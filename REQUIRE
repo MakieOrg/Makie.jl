@@ -1,1 +1,11 @@
 julia 0.6
+
+GLVisualize
+GeometryTypes
+Reactive
+GLAbstraction
+GLWindow
+Contour
+FileIO
+Images
+UnicodeFun
