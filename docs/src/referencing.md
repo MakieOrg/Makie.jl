@@ -6,6 +6,18 @@ decides to put data on the GPU you might even share those in GPU memory.
 
 This allows the following use cases:
 
+### `@ref`
+
+@ref Variable = Value # Inserts Value under name Variable into Scene
+
+@ref Scene.Name1.Name2 # Syntactic sugar for `Scene[:Name1, :Name2]`
+@ref Expr1, Expr1 # Syntactic sugar for `(@ref Expr1, @ref Expr2)`
+
+@ref Scene.X # where X doesn't yet exist - returns a Future reference to X
+Makes it possible to do:
+```Julia
+plot(@ref x = rand(10), color = map(to_color, @ref x))
+```
 
 ### Using Mouse and Time to animate plots
 
