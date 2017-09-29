@@ -30,7 +30,8 @@ surface(@ref A) # refer to exactly the same a in wireframe and surface plot
 wireframe((@ref A) .+ 0.5) # offsets A on the GPU based on the same data
 
 for i = 1:10
-    @ref A[:, :] = rand(32, 32) # updates A - resulting in an animation of the wireframe and offseted wireframe plot
+    # updates A - resulting in an animation of the surface and offsetted wireframe plot
+    @ref A[:, :] = rand(32, 32)
 end
 ```
 
@@ -50,8 +51,8 @@ function xy_data(x,y,i)
     Float32(sin(r) / r)
 end
 
-surf(i, N) = Float32[xy_data(x, y, i, N) for x=linspace(0, 1, N), y=linspace(0, 1, N)]
+surf(i, N) = Float32[xy_data(x, y, i, N) for x = linspace(0, 1, N), y = linspace(0, 1, N)]
 
-surface(map(svalue-> surf(svalue, 512), @ref slicer1)) # refer to exactly the same a in wireframe and surface plot
+surface(surf.(@ref slicer1, 512)) # refer to exactly the same a in wireframe and surface plot
 
 ```
