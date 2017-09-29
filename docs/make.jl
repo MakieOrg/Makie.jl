@@ -10,7 +10,9 @@ makedocs(
             "referencing.md",
             "axis.md",
             "labels.md",
-            "output.md"
+            "output.md",
+            "reflection.md",
+            "layout.md"
         ],
     ]
 )
