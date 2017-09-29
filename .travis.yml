@@ -28,6 +28,8 @@ git:
 #  - julia -e 'Pkg.clone(pwd()); Pkg.build("MakiE"); Pkg.test("MakiE"; coverage=true)'
 after_success:
   # push coverage results to Coveralls
-  - julia -e 'cd(Pkg.dir("MakiE")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
+  # - julia -e 'cd(Pkg.dir("MakiE")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())'
   # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("MakiE")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  # - julia -e 'cd(Pkg.dir("MakiE")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+  - julia -e 'Pkg.add("Documenter")'
+  - julia -e 'cd(Pkg.dir("MakiE")); include(joinpath("docs", "make.jl"))'
