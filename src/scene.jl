@@ -87,28 +87,48 @@ function unique_predictable_name(scene, name)
     return unique
 end
 
-function scatter(points; kw_args...)
-    scene = get_global_scene()
-    kw_args = map(x-> (x[1], to_signal(x[2])), kw_args)
-    points = to_signal(points)
-    viz = visualize((Circle(Point2f0(0), 10f0), points); kw_args...).children[]
-    name = unique_predictable_name(scene, :scatter)
-    attributes = map(viz.uniforms) do kv
-        if kv[1] in (:preferred_camera, :fxaa)
-            # this is silly, the system needs a rework. But for now we special case this!
-            kv[1] => kv[2] # make sure all are signal
-        else
-            kv[1] => to_signal(kv[2])
-        end
+function extract_fields(expr, fields = [])
+    if expr.head == :(.)
+        push!(fields, expr.args[1])
+        extract_fields(expr.args[2], fields)
+    elseif isa(expr, Symbol)
+        push!(fields, QuoteNode(expr))
+    elseif isa(expr, Expr) && expr.head == :quote && length(expr.args) == 1 && isa(expr.args[1], Symbol)
+        push!(fields, expr)
+    else
+        error("Not a getfield expr: $expr, $(typeof(expr)) $(expr.head)")
     end
-    viz.uniforms = attributes
-    scene.data[name] = attributes
-    _view(viz, scene[:screen])
-    viz
+    fields
 end
 
-s = Scene()
-viz = scatter(
-    map((mpos, t)-> [Point2f0((sin(x + t), cos(x + t)) .* 50f0) .+ Point2f0(mpos) for x in linspace(0, 2pi, 30)], s[:mouseposition], s[:time]),
-    scale = Vec2f0(5)
-)
+
+macro ref(arg)
+    fields = extract_fields(arg)
+    println(fields)
+    expr = :(getindex($(fields...)))
+    println(expr)
+    expr
+end
+
+struct Hehe
+    test::String
+end
+
+Lol = Hehe("haha")
+
+@ref Lol.test
+
+
+macro ref(arg, args...)
+    args = (arg, args...)
+    result = Expr(:tuple)
+    for elem in args
+
+
+end
+
+# s = Scene()
+# viz = scatter(
+#     map((mpos, t)-> [Point2f0((sin(x + t), cos(x + t)) .* 50f0) .+ Point2f0(mpos) for x in linspace(0, 2pi, 30)], s[:mouseposition], s[:time]),
+#     scale = Vec2f0(5)
+# )
