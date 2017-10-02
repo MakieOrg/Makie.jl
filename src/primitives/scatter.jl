@@ -1,4 +1,3 @@
-
 const _marker_map = KW(
     :rect => '■',
     :star5 => '★',
@@ -21,53 +20,41 @@ const _marker_map = KW(
     :x => 'x',
     :circle => '●'
 )
-function extract_marker(d, kw_args)
-    dim = Plots.is3d(d) ? 3 : 2
-    scaling = dim == 3 ? 0.003 : 2
-    if haskey(d, :markershape)
-        shape = d[:markershape]
-        shape = marker(shape)
-        if shape != :none
-            kw_args[:primitive] = shape
-        end
+
+function available_marker_syms()
+    println("Marker Symbols:")
+    for (k, v) in _marker_map
+        println("    ", k, " => ", v)
     end
-    dim = isa(kw_args[:primitive], GLVisualize.Sprites) ? 2 : 3
-    if haskey(d, :markersize)
-        msize = d[:markersize]
-        kw_args[:scale] = to_vec(GeometryTypes.Vec{dim, Float32}, msize .* scaling)
-    end
-    if haskey(d, :offset)
-        kw_args[:offset] = d[:offset]
-    end
-    # get the color
-    key = :markercolor
-    haskey(d, key) || return
-    c = color(d[key])
-    if isa(c, AbstractVector) && d[:marker_z] != nothing
-        extract_colornorm(d, kw_args)
-        kw_args[:color] = nothing
-        kw_args[:color_map] = c
-        kw_args[:intensity] = convert(Vector{Float32}, d[:marker_z])
+end
+
+"""
+Sprite marker. Allowed values:
+ * GeometryTypes.Circle
+ * Symbol. Available options can be printed with `available_marker_syms()`
+ * Any unicode Char
+ * A shape/polygon
+ * An Image
+ * A distancefield (Matrix{Float}-> annotating the distance from a contour with negative distances being outside and positves inside)/
+ * An array of any of the above, to give each marker it's own shape
+"""
+to_spritemarker(::Type{Circle}) = Circle(Point2f0(0), 1f0)
+to_spritemarker(::Type{Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+
+to_spritemarker(marker::Char) = marker
+to_spritemarker(marker::Matrix{<: AbstractFloat}) = Float32.(marker)
+to_spritemarker(marker::Image) = to_image(marker)
+
+function to_spritemarker(marker::Symbol)
+    if haskey(_marker_map, marker)
+        return to_spritemarker(_marker_map[marker])
     else
-        kw_args[:color] = c
-    end
-    key = :markerstrokecolor
-    haskey(d, key) || return
-    c = color(d[key])
-    if c != nothing
-        if !(isa(c, Colorant) || (isa(c, Vector) && eltype(c) <: Colorant))
-            error("Stroke Color not supported: $c")
-        end
-        kw_args[:stroke_color] = c
-        kw_args[:stroke_width] = Float32(d[:markerstrokewidth])
+        warn("Unsupported marker: $marker, using ● instead")
+        return '●'
     end
 end
 
-function marker(shape)
-    shape
-end
-
-function marker(shape::Shape)
+function to_spritemarker(shape::Shape)
     points = Point2f0[GeometryTypes.Vec{2, Float32}(p) for p in zip(shape.x, shape.y)]
     bb = GeometryTypes.AABB(points)
     mini, maxi = minimum(bb), maximum(bb)
@@ -77,42 +64,92 @@ function marker(shape::Shape)
     GeometryTypes.GLNormalMesh(points)
 end
 # create a marker/shape type
-function marker(shape::Vector{Symbol})
-    String(map(shape) do sym
-        get(_marker_map, sym, '●')
+to_spritemarker(marker::Vector{Char}) = String(marker)
+function to_spritemarker(marker::Vector)
+    marker = map(marker) do sym
+        to_spritemarker(sym)
+    end
+    if isa(marker, Vector{Char})
+        to_spritemarker(marker)
+    else
+        marker
+    end
+end
+
+"""
+Billboard attribute to always have a primitive face the camera.
+Can be used for rotation.
+"""
+immutable Billboard end
+
+function to_static_vec(x::AbstractArray)
+    Vec(ntuple(length(x)) do i
+        x[i]
     end)
 end
 
-function marker(shape::Symbol)
-    if shape == :rect
-        GeometryTypes.HyperRectangle(Vec2f0(0), Vec2f0(1))
-    elseif shape == :circle || shape == :none
-        GeometryTypes.HyperSphere(Point2f0(0), 1f0)
-    elseif haskey(_marker_map, shape)
-        _marker_map[shape]
-    elseif haskey(_shapes, shape)
-        marker(_shapes[shape])
-    else
-        error("Shape $shape not supported by GLVisualize")
-    end
+to_static_array(x::SVector) = Vec(x)
+to_static_array(x::NTuple{N}) = Vec(x)
+
+function to_static_array(x::AbstractArray{T}) where T <: Union{Tuple, SVector, AbstractArray}
+    to_static_array.(x)
 end
 
-function scatter(points; kw_args...)
-    scene = get_global_scene()
-    kw_args = map(x-> (x[1], to_signal(x[2])), kw_args)
-    points = to_signal(points)
-    viz = visualize((Circle(Point2f0(0), 10f0), points); kw_args...).children[]
-    name = unique_predictable_name(scene, :scatter)
-    attributes = map(viz.uniforms) do kv
-        if kv[1] in (:preferred_camera, :fxaa)
-            # this is silly, the system needs a rework. But for now we special case this!
-            kv[1] => kv[2] # make sure all are signal
-        else
-            kv[1] => to_signal(kv[2])
+to_rotations(x::Vector) = to_static_array(x)
+
+
+@default function sprite_defaults(scene, kw_args)
+    positions = to_positions(positions)
+
+    # Either you give a color, or a colormap.
+    # For a colormap, you'll also need intensities
+    xor(
+        begin
+            color = to_color(color)
+        end,
+        begin
+            colormap = to_colormap(colormap)
+            intensity = to_intensity(intensity)
+            colornorm = to_colornorm(colornorm, intensity)
         end
-    end
+    )
+    marker = to_marker(marker)
+
+    stroke_color = to_color(stroke_color)
+    stroke_thickness = stroke_thickness::Float32
+
+    glow_color = to_color(stroke_color)
+    glow_thickness = stroke_thickness::Float32
+
+    scales = to_scale(scales)
+
+    rotations = to_rotations(rotations)
+end
+
+function expand_kwargs(kw_args)
+    # TODO get in all the shorthands from Plots.jl
+    Dict{Symbol, Any}(kw_args)
+end
+
+
+function insert_scene!(scene, name, viz, attributes)
+    name = unique_predictable_name(scene, :scatter)
     viz.uniforms = attributes
     scene.data[name] = attributes
     _view(viz, scene[:screen])
+end
+
+function scatter(points; kw_args...)
+    kw_args = expand_kwargs(kw_args)
+    scene = get_global_scene()
+    kw_args[:positions] = to_signal(points)
+    attributes, attribute_syms = if is_sprites(kw_args)
+        sprite_defaults(scene, kw_args)
+    else
+        meshparticle_defaults(scene, kw_args)
+    end
+    main = (attributes[:marker], attributes[:position])
+    viz = visualize(main, Style(:default), attributes).children[]
+
     viz
 end
