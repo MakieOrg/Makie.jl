@@ -1,6 +1,5 @@
 # Legend
 
-
 The Legend is an interactive object, that can be edited and interacted with like
 any other object in MakiE.
 

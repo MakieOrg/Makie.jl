@@ -7,9 +7,11 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Basics" => [
+            "functions.md",
+            "extending.md",
             "referencing.md",
             "axis.md",
-            "labels.md",
+            "legends.md",
             "output.md",
             "reflection.md",
             "layout.md"
