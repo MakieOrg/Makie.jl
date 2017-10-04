@@ -1,71 +1,139 @@
-const RGBAf0 = RGA{Float32}
+using Colors, GeometryTypes, GLVisualize, GLAbstraction
+using Base.Iterators: repeated, drop
 
-struct Axis{T}
-    title::String
-    dims::NTuple{N, Tuple{String, RGBAf0}}
-    area::HyperCube{N, Float32}
-    ranges::NTuple{N, UnitRange{Float32}}
-    grid_color::RGBAf0
+include("scene.jl")
+const RGBAf0 = RGBA{Float32}
+
+struct Axis{N}
+    title::Text
+    axes_names::NTuple{N, Text}
+    screen_area::HyperRectangle{N, Float32}
+    world_area::HyperRectangle{N, Float32}
+    ranges::NTuple{N, T} where T <: Range
+
+    show::Bool
+    showticks::NTuple{N, Bool}
+    showaxis::NTuple{N, Bool}
+    showgrid::NTuple{N, Bool}
+
+    flips::NTuple{N, Bool}
+    scalefuncs::NTuple{N, Function}
+    theme::Theme
 end
 
-function draw_grid_lines(sp, grid_segs, thickness, style, model, color)
+axistheme = Theme(
+    :gridcolors => ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3),
+    :axiscolors => ntuple(x-> RGBAf0(0.0, 0.0, 0.0, 0.4), 3)
+)
 
-    kw_args = Dict{Symbol, Any}(
-        :model => model
-    )
-    d = Dict(
-        :linestyle => style,
-        :linewidth => thickness,
-        :linecolor => color
-    )
-    Plots.extract_linestyle(d, kw_args)
-    GL.lines(map(Point2f0, grid_segs.pts), kw_args)
-end
+N = 3
 
-function draw_ticks(
-        axis, ticks, isx, lims, m, text = "",
-        positions = Point2f0[], offsets=Vec2f0[]
-    )
-    sz = pointsize(axis[:tickfont])
-    atlas = GLVisualize.get_texture_atlas()
-    font = GLVisualize.defaultfont()
+x = Axis(
+    Text(""),
+    ntuple(i-> Text(""), N),
+    HyperRectangle{N, Float32}(Vec{N, Float32}(0), Vec{N, Float32}(3)),
+    HyperRectangle{N, Float32}(Vec{N, Float32}(0), Vec{N, Float32}(3)),
+    ntuple(i-> linspace(0, 3, 5), N),
 
-    flip = axis[:flip]; mirror = axis[:mirror]
+    true,
+    ntuple(i-> true, N),
+    ntuple(i-> true, N),
+    ntuple(i-> true, N),
 
-    align = if isx
-        mirror ? :bottom : :top
-    else
-        mirror ? :left : :right
-    end
-    axis_gap = Point2f0(isx ? 0 : sz / 2, isx ? sz / 2 : 0)
-    for (cv, dv) in zip(ticks...)
+    ntuple(i-> false, N),
+    ntuple(i-> identity, N),
+    axistheme
+)
 
-        x, y = cv, lims[1]
-        xy = isx ? (x, y) : (y, x)
-        _pos = m * GeometryTypes.Vec4f0(xy[1], xy[2], 0, 1)
-        startpos = Point2f0(_pos[1], _pos[2]) - axis_gap
-        str = string(dv)
-        # need to tag a new UnicodeFun version for this... also the numbers become
-        # so small that it looks terrible -.-
-        # _str = split(string(dv), "^")
-        # if length(_str) == 2
-        #     _str[2] = UnicodeFun.to_superscript(_str[2])
-        # end
-        # str = join(_str, "")
-        position = GLVisualize.calc_position(str, startpos, sz, font, atlas)
-        offset = GLVisualize.calc_offset(str, sz, font, atlas)
-        alignoff = align_offset(startpos, last(position), atlas, sz, font, align)
-        map!(position, position) do pos
-            pos .+ alignoff
+
+function draw_axes(x::Axis{N}, scene) where N
+    line_segments = Point{N, Float32}[]
+    line_colors = RGBAf0[]
+    textpositions = Point{N, Float32}[]
+    textoffsets = Point2f0[]
+    textrotations = Vec{N, Float32}[]
+    textcolors = RGBAf0[]
+    textio = IOBuffer()
+    atlas = GLVisualize.get_texture_atlas(scene[:screen])
+    for i = 1:N
+        axis_vec = unit(Point{N, Float32}, i)
+        mini, maxi = extrema(x.ranges[i])
+        start, stop = mini .* axis_vec, maxi .* axis_vec
+        if x.showaxis[i]
+            push!(line_segments, start, stop)
+            c = x.theme[:axiscolors].value[i]
+            push!(line_colors, c, c)
         end
-        append!(positions, position)
-        append!(offsets, offset)
-        text *= str
-
+        if x.showticks[i]
+            font = GLVisualize.defaultfont()
+            range = x.ranges[i]
+            j = mod1(i + 1, N)
+            tickdir = unit(Point{N, Float32}, j)
+            offset2 = (maximum(x.ranges[j]) .+ 0.05f0) * unit(Vec{N, Float32}, j)
+            offset = tickdir .* 0.1f0
+            rotation = rotationmatrix_z(pi*0.5f0)
+            for tick in drop(range, 1)
+                startpos = ((tick * axis_vec) .+ offset) .+ offset2
+                str = sprint() do io
+                    print(io, tick)
+                end
+                position = GLVisualize.calc_position(str, Point2f0(0), 0.1, font, atlas)
+                toffset = GLVisualize.calc_offset(str, 0.1, font, atlas)
+                position = map(position) do x
+                    x = Point3f0(x[1], x[2], 0)
+                    xx = rotationmatrix_z(pi/2f0) * Point4f0(x[1], x[2], x[3], 0)
+                    Point3f0(xx[1], xx[2], xx[3]) .+ startpos
+                end
+                toffset = map(toffset) do x
+                    xx = rotationmatrix_z(pi/2f0) * Vec4f0(x[1], x[2], 0, 0)
+                    Vec2f0(xx[1], xx[2])
+                end
+                append!(textpositions, position)
+                append!(textoffsets, toffset)
+                if i == 1
+                    θ = pi * 1f0
+                    tickdir = (rotation* Vec4f0(0, 0, 2, 0))[1:3]
+                end
+                append!(textrotations, repeated(tickdir, length(position)))
+                append!(textcolors, repeated(to_color(:black), length(position)))
+                print(textio, str)
+            end
+        end
+        if x.showgrid[i]
+            c = x.theme[:gridcolors].value[i]
+            for _j = (i + 1):(i + N - 1)
+                j = mod1(_j, N)
+                dir = unit(Point{N, Float32}, j)
+                range = x.ranges[j]
+                for tick in drop(range, 1)
+                    offset = tick * dir
+                    push!(line_segments, start .+ offset, stop .+ offset)
+                    push!(line_colors, c, c)
+                end
+            end
+        end
     end
-    text, positions, offsets
+    textrobj = visualize(
+        String(take!(textio)),
+        position = textpositions,
+        rotation = textrotations,
+        atlas = atlas,
+        offset = textoffsets,
+        color = textcolors,
+        relative_scale = 0.1f0,
+        billboard = false,
+        scale_primitive = false
+    )
+    line_segments, line_colors, textrobj
 end
 
+scene = Scene()
+ls, lc, trobj = draw_axes(x, scene)
+
+_view(visualize(ls, :linesegment, color = lc), scene[:screen], camera = :perspective)
+_view(trobj, scene[:screen], camera = :perspective)
+
+center!(scene[:screen])
 
 function draw_axes_2d(sp::Plots.Subplot{Plots.GLVisualizeBackend}, model, area)
     xticks, yticks, xspine_segs, yspine_segs, xgrid_segs, ygrid_segs, xborder_segs, yborder_segs = Plots.axis_drawing_info(sp)
@@ -158,16 +226,4 @@ function draw_axes_2d(sp::Plots.Subplot{Plots.GLVisualizeBackend}, model, area)
     end
 
     axis_vis
-end
-
-function draw_axes_3d(sp, model)
-    x = Plots.axis_limits(sp[:xaxis])
-    y = Plots.axis_limits(sp[:yaxis])
-    z = Plots.axis_limits(sp[:zaxis])
-
-    min = Vec3f0(x[1], y[1], z[1])
-    visualize(
-        GeometryTypes.AABB{Float32}(min, Vec3f0(x[2], y[2], z[2])-min),
-        :grid, model=model
-    )
 end
