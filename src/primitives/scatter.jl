@@ -21,7 +21,7 @@ const _marker_map = KW(
     :circle => '●'
 )
 
-function available_marker_syms()
+function available_marker_symbols()
     println("Marker Symbols:")
     for (k, v) in _marker_map
         println("    ", k, " => ", v)
@@ -31,7 +31,7 @@ end
 """
 Sprite marker. Allowed values:
  * GeometryTypes.Circle
- * Symbol. Available options can be printed with `available_marker_syms()`
+ * Symbol. Available options can be printed with `available_marker_symbols()`
  * Any unicode Char
  * A shape/polygon
  * An Image

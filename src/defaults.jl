@@ -5,20 +5,20 @@ using MacroTools, Reactive
 """
 Extract a default for `func` + `attribute`.
 If the attribute is in kw_args that will be selected.]
-Else will search in scene.Theme.func for `attribute` and if not found there it will
-search one level higher (scene.Theme).
+Else will search in scene.theme.func for `attribute` and if not found there it will
+search one level higher (scene.theme).
 """
 function find_default(scene, kw_args, func, attribute)
     if haskey(kw_args, attribute)
         return kw_args[attribute]
     end
-    if haskey(scene, :Theme)
-        if haskey(scene, :Theme, Symbol(func), attribute)
-            return scene[:Theme, Symbol(func), attribute]
-        elseif haskey(scene, :Theme, attribute)
-            return scene[:Theme, attribute]
+    if haskey(scene, :theme)
+        if haskey(scene, :theme, Symbol(func), attribute)
+            return scene[:theme, Symbol(func), attribute]
+        elseif haskey(scene, :theme, attribute)
+            return scene[:theme, attribute]
         else
-            error("Theme doesn't contain a default for $attribute. Please provide $attribute for $func")
+            error("theme doesn't contain a default for $attribute. Please provide $attribute for $func")
         end
     else
         error("Scene doesn't contain a theme and therefore doesn't provide any defaults.
@@ -43,40 +43,43 @@ function convert_expr(var, f, args, scene_sym, kw_sym, func, dictsym)
     end
 end
 
-function process_body_element(elem, var, f, args, fargs, mainfunc, dictsym, result = [])
-
+function process_body_element(elem, f, args, fargs, mainfunc, dictsym)
+    docs = []; symbols = []
+    # If is documented
     expr = if isa(elem, Expr) && elem.head == :macrocall &&
             length(elem.args) == 3 && elem.args[1].head == :core &&
             elem.args[1].args[1] == Symbol("@doc")
         push!(docs, elem.args[2])
-        elem.args[3]
+        elem.args[3] # the expression that is documented
     else
+        # TODO get docs of convert func
         elem
     end
-
-    # xor blocks
+    # exclusive blocks
     if isa(expr, Expr) && expr.head == :call && expr.args[1] == :xor
-        args = args[2:end]
-        quote
-            kw_keys = keys(kw_args)
-            if kw_keys in Akeys
-            elseif kw_keys in Bkeys
-            else
-                # Use first defined
-                $A
-            end
+        xor_expr = Expr(:block)
+        kwarg_keys = gensym(:kwarg_keys)
+        for arg in expr.args[2:end]
+            expressions, syms, docs = process_body_element(arg, f, args, fargs, mainfunc, dictsym)
+            condition = :($syms in $kwarg_keys)
+            else_expr = Expr(:block)
+            ifelse = Expr(:if, condition, Expr(:block, expressions...), else_expr)
+            push!(xor_expr, ifelse)
+            xor_expr = else_expr # now we need to insert into else
         end
+        return xor_expr, Symbol[], docs
     end
     found = @capture(expr,
         (var_ = f_(args__)) |
         (var_ = args__::f_)
     )
-    if found
-        push!(result, convert_expr(var, f, args, fargs[1], fargs[2], mainfunc, dictsym))
+    result = if found
+        push!(symbols, var)
+        convert_expr(var, f, args, fargs[1], fargs[2], mainfunc, dictsym)
     else
-        push!(result, expr)
+        expr
     end
-
+    return result, symbols, docs
 end
 
 """
@@ -93,8 +96,8 @@ It creates a function `sprites(scene, kw_args)::Dict{Symbol, Any}`
 
 Which will first look in kw_args for `:attribute`, if found it will call `convert_function(kw_args[:attribute])`
 and insert it in the returned attribute dictionary.
-If it's not found in kw_args, it will search in scene.Theme.sprites for `:attribute` and if not found there it will
-search one level higher (scene.Theme).
+If it's not found in kw_args, it will search in scene.theme.sprites for `:attribute` and if not found there it will
+search one level higher (scene.theme).
 This can be manually achieved by calling: `find_default(scene, kw_args, func, :attribute)`.
 
 The same will be done for attribute2, which also demonstrate that you can reference previously defined attributes and that you can
@@ -131,7 +134,8 @@ macro default(func)
     result = []
     dictsym = gensym(:attributes)
     for elem in body
-
+        expr, syms, docs = process_body_element(elem, f, args, fargs, mainfunc, dictsym)
+        push!(result, expr)
     end
     expr = quote
         function $mainfunc($(fargs...))
@@ -147,7 +151,29 @@ end
 
 @default function sprites(scene, kw_args)
 
+    positions = to_positions(positions)
 
+    # Either you give a color, or a colormap.
+    # For a colormap, you'll also need intensities
+    xor(
+        color = to_color(color),
+        begin
+            colormap = to_colormap(colormap)
+            intensity = to_intensity(intensity)
+            colornorm = to_colornorm(colornorm, intensity)
+        end
+    )
+    marker = to_marker(marker)
+
+    stroke_color = to_color(stroke_color)
+    stroke_thickness = stroke_thickness::Float32
+
+    glow_color = to_color(stroke_color)
+    glow_thickness = stroke_thickness::Float32
+
+    scales = to_scale(scales)
+
+    rotations = to_rotations(rotations)
 end
 
 macro test(x)

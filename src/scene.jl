@@ -6,6 +6,9 @@ immutable Scene
 end
 const global_scene = Scene[]
 
+function Scene(args::Pair{Symbol, Any}...)
+    Scene(Dict(map(x-> x[1] => to_signal(x[2]), args)))
+end
 
 function get_global_scene()
     if isempty(global_scene)
@@ -34,7 +37,23 @@ function render_loop(scene, screen, framerate = 1/60)
 end
 
 
-function Scene()
+const Theme = Scene
+
+const default_theme = Theme(
+    :color => UniqueColorIter(:YlGnBu),
+    :scatter => Theme(
+        :markershape => Circle,
+        :markersize => 5f0,
+        :stroke_color => RGBA(0, 0, 0, 0)
+        :stroke_thickness => 0f0,
+        :glow_color => RGBA(0, 0, 0, 0)
+        :glow_thickness => 0f0,
+        :rotations => Billboard()
+    )
+)
+
+
+function Scene(theme = default_theme)
     if !isempty(global_scene)
         oldscene = global_scene[]
         GLWindow.destroy!(oldscene[:screen])
@@ -47,6 +66,7 @@ function Scene()
     dict[:screen] = w
     push!(dict[:window_open], true)
     dict[:time] = Signal(0.0)
+    dict[:theme] = theme
     scene = Scene(dict)
     push!(global_scene, scene)
     @async render_loop(scene, w)
