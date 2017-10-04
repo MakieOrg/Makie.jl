@@ -150,6 +150,6 @@ function scatter(points; kw_args...)
     end
     main = (attributes[:marker], attributes[:position])
     viz = visualize(main, Style(:default), attributes).children[]
-
+    insert_scene!(scene, :scatter, viz, attributes)
     viz
 end
