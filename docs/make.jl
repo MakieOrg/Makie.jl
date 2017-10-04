@@ -16,6 +16,9 @@ makedocs(
             "reflection.md",
             "layout.md"
         ],
+        "Developper Documentation" => [
+            "devdocs.md",
+        ],
     ]
 )
 

@@ -50,3 +50,41 @@ function extract_linestyle(d, kw_args)
     extract_c(d, kw_args, :line)
     nothing
 end
+
+
+function handle_segment{P}(lines, line_segments, points::Vector{P}, segment)
+    (isempty(segment) || length(segment) < 2) && return
+    if length(segment) == 2
+         append!(line_segments, view(points, segment))
+    elseif length(segment) == 3
+        p = view(points, segment)
+        push!(line_segments, p[1], p[2], p[2], p[3])
+    else
+        append!(lines, view(points, segment))
+        push!(lines, P(NaN))
+    end
+end
+
+function lines(points, kw_args)
+    result = []
+    isempty(points) && return result
+    P = eltype(points)
+    lines = P[]
+    line_segments = P[]
+    last = 1
+    for (i,p) in enumerate(points)
+        if isnan(p) || i==length(points)
+            _i = isnan(p) ? i-1 : i
+            handle_segment(lines, line_segments, points, last:_i)
+            last = i+1
+        end
+    end
+    if !isempty(lines)
+        pop!(lines) # remove last NaN
+        push!(result, visualize(lines, Style(:lines), kw_args))
+    end
+    if !isempty(line_segments)
+        push!(result, visualize(line_segments, Style(:linesegment), kw_args))
+    end
+    return result
+end

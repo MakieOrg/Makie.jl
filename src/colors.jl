@@ -11,10 +11,10 @@ UniqueColorIter(x::Union{Symbol, String}) = UniqueColorIter(to_colormap(x), 1)
 
 function Base.getindex(iter::UniqueColorIter, idx::Int)
     # TODO make out of bounds more graceful? But hooow
-    iter.colors[mod(idx, length(iter.colors))]
+    iter.colors[mod1(idx, length(iter.colors))]
 end
 
-Base.start(iter::UniqueColorIter) = (iter.state = 1; iter, iter)
+Base.start(iter::UniqueColorIter) = (iter.state = 1; (iter, iter))
 
 function Base.next(iter::UniqueColorIter)
     result = iter[iter.state]
@@ -33,6 +33,7 @@ A color can be defined in the following way:
 to_color(c::Colorant) = RGBA{Float32}(c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
+to_color(c::UniqueColorIter) = to_color(next(c))
 
 
 const colorbrewer_names = Symbol[

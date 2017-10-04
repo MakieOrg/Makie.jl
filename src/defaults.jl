@@ -1,30 +1,4 @@
-
 using MacroTools, Reactive
-
-
-"""
-Extract a default for `func` + `attribute`.
-If the attribute is in kw_args that will be selected.]
-Else will search in scene.theme.func for `attribute` and if not found there it will
-search one level higher (scene.theme).
-"""
-function find_default(scene, kw_args, func, attribute)
-    if haskey(kw_args, attribute)
-        return kw_args[attribute]
-    end
-    if haskey(scene, :theme)
-        if haskey(scene, :theme, Symbol(func), attribute)
-            return scene[:theme, Symbol(func), attribute]
-        elseif haskey(scene, :theme, attribute)
-            return scene[:theme, attribute]
-        else
-            error("theme doesn't contain a default for $attribute. Please provide $attribute for $func")
-        end
-    else
-        error("Scene doesn't contain a theme and therefore doesn't provide any defaults.
-            Please provide attribute $attribute for $func")
-    end
-end
 
 function convert_expr(var, f, args, scene_sym, kw_sym, func, dictsym)
     tmpvar = gensym()
@@ -37,39 +11,69 @@ function convert_expr(var, f, args, scene_sym, kw_sym, func, dictsym)
     end
     var_sym = QuoteNode(var)
     quote
-        $tmpvar = Signal(find_default($scene_sym, $kw_sym, $(QuoteNode(func)), $var_sym))
-        $(esc(var)) = map(convert_f, $(args...))
+        $tmpvar = to_signal(find_default($scene_sym, $kw_sym, $(QuoteNode(func)), $var_sym))
+        $(esc(var)) = map($f, $(args...))
         $dictsym[$var_sym] = $(esc(var))
     end
 end
 
-function process_body_element(elem, f, args, fargs, mainfunc, dictsym)
+function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
     docs = []; symbols = []
+    if isa(elem, Expr) && elem.head == :kw
+        var, call = elem.args
+        @capture(call,
+            f_(args__) |
+            args__::f_
+        ) || error("Use a call or type assert on right hand side")
+
+        expr = convert_expr(var, f, args, fargs[1], fargs[2], mainfunc, dictsym)
+        return expr, [var], []
+    end
+    if isa(elem, Expr) && elem.head == :block
+        syms = Symbol[]
+        docs = []
+        result = Expr(:block)
+        for arg in elem.args
+            expr, _syms, _docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys)
+            push!(result.args, expr)
+            append!(syms, _syms)
+            append!(docs, _docs)
+        end
+        return result, syms, docs
+    end
     # If is documented
-    expr = if isa(elem, Expr) && elem.head == :macrocall &&
+    if isa(elem, Expr) && elem.head == :macrocall &&
             length(elem.args) == 3 && elem.args[1].head == :core &&
             elem.args[1].args[1] == Symbol("@doc")
         push!(docs, elem.args[2])
-        elem.args[3] # the expression that is documented
-    else
-        # TODO get docs of convert func
-        elem
+        # the expression that is documented
+        return process_body_element(elem.args[3], fargs, mainfunc, dictsym, kwarg_keys)
     end
     # exclusive blocks
-    if isa(expr, Expr) && expr.head == :call && expr.args[1] == :xor
+    if isa(elem, Expr) && elem.head == :call && elem.args[1] == :xor
         xor_expr = Expr(:block)
-        kwarg_keys = gensym(:kwarg_keys)
-        for arg in expr.args[2:end]
-            expressions, syms, docs = process_body_element(arg, f, args, fargs, mainfunc, dictsym)
-            condition = :($syms in $kwarg_keys)
+        first_expr = Expr(:block)
+        current_expr = xor_expr
+        for (i, arg) in enumerate(elem.args[2:end])
+            expression, syms, docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys)
+            if i == 1
+                first_expr = expression
+                # since a xor block defaults to first definition, we don't actually
+                # need to check for it's args and create an if - since it will land
+                # in the last else block anyways
+                continue
+            end
+            condition = :(any(x-> x in $kwarg_keys, $syms))
             else_expr = Expr(:block)
-            ifelse = Expr(:if, condition, Expr(:block, expressions...), else_expr)
-            push!(xor_expr, ifelse)
-            xor_expr = else_expr # now we need to insert into else
+            ifelse = Expr(:if, condition, expression, else_expr)
+            push!(current_expr.args, ifelse)
+            current_expr = else_expr # now we need to insert into else
         end
+        # defaults to first block in the last else block
+        current_expr.args = first_expr.args
         return xor_expr, Symbol[], docs
     end
-    found = @capture(expr,
+    found = @capture(elem,
         (var_ = f_(args__)) |
         (var_ = args__::f_)
     )
@@ -77,14 +81,18 @@ function process_body_element(elem, f, args, fargs, mainfunc, dictsym)
         push!(symbols, var)
         convert_expr(var, f, args, fargs[1], fargs[2], mainfunc, dictsym)
     else
-        expr
+        elem
     end
     return result, symbols, docs
 end
 
+
 """
+    `@default function name(args...) end`
+
 Macro that allows for concise default creations.
 From this expression:
+
     ```julia
         @default function sprites(scene, kw_args)
             attribute = convert_function(attribute)
@@ -104,9 +112,7 @@ The same will be done for attribute2, which also demonstrate that you can refere
 use as many inputs to convert_function as you want.
 You can optionally define a doc string for an attribute like this:
     ```julia
-        """
         Attribute 1 is great
-        """
         attribute = convert_fun(attribute)
     ```
 If you don't define any doc string, it will default to the doc string of the convert function.
@@ -129,56 +135,28 @@ macro default(func)
             ...
         end
     ")
+
     length(fargs) == 2 || error("Function should only have to arguments, namely scene and kw_args. Found: $fargs")
     docs = []
     result = []
     dictsym = gensym(:attributes)
+    kwarg_keys = gensym(:keys)
     for elem in body
-        expr, syms, docs = process_body_element(elem, f, args, fargs, mainfunc, dictsym)
+        expr, syms, docs = process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
         push!(result, expr)
     end
     expr = quote
-        function $mainfunc($(fargs...))
+        function $(esc(mainfunc))($(fargs...))
             $dictsym = Dict{Symbol, Any}()
+            $kwarg_keys = keys($dictsym)
             $(result...)
             return $dictsym
         end
     end
-    println(expr)
     expr
 end
 
 
-@default function sprites(scene, kw_args)
-
-    positions = to_positions(positions)
-
-    # Either you give a color, or a colormap.
-    # For a colormap, you'll also need intensities
-    xor(
-        color = to_color(color),
-        begin
-            colormap = to_colormap(colormap)
-            intensity = to_intensity(intensity)
-            colornorm = to_colornorm(colornorm, intensity)
-        end
-    )
-    marker = to_marker(marker)
-
-    stroke_color = to_color(stroke_color)
-    stroke_thickness = stroke_thickness::Float32
-
-    glow_color = to_color(stroke_color)
-    glow_thickness = stroke_thickness::Float32
-
-    scales = to_scale(scales)
-
-    rotations = to_rotations(rotations)
-end
-
-macro test(x)
-    nice_dump(x)
-end
 
 
 nice_dump(x, intent = 0) = (print("    "^intent); show(x); println())
@@ -192,15 +170,8 @@ function nice_dump(x::Expr, intent = 0)
 end
 
 
-@test(
-    xor(
-        color = to_color(color),
-        begin
-            colormap = to_colormap(colormap)
-            colornorm = to_colornorm(colornorm, positions)
-            intensity = to_intensity(intensity)
-        end, begin
-            println("test")
-        end
-    )
-)
+"""
+Billboard attribute to always have a primitive face the camera.
+Can be used for rotation.
+"""
+immutable Billboard end

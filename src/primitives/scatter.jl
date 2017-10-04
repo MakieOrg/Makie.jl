@@ -1,4 +1,8 @@
-const _marker_map = KW(
+using GeometryTypes, StaticArrays, Colors, GLAbstraction
+
+const Image = Matrix{T} where T <: Colorant
+
+const _marker_map = Dict(
     :rect => '■',
     :star5 => '★',
     :diamond => '◆',
@@ -54,16 +58,17 @@ function to_spritemarker(marker::Symbol)
     end
 end
 
-function to_spritemarker(shape::Shape)
-    points = Point2f0[GeometryTypes.Vec{2, Float32}(p) for p in zip(shape.x, shape.y)]
-    bb = GeometryTypes.AABB(points)
-    mini, maxi = minimum(bb), maximum(bb)
-    w3 = maxi-mini
-    origin, width = Point2f0(mini[1], mini[2]), Point2f0(w3[1], w3[2])
-    map!(p -> ((p - origin) ./ width) - 0.5f0, points, points) # normalize and center
-    GeometryTypes.GLNormalMesh(points)
-end
+# function to_spritemarker(shape::Shape)
+#     points = Point2f0[GeometryTypes.Vec{2, Float32}(p) for p in zip(shape.x, shape.y)]
+#     bb = GeometryTypes.AABB(points)
+#     mini, maxi = minimum(bb), maximum(bb)
+#     w3 = maxi-mini
+#     origin, width = Point2f0(mini[1], mini[2]), Point2f0(w3[1], w3[2])
+#     map!(p -> ((p - origin) ./ width) - 0.5f0, points, points) # normalize and center
+#     GeometryTypes.GLNormalMesh(points)
+# end
 # create a marker/shape type
+
 to_spritemarker(marker::Vector{Char}) = String(marker)
 function to_spritemarker(marker::Vector)
     marker = map(marker) do sym
@@ -76,11 +81,6 @@ function to_spritemarker(marker::Vector)
     end
 end
 
-"""
-Billboard attribute to always have a primitive face the camera.
-Can be used for rotation.
-"""
-immutable Billboard end
 
 function to_static_vec(x::AbstractArray)
     Vec(ntuple(length(x)) do i
@@ -89,18 +89,21 @@ function to_static_vec(x::AbstractArray)
 end
 
 to_static_array(x::SVector) = Vec(x)
-to_static_array(x::NTuple{N}) = Vec(x)
+to_static_array(x::NTuple{N}) where N = Vec(x)
 
 function to_static_array(x::AbstractArray{T}) where T <: Union{Tuple, SVector, AbstractArray}
     to_static_array.(x)
 end
 
+to_rotations(x::Billboard) = x
 to_rotations(x::Vector) = to_static_array(x)
 
+to_positions(x) = x
 
-@default function sprite_defaults(scene, kw_args)
+to_markersize(x) = Vec2f0(x)
+
+@default function scatter(scene, kw_args)
     positions = to_positions(positions)
-
     # Either you give a color, or a colormap.
     # For a colormap, you'll also need intensities
     xor(
@@ -113,43 +116,72 @@ to_rotations(x::Vector) = to_static_array(x)
             colornorm = to_colornorm(colornorm, intensity)
         end
     )
-    marker = to_marker(marker)
+    marker = to_spritemarker(marker)
 
     stroke_color = to_color(stroke_color)
     stroke_thickness = stroke_thickness::Float32
 
-    glow_color = to_color(stroke_color)
-    glow_thickness = stroke_thickness::Float32
+    glow_color = to_color(glow_color)
+    glow_thickness = glow_thickness::Float32
 
-    scales = to_scale(scales)
+    markersize = to_markersize(markersize)
 
     rotations = to_rotations(rotations)
-end
 
-function expand_kwargs(kw_args)
-    # TODO get in all the shorthands from Plots.jl
-    Dict{Symbol, Any}(kw_args)
 end
 
 
 function insert_scene!(scene, name, viz, attributes)
     name = unique_predictable_name(scene, :scatter)
-    viz.uniforms = attributes
     scene.data[name] = attributes
-    _view(viz, scene[:screen])
+    _view(viz, scene[:screen], camera = :orthographic_pixel)
 end
+
+function expand_for_glvisualize(kw_args)
+    result = Dict{Symbol, Any}()
+    for (k, v) in kw_args
+        if k == :rotations
+            k = :rotation
+            v = Vec3f0(0, 0, 1)
+            result[:billboard] = true
+        end
+        if k == :markersize
+            k = :scale
+        end
+        if k == :positions
+            k = :position
+        end
+        if k == :marker
+            k = :shape
+        end
+        result[k] = v
+    end
+    result
+end
+
 
 function scatter(points; kw_args...)
     kw_args = expand_kwargs(kw_args)
     scene = get_global_scene()
-    kw_args[:positions] = to_signal(points)
-    attributes, attribute_syms = if is_sprites(kw_args)
-        sprite_defaults(scene, kw_args)
+    kw_args[:positions] = points
+    attributes = if true #is_sprites(kw_args)
+        scatter(scene, kw_args)
     else
         meshparticle_defaults(scene, kw_args)
     end
-    main = (attributes[:marker], attributes[:position])
+    attributes = expand_for_glvisualize(attributes)
+    attributes[:visible] = true
+    attributes[:fxaa] = false
+    attributes[:model] = eye(Mat4f0)
+    main = (Circle, attributes[:position])
+    delete!(attributes, :shape)
+    delete!(attributes, :position)
     viz = visualize(main, Style(:default), attributes).children[]
     insert_scene!(scene, :scatter, viz, attributes)
     viz
 end
+
+
+
+scene = Scene()
+robj = scatter(rand(Point2f0, 10) .* 100f0, markersize = 10f0)

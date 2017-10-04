@@ -1,14 +1,22 @@
-using Reactive, GLWindow, GeometryTypes, GLVisualize, Colors
+using Reactive, GLWindow, GeometryTypes, GLVisualize, Colors, ColorBrewer
 import Base: setindex!, getindex, map, haskey
 
+include("colors.jl")
+include("defaults.jl")
 immutable Scene
     data::Dict{Symbol, Any}
 end
+
+include("signals.jl")
+
 const global_scene = Scene[]
 
-function Scene(args::Pair{Symbol, Any}...)
+
+function (::Type{Scene})(pair1::Pair, tail::Pair...)
+    args = (pair1, tail...)
     Scene(Dict(map(x-> x[1] => to_signal(x[2]), args)))
 end
+
 
 function get_global_scene()
     if isempty(global_scene)
@@ -37,23 +45,9 @@ function render_loop(scene, screen, framerate = 1/60)
 end
 
 
-const Theme = Scene
+include("themes.jl")
 
-const default_theme = Theme(
-    :color => UniqueColorIter(:YlGnBu),
-    :scatter => Theme(
-        :markershape => Circle,
-        :markersize => 5f0,
-        :stroke_color => RGBA(0, 0, 0, 0)
-        :stroke_thickness => 0f0,
-        :glow_color => RGBA(0, 0, 0, 0)
-        :glow_thickness => 0f0,
-        :rotations => Billboard()
-    )
-)
-
-
-function Scene(theme = default_theme)
+function Scene(; theme = default_theme)
     if !isempty(global_scene)
         oldscene = global_scene[]
         GLWindow.destroy!(oldscene[:screen])
@@ -63,6 +57,7 @@ function Scene(theme = default_theme)
     w = Screen()
     GLWindow.add_complex_signals!(w)
     dict = copy(w.inputs)
+
     dict[:screen] = w
     push!(dict[:window_open], true)
     dict[:time] = Signal(0.0)
@@ -72,14 +67,16 @@ function Scene(theme = default_theme)
     @async render_loop(scene, w)
     scene
 end
-to_signal(obj) = Signal(obj)
-to_signal(obj::Signal) = obj
 
-function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
-    s2 = Scene(Dict{Symbol, Any}())
-    s.data[key] = s2
-    s2[tail...] = obj
-end
+# function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
+#     s2 = get(s, key) do
+#         s2 = Scene(Dict{Symbol, Any}())
+#         s.data[key] = s2
+#         s2
+#     end
+#     s2[tail...] = obj
+# end
+
 function setindex!(s::Scene, obj, key::Symbol)
     if haskey(s, key) # if in dictionary, just push a new value to the signal
         push!(s[key], obj)
@@ -89,13 +86,16 @@ function setindex!(s::Scene, obj, key::Symbol)
 end
 
 haskey(s::Scene, key::Symbol) = haskey(s.data, key)
+function haskey(s::Scene, key::Symbol, tail::Symbol...)
+    res = haskey(s, key)
+    res || return false
+    haskey(s[key], tail...)
+end
 getindex(s::Scene, key::Symbol) = s.data[key]
 getindex(s::Scene, key::Symbol, tail::Symbol...) = s.data[key][tail...]
 
 
-function Base.map(f, x::Signal{T}) where T <: AbstractArray
-    invoke(map, (Function, Signal), x-> f(x), x)
-end
+
 
 function unique_predictable_name(scene, name)
     i = 1
@@ -121,34 +121,45 @@ function extract_fields(expr, fields = [])
     fields
 end
 
+"""
+    @ref(arg)
 
+    ```julia
+        @ref Variable = Value # Inserts Value under name Variable into Scene
+
+        @ref Scene.Name1.Name2 # Syntactic sugar for `Scene[:Name1, :Name2]`
+        @ref Expr1, Expr1 # Syntactic sugar for `(@ref Expr1, @ref Expr2)`
+    ```
+"""
 macro ref(arg)
     fields = extract_fields(arg)
-    println(fields)
     expr = :(getindex($(fields...)))
-    println(expr)
     expr
 end
 
-struct Hehe
-    test::String
+
+
+"""
+Extract a default for `func` + `attribute`.
+If the attribute is in kw_args that will be selected.]
+Else will search in scene.theme.func for `attribute` and if not found there it will
+search one level higher (scene.theme).
+"""
+function find_default(scene, kw_args, func, attribute)
+    if haskey(kw_args, attribute)
+        return kw_args[attribute]
+    end
+    if haskey(scene, :theme)
+        theme = scene[:theme]
+        if haskey(theme, Symbol(func), attribute)
+            return theme[Symbol(func), attribute]
+        elseif haskey(theme, attribute)
+            return theme[attribute]
+        else
+            error("theme doesn't contain a default for $attribute. Please provide $attribute for $func")
+        end
+    else
+        error("Scene doesn't contain a theme and therefore doesn't provide any defaults.
+            Please provide attribute $attribute for $func")
+    end
 end
-
-Lol = Hehe("haha")
-
-@ref Lol.test
-
-
-macro ref(arg, args...)
-    args = (arg, args...)
-    result = Expr(:tuple)
-    for elem in args
-
-
-end
-
-# s = Scene()
-# viz = scatter(
-#     map((mpos, t)-> [Point2f0((sin(x + t), cos(x + t)) .* 50f0) .+ Point2f0(mpos) for x in linspace(0, 2pi, 30)], s[:mouseposition], s[:time]),
-#     scale = Vec2f0(5)
-# )

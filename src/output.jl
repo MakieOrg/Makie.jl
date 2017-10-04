@@ -1,4 +1,4 @@
-function _show(io::IO, ::MIME"image/png", plt::Plot{GLVisualizeBackend})
+function show(io::IO, ::MIME"image/png", plt::Scene)
     _display(plt, false)
     GLWindow.poll_glfw()
     if Base.n_avail(Reactive._messages) > 0
