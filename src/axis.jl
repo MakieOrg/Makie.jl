@@ -2,6 +2,9 @@ using Colors, GeometryTypes, GLVisualize, GLAbstraction
 using Base.Iterators: repeated, drop
 
 include("scene.jl")
+include("primitives\\scatter.jl")
+include("primitives.jl")
+
 const RGBAf0 = RGBA{Float32}
 
 struct Axis{N}
@@ -26,7 +29,7 @@ axistheme = Theme(
     :axiscolors => ntuple(x-> RGBAf0(0.0, 0.0, 0.0, 0.4), 3)
 )
 
-N = 3
+N = 2
 
 x = Axis(
     Text(""),
@@ -55,6 +58,10 @@ function draw_axes(x::Axis{N}, scene) where N
     textcolors = RGBAf0[]
     textio = IOBuffer()
     atlas = GLVisualize.get_texture_atlas(scene[:screen])
+    aligns = (
+        (:hcenter, :top), # x axis
+        (:right, :vcenter), # y axis
+    )
     for i = 1:N
         axis_vec = unit(Point{N, Float32}, i)
         mini, maxi = extrema(x.ranges[i])
@@ -69,32 +76,31 @@ function draw_axes(x::Axis{N}, scene) where N
             range = x.ranges[i]
             j = mod1(i + 1, N)
             tickdir = unit(Point{N, Float32}, j)
-            offset2 = (maximum(x.ranges[j]) .+ 0.05f0) * unit(Vec{N, Float32}, j)
-            offset = tickdir .* 0.1f0
+            offset2 = Vec{N, Float32}(0) # (maximum(x.ranges[j]) .+ 0.05f0) * unit(Vec{N, Float32}, j)
+            offset = -tickdir .* 0.1f0
             rotation = rotationmatrix_z(pi*0.5f0)
+            rscale = 0.1
             for tick in drop(range, 1)
                 startpos = ((tick * axis_vec) .+ offset) .+ offset2
                 str = sprint() do io
                     print(io, tick)
                 end
-                position = GLVisualize.calc_position(str, Point2f0(0), 0.1, font, atlas)
-                toffset = GLVisualize.calc_offset(str, 0.1, font, atlas)
-                position = map(position) do x
-                    x = Point3f0(x[1], x[2], 0)
-                    xx = rotationmatrix_z(pi/2f0) * Point4f0(x[1], x[2], x[3], 0)
-                    Point3f0(xx[1], xx[2], xx[3]) .+ startpos
-                end
-                toffset = map(toffset) do x
-                    xx = rotationmatrix_z(pi/2f0) * Vec4f0(x[1], x[2], 0, 0)
-                    Vec2f0(xx[1], xx[2])
-                end
+                position = GLVisualize.calc_position(str, Point2f0(0), rscale, font, atlas)
+                toffset = GLVisualize.calc_offset(str, rscale, font, atlas)
+                aoffsetvec = Vec2f0(alignment2num.(aligns[i]))
+                aoffset = align_offset(Point2f0(0), position[end], atlas, rscale, font, aoffsetvec)
+                position .= position .+ (startpos .+ aoffset,)
+                # position = map(position) do x
+                #     xx = rotationmatrix_z(pi/2f0) * Point4f0(x[1], x[2], 0, 0)
+                #     Point{N, Float32}(ntuple(i->xx[i], Val{N})) .+ startpos
+                # end
+                # toffset = map(toffset) do x
+                #     xx = rotationmatrix_z(pi/2f0) * Vec4f0(x[1], x[2], 0, 0)
+                #     Vec2f0(xx[1], xx[2])
+                # end
                 append!(textpositions, position)
                 append!(textoffsets, toffset)
-                if i == 1
-                    θ = pi * 1f0
-                    tickdir = (rotation* Vec4f0(0, 0, 2, 0))[1:3]
-                end
-                append!(textrotations, repeated(tickdir, length(position)))
+                # append!(textrotations, repeated(tickdir, length(position)))
                 append!(textcolors, repeated(to_color(:black), length(position)))
                 print(textio, str)
             end
@@ -116,7 +122,7 @@ function draw_axes(x::Axis{N}, scene) where N
     textrobj = visualize(
         String(take!(textio)),
         position = textpositions,
-        rotation = textrotations,
+        # rotation = textrotations,
         atlas = atlas,
         offset = textoffsets,
         color = textcolors,
@@ -128,102 +134,18 @@ function draw_axes(x::Axis{N}, scene) where N
 end
 
 scene = Scene()
+GLVisualize.empty_screens!()
+GLVisualize.add_screen(scene[:screen])
 ls, lc, trobj = draw_axes(x, scene)
 
-_view(visualize(ls, :linesegment, color = lc), scene[:screen], camera = :perspective)
-_view(trobj, scene[:screen], camera = :perspective)
+_view(visualize(ls, :linesegment, color = lc), scene[:screen], camera = :orthographic_pixel)
+_view(trobj, scene[:screen], camera = :orthographic_pixel)
 
-center!(scene[:screen])
 
-function draw_axes_2d(sp::Plots.Subplot{Plots.GLVisualizeBackend}, model, area)
-    xticks, yticks, xspine_segs, yspine_segs, xgrid_segs, ygrid_segs, xborder_segs, yborder_segs = Plots.axis_drawing_info(sp)
-    xaxis = sp[:xaxis]; yaxis = sp[:yaxis]
+scatter(rand(Point2f0, 10) .* 3f0, markersize = 0.05f0)
 
-    xgc = Colors.color(Plots.color(xaxis[:foreground_color_grid]))
-    ygc = Colors.color(Plots.color(yaxis[:foreground_color_grid]))
-    axis_vis = []
-    if xaxis[:grid]
-        grid = draw_grid_lines(sp, xgrid_segs, xaxis[:gridlinewidth], xaxis[:gridstyle], model, RGBA(xgc, xaxis[:gridalpha]))
-        push!(axis_vis, grid)
-    end
-    if yaxis[:grid]
-        grid = draw_grid_lines(sp, ygrid_segs, yaxis[:gridlinewidth], yaxis[:gridstyle], model, RGBA(ygc, yaxis[:gridalpha]))
-        push!(axis_vis, grid)
-    end
+center!(scene[:screen], :orthographic_pixel, border = 0.1)
 
-    xac = Colors.color(Plots.color(xaxis[:foreground_color_axis]))
-    yac = Colors.color(Plots.color(yaxis[:foreground_color_axis]))
-    if alpha(xaxis[:foreground_color_axis]) > 0
-        spine = draw_grid_lines(sp, xspine_segs, 1f0, :solid, model, RGBA(xac, 1.0f0))
-        push!(axis_vis, spine)
-    end
-    if alpha(yaxis[:foreground_color_axis]) > 0
-        spine = draw_grid_lines(sp, yspine_segs, 1f0, :solid, model, RGBA(yac, 1.0f0))
-        push!(axis_vis, spine)
-    end
-    fcolor = Plots.color(xaxis[:foreground_color_axis])
-
-    xlim = Plots.axis_limits(xaxis)
-    ylim = Plots.axis_limits(yaxis)
-
-    if !(xaxis[:ticks] in (nothing, false, :none)) && !(sp[:framestyle] == :none)
-        ticklabels = map(model) do m
-            mirror = xaxis[:mirror]
-            t, positions, offsets = draw_ticks(xaxis, xticks, true, ylim, m)
-            mirror = xaxis[:mirror]
-            t, positions, offsets = draw_ticks(
-                yaxis, yticks, false, xlim, m,
-                t, positions, offsets
-            )
-        end
-        kw_args = Dict{Symbol, Any}(
-            :position => map(x-> x[2], ticklabels),
-            :offset => map(last, ticklabels),
-            :color => fcolor,
-            :relative_scale => pointsize(xaxis[:tickfont]),
-            :scale_primitive => false
-        )
-        push!(axis_vis, visualize(map(first, ticklabels), Style(:default), kw_args))
-    end
-
-    xbc = Colors.color(Plots.color(xaxis[:foreground_color_border]))
-    ybc = Colors.color(Plots.color(yaxis[:foreground_color_border]))
-    intensity = sp[:framestyle] == :semi ? 0.5f0 : 1.0f0
-    if sp[:framestyle] in (:box, :semi)
-        xborder = draw_grid_lines(sp, xborder_segs, intensity, :solid, model, RGBA(xbc, intensity))
-        yborder = draw_grid_lines(sp, yborder_segs, intensity, :solid, model, RGBA(ybc, intensity))
-        push!(axis_vis, xborder, yborder)
-    end
-
-    area_w = GeometryTypes.widths(area)
-    if sp[:title] != ""
-        tf = sp[:titlefont]; color = color(sp[:foreground_color_title])
-        font = Plots.Font(tf.family, tf.pointsize, :hcenter, :top, tf.rotation, color)
-        xy = Point2f0(area.w/2, area_w[2] + pointsize(tf)/2)
-        kw = Dict(:model => text_model(font, xy), :scale_primitive => true)
-        extract_font(font, kw)
-        t = PlotText(sp[:title], font)
-        push!(axis_vis, glvisualize_text(xy, t, kw))
-    end
-    if xaxis[:guide] != ""
-        tf = xaxis[:guidefont]; color = color(xaxis[:foreground_color_guide])
-        xy = Point2f0(area.w/2, - pointsize(tf)/2)
-        font = Plots.Font(tf.family, tf.pointsize, :hcenter, :bottom, tf.rotation, color)
-        kw = Dict(:model => text_model(font, xy), :scale_primitive => true)
-        t = PlotText(xaxis[:guide], font)
-        extract_font(font, kw)
-        push!(axis_vis, glvisualize_text(xy, t, kw))
-    end
-
-    if yaxis[:guide] != ""
-        tf = yaxis[:guidefont]; color = color(yaxis[:foreground_color_guide])
-        font = Plots.Font(tf.family, tf.pointsize, :hcenter, :top, 90f0, color)
-        xy = Point2f0(-pointsize(tf)/2, area.h/2)
-        kw = Dict(:model => text_model(font, xy), :scale_primitive=>true)
-        t = PlotText(yaxis[:guide], font)
-        extract_font(font, kw)
-        push!(axis_vis, glvisualize_text(xy, t, kw))
-    end
-
-    axis_vis
-end
+x = @ref(scene.mouseposition, scene.time)
+extract_fields(:(a.b))
+# scatter(map((mpos, t)-> mpos .+ (sin(t), cos(t)), ))

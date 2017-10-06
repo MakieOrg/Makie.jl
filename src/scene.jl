@@ -68,6 +68,12 @@ function Scene(; theme = default_theme)
     scene
 end
 
+function insert_scene!(scene, name, viz, attributes)
+    name = unique_predictable_name(scene, :scatter)
+    scene.data[name] = attributes
+    _view(viz, scene[:screen], camera = :orthographic_pixel)
+end
+
 # function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
 #     s2 = get(s, key) do
 #         s2 = Scene(Dict{Symbol, Any}())
@@ -94,9 +100,6 @@ end
 getindex(s::Scene, key::Symbol) = s.data[key]
 getindex(s::Scene, key::Symbol, tail::Symbol...) = s.data[key][tail...]
 
-
-
-
 function unique_predictable_name(scene, name)
     i = 1
     unique = name
@@ -108,18 +111,24 @@ function unique_predictable_name(scene, name)
 end
 
 function extract_fields(expr, fields = [])
-    if expr.head == :(.)
-        push!(fields, expr.args[1])
-        extract_fields(expr.args[2], fields)
-    elseif isa(expr, Symbol)
+    if isa(expr, Symbol)
         push!(fields, QuoteNode(expr))
-    elseif isa(expr, Expr) && expr.head == :quote && length(expr.args) == 1 && isa(expr.args[1], Symbol)
+    elseif isa(expr, QuoteNode)
         push!(fields, expr)
+    elseif isa(expr, Expr)
+        if expr.head == :(.)
+            push!(fields, expr.args[1])
+            return extract_fields(expr.args[2], fields)
+        elseif expr.head == :quote && length(expr.args) == 1 && isa(expr.args[1], Symbol)
+            push!(fields, expr)
+        end
     else
         error("Not a getfield expr: $expr, $(typeof(expr)) $(expr.head)")
     end
-    fields
+    return :(getindex($(fields...)))
 end
+extract_fields(:(a.b))
+
 
 """
     @ref(arg)
@@ -132,12 +141,16 @@ end
     ```
 """
 macro ref(arg)
-    fields = extract_fields(arg)
-    expr = :(getindex($(fields...)))
-    expr
+    extract_fields(arg)
 end
 
-
+macro ref(args...)
+elseif expr.head == :tuple
+    tup = Expr(:tuple)
+    tup.args = extract_fields.(expr.args)
+    return tup
+    #:($(extract_fields.(args)...))
+end
 
 """
 Extract a default for `func` + `attribute`.

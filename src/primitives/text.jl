@@ -25,10 +25,10 @@ end
 
 
 function alignment2num(x::Symbol)
-    (x in (:hcenter, :vcenter)) && return 0.5
-    (x in (:left, :bottom)) && return 0.0
-    (x in (:right, :top)) && return 1.0
-    0.0 # 0 default, or better to error?
+    (x in (:hcenter, :vcenter)) && return 0.5f0
+    (x in (:left, :bottom)) && return 0.0f0
+    (x in (:right, :top)) && return 1.0f0
+    0.0f0 # 0 default, or better to error?
 end
 
 function alignment2num(font::Plots.Font)

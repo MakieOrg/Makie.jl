@@ -131,12 +131,13 @@ to_markersize(x) = Vec2f0(x)
 end
 
 
-function insert_scene!(scene, name, viz, attributes)
-    name = unique_predictable_name(scene, :scatter)
-    scene.data[name] = attributes
-    _view(viz, scene[:screen], camera = :orthographic_pixel)
-end
 
+
+"""
+Hack to quickly make things more consistent inside MakiE, without
+changing GLVisualize too much! So we need to rewrite the attributes, the names and the
+values a bit!
+"""
 function expand_for_glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
@@ -160,7 +161,7 @@ function expand_for_glvisualize(kw_args)
 end
 
 
-function scatter(points; kw_args...)
+function scatter(points::AbstractArray; kw_args...)
     kw_args = expand_kwargs(kw_args)
     scene = get_global_scene()
     kw_args[:positions] = points
@@ -170,6 +171,7 @@ function scatter(points; kw_args...)
         meshparticle_defaults(scene, kw_args)
     end
     attributes = expand_for_glvisualize(attributes)
+    # TODO share those between all visuals
     attributes[:visible] = true
     attributes[:fxaa] = false
     attributes[:model] = eye(Mat4f0)
@@ -180,8 +182,3 @@ function scatter(points; kw_args...)
     insert_scene!(scene, :scatter, viz, attributes)
     viz
 end
-
-
-
-scene = Scene()
-robj = scatter(rand(Point2f0, 10) .* 100f0, markersize = 10f0)
