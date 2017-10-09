@@ -1,19 +1,20 @@
 using MacroTools, Reactive
 
+
 function convert_expr(var, f, args, scene_sym, kw_sym, func, dictsym)
-    tmpvar = gensym()
-    args = map(args) do arg
-        if arg == var
-            return tmpvar
-        else
-            esc(var)
-        end
-    end
+    # var = f(var) form
     var_sym = QuoteNode(var)
-    quote
-        $tmpvar = to_signal(find_default($scene_sym, $kw_sym, $(QuoteNode(func)), $var_sym))
-        $(esc(var)) = map($f, $(args...))
-        $dictsym[$var_sym] = $(esc(var))
+    if length(args) == 1 && args[1] == var
+        quote
+            $(esc(var)) = to_node(find_default($scene_sym, $kw_sym, $(QuoteNode(func)), $var_sym), $(esc(f)))
+            $dictsym[$var_sym] = $(esc(var))
+        end
+    else
+        args = esc.(args)
+        quote
+            $(esc(var)) = $(esc(f))($(args...))
+            $dictsym[$var_sym] = $(esc(var))
+        end
     end
 end
 
@@ -55,7 +56,21 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
         first_expr = Expr(:block)
         current_expr = xor_expr
         for (i, arg) in enumerate(elem.args[2:end])
-            expression, syms, docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys)
+            expression, docs, condition = if isa(arg, Expr) && arg.head == :if
+                condition_syms = arg.args[1]
+                if isa(condition_syms, Expr) && condition_syms.head == :tuple
+                    map!(QuoteNode, condition_syms.args, condition_syms.args)
+                    condition = :(all(x-> x in $kwarg_keys, $condition_syms))
+                    expression, syms, docs = process_body_element(arg.args[2], fargs, mainfunc, dictsym, kwarg_keys)
+                    expression, docs, condition
+                else
+                    error("Needs if (sym1, sym2, sym3), found if $(condition_syms)")
+                end
+            else
+                expression, syms, docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys)
+                condition = :(any(x-> x in $kwarg_keys, $syms))
+                expression, docs, condition
+            end
             if i == 1
                 first_expr = expression
                 # since a xor block defaults to first definition, we don't actually
@@ -63,7 +78,6 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
                 # in the last else block anyways
                 continue
             end
-            condition = :(any(x-> x in $kwarg_keys, $syms))
             else_expr = Expr(:block)
             ifelse = Expr(:if, condition, expression, else_expr)
             push!(current_expr.args, ifelse)
@@ -146,9 +160,9 @@ macro default(func)
         push!(result, expr)
     end
     expr = quote
-        function $(esc(mainfunc))($(fargs...))
+        function $(esc(Symbol("$(mainfunc)_defaults")))($(fargs...))
             $dictsym = Dict{Symbol, Any}()
-            $kwarg_keys = keys($dictsym)
+            $kwarg_keys = keys($(fargs[2]))
             $(result...)
             return $dictsym
         end

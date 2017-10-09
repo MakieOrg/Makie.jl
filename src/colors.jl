@@ -1,3 +1,7 @@
+# some type alias
+const RGBAf0 = RGBA{Float32}
+
+
 """
 A simple iterator that returns a new, unique color when `next(::UniqueColorIter)` is called.
 
@@ -34,6 +38,7 @@ to_color(c::Colorant) = RGBA{Float32}(c)
 to_color(c::Symbol) = to_color(string(c))
 to_color(c::String) = parse(RGBA{Float32}, c)
 to_color(c::UniqueColorIter) = to_color(next(c))
+to_color(c::Tuple) = to_color.(c)
 
 
 const colorbrewer_names = Symbol[

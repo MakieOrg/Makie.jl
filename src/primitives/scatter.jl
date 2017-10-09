@@ -98,12 +98,26 @@ end
 to_rotations(x::Billboard) = x
 to_rotations(x::Vector) = to_static_array(x)
 
-to_positions(x) = x
 
 to_markersize(x) = Vec2f0(x)
 
 @default function scatter(scene, kw_args)
-    positions = to_positions(positions)
+    xor(
+        begin
+            positions = to_positions(positions)
+        end,
+        if (x, y, z)
+            x = to_array(x)
+            y = to_array(y)
+            z = to_array(z)
+            positions = to_positions((x, y, z))
+        end,
+        if (x, y)
+            x = to_array(x)
+            y = to_array(y)
+            positions = to_positions((x, y))
+        end
+    )
     # Either you give a color, or a colormap.
     # For a colormap, you'll also need intensities
     xor(
@@ -127,11 +141,7 @@ to_markersize(x) = Vec2f0(x)
     markersize = to_markersize(markersize)
 
     rotations = to_rotations(rotations)
-
 end
-
-
-
 
 """
 Hack to quickly make things more consistent inside MakiE, without
@@ -141,9 +151,10 @@ values a bit!
 function expand_for_glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
+        k in (:marker, :positions, :x, :y, :z) && continue
         if k == :rotations
             k = :rotation
-            v = Vec3f0(0, 0, 1)
+            v = Vec4f0(0, 0, 0, 1)
             result[:billboard] = true
         end
         if k == :markersize
@@ -152,33 +163,35 @@ function expand_for_glvisualize(kw_args)
         if k == :positions
             k = :position
         end
-        if k == :marker
-            k = :shape
-        end
-        result[k] = v
+        result[k] = to_signal(v)
     end
+    result[:visible] = true
+    result[:fxaa] = false
+    result[:model] = eye(Mat4f0)
     result
 end
 
 
-function scatter(points::AbstractArray; kw_args...)
-    kw_args = expand_kwargs(kw_args)
+function _scatter(kw_args)
     scene = get_global_scene()
-    kw_args[:positions] = points
-    attributes = if true #is_sprites(kw_args)
-        scatter(scene, kw_args)
-    else
-        meshparticle_defaults(scene, kw_args)
-    end
-    attributes = expand_for_glvisualize(attributes)
-    # TODO share those between all visuals
-    attributes[:visible] = true
-    attributes[:fxaa] = false
-    attributes[:model] = eye(Mat4f0)
-    main = (Circle, attributes[:position])
-    delete!(attributes, :shape)
-    delete!(attributes, :position)
-    viz = visualize(main, Style(:default), attributes).children[]
+    attributes = scatter_defaults(scene, kw_args)
+    gl_data = expand_for_glvisualize(attributes)
+    shape = to_signal(attributes[:marker])
+    main = (shape, to_signal(attributes[:positions]))
+    viz = GLVisualize.sprites(main, Style(:default), gl_data)
+    viz = GLVisualize.assemble_shader(viz).children[]
     insert_scene!(scene, :scatter, viz, attributes)
-    viz
+end
+
+for arg in ((:x, :y), (:x, :y, :z), (:positions,))
+    insert_expr = map(arg) do elem
+        :(attributes[$(QuoteNode(elem))] = $elem)
+    end
+    @eval begin
+        function scatter($(arg...); kw_args...)
+            attributes = expand_kwargs(kw_args)
+            $(insert_expr...)
+            _scatter(attributes)
+        end
+    end
 end

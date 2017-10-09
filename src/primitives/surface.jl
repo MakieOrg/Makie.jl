@@ -1,5 +1,5 @@
-is_unitrange(x) = false, 0:0
-is_unitrange(x::UnitRange) = true, 0:0
+is_unitrange(x) = (false, 0:0)
+is_unitrange(x::Range) = (true, x)
 function is_unitrange(x::AbstractVector)
     length(x) < 2 && return false, 0:0
     diff = x[2] - x[1]
@@ -12,67 +12,112 @@ function is_unitrange(x::AbstractVector)
     return true, range(first(x), diff, length(x))
 end
 
-
-function surface(x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, kw_args) where T1, T2
-    T = Base.Core.Inference.return_type(f, (T1, T2))
-    z = similar(x, T, (length(x), length(y)))
-    z .= f.(x, y')
-    surface(x, y, z, kw_args)
+function ngrid(x::AbstractVector, y::AbstractVector)
+    xgrid = [Float32(x[i]) for i = 1:length(x), j = 1:length(y)]
+    ygrid = [Float32(y[j]) for i = 1:length(x), j = 1:length(y)]
+    xgrid, ygrid
 end
-function surface(x::AbstractMatrix{T1}, y::AbstractMatrix{T2}, f::Function, kw_args) where T1, T2
-    if size(x) != size(y)
-        error("x and y don't have the same size. Found: x: $(size(x)), y: $(size(y))")
+
+function nan_extrema(array)
+    mini, maxi = (Inf, -Inf)
+    for elem in array
+        isnan(elem) && continue
+        mini = min(mini, elem)
+        maxi = max(maxi, elem)
     end
-    T = Base.Core.Inference.return_type(f, (T1, T2))
-    z = f.(x, y)
-    surface(x, y, z, kw_args)
+    Vec2f0(mini, maxi)
 end
 
-
-function surface_attributes(kw_args)
-
-
+to_colornorm(norm, intensity) = Vec2f0(norm)
+function to_colornorm(norm::Void, intensity)
+    nan_extrema(intensity)
 end
+to_intensity(x::AbstractArray) = x
 
+to_surface(x::Range) = x
+to_surface(x) = Float32.(x)
 
-function _extract_surface(d::Plots.Surface)
-    d.surf
-end
-function _extract_surface(d::AbstractArray)
-    d
-end
+function surface_2glvisualize(kw_args)
+    result = Dict{Symbol, Any}()
+    xy = []
 
-# TODO when to transpose??
-function extract_surface(d)
-    map(_extract_surface, (d[:x], d[:y], d[:z]))
-end
-function topoints{P}(::Type{P}, array)
-    [P(x) for x in zip(array...)]
-end
-function extract_points(d)
-    dim = is3d(d) ? 3 : 2
-    array = (d[:x], d[:y], d[:z])[1:dim]
-    topoints(Point{dim, Float32}, array)
-end
-
-function surface(x, y, z::AbstractMatrix{T}, kw_args) where T <: AbstractFloat
-    x_is_ur, xrange = is_unitrange(x)
-    y_is_ur, yrange = is_unitrange(x)
+    for (k, v) in kw_args
+        k in (:z,) && continue
+        if k in (:x, :y)
+            push!(xy, v)
+            continue
+        end
+        if k == :colornorm
+            k = :color_norm
+        end
+        if k == :colormap
+            k = :color_map
+        end
+        result[k] = to_signal(v)
+    end
+    result[:visible] = true
+    result[:fxaa] = true
+    result[:model] = eye(Mat4f0)
+    x, y = xy
+    x_is_ur, xrange = is_unitrange(to_value(x))
+    y_is_ur, yrange = is_unitrange(to_value(y))
+    main = to_signal(kw_args[:z])
     if x_is_ur && y_is_ur
-        kw_args[:ranges] = (xrange, yrange)
+        result[:ranges] = (x, y)
     else
         if isa(x, AbstractMatrix) && isa(y, AbstractMatrix)
-            main = map(s->map(Float32, s), (x, y, z))
+            main = to_signal.((x, y, main))
         elseif isa(x, AbstractVector) || isa(y, AbstractVector)
-            x = Float32[x[i] for i = 1:size(z,1), j = 1:size(z,2)]
-            y = Float32[y[j] for i = 1:size(z,1), j = 1:size(z,2)]
-            main = (x, y, map(Float32, z))
+            xy = to_signal(lift_node(x, y) do x, y
+                ngrid(x, y)
+            end)
+            main = (map(first, xy), map(last, xy), main)
         else
             error("surface: combination of types not supported: $(typeof(x)) $(typeof(y)) $(typeof(z))")
         end
-        if get(kw_args, :wireframe, false)
-            return wireframe(x, y, z, kw_args)
-        end
     end
-    return visualize(main, Style(:surface), kw_args)
+    result, main
+end
+
+@default function surface(scene, kw_args)
+    x = to_surface(x)
+    y = to_surface(y)
+    z = to_surface(z)
+    xor(
+        begin # Colormap is first, so it will default to it
+            colormap = to_colormap(colormap)
+            # convert function should only have one argument right now, so we create this closure
+            colornorm = ((colornorm) -> to_colornorm(colornorm, z))(colornorm)
+        end,
+        begin
+            color = to_color(color)
+        end
+    )
+end
+
+function surface(x, y, z::AbstractMatrix{T}; kw_args...) where T <: AbstractFloat
+    scene = get_global_scene()
+    attributes = expand_kwargs(kw_args)
+    attributes[:x] = x
+    attributes[:y] = y
+    attributes[:z] = z
+    attributes = surface_defaults(scene, attributes)
+    gl_data, main = surface_2glvisualize(attributes)
+    viz = visualize(main, Style(:surface), gl_data).children[]
+    insert_scene!(scene, :surface, viz, attributes)
+end
+
+function surface(x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function; kw_args...) where {T1, T2}
+    T = Base.Core.Inference.return_type(f, (T1, T2))# TODO, i heard this is bad?!
+    z = similar(x, T, (length(x), length(y)))
+    z .= f.(x, y')
+    surface(x, y, z; kw_args...)
+end
+
+function surface(x::AbstractMatrix{T1}, y::AbstractMatrix{T2}, f::Function; kw_args...) where {T1, T2}
+    if size(x) != size(y)
+        error("x and y don't have the same size. Found: x: $(size(x)), y: $(size(y))")
+    end
+    z = f.(x, y)
+    surface(x, y, z; kw_args...)
 end

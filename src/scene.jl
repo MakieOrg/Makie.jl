@@ -11,10 +11,28 @@ include("signals.jl")
 
 const global_scene = Scene[]
 
+function GLAbstraction.center!(scene::Scene, border = 0.8)
+    screen = scene[:screen]
+    camsym = first(keys(screen.cameras))
+    center!(screen, camsym, border = border)
+end
+
+function cam2D!(scene)
+    screen = scene[:screen]
+    mouseinside = screen.inputs[:mouseinside]
+    ishidden = screen.hidden
+    keep = map((a, b) -> !a && b, ishidden, mouseinside)
+    cam = OrthographicPixelCamera(screen.inputs, keep = keep)
+    scene[:camera] = cam
+    screen.cameras[:orthographic_pixel] = cam
+    return cam
+end
+
+export center!, cam2D!
 
 function (::Type{Scene})(pair1::Pair, tail::Pair...)
     args = (pair1, tail...)
-    Scene(Dict(map(x-> x[1] => to_signal(x[2]), args)))
+    Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
 end
 
 
@@ -47,20 +65,24 @@ end
 
 include("themes.jl")
 
-function Scene(; theme = default_theme)
+function Scene(; theme = default_theme, resolution = GLWindow.standard_screen_resolution())
     if !isempty(global_scene)
         oldscene = global_scene[]
         GLWindow.destroy!(oldscene[:screen])
+        GLVisualize.empty_screens!()
         empty!(oldscene.data)
         empty!(global_scene)
     end
-    w = Screen()
+    w = Screen(resolution = resolution)
+    GLVisualize.add_screen(w)
     GLWindow.add_complex_signals!(w)
-    dict = copy(w.inputs)
+    dict = map(w.inputs) do k_v
+        k_v[1] => to_node(k_v[2])
+    end
 
     dict[:screen] = w
     push!(dict[:window_open], true)
-    dict[:time] = Signal(0.0)
+    dict[:time] = to_node(0.0)
     dict[:theme] = theme
     scene = Scene(dict)
     push!(global_scene, scene)
@@ -68,26 +90,39 @@ function Scene(; theme = default_theme)
     scene
 end
 
-function insert_scene!(scene, name, viz, attributes)
+function insert_scene!(scene::Scene, name, viz, attributes)
     name = unique_predictable_name(scene, :scatter)
-    scene.data[name] = attributes
-    _view(viz, scene[:screen], camera = :orthographic_pixel)
+    childscene = Scene(attributes)
+    scene.data[name] = childscene
+    cams = collect(keys(scene[:screen].cameras))
+    cam = if isempty(cams)
+        bb = value(GLAbstraction.boundingbox(viz))
+        widths(bb)[3] ≈ 0 ? :orthographic_pixel : :perspective
+    else
+        first(cams)
+    end
+    _view(viz, scene[:screen], camera = cam)
+    println(cams)
+    if isempty(cams)
+        scene[:camera] = first(scene[:screen].cameras)[2]
+    end
+    childscene
 end
 
-# function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
-#     s2 = get(s, key) do
-#         s2 = Scene(Dict{Symbol, Any}())
-#         s.data[key] = s2
-#         s2
-#     end
-#     s2[tail...] = obj
-# end
+function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
+    s2 = get(s.data, key) do
+        s2 = Scene(Dict{Symbol, Any}())
+        s.data[key] = s2
+        s2
+    end
+    s2[tail...] = obj
+end
 
 function setindex!(s::Scene, obj, key::Symbol)
     if haskey(s, key) # if in dictionary, just push a new value to the signal
         push!(s[key], obj)
     else
-        s.data[key] = to_signal(obj)
+        s.data[key] = to_node(obj)
     end
 end
 
@@ -145,11 +180,7 @@ macro ref(arg)
 end
 
 macro ref(args...)
-elseif expr.head == :tuple
-    tup = Expr(:tuple)
-    tup.args = extract_fields.(expr.args)
-    return tup
-    #:($(extract_fields.(args)...))
+    Expr(:tuple, extract_fields.(args)...)
 end
 
 """

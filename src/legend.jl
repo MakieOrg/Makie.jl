@@ -1,47 +1,4 @@
 
-"""
-Ugh, so much special casing (╯°□°）╯︵ ┻━┻
-"""
-function label_scatter(d, w, ho)
-    kw = KW()
-    extract_stroke(d, kw)
-    extract_marker(d, kw)
-    kw[:scale] = Vec2f0(w/2)
-    kw[:offset] = Vec2f0(-w/4)
-    if haskey(kw, :intensity)
-        cmap = kw[:color_map]
-        norm = kw[:color_norm]
-        kw[:color] = GLVisualize.color_lookup(cmap, kw[:intensity][1], norm)
-        delete!(kw, :intensity)
-        delete!(kw, :color_map)
-        delete!(kw, :color_norm)
-    else
-        color = get(kw, :color, nothing)
-        kw[:color] = isa(color, Array) ? first(color) : color
-    end
-    strcolor = get(kw, :stroke_color, RGBA{Float32}(0,0,0,0))
-    kw[:stroke_color] = isa(strcolor, Array) ? first(strcolor) : strcolor
-    p = get(kw, :primitive, GeometryTypes.Circle)
-    if isa(p, GLNormalMesh)
-        bb = GeometryTypes.AABB{Float32}(GeometryTypes.vertices(p))
-        bbw = GeometryTypes.widths(bb)
-        if isapprox(bbw[3], 0)
-            bbw = Vec3f0(bbw[1], bbw[2], 1)
-        end
-        mini = minimum(bb)
-        m = GLAbstraction.translationmatrix(-mini)
-        m *= GLAbstraction.scalematrix(1 ./ bbw)
-        kw[:primitive] = m * p
-        kw[:scale] = Vec3f0(w/2)
-        delete!(kw, :offset)
-    end
-    if isa(p, Array)
-        kw[:primitive] = GeometryTypes.Circle
-    end
-    GL.scatter(Point2f0[(w/2, ho)], kw)
-end
-
-
 function make_label(sp, series, i)
     GL = Plots
     w, gap, ho = 20f0, 5f0, 5

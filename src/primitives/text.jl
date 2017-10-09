@@ -1,17 +1,92 @@
-function text_model(font, pivot)
-    pv = GeometryTypes.Vec3f0(pivot[1], pivot[2], 0)
-    if font.rotation != 0.0
-        rot = Float32(deg2rad(font.rotation))
-        rotm = GLAbstraction.rotationmatrix_z(rot)
-        return GLAbstraction.translationmatrix(pv)*rotm*GLAbstraction.translationmatrix(-pv)
-    else
-        eye(GeometryTypes.Mat4f0)
-    end
+struct TextBuffer{N}
+    positions::GPUVector{Point{N, Float32}}
+    offsets::GPUVector{Vec2f0}
+    rotations::GPUVector{Vec4f0}
+    colors::GPUVector{RGBAf0}
+    uv_offset_width::GPUVector{Vec4f0}
+    scale::GPUVector{Vec2f0}
+    text::Vector{Char}
+    robj::RenderObject
+    range::Signal{Int}
+    cursors
 end
 
-function align_offset(startpos, lastpos, atlas, rscale, font, align)
+get_atlas(x::TextBuffer) = x.robj[:atlas]
+
+function TextBuffer(pos::Point{N, <: AbstractFloat} = Point3f0(0)) where N
+    positions = gpuvec(Point{N, Float32}[])
+    offset = gpuvec(Vec2f0[])
+    rotations = gpuvec(Vec4f0[])
+    colors = gpuvec(RGBAf0[])
+    uv_offset_width = gpuvec(Vec4f0[])
+    scale = gpuvec(Vec2f0[])
+    atlas = GLVisualize.get_texture_atlas()
+    range = Signal(0)
+    robj = visualize(
+        (DISTANCEFIELD, positions.buffer),
+        atlas = atlas,
+        offset = offset.buffer,
+        rotation = rotations.buffer,
+        color = colors.buffer,
+        uv_offset_width = uv_offset_width.buffer,
+        scale = scale.buffer,
+        distancefield = atlas.images,
+        indices = range
+    )
+    TextBuffer{N}(
+        positions,
+        offset,
+        rotations,
+        colors,
+        uv_offset_width,
+        scale,
+        Char[],
+        robj.children[],
+        range,
+        nothing
+    )
+end
+
+function Base.empty!(tb::TextBuffer)
+    resize!(tb.positions, 0)
+    resize!(tb.offsets, 0)
+    resize!(tb.rotations, 0)
+    resize!(tb.colors, 0)
+    resize!(tb.uv_offset_width, 0)
+    resize!(tb.scale, 0)
+    push!(tb.range, 0)
+    return
+end
+
+function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, scale, color, rot, align, font = GLVisualize.defaultfont()) where N
+    atlas = get_atlas(tb)
+    pos = Point{N, Float32}(startpos)
+    rscale = Float32(scale)
+    position = GLVisualize.calc_position(str, Point2f0(0), rscale, font, atlas)
+    toffset = GLVisualize.calc_offset(str, rscale, font, atlas)
+    aoffsetvec = Vec2f0(alignment2num.(align))
+    aoffset = align_offset(rot, Point2f0(0), position[end], atlas, rscale, font, aoffsetvec)
+    aoffsetn = Point{N, Float32}(to_nd(aoffset, Val{N}, 0f0))
+    uv_offset_width = Vec4f0[GLVisualize.glyph_uv_width!(atlas, c, font) for c = str]
+    scale = Vec2f0[GLVisualize.glyph_scale!(atlas, c, font, rscale) for c = str]
+    position = map(position) do p
+        pn = qmul(rot, Point{N, Float32}(to_nd(p, Val{N}, 0f0)))
+        pn .+ (pos .+ aoffsetn)
+    end
+    append!(tb.positions, position)
+    append!(tb.offsets, Vec2f0.(toffset))
+    append!(tb.rotations, fill(rot, length(position)))
+    append!(tb.colors, fill(to_color(color), length(position)))
+    append!(tb.uv_offset_width, uv_offset_width)
+    append!(tb.scale, scale)
+    push!(tb.range, length(tb.positions))
+    return
+end
+
+function align_offset(rot, startpos, lastpos, atlas, rscale, font, align)
     xscale, yscale = GLVisualize.glyph_scale!('X', rscale)
     xmove = (lastpos-startpos)[1] + xscale
+    xmove, yscale, z = qmul(rot, Vec3f0(xmove, yscale, 0))
     if isa(align, GeometryTypes.Vec)
         return -Vec2f0(xmove, yscale) .* align
     elseif align == :top
@@ -23,7 +98,6 @@ function align_offset(startpos, lastpos, atlas, rscale, font, align)
     end
 end
 
-
 function alignment2num(x::Symbol)
     (x in (:hcenter, :vcenter)) && return 0.5f0
     (x in (:left, :bottom)) && return 0.0f0
@@ -31,118 +105,11 @@ function alignment2num(x::Symbol)
     0.0f0 # 0 default, or better to error?
 end
 
-function alignment2num(font::Plots.Font)
-    Vec2f0(map(alignment2num, (font.halign, font.valign)))
+struct RichText{C, R, F, P, A}
+    text::String
+    color::C
+    rotation::R
+    font::F
+    position::P
+    align::A
 end
-
-pointsize(font) = font.pointsize * 2
-
-
-
-function glvisualize_text(position, text, kw_args)
-    text_align = alignment2num(text.font)
-    startpos = Vec2f0(position)
-    atlas = GLVisualize.get_texture_atlas()
-    font = GLVisualize.defaultfont()
-    rscale = kw_args[:relative_scale]
-
-    position = GLVisualize.calc_position(text.str, startpos, rscale, font, atlas)
-    offset = GLVisualize.calc_offset(text.str, rscale, font, atlas)
-    alignoff = align_offset(startpos, last(position), atlas, rscale, font, text_align)
-
-    map!(position, position) do pos
-        pos .+ alignoff
-    end
-    kw_args[:position] = position
-    kw_args[:offset] = offset
-    kw_args[:scale_primitive] = true
-    visualize(text.str, Style(:default), kw_args)
-end
-
-
-
-isnewline(x) = x == '\n'
-
-type Text
-    data
-    text
-    atlas
-    cursors
-    # default values
-    font
-    scale
-    offset
-    color
-    startposition
-    lineheight
-end
-
-immutable Sprite{N, T} <: Particle
-    position::Point{N, T}
-    offset::Vec{2, T}
-    scale::Vec{2, T}
-    uv::Vec{4, T}
-    color::Vec{4, T}
-end
-
-function Sprite{N, T}(char, position::Point{N, T}, text)
-    Sprite(
-        char, position, text.scale, text.offset,
-        text.color, text.font, text.atlas
-    )
-end
-function Sprite{N, T}(
-        char, position::Point{N, T}, scale, offset, color,
-        font = defaultfont(),  atlas = get_texture_atlas()
-    )
-    Sprite{N, T}(
-        position,
-        glyph_bearing!(atlas, char, font, scale) + offset,
-        glyph_scale!(atlas, char, font, scale),
-        glyph_uv_width!(atlas, char, font),
-        color
-    )
-end
-
-function nextposition(sprite::Sprite, char, text)
-    advance_x, advance_y = glyph_advance!(text.atlas, char, text.font, text.scale)
-    position = sprite.position
-    if isnewline(char)
-        return Point2f0(text.startposition[1], position[2] - advance_y * text.lineheight) #reset to startx
-    else
-        return position + Point2f0(advance_x, 0)
-    end
-end
-
-function printat(text::Text, idx::Integer, char::Char)
-    position = if checkbounds(Bool, text.data, idx)
-        sprite = text.data[idx]
-        nextposition(sprite, text.text[idx], text)
-    else
-        text.startposition
-    end
-    nextsprite = Sprite(char, position, text)
-    idx += 1
-    insert!(text.data, idx, nextsprite)
-    insert!(text.text, idx, char)
-    idx
-end
-
-function printat(text::Text, idx::Int, str::String)
-    sprite = text.data[idx]
-    position = sprite.position
-    for char in str
-        char == '\r' && continue # stupid windows!
-        idx = printat(text, idx, char)
-    end
-    idx
-end
-
-function Base.print(text::Text, char::Union{Char, String})
-    map!(text.cursors, text.cursors) do idx
-        idx = printat(text, idx, char)
-        return idx
-    end
-    nothing
-end
-Base.String(text::Text) = join(text.text)
