@@ -102,7 +102,6 @@ function insert_scene!(scene::Scene, name, viz, attributes)
         first(cams)
     end
     _view(viz, scene[:screen], camera = cam)
-    println(cams)
     if isempty(cams)
         scene[:camera] = first(scene[:screen].cameras)[2]
     end
