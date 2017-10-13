@@ -1,18 +1,28 @@
 using MacroTools, Reactive
 
 
-function convert_expr(var, f, args, scene_sym, kw_sym, func, dictsym)
-    # var = f(var) form
+function (::Type{T})(b::RefValue, x) where T
+    T(x)
+end
+
+"""
+Creates the expression that fetches the default for an attribute, converts it to a node
+and inserts it into the kw_arg dictionary
+"""
+function convert_expr(var, cfunc, args, mainfunc, fargs, dictsym)
+    backendsym, scene_sym, kw_sym = fargs
     var_sym = QuoteNode(var)
+    tmpsym = gensym("tmp")
     if length(args) == 1 && args[1] == var
         quote
-            $(esc(var)) = to_node(find_default($scene_sym, $kw_sym, $(QuoteNode(func)), $var_sym), $(esc(f)))
+            $tmpsym = find_default($scene_sym, $kw_sym, $(QuoteNode(mainfunc)), $var_sym)
+            $(esc(var)) = to_node($tmpsym, x-> ($(esc(cfunc))($backendsym, x)))
             $dictsym[$var_sym] = $(esc(var))
         end
-    else
+    else # case when a secondary convert function gets called, which builds up on other attributes
         args = esc.(args)
         quote
-            $(esc(var)) = $(esc(f))($(args...))
+            $(esc(var)) = $(esc(cfunc))($backendsym, $(args...))
             $dictsym[$var_sym] = $(esc(var))
         end
     end
@@ -27,7 +37,7 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
             args__::f_
         ) || error("Use a call or type assert on right hand side")
 
-        expr = convert_expr(var, f, args, fargs[1], fargs[2], mainfunc, dictsym)
+        expr = convert_expr(var, f, args, mainfunc, fargs, dictsym)
         return expr, [var], []
     end
     if isa(elem, Expr) && elem.head == :block
@@ -93,7 +103,7 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
     )
     result = if found
         push!(symbols, var)
-        convert_expr(var, f, args, fargs[1], fargs[2], mainfunc, dictsym)
+        convert_expr(var, f, args, mainfunc, fargs, dictsym)
     else
         elem
     end
@@ -108,13 +118,13 @@ Macro that allows for concise default creations.
 From this expression:
 
     ```julia
-        @default function sprites(scene, kw_args)
+        @default function sprites(backend, scene, kw_args)
             attribute = convert_function(attribute)
             attribute2 = convert_function2(attribute, attribute2)
         end
     ```
 
-It creates a function `sprites(scene, kw_args)::Dict{Symbol, Any}`
+It creates a function `sprites_default(scene, kw_args)::Dict{Symbol, Any}`
 
 Which will first look in kw_args for `:attribute`, if found it will call `convert_function(kw_args[:attribute])`
 and insert it in the returned attribute dictionary.
@@ -138,6 +148,46 @@ assert:
         # will become
         attribute = convert(Float32, find_default(scene, kw_args, sprites, :attribute))
     ```
+
+# xor blocks - exlusive sets of attributes
+You can define blocks of exclusive attributes like so:
+    ```Julia
+    xor(
+        begin
+            color = to_color(color)
+        end,
+        begin
+            colormap = to_colormap(colormap)
+            intensity = to_intensity(intensity)
+            colornorm = to_colornorm(colornorm, intensity)
+        end
+    )
+```
+This gets desugared to:
+
+    ```julia
+    if any(x-> x in keys(kw_args), (:color, :intensity, :colornorm))
+        colormap = to_colormap(colormap)
+        intensity = to_intensity(intensity)
+        colornorm = to_colornorm(colornorm, intensity)
+    else
+        color = to_color(color)
+    end
+    ```
+    So the first block becomes the default block if no key is in the kw_args.
+    You can also explicitely define what keys kw_args needs to contain to get selected:
+    ```julia
+    xor(
+        begin
+            color = to_color(color)
+        end,
+        if (colormap, intensity) # now kw_args needs to contain attributes colormap && intensity
+            colormap = to_colormap(colormap)
+            intensity = to_intensity(intensity)
+            colornorm = to_colornorm(colornorm, intensity)
+        end
+    )
+    ```
 """
 macro default(func)
     @capture(func,
@@ -150,7 +200,7 @@ macro default(func)
         end
     ")
 
-    length(fargs) == 2 || error("Function should only have to arguments, namely scene and kw_args. Found: $fargs")
+    length(fargs) == 3 || error("Function should have 3 arguments, namely backend, scene and kw_args. Found: $fargs")
     docs = []
     result = []
     dictsym = gensym(:attributes)
@@ -162,7 +212,7 @@ macro default(func)
     expr = quote
         function $(esc(Symbol("$(mainfunc)_defaults")))($(fargs...))
             $dictsym = Dict{Symbol, Any}()
-            $kwarg_keys = keys($(fargs[2]))
+            $kwarg_keys = keys($(fargs[3]))
             $(result...)
             return $dictsym
         end

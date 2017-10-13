@@ -8,10 +8,11 @@ These are the most atomic operations from which one can stack together more comp
 scatter
 lines
 image
+heatmap
 surface
 volume
 text
 poly
 mesh
- 
+wireframe
 ```

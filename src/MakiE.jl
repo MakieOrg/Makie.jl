@@ -5,25 +5,32 @@ using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
 using StaticArrays, GLWindow, ModernGL
 
 using Base.Iterators: repeated, drop
+using Base: RefValue
 
-include("utils.jl")
-include("scene.jl")
-include("converts.jl")
+const makie = Base.RefValue{:makie}
+const current_backend = RefValue(makie())
 
-include("primitives/scatter.jl")
-include("primitives/lines.jl")
-include("primitives/text.jl")
-include("primitives/surface.jl")
-include("primitives/wireframe.jl")
-include("primitives/mesh.jl")
-include("axis.jl")
+include("plotsbase/utils.jl")
+include("plotsbase/scene.jl")
+include("plotsbase/converts.jl")
 
-include("primitives.jl")
+include("plotsbase/atomics.jl")
+    include("atomics/scatter.jl")
+    include("atomics/lines.jl")
+    include("atomics/text.jl")
+    include("atomics/surface.jl")
+    include("atomics/wireframe.jl")
+    include("atomics/mesh.jl")
+
+include("plotsbase/axis.jl")
+
+
+
 
 
 export Scene
 
 export scatter, lines, linesegment, mesh, surface, wireframe, axis
-export @ref, to_node, lift_node, to_world
+export @ref, to_node, to_value, lift_node, to_world
 
 end # module

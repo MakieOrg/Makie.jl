@@ -51,12 +51,12 @@ function Base.empty!(lsb::LinesegmentBuffer)
     return
 end
 
-to_linestyle(ls::Void) = nothing
-to_linestyle(ls::AbstractVector{<:AbstractFloat}) = ls
-to_linestyle(ls::Symbol) = ls
+to_linestyle(b, ls::Void) = nothing
+to_linestyle(b, ls::AbstractVector{<:AbstractFloat}) = ls
+to_linestyle(b, ls::Symbol) = ls
 
-to_pattern(::Node{Void}, linewidth) = nothing
-to_pattern(A::AbstractVector, linewidth) = A
+to_pattern(b, ::Node{Void}, linewidth) = nothing
+to_pattern(b, A::AbstractVector, linewidth) = A
 function to_pattern(ls::Node{Symbol}, linewidth)
     lift_node(ls, lw) do ls, lw
         points = if ls == :dash
@@ -92,6 +92,10 @@ function lines_2glvisualize(kw_args)
         if k == :positions
             k = :vertex
         end
+        if k == :indices
+            result[k] = to_value(v)
+            continue
+        end
         result[k] = to_signal(v)
     end
     result[:visible] = true
@@ -101,42 +105,9 @@ function lines_2glvisualize(kw_args)
 end
 
 
-@default function lines(scene, kw_args)
-    xor(
-        begin
-            positions = to_positions(positions)
-        end,
-        if (x, y, z)
-            x = to_array(x)
-            y = to_array(y)
-            z = to_array(z)
-            positions = to_positions((x, y, z))
-        end,
-        if (x, y)
-            x = to_array(x)
-            y = to_array(y)
-            positions = to_positions((x, y))
-        end
-    )
-    xor(
-        begin
-            color = to_color(color)
-        end,
-        begin
-            colormap = to_colormap(colormap)
-            intensity = to_intensity(intensity)
-            colornorm = to_colornorm(colornorm, intensity)
-        end
-    )
-    linewidth = linewidth::Float32
-    linestyle = to_linestyle(linestyle)
-    pattern = to_pattern(linestyle, linewidth)
-end
-
-
-function _lines(style, attributes)
+function _lines(b, style, attributes)
     scene = get_global_scene()
-    attributes = lines_defaults(scene, attributes)
+    attributes = lines_defaults(b, scene, attributes)
     data = lines_2glvisualize(attributes)
     viz = GLVisualize._default(to_signal(attributes[:positions]), Style(style), data)
     viz = GLVisualize.assemble_shader(viz).children[]
@@ -149,15 +120,13 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
         :(attributes[$(QuoteNode(elem))] = $elem)
     end
     @eval begin
-        function lines($(arg...); kw_args...)
-            attributes = expand_kwargs(kw_args)
+        function lines(b::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
-            _lines(:lines, attributes)
+            _lines(b, :lines, attributes)
         end
-        function linesegment($(arg...); kw_args...)
-            attributes = expand_kwargs(kw_args)
+        function linesegment(b::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
-            _lines(:linesegment, attributes)
+            _lines(b, :linesegment, attributes)
         end
     end
 end

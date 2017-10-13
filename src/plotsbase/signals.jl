@@ -4,14 +4,6 @@ import Base: IndexStyle, size, getindex, setindex!, _unsafe_getindex!, push!, si
 
 using Base.Broadcast: map_newindexer, _broadcast_eltype, broadcast_indices
 
-struct Node{T, F}
-    value::Signal{T}
-    # Conversion function for push! This is a bit a hack around the fact that you can't do things like
-    # signal = map(conversion_func, Signal(RGB(0, 0, 0))); push!(signal, :red)
-    # since the signal won't have the correct type. so we give the chance to pass a conversion function
-    # at creation which will be called in push!
-    convert::F
-end
 struct ArrayNode{T, N, F, AT <: AbstractArray} <: AbstractArray{T, N}
     value::Signal{AT}
     convert::F
@@ -26,7 +18,7 @@ function lift_node(f, x::AbstractNode...)
 end
 
 function push!(x::AbstractNode, value)
-    val = x.convert(value)
+    val = x.convert(to_value(value))
     push!(x.value, val)
     val
 end

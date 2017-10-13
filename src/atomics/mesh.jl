@@ -12,7 +12,6 @@ function to_faces(faces::Vector{<: Face})
     decompose(GLTriangle, faces)
 end
 
-
 function to_faces(x::Vector{Int})
     if length(x) % 3 != 0
         error("Int indices need to represent triangles, therefore need to be a multiple of three. Found: $(length(x))")
@@ -51,17 +50,7 @@ function to_mesh(verts, faces, colors::AbstractVector, attribute_id::AbstractVec
     end
 end
 
-@default function mesh(scene, kw_args)
-    color = to_color(color)
-    shading = shading::Bool
-    positions = to_positions(positions)
-    faces = to_faces(faces)
-    attribute_id = to_attribut_id(attribute_id)
-    vertexmesh = to_mesh(positions, faces, color, attribute_id)
-end
-
-
-function mesh(xyz::AbstractVector, faces::AbstractVector; kw_args...)
+function mesh(::makie, xyz::AbstractVector, faces::AbstractVector, kw_args::Dict)
     attributes = expand_kwargs(kw_args)
     scene = get_global_scene()
     attributes[:positions] = xyz
@@ -70,20 +59,19 @@ function mesh(xyz::AbstractVector, faces::AbstractVector; kw_args...)
     pos
 end
 
-function mesh(x::AbstractVector, y::AbstractVector, z::AbstractVector; kw_args...)
-    mesh(Point3f0.(x, y, z); kw_args...)
+function mesh(::makie, x::AbstractVector, y::AbstractVector, z::AbstractVector, attributes::Dict)
+    mesh(Point3f0.(x, y, z), attributes)
 end
 
-function mesh(xyz; kw_args...)
+function mesh(::makie, xyz, attributes::Dict)
     faces = reinterpret(GLTriangle, UInt32[0:(length(x)-1);])
-    mesh(xyz, faces; kw_args...)
+    mesh(xyz, faces, attributes)
 end
 
-function mesh(m::AbstractMesh; kw_args...)
+function mesh(::makie, m::AbstractMesh, attributes::Dict)
 
 end
 
-
-function mesh(x, y, z, faces; kw_args...)
+function mesh(::makie, x, y, z, faces, attributes::Dict)
     mesh(Point3f0.(x, y, z), faces; kw_args...)
 end

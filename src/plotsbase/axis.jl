@@ -1,7 +1,3 @@
-to_scalefunc(x) = x
-to_text(x) = x
-to_scalefunc(x) = x
-to_font(x) = x
 
 function labelposition(ranges, dim)
     a, b = extrema(ranges[dim])
@@ -11,7 +7,7 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
-@default function axis(scene, kw_args)
+@default function axis(backend, scene, kw_args)
 
     axisnames = to_text(axisnames)
     visible = visible::Bool

@@ -3,6 +3,24 @@ import Base: setindex!, getindex, map, haskey
 
 include("colors.jl")
 include("defaults.jl")
+
+"""
+A MakiE flavored Signal
+"""
+struct Node{T, F}
+    value::Signal{T}
+    # Conversion function for push! This is a bit a hack around the fact that you can't do things like
+    # signal = map(conversion_func, Signal(RGB(0, 0, 0))); push!(signal, :red)
+    # since the signal won't have the correct type. so we give the chance to pass a conversion function
+    # at creation which will be called in push!
+    convert::F
+end
+
+"""
+A scene is a holder of attributes which are all of the type Node.
+A scene can contain attributes, which are themselves scenes.
+Nodes can be connected, since they're signals under the hood, which can be created from other nodes.
+"""
 immutable Scene
     data::Dict{Symbol, Any}
 end
@@ -17,24 +35,15 @@ function GLAbstraction.center!(scene::Scene, border = 0.8)
     center!(screen, camsym, border = border)
 end
 
-function cam2D!(scene)
-    screen = scene[:screen]
-    mouseinside = screen.inputs[:mouseinside]
-    ishidden = screen.hidden
-    keep = map((a, b) -> !a && b, ishidden, mouseinside)
-    cam = OrthographicPixelCamera(screen.inputs, keep = keep)
-    scene[:camera] = cam
-    screen.cameras[:orthographic_pixel] = cam
-    return cam
-end
-
-export center!, cam2D!
+export center!
 
 function (::Type{Scene})(pair1::Pair, tail::Pair...)
     args = (pair1, tail...)
+    for (k, v) in args
+        println(k, " ", v)
+    end
     Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
 end
-
 
 function get_global_scene()
     if isempty(global_scene)
@@ -43,7 +52,6 @@ function get_global_scene()
         global_scene[]
     end
 end
-
 
 function render_loop(scene, screen, framerate = 1/60)
     while isopen(screen)
@@ -79,12 +87,11 @@ function Scene(; theme = default_theme, resolution = GLWindow.standard_screen_re
     dict = map(w.inputs) do k_v
         k_v[1] => to_node(k_v[2])
     end
-
     dict[:screen] = w
     push!(dict[:window_open], true)
     dict[:time] = to_node(0.0)
-    dict[:theme] = theme
     scene = Scene(dict)
+    theme(scene) # apply theme
     push!(global_scene, scene)
     @async render_loop(scene, w)
     scene
@@ -102,7 +109,6 @@ function insert_scene!(scene::Scene, name, viz, attributes)
         first(cams)
     end
     _view(viz, scene[:screen], camera = cam)
-    println(cams)
     if isempty(cams)
         scene[:camera] = first(scene[:screen].cameras)[2]
     end
@@ -118,6 +124,12 @@ function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
     s2[tail...] = obj
 end
 
+
+function Base.push!(s::Scene, obj::Scene)
+    for (k, v) in obj.data
+        s[k] = v
+    end
+end
 function setindex!(s::Scene, obj, key::Symbol)
     if haskey(s, key) # if in dictionary, just push a new value to the signal
         push!(s[key], obj)

@@ -82,3 +82,34 @@ function qmul(q::StaticVector{4}, w::StaticVector{4})
     )
     qnormalize(qq)
 end
+
+
+is_unitrange(x) = (false, 0:0)
+is_unitrange(x::Range) = (true, x)
+function is_unitrange(x::AbstractVector)
+    length(x) < 2 && return false, 0:0
+    diff = x[2] - x[1]
+    length(x) < 3 && return true, x[1]:x[2]
+    last = x[3]
+    for elem in drop(x, 3)
+        diff2 = elem - last
+        diff2 != diff && return false, 0:0
+    end
+    return true, range(first(x), diff, length(x))
+end
+
+function ngrid(x::AbstractVector, y::AbstractVector)
+    xgrid = [Float32(x[i]) for i = 1:length(x), j = 1:length(y)]
+    ygrid = [Float32(y[j]) for i = 1:length(x), j = 1:length(y)]
+    xgrid, ygrid
+end
+
+function nan_extrema(array)
+    mini, maxi = (Inf, -Inf)
+    for elem in array
+        isnan(elem) && continue
+        mini = min(mini, elem)
+        maxi = max(maxi, elem)
+    end
+    Vec2f0(mini, maxi)
+end

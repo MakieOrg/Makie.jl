@@ -42,16 +42,17 @@ Sprite marker. Allowed values:
  * A distancefield (Matrix{Float}-> annotating the distance from a contour with negative distances being outside and positves inside)/
  * An array of any of the above, to give each marker it's own shape
 """
-to_spritemarker(::Type{Circle}) = Circle(Point2f0(0), 1f0)
-to_spritemarker(::Type{Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(b, x::Circle) = x
+to_spritemarker(b, ::Type{Circle}) = Circle(Point2f0(0), 1f0)
+to_spritemarker(b, ::Type{Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
 
-to_spritemarker(marker::Char) = marker
-to_spritemarker(marker::Matrix{<: AbstractFloat}) = Float32.(marker)
-to_spritemarker(marker::Image) = to_image(marker)
+to_spritemarker(b, marker::Char) = marker
+to_spritemarker(b, marker::Matrix{<: AbstractFloat}) = Float32.(marker)
+to_spritemarker(b, marker::Image) = to_image(marker)
 
-function to_spritemarker(marker::Symbol)
+function to_spritemarker(b, marker::Symbol)
     if haskey(_marker_map, marker)
-        return to_spritemarker(_marker_map[marker])
+        return to_spritemarker(b, _marker_map[marker])
     else
         warn("Unsupported marker: $marker, using ● instead")
         return '●'
@@ -69,79 +70,39 @@ end
 # end
 # create a marker/shape type
 
-to_spritemarker(marker::Vector{Char}) = String(marker)
-function to_spritemarker(marker::Vector)
+to_spritemarker(b, marker::Vector{Char}) = String(marker)
+function to_spritemarker(b, marker::Vector)
     marker = map(marker) do sym
-        to_spritemarker(sym)
+        to_spritemarker(b, sym)
     end
     if isa(marker, Vector{Char})
-        to_spritemarker(marker)
+        to_spritemarker(b, marker)
     else
         marker
     end
 end
 
 
-function to_static_vec(x::AbstractArray)
+function to_static_vec(b, x::AbstractArray)
     Vec(ntuple(length(x)) do i
         x[i]
     end)
 end
 
-to_static_array(x::SVector) = Vec(x)
-to_static_array(x::NTuple{N}) where N = Vec(x)
+to_static_array(b, x::SVector) = Vec(x)
+to_static_array(b, x::NTuple{N}) where N = Vec(x)
 
-function to_static_array(x::AbstractArray{T}) where T <: Union{Tuple, SVector, AbstractArray}
-    to_static_array.(x)
+function to_static_array(b, x::AbstractArray{T}) where T <: Union{Tuple, SVector, AbstractArray}
+    to_static_array.(b, x)
 end
 
-to_rotations(x::Billboard) = x
-to_rotations(x::Vector) = to_static_array(x)
+to_rotations(b, x::Billboard) = x
+to_rotations(b, x::Vector) = to_static_array(x)
 
 
-to_markersize(x) = Vec2f0(x)
+to_markersize(b, x) = Vec2f0(x)
 
-@default function scatter(scene, kw_args)
-    xor(
-        begin
-            positions = to_positions(positions)
-        end,
-        if (x, y, z)
-            x = to_array(x)
-            y = to_array(y)
-            z = to_array(z)
-            positions = to_positions((x, y, z))
-        end,
-        if (x, y)
-            x = to_array(x)
-            y = to_array(y)
-            positions = to_positions((x, y))
-        end
-    )
-    # Either you give a color, or a colormap.
-    # For a colormap, you'll also need intensities
-    xor(
-        begin
-            color = to_color(color)
-        end,
-        begin
-            colormap = to_colormap(colormap)
-            intensity = to_intensity(intensity)
-            colornorm = to_colornorm(colornorm, intensity)
-        end
-    )
-    marker = to_spritemarker(marker)
 
-    stroke_color = to_color(stroke_color)
-    stroke_thickness = stroke_thickness::Float32
-
-    glow_color = to_color(glow_color)
-    glow_thickness = glow_thickness::Float32
-
-    markersize = to_markersize(markersize)
-
-    rotations = to_rotations(rotations)
-end
 
 """
 Hack to quickly make things more consistent inside MakiE, without
@@ -160,6 +121,18 @@ function expand_for_glvisualize(kw_args)
         if k == :markersize
             k = :scale
         end
+        if k == :glowwidth
+            k = :glow_width
+        end
+        if k == :glowcolor
+            k = :glow_color
+        end
+        if k == :strokewidth
+            k = :stroke_width
+        end
+        if k == :strokecolor
+            k = :stroke_color
+        end
         if k == :positions
             k = :position
         end
@@ -172,9 +145,9 @@ function expand_for_glvisualize(kw_args)
 end
 
 
-function _scatter(kw_args)
+function _scatter(b, kw_args)
     scene = get_global_scene()
-    attributes = scatter_defaults(scene, kw_args)
+    attributes = scatter_defaults(b, scene, kw_args)
     gl_data = expand_for_glvisualize(attributes)
     shape = to_signal(attributes[:marker])
     main = (shape, to_signal(attributes[:positions]))
@@ -188,10 +161,9 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
         :(attributes[$(QuoteNode(elem))] = $elem)
     end
     @eval begin
-        function scatter($(arg...); kw_args...)
-            attributes = expand_kwargs(kw_args)
+        function scatter(b::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
-            _scatter(attributes)
+            _scatter(b, attributes)
         end
     end
 end
