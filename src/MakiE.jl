@@ -28,7 +28,7 @@ include("plotsbase/atomics.jl")
 include("plotsbase/axis.jl")
 include("plotsbase/output.jl")
 
-export Scene
+export Scene, Node
 
 export scatter, lines, linesegment, mesh, surface, wireframe, axis
 export @ref, @theme, @default, to_node, to_value, lift_node, to_world, save
