@@ -1,7 +1,7 @@
 # MakiE
 
 
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](http://www.glvisualize.com/MakiE.jl/latest/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.glvisualize.com/MakiE.jl/stable/)
 
 Mouse interaction:
 

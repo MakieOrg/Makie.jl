@@ -1,51 +1,3 @@
-function expand_kwargs(kw_args)
-    # TODO get in all the shorthands from Plots.jl
-    Dict{Symbol, Any}(kw_args)
-end
-
-const atomic_funcs = (
-    :contour => """
-    """,
-    :image => """
-    """,
-    # could be implemented via image, but might be optimized specifically by the backend
-    :heatmap => """
-    """,
-    :surface => """
-    """,
-    :volume => """
-    """,
-    :lines => """
-    """,
-    :linesegment => """
-    """,
-    # alternatively, mesh2d?
-    :poly => """
-    """,
-    # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
-    :mesh => """
-    """,
-    :scatter => """
-    """,
-    :text => """
-    """,
-    # Doesn't really need to be an atomic, could be implemented via lines
-    :wireframe => """
-    """
-)
-
-const Backend = RefValue
-
-for (func, docstring) in atomic_funcs
-    @eval begin
-        $func(args...; kw_args...) = $func(current_backend[], args...; kw_args...)
-        function $func(backend::Backend, args...; kw_args...)
-            $func(backend, args..., expand_kwargs(kw_args))
-        end
-    end
-end
-
-
 # Defaults for atomics
 
 # Note that this will create a function called surface_defaults
@@ -94,10 +46,9 @@ end
             colornorm = to_colornorm(colornorm, intensity)
         end
     )
-    linewidth = linewidth::Float32
+    linewidth = to_float(linewidth)
     linestyle = to_linestyle(linestyle)
     pattern = to_pattern(linestyle, linewidth)
-    indices = to_index_buffer(indices)
 end
 
 @default function mesh(backend, scene, kw_args)
@@ -141,12 +92,87 @@ end
     marker = to_spritemarker(marker)
 
     strokecolor = to_color(strokecolor)
-    strokewidth = strokewidth::Float32
+    strokewidth = to_float(strokewidth)
 
     glowcolor = to_color(glowcolor)
-    glowwidth = glowwidth::Float32
+    glowwidth = to_float(glowwidth)
 
     markersize = to_markersize(markersize)
 
     rotations = to_rotations(rotations)
+end
+
+
+
+function expand_kwargs(kw_args)
+    # TODO get in all the shorthands from Plots.jl
+    Dict{Symbol, Any}(kw_args)
+end
+
+const atomic_funcs = (
+    # :contour => """
+    # """,
+    # :image => """
+    # """,
+    # # could be implemented via image, but might be optimized specifically by the backend
+    # :heatmap => """
+    # """,
+    # :volume => """
+    # """,
+    # alternatively, mesh2d?
+    # :poly => """
+    # """,
+    :surface => """
+        surface(x, y, z)
+    Plots a surface, where x y z are supposed to lie on a grid
+    """,
+    :lines => """
+        lines(x, y, z) / lines(x, y) / lines(positions)
+    Plots a connected line for each element in xyz/positions
+    """,
+    :linesegment => """
+        linesegment(x, y, z) / linesegment(x, y) / linesegment(positions)
+    Plots a line for each pair of points in xyz/positions
+
+    ## Attributes:
+
+    The same as for [lines](@ref)
+    """,
+    # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
+    :mesh => """
+        mesh(x, y, z) / mesh(mesh_object)
+    Plots a 3D mesh
+    """,
+    :scatter => """
+        scatter(x, y, z) / scatter(x, y) / scatter(positions)
+    Plots a marker for each element in xyz/positions
+    """,
+    # :text => """
+    # """,
+    # Doesn't really need to be an atomic, could be implemented via lines
+    :wireframe => """
+        wireframe(x, y, z) / wireframe(positions) / wireframe(mesh)
+    Draws a wireframe either interpreted as a surface or mesh
+    """
+)
+
+
+for (func, docstring) in atomic_funcs
+    adoc = try
+        f = eval(Symbol("$(func)_defaults"))
+        sprint(x-> Markdown.plain(x, Docs.doc(f)))
+    catch e
+        ""
+    end
+    docstring = docstring * "\n\n ## Attributes:\n\n" * adoc
+    @eval begin
+        """
+        $($(docstring))
+        """
+        $func(args...; kw_args...) = $func(current_backend[], args...; kw_args...)
+        function $func(backend::Backend, args...; kw_args...)
+            $func(backend, args..., expand_kwargs(kw_args))
+        end
+        export $func
+    end
 end

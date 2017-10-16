@@ -64,20 +64,19 @@ function default_theme(scene)
     scalefuncs = ntuple(i-> identity, 3)
     gridcolors = ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3)
     axiscolors = ntuple(x-> dark_text, 3)
-
+    colors = UniqueColorIter(:Set1)
     @theme theme = begin
-        color = UniqueColorIter(:Set1)
-        linewidth = 1::Float32
+        color = colors
+        linewidth = to_float(1)
         colormap = to_colormap(:YlGnBu)
         colornorm = nothing # nothing for calculating it from intensity
-
         scatter = begin
             marker = to_spritemarker(Circle)
-            markersize = 0.1::Float32
+            markersize = to_markersize(0.1)
             strokecolor = to_color(RGBA(0, 0, 0, 0))
-            strokewidth = 0::Float32
+            strokewidth = to_float(0)
             glowcolor = to_color(RGBA(0, 0, 0, 0))
-            glowwidth = 0::Float32
+            glowwidth = to_float(0)
             rotations = to_rotations(Billboard())
         end
 
@@ -86,13 +85,13 @@ function default_theme(scene)
         end
 
         mesh = begin
-            shading = true::Bool
+            shading = true
             attribute_id = nothing
         end
 
         axis = begin
             axisnames = axisnames
-            visible = true::Bool
+            visible = true
 
             showticks = showticks
             tickfont = tickfont

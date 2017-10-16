@@ -51,50 +51,37 @@ function Base.empty!(lsb::LinesegmentBuffer)
     return
 end
 
-to_linestyle(b, ls::Void) = nothing
-to_linestyle(b, ls::AbstractVector{<:AbstractFloat}) = ls
-to_linestyle(b, ls::Symbol) = ls
 
-to_pattern(b, ::Node{Void}, linewidth) = nothing
-to_pattern(b, A::AbstractVector, linewidth) = A
-function to_pattern(ls::Node{Symbol}, linewidth)
-    lift_node(ls, lw) do ls, lw
-        points = if ls == :dash
-            [0.0, lw, 2lw, 3lw, 4lw]
-        elseif ls == :dot
-            tick, gap = lw/2, lw/4
-            [0.0, tick, tick+gap, 2tick+gap, 2tick+2gap]
-        elseif ls == :dashdot
-            dtick, dgap = lw, lw
-            ptick, pgap = lw/2, lw/4
-            [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap]
-        elseif ls == :dashdotdot
-            dtick, dgap = lw, lw
-            ptick, pgap = lw/2, lw/4
-            [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap, dtick+dgap+ptick+pgap+ptick,  dtick+dgap+ptick+pgap+ptick+pgap]
-        else
-            error("Unkown line style: $linestyle. Available: :dash, :dot, :dashdot, :dashdotdot or a sequence of numbers enumerating the next transparent/opaque region")
-        end
-        points
-    end
+function extract_view(x::SubArray)
+    x.parent, x.indexes[1]
 end
-
+function extract_view(x::ArrayNode)
+    p = if isa(to_value(x).parent, ArrayNode)
+        to_value(x).parent
+    else
+        lift_node(x-> x.parent, x)
+    end
+    p, lift_node(x-> x.indexes[1], x)
+end
 function lines_2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:linestyle, :x, :y, :z, :positions) && continue
+        k in (:linestyle, :x, :y, :z) && continue
         if k == :colornorm
             k = :color_norm
         end
         if k == :colormap
             k = :color_map
         end
+        if k == :linewidth
+            k = :thickness
+        end
         if k == :positions
             k = :vertex
-        end
-        if k == :indices
-            result[k] = to_value(v)
-            continue
+            if isa(to_value(v), SubArray)
+                v, idx = extract_view(v)
+            result[:indices] = to_index_buffer((), idx)
+            end
         end
         result[k] = to_signal(v)
     end
@@ -109,7 +96,9 @@ function _lines(b, style, attributes)
     scene = get_global_scene()
     attributes = lines_defaults(b, scene, attributes)
     data = lines_2glvisualize(attributes)
-    viz = GLVisualize._default(to_signal(attributes[:positions]), Style(style), data)
+    pos = data[:vertex]
+    delete!(data, :vertex)
+    viz = GLVisualize._default(pos, Style(style), data)
     viz = GLVisualize.assemble_shader(viz).children[]
     insert_scene!(scene, style, viz, attributes)
 end

@@ -10,8 +10,8 @@ function wireframe(backend::Backend, x::AbstractMatrix, y::AbstractMatrix, z::Ab
         Point3f0.(vec(x), vec(y), vec(z))
     end
     NF = (length(z) * 4) - ((size(z, 1) + size(z, 2)) * 2)
-    faces = Vector{Cuint}(NF)
-    idx = (i, j) -> sub2ind(size(z), i, j) - 1
+    faces = Vector{Int}(NF)
+    idx = (i, j) -> sub2ind(size(z), i, j)
     li = 1
     for i = 1:size(z, 1), j = 1:size(z, 2)
         if i < size(z, 1)
@@ -25,6 +25,5 @@ function wireframe(backend::Backend, x::AbstractMatrix, y::AbstractMatrix, z::Ab
             li += 2
         end
     end
-    attributes[:indices] = faces
-    linesegment(backend, points, attributes)
+    linesegment(backend, view(points, faces), attributes)
 end

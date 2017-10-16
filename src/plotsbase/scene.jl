@@ -22,26 +22,40 @@ A scene can contain attributes, which are themselves scenes.
 Nodes can be connected, since they're signals under the hood, which can be created from other nodes.
 """
 immutable Scene
+    parent::Nullable{Scene}
     data::Dict{Symbol, Any}
+end
+
+Scene(data::Dict) = Scene(Nullable{Scene}(), data)
+parent(x::Scene) = get(x.parent)
+function rootscreen(x::Scene)
+    while !isnull(x.parent)
+        x = parent(x)
+    end
+    get(x, :screen, nothing)
+end
+function getscreen(x::Scene)
+    while !isnull(x.parent) && !haskey(x, :screen)
+        x = parent(x)
+    end
+    get(x, :screen, nothing)
 end
 
 include("signals.jl")
 
 const global_scene = Scene[]
 
-function GLAbstraction.center!(scene::Scene, border = 0.8)
+function GLAbstraction.center!(scene::Scene, border = 0.1)
     screen = scene[:screen]
     camsym = first(keys(screen.cameras))
     center!(screen, camsym, border = border)
+    scene
 end
 
 export center!
 
 function (::Type{Scene})(pair1::Pair, tail::Pair...)
     args = (pair1, tail...)
-    for (k, v) in args
-        println(k, " ", v)
-    end
     Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
 end
 
@@ -53,15 +67,20 @@ function get_global_scene()
     end
 end
 
+render_frame(scene::Scene) = render_frame(rootscreen(scene))
+function render_frame(screen::GLWindow.Screen)
+    GLWindow.reactive_run_till_now()
+    GLWindow.render_frame(screen)
+    GLWindow.swapbuffers(screen)
+end
+
 function render_loop(scene, screen, framerate = 1/60)
     while isopen(screen)
         t = time()
         GLWindow.poll_glfw() # GLFW poll
         scene[:time] = t
         if Base.n_avail(Reactive._messages) > 0
-            GLWindow.reactive_run_till_now()
-            GLWindow.render_frame(screen)
-            GLWindow.swapbuffers(screen)
+            render_frame(screen)
         end
         t = time() - t
         GLWindow.sleep_pessimistic(framerate - t)
@@ -73,7 +92,10 @@ end
 
 include("themes.jl")
 
-function Scene(; theme = default_theme, resolution = GLWindow.standard_screen_resolution())
+function Scene(; theme = default_theme, resolution = nothing)
+    if resolution == nothing
+        resolution = GLWindow.standard_screen_resolution()
+    end
     if !isempty(global_scene)
         oldscene = global_scene[]
         GLWindow.destroy!(oldscene[:screen])
@@ -99,7 +121,7 @@ end
 
 function insert_scene!(scene::Scene, name, viz, attributes)
     name = unique_predictable_name(scene, :scatter)
-    childscene = Scene(attributes)
+    childscene = Scene(scene, attributes)
     scene.data[name] = childscene
     cams = collect(keys(scene[:screen].cameras))
     cam = if isempty(cams)
@@ -114,6 +136,10 @@ function insert_scene!(scene::Scene, name, viz, attributes)
     end
     childscene
 end
+
+
+Base.get(f, x::Scene, key::Symbol) = haskey(x, key) ? x[key] : f()
+Base.get(x::Scene, key::Symbol, default) = haskey(x, key) ? x[key] : default
 
 function setindex!(s::Scene, obj, key::Symbol, tail::Symbol...)
     s2 = get(s.data, key) do

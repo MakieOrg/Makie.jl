@@ -1,8 +1,21 @@
 using MacroTools, Reactive
 
-
 function (::Type{T})(b::RefValue, x) where T
     T(x)
+end
+
+attribute_doc(name, func) = ""
+function attribute_doc(name, func::Symbol)
+    io = IOBuffer()
+    f = getfield(MakiE, func)
+    println(io, "Attribute `$name`, convert function `$func` which accepts:")
+    println(io)
+    docstr = sprint(x-> Markdown.plain(x, Docs.doc(f, Union{})))
+    for line in split(docstr, '\n')
+        println(io, "\t$line")
+    end
+    seekstart(io)
+    String(take!(io))
 end
 
 """
@@ -103,6 +116,7 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
     )
     result = if found
         push!(symbols, var)
+        push!(docs, attribute_doc(var, f))
         convert_expr(var, f, args, mainfunc, fargs, dictsym)
     else
         elem
@@ -144,7 +158,7 @@ If you don't define any doc string, it will default to the doc string of the con
 For attributes that don't need a complex convert function, you can simply use a type
 assert:
     ```Julia
-        attribute = attribute::Float32
+        attribute = to_float(attribute)
         # will become
         attribute = convert(Float32, find_default(scene, kw_args, sprites, :attribute))
     ```
@@ -206,10 +220,20 @@ macro default(func)
     dictsym = gensym(:attributes)
     kwarg_keys = gensym(:keys)
     for elem in body
-        expr, syms, docs = process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
+        expr, syms, _docs = process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
         push!(result, expr)
+        append!(docs, _docs)
     end
+    io = IOBuffer()
+    for elem in docs
+        println(io, elem)
+        println(io, "\n____________________\n")
+    end
+    docstr = String(take!(io))
     expr = quote
+        """
+        $($(docstr))
+        """
         function $(esc(Symbol("$(mainfunc)_defaults")))($(fargs...))
             $dictsym = Dict{Symbol, Any}()
             $kwarg_keys = keys($(fargs[3]))
@@ -219,8 +243,6 @@ macro default(func)
     end
     expr
 end
-
-
 
 
 nice_dump(x, intent = 0) = (print("    "^intent); show(x); println())

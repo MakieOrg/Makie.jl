@@ -7,8 +7,12 @@ makedocs(
     pages = [
         "Home" => "index.md",
         "Basics" => [
+            "scene.md",
             "functions.md",
+            "documentation.md",
+            "backends.md",
             "extending.md",
+            "themes.md",
             "referencing.md",
             "axis.md",
             "legends.md",
@@ -21,6 +25,13 @@ makedocs(
         ],
     ]
 )
+
+ENV["TRAVIS_BRANCH"] = "latest"
+ENV["TRAVIS_PULL_REQUEST"] = "false"
+ENV["TRAVIS_REPO_SLUG"] = "github.com/SimonDanisch/MakiE.jl.git"
+ENV["TRAVIS_TAG"] = "tag"
+ENV["TRAVIS_OS_NAME"] = "linux"
+ENV["TRAVIS_JULIA_VERSION"] = "0.6"
 
 deploydocs(
     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
