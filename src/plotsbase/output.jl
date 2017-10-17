@@ -61,8 +61,12 @@ immutable VideoStream
 end
 
 """
+    VideoStream(scene::Scene, dir = mktempdir(), name = "video")
+
 returns a stream and a buffer that you can use to not allocate for new frames.
 Use `add_frame!(stream, window, buffer)` to add new video frames to the stream.
+Use `finish(stream)` to save the video to 'dir/name.mkv'. You can also call
+`finish(stream, "mkv")` or `finish(stream, "webm")` to convert the stream to those formats.
 """
 function VideoStream(scene::Scene, dir = mktempdir(), name = "video")
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
