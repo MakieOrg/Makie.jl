@@ -380,6 +380,7 @@ Any Object convertible to Floatingpoint
 """
 to_float(b, x) = Float32(x)
 
+to_color(c) = to_color(current_backend[], c)
 
 """
 `Colors.Colorants`

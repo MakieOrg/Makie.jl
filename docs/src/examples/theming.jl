@@ -1,3 +1,4 @@
+#julia
 using MakiE, GeometryTypes, Colors, MacroTools
 scene = Scene()
 vx = -1:0.1:1;
@@ -11,9 +12,7 @@ pos = lift_node(psurf[:x], psurf[:y], psurf[:z]) do x, y, z
 end
 pscat = scatter(pos)
 plines = lines(view(pos, 1:2:length(pos)))
-center!(scene)
-
-save(homedir()*"/Desktop/test.png", scene)
+scene
 
 @theme theme = begin
     markersize = to_markersize(0.01)
@@ -27,6 +26,7 @@ end
 # Or permananently (to be more precise: just for this session) change the theme for scatter
 scene[:theme, :scatter] = theme
 scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
+scene
 
 # Make a completely new theme
 function custom_theme(scene)

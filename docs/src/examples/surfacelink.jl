@@ -1,7 +1,6 @@
+#julia
 using MakiE
-
 scene = Scene()
-
 N = 32
 function xy_data(x,y,i, N)
     x = ((x/N)-0.5f0)*i
@@ -19,15 +18,14 @@ surf = surface(range, range, z, colormap = :Spectral)
 wf = wireframe(range, range, surf[:z] .+ 1.0,
     linewidth = 2f0, color = lift_node(x-> x[5], surf[:colormap])
 )
-
 axis(linspace(0, 3, 4), linspace(0, 3, 4), linspace(0, 3, 4))
 center!(scene)
 
 wf[:linewidth] = 1
 surf[:colormap] = :YlGnBu
-
+io = VideoStream(scene)
 for i in linspace(0, 60, 200)
     surf[:z] = surf_func(i)
-    yield()
-    sleep(0.01)
+    recordframe!(io)
 end
+io

@@ -7,15 +7,17 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
+to_bool(b, x) = Bool(x)
+to_bool(b, x::Tuple) = Bool.(x)
+
 @default function axis(backend, scene, kw_args)
-
     axisnames = to_text(axisnames)
-    visible = visible::Bool
+    visible = to_bool(visible)
 
-    showticks = showticks::NTuple{3, Bool}
+    showticks = to_bool(showticks)
     tickfont = to_font(tickfont)
-    showaxis = showaxis::NTuple{3, Bool}
-    showgrid = showgrid::NTuple{3, Bool}
+    showaxis = to_bool(showaxis)
+    showgrid = to_bool(showgrid)
 
     scalefuncs = to_scalefunc(scalefuncs)
     gridcolors = to_color(gridcolors)
@@ -88,7 +90,7 @@ function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
     textbuffer = TextBuffer(Point{N, Float32}(0))
     linebuffer = LinesegmentBuffer(Point{N, Float32}(0))
     scene = get_global_scene()
-    attributes = axis_defaults(scene, expand_kwargs(kw_args))
+    attributes = axis_defaults(current_backend[], scene, expand_kwargs(kw_args))
     names = (
         :axisnames, :visible, :showaxis, :showticks,
         :showgrid, :axiscolors, :gridcolors, :tickfont

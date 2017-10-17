@@ -1,6 +1,6 @@
 using MacroTools, Reactive
 
-function (::Type{T})(b::RefValue, x) where T
+function (::Type{T})(b::Backend, x) where T
     T(x)
 end
 
