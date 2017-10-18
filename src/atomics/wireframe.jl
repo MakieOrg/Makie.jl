@@ -27,3 +27,15 @@ function wireframe(backend::Backend, x::AbstractMatrix, y::AbstractMatrix, z::Ab
     end
     linesegment(backend, view(points, faces), attributes)
 end
+
+
+function wireframe(backend::Backend, mesh, attributes::Dict)
+    mesh = to_node(mesh, x-> to_mesh(backend, x))
+    points = lift_node(mesh) do g
+        decompose(Point3f0, g) # get the point representation of the geometry
+    end
+    indices = lift_node(mesh) do g
+        idx = decompose(Face{2, GLIndex}, g) # get the point representation of the geometry
+    end
+    linesegment(backend, view(points, indices), attributes)
+end

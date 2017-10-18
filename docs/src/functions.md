@@ -76,10 +76,47 @@ save("wireframe.png", scene); nothing # hide
 ![](wireframe.png)
 
 
-```
+## Mesh
+
+```@docs
 mesh
+```
+
+```@example mesh
+using MakiE
+scene = Scene(resolution = (500, 500))
+x = [0, 1, 2, 0]
+y = [0, 0, 1, 2]
+z = [0, 2, 0, 1]
+color = [:red, :green, :blue, :yellow]
+i = [0, 0, 0, 1]
+j = [1, 2, 3, 2]
+k = [2, 3, 1, 3]
+
+indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
+mesh(x, y, z, indices, color = color)
+r = linspace(-0.5, 2.5, 4)
+axis(r, r, r)
+center!(scene)
+save("coloredmesh.png", scene); nothing # hide
+```
+![](coloredmesh.png)
+
+
+```@example mesh
+scene = Scene(resolution = (500, 500))
+mesh(GLVisualize.loadasset("cat.obj"))
+axis(r, r, r)
+center!(scene)
+save("loadedmesh.png", scene); nothing # hide
+```
+![](loadedmesh.png)
+
+
+```
 image
 heatmap
 volume
 text
 poly
+```

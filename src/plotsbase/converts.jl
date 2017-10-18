@@ -1,3 +1,15 @@
+
+
+"""
+All kinds of images
+"""
+to_image(b, image) = image
+
+"""
+All kinds of images
+"""
+to_bool(b, bool) = Bool(bool)
+
 """
 `GLBuffer{UInt32}`
 """
@@ -18,6 +30,13 @@ function to_index_buffer(b, x::AbstractVector{I}) where I <: Integer
         update!(gpu_mem, val)
      end
     gpu_mem
+end
+
+"""
+`AbstractVector{<:Face{2}}` for linesegments
+"""
+function to_index_buffer(b, x::AbstractVector{I}) where I <: Face{2}
+    Face{2, GLIndex}.(x)
 end
 
 """
@@ -314,43 +333,58 @@ function to_pattern(b, ls::Node{Symbol}, linewidth)
 end
 
 """
-X, Y, Z as triangles, so need to have the same length and be dividable by 3
+Vector{Normal{3}}
 """
-function to_mesh(x, y, z)
-    verts = vec(Point3f0.(x, y, z))
-    faces = reinterpret(GLTriangle, UInt32[0:(length(verts)-1);])
-    GLPlainMesh(vertices = verts, faces = faces)
-end
+to_normals(b, x) = x
 
 """
 Any array of NTuple/GeometryTypes.Face
 """
-function to_faces(x::Vector{NTuple{N, TI}}) where {N, TI <: Integer}
+function to_faces(b, x::AbstractVector{NTuple{N, TI}}) where {N, TI <: Integer}
     to_faces(reinterpret(Face{N, TI}, x))
 end
 
-function to_faces(faces::Vector{<: Face})
+function to_faces(b, faces::AbstractVector{<: Face})
     decompose(GLTriangle, faces)
 end
+function to_faces(b, faces::AbstractVector{GLTriangle})
+    faces
+end
 
-function to_faces(x::Vector{Int})
+function to_faces(b, x::Void)
+    x
+end
+function to_faces(b, x::Vector{Int})
     if length(x) % 3 != 0
         error("Int indices need to represent triangles, therefore need to be a multiple of three. Found: $(length(x))")
     end
     reinterpret(GLTriangle, UInt32.(x .- 1))
 end
 
-function to_mesh(verts, faces, colors, attribute_id::Void)
+
+"""
+`AbstractMesh`
+"""
+function to_mesh(b, mesh::AbstractMesh)
+    mesh
+end
+
+function to_mesh(b, geom::GeometryPrimitive)
+    GLNormalMesh(geom)
+end
+
+function to_mesh(b, verts, faces, colors, attribute_id::Node{Void})
     lift_node(verts, faces) do v, f
         GLPlainMesh(v, f)
     end
 end
-function to_mesh(verts, faces, colors::Node{<:Colorant}, attribute_id::Void)
-    lift_node(verts, faces, c) do v, f, c
-        GLNormalColorMesh(vertices = v, faces = f, color = c)
+function to_mesh(b, verts, faces, colors::Node{<:Colorant}, attribute_id::Node{Void})
+    lift_node(verts, faces) do v, f
+        GLNormalMesh(vertices = v, faces = f)
     end
 end
-function to_mesh(verts, faces, colors::AbstractVector, attribute_id::Void)
+
+function to_mesh(b, verts, faces, colors::AbstractVector, attribute_id::Node{Void})
     lift_node(verts, faces, colors) do v, f, c
         if length(c) != length(v)
             error("You need one color per vertex. Found: $(length(v)) vertices, and $(length(c)) colors")
@@ -397,7 +431,8 @@ to_color(b, c::String) = parse(RGBA{Float32}, c)
 to_color(b, c::UniqueColorIter) = to_color(b, next(c))
 
 """
-A Tuple or Array with elements that `to_color` accepts
+A Tuple or Array with elements that `to_color` accepts.
+If Array is a Matrix it will get interpreted as an Image
 """
 to_color(b, c::Union{Tuple, AbstractArray}) = to_color.(b, c)
 

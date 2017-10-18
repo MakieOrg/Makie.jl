@@ -61,7 +61,12 @@ function extract_view(x::ArrayNode)
     else
         lift_node(x-> x.parent, x)
     end
-    p, lift_node(x-> x.indexes[1], x)
+    idx = if isa(to_value(x).parent, ArrayNode)
+        to_value(x).indexes[1]
+    else
+        lift_node(x-> x.indexes[1], x)
+    end
+    p, idx
 end
 function lines_2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
@@ -80,7 +85,7 @@ function lines_2glvisualize(kw_args)
             k = :vertex
             if isa(to_value(v), SubArray)
                 v, idx = extract_view(v)
-            result[:indices] = to_index_buffer((), idx)
+                result[:indices] = to_signal(to_index_buffer((), idx))
             end
         end
         result[k] = to_signal(v)
@@ -118,4 +123,10 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
             _lines(b, :linesegment, attributes)
         end
     end
+end
+
+function linesegment(b::makie, pos::AbstractVector{<: Union{Tuple{P, P}, Pair{P, P}}}, attributes::Dict) where P <: Point
+    println("Lol?")
+    positions = reinterpret(P, pos)
+    linesegment(b, positions, attributes)
 end

@@ -65,11 +65,15 @@ function default_theme(scene)
     gridcolors = ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3)
     axiscolors = ntuple(x-> dark_text, 3)
     colors = UniqueColorIter(:Set1)
+    meshrotation = Vec3f0(0, 0, 1)
     @theme theme = begin
         color = colors
         linewidth = to_float(1)
         colormap = to_colormap(:YlGnBu)
         colornorm = nothing # nothing for calculating it from intensity
+        surface = begin
+            image = nothing
+        end
         scatter = begin
             marker = to_spritemarker(Circle)
             markersize = to_markersize(0.1)
@@ -79,6 +83,11 @@ function default_theme(scene)
             glowwidth = to_float(0)
             rotations = to_rotations(Billboard())
         end
+        meshscatter = begin
+            marker = to_mesh(Sphere(Point3f0(0), 0.1f0))
+            markersize = to_markersize(1)
+            rotations = meshrotation
+        end
 
         lines = begin
             linestyle = to_linestyle(nothing)
@@ -87,6 +96,7 @@ function default_theme(scene)
         mesh = begin
             shading = true
             attribute_id = nothing
+            indices = nothing
         end
 
         axis = begin
@@ -102,7 +112,6 @@ function default_theme(scene)
             gridcolors = gridcolors
             axiscolors = axiscolors
         end
-
     end
     scene[:theme] = theme
 end

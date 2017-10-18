@@ -15,6 +15,9 @@
         end,
         begin
             color = to_color(color)
+        end,
+        if (image,)
+            image = to_image(image)
         end
     )
 end
@@ -52,12 +55,30 @@ end
 end
 
 @default function mesh(backend, scene, kw_args)
-    color = to_color(color)
-    shading = shading::Bool
-    positions = to_positions(positions)
-    faces = to_faces(faces)
+    shading = to_bool(shading)
     attribute_id = to_attribut_id(attribute_id)
-    vertexmesh = to_mesh(positions, faces, color, attribute_id)
+    color = to_color(color)
+
+    xor(
+        if (indices,)
+            indices = to_faces(indices)
+            xor(
+                if (positions,)
+                    positions = to_positions(positions)
+                end,
+                if (x, y, z)
+                    x = to_array(x)
+                    y = to_array(y)
+                    z = to_array(z)
+                    positions = to_positions((x, y, z))
+                end
+            )
+            mesh = to_mesh(positions, indices, color, attribute_id)
+        end,
+        begin
+            mesh = to_mesh(mesh)
+        end
+    )
 end
 
 @default function scatter(backend, scene, kw_args)
@@ -102,6 +123,41 @@ end
     rotations = to_rotations(rotations)
 end
 
+@default function meshscatter(backend, scene, kw_args)
+    xor(
+        begin
+            positions = to_positions(positions)
+        end,
+        if (x, y, z)
+            x = to_array(x)
+            y = to_array(y)
+            z = to_array(z)
+            positions = to_positions((x, y, z))
+        end,
+        if (x, y)
+            x = to_array(x)
+            y = to_array(y)
+            positions = to_positions((x, y))
+        end
+    )
+    # Either you give a color, or a colormap.
+    # For a colormap, you'll also need intensities
+    xor(
+        begin
+            color = to_color(color)
+        end,
+        begin
+            colormap = to_colormap(colormap)
+            intensity = to_intensity(intensity)
+            colornorm = to_colornorm(colornorm, intensity)
+        end
+    )
+
+    marker = to_mesh(marker)
+    markersize = to_markersize(markersize)
+    rotations = to_rotations(rotations)
+end
+
 
 
 function expand_kwargs(kw_args)
@@ -140,12 +196,16 @@ const atomic_funcs = (
     """,
     # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
     :mesh => """
-        mesh(x, y, z) / mesh(mesh_object)
+        mesh(x, y, z) / mesh(mesh_object) / mesh(x, y, z, faces) / mesh(xyz, faces)
     Plots a 3D mesh
     """,
     :scatter => """
         scatter(x, y, z) / scatter(x, y) / scatter(positions)
     Plots a marker for each element in xyz/positions
+    """,
+    :meshscatter => """
+        scatter(x, y, z) / scatter(x, y) / scatter(positions)
+    Plots a mesh for each element in xyz/positions
     """,
     # :text => """
     # """,
