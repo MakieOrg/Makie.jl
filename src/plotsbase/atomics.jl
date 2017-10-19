@@ -200,8 +200,10 @@ function expand_kwargs(kw_args)
 end
 
 const atomic_funcs = (
-    # :contour => """
-    # """,
+    :contour => """
+        contour(x, y, z)
+    Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
+    """,
     :image => """
         image(x, y, image) / image(image)
     Plots an image on range x, y (defaults to dimensions)

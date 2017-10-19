@@ -6,7 +6,7 @@ positions = decompose(Point3f0, large_sphere)
 linepos = view(positions, rand(1:length(positions), 1000))
 lines(linepos, linewidth = 0.1, color = :black)
 scatter(positions, strokewidth = 0.02, strokecolor = :white, color = RGBA(0.9, 0.2, 0.4, 0.6))
-r = linspace(-0.5, 1.5, 5)
+r = linspace(-1.5, 1.5, 5)
 axis(r, r, r)
 scene
 

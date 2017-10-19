@@ -4,6 +4,10 @@ img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
 image(img);
 
+img = load(homedir()*"/Desktop/matcha.png")
+scene = Scene()
+image(img);
+
 using MakiE
 scene = Scene()
 volume(rand(32, 32, 32), algorithm = :iso)
@@ -12,6 +16,13 @@ center!(scene)
 using MakiE
 scene = Scene()
 heatmap(rand(32, 32))
+center!(scene)
+
+using MakiE, GeometryTypes
+scene = Scene()
+r = linspace(-10, 10, 512)
+z = ((x, y)-> sin(x) + cos(y)).(r, r')
+MakiE.contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
 center!(scene)
 
 using MakiE, GeometryTypes, Colors, MacroTools

@@ -15,14 +15,17 @@ function scene2image(scene::Scene)
     end
 end
 
-function show(io::IO, ::MIME"image/png", scene::Scene)
+Base.mimewritable(::MIME"image/png", scene::Scene) = true
+
+function Base.show(io::IO, ::MIME"image/png", scene::Scene)
     img = scene2image(scene)
     if img != nothing
-        png = map(RGB{U8}, buff)
+        png = map(RGB{N0f8}, img)
         FileIO.save(FileIO.Stream(FileIO.DataFormat{:PNG}, io), png)
     end
     return
 end
+
 
 function save(path::String, scene::Scene)
     img = scene2image(scene)
@@ -115,4 +118,44 @@ function finish(io::VideoStream, typ = "mkv")
     end
 end
 
+Base.mimewritable(::MIME"image/png", scene::VideoStream) = true
+
+function Base.show(io::IO, ::MIME"image/png", vs::VideoStream)
+    path = finish(vs, "mp4")
+    show(
+        io,
+        "text/html",
+        string(
+            """<video autoplay controls><source src="data:video/x-m4v;base64,""",
+            base64encode(open(readbytes, path)),
+            """" type="video/mp4"></video>"""
+        )
+    )
+end
+
+
 export VideoStream, recordframe!, finish
+
+# mimewriteable to PNG if 2D colorant array
+
+# if IJulia.inited
+#     export set_ijulia_output
+#
+#     function set_ijulia_output(mimestr::AbstractString)
+#         # info("Setting IJulia output format to $mimestr")
+#         global _ijulia_output
+#         _ijulia_output[1] = mimestr
+#     end
+#     function IJulia.display_dict(plt::Plot)
+#         global _ijulia_output
+#         Dict{String, String}(_ijulia_output[1] => sprint(show, _ijulia_output[1], plt))
+#     end
+#
+#     # default text/plain passes to html... handles Interact issues
+#     function Base.show(io::IO, m::MIME"text/plain", plt::Plot)
+#         show(io, MIME("text/html"), plt)
+#     end
+#
+#     ENV["MPLBACKEND"] = "Agg"
+#     set_ijulia_output("text/html")
+# end

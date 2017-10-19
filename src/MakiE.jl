@@ -2,7 +2,7 @@ __precompile__(true)
 module MakiE
 
 using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
-using StaticArrays, GLWindow, ModernGL
+using StaticArrays, GLWindow, ModernGL, Contour
 
 using Base.Iterators: repeated, drop
 using Base: RefValue
@@ -25,6 +25,7 @@ include("plotsbase/atomics.jl")
     include("atomics/wireframe.jl")
     include("atomics/mesh.jl")
     include("atomics/imagelike.jl")
+    include("plotsbase/contour.jl")
 
 include("plotsbase/axis.jl")
 include("plotsbase/output.jl")

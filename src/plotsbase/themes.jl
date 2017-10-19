@@ -76,6 +76,11 @@ function default_theme(scene)
             image = nothing
         end
 
+        contour = begin
+            levels = to_float(5)
+            fillrange = false
+        end
+
         scatter = begin
             marker = to_spritemarker(Circle)
             markersize = to_markersize(0.1)

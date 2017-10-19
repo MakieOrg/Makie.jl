@@ -557,7 +557,7 @@ to_interval(b, x::Pair{<: Number, <: Number}) = to_interval(b, (x...,))
 """
 `AbstractVector` will be interpreted as an interval from minimum to maximum
 """
-to_interval(b, x::AbstractVector) = to_interval(b, (minimum(x), maximum(y)))
+to_interval(b, x::AbstractVector) = to_interval(b, (minimum(x), maximum(x)))
 
 
 

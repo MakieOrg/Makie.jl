@@ -91,7 +91,7 @@ function lines_2glvisualize(kw_args)
         result[k] = to_signal(v)
     end
     result[:visible] = true
-    result[:fxaa] = true
+    result[:fxaa] = false
     result[:model] = eye(Mat4f0)
     result
 end
@@ -126,7 +126,6 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
 end
 
 function linesegment(b::makie, pos::AbstractVector{<: Union{Tuple{P, P}, Pair{P, P}}}, attributes::Dict) where P <: Point
-    println("Lol?")
     positions = reinterpret(P, pos)
     linesegment(b, positions, attributes)
 end
