@@ -125,8 +125,15 @@ scene
 #julias
 using MakiE, FileIO, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500), color = :black)
-# earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
+earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
+image(earth)
+center!(scene)
+
+#julias
+using MakiE, FileIO, GeometryTypes, Colors
+scene = Scene(resolution = (500, 500), color = :black)
 m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
+earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
 MakiE.mesh(m, color = earth)
 stars = 100_000
 scatter((rand(Point3f0, stars) .- 0.5) .* 10,

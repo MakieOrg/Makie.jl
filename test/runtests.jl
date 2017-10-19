@@ -1,5 +1,8 @@
-using MakiE
+using MakiE, FileIO
 
+img = load(homedir()*"/Desktop/matcha.png")
+scene = Scene()
+image(img);
 
 using MakiE, GeometryTypes, Colors, MacroTools
 scene = Scene()

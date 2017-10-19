@@ -93,6 +93,10 @@ function default_theme(scene)
             linestyle = to_linestyle(nothing)
         end
 
+        image = begin
+            spatialorder = :yx
+        end
+
         mesh = begin
             shading = true
             attribute_id = nothing

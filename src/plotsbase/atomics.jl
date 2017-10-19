@@ -168,8 +168,10 @@ end
 const atomic_funcs = (
     # :contour => """
     # """,
-    # :image => """
-    # """,
+    :image => """
+        image(x, y, image) / image(image)
+    Plots an image on range x, y (defaults to dimensions)
+    """,
     # # could be implemented via image, but might be optimized specifically by the backend
     # :heatmap => """
     # """,
@@ -229,10 +231,24 @@ for (func, docstring) in atomic_funcs
         """
         $($(docstring))
         """
-        $func(args...; kw_args...) = $func(current_backend[], args...; kw_args...)
+        function $func(a::T, args...; kw_args...) where T
+            if T != Backend
+                $func(current_backend[], a, args...; kw_args...)
+            else
+                # keyword argument signature should never contain the backend.
+                # if so, it must come from the function defined below
+                ts = join(typeof.(args), ", ")
+                error("Signature $func($ts) is not implemented")
+            end
+        end
         function $func(backend::Backend, args...; kw_args...)
             $func(backend, args..., expand_kwargs(kw_args))
         end
         export $func
     end
+end
+
+# Higher level atomic signatures
+function image(b::Backend, img, attributes::Dict)
+    image(b, 1:size(img, 1), 1:size(img, 2), img, attributes)
 end

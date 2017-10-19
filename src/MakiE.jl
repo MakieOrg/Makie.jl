@@ -24,6 +24,7 @@ include("plotsbase/atomics.jl")
     include("atomics/surface.jl")
     include("atomics/wireframe.jl")
     include("atomics/mesh.jl")
+    include("atomics/imagelike.jl")
 
 include("plotsbase/axis.jl")
 include("plotsbase/output.jl")
