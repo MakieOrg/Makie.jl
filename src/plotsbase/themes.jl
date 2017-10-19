@@ -71,9 +71,11 @@ function default_theme(scene)
         linewidth = to_float(1)
         colormap = to_colormap(:YlGnBu)
         colornorm = nothing # nothing for calculating it from intensity
+
         surface = begin
             image = nothing
         end
+
         scatter = begin
             marker = to_spritemarker(Circle)
             markersize = to_markersize(0.1)
@@ -83,6 +85,7 @@ function default_theme(scene)
             glowwidth = to_float(0)
             rotations = to_rotations(Billboard())
         end
+
         meshscatter = begin
             marker = to_mesh(Sphere(Point3f0(0), 0.1f0))
             markersize = to_markersize(1)
@@ -115,6 +118,17 @@ function default_theme(scene)
             scalefuncs = scalefuncs
             gridcolors = gridcolors
             axiscolors = axiscolors
+        end
+
+        heatmap = begin
+            linewidth = to_float(0)
+            levels = to_float(1f0)
+        end
+        volume = begin
+            algorithm = to_volume_algorithm(GLVisualize.MaximumIntensityProjection)
+            absorption = to_float(1f0)
+            isovalue = to_float(0.5f0)
+            isorange = to_float(0.01f0)
         end
     end
     scene[:theme] = theme

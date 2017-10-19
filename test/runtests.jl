@@ -4,6 +4,16 @@ img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
 image(img);
 
+using MakiE
+scene = Scene()
+volume(rand(32, 32, 32), algorithm = :iso)
+center!(scene)
+
+using MakiE
+scene = Scene()
+heatmap(rand(32, 32))
+center!(scene)
+
 using MakiE, GeometryTypes, Colors, MacroTools
 scene = Scene()
 vx = -1:0.1:1;

@@ -122,6 +122,12 @@ wireframe(Sphere(Point3f0(0), 1f0))
 center!(scene)
 scene
 
+#julia
+using MakiE
+scene = Scene(resolution = (500, 500))
+heatmap(rand(32, 32))
+center!(scene)
+
 #julias
 using MakiE, FileIO, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500), color = :black)
@@ -141,3 +147,9 @@ scatter((rand(Point3f0, stars) .- 0.5) .* 10,
     markersize = rand(linspace(0.0001, 0.01, 100), stars)
 )
 scene
+
+#julia
+using MakiE
+scene = Scene()
+volume(rand(32, 32, 32), algorithm = :iso)
+center!(scene)

@@ -520,3 +520,75 @@ function to_colormap(b, cs::Union{String, Symbol})
         error("There is no color gradient named: $cs")
     end
 end
+
+
+
+"""
+"xy" or "yx"
+"""
+function to_spatial_order(b, x)
+    if !(x in ("yx", "xy"))
+        error("Spatial order must be \"yx\" or \"xy\". Found: $x")
+    end
+    x
+end
+
+"""
+:xy or :yx
+"""
+to_spatial_order(b, x::Symbol) = to_spatial_order(b, string(x))
+
+"""
+`Tuple{<: Number, <: Number}`
+"""
+function to_interval(b, x)
+    if isa(x, Tuple{<: Number, <: Number})
+        return x
+    else
+        error("Not an accepted value for interval. Please have a look at the documentation for to_interval")
+    end
+end
+
+"""
+Pair{<: Number, <: Number} e.g. 2 => 100
+"""
+to_interval(b, x::Pair{<: Number, <: Number}) = to_interval(b, (x...,))
+
+"""
+`AbstractVector` will be interpreted as an interval from minimum to maximum
+"""
+to_interval(b, x::AbstractVector) = to_interval(b, (minimum(x), maximum(y)))
+
+
+
+using GLVisualize: IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
+export IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
+
+"""
+Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
+"""
+function to_volume_algorithm(b, value)
+    if isa(value, GLVisualize.RaymarchAlgorithm)
+        return Int32(value)
+    elseif isa(value, Int32) && value in 0:5
+        return value
+    else
+        error("$value is not a valid volume algorithm. Please have a look at the documentation of `to_volume_algorithm`")
+    end
+end
+
+"""
+Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
+"""
+function to_volume_algorithm(b, value::Union{Symbol, String})
+    vals = Dict(
+        :iso => IsoValue,
+        :absorption => Absorption,
+        :mip => MaximumIntensityProjection,
+        :absorptionrgba => AbsorptionRGBA,
+        :indexedabsorption => IndexedAbsorptionRGBA,
+    )
+    to_volume_algorithm(b, get(vals, Symbol(value)) do
+        error("$value not a valid volume algorithm. Needs to be in $(keys(vals))")
+    end)
+end

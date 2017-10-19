@@ -1,57 +1,33 @@
-function heatmap(x, y, z, kw_args)
-    get!(kw_args, :color_norm, Vec2f0(ignorenan_extrema(z)))
-    get!(kw_args, :color_map, Plots.make_gradient(cgrad()))
-    delete!(kw_args, :intensity)
-    I = GLVisualize.Intensity{Float32}
-    heatmap = I[z[j,i] for i=1:size(z, 2), j=1:size(z, 1)]
-    tex = GLAbstraction.Texture(heatmap, minfilter=:nearest)
-    kw_args[:stroke_width] = 0f0
-    kw_args[:levels] = 1f0
-    visualize(tex, Style(:default), kw_args)
-end
 
-"""
-"xy" or "yx"
-"""
-function to_spatial_order(b, x)
-    if !(x in ("yx", "xy"))
-        error("Spatial order must be \"yx\" or \"xy\". Found: $x")
+
+function heatmap2glvisualize(attributes)
+    result = Dict{Symbol, Any}()
+    result[:stroke_width] = to_signal(attributes[:linewidth])
+    result[:levels] = to_signal(attributes[:levels])
+    result[:color_norm] = to_signal(attributes[:colornorm])
+    result[:color_map] = to_signal(attributes[:colormap])
+
+    heatmap = to_signal(lift_node(attributes[:heatmap]) do z
+        [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
+    end)
+    tex = GLAbstraction.Texture(value(heatmap), minfilter = :nearest)
+    foreach(heatmap) do x
+        update!(tex, x)
     end
-    x
+    result, tex
 end
 
-"""
-:xy or :yx
-"""
-to_spatial_order(b, x::Symbol) = to_spatial_order(b, string(x))
-
-"""
-`Tuple{<: Number, <: Number}`
-"""
-function to_interval(b, x)
-    if isa(x, Tuple{<: Number, <: Number})
-        return x
-    else
-        error("Not an accepted value for interval. Please have a look at the documentation for to_interval")
-    end
+function heatmap(b::makie, x, y, z, attributes)
+    attributes[:x] = x
+    attributes[:y] = y
+    attributes[:heatmap] = z
+    scene = get_global_scene()
+    attributes = heatmap_defaults(b, scene, attributes)
+    gl_data, tex = heatmap2glvisualize(attributes)
+    viz = visualize(tex, Style(:default), gl_data).children[]
+    insert_scene!(scene, :heatmap, viz, attributes)
 end
 
-"""
-Pair{<: Number, <: Number} e.g. 2 => 100
-"""
-to_interval(b, x::Pair{<: Number, <: Number}) = to_interval(b, (x...,))
-
-"""
-`AbstractVector` will be interpreted as an interval from minimum to maximum
-"""
-to_interval(b, x::AbstractVector) = to_interval(b, (minimum(x), maximum(y)))
-
-@default function image(b, scene, kw_args)
-    spatialorder = to_spatial_order(spatialorder)
-    x = to_interval(x)
-    y = to_interval(y)
-    image = to_image(image)
-end
 
 function image2glvisualize(attributes)
     result = Dict{Symbol, Any}()
@@ -76,4 +52,32 @@ function image(b::makie, x, y, img, attributes::Dict)
     gl_data = image2glvisualize(attributes)
     viz = visualize(to_signal(attributes[:image]), Style(:default), gl_data).children[]
     insert_scene!(scene, :image, viz, attributes)
+end
+
+function volume2glvisualize(attributes)
+    result = Dict{Symbol, Any}()
+    if haskey(attributes, :colornorm)
+        result[:color_norm] = to_signal(attributes[:colornorm])
+        result[:color_map] = to_signal(attributes[:colormap])
+    else
+        result[:color_map] = nothing
+        result[:color_norm] = nothing
+        result[:color] = to_signal(attributes[:color])
+    end
+
+    result[:algorithm] = to_signal(attributes[:algorithm])
+    result[:isovalue] = to_signal(attributes[:isovalue])
+    result[:isorange] = to_signal(attributes[:isorange])
+    result[:absorption] = to_signal(attributes[:absorption])
+
+    result
+end
+
+function volume(b::makie, values, attributes)
+    attributes[:volume] = values
+    scene = get_global_scene()
+    attributes = volume_defaults(b, scene, attributes)
+    gl_data = volume2glvisualize(attributes)
+    viz = visualize(to_signal(attributes[:volume]), Style(:default), gl_data).children[]
+    insert_scene!(scene, :volume, viz, attributes)
 end

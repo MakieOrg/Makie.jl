@@ -158,6 +158,40 @@ end
     rotations = to_rotations(rotations)
 end
 
+@default function image(b, scene, kw_args)
+    spatialorder = to_spatial_order(spatialorder)
+    x = to_interval(x)
+    y = to_interval(y)
+    image = to_image(image)
+end
+
+@default function volume(backend, scene, kw_args)
+    volume = to_array(volume)
+    xor(
+        begin
+            color = to_color(color)
+        end,
+        begin
+            colormap = to_colormap(colormap)
+            # convert function should only have one argument right now, so we create this closure
+            colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, volume))(colornorm)
+        end
+    )
+    algorithm = to_volume_algorithm(algorithm)
+    absorption = to_float(absorption)
+    isovalue = to_float(isovalue)
+    isorange = to_float(isorange)
+end
+
+@default function heatmap(backend, scene, kw_args)
+    linewidth = to_float(linewidth)
+    levels = to_float(levels)
+    heatmap = to_array(heatmap)
+
+    colormap = to_colormap(colormap)
+    # convert function should only have one argument right now, so we create this closure
+    colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, heatmap))(colornorm)
+end
 
 
 function expand_kwargs(kw_args)
@@ -172,11 +206,15 @@ const atomic_funcs = (
         image(x, y, image) / image(image)
     Plots an image on range x, y (defaults to dimensions)
     """,
-    # # could be implemented via image, but might be optimized specifically by the backend
-    # :heatmap => """
-    # """,
-    # :volume => """
-    # """,
+    # could be implemented via image, but might be optimized specifically by the backend
+    :heatmap => """
+        heatmap(x, y, values) / heatmap(values)
+    Plots a image on heatmap x, y (defaults to dimensions)
+    """,
+    :volume => """
+        volume(volume_data)
+    Plots a volume
+    """,
     # alternatively, mesh2d?
     # :poly => """
     # """,
@@ -251,4 +289,7 @@ end
 # Higher level atomic signatures
 function image(b::Backend, img, attributes::Dict)
     image(b, 1:size(img, 1), 1:size(img, 2), img, attributes)
+end
+function heatmap(b::Backend, img, attributes::Dict)
+    heatmap(b, 1:size(img, 1), 1:size(img, 2), img, attributes)
 end
