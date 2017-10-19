@@ -288,6 +288,7 @@ to_rotations(b, x::AbstractVector) = to_static_vec(x)
 Anything that can be converted to `Vec2f0` for x, y scale
 """
 to_markersize(b, x) = Vec2f0(x)
+to_markersize(b, x::AbstractVector) = Vec2f0.(x)
 
 """
 `Nothing` for no style
