@@ -41,6 +41,11 @@ function surface_2glvisualize(kw_args)
     result, main
 end
 
+function surface(::makie, z::AbstractMatrix, attributes::Dict)
+    surface(1:size(z, 1), 1:size(z, 2), z, attributes::Dict)
+end
+
+
 function surface(b::makie, x, y, z::AbstractMatrix{T}, attributes::Dict) where T <: AbstractFloat
     scene = get_global_scene()
     attributes[:x] = x
