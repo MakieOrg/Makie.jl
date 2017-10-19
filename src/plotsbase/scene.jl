@@ -92,7 +92,11 @@ end
 
 include("themes.jl")
 
-function Scene(; theme = default_theme, resolution = nothing)
+function Scene(;
+        theme = default_theme,
+        resolution = nothing,
+        color = :white
+    )
     if resolution == nothing
         resolution = GLWindow.standard_screen_resolution()
     end
@@ -103,7 +107,7 @@ function Scene(; theme = default_theme, resolution = nothing)
         empty!(oldscene.data)
         empty!(global_scene)
     end
-    w = Screen(resolution = resolution)
+    w = Screen(resolution = resolution, color = to_color(nothing, color))
     GLVisualize.add_screen(w)
     GLWindow.add_complex_signals!(w)
     dict = map(w.inputs) do k_v
