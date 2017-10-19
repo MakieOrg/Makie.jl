@@ -1,3 +1,4 @@
+#julia
 using MakiE, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500))
 large_sphere = HyperSphere(Point3f0(0), 1f0)
@@ -62,9 +63,7 @@ pos = map(x.vertices, x.normals) do p, n
     p => p .+ (normalize(n) .* 0.05f0)
 end
 linesegment(pos)
-
-
-
+scene
 
 #julia
 using MakiE
@@ -83,12 +82,14 @@ wireframe(m[:mesh], color = :black, linewidth = 2)
 r = linspace(-0.5, 2.5, 4)
 axis(r, r, r)
 center!(scene)
+scene
 
 #julia
 scene = Scene(resolution = (500, 500))
 mesh(GLVisualize.loadasset("cat.obj"))
 r = linspace(-0.1, 1, 4)
 center!(scene)
+scene
 
 #julia
 using MakiE, GeometryTypes, FileIO
@@ -97,13 +98,14 @@ scene = Scene(resolution = (500, 500))
 cat = load(assetpath("cat.obj"), GLNormalUVMesh)
 MakiE.mesh(cat, color = loadasset("diffusemap.tga"))
 center!(scene)
-
+scene
 
 #julia
 using MakiE, GeometryTypes
 scene = Scene(resolution = (500, 500))
 MakiE.mesh(Sphere(Point3f0(0), 1f0))
 center!(scene)
+scene
 
 
 #julia
@@ -111,9 +113,24 @@ using MakiE, GeometryTypes
 scene = Scene(resolution = (500, 500))
 wireframe(GLVisualize.loadasset("cat.obj"))
 center!(scene)
+scene
 
 #julia
 using MakiE, GeometryTypes
 scene = Scene(resolution = (500, 500))
 wireframe(Sphere(Point3f0(0), 1f0))
 center!(scene)
+scene
+
+#julias
+using MakiE, FileIO, GeometryTypes, Colors
+scene = Scene(resolution = (500, 500), color = :black)
+# earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
+m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
+MakiE.mesh(m, color = earth)
+stars = 100_000
+scatter((rand(Point3f0, stars) .- 0.5) .* 10,
+    glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
+    markersize = rand(linspace(0.0001, 0.01, 100), stars)
+)
+scene
