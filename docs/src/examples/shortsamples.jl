@@ -20,6 +20,7 @@ scene
 
 
 #julia
+using MakiE
 scene = Scene(resolution = (500, 500))
 function xy_data(x, y)
     r = sqrt(x*x + y*y)
@@ -36,12 +37,13 @@ wf = wireframe(r, r, surf[:z] .+ 1.0,
 xy = linspace(-2.1, 2.1, 4)
 axis(xy, xy, linspace(0, 2, 4))
 center!(scene)
+
 io = VideoStream(scene)
 for i in linspace(0, 60, 100)
     surf[:z] = surf_func(i)
     recordframe!(io)
 end
-io
+MakiE.finish(io, "mp4", remove_mkv = false)
 
 #julia
 using MakiE, GeometryTypes, GLVisualize, GLWindow

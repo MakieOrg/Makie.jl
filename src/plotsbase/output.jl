@@ -17,15 +17,22 @@ end
 
 Base.mimewritable(::MIME"image/png", scene::Scene) = true
 
-function Base.show(io::IO, ::MIME"image/png", scene::Scene)
-    img = scene2image(scene)
-    if img != nothing
-        png = map(RGB{N0f8}, img)
-        FileIO.save(FileIO.Stream(FileIO.DataFormat{:PNG}, io), png)
+function Base.show(io::IO, mime::MIME"image/png", scene::MakiE.Scene)
+    screen = MakiE.getscreen(scene)
+    if screen != nothing
+        img1 = MakiE.scene2image(screen)
+        imstream = foldp(img1, Reactive.fpswhen(screen.inputs[:window_open], 2)) do v0, t
+            if isopen(screen)
+                MakiE.scene2image(screen)
+            else
+                v0
+            end
+        end
+        display(Main.IJulia.InlineDisplay(), mime, imstream)
+#       FileIO.save(FileIO.Stream(FileIO.DataFormat{:PNG}, io), png)
     end
     return
 end
-
 
 function save(path::String, scene::Scene)
     img = scene2image(scene)
@@ -69,7 +76,7 @@ end
 returns a stream and a buffer that you can use to not allocate for new frames.
 Use `add_frame!(stream, window, buffer)` to add new video frames to the stream.
 Use `finish(stream)` to save the video to 'dir/name.mkv'. You can also call
-`finish(stream, "mkv")` or `finish(stream, "webm")` to convert the stream to those formats.
+`finish(stream, "mkv")`, `finish(stream, "mp4")`, `finish(stream, "gif")` or `finish(stream, "webm")` to convert the stream to those formats.
 """
 function VideoStream(scene::Scene, dir = mktempdir(), name = "video")
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
@@ -80,7 +87,7 @@ function VideoStream(scene::Scene, dir = mktempdir(), name = "video")
     end
     tex = GLWindow.framebuffer(screen).color
     res = size(tex)
-    io, process = open(`ffmpeg -f rawvideo -pixel_format rgb24 -s:v $(res[1])x$(res[2]) -i pipe:0 -vf vflip -y $path`, "w")
+    io, process = open(`ffmpeg -loglevel panic -f rawvideo -pixel_format rgb24 -s:v $(res[1])x$(res[2]) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(io, Matrix{RGB{N0f8}}(res), screen, abspath(path)) # tmp buffer
 end
 
@@ -95,67 +102,86 @@ function recordframe!(io::VideoStream)
     return
 end
 
-function finish(io::VideoStream, typ = "mkv")
+"""
+    finish(io::VideoStream, typ = "mkv"; remove_mkv = true)
+
+Flushes the video stream and optionally converts the file to `typ` which can
+be (`mkv` is default and doesn't need convert) gif, mp4 and webm.
+If you want to convert the original mkv to multiple formats you should choose
+`remove_mkv = false`, and remove it manually after you're done (with `rm(videostream.path)`)
+webm yields the smallest file size, mp4 and mk4 are marginally bigger and gifs are up to
+6 times bigger!
+"""
+function finish(io::VideoStream, typ = "mkv"; remove_mkv = true)
     close(io.io)
-    if typ == "mkv"
-        return io.path
-    elseif typ == "mp4"
-        path = dirname(io.path)
-        name, ext = splitext(basename(io.path))
-        out = joinpath(path, name * ".mp4")
-        run(`ffmpeg -i $(io.path) -vcodec copy -acodec copy $out`)
-        rm(io.path)
+    path = dirname(io.path)
+    typ == "mkv" && return io.path
+    name, ext = splitext(basename(io.path))
+    path = dirname(io.path)
+    out = joinpath(path, name * ".$typ")
+
+    if typ == "mp4"
+        run(`ffmpeg -loglevel quiet -i $(io.path) -vcodec copy -acodec copy -y $out`)
+        remove_mkv && rm(io.path)
         return out
     elseif typ == "webm"
-        path = dirname(io.path)
-        name, ext = splitext(basename(io.path))
-        out = joinpath(path, name * ".webm")
-        run(`ffmpeg -i $path -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf $out`)
-        rm(io.path)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf scale=iw:ih -y $out`)
+        remove_mkv && rm(io.path)
+        return out
+    elseif typ == "gif"
+        palette_path = mktempdir()
+        pname = joinpath(palette_path, "palette.png")
+        filters = "fps=15,scale=iw:ih:flags=lanczos"
+        run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+        run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
+        remove_mkv && rm(io.path)
         return out
     else
         error("Video type $typ not known")
     end
 end
 
-Base.mimewritable(::MIME"image/png", scene::VideoStream) = true
+Base.mimewritable(::MIME"text/html", scene::VideoStream) = true
 
-function Base.show(io::IO, ::MIME"image/png", vs::VideoStream)
+function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
     path = finish(vs, "mp4")
-    show(
-        io,
-        "text/html",
+    html = """
+        <video width="100%" autoplay controls="false">
+            <source src="$path" type="video/mp4">
+            Your browser does not support the video tag. Please use a modern browser like Chrome or Firefox.
+        </video>
+    """
+    display(
+        Main.IJulia.InlineDisplay(),
+        mime,
         string(
             """<video autoplay controls><source src="data:video/x-m4v;base64,""",
-            base64encode(open(readbytes, path)),
-            """" type="video/mp4"></video>"""
+            base64encode(open(read, path)),"""" type="video/mp4"></video>"""
         )
     )
 end
 
+# function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
+#     path = "file/" * finish(vs, "mp4")
+#     html = """
+#         <video width="100%" autoplay controls="false">
+#             <source src="%path" type="video/mp4">
+#             Your browser does not support the video tag. Please use a modern browser like Chrome or Firefox.
+#         </video>
+#     """
+#     display(
+#         Main.IJulia.InlineDisplay(),
+#         mime,
+#         html
+#     )
+# end
+
 
 export VideoStream, recordframe!, finish
 
-# mimewriteable to PNG if 2D colorant array
 
-# if IJulia.inited
-#     export set_ijulia_output
 #
-#     function set_ijulia_output(mimestr::AbstractString)
-#         # info("Setting IJulia output format to $mimestr")
-#         global _ijulia_output
-#         _ijulia_output[1] = mimestr
-#     end
-#     function IJulia.display_dict(plt::Plot)
-#         global _ijulia_output
-#         Dict{String, String}(_ijulia_output[1] => sprint(show, _ijulia_output[1], plt))
-#     end
+# function to_gif()
+#     ffmpeg -y -i ijulia.ogv -vf fps=20, scale=320:-1:flags=lanczos,palettegen palette.png
+#     ffmpeg -v warning -i ijulia.ogv -vf scale=300:-1 -gifflags +transdiff -y bbb-trans.gif
 #
-#     # default text/plain passes to html... handles Interact issues
-#     function Base.show(io::IO, m::MIME"text/plain", plt::Plot)
-#         show(io, MIME("text/html"), plt)
-#     end
-#
-#     ENV["MPLBACKEND"] = "Agg"
-#     set_ijulia_output("text/html")
-# end

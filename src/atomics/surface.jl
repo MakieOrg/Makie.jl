@@ -41,10 +41,6 @@ function surface_2glvisualize(kw_args)
     result, main
 end
 
-function surface(::makie, z::AbstractMatrix, attributes::Dict)
-    surface(1:size(z, 1), 1:size(z, 2), z, attributes::Dict)
-end
-
 
 function surface(b::makie, x, y, z::AbstractMatrix{T}, attributes::Dict) where T <: AbstractFloat
     scene = get_global_scene()
@@ -57,15 +53,6 @@ function surface(b::makie, x, y, z::AbstractMatrix{T}, attributes::Dict) where T
     insert_scene!(scene, :surface, viz, attributes)
 end
 
-function surface(b::makie, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
-    if !applicable(f, x[1], y[1])
-        error("You need to pass a function like f(x::$T1, y::$T2). Found: $f")
-    end
-    T = typeof(f(x[1], y[1])) # TODO, i heard this is bad?!
-    z = similar(x, T, (length(x), length(y)))
-    z .= f.(x, y')
-    surface(b, x, y, z, attributes)
-end
 
 function surface(::makie, x::AbstractMatrix{T1}, y::AbstractMatrix{T2}, f::Function, attributes::Dict) where {T1, T2}
     if size(x) != size(y)

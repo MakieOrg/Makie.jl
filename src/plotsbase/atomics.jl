@@ -288,10 +288,22 @@ for (func, docstring) in atomic_funcs
     end
 end
 
-# Higher level atomic signatures
-function image(b::Backend, img, attributes::Dict)
-    image(b, 1:size(img, 1), 1:size(img, 2), img, attributes)
-end
-function heatmap(b::Backend, img, attributes::Dict)
-    heatmap(b, 1:size(img, 1), 1:size(img, 2), img, attributes)
+
+
+for func in (:image, :heatmap, :lines, :surface)
+    # Higher level atomic signatures
+    @eval begin
+        function $func(b::Backend, data::AbstractMatrix, attributes::Dict)
+            $func(b, 1:size(data, 1), 1:size(data, 2), data, attributes)
+        end
+        function $func(b::makie, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
+            if !applicable(f, x[1], y[1])
+                error("You need to pass a function like f(x::$T1, y::$T2). Found: $f")
+            end
+            T = typeof(f(x[1], y[1]))
+            z = similar(x, T, (length(x), length(y)))
+            z .= f.(x, y')
+            $func(b, x, y, z, attributes)
+        end
+    end
 end

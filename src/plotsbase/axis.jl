@@ -7,8 +7,6 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
-to_bool(b, x) = Bool(x)
-to_bool(b, x::Tuple) = Bool.(x)
 
 @default function axis(backend, scene, kw_args)
     axisnames = to_text(axisnames)

@@ -6,9 +6,15 @@ All kinds of images
 to_image(b, image) = image
 
 """
-All kinds of images
+To boolean
 """
 to_bool(b, bool) = Bool(bool)
+
+"""
+Accepts Tuple of Bool
+"""
+to_bool(b, x::Tuple) = Bool.(x)
+
 
 """
 `GLBuffer{UInt32}`
