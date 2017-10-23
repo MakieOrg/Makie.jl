@@ -5,7 +5,7 @@ scene = Scene()
 # insert default cameras into the scene
 r = linspace(0, 3, 4)
 a = axis(r, r)
-center!(scene)
+center!(scene, 0.2)
 
 pos = lift_node(getindex.(scene, (:mouseposition, :time, :camera))...) do mpos, t, cam
     map(linspace(0, 2pi, 60)) do i
@@ -35,3 +35,4 @@ for i = linspace(0.01, 0.4, 100)
     yield()
     sleep(0.01)
 end
+

@@ -43,12 +43,19 @@ for i in linspace(0, 60, 100)
     surf[:z] = surf_func(i)
     recordframe!(io)
 end
-MakiE.finish(io, "mp4", remove_mkv = false)
+io
 
 #julia
 using MakiE, GeometryTypes, GLVisualize, GLWindow
 scene = Scene(resolution = (500, 500))
+function xy_data(x, y)
+    r = sqrt(x*x + y*y)
+    r == 0.0 ? 1f0 : (sin(r)/r)
+end
+r = linspace(-2, 2, 40)
+surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
 N = 40
+r = linspace(-2, 2, 40)
 surface(
     r, r, surf_func(10),
     color = GLVisualize.loadasset("doge.png")
@@ -57,7 +64,7 @@ center!(scene)
 scene
 
 #julia
-using MakiE, GeometryTypes
+using MakiE, GeometryTypes, GLVisualize
 scene = Scene(resolution = (500, 500))
 x = GLVisualize.loadasset("cat.obj")
 MakiE.mesh(x.vertices, x.faces, color = :black)
@@ -87,6 +94,7 @@ center!(scene)
 scene
 
 #julia
+using MakiE, GLVisualize
 scene = Scene(resolution = (500, 500))
 mesh(GLVisualize.loadasset("cat.obj"))
 r = linspace(-0.1, 1, 4)
@@ -94,13 +102,12 @@ center!(scene)
 scene
 
 #julia
-using MakiE, GeometryTypes, FileIO
+using MakiE, GeometryTypes, FileIO, GLVisualize
 using GLVisualize: loadasset, assetpath
 scene = Scene(resolution = (500, 500))
 cat = load(assetpath("cat.obj"), GLNormalUVMesh)
 MakiE.mesh(cat, color = loadasset("diffusemap.tga"))
 center!(scene)
-scene
 
 #julia
 using MakiE, GeometryTypes
@@ -111,7 +118,7 @@ scene
 
 
 #julia
-using MakiE, GeometryTypes
+using MakiE, GeometryTypes, GLVisualize
 scene = Scene(resolution = (500, 500))
 wireframe(GLVisualize.loadasset("cat.obj"))
 center!(scene)
@@ -137,7 +144,7 @@ earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/blu
 image(earth)
 center!(scene)
 
-#julias
+#julia
 using MakiE, FileIO, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500), color = :black)
 m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
