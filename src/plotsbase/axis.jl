@@ -13,7 +13,8 @@ end
     visible = to_bool(visible)
 
     showticks = to_bool(showticks)
-    tickfont = to_font(tickfont)
+    tickfont2d = to_font(tickfont2d)
+    tickfont3d = to_font(tickfont3d)
     showaxis = to_bool(showaxis)
     showgrid = to_bool(showgrid)
 
@@ -27,13 +28,17 @@ function GeometryTypes.widths(x::Range)
     maxi - mini
 end
 
+
+
 function draw_axis(
         textbuffer::TextBuffer{N}, linebuffer, ranges,
         axisnames, visible, showaxis, showticks, showgrid,
         axiscolors, gridcolors, tickfont
     ) where N
+
     empty!(textbuffer); empty!(linebuffer)
     origin = Point{N, Float32}(map(minimum, ranges))
+    is2d = N == 2 # sadly we need to special case on 2D case
     for i = 1:N
         axis_vec = unit(Point{N, Float32}, i)
         width = widths(ranges[i])
@@ -51,6 +56,9 @@ function draw_axis(
             else
                 tickdir = unit(Vec{N, Float32}, 1)
                 tickdir, Float32(widths(ranges[1]) + 0.3f0) * tickdir
+            end
+            if is2d
+                offset2 = Vec2f0(0)
             end
             offset = -tickdir .* 0.1f0
             for tick in drop(range, 1)
@@ -89,9 +97,10 @@ function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
     linebuffer = LinesegmentBuffer(Point{N, Float32}(0))
     scene = get_global_scene()
     attributes = axis_defaults(current_backend[], scene, expand_kwargs(kw_args))
+    tickfont = N == 2 ? :tickfont2d : :tickfont3d
     names = (
         :axisnames, :visible, :showaxis, :showticks,
-        :showgrid, :axiscolors, :gridcolors, :tickfont
+        :showgrid, :axiscolors, :gridcolors, tickfont
     )
     args = getindex.(attributes, names)
     lift_node(
@@ -104,7 +113,6 @@ function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
         HyperRectangle(mini3d, w)
     end)
     linebuffer.robj.boundingbox = bb
-    textbuffer.robj.boundingbox = bb
     viz = Context(linebuffer.robj, textbuffer.robj)
     insert_scene!(scene, :axis, viz, attributes)
 end

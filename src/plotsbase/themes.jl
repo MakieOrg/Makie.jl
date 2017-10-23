@@ -57,7 +57,8 @@ function default_theme(scene)
 
     axisnames = map(x-> ("$x Axis", 0.1, dark_text, Vec4f0(0,0,0,1), (:center, :bottom)), (:X, :Y, :Z))
     showticks = ntuple(i-> true, 3)
-    tickfont = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), tickrotations[i], tickalign[i]), 3)
+    tickfont3d = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), tickrotations[i], tickalign[i]), 3)
+    tickfont2d = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), Vec4f0(0,0,0,1), tickalign[i]), 2)
     showaxis = ntuple(i-> true, 3)
     showgrid = ntuple(i-> true, 3)
 
@@ -116,7 +117,8 @@ function default_theme(scene)
             visible = true
 
             showticks = showticks
-            tickfont = tickfont
+            tickfont2d = tickfont2d
+            tickfont3d = tickfont3d
             showaxis = showaxis
             showgrid = showgrid
 

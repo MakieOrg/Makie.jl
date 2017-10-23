@@ -92,6 +92,10 @@ end
 
 include("themes.jl")
 
+function close_all_signals()
+
+end
+
 function Scene(;
         theme = default_theme,
         resolution = nothing,
