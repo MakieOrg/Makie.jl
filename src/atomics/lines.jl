@@ -23,12 +23,13 @@ function LinesegmentBuffer(pos::Point{N, <: AbstractFloat} = Point3f0(0)) where 
         color = colors.buffer,
         thickness = thickness.buffer,
         indices = range
-    )
+    ).children[]
+    robj.boundingbox = Signal(AABB{Float32}())
     LinesegmentBuffer{N}(
         positions,
         colors,
         thickness,
-        robj.children[],
+        robj,
         range
     )
 end
@@ -37,12 +38,21 @@ same_length_array(array, value) = fill(value, length(array))
 same_length_array(arr, value::Vector) = value
 
 function Base.append!(lsb::LinesegmentBuffer{N}, pos::Vector{Point{N, Float32}}, color, thickness) where N
+    thickv = Float32.(same_length_array(pos, thickness))
     append!(lsb.positions, pos)
     append!(lsb.colors, same_length_array(pos, to_color(color)))
-    append!(lsb.thickness, Float32.(same_length_array(pos, thickness)))
+    append!(lsb.thickness, thickv)
+    bb = value(lsb.robj.boundingbox)
+    for (s, pos) in zip(thickv, pos)
+        pos3d = Vec{3, Float32}(to_nd(pos, Val{3}, 0))
+        bb = update(bb, pos3d)
+        bb = update(bb, pos3d .+ s)
+    end
+    push!(lsb.robj.boundingbox, bb)
     push!(lsb.range, length(lsb.positions))
     return
 end
+
 function Base.empty!(lsb::LinesegmentBuffer)
     resize!(lsb.positions, 0)
     resize!(lsb.colors, 0)

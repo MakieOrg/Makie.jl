@@ -73,12 +73,21 @@ function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, sc
         pn = qmul(rot, Point{N, Float32}(to_nd(p, Val{N}, 0f0)))
         pn .+ (pos .+ aoffsetn)
     end
+
     append!(tb.positions, position)
     append!(tb.offsets, Vec2f0.(toffset))
     append!(tb.rotations, fill(rot, length(position)))
     append!(tb.colors, fill(to_color(color), length(position)))
     append!(tb.uv_offset_width, uv_offset_width)
     append!(tb.scale, scale)
+    
+    bb = value(tb.robj.boundingbox)
+    for (s, pos) in zip(scale, position)
+        pos3d = Vec{3, Float32}(to_nd(pos, Val{3}, 0))
+        bb = update(bb, pos3d)
+        bb = update(bb, pos3d .+ Vec{3, Float32}(to_nd(s, Val{3}, 0)))
+    end
+    push!(tb.robj.boundingbox, bb)
     push!(tb.range, length(tb.positions))
     return
 end
