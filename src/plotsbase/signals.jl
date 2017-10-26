@@ -5,34 +5,74 @@ import Base: IndexStyle, size, getindex, setindex!, _unsafe_getindex!, push!, si
 using Base.Broadcast: map_newindexer, _broadcast_eltype, broadcast_indices
 
 struct ArrayNode{T, N, F, AT <: AbstractArray} <: AbstractArray{T, N}
-    value::Signal{AT}
+    signal::Signal{AT}
     convert::F
 end
+const AbstractNode{T} = Union{ArrayNode{T}, Node{T}}
 
 
-const AbstractNode = Union{ArrayNode, Node}
-function lift_node(f, x::AbstractNode...)
-    args = to_signal.(x)
+function children(x::Signal)
+    filter(x-> x != nothing, (x-> x.value).(Reactive.nodes[Reactive.edges[x.id]]))
+end
+children(x::AbstractNode) = children(to_signal(x))
+    
+
+function disconnect!(x::Signal, toremove::Signal)
+    x.parents = (Iterators.filter(x-> x != toremove, x.parents)...,)
+end
+
+disconnect_all_children!(x::AbstractNode) = disconnect_all_children!(to_signal(x))
+
+function disconnect_all_children!(x::Signal)
+    for child in children(x)
+        disconnect!(child, x)
+    end
+end
+
+function closenode!(x::AbstractNode)
+    s = to_signal(x)
+    disconnect_all_children!(s)
+    close(s, false)
+end
+
+"""
+Lift nodes of a scene by supplying fetching nodes via keys into the scene.
+A tuple of symboles will be interpreted as `scene[:tupl_elem_1, :tupl_elem_2, ...]`
+"""
+function lift_node(f, scene::Scene, keys::Union{Symbol, Tuple}...)
+    args = map(x-> getindex(scene, x), keys)
+    lift_node(f, args...)
+end
+
+"""
+Registers a callback to `nodes`, which calls function `f` whenever any node in `nodes` updates.
+`f` will get the values of each `node` as an argument, so basically `f(to_value.(nodes))`.
+Returns a new node which is the result of `f` applied to the updated `nodes`. 
+"""
+function lift_node(f, nodes::AbstractNode...)
+    args = to_signal.(nodes)
     s = foreach(f, args...)
     to_node(s)
 end
 
 function push!(x::AbstractNode, value)
     val = x.convert(to_value(value))
-    push!(x.value, val)
+    s = to_signal(x)
+    Reactive.set_value!(s, val) # make the value available already!
+    push!(s, val)
     val
 end
 
 
 
 IndexStyle(x::ArrayNode{T, N, F, AT}) where {T, N, F, AT} = IndexStyle(AT)
-Array(x::ArrayNode) = value(x.value)
+Array(x::ArrayNode) = value(to_signal(x))
 similar(A::ArrayNode) = to_node(similar(Array(A)))
 similar(A::ArrayNode, ::Type{T}) where T = to_node(similar(Array(A), T))
 similar(A::ArrayNode, dims::NTuple{N, Int}) where N = to_node(similar(Array(A), dims))
 similar(A::ArrayNode, ::Type{T}, dims::NTuple{N, Int}) where {T, N} = to_node(similar(Array(A), T, dims))
 
-size(x::ArrayNode) = size(value(x.value))
+size(x::ArrayNode) = size(value(to_signal(x)))
 
 # Index Linear
 function getindex(x::ArrayNode, i::Integer)
@@ -40,7 +80,7 @@ function getindex(x::ArrayNode, i::Integer)
 end
 function setindex!(x::ArrayNode{T, N}, val, i::Integer) where {T, N}
     Array(x)[i] = val
-    push!(x.value, Array(x)) # update array
+    push!(to_signal(x), Array(x)) # update array
     val
 end
 function getindex(x::ArrayNode, i::Vararg{Int, N}) where N
@@ -49,13 +89,13 @@ end
 
 function setindex!(x::ArrayNode{T, N}, val, i::Vararg{Int, N}) where {T, N}
     Array(x)[i...] = val
-    push!(x.value, Array(x))
+    push!(to_signal(x), Array(x))
     val
 end
 
 function _unsafe_getindex!(dest::ArrayNode, src::AbstractArray, Is::Union{Real, AbstractArray}...)
     Array(dest)[Is...] = Array(src)
-    push!(dest.value, Array(dest))
+    push!(to_signal(dest), Array(dest))
     return dest
 end
 
@@ -70,10 +110,10 @@ function to_node(obj::Signal{AT}, f::F = identity) where {AT <: AbstractArray, F
     ArrayNode{eltype(A), ndims(A), F, AT}(obj, f)
 end
 
-to_value(obj::AbstractNode) = value(obj.value)
+to_value(obj::AbstractNode) = value(to_signal(obj))
 to_value(obj) = obj
 
-to_signal(obj::AbstractNode) = obj.value
+to_signal(obj::AbstractNode) = obj.signal
 to_signal(obj) = obj
 
 # Called by Base broadcasting mechanisms (in place and out of place)

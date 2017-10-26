@@ -86,6 +86,9 @@ end
 """
 `AbstractArray{T}` where T needs to have `length` defined and must be convertible to a Point
 """
+function to_positions(b, x::AbstractArray{NTuple{N, T}}) where {N, T}
+    Point{N, Float32}.(x)
+end
 function to_positions(b, x::AbstractArray{T}) where T
     N = if applicable(length, T)
         length(T)
@@ -96,8 +99,17 @@ function to_positions(b, x::AbstractArray{T}) where T
 end
 
 
+function to_positions(b, x::GeometryPrimitive)
+    to_positions(b, decompose(Point, x))
+end
+
+function to_positions(b, x::SimpleRectangle)
+    # TODO fix the order of decompose
+    to_positions(b, decompose(Point, x)[[1, 2, 4, 3, 1]])
+end
+
 function to_positions(b, x)
-    error("Not a valid position type: $(typeof(x)). Try one of: $position_types")
+    error("Not a valid position type: $(typeof(x)). Please read the documentation of `to_position`")
 end
 
 """
@@ -296,46 +308,36 @@ Anything that can be converted to `Vec2f0` for x, y scale
 to_markersize(b, x) = Vec2f0(x)
 to_markersize(b, x::AbstractVector) = Vec2f0.(x)
 
+
 """
 `Nothing` for no style
 """
-to_linestyle(b, ls::Void) = nothing
+to_linestyle(b, x::Void) = x
 
 """
 `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. E.g.
-[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled
+[0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 """
-to_linestyle(b, ls::AbstractVector{<:AbstractFloat}) = ls
-
+to_linestyle(b, A::AbstractVector) = A
 """
 A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 """
-to_linestyle(b, ls::Symbol) = ls
-
-"""
-Same as `to_linestyle`
-"""
-to_pattern(b, ::Node{Void}, linewidth) = nothing
-to_pattern(b, A::AbstractVector, linewidth) = A
-function to_pattern(b, ls::Node{Symbol}, linewidth)
-    lift_node(ls, lw) do ls, lw
-        points = if ls == :dash
-            [0.0, lw, 2lw, 3lw, 4lw]
-        elseif ls == :dot
-            tick, gap = lw/2, lw/4
-            [0.0, tick, tick+gap, 2tick+gap, 2tick+2gap]
-        elseif ls == :dashdot
-            dtick, dgap = lw, lw
-            ptick, pgap = lw/2, lw/4
-            [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap]
-        elseif ls == :dashdotdot
-            dtick, dgap = lw, lw
-            ptick, pgap = lw/2, lw/4
-            [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap, dtick+dgap+ptick+pgap+ptick,  dtick+dgap+ptick+pgap+ptick+pgap]
-        else
-            error("Unkown line style: $linestyle. Available: :dash, :dot, :dashdot, :dashdotdot or a sequence of numbers enumerating the next transparent/opaque region")
-        end
-        points
+function to_linestyle(b, ls::Symbol)
+    return if ls == :dash
+        [0.0, 1.0, 2.0, 3.0, 4.0]
+    elseif ls == :dot
+        tick, gap = 1/2, 1/4
+        [0.0, tick, tick+gap, 2tick+gap, 2tick+2gap]
+    elseif ls == :dashdot
+        dtick, dgap = 1.0, 1.0
+        ptick, pgap = 1/2, 1/4
+        [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap]
+    elseif ls == :dashdotdot
+        dtick, dgap = 1.0, 1.0
+        ptick, pgap = 1/2, 1/4
+        [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap, dtick+dgap+ptick+pgap+ptick,  dtick+dgap+ptick+pgap+ptick+pgap]
+    else
+        error("Unkown line style: $linestyle. Available: :dash, :dot, :dashdot, :dashdotdot or a sequence of numbers enumerating the next transparent/opaque region")
     end
 end
 
@@ -416,6 +418,7 @@ function to_mesh(verts, faces, colors::AbstractVector, attribute_id::AbstractVec
     end
 end
 
+
 """
 Any Object convertible to Floatingpoint
 """
@@ -442,6 +445,12 @@ A Tuple or Array with elements that `to_color` accepts.
 If Array is a Matrix it will get interpreted as an Image
 """
 to_color(b, c::Union{Tuple, AbstractArray}) = to_color.(b, c)
+
+
+"""
+Tuple{<: ColorLike, <: AbstractFloat} for a transparent color
+"""
+to_color(b, c::Tuple{T, F}) where {T, F <: AbstractFloat} = RGBAf0(Colors.color(to_color(b, c[1])), c[2])
 
 
 const colorbrewer_names = Symbol[

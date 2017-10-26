@@ -1,4 +1,4 @@
-using Reactive, GLWindow, GeometryTypes, GLVisualize, Colors, ColorBrewer
+using Reactive, GLWindow, GeometryTypes, GLVisualize, Colors, ColorBrewer, GLFW
 import Base: setindex!, getindex, map, haskey
 
 include("colors.jl")
@@ -8,13 +8,14 @@ include("defaults.jl")
 A MakiE flavored Signal that can be used to link attributes
 """
 struct Node{T, F}
-    value::Signal{T}
+    signal::Signal{T}
     # Conversion function for push! This is a bit a hack around the fact that you can't do things like
     # signal = map(conversion_func, Signal(RGB(0, 0, 0))); push!(signal, :red)
     # since the signal won't have the correct type. so we give the chance to pass a conversion function
     # at creation which will be called in push!
     convert::F
 end
+
 
 """
 A scene is a holder of attributes which are all of the type Node.
@@ -42,6 +43,34 @@ function getscreen(x::Scene)
 end
 
 include("signals.jl")
+
+
+function Base.show(io::IO, m::MIME"text/plain", node::Node{T}) where T
+    print(io, "Node: ")
+    show(io, m, to_value(node))
+end
+function Base.show(io::IO, m::MIME"text/plain", node::ArrayNode{T}) where T
+    print(io, "Node: ")
+    showcompact(io, to_value(node))
+end
+
+
+scene_show(io, mime, val::AbstractArray, indent = 0) = showcompact(io, val)
+scene_show(io, mime, val, indent = 0) = show(io, mime, val)
+function scene_show(io, mime, scene::Scene, indent = 0)
+    println(io, "    "^indent, "Scene:")
+    indent += 1
+    for (k, v) in scene.data
+        print(io, "    "^indent, k, " => ")
+        scene_show(io, mime, v, indent)
+        println(io)
+    end
+end
+
+function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
+    scene_show(io, m, scene)
+end
+
 
 const global_scene = Scene[]
 
@@ -74,56 +103,97 @@ function render_frame(screen::GLWindow.Screen)
     GLWindow.swapbuffers(screen)
 end
 
-function render_loop(scene, screen, framerate = 1/60)
+function render_loop(tsig, screen, framerate = 1/60)
     while isopen(screen)
         t = time()
         GLWindow.poll_glfw() # GLFW poll
-        scene[:time] = t
+        push!(tsig, t)
         if Base.n_avail(Reactive._messages) > 0
             render_frame(screen)
         end
         t = time() - t
         GLWindow.sleep_pessimistic(framerate - t)
     end
-    destroy!(screen)
+    GLWindow.destroy!(screen)
     return
 end
 
 
 include("themes.jl")
 
-function close_all_signals()
+close_all_nodes(x::AbstractNode) = closenode!(x)
+close_all_nodes(x) = x
 
+function close_all_nodes(x::Scene)
+    for (k, v) in x.data
+        close_all_nodes(v)
+    end
+end
+
+function Base.empty!(scene::Scene)
+    close_all_nodes(scene)
+    empty!(scene.data)
 end
 
 function Scene(;
         theme = default_theme,
         resolution = nothing,
-        color = :white
+        position = nothing,
+        color = :white,
+        monitor = nothing
     )
+
+    tsig = to_node(0.0)
+    w = nothing
+    if !isempty(global_scene)
+        oldscene = global_scene[]
+        oldscreen = oldscene[:screen]
+        nw = GLWindow.nativewindow(oldscreen)
+        if position == nothing && isopen(nw)
+            position = GLFW.GetWindowPos(nw)
+        end
+        if resolution == nothing && isopen(nw)
+            resolution = GLFW.GetWindowSize(nw)
+        end
+        # GLWindow.destroy!(oldscene[:screen])
+        empty!(oldscreen)
+        empty!(oldscreen.cameras)
+        GLVisualize.empty_screens!()
+        empty!(oldscene)
+        empty!(global_scene)
+        oldscreen.color = to_color(nothing, color)
+        w = oldscreen
+    end
+    if w == nothing || !isopen(w)
+        if resolution == nothing
+            resolution = GLWindow.standard_screen_resolution()
+        end
+        w = Screen(resolution = resolution, color = to_color(nothing, color))
+        GLWindow.add_complex_signals!(w)
+        @async render_loop(tsig, w)
+    end
+
+    nw = GLWindow.nativewindow(w)
     if resolution == nothing
         resolution = GLWindow.standard_screen_resolution()
     end
-    if !isempty(global_scene)
-        oldscene = global_scene[]
-        GLWindow.destroy!(oldscene[:screen])
-        GLVisualize.empty_screens!()
-        empty!(oldscene.data)
-        empty!(global_scene)
+    if position == nothing
+        position = GLFW.GetWindowPos(nw)
     end
-    w = Screen(resolution = resolution, color = to_color(nothing, color))
+    GLFW.SetWindowPos(nw, position...)
+    resize!(w, Int.(resolution)...)
+
     GLVisualize.add_screen(w)
-    GLWindow.add_complex_signals!(w)
+    
     dict = map(w.inputs) do k_v
         k_v[1] => to_node(k_v[2])
     end
     dict[:screen] = w
     push!(dict[:window_open], true)
-    dict[:time] = to_node(0.0)
+    dict[:time] = tsig
     scene = Scene(dict)
     theme(scene) # apply theme
     push!(global_scene, scene)
-    @async render_loop(scene, w)
     scene
 end
 
@@ -178,6 +248,7 @@ function haskey(s::Scene, key::Symbol, tail::Symbol...)
     res || return false
     haskey(s[key], tail...)
 end
+getindex(s::Scene, key::NTuple{N, Symbol}) where N = getindex(s, key...)
 getindex(s::Scene, key::Symbol) = s.data[key]
 getindex(s::Scene, key::Symbol, tail::Symbol...) = s.data[key][tail...]
 
@@ -190,6 +261,8 @@ function unique_predictable_name(scene, name)
     end
     return unique
 end
+
+to_value(scene::Scene, s1::Symbol, srest::Symbol...) = to_value(scene[s1, srest...])
 
 function extract_fields(expr, fields = [])
     if isa(expr, Symbol)
@@ -208,7 +281,7 @@ function extract_fields(expr, fields = [])
     end
     return :(getindex($(fields...)))
 end
-extract_fields(:(a.b))
+
 
 
 """

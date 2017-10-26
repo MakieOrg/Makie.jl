@@ -4,6 +4,7 @@
 # This is not perfect, but for integrating this into the scene, it's the easiest to
 # just have the default function name in the macro match the drawing function name.
 @default function surface(backend, scene, kw_args)
+    visible = to_bool(visible)
     x = to_surface(x)
     y = to_surface(y)
     z = to_surface(z)
@@ -23,6 +24,7 @@
 end
 
 @default function lines(backend, scene, kw_args)
+    visible = to_bool(visible)
     xor(
         begin
             positions = to_positions(positions)
@@ -51,10 +53,11 @@ end
     )
     linewidth = to_float(linewidth)
     linestyle = to_linestyle(linestyle)
-    pattern = to_pattern(linestyle, linewidth)
+    drawover = to_bool(drawover)
 end
 
 @default function mesh(backend, scene, kw_args)
+    visible = to_bool(visible)
     shading = to_bool(shading)
     attribute_id = to_attribut_id(attribute_id)
     color = to_color(color)
@@ -82,6 +85,7 @@ end
 end
 
 @default function scatter(backend, scene, kw_args)
+    visible = to_bool(visible)
     xor(
         begin
             positions = to_positions(positions)
@@ -124,6 +128,7 @@ end
 end
 
 @default function meshscatter(backend, scene, kw_args)
+    visible = to_bool(visible)
     xor(
         begin
             positions = to_positions(positions)
@@ -159,6 +164,7 @@ end
 end
 
 @default function image(b, scene, kw_args)
+    visible = to_bool(visible)
     spatialorder = to_spatial_order(spatialorder)
     x = to_interval(x)
     y = to_interval(y)
@@ -166,6 +172,7 @@ end
 end
 
 @default function volume(backend, scene, kw_args)
+    visible = to_bool(visible)
     volume = to_array(volume)
     xor(
         begin
@@ -184,6 +191,7 @@ end
 end
 
 @default function heatmap(backend, scene, kw_args)
+    visible = to_bool(visible)
     linewidth = to_float(linewidth)
     levels = to_float(levels)
     heatmap = to_array(heatmap)

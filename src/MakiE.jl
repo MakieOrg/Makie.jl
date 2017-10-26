@@ -29,6 +29,9 @@ include("plotsbase/atomics.jl")
 
 include("plotsbase/axis.jl")
 include("plotsbase/output.jl")
+include("iodevices.jl")
+include("camera2d.jl")
+# include("camera3d.jl")
 
 export Scene, Node
 

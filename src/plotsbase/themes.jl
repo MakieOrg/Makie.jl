@@ -68,6 +68,9 @@ function default_theme(scene)
     colors = UniqueColorIter(:Set1)
     meshrotation = Vec3f0(0, 0, 1)
     @theme theme = begin
+
+        visible = to_bool(true)
+        drawover = to_bool(false)
         color = colors
         linewidth = to_float(1)
         colormap = to_colormap(:YlGnBu)

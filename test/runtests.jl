@@ -1,7 +1,8 @@
-using MakiE, FileIO
+using MakiE, FileIO, GLFW
 
 img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
+GLFW.SetWindowSize(GLWindow.nativewindow(scene[:screen]), 500, 500)
 image(img);
 
 img = load(homedir()*"/Desktop/matcha.png")
@@ -54,7 +55,7 @@ pscat[:glow_color] = to_node(RGBA(0, 0, 0, 0.4), x->to_color((), x))
 function custom_theme(scene)
     @theme theme = begin
         linewidth = to_float(3)
-        colormap = to_colormap(:RdPu)
+        colormap = to_colormap(:RdYlGn)#to_colormap(:RdPu)
         scatter = begin
             marker = to_spritemarker(Circle)
             markersize = to_float(0.03)
@@ -67,10 +68,10 @@ function custom_theme(scene)
     # update theme values
     scene[:theme] = theme
 end
-
 # apply it to the scene
 custom_theme(scene)
 
 # From now everything will be plotted with new theme
 psurf = surface(vx, 1:0.1:2, psurf[:z])
 center!(scene)
+

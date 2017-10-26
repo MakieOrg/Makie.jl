@@ -78,10 +78,20 @@ function extract_view(x::ArrayNode)
     end
     p, idx
 end
+
 function lines_2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:linestyle, :x, :y, :z) && continue
+        k in (:x, :y, :z) && continue
+        if k == :linestyle
+            # TODO implement pattern as signal
+            result[:pattern] = to_value(v)
+            continue
+        end
+        if k == :drawover
+            result[:prerender] = ()-> glDisable(GL_DEPTH_TEST)
+            continue
+        end
         if k == :colornorm
             k = :color_norm
         end
@@ -100,7 +110,6 @@ function lines_2glvisualize(kw_args)
         end
         result[k] = to_signal(v)
     end
-    result[:visible] = true
     result[:fxaa] = false
     result[:model] = eye(Mat4f0)
     result
@@ -113,6 +122,8 @@ function _lines(b, style, attributes)
     data = lines_2glvisualize(attributes)
     pos = data[:vertex]
     delete!(data, :vertex)
+    @show Style(style)
+    @show typeof(pos)
     viz = GLVisualize._default(pos, Style(style), data)
     viz = GLVisualize.assemble_shader(viz).children[]
     insert_scene!(scene, style, viz, attributes)
