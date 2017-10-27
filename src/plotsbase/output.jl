@@ -1,4 +1,4 @@
-import Hiccup, Media, Images, Juno, FileIO, ModernGL
+import Hiccup, Media, Images, Juno, FileIO, ModernGL, Interact
 
 function scene2image(screen::Screen)
     yield()
@@ -18,20 +18,10 @@ end
 Base.mimewritable(::MIME"image/png", scene::Scene) = true
 
 function Base.show(io::IO, mime::MIME"image/png", scene::MakiE.Scene)
-    screen = MakiE.getscreen(scene)
-    if screen != nothing
-        img1 = MakiE.scene2image(screen)
-        imstream = foldp(img1, Reactive.fpswhen(screen.inputs[:window_open], 2)) do v0, t
-            if isopen(screen)
-                MakiE.scene2image(screen)
-            else
-                v0
-            end
-        end
-        display(Main.IJulia.InlineDisplay(), mime, imstream)
-#       FileIO.save(FileIO.Stream(FileIO.DataFormat{:PNG}, io), png)
-    end
-    return
+    s = to_signal(lift_node(scene, :entered_window) do value
+        scene2image(scene)
+    end)
+    display(s)
 end
 
 function save(path::String, scene::Scene)

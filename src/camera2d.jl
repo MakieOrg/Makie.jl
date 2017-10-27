@@ -3,7 +3,7 @@ using GLAbstraction: orthographicprojection, translationmatrix
 using StaticArrays
 
 const AbstractCamera = Scene 
-@defaults function camera2d(backend, scene, kw_args)
+@default function camera2d(backend, scene, kw_args)
     area = SimpleRectangle(0, 0, 500, 500)
     projection = eye(Mat4f0)
     view = eye(Mat4f0)

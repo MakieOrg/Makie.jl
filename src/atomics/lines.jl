@@ -89,7 +89,9 @@ function lines_2glvisualize(kw_args)
             continue
         end
         if k == :drawover
-            result[:prerender] = ()-> glDisable(GL_DEPTH_TEST)
+            if v == true
+                result[:prerender] = ()-> glDisable(GL_DEPTH_TEST)
+            end
             continue
         end
         if k == :colornorm
@@ -122,8 +124,6 @@ function _lines(b, style, attributes)
     data = lines_2glvisualize(attributes)
     pos = data[:vertex]
     delete!(data, :vertex)
-    @show Style(style)
-    @show typeof(pos)
     viz = GLVisualize._default(pos, Style(style), data)
     viz = GLVisualize.assemble_shader(viz).children[]
     insert_scene!(scene, style, viz, attributes)
@@ -149,4 +149,31 @@ end
 function linesegment(b::makie, pos::AbstractVector{<: Union{Tuple{P, P}, Pair{P, P}}}, attributes::Dict) where P <: Point
     positions = reinterpret(P, pos)
     linesegment(b, positions, attributes)
+end
+
+
+
+function arc(pmin, pmax, a1, a2)
+
+    xy = Vector{Point2f0}(361)
+
+    xcenter = (x_lin(xmin) + x_lin(xmax)) / 2.0;
+    ycenter = (y_lin(ymin) + y_lin(ymax)) / 2.0;
+    width = abs(x_lin(xmax) - x_lin(xmin)) / 2.0;
+    height = abs(y_lin(ymax) - y_lin(ymin)) / 2.0;
+
+    start = min(a1, a2);
+    stop = max(a1, a2);
+    start += (stop - start) / 360 * 360;
+
+    n = 0;
+    for a in start:stop
+        x[n] = x_log(xcenter + width  * cos(a * M_PI / 180));
+        y[n] = y_log(ycenter + height * sin(a * M_PI / 180));
+        n += 1
+    end
+    if (n > 1)
+        lines(x, y)
+    end
+
 end

@@ -10,3 +10,4 @@ FileIO
 Images
 UnicodeFun
 ColorBrewer
+Interact # for displaying signals of Image - a bit unfortunate
