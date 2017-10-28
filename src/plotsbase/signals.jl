@@ -101,7 +101,9 @@ end
 
 
 to_node(obj::AbstractNode) = obj
-to_node(obj::AbstractNode, f) = to_node(to_signal(obj), f)
+function to_node(obj::AbstractNode, f)
+    to_node(map(f, to_signal(obj)))
+end
 to_node(obj, f = identity) = to_node(Signal(f(obj)), f)
 to_node(obj::Signal, f = identity) = Node(map(f, obj), f)
 to_node(obj::Scene, f = identity) = obj

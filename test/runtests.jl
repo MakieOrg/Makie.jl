@@ -75,3 +75,5 @@ custom_theme(scene)
 psurf = surface(vx, 1:0.1:2, psurf[:z])
 center!(scene)
 
+
+scatter(rand(Point3f0, 100))

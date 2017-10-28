@@ -89,6 +89,10 @@ end
 function to_positions(b, x::AbstractArray{NTuple{N, T}}) where {N, T}
     Point{N, Float32}.(x)
 end
+function to_positions(b, x::T) where T <: StaticVector
+    error("Please use an array of StaticVectors for positions. Found: $T")
+
+end
 function to_positions(b, x::AbstractArray{T}) where T
     N = if applicable(length, T)
         length(T)
@@ -300,12 +304,14 @@ to_rotations(b, x::Billboard) = x
 """
 Any AbstractArray which elements can be converted to Vec4 (as a quaternion x, y, z, w)
 """
-to_rotations(b, x::AbstractVector) = to_static_vec(x)
+to_rotations(b, x::AbstractVector) = to_static_vec(b, x)
 
 """
 Anything that can be converted to `Vec2f0` for x, y scale
 """
-to_markersize(b, x) = Vec2f0(x)
+to_markersize(b, x::Number) = Vec2f0(x)
+to_markersize(b, x::Tuple) = Vec2f0(x)
+to_markersize(b, x::StaticVector) = Vec2f0(x)
 to_markersize(b, x::AbstractVector) = Vec2f0.(x)
 
 
