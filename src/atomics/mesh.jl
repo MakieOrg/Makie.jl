@@ -31,7 +31,7 @@ end
 function mesh_2glvisualize(attributes)
     result = Dict{Symbol, Any}()
     for (k, v) in attributes
-        k in (:mesh, :positions, :x, :y, :z, :normals, :indices) && continue
+        k in (:mesh, :positions, :x, :y, :z, :normals, :indices, :scale, :rotation, :offset) && continue
         if k == :shading
             result[k] = to_value(v) # as signal not supported currently, will require shader signals
             continue
@@ -44,7 +44,6 @@ function mesh_2glvisualize(attributes)
     end
     result[:visible] = true
     result[:fxaa] = true
-    result[:model] = eye(Mat4f0)
     result
 end
 
@@ -54,7 +53,7 @@ function mesh_impl(b, attributes)
     mesh = attributes[:mesh]
     gl_data = mesh_2glvisualize(attributes)
     viz = visualize(to_signal(mesh), Style(:default), gl_data).children[]
-    insert_scene!(scene, :surface, viz, attributes)
+    insert_scene!(scene, :mesh, viz, attributes)
 end
 
 

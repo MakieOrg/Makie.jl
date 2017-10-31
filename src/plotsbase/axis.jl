@@ -7,6 +7,8 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
+to_3floats(b, x::Tuple) = to_float.(b, x)
+to_3floats(b, x::Number) = ntuple(i-> x, Val{3})
 
 @default function axis(backend, scene, kw_args)
     axisnames = to_text(axisnames)
@@ -20,7 +22,9 @@ end
 
     scalefuncs = to_scalefunc(scalefuncs)
     gridcolors = to_color(gridcolors)
+    gridthickness = to_3floats(gridthickness)
     axiscolors = to_color(axiscolors)
+
 end
 
 function GeometryTypes.widths(x::Range)
@@ -33,7 +37,7 @@ end
 function draw_axis(
         textbuffer::TextBuffer{N}, linebuffer, ranges,
         axisnames, visible, showaxis, showticks, showgrid,
-        axiscolors, gridcolors, tickfont
+        axiscolors, gridcolors, gridthickness, tickfont
     ) where N
 
     empty!(textbuffer); empty!(linebuffer)
@@ -69,13 +73,14 @@ function draw_axis(
         end
         if showgrid[i]
             c = gridcolors[i]
+            thickness = gridthickness[i]
             for _j = (i + 1):(i + N - 1)
                 j = mod1(_j, N)
                 dir = unit(Point{N, Float32}, j)
                 range = ranges[j]
                 for tick in drop(range, 1)
                     offset = Float32(tick - range[1]) * dir
-                    append!(linebuffer, [origin .+ offset, stop .+ offset], c, 1f0)
+                    append!(linebuffer, [origin .+ offset, stop .+ offset], c, thickness)
                 end
             end
         end
@@ -96,11 +101,11 @@ function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
     textbuffer = TextBuffer(Point{N, Float32}(0))
     linebuffer = LinesegmentBuffer(Point{N, Float32}(0))
     scene = get_global_scene()
-    attributes = axis_defaults(current_backend[], scene, expand_kwargs(kw_args))
+    attributes = axis_defaults(current_backend[], scene, expand_kwargs(MakiE.current_backend[], scene, kw_args))
     tickfont = N == 2 ? :tickfont2d : :tickfont3d
     names = (
         :axisnames, :visible, :showaxis, :showticks,
-        :showgrid, :axiscolors, :gridcolors, tickfont
+        :showgrid, :axiscolors, :gridcolors, :gridthickness, tickfont
     )
     args = getindex.(attributes, names)
     lift_node(

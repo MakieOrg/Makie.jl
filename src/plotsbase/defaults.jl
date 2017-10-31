@@ -238,7 +238,8 @@ macro default(func)
             $dictsym = Dict{Symbol, Any}()
             $kwarg_keys = keys($(fargs[3]))
             $(result...)
-            return $dictsym
+            merge!($(fargs[3]), $dictsym)
+            return $(fargs[3])
         end
     end
     expr

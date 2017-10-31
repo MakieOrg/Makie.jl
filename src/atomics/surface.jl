@@ -4,7 +4,7 @@ function surface_2glvisualize(kw_args)
     xy = []
 
     for (k, v) in kw_args
-        k in (:z,) && continue
+        k in (:z, :scale, :rotation, :offset) && continue
         if k in (:x, :y)
             push!(xy, v)
             continue
@@ -17,9 +17,7 @@ function surface_2glvisualize(kw_args)
         end
         result[k] = to_signal(v)
     end
-    result[:visible] = true
     result[:fxaa] = true
-    result[:model] = eye(Mat4f0)
     x, y = xy
     x_is_ur, xrange = is_unitrange(to_value(x))
     y_is_ur, yrange = is_unitrange(to_value(y))

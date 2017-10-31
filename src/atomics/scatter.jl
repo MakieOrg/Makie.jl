@@ -10,7 +10,7 @@ values a bit!
 function expand_for_glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:marker, :positions, :x, :y, :z) && continue
+        k in (:marker, :positions, :x, :y, :z, :scale, :rotation, :offset) && continue
         if k == :rotations
             k = :rotation
             v = Vec4f0(0, 0, 0, 1)
@@ -36,9 +36,7 @@ function expand_for_glvisualize(kw_args)
         end
         result[k] = to_signal(v)
     end
-    result[:visible] = true
     result[:fxaa] = false
-    result[:model] = eye(Mat4f0)
     result
 end
 
@@ -57,10 +55,10 @@ end
 function mesh2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:marker, :positions, :x, :y, :z, :rotations) && continue
-        # if k == :rotations
-        #     k = :rotation
-        # end
+        k in (:marker, :positions, :x, :y, :z, :scale, :rotation, :offset) && continue
+        if k == :rotations
+            k = :rotation
+        end
         if k == :markersize
             k = :scale
         end

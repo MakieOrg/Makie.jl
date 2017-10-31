@@ -198,7 +198,7 @@ function Scene(;
 end
 
 function insert_scene!(scene::Scene, name, viz, attributes)
-    name = unique_predictable_name(scene, :scatter)
+    name = unique_predictable_name(scene, name)
     childscene = Scene(scene, attributes)
     scene.data[name] = childscene
     cams = collect(keys(scene[:screen].cameras))

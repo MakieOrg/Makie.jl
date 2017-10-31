@@ -64,10 +64,15 @@ function default_theme(scene)
 
     scalefuncs = ntuple(i-> identity, 3)
     gridcolors = ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3)
+    gridthickness = ntuple(x-> 1f0, 3)
     axiscolors = ntuple(x-> dark_text, 3)
     colors = UniqueColorIter(:Set1)
-    meshrotation = Vec3f0(0, 0, 1)
+    meshrotation = Vec4f0(0, 0, 0, 1)
     @theme theme = begin
+
+        rotation = to_rotation(Vec4f0(0, 0, 0, 1))
+        scale = to_scale(Vec3f0(1))
+        offset = to_offset(Vec3f0(0))
 
         visible = to_bool(true)
         drawover = to_bool(false)
@@ -127,6 +132,7 @@ function default_theme(scene)
 
             scalefuncs = scalefuncs
             gridcolors = gridcolors
+            gridthickness = gridthickness
             axiscolors = axiscolors
         end
 

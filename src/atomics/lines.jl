@@ -82,7 +82,7 @@ end
 function lines_2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:x, :y, :z) && continue
+        k in (:x, :y, :z, :scale, :rotation, :offset) && continue
         if k == :linestyle
             # TODO implement pattern as signal
             result[:pattern] = to_value(v)
@@ -113,7 +113,6 @@ function lines_2glvisualize(kw_args)
         result[k] = to_signal(v)
     end
     result[:fxaa] = false
-    result[:model] = eye(Mat4f0)
     result
 end
 
@@ -147,7 +146,7 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
 end
 
 function linesegment(b::makie, pos::AbstractVector{<: Union{Tuple{P, P}, Pair{P, P}}}, attributes::Dict) where P <: Point
-    positions = reinterpret(P, pos)
+    positions = lift_node(x->reinterpret(P, x), to_node(pos))
     linesegment(b, positions, attributes)
 end
 
