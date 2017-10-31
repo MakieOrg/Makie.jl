@@ -1,5 +1,6 @@
 # MakiE
 
+![output](https://user-images.githubusercontent.com/1010467/32203311-b6624fd6-bde2-11e7-97ca-23cc41c7a475.gif)
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.glvisualize.com/MakiE.jl/stable/)
 
