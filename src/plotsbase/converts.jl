@@ -140,7 +140,7 @@ to_array(b, x) = collect(x)
 """
 `Function`
 """
-to_scalefunc(b, x) = x# TODO implement it
+to_scalefunc(b, x) = x # TODO implement it
 
 """
 All text

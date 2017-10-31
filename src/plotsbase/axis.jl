@@ -7,6 +7,9 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
+"""
+3 Numbers for each dimension
+"""
 to_3floats(b, x::Tuple) = to_float.(b, x)
 to_3floats(b, x::Number) = ntuple(i-> x, Val{3})
 
@@ -97,6 +100,13 @@ function axis(ranges...; kw_args...)
     axis(to_node(ranges); kw_args...)
 end
 
+"""
+Creates an axis visualization for a certain bounding box.
+
+## Attributes:
+
+$(sprint(x-> Markdown.plain(x, Docs.doc(axis_defaults))))
+"""
 function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
     textbuffer = TextBuffer(Point{N, Float32}(0))
     linebuffer = LinesegmentBuffer(Point{N, Float32}(0))

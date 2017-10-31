@@ -63,9 +63,7 @@ function default_theme(scene)
     showgrid = ntuple(i-> true, 3)
 
     scalefuncs = ntuple(i-> identity, 3)
-    gridcolors = ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3)
     gridthickness = ntuple(x-> 1f0, 3)
-    axiscolors = ntuple(x-> dark_text, 3)
     colors = UniqueColorIter(:Set1)
     meshrotation = Vec4f0(0, 0, 0, 1)
     @theme theme = begin
@@ -131,9 +129,9 @@ function default_theme(scene)
             showgrid = showgrid
 
             scalefuncs = scalefuncs
-            gridcolors = gridcolors
+            gridcolors = to_color(ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3))
             gridthickness = gridthickness
-            axiscolors = axiscolors
+            axiscolors = to_color(ntuple(x-> dark_text, 3))
         end
 
         heatmap = begin

@@ -1,6 +1,7 @@
 import Hiccup, Media, Images, Juno, FileIO, ModernGL, Interact
 
 function scene2image(screen::Screen)
+    GLWindow.poll_glfw()
     yield()
     render_frame(screen) # let it render
     ModernGL.glFinish()
@@ -86,7 +87,10 @@ Adds a video frame to the VideoStream
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    render_frame(io.screen)
+    GLWindow.poll_glfw()
+    yield()
+    render_frame(io.screen) # let it render
+    ModernGL.glFinish()
     tex = GLWindow.framebuffer(io.screen).color
     write(io.io, map(RGB{N0f8}, gpu_data(tex)))
     return

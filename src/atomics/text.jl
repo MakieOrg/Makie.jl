@@ -31,7 +31,8 @@ function TextBuffer(pos::Point{N, <: AbstractFloat} = Point3f0(0)) where N
         uv_offset_width = uv_offset_width.buffer,
         scale = scale.buffer,
         distancefield = atlas.images,
-        indices = range
+        indices = range,
+        boundingbox = Signal(AABB{Float32}())
     )
     TextBuffer{N}(
         positions,
@@ -47,7 +48,7 @@ function TextBuffer(pos::Point{N, <: AbstractFloat} = Point3f0(0)) where N
     )
 end
 
-function Base.empty!(tb::TextBuffer)
+function Base.empty!(tb::TextBuffer{N}) where N
     resize!(tb.positions, 0)
     resize!(tb.offsets, 0)
     resize!(tb.rotations, 0)
@@ -55,6 +56,7 @@ function Base.empty!(tb::TextBuffer)
     resize!(tb.uv_offset_width, 0)
     resize!(tb.scale, 0)
     push!(tb.range, 0)
+    push!(tb.robj.boundingbox, AABB{Float32}())
     return
 end
 

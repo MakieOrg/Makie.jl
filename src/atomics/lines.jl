@@ -22,7 +22,8 @@ function LinesegmentBuffer(pos::Point{N, <: AbstractFloat} = Point3f0(0)) where 
         positions.buffer, :linesegment,
         color = colors.buffer,
         thickness = thickness.buffer,
-        indices = range
+        indices = range,
+        boundingbox = Signal(AABB{Float32}())
     ).children[]
     robj.boundingbox = Signal(AABB{Float32}())
     LinesegmentBuffer{N}(
@@ -58,6 +59,7 @@ function Base.empty!(lsb::LinesegmentBuffer)
     resize!(lsb.colors, 0)
     resize!(lsb.thickness, 0)
     push!(lsb.range, 0)
+    push!(lsb.robj.boundingbox, AABB{Float32}())
     return
 end
 
