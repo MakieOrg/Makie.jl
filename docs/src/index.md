@@ -1,8 +1,7 @@
 # MakiE
 
 
-MakiE is a high level plotting interface for [GLVisualize](https://github.com/JuliaGL/GLVisualize.jl/), with a focus on interactivity
-and speed.
+MakiE is a high level plotting interface for [GLVisualize](https://github.com/JuliaGL/GLVisualize.jl/), with a focus on interactivity and speed.
 
 It can also be seen as a prototype for a new design of [Plots.jl](https://github.com/JuliaPlots/Plots.jl),
 since it will implement a very similar interface and incorporate a lot of the ideas.

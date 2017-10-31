@@ -84,6 +84,8 @@ mesh
 
 ```@example mesh
 using MakiE
+using GLVisualize: loadasset, assetpath
+
 scene = Scene(resolution = (500, 500))
 x = [0, 1, 2, 0]
 y = [0, 0, 1, 2]
@@ -105,17 +107,60 @@ save("coloredmesh.png", scene); nothing # hide
 
 ```@example mesh
 scene = Scene(resolution = (500, 500))
-mesh(GLVisualize.loadasset("cat.obj"))
+mesh(loadasset("cat.obj"))
 axis(r, r, r)
 center!(scene)
 save("loadedmesh.png", scene); nothing # hide
 ```
 ![](loadedmesh.png)
 
+```@example mesh
+using MakiE, GeometryTypes, FileIO, GLVisualize
+
+scene = Scene(resolution = (500, 500))
+cat = load(assetpath("cat.obj"), GLNormalUVMesh)
+MakiE.mesh(cat, color = loadasset("diffusemap.tga"))
+center!(scene)
+save("texturemesh.png", scene); nothing # hide
+```
+![](texturemesh.png)
+
+## Heatmap
+
+```@docs
+heatmap
+```
+
+```@example heatmap
+using MakiE
+scene = Scene(resolution = (500, 500))
+heatmap(rand(32, 32))
+center!(scene)
+save("heatmap.png", scene); nothing # hide
+```
+![](heatmap.png)
+
+
+## Volume
+
+```@docs
+volume
+
+```
+
+```@example volume
+#julia
+using MakiE
+scene = Scene()
+volume(rand(32, 32, 32), algorithm = :iso)
+center!(scene)
+save("volume.png", scene); nothing # hide
+```
+![](volume.png)
+
 
 ```
 image
-heatmap
 volume
 text
 poly

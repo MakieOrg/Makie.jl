@@ -4,9 +4,45 @@ MakiE offers a sophisticated referencing system to share attributes across the S
 in your plot. This is great for animations and saving resources - also if the backend
 decides to put data on the GPU you might even share those in GPU memory.
 
-This allows the following use cases:
+
+### Using Mouse and Time to animate plots
+
+The simples form is just to use getindex into a scene, which returns a life node!
+Which means, if you do anything with that node, your resulting data will also be life!
+`lift_node` creates a new node from a list of input nodes, which updates every time any 
+of the inputs updates.
+
+```@example
+using MakiE
+
+scene = Scene(resolution = (500, 500))
+
+f(t, v) = (sin(v + t), cos(v + t))
+
+scatter(lift_node(t-> f.(t, linspace(0, 2pi, 50)), scene[:time]))
+center!(scene)
+# record a video 
+io = VideoStream(scene, ".", "animation")
+for i = 1:100
+    recordframe!(io)
+    yield()
+    sleep(1/30)
+end
+finish(io, "mp4")
+```
+
+```@raw html
+<video width="100%">
+  <source src="animation.mp4" type="video/mp4">
+  Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
+</video>
+```
+
 
 ### `@ref`
+
+Is just syntactic sugar for accessing a key in a scene.
+It might actually get deprecated, since just accessing the scene directly is convenient enough!
 
 @ref Variable = Value # Inserts Value under name Variable into Scene
 
@@ -14,23 +50,15 @@ This allows the following use cases:
 @ref Expr1, Expr1 # Syntactic sugar for `(@ref Expr1, @ref Expr2)`
 
 
-### Using Mouse and Time to animate plots
+## Soon to be implemented
 
-```Julia
-using MakiE
-
-scene = Scene()
-
-scatter(map((mpos, t)-> mpos .+ (sin(t), cos(t)), @ref Scene.Mouse, Scene.Time))
-
-```
 
 ### Animating and sharing on the GPU
 
 ```Julia
 using MakiE
 
-scene = Scene()
+scene = Scene(resolution = (500, 500))
 @ref A = rand(32, 32) # if uploaded to the GPU, it will be shared on the GPU
 
 surface(@ref A) # refer to exactly the same a in wireframe and surface plot
