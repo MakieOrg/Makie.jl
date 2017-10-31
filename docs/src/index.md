@@ -32,5 +32,5 @@ So once a backend implements those, it will support all of the plotting operatio
     c) Backend dependencies get loaded via a function that gets evaled, so it's a bit awkward to use those dependencies in the function inside a backend
     d) World age issues because of the eval
 
-Please read the chapters [Scene](@ref), [Functions](@ref), [Referencing](@ref), [Extending](@ref), [Backends](@ref) and [Devdocs](@ref) to see how MakiE solves those issues!
+Please read the chapters [Scene](@ref), [Functions](@ref), [Interaction](@ref), [Extending](@ref), [Backends](@ref) and [Devdocs](@ref) to see how MakiE solves those issues!
 The code that will be moved back to Plots.jl lives in [plotbase]()

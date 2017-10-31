@@ -13,7 +13,7 @@ makedocs(
             "backends.md",
             "extending.md",
             "themes.md",
-            "referencing.md",
+            "interaction.md",
             "axis.md",
             "legends.md",
             "output.md",

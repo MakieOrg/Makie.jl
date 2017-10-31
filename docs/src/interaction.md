@@ -1,4 +1,4 @@
-# Referencing
+# Interaction
 
 MakiE offers a sophisticated referencing system to share attributes across the Scene
 in your plot. This is great for animations and saving resources - also if the backend
@@ -12,28 +12,40 @@ Which means, if you do anything with that node, your resulting data will also be
 `lift_node` creates a new node from a list of input nodes, which updates every time any 
 of the inputs updates.
 
-```@example
+
+```@example 
 using MakiE
 
 scene = Scene(resolution = (500, 500))
 
-f(t, v) = (sin(v + t), cos(v + t))
+f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
 
-scatter(lift_node(t-> f.(t, linspace(0, 2pi, 50)), scene[:time]))
+p1 = scatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), scene[:time]))
+p2 = scatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), scene[:time]))
+center!(scene)
+nothing
+# you can now reference to life attributes from the above plots:
+
+lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
+    map((a, b)-> (a, b), pos1, pos2)
+end
+
+linesegment(lines)
+
 center!(scene)
 # record a video 
-io = VideoStream(scene, ".", "animation")
-for i = 1:100
+io = VideoStream(scene, ".", "interaction")
+for i = 1:300
     recordframe!(io)
     yield()
     sleep(1/30)
 end
-finish(io, "mp4")
+finish(io, "mp4") # could also be gif, webm or mkv
+nothing
 ```
-
 ```@raw html
-<video width="100%">
-  <source src="animation.mp4" type="video/mp4">
+<video controls autoplay>
+  <source src="interaction.mp4" type="video/mp4">
   Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
 </video>
 ```
