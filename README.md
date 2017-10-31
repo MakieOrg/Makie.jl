@@ -7,6 +7,12 @@ It's Halloween :)
 
 ![output](https://user-images.githubusercontent.com/1010467/32203311-b6624fd6-bde2-11e7-97ca-23cc41c7a475.gif)
 
+IJulia examples:
+
+[![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
+
+
+
 
 Mouse interaction:
 
