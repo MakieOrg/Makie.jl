@@ -1,4 +1,4 @@
-![[code](https://github.com/SimonDanisch/MakiE.jl/blob/master/test/makie_header.jl)][https://github.com/SimonDanisch/MakiE.jl/blob/master/docs/make.jl]
+[![code](https://github.com/SimonDanisch/MakiE.jl/blob/master/docs/header.png?raw=true)][https://github.com/SimonDanisch/MakiE.jl/blob/master/docs/make.jl]
 
 # MakiE
 
