@@ -1,4 +1,10 @@
+![[code](https://github.com/SimonDanisch/MakiE.jl/blob/master/test/makie_header.jl)][https://github.com/SimonDanisch/MakiE.jl/blob/master/docs/make.jl]
+
 # MakiE
+
+From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
+
 
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.glvisualize.com/MakiE.jl/stable/)
