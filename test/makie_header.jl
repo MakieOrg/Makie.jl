@@ -29,11 +29,12 @@ lift_node(scene, :mouseposition) do mp
     return
 end
 
-aviz = axis(linspace(0, 600, 20), linspace(0, 100, 5))
-
-aviz[:gridthickness] = (0.5, 0.5, 0.5)
 c = RGBA(0.95, 0.98, 0.99, 1.0)
-aviz[:gridcolors] = (c, c, c)
+aviz = axis(
+    linspace(0, 600, 20), linspace(0, 100, 5),
+    gridthickness = (0.5, 0.5, 0.5),
+    gridcolors = (c, c, c)
+)
 
 bv = scatter(
     brush, markersize = markersize,
@@ -42,16 +43,4 @@ bv = scatter(
     glowcolor = (:yellow, 0.8)
 )
 
-positions = to_value(brush) |> copy
-sizes = to_value(markersize) |> copy
-
-aviz = axis(linspace(0, 600, 20), linspace(0, 100, 5))
-
-
-bv = scatter(
-    positions, markersize = sizes,
-    color =  :white,
-    glowwidth = 0.5,
-    glowcolor = (:yellow, 0.8)
-)
 save("header.png", scene)
