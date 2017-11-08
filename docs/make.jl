@@ -8,6 +8,7 @@ makedocs(
         "Home" => "index.md",
         "Basics" => [
             "scene.md",
+            "conversions.md",
             "functions.md",
             "documentation.md",
             "backends.md",

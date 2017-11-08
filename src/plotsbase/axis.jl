@@ -7,13 +7,7 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
-"""
-3 Numbers for each dimension
-"""
-to_3floats(b, x::Tuple) = to_float.(b, x)
-to_3floats(b, x::Number) = ntuple(i-> x, Val{3})
-
-@default function axis(backend, scene, kw_args)
+@default function axis(scene, kw_args)
     axisnames = to_text(axisnames)
     visible = to_bool(visible)
 
@@ -111,7 +105,7 @@ function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
     textbuffer = TextBuffer(Point{N, Float32}(0))
     linebuffer = LinesegmentBuffer(Point{N, Float32}(0))
     scene = get_global_scene()
-    attributes = axis_defaults(current_backend[], scene, expand_kwargs(MakiE.current_backend[], scene, kw_args))
+    attributes = axis_defaults(scene, expand_kwargs(scene, kw_args))
     tickfont = N == 2 ? :tickfont2d : :tickfont3d
     names = (
         :axisnames, :visible, :showaxis, :showticks,

@@ -119,9 +119,8 @@ function lines_2glvisualize(kw_args)
 end
 
 
-function _lines(b, style, attributes)
-    scene = get_global_scene()
-    attributes = lines_defaults(b, scene, attributes)
+function _lines(scene, style, attributes)
+    attributes = lines_defaults(scene, attributes)
     data = lines_2glvisualize(attributes)
     pos = data[:vertex]
     delete!(data, :vertex)
@@ -136,20 +135,20 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
         :(attributes[$(QuoteNode(elem))] = $elem)
     end
     @eval begin
-        function lines(b::makie, $(arg...), attributes::Dict)
+        function lines(scene::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
-            _lines(b, :lines, attributes)
+            _lines(scene, :lines, attributes)
         end
-        function linesegment(b::makie, $(arg...), attributes::Dict)
+        function linesegment(scene::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
-            _lines(b, :linesegment, attributes)
+            _lines(scene, :linesegment, attributes)
         end
     end
 end
 
-function linesegment(b::makie, pos::AbstractVector{<: Union{Tuple{P, P}, Pair{P, P}}}, attributes::Dict) where P <: Point
+function linesegment(scene::makie, pos::AbstractVector{<: Union{Tuple{P, P}, Pair{P, P}}}, attributes::Dict) where P <: Point
     positions = lift_node(x->reinterpret(P, x), to_node(pos))
-    linesegment(b, positions, attributes)
+    linesegment(scene, positions, attributes)
 end
 
 

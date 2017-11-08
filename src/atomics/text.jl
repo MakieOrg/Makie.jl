@@ -82,7 +82,7 @@ function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, sc
     append!(tb.colors, fill(to_color(color), length(position)))
     append!(tb.uv_offset_width, uv_offset_width)
     append!(tb.scale, scale)
-    
+
     bb = value(tb.robj.boundingbox)
     for (s, pos) in zip(scale, position)
         pos3d = Vec{3, Float32}(to_nd(pos, Val{3}, 0))

@@ -1,80 +1,84 @@
 
-function make_label(sp, series, i)
-    GL = Plots
-    w, gap, ho = 20f0, 5f0, 5
-    result = []
-    d = series.d
-    st = d[:seriestype]
-    kw_args = KW()
-    if (st in (:path, :path3d)) && d[:linewidth] > 0
-        points = Point2f0[(0, ho), (w, ho)]
-        kw = KW()
-        extract_linestyle(d, kw)
-        append!(result, GL.lines(points, kw))
-        if d[:markershape] != :none
-            push!(result, label_scatter(d, w, ho))
-        end
-    elseif st in (:scatter, :scatter3d) #|| d[:markershape] != :none
-        push!(result, label_scatter(d, w, ho))
+function make_label(textbuffer, scene, labeltext, yposition, attributes)
+    w, gap, msize, lpattern, mpattern, padding = to_value.(getindex.(attributes, (
+        :labelwidth, :textgap, :markersize, :linepattern, :scatterpattern, :padding
+    )))
+    p = parent(scene)
+    xpad = padding[1]
+    result = if scene.name in (:lines, :linesegment)
+        linesegment(
+            p, map(x-> Point2f0(x[1] * w + xpad, x[2] + yposition), lpattern),
+            color = scene[:color], linestyle = scene[:linestyle]
+        )
+    elseif scene.name == :scatter
+        scatter(
+            p, map(x-> Point2f0(x[1] * w + xpad, x[2] + yposition), mpattern),
+            markersize = msize, color = scene[:color]
+        )
     else
-        extract_c(d, kw_args, :fill)
-        if isa(kw_args[:color], AbstractVector)
-            kw_args[:color] = first(kw_args[:color])
-        end
-        push!(result, visualize(
-            GeometryTypes.SimpleRectangle(-w/2, ho-w/4, w/2, w/2),
-            Style(:default), kw_args
-        ))
+        scatter(p, points, markershape = :rect, color = scene[:color])
     end
-    labeltext = if isa(series[:label], Array)
-        i += 1
-        series[:label][i]
-    else
-        series[:label]
-    end
-    color = sp[:foreground_color_legend]
-    ft = sp[:legendfont]
-    font = Plots.Font(ft.family, ft.pointsize, :left, :bottom, 0.0, color)
-    xy = Point2f0(w+gap, 0.0)
-    kw = Dict(:model => text_model(font, xy), :scale_primitive=>false)
-    extract_font(font, kw)
-    t = PlotText(labeltext, font)
-    push!(result, glvisualize_text(xy, t, kw))
-    GLAbstraction.Context(result...), i
+    #color = to_color(:white) #scene[:legendcolor]
+    #ft = scene[:legendfont]
+    xy = Point2f0(w + xpad + gap, yposition)
+    font = to_value.(getindex.(attributes, (:textsize, :textcolor, :rotation, :align)))
+    append!(textbuffer, xy, labeltext, font...)
+    # TODO do composition with scene objects
+    result
 end
 
 
-function generate_legend(sp, screen, model_m)
-    legend = GLAbstraction.Context[]
-    if sp[:legend] != :none
-        i = 0
-        for series in series_list(sp)
-            should_add_to_legend(series) || continue
-            result, i = make_label(sp, series, i)
-            push!(legend, result)
-        end
-        if isempty(legend)
-            return
-        end
-        list = visualize(legend, gap=Vec3f0(0,5,0))
-        bb = GLAbstraction._boundingbox(list)
-        wx,wy,_ = GeometryTypes.widths(bb)
-        xmin, _ = Plots.axis_limits(sp[:xaxis])
-        _, ymax = Plots.axis_limits(sp[:yaxis])
-        area = map(model_m) do m
-            p = m * GeometryTypes.Vec4f0(xmin, ymax, 0, 1)
-            h = round(Int, wy)+20
-            w = round(Int, wx)+20
-            x,y = round(Int, p[1])+30, round(Int, p[2]-h)-30
-            GeometryTypes.SimpleRectangle(x, y, w, h)
-        end
-        sscren = GLWindow.Screen(
-            screen, area = area,
-            color = sp[:background_color_legend],
-            stroke = (2f0, RGBA(0.3, 0.3, 0.3, 0.9))
-        )
-        GLAbstraction.translate!(list, Vec3f0(10,10,0))
-        GLVisualize._view(list, sscren, camera=:fixed_pixel)
+to_textalign(b, x) = x
+
+function legend_defaults(kw_args)
+    @theme theme = begin
+        backgroundcolor = to_color(:white)
+        strokecolor = to_color(RGBA(0.3, 0.3, 0.3, 0.9))
+        strokewidth = to_float(2)
+        position = to_position((0.1, 0.5))
+        gap = to_float(10)
+        textgap = to_float(5)
+        labelwidth = to_float(20)
+        padding = to_float(20)
+        align = to_textalign((:left, :hcenter))
+        rotation = to_rotation(Vec4f0(0, 0, 0, 1))
+        textcolor = to_color(:black)
+        textsize = to_float(12)
+        markersize = to_markersize(5)
+        linepattern = to_positions(Point2f0[(0, 0), (1, 0.0)])
+        scatterpattern = to_positions(Point2f0[(0.5, 0.0)])
     end
-    return
+    merge(kw_args, theme.data)
+end
+
+
+
+function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::AbstractVector{<:String}, attributes)
+    isempty(legends) && return
+    attributes = legend_defaults(attributes)
+    position, color, stroke, strokecolor, padding, gap = getindex.(attributes, (
+        :position, :backgroundcolor, :strokewidth, :strokecolor, :padding, :gap
+    ))
+    gap = to_value(gap)
+    textbuffer = TextBuffer(Point2f0(0))
+    N = length(legends)
+    legend = make_label.(textbuffer, legends, labels, linspace(gap, gap * (N + 1), N), (attributes,))
+    list = GLAbstraction.Context(native_visual.(legend)..., textbuffer.robj)
+    root = MakiE.rootscene(first(legends))
+    screen = rootscreen(root)
+    bb = GLAbstraction._boundingbox(list)
+    wx, wy, _ = GeometryTypes.widths(bb)
+    area = to_signal(lift_node(position, to_node(screen.area), padding) do xy, area, padding
+        xy = (xy .* widths(area))
+        w, h = round.(Int, (wx, wy)) .+ (2padding, padding)
+        # TODO check for overlaps, eliminate them!!
+        IRect(xy[1], xy[2], w, h)
+    end)
+    sscren = GLWindow.Screen(
+        screen, area = area,
+        color = to_value(color),
+        stroke = (to_value(stroke), to_value(strokecolor))
+    )
+    GLVisualize._view(list, sscren, camera = :fixed_pixel)
+    Scene(attributes)
 end

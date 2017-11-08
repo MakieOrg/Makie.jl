@@ -16,60 +16,98 @@ struct Node{T, F}
     convert::F
 end
 
-
 """
 A scene is a holder of attributes which are all of the type Node.
 A scene can contain attributes, which are themselves scenes.
 Nodes can be connected, since they're signals under the hood, which can be created from other nodes.
 """
-immutable Scene
+immutable Scene{Backend}
+    name::Symbol
     parent::Nullable{Scene}
     data::Dict{Symbol, Any}
+    visual
 end
 
-Scene(data::Dict) = Scene(Nullable{Scene}(), data)
+attributes(scene::Scene) = copy(scene.data)
+
+const current_backend = Ref(:makie)
+
+function Scene(args...)
+    Scene{current_backend[]}(args...)
+end
+
+function (::Type{Scene{Backend}})(data::Dict, name = :scene) where Backend
+    Scene{Backend}(name, Nullable{Scene{Backend}}(), data, nothing)
+end
+
+function (::Type{Scene{Backend}})(pair1::Pair, tail::Pair...) where Backend
+    args = [pair1, tail...]
+    Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
+end
+
+function insert_scene!(scene::Scene{Backend}, name, viz, attributes) where Backend
+    uname = unique_predictable_name(scene, name)
+    childscene = Scene{Backend}(name, scene, attributes, viz)
+    scene.data[uname] = childscene
+    cams = collect(keys(scene[:screen].cameras))
+    cam = if isempty(cams)
+        bb = value(GLAbstraction.boundingbox(viz))
+        widths(bb)[3] ≈ 0 ? :orthographic_pixel : :perspective
+    else
+        first(cams)
+    end
+    _view(viz, scene[:screen], camera = cam)
+    if isempty(cams)
+        scene[:camera] = first(scene[:screen].cameras)[2]
+    end
+    childscene
+end
+
+"""
+Get's the backend native visual belonging to a scene. If
+it isn't a visual, it will return nothing!
+"""
+native_visual(scene::Scene) = scene.visual
+
+function Base.delete!(scene::Scene, name::Symbol)
+    if haskey(scene, name)
+        obj = scene[name]
+        delete!(scene.data, name)
+        visual = native_visual(obj)
+        if visual != nothing
+            # Also delete the visual from renderlist
+            delete!(rootscreen(scene), visual)
+        end
+    end
+end
+
 parent(x::Scene) = get(x.parent)
-function rootscreen(x::Scene)
+
+function rootscene(x::Scene)
     while !isnull(x.parent)
         x = parent(x)
     end
-    get(x, :screen, nothing)
+    x
+end
+function rootscreen(x::Scene)
+    getscreen(x)
 end
 function getscreen(x::Scene)
-    while !isnull(x.parent) && !haskey(x, :screen)
-        x = parent(x)
-    end
-    get(x, :screen, nothing)
+    root = rootscene(x)
+    get(root, :screen, nothing)
 end
 
 include("signals.jl")
 
-
-function Base.show(io::IO, m::MIME"text/plain", node::Node{T}) where T
-    print(io, "Node: ")
-    show(io, m, to_value(node))
-end
-function Base.show(io::IO, m::MIME"text/plain", node::ArrayNode{T}) where T
-    print(io, "Node: ")
-    showcompact(io, to_value(node))
+function Base.show(io::IO, mime::MIME"text/plain", scene::Scene)
+    println(io, "Scene $(scene.name):")
+    show(io, mime, scene.data)
 end
 
-
-scene_show(io, mime, val::AbstractArray, indent = 0) = showcompact(io, val)
-scene_show(io, mime, val, indent = 0) = show(io, mime, val)
-function scene_show(io, mime, scene::Scene, indent = 0)
-    println(io, "    "^indent, "Scene:")
-    indent += 1
-    for (k, v) in scene.data
-        print(io, "    "^indent, k, " => ")
-        scene_show(io, mime, v, indent)
-        println(io)
-    end
+function Base.show(io::IO, scene::Scene)
+    print(io, "Scene: $(scene.name)")
 end
 
-function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
-    scene_show(io, m, scene)
-end
 
 
 const global_scene = Scene[]
@@ -82,11 +120,6 @@ function GLAbstraction.center!(scene::Scene, border = 0.1)
 end
 
 export center!
-
-function (::Type{Scene})(pair1::Pair, tail::Pair...)
-    args = (pair1, tail...)
-    Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
-end
 
 function get_global_scene()
     if isempty(global_scene)
@@ -184,7 +217,7 @@ function Scene(;
     resize!(w, Int.(resolution)...)
 
     GLVisualize.add_screen(w)
-    
+
     dict = map(w.inputs) do k_v
         k_v[1] => to_node(k_v[2])
     end
@@ -197,23 +230,6 @@ function Scene(;
     scene
 end
 
-function insert_scene!(scene::Scene, name, viz, attributes)
-    name = unique_predictable_name(scene, name)
-    childscene = Scene(scene, attributes)
-    scene.data[name] = childscene
-    cams = collect(keys(scene[:screen].cameras))
-    cam = if isempty(cams)
-        bb = value(GLAbstraction.boundingbox(viz))
-        widths(bb)[3] ≈ 0 ? :orthographic_pixel : :perspective
-    else
-        first(cams)
-    end
-    _view(viz, scene[:screen], camera = cam)
-    if isempty(cams)
-        scene[:camera] = first(scene[:screen].cameras)[2]
-    end
-    childscene
-end
 
 
 Base.get(f, x::Scene, key::Symbol) = haskey(x, key) ? x[key] : f()
@@ -312,8 +328,9 @@ function find_default(scene, kw_args, func, attribute)
     if haskey(kw_args, attribute)
         return kw_args[attribute]
     end
-    if haskey(scene, :theme)
-        theme = scene[:theme]
+    root = rootscene(scene) # theme is in root!
+    if haskey(root, :theme)
+        theme = root[:theme]
         if haskey(theme, Symbol(func), attribute)
             return theme[Symbol(func), attribute]
         elseif haskey(theme, attribute)

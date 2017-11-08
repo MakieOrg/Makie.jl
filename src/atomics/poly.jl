@@ -1,5 +1,5 @@
 
-function poly(::makie, points, attributes::Dict)
+function poly(scene::makie, points, attributes::Dict)
     last(points) == first(points) && pop!(points)
     polys = GeometryTypes.split_intersections(points)
     result = []

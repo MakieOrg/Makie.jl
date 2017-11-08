@@ -40,22 +40,21 @@ function surface_2glvisualize(kw_args)
 end
 
 
-function surface(b::makie, x, y, z::AbstractMatrix{T}, attributes::Dict) where T <: AbstractFloat
-    scene = get_global_scene()
+function surface(scene::makie, x, y, z::AbstractMatrix{T}, attributes::Dict) where T <: AbstractFloat
     attributes[:x] = x
     attributes[:y] = y
     attributes[:z] = z
-    attributes = surface_defaults(b, scene, attributes)
+    attributes = surface_defaults(scene, attributes)
     gl_data, main = surface_2glvisualize(attributes)
     viz = visualize(main, Style(:surface), gl_data).children[]
     insert_scene!(scene, :surface, viz, attributes)
 end
 
 
-function surface(::makie, x::AbstractMatrix{T1}, y::AbstractMatrix{T2}, f::Function, attributes::Dict) where {T1, T2}
+function surface(scene::makie, x::AbstractMatrix{T1}, y::AbstractMatrix{T2}, f::Function, attributes::Dict) where {T1, T2}
     if size(x) != size(y)
         error("x and y don't have the same size. Found: x: $(size(x)), y: $(size(y))")
     end
     z = f.(x, y)
-    surface(x, y, z, attributes::Dict)
+    surface(scene, x, y, z, attributes::Dict)
 end

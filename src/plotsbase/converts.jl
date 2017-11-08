@@ -1,39 +1,73 @@
 
 const VecLike{N, T} = Union{NTuple{N, T}, StaticVector{N, T}}
 
+
+"""
+3 Numbers for each dimension
+"""
+to_3floats(b, x::Tuple) = to_float.(b, x)
+to_3floats(b, x::Number) = ntuple(i-> x, Val{3})
+
+
+"""
+    to_scale(b, s::Number)::Vec
+"""
 to_scale(b, s::Number) = Vec3f0(s)
+"""
+    to_scale(b, s::VecLike)::Point
+"""
 to_scale(b, s::VecLike{2}) = Vec3f0(s[1], s[2], 1)
 to_scale(b, s::VecLike{3}) = Vec3f0(s)
 
+"""
+    to_offset(b, s::Number)::Point
+"""
 to_offset(b, s::Number) = Point3f0(s)
+"""
+    to_scale(b, s::VecLike)::Point
+"""
 to_offset(b, s::VecLike{2}) = Point3f0(s[1], s[2], 0)
 to_offset(b, s::VecLike{3}) = Point3f0(s)
 
+"""
+    to_rotation(b, vec4)
+"""
 to_rotation(b, s::VecLike{4}) = Vec4f0(s)
+"""
+    to_rotation(b, quaternion)
+"""
 to_rotation(b, s::Quaternion) = Vec4f0(s.v1, s.v2, s.v3, s.s)
+
+"""
+    to_rotation(b, tuple_float)
+"""
 to_rotation(b, s::Tuple{<:VecLike{3}, <: AbstractFloat}) = qrotation(s[1], s[2])
 to_rotation(b, s::Tuple{<:VecLike{2}, <: AbstractFloat}) = qrotation(Vec3f0(s[1][1], s[1][2], 0), s[2])
 
 
 
 """
+    to_image(b, image)
 All kinds of images
 """
 to_image(b, image) = image
 
 """
+    to_bool(b, bool)
 To boolean
 """
 to_bool(b, bool) = Bool(bool)
 
 """
+    to_bool(b, tuple)
 Accepts Tuple of Bool
 """
 to_bool(b, x::Tuple) = Bool.(x)
 
 
 """
-`GLBuffer{UInt32}`
+
+    to_index_buffer(b, x::GLBuffer{UInt32})
 """
 to_index_buffer(b, x::GLBuffer) = x
 
@@ -79,6 +113,7 @@ to_index_buffer(b, x) = error(
 
 
 """
+    to_positions(b, positionlike)
 `NTuple{2, AbstractArray{Float}}` for 2D points
 """
 function to_positions(b, x::Tuple{<: AbstractArray, <: AbstractArray})
@@ -105,10 +140,6 @@ end
 function to_positions(b, x::AbstractArray{NTuple{N, T}}) where {N, T}
     Point{N, Float32}.(x)
 end
-function to_positions(b, x::T) where T <: StaticVector
-    error("Please use an array of StaticVectors for positions. Found: $T")
-
-end
 function to_positions(b, x::AbstractArray{T}) where T
     N = if applicable(length, T)
         length(T)
@@ -117,7 +148,10 @@ function to_positions(b, x::AbstractArray{T}) where T
     end
     Point{N, Float32}.(x)
 end
+function to_positions(b, x::T) where T <: StaticVector
+    error("Please use an array of StaticVectors for positions. Found: $T")
 
+end
 
 function to_positions(b, x::GeometryPrimitive)
     to_positions(b, decompose(Point, x))
@@ -129,29 +163,42 @@ function to_positions(b, x::SimpleRectangle)
 end
 
 function to_positions(b, x)
-    error("Not a valid position type: $(typeof(x)). Please read the documentation of `to_position`")
+    error("Not a valid position type: $(typeof(x)). Please read the documentation of [`to_positions`](@ref)")
 end
 
 """
+Converts a Vec like to a position (Point)
+"""
+function to_position(b, x::VecLike{N}) where N
+    Point{N, Float32}(x)
+end
+
+
+"""
+    to_array(b, arraylike)
 `AbstractArray`
 """
 to_array(b, x) = collect(x)
 
 """
+    to_scalefunc(b, x)
 `Function`
 """
 to_scalefunc(b, x) = x # TODO implement it
 
 """
+    to_text(b, x)
 All text
 """
 to_text(b, x) = x# TODO implement it
 """
+    to_font(b, x)
 All fonts
 """
 to_font(b, x) = x # TODO implement it
 
 """
+    to_colornorm(b, norm, intensity)
 anything that can be converted to `Vec2f0` (e.g. `Tuple`, `Vector`)
 """
 to_colornorm(b, norm, intensity) = Vec2f0(norm)
@@ -169,10 +216,12 @@ end
 to_intensity(b, x::AbstractArray) = x # TODO implement
 
 """
+    to_surface(b, x::Range)
 `Range`
 """
 to_surface(b, x::Range) = x
 """
+    to_surface(b, arraylike)
 Anything that can be converted to Matrix/Vector of Float32
 """
 to_surface(b, x) = Float32.(x)
@@ -217,19 +266,23 @@ end
 
 
 """
+    to_spritemarker(b, x::Circle)
 `GeometryTypes.Circle(Point2(...), radius)`
 """
 to_spritemarker(b, x::Circle) = x
 
 """
+    to_spritemarker(b, ::Type{Circle})
 `Type{GeometryTypes.Circle}`
 """
 to_spritemarker(b, ::Type{Circle}) = Circle(Point2f0(0), 1f0)
 """
+    to_spritemarker(b, ::Type{Rectangle})
 `Type{GeometryTypes.Rectangle}`
 """
 to_spritemarker(b, ::Type{Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
 """
+    to_spritemarker(b, marker::Char)
 Any `Char`, including unicode
 """
 to_spritemarker(b, marker::Char) = marker
@@ -287,6 +340,7 @@ end
 # create a marker/shape type
 
 """
+    to_static_vec(b, x)
 `AbstractArray`
 """
 function to_static_vec(b, x::AbstractArray)
@@ -313,6 +367,7 @@ function to_static_vec(b, x::AbstractArray{T}) where T <: Union{Tuple, SVector, 
 end
 
 """
+    to_rotations(b, x)
 `Billboard()` for a rotation that will always face the camera
 """
 to_rotations(b, x::Billboard) = x
@@ -323,6 +378,7 @@ Any AbstractArray which elements can be converted to Vec4 (as a quaternion x, y,
 to_rotations(b, x::AbstractVector) = to_static_vec(b, x)
 
 """
+    to_markersize(b, x)
 Anything that can be converted to `Vec2f0` for x, y scale
 """
 to_markersize(b, x::Number) = Vec2f0(x)
@@ -332,6 +388,7 @@ to_markersize(b, x::AbstractVector) = Vec2f0.(x)
 
 
 """
+    to_linestyle(b, x)
 `Nothing` for no style
 """
 to_linestyle(b, x::Void) = x
@@ -364,11 +421,13 @@ function to_linestyle(b, ls::Symbol)
 end
 
 """
+    to_normals(b, x)
 Vector{Normal{3}}
 """
 to_normals(b, x) = x
 
 """
+    to_faces(b, x)
 Any array of NTuple/GeometryTypes.Face
 """
 function to_faces(b, x::AbstractVector{NTuple{N, TI}}) where {N, TI <: Integer}
@@ -385,6 +444,7 @@ end
 function to_faces(b, x::Void)
     x
 end
+
 function to_faces(b, x::Vector{Int})
     if length(x) % 3 != 0
         error("Int indices need to represent triangles, therefore need to be a multiple of three. Found: $(length(x))")
@@ -394,6 +454,7 @@ end
 
 
 """
+    to_mesh(b, meshlike)
 `AbstractMesh`
 """
 function to_mesh(b, mesh::AbstractMesh)
@@ -423,11 +484,6 @@ function to_mesh(b, verts, faces, colors::AbstractVector, attribute_id::Node{Voi
         GLNormalVertexcolorMesh(vertices = v, faces = f, color = c)
     end
 end
-
-"""
-Index into Mesh attributes, Vector{Integer}
-"""
-to_attribut_id(backend, x) = x
 function to_mesh(verts, faces, colors::AbstractVector, attribute_id::AbstractVector)
     lift_node(verts, faces, colors, attribute_id) do v, f, c, id
         if length(id) != length(v)
@@ -440,8 +496,16 @@ function to_mesh(verts, faces, colors::AbstractVector, attribute_id::AbstractVec
     end
 end
 
+"""
+    to_attribut_id(b, x)
+Index into Mesh attributes, Vector{Integer}
+"""
+to_attribut_id(backend, x) = x
+
+
 
 """
+    to_float(b, x)
 Any Object convertible to Floatingpoint
 """
 to_float(b, x) = Float32(x)
@@ -449,6 +513,7 @@ to_float(b, x) = Float32(x)
 to_color(c) = to_color(current_backend[], c)
 
 """
+    to_color(b, x)
 `Colors.Colorants`
 """
 to_color(b, c::Colorant) = RGBA{Float32}(c)
@@ -532,12 +597,13 @@ function available_gradients()
 end
 
 """
-An `AbstractVector{T}` with any object that [to_color](@ref) accepts
+    to_colormap(b, x)
+An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts
 """
 to_colormap(b, cm::AbstractVector) = RGBAf0.(cm)
 
 """
-Tuple(A, B) or Pair{A, B} with any object that [to_color](@ref) accepts
+Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
 """
 function to_colormap(b, cs::Union{Tuple, Pair})
     [to_color.(cs)...]
@@ -546,7 +612,7 @@ end
 to_colormap(val) = to_colormap(current_backend[], val)
 
 """
-A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`
+A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
 """
 function to_colormap(b, cs::Union{String, Symbol})
     cs_sym = Symbol(cs)
@@ -561,6 +627,7 @@ end
 
 
 """
+    to_spatial_order(b, x)
 "xy" or "yx"
 """
 function to_spatial_order(b, x)
@@ -576,6 +643,7 @@ end
 to_spatial_order(b, x::Symbol) = to_spatial_order(b, string(x))
 
 """
+    to_interval(b, x)
 `Tuple{<: Number, <: Number}`
 """
 function to_interval(b, x)
@@ -602,6 +670,7 @@ using GLVisualize: IsoValue, Absorption, MaximumIntensityProjection, AbsorptionR
 export IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 
 """
+    to_volume_algorithm(b, x)
 Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
 """
 function to_volume_algorithm(b, value)

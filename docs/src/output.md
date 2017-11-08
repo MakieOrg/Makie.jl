@@ -27,7 +27,7 @@ VideoStream
 finish
 ```
 
-```@example 
+```@example
 using MakiE
 
 scene = Scene(resolution = (500, 500))
@@ -47,7 +47,7 @@ end
 linesegment(lines, linestyle = :dot)
 
 center!(scene)
-# record a video 
+# record a video
 io = VideoStream(scene, ".", "output_vid")
 for i = 1:300
     push!(t, time())
@@ -58,6 +58,7 @@ end
 finish(io, "mp4") # could also be gif, webm or mkv
 nothing
 ```
+
 ```@raw html
 <video controls autoplay>
   <source src="output_vid.mp4" type="video/mp4">

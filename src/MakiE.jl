@@ -9,12 +9,12 @@ using Base: RefValue
 
 struct Backend{B} end
 
-const makie = Backend{:makie}
-const current_backend = RefValue(makie())
 
 include("plotsbase/utils.jl")
 include("plotsbase/scene.jl")
 include("plotsbase/converts.jl")
+
+const makie = Scene{:makie}
 
 include("plotsbase/atomics.jl")
     # The actual implementation
@@ -26,6 +26,7 @@ include("plotsbase/atomics.jl")
     include("atomics/mesh.jl")
     include("atomics/imagelike.jl")
     include("plotsbase/contour.jl")
+    include("plotsbase/legend.jl")
 
 include("plotsbase/axis.jl")
 include("plotsbase/output.jl")
@@ -44,5 +45,39 @@ export available_marker_symbols, available_gradients, render_frame
 export to_float, to_markersize, to_spritemarker, to_linestyle, to_pattern
 export to_color, to_colormap, to_colornorm, to_array, to_mesh, to_surface
 export to_positions, to_rotations
+
+export to_scale
+export to_offset
+export to_rotation
+export to_image
+export to_bool
+export to_index_buffer
+export to_index_buffer
+export to_positions
+export to_positions
+export to_array
+export to_scalefunc
+export to_text
+export to_font
+export to_intensity
+export to_surface
+export to_spritemarker
+export to_static_vec
+export to_rotations
+export to_markersize
+export to_linestyle
+export to_normals
+export to_faces
+export to_attribut_id
+export to_mesh
+export to_float
+export to_color
+export to_colornorm
+export to_colormap
+export available_gradients
+export to_spatial_order
+export to_interval
+export to_volume_algorithm
+export to_3floats
 
 end # module

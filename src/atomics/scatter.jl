@@ -1,7 +1,5 @@
 using GeometryTypes, StaticArrays, Colors, GLAbstraction
 
-
-
 """
 Hack to quickly make things more consistent inside MakiE, without
 changing GLVisualize too much! So we need to rewrite the attributes, the names and the
@@ -41,9 +39,8 @@ function expand_for_glvisualize(kw_args)
 end
 
 
-function _scatter(b, kw_args)
-    scene = get_global_scene()
-    attributes = scatter_defaults(b, scene, kw_args)
+function _scatter(scene, kw_args)
+    attributes = scatter_defaults(scene, kw_args)
     gl_data = expand_for_glvisualize(attributes)
     shape = to_signal(attributes[:marker])
     main = (shape, to_signal(attributes[:positions]))
@@ -73,9 +70,8 @@ function mesh2glvisualize(kw_args)
     result
 end
 
-function _meshscatter(b, kw_args)
-    scene = get_global_scene()
-    attributes = meshscatter_defaults(b, scene, kw_args)
+function _meshscatter(scene, kw_args)
+    attributes = meshscatter_defaults(scene, kw_args)
     gl_data = mesh2glvisualize(attributes)
     shape = to_signal(attributes[:marker])
     main = (shape, to_signal(attributes[:positions]))
@@ -89,14 +85,14 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
         :(attributes[$(QuoteNode(elem))] = $elem)
     end
     @eval begin
-        function scatter(b::makie, $(arg...), attributes::Dict)
+        function scatter(scene::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
-            _scatter(b, attributes)
+            _scatter(scene, attributes)
         end
         @eval begin
-            function meshscatter(b::makie, $(arg...), attributes::Dict)
+            function meshscatter(scene::makie, $(arg...), attributes::Dict)
                 $(insert_expr...)
-                _meshscatter(b, attributes)
+                _meshscatter(scene, attributes)
             end
         end
     end

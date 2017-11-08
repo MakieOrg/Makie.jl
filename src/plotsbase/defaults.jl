@@ -1,20 +1,10 @@
 using MacroTools, Reactive
 
-function (::Type{T})(b::Backend, x) where T
-    T(x)
-end
-
-attribute_doc(name, func) = ""
-function attribute_doc(name, func::Symbol)
+attribute_doc(name, func, indent) = ""
+function attribute_doc(name, func::Symbol, indent)
     io = IOBuffer()
     f = getfield(MakiE, func)
-    println(io, "Attribute `$name`, convert function `$func` which accepts:")
-    println(io)
-    docstr = sprint(x-> Markdown.plain(x, Docs.doc(f, Union{})))
-    for line in split(docstr, '\n')
-        println(io, "\t$line")
-    end
-    seekstart(io)
+    println(io, "Attribute `$name`, conversion function [`$func`](@ref)")
     String(take!(io))
 end
 
@@ -23,25 +13,25 @@ Creates the expression that fetches the default for an attribute, converts it to
 and inserts it into the kw_arg dictionary
 """
 function convert_expr(var, cfunc, args, mainfunc, fargs, dictsym)
-    backendsym, scene_sym, kw_sym = fargs
+    scene_sym, kw_sym = fargs
     var_sym = QuoteNode(var)
     tmpsym = gensym("tmp")
     if length(args) == 1 && args[1] == var
         quote
             $tmpsym = find_default($scene_sym, $kw_sym, $(QuoteNode(mainfunc)), $var_sym)
-            $(esc(var)) = to_node($tmpsym, x-> ($(esc(cfunc))($backendsym, x)))
+            $(esc(var)) = to_node($tmpsym, x-> ($(esc(cfunc))($scene_sym, x)))
             $dictsym[$var_sym] = $(esc(var))
         end
     else # case when a secondary convert function gets called, which builds up on other attributes
         args = esc.(args)
         quote
-            $(esc(var)) = $(esc(cfunc))($backendsym, $(args...))
+            $(esc(var)) = $(esc(cfunc))($scene_sym, $(args...))
             $dictsym[$var_sym] = $(esc(var))
         end
     end
 end
 
-function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
+function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys, indent = 1)
     docs = []; symbols = []
     if isa(elem, Expr) && elem.head == :kw
         var, call = elem.args
@@ -51,14 +41,14 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
         ) || error("Use a call or type assert on right hand side")
 
         expr = convert_expr(var, f, args, mainfunc, fargs, dictsym)
-        return expr, [var], []
+        return expr, [var], [attribute_doc(var, f, indent)]
     end
     if isa(elem, Expr) && elem.head == :block
         syms = Symbol[]
         docs = []
         result = Expr(:block)
         for arg in elem.args
-            expr, _syms, _docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys)
+            expr, _syms, _docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys, indent)
             push!(result.args, expr)
             append!(syms, _syms)
             append!(docs, _docs)
@@ -71,28 +61,36 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
             elem.args[1].args[1] == Symbol("@doc")
         push!(docs, elem.args[2])
         # the expression that is documented
-        return process_body_element(elem.args[3], fargs, mainfunc, dictsym, kwarg_keys)
+        return process_body_element(elem.args[3], fargs, mainfunc, dictsym, kwarg_keys, indent)
     end
     # exclusive blocks
     if isa(elem, Expr) && elem.head == :call && elem.args[1] == :xor
         xor_expr = Expr(:block)
         first_expr = Expr(:block)
         current_expr = xor_expr
+        docio = IOBuffer()
+        println(docio, "## Exclusive Attribute sets:\n---\n")
         for (i, arg) in enumerate(elem.args[2:end])
             expression, docs, condition = if isa(arg, Expr) && arg.head == :if
                 condition_syms = arg.args[1]
                 if isa(condition_syms, Expr) && condition_syms.head == :tuple
                     map!(QuoteNode, condition_syms.args, condition_syms.args)
                     condition = :(all(x-> x in $kwarg_keys, $condition_syms))
-                    expression, syms, docs = process_body_element(arg.args[2], fargs, mainfunc, dictsym, kwarg_keys)
+                    expression, syms, docs = process_body_element(arg.args[2], fargs, mainfunc, dictsym, kwarg_keys, indent + 1)
                     expression, docs, condition
                 else
                     error("Needs if (sym1, sym2, sym3), found if $(condition_syms)")
                 end
             else
-                expression, syms, docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys)
+                expression, syms, docs = process_body_element(arg, fargs, mainfunc, dictsym, kwarg_keys, indent + 1)
                 condition = :(any(x-> x in $kwarg_keys, $syms))
                 expression, docs, condition
+            end
+            println(docio, join(docs, "\n"))
+            if i == length(elem.args[2:end])
+                println(docio, "## end\n---\n")
+            else
+                println(docio, "## or\n---\n")
             end
             if i == 1
                 first_expr = expression
@@ -105,10 +103,11 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
             ifelse = Expr(:if, condition, expression, else_expr)
             push!(current_expr.args, ifelse)
             current_expr = else_expr # now we need to insert into else
+
         end
         # defaults to first block in the last else block
         current_expr.args = first_expr.args
-        return xor_expr, Symbol[], docs
+        return xor_expr, Symbol[], [String(take!(docio))]
     end
     found = @capture(elem,
         (var_ = f_(args__)) |
@@ -116,7 +115,7 @@ function process_body_element(elem, fargs, mainfunc, dictsym, kwarg_keys)
     )
     result = if found
         push!(symbols, var)
-        push!(docs, attribute_doc(var, f))
+        push!(docs, attribute_doc(var, f, indent))
         convert_expr(var, f, args, mainfunc, fargs, dictsym)
     else
         elem
@@ -214,7 +213,7 @@ macro default(func)
         end
     ")
 
-    length(fargs) == 3 || error("Function should have 3 arguments, namely backend, scene and kw_args. Found: $fargs")
+    length(fargs) == 2 || error("Function should have 2 arguments, namely scene and kw_args. Found: $fargs")
     docs = []
     result = []
     dictsym = gensym(:attributes)
@@ -226,7 +225,8 @@ macro default(func)
     end
     io = IOBuffer()
     for elem in docs
-        println(io, elem)
+        # the `    ` before Attribute get it parsed as a code block, which destroys cross references
+        println(io, replace(elem, "    Attribute", "Attribute"))
         println(io, "\n____________________\n")
     end
     docstr = String(take!(io))
@@ -236,10 +236,10 @@ macro default(func)
         """
         function $(esc(Symbol("$(mainfunc)_defaults")))($(fargs...))
             $dictsym = Dict{Symbol, Any}()
-            $kwarg_keys = keys($(fargs[3]))
+            $kwarg_keys = keys($(fargs[2]))
             $(result...)
-            merge!($(fargs[3]), $dictsym)
-            return $(fargs[3])
+            merge!($(fargs[2]), $dictsym)
+            return $(fargs[2])
         end
     end
     expr

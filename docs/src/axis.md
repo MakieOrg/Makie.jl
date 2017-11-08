@@ -28,7 +28,7 @@ save("axis3d.png", scene); nothing # hide
 ```
 ![](axis3d.png)
 
-### Interaction
+### Interacting with the Axis
 
 One can quite easily interact with the attributes of the axis like with any other plot:
 

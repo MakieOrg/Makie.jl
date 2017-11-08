@@ -1,31 +1,31 @@
 
-function mesh(b::makie, x::AbstractVector, y::AbstractVector, z::AbstractVector, attributes::Dict)
-    mesh(b, Point3f0.(x, y, z), attributes)
+function mesh(scene::makie, x::AbstractVector, y::AbstractVector, z::AbstractVector, attributes::Dict)
+    mesh(scene, Point3f0.(x, y, z), attributes)
 end
 
-function mesh(b::makie, xyz::AbstractVector, attributes::Dict)
+function mesh(scene::makie, xyz::AbstractVector, attributes::Dict)
     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
-    mesh(xyz, faces, attributes)
+    mesh(scene, xyz, faces, attributes)
 end
 
-function mesh(b::makie, triangle_mesh, attributes::Dict)
+function mesh(scene::makie, triangle_mesh, attributes::Dict)
     attributes[:mesh] = triangle_mesh
-    mesh_impl(b, attributes)
+    mesh_impl(scene, attributes)
 end
 
-function mesh(b::makie, x, y, z, indices, attributes::Dict)
+function mesh(scene::makie, x, y, z, indices, attributes::Dict)
     attributes[:x] = x
     attributes[:y] = y
     attributes[:z] = z
     attributes[:indices] = indices
-    mesh_impl(b, attributes)
+    mesh_impl(scene, attributes)
 end
 
 
-function mesh(b::makie, xyz::AbstractVector, faces::AbstractVector, attributes::Dict)
+function mesh(scene::makie, xyz::AbstractVector, faces::AbstractVector, attributes::Dict)
     attributes[:positions] = xyz
     attributes[:indices] = faces
-    mesh_impl(b, attributes)
+    mesh_impl(scene, attributes)
 end
 
 function mesh_2glvisualize(attributes)
@@ -47,9 +47,8 @@ function mesh_2glvisualize(attributes)
     result
 end
 
-function mesh_impl(b, attributes)
-    scene = get_global_scene()
-    attributes = mesh_defaults(b, scene, attributes)
+function mesh_impl(scene, attributes)
+    attributes = mesh_defaults(scene, attributes)
     mesh = attributes[:mesh]
     gl_data = mesh_2glvisualize(attributes)
     viz = visualize(to_signal(mesh), Style(:default), gl_data).children[]
@@ -57,8 +56,8 @@ function mesh_impl(b, attributes)
 end
 
 
-function mesh(b::makie, mesh, xyz::AbstractVector{<:Point}, attributes::Dict)
-    attributes[:marker] = to_node(mesh, x-> to_mesh(b, x))
+function mesh(scene::makie, mesh, xyz::AbstractVector{<:Point}, attributes::Dict)
+    attributes[:marker] = to_node(mesh, x-> to_mesh(scene, x))
     attributes[:positions] = xyz
-    meshscatter(b, xyz, attributes)
+    meshscatter(scene, xyz, attributes)
 end

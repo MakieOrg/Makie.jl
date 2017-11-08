@@ -10,12 +10,19 @@ struct ArrayNode{T, N, F, AT <: AbstractArray} <: AbstractArray{T, N}
 end
 const AbstractNode{T} = Union{ArrayNode{T}, Node{T}}
 
+function Base.show(io::IO, node::AbstractNode{T}) where T
+    print(io, "<Node: ")
+    show(io, to_value(node))
+    print(io, ">")
+end
+
+
 
 function children(x::Signal)
     filter(x-> x != nothing, (x-> x.value).(Reactive.nodes[Reactive.edges[x.id]]))
 end
 children(x::AbstractNode) = children(to_signal(x))
-    
+
 
 function disconnect!(x::Signal, toremove::Signal)
     x.parents = (Iterators.filter(x-> x != toremove, x.parents)...,)
@@ -47,7 +54,7 @@ end
 """
 Registers a callback to `nodes`, which calls function `f` whenever any node in `nodes` updates.
 `f` will get the values of each `node` as an argument, so basically `f(to_value.(nodes))`.
-Returns a new node which is the result of `f` applied to the updated `nodes`. 
+Returns a new node which is the result of `f` applied to the updated `nodes`.
 """
 function lift_node(f, nodes::AbstractNode...)
     args = to_signal.(nodes)
@@ -134,4 +141,10 @@ end
     lift_node(to_node(A), to_node.(Bs)...) do a, bs...
         broadcast(f, a, bs...)
     end
+end
+function Base.append!(node::ArrayNode, values)
+    v = to_value(node)
+    append!(v, values)
+    push!(node, v)
+    node
 end

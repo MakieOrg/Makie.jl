@@ -1,5 +1,3 @@
-
-
 function heatmap2glvisualize(attributes)
     result = Dict{Symbol, Any}()
     result[:stroke_width] = to_signal(attributes[:linewidth])
@@ -17,12 +15,11 @@ function heatmap2glvisualize(attributes)
     result, tex
 end
 
-function heatmap(b::makie, x, y, z, attributes)
+function heatmap(scene::makie, x, y, z, attributes)
     attributes[:x] = x
     attributes[:y] = y
     attributes[:heatmap] = z
-    scene = get_global_scene()
-    attributes = heatmap_defaults(b, scene, attributes)
+    attributes = heatmap_defaults(scene, attributes)
     gl_data, tex = heatmap2glvisualize(attributes)
     viz = visualize(tex, Style(:default), gl_data).children[]
     insert_scene!(scene, :heatmap, viz, attributes)
@@ -43,12 +40,11 @@ function image2glvisualize(attributes)
     result
 end
 
-function image(b::makie, x, y, img, attributes::Dict)
-    scene = get_global_scene()
+function image(scene::makie, x, y, img, attributes::Dict)
     attributes[:x] = x
     attributes[:y] = y
     attributes[:image] = img
-    attributes = image_defaults(b, scene, attributes)
+    attributes = image_defaults(scene, attributes)
     gl_data = image2glvisualize(attributes)
     viz = visualize(to_signal(attributes[:image]), Style(:default), gl_data).children[]
     insert_scene!(scene, :image, viz, attributes)
@@ -73,10 +69,9 @@ function volume2glvisualize(attributes)
     result
 end
 
-function volume(b::makie, values, attributes)
+function volume(scene::makie, values, attributes)
     attributes[:volume] = values
-    scene = get_global_scene()
-    attributes = volume_defaults(b, scene, attributes)
+    attributes = volume_defaults(scene, attributes)
     gl_data = volume2glvisualize(attributes)
     viz = visualize(to_signal(attributes[:volume]), Style(:default), gl_data).children[]
     insert_scene!(scene, :volume, viz, attributes)

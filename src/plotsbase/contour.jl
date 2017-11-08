@@ -1,17 +1,16 @@
 
-@default function contour(backend, scene, kw_args)
+@default function contour(scene, kw_args)
     levels = to_float(levels)
     color = to_color(color)
     linewidth = to_float(1)
     fillrange = to_bool(fillrange)
 end
 
-function contour(b::makie, x, y, z, attributes)
-    scene = get_global_scene()
-    attributes = contour_defaults(b, scene, attributes)
+function contour(scene::makie, x, y, z, attributes)
+    attributes = contour_defaults(scene, attributes)
 
     if to_value(attributes[:fillrange])
-        return heatmap(b, x, y, z, attributes)
+        return heatmap(scene, x, y, z, attributes)
     else
         levels = round(Int, to_value(attributes[:levels]))
         T = eltype(z)
@@ -36,6 +35,6 @@ function contour(b::makie, x, y, z, attributes)
             end
         end
         attributes[:color] = colors
-        return lines(b, result, attributes)
+        return lines(scene, result, attributes)
     end
 end

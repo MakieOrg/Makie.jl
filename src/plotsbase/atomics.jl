@@ -1,6 +1,5 @@
 # Defaults for atomics
 
-
 function to_modelmatrix(b, scale, offset, rotation)
     lift_node(scale, offset, rotation) do s, o, r
         q = Quaternion(r[4], r[1], r[2], r[3])
@@ -8,7 +7,7 @@ function to_modelmatrix(b, scale, offset, rotation)
     end
 end
 
-@default function shared(backend, scene, kw_args)
+@default function shared(scene, kw_args)
     visible = to_bool(visible)
     scale = to_scale(scale)
     offset = to_offset(offset)
@@ -19,7 +18,7 @@ end
 # Note that this will create a function called surface_defaults
 # This is not perfect, but for integrating this into the scene, it's the easiest to
 # just have the default function name in the macro match the drawing function name.
-@default function surface(backend, scene, kw_args)
+@default function surface(scene, kw_args)
     x = to_surface(x)
     y = to_surface(y)
     z = to_surface(z)
@@ -27,7 +26,7 @@ end
         begin # Colormap is first, so it will default to it
             colormap = to_colormap(colormap)
             # convert function should only have one argument right now, so we create this closure
-            colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, z))(colornorm)
+            colornorm = ((s, colornorm) -> to_colornorm(s, colornorm, z))(colornorm)
         end,
         begin
             color = to_color(color)
@@ -38,7 +37,7 @@ end
     )
 end
 
-@default function lines(backend, scene, kw_args)
+@default function lines(scene, kw_args)
     xor(
         begin
             positions = to_positions(positions)
@@ -70,7 +69,7 @@ end
     drawover = to_bool(drawover)
 end
 
-@default function mesh(backend, scene, kw_args)
+@default function mesh(scene, kw_args)
     shading = to_bool(shading)
     attribute_id = to_attribut_id(attribute_id)
     color = to_color(color)
@@ -97,7 +96,7 @@ end
     )
 end
 
-@default function scatter(backend, scene, kw_args)
+@default function scatter(scene, kw_args)
     xor(
         begin
             positions = to_positions(positions)
@@ -139,7 +138,7 @@ end
     rotations = to_rotations(rotations)
 end
 
-@default function meshscatter(backend, scene, kw_args)
+@default function meshscatter(scene, kw_args)
     xor(
         begin
             positions = to_positions(positions)
@@ -174,14 +173,14 @@ end
     rotations = to_rotations(rotations)
 end
 
-@default function image(b, scene, kw_args)
+@default function image(scene, kw_args)
     spatialorder = to_spatial_order(spatialorder)
     x = to_interval(x)
     y = to_interval(y)
     image = to_image(image)
 end
 
-@default function volume(backend, scene, kw_args)
+@default function volume(scene, kw_args)
     volume = to_array(volume)
     xor(
         begin
@@ -199,7 +198,7 @@ end
     isorange = to_float(isorange)
 end
 
-@default function heatmap(backend, scene, kw_args)
+@default function heatmap(scene, kw_args)
     linewidth = to_float(linewidth)
     levels = to_float(levels)
     heatmap = to_array(heatmap)
@@ -210,10 +209,10 @@ end
 end
 
 
-function expand_kwargs(backend, scene, kw_args)
+function expand_kwargs(scene, kw_args)
     # TODO get in all the shorthands from Plots.jl
     attributes = Dict{Symbol, Any}(kw_args)
-    shared_defaults(backend, scene, attributes)
+    shared_defaults(scene, attributes)
 end
 
 const atomic_funcs = (
@@ -251,7 +250,7 @@ const atomic_funcs = (
 
     ## Attributes:
 
-    The same as for [lines](@ref)
+    The same as for [`lines`](@ref)
     """,
     # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
     :mesh => """
@@ -272,6 +271,11 @@ const atomic_funcs = (
     :wireframe => """
         wireframe(x, y, z) / wireframe(positions) / wireframe(mesh)
     Draws a wireframe either interpreted as a surface or mesh
+    """,
+
+    :legend => """
+        legend(series, labels)
+    creates a legend from an array of plots and labels
     """
 )
 
@@ -289,8 +293,8 @@ for (func, docstring) in atomic_funcs
         $($(docstring))
         """
         function $func(a::T, args...; kw_args...) where T
-            if T != Backend
-                $func(current_backend[], a, args...; kw_args...)
+            if T != Scene
+                $func(get_global_scene(), a, args...; kw_args...)
             else
                 # keyword argument signature should never contain the backend.
                 # if so, it must come from the function defined below
@@ -298,8 +302,8 @@ for (func, docstring) in atomic_funcs
                 error("Signature $func($ts) is not implemented")
             end
         end
-        function $func(backend::Backend, args...; kw_args...)
-            $func(backend, args..., expand_kwargs(backend, get_global_scene(), kw_args))
+        function $func(scene::Scene, args...; kw_args...)
+            $func(scene, args..., expand_kwargs(scene, kw_args))
         end
         export $func
     end
@@ -307,20 +311,57 @@ end
 
 
 
+
+"""
+Get's the function a scene got created with
+"""
+function plotfunction(scene::Scene)
+    # TODO if we actually make new types per atomic primitive, we could do this performant and more elegantly
+    scene.name == :scatter && return scatter
+    scene.name == :lines && return lines
+    scene.name == :linesegment && return linesegment
+    scene.name == :mesh && return mesh
+    scene.name == :poly && return poly
+    scene.name == :surface && return surface
+    scene.name == :wireframe && return wireframe
+    scene.name == :image && return image
+    scene.name == :heatmap && return heatmap
+    scene.name == :volume && return volume
+    scene.name == :meshscatter && return meshscatter
+    error("$(scene.name) wasn't created by any plot command")
+end
+
+
+"""
+Recreates a similar plot with new data
+"""
+function Base.similar(scene::Scene, newdata...; kw_args...)
+    f = plotfunction(scene)
+    p = parent(scene)
+    attributes = expand_kwargs(scene, kw_args)
+    attributes = merge(scene.data, attributes)
+    for elem in (:positions, :x, :y, :z)
+        delete!(attributes, elem)
+    end
+    f(p, newdata..., attributes)
+end
+
+
+
 for func in (:image, :heatmap, :lines, :surface)
     # Higher level atomic signatures
     @eval begin
-        function $func(b::Backend, data::AbstractMatrix, attributes::Dict)
-            $func(b, 1:size(data, 1), 1:size(data, 2), data, attributes)
+        function $func(scene::Scene, data::AbstractMatrix, attributes::Dict)
+            $func(scene, 1:size(data, 1), 1:size(data, 2), data, attributes)
         end
-        function $func(b::makie, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
+        function $func(scene::Scene, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
             if !applicable(f, x[1], y[1])
                 error("You need to pass a function like f(x::$T1, y::$T2). Found: $f")
             end
             T = typeof(f(x[1], y[1]))
             z = similar(x, T, (length(x), length(y)))
             z .= f.(x, y')
-            $func(b, x, y, z, attributes)
+            $func(scene, x, y, z, attributes)
         end
     end
 end

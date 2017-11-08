@@ -36,10 +36,6 @@ end
 
 Media.media(Scene, Media.Plot)
 
-function Juno.render(e::Juno.Editor, plt::Scene)
-    Juno.render(e, nothing)
-end
-
 const use_atom_plot_pane = Ref(false)
 use_plot_pane(x::Bool = true) = (use_atom_plot_pane[] = x)
 

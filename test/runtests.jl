@@ -1,9 +1,10 @@
-using MakiE, FileIO, GLFW
+using MakiE, FileIO, GLFW, GeometryTypes
 
 img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
-GLFW.SetWindowSize(GLWindow.nativewindow(scene[:screen]), 500, 500)
-image(img);
+is = image(img)
+center!(scene)
+similar(is, )
 
 img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
@@ -75,5 +76,66 @@ custom_theme(scene)
 psurf = surface(vx, 1:0.1:2, psurf[:z])
 center!(scene)
 
+scene = Scene()
+sv = scatter(rand(Point3f0, 100))
+similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
 
-scatter(rand(Point3f0, 100))
+
+using MakiE, GeometryTypes
+scene = Scene()
+x = map([:dot, :dash, :dashdot]) do ls
+    linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls)
+end
+push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
+center!(scene)
+l = MakiE.legend(x, ["hallo", "mah dude", "legit shit", "better shit"])
+
+l[:position] = (0.05, 0.75)
+
+
+scene = Scene()
+y = [
+ -0.997669
+ -0.979084
+ -0.942261
+ -0.887885
+ -0.81697
+ -0.730836
+ -0.631088
+ -0.519584
+ -0.398401
+ -0.269797
+ -0.136167
+  0.0
+  0.136167
+  0.269797
+  0.398401
+  0.519584
+  0.631088
+  0.730836
+  0.81697
+  0.887885
+  0.942261
+  0.979084
+  0.997669
+]
+contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
+center!(scene)
+
+using FileIO, MakiE, GeometryTypes, MakiE
+lakemesh = load(Pkg.dir("DiffEqProblemLibrary", "src", "premade_meshes.jld"))["lakemesh"]
+scene = Scene()
+
+function MakiE.to_mesh(b, m::typeof(lakemesh))
+    vertices = map(1:size(m.node, 1)) do i
+        Point3f0(ntuple(j-> m.node[i, j], Val{2})..., 0)
+    end
+    triangles = map(1:size(m.elem, 1)) do i
+        GLTriangle(Int.(ntuple(j-> m.elem[i, j], Val{3})))
+    end
+    GLNormalMesh(vertices, triangles)
+end
+
+wireframe(lakemesh)
+m = mesh(lakemesh)
+center!(scene)
