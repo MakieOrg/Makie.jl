@@ -40,7 +40,7 @@ Pkg.checkout("GLVisualize", "sd/makie")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
 Pkg.checkout("MeshIO", "sd/objuv")
-Pkg.checkout("GeometryTypes", "sd/sphereuv")
+Pkg.checkout("GeometryTypes")
 ```
 
 Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
