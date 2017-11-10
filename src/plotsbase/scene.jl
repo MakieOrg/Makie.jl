@@ -253,7 +253,7 @@ function Scene(;
         if resolution == nothing
             resolution = GLWindow.standard_screen_resolution()
         end
-        w = Screen(resolution = resolution, color = to_color(nothing, color))
+        w = Screen("Makie", resolution = resolution, color = to_color(nothing, color))
         GLWindow.add_complex_signals!(w)
         render_task[] = @async render_loop(tsig, w)
     end
