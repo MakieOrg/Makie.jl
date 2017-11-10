@@ -18,6 +18,8 @@ const makie = Scene{:makie}
 
 include("plotsbase/atomics.jl")
     # The actual implementation
+
+    include("atomics/shared.jl")
     include("atomics/scatter.jl")
     include("atomics/lines.jl")
     include("atomics/text.jl")
@@ -42,7 +44,7 @@ export available_marker_symbols, available_gradients, render_frame
 
 # conversion
 
-export to_float, to_markersize, to_spritemarker, to_linestyle, to_pattern
+export to_float, to_markersize2d, to_spritemarker, to_linestyle, to_pattern
 export to_color, to_colormap, to_colornorm, to_array, to_mesh, to_surface
 export to_positions, to_rotations
 
@@ -64,7 +66,8 @@ export to_surface
 export to_spritemarker
 export to_static_vec
 export to_rotations
-export to_markersize
+export to_markersize2d
+export to_markersize3d
 export to_linestyle
 export to_normals
 export to_faces

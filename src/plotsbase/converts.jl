@@ -3,6 +3,17 @@ const VecLike{N, T} = Union{NTuple{N, T}, StaticVector{N, T}}
 
 
 """
+Takes a camera symbol, one of :auto, :perspective, :orthographic, :pixel
+"""
+function to_camera(b, x::Symbol)
+    if x in (:auto, :perspective, :orthographic, :pixel)
+        return x
+    else
+        error(":$x is not a supported camera symbol. Try one of :auto, :perspective, :orthographic, :pixel")
+    end
+end
+
+"""
 3 Numbers for each dimension
 """
 to_3floats(b, x::Tuple) = to_float.(b, x)
@@ -378,14 +389,24 @@ Any AbstractArray which elements can be converted to Vec4 (as a quaternion x, y,
 to_rotations(b, x::AbstractVector) = to_static_vec(b, x)
 
 """
-    to_markersize(b, x)
+    to_markersize2d(b, x)
 Anything that can be converted to `Vec2f0` for x, y scale
 """
-to_markersize(b, x::Number) = Vec2f0(x)
-to_markersize(b, x::Tuple) = Vec2f0(x)
-to_markersize(b, x::StaticVector) = Vec2f0(x)
-to_markersize(b, x::AbstractVector) = Vec2f0.(x)
+to_markersize2d(b, x::Number) = Vec2f0(x)
+to_markersize2d(b, x::Tuple) = Vec2f0(x)
+to_markersize2d(b, x::StaticVector) = Vec2f0(x)
+to_markersize2d(b, x::AbstractVector) = Vec2f0.(x)
 
+
+# TODO generically implement these to share implementation with to_position etc
+"""
+    to_markersize3d(b, x)
+Anything that can be converted to `Vec3f0` for x, y, z scale
+"""
+to_markersize3d(b, x::Number) = Vec3f0(x)
+to_markersize3d(b, x::Tuple) = Vec3f0(x)
+to_markersize3d(b, x::StaticVector) = Vec3f0(x)
+to_markersize3d(b, x::AbstractVector) = Vec3f0.(x)
 
 """
     to_linestyle(b, x)

@@ -36,6 +36,17 @@ function Scene(args...)
     Scene{current_backend[]}(args...)
 end
 
+"""
+Creates a child scene containing a new window!
+"""
+function Scene(parent::Scene{Backend}, area, name = :scene, data = Dict{Symbol, Any}(); screen_kw_args...) where Backend
+    screen = getscreen(parent)
+    newscreen = Screen(screen; area = to_signal(area), screen_kw_args...)
+    data[:screen] = newscreen
+    Scene{Backend}(name, parent, data, nothing)
+end
+
+
 function (::Type{Scene{Backend}})(data::Dict, name = :scene) where Backend
     Scene{Backend}(name, Nullable{Scene{Backend}}(), data, nothing)
 end
@@ -45,21 +56,54 @@ function (::Type{Scene{Backend}})(pair1::Pair, tail::Pair...) where Backend
     Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
 end
 
+
+"""
+Inserts `childscene` into the scene graph of `scene`. This will display the
+`childscene` in `scene`, when it is visible.
+`show!` will get called by default for any plotting command, and can be disabled
+and manually added via `show` by doing e.g.
+    ```
+    scene = Scene()
+    scatplot = scatter(rand(10), rand(10), show = false)
+    view!(scene, scatplot)
+    ```
+"""
+function show!(scene::Scene{Backend}, childscene::Scene{Backend}) where Backend
+    camera = to_value(childscene, :camera) # should always be available!
+    screen = scene[:screen]
+    cams = collect(keys(screen.cameras))
+    viz = native_visual(childscene)
+    viz == nothing && error("`childscene` does not contain any visual, so can't be added to `scene` with `show!`!")
+    cam = if camera == :auto
+        if isempty(cams)
+            bb = value(GLAbstraction.boundingbox(viz))
+            # infer if it's 3D
+            widths(bb)[3] ≈ 0 ? :orthographic_pixel : :perspective
+        else
+            # use the already present cam
+            first(cams)
+        end
+    elseif camera == :pixel
+        :fixed_pixel
+    elseif camera == :orthographic
+        :orthographic_pixel
+    else
+        :perspective
+    end
+    _view(viz, screen, camera = cam)
+    if isempty(cams)
+        scene[:camera] = first(screen.cameras)[2] # The camera just got created by _view
+    end
+    childscene
+end
+
 function insert_scene!(scene::Scene{Backend}, name, viz, attributes) where Backend
     uname = unique_predictable_name(scene, name)
     childscene = Scene{Backend}(name, scene, attributes, viz)
     scene.data[uname] = childscene
-    cams = collect(keys(scene[:screen].cameras))
-    cam = if isempty(cams)
-        bb = value(GLAbstraction.boundingbox(viz))
-        widths(bb)[3] ≈ 0 ? :orthographic_pixel : :perspective
-    else
-        first(cams)
-    end
-    _view(viz, scene[:screen], camera = cam)
-    if isempty(cams)
-        scene[:camera] = first(scene[:screen].cameras)[2]
-    end
+
+    to_value(childscene, :show) && show!(scene, childscene)
+
     childscene
 end
 
@@ -81,20 +125,22 @@ function Base.delete!(scene::Scene, name::Symbol)
     end
 end
 
-parent(x::Scene) = get(x.parent)
+parent(scene::Scene) = get(scene.parent)
 
-function rootscene(x::Scene)
-    while !isnull(x.parent)
-        x = parent(x)
+function rootscene(scene::Scene)
+    while !isnull(scene.parent)
+        scene = parent(scene)
     end
-    x
+    scene
 end
-function rootscreen(x::Scene)
-    getscreen(x)
+function rootscreen(scene::Scene)
+    getscreen(rootscene(scene))
 end
-function getscreen(x::Scene)
-    root = rootscene(x)
-    get(root, :screen, nothing)
+function getscreen(scene::Scene)
+    while !isnull(scene.parent) && !haskey(scene, :screen)
+        scene = parent(scene)
+    end
+    get(scene, :screen, nothing)
 end
 
 include("signals.jl")
@@ -168,6 +214,12 @@ function Base.empty!(scene::Scene)
     empty!(scene.data)
 end
 
+const render_task = RefValue{Task}()
+
+function block(scene::Scene)
+    wait(render_task[])
+end
+
 function Scene(;
         theme = default_theme,
         resolution = nothing,
@@ -203,7 +255,7 @@ function Scene(;
         end
         w = Screen(resolution = resolution, color = to_color(nothing, color))
         GLWindow.add_complex_signals!(w)
-        @async render_loop(tsig, w)
+        render_task[] = @async render_loop(tsig, w)
     end
 
     nw = GLWindow.nativewindow(w)

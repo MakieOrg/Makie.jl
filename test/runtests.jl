@@ -1,10 +1,12 @@
-using MakiE, FileIO, GLFW, GeometryTypes
+using MakiE, FileIO, GLFW, GeometryTypes, Reactive
 
 img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
 is = image(img)
 center!(scene)
-similar(is, )
+subscene = Scene(scene, Signal(SimpleRectangle(0, 0, 200, 200)))
+scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
+
 
 img = load(homedir()*"/Desktop/matcha.png")
 scene = Scene()
@@ -81,43 +83,54 @@ sv = scatter(rand(Point3f0, 100))
 similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
 
 
-using MakiE, GeometryTypes
+using MakiE, GeometryTypes, GLVisualize
 scene = Scene()
-x = map([:dot, :dash, :dashdot]) do ls
-    linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls)
+x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
+    linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
 end
 push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
 center!(scene)
-l = MakiE.legend(x, ["hallo", "mah dude", "legit shit", "better shit"])
+l = MakiE.legend(x, ["attribute $i" for i in 1:4])
 
-l[:position] = (0.05, 0.75)
+l[:position] = (0.089, 0.75)
+l[:gap] = 20
+l[:textgap] = 20
+l[:padding] = 20
+l[:scatterpattern]
 
+
+scene = Scene(resolution = (500, 500))
+large_sphere = HyperSphere(Point3f0(0), 1f0)
+positions = decompose(Point3f0, large_sphere)
+colS = [Colors.RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:length(positions)]
+sizesS = [rand(Vec3f0) .* 0.5f0 for i = 1:length(positions)]
+meshscatter(positions, color = colS, markersize = sizesS)
 
 scene = Scene()
 y = [
- -0.997669
- -0.979084
- -0.942261
- -0.887885
- -0.81697
- -0.730836
- -0.631088
- -0.519584
- -0.398401
- -0.269797
- -0.136167
-  0.0
-  0.136167
-  0.269797
-  0.398401
-  0.519584
-  0.631088
-  0.730836
-  0.81697
-  0.887885
-  0.942261
-  0.979084
-  0.997669
+    -0.997669
+    -0.979084
+    -0.942261
+    -0.887885
+    -0.81697
+    -0.730836
+    -0.631088
+    -0.519584
+    -0.398401
+    -0.269797
+    -0.136167
+    0.0
+    0.136167
+    0.269797
+    0.398401
+    0.519584
+    0.631088
+    0.730836
+    0.81697
+    0.887885
+    0.942261
+    0.979084
+    0.997669
 ]
 contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
 center!(scene)

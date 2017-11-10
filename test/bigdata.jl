@@ -2,20 +2,20 @@ using TextParse
 using TextParse: Record, Field, Numeric, tryparsenext
 
 # Helper type to memory map a file as a string
-struct MMapString{T}
-    # using Type parameter, too lazy to write out the result type of mmap, 
+struct MMapString{T} <: AbstractArray{T, 1}
+    # using Type parameter, too lazy to write out the result type of mmap,
     # but also don't want to loose performance
-    x::T 
+    x::T
 end
 MMapString(path::String) = MMapString(Mmap.mmap(open(path), Vector{UInt8}))
 # we only need to overload the iteration protocol for TextParse to work!
 Base.getindex(x::MMapString, i) = Char(x.x[i])
 Base.next(x::MMapString, i) = Char(x.x[i]), i + 1
 Base.done(x::MMapString, i) = i > length(x.x)
-Base.start(x::MMapString, i) = 1
-Base.length(x::MMapString) = length(x.x)
+Base.start(x::MMapString) = 1
+Base.size(x::MMapString) = size(x.x)
 
-# Base.write creates a mutable container (Ref) for its argument to savely pass it to C. 
+# Base.write creates a mutable container (Ref) for its argument to savely pass it to C.
 # Even Base.unsafe_write that directly takes a pointer still has a check that allocates 128 bytes.
 # Be ready for unsafe_unsafe_write, short uuwrite.
 # This saves us 40 seconds && 3.5 gb less memory allocation!
@@ -29,7 +29,7 @@ function save2bin(path, n = typemax(Int))
     str = MMapString(path)
     # Parser descriptor of 'num,num\n' which is the format in the csv
     rec = Record((
-        Field(Numeric(Float32), delim = ','), 
+        Field(Numeric(Float32), delim = ','),
         Field(Numeric(Float32), eoldelim = true)
     ))
     # skip the header...
@@ -40,7 +40,7 @@ function save2bin(path, n = typemax(Int))
         p_or_null, pos = tryparsenext(
             rec, str, pos, length(str)
         )
-        isnull(p_or_null) && continue 
+        isnull(p_or_null) && continue
         p = get(p_or_null)
         uuwrite(io, p)
         i += 1
@@ -54,7 +54,7 @@ save2bin(homedir() * "/Downloads/gps-points.csv");
 toc()
 
 """
-Transforms from longitude/latitude to pixel on screen, with `dims` refering to 
+Transforms from longitude/latitude to pixel on screen, with `dims` refering to
 the dimensions of the screen in pixel
 """
 @inline function gps2pixel(point, dims)
@@ -108,7 +108,7 @@ close(io)
 # Or an interactive version
 using MakiE, Images
 io = open(homedir() * "/gpspoints.bin")
-# Now that we have the data as a binary blob, we can just memory map 
+# Now that we have the data as a binary blob, we can just memory map
 # it as a Vector of points (NTuple{2, Float32})
 points = Mmap.mmap(io, Vector{NTuple{2, Float32}})
 resolution = (600, 960)
@@ -130,3 +130,23 @@ while true
     stop == length(points) && break
 end
 finish(vio, "gif") # finish streaming and export as gif!
+
+
+using Matcha
+
+
+function test(str, pattern)
+    res = matchat(str, 1, pattern)
+    for i = 2:length(str)
+        match, res = matchat(str, i, pattern)
+        match && return res
+    end
+    res
+end
+
+mf(x) = x in ('h', 'y', 'e')
+
+str = MMapString(homedir() * "/gpspoints.bin")
+
+pattern = (Greed(x-> x in ('h', 'y', 'e'), 3:3),)
+@time matchone(str, pattern)

@@ -130,7 +130,6 @@ function finish(io::VideoStream, typ = "mkv"; remove_mkv = true)
         error("Video type $typ not known")
     end
 end
-
 Base.mimewritable(::MIME"text/html", scene::VideoStream) = true
 
 function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)

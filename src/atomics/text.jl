@@ -56,6 +56,7 @@ function Base.empty!(tb::TextBuffer{N}) where N
     resize!(tb.uv_offset_width, 0)
     resize!(tb.scale, 0)
     push!(tb.range, 0)
+    Reactive.set_value!(tb.robj.boundingbox, AABB{Float32}())
     push!(tb.robj.boundingbox, AABB{Float32}())
     return
 end
@@ -90,6 +91,7 @@ function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, sc
         bb = update(bb, pos3d .+ Vec{3, Float32}(to_nd(s, Val{3}, 0)))
     end
     push!(tb.robj.boundingbox, bb)
+    Reactive.set_value!(tb.robj.boundingbox, bb)
     push!(tb.range, length(tb.positions))
     return
 end

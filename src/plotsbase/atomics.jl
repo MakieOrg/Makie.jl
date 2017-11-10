@@ -13,6 +13,8 @@ end
     offset = to_offset(offset)
     rotation = to_rotation(rotation)
     model = to_modelmatrix(scale, offset, rotation)
+    camera = to_camera(camera)
+    show = to_bool(show)
 end
 
 # Note that this will create a function called surface_defaults
@@ -133,7 +135,7 @@ end
     glowcolor = to_color(glowcolor)
     glowwidth = to_float(glowwidth)
 
-    markersize = to_markersize(markersize)
+    markersize = to_markersize2d(markersize)
 
     rotations = to_rotations(rotations)
 end
@@ -169,7 +171,7 @@ end
     )
 
     marker = to_mesh(marker)
-    markersize = to_markersize(markersize)
+    markersize = to_markersize3d(markersize)
     rotations = to_rotations(rotations)
 end
 
@@ -262,7 +264,7 @@ const atomic_funcs = (
     Plots a marker for each element in xyz/positions
     """,
     :meshscatter => """
-        scatter(x, y, z) / scatter(x, y) / scatter(positions)
+        meshscatter(x, y, z) / meshscatter(x, y) / meshscatter(positions)
     Plots a mesh for each element in xyz/positions
     """,
     # :text => """
@@ -308,8 +310,6 @@ for (func, docstring) in atomic_funcs
         export $func
     end
 end
-
-
 
 
 """

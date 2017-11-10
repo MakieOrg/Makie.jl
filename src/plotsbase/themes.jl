@@ -39,6 +39,9 @@ macro theme(assignment)
 end
 
 
+# BIG TODO: make themes + defaults + conversion function @default + @theme macro suck less!
+# Right now there is a lot of annoying and unecessary dublication going on
+
 function default_theme(scene)
     q1 = qrotation(Vec3f0(1, 0, 0), -0.5f0*pi)
     q2 = qrotation(Vec3f0(0, 0, 1), 1f0*pi)
@@ -72,8 +75,12 @@ function default_theme(scene)
         scale = to_scale(Vec3f0(1))
         offset = to_offset(Vec3f0(0))
 
+        camera = to_camera(:auto)
         visible = to_bool(true)
+        show = to_bool(true)
+
         drawover = to_bool(false)
+
         color = colors
         linewidth = to_float(1)
         colormap = to_colormap(:YlGnBu)
@@ -90,7 +97,7 @@ function default_theme(scene)
 
         scatter = begin
             marker = to_spritemarker(Circle)
-            markersize = to_markersize(0.1)
+            markersize = to_markersize2d(0.1)
             strokecolor = to_color(RGBA(0, 0, 0, 0))
             strokewidth = to_float(0)
             glowcolor = to_color(RGBA(0, 0, 0, 0))
@@ -100,7 +107,7 @@ function default_theme(scene)
 
         meshscatter = begin
             marker = to_mesh(Sphere(Point3f0(0), 0.1f0))
-            markersize = to_markersize(1)
+            markersize = to_markersize3d(1)
             rotations = meshrotation
         end
 
@@ -143,6 +150,23 @@ function default_theme(scene)
             absorption = to_float(1f0)
             isovalue = to_float(0.5f0)
             isorange = to_float(0.01f0)
+        end
+        legend = begin
+            backgroundcolor = to_color(:white)
+            strokecolor = to_color(RGBA(0.3, 0.3, 0.3, 0.9))
+            strokewidth = to_float(2)
+            position = to_position((0.1, 0.5))
+            gap = to_float(15)
+            textgap = to_float(20)
+            labelwidth = to_float(20)
+            padding = to_float(20)
+            align = to_textalign((:left, :hcenter))
+            rotation = to_rotation(Vec4f0(0, 0, 0, 1))
+            textcolor = to_color(:black)
+            textsize = to_float(16)
+            markersize = to_markersize2d(5)
+            linepattern = to_positions(Point2f0[(0, 0), (1, 0.0)])
+            scatterpattern = to_positions(Point2f0[(0.5, 0.0)])
         end
     end
     scene[:theme] = theme

@@ -8,7 +8,8 @@ values a bit!
 function expand_for_glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:marker, :positions, :x, :y, :z, :scale, :rotation, :offset) && continue
+        k in (:marker, :positions, always_skip...) && continue
+
         if k == :rotations
             k = :rotation
             v = Vec4f0(0, 0, 0, 1)
@@ -52,7 +53,7 @@ end
 function mesh2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:marker, :positions, :x, :y, :z, :scale, :rotation, :offset) && continue
+        k in (:marker, :positions, always_skip...) && continue
         if k == :rotations
             k = :rotation
         end

@@ -84,7 +84,7 @@ end
 function lines_2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
-        k in (:x, :y, :z, :scale, :rotation, :offset) && continue
+        k in (:x, :y, :z, :scale, :rotation, :offset, :camera) && continue
         if k == :linestyle
             # TODO implement pattern as signal
             result[:pattern] = to_value(v)

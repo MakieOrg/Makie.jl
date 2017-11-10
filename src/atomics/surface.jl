@@ -4,11 +4,11 @@ function surface_2glvisualize(kw_args)
     xy = []
 
     for (k, v) in kw_args
-        k in (:z, :scale, :rotation, :offset) && continue
         if k in (:x, :y)
             push!(xy, v)
             continue
         end
+        k in always_skip && continue
         if k == :colornorm
             k = :color_norm
         end
