@@ -25,7 +25,7 @@ Now, the first simple way of theming your plots/applying a series of attributes 
 
 ```@example theming
 @theme theme = begin
-    markersize = to_markersize(0.01)
+    markersize = to_markersize2d(0.01)
     strokecolor = to_color(:white)
     strokewidth = to_float(0.01)
 end

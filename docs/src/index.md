@@ -35,8 +35,5 @@ A fresh start instead of the already available GLVisualize backend for Plots.jl 
     d) World age issues because of the eval
 
 Please read the chapters [Scene](@ref), [Functions](@ref), [Interaction](@ref), [Extending](@ref), [Backends](@ref) and [Devdocs](@ref) to see how MakiE solves those issues!
-<<<<<<< HEAD
-The code that will be moved back to Plots.jl lives in [plotbase](https://github.com/SimonDanisch/MakiE.jl/tree/master/src/plotsbase)
-=======
+
 The code that will be moved back to Plots.jl lives in [plotsbase](https://github.com/SimonDanisch/MakiE.jl/tree/master/src/plotsbase).
->>>>>>> 277494f9743b3293280ad464322ff1ee92e86a7f

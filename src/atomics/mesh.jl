@@ -31,7 +31,9 @@ end
 function mesh_2glvisualize(attributes)
     result = Dict{Symbol, Any}()
     for (k, v) in attributes
-        k in (:mesh, :positions, :x, :y, :z, :normals, :indices, :scale, :rotation, :offset) && continue
+
+        k in (:mesh, :normals, :indices, :positions, always_skip...) && continue
+
         if k == :shading
             result[k] = to_value(v) # as signal not supported currently, will require shader signals
             continue

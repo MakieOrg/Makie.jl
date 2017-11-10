@@ -44,7 +44,8 @@ to_static_vec
 
 to_rotations
 
-to_markersize
+to_markersize2d
+to_markersize3d
 
 to_linestyle
 

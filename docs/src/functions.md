@@ -20,6 +20,22 @@ save("scatter.png", scene); nothing # hide
 scatter
 ```
 
+# Meshscatter
+
+```@example
+using MakiE, GLVisualize, GeometryTypes
+scene = Scene(resolution = (500, 500))
+meshscatter(Sphere(Point3f0(0), 1f0), marker = loadasset("cat.obj"), markersize = 0.2)
+center!(scene)
+save("meshscatter.png", scene); nothing # hide
+```
+![](meshscatter.png)
+
+
+```@docs
+meshscatter
+```
+
 ## Lines
 
 ```@example
