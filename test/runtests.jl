@@ -28,7 +28,7 @@ end
 
 function run()
 
-    img = load(homedir()*"/Desktop/matcha.png")
+    img = loadasset("doge.png")
     scene = Scene()
     is = image(img)
     center!(scene)
@@ -51,10 +51,6 @@ function run()
     r = linspace(-0.5, 2.5, 4);
     axis(r, r, r);
     center!(scene);
-
-    img = load(homedir()*"/Desktop/matcha.png")
-    scene = Scene()
-    image(img);
 
     scene = Scene()
     MakiE.MakiE.volume(rand(32, 32, 32), algorithm = :iso)
@@ -246,7 +242,6 @@ function run()
     scene = Scene(resolution = (500, 500))
 
     r = linspace(-2, 2, 40)
-    surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
     N = 40
     r = linspace(-2, 2, 40)
     surface(
