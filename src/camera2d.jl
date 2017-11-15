@@ -1,4 +1,4 @@
-using GLAbstraction, MakiE, GeometryTypes
+using GLAbstraction, Makie, GeometryTypes
 using GLAbstraction: orthographicprojection, translationmatrix
 using StaticArrays
 

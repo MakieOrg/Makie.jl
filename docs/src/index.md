@@ -1,7 +1,7 @@
-# MakiE
+# Makie
 
 
-MakiE is a high level plotting interface for [GLVisualize](https://github.com/JuliaGL/GLVisualize.jl/), with a focus on interactivity and speed.
+Makie is a high level plotting interface for [GLVisualize](https://github.com/JuliaGL/GLVisualize.jl/), with a focus on interactivity and speed.
 
 It can also be seen as a prototype for a new design of [Plots.jl](https://github.com/JuliaPlots/Plots.jl),
 since it will implement a very similar interface and incorporate a lot of the ideas.
@@ -34,6 +34,6 @@ A fresh start instead of the already available GLVisualize backend for Plots.jl 
     c) Backend dependencies get loaded via a function that gets evaled, so it's a bit awkward to use those dependencies in the function inside a backend
     d) World age issues because of the eval
 
-Please read the chapters [Scene](@ref), [Functions](@ref), [Interaction](@ref), [Extending](@ref), [Backends](@ref) and [Devdocs](@ref) to see how MakiE solves those issues!
+Please read the chapters [Scene](@ref), [Functions](@ref), [Interaction](@ref), [Extending](@ref), [Backends](@ref) and [Devdocs](@ref) to see how Makie solves those issues!
 
-The code that will be moved back to Plots.jl lives in [plotsbase](https://github.com/SimonDanisch/MakiE.jl/tree/master/src/plotsbase).
+The code that will be moved back to Plots.jl lives in [plotsbase](https://github.com/SimonDanisch/Makie.jl/tree/master/src/plotsbase).

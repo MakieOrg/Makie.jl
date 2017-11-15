@@ -1,4 +1,4 @@
-using MakiE, GeometryTypes, Colors
+using Makie, GeometryTypes, Colors
 
 scene = Scene()
 # this is just a work around that will be gone immediatly after I figure out how to best

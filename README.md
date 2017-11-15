@@ -1,13 +1,13 @@
-[![code](https://github.com/SimonDanisch/MakiE.jl/blob/master/docs/header.png?raw=true)](https://github.com/SimonDanisch/MakiE.jl/blob/master/test/makie_header.jl)
+[![code](https://github.com/SimonDanisch/Makie.jl/blob/master/docs/header.png?raw=true)](https://github.com/SimonDanisch/Makie.jl/blob/master/test/makie_header.jl)
 
-# MakiE
+# Makie
 
 From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
 
 
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.glvisualize.com/MakiE.jl/stable/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.glvisualize.com/Makie.jl/stable/)
 
 It's Halloween :)
 
@@ -34,13 +34,18 @@ Animating a surface:
 This package is not released yet so a bit awkward to set up. Here are the steps:
 
 ```julia
-Pkg.clone("https://github.com/SimonDanisch/MakiE.jl.git")
+Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
 Pkg.checkout("GLAbstraction", "sd/makie")
 Pkg.checkout("GLVisualize", "sd/makie")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
 Pkg.checkout("MeshIO", "sd/objuv")
 Pkg.checkout("GeometryTypes")
+
+# For precompilation
+Pkg.checkout("StaticArrays")
+Pkg.checkout("GLWindow", "sd/static")
+Pkg.checkout("GLFW")
 ```
 
 Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.

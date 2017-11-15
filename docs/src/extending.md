@@ -1,6 +1,6 @@
 # Extending
 
-There are 3 ways to extend MakiE:
+There are 3 ways to extend Makie:
 
 1) By creating a new function combining multiple plotting commands (duh)
 2) By overloading conversions for your custom type
@@ -27,18 +27,18 @@ or for a specific position type.
 This can look something like this:
 
 ```@example to_position
-using MakiE, GeometryTypes
+using Makie, GeometryTypes
 
 # To simplify the example, we take the already existing GeometryTypes.Circle type, which
 # can already be decomposed into positions
-function MakiE.to_positions(backend, x::Circle)
+function Makie.to_positions(backend, x::Circle)
     # Convert to a type to_positions can handle.
     # Everything that usually works in e.g. scatter/lines should be allowed here.
     positions = decompose(Point2f0, x, 50)
     # Pass your position data to to_positions,
     # just in case the backend has some extra converts
     # that are not visible in the user facing API.
-    MakiE.to_positions(backend, positions)
+    Makie.to_positions(backend, positions)
 end
 scene = Scene(resolution = (500, 500))
 p1 = lines(Circle(Point2f0(0), 5f0))
@@ -76,7 +76,7 @@ end
 
 ## Option 3
 
-Option 3 is pretty unique and is a real extension of MakiE's functionality as it
+Option 3 is pretty unique and is a real extension of Makie's functionality as it
 adds a new primitive drawing type.
 This interface will likely change a lot in the future, since it carries quite a lot of
 technical debt from the design of GLAbstraction + GLVisualize, but this is how you can do it right now:

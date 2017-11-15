@@ -5,7 +5,7 @@ include("colors.jl")
 include("defaults.jl")
 
 """
-A MakiE flavored Signal that can be used to link attributes
+A Makie flavored Signal that can be used to link attributes
 """
 struct Node{T, F}
     signal::Signal{T}

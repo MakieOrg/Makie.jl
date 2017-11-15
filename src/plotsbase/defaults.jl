@@ -3,7 +3,7 @@ using MacroTools, Reactive
 attribute_doc(name, func, indent) = ""
 function attribute_doc(name, func::Symbol, indent)
     io = IOBuffer()
-    f = getfield(MakiE, func)
+    f = getfield(Makie, func)
     println(io, "Attribute `$name`, conversion function [`$func`](@ref)")
     String(take!(io))
 end

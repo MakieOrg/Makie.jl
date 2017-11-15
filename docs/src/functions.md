@@ -7,7 +7,7 @@ These are the most atomic operations from which one can stack together more comp
 ## Scatter
 
 ```@example
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 scatter(rand(10), rand(10))
 center!(scene)
@@ -23,7 +23,7 @@ scatter
 # Meshscatter
 
 ```@example
-using MakiE, GLVisualize, GeometryTypes
+using Makie, GLVisualize, GeometryTypes
 scene = Scene(resolution = (500, 500))
 meshscatter(Sphere(Point3f0(0), 1f0), marker = loadasset("cat.obj"), markersize = 0.2)
 center!(scene)
@@ -39,7 +39,7 @@ meshscatter
 ## Lines
 
 ```@example
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 x = linspace(0, 3pi)
 lines(x, sin.(x))
@@ -56,7 +56,7 @@ lines
 ## Surface
 
 ```@example surf
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 N = 32
 function xy_data(x,y,i, N)
@@ -83,7 +83,7 @@ wireframe
 ```
 
 ```@example surf
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 surf = wireframe(range, range, z)
 center!(scene)
@@ -99,7 +99,7 @@ mesh
 ```
 
 ```@example mesh
-using MakiE
+using Makie
 using GLVisualize: loadasset, assetpath
 
 scene = Scene(resolution = (500, 500))
@@ -131,11 +131,11 @@ save("loadedmesh.png", scene); nothing # hide
 ![](loadedmesh.png)
 
 ```@example mesh
-using MakiE, GeometryTypes, FileIO, GLVisualize
+using Makie, GeometryTypes, FileIO, GLVisualize
 
 scene = Scene(resolution = (500, 500))
 cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-MakiE.mesh(cat, color = loadasset("diffusemap.tga"))
+Makie.mesh(cat, color = loadasset("diffusemap.tga"))
 center!(scene)
 save("texturemesh.png", scene); nothing # hide
 ```
@@ -148,7 +148,7 @@ heatmap
 ```
 
 ```@example heatmap
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 heatmap(rand(32, 32))
 center!(scene)
@@ -166,7 +166,7 @@ volume
 
 ```@example volume
 #julia
-using MakiE
+using Makie
 scene = Scene()
 volume(rand(32, 32, 32), algorithm = :iso)
 center!(scene)

@@ -1,6 +1,6 @@
-site_name:        MakiE.jl
-repo_url:         https://github.com/SimonDanisch/MakiE.jl
-site_description: Documentation for MakiE
+site_name:        Makie.jl
+repo_url:         https://github.com/SimonDanisch/Makie.jl
+site_description: Documentation for Makie
 site_author:      Simon Danisch
 
 theme: cinder

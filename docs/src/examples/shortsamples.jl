@@ -1,5 +1,5 @@
 #julia
-using MakiE, GeometryTypes, Colors
+using Makie, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500))
 large_sphere = HyperSphere(Point3f0(0), 1f0)
 positions = decompose(Point3f0, large_sphere)
@@ -11,7 +11,7 @@ axis(r, r, r)
 scene
 
 #julia
-using MakiE, GeometryTypes, Colors
+using Makie, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500))
 large_sphere = HyperSphere(Point3f0(0), 1f0)
 positions = decompose(Point3f0, large_sphere)
@@ -20,7 +20,7 @@ scene
 
 
 #julia
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 function xy_data(x, y)
     r = sqrt(x*x + y*y)
@@ -46,7 +46,7 @@ end
 io
 
 #julia
-using MakiE, GeometryTypes, GLVisualize, GLWindow
+using Makie, GeometryTypes, GLVisualize, GLWindow
 scene = Scene(resolution = (500, 500))
 function xy_data(x, y)
     r = sqrt(x*x + y*y)
@@ -64,10 +64,10 @@ center!(scene)
 scene
 
 #julia
-using MakiE, GeometryTypes, GLVisualize
+using Makie, GeometryTypes, GLVisualize
 scene = Scene(resolution = (500, 500))
 x = GLVisualize.loadasset("cat.obj")
-MakiE.mesh(x.vertices, x.faces, color = :black)
+Makie.mesh(x.vertices, x.faces, color = :black)
 pos = map(x.vertices, x.normals) do p, n
     p => p .+ (normalize(n) .* 0.05f0)
 end
@@ -75,7 +75,7 @@ linesegment(pos)
 scene
 
 #julia
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 x = [0, 1, 2, 0]
 y = [0, 0, 1, 2]
@@ -94,7 +94,7 @@ center!(scene)
 scene
 
 #julia
-using MakiE, GLVisualize
+using Makie, GLVisualize
 scene = Scene(resolution = (500, 500))
 mesh(GLVisualize.loadasset("cat.obj"))
 r = linspace(-0.1, 1, 4)
@@ -102,54 +102,54 @@ center!(scene)
 scene
 
 #julia
-using MakiE, GeometryTypes, FileIO, GLVisualize
+using Makie, GeometryTypes, FileIO, GLVisualize
 using GLVisualize: loadasset, assetpath
 scene = Scene(resolution = (500, 500))
 cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-MakiE.mesh(cat, color = loadasset("diffusemap.tga"))
+Makie.mesh(cat, color = loadasset("diffusemap.tga"))
 center!(scene)
 
 #julia
-using MakiE, GeometryTypes
+using Makie, GeometryTypes
 scene = Scene(resolution = (500, 500))
-MakiE.mesh(Sphere(Point3f0(0), 1f0))
+Makie.mesh(Sphere(Point3f0(0), 1f0))
 center!(scene)
 scene
 
 
 #julia
-using MakiE, GeometryTypes, GLVisualize
+using Makie, GeometryTypes, GLVisualize
 scene = Scene(resolution = (500, 500))
 wireframe(GLVisualize.loadasset("cat.obj"))
 center!(scene)
 scene
 
 #julia
-using MakiE, GeometryTypes
+using Makie, GeometryTypes
 scene = Scene(resolution = (500, 500))
 wireframe(Sphere(Point3f0(0), 1f0))
 center!(scene)
 scene
 
 #julia
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 heatmap(rand(32, 32))
 center!(scene)
 
 #julias
-using MakiE, FileIO, GeometryTypes, Colors
+using Makie, FileIO, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500), color = :black)
 earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
 image(earth)
 center!(scene)
 
 #julia
-using MakiE, FileIO, GeometryTypes, Colors
+using Makie, FileIO, GeometryTypes, Colors
 scene = Scene(resolution = (500, 500), color = :black)
 m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
 earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
-MakiE.mesh(m, color = earth)
+Makie.mesh(m, color = earth)
 stars = 100_000
 scatter((rand(Point3f0, stars) .- 0.5) .* 10,
     glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
@@ -158,7 +158,7 @@ scatter((rand(Point3f0, stars) .- 0.5) .* 10,
 scene
 
 #julia
-using MakiE
+using Makie
 scene = Scene()
 volume(rand(32, 32, 32), algorithm = :iso)
 center!(scene)

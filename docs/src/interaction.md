@@ -1,6 +1,6 @@
 # Interaction
 
-MakiE offers a sophisticated referencing system to share attributes across the Scene
+Makie offers a sophisticated referencing system to share attributes across the Scene
 in your plot. This is great for animations and saving resources - also if the backend
 decides to put data on the GPU you might even share those in GPU memory.
 
@@ -14,7 +14,7 @@ of the inputs updates.
 
 
 ```@example 
-using MakiE
+using Makie
 
 scene = Scene(resolution = (500, 500))
 
@@ -68,7 +68,7 @@ It might actually get deprecated, since just accessing the scene directly is con
 ### Animating and sharing on the GPU
 
 ```Julia
-using MakiE
+using Makie
 
 scene = Scene(resolution = (500, 500))
 @ref A = rand(32, 32) # if uploaded to the GPU, it will be shared on the GPU
@@ -85,7 +85,7 @@ end
 ### Simple GUI
 
 ```Julia
-using MakiE
+using Makie
 
 scene = Scene()
 @ref slicer1 = slider(linspace(0, 1, 100)) # create a slider

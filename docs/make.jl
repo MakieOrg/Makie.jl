@@ -1,7 +1,7 @@
-using Documenter, MakiE
+using Documenter, Makie
 
 makedocs(
-    modules = [MakiE],
+    modules = [Makie],
     format = :html,
     sitename = "Plotting in pure Julia",
     pages = [
@@ -29,14 +29,14 @@ makedocs(
 
 ENV["TRAVIS_BRANCH"] = "latest"
 ENV["TRAVIS_PULL_REQUEST"] = "false"
-ENV["TRAVIS_REPO_SLUG"] = "github.com/SimonDanisch/MakiE.jl.git"
+ENV["TRAVIS_REPO_SLUG"] = "github.com/SimonDanisch/Makie.jl.git"
 ENV["TRAVIS_TAG"] = "tag"
 ENV["TRAVIS_OS_NAME"] = "linux"
 ENV["TRAVIS_JULIA_VERSION"] = "0.6"
 
 deploydocs(
     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-    repo   = "github.com/SimonDanisch/MakiE.jl.git",
+    repo   = "github.com/SimonDanisch/Makie.jl.git",
     julia  = "0.6",
     target = "build",
     osname = "linux",
