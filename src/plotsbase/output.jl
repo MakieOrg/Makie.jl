@@ -18,7 +18,7 @@ end
 
 Base.mimewritable(::MIME"image/png", scene::Scene) = true
 
-function Base.show(io::IO, mime::MIME"image/png", scene::MakiE.Scene)
+function Base.show(io::IO, mime::MIME"image/png", scene::Makie.Scene)
     s = to_signal(lift_node(scene, :entered_window) do value
         scene2image(scene)
     end)

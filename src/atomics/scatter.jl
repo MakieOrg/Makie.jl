@@ -1,7 +1,7 @@
 using GeometryTypes, StaticArrays, Colors, GLAbstraction
 
 """
-Hack to quickly make things more consistent inside MakiE, without
+Hack to quickly make things more consistent inside Makie, without
 changing GLVisualize too much! So we need to rewrite the attributes, the names and the
 values a bit!
 """

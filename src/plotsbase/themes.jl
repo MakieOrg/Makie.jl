@@ -26,7 +26,7 @@ function matchnode(assignment)
                     (f_(args__)) |
                     (args__::f_)
                 )
-                return :(to_node($(esc.(args)...), x-> $(esc(f))(MakiE.current_backend[], x))), a
+                return :(to_node($(esc.(args)...), x-> $(esc(f))(Makie.current_backend[], x))), a
             end
         end
     end

@@ -1,5 +1,5 @@
-using MakiE, GeometryTypes, GLAbstraction
-using MakiE: to_signal, add_pan, add_zoom, add_mousebuttons, add_mousedrag, selection_rect
+using Makie, GeometryTypes, GLAbstraction
+using Makie: to_signal, add_pan, add_zoom, add_mousebuttons, add_mousedrag, selection_rect
 using Base: RefValue
 
 scene = Scene()
@@ -16,7 +16,7 @@ cam = Scene(
     :projection => eye(Mat4f0),
     :view => eye(Mat4f0)
 )
-MakiE.update_cam!(cam, to_value(cam, :area))
+Makie.update_cam!(cam, to_value(cam, :area))
 add_zoom(cam, scene)
 add_pan(cam, scene)
 

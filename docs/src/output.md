@@ -1,6 +1,6 @@
 # Input Output
 
-MakiE overloads the FileIO interface.
+Makie overloads the FileIO interface.
 So you can just write e.g.:
 ```Julia
 save(scene, "test.png")
@@ -28,7 +28,7 @@ finish
 ```
 
 ```@example
-using MakiE
+using Makie
 
 scene = Scene(resolution = (500, 500))
 

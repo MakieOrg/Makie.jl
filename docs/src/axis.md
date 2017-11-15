@@ -10,7 +10,7 @@ axis
 
 
 ```@example axis
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 aviz = axis(linspace(0, 2, 4), linspace(0, 2, 4))
 center!(scene)
@@ -20,7 +20,7 @@ save("axis2d.png", scene); nothing # hide
 
 
 ```@example axis
-using MakiE
+using Makie
 scene = Scene(resolution = (500, 500))
 aviz = axis(linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
 center!(scene)

@@ -1,5 +1,5 @@
 using GeometryTypes
-using MakiE, Colors
+using Makie, Colors
 
 struct Ring
     movement::Float32

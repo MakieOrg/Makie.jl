@@ -3,7 +3,7 @@
 It's pretty easy and interactive to change the current theme.
 
 ```@example theming
-using MakiE, GeometryTypes, Colors, MacroTools
+using Makie, GeometryTypes, Colors, MacroTools
 scene = Scene()
 vx = -1:0.1:1;
 vy = -1:0.1:1;

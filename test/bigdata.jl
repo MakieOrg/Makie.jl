@@ -106,7 +106,7 @@ FileIO.save("gps.png", Gray.(clamp.(1f0 .- img, 0, 1)))
 close(io)
 
 # Or an interactive version
-using MakiE, Images
+using Makie, Images
 io = open(homedir() * "/gpspoints.bin")
 # Now that we have the data as a binary blob, we can just memory map
 # it as a Vector of points (NTuple{2, Float32})

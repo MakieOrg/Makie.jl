@@ -1,5 +1,5 @@
 __precompile__(true)
-module MakiE
+module Makie
 
 using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
 using StaticArrays, GLWindow, ModernGL, Contour, Quaternions

@@ -1,4 +1,4 @@
-The MakiE.jl package is licensed under the MIT "Expat" License:
+The Makie.jl package is licensed under the MIT "Expat" License:
 
 > Copyright (c) 2017: SimonDanisch.
 > 

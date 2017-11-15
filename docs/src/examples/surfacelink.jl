@@ -1,5 +1,5 @@
 #julia
-using MakiE
+using Makie
 scene = Scene()
 N = 32
 function xy_data(x,y,i, N)

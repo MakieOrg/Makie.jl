@@ -1,5 +1,5 @@
 #julia
-using MakiE, GeometryTypes
+using Makie, GeometryTypes
 scene = Scene()
 
 large_sphere = HyperSphere(Point3f0(0), 1f0)

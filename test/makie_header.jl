@@ -1,13 +1,13 @@
-using MakiE, GeometryTypes, Colors
+using Makie, GeometryTypes, Colors
 
 scene = Scene(color = :black, resolution = (600, 100))
-MakiE.add_mousebuttons(scene)
+Makie.add_mousebuttons(scene)
 brush = to_node(Point2f0[])
 markersize = to_node(Float32[])
 
 waspressed_t_lastpos = Ref((false, time(), Point2f0(0)))
 lift_node(scene, :mouseposition) do mp
-    if ispressed(scene, MakiE.Mouse.left)
+    if ispressed(scene, Makie.Mouse.left)
         waspressed, t, lastpos = waspressed_t_lastpos[]
         elapsed = time() - t
         r = elapsed * 30.0

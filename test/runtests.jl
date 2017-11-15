@@ -1,6 +1,6 @@
 module MakieTest
 
-using MakiE, FileIO, GLFW, GeometryTypes, Reactive, FileIO, ColorBrewer, Colors
+using Makie, FileIO, GLFW, GeometryTypes, Reactive, FileIO, ColorBrewer, Colors
 using GLVisualize
 using GLVisualize: loadasset, assetpath
 
@@ -57,7 +57,7 @@ function run()
     image(img);
 
     scene = Scene()
-    MakiE.MakiE.volume(rand(32, 32, 32), algorithm = :iso)
+    Makie.Makie.volume(rand(32, 32, 32), algorithm = :iso)
     center!(scene)
 
     scene = Scene()
@@ -67,7 +67,7 @@ function run()
     scene = Scene()
     r = linspace(-10, 10, 512)
     z = ((x, y)-> sin(x) + cos(y)).(r, r')
-    MakiE.contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
+    Makie.contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
     center!(scene)
 
     scene = Scene()
@@ -112,7 +112,7 @@ function run()
     end
     push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
     center!(scene)
-    l = MakiE.legend(x, ["attribute $i" for i in 1:4])
+    l = Makie.legend(x, ["attribute $i" for i in 1:4])
 
     l[:position] = (0.089, 0.75)
     l[:gap] = 20
@@ -157,7 +157,7 @@ function run()
     center!(scene)
 
 
-    scene = MakiE.Scene(resolution = (900, 900))
+    scene = Makie.Scene(resolution = (900, 900))
     # define points/edges
     perturbfactor = 4e1
     N = 3; nbfacese = 30; radius = 0.02
@@ -197,11 +197,11 @@ function run()
     end
     rotationsC = AbstractVector[Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
     # plot
-    hm = MakiE.meshscatter(pG[edges[:, 1]], color = colorsC, marker = meshC,
+    hm = Makie.meshscatter(pG[edges[:, 1]], color = colorsC, marker = meshC,
                            markersize = sizesC,  rotations = rotationsC)
-    hp = MakiE.meshscatter(pG, color = colorsp, marker = meshS, markersize = radius)
+    hp = Makie.meshscatter(pG, color = colorsp, marker = meshS, markersize = radius)
 
-    r = linspace(-1.3, 1.3, 4); MakiE.axis(r, r, r)
+    r = linspace(-1.3, 1.3, 4); Makie.axis(r, r, r)
 
 
     scene = Scene(resolution = (500, 500))
@@ -259,7 +259,7 @@ function run()
     #julia
     scene = Scene(resolution = (500, 500))
     x = GLVisualize.loadasset("cat.obj")
-    MakiE.mesh(x.vertices, x.faces, color = :black)
+    Makie.mesh(x.vertices, x.faces, color = :black)
     pos = map(x.vertices, x.normals) do p, n
         p => p .+ (normalize(n) .* 0.05f0)
     end
@@ -293,11 +293,11 @@ function run()
     #julia
     scene = Scene(resolution = (500, 500))
     cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-    MakiE.mesh(cat, color = loadasset("diffusemap.tga"))
+    Makie.mesh(cat, color = loadasset("diffusemap.tga"))
     center!(scene)
 
     scene = Scene(resolution = (500, 500))
-    MakiE.mesh(Sphere(Point3f0(0), 1f0))
+    Makie.mesh(Sphere(Point3f0(0), 1f0))
     center!(scene)
     scene
 
@@ -326,7 +326,7 @@ function run()
     scene = Scene(resolution = (500, 500), color = :black)
     m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
     earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
-    MakiE.mesh(m, color = earth)
+    Makie.mesh(m, color = earth)
     stars = 100_000
     scatter((rand(Point3f0, stars) .- 0.5) .* 10,
         glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
@@ -335,7 +335,7 @@ function run()
     scene
 
     scene = Scene()
-    MakiE.volume(rand(32, 32, 32), algorithm = :iso)
+    Makie.volume(rand(32, 32, 32), algorithm = :iso)
     center!(scene)
 end
 
