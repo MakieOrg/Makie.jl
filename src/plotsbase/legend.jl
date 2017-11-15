@@ -77,7 +77,11 @@ function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::Abstract
     area = to_signal(lift_node(position, to_node(screen.area), args[4:5]..., args[1:3]...) do xy, area, padding, unused...
         wx, wy, _ = widths(mapreduce(GLAbstraction._boundingbox, union, bblist))
         xy = (xy .* widths(area))
-        w, h = round.(Int, (wx, wy)) .+ (2padding, padding)
+        w, h = if isfinite(wx) && isfinite(wy)
+            round.(Int, (wx, wy)) .+ (2padding, padding)
+        else
+            (0, 0)
+        end
         # TODO check for overlaps, eliminate them!!
         IRect(xy[1], xy[2], w, h)
     end)
