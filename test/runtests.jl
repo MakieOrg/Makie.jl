@@ -35,8 +35,6 @@ function run()
     subscene = Scene(scene, Signal(SimpleRectangle(0, 0, 200, 200)))
     scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
 
-
-
     scene = Scene(resolution = (500, 500));
     x = [0, 1, 2, 0];
     y = [0, 0, 1, 2];
@@ -261,22 +259,6 @@ function run()
     linesegment(pos)
     scene
 
-    scene = Scene(resolution = (500, 500))
-    x = [0, 1, 2, 0]
-    y = [0, 0, 1, 2]
-    z = [0, 2, 0, 1]
-    color = [:red, :green, :blue, :yellow]
-    i = [0, 0, 0, 1]
-    j = [1, 2, 3, 2]
-    k = [2, 3, 1, 3]
-
-    indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
-    m = mesh(x, y, z, indices, color = color)
-    wireframe(m[:mesh], color = :black, linewidth = 2)
-    r = linspace(-0.5, 2.5, 4)
-    axis(r, r, r)
-    center!(scene)
-    scene
 
     #julia
     scene = Scene(resolution = (500, 500))
@@ -296,7 +278,6 @@ function run()
     center!(scene)
     scene
 
-
     scene = Scene(resolution = (500, 500))
     wireframe(GLVisualize.loadasset("cat.obj"))
     center!(scene)
@@ -312,26 +293,19 @@ function run()
     center!(scene)
 
     scene = Scene(resolution = (500, 500), color = :black)
-    earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
-    image(earth)
-    center!(scene)
-
-    #julia
-
-    scene = Scene(resolution = (500, 500), color = :black)
-    m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
-    earth = load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
-    Makie.mesh(m, color = earth)
     stars = 100_000
     scatter((rand(Point3f0, stars) .- 0.5) .* 10,
         glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
         markersize = rand(linspace(0.0001, 0.01, 100), stars)
     )
-    scene
 
     scene = Scene()
     Makie.volume(rand(32, 32, 32), algorithm = :iso)
     center!(scene)
+    nothing
 end
 
 end
+
+using .MakieTest
+MakieTest.run()
