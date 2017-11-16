@@ -44,6 +44,7 @@ Pkg.checkout("GeometryTypes")
 
 # For precompilation
 Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
+Pkg.build("PackageCompiler")
 Pkg.checkout("StaticArrays")
 Pkg.checkout("GLWindow", "sd/static")
 Pkg.checkout("GLFW")
