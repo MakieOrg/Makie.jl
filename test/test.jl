@@ -1,11 +1,4 @@
-using Makie, GeometryTypes
-
-s = Scene()
-
-io = Makie.TextBuffer(Point3f0(0))
-
-a = axis(ntuple(x-> linspace(0, 1, 4), 3)...)
-
+using Makie, GeometryTypes, Colors
 
 scene = Scene()
 x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
@@ -14,8 +7,6 @@ end
 push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
 center!(scene)
 l = Makie.legend(x, ["attribute $i" for i in 1:4])
-
-l[:position] = (0.089, 0.75)
-l[:gap] = 20
-l[:textgap] = 20
-l[:padding] = 20
+l[:backgroundcolor] = RGBA(0.98, 0.98, 0.98, 0.2)
+l[:strokecolor] = RGB(0.8, 0.8, 0.8)
+l[:stroke] = 2

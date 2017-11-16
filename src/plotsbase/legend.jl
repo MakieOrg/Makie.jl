@@ -24,21 +24,27 @@ end
 
 
 function make_label(p, plot, labeltext, i, attributes)
-    w, gap, msize, lpattern, mpattern, padding = getindex.(attributes, (
-        :labelwidth, :gap, :markersize, :linepattern, :scatterpattern, :padding
+    w, gap, msize, tsize, lpattern, mpattern, padding = getindex.(attributes, (
+        :labelwidth, :gap, :markersize, :textsize,
+        :linepattern, :scatterpattern, :padding
     ))
 
-    scale(x, w, pad, g) = Point2f0(pad + (x[1] * w), x[2] + (i * g))
+    scale(x, w, pad, g, t) = Point2f0(
+        pad + (x[1] * w),
+        pad + floor(t/2) + x[2] + ((i - 1) * g)
+    )
 
     return if plot.name in (:lines, :linesegment)
         linesegment(
-            p, scale.(lpattern, w, padding, gap),
-            color = plot[:color], linestyle = plot[:linestyle], show = false
+            p, scale.(lpattern, w, padding, gap, tsize),
+            color = plot[:color], linestyle = plot[:linestyle], show = false,
+            camera = :pixel
         )
     else
         scatter(
-            p, scale.(mpattern, w, padding, gap),
-            markersize = msize, color = get(plot, :color, :black), show = false
+            p, scale.(mpattern, w, padding, gap, tsize),
+            markersize = msize, color = get(plot, :color, :black), show = false,
+            camera = :pixel
         )
     end
 end
@@ -48,6 +54,7 @@ end
 function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::AbstractVector{<:String}, attributes)
     isempty(legends) && return
     N = length(legends)
+    legendarea = Signal(IRect(0, 0, 50, 50))
 
     attributes = legend_defaults(scene, attributes)
 
@@ -56,15 +63,20 @@ function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::Abstract
     ))
 
     textbuffer = TextBuffer(Point2f0(0))
-    legend = make_label.(scene, legends, labels, 1:N, attributes)
 
-    args = getindex.(attributes, (:labelwidth, :gap, :textgap, :padding, :textsize, :textcolor, :rotation, :align))
+    args = getindex.(attributes, (
+        :labelwidth, :gap, :textgap, :padding,
+        :textsize, :textcolor, :rotation, :align
+    ))
+
+    legend = make_label.(scene, legends, labels, 1:N, attributes)
 
     lift_node(to_node(labels), args...) do labels, w, gap, tgap, padding, font...
         empty!(textbuffer)
         for i = 1:length(labels)
-            yposition = i * gap
-            xy = Point2f0(w + padding + tgap, yposition)
+            yposition = (i - 1) * gap
+            tsize = floor(font[1] / 2) # textsize at position one, half of it since we used centered align
+            xy = Point2f0(w + padding + tgap, yposition + tsize + padding)
             append!(textbuffer, xy, labels[i], font...)
         end
         return
@@ -73,23 +85,24 @@ function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::Abstract
     bblist = (native_visual.(legend)..., textbuffer.robj)
     screen = getscreen(scene)
 
-    #
-    area = to_signal(lift_node(position, to_node(screen.area), args[4:5]..., args[1:3]...) do xy, area, padding, unused...
-        wx, wy, _ = widths(mapreduce(GLAbstraction._boundingbox, union, bblist))
+    legendarea = lift_node(position, to_node(screen.area), args[4:5]..., args[1:3]...) do xy, area, padding, unused...
+        bb = mapreduce(x-> value(x.boundingbox), union, bblist)
+        mini = minimum(bb)
+        wx, wy, _ = widths(bb) .+ mini
         xy = (xy .* widths(area))
         w, h = if isfinite(wx) && isfinite(wy)
-            round.(Int, (wx, wy)) .+ (2padding, padding)
+            round.(Int, (wx, wy)) .+ padding
         else
             (0, 0)
         end
         # TODO check for overlaps, eliminate them!!
         IRect(xy[1], xy[2], w, h)
-    end)
-
+    end
     legend_scene = Scene(
-        scene, area,
+        scene, legendarea,
         color = to_value(color),
-        stroke = (to_value(stroke), to_value(strokecolor))
+        stroke = (to_value(stroke), to_value(strokecolor)),
+        clear = false
     )
     # Nasty, but Scene doesn't accept signals... Guess at some point we will just fold
     # GLWindow into makie anyways (or the gl backend package)
