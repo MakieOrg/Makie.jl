@@ -43,6 +43,7 @@ Pkg.checkout("MeshIO", "sd/objuv")
 Pkg.checkout("GeometryTypes")
 
 # For precompilation
+Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
 Pkg.checkout("StaticArrays")
 Pkg.checkout("GLWindow", "sd/static")
 Pkg.checkout("GLFW")
