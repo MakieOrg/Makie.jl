@@ -154,8 +154,6 @@ function Base.show(io::IO, scene::Scene)
     print(io, "Scene: $(scene.name)")
 end
 
-
-
 const global_scene = Scene[]
 
 function GLAbstraction.center!(scene::Scene, border = 0.1)
@@ -169,10 +167,9 @@ export center!
 
 function get_global_scene()
     if isempty(global_scene)
-        Scene()
-    else
-        global_scene[]
+        global_scene[] = Scene()
     end
+    global_scene[]
 end
 
 render_frame(scene::Scene) = render_frame(rootscreen(scene))
@@ -240,7 +237,6 @@ function Scene(;
         if resolution == nothing && isopen(nw)
             resolution = GLFW.GetWindowSize(nw)
         end
-        # GLWindow.destroy!(oldscene[:screen])
         empty!(oldscreen)
         empty!(oldscreen.cameras)
         GLVisualize.empty_screens!()
@@ -270,7 +266,7 @@ function Scene(;
 
     GLVisualize.add_screen(w)
 
-    dict = map(w.inputs) do k_v
+    dict = map(filter((k, v)-> k != :cursor_position, w.inputs)) do k_v
         k_v[1] => to_node(k_v[2])
     end
     dict[:screen] = w
@@ -281,8 +277,6 @@ function Scene(;
     push!(global_scene, scene)
     scene
 end
-
-
 
 Base.get(f, x::Scene, key::Symbol) = haskey(x, key) ? x[key] : f()
 Base.get(x::Scene, key::Symbol, default) = haskey(x, key) ? x[key] : default

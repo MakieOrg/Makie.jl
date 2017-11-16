@@ -24,7 +24,6 @@ end
 
 
 function make_label(p, plot, labeltext, i, attributes)
-
     w, gap, msize, lpattern, mpattern, padding = getindex.(attributes, (
         :labelwidth, :gap, :markersize, :linepattern, :scatterpattern, :padding
     ))
@@ -60,6 +59,7 @@ function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::Abstract
     legend = make_label.(scene, legends, labels, 1:N, attributes)
 
     args = getindex.(attributes, (:labelwidth, :gap, :textgap, :padding, :textsize, :textcolor, :rotation, :align))
+
     lift_node(to_node(labels), args...) do labels, w, gap, tgap, padding, font...
         empty!(textbuffer)
         for i = 1:length(labels)
