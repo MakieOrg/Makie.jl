@@ -53,6 +53,9 @@ Pkg.checkout("GLWindow", "sd/static")
 Pkg.checkout("GLFW")
 ```
 
+Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
+
+
 # Precompilation
 
 You can compile binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
@@ -60,18 +63,17 @@ To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
 ```julia
+# This is not well tested, so please be careful - I don't take any responsibilities for a messed up Julia install.
+
 # Replaces julias system image
-# please be very carefull with this option, since this can make your julia stop working.
+
+ENV["MAKIE_COMPILE"] = "force" 
+# please be very carefull with the above option, since this can make your julia stop working.
 # If Julia doesn't start for you anymore, consider doing:
 # using PackageCompiler; PackageCompiler.revert() <- not well tested
 
-ENV["MAKIE_COMPILE"] = "force" 
-# or the saver option:
+# or the safer option:
 ENV["MAKIE_COMPILE"] = "build" # just builds a system image the needs to be added manually
 Pkg.build("Makie") # can take around ~20 minutes
 ```
 
-
-
-
-Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
