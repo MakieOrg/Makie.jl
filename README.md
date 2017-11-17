@@ -35,6 +35,7 @@ This package is not released yet so a bit awkward to set up. Here are the steps:
 
 ```julia
 Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
+Pkg.checkout("GLAbstraction")
 Pkg.checkout("GLAbstraction", "sd/makie")
 Pkg.checkout("GLVisualize")
 
@@ -48,6 +49,7 @@ Pkg.add("ImageMagick")
 Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
 Pkg.build("PackageCompiler")
 Pkg.checkout("StaticArrays")
+Pkg.checkout("GLWindow")
 Pkg.checkout("GLWindow", "sd/static")
 ```
 
