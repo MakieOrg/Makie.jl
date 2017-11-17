@@ -36,11 +36,10 @@ This package is not released yet so a bit awkward to set up. Here are the steps:
 ```julia
 Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
 Pkg.checkout("GLAbstraction", "sd/makie")
-Pkg.checkout("GLVisualize", "sd/makie")
+Pkg.checkout("GLVisualize")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
-Pkg.checkout("MeshIO", "sd/objuv")
-Pkg.checkout("GeometryTypes")
+Pkg.checkout("MeshIO")
 
 # For image loading
 Pkg.add("ImageMagick")
@@ -50,7 +49,6 @@ Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
 Pkg.build("PackageCompiler")
 Pkg.checkout("StaticArrays")
 Pkg.checkout("GLWindow", "sd/static")
-Pkg.checkout("GLFW")
 ```
 
 Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
@@ -67,7 +65,7 @@ Then you can build a system image like this:
 
 # Replaces julias system image
 
-ENV["MAKIE_COMPILE"] = "force" 
+ENV["MAKIE_COMPILE"] = "force"
 # please be very carefull with the above option, since this can make your julia stop working.
 # If Julia doesn't start for you anymore, consider doing:
 # using PackageCompiler; PackageCompiler.revert() <- not well tested
@@ -76,4 +74,3 @@ ENV["MAKIE_COMPILE"] = "force"
 ENV["MAKIE_COMPILE"] = "build" # just builds a system image the needs to be added manually
 Pkg.build("Makie") # can take around ~20 minutes
 ```
-

@@ -2,7 +2,7 @@ julia 0.6
 
 Quaternions
 GLVisualize
-GeometryTypes
+GeometryTypes 0.4.3
 Reactive
 GLAbstraction
 GLWindow
@@ -16,3 +16,4 @@ Hiccup
 Media
 Juno
 ModernGL
+GLFW 1.4.1
