@@ -36,6 +36,7 @@ This package is not released yet so a bit awkward to set up. Here are the steps:
 ```julia
 Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
 Pkg.checkout("GLAbstraction", "sd/makie")
+Pkg.checkout("GLVisualize")
 Pkg.checkout("GLVisualize", "sd/makie")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
