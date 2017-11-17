@@ -38,7 +38,6 @@ Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
 Pkg.checkout("GLAbstraction")
 Pkg.checkout("GLAbstraction", "sd/makie")
 Pkg.checkout("GLVisualize")
-Pkg.checkout("GLVisualize", "sd/makie")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
 Pkg.checkout("MeshIO")
