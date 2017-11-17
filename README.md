@@ -49,7 +49,6 @@ Pkg.add("ImageMagick")
 Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
 Pkg.build("PackageCompiler")
 Pkg.checkout("GLWindow")
-Pkg.checkout("GLWindow", "sd/static")
 ```
 
 Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
