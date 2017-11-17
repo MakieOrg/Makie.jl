@@ -2,6 +2,7 @@ julia 0.6
 
 Quaternions
 GLVisualize
+StaticArrays 0.6.6
 GeometryTypes 0.4.3
 Reactive
 GLAbstraction
