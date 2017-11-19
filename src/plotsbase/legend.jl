@@ -30,8 +30,8 @@ function make_label(p, plot, labeltext, i, attributes)
     ))
 
     scale(x, w, pad, g, t) = Point2f0(
-        pad + (x[1] * w),
-        pad + floor(t/2) + x[2] + ((i - 1) * g)
+        pad + (x[1]w),
+        pad + floor(t/2) + x[2]w + ((i - 1) * g)
     )
 
     return if plot.name in (:lines, :linesegment)
@@ -101,8 +101,7 @@ function legend(scene::Scene, legends::AbstractVector{<:Scene}, labels::Abstract
     legend_scene = Scene(
         scene, legendarea,
         color = to_value(color),
-        stroke = (to_value(stroke), to_value(strokecolor)),
-        clear = false
+        stroke = (to_value(stroke), to_value(strokecolor))
     )
     # Nasty, but Scene doesn't accept signals... Guess at some point we will just fold
     # GLWindow into makie anyways (or the gl backend package)
