@@ -69,6 +69,7 @@ function default_theme(scene)
     gridthickness = ntuple(x-> 1f0, 3)
     colors = UniqueColorIter(:Set1)
     meshrotation = Vec4f0(0, 0, 0, 1)
+    light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     @theme theme = begin
 
         rotation = to_rotation(Vec4f0(0, 0, 0, 1))
@@ -78,6 +79,8 @@ function default_theme(scene)
         camera = to_camera(:auto)
         visible = to_bool(true)
         show = to_bool(true)
+
+        light = to_static_vec(light)
 
         drawover = to_bool(false)
 
@@ -151,15 +154,17 @@ function default_theme(scene)
             isovalue = to_float(0.5f0)
             isorange = to_float(0.01f0)
         end
+
         legend = begin
             backgroundcolor = to_color(:white)
             strokecolor = to_color(RGBA(0.3, 0.3, 0.3, 0.9))
             strokewidth = to_float(2)
-            position = to_position((0.1, 0.5))
+            position = to_position((0, 1))
             gap = to_float(20)
             textgap = to_float(15)
             labelwidth = to_float(20)
             padding = to_float(10)
+            outerpadding = to_markersize2d(10)
             align = to_textalign((:left, :hcenter))
             rotation = to_rotation(Vec4f0(0, 0, 0, 1))
             textcolor = to_color(:black)
@@ -168,6 +173,22 @@ function default_theme(scene)
             linepattern = to_positions(Point2f0[(0, 0), (1, 0.0)])
             scatterpattern = to_positions(Point2f0[(0.5, 0.0)])
         end
+
+        color_legend = begin
+            width = to_markersize2d((20, 200))
+            backgroundcolor = to_color(:white)
+            strokecolor = to_color(RGBA(0.3, 0.3, 0.3, 0.9))
+            strokewidth = to_float(2)
+            position = to_position((0.1, 0.5))
+            textgap = to_float(15)
+            padding = to_float(10)
+            align = Makie.to_textalign((:left, :hcenter))
+            rotation = to_rotation(Vec4f0(0, 0, 0, 1))
+            textcolor = to_color(:black)
+            textsize = to_float(16)
+        end
+
+
     end
     scene[:theme] = theme
 end

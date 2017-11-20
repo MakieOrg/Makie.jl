@@ -15,7 +15,7 @@ end
     model = to_modelmatrix(scale, offset, rotation)
     camera = to_camera(camera)
     show = to_bool(show)
-    light = to_static_vec(Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)])
+    light = to_static_vec(light)
 end
 
 
