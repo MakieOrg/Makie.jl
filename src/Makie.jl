@@ -16,6 +16,8 @@ include("plotsbase/converts.jl")
 
 const makie = Scene{:makie}
 
+include("plotutils/layout.jl")
+
 include("plotsbase/atomics.jl")
     # The actual implementation
 
@@ -46,7 +48,6 @@ export available_marker_symbols, available_gradients, render_frame
 
 export to_float, to_markersize2d, to_spritemarker, to_linestyle, to_pattern
 export to_color, to_colormap, to_colornorm, to_array, to_mesh, to_surface
-export to_positions, to_rotations
 
 export to_scale
 export to_offset
@@ -56,7 +57,7 @@ export to_bool
 export to_index_buffer
 export to_index_buffer
 export to_positions
-export to_positions
+export to_position
 export to_array
 export to_scalefunc
 export to_text
@@ -82,5 +83,7 @@ export to_spatial_order
 export to_interval
 export to_volume_algorithm
 export to_3floats
+export to_2floats
+export to_textalign
 
 end # module

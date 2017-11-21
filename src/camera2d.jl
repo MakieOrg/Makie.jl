@@ -63,11 +63,13 @@ function selection_rect(
     rect = RefValue(FRect(0, 0, 0, 0))
     lw = 2f0
     rect_vis = lines(
+        scene,
         rect[],
         linestyle = :dot,
         thickness = 1f0,
         color = (:black, 0.4),
-        drawover = true
+        drawover = true,
+        camera = :pixel
     )
     waspressed = RefValue(false)
     dragged_rect = lift_node(scene, :mousedrag) do drag

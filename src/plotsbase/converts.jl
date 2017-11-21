@@ -3,6 +3,12 @@ const VecLike{N, T} = Union{NTuple{N, T}, StaticVector{N, T}}
 
 
 """
+Any GLAbstraction.Camera
+"""
+function to_camera(b, x::GLAbstraction.Camera)
+    x
+end
+"""
 Takes a camera symbol, one of :auto, :perspective, :orthographic, :pixel
 """
 function to_camera(b, x::Symbol)
@@ -18,6 +24,9 @@ end
 """
 to_3floats(b, x::Tuple) = to_float.(b, x)
 to_3floats(b, x::Number) = ntuple(i-> x, Val{3})
+
+to_2floats(b, x::Tuple) = to_float.(b, x)
+to_2floats(b, x::Number) = ntuple(i-> to_float(b, x), Val{2})
 
 
 """

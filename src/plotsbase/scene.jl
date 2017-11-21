@@ -46,6 +46,21 @@ function Scene(parent::Scene{Backend}, area, name = :scene, data = Dict{Symbol, 
     Scene{Backend}(name, parent, data, nothing)
 end
 
+function Scene(parent::Scene{Backend}, scene::Scene, name = :scene) where Backend
+    Scene{Backend}(name, Nullable(parent), scene.data, nothing)
+end
+
+function Scene(parent::Scene{Backend}, scene::Dict, name = :scene) where Backend
+    data = Dict{Symbol, Any}()
+    for (k, v) in scene
+        data[Symbol(k)] = to_node(v)
+    end
+    Scene{Backend}(name, Nullable(parent), data, nothing)
+end
+function Scene(parent::Scene{Backend}, name = :scene; attributes...) where Backend
+    Scene(parent, Dict{Symbol, Any}(attributes), name)
+end
+
 
 function (::Type{Scene{Backend}})(data::Dict, name = :scene) where Backend
     Scene{Backend}(name, Nullable{Scene{Backend}}(), data, nothing)
@@ -70,7 +85,8 @@ and manually added via `show` by doing e.g.
 """
 function show!(scene::Scene{Backend}, childscene::Scene{Backend}) where Backend
     camera = to_value(childscene, :camera) # should always be available!
-    screen = scene[:screen]
+    println(camera)
+    screen = getscreen(scene)
     cams = collect(keys(screen.cameras))
     viz = native_visual(childscene)
     viz == nothing && error("`childscene` does not contain any visual, so can't be added to `scene` with `show!`!")
@@ -92,7 +108,7 @@ function show!(scene::Scene{Backend}, childscene::Scene{Backend}) where Backend
     end
     _view(viz, screen, camera = cam)
     if isempty(cams)
-        scene[:camera] = first(screen.cameras)[2] # The camera just got created by _view
+        scene[:camera] = camera # The camera just got created by _view
     end
     childscene
 end
@@ -373,6 +389,9 @@ search one level higher (scene.theme).
 function find_default(scene, kw_args, func, attribute)
     if haskey(kw_args, attribute)
         return kw_args[attribute]
+    end
+    if haskey(scene, attribute)
+        return scene[attribute]
     end
     root = rootscene(scene) # theme is in root!
     if haskey(root, :theme)

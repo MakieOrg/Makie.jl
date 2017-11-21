@@ -65,9 +65,7 @@ function mesh2glvisualize(kw_args)
         end
         result[k] = to_signal(v)
     end
-    result[:visible] = true
     result[:fxaa] = true
-    result[:model] = eye(Mat4f0)
     result
 end
 
@@ -78,7 +76,7 @@ function _meshscatter(scene, kw_args)
     main = (shape, to_signal(attributes[:positions]))
     viz = GLVisualize.meshparticle(main, Style(:default), gl_data)
     viz = GLVisualize.assemble_shader(viz).children[]
-    insert_scene!(scene, :scatter, viz, attributes)
+    insert_scene!(scene, :meshscatter, viz, attributes)
 end
 
 for arg in ((:x, :y), (:x, :y, :z), (:positions,))

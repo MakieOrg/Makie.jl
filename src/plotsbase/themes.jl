@@ -178,17 +178,16 @@ function default_theme(scene)
             width = to_markersize2d((20, 200))
             backgroundcolor = to_color(:white)
             strokecolor = to_color(RGBA(0.3, 0.3, 0.3, 0.9))
-            strokewidth = to_float(2)
-            position = to_position((0.1, 0.5))
+            strokewidth = to_float(1)
+            position = to_position((1, 1))
             textgap = to_float(15)
-            padding = to_float(10)
+            padding = to_markersize2d(10)
+            outerpadding = to_markersize2d(10)
             align = Makie.to_textalign((:left, :hcenter))
             rotation = to_rotation(Vec4f0(0, 0, 0, 1))
             textcolor = to_color(:black)
             textsize = to_float(16)
         end
-
-
     end
     scene[:theme] = theme
 end
