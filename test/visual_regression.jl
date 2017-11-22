@@ -3,7 +3,12 @@ using VisualRegressionTests, Base.Test
 cd(@__DIR__)
 include("visual_regression_funcs.jl")
 
-if !isa(Pkg.installed("ReferenceImages"), VersionNumber)
+reference_image_installed = try
+    isa(Pkg.installed("ReferenceImages"), VersionNumber)
+catch e
+    false
+end
+if !reference_image_installed
     Pkg.clone("https://github.com/SimonDanisch/ReferenceImages.git")
 end
 
