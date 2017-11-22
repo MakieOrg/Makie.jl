@@ -137,7 +137,7 @@ to_index_buffer(b, x) = error(
 `NTuple{2, AbstractArray{Float}}` for 2D points
 """
 function to_positions(b, x::Tuple{<: AbstractArray, <: AbstractArray})
-    Point{2, Float32}.(x...)
+    to_position.(b, x...)
 end
 
 """
@@ -191,6 +191,10 @@ Converts a Vec like to a position (Point)
 """
 function to_position(b, x::VecLike{N}) where N
     Point{N, Float32}(x)
+end
+
+function to_position(b, x, y)
+    Point{2, Float32}(to_absolute(b, x), to_absolute(b, y))
 end
 
 
@@ -330,18 +334,20 @@ function to_spritemarker(b, marker::Symbol)
 end
 
 
-to_spritemarker(b, marker::Vector{Char}) = String(marker)
+to_spritemarker(b, marker::String) = marker
+to_spritemarker(b, marker::AbstractVector{Char}) = String(marker)
 
 """
 Vector of anything that is accepted as a single marker will give each point it's own marker.
 Note that it needs to be a uniform vector with the same element type!
 """
-function to_spritemarker(b, marker::Vector)
+function to_spritemarker(b, marker::AbstractVector)
+    println(typeof(marker))
     marker = map(marker) do sym
         to_spritemarker(b, sym)
     end
-    if isa(marker, Vector{Char})
-        to_spritemarker(b, marker)
+    if isa(marker, AbstractVector{Char})
+        String(marker)
     else
         marker
     end

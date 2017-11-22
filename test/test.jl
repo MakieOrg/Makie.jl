@@ -1,7 +1,14 @@
 using Makie, GeometryTypes, Colors
 scene = Scene()
+scatter(
+    Point3f0[(1,0,0), (0,1,0), (0,0,1)],
+    marker = [:x, :circle, :cross]
+)
 
+GLVisualize.visualize(("helo", rand(Point3f0, length("helo"))))
 
+scene[:theme][:scatter][:marker] = :cross
+center!(scene)
 
 x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
     linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
@@ -79,9 +86,102 @@ sub = Scene(scene, rotation = Vec4f0(0, 0, 0, 1))
 
 meshscatter(sub, rand(30) + 1.0, rand(30), rand(30))
 meshscatter(sub, rand(30), rand(30), rand(30) .+ 1.0)
+r = linspace(-2, 2, 4)
+Makie.axis(r, r, r)
+center!(scene)
 
 axis = Vec3f0(0, 0, 1)
+io = VideoStream(scene, homedir()*"/Desktop/", "rotation")
 for angle = linspace(0, 2pi, 100)
     sub[:rotation] = Makie.qrotation(axis, angle)
-    sleep(0.1)
+    recordframe!(io)
+    sleep(1/15)
 end
+finish(io, "gif")
+
+keys = (
+    :lol, :pos, :test
+)
+positions, pos, test = get.(attributes, keys, scene)
+
+
+function myvisual(scene, args, attributes)
+    keys = (
+        :positions, :color, :blah, shared...,
+    )
+    Scene(zip(keys, getindex.(attributes, keys))
+
+end
+
+
+using Makie, GeometryTypes
+
+
+function plot(scene::S, A::AbstractMatrix{T}) where {T <: AbstractFloat, S <: Scene}
+    N, M = size(A)
+    sub = Scene(scene, scale = Vec3f0(1))
+    attributes = Dict{Symbol, Any}()
+
+    plots = map(1:M) do i
+        lines(sub, 1:N, A[:, i])
+    end
+    labels = get(attributes, :labels) do
+        map(i-> "y $i", 1:M)
+    end
+
+    lift_node(to_node(A), to_node(Makie.getscreen(scene).area)) do a, area
+        xlims = (1, size(A, 1))
+        ylims = extrema(A)
+        stretch = Makie.to_nd(fit_ratio(area, (xlims, ylims)), Val{3}, 1)
+        sub[:scale] = stretch
+    end
+    l = legend(scene, plots, labels)
+    # Only create one axis per scene
+    xlims = linspace(1, size(A, 1), min(N, 10))
+    ylims = linspace(extrema(A)..., 5)
+    a = get(scene, :axis) do
+        xlims = (1, size(A, 1))
+        ylims = extrema(A)
+        area = Reactive.value(Makie.getscreen(scene).area)
+        stretch = Makie.to_nd(fit_ratio(area, (xlims, ylims)), Val{3}, 1)
+        axis(linspace((xlims .* stretch[1])..., 4), linspace((ylims .* stretch[2])..., 4))
+    end
+    center!(scene)
+end
+
+using Makie, GeometryTypes
+
+scene = Scene()
+
+x = (0.5rel, 0.5rel)
+
+x .* Point2f0(0.5, 0.5)
+StaticArrays.similar_type(NTuple{2, Float32}, Int)
+
+
+Makie.VecLike{3, Float32}
+Makie.Units.to_absolute(scene, x)
+to_positions(scene, (rand(10) .* rel, rand(10) .* rel))
+
+convert(Relative{Float64}, 1)
+
+convert(NTuple{2, Relative{Float64}}, Tuple(Relative.(widths(scene))))
+
+plot(scene, rand(11, 2))
+
+using VisualRegressionTests
+
+
+function test1(fn)
+    srand(1234)
+    scene = Scene(resolution = (500, 500))
+    scatter(rand(10), rand(10))
+    center!(scene)
+    save(fn, scene)
+end
+
+cd(@__DIR__)
+
+test1("test.png")
+
+result = test_images(VisualTest(test1, "test.png"))

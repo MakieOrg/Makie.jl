@@ -158,7 +158,7 @@ function default_theme(scene)
         legend = begin
             backgroundcolor = to_color(:white)
             strokecolor = to_color(RGBA(0.3, 0.3, 0.3, 0.9))
-            strokewidth = to_float(2)
+            strokewidth = to_float(1)
             position = to_position((0, 1))
             gap = to_float(20)
             textgap = to_float(15)

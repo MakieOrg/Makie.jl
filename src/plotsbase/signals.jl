@@ -106,14 +106,12 @@ function _unsafe_getindex!(dest::ArrayNode, src::AbstractArray, Is::Union{Real, 
     return dest
 end
 
-
 to_node(obj::AbstractNode) = obj
 function to_node(obj::AbstractNode, f)
     to_node(map(f, to_signal(obj)), f)
 end
 to_node(obj, f = identity) = to_node(Signal(f(obj)), f)
 to_node(obj::Signal, f = identity) = Node(map(f, obj), f)
-to_node(obj::Scene, f = identity) = obj
 function to_node(obj::Signal{AT}, f::F = identity) where {AT <: AbstractArray, F}
     A = value(obj)
     ArrayNode{eltype(A), ndims(A), F, AT}(obj, f)

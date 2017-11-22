@@ -41,9 +41,6 @@ Pkg.checkout("GLVisualize")
 # For UV examples, e.g. earth texture on sphere, or textured cat
 Pkg.checkout("MeshIO")
 
-# For image loading
-Pkg.add("ImageMagick")
-
 # For precompilation
 Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
 Pkg.build("PackageCompiler")

@@ -5,8 +5,9 @@ function scene2image(screen::Screen)
     yield()
     render_frame(screen) # let it render
     ModernGL.glFinish()
-    return GLWindow.screenbuffer(screen)
+    return Images.clamp01nan.(GLWindow.screenbuffer(screen))
 end
+
 function scene2image(scene::Scene)
     screen = getscreen(scene)
     if screen != nothing

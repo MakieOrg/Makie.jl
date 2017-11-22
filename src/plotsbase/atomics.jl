@@ -212,6 +212,21 @@ end
     colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, heatmap))(colornorm)
 end
 
+@default function axis(scene, kw_args)
+    axisnames = to_text(axisnames)
+
+    showticks = to_bool(showticks)
+    tickfont2d = to_font(tickfont2d)
+    tickfont3d = to_font(tickfont3d)
+    showaxis = to_bool(showaxis)
+    showgrid = to_bool(showgrid)
+
+    scalefuncs = to_scalefunc(scalefuncs)
+    gridcolors = to_color(gridcolors)
+    gridthickness = to_3floats(gridthickness)
+    axiscolors = to_color(axiscolors)
+end
+
 
 function expand_kwargs(scene, kw_args)
     # TODO get in all the shorthands from Plots.jl
@@ -280,6 +295,12 @@ const atomic_funcs = (
     :legend => """
         legend(series, labels)
     creates a legend from an array of plots and labels
+    """,
+
+    :axis => """
+        axis(xrange, yrange, [zrange])
+
+    Creates a axis from a x,y,z ranges
     """
 )
 

@@ -7,22 +7,6 @@ function labelposition(ranges, dim)
     pos .* axis_vec .- (normal * 0.2f0)
 end
 
-@default function axis(scene, kw_args)
-    axisnames = to_text(axisnames)
-    visible = to_bool(visible)
-
-    showticks = to_bool(showticks)
-    tickfont2d = to_font(tickfont2d)
-    tickfont3d = to_font(tickfont3d)
-    showaxis = to_bool(showaxis)
-    showgrid = to_bool(showgrid)
-
-    scalefuncs = to_scalefunc(scalefuncs)
-    gridcolors = to_color(gridcolors)
-    gridthickness = to_3floats(gridthickness)
-    axiscolors = to_color(axiscolors)
-
-end
 
 function GeometryTypes.widths(x::Range)
     mini, maxi = Float32.(extrema(x))
@@ -90,22 +74,20 @@ function draw_axis(
     return
 end
 
-function axis(ranges...; kw_args...)
-    axis(to_node(ranges); kw_args...)
+function axis(scene::Scene, x, y, attributes::Dict)
+    axis(scene, to_node((x, y)), attributes)
 end
 
-"""
-Creates an axis visualization for a certain bounding box.
+function axis(scene::Scene, x, y, z, attributes::Dict)
+    axis(scene, to_node((x, y, z)), attributes)
+end
 
-## Attributes:
 
-$(sprint(x-> Markdown.plain(x, Docs.doc(axis_defaults))))
-"""
-function axis(ranges::Node{<: NTuple{N}}; kw_args...) where N
+function axis(scene::Scene, ranges::Node{<: NTuple{N}}, attributes::Dict) where N
     textbuffer = TextBuffer(Point{N, Float32}(0))
     linebuffer = LinesegmentBuffer(Point{N, Float32}(0))
     scene = get_global_scene()
-    attributes = axis_defaults(scene, expand_kwargs(scene, kw_args))
+    attributes = axis_defaults(scene, attributes)
     tickfont = N == 2 ? :tickfont2d : :tickfont3d
     names = (
         :axisnames, :visible, :showaxis, :showticks,

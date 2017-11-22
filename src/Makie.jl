@@ -10,9 +10,11 @@ using Base: RefValue
 struct Backend{B} end
 
 
-include("plotsbase/utils.jl")
+include("plotutils/utils.jl")
+
 include("plotsbase/scene.jl")
-include("plotsbase/converts.jl")
+include("plotsbase/conversions.jl")
+include("plotutils/units.jl")
 
 const makie = Scene{:makie}
 
@@ -20,7 +22,6 @@ include("plotutils/layout.jl")
 
 include("plotsbase/atomics.jl")
     # The actual implementation
-
     include("atomics/shared.jl")
     include("atomics/scatter.jl")
     include("atomics/lines.jl")
