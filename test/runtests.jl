@@ -11,7 +11,7 @@ if is_ci()
     Pkg.checkout("GLAbstraction")
     Pkg.checkout("GLVisualize")
     Pkg.checkout("MeshIO")
-    Pkg.add("ImageMagick")
+    Pkg.add("VisualRegressionTests")
     Pkg.checkout("GLWindow")
 end
 
