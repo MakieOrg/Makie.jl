@@ -30,6 +30,9 @@ end
 
 attributes(scene::Scene) = copy(scene.data)
 
+scene_node(x) = to_node(x)
+# there is not much use in having scene being a node, besides that it's awkward to work with
+scene_node(x::Scene) = x
 const current_backend = Ref(:makie)
 
 function Scene(args...)
@@ -53,11 +56,11 @@ end
 function Scene(parent::Scene{Backend}, scene::Dict, name = :scene) where Backend
     data = Dict{Symbol, Any}()
     for (k, v) in scene
-        data[Symbol(k)] = to_node(v)
+        data[Symbol(k)] = scene_node(v)
     end
     Scene{Backend}(name, Nullable(parent), data, nothing)
 end
-function Scene(parent::Scene{Backend}, name = :scene; attributes...) where Backend
+function Scene(parent::Scene{Backend}, name::Symbol = :scene; attributes...) where Backend
     Scene(parent, Dict{Symbol, Any}(attributes), name)
 end
 
@@ -68,7 +71,7 @@ end
 
 function (::Type{Scene{Backend}})(pair1::Pair, tail::Pair...) where Backend
     args = [pair1, tail...]
-    Scene(Dict(map(x-> x[1] => to_node(x[2]), args)))
+    Scene(Dict(map(x-> x[1] => scene_node(x[2]), args)))
 end
 
 
@@ -85,7 +88,6 @@ and manually added via `show` by doing e.g.
 """
 function show!(scene::Scene{Backend}, childscene::Scene{Backend}) where Backend
     camera = to_value(childscene, :camera) # should always be available!
-    println(camera)
     screen = getscreen(scene)
     cams = collect(keys(screen.cameras))
     viz = native_visual(childscene)
@@ -281,8 +283,14 @@ function Scene(;
     resize!(w, Int.(resolution)...)
 
     GLVisualize.add_screen(w)
-
-    dict = map(filter((k, v)-> k != :cursor_position, w.inputs)) do k_v
+    filtered = filter(w.inputs) do k, v
+        !(k in (
+            :cursor_position,
+            :window_size,
+            :framebuffer_size
+        ))
+    end
+    dict = map(filtered) do k_v
         k_v[1] => to_node(k_v[2])
     end
     dict[:screen] = w
@@ -316,7 +324,7 @@ function setindex!(s::Scene, obj, key::Symbol)
     if haskey(s, key) # if in dictionary, just push a new value to the signal
         push!(s[key], obj)
     else
-        s.data[key] = to_node(obj)
+        s.data[key] = scene_node(obj)
     end
 end
 
@@ -407,4 +415,8 @@ function find_default(scene, kw_args, func, attribute)
         error("Scene doesn't contain a theme and therefore doesn't provide any defaults.
             Please provide attribute $attribute for $func")
     end
+end
+
+function GeometryTypes.widths(scene::Scene)
+    widths(getscreen(scene))
 end
