@@ -7,12 +7,14 @@ function is_ci()
 end
 
 if is_ci()
+    Pkg.clone("https://github.com/SimonDanisch/AbstractNumbers.jl.git")
     Pkg.checkout("GLAbstraction")
     Pkg.checkout("GLVisualize")
     Pkg.checkout("MeshIO")
     Pkg.add("ImageMagick")
     Pkg.checkout("GLWindow")
 end
+
 if isempty(mode)
     # we're not compiling, so we do a reference image test run
     include("visual_regression.jl")
