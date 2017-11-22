@@ -38,6 +38,7 @@ Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
 Pkg.clone("https://github.com/SimonDanisch/AbstractNumbers.jl.git")
 Pkg.checkout("GLAbstraction")
 Pkg.checkout("GLVisualize")
+Pkg.checkout("GeometryTypes")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
 Pkg.checkout("MeshIO")
