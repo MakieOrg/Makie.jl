@@ -21,5 +21,5 @@ if isempty(mode)
     include("visual_regression.jl")
 else
     # when snoop compiling, we simply just execute all sample code directly
-    parse("all_samples.jl")
+    include("all_samples.jl")
 end
