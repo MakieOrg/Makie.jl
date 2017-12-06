@@ -1,4 +1,5 @@
 import Hiccup, Media, Images, Juno, FileIO, ModernGL, Interact
+import FileIO: save
 
 function scene2image(screen::Screen)
     GLWindow.poll_glfw()
@@ -29,7 +30,7 @@ end
 function save(path::String, scene::Scene)
     img = scene2image(scene)
     if img != nothing
-        FileIO.save(path, img)
+        save(path, img)
     else
         error("Scene doesn't contain a plot!")
     end
