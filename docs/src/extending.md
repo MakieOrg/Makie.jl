@@ -1,6 +1,6 @@
 # Extending
 
-There are 3 ways to extend Makie:
+There are 4 ways to extend Makie:
 
 1) By creating a new function combining multiple plotting commands (duh)
 2) By overloading conversions for your custom type
@@ -60,7 +60,7 @@ save("ext_plot2.png", scene); nothing # hide
 
 ## Option 3
 
-Option 2 is very similar to Plots.jl recipes.
+Option 3 is very similar to Plots.jl recipes.
 Inside the function you can just use all of the plotting and drawing API to create
 a rich visual representation of your type.
 The signature that needs overloading is:
@@ -74,9 +74,9 @@ function plot(obj::MyType, kw_args::Dict)
 end
 ```
 
-## Option 3
+## Option 4
 
-Option 3 is pretty unique and is a real extension of Makie's functionality as it
+Option 4 is pretty unique and is a real extension of Makie's functionality as it
 adds a new primitive drawing type.
 This interface will likely change a lot in the future, since it carries quite a lot of
 technical debt from the design of GLAbstraction + GLVisualize, but this is how you can do it right now:
