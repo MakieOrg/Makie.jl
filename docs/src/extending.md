@@ -60,7 +60,7 @@ save("ext_plot2.png", scene); nothing # hide
 
 ## Option 3
 
-Option 2 is very similar to Plots.jl recipes.
+Option 3 is very similar to Plots.jl recipes.
 Inside the function you can just use all of the plotting and drawing API to create
 a rich visual representation of your type.
 The signature that needs overloading is:
