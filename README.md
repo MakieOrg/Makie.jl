@@ -35,17 +35,15 @@ This package is not released yet so a bit awkward to set up. Here are the steps:
 
 ```julia
 Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
-Pkg.clone("https://github.com/SimonDanisch/AbstractNumbers.jl.git")
+Pkg.clone("AbstractNumbers");Pkg.checkout("AbstractNumbers")
 Pkg.checkout("GLAbstraction")
 Pkg.checkout("GLVisualize")
 Pkg.checkout("GeometryTypes")
 
 # For UV examples, e.g. earth texture on sphere, or textured cat
-Pkg.checkout("MeshIO")
 
 # For precompilation
-Pkg.clone("https://github.com/SimonDanisch/PackageCompiler.jl.git")
-Pkg.build("PackageCompiler")
+Pkg.add("PackageCompiler")
 Pkg.checkout("GLWindow")
 ```
 
@@ -61,14 +59,13 @@ Then you can build a system image like this:
 ```julia
 # This is not well tested, so please be careful - I don't take any responsibilities for a messed up Julia install.
 
-# Replaces julias system image
+# The safe option:
+PackageCompiler.compile_package("Makie", force = false) # can take around ~20 minutes
 
-ENV["MAKIE_COMPILE"] = "force"
+# Replaces julias system image
 # please be very carefull with the above option, since this can make your julia stop working.
 # If Julia doesn't start for you anymore, consider doing:
 # using PackageCompiler; PackageCompiler.revert() <- not well tested
 
-# or the safer option:
-ENV["MAKIE_COMPILE"] = "build" # just builds a system image the needs to be added manually
-Pkg.build("Makie") # can take around ~20 minutes
+PackageCompiler.compile_package("Makie", force = true)
 ```
