@@ -3,10 +3,10 @@ julia 0.6
 Quaternions
 GLVisualize
 StaticArrays 0.6.6
-GeometryTypes 0.4.3
-Reactive
-GLAbstraction
-GLWindow
+GeometryTypes 0.4.4
+Reactive 0.6.0
+GLAbstraction 0.6.0
+GLWindow 0.7.1
 Contour
 FileIO
 Images
