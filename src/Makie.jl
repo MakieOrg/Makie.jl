@@ -18,6 +18,10 @@ include("plotutils/units.jl")
 
 const makie = Scene{:makie}
 
+
+# Until I find a non breaking way to integrate this into GLAbstraction, it lives here.
+GLAbstraction.gl_convert(a::Vector{T}) where T = convert(Vector{GLAbstraction.gl_promote(T)}, a)
+
 include("plotutils/layout.jl")
 
 include("plotsbase/atomics.jl")
