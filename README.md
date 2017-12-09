@@ -36,15 +36,7 @@ This package is not released yet so a bit awkward to set up. Here are the steps:
 ```julia
 Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
 Pkg.clone("AbstractNumbers");Pkg.checkout("AbstractNumbers")
-Pkg.checkout("GLAbstraction")
 Pkg.checkout("GLVisualize")
-Pkg.checkout("GeometryTypes")
-
-# For UV examples, e.g. earth texture on sphere, or textured cat
-
-# For precompilation
-Pkg.add("PackageCompiler")
-Pkg.checkout("GLWindow")
 ```
 
 Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
@@ -57,6 +49,9 @@ To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
 ```julia
+# add PackageCompiler
+Pkg.add("PackageCompiler")
+using PackageCompiler
 # This is not well tested, so please be careful - I don't take any responsibilities for a messed up Julia install.
 
 # The safe option:
