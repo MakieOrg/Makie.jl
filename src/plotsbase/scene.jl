@@ -242,11 +242,12 @@ function Scene(;
         color = :white,
         monitor = nothing
     )
-
-    tsig = to_node(0.0)
     w = nothing
+    signal_dict = Dict{Symbol, Any}()
     if !isempty(global_scene)
         oldscene = global_scene[]
+        signal_dict[:time] = oldscene[:time]
+        delete!(oldscene.data, :time)
         oldscreen = oldscene[:screen]
         nw = GLWindow.nativewindow(oldscreen)
         if position == nothing && isopen(nw)
@@ -269,7 +270,9 @@ function Scene(;
         end
         w = Screen("Makie", resolution = resolution, color = to_color(nothing, color))
         GLWindow.add_complex_signals!(w)
+        tsig = to_node(0.0)
         render_task[] = @async render_loop(tsig, w)
+        signal_dict[:time] = tsig
     end
 
     nw = GLWindow.nativewindow(w)
@@ -283,20 +286,18 @@ function Scene(;
     resize!(w, Int.(resolution)...)
 
     GLVisualize.add_screen(w)
-    filtered = filter(w.inputs) do k, v
-        !(k in (
+    for (k, v) in w.inputs
+        # filter out crucial signals, which shouldn't be closed when closing scene
+        (k in (
             :cursor_position,
             :window_size,
             :framebuffer_size
-        ))
+        )) && continue
+        signal_dict[k] = to_node(v)
     end
-    dict = map(filtered) do k_v
-        k_v[1] => to_node(k_v[2])
-    end
-    dict[:screen] = w
-    push!(dict[:window_open], true)
-    dict[:time] = tsig
-    scene = Scene(dict)
+    signal_dict[:screen] = w
+    push!(signal_dict[:window_open], true)
+    scene = Scene(signal_dict)
     theme(scene) # apply theme
     push!(global_scene, scene)
     scene
