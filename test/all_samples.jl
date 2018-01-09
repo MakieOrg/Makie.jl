@@ -354,3 +354,48 @@ l[:strokewidth] = 1
 l[:textsize] = 15
 l[:textgap] = 5
 scene
+
+#cell
+using Makie, GeometryTypes
+scene = Scene()
+lineplots = []
+axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
+center!(scene)
+us = linspace(0, 1, 100)
+
+io = VideoStream(scene, "/home/s/Desktop/", "lines")
+for i = 1:100
+    if length(lineplots) < 20
+        push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
+    else
+        lineplots = circshift(lineplots, 1)
+        lp = first(lineplots)
+        lp[:positions] = Point3f0.(us, sin.(us .+ time()), zeros(100))
+        lp[:offset] = Vec3f0(0)
+    end
+    for lp in lineplots
+        z = to_value(lp, :offset)[3]
+        lp[:offset] = Vec3f0(0, 0, z + 0.1)
+    end
+    sleep(1/30)
+    recordframe!(io)
+end
+finish(io, "gif")
+
+
+#cell
+function animtest1(r)
+    scene = Scene(resolution = (600, 600))
+    axis(linspace(-25, 25, 4), linspace(-25, 25, 4))
+    scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
+    center!(scene)
+    io = VideoStream(scene, ".", "interaction")
+    @inbounds for i in 2:length(r)
+        scene[:scatter][:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
+        recordframe!(io)
+    end
+    finish(io, "mp4") # could also be gif, webm or mkv
+    nothing
+end
+r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
+animtest1(r) # compile
