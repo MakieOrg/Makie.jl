@@ -201,12 +201,14 @@ function render_loop(tsig, screen, framerate = 1/60)
     while isopen(screen)
         t = time()
         GLWindow.poll_glfw() # GLFW poll
-        push!(tsig, t)
         if Base.n_avail(Reactive._messages) > 0
             render_frame(screen)
         end
         t = time() - t
-        GLWindow.sleep_pessimistic(framerate - t)
+        to_sleep = framerate - t
+        if to_sleep > 0.001 # minimal sleep time
+            sleep(to_sleep)
+        end
     end
     GLWindow.destroy!(screen)
     return
