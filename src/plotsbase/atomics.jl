@@ -184,6 +184,19 @@ end
     image = to_image(image)
 end
 
+@default function heatmap(scene, kw_args)
+    x = to_interval(x)
+    y = to_interval(y)
+
+    linewidth = to_float(linewidth)
+    levels = to_float(levels)
+    heatmap = to_array(heatmap)
+
+    colormap = to_colormap(colormap)
+    # convert function should only have one argument right now, so we create this closure
+    colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, heatmap))(colornorm)
+end
+
 @default function volume(scene, kw_args)
     volume = to_array(volume)
     xor(
@@ -202,15 +215,7 @@ end
     isorange = to_float(isorange)
 end
 
-@default function heatmap(scene, kw_args)
-    linewidth = to_float(linewidth)
-    levels = to_float(levels)
-    heatmap = to_array(heatmap)
 
-    colormap = to_colormap(colormap)
-    # convert function should only have one argument right now, so we create this closure
-    colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, heatmap))(colornorm)
-end
 
 @default function axis(scene, kw_args)
     axisnames = to_text(axisnames)

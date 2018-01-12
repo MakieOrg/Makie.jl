@@ -4,7 +4,8 @@ function heatmap2glvisualize(attributes)
     result[:levels] = to_signal(attributes[:levels])
     result[:color_norm] = to_signal(attributes[:colornorm])
     result[:color_map] = to_signal(attributes[:colormap])
-
+    result[:model] = to_signal(attributes[:model])
+    result[:ranges] = (to_value(attributes[:x]), to_value(attributes[:y]))
     heatmap = to_signal(lift_node(attributes[:heatmap]) do z
         [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
     end)
@@ -36,6 +37,7 @@ function image2glvisualize(attributes)
         xmax, ymax = maximum(x), maximum(y)
         SimpleRectangle{Float32}(xmin, ymin, xmax - xmin, ymax - ymin)
     end)
+    result[:model] = to_signal(attributes[:model])
     result[:spatialorder] = to_value(attributes[:spatialorder])
     result
 end
@@ -65,6 +67,7 @@ function volume2glvisualize(attributes)
     result[:isovalue] = to_signal(attributes[:isovalue])
     result[:isorange] = to_signal(attributes[:isorange])
     result[:absorption] = to_signal(attributes[:absorption])
+    result[:model] = to_signal(attributes[:model])
 
     result
 end
