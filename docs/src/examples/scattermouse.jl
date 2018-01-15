@@ -6,8 +6,8 @@ scene = Scene()
 r = linspace(0, 3, 4)
 a = axis(r, r)
 center!(scene, 0.2)
-
-pos = lift_node(getindex.(scene, (:mouseposition, :time, :camera))...) do mpos, t, cam
+cam = scene[:screen].cameras[:orthographic_pixel]
+pos = lift_node(getindex.(scene, (:mouseposition, :time))...) do mpos, t
     map(linspace(0, 2pi, 60)) do i
         circle = Point2f0(sin(i), cos(i))
         mouse = to_world(Point2f0(mpos), cam)
@@ -35,4 +35,3 @@ for i = linspace(0.01, 0.4, 100)
     yield()
     sleep(0.01)
 end
-
