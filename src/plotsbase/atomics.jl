@@ -221,8 +221,8 @@ end
     axisnames = to_text(axisnames)
 
     showticks = to_bool(showticks)
-    tickfont2d = to_font(tickfont2d)
-    tickfont3d = to_font(tickfont3d)
+    tickfont2d = to_text(tickfont2d)
+    tickfont3d = to_text(tickfont3d)
     showaxis = to_bool(showaxis)
     showgrid = to_bool(showgrid)
 
@@ -231,7 +231,17 @@ end
     gridthickness = to_3floats(gridthickness)
     axiscolors = to_color(axiscolors)
 end
-
+@default function text(scene, kw_args)
+    text = to_string(text)
+    color = to_color(color)
+    strokecolor = to_color(strokecolor)
+    strokewidth = to_float(strokewidth)
+    font = to_font(font)
+    align = to_textalign(align)
+    rotation = to_rotation(rotation)
+    textsize = to_float(textsize)
+    position = to_position(position)
+end
 
 function expand_kwargs(scene, kw_args)
     # TODO get in all the shorthands from Plots.jl
@@ -306,6 +316,12 @@ const atomic_funcs = (
         axis(xrange, yrange, [zrange])
 
     Creates a axis from a x,y,z ranges
+    """,
+
+    :text => """
+        text(string)
+
+    Plots a text
     """
 )
 

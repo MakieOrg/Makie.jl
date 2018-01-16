@@ -215,11 +215,16 @@ to_scalefunc(b, x) = x # TODO implement it
 All text
 """
 to_text(b, x) = x# TODO implement it
+
+to_string(scene, x::String) = x
+to_string(scene, x) = string(x)
+
+
 """
-    to_font(b, x)
-All fonts
+Text align, e.g. :
 """
-to_font(b, x) = x # TODO implement it
+to_textalign(b, x::Tuple{Symbol, Symbol}) = Vec2f0(alignment2num.(x))
+to_textalign(b, x::Vec2f0) = x
 
 """
     to_colornorm(b, norm, intensity)
@@ -733,4 +738,22 @@ function to_volume_algorithm(b, value::Union{Symbol, String})
     to_volume_algorithm(b, get(vals, Symbol(value)) do
         error("$value not a valid volume algorithm. Needs to be in $(keys(vals))")
     end)
+end
+
+
+"""
+    to_font(scene, x)
+a string naming a font, e.g. helvetica
+"""
+function to_font(scene, x::Union{Symbol, String})
+    str = string(x)
+    if str == "default"
+        return GLVisualize.defaultfont()
+    end
+    newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
+end
+const Font = Vector{Ptr{FreeType.FT_FaceRec}}
+to_font(scene, x::Font) = x
+function to_font(scene, x)
+    error("Please use a string like \"Helvetica\" or a font loaded with FreeType!. Found: $x")
 end

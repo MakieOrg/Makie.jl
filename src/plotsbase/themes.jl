@@ -183,10 +183,20 @@ function default_theme(scene)
             textgap = to_float(15)
             padding = to_markersize2d(10)
             outerpadding = to_markersize2d(10)
-            align = Makie.to_textalign((:left, :hcenter))
+            align = to_textalign((:left, :hcenter))
             rotation = to_rotation(Vec4f0(0, 0, 0, 1))
             textcolor = to_color(:black)
             textsize = to_float(16)
+        end
+        text = begin
+            color = to_color(:black)
+            strokecolor = to_color((:black, 0.0))
+            strokewidth = to_float(0)
+            font = to_font(GLVisualize.defaultfont())
+            align = to_textalign((:left, :bottom))
+            rotation = to_rotation(Vec4f0(0, 0, 0, 1))
+            textsize = to_float(20)
+            position = to_position(Point2f0(0))
         end
     end
     scene[:theme] = theme

@@ -6,6 +6,7 @@ using StaticArrays, GLWindow, ModernGL, Contour, Quaternions
 
 using Base.Iterators: repeated, drop
 using Base: RefValue
+using Fontconfig, FreeType, FreeTypeAbstraction
 
 struct Backend{B} end
 
@@ -45,7 +46,7 @@ include("camera2d.jl")
 
 export Scene, Node
 
-export scatter, lines, linesegment, mesh, surface, wireframe, axis
+export scatter, lines, linesegment, mesh, surface, wireframe, axis, text
 export @ref, @theme, @default, to_node, to_value, lift_node, to_world, save
 export available_marker_symbols, available_gradients, render_frame
 

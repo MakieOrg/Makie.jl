@@ -19,6 +19,9 @@ Media
 Juno
 ModernGL
 GLFW 1.4.1
+Fontconfig
+FreeType
+FreeTypeAbstraction
 
 @windows ImageMagick
 @linux ImageMagick

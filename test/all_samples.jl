@@ -403,3 +403,14 @@ function animtest1(r)
 end
 r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
 animtest1(r)
+
+
+using Makie
+scene = Scene()
+text(
+    ". This is an annotation!",
+    position = (300, 200),
+    align = (:center,  :center),
+    textsize = 60,
+    font = "URW Chancery L"
+)
