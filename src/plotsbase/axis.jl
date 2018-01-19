@@ -1,10 +1,10 @@
 
-function labelposition(ranges, dim)
+function labelposition(ranges, dim, dir, origin::StaticVector{N}) where N
     a, b = extrema(ranges[dim])
-    pos = Float32(((b - a) / 2) + a)
-    axis_vec = unit(Point{N, Float32}, dim)
-    normal = unit(Point{N, Float32}, mod1(dim + 1, 3))
-    pos .* axis_vec .- (normal * 0.2f0)
+    whalf = Float32(((b - a) / 2))
+    halfaxis = unit(Point{N, Float32}, dim) .* whalf
+
+    origin .+ (halfaxis .+ (dir * (whalf / 3f0)))
 end
 
 
@@ -17,7 +17,8 @@ end
 
 function draw_axis(
         textbuffer::TextBuffer{N}, linebuffer, ranges,
-        axisnames, visible, showaxis, showticks, showgrid,
+        axisnames, axisnames_color, axisnames_size, axisnames_rotation_align, axisnames_font,
+        visible, showaxis, showticks, showgrid,
         axiscolors, gridcolors, gridthickness, tickfont
     ) where N
 
@@ -51,6 +52,14 @@ function draw_axis(
                 str = sprint(io-> print(io, round(tick, 2)))
                 append!(textbuffer, startpos, str, tickfont[i]...)
             end
+            if !isempty(axisnames[i])
+                pos = labelposition(ranges, i, tickdir, origin) .+ offset2
+                append!(
+                    textbuffer, pos, to_latex(axisnames[i]),
+                    axisnames_size[i], axisnames_color[i],
+                    axisnames_rotation_align[i]..., axisnames_font
+                )
+            end
         end
         if showgrid[i]
             c = gridcolors[i]
@@ -65,11 +74,6 @@ function draw_axis(
                 end
             end
         end
-        nametext = axisnames[i]
-        # if !isempty(first(nametext))
-        #     pos = labelposition(ranges, i)
-        #     printat(textio, startpos, nametext...)
-        # end
     end
     return
 end
@@ -90,7 +94,7 @@ function axis(scene::Scene, ranges::Node{<: NTuple{N}}, attributes::Dict) where 
     attributes = axis_defaults(scene, attributes)
     tickfont = N == 2 ? :tickfont2d : :tickfont3d
     names = (
-        :axisnames, :visible, :showaxis, :showticks,
+        :axisnames, :axisnames_color, :axisnames_size, :axisnames_rotation_align, :axisnames_font, :visible, :showaxis, :showticks,
         :showgrid, :axiscolors, :gridcolors, :gridthickness, tickfont
     )
     args = getindex.(attributes, names)

@@ -6,7 +6,7 @@ using StaticArrays, GLWindow, ModernGL, Contour, Quaternions
 
 using Base.Iterators: repeated, drop
 using Base: RefValue
-using Fontconfig, FreeType, FreeTypeAbstraction
+using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
 
 struct Backend{B} end
 

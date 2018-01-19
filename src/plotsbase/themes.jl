@@ -57,8 +57,12 @@ function default_theme(scene)
         (:right, :vcenter), # z axis
     )
     dark_text = RGBAf0(0.0, 0.0, 0.0, 0.4)
+    syms = (:X, :Y, :Z)
+    axisnames = ntuple(i-> "$(syms[i]) Axis", 3)
+    axisnames_color = ntuple(i-> dark_text, 3)
+    axisnames_rotation_align = ntuple(i-> (tickrotations[i], tickalign[i]), 3)
+    axisnames_size = ntuple(i-> 0.1, 3)
 
-    axisnames = map(x-> ("$x Axis", 0.1, dark_text, Vec4f0(0,0,0,1), (:center, :bottom)), (:X, :Y, :Z))
     showticks = ntuple(i-> true, 3)
     tickfont3d = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), tickrotations[i], tickalign[i]), 3)
     tickfont2d = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), Vec4f0(0,0,0,1), tickalign[i]), 2)
@@ -129,7 +133,13 @@ function default_theme(scene)
         end
 
         axis = begin
+
             axisnames = axisnames
+            axisnames_color = axisnames_color
+            axisnames_rotation_align = axisnames_rotation_align
+            axisnames_size = axisnames_size
+            axisnames_font = "default"
+
             visible = true
 
             showticks = showticks

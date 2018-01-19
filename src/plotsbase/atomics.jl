@@ -216,9 +216,14 @@ end
 end
 
 
-
+dontcare(b, x) = x
 @default function axis(scene, kw_args)
     axisnames = to_text(axisnames)
+
+    axisnames_color = to_color(axisnames_color)
+    axisnames_rotation_align = dontcare(axisnames_rotation_align)
+    axisnames_size = to_3floats(axisnames_size)
+    axisnames_font = to_font(axisnames_font)
 
     showticks = to_bool(showticks)
     tickfont2d = to_text(tickfont2d)

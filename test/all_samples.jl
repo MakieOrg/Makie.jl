@@ -414,3 +414,43 @@ text(
     textsize = 60,
     font = "URW Chancery L"
 )
+
+
+
+#cell
+using Makie, UnicodeFun
+scene = Scene()
+vx = -1:0.01:1;
+vy = -1:0.01:1;
+
+f(x, y) = (sin(x*10) + cos(y*10)) / 4
+psurf = surface(vx, vy, f)
+
+a = axis(linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
+center!(scene, 0)
+
+a[:axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
+a[:axisnames_size] = (0.15, 0.15, 0.15)
+a[:axisnames_color] = (:black, :black, :black)
+a[:axisnames_font] = "Palatino"
+
+# available_gradients() print gradients
+
+psurf[:colormap] = :RdYlBu
+wh = widths(scene)
+t = text(
+    "Multipole Representation of first resonances of U-238",
+    position = (wh[1] / 2.0, wh[2] - 20.0),
+    align = (:center,  :center),
+    textsize = 20,
+    font = "Palatino",
+    camera = :pixel
+)
+c = lines(Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
+#update surface
+psurf[:z] = f.(vx .+ 0.5, (vy .+ 0.5)')
+function Base.to_index(i::Array{IDX})
+    ii = reinterpret(Int32, i)
+    ii .= ii .+ 1
+    ii
+end
