@@ -218,3 +218,19 @@ function text(
 
     insert_scene!(scene, :text, viz, attributes)
 end
+
+function text_overlay!(scene, text, position, size, color)
+    screen = getscreen(scene)
+    if length(position) ==3
+        @assert haskey(screen.cameras, :perspective) "Textoverlay in 3D requires a 3D scene"
+        camera = screen.cameras[:perspective]
+    elseif length(position) == 2
+        
+    projectionview = camera.projectionview
+
+    pos = map((pos, pv)-> pv * Vec4f0(pos..., 1.0f0), Signal(position), projectionview)
+    resolution = map(x-> Vec2f0(widths(x)), camera.window_size)
+    screen_pos = map(clip2pixel_space, pos, resolution)
+    Makie.text(text, position = screen_pos, camera=:pixel, textsize=size, color=color)
+end
+
