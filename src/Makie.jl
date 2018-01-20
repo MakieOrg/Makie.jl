@@ -46,7 +46,7 @@ include("camera2d.jl")
 
 export Scene, Node
 
-export scatter, lines, linesegment, mesh, surface, wireframe, axis, text
+export scatter, lines, linesegment, mesh, surface, wireframe, axis, text, text_overlay!
 export @ref, @theme, @default, to_node, to_value, lift_node, to_world, save
 export available_marker_symbols, available_gradients, render_frame
 

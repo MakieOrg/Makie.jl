@@ -454,3 +454,9 @@ function Base.to_index(i::Array{IDX})
     ii .= ii .+ 1
     ii
 end
+
+scene = Scene();
+scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
+center!(scene);
+text_overlay!(scene, "test", position = Point2f0(1.0f0,1.0f0), textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
+text_overlay!(scene, "test", position = Point2f0(1.0f0,0.0f0), textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
