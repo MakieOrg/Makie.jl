@@ -455,8 +455,20 @@ function Base.to_index(i::Array{IDX})
     ii
 end
 
+using Makie, GeometryTypes, ColorTypes
 scene = Scene();
 scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
 center!(scene);
 text_overlay!(scene, "test", position = Point2f0(1.0f0,1.0f0), textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
 text_overlay!(scene, "test", position = Point2f0(1.0f0,0.0f0), textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
+
+scene = Scene();
+scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
+center!(scene);
+
+text_overlay!(scene,:scatter, "test", "test", textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
+
+scene = Scene();
+scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
+center!(scene);
+text_overlay!(scene, :scatter, 1=>"test1", 2=>"test2", textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))

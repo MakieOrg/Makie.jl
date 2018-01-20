@@ -239,8 +239,30 @@ function text_overlay!(scene::makie, text; attributes...)
     resolution = map(x-> Vec2f0(widths(x)), camera.window_size)
     screen_pos = map(clip2pixel_space, pos, resolution)
 
-    attributes[:position] = screen_pos
-
-    Makie.text(text, attributes...)
+    attributes[:position] = map(pos-> (pos[1:2]...),screen_pos)
+    attributes[:camera] = :pixel
+    Makie.text(text; attributes...)
 end
 
+function text_overlay!(scene::makie, display_kind::Symbol, texts::Pair{Int, String}...; attributes...)
+    @assert haskey(scene, display_kind) "No objects of kind $display_kind were found in the scene"
+    positions = get(get(scene, display_kind, nothing), :positions ,nothing)
+    n_objects = length(positions)
+    not_found = String[]
+    for (i, text) in texts
+        if i > n_objects
+            push!(not_found, text)
+            continue
+        end
+        _attributes = Dict(deepcopy(attributes))
+        _attributes[:position] = positions[i]
+        text_overlay!(scene,text; _attributes...)
+    end
+    if !isempty(not_found)
+        info("Following texts had no objects: $not_found")
+    end
+end
+
+function text_overlay!(scene::makie, display_kind::Symbol, texts::String...; attributes...)
+    text_overlay!(scene, display_kind, [ i=>text for (i,text) in enumerate(texts)]...; attributes...)
+end
