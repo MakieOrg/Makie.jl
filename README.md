@@ -7,7 +7,7 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 
 
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://www.glvisualize.com/Makie.jl/stable/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://makie.juliaplots.org/stable/)
 
 It's Halloween :)
 
