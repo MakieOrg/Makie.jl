@@ -63,6 +63,8 @@ to_rotation(b, s::Quaternion) = Vec4f0(s.v1, s.v2, s.v3, s.s)
 """
 to_rotation(b, s::Tuple{<:VecLike{3}, <: AbstractFloat}) = qrotation(s[1], s[2])
 to_rotation(b, s::Tuple{<:VecLike{2}, <: AbstractFloat}) = qrotation(Vec3f0(s[1][1], s[1][2], 0), s[2])
+to_rotation(b, angle::AbstractFloat) = qrotation(Vec3f0(0, 0, 1), angle)
+to_rotation(b, r::AbstractVector) = to_rotation.(b, r)
 
 
 

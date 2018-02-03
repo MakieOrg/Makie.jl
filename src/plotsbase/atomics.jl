@@ -2,7 +2,7 @@
 
 function to_modelmatrix(b, scale, offset, rotation)
     lift_node(scale, offset, rotation) do s, o, r
-        q = Quaternion(r[4], r[1], r[2], r[3])
+        q = Quaternion(1f0,0f0,0f0,0f0)
         transformationmatrix(o, s, q)
     end
 end
@@ -401,7 +401,8 @@ for func in (:image, :heatmap, :lines, :surface)
     # Higher level atomic signatures
     @eval begin
         function $func(scene::Scene, data::AbstractMatrix, attributes::Dict)
-            $func(scene, 1:size(data, 1), 1:size(data, 2), data, attributes)
+            n, m = Float64.(size(data))
+            $func(scene, 0.0 => n, 0.0 => m, data, attributes)
         end
         function $func(scene::Scene, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
             if !applicable(f, x[1], y[1])

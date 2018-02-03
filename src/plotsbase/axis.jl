@@ -1,17 +1,83 @@
 
-function labelposition(ranges, dim, dir, origin::StaticVector{N}) where N
+function labelposition(ranges, dim, dir, origin::StaticVector{3})
     a, b = extrema(ranges[dim])
     whalf = Float32(((b - a) / 2))
-    halfaxis = unit(Point{N, Float32}, dim) .* whalf
+    halfaxis = unit(Point{3, Float32}, dim) .* whalf
 
     origin .+ (halfaxis .+ (dir * (whalf / 3f0)))
 end
 
+function labelposition(ranges, dim, dir, origin::StaticVector{2})
+    a, b = extrema(ranges[dim])
+    whalf = Float32(((b - a) / 2))
+    halfaxis = unit(Point{2, Float32}, dim) .* whalf
+    origin .+ (halfaxis .- (dir * (whalf / 2f0)))
+end
 
 function GeometryTypes.widths(x::Range)
     mini, maxi = Float32.(extrema(x))
     maxi - mini
 end
+
+function standard_ticks(range)
+    str = sprint(io-> print(io, round(tick, 2)))
+end
+#
+
+#
+# # return (continuous_values, discrete_values) for the ticks on this axis
+# function get_ticks(axis::Axis)
+#     ticks = _transform_ticks(axis[:ticks])
+#     ticks in (nothing, false) && return nothing
+#
+#     dvals = axis[:discrete_values]
+#     cv, dv = if !isempty(dvals) && ticks == :auto
+#         # discrete ticks...
+#         axis[:continuous_values], dvals
+#     elseif ticks == :auto
+#         # compute optimal ticks and labels
+#         optimal_ticks_and_labels(axis)
+#     elseif typeof(ticks) <: Union{AVec, Int}
+#         # override ticks, but get the labels
+#         optimal_ticks_and_labels(axis, ticks)
+#     elseif typeof(ticks) <: NTuple{2, Any}
+#         # assuming we're passed (ticks, labels)
+#         ticks
+#     else
+#         error("Unknown ticks type in get_ticks: $(typeof(ticks))")
+#     end
+#     # @show ticks dvals cv dv
+#
+#     # TODO: better/smarter cutoff values for sampling ticks
+#     if length(cv) > 30 && ticks == :auto
+#         rng = Int[round(Int,i) for i in linspace(1, length(cv), 15)]
+#         cv[rng], dv[rng]
+#     else
+#         cv, dv
+#     end
+# end
+
+
+
+function draw_axis(show, textbuffer::TextBuffer{N}, linebuffer, framestyle) where N
+
+
+end
+
+function draw_grid(show, textbuffer::TextBuffer{N}, linebuffer, gridstyle) where N
+
+
+end
+
+
+function draw_titles(show, textbuffer::TextBuffer{N}, linebuffer, title_style) where N
+
+
+end
+
+
+
+
 
 
 
@@ -53,11 +119,16 @@ function draw_axis(
                 append!(textbuffer, startpos, str, tickfont[i]...)
             end
             if !isempty(axisnames[i])
-                pos = labelposition(ranges, i, tickdir, origin) .+ offset2
+                rot, align = axisnames_rotation_align[i]
+                if N == 2
+                    rot = (Vec4f0(0,0,0,1), qrotation(Vec3f0(0,0,1), -1.5pi))[i]
+                    align = ((:center, :top), (:bottom, :center))[i]
+                end
+                pos = labelposition(ranges, i, tickdir, origin)# .+ offset2
                 append!(
                     textbuffer, pos, to_latex(axisnames[i]),
                     axisnames_size[i], axisnames_color[i],
-                    axisnames_rotation_align[i]..., axisnames_font
+                    rot, align, axisnames_font
                 )
             end
         end

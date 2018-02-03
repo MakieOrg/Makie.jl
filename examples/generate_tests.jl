@@ -5,32 +5,28 @@ using Makie, GLFW, GeometryTypes, Reactive, FileIO
 using GLVisualize, ColorBrewer, Colors
 using GLVisualize: loadasset, assetpath
 
-function unique_name!(name, defined)
-    funcname = Symbol(replace(lowercase(name), r"[ #$!@#$%^&*()+]", '_'))
-    i = 1
-    while isdefined(Main, funcname) || (funcname in defined)
-        funcname = Symbol("$(funcname)_$i")
-        i += 1
-    end
-    push!(defined, funcname)
-    funcname
-end
-
-
-open("../test/visual_regression_funcs.jl", "w") do io
-    last_setup = first(database).setup
-    println(io, last_setup)
-    defined = Set(Symbol[])
-    for (i, entry) in enumerate(database)
-        if entry.setup != last_setup
-            last_setup = entry.setup
-            println(io, last_setup)
-        end
-        funcname = unique_name!(entry.title, defined)
-        println(io, "function $(funcname)()")
-        for line in split(entry.source, "\n")
-            println(io, " "^4, line)
-        end
-        println(io, "end")
+open("function_form.jl", "w") do io
+    sort!(database, by = (x)-> x.groupid)
+    i = start(database)
+    while length(database) >= i
+        entry = database[i]
+        fname = entry.unique_name
+        i = print_code(io, database, i, "function $fname()")
     end
 end
+
+open("global_form.jl", "w") do io
+    sort!(database, by = (x)-> x.groupid)
+    i = start(database)
+    while length(database) >= i
+        i = print_code(io, database, i)
+    end
+end
+
+include("global_form.jl")
+for entry in database
+    f = getfield(Main, entry.unique_name)
+    f()
+end
+
+0.5 in (0.0..2.0)

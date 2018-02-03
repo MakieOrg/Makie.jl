@@ -1,24 +1,11 @@
 include("database.jl")
 
-@globaly_shared begin
-    using Makie, GLFW, GeometryTypes, Reactive, FileIO
-    using GLVisualize, ColorBrewer, Colors
-    using GLVisualize: loadasset, assetpath
-
-    function xy_data(x, y)
-        r = sqrt(x*x + y*y)
-        r == 0.0 ? 1f0 : (sin(r)/r)
-    end
-    nothing
-end
-
-
 @block SimonDanisch ["2d"] begin
 
     @cell "Subscenes" [image, scatter, subscene] begin
 
         img = loadasset("doge.png")
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
 
         is = image(img)
         center!(scene)
@@ -28,26 +15,18 @@ end
         scene
     end
 
+    @cell "Contour Function" [contour] begin
 
-    @cell "Sample 4" [heatmap] begin
-        scene = Scene(resolution = (500, 500))
-        heatmap(rand(32, 32))
-        center!(scene)
-    end
-
-    @cell "Sample 5" [contour] begin
-
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
-        Makie.contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
+        contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
         center!(scene)
     end
 
 
-    @cell "Sample 9" [contour] begin
-
-        scene = Scene(resolution = (500, 500))
+    @cell "Contour Simple" [contour] begin
+        scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
         contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
         center!(scene)
@@ -55,18 +34,18 @@ end
 
 
     @cell "Heatmap" [heatmap] begin
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         heatmap(rand(32, 32))
         center!(scene)
     end
 
-    @cell "Sample 28" [animation, scatter, updating] begin
+    @cell "Animated Scatter" [animation, scatter, updating] begin
+        scene = Scene(@resolution)
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
-        scene = Scene(resolution = (600, 600))
         axis(linspace(-25, 25, 4), linspace(-25, 25, 4))
         scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
         center!(scene)
-        io = VideoStream(scene, path, "interaction")
+        io = VideoStream(scene, @outputfile)
         @inbounds for i in 2:length(r)
             scene[:scatter][:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
             recordframe!(io)
@@ -75,7 +54,7 @@ end
     end
 
     @cell "Text Annotation" [text, align] begin
-        scene = Scene()
+        scene = Scene(@resolution)
         text(
             ". This is an annotation!",
             position = (300, 200),
@@ -85,106 +64,40 @@ end
         )
         scene
     end
+
+    @cell "Text rotation" [text, rotation] begin
+        scene = Scene(@resolution)
+        pos = (500, 500)
+        rot = to_node(0.0pi)
+        posis = Point2f0[]
+        for r in linspace(0, 2pi, 20)
+            p = pos .+ (sin(r)*100.0, cos(r) * 100)
+            push!(posis, p)
+            t = text("test",
+                position = p,
+                textsize = 50,
+                rotation = 1.5pi - r,
+                align = (:center, :center)
+            )
+        end
+        scatter(posis, markersize = 10)
+        center!(scene)
+    end
 end
 
 @block SimonDanisch ["3d"] begin
 
-    @cell "Sample 2" [mesh, axis] begin
-
-        scene = Scene(resolution = (500, 500));
-        x = [0, 1, 2, 0]
-        y = [0, 0, 1, 2]
-        z = [0, 2, 0, 1]
-        color = [:red, :green, :blue, :yellow]
-        i = [0, 0, 0, 1]
-        j = [1, 2, 3, 2]
-        k = [2, 3, 1, 3]
-
-        indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
-        mesh(x, y, z, indices, color = color)
-        r = linspace(-0.5, 2.5, 4)
-        axis(r, r, r)
-        center!(scene)
-    end
-
-    @cell "Volume" [volume] begin
-
-        scene = Scene(resolution = (500, 500))
-        Makie.Makie.volume(rand(32, 32, 32), algorithm = :iso)
-        center!(scene)
-
-    end
-
-    @cell "Theming" [scatter, surface, theming, lines] begin
-
-        scene = Scene(resolution = (500, 500))
-
-        function custom_theme(scene)
-            @theme theme = begin
-                linewidth = to_float(3)
-                colormap = to_colormap(:RdYlGn)#to_colormap(:RdPu)
-                scatter = begin
-                    marker = to_spritemarker(Circle)
-                    markersize = to_float(0.03)
-                    strokecolor = to_color(:white)
-                    strokewidth = to_float(0.01)
-                    glowcolor = to_color(RGBA(0, 0, 0, 0.4))
-                    glowwidth = to_float(0.1)
-                end
-            end
-            # update theme values
-            scene[:theme] = theme
-        end
-
-        vx = -1:0.1:1;
-        vy = -1:0.1:1;
-
-        f(x, y) = (sin(x*10) + cos(y*10)) / 4
-        psurf = surface(vx, vy, f)
-
-        pos = lift_node(psurf[:x], psurf[:y], psurf[:z]) do x, y, z
-            vec(Point3f0.(x, y', z .+ 0.5))
-        end
-        pscat = scatter(pos)
-        plines = lines(view(pos, 1:2:length(pos)))
-        center!(scene)
-        @theme theme = begin
-            markersize = to_markersize2d(0.01)
-            strokecolor = to_color(:white)
-            strokewidth = to_float(0.01)
-        end
-        # this pushes all the values from theme to the plot
-        push!(pscat, theme)
-        pscat[:glow_color] = to_node(RGBA(0, 0, 0, 0.4), x->to_color((), x))
-        # apply it to the scene
-        custom_theme(scene)
-        # From now everything will be plotted with new theme
-        psurf = surface(vx, 1:0.1:2, psurf[:z])
-        center!(scene)
-    end
-
 
     @cell "Sample 7" [scatter, similar] begin
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         sv = scatter(rand(Point3f0, 100))
         similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
         center!(scene)
     end
 
-    @cell "Sample 8" [meshscatter] begin
-
-        scene = Scene(resolution = (500, 500))
-        large_sphere = HyperSphere(Point3f0(0), 1f0)
-        positions = decompose(Point3f0, large_sphere)
-        colS = [Colors.RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:length(positions)]
-        sizesS = [rand(Vec3f0) .* 0.5f0 for i = 1:length(positions)]
-        meshscatter(positions, color = colS, markersize = sizesS)
-        center!(scene)
-    end
-
     @cell "Fluctuation 3D" [animated, mesh, meshscatter, axis] begin
 
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         # define points/edges
         perturbfactor = 4e1
         N = 3; nbfacese = 30; radius = 0.02
@@ -239,7 +152,7 @@ end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
 
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         large_sphere = HyperSphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
@@ -250,9 +163,8 @@ end
         scene
     end
 
-    @cell "Sample 12" [meshscatter] begin
-
-        scene = Scene(resolution = (500, 500))
+    @cell "Simple meshscatter" [meshscatter] begin
+        scene = Scene(@resolution)
         large_sphere = HyperSphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         meshscatter(positions, color = RGBA(0.9, 0.2, 0.4, 1))
@@ -261,7 +173,12 @@ end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
 
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
+
+        function xy_data(x, y)
+            r = sqrt(x^x + y^y)
+            r == 0.0 ? 1f0 : (sin(r)/r)
+        end
 
         r = linspace(-2, 2, 40)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
@@ -275,7 +192,7 @@ end
         axis(xy, xy, linspace(0, 2, 4))
         center!(scene)
 
-        io = VideoStream(scene)
+        io = VideoStream(scene, @outputfile)
         for i in linspace(0, 60, 100)
             surf[:z] = surf_func(i)
             recordframe!(io)
@@ -283,22 +200,8 @@ end
         scene
     end
 
-    @cell "Surface with image" [surface, image] begin
-        scene = Scene(resolution = (500, 500))
-
-        N = 40
-        r = linspace(-2, 2, 40)
-        surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-        surface(
-            r, r, surf_func(10),
-            color = loadasset("doge.png")
-        )
-        center!(scene)
-        scene
-    end
-
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         x = loadasset("cat.obj")
         mesh(x.vertices, x.faces, color = :black)
         pos = map(x.vertices, x.normals) do p, n
@@ -308,41 +211,18 @@ end
         scene
     end
 
-    @cell "Simple Mesh" [mesh, cat] begin
-        scene = Scene(resolution = (500, 500))
-        mesh(loadasset("cat.obj"))
-        r = linspace(-0.1, 1, 4)
-        center!(scene)
-        scene
-    end
 
-    @cell "Textured Mesh" [mesh, texture, cat] begin
-        scene = Scene(resolution = (500, 500))
-        cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-        mesh(cat, color = loadasset("diffusemap.tga"))
-        center!(scene)
-    end
+
+
     @cell "Sphere Mesh" [mesh] begin
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         mesh(Sphere(Point3f0(0), 1f0))
         center!(scene)
         scene
     end
 
-    @cell "Wireframe of a Mesh" [mesh, wireframe, cat] begin
-        scene = Scene(resolution = (500, 500))
-        wireframe(GLVisualize.loadasset("cat.obj"))
-        center!(scene)
-    end
-
-    @cell "Wireframe of Sphere" [mesh, wireframe] begin
-        scene = Scene(resolution = (500, 500))
-        wireframe(Sphere(Point3f0(0), 1f0))
-        center!(scene)
-    end
 
     @cell "Stars" [scatter, glow] begin
-
         scene = Scene(resolution = (500, 500), color = :black)
         stars = 100_000
         scatter((rand(Point3f0, stars) .- 0.5) .* 10,
@@ -353,57 +233,22 @@ end
     end
 
     @cell "Unicode Marker" [scatter, axis, marker] begin
-        scene = Scene(resolution = (500, 500))
+        scene = Scene(@resolution)
         scatter(Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
         axis(scene, linspace(0, 1, 4), linspace(0, 1, 4), linspace(0, 1, 4))
         center!(scene);
     end
 
-    @cell "Legend" [legend, lines, linestyle, scatter] begin
-
-        scene = Scene(resolution = (500, 500))
-
-        x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
-            linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
-        end
-        push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
-        center!(scene)
-        l = Makie.legend(x, ["attribute $i" for i in 1:4])
-        l[:position] = (0, 1)
-        l[:backgroundcolor] = RGBA(0.95, 0.95, 0.95)
-        l[:strokecolor] = RGB(0.8, 0.8, 0.8)
-        l[:gap] = 30
-        l[:textsize] = 19
-        l[:linepattern] = Point2f0[(0,-0.2), (0.5, 0.2), (0.5, 0.2), (1.0, -0.2)]
-        l[:scatterpattern] = decompose(Point2f0, Circle(Point2f0(0.5, 0), 0.3f0), 9)
-        l[:markersize] = 2f0
-
-        scene
-    end
-
-    @cell "Color Legend" [colorlegend, legend, ] begin
-        scene = Scene(resolution = (500, 500))
-        cmap = collect(linspace(to_color(:red), to_color(:blue), 20))
-        l = legend(cmap, 1:4)
-        l[:position] = (1.0,1.0)
-        l[:textcolor] = :blue
-        l[:strokecolor] = :black
-        l[:strokewidth] = 1
-        l[:textsize] = 15
-        l[:textgap] = 5
-        scene
-    end
-
     @cell "Line Gif" [lines, animated, gif, offset] begin
 
-        scene = Scene()
+        scene = Scene(@resolution)
         lineplots = []
         axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
         center!(scene)
         us = linspace(0, 1, 100)
 
         mktempdir() do path
-            io = VideoStream(scene, path, "lines")
+            io = VideoStream(scene, @outputfile)
             for i = 1:100
                 if length(lineplots) < 20
                     push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
@@ -417,7 +262,6 @@ end
                     z = to_value(lp, :offset)[3]
                     lp[:offset] = Vec3f0(0, 0, z + 0.1)
                 end
-                sleep(1/30)
                 recordframe!(io)
             end
             finish(io, "gif")
@@ -426,7 +270,7 @@ end
 
     @cell "Complex Axis" [surface, axis, text] begin
 
-        scene = Scene()
+        scene = Scene(@resolution)
         vx = -1:0.01:1;
         vy = -1:0.01:1;
 
@@ -458,3 +302,336 @@ end
         scene
     end
 end
+
+
+@block SimonDanisch [documentation] begin
+    @group begin
+
+        @cell "Axis 2D" [axis] begin
+            scene = Scene(@resolution)
+            aviz = axis(linspace(0, 2, 4), linspace(0, 2, 4))
+            center!(scene)
+        end
+
+        @cell "Axis 3D" [axis] begin
+            scene = Scene(@resolution)
+            aviz = axis(linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
+            center!(scene)
+        end
+
+        @cell "Axis Custom" [axis] begin
+            # always tuples of xyz for most attributes that are applied to each axis
+            aviz[:gridcolors] = (:gray, :gray, :gray)
+            aviz[:axiscolors] = (:red, :black, :black)
+            aviz[:showticks] = (true, true, false)
+        end
+    end
+
+    @group begin
+        @cell "overload to position" [axis] begin
+            using GeometryTypes
+            # To simplify the example, we take the already existing GeometryTypes.Circle type, which
+            # can already be decomposed into positions
+            function Makie.to_positions(backend, x::Circle)
+                # Convert to a type to_positions can handle.
+                # Everything that usually works in e.g. scatter/lines should be allowed here.
+                positions = decompose(Point2f0, x, 50)
+                # Pass your position data to to_positions,
+                # just in case the backend has some extra converts
+                # that are not visible in the user facing API.
+                Makie.to_positions(backend, positions)
+            end
+            scene = Scene(@resolution)
+            p1 = lines(Circle(Point2f0(0), 5f0))
+            p2 = scatter(Circle(Point2f0(0), 6f0))
+            center!(scene)
+        end
+
+        @cell "change size" [axis] begin
+            p2[:positions] = Circle(Point2f0(0), 7f0)
+            center!(scene)
+        end
+    end
+
+    @cell "Volume Function" ["3d", volume] begin
+        scene = Scene(@resolution)
+        volume(rand(32, 32, 32), algorithm = :iso)
+        center!(scene)
+    end
+
+    @cell "Heatmap Function" ["2d", heatmap] begin
+        scene = Scene(@resolution)
+        heatmap(rand(32, 32))
+        center!(scene)
+    end
+
+    @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
+        scene = Scene(@resolution)
+        cat = load(assetpath("cat.obj"), GLNormalUVMesh)
+        mesh(cat, color = loadasset("diffusemap.tga"))
+        center!(scene)
+    end
+    @cell "Load Mesh" ["3d", mesh, cat] begin
+        scene = Scene(@resolution)
+        mesh(loadasset("cat.obj"))
+        r = linspace(-0.1, 1, 4)
+        center!(scene)
+        scene
+    end
+    @cell "Colored Mesh" ["3d", mesh, axis] begin
+
+        scene = Scene(@resolution);
+        x = [0, 1, 2, 0]
+        y = [0, 0, 1, 2]
+        z = [0, 2, 0, 1]
+        color = [:red, :green, :blue, :yellow]
+        i = [0, 0, 0, 1]
+        j = [1, 2, 3, 2]
+        k = [2, 3, 1, 3]
+
+        indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
+        mesh(x, y, z, indices, color = color)
+        r = linspace(-0.5, 2.5, 4)
+        axis(r, r, r)
+        center!(scene)
+    end
+    @cell "Wireframe of a Mesh" ["3d", mesh, wireframe, cat] begin
+        scene = Scene(@resolution)
+        wireframe(GLVisualize.loadasset("cat.obj"))
+        center!(scene)
+    end
+    @cell "Wireframe of Sphere" ["3d", wireframe] begin
+        scene = Scene(@resolution)
+        wireframe(Sphere(Point3f0(0), 1f0))
+        center!(scene)
+    end
+    @cell "Wireframe of a Surface" ["3d", surface, wireframe] begin
+        scene = Scene(@resolution)
+        surf = wireframe(range, range, z)
+        center!(scene)
+    end
+    @cell "Surface Function" ["3d", surface] begin
+        scene = Scene(@resolution)
+        N = 32
+        function xy_data(x, y)
+            r = sqrt(x^x + y^y)
+            r == 0.0 ? 1f0 : (sin(r)/r)
+        end
+        lspace = linspace(-10, 10, 32)
+        z = Float32[xy_data(x, y) for x in lspace, y in lspace]
+        range = linspace(0, 3, N)
+        surf = surface(range, range, z, colormap = :Spectral)
+        center!(scene)
+    end
+    @cell "Surface with image" ["3d", surface, image] begin
+        scene = Scene(@resolution)
+
+        N = 60
+
+        function xy_data(x, y)
+            r = sqrt(x^x + y^y)
+            r == 0.0 ? 1f0 : (sin(r)/r)
+        end
+
+        r = linspace(-2, 2, 40)
+        surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
+        surface(
+            r, r, surf_func(10),
+            color = loadasset("doge.png")
+        )
+        center!(scene)
+        scene
+    end
+    @cell "Line Function" ["2d", lines] begin
+        scene = Scene(@resolution)
+        x = linspace(0, 3pi)
+        lines(x, sin.(x))
+        center!(scene)
+    end
+
+    @cell "Meshscatter Function" ["3d", meshscatter] begin
+        scene = Scene(@resolution)
+        large_sphere = HyperSphere(Point3f0(0), 1f0)
+        positions = decompose(Point3f0, large_sphere)
+        colS = [RGB(rand(), rand(), rand()) for i = 1:length(positions)]
+        sizesS = [rand(Point3f0) .* 0.5f0 for i = 1:length(positions)]
+        meshscatter(positions, color = colS, markersize = sizesS)
+        center!(scene)
+    end
+
+    @cell "Scatter Function" ["2d", scatter] begin
+        scene = Scene(@resolution)
+        scatter(rand(20), rand(20))
+        center!(scene)
+    end
+
+    @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
+        scene = Scene(@resolution)
+
+        f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
+
+        p1 = scatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), scene[:time]))
+        p2 = scatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), scene[:time]))
+        center!(scene)
+        # you can now reference to life attributes from the above plots:
+
+        lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
+            map((a, b)-> (a, b), pos1, pos2)
+        end
+
+        linesegment(lines)
+
+        center!(scene)
+        io = VideoStream(scene, @outputfile)
+        # record a video
+        for i = 1:300
+            recordframe!(io)
+        end
+        io
+    end
+    @cell "Legend" ["3d", legend, lines, linestyle, scatter] begin
+        scene = Scene(@resolution)
+        plots = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
+            linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
+        end
+
+        push!(plots, scatter(linspace(1, 5, 100), rand(100), rand(100)))
+
+        center!(scene)
+
+        # plot a legend for the plots with an array of names
+        l = legend(plots, ["attribute $i" for i in 1:4])
+
+        ann = VideoAnnotation(scene, @outputfile, "Themes")
+
+        io = ann
+        recordstep!(io, "Interact with Legend:")
+        # Change some attributes interactively
+        l[:position] = (0.4, 0.7)
+        recordstep!(io, "Change Position")
+        l[:backgroundcolor] = RGBA(0.95, 0.95, 0.95)
+        recordstep!(io, "Change Background")
+        l[:strokecolor] = RGB(0.8, 0.8, 0.8)
+        recordstep!(io, "Change Stroke Color")
+        l[:gap] = 30
+        recordstep!(io, "Change Gaps")
+        l[:textsize] = 19
+        recordstep!(io, "Change Textsize")
+        l[:linepattern] = Point2f0[(0,-0.2), (0.5, 0.2), (0.5, 0.2), (1.0, -0.2)]
+        recordstep!(io, "Change Line Pattern")
+        l[:scatterpattern] = decompose(Point2f0, Circle(Point2f0(0.5, 0), 0.3f0), 9)
+        recordstep!(io, "Change Scatter Pattern")
+        l[:markersize] = 2f0
+        recordstep!(io, "Change Marker Size")
+        io
+    end
+
+    @cell "Color Legend" ["2d", colorlegend, legend] begin
+        scene = Scene(@resolution)
+        cmap = collect(linspace(to_color(:red), to_color(:blue), 20))
+        l = legend(cmap, 1:4)
+        ann = VideoAnnotation(scene, @outputfile, "Color Map Legend:")
+        recordstep!(io, "Color Map Legend:", 3)
+        l[:position] = (1.0, 1.0)
+        recordstep!(io, "Change Position")
+        l[:textcolor] = :blue
+        l[:strokecolor] = :black
+        recordstep!(io, "Change Colors")
+        l[:strokewidth] = 1
+        l[:textsize] = 15
+        l[:textgap] = 5
+        recordstep!(io, "Change everything!")
+        ann
+    end
+
+    @cell "VideoStream" ["3d", VideoStream, meshscatter, linesegment] begin
+        scene = Scene(@resolution)
+
+        f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
+        t = to_node(time()) # create a life signal
+        p1 = meshscatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), t))
+        p2 = meshscatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t))
+        center!(scene)
+
+        # you can now reference to life attributes from the above plots:
+        lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
+            map((a, b)-> (a, b), pos1, pos2)
+        end
+
+        linesegment(lines, linestyle = :dot)
+
+        center!(scene)
+        # record a video
+        io = VideoStream(scene, @outputfile)
+        for i = 1:300
+            push!(t, time())
+            recordframe!(io)
+        end
+        finish(io, "mp4") # could also be gif, webm or mkv
+    end
+
+
+    @group begin
+        @cell "Theming Step 1" ["3d", scatter, surface] begin
+            scene = Scene(@resolution)
+            vx = -1:0.1:1;
+            vy = -1:0.1:1;
+
+            f(x, y) = (sin(x*10) + cos(y*10)) / 4
+            psurf = surface(vx, vy, f)
+
+            pos = lift_node(psurf[:x], psurf[:y], psurf[:z]) do x, y, z
+                vec(Point3f0.(x, y', z .+ 0.5))
+            end
+            pscat = scatter(pos)
+            plines = lines(view(pos, 1:2:length(pos)))
+            center!(scene)
+        end
+
+        @cell "Theming Step 2" ["3d", scatter, surface] begin
+            @theme theme = begin
+                markersize = to_markersize2d(0.01)
+                strokecolor = to_color(:white)
+                strokewidth = to_float(0.01)
+            end
+            # this pushes all the values from theme to the plot
+            push!(pscat, theme)
+            # Update the entire surface node with this
+            scene[:scatter] = theme
+            # Or permananently (to be more precise: just for this session) change the theme for scatter
+            scene[:theme, :scatter] = theme
+            scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
+            scene
+        end
+
+        @cell "Theming Step 3" ["3d", scatter, surface] begin
+            # Make a completely new theme
+            function custom_theme(scene)
+                @theme theme = begin
+                    linewidth = to_float(3)
+                    colormap = to_colormap(:RdPu)
+                    scatter = begin
+                        marker = to_spritemarker(Circle)
+                        markersize = to_float(0.03)
+                        strokecolor = to_color(:white)
+                        strokewidth = to_float(0.01)
+                        glowcolor = to_color(RGBA(0, 0, 0, 0.4))
+                        glowwidth = to_float(0.1)
+                    end
+                end
+                # update theme values
+                scene[:theme] = theme
+            end
+
+            # apply it to the scene
+            custom_theme(scene)
+
+            # From now everything will be plotted with new theme
+            psurf = surface(vx, 1:0.1:2, psurf[:z])
+            center!(scene)
+        end
+    end
+end
+
+
+database

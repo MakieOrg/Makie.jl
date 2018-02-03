@@ -22,6 +22,7 @@ GLFW 1.4.1
 Fontconfig
 FreeType
 FreeTypeAbstraction
+IntervalSets
 
 @windows ImageMagick
 @linux ImageMagick

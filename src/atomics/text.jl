@@ -84,7 +84,7 @@ function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, sc
     rscale = Float32(scale)
     position = GLVisualize.calc_position(str, Point2f0(0), rscale, font, atlas)
     toffset = GLVisualize.calc_offset(str, rscale, font, atlas)
-    aoffset = align_offset(rot, Point2f0(0), position[end], atlas, rscale, font, to_textalign((), aoffsetvec))
+    aoffset = align_offset(Point2f0(0), position[end], atlas, rscale, font, to_textalign((), aoffsetvec))
     aoffsetn = Point{N, Float32}(to_nd(aoffset, Val{N}, 0f0))
     uv_offset_width = Vec4f0[GLVisualize.glyph_uv_width!(atlas, c, font) for c = str]
     scale = Vec2f0[GLVisualize.glyph_scale!(atlas, c, font, rscale) for c = str]
@@ -112,10 +112,9 @@ function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, sc
     return
 end
 
-function align_offset(rot, startpos, lastpos, atlas, rscale, font, align)
+function align_offset(startpos, lastpos, atlas, rscale, font, align)
     xscale, yscale = GLVisualize.glyph_scale!('X', rscale)
     xmove = (lastpos-startpos)[1] + xscale
-    xmove, yscale, z = qmul(rot, Vec3f0(xmove, yscale, 0))
     if isa(align, GeometryTypes.Vec)
         return -Vec2f0(xmove, yscale) .* align
     elseif align == :top
@@ -135,22 +134,32 @@ function alignment2num(x::Symbol)
 end
 
 
-function to_gl_text(string, startpos::VecLike{N, T}, textsize, font, aoffsetvec, rot) where {N, T}
+function to_gl_text(string, startpos::VecLike{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
     atlas = GLVisualize.get_texture_atlas()
-    pos = Point{N, Float32}(startpos)
+    mpos = model * Vec4f0(to_nd(startpos, Val{3}, 0f0)..., 1f0)
+    pos = Point{N, Float32}(to_nd(mpos, Val{N}, 0))
     rscale = Float32(textsize)
     positions2d = GLVisualize.calc_position(string, Point2f0(0), rscale, font, atlas)
     toffset = GLVisualize.calc_offset(string, rscale, font, atlas)
-    aoffset = align_offset(rot, Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
+    aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = Point{N, Float32}(to_nd(aoffset, Val{N}, 0f0))
     uv_offset_width = Vec4f0[GLVisualize.glyph_uv_width!(atlas, c, font) for c = string]
     scale = Vec2f0[GLVisualize.glyph_scale!(atlas, c, font, rscale) for c = string]
     positions = map(positions2d) do p
-        pn = qmul(rot, Point{N, Float32}(to_nd(p, Val{N}, 0f0)))
-        pn .+ (pos .+ aoffsetn)
+        pn = qmul(rot, Point{N, Float32}(to_nd(p, Val{N}, 0f0)) .+ aoffsetn)
+        pn .+ (pos)
     end
     positions, toffset, uv_offset_width, scale
 end
+
+
+function text_bb(str, font, size)
+    positions, toffset, uv_offset_width, scale = to_gl_text(
+        str, Point2f0(0), size, font, Vec2f0(0), Vec4f0(0,0,0,1), eye(Mat4f0)
+    )
+    AABB(vcat(positions, positions .+ scale))
+end
+
 
 
 
@@ -193,7 +202,7 @@ function text(
     )
     attributes[:text] = text
     attributes = text_defaults(scene, attributes)
-    liftkeys = (:text, :position, :textsize, :font, :align, :rotation)
+    liftkeys = (:text, :position, :textsize, :font, :align, :rotation, :model)
     gl_text = to_signal(lift_node(to_gl_text, getindex.(attributes, liftkeys)...))
     # unpack values from the one signal:
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
@@ -217,4 +226,15 @@ function text(
     ).children[]
 
     insert_scene!(scene, :text, viz, attributes)
+end
+
+
+function annotate(parent, string, pos1, pos2 = pos1;
+        linecolor = :gray, arrowsize = 0.1, arrowcolor = :black, textsize = 0.1,
+        kw_args...
+    )
+    if norm(Vec(pos1) .- Vec(pos2)) > textsize
+        arrows(parent, [Point2f0(pos1) => Point2f0(pos2)], arrowsize = textsize .* 0.5, arrowcolor = arrowcolor, linecolor = linecolor)
+    end
+    text(parent, string; position = pos1, textsize = textsize, kw_args...)
 end

@@ -7,6 +7,8 @@ using StaticArrays, GLWindow, ModernGL, Contour, Quaternions
 using Base.Iterators: repeated, drop
 using Base: RefValue
 using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
+using IntervalSets
+
 
 struct Backend{B} end
 
@@ -37,8 +39,10 @@ include("plotsbase/atomics.jl")
     include("atomics/imagelike.jl")
     include("plotsbase/contour.jl")
     include("plotsbase/legend.jl")
+    include("atomics/arrows.jl")
 
-include("plotsbase/axis.jl")
+include("plotsbase/plotutils.jl")
+include("plotsbase/axsi2.jl")
 include("plotsbase/output.jl")
 include("iodevices.jl")
 include("camera2d.jl")
@@ -91,5 +95,26 @@ export to_volume_algorithm
 export to_3floats
 export to_2floats
 export to_textalign
+
+
+# Reexport some things from other packages,
+# which seem to pop as frequently as I say `using Makie`
+
+# GeometryTypes.jl
+export Vec, Vec2f0, Vec3f0, Point, Point2f0, Point3f0
+
+# Colors.jl
+export Colorant, RGB, RGBA, N0f8
+
+# FileIO
+
+export save, load
+
+# GLVisualize
+
+export loadasset, assetpath
+
+
+
 
 end # module

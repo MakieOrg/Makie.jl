@@ -168,20 +168,3 @@ convert(Relative{Float64}, 1)
 convert(NTuple{2, Relative{Float64}}, Tuple(Relative.(widths(scene))))
 
 plot(scene, rand(11, 2))
-
-using VisualRegressionTests
-
-
-function test1(fn)
-    srand(1234)
-    scene = Scene(resolution = (500, 500))
-    scatter(rand(10), rand(10))
-    center!(scene)
-    save(fn, scene)
-end
-
-cd(@__DIR__)
-
-test1("test.png")
-
-result = test_images(VisualTest(test1, "test.png"))

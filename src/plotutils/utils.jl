@@ -1,3 +1,8 @@
+
+const Vecf0{N} = Vec{N, Float32}
+const Pointf0{N} = Point{N, Float32}
+export Vecf0, Pointf0
+
 gpuvec(x) = GPUVector(GLBuffer(x))
 
 function to_nd(x, n::Type{Val{N}}, default) where N
@@ -112,4 +117,65 @@ function nan_extrema(array)
         maxi = max(maxi, elem)
     end
     Vec2f0(mini, maxi)
+end
+
+
+function drawbrush(scene)
+    brush = to_node(Point2f0[])
+    waspressed_t_lastpos = Ref((false, time(), Point2f0(0)))
+    cam = scene[:screen].cameras[:orthographic_pixel]
+    Makie.to_world(Point2f0(0,0), cam)
+    lift_node(scene, :mouseposition) do mp
+        if ispressed(scene, Makie.Mouse.left)
+            waspressed, t, lastpos = waspressed_t_lastpos[]
+            append!(brush, [Makie.to_world(Point2f0(mp), cam)])
+            if !waspressed
+                waspressed_t_lastpos[] = (true, time(), mp)
+            else
+                waspressed_t_lastpos[] = (true, t, mp)
+            end
+        else
+            waspressed_t_lastpos[] = (false, 0, Point2f0(0))
+        end
+        return
+    end
+end
+
+
+"""
+usage @exctract scene (a, b, c, d)
+"""
+macro extract(scene, args)
+    if args.head != :tuple
+        error("Usage: args need to be a tuple. Found: $args")
+    end
+    expr = Expr(:block)
+    for elem in args.args
+        push!(expr.args, :($(esc(elem)) = $(esc(scene))[$(QuoteNode(elem))]))
+    end
+    expr
+end
+
+"""
+usage @extractvals scene (a, b, c, d)
+"""
+macro extractvals(scene, args)
+    if args.head != :tuple
+        error("Usage: args need to be a tuple. Found: $args")
+    end
+    expr = Expr(:block)
+    for elem in args.args
+        push!(expr.args, :($(esc(elem)) = to_value($(esc(scene))[$(QuoteNode(elem))])))
+    end
+    push!(expr.args, esc(args)) # return the tuple
+    expr
+end
+
+
+function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
+    mini, maxi = minimum(rectangle), maximum(rectangle)
+    for i = 1:N
+        point[i] in (mini[i]..maxi[i]) || return false
+    end
+    return true
 end

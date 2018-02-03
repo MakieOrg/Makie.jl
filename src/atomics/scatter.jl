@@ -12,8 +12,10 @@ function expand_for_glvisualize(kw_args)
 
         if k == :rotations
             k = :rotation
-            v = Vec4f0(0, 0, 0, 1)
-            result[:billboard] = true
+            if to_value(v) == Billboard()
+                v = Vec4f0(0, 0, 0, 1)
+                result[:billboard] = true
+            end
         end
         if k == :markersize
             k = :scale

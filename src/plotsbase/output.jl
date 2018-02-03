@@ -57,6 +57,7 @@ immutable VideoStream
     buffer
     screen::GLWindow.Screen
     path::String
+    framerate::Int
 end
 
 """
@@ -67,17 +68,17 @@ Use `add_frame!(stream, window, buffer)` to add new video frames to the stream.
 Use `finish(stream)` to save the video to 'dir/name.mkv'. You can also call
 `finish(stream, "mkv")`, `finish(stream, "mp4")`, `finish(stream, "gif")` or `finish(stream, "webm")` to convert the stream to those formats.
 """
-function VideoStream(scene::Scene, dir = mktempdir(), name = "video")
+function VideoStream(scene::Scene, path, framerate = 30)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    path = joinpath(dir, "$name.mkv")
+    path = "$path.mkv"
     screen = rootscreen(scene)
     if screen == nothing
         error("Scene doesn't contain any screen")
     end
     tex = GLWindow.framebuffer(screen).color
     res = size(tex)
-    io, process = open(`ffmpeg -loglevel panic -f rawvideo -pixel_format rgb24 -s:v $(res[1])x$(res[2]) -i pipe:0 -vf vflip -y $path`, "w")
-    VideoStream(io, Matrix{RGB{N0f8}}(res), screen, abspath(path)) # tmp buffer
+    io, process = open(`ffmpeg -loglevel panic -f rawvideo -pixel_format rgb24 -s:v $(res[1])x$(res[2]) -r $framerate -i pipe:0 -vf vflip -y $path`, "w")
+    VideoStream(io, Matrix{RGB{N0f8}}(res), screen, abspath(path), framerate) # tmp buffer
 end
 
 """
@@ -113,7 +114,7 @@ function finish(io::VideoStream, typ = "mkv"; remove_mkv = true)
     out = joinpath(path, name * ".$typ")
 
     if typ == "mp4"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -vcodec copy -acodec copy -y $out`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -pix_fmt yuv420p -vcodec copy -acodec copy -y $out`)
         remove_mkv && rm(io.path)
         return out
     elseif typ == "webm"
@@ -132,6 +133,7 @@ function finish(io::VideoStream, typ = "mkv"; remove_mkv = true)
         error("Video type $typ not known")
     end
 end
+
 Base.mimewritable(::MIME"text/html", scene::VideoStream) = true
 
 function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
@@ -151,6 +153,29 @@ function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
         )
     )
 end
+
+export VideoAnnotation, recordstep!
+
+function VideoAnnotation(scene::Scene, file, annotation = "")
+    t = text(
+        scene, annotation,
+        position = (10, 10), align = (:left, :bottom),
+        camera = :pixel
+    )
+    io = VideoStream(scene, dirname(file), basename(file))
+    (io, t)
+end
+
+function recordstep!(video_io, annotation::String = "", time = 2) # time in seconds
+    io, text = video_io
+    text[:text] = annotation
+    yield()
+    for i = 1:round(time * io.framerate)
+        recordframe!(io)
+    end
+    video_io
+end
+
 
 # function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
 #     path = "file/" * finish(vs, "mp4")

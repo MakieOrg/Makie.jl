@@ -43,31 +43,28 @@ end
 # Right now there is a lot of annoying and unecessary dublication going on
 
 function default_theme(scene)
+
     q1 = qrotation(Vec3f0(1, 0, 0), -0.5f0*pi)
     q2 = qrotation(Vec3f0(0, 0, 1), 1f0*pi)
-    tickrotations = (
+
+    tickrotations3d = (
         qrotation(Vec3f0(0,0,1), -1.5pi),
         q2,
         qmul(qmul(q2, q1), qrotation(Vec3f0(0, 1, 0), 1pi))
     )
-
-    tickalign = (
+    axisnames_rotation3d = tickrotations3d
+    tickalign3d = (
         (:hcenter, :left), # x axis
         (:right, :vcenter), # y axis
         (:right, :vcenter), # z axis
     )
-    dark_text = RGBAf0(0.0, 0.0, 0.0, 0.4)
-    syms = (:X, :Y, :Z)
-    axisnames = ntuple(i-> "$(syms[i]) Axis", 3)
-    axisnames_color = ntuple(i-> dark_text, 3)
-    axisnames_rotation_align = ntuple(i-> (tickrotations[i], tickalign[i]), 3)
-    axisnames_size = ntuple(i-> 0.1, 3)
+    axisnames_align3d = tickalign3d
 
-    showticks = ntuple(i-> true, 3)
-    tickfont3d = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), tickrotations[i], tickalign[i]), 3)
-    tickfont2d = ntuple(i-> (0.1, RGBAf0(0.5, 0.5, 0.5, 0.6), Vec4f0(0,0,0,1), tickalign[i]), 2)
-    showaxis = ntuple(i-> true, 3)
-    showgrid = ntuple(i-> true, 3)
+    darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
+    tick_color = RGBAf0(0.5, 0.5, 0.5, 0.6)
+    grid_color = RGBAf0(0.5, 0.5, 0.5, 0.4)
+    darktext = RGB(0.4, 0.4, 0.4)
+    grid_thickness = 1
 
     scalefuncs = ntuple(i-> identity, 3)
     gridthickness = ntuple(x-> 1f0, 3)
@@ -132,26 +129,61 @@ function default_theme(scene)
             indices = nothing
         end
 
-        axis = begin
+        axis2d = begin
+            title_size = 6
+            tick_size = 5
+            tick_gap = 3
+            tick_title_gap = 3
+            tickstyle = begin
+                linewidth = (1, 1)
+                linecolor = ((:black, 0.4), (:black, 0.4))
+                textcolor = (darktext, darktext)
+                textsize = (5, 5)
+                rotation = (0.0, 0.0)
+                align = ((:center, :top), (:right, :center))
+                font = ("default", "default")
+            end
+            gridstyle = begin
+                linewidth = (0.5, 0.5)
+                linecolor = ((:black, 0.3), (:black, 0.3))
+                linestyle = (nothing, nothing)
+            end
+            framestyle = begin
+                linewidth = 1.0
+                linecolor = :black
+                linestyle = nothing
+                axis_position = :origin
+                axis_arrow = false
+                arrow_size = 2.5
+                frames = ((false, false), (false, false))
+            end
+        end
 
-            axisnames = axisnames
-            axisnames_color = axisnames_color
-            axisnames_rotation_align = axisnames_rotation_align
-            axisnames_size = axisnames_size
-            axisnames_font = "default"
-
+        axis3d = begin
             visible = true
 
-            showticks = showticks
-            tickfont2d = tickfont2d
-            tickfont3d = tickfont3d
-            showaxis = showaxis
-            showgrid = showgrid
+            axisnames = ("X Axis", "Y Axis", "Z Axis")
 
-            scalefuncs = scalefuncs
-            gridcolors = to_color(ntuple(x-> RGBAf0(0.5, 0.5, 0.5, 0.4), 3))
-            gridthickness = gridthickness
-            axiscolors = to_color(ntuple(x-> dark_text, 3))
+            names_color = (darktext, darktext, darktext)
+            names_rotation = axisnames_rotation3d
+            names_size = (5.0, 5.0, 5.0)
+            names_align = axisnames_align3d
+            names_font = "default"
+
+            showticks = (true, true, true)
+            showaxis = (true, true, true)
+            showgrid = (true, true, true)
+
+            tick_color = (tick_color, tick_color, tick_color)
+            tick_rotation = tickrotations3d
+            tick_size =  (2.0, 2.0, 2.0)
+            tick_align = tickalign3d
+            tick_font = "default"
+
+
+            gridcolors = (grid_color, grid_color, grid_color)
+            gridthickness = (grid_thickness, grid_thickness, grid_thickness)
+            axiscolors = (darktext, darktext, darktext)
         end
 
         heatmap = begin

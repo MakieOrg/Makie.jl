@@ -9,46 +9,11 @@ decides to put data on the GPU you might even share those in GPU memory.
 
 The simples form is just to use getindex into a scene, which returns a life node!
 Which means, if you do anything with that node, your resulting data will also be life!
-`lift_node` creates a new node from a list of input nodes, which updates every time any 
+`lift_node` creates a new node from a list of input nodes, which updates every time any
 of the inputs updates.
 
 
-```@example 
-using Makie
-
-scene = Scene(resolution = (500, 500))
-
-f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
-
-p1 = scatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), scene[:time]))
-p2 = scatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), scene[:time]))
-center!(scene)
-nothing
-# you can now reference to life attributes from the above plots:
-
-lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
-    map((a, b)-> (a, b), pos1, pos2)
-end
-
-linesegment(lines)
-
-center!(scene)
-# record a video 
-io = VideoStream(scene, ".", "interaction")
-for i = 1:300
-    recordframe!(io)
-    yield()
-    sleep(1/30)
-end
-finish(io, "mp4") # could also be gif, webm or mkv
-nothing
-```
-```@raw html
-<video controls autoplay>
-  <source src="interaction.mp4" type="video/mp4">
-  Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
-</video>
-```
+@library_ref[example] "Interaction"
 
 
 ### `@ref`

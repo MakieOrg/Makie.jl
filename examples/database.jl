@@ -1,15 +1,82 @@
+import Makie
+
 struct CellEntry
     author::String
     title::String
+    unique_name::Symbol
     tags::Set{String}
     file::String
     file_range::UnitRange{Int}
-    source::String
-    setup::String
+    toplevel::String # e.g. using statements
+    source::String # the actual source
+    groupid::Int
 end
 
 database = CellEntry[]
 globaly_shared_code = String[]
+const NO_GROUP = 0
+unique_names = Set(Symbol[])
+function unique_name!(name, unique_names = unique_names)
+    funcname = Symbol(replace(lowercase(string(name)), r"[ #$!@#$%^&*()+]", '_'))
+    i = 1
+    while isdefined(Makie, funcname) || (funcname in unique_names)
+        funcname = Symbol("$(funcname)_$i")
+        i += 1
+    end
+    push!(unique_names, funcname)
+    funcname
+end
+
+function CellEntry(author, title, tags, file, file_range, toplevel, source, groupid = NO_GROUP)
+    uname = unique_name!(title)
+    CellEntry(author, title, uname, tags, file, file_range, toplevel, source, groupid)
+end
+
+
+"""
+Prints the source of an entry in the database at `idx`.
+This puts entries of a group into one local scope
+"""
+function print_code(
+        io, database, idx,
+        scope_start = "let",
+        scope_end = "end",
+        indent = " "^4,
+        resolution = (entry)-> "resolution = (500, 500)",
+        outputfile = (entry, ending)-> Pkg.dir("Makie", "docs", "media", string(entry.unique_name, ending))
+    )
+    entry = database[idx]
+    groupid = entry.groupid
+    if entry.groupid != NO_GROUP
+        idx = findprev(x-> x.groupid != groupid, database, idx) + 1
+    end
+    group = [entry]
+    while groupid != NO_GROUP && entry.groupid == groupid
+        idx += 1
+        done(database, idx) && break
+        push!(group, database[idx])
+    end
+    foreach(entry-> println(io, entry.toplevel), group)
+    println(io, scope_start)
+    for entry in group
+        for line in split(entry.source, "\n")
+            line = replace(line, "@resolution", resolution(entry))
+            filematch = match(r"(@outputfile)(\(.+\))?" , line)
+            if filematch != nothing
+                ending = filematch.captures[2]
+                replacement = outputfile(entry, ending == nothing ? "" : ending)
+                line = replace(
+                    line, r"(@outputfile)(\(.+\))?",
+                    string('"', escape_string(replacement), '"')
+                )
+            end
+            println(io, indent, line)
+        end
+    end
+    println(io, scope_end)
+    idx + 1
+end
+
 
 function extract_tags(expr)
     if !any(x-> isa(x, String) || isa(x, Symbol), expr.args) || expr.head != :vect
@@ -18,32 +85,85 @@ function extract_tags(expr)
     Set(String.(expr.args))
 end
 
-function extract_source(file, file_range, filterfun = x-> true)
+function findspace(line)
+    space_len = 0
+    s = start(line)
+    c = first(line)
+    while !done(line, s) && c == ' '
+        space_len += 1
+        c, s = next(line, s)
+    end
+    space_len -= 1
+    space_len
+end
+
+function printline(line, toplevel, source, start_indent)
+    # if space_len not defined yet, find it!
+    if start_indent == -1 && length(line) > 4
+        start_indent = findspace(line)
+    end
+    if start_indent != -1 && length(line) >= start_indent && all(x-> x == ' ', line[1:start_indent])
+        # remove all spaces of first indent
+        line = line[(start_indent+1):end]
+    end
+    if ismatch(r"using|import", line)
+        println(toplevel, line)
+    else
+        println(source, line)
+    end
+    start_indent
+end
+
+function extract_source(file, file_range)
     source = IOBuffer()
+    toplevel = IOBuffer()
     open(file) do io
+        start_indent = -1
         for (i, line) in enumerate(eachline(io))
-            if i in file_range
-                if length(line) >= 8 && all(x-> x == ' ', line[1:8])
-                    line = line[9:end]
+            i < minimum(file_range) && continue
+            # allow to parse past maximum(file_range) until next end
+            if i > maximum(file_range) && contains(line, "end")
+                if length(line) > start_indent && line[start_indent] == ' '
+                    # if end is on start indention level,
+                    # this isn't the macro end and needs to be part of source
+                    println(source, "end")
                 end
-                if filterfun(line)
-                    println(source, line)
-                end
+                break
+            else
+                start_indent = printline(line, toplevel, source, start_indent)
             end
         end
     end
-    String(take!(source))
+    String(take!(toplevel)), String(take!(source))
 end
 
 
 is_cell(x::Expr) = x.head == :macrocall && x.args[1] == Symbol("@cell")
 is_cell(x) = false
 
+is_group(x::Expr) = x.head == :macrocall && x.args[1] == Symbol("@group")
+is_group(x) = false
+
+
+find_lastline(arg::Any) = 0
+function find_lastline(arg::Expr)
+    find_lastline(arg.args)
+end
+function find_lastline(args::Vector)
+    isempty(args) && return 0
+    idx = findlast(Base.is_linenumber, args)
+    line_number = if idx == 0
+        0
+    else
+        args[idx].args[1]
+    end
+    max(mapreduce(find_lastline, max, args), line_number)
+end
 function find_startend(args::Vector)
     firstidx = findfirst(Base.is_linenumber, args)
-    lastidx = findlast(Base.is_linenumber, args)
-    lf, le = args[firstidx], args[lastidx]
-    string(lf.args[2]), (lf.args[1]):(le.args[1])
+    first_linenumber, file = args[firstidx].args
+    last_linenumber = find_lastline(args)
+    string(file), first_linenumber:last_linenumber
 end
 
 remove_toplevel(x) = x
@@ -69,7 +189,7 @@ function flatten2block(args::Vector)
     res
 end
 
-function extract_cell(cell, author, parent_tags, setup)
+function extract_cell(cell, author, parent_tags, setup, groupid = NO_GROUP)
     if !(length(cell.args) in (4, 5))
         error(
             "You need to supply 3 or 4 arguments to `@cell`. E.g.:
@@ -92,11 +212,11 @@ function extract_cell(cell, author, parent_tags, setup)
     end
 
     file, startend = find_startend(cblock.args)
-    source = extract_source(file, startend)
-
+    toplevel, source = extract_source(file, startend)
+    unique_name =
     CellEntry(
         author, title, parent_tags ∪ extract_tags(ctags),
-        file, startend, source, setup
+        file, startend, toplevel, source, groupid
     )
 end
 
@@ -150,20 +270,29 @@ macro block(author, tags, block)
         cell_entry = extract_cell(cell, author, parent_tags, setup)
         push!(database, cell_entry)
     end
-end
 
-# Macro is only for marking, so no implementation here
-macro cell(title, tags, block)
-
-end
-
-# Macro is only for marking, so no implementation here
-macro globaly_shared(block)
-    if block.head != :block
-        error("Please use a block, e.g. `@globaly_shared begin ... end`. Found: $block")
+    groups = args[find(is_group, args)]
+    lastidx = length(database)
+    for (groupid, group) in enumerate(groups)
+        cellist = group.args[2].args
+        groupid += (lastidx - 1)
+        for cell in cellist
+            if is_cell(cell)
+                cell_entry = extract_cell(cell, author, parent_tags, setup, groupid)
+                push!(database, cell_entry)
+            end
+        end
     end
-    file, file_range = find_startend(block.args)
-    source = extract_source(file, file_range)
-    push!(globaly_shared_code, source)
-    nothing
+end
+
+# Cell macro
+macro cell(author, title, tags, block)
+    # implementation in block, this only marks
+end
+macro cell(title, tags, block)
+end
+
+# Group macro
+macro group(block_of_grouped_cells)
+    # only for marking
 end
