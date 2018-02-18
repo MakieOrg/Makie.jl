@@ -1,9 +1,8 @@
 
-function draw_ticks(scene, idx, origin, ticks, tickstyle, scale)
-    tickstyle = map(tickstyle) do ns
-        ns[1] => to_value(ns[2])[idx]
-    end
-    vals = @extract tickstyle (linewidth, linecolor, textcolor, textsize, rotation, align, font)
+function draw_ticks(
+        scene, idx, origin, ticks, scale, pscale,
+        linewidth, linecolor, textcolor, textsize, rotation, align, font
+    )
     for (tick, str) in ticks
         pos = ntuple(i-> i != idx ? origin[i] : (tick .* scale[idx]), Val{2})
         text(
@@ -12,14 +11,14 @@ function draw_ticks(scene, idx, origin, ticks, tickstyle, scale)
             rotation = rotation, textsize = textsize,
             align = align, color = textcolor
         )
-        #linesegment([pos, endpos], color = linecolor, linewidth = linewidth)
     end
-    positions = first.(ticks)
 end
 
 
-function draw_grid(scene, dim, origin, ticks, scale, dir::VecLike{N}, style) where N
-    @extractvals style (linewidth, linecolor, linestyle)
+function draw_grid(
+        scene, dim, origin, ticks, scale, dir::VecLike{N},
+        linewidth, linecolor, linestyle
+    ) where N
     scaleND = Pointf0{N}(ntuple(i-> scale[i], Val{N}))
     dirf0 = Pointf0{N}(dir) .* scaleND
     for (tick, str) in ticks
@@ -32,12 +31,18 @@ function draw_grid(scene, dim, origin, ticks, scale, dir::VecLike{N}, style) whe
         )
     end
 end
-function draw_frame(scene, limits::NTuple{N, Any}, framestyle, scale) where N
-    vals = @extract framestyle (linewidth, linecolor, linestyle, axis_position, axis_arrow, arrow_size)
+
+
+function draw_frame(
+        scene, limits::NTuple{N, Any}, scale,
+        linewidth, linecolor, linestyle, axis_position, axis_arrow, arrow_size
+    ) where N
+
     mini = minimum.(limits)
     maxi = maximum.(limits)
     rect = HyperRectangle(Vec(mini), Vec(maxi .- mini))
     origin = Vec{N}(0.0)
+    
     if (origin in rect) && axis_position == :origin
         for i = 1:N
             start = unit(Point{N, Float32}, i) * Float32(mini[i])
@@ -78,43 +83,24 @@ function draw_frame(scene, limits::NTuple{N, Any}, framestyle, scale) where N
     end
 end
 
+function draw_titles(
+        
+        yticks, xticks, origin_scaled, limit_widths, scale,
 
+        tickfont, tick_size, tick_gap, tick_title_gap,
 
+        axis_labels, textsize, align, rotation
 
-    textbuffer = TextBuffer(Point{N, Float32}(0))
-    linebuffer = LinesegmentBuffer(Point{N, Float32}(0))
-    scene = get_global_scene()
-    attributes = axis_defaults(scene, attributes)
-    tickfont = N == 2 ? :tickfont2d : :tickfont3d
-    names = (
-        :axisnames, :axisnames_color, :axisnames_size, :axisnames_rotation_align, :axisnames_font, :visible, :showaxis, :showticks,
-        :showgrid, :axiscolors, :gridcolors, :gridthickness, tickfont
     )
-    args = getindex.(attributes, names)
-    lift_node(
-        draw_axis,
-        to_node(textbuffer), to_node(linebuffer), ranges, args...
-    )
-    bb = to_signal(lift_node(ranges) do ranges
-        mini, maxi = Vec{N, Float32}(map(minimum, ranges)), Vec{N, Float32}(map(maximum, ranges))
-        mini3d, w = Vec3f0(to_nd(mini, Val{3}, 0f0)), Vec3f0(to_nd(maxi .- mini, Val{3}, 0f0))
-        HyperRectangle(mini3d, w)
-    end)
-    linebuffer.robj.boundingbox = bb
-    viz = Context(linebuffer.robj, textbuffer.robj)
-    insert_scene!(scene, :axis, viz, attributes)
-end
-
-function draw_titles(yticks, xticks, tickstyle, titlestyle)
 
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
-        tick_bb = text_bb(str, to_font(scene, tickstyle[:font][2]), tick_size)
+        tick_bb = text_bb(str, to_font(scene, tickfont[2]), tick_size)
         widths(tick_bb)[1]
     end)
 
     tickspace_y = widths(text_bb(
-        last(first(xticks)), to_font(scene, tickstyle[:font][1]), tick_size
+        last(first(xticks)), to_font(scene, tickfont[1]), tick_size
     ))[2]
 
     tickspace = (tickspace_x, tickspace_y)
@@ -124,53 +110,62 @@ function draw_titles(yticks, xticks, tickstyle, titlestyle)
 
     posx = (half_width[1], title_start[2])
     posy = (title_start[1], half_width[2])
-
-    text(
-        scene, titlestyle[:xaxis],
-        position = posx,
-        textsize = titlestyle[:title_size][1], align = (:center, :top)
-    )
-    text(
-        scene, titlestyle[:yaxis],
-        position = posy, textsize = titlestyle[:title_size][2],
-        align = (:center, :bottom), rotation = -1.5pi
-    )
+    positions = (posx, posy)
+    for i = 1:2
+        text(
+            scene, axis_labels[i],
+            position = positions[i], textsize = textsize[i],
+            align = align[i], rotation = rotation[i]
+        )
+    end
 
 end
 
 function axis(scene::Scene, ranges::Node{<: NTuple{2}}, attributes::Dict)
     root = get_root_scene(scene)
-    limit_widths = (maximum(x) - minimum(x)), (maximum(y) - minimum(y))
-    # we use percentage of whole plot area for sizes
-    pscale = minimum(limit_widths) / 100
 
-    @extractvals axis_style (title_size, tick_size, tick_gap, tick_title_gap)
+    values = lift_node(ranges) do ranges
+        limits = extrema.(ranges)
+        limit_widths = map(x-> x[2] - x[1], limits)
+        pscale = minimum(limit_widths) / 100
+        
+        xyticks = generate_ticks.(limits)
+        rect = Reactive.value(root[:screen].inputs[:window_area])
+        xyfit = Makie.fit_ratio(rect, limits)
+        scale = Vec3f0(xyfit..., 1)
 
-    title_size = pscale * title_size
-    tick_size = pscale * tick_size
-    tick_gap = pscale * tick_gap
-    tick_title_gap = pscale * tick_title_gap
+        limits, limit_widths, xyticks, pscale, scale
+    end
+    tick_args = getindex.(attributes[:ticks], (
+        :linewidth, :linecolor, :textcolor, :textsize, :rotation, :align, :font
+    ))
+    args = (values, attributes[:tick_gap], tick_args...)
+    lift_node(args...) do values, tick_gap, style...
+        for idx = 1:2
+            o = mini_scaled .- unit((0.0, tick_gap)
+            draw_ticks(
+                scene, idx, origin, ticks, scale,
+                ticks...
+            )
+        end
+    end
+    @lift_node(attributes) do title_size, tick_size, tick_gap, tick_title_gap
+        # we use percentage of whole plot area for sizes
 
-    limits = extrema.((x, y))
+        title_size = pscale * title_size
+        tick_size = pscale * tick_size
+        tick_gap = pscale * tick_gap
+        tick_title_gap = pscale * tick_title_gap
 
-    xticks, yticks = generate_ticks.(limits)
+        
+        mini_scaled = (minimum(x), minimum(y)) .* scale2d
 
-    rect = Reactive.value(root[:screen].inputs[:window_area])
-    xfit, yfit = Makie.fit_ratio(rect, (extrema(x), extrema(y)))
-    scale = Vec3f0(xfit, yfit, 1)
+        draw_ticks(scene, 1, , xticks, tickstyle, scale)
+        draw_ticks(scene, 2, mini_scaled .- (tick_gap, 0.0), yticks, tickstyle, scale)
 
-    scale2d = ntuple(i-> scale[i], Val{2})
-    origin_scaled = (minimum(x), minimum(y)) .* scale2d
+        draw_grid(scene, 1, mini_scaled, xticks, scale, (0.0, limit_widths[2]), gridstyle)
+        draw_grid(scene, 2, mini_scaled, yticks, scale, (limit_widths[1], 0.0), gridstyle)
 
-    draw_ticks(scene, 1, origin_scaled .- (0.0, tick_gap), xticks, tickstyle, scale)
-    draw_ticks(scene, 2, origin_scaled .- (tick_gap, 0.0), yticks, tickstyle, scale)
-
-    draw_grid(scene, 1, origin_scaled, xticks, scale, (0.0, limit_widths[2]), gridstyle)
-    draw_grid(scene, 2, origin_scaled, yticks, scale, (limit_widths[1], 0.0), gridstyle)
-
-
-    draw_frame(scene, limits, framestyle)
-
-
-
+        draw_frame(scene, limits, framestyle)
+    end
 end
