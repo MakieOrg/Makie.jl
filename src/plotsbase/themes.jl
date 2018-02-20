@@ -129,25 +129,30 @@ function default_theme(scene)
             indices = nothing
         end
 
-        axis2d = begin
+        axis = begin
             title_size = 6
-            tick_size = 5
-            tick_gap = 3
-            tick_title_gap = 3
+
             tickstyle = begin
+                gap = 3
+                title_gap = 3
+
                 linewidth = (1, 1)
                 linecolor = ((:black, 0.4), (:black, 0.4))
+                linestyle = (nothing, nothing)
+
                 textcolor = (darktext, darktext)
                 textsize = (5, 5)
                 rotation = (0.0, 0.0)
                 align = ((:center, :top), (:right, :center))
                 font = ("default", "default")
             end
+
             gridstyle = begin
                 linewidth = (0.5, 0.5)
                 linecolor = ((:black, 0.3), (:black, 0.3))
                 linestyle = (nothing, nothing)
             end
+
             framestyle = begin
                 linewidth = 1.0
                 linecolor = :black
@@ -157,34 +162,43 @@ function default_theme(scene)
                 arrow_size = 2.5
                 frames = ((false, false), (false, false))
             end
+
+            titlestyle = begin
+                axisnames = ("X Axis", "Y Axis")
+                textcolor = (darktext, darktext)
+                textsize = (6, 6)
+                rotation = (0.0, -1.5pi)
+                align = ((:center, :top), (:center, :bottom))
+                font = ("default", "default")
+            end
         end
 
-        axis3d = begin
-            visible = true
-
-            axisnames = ("X Axis", "Y Axis", "Z Axis")
-
-            names_color = (darktext, darktext, darktext)
-            names_rotation = axisnames_rotation3d
-            names_size = (5.0, 5.0, 5.0)
-            names_align = axisnames_align3d
-            names_font = "default"
-
-            showticks = (true, true, true)
-            showaxis = (true, true, true)
-            showgrid = (true, true, true)
-
-            tick_color = (tick_color, tick_color, tick_color)
-            tick_rotation = tickrotations3d
-            tick_size =  (2.0, 2.0, 2.0)
-            tick_align = tickalign3d
-            tick_font = "default"
-
-
-            gridcolors = (grid_color, grid_color, grid_color)
-            gridthickness = (grid_thickness, grid_thickness, grid_thickness)
-            axiscolors = (darktext, darktext, darktext)
-        end
+        # axis3d = begin
+        #     visible = true
+        #
+        #     axisnames = ("X Axis", "Y Axis", "Z Axis")
+        #
+        #     names_color = (darktext, darktext, darktext)
+        #     names_rotation = axisnames_rotation3d
+        #     names_size = (5.0, 5.0, 5.0)
+        #     names_align = axisnames_align3d
+        #     names_font = "default"
+        #
+        #     showticks = (true, true, true)
+        #     showaxis = (true, true, true)
+        #     showgrid = (true, true, true)
+        #
+        #     tick_color = (tick_color, tick_color, tick_color)
+        #     tick_rotation = tickrotations3d
+        #     tick_size =  (2.0, 2.0, 2.0)
+        #     tick_align = tickalign3d
+        #     tick_font = "default"
+        #
+        #
+        #     gridcolors = (grid_color, grid_color, grid_color)
+        #     gridthickness = (grid_thickness, grid_thickness, grid_thickness)
+        #     axiscolors = (darktext, darktext, darktext)
+        # end
 
         heatmap = begin
             linewidth = to_float(0)
