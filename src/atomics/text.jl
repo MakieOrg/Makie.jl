@@ -78,10 +78,14 @@ end
 function Base.append!(tb::TextBuffer, startpos, str, x::TextAttributes)
     append!(tb, startpos, str, x.size, x.color, x.rotation, x.alignment, x.font)
 end
-function Base.append!(tb::TextBuffer, startpos::StaticVector{N}, str::String, scale, color, rot, aoffsetvec, font = GLVisualize.defaultfont()) where N
+function Base.append!(
+        tb::TextBuffer, startpos::StaticVector{N}, str::String,
+        scale, color, rot, aoffsetvec, _font = GLVisualize.defaultfont()
+    ) where N
     atlas = get_atlas(tb)
     pos = Point{N, Float32}(startpos)
     rscale = Float32(scale)
+    font = to_font(nothing, _font)
     position = GLVisualize.calc_position(str, Point2f0(0), rscale, font, atlas)
     toffset = GLVisualize.calc_offset(str, rscale, font, atlas)
     aoffset = align_offset(Point2f0(0), position[end], atlas, rscale, font, to_textalign((), aoffsetvec))

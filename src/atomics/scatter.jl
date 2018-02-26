@@ -1,5 +1,19 @@
 using GeometryTypes, StaticArrays, Colors, GLAbstraction
 
+function to_visualize_key(key)
+    k == :rotations && return :rotation
+    k == :markersize && return :scale
+    k == :glowwidth && return :glow_width
+    k == :glowcolor && return :glow_color
+    k == :strokewidth && return :stroke_width
+    k == :strokecolor && return :stroke_color
+    k == :positions && return :position
+    k
+end
+
+
+end
+
 """
 Hack to quickly make things more consistent inside Makie, without
 changing GLVisualize too much! So we need to rewrite the attributes, the names and the

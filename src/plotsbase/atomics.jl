@@ -396,7 +396,6 @@ function Base.similar(scene::Scene, newdata...; kw_args...)
 end
 
 
-
 for func in (:image, :heatmap, :lines, :surface)
     # Higher level atomic signatures
     @eval begin
@@ -414,4 +413,73 @@ for func in (:image, :heatmap, :lines, :surface)
             $func(scene, x, y, z, attributes)
         end
     end
+end
+
+scatter(args...; kw_args...) = plot(Scatter, args...; kw_args...)
+
+function plot(scene::Scene, t::Type{Scatter}, attributes::Attributes, positions::AbstractVector{<:Point})
+    cmap_or_color!(scene, attributes)
+    scatter_attributes, rest = merged_get!(scatter, scene, attributes) do
+        Attributes(
+            marker = Circle
+            markersize = 0.1
+            strokecolor = RGBA(0, 0, 0, 0)
+            strokewidth = 0.0
+            glowcolor = RGBA(0, 0, 0, 0)
+            glowwidth = 0.0
+            rotations = Billboard()
+        )
+    end
+    plot(scene, Scatter(positions, attributes), rest)
+end
+
+function plot(scene::Scene, P::Type, attributes::Attributes, args...)
+    plot(scene, P, attributes, convert_arguments(args...)...)
+end
+
+
+struct Scatter{T}
+    args::T
+    attributes::Attributes
+end
+
+function data_limits(x::Scatter{<: AbstractArray{<:Point}})
+
+end
+
+function plot(scene::Scene, p::AbstractPlot, attributes::Attributes)
+    plot_attributes, rest = merged_get!(plot, scene, attributes) do
+        Attributes(
+            show_axis = true,
+            show_legend = true,
+            scale_plot = true,
+            center = true,
+            axis = Attributes(),
+            legend = Attributes(),
+            scale = Vec3f0(1)
+        )
+    end
+    if !isempty(rest) # at this point, there should be no attributes left.
+        warn("The following attributes are unused: $(sprint(display, rest))")
+    end
+    limits = data_limits(p)
+    if to_value(plot_attributes, :scale_plot)
+        scale = lift_node(window_area(scene), limits) do rect, limits
+            xyzfit = Makie.fit_ratio(rect, limits)
+            to_ndim(Vec3f0, xyzfit, 1f0)
+        end
+        p[:scale] = scale
+    end
+    if to_value(plot_attributes, :show_axis)
+        axis_attributes = plot_attributes[:axis]
+        axis_attributes[:scale] = scale
+        axis(scene, limits, axis_attributes)
+    end
+
+    if to_value(plot_attributes, :show_legend)
+        legend_attributes = plot_attributes[:legend]
+        legend_attributes[:scale] = scale
+        legend(scene, limits, legend_attributes)
+    end
+    Series(Scene, p, plot_attributes)
 end
