@@ -291,6 +291,10 @@ const atomic_funcs = (
 
     The same as for [`lines`](@ref)
     """,
+    :poly => """
+        poly(positions)
+    Plot a filled polygon with vertices at the specified positions
+    """,
     # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
     :mesh => """
         mesh(x, y, z) / mesh(mesh_object) / mesh(x, y, z, faces) / mesh(xyz, faces)
