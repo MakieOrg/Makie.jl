@@ -1,54 +1,30 @@
-using GLAbstraction, Makie, GeometryTypes
+# using GLAbstraction, Makie, GeometryTypes
 using GLAbstraction: orthographicprojection, translationmatrix
 using StaticArrays
-
-const AbstractCamera = Scene
-@default function camera2d(scene, kw_args)
-    area = SimpleRectangle(0, 0, 500, 500)
-    projection = eye(Mat4f0)
-    view = eye(Mat4f0)
-
-    translationspeed = to_float(1)
-    eyeposition = Vec3f0(3)
-    lookat = Vec3f0(0)
-    upvector = Vec3f0((0, 0, 1))
-    near = to_float(10_000)
-    far = to_float(-10_000)
-end
+include("plotutils\\layout.jl")
+# @default function camera2d(scene, kw_args)
+#     translationspeed = to_float(1)
+#     eyeposition = Vec3f0(3)
+#     lookat = Vec3f0(0)
+#     upvector = Vec3f0((0, 0, 1))
+#     near = to_float(10_000)
+#     far = to_float(-10_000)
+# end
 
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
-function update_cam!(cam::AbstractCamera, area)
+set_value!(x::Node, value) = (x.value = value)
+function update_cam!(cam::Scene, area)
     x, y = minimum(area)
     w, h = widths(area) ./ 2f0
-    cam[:area] = FRect(area)
-    cam[:projection] = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
-    cam[:view] = translationmatrix(Vec3f0(-x - w, -y - h, 0))
+    # These nodes should be final, no one should do map(cam.projection),
+    # so we don't push! and just update the value in place
+    set_value!(cam.area, area)
+    set_value!(cam.projection, orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0))
+    set_value!(cam.view, translationmatrix(Vec3f0(-x - w, -y - h, 0)))
     return
 end
 
-function add_mousebuttons(scene::Scene)
-    nw = GLWindow.nativewindow(scene[:screen])
-    scene[:mousebuttons] = Set(Mouse.Button[])
-    GLFW.SetMouseButtonCallback(nw, (native_window, button, action, mods) -> begin
-        set = to_value(scene, :mousebuttons)
-        button_enum = Mouse.Button(button)
-        if button != GLFW.KEY_UNKNOWN
-            if action == GLFW.PRESS
-                push!(set, button_enum)
-            elseif action == GLFW.RELEASE
-                delete!(set, button_enum)
-            elseif action == GLFW.REPEAT
-                # nothing needs to be done, besides returning the same set of keys
-            else
-                error("Unrecognized enum value for GLFW button press action: $action")
-            end
-        end
-        scene[:mousebuttons] = set # trigger setfield event!
-        return
-    end)
-    return
-end
 
 function camspace(cam_area, screen_area, point)
     point = point .* wscale(screen_area, cam_area)
@@ -63,16 +39,15 @@ function selection_rect(
     rect = RefValue(FRect(0, 0, 0, 0))
     lw = 2f0
     rect_vis = lines(
-        scene,
+        Scene(scene, camera = :pixel),
         rect[],
         linestyle = :dot,
         thickness = 1f0,
         color = (:black, 0.4),
-        drawover = true,
-        camera = :pixel
+        drawover = true
     )
     waspressed = RefValue(false)
-    dragged_rect = lift_node(scene, :mousedrag) do drag
+    dragged_rect = map(scene.events.mousedrag) do drag
         if ispressed(scene, key) && ispressed(scene, button)
             screen_area = to_value(scene, :window_area)
             cam_area = to_value(cam, :area)
@@ -105,72 +80,51 @@ function selection_rect(
     rect_vis, dragged_rect
 end
 
-function add_mousedrag(scene::Scene)
-    indrag = RefValue(false)
-    tracked_mousebutton = RefValue(Mouse.left)
-    drag = RefValue(Mouse.notpressed)
-    scene[:mousedrag] = lift_node(scene, :mouseposition, :mousebuttons) do mp, buttons
-        # only track if still the same button is pressed
-        if length(buttons) == 1 &&
-                (!indrag[] || tracked_mousebutton[] == first(buttons))
 
-            if !indrag[]
-                tracked_mousebutton[] = first(buttons); indrag[] = true
-                drag[] = Mouse.down # just started, so dragging is still false
-                return drag[]
-            else
-                drag[] = Mouse.pressed
-                return drag[]
-            end
-        end
-        # already on notpressed, no need for update
-        if drag[] != Mouse.notpressed
-            drag[] = indrag[] ? Mouse.up : Mouse.notpressed
-        end
-        indrag[] = false
-        return drag[]
-    end
-end
-
-function add_pan(cam::AbstractCamera, scene)
-    startpos = RefValue(Vec(0.0, 0.0))
-    lift_node(scene, :mouseposition, :mousedrag) do mp, dragging
-        if ispressed(scene, Mouse.middle)
-            screen_area = to_value(scene, :window_area)
-            cam_area = to_value(cam, :area)
+function add_pan!(scene, attributes)
+    startpos = RefValue((0.0, 0.0))
+    events = scene.events
+    panbutton = attributes[:panbutton]
+    foreach(events.mouseposition, events.mousedrag) do mp, dragging
+        if ispressed(scene, panbutton[])
+            window_area = scene.px_area[]
+            cam_area = scene.area[]
             if dragging == Mouse.down
                 startpos[] = mp
-            elseif dragging == Mouse.pressed && ispressed(scene, Mouse.middle)
+            elseif dragging == Mouse.pressed && ispressed(scene, panbutton[])
                 diff = startpos[] .- mp
                 startpos[] = mp
-                diff = diff .* wscale(screen_area, cam_area)
-                update_cam!(cam, FRect(minimum(cam_area) .+ diff, widths(cam_area)))
+                diff = Vec(diff) .* wscale(window_area, cam_area)
+                update_cam!(scene, FRect(minimum(cam_area) .+ diff, widths(cam_area)))
             end
         end
         return
     end
 end
 
-function add_zoom(cam::AbstractCamera, scene)
-    lift_node(scene[:scroll]) do x
+function add_zoom!(scene, attributes)
+    events = scene.events
+    zoomspeed, zoombutton = getindex.(attributes, (:zoomspeed, :zoombutton))
+
+    foreach(events.scroll) do x
         zoom = Float32(x[2])
-        if zoom != 0
-            a = to_value(cam, :area)
-            z = 1 + (zoom * 0.10)
-            mp = Vec2f0(to_value(scene, :mouseposition))
-            mp = (mp .* wscale(to_value(scene, :window_area), a)) + minimum(a)
+        if zoom != 0 && (zoombutton[] == nothing || ispressed(scene, zoombutton[]))
+            a = scene.area[]
+            z = 1f0 + (zoom * zoomspeed[])
+            mp = Vec2f0(events.mouseposition[])
+            mp = (mp .* wscale(scene.px_area[], a)) + minimum(a)
             p1, p2 = minimum(a), maximum(a)
             p1, p2 = p1 - mp, p2 - mp # translate to mouse position
             p1, p2 = z * p1, z * p2
             p1, p2 = p1 + mp, p2 + mp
-            update_cam!(cam, FRect(p1, p2 - p1))
+            update_cam!(scene, FRect(p1, p2 - p1))
             z
         end
         return
     end
 end
 
-function reset!(cam::AbstractCamera, boundingbox, preserveratio = true)
+function reset!(cam, boundingbox, preserveratio = true)
     w1 = widths(boundingbox)
     if preserveratio
         w2 = widths(cam[Screen][Area])
@@ -191,7 +145,7 @@ end
 
 lerp{T}(a::T, b::T, val::AbstractFloat) = (a .+ (val * (b .- a)))
 
-function add_restriction!(cam::AbstractCamera, window, rarea::SimpleRectangle, minwidths::Vec)
+function add_restriction!(cam, window, rarea::SimpleRectangle, minwidths::Vec)
     area_ref = Base.RefValue(cam[Area])
     restrict_action = paused_action(1.0) do t
         o = lerp(origin(area_ref[]), origin(cam[Area]), t)
@@ -222,4 +176,32 @@ function add_restriction!(cam::AbstractCamera, window, rarea::SimpleRectangle, m
         return
     end
     restrict_action
+end
+
+
+function cam2d!(scene; kw_args...)
+    cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
+        Theme(
+            zoomspeed = 0.10f0,
+            zoombutton = nothing,
+            panbutton = Mouse.middle,
+            padding = 0.001
+        )
+    end
+    add_zoom!(scene, cam_attributes)
+    add_pan!(scene, cam_attributes)
+    foreach(scene.px_area) do area
+        screenw = widths(area)
+        camw = widths(scene.area[])
+        ratio = camw ./ screenw
+        if !(ratio[1] ≈ ratio[2])
+            screen_r = screenw ./ screenw[1]
+            camw_r = camw ./ camw[1]
+            r = (screen_r ./ camw_r)
+            r = r ./ minimum(r)
+            update_cam!(scene, FRect(minimum(scene.area[]), r .* camw))
+        end
+        return
+    end
+    cam_attributes
 end

@@ -12,7 +12,6 @@ function to_visualize_key(key)
 end
 
 
-end
 
 """
 Hack to quickly make things more consistent inside Makie, without
