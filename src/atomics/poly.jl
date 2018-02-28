@@ -1,52 +1,39 @@
-function poly(scene::makie, x, y, attributes::Dict)
+function _poly(scene::makie, attributes::Dict)
+    attributes = poly_defaults(scene, attributes)
+    println(typeof(attributes[:positions]))
+    bigmesh = lift_node(attributes[:positions]) do p
+        polys = GeometryTypes.split_intersections(p)
+        merge(GLPlainMesh.(polys))
+    end
+    mesh(scene, bigmesh, color = attributes[:color])
+    line = lift_node(attributes[:positions]) do p
+        Point2f0[p; p[1:1]]
+    end
+    println(typeof(line))
+    lines(scene, line,
+        color = attributes[:linecolor], linestyle = attributes[:linestyle],
+        linewidth = attributes[:linewidth]
+    )
+    return Scene(scene, attributes, :poly)
+end
+function poly(scene::makie, points::AbstractVector{Point2f0}, attributes::Dict)
+    attributes[:positions] = points
+    _poly(scene, attributes)
+end
+function poly(scene::makie, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}, attributes::Dict)
     attributes[:x] = x
     attributes[:y] = y
-    attributes = lines_defaults(scene, attributes)
-    polys, gl_data = poly_2glvisualize(attributes)
-    result = []
-    for poly in polys
-        mesh = GLNormalMesh(poly) # make polygon
-        if !isempty(GeometryTypes.faces(mesh)) # check if polygonation has any faces
-            viz = visualize(mesh, :poly, color=attributes[:color]).children[]
-            insert_scene!(scene, :poly, viz, attributes)
-        else
-            warn("Couldn't draw the polygon: $(attributes[:positions])")
-        end
-    end
-    return scene
+    _poly(scene, attributes)
 end
 
-function poly_2glvisualize(attributes::Dict)
-    points = attributes[:positions]
-    last(points) == first(points) && pop!(points)
-    polys = GeometryTypes.split_intersections(to_value(points))
-    result = Dict{Symbol, Any}()
-    for (k, v) in attributes
-
-        k in (:mesh, :normals, :indices, :positions, always_skip...) && continue
-
-        if k == :shading
-            result[k] = to_value(v) # as signal not supported currently, will require shader signals
-            continue
+function poly(scene::makie, x::AbstractVector{T}, attributes::Dict) where T <: Union{Circle, Rectangle}
+    position = lift_node(to_node(x)) do rects
+        map(rects) do rect
+            minimum(rect) .+ (widths(rect) ./ 2f0)
         end
-        if k == :color && isa(v, AbstractVector)
-            # normal colors pass through, vector of colors should be part of mesh already
-            continue
-        end
-        result[k] = to_signal(v)
     end
-    result[:visible] = true
-    result[:fxaa] = true
-    polys, result
-end
-
-function shape(d, kw_args)
-    points = Plots.extract_points(d)
-    result = []
-    for rng in iter_segments(d[:x], d[:y])
-        ps = points[rng]
-        meshes = poly(ps, kw_args)
-        append!(result, meshes)
+    scale = lift_node(to_node(x)) do rects
+        widths.(rects)
     end
-    result
+    scatter(scene, position; markersize = scale, marker = T, attributes...)
 end

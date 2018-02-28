@@ -100,6 +100,25 @@ end
     )
 end
 
+@default function poly(scene, kw_args)
+    xor(
+        begin
+            positions = to_positions(positions)
+        end,
+        if (x, y)
+            x = to_array(x)
+            y = to_array(y)
+            positions = to_positions((x, y))
+        end
+    )
+    color = to_color(color)
+    linecolor = to_color(linecolor)
+    linewidth = to_float(linewidth)
+    linestyle = to_linestyle(linestyle)
+    drawover = to_bool(drawover)
+end
+
+
 @default function scatter(scene, kw_args)
     xor(
         begin

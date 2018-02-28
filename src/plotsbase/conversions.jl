@@ -304,12 +304,13 @@ to_spritemarker(b, x::Circle) = x
     to_spritemarker(b, ::Type{Circle})
 `Type{GeometryTypes.Circle}`
 """
-to_spritemarker(b, ::Type{Circle}) = Circle(Point2f0(0), 1f0)
+to_spritemarker(b, ::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
 """
     to_spritemarker(b, ::Type{Rectangle})
 `Type{GeometryTypes.Rectangle}`
 """
-to_spritemarker(b, ::Type{Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(b, ::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(b, x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)
 Any `Char`, including unicode
