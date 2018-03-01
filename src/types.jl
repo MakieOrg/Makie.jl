@@ -11,6 +11,9 @@ const IRect2D = Rect2D{Int}
 const Point2d{T} = NTuple{2, T}
 const Vec2d{T} = NTuple{2, T}
 const VecTypes{N, T} = Union{StaticVector{N, T}, NTuple{N, T}}
+const RGBAf0 = RGBA{Float32}
+
+const Font = Vector{Ptr{FreeType.FT_FaceRec}}
 
 abstract type AbstractScreen end
 using Base: RefValue

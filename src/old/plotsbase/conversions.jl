@@ -189,7 +189,6 @@ Vector of anything that is accepted as a single marker will give each point it's
 Note that it needs to be a uniform vector with the same element type!
 """
 function to_spritemarker(b, marker::AbstractVector)
-    println(typeof(marker))
     marker = map(marker) do sym
         to_spritemarker(b, sym)
     end
@@ -559,22 +558,4 @@ function to_volume_algorithm(b, value::Union{Symbol, String})
     to_volume_algorithm(b, get(vals, Symbol(value)) do
         error("$value not a valid volume algorithm. Needs to be in $(keys(vals))")
     end)
-end
-
-
-"""
-    to_font(scene, x)
-a string naming a font, e.g. helvetica
-"""
-function to_font(scene, x::Union{Symbol, String})
-    str = string(x)
-    if str == "default"
-        return GLVisualize.defaultfont()
-    end
-    newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
-end
-const Font = Vector{Ptr{FreeType.FT_FaceRec}}
-to_font(scene, x::Font) = x
-function to_font(scene, x)
-    error("Please use a string like \"Helvetica\" or a font loaded with FreeType!. Found: $x")
 end

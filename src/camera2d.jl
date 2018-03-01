@@ -1,7 +1,7 @@
 # using GLAbstraction, Makie, GeometryTypes
 using GLAbstraction: orthographicprojection, translationmatrix
 using StaticArrays
-include("plotutils\\layout.jl")
+include("old/plotutils/layout.jl")
 # @default function camera2d(scene, kw_args)
 #     translationspeed = to_float(1)
 #     eyeposition = Vec3f0(3)

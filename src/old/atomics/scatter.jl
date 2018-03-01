@@ -90,7 +90,15 @@ function _scatter(scene, kw_args)
     viz = visualize(main, Style(:default), gl_data)
     insert_scene!(scene, :scatter, viz, attributes)
 end
-
+function _meshscatter(scene, kw_args)
+    attributes = meshscatter_defaults(scene, kw_args)
+    gl_data = mesh2glvisualize(attributes)
+    shape = to_signal(attributes[:marker])
+    main = (shape, to_signal(attributes[:positions]))
+    viz = GLVisualize.meshparticle(main, Style(:default), gl_data)
+    viz = GLVisualize.assemble_shader(viz).children[]
+    insert_scene!(scene, :meshscatter, viz, attributes)
+end
 function mesh2glvisualize(kw_args)
     result = Dict{Symbol, Any}()
     for (k, v) in kw_args
@@ -110,15 +118,7 @@ function mesh2glvisualize(kw_args)
     result
 end
 
-function _meshscatter(scene, kw_args)
-    attributes = meshscatter_defaults(scene, kw_args)
-    gl_data = mesh2glvisualize(attributes)
-    shape = to_signal(attributes[:marker])
-    main = (shape, to_signal(attributes[:positions]))
-    viz = GLVisualize.meshparticle(main, Style(:default), gl_data)
-    viz = GLVisualize.assemble_shader(viz).children[]
-    insert_scene!(scene, :meshscatter, viz, attributes)
-end
+
 
 for arg in ((:x, :y), (:x, :y, :z), (:positions,))
     insert_expr = map(arg) do elem

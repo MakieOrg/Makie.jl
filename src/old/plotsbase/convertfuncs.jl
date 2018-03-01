@@ -120,11 +120,3 @@ to_interval(b, x::Pair{<: Number, <: Number}) = to_interval(b, (x...,))
 `AbstractVector` will be interpreted as an interval from minimum to maximum
 """
 to_interval(b, x::AbstractVector) = to_interval(b, (minimum(x), maximum(x)))
-
-
-function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
-    T(ntuple(Val{N}) do i
-        i > N2 && return ET(fillval)
-        @inbounds vec[i]
-    end)
-end

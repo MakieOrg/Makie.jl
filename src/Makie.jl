@@ -1,120 +1,107 @@
 __precompile__(true)
 module Makie
 
+using Reactive, GeometryTypes, Colors, StaticArrays
+
 using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
-using StaticArrays, GLWindow, ModernGL, Contour, Quaternions
+using StaticArrays, GLWindow, ModernGL, Contour
+import Quaternions
 
 using Base.Iterators: repeated, drop
 using Base: RefValue
 using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
 using IntervalSets
 
+include("types.jl")
+include("utils.jl")
 
-struct Backend{B} end
+Base.getindex(x::Node) = value(x)
+Base.setindex!(x::Node, value) = push!(x, value)
+
+struct Scene
+    events::Events
+
+    px_area::Node{IRect2D}
+    area::Node{FRect2D}
+    view::Node{Mat4f0}
+    projection::Node{Mat4f0}
+    resolution::Node{Vec2f0}
+    eyeposition::Node{Vec3f0}
+
+    limits::Node{HyperRectangle{3, Float32}}
+    scale::Node{Vec3f0}
+    flip::Node{NTuple{3, Bool}}
+
+    plots::Vector{<: AbstractPlot}
+    theme::Attributes
+    children::Vector{Scene}
+end
 
 
-include("plotutils/utils.jl")
+function Scene(area = nothing)
+    events = Events()
+    if area == nothing
+        area = map(x-> IRect(0, 0, widths(x)), events.window_area)
+    end
+    Scene(
+        events,
+        area,
+        Node(FRect(0, 0, 1, 1)),
+        Node(eye(Mat4f0)),
+        Node(eye(Mat4f0)),
+        map(a-> Vec2f0(widths(a)), events.window_area),
+        Node(Vec3f0(1)),
 
-include("plotsbase/scene.jl")
-include("plotsbase/conversions.jl")
-include("plotutils/units.jl")
+        Signal(AABB(Vec3f0(0), Vec3f0(1))),
+        Signal(Vec3f0(1)),
+        Signal((false, false, false)),
+        AbstractPlot[],
+        Attributes(),
+        Scene[]
+    )
+end
 
-const makie = Scene{:makie}
+to_node(x::Node) = x
+to_node(x) = Node(x)
+
+function merged_get!(defaults, key, scene, input::Attributes)
+    theme = get!(defaults, scene.theme, key)
+    rest = Attributes()
+    merged = Attributes()
+
+    for key in union(keys(input), keys(theme))
+        if haskey(input, key) && haskey(theme, key)
+            merged[key] = to_node(input[key])
+        elseif haskey(input, key)
+            rest[key] = input[key]
+        else # haskey(theme) must be true!
+            merged[key] = theme[key]
+        end
+    end
+    merged, rest
+end
+
+Theme(; kw_args...) = Attributes(map(kw-> kw[1] => to_node(kw[2]), kw_args))
 
 
-# Until I find a non breaking way to integrate this into GLAbstraction, it lives here.
-GLAbstraction.gl_convert(a::Vector{T}) where T = convert(Vector{GLAbstraction.gl_promote(T)}, a)
+function popkey!(dict::Dict, key)
+    val = dict[key]
+    delete!(dict, key)
+    val
+end
 
-include("plotutils/layout.jl")
+include("basic_drawing.jl")
+include("layouting.jl")
 
-include("plotsbase/atomics.jl")
-    # The actual implementation
-    include("atomics/shared.jl")
-    include("atomics/scatter.jl")
-    include("atomics/lines.jl")
-    include("atomics/text.jl")
-    include("atomics/surface.jl")
-    include("atomics/wireframe.jl")
-    include("atomics/mesh.jl")
-    include("atomics/imagelike.jl")
-    include("plotsbase/contour.jl")
-    include("plotsbase/legend.jl")
-    include("atomics/arrows.jl")
+include("attribute_conversion.jl")
 
-include("plotsbase/plotutils.jl")
-include("plotsbase/axsi2.jl")
-include("plotsbase/output.jl")
-include("iodevices.jl")
+
+include("events.jl")
+include("glbackend/glbackend.jl")
+
+include("plot.jl")
 include("camera2d.jl")
-# include("camera3d.jl")
 
-export Scene, Node
+export cam2d!, Scene, update_cam!, Screen, scatter
 
-export scatter, lines, linesegment, mesh, surface, wireframe, axis, text
-export @ref, @theme, @default, to_node, to_value, lift_node, to_world, save
-export available_marker_symbols, available_gradients, render_frame
-
-# conversion
-
-export to_float, to_markersize2d, to_spritemarker, to_linestyle, to_pattern
-export to_color, to_colormap, to_colornorm, to_array, to_mesh, to_surface
-
-export to_scale
-export to_offset
-export to_rotation
-export to_image
-export to_bool
-export to_index_buffer
-export to_index_buffer
-export to_positions
-export to_position
-export to_array
-export to_scalefunc
-export to_text
-export to_font
-export to_intensity
-export to_surface
-export to_spritemarker
-export to_static_vec
-export to_rotations
-export to_markersize2d
-export to_markersize3d
-export to_linestyle
-export to_normals
-export to_faces
-export to_attribut_id
-export to_mesh
-export to_float
-export to_color
-export to_colornorm
-export to_colormap
-export available_gradients
-export to_spatial_order
-export to_interval
-export to_volume_algorithm
-export to_3floats
-export to_2floats
-export to_textalign
-
-
-# Reexport some things from other packages,
-# which seem to pop as frequently as I say `using Makie`
-
-# GeometryTypes.jl
-export Vec, Vec2f0, Vec3f0, Point, Point2f0, Point3f0
-
-# Colors.jl
-export Colorant, RGB, RGBA, N0f8
-
-# FileIO
-
-export save, load
-
-# GLVisualize
-
-export loadasset, assetpath
-
-
-
-
-end # module
+end

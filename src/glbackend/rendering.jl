@@ -1,5 +1,3 @@
-using ModernGL
-
 function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     try
         while isopen(screen)
@@ -8,6 +6,7 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
             prerender()
             if Base.n_avail(Reactive._messages) > 0
                 GLWindow.reactive_run_till_now()
+                GLFW.MakeContextCurrent(to_native(screen))
                 render_frame(screen)
                 GLWindow.swapbuffers(to_native(screen))
             end
@@ -18,12 +17,15 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
         rethrow(e)
     finally
         nw = to_native(screen)
-        if nw.handle != C_NULL
-            GLFW.DestroyWindow(nw)
-            nw.handle = C_NULL
-        end
+        destroy!(nw)
     end
     return
+end
+function destroy!(nw::GLFW.Window)
+    if nw.handle != C_NULL
+        GLFW.DestroyWindow(nw)
+        nw.handle = C_NULL
+    end
 end
 
 function setup!(screen)
@@ -42,6 +44,7 @@ function setup!(screen)
     end
     return
 end
+
 
 """
 Renders a single frame of a `window`
