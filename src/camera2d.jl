@@ -1,19 +1,35 @@
 # using GLAbstraction, Makie, GeometryTypes
 using GLAbstraction: orthographicprojection, translationmatrix
 using StaticArrays
-include("old/plotutils/layout.jl")
-# @default function camera2d(scene, kw_args)
-#     translationspeed = to_float(1)
-#     eyeposition = Vec3f0(3)
-#     lookat = Vec3f0(0)
-#     upvector = Vec3f0((0, 0, 1))
-#     near = to_float(10_000)
-#     far = to_float(-10_000)
-# end
 
+function cam2d!(scene; kw_args...)
+    cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
+        Theme(
+            zoomspeed = 0.10f0,
+            zoombutton = nothing,
+            panbutton = Mouse.middle,
+            padding = 0.001
+        )
+    end
+    add_zoom!(scene, cam_attributes)
+    add_pan!(scene, cam_attributes)
+    map_once(scene.px_area) do area
+        screenw = widths(area)
+        camw = widths(scene.area[])
+        ratio = camw ./ screenw
+        if !(ratio[1] ≈ ratio[2])
+            screen_r = screenw ./ screenw[1]
+            camw_r = camw ./ camw[1]
+            r = (screen_r ./ camw_r)
+            r = r ./ minimum(r)
+            update_cam!(scene, FRect(minimum(scene.area[]), r .* camw))
+        end
+        return
+    end
+    cam_attributes
+end
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
-set_value!(x::Node, value) = (x.value = value)
 function update_cam!(cam::Scene, area)
     x, y = minimum(area)
     w, h = widths(area) ./ 2f0
@@ -85,7 +101,7 @@ function add_pan!(scene, attributes)
     startpos = RefValue((0.0, 0.0))
     events = scene.events
     panbutton = attributes[:panbutton]
-    foreach(events.mouseposition, events.mousedrag) do mp, dragging
+    map_once(events.mouseposition, events.mousedrag) do mp, dragging
         if ispressed(scene, panbutton[])
             window_area = scene.px_area[]
             cam_area = scene.area[]
@@ -106,7 +122,7 @@ function add_zoom!(scene, attributes)
     events = scene.events
     zoomspeed, zoombutton = getindex.(attributes, (:zoomspeed, :zoombutton))
 
-    foreach(events.scroll) do x
+    map_once(events.scroll) do x
         zoom = Float32(x[2])
         if zoom != 0 && (zoombutton[] == nothing || ispressed(scene, zoombutton[]))
             a = scene.area[]
@@ -176,32 +192,4 @@ function add_restriction!(cam, window, rarea::SimpleRectangle, minwidths::Vec)
         return
     end
     restrict_action
-end
-
-
-function cam2d!(scene; kw_args...)
-    cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
-        Theme(
-            zoomspeed = 0.10f0,
-            zoombutton = nothing,
-            panbutton = Mouse.middle,
-            padding = 0.001
-        )
-    end
-    add_zoom!(scene, cam_attributes)
-    add_pan!(scene, cam_attributes)
-    foreach(scene.px_area) do area
-        screenw = widths(area)
-        camw = widths(scene.area[])
-        ratio = camw ./ screenw
-        if !(ratio[1] ≈ ratio[2])
-            screen_r = screenw ./ screenw[1]
-            camw_r = camw ./ camw[1]
-            r = (screen_r ./ camw_r)
-            r = r ./ minimum(r)
-            update_cam!(scene, FRect(minimum(scene.area[]), r .* camw))
-        end
-        return
-    end
-    cam_attributes
 end

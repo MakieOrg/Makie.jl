@@ -1,149 +1,68 @@
-using Quaternions
+import Quaternions
 const Q = Quaternions
 
 @enum ProjectionEnum Perspective Orthographic
 
-
-
-
-abstract type AbstractCamera end
-
-
-@reactivecomposed type BasicCamera <: AbstractCamera
-    Area
-    Projection
-    View
-    ProjectionView
+const N = Node # Signal
+struct Camera3D
+    rotationspeed::N{Float32}
+    translationspeed::N{Float32}
+    eyeposition::N{Vec3f0}
+    lookat::N{Vec3f0}
+    upvector::N{Vec3f0}
+    fov::N{Float32}
+    near::N{Float32}
+    far::N{Float32}
+    projectiontype::N{ProjectionEnum}
+    pan_button
+    rotate_button
+    move_key
+end
+signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x)
+signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1(x))
+signal_convert(t, x) = x
+function from_dict(::Type{T}, dict) where T
+    T(map(fieldnames(T)) do name
+        signal_convert(fieldtype(T, name), dict[name])
+    end...)
 end
 
-@composed type PerspectiveCamera <: AbstractCamera
-    <: BasicCamera
-    ProjectionType
-    Translation
-    Rotation
-    RotationSpeed
-    TranslationSpeed
-    EyePosition
-    LookAt
-    UpVector
-    Fov
-    Near
-    Far
-end
 
-default(::Type{Rotation}, ::Partial{<: AbstractCamera}) = Vec3f0(0, 0, 0)
-
-function add_translation(cam, scene, key, button)
-    local last_mousepos::Vec2f0 = Vec2f0(0, 0)
-    lift_node(scene[:mousedrag]) do drag
-        if ispressed(scene, key) && ispressed(scene, button)
-            if drag == Mouse.down
-                #just started pressing, nothing to do yet
-                last_mousepos = Vec2f0(to_value(scene, :mouseposition))
-            elseif drag == Mouse.pressed
-                 # we need the difference, although I'm wondering if absolute wouldn't be better.
-                 # TODO FIND OUT! Definitely would have more precision problems
-                mousepos = Vec2f0(scene[:mouseposition])
-                diff = (last_mousepos - mousepos) * to_value(cam, :translationspeed)
-                last_mousepos = mousepos
-                cam[:translation] = Vec3f0(0f0, diff[1], - diff[2])
-            end
-        end
-        return
+function cam3d!(scene; kw_args...)
+    cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
+        Theme(
+            rotationspeed = 0.1,
+            translationspeed = 1,
+            eyeposition = Vec3f0(3),
+            lookat = Vec3f0(0),
+            upvector = Vec3f0(0, 0, 1),
+            fov = 45f0,
+            near = 0.01f0,
+            far = 100f0,
+            projectiontype = Perspective,
+            pan_button = Mouse.middle,
+            rotate_button = Mouse.left,
+            move_key = nothing
+        )
     end
-    lift_node(scene, Mouse.Scroll) do scroll
-        if ispressed(scene, button)
-            cam[:translation] = Vec3f0(scroll[2], 0f0, 0f0)
-        end
-        return
-    end
-end
-function addrotation(cam, ::Type{Rotation}, canvas, key, button)
-    local last_mousepos::Vec2f0 = Vec2f0(0, 0)
-    on(canvas, Mouse.Drag) do drag
-        if ispressed(canvas, key) && ispressed(canvas, button)
-            if drag == Mouse.down
-                last_mousepos = Vec2f0(canvas[Mouse.Position])
-            elseif drag == Mouse.pressed
-                mousepos = Vec2f0(canvas[Mouse.Position])
-                mp = (last_mousepos - mousepos) * cam[RotationSpeed]
-                last_mousepos = mousepos
-                cam[Rotation] = Vec3f0(mp[1], -mp[2], 0f0)
-            end
-        end
-        return
-    end
-end
-
-function add!(cam, ::Type{EyePosition}, ::Type{LookAt})
-    on(cam, Translation) do translation
-        translation == Vec3f0(0) && return
-
-        lookat = cam[LookAt]; eyepos = cam[EyePosition]; up = cam[UpVector]
-        projview = cam[ProjectionView]; area = cam[Area]; prjt = cam[ProjectionType]
-
-        dir = eyepos - lookat
-        dir_len = norm(dir)
-        cam_res = Vec2f0(widths(area))
-        zoom, x, y = translation
-        zoom *= 0.1f0 * dir_len
-
-        if prjt != Perspective
-            x, y = to_worldspace(Vec2f0(x, y), projview, cam_res)
-        else
-            x, y = (Vec2f0(x, y) ./ cam_res) .* dir_len
-        end
-        dir_norm = normalize(dir)
-        right = normalize(cross(dir_norm, up))
-        zoom_trans = dir_norm * zoom
-
-        side_trans = right * (-x) + normalize(up) * y
-        newpos = eyepos + side_trans + zoom_trans
-        cam[EyePosition] = newpos
-        cam[LookAt] = lookat + side_trans
-        return
-    end
-    on(cam, Rotation) do theta_v
-        theta_v == Vec3f0(0) && return #nothing to do!
-        eyepos_v = cam[EyePosition]; lookat_v = cam[LookAt]; up_v = cam[UpVector]
-
-        dir = normalize(eyepos_v - lookat_v)
-        right_v = normalize(cross(up_v, dir))
-        up_v  = normalize(cross(dir, right_v))
-        rotation = rotate_cam(theta_v, right_v, Vec3f0(0, 0, 1), dir)
-        r_eyepos = lookat_v + rotation * (eyepos_v - lookat_v)
-        r_up = normalize(rotation * up_v)
-        cam[EyePosition] = r_eyepos
-        cam[UpVector] = r_up
-        return
-    end
-end
-
-function add!(cam::PerspectiveCamera, ::Type{ProjectionView})
-    on(cam, Area, Fov, Near, ProjectionType, LookAt, EyePosition, UpVector) do area, fov, near, projectiontype, lookatv, eyeposition, upvector
-        zoom = norm(lookatv - eyeposition)
-        # TODO this means you can't set FarClip... SAD!
-        far = max(zoom * 5f0, 30f0)
-        proj = projection_switch(area, fov, near, far, projectiontype, zoom)
-        view = lookat(eyeposition, lookatv, upvector)
-        cam[Projection] = proj
-        cam[View] = view
-        cam[ProjectionView] = proj * view
-    end
+    camera = from_dict(Camera3D, cam_attributes)
+    add_translation!(scene, camera, camera.pan_button, camera.move_key)
+    add_rotation!(scene, camera, camera.rotate_button, camera.move_key)
+    camera
 end
 
 
 function projection_switch{T <: Real}(
-        wh::SimpleRectangle,
+        wh::Rect2D,
         fov::T, near::T, far::T,
         projection::ProjectionEnum, zoom::T
     )
-    aspect = T(wh.w / wh.h)
+    aspect = T((/)(widths(wh)...))
     h = T(tan(fov / 360.0 * pi) * near)
     w = T(h * aspect)
-    projection == Perspective && return frustum(-w, w, -h, h, near, far)
+    projection == Perspective && return GLAbstraction.frustum(-w, w, -h, h, near, far)
     h, w = h * zoom, w * zoom
-    orthographicprojection(-w, w, -h, h, near, far)
+     GLAbstraction.orthographicprojection(-w, w, -h, h, near, far)
 end
 
 function rotate_cam{T}(
@@ -167,16 +86,104 @@ function rotate_cam{T}(
 end
 
 
+function add_translation!(scene, cam, key, button)
+    last_mousepos = RefValue(Vec2f0(0, 0))
+    map_once(scene.events.mousedrag) do drag
+        if ispressed(scene, key[]) && ispressed(scene, button[])
+            if drag == Mouse.down
+                #just started pressing, nothing to do yet
+                last_mousepos[] = Vec2f0(scene.events.mouseposition[])
+            elseif drag == Mouse.pressed
+                mousepos = Vec2f0(scene.events.mouseposition[])
+                diff = (last_mousepos[] - mousepos) * cam.translationspeed[]
+                last_mousepos[] = mousepos
+                translate_cam!(scene, cam, Vec3f0(0f0, diff[1], diff[2]))
+            end
+        end
+        return
+    end
+    map_once(scene.events.scroll) do scroll
+        if ispressed(scene, button[])
+            translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
+        end
+        return
+    end
+end
 
 
-@defaults function camera3d(backend, scene, kw_args)
-    rotationspeed = to_float(1)
-    translationspeed = to_float(1)
-    eyeposition = Vec3f0(3)
-    lookat = Vec3f0(0)
-    upvector = Vec3f0((0, 0, 1))
-    fov = to_float(45f0)
-    near = to_float(0.01f0)
-    far = to_float(100f0)
-    projectiontype = to_projection(Perspective)
+function add_rotation!(scene, cam, button, key)
+    last_mousepos = RefValue(Vec2f0(0, 0))
+    map_once(scene.events.mousedrag) do drag
+        if ispressed(scene, button[]) && ispressed(scene, key[])
+            if drag == Mouse.down
+                last_mousepos[] = Vec2f0(scene.events.mouseposition[])
+            elseif drag == Mouse.pressed
+                mousepos = Vec2f0(scene.events.mouseposition[])
+                mp = (last_mousepos[] - mousepos) * cam.rotationspeed[]
+                last_mousepos[] = mousepos
+                rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0))
+            end
+        end
+        return
+    end
+end
+
+function translate_cam!(scene, cam, translation)
+    translation == Vec3f0(0) && return
+    @getfields cam (projectiontype, lookat, eyeposition, upvector)
+
+    dir = eyeposition - lookat
+    dir_len = norm(dir)
+    cam_res = Vec2f0(widths(scene.px_area[]))
+    zoom, x, y = translation
+    zoom *= 0.1f0 * dir_len
+
+    if projectiontype != Perspective
+        x, y = GLAbstraction.to_worldspace(Vec2f0(x, y), scene.projectionview[], cam_res)
+    else
+        x, y = (Vec2f0(x, y) ./ cam_res) .* dir_len
+    end
+    dir_norm = normalize(dir)
+    right = normalize(cross(dir_norm, upvector))
+    zoom_trans = dir_norm * zoom
+
+    side_trans = right * (-x) + normalize(upvector) * y
+    newpos = eyeposition + side_trans + zoom_trans
+
+    cam.eyeposition[] = newpos
+    cam.lookat[] = lookat + side_trans
+    update_cam!(scene, cam)
+    return
+end
+
+function rotate_cam!(scene, cam, theta_v)
+    theta_v == Vec3f0(0) && return #nothing to do!
+    @getfields cam (eyeposition, lookat, upvector)
+
+    dir = normalize(eyeposition - lookat)
+    right_v = normalize(cross(upvector, dir))
+    upvector = normalize(cross(dir, right_v))
+    rotation = rotate_cam(theta_v, right_v, Vec3f0(0, 0, sign(upvector[3])), dir)
+    r_eyepos = lookat + rotation * (eyeposition - lookat)
+    r_up = normalize(rotation * upvector)
+    cam.eyeposition[] = r_eyepos
+    cam.upvector[] = r_up
+    update_cam!(scene, cam)
+    return
+end
+
+
+
+function update_cam!(scene::Scene, cam::Camera3D)
+    @getfields cam (fov, near, projectiontype, lookat, eyeposition, upvector)
+
+    zoom = norm(lookat - eyeposition)
+    # TODO this means you can't set FarClip... SAD!
+    # TODO use boundingbox(scene) for optimal far/near
+    far = max(zoom * 5f0, 30f0)
+    proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
+    view = GLAbstraction.lookat(eyeposition, lookat, upvector)
+    set_value!(scene.projection, proj)
+    set_value!(scene.view, view)
+    # set_value!(scene.projectionview, proj * view)
 end

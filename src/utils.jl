@@ -5,13 +5,6 @@ export Vecf0, Pointf0
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
-function to_nd(x, n::Type{Val{N}}, default) where N
-    ntuple(n) do i
-        i <= length(x) && return x[i]
-        default
-    end
-end
-
 
 function to_world(point::T, cam) where T <: StaticVector
     x = to_world(
@@ -156,8 +149,23 @@ macro extract(scene, args)
     expr
 end
 
+
+
+
+function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
+    mini, maxi = minimum(rectangle), maximum(rectangle)
+    for i = 1:N
+        point[i] in (mini[i]..maxi[i]) || return false
+    end
+    return true
+end
+
 """
 usage @extractvals scene (a, b, c, d)
+will become:
+a = value(scene[:a])
+b = value(scene[:b])
+c = value(scene[:c])
 """
 macro extractvals(scene, args)
     if args.head != :tuple
@@ -171,11 +179,31 @@ macro extractvals(scene, args)
     expr
 end
 
-
-function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
-    mini, maxi = minimum(rectangle), maximum(rectangle)
-    for i = 1:N
-        point[i] in (mini[i]..maxi[i]) || return false
+"""
+usage @extractvals type (a, b, c)
+will become:
+a = value(type.a)
+b = value(type.b)
+c = value(type.c)
+"""
+macro getfields(val, keys)
+    if keys.head != :tuple
+        error("Needs to be @getfields typ (field1, field2, ...). Found: @getfields $val $keys")
     end
-    return true
+    valsym = gensym(:tmp)
+
+    result = Expr(:block, :($valsym = $(esc(val))))
+    for key in keys.args
+        push!(result.args, :($(esc(key)) = value(getfield($valsym, $(QuoteNode(key))))))
+    end
+    result
+end
+
+"""
+Deletes a key from `dict` and returns the value
+"""
+function popkey!(dict::Dict, key)
+    val = dict[key]
+    delete!(dict, key)
+    val
 end

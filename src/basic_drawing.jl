@@ -159,6 +159,7 @@ function default_theme(scene, ::Type{Scatter})
         fxaa = false
     )
 end
+
 function default_theme(scene, ::Type{Meshscatter})
     Theme(;
         default_theme(scene)...,
@@ -179,20 +180,7 @@ function default_theme(scene, ::Type{Lines})
 end
 
 
-function default_theme(scene, ::Type{Scatter})
-    Theme(;
-        default_theme(scene)...,
-        marker = Circle,
-        markersize = 0.1,
-        color = :black,
-        strokecolor = RGBA(0, 0, 0, 0),
-        strokewidth = 0.0,
-        glowcolor = RGBA(0, 0, 0, 0),
-        glowwidth = 0.0,
-        rotations = Billboard(),
-        fxaa = false
-    )
-end
+
 
 function default_theme(scene, ::Type{Text})
     Theme(;
