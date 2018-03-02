@@ -87,19 +87,19 @@ for (func, docs) in atomic_funcs
             attributes::Attributes
         end
         plot_key(::$Typ) = Key{$(QuoteNode(func))}()
-        $func(scene::Scene, args...; kw_args...) = plot(scene, $Typ, args...; kw_args...)
-        $func(args...; kw_args...) = plot($Typ, args...; kw_args...)
-        $inplace(scene::Scene, args...; kw_args...) = plot(scene, $Typ, args...; kw_args...)
-        $inplace(args...; kw_args...) = plot($Typ, args...; kw_args...)
-        function plot(scene::Scene, T::Type{$Typ}, attributes::Attributes, args...)
+        $func(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
+        $func(args...; kw_args...) = plot!($Typ, args...; kw_args...)
+        $inplace(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
+        $inplace(args...; kw_args...) = plot!($Typ, args...; kw_args...)
+        function plot!(scene::Scene, T::Type{$Typ}, attributes::Attributes, args...)
             #cmap_or_color!(scene, attributes)
             attributes, rest = merged_get!($(QuoteNode(func)), scene, attributes) do
                 default_theme(scene, T)
             end
             calculate_values!(T, attributes, args)
-            plot(scene, $Typ(convert_arguments(T, args...), attributes), rest)
+            plot!(scene, $Typ(convert_arguments(T, args...), attributes), rest)
         end
-        export $func
+        export $func, $inplace
     end
 end
 

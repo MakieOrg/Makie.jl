@@ -3,16 +3,17 @@ convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 
-plot(args...; kw_args...) = plot(Scatter, args...; kw_args...)
-plot(P::Type, args...; kw_args...) = plot(P, Attributes(kw_args), args...)
-plot(scene::Scene, P::Type, args...; kw_args...) = plot(scene, P, Attributes(kw_args), args...)
-plot(P::Type, attributes::Attributes, args...) = plot(Scene(), P, attributes, args...)
+plot!(args...; kw_args...) = plot!(Scatter, args...; kw_args...)
 
-function plot(scene::Scene, P::Type, attributes::Attributes, args...)
-    plot(scene, P, attributes, convert_arguments(P, args...)...)
+plot!(P::Type, args...; kw_args...) = plot!(P, Attributes(kw_args), args...)
+plot!(scene::Scene, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
+plot!(P::Type, attributes::Attributes, args...) = plot!(Scene(), P, attributes, args...)
+
+function plot!(scene::Scene, P::Type, attributes::Attributes, args...)
+    plot!(scene, P, attributes, convert_arguments(P, args...)...)
 end
 
-function plot(scene::Scene, p::AbstractPlot, attributes::Attributes)
+function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(
             show_axis = false,
@@ -46,5 +47,6 @@ function plot(scene::Scene, p::AbstractPlot, attributes::Attributes)
         legend_attributes[:scale] = scale
         legend(scene, limits, legend_attributes)
     end
+    push!(scene, p)
     p#Series(Scene, p, plot_attributes)
 end

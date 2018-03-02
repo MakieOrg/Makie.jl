@@ -138,5 +138,7 @@ module Mouse
     @enum DragEnum down up pressed notpressed
 end
 
+# Void for no button needs to be pressed,
+const ButtonTypes = Union{Void, Mouse.Button, Keyboard.Button}
 
 export ispressed, IRect, FRect, Rect, Keyboard, Mouse

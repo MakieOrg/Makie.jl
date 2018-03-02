@@ -28,11 +28,12 @@ include("attribute_conversion.jl")
 
 include("events.jl")
 include("glbackend/glbackend.jl")
+include("cairo/cairo.jl")
 
 include("plot.jl")
 include("camera2d.jl")
 include("camera3d.jl")
 
-export cam2d!, Scene, update_cam!, Screen, scatter
+export cam2d!, Scene, update_cam!, Screen, plot!, CairoScreen
 
 end

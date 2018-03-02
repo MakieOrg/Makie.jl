@@ -15,6 +15,7 @@ const RGBAf0 = RGBA{Float32}
 
 const Font = Vector{Ptr{FreeType.FT_FaceRec}}
 
+
 abstract type AbstractScreen end
 using Base: RefValue
 
@@ -51,6 +52,7 @@ include("iodevices.jl")
 
 struct Events
     window_area::Node{IRect2D}
+    window_dpi::Node{Float64}
     window_open::Node{Bool}
 
     mousebuttons::Node{Set{Mouse.Button}}
@@ -69,6 +71,7 @@ end
 function Events()
     Events(
         Node(IRect(0, 0, 1, 1)),
+        Node(100.0),
         Node(false),
 
         Node(Set{Mouse.Button}()),

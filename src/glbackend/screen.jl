@@ -126,5 +126,6 @@ function Screen(scene::Scene; kw_args...)
     )
     screen.rendertask[] = @async(renderloop(screen))
     register_callbacks(scene, to_native(screen))
+    push!(scene.current_screens, screen)
     screen
 end

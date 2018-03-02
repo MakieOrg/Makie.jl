@@ -207,3 +207,25 @@ function popkey!(dict::Dict, key)
     delete!(dict, key)
     val
 end
+bs_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
+bs_length(x::AbstractArray) = length(x)
+bs_length(x) = 1
+bs_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
+bs_getindex(x::AbstractArray, i) = x[i]
+bs_getindex(x, i) = x
+
+"""
+Like broadcast but for foreach. Doesn't care about shape and treats Tuples && StaticVectors as scalars.
+"""
+function broadcast_foreach(f, args...)
+    lengths = bs_length.(args)
+    maxlen = maximum(lengths)
+    # all non scalars should have same length
+    if any(x-> !(x in (1, maxlen)), lengths)
+        error("All non scalars need same length, Found lengths for each argument: $lengths")
+    end
+    for i in 1:maxlen
+        f(bs_getindex.(args, i)...)
+    end
+    return
+end

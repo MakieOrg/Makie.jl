@@ -7,8 +7,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_key => gl_value
         end
         robj = robj_func(gl_attributes)
-        for key in (:view, :projection, :resolution, :eyeposition)
-            robj[key] = getfield(scene, key)
+        for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
+            robj[key] = getfield(scene.camera, key)
         end
         push!(screen, scene, robj)
         robj

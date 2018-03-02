@@ -4,23 +4,19 @@ const Q = Quaternions
 @enum ProjectionEnum Perspective Orthographic
 
 
-const N = Node # Signal
-# Void for no button needs to be pressed,
-const ButtonTypes = Union{Void, Mouse.Button, Keyboard.Button}
-
 struct Camera3D
-    rotationspeed::N{Float32}
-    translationspeed::N{Float32}
-    eyeposition::N{Vec3f0}
-    lookat::N{Vec3f0}
-    upvector::N{Vec3f0}
-    fov::N{Float32}
-    near::N{Float32}
-    far::N{Float32}
-    projectiontype::N{ProjectionEnum}
-    pan_button::N{ButtonTypes}
-    rotate_button::N{ButtonTypes}
-    move_key::N{ButtonTypes}
+    rotationspeed::Node{Float32}
+    translationspeed::Node{Float32}
+    eyeposition::Node{Vec3f0}
+    lookat::Node{Vec3f0}
+    upvector::Node{Vec3f0}
+    fov::Node{Float32}
+    near::Node{Float32}
+    far::Node{Float32}
+    projectiontype::Node{ProjectionEnum}
+    pan_button::Node{ButtonTypes}
+    rotate_button::Node{ButtonTypes}
+    move_key::Node{ButtonTypes}
 end
 
 signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1)
@@ -36,8 +32,8 @@ end
 function cam3d!(scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Theme(
-            rotationspeed = 0.1,
-            translationspeed = 1,
+            rotationspeed = 1.0,
+            translationspeed = 1.0,
             eyeposition = Vec3f0(3),
             lookat = Vec3f0(0),
             upvector = Vec3f0(0, 0, 1),
@@ -45,7 +41,7 @@ function cam3d!(scene; kw_args...)
             near = 0.01f0,
             far = 100f0,
             projectiontype = Perspective,
-            pan_button = Mouse.middle,
+            pan_button = Mouse.right,
             rotate_button = Mouse.left,
             move_key = nothing
         )
@@ -124,7 +120,8 @@ function add_rotation!(scene, cam, button, key)
                 last_mousepos[] = Vec2f0(scene.events.mouseposition[])
             elseif drag == Mouse.pressed
                 mousepos = Vec2f0(scene.events.mouseposition[])
-                mp = (last_mousepos[] - mousepos) * cam.rotationspeed[]
+                rot_scaling = cam.rotationspeed[] * (scene.events.window_dpi[] * 0.001)
+                mp = (last_mousepos[] - mousepos) * rot_scaling
                 last_mousepos[] = mousepos
                 rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0))
             end
@@ -188,7 +185,8 @@ function update_cam!(scene::Scene, cam::Camera3D)
     far = max(zoom * 5f0, 30f0)
     proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
     view = GLAbstraction.lookat(eyeposition, lookat, upvector)
-    set_value!(scene.projection, proj)
-    set_value!(scene.view, view)
-    # set_value!(scene.projectionview, proj * view)
+
+    set_value!(scene.camera.projection, proj)
+    set_value!(scene.camera.view, view)
+    set_value!(scene.camera.projectionview, proj * view)
 end
