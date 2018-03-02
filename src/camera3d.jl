@@ -3,7 +3,11 @@ const Q = Quaternions
 
 @enum ProjectionEnum Perspective Orthographic
 
+
 const N = Node # Signal
+# Void for no button needs to be pressed,
+const ButtonTypes = Union{Void, Mouse.Button, Keyboard.Button}
+
 struct Camera3D
     rotationspeed::N{Float32}
     translationspeed::N{Float32}
@@ -14,12 +18,13 @@ struct Camera3D
     near::N{Float32}
     far::N{Float32}
     projectiontype::N{ProjectionEnum}
-    pan_button
-    rotate_button
-    move_key
+    pan_button::N{ButtonTypes}
+    rotate_button::N{ButtonTypes}
+    move_key::N{ButtonTypes}
 end
-signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x)
-signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1(x))
+
+signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1)
+signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1, convert(T1, x))
 signal_convert(t, x) = x
 function from_dict(::Type{T}, dict) where T
     T(map(fieldnames(T)) do name
