@@ -36,6 +36,12 @@ function surface_2glvisualize(kw_args)
             error("surface: combination of types not supported: $(typeof(x)) $(typeof(y)) $(typeof(z))")
         end
     end
+    if haskey(result, :color_map) && haskey(result, :image)
+        delete!(result, :color_map)
+        haskey(result, :color_norm) && delete!(result, :color_norm)
+        result[:color] = result[:image]
+        delete!(result, :image)
+    end
     result, main
 end
 

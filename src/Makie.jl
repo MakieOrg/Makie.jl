@@ -37,6 +37,7 @@ include("plotsbase/atomics.jl")
     include("atomics/imagelike.jl")
     include("plotsbase/contour.jl")
     include("plotsbase/legend.jl")
+    include("plotsbase/basic_recipes.jl")
 
 include("plotsbase/axis.jl")
 include("plotsbase/output.jl")
@@ -91,5 +92,20 @@ export to_volume_algorithm
 export to_3floats
 export to_2floats
 export to_textalign
+export arrows
+const has_ffmpeg = Ref(false)
+
+function __init__()
+    has_ffmpeg[] = try
+        success(`ffmpeg -h`)
+    catch
+        false
+    end
+    if !has_ffmpeg[]
+        warn("You don't have ffmpeg in your path. Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
+            Makie will still work, but won't be able to save gifs or videos"
+        )
+    end
+end
 
 end # module

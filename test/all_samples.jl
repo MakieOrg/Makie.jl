@@ -357,14 +357,16 @@ scene
 
 #cell
 using Makie, GeometryTypes
-scene = Scene()
-lineplots = []
-axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
-center!(scene)
-us = linspace(0, 1, 100)
+
 
 mktempdir() do path
+    scene = Scene()
+    lineplots = []
+    axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
+    center!(scene)
+    us = linspace(0, 1, 100)
     io = VideoStream(scene, path, "lines")
+
     for i = 1:100
         if length(lineplots) < 20
             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
