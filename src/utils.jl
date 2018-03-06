@@ -229,3 +229,10 @@ function broadcast_foreach(f, args...)
     end
     return
 end
+
+
+function from_dict(::Type{T}, dict) where T
+    T(map(fieldnames(T)) do name
+        signal_convert(fieldtype(T, name), dict[name])
+    end...)
+end

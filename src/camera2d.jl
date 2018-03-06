@@ -10,6 +10,7 @@ struct Camera2D
     padding::Node{Float32}
 end
 
+
 function cam2d!(scene::Scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Theme(
@@ -21,9 +22,11 @@ function cam2d!(scene::Scene; kw_args...)
         )
     end
     camera = from_dict(Camera2D, cam_attributes)
+    # remove previously connected camera
+    disconnect!(scene.camera)
     add_zoom!(scene, camera)
     add_pan!(scene, camera)
-    map_once(scene.px_area) do area
+    map(scene.camera, scene.px_area) do area
         screenw = widths(area)
         camw = widths(camera.area[])
         ratio = camw ./ screenw
@@ -58,7 +61,7 @@ function add_pan!(scene::Scene, camera::Camera2D)
     startpos = RefValue((0.0, 0.0))
     events = scene.events
     panbutton = camera.panbutton
-    map_once(events.mouseposition, events.mousedrag) do mp, dragging
+    map(scene.camera, events.mouseposition, events.mousedrag) do mp, dragging
         @getfields camera (panbutton, area)
         if ispressed(scene, panbutton)
             window_area = scene.px_area[]
@@ -78,7 +81,7 @@ end
 
 function add_zoom!(scene::Scene, camera::Camera2D)
     events = scene.events
-    map_once(events.scroll) do x
+    map(scene.camera, events.scroll) do x
         @getfields camera (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
         if zoom != 0 && ispressed(scene, zoombutton)

@@ -15,6 +15,9 @@ b = scatter!(scene, rand(10), rand(10))
 c = lines!(scene, rand(10), rand(10), color = :white)
 d = meshscatter!(scene, rand(10), rand(10), rand(10))
 scene
+Makie.cam3d!(scene)
+
+
 # update_cam!(scene, FRect(0, 0, 1, 2))
 
 # cam = Makie.cam2d!(scene)

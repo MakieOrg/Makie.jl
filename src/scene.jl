@@ -5,6 +5,23 @@ struct Camera
     projectionview::Node{Mat4f0}
     resolution::Node{Vec2f0}
     eyeposition::Node{Vec3f0}
+    steering_nodes::Vector{Node}
+end
+function disconnect!(c::Camera)
+    for node in c.steering_nodes
+        disconnect!(node)
+    end
+    empty!(c.steering_nodes)
+    return
+end
+
+"""
+When mapping over nodes for the camera, we store them in the steering_node vector,
+to make it easier to disconnect the camera steering signals later!
+"""
+function Base.map(f, c::Camera, nodes::Node...)
+    node = map(f, nodes...)
+    push!(c.steering_nodes, node)
 end
 
 Camera(px_area) = Camera(
@@ -13,6 +30,7 @@ Camera(px_area) = Camera(
     Node(eye(Mat4f0)),
     map(a-> Vec2f0(widths(a)), px_area),
     Node(Vec3f0(1)),
+    Node[]
 )
 
 struct Scene
@@ -22,6 +40,7 @@ struct Scene
     camera::Camera
 
     limits::Node{HyperRectangle{3, Float32}}
+
     scale::Node{Vec3f0}
     flip::Node{NTuple{3, Bool}}
 
@@ -61,7 +80,7 @@ end
 
 
 
-function merged_get!(defaults, key, scene, input::Attributes)
+function merged_get!(defaults::Function, key, scene, input::Attributes)
     theme = get!(defaults, scene.theme, key)
     rest = Attributes()
     merged = Attributes()

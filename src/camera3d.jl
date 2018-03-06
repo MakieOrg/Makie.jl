@@ -22,11 +22,7 @@ end
 signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1)
 signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1, convert(T1, x))
 signal_convert(t, x) = x
-function from_dict(::Type{T}, dict) where T
-    T(map(fieldnames(T)) do name
-        signal_convert(fieldtype(T, name), dict[name])
-    end...)
-end
+
 
 
 function cam3d!(scene; kw_args...)
@@ -47,6 +43,8 @@ function cam3d!(scene; kw_args...)
         )
     end
     camera = from_dict(Camera3D, cam_attributes)
+    # remove previously connected camera
+    disconnect!(scene.camera)
     add_translation!(scene, camera, camera.pan_button, camera.move_key)
     add_rotation!(scene, camera, camera.rotate_button, camera.move_key)
     camera
@@ -89,7 +87,7 @@ end
 
 function add_translation!(scene, cam, key, button)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    map_once(scene.events.mousedrag) do drag
+    map(scene.camera, scene.events.mousedrag) do drag
         if ispressed(scene, key[]) && ispressed(scene, button[])
             if drag == Mouse.down
                 #just started pressing, nothing to do yet
@@ -114,7 +112,7 @@ end
 
 function add_rotation!(scene, cam, button, key)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    map_once(scene.events.mousedrag) do drag
+    map(scene.camera, scene.events.mousedrag) do drag
         if ispressed(scene, button[]) && ispressed(scene, key[])
             if drag == Mouse.down
                 last_mousepos[] = Vec2f0(scene.events.mouseposition[])

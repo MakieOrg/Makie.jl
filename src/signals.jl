@@ -10,6 +10,11 @@ end
 to_node(x::Node) = x
 to_node(x) = Node(x)
 
+function disconnect!(s::Node)
+    unpreserve(s)#; empty!(s.actions)
+    s.parents = (); close(s, false)
+    return
+end
 function get_children(x::Signal)
     filter!(x-> x != nothing, map(x-> x.value, Reactive.nodes[Reactive.edges[x.id]]))
 end
@@ -58,11 +63,8 @@ function map_once(
     has, prev_output = children_with(action_func, input, inputsrest...)
     # if all input nodes have the action_func, then `node` must be the result
     # of a previous call to map_once, meaning we're about to replace this node!
-
-    if has # clean up!
-        unpreserve(prev_output); #empty!(prev_output.actions)
-        prev_output.parents = (); close(prev_output, false)
-    end
+    # clean up previously connected signal!
+    has && disconnect!(prev_output)
     # add the action to the new output
     Reactive.add_action!(action_func, output)
     preserve(output)

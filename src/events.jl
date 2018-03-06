@@ -35,7 +35,6 @@ function disconnect!(window::AbstractScreen, signal)
     disconnect!(to_native(window), signal)
 end
 
-disconnect!(x::Node) = nothing
 function register_callbacks(scene::Scene, native_window)
     window_area(scene, native_window)
     window_open(scene, native_window)
