@@ -456,3 +456,13 @@ function Base.to_index(i::Array{IDX})
     ii .= ii .+ 1
     ii
 end
+
+
+
+#cell
+using Makie, Colors
+scene = Scene(resolution = (500, 500))
+heatmap(rand(32, 32))
+center!(scene)
+image(map(x->RGB(x,0.5, 0.5), rand(32,32)))
+center!(scene)

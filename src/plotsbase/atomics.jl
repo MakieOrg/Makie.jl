@@ -413,13 +413,17 @@ function Base.similar(scene::Scene, newdata...; kw_args...)
     f(p, newdata..., attributes)
 end
 
-
+function dimlinspace(data::AbstractArray{T}, dim::Integer) where T
+    n = size(data, dim)
+    linspace(T(0), T(n), n)
+end
 
 for func in (:image, :heatmap, :lines, :surface)
     # Higher level atomic signatures
     @eval begin
-        function $func(scene::Scene, data::AbstractMatrix, attributes::Dict)
-            $func(scene, 1:size(data, 1), 1:size(data, 2), data, attributes)
+        function $func(scene::Scene, data::AbstractMatrix{T}, attributes::Dict) where T
+            m, n = size(data)
+            $func(scene, 0 => m, 0 => n, data, attributes)
         end
         function $func(scene::Scene, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
             if !applicable(f, x[1], y[1])
