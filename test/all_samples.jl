@@ -466,3 +466,14 @@ heatmap(rand(32, 32))
 center!(scene)
 image(map(x->RGB(x,0.5, 0.5), rand(32,32)))
 center!(scene)
+
+
+#cell
+using Makie
+
+scene = Scene(resolution = (500, 500))
+pts = CartesianRange((10, 10))
+xs = vec([I[1] for I in pts])
+ys = vec([I[2] for I in pts])
+zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
+wireframe(xs, ys, zs)
