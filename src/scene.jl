@@ -52,10 +52,15 @@ end
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
+    parent(plot)[] = scene
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
 end
+
+const global_current_scene = Ref{Scene}()
+
+current_scene() = global_current_scene[]
 
 function Scene(area = nothing)
     events = Events()
@@ -64,7 +69,7 @@ function Scene(area = nothing)
     else
         px_area = signal_convert(Signal{IRect2D}, area)
     end
-    Scene(
+    scene = Scene(
         events,
         px_area,
         Camera(px_area),
@@ -76,6 +81,8 @@ function Scene(area = nothing)
         Scene[],
         AbstractScreen[]
     )
+    global_current_scene[] = scene
+    scene
 end
 
 

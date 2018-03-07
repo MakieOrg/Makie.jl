@@ -1,3 +1,16 @@
+
+function to_glvisualize_key(k)
+    k == :rotations && return :rotation
+    k == :markersize && return :scale
+    k == :glowwidth && return :glow_width
+    k == :glowcolor && return :glow_color
+    k == :strokewidth && return :stroke_width
+    k == :strokecolor && return :stroke_color
+    k == :positions && return :position
+    k == :linewidth && return :thickness
+    k
+end
+
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
         gl_attributes = map(x.attributes) do key_value
@@ -18,6 +31,9 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, Meshscatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         marker = popkey!(gl_attributes, :marker)
+        if isa(x, Scatter)
+            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
+        end
         visualize((value(marker), x.args[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
@@ -25,7 +41,10 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Lines)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        visualize(x.args[1], Style(:lines), Dict{Symbol, Any}(gl_attributes)).children[]
+        linestyle = popkey!(gl_attributes, :linestyle)
+        data = Dict{Symbol, Any}(gl_attributes)
+        data[:pattern] = value(linestyle)
+        visualize(x.args[1], Style(:lines), data).children[]
     end
 end
 

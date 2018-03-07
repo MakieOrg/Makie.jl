@@ -1,8 +1,22 @@
 function data_limits(x)
-    map(x.args) do points
+    map(to_node(x.args[1])) do points
         Tuple.(extrema(points))
     end
 end
+
+function data_limits(x::Text)
+    keys = (:position, :textsize, :font, :align, :rotation, :model)
+    args = map(keys) do key
+        node = x.attributes[key]
+        map(x-> attribute_convert(x, Key{key}(), Key{:text}()), node)
+    end
+    textnode = map(to_gl_text, to_node(x.args[1]), args...)
+    map(textnode) do textnode
+        positions = textnode[1]; scale = textnode[end]
+        Tuple.(extrema(vcat(positions, positions .+ scale)))
+    end
+end
+
 """
 calculates how much `child` needs to move to not touch `parent`
 """

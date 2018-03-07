@@ -78,6 +78,23 @@ struct Billboard end
 
 calculate_values!(T, attributes, args) = attributes
 
+Base.parent(x::AbstractPlot) = x.parent
+function Base.getindex(x::AbstractPlot, key::Symbol)
+    key == :x && return x.args[1]
+    key == :y && return x.args[2]
+    key == :z && return x.args[3]
+    key == :positions && return x.args[1]
+    return x.attributes[key]
+end
+
+function Base.setindex!(x::T, value, key::Symbol) where T <: AbstractPlot
+    key == :x && return setindex!(x.args[1], value)
+    key == :y && return setindex!(x.args[2], value)
+    key == :z && return setindex!(x.args[3], value)
+    key == :positions && return setindex!(x.args[1], convert_arguments(T, value)...)
+    x.attributes[key][] = value
+end
+
 for (func, docs) in atomic_funcs
     Typ = Symbol(titlecase(string(func)))
     inplace = Symbol(string(func, "!"))
@@ -85,18 +102,24 @@ for (func, docs) in atomic_funcs
         struct $Typ{T} <: AbstractPlot
             args::T
             attributes::Attributes
+            parent::RefValue{Scene}
         end
+        $Typ(args, attributes) = $Typ(to_node.(args), attributes, RefValue{Scene}())
         plot_key(::$Typ) = Key{$(QuoteNode(func))}()
-        $func(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
-        $func(args...; kw_args...) = plot!($Typ, args...; kw_args...)
-        $inplace(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
+
+        $func(args...; kw_args...) = plot($Typ, args...; kw_args...)
+        $func(scene::Scene, args...; kw_args...) = plot(scene, $Typ, args...; kw_args...)
+
         $inplace(args...; kw_args...) = plot!($Typ, args...; kw_args...)
+        $inplace(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
+
         function plot!(scene::Scene, T::Type{$Typ}, attributes::Attributes, args...)
             #cmap_or_color!(scene, attributes)
             attributes, rest = merged_get!($(QuoteNode(func)), scene, attributes) do
                 default_theme(scene, T)
             end
             calculate_values!(T, attributes, args)
+            xx = convert_arguments(T, args...)
             plot!(scene, $Typ(convert_arguments(T, args...), attributes), rest)
         end
         export $func, $inplace
