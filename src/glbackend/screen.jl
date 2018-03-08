@@ -13,8 +13,8 @@ struct Screen <: AbstractScreen
 end
 Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::Screen, scene::Scene, robj)
-    filter!(screen.screen2scene) do kv
-        kv[1].value != nothing
+    filter!(screen.screen2scene) do k, v
+        k.value != nothing
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1

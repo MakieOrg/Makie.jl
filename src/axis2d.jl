@@ -218,7 +218,7 @@ function draw_axis(
     xyticks = generate_ticks.(limits)
     rect = scene.px_area[]
     xyfit = Makie.fit_ratio(rect, limits)
-    scale = Vec3f0(xyfit..., 1)
+    scale = Vec3f0(1)
 
     ti_textsize = ti_textsize .* %
     t_textsize = t_textsize .* %; t_gap = t_gap .* %;
