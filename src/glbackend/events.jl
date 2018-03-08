@@ -55,7 +55,7 @@ function window_area(scene::Scene, window)
     end
     event[] = IRect(GLFW.GetWindowPos(window), GLFW.GetFramebufferSize(window))
     disconnect!(event); disconnect!(window, window_area)
-    
+
     monitor = GLFW.GetPrimaryMonitor()
     props = GLWindow.MonitorProperties(monitor)
     dpievent[] = minimum(props.dpi)

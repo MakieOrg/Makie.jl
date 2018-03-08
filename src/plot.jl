@@ -2,6 +2,7 @@ convert_arguments(P, y::RealVector) = convert_arguments(0:length(y), y)
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
+convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 convert_arguments(P, x::GeometryPrimitive) = (decompose(Point, x),)
 
 function convert_arguments(P, x::Rect)

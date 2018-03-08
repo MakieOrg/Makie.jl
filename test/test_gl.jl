@@ -15,24 +15,52 @@ function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
 end
 
 scene = Scene()
+scene.px_area[] = IRect(0, 0, 1920, 1080)
+cam = cam2d!(scene)
+cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
+update_cam!(scene, cam)
+# ax = axis2d(scene, Makie.Node((linspace(0, 4, 5), linspace(0, 4, 5))))
+scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
+scene
+
+x = cameraw .* s
+(/)(x...)
+
+r1 = screenw ./ reverse(screenw)
+r2 = cameraw ./ reverse(cameraw)
+
+s = r1 ./ r2
+cameraw .* s
+
+
+val, idx = findmin()
+
+s = Vec(ntuple(i-> ifelse(i == idx, inv(val), 1.0), Val{2}))
+wn = s .* cameraw
+
+x, stretchdim = findmax(ratio) # which sides needs most stretching
+no_stretch = mod1(stretchdim + 1, 2) # other dim, that doesn't need stretching
+
+rs = r2[stretchdim] / r1[stretchdim] # stretch factor
+res = ntuple(i-> i == stretchdim ? r2[i] * rs : 1.0, Val{2}) # stretch only idx
+@show res
+camera.area[] = FRect(minimum(camera.area[]), Vec(res) .* cameraw)
+update_cam!(scene, camera)
+
+
+
+
 x = lines!(scene, FRect(0, 0, 0.5, 0.5), linestyle = :dot)
 x[:positions] = FRect(0, 0, 1.0, 0.5)
 x[:visible] = true
-x.attributes
 
 # screen = Screen(scene)
 a = text!(scene, "Hellooo", color = :white, textsize = 0.1, position = (0.5, 0.5))
-b = Makie.scatter!(scene, rand(10), rand(10))
-c = Makie.plot!(scene, rand(10), rand(10), color = :white)
+b = scatter!(scene, rand(10), rand(10))
+b = linesegments!(scene, rand(10), rand(10))
+c = plot!(scene, rand(10), rand(10), color = :white)
 d = meshscatter!(scene, rand(10), rand(10), rand(10));
-scene2 = Scene()
-a = text!(scene2, "Hellooo", color = :white, textsize = 0.1, position = (0.5, 0.5))
-b = Makie.scatter!(scene2, rand(10), rand(10))
-c = Makie.plot!(scene2, rand(10), rand(10), color = :white)
-d = meshscatter!(rand(10), rand(10), rand(10));
 
-lolz = Makie.plot(rand(10), rand(10))
-meshscatter!(rand(10), rand(10), rand(10));
 
 # update_cam!(scene, FRect(0, 0, 1, 2))
 

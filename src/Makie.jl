@@ -33,7 +33,8 @@ include("cairo/cairo.jl")
 include("plot.jl")
 include("camera2d.jl")
 include("camera3d.jl")
+include("axis2d.jl")
 
-export cam2d!, Scene, update_cam!, Screen, plot!, CairoScreen
+export cam2d!, Scene, update_cam!, Screen, plot!, CairoScreen, axis2d
 
 end

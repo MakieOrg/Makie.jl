@@ -19,9 +19,7 @@ struct Camera3D
     move_key::Node{ButtonTypes}
 end
 
-signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1)
-signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1, convert(T1, x))
-signal_convert(t, x) = x
+
 
 
 

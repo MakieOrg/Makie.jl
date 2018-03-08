@@ -27,8 +27,8 @@ const atomic_funcs = (
         lines(x, y, z) / lines(x, y) / lines(positions)
     Plots a connected line for each element in xyz/positions
     """,
-    :linesegment => """
-        linesegment(x, y, z) / linesegment(x, y) / linesegment(positions)
+    :linesegments => """
+        linesegments(x, y, z) / linesegments(x, y) / linesegments(positions)
     Plots a line for each pair of points in xyz/positions
 
     ## Attributes:
@@ -193,7 +193,7 @@ function default_theme(scene, ::Type{Meshscatter})
     )
 end
 
-function default_theme(scene, ::Type{Lines})
+function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
     Theme(;
         default_theme(scene)...,
         linewidth = 1.0,

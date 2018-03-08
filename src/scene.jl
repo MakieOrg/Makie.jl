@@ -22,6 +22,7 @@ to make it easier to disconnect the camera steering signals later!
 function Base.map(f, c::Camera, nodes::Node...)
     node = map(f, nodes...)
     push!(c.steering_nodes, node)
+    node
 end
 
 Camera(px_area) = Camera(
@@ -77,7 +78,7 @@ function Scene(area = nothing)
         Signal(Vec3f0(1)),
         Signal((false, false, false)),
         AbstractPlot[],
-        Attributes(),
+        Theme(backgroundcolor = RGBAf0(1,1,1,1)),
         Scene[],
         AbstractScreen[]
     )

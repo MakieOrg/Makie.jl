@@ -100,3 +100,4 @@ attribute_convert(r::AbstractVector, k::key"rotation") = attribute_convert.(r, k
 
 
 attribute_convert(x, k::key"textsize") = Float32(x)
+attribute_convert(x, k::key"linewidth") = Float32(x)

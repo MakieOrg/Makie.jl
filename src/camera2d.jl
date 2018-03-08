@@ -8,13 +8,30 @@ struct Camera2D
     zoombutton::Node{ButtonTypes}
     panbutton::Node{ButtonTypes}
     padding::Node{Float32}
+    function Camera2D(
+            area::Node{FRect2D},
+            zoomspeed::Node{Float32},
+            zoombutton::Node{ButtonTypes},
+            panbutton::Node{ButtonTypes},
+            padding::Node{Float32},
+        )
+        println("Creating shit: $(object_id(area))")
+        new(
+            area,
+            zoomspeed,
+            zoombutton,
+            panbutton,
+            padding
+        )
+    end
 end
 
-
+const mycounter = Ref(0)
 function cam2d!(scene::Scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
+        mycounter[] = mycounter[] + 1
         Theme(
-            area = FRect(0, 0, 1, 1),
+            area = Signal(FRect(0, 0, 1, 1), name = "area$(mycounter[])"),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -26,21 +43,20 @@ function cam2d!(scene::Scene; kw_args...)
     disconnect!(scene.camera)
     add_zoom!(scene, camera)
     add_pan!(scene, camera)
+    lastw = RefValue(widths(scene.px_area[]))
     map(scene.camera, scene.px_area) do area
-        screenw = widths(area)
-        camw = widths(camera.area[])
-        ratio = camw ./ screenw
-        if !(ratio[1] ≈ ratio[2])
-            screen_r = screenw ./ screenw[1]
-            camw_r = camw ./ camw[1]
-            r = (screen_r ./ camw_r)
-            r = r ./ minimum(r)
-            camera.area[] = FRect(minimum(camera.area[]), r .* camw)
+        neww = widths(area)
+        change = neww .- lastw[]
+        if !(change ≈ Vec(0.0, 0.0))
+            s = 1.0 .+ (change ./ lastw[])
+            lastw[] = neww
+            camrect = FRect(minimum(camera.area[]), widths(camera.area[]) .* s)
+            camera.area[] = camrect
             update_cam!(scene, camera)
         end
         return
     end
-    cam_attributes
+    camera
 end
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
@@ -57,26 +73,32 @@ function update_cam!(scene::Scene, camera::Camera2D)
     return
 end
 
+function inner_pan(scene, camera, startpos, mp, dragging)
+    pan = camera.panbutton[]
+    if ispressed(scene, pan)
+        window_area = scene.px_area[]
+        if dragging == Mouse.down
+            startpos[] = mp
+        elseif dragging == Mouse.pressed && ispressed(scene, pan)
+            diff = startpos[] .- mp
+            startpos[] = mp
+            area = camera.area[]
+            diff = Vec(diff) .* wscale(window_area, area)
+            camera.area[] = FRect(minimum(area) .+ diff, widths(area))
+            update_cam!(scene, camera)
+        end
+    end
+    return camera.area
+end
+
 function add_pan!(scene::Scene, camera::Camera2D)
     startpos = RefValue((0.0, 0.0))
     events = scene.events
-    panbutton = camera.panbutton
-    map(scene.camera, events.mouseposition, events.mousedrag) do mp, dragging
-        @getfields camera (panbutton, area)
-        if ispressed(scene, panbutton)
-            window_area = scene.px_area[]
-            if dragging == Mouse.down
-                startpos[] = mp
-            elseif dragging == Mouse.pressed && ispressed(scene, panbutton)
-                diff = startpos[] .- mp
-                startpos[] = mp
-                diff = Vec(diff) .* wscale(window_area, area)
-                camera.area[] = FRect(minimum(area) .+ diff, widths(area))
-                update_cam!(scene, camera)
-            end
-        end
-        return
-    end
+    map(
+        inner_pan, scene.camera,
+        Node(scene), Node(camera), Node(startpos),
+        events.mouseposition, events.mousedrag
+    )
 end
 
 function add_zoom!(scene::Scene, camera::Camera2D)

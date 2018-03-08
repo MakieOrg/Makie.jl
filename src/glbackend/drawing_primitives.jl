@@ -47,6 +47,14 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
         visualize(x.args[1], Style(:lines), data).children[]
     end
 end
+function Base.insert!(screen::Screen, scene::Scene, x::Linesegments)
+    robj = cached_robj!(screen, scene, x) do gl_attributes
+        linestyle = popkey!(gl_attributes, :linestyle)
+        data = Dict{Symbol, Any}(gl_attributes)
+        data[:pattern] = value(linestyle)
+        visualize(x.args[1], Style(:linesegment), data).children[]
+    end
+end
 
 function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
     T(ntuple(Val{N}) do i
@@ -88,7 +96,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = map(to_gl_text, Node(x.args[1]), getindex.(gl_attributes, liftkeys)...)
+        gl_text = map(to_gl_text, x.args[1], getindex.(gl_attributes, liftkeys)...)
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             map(getindex, gl_text, Signal(i))

@@ -30,13 +30,14 @@ end
 
 function setup!(screen)
     if isopen(screen)
-        for (id, rect, clear) in screen.screens
+        for (id, rect, clear, color) in screen.screens
             a = rect[]
             glScissor(minimum(a)..., widths(a)...)
             glClearStencil(id)
             bits = GL_STENCIL_BUFFER_BIT
             if clear[]
-                glClearColor(0, 0, 0, 0)
+                c = color[]
+                glClearColor(red(c), green(c), blue(c), alpha(c))
                 bits |= GL_COLOR_BUFFER_BIT
             end
             glClear(bits)
@@ -109,7 +110,7 @@ end
 
 function id2rect(screen, id1)
     # TODO maybe we should use a different data structure
-    for (id2, rect, clear) in screen.screens
+    for (id2, rect, clear, color) in screen.screens
         id1 == id2 && return true, rect
     end
     false, IRect(0,0,0,0)

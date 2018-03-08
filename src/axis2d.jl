@@ -1,4 +1,76 @@
+using PlotUtils, Showoff
 
+export optimal_ticks_and_labels, generate_ticks
+
+function text_bb(str, font, size)
+    positions, toffset, uv_offset_width, scale = to_gl_text(
+        str, Point2f0(0), size, font, Vec2f0(0), Vec4f0(0,0,0,1), eye(Mat4f0)
+    )
+    AABB(vcat(positions, positions .+ scale))
+end
+
+function optimal_ticks_and_labels(limits, ticks = nothing)
+    amin, amax = limits
+    # scale the limits
+    scale = :identity
+    sf = identity
+    invscale = identity #invscalefunc(scale)
+    # If the axis input was a Date or DateTime use a special logic to find
+    # "round" Date(Time)s as ticks
+    # This bypasses the rest of optimal_ticks_and_labels, because
+    # optimize_datetime_ticks returns ticks AND labels: the label format (Date
+    # or DateTime) is chosen based on the time span between amin and amax
+    # rather than on the input format
+    # TODO: maybe: non-trivial scale (:ln, :log2, :log10) for date/datetime
+    # get a list of well-laid-out ticks
+    if ticks == nothing
+        scaled_ticks = optimize_ticks(
+            sf(amin),
+            sf(amax);
+            k_min = 4, # minimum number of ticks
+            k_max = 8, # maximum number of ticks
+        )[1]
+    elseif isa(ticks, Integer) # a single integer for number of ticks
+        scaled_ticks, viewmin, viewmax = optimize_ticks(
+            sf(amin),
+            sf(amax);
+            k_min = ticks, # minimum number of ticks
+            k_max = ticks, # maximum number of ticks
+            k_ideal = ticks,
+            # `strict_span = false` rewards cases where the span of the
+            # chosen  ticks is not too much bigger than amin - amax:
+            strict_span = false,
+        )
+    else
+        scaled_ticks = map(sf, (filter(t -> amin <= t <= amax, ticks)))
+    end
+    unscaled_ticks = map(invscale, scaled_ticks)
+
+    labels = if any(isfinite, unscaled_ticks)
+        formatter = :auto #axis[:formatter]
+        if formatter == :auto
+            # the default behavior is to make strings of the scaled values and then apply the labelfunc
+            lfunc = identity#labelfunc(scale, backend())
+            map(identity, Showoff.showoff(scaled_ticks, :plain))
+        elseif formatter == :scientific
+            Showoff.showoff(unscaled_ticks, :scientific)
+        else
+            # there was an override for the formatter... use that on the unscaled ticks
+            map(formatter, unscaled_ticks)
+        end
+    else
+        # no finite ticks to show...
+        String[]
+    end
+    unscaled_ticks, labels
+end
+
+
+
+function generate_ticks(limits)
+    ticks, labels = optimal_ticks_and_labels(limits, nothing)
+    zip(ticks, labels)
+end
 function draw_ticks(
         scene, dim, origin, ticks, scale,
         linewidth, linecolor, linestyle,
@@ -6,7 +78,7 @@ function draw_ticks(
     )
     for (tick, str) in ticks
         pos = ntuple(i-> i != dim ? origin[i] : (tick .* scale[dim]), Val{2})
-        text(
+        text!(
             scene,
             str, position = pos,
             rotation = rotation[dim], textsize = textsize[dim],
@@ -24,7 +96,7 @@ function draw_grid(
     for (tick, str) in ticks
         tup = ntuple(i-> i != dim ? origin[i] : (tick .* scaleND[dim]), Val{N})
         posf0 = Pointf0{N}(tup)
-        linesegment(
+        linesegments!(
             scene,
             [posf0, posf0 .+ dirf0],
             color = linecolor[dim], linewidth = linewidth[dim], linestyle = linestyle[dim]
@@ -55,7 +127,7 @@ function draw_frame(
                     scale = scale, arrowsize = arrow_size
                 )
             else
-                linesegment(
+                linesegments!(
                     scene, [start, to],
                     linewidth = linewidth, color = linecolor, linestyle = linestyle,
                     scale = scale
@@ -73,7 +145,7 @@ function draw_frame(
                 for dim in 1:N
                     p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val{N})
                     to = Point{N, Float32}(p)
-                    linesegment(
+                    linesegments!(
                         [from, to],
                         linewidth = linewidth, color = linecolor, linestyle = linestyle,
                         scale = scale
@@ -94,12 +166,12 @@ function draw_titles(
 
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
-        tick_bb = text_bb(str, to_font(scene, tickfont[2]), tick_size[2])
+        tick_bb = text_bb(str, attribute_convert(tickfont[2], Key{:font}()), tick_size[2])
         widths(tick_bb)[1]
     end)
 
     tickspace_y = widths(text_bb(
-        last(first(xticks)), to_font(scene, tickfont[1]), tick_size[1]
+        last(first(xticks)), attribute_convert(tickfont[1], Key{:font}()), tick_size[1]
     ))[2]
 
     tickspace = (tickspace_x, tickspace_y)
@@ -111,7 +183,7 @@ function draw_titles(
     posy = (title_start[1], half_width[2])
     positions = (posx, posy)
     for i = 1:2
-        text(
+        text!(
             scene, axis_labels[i],
             position = positions[i], textsize = textsize[i],
             align = align[i], rotation = rotation[i]
@@ -139,13 +211,12 @@ function draw_axis(
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
     )
-    root = rootscene(scene)
     limits = extrema.(ranges)
     limit_widths = map(x-> x[2] - x[1], limits)
     % = minimum(limit_widths) / 100 # percentage
 
     xyticks = generate_ticks.(limits)
-    rect = value(root[:screen].inputs[:window_area])
+    rect = scene.px_area[]
     xyfit = Makie.fit_ratio(rect, limits)
     scale = Vec3f0(xyfit..., 1)
 
@@ -188,53 +259,57 @@ function draw_axis(
     return
 end
 
+struct Axis2D end
 
 function default_theme(scene, ::Type{Axis2D})
+    darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
         tickstyle = Theme(
-            tick_gap = 3
-            tick_title_gap = 3
+            gap = 3,
+            title_gap = 3,
 
-            linewidth = (1, 1)
-            linecolor = ((:black, 0.4), (:black, 0.4))
-            linestyle = (nothing, nothing)
+            linewidth = (1, 1),
+            linecolor = ((:black, 0.4), (:black, 0.4)),
+            linestyle = (nothing, nothing),
 
-            textcolor = (darktext, darktext)
-            textsize = (5, 5)
-            rotation = (0.0, 0.0)
-            align = ((:center, :top), (:right, :center))
-            font = ("default", "default")
+            textcolor = (darktext, darktext),
+            textsize = (5, 5),
+            rotation = (0.0, 0.0),
+            align = ((:center, :top), (:right, :center)),
+            font = ("default", "default"),
         ),
 
         gridstyle = Theme(
-            linewidth = (0.5, 0.5)
-            linecolor = ((:black, 0.3), (:black, 0.3))
-            linestyle = (nothing, nothing)
+            linewidth = (0.5, 0.5),
+            linecolor = ((:black, 0.3), (:black, 0.3)),
+            linestyle = (nothing, nothing),
         ),
 
         framestyle = Theme(
-            linewidth = 1.0
-            linecolor = :black
-            linestyle = nothing
-            axis_position = :origin
-            axis_arrow = false
-            arrow_size = 2.5
-            frames = ((false, false), (false, false))
+            linewidth = 1.0,
+            linecolor = :black,
+            linestyle = nothing,
+            axis_position = :origin,
+            axis_arrow = false,
+            arrow_size = 2.5,
+            frames = ((false, false), (false, false)),
         ),
 
         titlestyle = Theme(
-            axisnames = ("X Axis", "Y Axis")
-            textcolor = (darktext, darktext)
-            textsize = (6, 6)
-            rotation = (0.0, -1.5pi)
-            align = ((:center, :top), (:center, :bottom))
-            font = ("default", "default")
+            axisnames = ("X Axis", "Y Axis"),
+            textcolor = (darktext, darktext),
+            textsize = (6, 6),
+            rotation = (0.0, -1.5pi),
+            align = ((:center, :top), (:center, :bottom)),
+            font = ("default", "default"),
         )
     )
 end
 
-function plot(scene::Scene, ::Type{Axis2D}, attributes::Attributes, ranges::Node{<: NTuple{2}})
-    attributes = scene[:theme, :axis]
+function axis2d(scene::Scene, ranges::Node{<: NTuple{2, Any}})
+    attributes, rest = merged_get!(:axis2d, scene, Attributes()) do
+        default_theme(scene, Axis2D)
+    end
     g_keys = (:linewidth, :linecolor, :linestyle)
     f_keys = (:linewidth, :linecolor, :linestyle, :axis_position, :axis_arrow, :arrow_size)
     t_keys = (
@@ -244,15 +319,15 @@ function plot(scene::Scene, ::Type{Axis2D}, attributes::Attributes, ranges::Node
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
 
-    g_args = getindex.(attributes[:gridstyle], g_keys)
-    f_args = getindex.(attributes[:framestyle], f_keys)
-    t_args = getindex.(attributes[:tickstyle], t_keys)
-    ti_args = getindex.(attributes[:titlestyle], ti_keys)
+    g_args = getindex.(attributes[:gridstyle][], g_keys)
+    f_args = getindex.(attributes[:framestyle][], f_keys)
+    t_args = getindex.(attributes[:tickstyle][], t_keys)
+    ti_args = getindex.(attributes[:titlestyle][], ti_keys)
 
     map_once(
         draw_axis,
         to_node(scene), ranges,
         g_args..., t_args..., f_args..., ti_args...
     )
-    return
+    return attributes
 end

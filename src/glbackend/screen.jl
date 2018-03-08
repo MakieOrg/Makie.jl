@@ -1,21 +1,24 @@
 const ScreenID = UInt8
 const ZIndex = Int
-const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}}
+const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
 struct Screen <: AbstractScreen
     glscreen::GLFW.Window
     framebuffer::GLWindow.GLFramebuffer
     rendertask::RefValue{Task}
-    screen2scene::Dict{Scene, ScreenID}
+    screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
 end
 Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::Screen, scene::Scene, robj)
-    screenid = get!(screen.screen2scene, scene) do
+    filter!(screen.screen2scene) do kv
+        kv[1].value != nothing
+    end
+    screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        push!(screen.screens, (id, scene.px_area, Node(true)))
+        push!(screen.screens, (id, scene.px_area, Node(true), scene.theme[:backgroundcolor]))
         id
     end
     push!(screen.renderlist, (0, screenid, robj))
