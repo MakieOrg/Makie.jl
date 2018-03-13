@@ -36,24 +36,37 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
             axis = Attributes(),
             legend = Attributes(),
             scale = Vec3f0(1),
-            camera = :automatic
+            camera = :automatic,
+            limits = :automatic,
+            padding = (0.1, 0.1)
         )
     end
     if !isempty(rest) # at this point, there should be no attributes left.
-        warn("The following attributes are unused: $(sprint(display, rest))")
+        warn("The following attributes are unused: $(sprint(show, rest))")
     end
-    limits = data_limits(p)
-    if plot_attributes[:scale_plot][]
-        scale = lift_node(scene.area, limits) do rect, limits
-            xyzfit = Makie.fit_ratio(rect, limits)
-            to_ndim(Vec3f0, xyzfit, 1f0)
+    limits = map(plot_attributes[:limits], data_limits(p)) do limit, dlimits
+        if limit == :automatic
+            dlimits
+        else
+            limit
         end
-        p[:scale] = scale
     end
+    scale = if plot_attributes[:scale_plot][]
+        map_once(scene.px_area, limits) do rect, limits
+            l = ((limits[1][1], limits[2][1]), (limits[1][2], limits[2][2]))
+            xyzfit = fit_ratio(rect, l)
+            s = to_ndim(Vec3f0, xyzfit, 1f0)
+            p[:transformation][][:scale][] = s
+            s
+        end
+    else
+        Vec3f0(1)
+    end
+
     if plot_attributes[:show_axis][]
         axis_attributes = plot_attributes[:axis][]
         axis_attributes[:scale] = scale
-        axis(scene, limits, axis_attributes)
+        axis2d(scene, axis_attributes, limits)
     end
 
     if plot_attributes[:show_legend][]
@@ -62,14 +75,13 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
         legend(scene, limits, legend_attributes)
     end
     if plot_attributes[:camera][] == :automatic
-        @show limits[]
-        if length(limits[][1]) == 2
-            cam2d!(scene)
-        elseif length(limits[][1]) == 3
-            cam3d!(scene)
-        else
-            @assert false "Scene limits should be 2d or 3d. Found limits: $limits"
-        end
+        # if length(limits[][1]) == 2
+        #     cam2d!(scene)
+        # elseif length(limits[][1]) == 3
+        #     cam3d!(scene)
+        # else
+        #     @assert false "Scene limits should be 2d or 3d. Found limits: $limits"
+        # end
     end
     push!(scene, p)
     p#Series(Scene, p, plot_attributes)

@@ -52,6 +52,8 @@ function attribute_convert(ls::Symbol, ::key"linestyle")
 end
 
 
+attribute_convert(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f0(c[1], c[2])
+attribute_convert(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f0(c)
 attribute_convert(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 

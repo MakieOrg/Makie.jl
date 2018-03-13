@@ -65,8 +65,6 @@ function optimal_ticks_and_labels(limits, ticks = nothing)
     unscaled_ticks, labels
 end
 
-
-
 function generate_ticks(limits)
     ticks, labels = optimal_ticks_and_labels(limits, nothing)
     zip(ticks, labels)
@@ -130,7 +128,7 @@ function draw_frame(
                 linesegments!(
                     scene, [start, to],
                     linewidth = linewidth, color = linecolor, linestyle = linestyle,
-                    scale = scale
+                    transformation = Attributes(:scale => scale)
                 )
             end
         end
@@ -148,7 +146,7 @@ function draw_frame(
                     linesegments!(
                         [from, to],
                         linewidth = linewidth, color = linecolor, linestyle = linestyle,
-                        scale = scale
+                        transformation = Attributes(:scale => scale)
                     )
                 end
             end
@@ -193,8 +191,7 @@ function draw_titles(
 end
 
 function draw_axis(
-        scene, ranges,
-
+        scene, ranges, scale,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
 
@@ -211,14 +208,11 @@ function draw_axis(
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
     )
-    limits = extrema.(ranges)
+    limits = ((ranges[1][1], ranges[2][1]), (ranges[1][2], ranges[2][2]))
     limit_widths = map(x-> x[2] - x[1], limits)
     % = minimum(limit_widths) / 100 # percentage
 
     xyticks = generate_ticks.(limits)
-    rect = scene.px_area[]
-    xyfit = Makie.fit_ratio(rect, limits)
-    scale = Vec3f0(1)
 
     ti_textsize = ti_textsize .* %
     t_textsize = t_textsize .* %; t_gap = t_gap .* %;
@@ -264,6 +258,7 @@ struct Axis2D end
 function default_theme(scene, ::Type{Axis2D})
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
+        scale = Vec3f0(1),
         tickstyle = Theme(
             gap = 3,
             title_gap = 3,
@@ -306,8 +301,8 @@ function default_theme(scene, ::Type{Axis2D})
     )
 end
 
-function axis2d(scene::Scene, ranges::Node{<: NTuple{2, Any}})
-    attributes, rest = merged_get!(:axis2d, scene, Attributes()) do
+function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, Any}})
+    attributes, rest = merged_get!(:axis2d, scene, attributes) do
         default_theme(scene, Axis2D)
     end
     g_keys = (:linewidth, :linecolor, :linestyle)
@@ -319,14 +314,13 @@ function axis2d(scene::Scene, ranges::Node{<: NTuple{2, Any}})
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
 
-    g_args = getindex.(attributes[:gridstyle][], g_keys)
-    f_args = getindex.(attributes[:framestyle][], f_keys)
-    t_args = getindex.(attributes[:tickstyle][], t_keys)
-    ti_args = getindex.(attributes[:titlestyle][], ti_keys)
-
-    map_once(
-        draw_axis,
-        to_node(scene), ranges,
+    g_args = value.(getindex.(attributes[:gridstyle][], g_keys))
+    f_args = value.(getindex.(attributes[:framestyle][], f_keys))
+    t_args = value.(getindex.(attributes[:tickstyle][], t_keys))
+    ti_args = value.(getindex.(attributes[:titlestyle][], ti_keys))
+    #map_once(
+        draw_axis(
+        value(scene), value(ranges), value(attributes[:scale]),
         g_args..., t_args..., f_args..., ti_args...
     )
     return attributes

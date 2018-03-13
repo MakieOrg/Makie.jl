@@ -8,30 +8,12 @@ struct Camera2D
     zoombutton::Node{ButtonTypes}
     panbutton::Node{ButtonTypes}
     padding::Node{Float32}
-    function Camera2D(
-            area::Node{FRect2D},
-            zoomspeed::Node{Float32},
-            zoombutton::Node{ButtonTypes},
-            panbutton::Node{ButtonTypes},
-            padding::Node{Float32},
-        )
-        println("Creating shit: $(object_id(area))")
-        new(
-            area,
-            zoomspeed,
-            zoombutton,
-            panbutton,
-            padding
-        )
-    end
 end
 
-const mycounter = Ref(0)
 function cam2d!(scene::Scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
-        mycounter[] = mycounter[] + 1
         Theme(
-            area = Signal(FRect(0, 0, 1, 1), name = "area$(mycounter[])"),
+            area = Signal(FRect(0, 0, 1, 1), name = "area"),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -43,23 +25,29 @@ function cam2d!(scene::Scene; kw_args...)
     disconnect!(scene.camera)
     add_zoom!(scene, camera)
     add_pan!(scene, camera)
-    lastw = RefValue(widths(scene.px_area[]))
-    map(scene.camera, scene.px_area) do area
-        neww = widths(area)
-        change = neww .- lastw[]
-        if !(change ≈ Vec(0.0, 0.0))
-            s = 1.0 .+ (change ./ lastw[])
-            lastw[] = neww
-            camrect = FRect(minimum(camera.area[]), widths(camera.area[]) .* s)
-            camera.area[] = camrect
-            update_cam!(scene, camera)
-        end
-        return
-    end
+    correct_ratio!(scene, camera)
+    selection_rect!(scene, camera)
     camera
 end
+
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
+function update_cam!(scene::Scene, camera::Camera2D, area::Rect)
+    area = positive_widths(area)
+    px_wh = normalize(widths(scene.px_area[]))
+    wh = normalize(widths(area))
+    ratio = px_wh ./ wh
+    if ratio ≈ Vec(1.0, 1.0)
+        camera.area[] = area
+    else
+        # we only want to make the area bigger, to at least show what was selected
+        # so we make the minimum 1.0, and grow in the other dimension
+        s = ratio ./ minimum(ratio)
+        newwh = s .* widths(area)
+        camera.area[] = FRect(minimum(area), newwh)
+    end
+    update_cam!(scene, camera)
+end
 function update_cam!(scene::Scene, camera::Camera2D)
     x, y = minimum(camera.area[])
     w, h = widths(camera.area[]) ./ 2f0
@@ -73,32 +61,46 @@ function update_cam!(scene::Scene, camera::Camera2D)
     return
 end
 
-function inner_pan(scene, camera, startpos, mp, dragging)
-    pan = camera.panbutton[]
-    if ispressed(scene, pan)
-        window_area = scene.px_area[]
-        if dragging == Mouse.down
-            startpos[] = mp
-        elseif dragging == Mouse.pressed && ispressed(scene, pan)
-            diff = startpos[] .- mp
-            startpos[] = mp
-            area = camera.area[]
-            diff = Vec(diff) .* wscale(window_area, area)
-            camera.area[] = FRect(minimum(area) .+ diff, widths(area))
+function correct_ratio!(scene, camera)
+    lastw = RefValue(widths(scene.px_area[]))
+    map(scene.camera, scene.px_area) do area
+        neww = widths(area)
+        change = neww .- lastw[]
+        if !(change ≈ Vec(0.0, 0.0))
+            s = 1.0 .+ (change ./ lastw[])
+            lastw[] = neww
+            camrect = FRect(minimum(camera.area[]), widths(camera.area[]) .* s)
+            camera.area[] = camrect
             update_cam!(scene, camera)
         end
+        return
     end
-    return camera.area
 end
-
 function add_pan!(scene::Scene, camera::Camera2D)
     startpos = RefValue((0.0, 0.0))
     events = scene.events
     map(
-        inner_pan, scene.camera,
-        Node(scene), Node(camera), Node(startpos),
+        scene.camera,
+        Node.((scene, camera, startpos))...,
         events.mouseposition, events.mousedrag
-    )
+    ) do scene, camera, startpos, mp, dragging
+
+        pan = camera.panbutton[]
+        if ispressed(scene, pan)
+            window_area = scene.px_area[]
+            if dragging == Mouse.down
+                startpos[] = mp
+            elseif dragging == Mouse.pressed && ispressed(scene, pan)
+                diff = startpos[] .- mp
+                startpos[] = mp
+                area = camera.area[]
+                diff = Vec(diff) .* wscale(window_area, area)
+                camera.area[] = FRect(minimum(area) .+ diff, widths(area))
+                update_cam!(scene, camera)
+            end
+        end
+        return
+    end
 end
 
 function add_zoom!(scene::Scene, camera::Camera2D)
@@ -122,18 +124,18 @@ function add_zoom!(scene::Scene, camera::Camera2D)
 end
 
 function camspace(scene::Scene, camera::Camera2D, point)
-    point = point .* wscale(scene.px_area[], camera.area[])
-    point .+ minimum(camera.area[])
+    point = Vec(point) .* wscale(scene.px_area[], camera.area[])
+    Vec(point) .+ Vec(minimum(camera.area[]))
 end
 
-function selection_rect(
+function selection_rect!(
         scene, cam,
         key = Mouse.left,
-        button = Set([Keyboard.left_control, Keyboard.space])
+        button = nothing
     )
     rect = RefValue(FRect(0, 0, 0, 0))
     lw = 2f0
-    rect_vis = lines(
+    rect_vis = lines!(
         scene,
         rect[],
         linestyle = :dot,
@@ -142,13 +144,13 @@ function selection_rect(
         drawover = true
     )
     waspressed = RefValue(false)
-    dragged_rect = map(scene.events.mousedrag) do drag
-        if ispressed(scene, key) && ispressed(scene, button)
-            screen_area = to_value(scene, :window_area)
-            cam_area = to_value(cam, :area)
-            mp = to_value(scene, :mouseposition)
-            mp = camspace(scene, camera, mp)
+    dragged_rect = map(scene.camera, scene.events.mousedrag) do drag
+        if ispressed(scene, key)# && ispressed(scene, button)
 
+            screen_area = scene.px_area[]
+            cam_area = cam.area[]
+            mp = scene.events.mouseposition[]
+            mp = camspace(scene, cam, mp)
             if drag == Mouse.down
                 waspressed[] = true
                 rect_vis[:visible] = true # start displaying
@@ -163,7 +165,7 @@ function selection_rect(
         else
             if drag == Mouse.up && waspressed[]
                 waspressed[] = false
-                update_cam!(cam, rect[])
+                update_cam!(scene, cam, rect[])
             end
             rect[] = FRect(0, 0, 0, 0)
             rect_vis[:positions] = rect[]

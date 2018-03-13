@@ -86,23 +86,27 @@ function Scene(area = nothing)
     scene
 end
 
-
-
-function merged_get!(defaults::Function, key, scene, input::Attributes)
-    theme = get!(defaults, scene.theme, key)
-    rest = Attributes()
-    merged = Attributes()
-
+function merge_attributes!(input, theme, rest = Attributes(), merged = Attributes())
     for key in union(keys(input), keys(theme))
         if haskey(input, key) && haskey(theme, key)
-            merged[key] = to_node(input[key])
+            val = input[key]
+            if isa(val, Attributes)
+                merged[key] = Attributes()
+                merge_attributes!(val, theme[key][], rest, merged[key])
+            else
+                merged[key] = to_node(val)
+            end
         elseif haskey(input, key)
             rest[key] = input[key]
         else # haskey(theme) must be true!
             merged[key] = theme[key]
         end
     end
-    merged, rest
+    return merged, rest
+end
+
+function merged_get!(defaults::Function, key, scene, input::Attributes)
+    return merge_attributes!(input, get!(defaults, scene.theme, key))
 end
 
 Theme(; kw_args...) = Attributes(map(kw-> kw[1] => to_node(kw[2]), kw_args))

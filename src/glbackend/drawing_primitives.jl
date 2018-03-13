@@ -8,12 +8,13 @@ function to_glvisualize_key(k)
     k == :strokecolor && return :stroke_color
     k == :positions && return :position
     k == :linewidth && return :thickness
+    k == :marker_offset && return :offset
     k
 end
 
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
-        gl_attributes = map(x.attributes) do key_value
+        gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = map(val-> attribute_convert(val, Key{key}(), plot_key(x)), value)

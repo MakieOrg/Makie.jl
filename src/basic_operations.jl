@@ -137,13 +137,16 @@ end
 Fill in values that can only be calculated when we have all other attributes filled
 """
 function calculate_values!(::Type{T}, attributes, args) where T <: AbstractPlot
+    calculate_values!(attributes, args)
+end
+function calculate_values!(attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
         get!(attributes, :colornorm) do
             extrema(args)
         end
     end
-    transform_args = getindex.(attributes, (:scale, :offset, :rotation))
+    transform_args = getindex.(value(attributes[:transformation]), (:scale, :offset, :rotation))
     get!(attributes, :model) do
         map(transform_args...) do s, o, r
             q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
@@ -158,11 +161,11 @@ function default_theme(scene)
 
         color = :blue,
         linewidth = 1,
-
-        rotation = Vec4f0(0, 0, 0, 1),
-        scale = Vec3f0(1),
-        offset = Vec3f0(0),
-
+        transformation = Theme(
+            rotation = Vec4f0(0, 0, 0, 1),
+            scale = Vec3f0(1),
+            offset = Vec3f0(0)
+        ),
         visible = true,
         light = light,
         #drawover = false,
@@ -182,6 +185,14 @@ function default_theme(scene, ::Type{Scatter})
         fxaa = false
     )
 end
+function calculate_values!(::Type{Scatter}, attributes, args)
+    calculate_values!(attributes, args)
+    get!(attributes, :marker_offset) do
+        # default to middle
+        map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
+    end
+end
+
 
 function default_theme(scene, ::Type{Meshscatter})
     Theme(;

@@ -13,17 +13,18 @@ function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
     show(io, m, Makie.parent(plot)[])
     nothing
 end
-
 scene = Scene()
+
 scene.px_area[] = IRect(0, 0, 1920, 1080)
 cam = cam2d!(scene)
 cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
 update_cam!(scene, cam)
-ax = axis2d(scene, Makie.Node((linspace(0, 4, 5), linspace(0, 4, 5))))
-scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
+s = scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1], show_axis = true, scale_plot = false)
+nothing
 scene
 
 
+scene.current_screens[1].renderlist[1][3][:scale]
 x = lines!(scene, FRect(0, 0, 0.5, 0.5), linestyle = :dot)
 x[:positions] = FRect(0, 0, 1.0, 0.5)
 x[:visible] = true
@@ -34,7 +35,6 @@ b = scatter!(scene, rand(10), rand(10))
 b = linesegments!(scene, rand(10), rand(10))
 c = plot!(scene, rand(10), rand(10), color = :white)
 d = meshscatter!(scene, rand(10), rand(10), rand(10));
-
 
 # update_cam!(scene, FRect(0, 0, 1, 2))
 

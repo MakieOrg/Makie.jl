@@ -32,6 +32,14 @@ end
 function IRect(xy::VecTypes, wh::VecTypes)
     IRect(xy[1], xy[2], wh[1], wh[2])
 end
+
+function positive_widths(rect::HyperRectangle{N, T}) where {N, T}
+    mini, maxi = minimum(rect), maximum(rect)
+    realmin = min.(mini, maxi)
+    realmax = max.(mini, maxi)
+    HyperRectangle{N, T}(realmin, realmax .- realmin)
+end
+
 function FRect(x, y, w, h)
     HyperRectangle{2, Float32}(Vec2f0(x, y), Vec2f0(w, h))
 end
