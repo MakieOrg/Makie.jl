@@ -118,7 +118,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,
-            distancefield = atlas.images
+            distancefield = GLVisualize.get_texture!(atlas)
         ).children[]
     end
 end
@@ -130,11 +130,12 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         heatmap = map(to_node(x.args[3])) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
-        tex = GLAbstraction.Texture(value(heatmap), minfilter = :nearest)
+        interp = value(popkey!(gl_attributes, :interpolate))
+        interp = interp ? :linear : :nearest
+        tex = GLAbstraction.Texture(value(heatmap), minfilter = interp)
         map_once(heatmap) do x
             update!(tex, x)
         end
-        @show gl_attributes[:thickness]
         gl_attributes[:stroke_width] = popkey!(gl_attributes, :thickness)
         visualize(tex, Style(:default), gl_attributes).children[]
     end

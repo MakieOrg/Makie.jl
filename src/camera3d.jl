@@ -4,7 +4,7 @@ const Q = Quaternions
 @enum ProjectionEnum Perspective Orthographic
 
 
-struct Camera3D
+struct Camera3D <: AbstractCamera
     rotationspeed::Node{Float32}
     translationspeed::Node{Float32}
     eyeposition::Node{Vec3f0}

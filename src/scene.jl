@@ -25,6 +25,10 @@ function Base.map(f, c::Camera, nodes::Node...)
     node
 end
 
+abstract type AbstractCamera end
+
+# placeholder
+struct EmptyCamera <: AbstractCamera end
 Camera(px_area) = Camera(
     Node(eye(Mat4f0)),
     Node(eye(Mat4f0)),
@@ -39,6 +43,7 @@ struct Scene
 
     px_area::Node{IRect2D}
     camera::Camera
+    camera_controls::AbstractCamera
 
     limits::Node{HyperRectangle{3, Float32}}
 
@@ -63,10 +68,15 @@ const global_current_scene = Ref{Scene}()
 
 current_scene() = global_current_scene[]
 
-function Scene(area = nothing)
+reasonable_resolution() = (500, 500)
+function Scene(; area = nothing, resolution = reasonable_resolution())
     events = Events()
     if area == nothing
-        px_area = map(x-> IRect(0, 0, widths(x)), events.window_area)
+        px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
+            wh = widths(w_area)
+            wh = (wh == Vec(0, 0)) ? widths(v0) : wh
+            IRect(0, 0, wh)
+        end
     else
         px_area = signal_convert(Signal{IRect2D}, area)
     end
@@ -74,6 +84,7 @@ function Scene(area = nothing)
         events,
         px_area,
         Camera(px_area),
+        EmptyCamera(),
         Signal(AABB(Vec3f0(0), Vec3f0(1))),
         Signal(Vec3f0(1)),
         Signal((false, false, false)),

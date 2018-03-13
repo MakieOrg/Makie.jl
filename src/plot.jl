@@ -4,7 +4,24 @@ convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 convert_arguments(P, x::GeometryPrimitive) = (decompose(Point, x),)
+
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+    (x, y, z)
+end
+function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+    (x, y, z)
+end
+function convert_arguments(P, data::AbstractMatrix)
+    n, m = Float64.(size(data))
+    (0.0 .. n, 0.0 .. m, data)
+end
+function convert_arguments(P, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+    if !applicable(f, x[1], y[1])
+        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
+    end
+    T = typeof(f(x[1], y[1]))
+    z = similar(x, T, (length(x), length(y)))
+    z .= f.(x, y')
     (x, y, z)
 end
 

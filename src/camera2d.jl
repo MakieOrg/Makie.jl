@@ -2,7 +2,7 @@
 using GLAbstraction: orthographicprojection, translationmatrix
 using StaticArrays
 
-struct Camera2D
+struct Camera2D <: AbstractCamera
     area::Node{FRect2D}
     zoomspeed::Node{Float32}
     zoombutton::Node{ButtonTypes}
@@ -139,10 +139,10 @@ function selection_rect!(
         scene,
         rect[],
         linestyle = :dot,
-        thickness = 1f0,
+        linewidth = 1f0,
         color = (:black, 0.4),
         visible = false,
-        drawover = true
+        #drawover = true
     )
     waspressed = RefValue(false)
     dragged_rect = map(scene.camera, scene.events.mousedrag) do drag

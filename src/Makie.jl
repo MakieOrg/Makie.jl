@@ -20,7 +20,7 @@ GLAbstraction.gl_convert(x::Vector{Vec3f0}) = x
 
 include("scene.jl")
 
-include("basic_operations.jl")
+include("basic_drawing.jl")
 include("basic_recipes.jl")
 include("layouting.jl")
 

@@ -1,7 +1,4 @@
-struct Key{K} end
-macro key_str(arg)
-    :(Key{$(QuoteNode(Symbol(arg)))})
-end
+
 
 attribute_convert(x, key::Key, ::Key) = attribute_convert(x, key)
 attribute_convert(s::Scene, x, key::Key, ::Key) = attribute_convert(s, x, key)

@@ -1,5 +1,5 @@
 using Makie
-using GeometryTypes
+using GeometryTypes, IntervalSets
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     isempty(scene.current_screens) || return
@@ -9,29 +9,36 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     end
     return
 end
+
 function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
     show(io, m, Makie.parent(plot)[])
     nothing
 end
-scene = Scene()
 
-scene.px_area[] = IRect(0, 0, 1920, 1080)
+scene = Scene()
 cam = cam2d!(scene)
 cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
 update_cam!(scene, cam)
-s = scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
-s = lines!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
+s = scatter!(scene, [0, 0, 1, 1], [0, 1.5, 0, 1.5])
+s = lines!(scene, FRect(0, 0, 1, 1.5), color = :black, show_axis = true)
 xy = linspace(0, 2pi, 100)
-s = contour!(scene, xy, xy, ((x, y)-> sin(x) + cos(y)).(xy, xy'))
-
+f(x, y) = sin(x) + cos(y)
+z = f.(xy, xy')
+s1 = heatmap!(scene, 0.1 .. 0.9, 0.1 .. 0.44, z)
+s2 = contour!(scene, 0.1 .. 0.9, 0.46 .. 0.9, z, linewidth = 0.1, fillrange = true)
+s2 = contour!(scene, 0.1 .. 0.9, 0.91 .. 1.4, z, linewidth = 2)
 
 # screen = Screen(scene)
-a = text!(scene, "Hellooo", color = :white, textsize = 0.1, position = (0.5, 0.5))
+scene = Scene()
+a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = (0.5, 0.5))
 b = scatter!(scene, rand(10), rand(10))
 b = linesegments!(scene, rand(10), rand(10))
 c = plot!(scene, rand(10), rand(10), color = :white)
-d = meshscatter!(scene, rand(10), rand(10), rand(10));
-
+d = meshscatter!(scene, rand(10), rand(10), rand(10), show_axis = true);
+cam = cam2d!(scene)
+cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
+update_cam!(scene, cam)
+scene
 
 scene = Scene()
 scene.px_area[] = IRect(0, 0, 1920, 1080)

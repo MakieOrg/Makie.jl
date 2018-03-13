@@ -95,3 +95,9 @@ function Events()
         Node(false),
     )
 end
+
+
+struct Key{K} end
+macro key_str(arg)
+    :(Key{$(QuoteNode(Symbol(arg)))})
+end

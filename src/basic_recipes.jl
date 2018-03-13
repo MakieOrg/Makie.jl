@@ -2,11 +2,19 @@
 function default_theme(scene, ::Type{Contour})
     Theme(;
         default_theme(scene)...,
-        color = scene.theme[:color],
+        colormap = scene.theme[:colormap],
         levels = 5,
         linewidth = 1.0,
         fillrange = false,
     )
+end
+
+to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
+to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)
+
+function resample(x::AbstractVector, len)
+    length(x) == len && return x
+    interpolated_getindex.((x,), linspace(0.0, 1.0, len))
 end
 
 function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
@@ -17,21 +25,20 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
     T = eltype(last(args))
     x, y, z = convert_arguments(Contour, args...)
     if value(attributes[:fillrange])
+        attributes[:interpolate] = true
         return heatmap!(scene, attributes, x, y, z)
     else
         levels = round(Int, value(attributes[:levels]))
         T = eltype(z)
-        contours = Main.Contour.contours(T.(x), T.(y), z, levels)
+        contours = Main.Contour.contours(to_vector(x, size(z, 1), T), to_vector(y, size(z, 2), T), z, levels)
         result = Point2f0[]
         colors = RGBA{Float32}[]
-        col = attribute_convert(value(attributes[:color]), key"color"())
-        cols = if isa(col, AbstractVector)
-            if length(col) != levels
-                error("Please have one color per level. Found: $(length(col)) colors and $levels level")
-            end
-            col
+        cols = if haskey(attributes, :color)
+            c = attribute_convert(value(attributes[:color]), key"color"())
+            repeated(c, levels)
         else
-            repeated(col, levels)
+            c = attribute_convert(value(attributes[:colormap]), key"colormap"())
+            resample(c, levels)
         end
         for (color, c) in zip(cols, Main.Contour.levels(contours))
             for elem in Main.Contour.lines(c)

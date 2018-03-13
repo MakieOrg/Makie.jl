@@ -4,6 +4,17 @@ function data_limits(x)
     end
 end
 
+# TODO don't be a pirate and add this to IntervalSets
+function Base.extrema(x::ClosedInterval)
+    (minimum(x), maximum(x))
+end
+
+function data_limits(x::Union{Heatmap, Contour, Image})
+    map(to_node(x.args[1]), to_node(x.args[2])) do x, y
+        (extrema(x), extrema(y))
+    end
+end
+
 function data_limits(x::Text)
     keys = (:position, :textsize, :font, :align, :rotation, :model)
     args = map(keys) do key

@@ -118,9 +118,9 @@ for (func, docs) in atomic_funcs
             attributes, rest = merged_get!($(QuoteNode(func)), scene, attributes) do
                 default_theme(scene, T)
             end
-            calculate_values!(T, attributes, args)
-            xx = convert_arguments(T, args...)
-            plot!(scene, $Typ(convert_arguments(T, args...), attributes), rest)
+            converted_args = convert_arguments(T, args...)
+            calculate_values!(T, attributes, converted_args)
+            plot!(scene, $Typ(converted_args, attributes), rest)
         end
         export $func, $inplace
     end
@@ -212,7 +212,7 @@ function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
         linewidth = 1.0,
         linestyle = nothing,
         fxaa = false
-)
+        )
 end
 
 
@@ -238,6 +238,7 @@ function default_theme(scene, ::Type{Heatmap})
         colormap = scene.theme[:colormap],
         linewidth = 0.0,
         levels = 1,
-        fxaa = false
+        fxaa = false,
+        interpolate = false
     )
 end

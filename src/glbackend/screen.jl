@@ -105,7 +105,7 @@ end
 function Screen(scene::Scene; kw_args...)
     filter!(isopen, gl_screens)
     window = if isempty(gl_screens)
-        window = create_glcontext("Makie"; kw_args...)
+        window = create_glcontext("Makie"; resolution = widths(scene.px_area[]), kw_args...)
         # tell GLAbstraction that we created a new context.
         # This is important for resource tracking, and only needed for the first context
         GLAbstraction.new_context()
