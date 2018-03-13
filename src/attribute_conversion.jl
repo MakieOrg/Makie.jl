@@ -101,5 +101,92 @@ attribute_convert(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0
 attribute_convert(r::AbstractVector, k::key"rotation") = attribute_convert.(r, k)
 
 
+attribute_convert(x, k::key"colornorm")::Vec2f0 = Vec2f0(x)
 attribute_convert(x, k::key"textsize") = Float32(x)
 attribute_convert(x, k::key"linewidth") = Float32(x)
+
+using ColorBrewer
+
+const colorbrewer_names = Symbol[
+    # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
+    :Blues,
+    :Oranges,
+    :Greens,
+    :Reds,
+    :Purples,
+    :Greys,
+    :OrRd,
+    :GnBu,
+    :PuBu,
+    :PuRd,
+    :BuPu,
+    :BuGn,
+    :YlGn,
+    :RdPu,
+    :YlOrBr,
+    :YlGnBu,
+    :YlOrRd,
+    :PuBuGn,
+
+    # All diverging color schemes can have between 3 and 11 colors. The available diverging color schemes are:
+    :Spectral,
+    :RdYlGn,
+    :RdBu,
+    :PiYG,
+    :PRGn,
+    :RdYlBu,
+    :BrBG,
+    :RdGy,
+    :PuOr,
+
+    #The number of colors a qualitative color scheme can have depends on the scheme. The available qualitative color schemes are:
+    :Name,
+    :Set1,
+    :Set2,
+    :Set3,
+    :Dark2,
+    :Accent,
+    :Paired,
+    :Pastel1,
+    :Pastel2
+]
+
+"""
+    available_gradients()
+
+Prints all available gradient names
+"""
+function available_gradients()
+    println("Gradient Symbol/Strings:")
+    for name in colorbrewer_names
+        println("    ", name)
+    end
+end
+
+"""
+    to_colormap(b, x)
+An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts
+"""
+to_colormap(cm::AbstractVector) = RGBAf0.(cm)
+
+"""
+Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
+"""
+function to_colormap(cs::Union{Tuple, Pair})
+    [to_color.(cs)...]
+end
+
+"""
+A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
+"""
+function to_colormap(cs::Union{String, Symbol})
+    cs_sym = Symbol(cs)
+    if cs_sym in colorbrewer_names
+        ColorBrewer.palette(string(cs_sym), 9)
+    else
+        #TODO integrate PlotUtils color gradients
+        error("There is no color gradient named: $cs")
+    end
+end
+
+attribute_convert(val, ::key"colormap") = to_colormap(val)

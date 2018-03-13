@@ -143,7 +143,9 @@ function calculate_values!(attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
         get!(attributes, :colornorm) do
-            extrema(args)
+            x = extrema(args[3])
+            y = Vec2f0(x)
+            return Node(y)
         end
     end
     transform_args = getindex.(value(attributes[:transformation]), (:scale, :offset, :rotation))
@@ -227,5 +229,15 @@ function default_theme(scene, ::Type{Text})
         rotation = 0.0,
         textsize = 20,
         position = Point2f0(0),
+    )
+end
+
+function default_theme(scene, ::Type{Heatmap})
+    Theme(;
+        default_theme(scene)...,
+        colormap = scene.theme[:colormap],
+        linewidth = 0.0,
+        levels = 1,
+        fxaa = false
     )
 end

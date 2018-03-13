@@ -19,7 +19,8 @@ scene.px_area[] = IRect(0, 0, 1920, 1080)
 cam = cam2d!(scene)
 cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
 update_cam!(scene, cam)
-s = scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1], show_axis = true, scale_plot = false)
+s = scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
+s = lines!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
 nothing
 scene
 
@@ -36,10 +37,15 @@ b = linesegments!(scene, rand(10), rand(10))
 c = plot!(scene, rand(10), rand(10), color = :white)
 d = meshscatter!(scene, rand(10), rand(10), rand(10));
 
-# update_cam!(scene, FRect(0, 0, 1, 2))
 
-# cam = Makie.cam2d!(scene)
-
+scene = Scene()
+scene.px_area[] = IRect(0, 0, 1920, 1080)
+cam = cam2d!(scene)
+cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
+update_cam!(scene, cam)
+scatter!(scene, FRect(0, 0, 1, 1), scale_plot = false, linewidth = 5)
+h = heatmap!(scene, linspace(0, 1, 50), linspace(0, 1, 50), rand(50, 50))
+scene
 # cam.rotationspeed[] = 0.1
 # cam.pan_button[] = Mouse.right
 # scene.events.window_dpi[]

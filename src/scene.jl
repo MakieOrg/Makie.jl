@@ -78,7 +78,11 @@ function Scene(area = nothing)
         Signal(Vec3f0(1)),
         Signal((false, false, false)),
         AbstractPlot[],
-        Theme(backgroundcolor = RGBAf0(1,1,1,1)),
+        Theme(
+            backgroundcolor = RGBAf0(1,1,1,1),
+            color = :black,
+            colormap = :YlOrRd
+        ),
         Scene[],
         AbstractScreen[]
     )

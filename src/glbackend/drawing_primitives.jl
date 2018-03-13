@@ -9,6 +9,8 @@ function to_glvisualize_key(k)
     k == :positions && return :position
     k == :linewidth && return :thickness
     k == :marker_offset && return :offset
+    k == :colormap && return :color_map
+    k == :colornorm && return :color_norm
     k
 end
 
@@ -20,7 +22,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_value = map(val-> attribute_convert(val, Key{key}(), plot_key(x)), value)
             gl_key => gl_value
         end
-        robj = robj_func(gl_attributes)
+        robj = robj_func(Dict{Symbol, Any}(gl_attributes))
         for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
         end
@@ -118,5 +120,22 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             uv_offset_width = uv_offset_width,
             distancefield = atlas.images
         ).children[]
+    end
+end
+
+
+function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
+    robj = cached_robj!(screen, scene, x) do gl_attributes
+        gl_attributes[:ranges] = (value.(x.args[1:2]))
+        heatmap = map(to_node(x.args[3])) do z
+            [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
+        end
+        tex = GLAbstraction.Texture(value(heatmap), minfilter = :nearest)
+        map_once(heatmap) do x
+            update!(tex, x)
+        end
+        @show gl_attributes[:thickness]
+        gl_attributes[:stroke_width] = popkey!(gl_attributes, :thickness)
+        visualize(tex, Style(:default), gl_attributes).children[]
     end
 end

@@ -4,6 +4,9 @@ convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 convert_arguments(P, x::GeometryPrimitive) = (decompose(Point, x),)
+function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+    (x, y, z)
+end
 
 function convert_arguments(P, x::Rect)
     # TODO fix the order of decompose
