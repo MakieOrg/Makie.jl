@@ -1,6 +1,5 @@
 function _poly(scene::makie, attributes::Dict)
     attributes = poly_defaults(scene, attributes)
-    println(typeof(attributes[:positions]))
     bigmesh = lift_node(attributes[:positions]) do p
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
@@ -9,7 +8,6 @@ function _poly(scene::makie, attributes::Dict)
     line = lift_node(attributes[:positions]) do p
         Point2f0[p; p[1:1]]
     end
-    println(typeof(line))
     lines(scene, line,
         color = attributes[:linecolor], linestyle = attributes[:linestyle],
         linewidth = attributes[:linewidth]
