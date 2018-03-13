@@ -141,6 +141,7 @@ function selection_rect!(
         linestyle = :dot,
         thickness = 1f0,
         color = (:black, 0.4),
+        visible = false,
         drawover = true
     )
     waspressed = RefValue(false)

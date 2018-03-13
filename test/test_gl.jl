@@ -21,14 +21,9 @@ cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
 update_cam!(scene, cam)
 s = scatter!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
 s = lines!(scene, [0, 0, 1, 1], [0, 1, 0, 1])
-nothing
-scene
+xy = linspace(0, 2pi, 100)
+s = contour!(scene, xy, xy, ((x, y)-> sin(x) + cos(y)).(xy, xy'))
 
-
-scene.current_screens[1].renderlist[1][3][:scale]
-x = lines!(scene, FRect(0, 0, 0.5, 0.5), linestyle = :dot)
-x[:positions] = FRect(0, 0, 1.0, 0.5)
-x[:visible] = true
 
 # screen = Screen(scene)
 a = text!(scene, "Hellooo", color = :white, textsize = 0.1, position = (0.5, 0.5))

@@ -212,7 +212,7 @@ function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
         linewidth = 1.0,
         linestyle = nothing,
         fxaa = false
-    )
+)
 end
 
 
