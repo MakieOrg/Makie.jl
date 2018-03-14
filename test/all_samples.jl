@@ -459,6 +459,18 @@ end
 
 
 
+using Makie, GeometryTypes
+scene = Scene()
+points = decompose(Point2f0, Circle(Point2f0(0), 500f0))
+pol = poly(points, color = :gray, linewidth = 10, linecolor = :black)
+pol[:positions] = Circle(Point2f0(250), 500f0)
+pol[:linewidth] = 2
+# Optimized forms
+y = poly([Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
+x = poly([Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
+x = linesegment([Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple)
+
+
 #cell
 using Makie, Colors
 scene = Scene(resolution = (500, 500))
@@ -466,3 +478,4 @@ heatmap(rand(32, 32))
 center!(scene)
 image(map(x->RGB(x,0.5, 0.5), rand(32,32)))
 center!(scene)
+
