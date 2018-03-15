@@ -159,7 +159,7 @@ x .* Point2f0(0.5, 0.5)
 StaticArrays.similar_type(NTuple{2, Float32}, Int)
 
 
-Makie.VecLike{3, Float32}
+Makie.VecTypes{3, Float32}
 Makie.Units.to_absolute(scene, x)
 to_positions(scene, (rand(10) .* rel, rand(10) .* rel))
 

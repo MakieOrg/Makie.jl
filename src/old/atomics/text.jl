@@ -138,7 +138,7 @@ function alignment2num(x::Symbol)
 end
 
 
-function to_gl_text(string, startpos::VecLike{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
     atlas = GLVisualize.get_texture_atlas()
     mpos = model * Vec4f0(to_nd(startpos, Val{3}, 0f0)..., 1f0)
     pos = Point{N, Float32}(to_nd(mpos, Val{N}, 0))

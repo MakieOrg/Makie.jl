@@ -1,5 +1,5 @@
 using Makie, GeometryTypes, Quaternions, StaticArrays, PlotUtils, Showoff
-using Makie: VecLike
+using Makie: VecTypes
 
 using Makie: draw_ticks, draw_grid, draw_frame, @extractvals, generate_ticks
 

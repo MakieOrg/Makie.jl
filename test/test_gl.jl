@@ -12,6 +12,7 @@ end
 
 function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
     show(io, m, Makie.parent(plot)[])
+    display(TextDisplay(io), m, plot.attributes)
     nothing
 end
 
@@ -25,6 +26,9 @@ xy = linspace(0, 2pi, 100)
 f(x, y) = sin(x) + cos(y)
 z = f.(xy, xy')
 s1 = heatmap!(scene, 0.1 .. 0.9, 0.1 .. 0.44, z)
+# TODO linewidth varies and comes out quite different compared to `lines`,
+# because it is actually in defined in gradients of z (at least for opengl)
+# Can user deal with this or does this need to be changed?
 s2 = contour!(scene, 0.1 .. 0.9, 0.46 .. 0.9, z, linewidth = 0.1, fillrange = true)
 s2 = contour!(scene, 0.1 .. 0.9, 0.91 .. 1.4, z, linewidth = 2)
 
@@ -61,3 +65,29 @@ scene
 # r = r ./ maximum(r)
 #
 # update_cam!(scene, FRect(minimum(scene.area[]), r .* camw))
+using Makie
+
+scene = Scene()
+m = GLVisualize.loadasset("cat.obj")
+mesh!(scene, m)
+Makie.cam3d!(scene)
+scene
+
+
+using Makie, GeometryTypes
+scene = Scene()
+scene.px_area[] = IRect(0, 0, 1920, 1080)
+cam = cam2d!(scene)
+points = decompose(Point2f0, Circle(Point2f0(0), 500f0))
+poly!(
+    scene, points,
+    color = :gray, linewidth = 10, linecolor = :black
+)
+scene
+
+pol[:positions] = Circle(Point2f0(250), 500f0)
+pol[:linewidth] = 2
+# Optimized forms
+y = poly([Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
+x = poly([Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
+x = linesegment([Point2f0(600+i, i) => Point2f0(i + 700, i + 100)

@@ -51,3 +51,53 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
         return lines!(scene, attributes, result)
     end
 end
+
+
+
+
+function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, positions::AbstractVector{<: VecTypes{2, T}}) where T <: AbstractFloat
+    attributes, rest = merged_get!(:poly, scene, attributes) do
+        Theme(;
+            default_theme(scene)...,
+            linecolor = RGBAf0(0,0,0,0),
+            linewidth = 0.0,
+            linestyle = nothing
+        )
+    end
+    positions_n = to_node(positions)
+    bigmesh = map(positions_n) do p
+        polys = GeometryTypes.split_intersections(p)
+        merge(GLPlainMesh.(polys))
+    end
+    mesh!(scene, bigmesh, color = attributes[:color])
+    outline = map(positions_n) do p
+        push!(copy(p), p[1]) # close path
+    end
+    lines!(scene, outline,
+        color = attributes[:linecolor], linestyle = attributes[:linestyle],
+        linewidth = attributes[:linewidth],
+        visible = map(x-> x > 0.0, attributes[:linewidth])
+    )
+    return Poly(positions, attributes)
+end
+# function poly(scene::makie, points::AbstractVector{Point2f0}, attributes::Dict)
+#     attributes[:positions] = points
+#     _poly(scene, attributes)
+# end
+# function poly(scene::makie, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}, attributes::Dict)
+#     attributes[:x] = x
+#     attributes[:y] = y
+#     _poly(scene, attributes)
+# end
+function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, x::AbstractVector{T}) where T <: Union{Circle, Rectangle}
+    position = map(to_node(x)) do rects
+        map(rects) do rect
+            minimum(rect) .+ (widths(rect) ./ 2f0)
+        end
+    end
+    attributes[:markersize] = lift_node(to_node(x)) do rects
+        widths.(rects)
+    end
+    attributes[:marker] = T
+    plot!(scene, Scatter, attributes, position)
+end

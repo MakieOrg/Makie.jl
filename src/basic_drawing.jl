@@ -17,8 +17,9 @@ const atomic_funcs = (
     Plots a volume
     """,
     # alternatively, mesh2d?
-    # :poly => """
-    # """,
+    :poly => """
+
+    """,
     :surface => """
         surface(x, y, z)
     Plots a surface, where x y z are supposed to lie on a grid
@@ -118,7 +119,12 @@ for (func, docs) in atomic_funcs
             attributes, rest = merged_get!($(QuoteNode(func)), scene, attributes) do
                 default_theme(scene, T)
             end
-            converted_args = convert_arguments(T, args...)
+            converted_args = map(to_node.(args)...) do args...
+                convert_arguments(T, args...)
+            end
+            converted_args = map(ntuple(identity, length(args))) do i
+                map(getindex, converted_args, Signal(i))
+            end
             calculate_values!(T, attributes, converted_args)
             plot!(scene, $Typ(converted_args, attributes), rest)
         end
@@ -195,7 +201,6 @@ function calculate_values!(::Type{Scatter}, attributes, args)
     end
 end
 
-
 function default_theme(scene, ::Type{Meshscatter})
     Theme(;
         default_theme(scene)...,
@@ -212,11 +217,8 @@ function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
         linewidth = 1.0,
         linestyle = nothing,
         fxaa = false
-        )
+    )
 end
-
-
-
 
 function default_theme(scene, ::Type{Text})
     Theme(;
@@ -240,5 +242,14 @@ function default_theme(scene, ::Type{Heatmap})
         levels = 1,
         fxaa = false,
         interpolate = false
+    )
+end
+
+function default_theme(scene, ::Type{Mesh})
+    Theme(;
+        default_theme(scene)...,
+        fxaa = true,
+        interpolate = false,
+        shading = true
     )
 end

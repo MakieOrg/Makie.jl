@@ -30,6 +30,40 @@ function convert_arguments(P, x::Rect)
     (decompose(Point, x)[[1, 2, 4, 3, 1]],)
 end
 
+convert_arguments(::Type{Mesh}, m::AbstractMesh) = (m,)
+function convert_arguments(
+        T::Type{Mesh},
+        x::RealVector, y::RealVector, z::RealVector,
+        indices::AbstractVector
+    )
+    convert_arguments(T, Point3f0.(x, y, z), indices)
+end
+function convert_arguments(
+        ::Type{Mesh},
+        vertices::AbstractVector{<: VecTypes{3, T}},
+        indices::AbstractVector
+    ) where T
+    vert3f0 = T != Float32 ? Point3f0.(vertices) : vertices
+    vertp3f0 = reinterpret(Point3f0, vert3f0)
+    m = GLNormalMesh(vertp3f0, to_indices(indices))
+    (m,)
+end
+function convert_arguments(
+        MT::Type{Mesh},
+        x::RealVector, y::RealVector, z::RealVector
+    )
+    convert_arguments(MT, Point3f0.(x, y, z))
+end
+function convert_arguments(
+        MT::Type{Mesh},
+        xyz::AbstractVector{<: VecTypes{3, T}}
+    ) where T
+    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
+    convert_arguments(MT, xyz, faces)
+end
+
+
+
 
 plot(args...; kw_args...) = plot!(Scene(), Scatter, args...; kw_args...)
 plot(scene::Scene, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)

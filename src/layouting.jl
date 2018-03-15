@@ -14,6 +14,12 @@ function data_limits(x::Union{Heatmap, Contour, Image})
         (extrema(x), extrema(y))
     end
 end
+function data_limits(x::Mesh)
+    map(to_node(x.args[1])) do mesh
+        bb = AABB(mesh)
+        (minimum(bb), maximum(bb))
+    end
+end
 
 function data_limits(x::Text)
     keys = (:position, :textsize, :font, :align, :rotation, :model)

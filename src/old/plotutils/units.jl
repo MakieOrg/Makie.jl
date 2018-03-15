@@ -1,6 +1,6 @@
 module Units
 
-using ..Makie: VecLike
+using ..Makie: VecTypes
 #=
 Absolute is the default, so any number not having a unit is treated as absolute
 struct Absolute{T}
@@ -76,11 +76,11 @@ end
 similar_vec(::Type{V}, T) where V <: StaticVector = similar_type(V, T)
 similar_vec(::Type{NTuple{N, T}}, t) where {N, T} = NTuple{N, t}
 
-function to_absolute(scene, x::V) where V <: VecLike{N, T} where {N, T <: Relative}
+function to_absolute(scene, x::V) where V <: VecTypes{N, T} where {N, T <: Relative}
     x .* convert(V, Relative.(widths(scene)))
 end
 
-function to_absolute(scene, x::VecLike{N, <: Pixel}) where N
+function to_absolute(scene, x::VecTypes{N, <: Pixel}) where N
     vec3 = to_nd(x, Val{3}, 0)
     vec4 = to_nd(vec3, Val{4}, isa(x, Point) ? 1 : 0)
     projected = to_value(scene[:camera].projectionview) .* vec4

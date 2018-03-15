@@ -1,5 +1,5 @@
 #to_([a-z0-9_]+)\(b, ([::a-zA-Z0-9\.\{\}_]+)\) where
-const VecLike{N, T} = Union{NTuple{N, T}, StaticVector{N, T}}
+const VecTypes{N, T} = Union{NTuple{N, T}, StaticVector{N, T}}
 
 
 """
@@ -31,7 +31,7 @@ end
 """
 Converts a Vec like to a position (Point)
 """
-function to_position(b, x::VecLike{N}) where N
+function to_position(b, x::VecTypes{N}) where N
     Point{N, Float32}(x)
 end
 
