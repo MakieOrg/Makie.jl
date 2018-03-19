@@ -1,27 +1,37 @@
-
-function poly(scene::makie, points, attributes::Dict)
-    last(points) == first(points) && pop!(points)
-    polys = GeometryTypes.split_intersections(points)
-    result = []
-    for poly in polys
-        mesh = GLNormalMesh(poly) # make polygon
-        if !isempty(GeometryTypes.faces(mesh)) # check if polygonation has any faces
-            push!(result, GLVisualize.visualize(mesh, Style(:default), kw_args))
-        else
-            warn("Couldn't draw the polygon: $points")
-        end
+function _poly(scene::makie, attributes::Dict)
+    attributes = poly_defaults(scene, attributes)
+    bigmesh = lift_node(attributes[:positions]) do p
+        polys = GeometryTypes.split_intersections(p)
+        merge(GLPlainMesh.(polys))
     end
-    result
+    mesh(scene, bigmesh, color = attributes[:color])
+    line = lift_node(attributes[:positions]) do p
+        Point2f0[p; p[1:1]]
+    end
+    lines(scene, line,
+        color = attributes[:linecolor], linestyle = attributes[:linestyle],
+        linewidth = attributes[:linewidth]
+    )
+    return Scene(scene, attributes, :poly)
+end
+function poly(scene::makie, points::AbstractVector{Point2f0}, attributes::Dict)
+    attributes[:positions] = points
+    _poly(scene, attributes)
+end
+function poly(scene::makie, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}, attributes::Dict)
+    attributes[:x] = x
+    attributes[:y] = y
+    _poly(scene, attributes)
 end
 
-
-function shape(d, kw_args)
-    points = Plots.extract_points(d)
-    result = []
-    for rng in iter_segments(d[:x], d[:y])
-        ps = points[rng]
-        meshes = poly(ps, kw_args)
-        append!(result, meshes)
+function poly(scene::makie, x::AbstractVector{T}, attributes::Dict) where T <: Union{Circle, Rectangle}
+    position = lift_node(to_node(x)) do rects
+        map(rects) do rect
+            minimum(rect) .+ (widths(rect) ./ 2f0)
+        end
     end
-    result
+    scale = lift_node(to_node(x)) do rects
+        widths.(rects)
+    end
+    scatter(scene, position; markersize = scale, marker = T, attributes...)
 end

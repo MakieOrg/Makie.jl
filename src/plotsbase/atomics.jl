@@ -19,6 +19,19 @@ end
 end
 
 
+function cmap2color(value, cmap, cmin, cmax)
+    i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
+    i1len = (i01 * (length(cmap) - 1)) + 1
+    down = floor(Int, i1len)
+    up = ceil(Int, i1len)
+    interp_val = up - i1len
+    downc, upc = cmap[down], cmap[up]
+    (downc * (1.0 - interp_val)) + (upc * interp_val)
+end
+
+function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colornorm)
+    cmap2color.(image, (to_value(colormap),), to_value(colornorm)...)
+end
 # Note that this will create a function called surface_defaults
 # This is not perfect, but for integrating this into the scene, it's the easiest to
 # just have the default function name in the macro match the drawing function name.
@@ -32,7 +45,12 @@ end
             # convert function should only have one argument right now, so we create this closure
             colornorm = ((s, colornorm) -> to_colornorm(s, colornorm, z))(colornorm)
         end,
-        begin
+        if (colormap, image,)
+            colornorm = ((s, colornorm) -> to_colornorm(s, colornorm, z))(colornorm)
+            colormap = to_colormap(colormap)
+            image = ((s, image) -> to_image(image, colormap, colornorm))(image)
+        end,
+        if (color,)
             color = to_color(color)
         end,
         if (image,)
@@ -99,6 +117,25 @@ end
         end
     )
 end
+
+@default function poly(scene, kw_args)
+    xor(
+        begin
+            positions = to_positions(positions)
+        end,
+        if (x, y)
+            x = to_array(x)
+            y = to_array(y)
+            positions = to_positions((x, y))
+        end
+    )
+    color = to_color(color)
+    linecolor = to_color(linecolor)
+    linewidth = to_float(linewidth)
+    linestyle = to_linestyle(linestyle)
+    drawover = to_bool(drawover)
+end
+
 
 @default function scatter(scene, kw_args)
     xor(
@@ -291,6 +328,10 @@ const atomic_funcs = (
 
     The same as for [`lines`](@ref)
     """,
+    :poly => """
+        poly(positions)
+    Plot a filled polygon with vertices at the specified positions
+    """,
     # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
     :mesh => """
         mesh(x, y, z) / mesh(mesh_object) / mesh(x, y, z, faces) / mesh(xyz, faces)
@@ -395,13 +436,17 @@ function Base.similar(scene::Scene, newdata...; kw_args...)
     f(p, newdata..., attributes)
 end
 
-
+function dimlinspace(data::AbstractArray{T}, dim::Integer) where T
+    n = size(data, dim)
+    linspace(T(0), T(n), n)
+end
 
 for func in (:image, :heatmap, :lines, :surface)
     # Higher level atomic signatures
     @eval begin
-        function $func(scene::Scene, data::AbstractMatrix, attributes::Dict)
-            $func(scene, 1:size(data, 1), 1:size(data, 2), data, attributes)
+        function $func(scene::Scene, data::AbstractMatrix{T}, attributes::Dict) where T
+            m, n = size(data)
+            $func(scene, 0 => m, 0 => n, data, attributes)
         end
         function $func(scene::Scene, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function, attributes::Dict) where {T1, T2}
             if !applicable(f, x[1], y[1])

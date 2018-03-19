@@ -357,14 +357,16 @@ scene
 
 #cell
 using Makie, GeometryTypes
-scene = Scene()
-lineplots = []
-axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
-center!(scene)
-us = linspace(0, 1, 100)
+
 
 mktempdir() do path
+    scene = Scene()
+    lineplots = []
+    axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
+    center!(scene)
+    us = linspace(0, 1, 100)
     io = VideoStream(scene, path, "lines")
+
     for i = 1:100
         if length(lineplots) < 20
             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
@@ -455,6 +457,8 @@ function Base.to_index(i::Array{IDX})
     ii
 end
 
+
+#cell
 using Makie, GeometryTypes, ColorTypes
 scene = Scene();
 scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
@@ -472,3 +476,26 @@ scene = Scene();
 scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
 center!(scene);
 text_overlay!(scene, :scatter, 1=>"test1", 2=>"test2", textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
+
+
+#cell
+using Makie, GeometryTypes
+scene = Scene()
+points = decompose(Point2f0, Circle(Point2f0(0), 500f0))
+pol = poly(points, color = :gray, linewidth = 10, linecolor = :black)
+pol[:positions] = Circle(Point2f0(250), 500f0)
+pol[:linewidth] = 2
+# Optimized forms
+y = poly([Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
+x = poly([Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
+x = linesegment([Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple)
+
+
+#cell
+using Makie, Colors
+scene = Scene(resolution = (500, 500))
+heatmap(rand(32, 32))
+center!(scene)
+image(map(x->RGB(x,0.5, 0.5), rand(32,32)))
+center!(scene)
+

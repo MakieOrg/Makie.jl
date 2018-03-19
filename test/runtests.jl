@@ -6,16 +6,6 @@ function is_ci()
     get(ENV, "CI", "") == "true"
 end
 
-if is_ci()
-    Pkg.clone("https://github.com/SimonDanisch/AbstractNumbers.jl.git")
-    Pkg.checkout("GLAbstraction")
-    Pkg.checkout("GeometryTypes")
-    Pkg.checkout("GLVisualize")
-    Pkg.checkout("MeshIO")
-    Pkg.add("VisualRegressionTests")
-    Pkg.checkout("GLWindow")
-end
-
 if isempty(mode)
     # we're not compiling, so we do a reference image test run
     include("visual_regression.jl")

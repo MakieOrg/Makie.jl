@@ -304,12 +304,13 @@ to_spritemarker(b, x::Circle) = x
     to_spritemarker(b, ::Type{Circle})
 `Type{GeometryTypes.Circle}`
 """
-to_spritemarker(b, ::Type{Circle}) = Circle(Point2f0(0), 1f0)
+to_spritemarker(b, ::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
 """
     to_spritemarker(b, ::Type{Rectangle})
 `Type{GeometryTypes.Rectangle}`
 """
-to_spritemarker(b, ::Type{Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(b, ::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(b, x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)
 Any `Char`, including unicode
@@ -635,6 +636,7 @@ function available_gradients()
     for name in colorbrewer_names
         println("    ", name)
     end
+    println("    ", "Viridis")
 end
 
 """
@@ -659,6 +661,29 @@ function to_colormap(b, cs::Union{String, Symbol})
     cs_sym = Symbol(cs)
     if cs_sym in colorbrewer_names
         ColorBrewer.palette(string(cs_sym), 9)
+    elseif lowercase(string(cs_sym)) == "viridis"
+        return [
+            to_color((), "#440154FF")
+            to_color((), "#481567FF")
+            to_color((), "#482677FF")
+            to_color((), "#453781FF")
+            to_color((), "#404788FF")
+            to_color((), "#39568CFF")
+            to_color((), "#33638DFF")
+            to_color((), "#2D708EFF")
+            to_color((), "#287D8EFF")
+            to_color((), "#238A8DFF")
+            to_color((), "#1F968BFF")
+            to_color((), "#20A387FF")
+            to_color((), "#29AF7FFF")
+            to_color((), "#3CBB75FF")
+            to_color((), "#55C667FF")
+            to_color((), "#73D055FF")
+            to_color((), "#95D840FF")
+            to_color((), "#B8DE29FF")
+            to_color((), "#DCE319FF")
+            to_color((), "#FDE725FF")
+        ]
     else
         #TODO integrate PlotUtils color gradients
         error("There is no color gradient named: $cs")

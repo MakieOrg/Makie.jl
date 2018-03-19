@@ -3,14 +3,14 @@
 Makie overloads the FileIO interface.
 So you can just write e.g.:
 ```Julia
-save(scene, "test.png")
-save(scene, "test.jpg")
+save("test.png", scene)
+save("test.jpg", scene)
 ```
 
 There is also the option to save a plot as a Julia File (not implemented yet)
 
 ```Julia
-save(scene, "test.jl")
+save("test.jl", scene)
 ```
 
 This will try to reproduce the plotting commands as closely as possible to recreate the current scene.
