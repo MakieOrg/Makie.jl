@@ -43,7 +43,7 @@ struct Scene
 
     px_area::Node{IRect2D}
     camera::Camera
-    camera_controls::AbstractCamera
+    camera_controls::RefValue
 
     limits::Node{HyperRectangle{3, Float32}}
 
@@ -84,7 +84,7 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
         events,
         px_area,
         Camera(px_area),
-        EmptyCamera(),
+        RefValue{Any}(),
         Signal(AABB(Vec3f0(0), Vec3f0(1))),
         Signal(Vec3f0(1)),
         Signal((false, false, false)),

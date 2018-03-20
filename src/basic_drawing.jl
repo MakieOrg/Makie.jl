@@ -72,12 +72,17 @@ const atomic_funcs = (
         text(string)
 
     Plots a text
+    """,
+    :annotations => """
+        annotations(strings::Vector{String}, positions::Vector{Point})
+
+    Plots an array of texts at each position in `positions`
     """
 )
 struct Billboard end
 
 
-calculate_values!(T, attributes, args) = attributes
+calculate_values!(scene::Scene, T, attributes, args) = attributes
 
 Base.parent(x::AbstractPlot) = x.parent
 function Base.getindex(x::AbstractPlot, key::Symbol)
@@ -106,6 +111,7 @@ for (func, docs) in atomic_funcs
             parent::RefValue{Scene}
         end
         $Typ(args, attributes) = $Typ(to_node.(args), attributes, RefValue{Scene}())
+        $Typ(parent::Scene, args, attributes) = $Typ(to_node.(args), attributes, RefValue{Scene}(parent))
         plot_key(::$Typ) = Key{$(QuoteNode(func))}()
 
         $func(args...; kw_args...) = plot($Typ, args...; kw_args...)
@@ -122,10 +128,10 @@ for (func, docs) in atomic_funcs
             converted_args = map(to_node.(args)...) do args...
                 convert_arguments(T, args...)
             end
-            converted_args = map(ntuple(identity, length(args))) do i
+            converted_args = ntuple(length(value(converted_args))) do i
                 map(getindex, converted_args, Signal(i))
             end
-            calculate_values!(T, attributes, converted_args)
+            calculate_values!(scene, T, attributes, converted_args)
             plot!(scene, $Typ(converted_args, attributes), rest)
         end
         export $func, $inplace
@@ -142,10 +148,10 @@ end
 """
 Fill in values that can only be calculated when we have all other attributes filled
 """
-function calculate_values!(::Type{T}, attributes, args) where T <: AbstractPlot
-    calculate_values!(attributes, args)
+function calculate_values!(scene::Scene, ::Type{T}, attributes, args) where T <: AbstractPlot
+    calculate_values!(scene, attributes, args)
 end
-function calculate_values!(attributes, args)
+function calculate_values!(scene::Scene, attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
         get!(attributes, :colornorm) do
@@ -154,9 +160,9 @@ function calculate_values!(attributes, args)
             return Node(y)
         end
     end
-    transform_args = getindex.(value(attributes[:transformation]), (:scale, :offset, :rotation))
+    transform_args = getindex.(attributes[:transformation][], (:offset, :rotation))
     get!(attributes, :model) do
-        map(transform_args...) do s, o, r
+        map_once(scene.scale, transform_args...) do s, o, r
             q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
             transformationmatrix(o, s, q)
         end
@@ -166,7 +172,6 @@ end
 function default_theme(scene)
     light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     Theme(
-
         color = :blue,
         linewidth = 1,
         transformation = Theme(
@@ -193,8 +198,8 @@ function default_theme(scene, ::Type{Scatter})
         fxaa = false
     )
 end
-function calculate_values!(::Type{Scatter}, attributes, args)
-    calculate_values!(attributes, args)
+function calculate_values!(scene::Scene, ::Type{Scatter}, attributes, args)
+    calculate_values!(scene::Scene, attributes, args)
     get!(attributes, :marker_offset) do
         # default to middle
         map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])

@@ -80,6 +80,7 @@ function attribute_convert(x::Union{Symbol, String}, ::key"font")
     newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
 end
 attribute_convert(x::Font, ::key"font") = x
+attribute_convert(x::Vector{String}, k::key"font") = attribute_convert.(x, k)
 
 
 
@@ -100,7 +101,10 @@ attribute_convert(r::AbstractVector, k::key"rotation") = attribute_convert.(r, k
 
 attribute_convert(x, k::key"colornorm")::Vec2f0 = Vec2f0(x)
 attribute_convert(x, k::key"textsize") = Float32(x)
+attribute_convert(x::AbstractVector{T}, k::key"textsize") where T <: Number = Float32.(x)
+attribute_convert(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = Vec2f0.(x)
 attribute_convert(x, k::key"linewidth") = Float32(x)
+attribute_convert(x::AbstractVector, k::key"linewidth") = Float32.(x)
 
 using ColorBrewer
 

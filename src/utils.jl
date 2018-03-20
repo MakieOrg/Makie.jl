@@ -199,19 +199,15 @@ macro getfields(val, keys)
     result
 end
 
-"""
-Deletes a key from `dict` and returns the value
-"""
-function popkey!(dict::Dict, key)
-    val = dict[key]
-    delete!(dict, key)
-    val
-end
+
 bs_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 bs_length(x::AbstractArray) = length(x)
+bs_length(x::AbstractString) = length(x)
 bs_length(x) = 1
+
 bs_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 bs_getindex(x::AbstractArray, i) = x[i]
+bs_getindex(x::AbstractString, i) = x[i]
 bs_getindex(x, i) = x
 
 """
@@ -222,7 +218,7 @@ function broadcast_foreach(f, args...)
     maxlen = maximum(lengths)
     # all non scalars should have same length
     if any(x-> !(x in (1, maxlen)), lengths)
-        error("All non scalars need same length, Found lengths for each argument: $lengths")
+        error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
     end
     for i in 1:maxlen
         f(bs_getindex.(args, i)...)
@@ -252,3 +248,13 @@ end
 function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colornorm)
     interpolated_getindex.((value(colormap),), image, (value(colornorm),))
 end
+
+same_length_array(array, value) = repeated(value, length(array))
+same_length_array(array, value::Font) = repeated(value, length(array))
+function same_length_array(arr, value::Vector)
+    if length(arr) != length(value)
+        error("Array lengths do not match. Found: $(length(arr)) of $(eltype(arr)) but $(length(value)) $(eltype(value))")
+    end
+    value
+end
+same_length_array(arr, value, key) = same_length_array(arr, attribute_convert(value, key))

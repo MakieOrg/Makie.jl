@@ -27,10 +27,13 @@ function cam2d!(scene::Scene; kw_args...)
     add_pan!(scene, camera)
     correct_ratio!(scene, camera)
     selection_rect!(scene, camera)
+    scene.camera_controls[] = camera
     camera
 end
 
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
+
+update_cam!(scene::Scene, area) = update_cam!(scene, scene.camera_controls[], area)
 
 function update_cam!(scene::Scene, camera::Camera2D, area::Rect)
     area = positive_widths(area)

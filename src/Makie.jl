@@ -35,6 +35,7 @@ include("plot.jl")
 include("camera2d.jl")
 include("camera3d.jl")
 include("axis2d.jl")
+include("buffers.jl")
 
 export cam2d!, Scene, update_cam!, Screen, plot!, CairoScreen, axis2d
 

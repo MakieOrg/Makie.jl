@@ -116,27 +116,6 @@ function Base.append!(
     return
 end
 
-function align_offset(startpos, lastpos, atlas, rscale, font, align)
-    xscale, yscale = GLVisualize.glyph_scale!('X', rscale)
-    xmove = (lastpos-startpos)[1] + xscale
-    if isa(align, GeometryTypes.Vec)
-        return -Vec2f0(xmove, yscale) .* align
-    elseif align == :top
-        return -Vec2f0(xmove/2f0, yscale)
-    elseif align == :right
-        return -Vec2f0(xmove, yscale/2f0)
-    else
-        error("Align $align not known")
-    end
-end
-
-function alignment2num(x::Symbol)
-    (x == :center) && return 0.5f0
-    (x in (:left, :bottom)) && return 0.0f0
-    (x in (:right, :top)) && return 1.0f0
-    0.0f0 # 0 default, or better to error?
-end
-
 
 function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
     atlas = GLVisualize.get_texture_atlas()

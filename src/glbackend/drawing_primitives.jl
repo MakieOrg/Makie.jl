@@ -1,3 +1,4 @@
+import GLVisualize: calc_offset, glyph_uv_width!, glyph_uv_width!, get_texture_atlas, glyph_scale!, calc_position
 
 function to_glvisualize_key(k)
     k == :rotations && return :rotation
@@ -33,7 +34,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, Meshscatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        marker = popkey!(gl_attributes, :marker)
+        marker = pop!(gl_attributes, :marker)
         if isa(x, Scatter)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
@@ -44,7 +45,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Lines)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        linestyle = popkey!(gl_attributes, :linestyle)
+        linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
         visualize(x.args[1], Style(:lines), data).children[]
@@ -52,7 +53,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
 end
 function Base.insert!(screen::Screen, scene::Scene, x::Linesegments)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        linestyle = popkey!(gl_attributes, :linestyle)
+        linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
         visualize(x.args[1], Style(:linesegment), data).children[]
@@ -65,30 +66,39 @@ function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where 
         @inbounds return vec[i]
     end)
 end
-function align_offset(startpos, lastpos, atlas, rscale, font, align)
-    xscale, yscale = GLVisualize.glyph_scale!('X', rscale)
-    xmove = (lastpos-startpos)[1] + xscale
-    if isa(align, GeometryTypes.Vec)
-        return -Vec2f0(xmove, yscale) .* align
-    elseif align == :top
-        return -Vec2f0(xmove/2f0, yscale)
-    elseif align == :right
-        return -Vec2f0(xmove, yscale/2f0)
-    else
-        error("Align $align not known")
-    end
-end
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+
+function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
     atlas = GLVisualize.get_texture_atlas()
+    N = length(T)
+    positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
+    toffset = calc_offset(string, textsize, font, atlas)
+    broadcast_foreach(1:length(string), string, startpos, textsize, (font,), align) do idx, char, pos, tsize, font, align
+        _font = isa(font[1], Font) ? font[1] : font[1][idx]
+        mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
+        push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
+        push!(uv_offset_width, glyph_uv_width!(atlas, char, _font))
+        if isa(tsize, Vec2f0) # this needs better unit support
+            push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
+        else
+            push!(scale, glyph_scale!(atlas, char,_font, tsize))
+        end
+    end
+    positions, toffset, uv_offset_width, scale
+end
+
+function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+    atlas = get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point{N, Float32}, mpos, 0)
     rscale = Float32(textsize)
-    positions2d = GLVisualize.calc_position(string, Point2f0(0), rscale, font, atlas)
-    toffset = GLVisualize.calc_offset(string, rscale, font, atlas)
+    chars = convert(Vector{Char}, string)
+    positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
+    # font is Vector{FreeType.Font} so we need to protec
+    toffset = calc_offset(chars, rscale, font, atlas)
     aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
-    uv_offset_width = Vec4f0[GLVisualize.glyph_uv_width!(atlas, c, font) for c = string]
-    scale = Vec2f0[GLVisualize.glyph_scale!(atlas, c, font, rscale) for c = string]
+    uv_offset_width = glyph_uv_width!.(atlas, chars, (font,))
+    scale = glyph_scale!.(atlas, chars, (font,), rscale)
     positions = map(positions2d) do p
         pn = qmul(rot, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ (pos)
@@ -130,13 +140,13 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         heatmap = map(to_node(x.args[3])) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
-        interp = value(popkey!(gl_attributes, :interpolate))
+        interp = value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         tex = GLAbstraction.Texture(value(heatmap), minfilter = interp)
         map_once(heatmap) do x
             update!(tex, x)
         end
-        gl_attributes[:stroke_width] = popkey!(gl_attributes, :thickness)
+        gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         visualize(tex, Style(:default), gl_attributes).children[]
     end
 end
@@ -145,7 +155,7 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
-        gl_attributes[:shading] = value(popkey!(gl_attributes, :shading))
+        gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
         visualize(x.args[1], Style(:default), gl_attributes).children[]
     end
 end

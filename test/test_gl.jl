@@ -1,5 +1,6 @@
 using Makie
 using GeometryTypes, IntervalSets
+using Makie: LinesegmentBuffer, start!, finish!
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     isempty(scene.current_screens) || return
@@ -16,10 +17,39 @@ function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
     nothing
 end
 
+
+# screen = Screen(scene)
+using Makie: Theme
+scene = Scene(resolution = (600, 300))
+cam2d!(scene)
+update_cam!(scene, FRect(0, 0, 1, 1))
+scatter!(scene, rand(10), rand(10),
+    markersize = 0.01,
+    show_axis = true, scale_plot = true,
+)
+scene.scale[] = Vec3f0(1, 1, 1)
+scene.scale[]
+scene
+# a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = (0.5, 0.5))
+# a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = ps)
+tb = Makie.TextBuffer(scene)
+start!(tb)
+append!(tb, ["Hello there"], Point2f0[(0.5, 0.5)], textsize = 0.1, color = :black, rotation = 0.0, font = "default")
+append!(tb, ["General Kenobi!"], Point2f0[(0.0, 0.0)])
+finish!(tb)
+
+
+
+tb
 scene = Scene()
 cam = cam2d!(scene)
 cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
 update_cam!(scene, cam)
+lsb = LinesegmentBuffer(Point2f0)
+start!(lsb)
+append!(lsb, Point2f0[(1, 1), (0, 0)], RGBAf0(0,0,0,1), 1f0)
+
+
 s = scatter!(scene, [0, 0, 1, 1], [0, 1.5, 0, 1.5])
 s = lines!(scene, FRect(0, 0, 1, 1.5), color = :black, show_axis = true)
 xy = linspace(0, 2pi, 100)
@@ -35,6 +65,7 @@ s2 = contour!(scene, 0.1 .. 0.9, 0.91 .. 1.4, z, linewidth = 2)
 # screen = Screen(scene)
 scene = Scene()
 a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = (0.5, 0.5))
+
 b = scatter!(scene, rand(10), rand(10))
 b = linesegments!(scene, rand(10), rand(10))
 c = plot!(scene, rand(10), rand(10), color = :white)
