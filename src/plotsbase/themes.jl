@@ -121,7 +121,11 @@ function default_theme(scene)
         lines = begin
             linestyle = to_linestyle(nothing)
         end
-
+        poly = begin
+            linecolor = to_color(RGBAf0(0,0,0,0))
+            linewidth = to_float(0)
+            linestyle = to_linestyle(nothing)
+        end
         image = begin
             spatialorder = :yx
         end

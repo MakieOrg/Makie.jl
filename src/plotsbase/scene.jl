@@ -421,3 +421,10 @@ end
 function GeometryTypes.widths(scene::Scene)
     widths(getscreen(scene))
 end
+
+function clip2pixel_space(position, resolution)
+    clipspace = position / position[4]
+    p = clipspace[Vec(1, 2)]
+    (((p + 1f0) / 2f0) .* (resolution - 1f0)) + 1f0
+end
+

@@ -218,3 +218,51 @@ function text(
 
     insert_scene!(scene, :text, viz, attributes)
 end
+
+function text_overlay!(scene::makie, text; attributes...)
+    attributes = Dict(attributes)
+    position = pop!(attributes, :position, nothing)
+    screen = getscreen(scene)
+    if length(position) ==3
+        @assert haskey(screen.cameras, :perspective) "Textoverlay in 3D requires a 3D scene."
+        camera = screen.cameras[:perspective]
+        full_pos = Vec4f0(position..., 1.0f0)
+    elseif length(position) == 2
+        @assert haskey(screen.cameras, :orthographic_pixel) "Textoverlay in 2D requires a 2D scene."
+        camera = screen.cameras[:orthographic_pixel]
+        full_pos = Vec4f0(position..., 0.0f0, 1.0f0)
+    else
+        error("Please provide a position for the text.")
+    end
+    projectionview = camera.projectionview
+    pos = map((pos, pv)-> pv * pos, Signal(full_pos), projectionview)
+    resolution = map(x-> Vec2f0(widths(x)), camera.window_size)
+    screen_pos = map(clip2pixel_space, pos, resolution)
+
+    attributes[:position] = map(pos-> (pos[1:2]...),screen_pos)
+    attributes[:camera] = :pixel
+    Makie.text(text; attributes...)
+end
+
+function text_overlay!(scene::makie, display_kind::Symbol, texts::Pair{Int, String}...; attributes...)
+    @assert haskey(scene, display_kind) "No objects of kind $display_kind were found in the scene"
+    positions = get(get(scene, display_kind, nothing), :positions ,nothing)
+    n_objects = length(positions)
+    not_found = String[]
+    for (i, text) in texts
+        if i > n_objects
+            push!(not_found, text)
+            continue
+        end
+        _attributes = Dict(deepcopy(attributes))
+        _attributes[:position] = positions[i]
+        text_overlay!(scene,text; _attributes...)
+    end
+    if !isempty(not_found)
+        info("Following texts had no objects: $not_found")
+    end
+end
+
+function text_overlay!(scene::makie, display_kind::Symbol, texts::String...; attributes...)
+    text_overlay!(scene, display_kind, [ i=>text for (i,text) in enumerate(texts)]...; attributes...)
+end
