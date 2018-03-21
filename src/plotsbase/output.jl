@@ -87,7 +87,6 @@ function VideoStream(scene::Scene, dir = mktempdir(), name = "video")
     _xdim, _ydim = size(tex)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    @show ispath(dirname(path))
     io, process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r 24 -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(io, Matrix{RGB{N0f8}}(xdim, ydim), process, screen, abspath(path)) # tmp buffer
 end

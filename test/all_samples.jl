@@ -359,32 +359,32 @@ scene
 using Makie, GeometryTypes
 
 
-mktempdir() do path
-    scene = Scene()
-    lineplots = []
-    axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
-    center!(scene)
-    us = linspace(0, 1, 100)
-    io = VideoStream(scene, path, "lines")
-
-    for i = 1:100
-        if length(lineplots) < 20
-            push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
-        else
-            lineplots = circshift(lineplots, 1)
-            lp = first(lineplots)
-            lp[:positions] = Point3f0.(us, sin.(us .+ time()), zeros(100))
-            lp[:offset] = Vec3f0(0)
-        end
-        for lp in lineplots
-            z = to_value(lp, :offset)[3]
-            lp[:offset] = Vec3f0(0, 0, z + 0.1)
-        end
-        sleep(1/30)
-        recordframe!(io)
-    end
-    finish(io, "gif")
-end
+# mktempdir() do path
+#     scene = Scene()
+#     lineplots = []
+#     axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
+#     center!(scene)
+#     us = linspace(0, 1, 100)
+#     io = VideoStream(scene, path, "lines")
+#
+#     for i = 1:100
+#         if length(lineplots) < 20
+#             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
+#         else
+#             lineplots = circshift(lineplots, 1)
+#             lp = first(lineplots)
+#             lp[:positions] = Point3f0.(us, sin.(us .+ time()), zeros(100))
+#             lp[:offset] = Vec3f0(0)
+#         end
+#         for lp in lineplots
+#             z = to_value(lp, :offset)[3]
+#             lp[:offset] = Vec3f0(0, 0, z + 0.1)
+#         end
+#         sleep(1/30)
+#         recordframe!(io)
+#     end
+#     finish(io, "gif")
+# end
 
 
 #cell
@@ -436,8 +436,6 @@ a[:axisnames_size] = (0.15, 0.15, 0.15)
 a[:axisnames_color] = (:black, :black, :black)
 a[:axisnames_font] = "Palatino"
 
-# available_gradients() print gradients
-
 psurf[:colormap] = :RdYlBu
 wh = widths(scene)
 t = text(
@@ -451,11 +449,7 @@ t = text(
 c = lines(Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
 #update surface
 psurf[:z] = f.(vx .+ 0.5, (vy .+ 0.5)')
-function Base.to_index(i::Array{IDX})
-    ii = reinterpret(Int32, i)
-    ii .= ii .+ 1
-    ii
-end
+
 
 
 #cell
@@ -489,7 +483,7 @@ pol[:linewidth] = 2
 y = poly([Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
 x = poly([Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
 x = linesegment([Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple)
-
+center!(scene)
 
 #cell
 using Makie, Colors
@@ -500,12 +494,12 @@ image(map(x->RGB(x,0.5, 0.5), rand(32,32)))
 center!(scene)
 
 
-#cell
-using Makie
-
-scene = Scene(resolution = (500, 500))
-pts = CartesianRange((10, 10))
-xs = vec([I[1] for I in pts])
-ys = vec([I[2] for I in pts])
-zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
-wireframe(xs, ys, zs)
+# #cell
+# using Makie
+#
+# scene = Scene(resolution = (500, 500))
+# pts = CartesianRange((10, 10))
+# xs = vec([I[1] for I in pts])
+# ys = vec([I[2] for I in pts])
+# zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
+# wireframe(xs, ys, zs) # stackoverflow
