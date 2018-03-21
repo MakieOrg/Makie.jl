@@ -92,46 +92,57 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
             scale = Vec3f0(1),
             camera = :automatic,
             limits = :automatic,
-            padding = (0.1, 0.1)
+            padding = (0.1, 0.1),
+            raw = false
         )
     end
-    if !isempty(rest) # at this point, there should be no attributes left.
-        warn("The following attributes are unused: $(sprint(show, rest))")
-    end
-    limits = map(plot_attributes[:limits], data_limits(p)) do limit, dlimits
-        limit == :automatic ? dlimits : limit
-    end
-    map_once(scene.px_area, limits, plot_attributes[:scale_plot]) do rect, limits, scaleit
-        if scaleit
-            l = ((limits[1][1], limits[2][1]), (limits[1][2], limits[2][2]))
-            xyzfit = fit_ratio(rect, l)
-            s = to_ndim(Vec3f0, xyzfit, 1f0)
-            scene.scale[] = s
-        else
-            scene.scale[] = Vec3f0(1)
+    # if !isempty(rest) # at this point, there should be no attributes left.
+    #     warn("The following attributes are unused: $(sprint(show, rest))")
+    # end
+    if plot_attributes[:raw][] == false
+        scale = scene.transformation.scale
+        limits = map(plot_attributes[:limits], data_limits(p), plot_attributes[:padding]) do limit, dlimits, padd
+            if limit == :automatic
+                lim_w = dlimits[2] .- dlimits[1]
+                padd_abs = lim_w .* padd
+                (dlimits[1] .- padd_abs, dlimits[2] .+ (2 .* padd_abs))
+            else
+                limit
+            end
         end
-        nothing
-    end
-
-    if plot_attributes[:show_axis][]
-        axis_attributes = plot_attributes[:axis][]
-        axis_attributes[:scale] = scene.scale
-        axis2d(scene, axis_attributes, limits)
-    end
-
-    if plot_attributes[:show_legend][]
-        legend_attributes = plot_attributes[:legend][]
-        legend_attributes[:scale] = scale
-        legend(scene, limits, legend_attributes)
-    end
-    if plot_attributes[:camera][] == :automatic
-        # if length(limits[][1]) == 2
-        #     cam2d!(scene)
-        # elseif length(limits[][1]) == 3
-        #     cam3d!(scene)
-        # else
-        #     @assert false "Scene limits should be 2d or 3d. Found limits: $limits"
-        # end
+        map_once(scene.px_area, limits, plot_attributes[:scale_plot]) do rect, limits, scaleit
+            if scaleit
+                l = ((limits[1][1], limits[2][1]), (limits[1][2], limits[2][2]))
+                xyzfit = fit_ratio(rect, l)
+                s = to_ndim(Vec3f0, xyzfit, 1f0)
+                scale[] = s
+            else
+                scale[] = Vec3f0(1)
+            end
+            nothing
+        end
+        if plot_attributes[:show_axis][]
+            axis_attributes = plot_attributes[:axis][]
+            axis_attributes[:scale] = scale
+            axis2d(scene, axis_attributes, limits)
+        end
+        if plot_attributes[:show_legend][]
+            legend_attributes = plot_attributes[:legend][]
+            legend_attributes[:scale] = scale
+            legend(scene, limits, legend_attributes)
+        end
+        if plot_attributes[:camera][] == :automatic
+            cam = scene.camera_controls[]
+            if cam == EmptyCamera()
+                if length(limits[][1]) == 2
+                    cam2d!(scene)
+                elseif length(limits[][1]) == 3
+                    cam3d!(scene)
+                else
+                    @assert false "Scene limits should be 2d or 3d. Found limits: $limits"
+                end
+            end
+        end
     end
     push!(scene, p)
     p#Series(Scene, p, plot_attributes)

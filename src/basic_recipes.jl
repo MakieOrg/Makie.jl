@@ -181,7 +181,7 @@ function plot!(scene::Scene, ::Type{Annotations}, attributes::Attributes, text::
         end
         (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
     end
-    t_attributes = copy(attributes)
+    t_attributes = merge(attributes, rest)
     t_attributes[:position] = map(x-> x[2], tp)
     t_attributes[:color] = map(x-> x[3], tp)
     t_attributes[:textsize] = map(x-> x[4], tp)

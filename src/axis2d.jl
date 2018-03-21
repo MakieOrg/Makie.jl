@@ -321,10 +321,9 @@ function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, 
     f_args = getindex.(attributes[:framestyle][], f_keys)
     t_args = getindex.(attributes[:tickstyle][], t_keys)
     ti_args = getindex.(attributes[:titlestyle][], ti_keys)
-
-    textbuffer = TextBuffer(scene, Point{2})
-    linebuffer = LinesegmentBuffer(scene, Point{2})
-
+    scene_unscaled = Scene(scene, transformation = Transformation())
+    textbuffer = TextBuffer(scene_unscaled, Point{2})
+    linebuffer = LinesegmentBuffer(scene_unscaled, Point{2})
     map_once(
         draw_axis,
         to_node(textbuffer), to_node(linebuffer), ranges, attributes[:scale],

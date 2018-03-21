@@ -160,9 +160,9 @@ function calculate_values!(scene::Scene, attributes, args)
             return Node(y)
         end
     end
-    transform_args = getindex.(attributes[:transformation][], (:offset, :rotation))
     get!(attributes, :model) do
-        map_once(scene.scale, transform_args...) do s, o, r
+        t = scene.transformation
+        map_once(t.scale, t.translation, t.rotation) do s, o, r
             q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
             transformationmatrix(o, s, q)
         end
@@ -174,11 +174,6 @@ function default_theme(scene)
     Theme(
         color = :blue,
         linewidth = 1,
-        transformation = Theme(
-            rotation = Vec4f0(0, 0, 0, 1),
-            scale = Vec3f0(1),
-            offset = Vec3f0(0)
-        ),
         visible = true,
         light = light,
         #drawover = false,

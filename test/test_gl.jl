@@ -2,12 +2,24 @@ using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!
 
+function insert_plots!(scene::Scene)
+    for screen in scene.current_screens
+        for elem in scene.plots
+            insert!(screen, scene, elem)
+        end
+    end
+    foreach(insert_plots!, scene.children)
+end
+
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     isempty(scene.current_screens) || return
     screen = Screen(scene)
-    for elem in scene.plots
-        insert!(screen, scene, elem)
-    end
+    insert_plots!(scene)
+    bb = Makie.FRect2D(Makie.real_boundingbox(scene))
+    w = widths(bb)
+    padd = w .* 0.01
+    bb = FRect(minimum(bb) .- padd, widths(bb) .+ 2padd)
+    update_cam!(scene, bb)
     return
 end
 
@@ -18,16 +30,20 @@ function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
 end
 
 
-# screen = Screen(scene)
-using Makie: Theme
-scene = Scene(resolution = (600, 300))
-cam2d!(scene)
-update_cam!(scene, FRect(0, 0, 1, 1))
-scatter!(scene, rand(10), rand(10),
-    markersize = 0.01,
+s = scatter(
+    [1, 0, 1, 0], [1, 0, 0, 1],
+    markersize = 0.04,
     show_axis = true, scale_plot = true,
 )
-scene.scale[] = Vec3f0(1, 1, 1)
+
+
+cscene = Scene(scene, transformation = Makie.Transformation());
+scatter!(cscene, [1, 0, 1, 0], [1, 0, 0, 1],
+    markersize = 0.02, color = :black
+);
+
+
+
 scene.scale[]
 scene
 # a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = (0.5, 0.5))
@@ -39,16 +55,13 @@ append!(tb, ["General Kenobi!"], Point2f0[(0.0, 0.0)])
 finish!(tb)
 
 
-
-tb
+using Makie: RGBAf0
 scene = Scene()
-cam = cam2d!(scene)
-cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
-update_cam!(scene, cam)
-lsb = LinesegmentBuffer(Point2f0)
+lsb = Makie.LinesegmentBuffer(scene, Point2)
 start!(lsb)
-append!(lsb, Point2f0[(1, 1), (0, 0)], RGBAf0(0,0,0,1), 1f0)
-
+append!(lsb, Point2f0[(1, 1), (0, 0)], color = RGBAf0(0,0,0,1), linewidth = 1f0)
+finish!(lsb)
+scene
 
 s = scatter!(scene, [0, 0, 1, 1], [0, 1.5, 0, 1.5])
 s = lines!(scene, FRect(0, 0, 1, 1.5), color = :black, show_axis = true)

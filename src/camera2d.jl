@@ -145,6 +145,7 @@ function selection_rect!(
         linewidth = 1f0,
         color = (:black, 0.4),
         visible = false,
+        raw = true
         #drawover = true
     )
     waspressed = RefValue(false)

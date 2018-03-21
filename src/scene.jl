@@ -38,6 +38,25 @@ Camera(px_area) = Camera(
     Node[]
 )
 
+
+
+struct Transformation
+    translation::Node{Vec3f0}
+    scale::Node{Vec3f0}
+    rotation::Node{Vec4f0}
+    flip::Node{NTuple{3, Bool}}
+    align::Node{Vec2f0}
+    func::Node{Any}
+end
+Transformation() = Transformation(
+    Node(Vec3f0(0)),
+    Node(Vec3f0(1)),
+    Node(Vec4f0(0, 0, 0, 1)),
+    Node((false, false, false)),
+    Node(Vec2f0(0)),
+    signal_convert(Node{Any}, identity)
+)
+
 struct Scene
     events::Events
 
@@ -47,8 +66,7 @@ struct Scene
 
     limits::Node{HyperRectangle{3, Float32}}
 
-    scale::Node{Vec3f0}
-    flip::Node{NTuple{3, Bool}}
+    transformation::Transformation
 
     plots::Vector{AbstractPlot}
     theme::Attributes
@@ -64,11 +82,38 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     end
 end
 
-const global_current_scene = Ref{Scene}()
+const current_global_scene = Ref{Scene}()
+if is_windows()
+    function _primary_resolution()
+        # ccall((:GetSystemMetricsForDpi, :user32), Cint, (Cint, Cuint), 0, ccall((:GetDpiForSystem, :user32), Cuint, ()))
+        # ccall((:GetSystemMetrics, :user32), Cint, (Cint,), 17)
+        dc = ccall((:GetDC, :user32), Ptr{Void}, (Ptr{Void},), C_NULL)
+        ntuple(2) do i
+            Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Void}, Cint), dc, (2 - i) + 117))
+        end
+    end
+else
+    # TODO implement osx + linux
+    _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
+end
+function primary_resolution()
+    # Since this is pretty low level and os specific + we can't test on all possible
+    # computers, I assume we'll have bugs here. Let's not sweat about it too much,
+    # we just use primary_resolution to have a good estimate for a default window resolution
+    # if this fails, only thing happening will be a too small/big window when the user doesn't give any resolution.
+    try
+        _primary_resolution()
+    catch e
+        warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
+        Error: $(sprint(io->showerror(io, e))).")
+        (1920, 1080)
+    end
+end
+reasonable_resolution() = primary_resolution() .÷ 2
 
-current_scene() = global_current_scene[]
+current_scene() = current_global_scene[]
 
-reasonable_resolution() = (500, 500)
+
 function Scene(; area = nothing, resolution = reasonable_resolution())
     events = Events()
     if area == nothing
@@ -84,10 +129,9 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
         events,
         px_area,
         Camera(px_area),
-        RefValue{Any}(),
-        Signal(AABB(Vec3f0(0), Vec3f0(1))),
-        Signal(Vec3f0(1)),
-        Signal((false, false, false)),
+        RefValue{Any}(EmptyCamera()),
+        Node(AABB(Vec3f0(0), Vec3f0(1))),
+        Transformation(),
         AbstractPlot[],
         Theme(
             backgroundcolor = RGBAf0(1,1,1,1),
@@ -97,10 +141,50 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
         Scene[],
         AbstractScreen[]
     )
-    global_current_scene[] = scene
+    current_global_scene[] = scene
     scene
 end
+function Scene(
+        scene::Scene;
+        events = scene.events,
+        px_area = scene.px_area,
+        cam = scene.camera,
+        camera_controls = scene.camera_controls,
+        boundingbox = Node(AABB(Vec3f0(0), Vec3f0(1))),
+        transformation = scene.transformation,
+        theme = scene.theme,
+        current_screens = scene.current_screens
+    )
+    child = Scene(
+        events,
+        px_area,
+        cam,
+        camera_controls,
+        boundingbox,
+        transformation,
+        AbstractPlot[],
+        theme,
+        Scene[],
+        current_screens
+    )
+    push!(scene.children, child)
+    child
+end
 
+function real_boundingbox(scene::Scene)
+    bb = AABB{Float32}()
+    for screen in scene.current_screens
+        if !isempty(screen.renderlist)
+            if bb == AABB{Float32}()
+                bb = first(screen.renderlist)[end].boundingbox[]
+            end
+            for (a,b,robj) in screen.renderlist
+                bb = union(bb, robj.boundingbox[])
+            end
+        end
+    end
+    bb
+end
 function merge_attributes!(input, theme, rest = Attributes(), merged = Attributes())
     for key in union(keys(input), keys(theme))
         if haskey(input, key) && haskey(theme, key)

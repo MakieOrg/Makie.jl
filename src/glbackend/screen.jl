@@ -17,7 +17,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
         k.value != nothing
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
-        id = length(screen.screens) + 1
+        id = 1#length(screen.screens) + 1
         push!(screen.screens, (id, scene.px_area, Node(true), scene.theme[:backgroundcolor]))
         id
     end
