@@ -185,3 +185,41 @@ cd(@__DIR__)
 test1("test.png")
 
 result = test_images(VisualTest(test1, "test.png"))
+
+
+using Makie, GeometryTypes
+scene = Makie.Scene()
+linesloc = [rand(Point2f0) => rand(Point2f0) for k = 1:2]
+colloc = [Colors.RGBA{Float32}(1, 0, 0), Colors.RGBA{Float32}(0, 0, 0), Colors.RGBA{Float32}(1, 1, 0), Colors.RGBA{Float32}(0, 1, 0)]
+Makie.linesegment(scene, linesloc, color = colloc, linewidth = 20)
+Makie.center!(scene)
+
+using Makie, GLVisualize, GLWindow, Colors, Reactive, GeometryTypes
+using GLVisualize: play_slider
+using Makie: to_signal
+scene = Scene()
+
+editarea, viewarea = y_partition(to_signal(scene[:window_area]), 10) # 10% of the area
+edit_screen = Scene(scene, editarea, color = RGBA(0.99f0, 0.99f0, 0.99f0, 1f0))
+viewscreen = Scene(scene, viewarea)
+
+function xy_data(x,y,i, N)
+    x = ((x/N)-0.5f0)*i
+    y = ((y/N)-0.5f0)*i
+    r = sqrt(x*x + y*y)
+    Float32(sin(r)/r)
+end
+surf(i, N) = Float32[xy_data(x, y, i, N) for x=1:N, y=1:N]
+
+
+play_viz, slider_value = play_slider(
+    edit_screen[:screen], 20, linspace(1f0, 50f0, 100),
+    slider_length = widths(value(editarea))[1] .* 0.8
+)
+
+# startstop is not needed here, since the slider value will start and stop
+my_animation = lift_node(to_node(slider_value)) do t
+    surf(t, 128)
+end
+surface(viewscreen, -2:2, -2:2, my_animation, colornorm = (0f0, 1f0))
+_view(play_viz, edit_screen[:screen], camera = :fixed_pixel)
