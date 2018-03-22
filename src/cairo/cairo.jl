@@ -1,16 +1,16 @@
-using Gtk
+#using Gtk
 using Cairo
 
-struct CairoGtkPane
-    window::GtkWindow
-    canvas::GtkCanvas
-end
+# struct CairoGtkPane
+#     window::GtkWindow
+#     canvas::GtkCanvas
+# end
 
 struct CairoScreen{S}
     scene::Scene
     surface::S
     context::CairoContext
-    pane::Union{CairoGtkPane, Void}
+    pane::Void#Union{CairoGtkPane, Void}
 end
 # # we render the scene directly, since we have no screen dependant state like in e.g. opengl
 Base.insert!(screen::CairoScreen, scene::Scene, plot) = nothing
@@ -159,7 +159,7 @@ end
 function cairo_finish(screen::CairoScreen{CairoRGBSurface})
     info("draw")
     showall(screen.pane.window)
-    @guarded draw(screen.pane.canvas) do canvas
+    #=@guarded=# draw(screen.pane.canvas) do canvas
         ctx = getgc(canvas)
         w, h = Cairo.width(ctx), Cairo.height(ctx)
         info(w, " ", h)

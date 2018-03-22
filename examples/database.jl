@@ -38,7 +38,7 @@ Prints the source of an entry in the database at `idx`.
 This puts entries of a group into one local scope
 """
 function print_code(
-        io, database, idx,
+        io, database, idx;
         scope_start = "let",
         scope_end = "end",
         indent = " "^4,
