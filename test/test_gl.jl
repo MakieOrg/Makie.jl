@@ -2,33 +2,6 @@ using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!
 
-function insert_plots!(scene::Scene)
-    for screen in scene.current_screens
-        for elem in scene.plots
-            insert!(screen, scene, elem)
-        end
-    end
-    foreach(insert_plots!, scene.children)
-end
-
-function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
-    isempty(scene.current_screens) || return
-    screen = Screen(scene)
-    insert_plots!(scene)
-    bb = Makie.FRect2D(Makie.real_boundingbox(scene))
-    w = widths(bb)
-    padd = w .* 0.01
-    bb = FRect(minimum(bb) .- padd, widths(bb) .+ 2padd)
-    update_cam!(scene, bb)
-    return
-end
-
-function Base.show(io::IO, m::MIME"text/plain", plot::Makie.AbstractPlot)
-    show(io, m, Makie.parent(plot)[])
-    display(TextDisplay(io), m, plot.attributes)
-    nothing
-end
-
 
 s = scatter(
     [1, 0, 1, 0], [1, 0, 0, 1],
@@ -37,7 +10,16 @@ s = scatter(
 )
 
 
-cscene = Scene(scene, transformation = Makie.Transformation());
+r = linspace(-10, 10, 512)
+z = ((x, y)-> sin(x) + cos(y)).(r, r')
+scene = Scene()
+c = heatmap!(scene, r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
+s = scatter!(scene, rand(-10:10, 10), rand(-10:10, 10))
+
+
+scene.current_screens[1].renderlist[4][end].boundingbox[]
+c = contour(r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
+
 scatter!(cscene, [1, 0, 1, 0], [1, 0, 0, 1],
     markersize = 0.02, color = :black
 );
