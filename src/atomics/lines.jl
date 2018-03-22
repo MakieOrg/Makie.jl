@@ -141,6 +141,11 @@ for arg in ((:x, :y), (:x, :y, :z), (:positions,))
         end
         function linesegment(scene::makie, $(arg...), attributes::Dict)
             $(insert_expr...)
+            # to allow one color per edge
+            if :color ∈ keys(attributes) && iseven(length(attributes[:positions])) &&
+                Int(length(attributes[:positions]) / 2) == length(attributes[:color])
+                attributes[:color] = [attributes[:color][k] for k = 1:length(attributes[:color]) for l = 1:2]
+            end
             _lines(scene, :linesegment, attributes)
         end
     end
