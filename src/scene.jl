@@ -176,10 +176,10 @@ function real_boundingbox(scene::Scene)
     for screen in scene.current_screens
         if !isempty(screen.renderlist)
             if bb == AABB{Float32}()
-                bb = first(screen.renderlist)[end].boundingbox[]
+                bb = value(first(screen.renderlist)[end].boundingbox)
             end
             for (a,b,robj) in screen.renderlist
-                bb = union(bb, robj.boundingbox[])
+                bb = union(bb, value(robj.boundingbox))
             end
         end
     end
@@ -209,3 +209,30 @@ function merged_get!(defaults::Function, key, scene, input::Attributes)
 end
 
 Theme(; kw_args...) = Attributes(map(kw-> kw[1] => to_node(kw[2]), kw_args))
+
+function insert_plots!(scene::Scene)
+    for screen in scene.current_screens
+        for elem in scene.plots
+            insert!(screen, scene, elem)
+        end
+    end
+    foreach(insert_plots!, scene.children)
+end
+
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    isempty(scene.current_screens) || return
+    screen = Screen(scene)
+    insert_plots!(scene)
+    bb = Makie.FRect2D(Makie.real_boundingbox(scene))
+    w = widths(bb)
+    padd = w .* 0.01
+    bb = FRect(minimum(bb) .- padd, widths(bb) .+ 2padd)
+    update_cam!(scene, bb)
+    return
+end
+
+function Base.show(io::IO, m::MIME"text/plain", plot::AbstractPlot)
+    show(io, m, Makie.parent(plot)[])
+    display(TextDisplay(io), m, plot.attributes)
+    nothing
+end

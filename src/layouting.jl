@@ -1,18 +1,44 @@
 
 function data_limits(x)
     map(to_node(x.args[1])) do points
-        Tuple.(extrema(points))
+        Tuple.(extrema_nan(points))
     end
 end
 
-# TODO don't be a pirate and add this to IntervalSets
-function Base.extrema(x::ClosedInterval)
+function extrema_nan(x::ClosedInterval)
     (minimum(x), maximum(x))
+end
+_isfinite(x) = isfinite(x)
+_isfinite(x::VecTypes) = all(isfinite, x)
+scalarmax(x::AbstractArray, y::AbstractArray) = max.(x, y)
+scalarmax(x, y) = max(x, y)
+scalarmin(x::AbstractArray, y::AbstractArray) = min.(x, y)
+scalarmin(x, y) = min(x, y)
+
+function extrema_nan(itr)
+    s = start(itr)
+    done(itr, s) && throw(ArgumentError("collection must be non-empty"))
+    (v, s) = next(itr, s)
+    vmin = vmax = v
+    while !done(itr, s)
+        (v, s) = next(itr, s)
+        vmin = vmax = v
+        _isfinite(v) && break
+        (v, s) = next(itr, s)
+    end
+    while !done(itr, s)
+        (x, s) = next(itr, s)
+        _isfinite(x) || continue
+        vmax = scalarmax(x, vmax)
+        vmin = scalarmin(x, vmin)
+    end
+    return (vmin, vmax)
 end
 
 function data_limits(x::Union{Heatmap, Contour, Image})
     map(to_node(x.args[1]), to_node(x.args[2])) do x, y
-        (extrema(x), extrema(y))
+        xy_e = extrema_nan(x), extrema_nan(y)
+        (first.(xy_e), last.(xy_e))
     end
 end
 function data_limits(x::Mesh)

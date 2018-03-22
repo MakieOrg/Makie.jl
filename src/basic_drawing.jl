@@ -155,9 +155,10 @@ function calculate_values!(scene::Scene, attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
         get!(attributes, :colornorm) do
-            x = extrema(args[3])
-            y = Vec2f0(x)
-            return Node(y)
+            map(to_node(args[3])) do arg
+                x = extrema(arg)
+                Vec2f0(x)
+            end
         end
     end
     get!(attributes, :model) do

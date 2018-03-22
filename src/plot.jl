@@ -105,7 +105,7 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
             if limit == :automatic
                 lim_w = dlimits[2] .- dlimits[1]
                 padd_abs = lim_w .* padd
-                (dlimits[1] .- padd_abs, dlimits[2] .+ (2 .* padd_abs))
+                (dlimits[1] .- padd_abs, dlimits[2] .+  padd_abs)
             else
                 limit
             end

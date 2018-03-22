@@ -161,7 +161,6 @@ function draw_titles(
         axis_labels,
         textcolor, textsize, rotation, align, font
     )
-
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
         tick_bb = text_bb(str, attribute_convert(tickfont[2], Key{:font}()), tick_size[2])
@@ -209,6 +208,7 @@ function draw_axis(
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
     )
     start!(textbuffer); start!(linebuffer)
+
     limits = ((ranges[1][1], ranges[2][1]), (ranges[1][2], ranges[2][2]))
     limit_widths = map(x-> x[2] - x[1], limits)
     % = minimum(limit_widths) / 100 # percentage

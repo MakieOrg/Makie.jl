@@ -48,7 +48,7 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
             end
         end
         attributes[:color] = colors
-        return lines!(scene, attributes, result)
+        return lines!(scene, merge(attributes, rest), result)
     end
 end
 
