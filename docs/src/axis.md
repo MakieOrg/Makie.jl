@@ -9,13 +9,13 @@ axis
 ```
 
 
-@library_ref[example] "Axis 2D"
+@library[example] "Axis 2D"
 
 
-@library_ref[example] "Axis 3D"
+@library[example] "Axis 3D"
 
 ### Interacting with the Axis
 
 One can quite easily interact with the attributes of the axis like with any other plot:
 
-@library_ref[example] "Axis Custom"
+@library[example] "Axis Custom"

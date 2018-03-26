@@ -256,7 +256,13 @@ function draw_axis(
     return
 end
 
-struct Axis2D end
+
+abstract type AbstractAxis <: AbstractPlot end
+
+struct Axis2D <: AbstractAxis
+    ranges::Node
+    attributes::Attributes
+end
 
 function default_theme(scene, ::Type{Axis2D})
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
@@ -304,6 +310,7 @@ function default_theme(scene, ::Type{Axis2D})
     )
 end
 
+
 function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, Any}})
     attributes, rest = merged_get!(:axis2d, scene, attributes) do
         default_theme(scene, Axis2D)
@@ -329,5 +336,5 @@ function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, 
         to_node(textbuffer), to_node(linebuffer), ranges, attributes[:scale],
         g_args..., t_args..., f_args..., ti_args...
     )
-    return attributes
+    return Axis2D(ranges, attributes)
 end

@@ -1,4 +1,4 @@
-using Documenter#, Makie
+using Documenter, Makie
 cd(Pkg.dir("Makie", "docs"))
 include("../examples/library.jl")
 
@@ -8,7 +8,7 @@ struct DatabaseLookup <: Expanders.ExpanderPipeline end
 
 Selectors.order(::Type{DatabaseLookup}) = 0.5
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
-match_kw(x::String) = (println(x);ismatch(r"\@library\[example\] \"(.*)\"", x))
+match_kw(x::String) = ismatch(r"\@library\[example\] ([\"a-zA-Z_0-9 ]+)", x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = match_kw(node)
@@ -32,38 +32,47 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     matched = nothing
     for elem in x.content
         if isa(elem, AbstractString)
-            matched = match(r"\@library\[example\] \"(.*)\"", elem)
+            matched = match(r"\@library\[example\] ([\"a-zA-Z_0-9 ]+)", elem)
             matched != nothing && break
         end
     end
     matched == nothing && error("No match: $x")
     # The sandboxed module -- either a new one or a cached one from this page.
-    database_key = matched[1]
+    database_keys = filter(x-> !(x in ("", " ")), split(matched[1], '"'))
+    content = map(database_keys) do database_key
+        Markdown.Code("julia", look_up_source(database_key))
+    end
     # Evaluate the code block. We redirect stdout/stderr to `buffer`.
-    page.mapping[x] = Markdown.Code("julia", look_up_source(database_key))
+    page.mapping[x] = Markdown.MD(content)
 end
 
-
-
-
 makedocs(
-    #modules = [Makie],
-    debug = true,
+    modules = [Makie],
     format = :html,
-    source = "src",
     sitename = "Plotting in pure Julia",
-    pages = ["Home" => "index.md"]
+    pages = [
+        "Home" => "index.md",
+        "Basics" => [
+            "scene.md",
+            "conversions.md",
+            "functions.md",
+            "documentation.md",
+            "backends.md",
+            "extending.md",
+            "themes.md",
+            "interaction.md",
+            "axis.md",
+            "legends.md",
+            "output.md",
+            "reflection.md",
+            "layout.md"
+        ],
+        "Developper Documentation" => [
+            "devdocs.md",
+        ],
+    ]
 )
-# args = [
-#     :debug => true,
-#     :format => :html,
-#     :source => "preprocessed",
-#     :sitename => "Plotting in pure Julia",
-#     :pages => ["Home" => "index.md"]
-# ]
-# document = Documenter.Documents.Document(; args...)
-# document.user.root
-# subtypes(Documenter.Builder.DocumentPipeline)
+
 
 #
 # ENV["TRAVIS_BRANCH"] = "latest"

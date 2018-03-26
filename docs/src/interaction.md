@@ -13,18 +13,8 @@ Which means, if you do anything with that node, your resulting data will also be
 of the inputs updates.
 
 
-@library_ref[example] "Interaction"
+@library[example] "Interaction"
 
-
-### `@ref`
-
-Is just syntactic sugar for accessing a key in a scene.
-It might actually get deprecated, since just accessing the scene directly is convenient enough!
-
-@ref Variable = Value # Inserts Value under name Variable into Scene
-
-@ref Scene.Name1.Name2 # Syntactic sugar for `Scene[:Name1, :Name2]`
-@ref Expr1, Expr1 # Syntactic sugar for `(@ref Expr1, @ref Expr2)`
 
 
 ## Soon to be implemented

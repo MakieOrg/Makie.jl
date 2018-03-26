@@ -26,12 +26,12 @@ As you can see, the first argument is the backend, so you can overload this for 
 or for a specific position type.
 This can look something like this:
 
-@library_ref[example] "overload to position"
+@library[example] "overload to position"
 
 since the pipeline for converting attributes also knows about Circle now,
 we can update the attribute directly with our own type
 
-@library_ref[example] "change size"
+@library[example] "change size"
 
 ## Option 3
 

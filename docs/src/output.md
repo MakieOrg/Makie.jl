@@ -27,4 +27,4 @@ VideoStream
 finish
 ```
 
-@library_ref[example] "VideoStream"
+@library[example] "VideoStream"

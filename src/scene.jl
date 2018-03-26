@@ -64,7 +64,7 @@ struct Scene
     camera::Camera
     camera_controls::RefValue
 
-    limits::Node{HyperRectangle{3, Float32}}
+    limits::Node
 
     transformation::Transformation
 
@@ -113,6 +113,7 @@ reasonable_resolution() = primary_resolution() .÷ 2
 
 current_scene() = current_global_scene[]
 
+Scene(::Void) = Scene()
 
 function Scene(; area = nothing, resolution = reasonable_resolution())
     events = Events()
@@ -130,7 +131,7 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
         px_area,
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
-        Node(AABB(Vec3f0(0), Vec3f0(1))),
+        Node(((0.0, 0.0), (1.0, 1.0))),
         Transformation(),
         AbstractPlot[],
         Theme(
@@ -218,7 +219,7 @@ function insert_plots!(scene::Scene)
     end
     foreach(insert_plots!, scene.children)
 end
-
+update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     isempty(scene.current_screens) || return
     screen = Screen(scene)

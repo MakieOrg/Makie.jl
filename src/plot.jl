@@ -83,9 +83,9 @@ end
 function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(
-            show_axis = false,
+            show_axis = true,
             show_legend = false,
-            scale_plot = false,
+            scale_plot = true,
             center = false,
             axis = Attributes(),
             legend = Attributes(),
@@ -101,13 +101,14 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
     # end
     if plot_attributes[:raw][] == false
         scale = scene.transformation.scale
-        limits = map(plot_attributes[:limits], data_limits(p), plot_attributes[:padding]) do limit, dlimits, padd
+        limits = scene.limits
+        map_once(plot_attributes[:limits], data_limits(p), plot_attributes[:padding]) do limit, dlimits, padd
             if limit == :automatic
                 lim_w = dlimits[2] .- dlimits[1]
                 padd_abs = lim_w .* padd
-                (dlimits[1] .- padd_abs, dlimits[2] .+  padd_abs)
+                limits[] = (dlimits[1] .- padd_abs, dlimits[2] .+  padd_abs)
             else
-                limit
+                limits[] = limit
             end
         end
         map_once(scene.px_area, limits, plot_attributes[:scale_plot]) do rect, limits, scaleit
@@ -121,7 +122,7 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
             end
             nothing
         end
-        if plot_attributes[:show_axis][]
+        if plot_attributes[:show_axis][] && !(any(x-> isa(x, AbstractAxis), scene.plots))
             axis_attributes = plot_attributes[:axis][]
             axis_attributes[:scale] = scale
             axis2d(scene, axis_attributes, limits)

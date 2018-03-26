@@ -114,6 +114,11 @@ function printline(line, toplevel, source, start_indent)
     start_indent
 end
 
+"""
+We could just use the AST of the macro, but since we're interested to also capture
+comments and formatting for e.g. docs, we need to extract the source directly
+from the file!
+"""
 function extract_source(file, file_range)
     source = IOBuffer()
     toplevel = IOBuffer()
@@ -295,4 +300,9 @@ end
 # Group macro
 macro group(block_of_grouped_cells)
     # only for marking
+end
+# Group macro
+macro resolution()
+    # only for marking
+    nothing
 end

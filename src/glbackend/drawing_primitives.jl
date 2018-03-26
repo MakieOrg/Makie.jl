@@ -89,7 +89,7 @@ end
 function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
     atlas = get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    pos = to_ndim(Point{N, Float32}, mpos, 0)
+    pos = to_ndim(Point{N, Float32}, mpos, 0f0)
     rscale = Float32(textsize)
     chars = convert(Vector{Char}, string)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
@@ -101,7 +101,7 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     scale = glyph_scale!.(atlas, chars, (font,), rscale)
     positions = map(positions2d) do p
         pn = qmul(rot, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
-        pn .+ (pos)
+        pn .+ pos
     end
     positions, toffset, uv_offset_width, scale
 end

@@ -6,4 +6,4 @@ any other object in Makie.
 You can create it on your own, or let it get created by automatically by a `plot`
 command.
 
-@library_ref[example] "Legend" "Color Legend"
+@library[example] "Legend" "Color Legend"

@@ -4,11 +4,13 @@ using Makie: LinesegmentBuffer, start!, finish!
 
 
 s = scatter(
-    [1, 0, 1, 0], [1, 0, 0, 1],
+    rand(10),rand(10),
     markersize = 0.04,
     show_axis = true, scale_plot = true,
 )
+Makie.data_limits(s)[]
 
+s = scatter!(s.parent[], rand(10), rand(10))
 
 r = linspace(-10, 10, 512)
 z = ((x, y)-> sin(x) + cos(y)).(r, r')
@@ -117,3 +119,38 @@ pol[:linewidth] = 2
 y = poly([Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
 x = poly([Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
 x = linesegment([Point2f0(600+i, i) => Point2f0(i + 700, i + 100)
+
+struct Test <: AbstractArray{Float32, 1} end
+x = Test()
+@which filter(x-> x > 0.5, x)
+As[map(f, As)::AbstractArray{Bool}]
+
+using Makie
+scene = Scene()
+t = text!(
+    scene,
+    ". This is an annotation!",
+    position = (300, 200),
+    align = (:center,  :center),
+    textsize = 60,
+    font = "Comic Sans MS",
+    scale_plot = false
+)
+dlims = Makie.data_limits(t)[]
+rect =  FRect(dlims[1], dlims[2] .- dlims[1])
+lines!(scene, rect, scale_plot = false)
+
+using Reactive
+
+keys = (:position, :textsize, :font, :align, :rotation, :model)
+x = t
+args = (value(x.args[1]), value.(getindex.(x.attributes, keys))...)
+
+positions, scale = Makie.layout_text(args...)
+scatter!(scene, positions, markersize = 10, color = :red, scale_plot = false)
+scatter!(scene, positions .+ scale, markersize = 10, color = :green, scale_plot = false)
+rect = Makie.FRect2D(union(AABB(positions .+ scale), AABB(positions)))
+
+
+ex = extrema(vcat(positions, positions .+ scale))
+(last.(ex), first.(ex))

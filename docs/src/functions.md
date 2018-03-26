@@ -10,7 +10,7 @@ These are the most atomic operations from which one can stack together more comp
 scatter
 ```
 
-@library_ref[example] "Scatter Function" "Stars" "Unicode Marker" 
+@library[example] "Scatter Function" "Stars" "Unicode Marker"
 
 
 
@@ -20,7 +20,7 @@ scatter
 meshscatter
 ```
 
-@library_ref[example] "Meshscatter Function"
+@library[example] "Meshscatter Function"
 
 
 ## Lines
@@ -29,7 +29,7 @@ meshscatter
 lines
 ```
 
-@library_ref[example] "Line Function"
+@library[example] "Line Function"
 
 ![](lines.png)
 
@@ -40,7 +40,7 @@ lines
 surface
 ```
 
-@library_ref[example] "Surface Function" "Surface with image"
+@library[example] "Surface Function" "Surface with image"
 
 
 ## Wireframe
@@ -49,7 +49,7 @@ surface
 wireframe
 ```
 
-@library_ref[example] "Wireframe of a Surface" "Wireframe of a Mesh" "Wireframe of Sphere"
+@library[example] "Wireframe of a Surface" "Wireframe of a Mesh" "Wireframe of Sphere"
 
 
 ## Mesh
@@ -59,7 +59,7 @@ mesh
 ```
 
 
-@library_ref[example] "Colored Mesh" "Load Mesh" "Textured Mesh"
+@library[example] "Colored Mesh" "Load Mesh" "Textured Mesh"
 
 
 ## Heatmap
@@ -68,7 +68,7 @@ mesh
 heatmap
 ```
 
-@library_ref[example] "Heatmap Function"
+@library[example] "Heatmap Function"
 
 
 ## Volume
@@ -78,7 +78,7 @@ volume
 
 ```
 
-@library_ref[example] "Volume Function"
+@library[example] "Volume Function"
 
 
 ```

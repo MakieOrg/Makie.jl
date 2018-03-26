@@ -1,4 +1,5 @@
 include("database.jl")
+using Makie
 
 @block SimonDanisch ["2d"] begin
 
@@ -20,34 +21,29 @@ include("database.jl")
         scene = Scene(@resolution)
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
-        contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
-        center!(scene)
+        contour!(scene, r, r, z, levels = 5, color = :RdYlBu)
     end
 
 
     @cell "Contour Simple" [contour] begin
         scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
-        contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
-        center!(scene)
+        contour(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
     end
 
 
     @cell "Heatmap" [heatmap] begin
         scene = Scene(@resolution)
-        heatmap(rand(32, 32))
-        center!(scene)
+        heatmap!(scene, rand(32, 32))
     end
 
     @cell "Animated Scatter" [animation, scatter, updating] begin
         scene = Scene(@resolution)
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
-        axis(linspace(-25, 25, 4), linspace(-25, 25, 4))
-        scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
-        center!(scene)
+        s = scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
         io = VideoStream(scene, @outputfile)
         @inbounds for i in 2:length(r)
-            scene[:scatter][:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
+            s[:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
             recordframe!(io)
         end
         io
@@ -66,22 +62,22 @@ include("database.jl")
     end
 
     @cell "Text rotation" [text, rotation] begin
+        using GeometryTypes
         scene = Scene(@resolution)
         pos = (500, 500)
-        rot = to_node(0.0pi)
         posis = Point2f0[]
         for r in linspace(0, 2pi, 20)
             p = pos .+ (sin(r)*100.0, cos(r) * 100)
             push!(posis, p)
-            t = text("test",
+            t = text!(
+                scene, "test",
                 position = p,
                 textsize = 50,
                 rotation = 1.5pi - r,
                 align = (:center, :center)
             )
         end
-        scatter(posis, markersize = 10)
-        center!(scene)
+        scatter!(scene, posis, markersize = 10)
     end
 end
 
@@ -92,7 +88,6 @@ end
         scene = Scene(@resolution)
         sv = scatter(rand(Point3f0, 100))
         similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
-        center!(scene)
     end
 
     @cell "Fluctuation 3D" [animated, mesh, meshscatter, axis] begin
@@ -132,7 +127,7 @@ end
                 Point3f0(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
                 Float32(1)
             )
-            Q = rotation(ct)
+            Q = GeometryTypes.rotation(ct)
             r = 0.5 * sqrt(1 + Q[1, 1] + Q[2, 2] + Q[3, 3]); Qlist[k, 4] = r
             Qlist[k, 1] = (Q[3, 2] - Q[2, 3]) / (4 * r)
             Qlist[k, 2] = (Q[1, 3] - Q[3, 1]) / (4 * r)
@@ -140,14 +135,19 @@ end
         end
         rotationsC = [Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
         # plot
-        hm = meshscatter(
-            pG[edges[:, 1]], color = colorsC, marker = meshC,
-            markersize = sizesC,  rotations = rotationsC
+        scene = Scene(@resolution)
+        hm = meshscatter!(
+            scene, pG[edges[:, 1]],
+            color = colorsC, marker = meshC,
+            markersize = sizesC,  rotations = rotationsC,
+            raw = true
         )
-        hp = meshscatter(pG, color = colorsp, marker = meshS, markersize = radius)
+        hp = meshscatter!(
+            scene, pG,
+            color = colorsp, marker = meshS, markersize = radius,
+            raw = true
+        )
 
-        r = linspace(-1.3, 1.3, 4); axis(r, r, r)
-        center!(scene)
     end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
@@ -156,14 +156,13 @@ end
         large_sphere = HyperSphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
-        lines(linepos, linewidth = 0.1, color = :black)
-        scatter(positions, strokewidth = 0.02, strokecolor = :white, color = RGBA(0.9, 0.2, 0.4, 0.6))
-        r = linspace(-1.5, 1.5, 5)
-        axis(r, r, r)
+        lines!(scene, linepos, linewidth = 0.1, color = :black)
+        scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBA(0.9, 0.2, 0.4, 0.6))
         scene
     end
 
     @cell "Simple meshscatter" [meshscatter] begin
+        using Colors
         scene = Scene(@resolution)
         large_sphere = HyperSphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)

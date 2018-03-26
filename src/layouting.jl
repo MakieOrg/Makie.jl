@@ -1,7 +1,8 @@
 
 function data_limits(x)
-    map(to_node(x.args[1])) do points
-        Tuple.(extrema_nan(points))
+    map_once(to_node(x.args[1])) do points
+        ex = Tuple.(extrema_nan(points))
+        #(first.(ex), last.(ex))
     end
 end
 
@@ -36,13 +37,13 @@ function extrema_nan(itr)
 end
 
 function data_limits(x::Union{Heatmap, Contour, Image})
-    map(to_node(x.args[1]), to_node(x.args[2])) do x, y
+    map_once(to_node(x.args[1]), to_node(x.args[2])) do x, y
         xy_e = extrema_nan(x), extrema_nan(y)
         (first.(xy_e), last.(xy_e))
     end
 end
 function data_limits(x::Mesh)
-    map(to_node(x.args[1])) do mesh
+    map_once(to_node(x.args[1])) do mesh
         bb = AABB(mesh)
         (minimum(bb), maximum(bb))
     end
@@ -50,14 +51,10 @@ end
 
 function data_limits(x::Text)
     keys = (:position, :textsize, :font, :align, :rotation, :model)
-    args = map(keys) do key
-        node = x.attributes[key]
-        map(x-> attribute_convert(x, Key{key}(), Key{:text}()), node)
-    end
-    textnode = map(to_gl_text, to_node(x.args[1]), args...)
-    map(textnode) do textnode
-        positions = textnode[1]; scale = textnode[end]
-        Tuple.(extrema(vcat(positions, positions .+ scale)))
+    map_once(to_node(x.args[1]), getindex.(x.attributes, keys)...) do txt, args...
+        positions, scale = layout_text(txt * last(txt), args...)
+        ex = union(HyperRectangle(positions .+ scale), HyperRectangle(positions))
+        Tuple.((minimum(ex), maximum(ex)))
     end
 end
 
