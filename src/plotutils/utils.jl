@@ -113,3 +113,15 @@ function nan_extrema(array)
     end
     Vec2f0(mini, maxi)
 end
+
+
+function cmap2color(value, _cmap, cmin, cmax)
+    cmap = to_colormap((), _cmap)
+    i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
+    i1len = (i01 * (length(cmap) - 1)) + 1
+    down = floor(Int, i1len)
+    up = ceil(Int, i1len)
+    interp_val = up - i1len
+    downc, upc = cmap[down], cmap[up]
+    (downc * (1.0 - interp_val)) + (upc * interp_val)
+end

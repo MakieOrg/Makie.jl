@@ -174,6 +174,8 @@ end
 
 const global_scene = Scene[]
 
+GLAbstraction.center!(border = 0.1) = center!(get_global_scene(), border)
+
 function GLAbstraction.center!(scene::Scene, border = 0.1)
     screen = scene[:screen]
     camsym = first(keys(screen.cameras))
@@ -427,4 +429,3 @@ function clip2pixel_space(position, resolution)
     p = clipspace[Vec(1, 2)]
     (((p + 1f0) / 2f0) .* (resolution - 1f0)) + 1f0
 end
-

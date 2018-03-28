@@ -62,6 +62,7 @@ to_rotation(b, s::Quaternion) = Vec4f0(s.v1, s.v2, s.v3, s.s)
     to_rotation(b, tuple_float)
 """
 to_rotation(b, s::Tuple{<:VecLike{3}, <: AbstractFloat}) = qrotation(s[1], s[2])
+to_rotation(b, s::AbstractFloat) = qrotation(Vec3f0(0, 0, 1), s)
 to_rotation(b, s::Tuple{<:VecLike{2}, <: AbstractFloat}) = qrotation(Vec3f0(s[1][1], s[1][2], 0), s[2])
 
 
@@ -71,6 +72,10 @@ to_rotation(b, s::Tuple{<:VecLike{2}, <: AbstractFloat}) = qrotation(Vec3f0(s[1]
 All kinds of images
 """
 to_image(b, image) = image
+
+function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colornorm)
+    cmap2color.(image, (to_value(colormap),), to_value(colornorm)...)
+end
 
 """
     to_bool(b, bool)
@@ -716,7 +721,7 @@ function to_interval(b, x)
     if isa(x, Tuple{<: Number, <: Number})
         return x
     else
-        error("Not an accepted value for interval. Please have a look at the documentation for to_interval")
+        error("Not an accepted value for interval: $(typeof(x)). Please have a look at the documentation for to_interval")
     end
 end
 

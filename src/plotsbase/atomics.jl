@@ -19,19 +19,7 @@ end
 end
 
 
-function cmap2color(value, cmap, cmin, cmax)
-    i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
-    i1len = (i01 * (length(cmap) - 1)) + 1
-    down = floor(Int, i1len)
-    up = ceil(Int, i1len)
-    interp_val = up - i1len
-    downc, upc = cmap[down], cmap[up]
-    (downc * (1.0 - interp_val)) + (upc * interp_val)
-end
 
-function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colornorm)
-    cmap2color.(image, (to_value(colormap),), to_value(colornorm)...)
-end
 # Note that this will create a function called surface_defaults
 # This is not perfect, but for integrating this into the scene, it's the easiest to
 # just have the default function name in the macro match the drawing function name.
@@ -163,7 +151,7 @@ end
         begin
             colormap = to_colormap(colormap)
             intensity = to_intensity(intensity)
-            colornorm = to_colornorm(colornorm, intensity)
+            colornorm = ((s, colornorm) -> to_colornorm(s, colornorm, intensity))(colornorm)
         end
     )
     marker = to_spritemarker(marker)
@@ -205,7 +193,7 @@ end
         begin
             colormap = to_colormap(colormap)
             intensity = to_intensity(intensity)
-            colornorm = to_colornorm(colornorm, intensity)
+            colornorm = ((s, colornorm) -> to_colornorm(s, colornorm, intensity))(colornorm)
         end
     )
 
@@ -228,7 +216,7 @@ end
     linewidth = to_float(linewidth)
     levels = to_float(levels)
     heatmap = to_array(heatmap)
-
+    interpolate = to_bool(interpolate)
     colormap = to_colormap(colormap)
     # convert function should only have one argument right now, so we create this closure
     colornorm = ((b, colornorm) -> to_colornorm(b, colornorm, heatmap))(colornorm)

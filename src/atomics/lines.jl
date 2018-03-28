@@ -114,7 +114,7 @@ function lines_2glvisualize(kw_args)
         end
         result[k] = to_signal(v)
     end
-    result[:fxaa] = false
+    result[:fxaa] = to_value(get(kw_args, :fxaa, false))
     result
 end
 

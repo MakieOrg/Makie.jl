@@ -420,7 +420,7 @@ text(
 
 
 #cell
-using Makie, UnicodeFun
+using Makie, UnicodeFun, GeometryTypes
 scene = Scene()
 vx = -1:0.01:1;
 vy = -1:0.01:1;

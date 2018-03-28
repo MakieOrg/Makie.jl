@@ -9,7 +9,9 @@ function heatmap2glvisualize(attributes)
     heatmap = to_signal(lift_node(attributes[:heatmap]) do z
         [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
     end)
-    tex = GLAbstraction.Texture(value(heatmap), minfilter = :nearest)
+    interpolate = to_value(get(attributes, :interpolate, false))
+    minfilter = interpolate ? :linear : :nearest
+    tex = GLAbstraction.Texture(value(heatmap), minfilter = minfilter)
     foreach(heatmap) do x
         update!(tex, x)
     end
@@ -62,7 +64,7 @@ function volume2glvisualize(attributes)
         result[:color_norm] = nothing
         result[:color] = to_signal(attributes[:color])
     end
-
+    result[:dimensions] = Vec3f0(to_value(get(attributes, :dimensions, Vec3f0(1))))
     result[:algorithm] = to_signal(attributes[:algorithm])
     result[:isovalue] = to_signal(attributes[:isovalue])
     result[:isorange] = to_signal(attributes[:isorange])

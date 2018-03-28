@@ -33,6 +33,12 @@ function expand_for_glvisualize(kw_args)
         if k == :positions
             k = :position
         end
+        if k == :colormap
+            k = :color_map
+        end
+        if k == :colornorm
+            k = :color_norm
+        end
         result[k] = to_signal(v)
     end
     result[:fxaa] = false
@@ -88,6 +94,12 @@ function mesh2glvisualize(kw_args)
         end
         if k == :positions
             k = :position
+        end
+        if k == :colormap
+            k = :color_map
+        end
+        if k == :colornorm
+            k = :color_norm
         end
         result[k] = to_signal(v)
     end
