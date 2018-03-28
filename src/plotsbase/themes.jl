@@ -161,6 +161,7 @@ function default_theme(scene)
         heatmap = begin
             linewidth = to_float(0)
             levels = to_float(1f0)
+            interpolate = to_bool(false)
         end
         volume = begin
             algorithm = to_volume_algorithm(GLVisualize.MaximumIntensityProjection)

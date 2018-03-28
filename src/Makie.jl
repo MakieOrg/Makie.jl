@@ -35,6 +35,7 @@ include("plotsbase/atomics.jl")
     include("atomics/surface.jl")
     include("atomics/mesh.jl")
     include("atomics/imagelike.jl")
+    include("atomics/gui.jl")
     include("plotsbase/legend.jl")
     include("plotsbase/basic_recipes.jl")
 
