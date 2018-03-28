@@ -34,7 +34,7 @@ Animating a surface:
 This package is not released yet so a bit awkward to set up. Here are the steps:
 
 ```julia
-Pkg.clone("https://github.com/SimonDanisch/Makie.jl.git")
+Pkg.clone("https://github.com/JuliaPlots/Makie.jl.git")
 Pkg.checkout("GLVisualize")
 ```
 
