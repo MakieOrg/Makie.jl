@@ -29,6 +29,7 @@ abstract type AbstractCamera end
 
 # placeholder
 struct EmptyCamera <: AbstractCamera end
+
 Camera(px_area) = Camera(
     Node(eye(Mat4f0)),
     Node(eye(Mat4f0)),
@@ -48,16 +49,30 @@ struct Transformation
     align::Node{Vec2f0}
     func::Node{Any}
 end
+
 Transformation() = Transformation(
-    Node(Vec3f0(0)),
-    Node(Vec3f0(1)),
-    Node(Vec4f0(0, 0, 0, 1)),
-    Node((false, false, false)),
-    Node(Vec2f0(0)),
+    node(:translation, Vec3f0(0)),
+    node(:scale, Vec3f0(1)),
+    node(:rotation, Vec4f0(0, 0, 0, 1)),
+    node(:flip, (false, false, false)),
+    node(:align, Vec2f0(0)),
     signal_convert(Node{Any}, identity)
 )
 
-struct Scene
+if VERSION >= v"0.7-"
+    const jl_finalizer = finalizer
+else
+    const jl_finalizer = (f, x) -> finalizer(x, f)
+end
+
+function close_all_nodes(any)
+    for field in fieldnames(any)
+        value = getfield(any, field)
+        (value isa Node) && close(value, true)
+    end
+end
+
+mutable struct Scene
     events::Events
 
     px_area::Node{IRect2D}
@@ -71,7 +86,34 @@ struct Scene
     plots::Vector{AbstractPlot}
     theme::Attributes
     children::Vector{Scene}
-    current_screens::Vector{AbstractScreen}
+    current_screens::Vector{WeakRef}
+    function Scene(
+            events::Events,
+            px_area::Node{IRect2D},
+            camera::Camera,
+            camera_controls::RefValue,
+            limits::Node,
+            transformation::Transformation,
+            plots::Vector{AbstractPlot},
+            theme::Attributes,
+            children::Vector{Scene},
+            current_screens::Vector{WeakRef},
+        )
+        obj = new(events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
+        jl_finalizer(obj) do obj
+            # save_print("Freeing scene")
+            close_all_nodes(obj.events)
+            close_all_nodes(obj.transformation)
+            for field in (:px_area, :limits)
+                close(getfield(obj, field), true)
+            end
+            empty!(obj.theme)
+            empty!(obj.children)
+            empty!(obj.current_screens)
+            return
+        end
+        obj
+    end
 end
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
@@ -82,7 +124,8 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     end
 end
 
-const current_global_scene = Ref{Scene}()
+const current_global_scene = Ref{Any}()
+
 if is_windows()
     function _primary_resolution()
         # ccall((:GetSystemMetricsForDpi, :user32), Cint, (Cint, Cuint), 0, ccall((:GetDpiForSystem, :user32), Cuint, ()))
@@ -140,7 +183,7 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
             colormap = :YlOrRd
         ),
         Scene[],
-        AbstractScreen[]
+        WeakRef[]
     )
     current_global_scene[] = scene
     scene
@@ -174,7 +217,8 @@ end
 
 function real_boundingbox(scene::Scene)
     bb = AABB{Float32}()
-    for screen in scene.current_screens
+    for screen_wref in scene.current_screens
+        screen = screen_wref.value
         if !isempty(screen.renderlist)
             if bb == AABB{Float32}()
                 bb = value(first(screen.renderlist)[end].boundingbox)
@@ -209,18 +253,20 @@ function merged_get!(defaults::Function, key, scene, input::Attributes)
     return merge_attributes!(input, get!(defaults, scene.theme, key))
 end
 
-Theme(; kw_args...) = Attributes(map(kw-> kw[1] => to_node(kw[2]), kw_args))
+Theme(; kw_args...) = Attributes(map(kw-> kw[1] => node(kw[1], kw[2]), kw_args))
 
 function insert_plots!(scene::Scene)
     for screen in scene.current_screens
         for elem in scene.plots
-            insert!(screen, scene, elem)
+            insert!(screen.value, scene, elem)
         end
     end
     foreach(insert_plots!, scene.children)
 end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
+
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    filter!(x-> x.value != nothing, scene.current_screens)
     isempty(scene.current_screens) || return
     screen = Screen(scene)
     insert_plots!(scene)

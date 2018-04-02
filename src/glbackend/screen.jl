@@ -2,7 +2,8 @@ const ScreenID = UInt8
 const ZIndex = Int
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
-struct Screen <: AbstractScreen
+
+mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
     framebuffer::GLWindow.GLFramebuffer
     rendertask::RefValue{Task}
@@ -10,7 +11,37 @@ struct Screen <: AbstractScreen
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
+    function Screen(
+            glscreen::GLFW.Window,
+            framebuffer::GLWindow.GLFramebuffer,
+            rendertask::RefValue{Task},
+            screen2scene::Dict{WeakRef, ScreenID},
+            screens::Vector{ScreenArea},
+            renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
+            cache::Dict{UInt64, RenderObject},
+        )
+        obj = new(glscreen, framebuffer, rendertask, screen2scene, screens, renderlist, cache)
+        jl_finalizer(obj) do obj
+            # save_print("Freeing screen")
+            empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene))
+            return
+        end
+        obj
+    end
 end
+
+const io_lock = ReentrantLock()
+
+function save_print(args...)
+    @async begin
+        lock(io_lock)
+        println(args...)
+        unlock(io_lock)
+    end
+end
+
+
+
 Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::Screen, scene::Scene, robj)
     filter!(screen.screen2scene) do k, v
@@ -122,13 +153,13 @@ function Screen(scene::Scene; kw_args...)
     screen = Screen(
         window, fb,
         RefValue{Task}(),
-        Dict{Scene, ScreenID}(),
+        Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
         Dict{UInt64, RenderObject}()
     )
     screen.rendertask[] = @async(renderloop(screen))
     register_callbacks(scene, to_native(screen))
-    push!(scene.current_screens, screen)
+    push!(scene.current_screens, WeakRef(screen))
     screen
 end

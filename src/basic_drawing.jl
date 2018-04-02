@@ -89,7 +89,7 @@ function Base.getindex(x::AbstractPlot, key::Symbol)
     key == :x && return x.args[1]
     key == :y && return x.args[2]
     key == :z && return x.args[3]
-    key == :positions && return x.args[1]
+    key == :position && return x.args[1]
     return x.attributes[key]
 end
 
@@ -116,6 +116,8 @@ for (func, docs) in atomic_funcs
 
         $func(args...; kw_args...) = plot($Typ, args...; kw_args...)
         $func(scene::Scene, args...; kw_args...) = plot(scene, $Typ, args...; kw_args...)
+        $func(scene::AbstractPlot, args...; kw_args...) = plot(parent(scene)[], $Typ, args...; kw_args...)
+        $inplace(scene::AbstractPlot, args...; kw_args...) = plot(parent(scene)[], $Typ, args...; kw_args...)
 
         $inplace(args...; kw_args...) = plot!($Typ, args...; kw_args...)
         $inplace(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)

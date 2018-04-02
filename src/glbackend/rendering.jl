@@ -6,7 +6,7 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
             prerender()
             if Base.n_avail(Reactive._messages) > 0
                 GLWindow.reactive_run_till_now()
-                GLFW.MakeContextCurrent(to_native(screen))
+                make_context_current(screen)
                 render_frame(screen)
                 GLWindow.swapbuffers(to_native(screen))
             end
@@ -24,7 +24,6 @@ end
 function destroy!(nw::GLFW.Window)
     if nw.handle != C_NULL
         GLFW.DestroyWindow(nw)
-        nw.handle = C_NULL
     end
 end
 

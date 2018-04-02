@@ -1,8 +1,7 @@
 
 function data_limits(x)
-    map_once(to_node(x.args[1])) do points
+    map_once(to_node(x[:position])) do points
         ex = Tuple.(extrema_nan(points))
-        #(first.(ex), last.(ex))
     end
 end
 
@@ -21,11 +20,9 @@ function extrema_nan(itr)
     done(itr, s) && throw(ArgumentError("collection must be non-empty"))
     (v, s) = next(itr, s)
     vmin = vmax = v
-    while !done(itr, s)
+    while !_isfinite(v) && !done(itr, s)
         (v, s) = next(itr, s)
         vmin = vmax = v
-        _isfinite(v) && break
-        (v, s) = next(itr, s)
     end
     while !done(itr, s)
         (x, s) = next(itr, s)

@@ -15,6 +15,7 @@ function to_glvisualize_key(k)
     k
 end
 
+make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value

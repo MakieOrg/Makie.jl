@@ -78,21 +78,21 @@ end
 
 function Events()
     Events(
-        Node(IRect(0, 0, 1, 1)),
-        Node(100.0),
-        Node(false),
+        node(:window_area, IRect(0, 0, 1, 1)),
+        node(:window_dpi, 100.0),
+        node(:window_open, false),
 
-        Node(Set{Mouse.Button}()),
-        Node((0.0, 0.0)),
-        Node(Mouse.notpressed),
-        Node((0.0, 0.0)),
+        node(:mousebuttons, Set{Mouse.Button}()),
+        node(:mouseposition, (0.0, 0.0)),
+        node(:mousedrag, Mouse.notpressed),
+        node(:scroll, (0.0, 0.0)),
 
-        Node(Set{Keyboard.Button}()),
+        node(:keyboardbuttons, Set{Keyboard.Button}()),
 
-        Node(Char[]),
-        Node(String[]),
-        Node(false),
-        Node(false),
+        node(:unicode_input, Char[]),
+        node(:dropped_files, String[]),
+        node(:hasfocus, false),
+        node(:entered_window, false),
     )
 end
 

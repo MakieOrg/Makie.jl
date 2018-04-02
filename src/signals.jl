@@ -15,6 +15,10 @@ signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> conve
 signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1, convert(T1, x))
 signal_convert(t, x) = x
 
+node(name, node) = Node(node, name = string(name))
+node(name, node::Node) = map(identity, node, name = string(name))
+
+
 function disconnect!(s::Node)
     unpreserve(s)#; empty!(s.actions)
     s.parents = (); close(s, false)

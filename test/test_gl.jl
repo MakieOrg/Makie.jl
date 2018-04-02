@@ -2,15 +2,51 @@ using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!
 
+# Update limits when zooming with cam
+# Update limits when subplot changes /new
+# 3D  axis + limits
+# remaining primitives ()
 
-s = scatter(
+scatter(
     rand(10),rand(10),
     markersize = 0.04,
-    show_axis = true, scale_plot = true,
 )
-Makie.data_limits(s)[]
+Profile.clear()
+scatter(
+    rand(10),rand(10),
+    markersize = 0.04,
+);
 
-s = scatter!(s.parent[], rand(10), rand(10))
+Profile.print()
+
+s = nothing
+s2 = nothing
+Makie.current_global_scene[] = nothing
+length(filter(x-> x.value != nothing, Reactive.nodes))
+gc(true)
+
+for elem in Reactive.nodes
+    elem.value != nothing && println(elem.value)
+end
+
+Base.n_avail(Reactive._messages)
+
+
+s2 = scatter!(s, rand(10), rand(10))
+using GLVisualize
+m = mesh(loadasset("cat.obj"), show_axis= false, scale_plot = false, limits = ((0,0), (1,1)))
+
+Makie.cam3d!(Makie.current_scene())
+
+Makie.current_global_scene[]= Scene();
+lol = 1
+for elem in Reactive.nodes
+    if elem.value != nothing
+        println(elem.value.name)
+        lol += 1
+    end
+end
+
 
 r = linspace(-10, 10, 512)
 z = ((x, y)-> sin(x) + cos(y)).(r, r')
@@ -18,6 +54,7 @@ scene = Scene()
 c = heatmap!(scene, r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
 s = scatter!(scene, rand(-10:10, 10), rand(-10:10, 10))
 
+length(Reactive.nodes)
 
 scene.current_screens[1].renderlist[4][end].boundingbox[]
 c = contour(r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
