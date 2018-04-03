@@ -7,6 +7,7 @@ struct Camera
     eyeposition::Node{Vec3f0}
     steering_nodes::Vector{Node}
 end
+
 function disconnect!(c::Camera)
     for node in c.steering_nodes
         disconnect!(node)
@@ -79,7 +80,7 @@ mutable struct Scene
     camera::Camera
     camera_controls::RefValue
 
-    limits::Node
+    limits::Node{FRect3D}
 
     transformation::Transformation
 
@@ -107,6 +108,7 @@ mutable struct Scene
             for field in (:px_area, :limits)
                 close(getfield(obj, field), true)
             end
+            disconnect!(obj.camera)
             empty!(obj.theme)
             empty!(obj.children)
             empty!(obj.current_screens)
@@ -120,7 +122,7 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
     parent(plot)[] = scene
     for screen in scene.current_screens
-        insert!(screen, scene, plot)
+        insert!(screen.value, scene, plot)
     end
 end
 
@@ -174,7 +176,7 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
         px_area,
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
-        Node(((0.0, 0.0), (1.0, 1.0))),
+        node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
         Theme(
@@ -270,10 +272,11 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     isempty(scene.current_screens) || return
     screen = Screen(scene)
     insert_plots!(scene)
-    bb = Makie.FRect2D(Makie.real_boundingbox(scene))
+    bb = Makie.real_boundingbox(scene)
     w = widths(bb)
     padd = w .* 0.01
-    bb = FRect(minimum(bb) .- padd, widths(bb) .+ 2padd)
+    println(">>>>>>>>>>", w, " ", minimum(bb))
+    bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     return
 end

@@ -160,3 +160,12 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
         visualize(x.args[1], Style(:default), gl_attributes).children[]
     end
 end
+
+
+function Base.insert!(screen::Screen, scene::Scene, x::Surface)
+    robj = cached_robj!(screen, scene, x) do gl_attributes
+        # signals not supported for shading yet
+        gl_attributes[:ranges] = value.(x.args[1:2])
+        visualize(x.args[3], Style(:surface), gl_attributes).children[]
+    end
+end

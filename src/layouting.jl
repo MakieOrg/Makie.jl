@@ -39,6 +39,13 @@ function data_limits(x::Union{Heatmap, Contour, Image})
         (first.(xy_e), last.(xy_e))
     end
 end
+
+function data_limits(x::Union{Surface})
+    map_once(to_node(x.args[1]), to_node(x.args[2]), to_node(x.args[3])) do x, y, z
+        xyz_e = extrema_nan(x), extrema_nan(y), extrema_nan(z)
+        (first.(xyz_e), last.(xyz_e))
+    end
+end
 function data_limits(x::Mesh)
     map_once(to_node(x.args[1])) do mesh
         bb = AABB(mesh)

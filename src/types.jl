@@ -6,6 +6,12 @@ const Node = Signal
 const Rect{N, T} = HyperRectangle{N, T}
 const Rect2D{T} = HyperRectangle{2, T}
 const FRect2D = Rect2D{Float32}
+
+const Rect3D{T} = Rect{3, T}
+const FRect3D = Rect3D{Float32}
+const IRect3D = Rect3D{Int}
+
+
 const IRect2D = Rect2D{Int}
 
 const Point2d{T} = NTuple{2, T}
@@ -14,7 +20,6 @@ const VecTypes{N, T} = Union{StaticVector{N, T}, NTuple{N, T}}
 const RGBAf0 = RGBA{Float32}
 
 const Font = Vector{Ptr{FreeType.FT_FaceRec}}
-
 
 abstract type AbstractScreen end
 using Base: RefValue
@@ -54,6 +59,13 @@ function FRect(x, y, wh::VecTypes)
 end
 function FRect(xy::VecTypes, wh::VecTypes)
     FRect(xy[1], xy[2], wh[1], wh[2])
+end
+
+function FRect3D(x::Tuple{Tuple{<: Number, <: Number}, Tuple{<: Number, <: Number}})
+    FRect3D(Vec3f0(x[1]..., 0), Vec3f0(x[2]..., 0))
+end
+function FRect3D(x::Tuple{Tuple{<: Number, <: Number, <: Number}, Tuple{<: Number, <: Number, <: Number}})
+    FRect3D(Vec3f0(x[1]...), Vec3f0(x[2]...))
 end
 
 include("iodevices.jl")

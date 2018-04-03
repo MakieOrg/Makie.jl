@@ -80,6 +80,9 @@ function plot!(scene::Scene, P::Type, attributes::Attributes, args...)
     plot!(scene, P, attributes, convert_arguments(P, args...)...)
 end
 
+
+is2d(scene::Scene) = widths(scene.limits[])[3] == 0.0
+
 function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(
@@ -92,7 +95,7 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
             scale = Vec3f0(1),
             camera = :automatic,
             limits = :automatic,
-            padding = (0.1, 0.1),
+            padding = (0.1, 0.1, 0.1),
             raw = false
         )
     end
@@ -102,30 +105,43 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
     if plot_attributes[:raw][] == false
         scale = scene.transformation.scale
         limits = scene.limits
-        map_once(plot_attributes[:limits], data_limits(p), plot_attributes[:padding]) do limit, dlimits, padd
+        map_once(plot_attributes[:limits], data_limits(p), plot_attributes[:padding]) do limit, _limits, padd
             if limit == :automatic
-                lim_w = dlimits[2] .- dlimits[1]
-                padd_abs = lim_w .* padd
-                limits[] = (dlimits[1] .- padd_abs, dlimits[2] .+  padd_abs)
+                mini, maxi = _limits
+                dlimits = FRect3D(mini, maxi .- mini)
+                lim_w = widths(dlimits)
+                padd_abs = lim_w .* Vec3f0(padd)
+                limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
             else
-                limits[] = limit
+                limits[] = FRect3D(limit)
             end
         end
         map_once(scene.px_area, limits, plot_attributes[:scale_plot]) do rect, limits, scaleit
-            if scaleit
-                l = ((limits[1][1], limits[2][1]), (limits[1][2], limits[2][2]))
+            if scaleit && is2d(scene)
+                mini, maxi = minimum(limits), maximum(limits)
+                l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
                 xyzfit = fit_ratio(rect, l)
                 s = to_ndim(Vec3f0, xyzfit, 1f0)
                 scale[] = s
-            else
-                scale[] = Vec3f0(1)
             end
-            nothing
+            return
         end
         if plot_attributes[:show_axis][] && !(any(x-> isa(x, AbstractAxis), scene.plots))
             axis_attributes = plot_attributes[:axis][]
             axis_attributes[:scale] = scale
-            axis2d(scene, axis_attributes, limits)
+            if is2d(scene)
+                limits2d = map(limits) do l
+                    l2d = FRect2D(l)
+                    Tuple.((minimum(l2d), maximum(l2d)))
+                end
+                axis2d(scene, axis_attributes, limits2d)
+            else
+                limits3d = map(limits) do l
+                    mini, maxi = minimum(l), maximum(l)
+                    tuple.(Tuple.((mini, maxi))...)
+                end
+                axis3d(scene, limits3d, axis_attributes)
+            end
         end
         if plot_attributes[:show_legend][]
             legend_attributes = plot_attributes[:legend][]
@@ -135,12 +151,10 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
         if plot_attributes[:camera][] == :automatic
             cam = scene.camera_controls[]
             if cam == EmptyCamera()
-                if length(limits[][1]) == 2
+                if is2d(scene)
                     cam2d!(scene)
-                elseif length(limits[][1]) == 3
-                    cam3d!(scene)
                 else
-                    @assert false "Scene limits should be 2d or 3d. Found limits: $limits"
+                    cam3d!(scene)
                 end
             end
         end

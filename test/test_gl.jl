@@ -1,16 +1,16 @@
 using Makie
 using GeometryTypes, IntervalSets
-using Makie: LinesegmentBuffer, start!, finish!
+using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
+x = linspace(0, 6, 100)
+s = surface(x, x, (x, y)-> sin(x) + cos(y))
+
 
 # Update limits when zooming with cam
 # Update limits when subplot changes /new
 # 3D  axis + limits
 # remaining primitives ()
+Makie.FRect3D(Vec3f0(0), Vec3f0(1))
 
-scatter(
-    rand(10),rand(10),
-    markersize = 0.04,
-)
 Profile.clear()
 scatter(
     rand(10),rand(10),

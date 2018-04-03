@@ -62,12 +62,6 @@ const atomic_funcs = (
     creates a legend from an array of plots and labels
     """,
 
-    :axis => """
-        axis(xrange, yrange, [zrange])
-
-    Creates a axis from a x,y,z ranges
-    """,
-
     :text => """
         text(string)
 
@@ -247,6 +241,14 @@ function default_theme(scene, ::Type{Heatmap})
         interpolate = false
     )
 end
+function default_theme(scene, ::Type{Surface})
+    Theme(;
+        default_theme(scene)...,
+        colormap = scene.theme[:colormap],
+        fxaa = true,
+    )
+end
+
 
 function default_theme(scene, ::Type{Mesh})
     Theme(;

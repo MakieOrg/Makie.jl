@@ -45,6 +45,8 @@ function cam3d!(scene; kw_args...)
     disconnect!(scene.camera)
     add_translation!(scene, camera, camera.pan_button, camera.move_key)
     add_rotation!(scene, camera, camera.rotate_button, camera.move_key)
+    scene.camera_controls[] = camera
+    update_cam!(scene, camera)
     camera
 end
 
@@ -185,4 +187,37 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_value!(scene.camera.projection, proj)
     set_value!(scene.camera.view, view)
     set_value!(scene.camera.projectionview, proj * view)
+    yield()
+end
+
+
+function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
+    @getfields camera (fov, near, projectiontype, lookat, eyeposition, upvector)
+    bb = FRect3D(area3d)
+    width = widths(bb)
+    half_width = width/2f0
+    lower_corner = minimum(bb)
+    middle = maximum(bb) - half_width
+    # if Reactive.value(camera.projectiontype) == ORTHOGRAPHIC
+    #     area, fov, near, far = map(value,
+    #         (camera.window_size, camera.fov, camera.nearclip, camera.farclip)
+    #     )
+    #     aspect = Float32(area.w/area.h)
+    #     h = Float32(tan(fov / 360.0 * pi) * near)
+    #     w = h * aspect
+    #     w_, h_, _ = half_width
+    #     zoom = Vec2f0(w_, h_)./Vec2f0(w,h)
+    #     x, y, _ = middle
+    #     push!(camera.eyeposition, Vec3f0(x, y, maximum(zoom)))
+    #     push!(camera.lookat, Vec3f0(x, y, 0))
+    #     push!(camera.up, Vec3f0(0,1,0))
+    # else
+    camera.lookat[] = middle
+    neweyepos = middle + (width*1.2f0)
+    camera.eyeposition[] = neweyepos
+    camera.upvector[] = Vec3f0(0,0,1)
+    camera.near[] = 0.1f0 * norm(widths(bb))
+    camera.far[] = 3f0 * norm(widths(bb))
+    update_cam!(scene, camera)
+    return
 end

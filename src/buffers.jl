@@ -44,7 +44,7 @@ function TextBuffer(
         raw = true
     ) where N
     annotations!(
-        scene, String[" "], Point{N, Float32}[(0, 0)],
+        scene, String[" "], [Point{N, Float32}(0)],
         rotation = rotation,
         color = color,
         textsize = textsize,
@@ -86,7 +86,7 @@ function Base.append!(tb::Annotations, text::Vector{String}, positions::Vector{P
     kw = Dict(kw_args)
     for key in (:color, :rotation, :textsize, :font, :align)
         val = get(kw, key) do
-            isempty(tb[key][]) && error("plz provide default for $key")
+            isempty(tb[key][]) && error("please provide default for $key")
             last(tb[key][])
         end
         val_vec = same_length_array(text, val, Key{key}())

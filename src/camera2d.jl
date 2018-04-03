@@ -34,8 +34,10 @@ end
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
 update_cam!(scene::Scene, area) = update_cam!(scene, scene.camera_controls[], area)
+update_cam!(scene::Scene) = update_cam!(scene, scene.camera_controls[], scene.limits[])
 
-function update_cam!(scene::Scene, camera::Camera2D, area::Rect)
+function update_cam!(scene::Scene, camera::Camera2D, area3d::Rect)
+    area = FRect2D(area3d)
     area = positive_widths(area)
     px_wh = normalize(widths(scene.px_area[]))
     wh = normalize(widths(area))
