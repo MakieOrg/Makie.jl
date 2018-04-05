@@ -30,6 +30,9 @@ function finish!(lsb::Linesegments)
     lsb.args[1][] = lsb.args[1][]
     lsb[:color][] = lsb[:color][]
     lsb[:linewidth][] = lsb[:linewidth][]
+    # Yield to allow Reactive to update values...
+    # TODO checkout if this is the savest and best way
+    yield()
     return
 end
 
@@ -72,6 +75,7 @@ function finish!(tb::Annotations)
     for key in (:color, :rotation, :textsize, :font, :align)
         tb[key][] = tb[key][]
     end
+    yield()
     return
 end
 

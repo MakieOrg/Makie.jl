@@ -87,7 +87,7 @@ mutable struct Scene
     plots::Vector{AbstractPlot}
     theme::Attributes
     children::Vector{Scene}
-    current_screens::Vector{WeakRef}
+    current_screens::Vector{AbstractScreen}
     function Scene(
             events::Events,
             px_area::Node{IRect2D},
@@ -98,7 +98,7 @@ mutable struct Scene
             plots::Vector{AbstractPlot},
             theme::Attributes,
             children::Vector{Scene},
-            current_screens::Vector{WeakRef},
+            current_screens::Vector{AbstractScreen},
         )
         obj = new(events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
         jl_finalizer(obj) do obj
@@ -122,7 +122,7 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
     parent(plot)[] = scene
     for screen in scene.current_screens
-        insert!(screen.value, scene, plot)
+        insert!(screen, scene, plot)
     end
 end
 
@@ -185,7 +185,7 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
             colormap = :YlOrRd
         ),
         Scene[],
-        WeakRef[]
+        AbstractScreen[]
     )
     current_global_scene[] = scene
     scene
@@ -217,17 +217,50 @@ function Scene(
     child
 end
 
+
+function Scene(scene::Scene, area)
+    events = scene.events
+    px_area = signal_convert(Signal{IRect2D}, area)
+    child = Scene(
+        events,
+        px_area,
+        Camera(px_area),
+        RefValue{Any}(EmptyCamera()),
+        node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
+        Transformation(),
+        AbstractPlot[],
+        Theme(
+            backgroundcolor = RGBAf0(1,1,1,1),
+            color = :black,
+            colormap = :YlOrRd
+        ),
+        Scene[],
+        scene.current_screens
+    )
+    push!(scene.children, child)
+    child
+end
+
+"""
+Fetches all plots sharing the same camera
+"""
+plots_from_camera(scene::Scene) = plots_from_camera(scene, scene.camera)
+function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
+    append!(list, scene.plots)
+    for child in scene.children
+        child.camera === camera && plots_from_camera(child, camera, list)
+    end
+    list
+end
 function real_boundingbox(scene::Scene)
     bb = AABB{Float32}()
-    for screen_wref in scene.current_screens
-        screen = screen_wref.value
-        if !isempty(screen.renderlist)
-            if bb == AABB{Float32}()
-                bb = value(first(screen.renderlist)[end].boundingbox)
-            end
-            for (a,b,robj) in screen.renderlist
-                bb = union(bb, value(robj.boundingbox))
-            end
+    for screen in scene.current_screens
+        for plot in plots_from_camera(scene)
+            id = object_id(plot)
+            haskey(screen.cache, id) || continue
+            robj = screen.cache[id]
+            bb == AABB{Float32}() && (bb = value(robj.boundingbox))
+            bb = union(bb, value(robj.boundingbox))
         end
     end
     bb
@@ -260,7 +293,7 @@ Theme(; kw_args...) = Attributes(map(kw-> kw[1] => node(kw[1], kw[2]), kw_args))
 function insert_plots!(scene::Scene)
     for screen in scene.current_screens
         for elem in scene.plots
-            insert!(screen.value, scene, elem)
+            insert!(screen, scene, elem)
         end
     end
     foreach(insert_plots!, scene.children)
@@ -268,14 +301,12 @@ end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
-    filter!(x-> x.value != nothing, scene.current_screens)
     isempty(scene.current_screens) || return
     screen = Screen(scene)
     insert_plots!(scene)
     bb = Makie.real_boundingbox(scene)
     w = widths(bb)
     padd = w .* 0.01
-    println(">>>>>>>>>>", w, " ", minimum(bb))
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     return
@@ -286,3 +317,5 @@ function Base.show(io::IO, m::MIME"text/plain", plot::AbstractPlot)
     display(TextDisplay(io), m, plot.attributes)
     nothing
 end
+
+Base.empty!(scene::Scene) = empty!(scene.plots)

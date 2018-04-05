@@ -101,7 +101,7 @@ function add_translation!(scene, cam, key, button)
         end
         return
     end
-    map_once(scene.events.scroll) do scroll
+    map(scene.camera, scene.events.scroll) do scroll
         if ispressed(scene, button[])
             translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
         end
@@ -187,7 +187,6 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_value!(scene.camera.projection, proj)
     set_value!(scene.camera.view, view)
     set_value!(scene.camera.projectionview, proj * view)
-    yield()
 end
 
 
@@ -198,20 +197,6 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     half_width = width/2f0
     lower_corner = minimum(bb)
     middle = maximum(bb) - half_width
-    # if Reactive.value(camera.projectiontype) == ORTHOGRAPHIC
-    #     area, fov, near, far = map(value,
-    #         (camera.window_size, camera.fov, camera.nearclip, camera.farclip)
-    #     )
-    #     aspect = Float32(area.w/area.h)
-    #     h = Float32(tan(fov / 360.0 * pi) * near)
-    #     w = h * aspect
-    #     w_, h_, _ = half_width
-    #     zoom = Vec2f0(w_, h_)./Vec2f0(w,h)
-    #     x, y, _ = middle
-    #     push!(camera.eyeposition, Vec3f0(x, y, maximum(zoom)))
-    #     push!(camera.lookat, Vec3f0(x, y, 0))
-    #     push!(camera.up, Vec3f0(0,1,0))
-    # else
     camera.lookat[] = middle
     neweyepos = middle + (width*1.2f0)
     camera.eyeposition[] = neweyepos

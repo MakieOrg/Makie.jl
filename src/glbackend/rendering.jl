@@ -21,9 +21,14 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     end
     return
 end
+
 function destroy!(nw::GLFW.Window)
     if nw.handle != C_NULL
         GLFW.DestroyWindow(nw)
+        # GLFW.jl compat - newer versions are immutable and don't need to be set to C_NULL
+        if !isimmutable(nw)
+            nw.handle = C_NULL
+        end
     end
 end
 

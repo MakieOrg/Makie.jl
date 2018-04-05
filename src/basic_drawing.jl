@@ -57,11 +57,6 @@ const atomic_funcs = (
     Draws a wireframe either interpreted as a surface or mesh
     """,
 
-    :legend => """
-        legend(series, labels)
-    creates a legend from an array of plots and labels
-    """,
-
     :text => """
         text(string)
 
@@ -239,6 +234,13 @@ function default_theme(scene, ::Type{Heatmap})
         levels = 1,
         fxaa = false,
         interpolate = false
+    )
+end
+
+function default_theme(scene, ::Type{Image})
+    Theme(;
+        default_theme(scene)...,
+        fxaa = false,
     )
 end
 function default_theme(scene, ::Type{Surface})

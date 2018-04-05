@@ -173,7 +173,7 @@ macro extractvals(scene, args)
     end
     expr = Expr(:block)
     for elem in args.args
-        push!(expr.args, :($(esc(elem)) = to_value($(esc(scene))[$(QuoteNode(elem))])))
+        push!(expr.args, :($(esc(elem)) = value($(esc(scene))[$(QuoteNode(elem))])))
     end
     push!(expr.args, esc(args)) # return the tuple
     expr

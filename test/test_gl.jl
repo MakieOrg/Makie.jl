@@ -2,14 +2,45 @@ using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
 x = linspace(0, 6, 100)
-s = surface(x, x, (x, y)-> sin(x) + cos(y))
+scene = Scene()
+s = scatter!(scene, 1:10, rand(10))
+s2 = scatter!(scene, 1:10, rand(10))
+# Makie.legend(scene, [s, s2], ["hehe", "trolol?"], Makie.Attributes())
+scene
+# s = surface(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
+# scene
+s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
+scene
+cmap = Makie.attribute_convert(:Set1, Makie.key"colormap"())
+M = 20
 
+scene = Scene()
+plot!(scene, Makie.Attributes(), rand(10, 5))
+scene
+
+cam2d!(scene.children[1])
+
+
+
+scene.current_screens[1].renderlist
+
+
+cmap = Makie.attribute_convert(:PuBuGn, Makie.key"colormap"())
+Makie.colorlegend(scene, cmap, linspace(0, 1, 4), Makie.Attributes())
+# cam2d!(scene)
+scene
+
+
+# Makie.campixel!(scene)
+# image!(scene, GLVisualize.loadasset("doge.png"), raw = true)
 
 # Update limits when zooming with cam
 # Update limits when subplot changes /new
 # 3D  axis + limits
 # remaining primitives ()
 Makie.FRect3D(Vec3f0(0), Vec3f0(1))
+
+x = Makie.TextBuffer(scene)
 
 Profile.clear()
 scatter(
@@ -191,3 +222,68 @@ rect = Makie.FRect2D(union(AABB(positions .+ scale), AABB(positions)))
 
 ex = extrema(vcat(positions, positions .+ scale))
 (last.(ex), first.(ex))
+
+
+using Transpiler, GeometryTypes
+
+
+import Transpiler.gli: texelFetch
+
+
+function image_preprocess(img::AbstractMatrix{NTuple{4, T}}, uv, mini, maxi, kernel, brightness, contrast) where T
+    @inbounds begin
+        z = 1f0
+        val = (z, z, z, 1f0)
+        # filter
+        for i in 1:3
+            for j in 1:3
+                tmp = img[Cint(i), Cint(j)] .* kernel[i, j]
+                val = val .+ tmp
+            end
+        end
+        # brightness
+        val = val .+ brightness
+        # contrast
+        val = val .- 0.5f0
+        val = (contrast .* val)
+        val = val .+ 0.5f0
+        val = val .- mini
+        val = val ./ (maxi - mini)
+        # min max
+        return clamp.(val, 0f0, 1f0)
+    end
+end
+decl = Transpiler.GLMethod((image_preprocess, (
+    Matrix{NTuple{4, Float32}}, Tuple{Int, Int}, Float32, Float32, Mat3f0, Float32, Float32
+)))
+
+# image_preprocess(rand(50, 50), ())
+
+source = Sugar.getsource!(decl);
+println(source)
+
+deps = reverse(collect(Sugar.dependencies!(decl, true)));
+types = filter(Sugar.istype, deps)
+Transpiler.is_fixedsize_array(Mat4f0)
+funcs = filter(Sugar.isfunction, deps)
+io = STDOUT
+println(io, "// dependant type declarations")
+for typ in types
+    if !Sugar.isintrinsic(typ)
+        println(io, Sugar.getsource!(typ))
+    end
+end
+# defer printing for the function and types
+io2 = GLIO(IOBuffer(), m)
+for func in funcs
+    if !Sugar.isintrinsic(func)
+        println("//", func.signature)
+        println(io, Sugar.getsource!(func))
+    end
+end
+code = code_typed(image_preprocess, (
+    Transpiler.gli.GLTexture{Float32, 2}, Tuple{Int, Int}, Float32, Float32, Mat3f0, Float32, Float32
+))[1][1].code
+
+code = filter(x-> x != nothing && !Base.is_linenumber(x) && !Base.is_expr(x, :meta) && !Base.is_expr(x, :inbounds), code)
+Expr(:block, code...)

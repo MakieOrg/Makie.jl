@@ -51,6 +51,9 @@ end
 function FRect(r::SimpleRectangle)
     FRect(r.x, r.y, r.w, r.h)
 end
+function FRect(r::Rect)
+    FRect(minimum(r), widths(r))
+end
 function FRect(xy::VecTypes, w, h)
     FRect(xy[1], xy[2], w, h)
 end
@@ -66,6 +69,10 @@ function FRect3D(x::Tuple{Tuple{<: Number, <: Number}, Tuple{<: Number, <: Numbe
 end
 function FRect3D(x::Tuple{Tuple{<: Number, <: Number, <: Number}, Tuple{<: Number, <: Number, <: Number}})
     FRect3D(Vec3f0(x[1]...), Vec3f0(x[2]...))
+end
+
+function FRect3D(x::Rect2D)
+    FRect3D(Vec3f0(minimum(x)..., 0), Vec3f0(widths(x)..., 0.0))
 end
 
 include("iodevices.jl")

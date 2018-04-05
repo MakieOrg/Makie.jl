@@ -153,7 +153,6 @@ function selection_rect!(
     waspressed = RefValue(false)
     dragged_rect = map(scene.camera, scene.events.mousedrag) do drag
         if ispressed(scene, key)# && ispressed(scene, button)
-
             screen_area = scene.px_area[]
             cam_area = cam.area[]
             mp = scene.events.mouseposition[]
@@ -239,4 +238,20 @@ function add_restriction!(cam, window, rarea::SimpleRectangle, minwidths::Vec)
         return
     end
     restrict_action
+end
+
+struct PixelCamera <: AbstractCamera end
+function campixel!(scene)
+    scene.camera.view[] = eye(Mat4f0)
+    map(scene.camera, scene.px_area) do window_size
+        nearclip = -10_000f0
+        farclip = 10_000f0
+        w, h = Float32.(widths(window_size))
+        projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
+        set_value!(scene.camera.projection, projection)
+        set_value!(scene.camera.projectionview, projection)
+    end
+    cam = PixelCamera()
+    scene.camera_controls[] = cam
+    cam
 end

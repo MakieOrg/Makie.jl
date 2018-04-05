@@ -2,6 +2,60 @@ using PlotUtils, Showoff
 
 export optimal_ticks_and_labels, generate_ticks
 
+
+abstract type AbstractAxis <: AbstractPlot end
+
+struct Axis2D <: AbstractAxis
+    ranges::Node
+    attributes::Attributes
+end
+
+function default_theme(scene, ::Type{Axis2D})
+    darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
+    Theme(
+        scale = Vec3f0(1),
+        tickstyle = Theme(
+            gap = 3,
+            title_gap = 3,
+
+            linewidth = (1, 1),
+            linecolor = ((:black, 0.4), (:black, 0.4)),
+            linestyle = (nothing, nothing),
+
+            textcolor = (darktext, darktext),
+            textsize = (5, 5),
+            rotation = (0.0, 0.0),
+            align = ((:center, :top), (:right, :center)),
+            font = ("default", "default"),
+        ),
+
+        gridstyle = Theme(
+            linewidth = (0.5, 0.5),
+            linecolor = ((:black, 0.3), (:black, 0.3)),
+            linestyle = (nothing, nothing),
+        ),
+
+        framestyle = Theme(
+            linewidth = 1.0,
+            linecolor = :black,
+            linestyle = nothing,
+            axis_position = :origin,
+            axis_arrow = false,
+            arrow_size = 2.5,
+            frames = ((false, false), (false, false)),
+        ),
+
+        titlestyle = Theme(
+            axisnames = ("X Axis", "Y Axis"),
+            textcolor = (:black, :black),
+            textsize = (6, 6),
+            rotation = (0.0, -1.5pi),
+            align = ((:center, :top), (:center, :bottom)),
+            font = ("default", "default"),
+        )
+    )
+end
+
 function text_bb(str, font, size)
     positions, scale = layout_text(
         str, Point2f0(0), size,
@@ -211,7 +265,7 @@ function draw_axis(
 
     limits = ((ranges[1][1], ranges[2][1]), (ranges[1][2], ranges[2][2]))
     limit_widths = map(x-> x[2] - x[1], limits)
-    % = minimum(limit_widths) / 100 # percentage
+    % = mean(limit_widths) / 100 # percentage
 
     xyticks = generate_ticks.(limits)
 
@@ -256,59 +310,6 @@ function draw_axis(
     return
 end
 
-
-abstract type AbstractAxis <: AbstractPlot end
-
-struct Axis2D <: AbstractAxis
-    ranges::Node
-    attributes::Attributes
-end
-
-function default_theme(scene, ::Type{Axis2D})
-    darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
-    Theme(
-        scale = Vec3f0(1),
-        tickstyle = Theme(
-            gap = 3,
-            title_gap = 3,
-
-            linewidth = (1, 1),
-            linecolor = ((:black, 0.4), (:black, 0.4)),
-            linestyle = (nothing, nothing),
-
-            textcolor = (darktext, darktext),
-            textsize = (5, 5),
-            rotation = (0.0, 0.0),
-            align = ((:center, :top), (:right, :center)),
-            font = ("default", "default"),
-        ),
-
-        gridstyle = Theme(
-            linewidth = (0.5, 0.5),
-            linecolor = ((:black, 0.3), (:black, 0.3)),
-            linestyle = (nothing, nothing),
-        ),
-
-        framestyle = Theme(
-            linewidth = 1.0,
-            linecolor = :black,
-            linestyle = nothing,
-            axis_position = :origin,
-            axis_arrow = false,
-            arrow_size = 2.5,
-            frames = ((false, false), (false, false)),
-        ),
-
-        titlestyle = Theme(
-            axisnames = ("X Axis", "Y Axis"),
-            textcolor = (:black, :black),
-            textsize = (6, 6),
-            rotation = (0.0, -1.5pi),
-            align = ((:center, :top), (:center, :bottom)),
-            font = ("default", "default"),
-        )
-    )
-end
 
 
 function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, Any}})

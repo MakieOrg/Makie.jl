@@ -1,8 +1,6 @@
 
 function data_limits(x)
-    map_once(to_node(x[:position])) do points
-        ex = Tuple.(extrema_nan(points))
-    end
+    FRect3D(x[:position][])
 end
 
 function extrema_nan(x::ClosedInterval)
@@ -14,6 +12,8 @@ scalarmax(x::AbstractArray, y::AbstractArray) = max.(x, y)
 scalarmax(x, y) = max(x, y)
 scalarmin(x::AbstractArray, y::AbstractArray) = min.(x, y)
 scalarmin(x, y) = min(x, y)
+
+extrema_nan(itr::Pair) = (itr[1], itr[2])
 
 function extrema_nan(itr)
     s = start(itr)
@@ -33,33 +33,34 @@ function extrema_nan(itr)
     return (vmin, vmax)
 end
 
-function data_limits(x::Union{Heatmap, Contour, Image})
-    map_once(to_node(x.args[1]), to_node(x.args[2])) do x, y
-        xy_e = extrema_nan(x), extrema_nan(y)
-        (first.(xy_e), last.(xy_e))
-    end
+
+function boundingbox(x, y, z = (0=>0))
+    minmax = extrema_nan.((x, y, z))
+    mini, maxi = first.(minmax), last.(minmax)
+    FRect3D(mini, maxi .- mini)
 end
 
-function data_limits(x::Union{Surface})
-    map_once(to_node(x.args[1]), to_node(x.args[2]), to_node(x.args[3])) do x, y, z
-        xyz_e = extrema_nan(x), extrema_nan(y), extrema_nan(z)
-        (first.(xyz_e), last.(xyz_e))
-    end
+function data_limits(x::Union{Heatmap, Contour, Image})
+    boundingbox(value.((x.args[1], x.args[2]))...)
 end
-function data_limits(x::Mesh)
-    map_once(to_node(x.args[1])) do mesh
-        bb = AABB(mesh)
-        (minimum(bb), maximum(bb))
-    end
-end
+
+data_limits(x::Union{Surface}) = boundingbox(value.(x.args)...)
+
+data_limits(x::Mesh) = FRect3D(value(x.args[1]))
+
 
 function data_limits(x::Text)
-    keys = (:position, :textsize, :font, :align, :rotation, :model)
-    map_once(to_node(x.args[1]), getindex.(x.attributes, keys)...) do txt, args...
-        positions, scale = layout_text(txt * last(txt), args...)
-        ex = union(HyperRectangle(positions .+ scale), HyperRectangle(positions))
-        Tuple.((minimum(ex), maximum(ex)))
+    @extractvals x (textsize, font, align, rotation, model)
+    txt = value(x.args[1])
+    position = x.attributes[:position][]
+    positions, scales = if isa(position, VecTypes)
+        layout_text(txt * last(txt), args...)
+    elseif  length(txt) == length(position) && length(txt) == length(textsize)
+        position, textsize
+    else
+        error("Incompatible sizes found: $(length(textsize)) && $(length(txt)) && $(length(position))")
     end
+    union(HyperRectangle(positions .+ scales), HyperRectangle(positions))
 end
 
 """

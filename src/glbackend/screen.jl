@@ -134,18 +134,21 @@ function create_glcontext(
 end
 
 function Screen(scene::Scene; kw_args...)
-    filter!(isopen, gl_screens)
-    window = if isempty(gl_screens)
-        window = create_glcontext("Makie"; resolution = widths(scene.px_area[]), kw_args...)
-        # tell GLAbstraction that we created a new context.
-        # This is important for resource tracking, and only needed for the first context
-        GLAbstraction.new_context()
-        GLAbstraction.empty_shader_cache!()
-        window
-    else
-        # share OpenGL Context
-        create_glcontext("Makie"; parent = first(gl_screens), kw_args...)
+    if !isempty(gl_screens)
+        for elem in gl_screens
+            isopen(elem) && destroy!(elem)
+        end
+        empty!(gl_screens)
     end
+    window = create_glcontext("Makie"; resolution = widths(scene.px_area[]), kw_args...)
+    # tell GLAbstraction that we created a new context.
+    # This is important for resource tracking, and only needed for the first context
+    GLAbstraction.new_context()
+    GLAbstraction.empty_shader_cache!()
+    # else
+    #     # share OpenGL Context
+    #     create_glcontext("Makie"; parent = first(gl_screens), kw_args...)
+    # end
     push!(gl_screens, window)
     GLFW.MakeContextCurrent(window)
     GLFW.SwapInterval(0)
@@ -160,6 +163,6 @@ function Screen(scene::Scene; kw_args...)
     )
     screen.rendertask[] = @async(renderloop(screen))
     register_callbacks(scene, to_native(screen))
-    push!(scene.current_screens, WeakRef(screen))
+    push!(scene.current_screens, screen)
     screen
 end

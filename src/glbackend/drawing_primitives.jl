@@ -151,7 +151,12 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         visualize(tex, Style(:default), gl_attributes).children[]
     end
 end
-
+function Base.insert!(screen::Screen, scene::Scene, x::Image)
+    robj = cached_robj!(screen, scene, x) do gl_attributes
+        gl_attributes[:ranges] = (value.(x.args[1:2]))
+        visualize(x.args[3], Style(:default), gl_attributes).children[]
+    end
+end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes

@@ -191,3 +191,57 @@ function plot!(scene::Scene, ::Type{Annotations}, attributes::Attributes, text::
     attributes[:text_visual] = plot!(scene, Text, t_attributes, map(x->x[1], tp))
     Annotations(scene, t_args, attributes)
 end
+
+function data_limits(x::Annotations)
+    # keys = (:textsize, :font, :align, :rotation)
+    # model = value(x.attributes[:model])
+    # txt = value(x.args[1])
+    # args = value.((x.args[2], getindex.(x.attributes, keys)...))
+    # positions_scale = broadcast(txt, args...) do txt, args...
+    #     layout_text(txt * last(txt), args..., model)
+    # end
+    # positions, scale = vcat(first.(positions_scale)...), vcat(last.(positions_scale)...)
+    # union(HyperRectangle(positions .+ scale), HyperRectangle(positions))
+    FRect3D()
+end
+
+
+
+function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: AbstractFloat})
+    attributes, rest = merged_get!(:series, scene, attributes) do
+        Theme(
+            seriescolors = :Set1,
+            seriestype = :lines
+        )
+    end
+    sub = Scene(scene)
+    A = node(:series, matrix)
+    colors = map_once(attributes[:seriescolors], A) do colors, A
+        cmap = attribute_convert(colors, key"colormap"())
+        if size(A, 2) > length(cmap)
+            warn("Colormap doesn't have enough distinctive values. Please consider using another value for seriescolors")
+            cmap = interpolated_getindex.((cmap,), linspace(0, 1, M))
+        end
+        cmap
+    end
+    plots = map_once(A, attributes[:seriestype]) do A, stype
+        empty!(sub)
+        N, M = size(A)
+        map(1:M) do i
+            # subsub = Scene(sub)
+            c = map(getindex, colors, Node(i))
+            if stype in (:lines, :scatter_lines)
+                lines!(sub, 1:N, A[:, i], color = c, raw = true)
+            end
+            # if stype in (:scatter, :scatter_lines)
+            #     scatter!(subsub, 1:N, A[:, i], color = c, raw = true)
+            # end
+            # subsub
+        end
+    end
+    labels = get(attributes, :labels) do
+        map(i-> "y $i", 1:size(matrix, 2))
+    end
+    l = legend(scene, plots[], labels, rest)
+    plot!(scene, sub, rest)
+end

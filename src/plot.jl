@@ -83,7 +83,25 @@ end
 
 is2d(scene::Scene) = widths(scene.limits[])[3] == 0.0
 
-function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
+
+function data_limits(s::Scene)
+    plots = plots_from_camera(s)
+    isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
+    p1 = first(plots)
+    bb = FRect3D(data_limits(p1))
+    no = FRect3D()
+    for plot in Iterators.drop(plots, 1)
+        bb2 = FRect3D(data_limits(plot))
+        if bb != no && bb2 != no
+            bb = union(bb, bb2)
+        elseif bb2 != no
+            bb = bb2
+        end
+    end
+    bb
+end
+
+function plot!(scene::Scene, subscene::Union{Scene, AbstractPlot}, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(
             show_axis = true,
@@ -105,10 +123,9 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
     if plot_attributes[:raw][] == false
         scale = scene.transformation.scale
         limits = scene.limits
-        map_once(plot_attributes[:limits], data_limits(p), plot_attributes[:padding]) do limit, _limits, padd
+        map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
             if limit == :automatic
-                mini, maxi = _limits
-                dlimits = FRect3D(mini, maxi .- mini)
+                dlimits = data_limits(subscene)
                 lim_w = widths(dlimits)
                 padd_abs = lim_w .* Vec3f0(padd)
                 limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
@@ -143,11 +160,10 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
                 axis3d(scene, limits3d, axis_attributes)
             end
         end
-        if plot_attributes[:show_legend][]
-            legend_attributes = plot_attributes[:legend][]
-            legend_attributes[:scale] = scale
-            legend(scene, limits, legend_attributes)
-        end
+        # if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
+        #     legend_attributes = plot_attributes[:legend][]
+        #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colornorm], legend_attributes)
+        # end
         if plot_attributes[:camera][] == :automatic
             cam = scene.camera_controls[]
             if cam == EmptyCamera()
@@ -159,6 +175,10 @@ function plot!(scene::Scene, p::AbstractPlot, attributes::Attributes)
             end
         end
     end
-    push!(scene, p)
-    p#Series(Scene, p, plot_attributes)
+    if isa(subscene, Scene)
+        push!(scene.children, subscene)
+    else
+        push!(scene.plots, subscene)
+    end
+    subscene
 end
