@@ -60,6 +60,11 @@ function Base.insert!(screen::Screen, scene::Scene, x::Linesegments)
         visualize(x.args[1], Style(:linesegment), data).children[]
     end
 end
+function Base.insert!(screen::Screen, scene::Scene, x::Combined)
+    for elem in x.plots
+        insert!(screen, scene, elem)
+    end
+end
 
 function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
     T(ntuple(Val{N}) do i

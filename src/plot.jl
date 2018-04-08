@@ -66,17 +66,17 @@ end
 
 
 plot(args...; kw_args...) = plot!(Scene(), Scatter, args...; kw_args...)
-plot(scene::Scene, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
-plot(scene::Scene, P::Type, args...; kw_args...) = plot!(scene, P, args...; kw_args...)
+plot(scene::Scenelike, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
+plot(scene::Scenelike, P::Type, args...; kw_args...) = plot!(scene, P, args...; kw_args...)
 plot(P::Type, args...; kw_args...) = plot!(Scene(), P, args...; kw_args...)
 
 plot!(args...; kw_args...) = plot!(current_scene(), Scatter, args...; kw_args...)
-plot!(scene::Scene, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
+plot!(scene::Scenelike, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
 plot!(P::Type, args...; kw_args...) = plot!(current_scene(), P, Attributes(kw_args), args...)
 plot!(P::Type, attributes::Attributes, args...) = plot!(current_scene(), P, attributes, args...)
-plot!(scene::Scene, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
+plot!(scene::Scenelike, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
 
-function plot!(scene::Scene, P::Type, attributes::Attributes, args...)
+function plot!(scene::Scenelike, P::Type, attributes::Attributes, args...)
     plot!(scene, P, attributes, convert_arguments(P, args...)...)
 end
 
@@ -84,24 +84,7 @@ end
 is2d(scene::Scene) = widths(scene.limits[])[3] == 0.0
 
 
-function data_limits(s::Scene)
-    plots = plots_from_camera(s)
-    isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
-    p1 = first(plots)
-    bb = FRect3D(data_limits(p1))
-    no = FRect3D()
-    for plot in Iterators.drop(plots, 1)
-        bb2 = FRect3D(data_limits(plot))
-        if bb != no && bb2 != no
-            bb = union(bb, bb2)
-        elseif bb2 != no
-            bb = bb2
-        end
-    end
-    bb
-end
-
-function plot!(scene::Scene, subscene::Union{Scene, AbstractPlot}, attributes::Attributes)
+function plot!(scene::Scene, subscene::AbstractPlot, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(
             show_axis = true,
@@ -113,19 +96,21 @@ function plot!(scene::Scene, subscene::Union{Scene, AbstractPlot}, attributes::A
             scale = Vec3f0(1),
             camera = :automatic,
             limits = :automatic,
-            padding = (0.1, 0.1, 0.1),
+            padding = Vec3f0(0.1),
             raw = false
         )
     end
     # if !isempty(rest) # at this point, there should be no attributes left.
     #     warn("The following attributes are unused: $(sprint(show, rest))")
     # end
+
+    !isa(subscene, Combined) && push!(scene.plots, subscene)
     if plot_attributes[:raw][] == false
         scale = scene.transformation.scale
         limits = scene.limits
         map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
             if limit == :automatic
-                dlimits = data_limits(subscene)
+                dlimits = data_limits(scene)
                 lim_w = widths(dlimits)
                 padd_abs = lim_w .* Vec3f0(padd)
                 limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
@@ -134,6 +119,7 @@ function plot!(scene::Scene, subscene::Union{Scene, AbstractPlot}, attributes::A
             end
         end
         map_once(scene.px_area, limits, plot_attributes[:scale_plot]) do rect, limits, scaleit
+            # not really sure how to scale 3D scenes in a reasonable way
             if scaleit && is2d(scene)
                 mini, maxi = minimum(limits), maximum(limits)
                 l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
@@ -143,7 +129,7 @@ function plot!(scene::Scene, subscene::Union{Scene, AbstractPlot}, attributes::A
             end
             return
         end
-        if plot_attributes[:show_axis][] && !(any(x-> isa(x, AbstractAxis), scene.plots))
+        if plot_attributes[:show_axis][] && !(any(isaxis, scene.plots))
             axis_attributes = plot_attributes[:axis][]
             axis_attributes[:scale] = scale
             if is2d(scene)
@@ -175,10 +161,6 @@ function plot!(scene::Scene, subscene::Union{Scene, AbstractPlot}, attributes::A
             end
         end
     end
-    if isa(subscene, Scene)
-        push!(scene.children, subscene)
-    else
-        push!(scene.plots, subscene)
-    end
+
     subscene
 end

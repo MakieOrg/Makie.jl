@@ -1,12 +1,5 @@
-struct Legend{T} <: AbstractPlot
-    args::T
-    attributes::Attributes
-end
-struct ColorLegend{T} <: AbstractPlot
-    args::T
-    attributes::Attributes
-end
-
+const Legend{T} = Combined{:Legend, T}
+const ColorLegend{T} = Combined{:ColorLegend, T}
 
 function default_theme(scene::Scene, ::Type{Legend})
     Theme(
@@ -90,14 +83,15 @@ function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::A
 
     lscene = Scene(scene, scene.px_area)
     campixel!(lscene) # map coordinates to pixel
-    textbuffer = TextBuffer(lscene, Point2)
+    legend_plot = Legend(lscene, attributes, legends, labels)
+    textbuffer = TextBuffer(legend_plot, Point2)
 
     args = getindex.(attributes, (
         :labelwidth, :gap, :textgap, :padding,
         :textsize, :textcolor, :rotation, :align
     ))
 
-    legends = make_label.(lscene, legends, labels, 1:N, attributes)
+    legends = make_label.(legend_plot, legends, labels, 1:N, attributes)
 
     map_once(to_node(labels), args...) do labels, w, gap, tgap, padding, font...
         start!(textbuffer)
@@ -106,14 +100,12 @@ function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::A
             tsize = floor(font[1] / 2) # textsize at position one, half of it since we used centered align
             xy = Point2f0(w + padding + tgap, yposition + tsize + padding)
             push!(textbuffer, labels[i], xy, textsize = font[1], color = font[2], rotation = font[3], align = font[4], font = "default")
-            raw = true
         end
         finish!(textbuffer)
         return
     end
-    #
-    legendarea = map(position, scene.px_area, opad, args[4:5]..., args[1:3]...) do xy, area, opad, padding, unused...
-        bb = data_limits(lscene)
+    legendarea = map_once(position, scene.px_area, opad, args[4:5]..., args[1:3]...) do xy, area, opad, padding, unused...
+        bb = data_limits(legend_plot)
         mini = minimum(bb)
         wx, wy, _ = widths(bb) .+ mini
         xy = (Vec2f0(xy) .* widths(area))
@@ -126,11 +118,10 @@ function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::A
         lscene.transformation.translation[] = Vec3f0(minimum(rect)..., 0)
         FRect2D(rect)
     end
-
     bg = Scene(scene, scene.px_area)
     campixel!(bg)
     lines!(bg, legendarea, raw = true)
-    Legend((legends, labels), attributes)
+    legend_plot
 end
 
     #

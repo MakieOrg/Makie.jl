@@ -140,11 +140,12 @@ function selection_rect!(
     )
     rect = RefValue(FRect(0, 0, 0, 0))
     lw = 2f0
+    scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(scene.camera))
     rect_vis = lines!(
-        scene,
+        scene_unscaled,
         rect[],
         linestyle = :dot,
-        linewidth = 1f0,
+        linewidth = 2f0,
         color = (:black, 0.4),
         visible = false,
         raw = true
@@ -153,8 +154,6 @@ function selection_rect!(
     waspressed = RefValue(false)
     dragged_rect = map(scene.camera, scene.events.mousedrag) do drag
         if ispressed(scene, key)# && ispressed(scene, button)
-            screen_area = scene.px_area[]
-            cam_area = cam.area[]
             mp = scene.events.mouseposition[]
             mp = camspace(scene, cam, mp)
             if drag == Mouse.down
@@ -172,9 +171,10 @@ function selection_rect!(
             if drag == Mouse.up && waspressed[]
                 waspressed[] = false
                 update_cam!(scene, cam, rect[])
+                #scene.limits[] = FRect3D(rect[])
+                rect[] = FRect(0, 0, 0, 0)
+                rect_vis[:positions] = rect[]
             end
-            rect[] = FRect(0, 0, 0, 0)
-            rect_vis[:positions] = rect[]
             # always hide if not the right key is pressed
             rect_vis[:visible] = false # hide
         end

@@ -1,4 +1,3 @@
-
 function default_theme(scene, ::Type{Contour})
     Theme(;
         default_theme(scene)...,
@@ -24,9 +23,10 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
     calculate_values!(scene, Contour, attributes, args)
     T = eltype(last(args))
     x, y, z = convert_arguments(Contour, args...)
+    contourplot = Combined{:Contour}(scene, attributes, x, y, z)
     if value(attributes[:fillrange])
         attributes[:interpolate] = true
-        return heatmap!(scene, attributes, x, y, z)
+        return heatmap!(contourplot, attributes, x, y, z)
     else
         levels = round(Int, value(attributes[:levels]))
         T = eltype(z)
@@ -48,8 +48,9 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
             end
         end
         attributes[:color] = colors
-        return lines!(scene, merge(attributes, rest), result)
+        return lines!(contourplot, merge(attributes, rest), result)
     end
+    contourplot
 end
 
 
@@ -141,13 +142,14 @@ function layout_text(
 end
 
 
-function plot!(scene::Scene, ::Type{Annotations}, attributes::Attributes, text::AbstractVector{String}, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T}
+function plot!(scene::Scenelike, ::Type{Annotations}, attributes::Attributes, text::AbstractVector{String}, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T}
     attributes, rest = merged_get!(:annotations, scene, attributes) do
         default_theme(scene, Text)
     end
 
     calculate_values!(scene, Text, attributes, text)
     t_args = (to_node(text), to_node(positions))
+    annotations = Combined{:Annotations}(scene, attributes, t_args...)
     sargs = (
         attributes[:model], attributes[:font],
         t_args...,
@@ -169,7 +171,6 @@ function plot!(scene::Scene, ::Type{Annotations}, attributes::Attributes, text::
             rot = attribute_convert(rotation, key"rotation"())
             ali = attribute_convert(alignment, key"align"())
             pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
-
             print(io, text)
             n = length(pos)
             append!(combinedpos, pos)
@@ -188,21 +189,9 @@ function plot!(scene::Scene, ::Type{Annotations}, attributes::Attributes, text::
     t_attributes[:font] = map(x-> x[5], tp)
     t_attributes[:rotation] = map(x-> x[6], tp)
     t_attributes[:align] = map(x-> x[7], tp)
-    attributes[:text_visual] = plot!(scene, Text, t_attributes, map(x->x[1], tp))
-    Annotations(scene, t_args, attributes)
-end
-
-function data_limits(x::Annotations)
-    # keys = (:textsize, :font, :align, :rotation)
-    # model = value(x.attributes[:model])
-    # txt = value(x.args[1])
-    # args = value.((x.args[2], getindex.(x.attributes, keys)...))
-    # positions_scale = broadcast(txt, args...) do txt, args...
-    #     layout_text(txt * last(txt), args..., model)
-    # end
-    # positions, scale = vcat(first.(positions_scale)...), vcat(last.(positions_scale)...)
-    # union(HyperRectangle(positions .+ scale), HyperRectangle(positions))
-    FRect3D()
+    t_attributes[:model] = eye(Mat4f0)
+    plot!(annotations, Text, t_attributes, map(x->x[1], tp))
+    annotations
 end
 
 
@@ -214,8 +203,8 @@ function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: A
             seriestype = :lines
         )
     end
-    sub = Scene(scene)
     A = node(:series, matrix)
+    sub = Combined{:Series}(scene, attributes, A)
     colors = map_once(attributes[:seriescolors], A) do colors, A
         cmap = attribute_convert(colors, key"colormap"())
         if size(A, 2) > length(cmap)
@@ -225,7 +214,7 @@ function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: A
         cmap
     end
     plots = map_once(A, attributes[:seriestype]) do A, stype
-        empty!(sub)
+        empty!(sub.plots)
         N, M = size(A)
         map(1:M) do i
             # subsub = Scene(sub)

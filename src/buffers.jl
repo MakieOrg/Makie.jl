@@ -1,5 +1,7 @@
+
+
 function LinesegmentBuffer(
-        scene::Scene, ::Type{Point{N}} = Point{2};
+        scene::Scenelike, ::Type{Point{N}} = Point{2};
         color = RGBAf0[], linewidth = Float32[], raw = true
     ) where N
     linesegments!(scene, Point{N, Float32}[]; color = color, linewidth = linewidth, raw = raw)
@@ -37,7 +39,7 @@ function finish!(lsb::Linesegments)
 end
 
 function TextBuffer(
-        scene, ::Type{Point{N}} = Point{2};
+        scene::Scenelike, ::Type{Point{N}} = Point{2};
         rotation = Vec4f0[(0,0,0,1)],
         color = RGBAf0[RGBAf0(0,0,0,0)],
         textsize = Float32[0],
@@ -57,7 +59,7 @@ function TextBuffer(
     )
 end
 
-function start!(tb::Annotations)
+function start!(tb::Combined{:Annotations})
     for i = 1:2
         resize!(tb.args[i][], 0)
     end
@@ -67,7 +69,7 @@ function start!(tb::Annotations)
     return
 end
 
-function finish!(tb::Annotations)
+function finish!(tb::Combined{:Annotations})
     # update the signal!
     for i = 1:2
         tb.args[i][] = tb.args[i][]
@@ -80,11 +82,11 @@ function finish!(tb::Annotations)
 end
 
 
-function Base.push!(tb::Annotations, text::String, position; kw_args...)
+function Base.push!(tb::Combined{:Annotations}, text::String, position; kw_args...)
     N = length(position)
     append!(tb, [text], Point{N, Float32}[position]; kw_args...)
 end
-function Base.append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
+function Base.append!(tb::Combined{:Annotations}, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
     append!(tb.args[1][], text)
     append!(tb.args[2][], positions)
     kw = Dict(kw_args)

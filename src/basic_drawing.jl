@@ -71,7 +71,7 @@ const atomic_funcs = (
 struct Billboard end
 
 
-calculate_values!(scene::Scene, T, attributes, args) = attributes
+calculate_values!(scene::Scenelike, T, attributes, args) = attributes
 
 Base.parent(x::AbstractPlot) = x.parent
 function Base.getindex(x::AbstractPlot, key::Symbol)
@@ -104,14 +104,14 @@ for (func, docs) in atomic_funcs
         plot_key(::$Typ) = Key{$(QuoteNode(func))}()
 
         $func(args...; kw_args...) = plot($Typ, args...; kw_args...)
-        $func(scene::Scene, args...; kw_args...) = plot(scene, $Typ, args...; kw_args...)
-        $func(scene::AbstractPlot, args...; kw_args...) = plot(parent(scene)[], $Typ, args...; kw_args...)
-        $inplace(scene::AbstractPlot, args...; kw_args...) = plot(parent(scene)[], $Typ, args...; kw_args...)
+        $func(scene::Scenelike, args...; kw_args...) = plot(scene, $Typ, args...; kw_args...)
+        $func(scene::AbstractPlot, args...; kw_args...) = plot(parent(scene), $Typ, args...; kw_args...)
+        $inplace(scene::AbstractPlot, args...; kw_args...) = plot(parent(scene), $Typ, args...; kw_args...)
 
         $inplace(args...; kw_args...) = plot!($Typ, args...; kw_args...)
-        $inplace(scene::Scene, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
+        $inplace(scene::Scenelike, args...; kw_args...) = plot!(scene, $Typ, args...; kw_args...)
 
-        function plot!(scene::Scene, T::Type{$Typ}, attributes::Attributes, args...)
+        function plot!(scene::Scenelike, T::Type{$Typ}, attributes::Attributes, args...)
             #cmap_or_color!(scene, attributes)
             attributes, rest = merged_get!($(QuoteNode(func)), scene, attributes) do
                 default_theme(scene, T)
@@ -139,10 +139,12 @@ end
 """
 Fill in values that can only be calculated when we have all other attributes filled
 """
-function calculate_values!(scene::Scene, ::Type{T}, attributes, args) where T <: AbstractPlot
+function calculate_values!(scene::Scenelike, ::Type{T}, attributes, args) where T <: AbstractPlot
     calculate_values!(scene, attributes, args)
 end
-function calculate_values!(scene::Scene, attributes, args)
+modelmatrix(x::Scene) = x.transformation.model
+modelmatrix(x::Combined) = x.parent.transformation.model
+function calculate_values!(scene::Scenelike, attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
         get!(attributes, :colornorm) do
@@ -152,15 +154,14 @@ function calculate_values!(scene::Scene, attributes, args)
             end
         end
     end
-    get!(attributes, :model) do
-        t = scene.transformation
-        map_once(t.scale, t.translation, t.rotation) do s, o, r
-            q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
-            transformationmatrix(o, s, q)
-        end
+end
+function calculate_values!(scene::Scenelike, ::Type{Scatter}, attributes, args)
+    calculate_values!(scene, attributes, args)
+    get!(attributes, :marker_offset) do
+        # default to middle
+        map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
     end
 end
-
 function default_theme(scene)
     light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     Theme(
@@ -168,6 +169,7 @@ function default_theme(scene)
         linewidth = 1,
         visible = true,
         light = light,
+        model = modelmatrix(scene)
         #drawover = false,
     )
 end
@@ -185,13 +187,7 @@ function default_theme(scene, ::Type{Scatter})
         fxaa = false
     )
 end
-function calculate_values!(scene::Scene, ::Type{Scatter}, attributes, args)
-    calculate_values!(scene::Scene, attributes, args)
-    get!(attributes, :marker_offset) do
-        # default to middle
-        map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
-    end
-end
+
 
 function default_theme(scene, ::Type{Meshscatter})
     Theme(;

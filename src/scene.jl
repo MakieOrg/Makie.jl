@@ -1,11 +1,17 @@
 
-struct Camera
+mutable struct Camera
     view::Node{Mat4f0}
     projection::Node{Mat4f0}
     projectionview::Node{Mat4f0}
     resolution::Node{Vec2f0}
     eyeposition::Node{Vec3f0}
     steering_nodes::Vector{Node}
+end
+
+function Base.copy(x::Camera)
+    Camera(ntuple(6) do i
+        getfield(x, i)
+    end...)
 end
 
 function disconnect!(c::Camera)
@@ -20,6 +26,7 @@ end
 When mapping over nodes for the camera, we store them in the steering_node vector,
 to make it easier to disconnect the camera steering signals later!
 """
+
 function Base.map(f, c::Camera, nodes::Node...)
     node = map(f, nodes...)
     push!(c.steering_nodes, node)
@@ -46,19 +53,32 @@ struct Transformation
     translation::Node{Vec3f0}
     scale::Node{Vec3f0}
     rotation::Node{Vec4f0}
+    model::Node{Mat4f0}
     flip::Node{NTuple{3, Bool}}
     align::Node{Vec2f0}
     func::Node{Any}
 end
 
-Transformation() = Transformation(
-    node(:translation, Vec3f0(0)),
-    node(:scale, Vec3f0(1)),
-    node(:rotation, Vec4f0(0, 0, 0, 1)),
-    node(:flip, (false, false, false)),
-    node(:align, Vec2f0(0)),
-    signal_convert(Node{Any}, identity)
-)
+function Transformation()
+    translation, scale, rotation = (
+        node(:translation, Vec3f0(0)),
+        node(:scale, Vec3f0(1)),
+        node(:rotation, Vec4f0(0, 0, 0, 1))
+    )
+    model = map_once(scale, translation, rotation) do s, o, r
+        q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
+        transformationmatrix(o, s, q)
+    end
+    Transformation(
+        translation,
+        scale,
+        rotation,
+        model,
+        node(:flip, (false, false, false)),
+        node(:align, Vec2f0(0)),
+        signal_convert(Node{Any}, identity)
+    )
+end
 
 if VERSION >= v"0.7-"
     const jl_finalizer = finalizer
@@ -120,7 +140,7 @@ end
 
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
-    parent(plot)[] = scene
+    plot.parent[] = scene
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
@@ -252,10 +272,21 @@ function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
     end
     list
 end
+
+function flatten_combined(plots::Vector, flat = AbstractPlot[])
+    for elem in plots
+        if (elem isa Combined)
+            flatten_combined(elem.plots, flat)
+        else
+            push!(flat, elem)
+        end
+    end
+    flat
+end
 function real_boundingbox(scene::Scene)
     bb = AABB{Float32}()
     for screen in scene.current_screens
-        for plot in plots_from_camera(scene)
+        for plot in flatten_combined(plots_from_camera(scene))
             id = object_id(plot)
             haskey(screen.cache, id) || continue
             robj = screen.cache[id]
@@ -313,9 +344,45 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, m::MIME"text/plain", plot::AbstractPlot)
-    show(io, m, Makie.parent(plot)[])
+    show(io, m, Makie.parent(plot))
     display(TextDisplay(io), m, plot.attributes)
     nothing
 end
 
 Base.empty!(scene::Scene) = empty!(scene.plots)
+
+
+
+"""
+A plot type that combines multiple more primitive plots.
+"""
+struct Combined{Typ, T} <: AbstractPlot
+    args::T
+    attributes::Attributes
+    parent::Scene
+    plots::Vector{AbstractPlot}
+end
+# Since we can use Combined like a scene in some circumstances, we define this alias
+const Scenelike = Union{Scene, Combined}
+
+# A combined plot can be used like a scene
+function plot!(cplot::Combined, plot::AbstractPlot, attributes::Attributes)
+    push!(cplot.plots, plot)
+    plot
+    # plot!(cplot.parent, cplot, attributes) # now we can plot
+end
+
+function merged_get!(defaults::Function, key, scene::Combined, input::Attributes)
+    return merge_attributes!(input, get!(defaults, scene.parent.theme, key))
+end
+
+function Combined{Typ}(scene::Scene, attributes, args...) where Typ
+    c = Combined{Typ, typeof(args)}(args, attributes, scene, AbstractPlot[])
+    push!(scene.plots, c)
+    c
+end
+function Combined{Typ}(scene::Combined, attributes, args...) where Typ
+    c = Combined{Typ, typeof(args)}(args, attributes, scene.parent, AbstractPlot[])
+    push!(scene.plots, c)
+    c
+end

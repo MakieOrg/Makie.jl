@@ -1,4 +1,3 @@
-
 function data_limits(x)
     FRect3D(x[:position][])
 end
@@ -60,8 +59,38 @@ function data_limits(x::Text)
     else
         error("Incompatible sizes found: $(length(textsize)) && $(length(txt)) && $(length(position))")
     end
-    union(HyperRectangle(positions .+ scales), HyperRectangle(positions))
+    FRect3D(union(HyperRectangle(positions .+ scales), HyperRectangle(positions)))
 end
+
+function data_limits(x::Combined{:Annotations})
+    # data limits is supposed to not include any transformation.
+    # for the annotation, we use the model matrix directly, so we need to
+    # to inverse that transformation for the correct limits
+    bb = data_limits(x.plots[1])
+    inv(value(x[:model])) * bb
+end
+
+Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
+
+function data_limits(plots::Vector)
+    isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
+    idx = start(plots)
+    bb = FRect3D()
+    while !done(plots, idx)
+        plot, idx = next(plots, idx)
+        # axis shouldn't be part of the data limit
+        isaxis(plot) && continue
+        bb2 = data_limits(plot)
+        isfinite(bb) || (bb = bb2)
+        isfinite(bb2) || continue
+        bb = union(bb, bb2)
+    end
+    bb
+end
+
+data_limits(s::Scene) = data_limits(plots_from_camera(s))
+data_limits(plot::Combined) = data_limits(plot.plots)
+
 
 """
 calculates how much `child` needs to move to not touch `parent`

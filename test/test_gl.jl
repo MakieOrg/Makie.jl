@@ -4,9 +4,9 @@ using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
 x = linspace(0, 6, 100)
 scene = Scene()
 s = scatter!(scene, 1:10, rand(10))
-s2 = scatter!(scene, 1:10, rand(10))
-# Makie.legend(scene, [s, s2], ["hehe", "trolol?"], Makie.Attributes())
+s2 = scatter!(scene, -1:8, rand(10).+1, color = :black)
 scene
+
 # s = surface(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 # scene
 s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
@@ -17,9 +17,22 @@ M = 20
 scene = Scene()
 plot!(scene, Makie.Attributes(), rand(10, 5))
 scene
+plots = scene.children[1].plots[1].plots
+a, b = Makie.data_limits.(plots[1:2])
+(plots[1].args[1])
+@which Makie.data_limits(plots[1])
+Makie.data_limits(plots[1].plots[1])
+plots[1].plots[1].attributes[:position][]
+
+union(Makie.data_limits.(plots[1:2])...)
+
+
+widths(GeometryTypes.HyperRectangle{3,Float32}(Float32[55.0, 967.0, 0.0], Float32[23.68, 92.736, 0.0]))
+union(
+    GeometryTypes.HyperRectangle{3,Float32}(Float32[55.0, 967.0, 0.0], Float32[23.68, 92.736, 0.0]),
+    GeometryTypes.HyperRectangle{3,Float32}(Float32[10.0, 18.0, 0.0], Float32[20.0, 0.0, 0.0]))
 
 cam2d!(scene.children[1])
-
 
 
 scene.current_screens[1].renderlist

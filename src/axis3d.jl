@@ -1,8 +1,3 @@
-struct Axis3D <: AbstractAxis
-    ranges::Node
-    attributes::Attributes
-end
-
 function default_theme(scene, ::Type{Axis3D})
     q1 = qrotation(Vec3f0(1, 0, 0), -0.5f0*pi)
     q2 = qrotation(Vec3f0(0, 0, 1), 1f0*pi)
@@ -161,8 +156,9 @@ function axis3d(scene::Scene, ranges::Node{<: NTuple{3, Any}}, attributes::Attri
         default_theme(scene, Axis3D)
     end
     scene_unscaled = Scene(scene, transformation = Transformation())
+    axis = Axis3D(scene, attributes, ranges)
     textbuffer = TextBuffer(scene_unscaled, Point{3})
-    linebuffer = LinesegmentBuffer(scene, Point{3})
+    linebuffer = LinesegmentBuffer(axis, Point{3})
 
     tstyle, tickstyle, framestyle = value.(getindex.(attributes, (:titlestyle, :tickstyle, :framestyle)))
 
@@ -178,5 +174,5 @@ function axis3d(scene::Scene, ranges::Node{<: NTuple{3, Any}}, attributes::Attri
         draw_axis,
         Node(textbuffer), Node(linebuffer), ranges, args...
     )
-    return Axis3D(ranges, attributes)
+    return axis
 end

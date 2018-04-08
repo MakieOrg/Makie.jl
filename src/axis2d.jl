@@ -2,13 +2,11 @@ using PlotUtils, Showoff
 
 export optimal_ticks_and_labels, generate_ticks
 
+const Axis2D = Combined{:Axis2D}
+const Axis3D = Combined{:Axis3D}
 
-abstract type AbstractAxis <: AbstractPlot end
-
-struct Axis2D <: AbstractAxis
-    ranges::Node
-    attributes::Attributes
-end
+isaxis(x) = false
+isaxis(x::Union{Axis2D, Axis3D}) = true
 
 function default_theme(scene, ::Type{Axis2D})
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
@@ -329,13 +327,15 @@ function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, 
     f_args = getindex.(attributes[:framestyle][], f_keys)
     t_args = getindex.(attributes[:tickstyle][], t_keys)
     ti_args = getindex.(attributes[:titlestyle][], ti_keys)
+
     scene_unscaled = Scene(scene, transformation = Transformation())
-    textbuffer = TextBuffer(scene_unscaled, Point{2})
-    linebuffer = LinesegmentBuffer(scene_unscaled, Point{2})
+    cplot = Axis2D(scene_unscaled, attributes, ranges)
+    textbuffer = TextBuffer(cplot, Point{2})
+    linebuffer = LinesegmentBuffer(cplot, Point{2})
     map_once(
         draw_axis,
         to_node(textbuffer), to_node(linebuffer), ranges, attributes[:scale],
         g_args..., t_args..., f_args..., ti_args...
     )
-    return Axis2D(ranges, attributes)
+    return cplot
 end
