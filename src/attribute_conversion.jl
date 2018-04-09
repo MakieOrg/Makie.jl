@@ -54,12 +54,6 @@ attribute_convert(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = 
 attribute_convert(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 
-function alignment2num(x::Symbol)
-    (x == :center) && return 0.5f0
-    (x in (:left, :bottom)) && return 0.0f0
-    (x in (:right, :top)) && return 1.0f0
-    0.0f0 # 0 default, or better to error?
-end
 
 """
 Text align, e.g. :

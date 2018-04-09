@@ -103,8 +103,8 @@ function plot!(scene::Scene, subscene::AbstractPlot, attributes::Attributes)
     # if !isempty(rest) # at this point, there should be no attributes left.
     #     warn("The following attributes are unused: $(sprint(show, rest))")
     # end
-
-    !isa(subscene, Combined) && push!(scene.plots, subscene)
+    # Combined plots add themselves uppon creation
+    isa(subscene, Combined) || push!(scene.plots, subscene)
     if plot_attributes[:raw][] == false
         scale = scene.transformation.scale
         limits = scene.limits

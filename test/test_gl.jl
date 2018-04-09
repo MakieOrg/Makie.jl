@@ -1,48 +1,26 @@
 using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
-x = linspace(0, 6, 100)
 scene = Scene()
 s = scatter!(scene, 1:10, rand(10))
 s2 = scatter!(scene, -1:8, rand(10).+1, color = :black)
 scene
 
+nw = scene.current_screens[1].glscreen
+img = GLVisualize.loadasset("doge.png")
+GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))
+
 # s = surface(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 # scene
+scene = Scene()
+x = linspace(0, 6, 100)
 s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 scene
-cmap = Makie.attribute_convert(:Set1, Makie.key"colormap"())
-M = 20
 
 scene = Scene()
-plot!(scene, Makie.Attributes(), rand(10, 5))
+p = plot!(scene, Makie.Attributes(), rand(10, 5))
 scene
-plots = scene.children[1].plots[1].plots
-a, b = Makie.data_limits.(plots[1:2])
-(plots[1].args[1])
-@which Makie.data_limits(plots[1])
-Makie.data_limits(plots[1].plots[1])
-plots[1].plots[1].attributes[:position][]
-
-union(Makie.data_limits.(plots[1:2])...)
-
-
-widths(GeometryTypes.HyperRectangle{3,Float32}(Float32[55.0, 967.0, 0.0], Float32[23.68, 92.736, 0.0]))
-union(
-    GeometryTypes.HyperRectangle{3,Float32}(Float32[55.0, 967.0, 0.0], Float32[23.68, 92.736, 0.0]),
-    GeometryTypes.HyperRectangle{3,Float32}(Float32[10.0, 18.0, 0.0], Float32[20.0, 0.0, 0.0]))
-
-cam2d!(scene.children[1])
-
-
-scene.current_screens[1].renderlist
-
-
-cmap = Makie.attribute_convert(:PuBuGn, Makie.key"colormap"())
-Makie.colorlegend(scene, cmap, linspace(0, 1, 4), Makie.Attributes())
-# cam2d!(scene)
-scene
-
+keys(p.attributes)
 
 # Makie.campixel!(scene)
 # image!(scene, GLVisualize.loadasset("doge.png"), raw = true)
@@ -51,45 +29,11 @@ scene
 # Update limits when subplot changes /new
 # 3D  axis + limits
 # remaining primitives ()
-Makie.FRect3D(Vec3f0(0), Vec3f0(1))
 
-x = Makie.TextBuffer(scene)
-
-Profile.clear()
-scatter(
-    rand(10),rand(10),
-    markersize = 0.04,
-);
-
-Profile.print()
-
-s = nothing
-s2 = nothing
-Makie.current_global_scene[] = nothing
-length(filter(x-> x.value != nothing, Reactive.nodes))
-gc(true)
-
-for elem in Reactive.nodes
-    elem.value != nothing && println(elem.value)
-end
-
-Base.n_avail(Reactive._messages)
-
-
-s2 = scatter!(s, rand(10), rand(10))
-using GLVisualize
-m = mesh(loadasset("cat.obj"), show_axis= false, scale_plot = false, limits = ((0,0), (1,1)))
-
-Makie.cam3d!(Makie.current_scene())
-
-Makie.current_global_scene[]= Scene();
-lol = 1
-for elem in Reactive.nodes
-    if elem.value != nothing
-        println(elem.value.name)
-        lol += 1
-    end
-end
+using GLVisualize, Makie
+scene = Scene()
+m = mesh!(scene, loadasset("cat.obj"))
+scene
 
 
 r = linspace(-10, 10, 512)
@@ -97,11 +41,9 @@ z = ((x, y)-> sin(x) + cos(y)).(r, r')
 scene = Scene()
 c = heatmap!(scene, r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
 s = scatter!(scene, rand(-10:10, 10), rand(-10:10, 10))
+s2 = contour!(scene, r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
+scene
 
-length(Reactive.nodes)
-
-scene.current_screens[1].renderlist[4][end].boundingbox[]
-c = contour(r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
 
 scatter!(cscene, [1, 0, 1, 0], [1, 0, 0, 1],
     markersize = 0.02, color = :black
@@ -109,8 +51,6 @@ scatter!(cscene, [1, 0, 1, 0], [1, 0, 0, 1],
 
 
 
-scene.scale[]
-scene
 # a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = (0.5, 0.5))
 # a = text!(scene, "Hellooo", color = :black, textsize = 0.1, position = ps)
 tb = Makie.TextBuffer(scene)
@@ -120,7 +60,6 @@ append!(tb, ["General Kenobi!"], Point2f0[(0.0, 0.0)])
 finish!(tb)
 
 
-using Makie: RGBAf0
 scene = Scene()
 lsb = Makie.LinesegmentBuffer(scene, Point2)
 start!(lsb)

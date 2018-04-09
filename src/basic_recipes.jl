@@ -26,7 +26,7 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
     contourplot = Combined{:Contour}(scene, attributes, x, y, z)
     if value(attributes[:fillrange])
         attributes[:interpolate] = true
-        return heatmap!(contourplot, attributes, x, y, z)
+        heatmap!(contourplot, attributes, x, y, z)
     else
         levels = round(Int, value(attributes[:levels]))
         T = eltype(z)
@@ -48,12 +48,10 @@ function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
             end
         end
         attributes[:color] = colors
-        return lines!(contourplot, merge(attributes, rest), result)
+        lines!(contourplot, merge(attributes, rest), result)
     end
     contourplot
 end
-
-
 
 
 function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, positions::AbstractVector{<: VecTypes{2, T}}) where T <: AbstractFloat
@@ -70,16 +68,18 @@ function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, positions::Ab
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
     end
-    mesh!(scene, bigmesh, color = attributes[:color])
+    poly = Combined{:Poly}(scene, attributes, positions_n)
+    mesh!(poly, bigmesh, color = attributes[:color])
     outline = map(positions_n) do p
         push!(copy(p), p[1]) # close path
     end
-    lines!(scene, outline,
+    lines!(
+        poly, outline,
         color = attributes[:linecolor], linestyle = attributes[:linestyle],
         linewidth = attributes[:linewidth],
         visible = map(x-> x > 0.0, attributes[:linewidth])
     )
-    return Poly(scene, positions, attributes)
+    return poly
 end
 # function poly(scene::makie, points::AbstractVector{Point2f0}, attributes::Dict)
 #     attributes[:positions] = points
@@ -100,22 +100,11 @@ function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, x::AbstractVe
         widths.(rects)
     end
     attributes[:marker] = T
-    plot!(scene, Scatter, attributes, position)
+    poly = Combined{:Poly}(scene, attributes, x)
+    plot!(poly, Scatter, attributes, position)
+    poly
 end
 
-function align_offset(startpos, lastpos, atlas, rscale, font, align)
-    xscale, yscale = GLVisualize.glyph_scale!('X', rscale)
-    xmove = (lastpos-startpos)[1] + xscale
-    if isa(align, GeometryTypes.Vec)
-        return -Vec2f0(xmove, yscale) .* align
-    elseif align == :top
-        return -Vec2f0(xmove/2f0, yscale)
-    elseif align == :right
-        return -Vec2f0(xmove, yscale/2f0)
-    else
-        error("Align $align not known")
-    end
-end
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
         font, align, rotation, model
@@ -222,10 +211,10 @@ function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: A
             if stype in (:lines, :scatter_lines)
                 lines!(sub, 1:N, A[:, i], color = c, raw = true)
             end
-            # if stype in (:scatter, :scatter_lines)
-            #     scatter!(subsub, 1:N, A[:, i], color = c, raw = true)
-            # end
-            # subsub
+            if stype in (:scatter, :scatter_lines)
+                scatter!(subsub, 1:N, A[:, i], color = c, raw = true)
+            end
+            subsub
         end
     end
     labels = get(attributes, :labels) do

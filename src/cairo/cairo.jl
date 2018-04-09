@@ -1,3 +1,8 @@
+module CairoBackend
+
+import ..Makie
+import ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str
+
 #using Gtk
 using Cairo
 
@@ -168,3 +173,5 @@ function cairo_finish(screen::CairoScreen{CairoRGBSurface})
     end
 end
 cairo_finish(screen::CairoScreen{S} where S) = finish(screen.surface)
+
+end

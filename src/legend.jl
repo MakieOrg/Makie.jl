@@ -6,7 +6,7 @@ function default_theme(scene::Scene, ::Type{Legend})
         backgroundcolor = :white,
         strokecolor = RGBA(0.3, 0.3, 0.3, 0.9),
         strokewidth = 1,
-        position = (0, 1),
+        position = (1, 1),
         gap = 20,
         textgap = 15,
         labelwidth = 20,
