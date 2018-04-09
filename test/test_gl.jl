@@ -1,17 +1,22 @@
 using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
+
 scene = Scene()
 s = scatter!(scene, 1:10, rand(10))
-s2 = scatter!(scene, -1:8, rand(10).+1, color = :black)
+s2 = scatter!(scene, -1:8, rand(10) .+ 1, color = :black)
 scene
 
 nw = scene.current_screens[1].glscreen
 img = GLVisualize.loadasset("doge.png")
 GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))
 
-# s = surface(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
-# scene
+using Makie
+scene = Scene()
+x = linspace(0, 6, 100)
+s = surface!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
+scene
+
 scene = Scene()
 x = linspace(0, 6, 100)
 s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
@@ -20,7 +25,6 @@ scene
 scene = Scene()
 p = plot!(scene, Makie.Attributes(), rand(10, 5))
 scene
-keys(p.attributes)
 
 # Makie.campixel!(scene)
 # image!(scene, GLVisualize.loadasset("doge.png"), raw = true)
@@ -39,9 +43,9 @@ scene
 r = linspace(-10, 10, 512)
 z = ((x, y)-> sin(x) + cos(y)).(r, r')
 scene = Scene()
-c = heatmap!(scene, r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
+c = heatmap!(scene, r, r, z, levels = 5)
 s = scatter!(scene, rand(-10:10, 10), rand(-10:10, 10))
-s2 = contour!(scene, r, r, z, levels = 5, color = :RdYlBu, show_axis = true)
+s2 = contour!(scene, r, r, z, levels = 5)
 scene
 
 

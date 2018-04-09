@@ -79,7 +79,7 @@ function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, positions::Ab
         linewidth = attributes[:linewidth],
         visible = map(x-> x > 0.0, attributes[:linewidth])
     )
-    return poly
+    return plot!(scene, poly, rest)
 end
 # function poly(scene::makie, points::AbstractVector{Point2f0}, attributes::Dict)
 #     attributes[:positions] = points
@@ -91,12 +91,12 @@ end
 #     _poly(scene, attributes)
 # end
 function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, x::AbstractVector{T}) where T <: Union{Circle, Rectangle}
-    position = map(to_node(x)) do rects
+    position = map(node(:positions, x)) do rects
         map(rects) do rect
             minimum(rect) .+ (widths(rect) ./ 2f0)
         end
     end
-    attributes[:markersize] = lift_node(to_node(x)) do rects
+    attributes[:markersize] = map(node(:markersize, x)) do rects
         widths.(rects)
     end
     attributes[:marker] = T
@@ -206,13 +206,14 @@ function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: A
         empty!(sub.plots)
         N, M = size(A)
         map(1:M) do i
-            # subsub = Scene(sub)
             c = map(getindex, colors, Node(i))
+            attributes = Theme(color = c)
+            subsub = Combined{:LineScatter}(sub, attributes, A)
             if stype in (:lines, :scatter_lines)
-                lines!(sub, 1:N, A[:, i], color = c, raw = true)
+                lines!(subsub, attributes, 1:N, A[:, i])
             end
             if stype in (:scatter, :scatter_lines)
-                scatter!(subsub, 1:N, A[:, i], color = c, raw = true)
+                scatter!(subsub, attributes, 1:N, A[:, i])
             end
             subsub
         end
