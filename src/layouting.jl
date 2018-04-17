@@ -76,6 +76,7 @@ function data_limits(plots::Vector)
     isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
     idx = start(plots)
     bb = FRect3D()
+    println(typeof.(plots))
     while !done(plots, idx)
         plot, idx = next(plots, idx)
         # axis shouldn't be part of the data limit

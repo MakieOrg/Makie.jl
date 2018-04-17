@@ -224,3 +224,150 @@ function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: A
     l = legend(scene, plots[], labels, rest)
     plot!(scene, sub, rest)
 end
+
+
+
+
+arrow_head(::Type{<: Point{3}}) = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
+arrow_head(::Type{<: Point{2}}) = '▲'
+
+scatterfun(::Type{<: Point{2}}) = scatter!
+scatterfun(::Type{<: Point{3}}) = meshscatter!
+
+function arrows(
+        scene, points::AbstractVector{T}, directions::AbstractVector{<: VecTypes};
+        kw_args...
+    ) where T <: VecTypes
+    attributes, rest = merged_get!(:arrows, scene, Attributes(kw_args)) do
+        color = :black
+        Theme(
+            arrowhead = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0),
+            arrowtail = nothing,
+            linecolor = color,
+            arrowcolor = color,
+            linewidth = 1,
+            arrowsize = 0.3,
+            linestyle = nothing,
+            scale = Vec3f0(1),
+            normalize = false,
+            lengthscale = 1.0f0
+        )
+    end
+    points_n = node(:arrow_origins, points)
+    directions_n = node(:arrow_dir, directions)
+
+    arrows = Combined{:Arrows}(scene, attributes, points_n, directions_n)
+    headstart = map(points_n, directions_n, attributes[:lengthscale]) do points, directions, s
+        map(points, directions) do p1, dir
+            dir = attributes[:normalize][] ? StaticArrays.normalize(dir) : dir
+            p1 => p1 .+ (dir .* Float32(s))
+        end
+    end
+
+    ls = linesegments!(
+        arrows,
+        map(reinterpret, Signal(Point3f0), headstart),
+        color = arrows[:linecolor],
+        linewidth = arrows[:linewidth],
+        linestyle = arrows[:linestyle]
+    )
+    heads = map(x-> last.(x), headstart)
+    scatterfun(T)(
+        arrows,
+        heads, marker = arrows[:arrowhead],
+         markersize = attributes[:arrowsize],
+        color = attributes[:arrowcolor],
+        rotations = directions_n
+    )
+    plot!(scene, arrows, rest)
+end
+
+
+function wireframe(scene::Scene, x::AbstractVector, y::AbstractVector, z::AbstractMatrix, attributes::Dict)
+    wireframe(ngrid(x, y)..., z, attributes)
+end
+
+function wireframe!(scene::Scene, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix, attributes::Dict)
+    if (length(x) != length(y)) || (length(y) != length(z))
+        error("x, y and z must have the same length. Found: $(length(x)), $(length(y)), $(length(z))")
+    end
+    points = lift_node(to_node(x), to_node(y), to_node(z)) do x, y, z
+        Point3f0.(vec(x), vec(y), vec(z))
+    end
+    NF = (length(z) * 4) - ((size(z, 1) + size(z, 2)) * 2)
+    faces = Vector{Int}(NF)
+    idx = (i, j) -> sub2ind(size(z), i, j)
+    li = 1
+    for i = 1:size(z, 1), j = 1:size(z, 2)
+        if i < size(z, 1)
+            faces[li] = idx(i, j);
+            faces[li + 1] = idx(i + 1, j)
+            li += 2
+        end
+        if j < size(z, 2)
+            faces[li] = idx(i, j)
+            faces[li + 1] = idx(i, j + 1)
+            li += 2
+        end
+    end
+    linesegment!(scene, view(points, faces), attributes)
+end
+
+
+function wireframe(scene::Scene, mesh, attributes::Dict)
+    mesh = to_node(mesh, x-> to_mesh(scene, x))
+    points = lift_node(mesh) do g
+        decompose(Point3f0, g) # get the point representation of the geometry
+    end
+    indices = lift_node(mesh) do g
+        idx = decompose(Face{2, GLIndex}, g) # get the point representation of the geometry
+    end
+    linesegment(scene, view(points, indices), attributes)
+end
+
+
+function sphere_streamline(linebuffer, ∇ˢf, pt, h=0.01f0, n=5)
+    push!(linebuffer, pt)
+    df = normalize(∇ˢf(pt[1], pt[2], pt[3]))
+    push!(linebuffer, normalize(pt .+ h*df))
+    for k=2:n
+        cur_pt = last(linebuffer)
+        push!(linebuffer, cur_pt)
+        df = normalize(∇ˢf(cur_pt...))
+        push!(linebuffer, normalize(cur_pt .+ h*df))
+    end
+    return
+end
+using Makie: node
+
+function streamlines!(
+        scene::Scene,
+        origins::AbstractVector{T},
+        directions;
+        kw_args...
+    ) where T
+    attributes, rest = merged_get!(:streamlines, scene, kw_args) do
+        Theme(
+            h = 0.01f0,
+            n = 5,
+            color = :black,
+            linewidth = 1
+        )
+    end
+    dirs_n, pts_n = node(:dirs, directions), node(:origins, origins)
+    linebuffer = T[]
+    sub = Combined{:Streamlines}(
+        scene,
+        attributes,
+        pts_n, dirs_n
+    )
+    lines = map(dirs_n, pts_n, sub[:h], sub[:n]) do ∇ˢf, origins, h, n
+        empty!(linebuffer)
+        for point in origins
+            sphere_streamline(linebuffer, ∇ˢf, point, h, n)
+        end
+        linebuffer
+    end
+    linesegments!(sub, lines, color = sub[:color], linewidth = sub[:linewidth])
+    plot!(scene, sub, rest)
+end

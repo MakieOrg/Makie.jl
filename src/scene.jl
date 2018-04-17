@@ -60,12 +60,16 @@ struct Transformation
 end
 
 function Transformation()
-    translation, scale, rotation = (
+    translation, scale, rotation, align = (
         node(:translation, Vec3f0(0)),
         node(:scale, Vec3f0(1)),
-        node(:rotation, Vec4f0(0, 0, 0, 1))
+        node(:rotation, Vec4f0(0, 0, 0, 1)),
+        node(:align, Vec2f0(0))
     )
-    model = map_once(scale, translation, rotation) do s, o, r
+    model = map_once(scale, translation, rotation, align) do s, o, r, a
+        if a != Vec2f0(0)
+
+        end
         q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
         transformationmatrix(o, s, q)
     end
@@ -318,6 +322,10 @@ end
 function merged_get!(defaults::Function, key, scene, input::Attributes)
     return merge_attributes!(input, get!(defaults, scene.theme, key))
 end
+function merged_get!(defaults::Function, key, scene, input::Vector{Any})
+    return merged_get!(defaults, key, scene, Attributes(input))
+end
+
 
 Theme(; kw_args...) = Attributes(map(kw-> kw[1] => node(kw[1], kw[2]), kw_args))
 
@@ -332,6 +340,8 @@ end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    println("oh hi, mark")
+    println("length ", length(scene.current_screens))
     isempty(scene.current_screens) || return
     screen = Screen(scene)
     insert_plots!(scene)

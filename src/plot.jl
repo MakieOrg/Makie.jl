@@ -5,6 +5,10 @@ convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 convert_arguments(P, x::GeometryPrimitive) = (decompose(Point, x),)
 
+
+function convert_arguments(P, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
+    (Float32.(x), Float32.(y), Float32.(z))
+end
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (x, y, z)
 end

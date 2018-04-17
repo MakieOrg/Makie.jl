@@ -157,7 +157,9 @@ function axis3d(scene::Scene, ranges::Node{<: NTuple{3, Any}}, attributes::Attri
     end
     scene_unscaled = Scene(scene, transformation = Transformation())
     axis = Axis3D(scene, attributes, ranges)
-    textbuffer = TextBuffer(scene_unscaled, Point{3})
+    # TODO, how to have an unscaled and scaled scene inside Axis3D?
+    axis2 = Axis3D(scene_unscaled, attributes, ranges)
+    textbuffer = TextBuffer(axis2, Point{3})
     linebuffer = LinesegmentBuffer(axis, Point{3})
 
     tstyle, tickstyle, framestyle = value.(getindex.(attributes, (:titlestyle, :tickstyle, :framestyle)))

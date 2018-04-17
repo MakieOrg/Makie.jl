@@ -74,64 +74,6 @@ function rewrap(robj::RenderObject{Pre}) where Pre
         robj.boundingbox,
     )
 end
-"""
-Function to create a pure GLFW OpenGL window
-"""
-function create_glcontext(
-        name = "Makie";
-        resolution = GLWindow.standard_screen_resolution(),
-        debugging = false,
-        major = 3,
-        minor = 3,# this is what GLVisualize needs to offer all features
-        windowhints = GLWindow.standard_window_hints(),
-        contexthints = GLWindow.standard_context_hints(major, minor),
-        visible = true,
-        focus = false,
-        fullscreen = false,
-        monitor = nothing,
-        parent = GLFW.Window(C_NULL)
-    )
-    # we create a new context, so we need to clear the shader cache.
-    # TODO, cache shaders in GLAbstraction per GL context
-    GLFW.WindowHint(GLFW.VISIBLE, visible)
-    GLFW.WindowHint(GLFW.FOCUSED, focus)
-    for ch in contexthints
-        GLFW.WindowHint(ch[1], ch[2])
-    end
-    for wh in windowhints
-        GLFW.WindowHint(wh[1], wh[2])
-    end
-
-    @static if is_apple()
-        if debugging
-            warn("OpenGL debug message callback not available on osx")
-            debugging = false
-        end
-    end
-
-    GLFW.WindowHint(GLFW.OPENGL_DEBUG_CONTEXT, Cint(debugging))
-
-    monitor = if monitor == nothing
-        GLFW.GetPrimaryMonitor()
-    elseif isa(monitor, Integer)
-        GLFW.GetMonitors()[monitor]
-    elseif isa(monitor, GLFW.Monitor)
-        monitor
-    else
-        error("Monitor needs to be nothing, int, or GLFW.Monitor. Found: $monitor")
-    end
-
-    window = GLFW.CreateWindow(resolution..., String(name), GLFW.Monitor(C_NULL), parent)
-
-    if fullscreen
-        GLFW.SetKeyCallback(window, (_1, button, _2, _3, _4) -> begin
-            button == GLFW.KEY_ESCAPE && GLWindow.make_windowed!(window)
-        end)
-        GLWindow.make_fullscreen!(window, monitor)
-    end
-    debugging && glDebugMessageCallbackARB(_openglerrorcallback, C_NULL)
-    window
-end
 
 function Screen(scene::Scene; kw_args...)
     if !isempty(gl_screens)
@@ -140,7 +82,7 @@ function Screen(scene::Scene; kw_args...)
         end
         empty!(gl_screens)
     end
-    window = create_glcontext("Makie"; resolution = widths(scene.px_area[]), kw_args...)
+    window = GLFW.Window(name = "Makie", resolution = widths(scene.px_area[]), kw_args...)
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     GLAbstraction.new_context()

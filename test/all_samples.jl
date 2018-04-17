@@ -502,3 +502,100 @@ scene
 # ys = vec([I[2] for I in pts])
 # zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
 # wireframe(xs, ys, zs) # stackoverflow
+
+
+using Makie, GeometryTypes
+
+n = 20
+f   = (x,y,z) -> x*exp(cos(y)*z)
+∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
+∇ˢf = (x,y,z) -> ∇f(x,y,z) - Point3f0(x,y,z)*dot(Point3f0(x,y,z), ∇f(x,y,z))
+
+θ = [0;(0.5:n-0.5)/n;1]
+φ = [(0:2n-2)*2/(2n-1);2]
+x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+z = [cospi(θ) for θ in θ, φ in φ]
+
+pts = vec(Point3f0.(x, y, z))
+∇ˢF = vec(∇ˢf.(x, y, z))
+
+scene = Scene();
+surface!(scene , x, y, z)
+
+Makie.arrows(
+    scene, pts, ∇ˢF,
+    arrowsize = 0.03, linecolor = :gray, linewidth = 3
+)
+scene
+
+
+using Makie, GeometryTypes
+
+# needs to be in a function for ∇ˢf to be fast and inferable
+function test(scene)
+    n = 20
+    f   = (x,y,z) -> x*exp(cos(y)*z)
+    ∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
+    ∇ˢf = (x,y,z) -> ∇f(x,y,z) - Point3f0(x,y,z)*dot(Point3f0(x,y,z), ∇f(x,y,z))
+    θ = [0;(0.5:n-0.5)/n;1]
+    φ = [(0:2n-2)*2/(2n-1);2]
+    x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+    y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+    z = [cospi(θ) for θ in θ, φ in φ]
+
+    pts = vec(Point3f0.(x, y, z))
+    lns = Makie.streamlines!(scene, pts, ∇ˢf)
+    # those can be changed interactively:
+    lns[:color] = :black
+    lns[:h] = 0.06
+    lns[:linewidth] = 1.0
+    lns
+end
+
+scene = Scene()
+lns = test(scene)
+n = 20
+θ = [0;(0.5:n-0.5)/n;1]
+φ = [(0:2n-2)*2/(2n-1);2]
+x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+z = [cospi(θ) for θ in θ, φ in φ]
+rand([-1f0, 1f0], 3)
+pts = vec(Point3f0.(x, y, z))
+
+surface!(scene, x, y, z)
+scene
+
+scene = Scene()
+function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
+    x = @.r*sin(θ)*cos(ϕ)
+    y = @.r*sin(θ)*sin(ϕ)
+    z = @.r*cos(θ)
+    Point3f0.(x, y, z)
+end
+
+n = 128^2 #number of points to generate
+r = ones(n);
+θ = acos.(1 .- 2 .* rand(n));
+φ = 2π * rand(n);
+pts = SphericalToCartesian(r,θ,φ);
+s = Makie.arrows(scene, pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02)
+scene
+
+
+parent = Scene();
+n = 128
+θ = [0;(0.5:n-0.5)/n;1]
+φ = [(0:2n-2)*2/(2n-1);2]
+x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+z = [cospi(θ) for θ in θ, φ in φ]
+sub1 = Scene(parent);
+s = surface!(sub1, x, y, z, image = rand(size(xyz)), colormap = :viridis)
+sub2 = Scene(parent, transformation = Makie.Transformation())
+s = surface!(sub2, x, y, z, image = rand(size(xyz)), colormap = :viridis)
+parent
+sub2.transformation.translation[] = Vec3f0(0, 1.5, 0)
+sub2.plots[1][:model][]
+typeof(sub2) == typeof(parent)

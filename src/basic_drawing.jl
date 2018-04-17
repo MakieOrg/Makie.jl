@@ -74,6 +74,9 @@ struct Billboard end
 calculate_values!(scene::Scenelike, T, attributes, args) = attributes
 
 Base.parent(x::AbstractPlot) = x.parent
+function Base.getindex(x::AbstractPlot, idx::Integer)
+    x.args[idx]
+end
 function Base.getindex(x::AbstractPlot, key::Symbol)
     key == :x && return x.args[1]
     key == :y && return x.args[2]
@@ -243,6 +246,7 @@ function default_theme(scene, ::Type{Surface})
     Theme(;
         default_theme(scene)...,
         colormap = scene.theme[:colormap],
+        image = nothing,
         fxaa = true,
     )
 end
