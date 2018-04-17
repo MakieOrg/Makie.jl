@@ -61,17 +61,18 @@ Text align, e.g. :
 attribute_convert(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f0(alignment2num.(x))
 attribute_convert(x::Vec2f0, ::key"align") = x
 
+const _font_cache = Dict{String, Font}()
 
 """
     font conversion
 a string naming a font, e.g. helvetica
 """
-function attribute_convert(x::Union{Symbol, String}, ::key"font")
+function attribute_convert(x::Union{Symbol, String}, k::key"font")
     str = string(x)
-    if str == "default"
-        return GLVisualize.defaultfont()
+    get!(_font_cache, str) do
+        str == "default" && return attribute_convert("DejaVuSans", k)
+        newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
     end
-    newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
 end
 attribute_convert(x::Font, ::key"font") = x
 attribute_convert(x::Vector{String}, k::key"font") = attribute_convert.(x, k)

@@ -2,7 +2,7 @@
 function addbuttons(scene::Scene, name, button, action, ::Type{ButtonEnum}) where ButtonEnum
     event = getfield(scene.events, name)
     set = event[]
-    button_enum = ButtonEnum(button)
+    button_enum = ButtonEnum(Int(button))
     if button != GLFW.KEY_UNKNOWN
         if action == GLFW.PRESS
             push!(set, button_enum)
@@ -89,7 +89,7 @@ function disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
 end
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
-    function keyoardbuttons(window, button::Cint, scancode::Cint, action::Cint, mods::Cint)
+    function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
     end
     disconnect!(event); disconnect!(window, keyboard_buttons)

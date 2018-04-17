@@ -204,6 +204,7 @@ function Scene(; area = nothing, resolution = reasonable_resolution())
         Transformation(),
         AbstractPlot[],
         Theme(
+            font = "DejaVuSans",
             backgroundcolor = RGBAf0(1,1,1,1),
             color = :black,
             colormap = :YlOrRd
@@ -340,8 +341,6 @@ end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
-    println("oh hi, mark")
-    println("length ", length(scene.current_screens))
     isempty(scene.current_screens) || return
     screen = Screen(scene)
     insert_plots!(scene)
@@ -396,3 +395,8 @@ function Combined{Typ}(scene::Combined, attributes, args...) where Typ
     push!(scene.plots, c)
     c
 end
+
+
+theme(x::Combined, args...) = theme(x.parent, args...)
+theme(x::Scene) = x.theme
+theme(x::Scene, key) = x.theme[key]

@@ -258,3 +258,18 @@ function same_length_array(arr, value::Vector)
     value
 end
 same_length_array(arr, value, key) = same_length_array(arr, attribute_convert(value, key))
+
+
+
+function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
+    T(ntuple(Val{N}) do i
+        i > N2 && return ET(fillval)
+        @inbounds return vec[i]
+    end)
+end
+
+dim3(x) = ntuple(i-> x, Val{3})
+dim3(x::NTuple{3, Any}) = x
+
+dim2(x) = ntuple(i-> x, Val{2})
+dim2(x::NTuple{2, Any}) = x

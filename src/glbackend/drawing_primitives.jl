@@ -66,13 +66,6 @@ function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     end
 end
 
-function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
-    T(ntuple(Val{N}) do i
-        i > N2 && return ET(fillval)
-        @inbounds return vec[i]
-    end)
-end
-
 function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
     atlas = GLVisualize.get_texture_atlas()
     N = length(T)

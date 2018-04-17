@@ -16,6 +16,7 @@ function default_theme(scene::Scene, ::Type{Legend})
         rotation = Vec4f0(0, 0, 0, 1),
         textcolor = :black,
         textsize = 16,
+        font = theme(scene, :font),
         markersize = 5,
         linepattern = Point2f0[(0, 0), (1, 0.0)],
         scatterpattern = Point2f0[(0.5, 0.0)],
@@ -36,6 +37,7 @@ function default_theme(scene::Scene, ::Type{ColorLegend})
         rotation = 0.0,
         textcolor = :black,
         textsize = 16,
+        font = theme(scene, :font),
     )
 end
 
@@ -67,7 +69,6 @@ function make_label(scene, plot, labeltext, i, attributes)
 end
 
 
-
 function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::AbstractVector{<:String}, attributes)
     isempty(legends) && return
     attributes, rest = merged_get!(:legend, scene, attributes) do
@@ -88,7 +89,7 @@ function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::A
 
     args = getindex.(attributes, (
         :labelwidth, :gap, :textgap, :padding,
-        :textsize, :textcolor, :rotation, :align
+        :textsize, :textcolor, :rotation, :align, :font
     ))
 
     legends = make_label.(legend_plot, legends, labels, 1:N, attributes)
@@ -99,7 +100,12 @@ function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::A
             yposition = (i - 1) * gap
             tsize = floor(font[1] / 2) # textsize at position one, half of it since we used centered align
             xy = Point2f0(w + padding + tgap, yposition + tsize + padding)
-            push!(textbuffer, labels[i], xy, textsize = font[1], color = font[2], rotation = font[3], align = font[4], font = "default")
+            push!(
+                textbuffer,
+                labels[i], xy, textsize = font[1], color = font[2],
+                rotation = font[3], align = font[4],
+                font = font[5]
+            )
         end
         finish!(textbuffer)
         return
@@ -149,13 +155,16 @@ function colorlegend(scene::Scene, colormap, range, attributes)
     attributes, rest = merged_get!(:colorlegend, scene, attributes) do
         default_theme(scene, ColorLegend)
     end
-
     lscene = Scene(scene, scene.px_area)
     campixel!(lscene) # map coordinates to pixel
 
-    padding, textsize, textcolor, align, textgap, width, position, opad = getindex.(attributes, (
-        :padding, :textsize, :textcolor, :align, :textgap, :width, :position, :outerpadding
-    ))
+    @extract(
+        attributes,
+        (
+            padding, textsize, textcolor, align, font,
+            textgap, width, position, outerpadding
+        )
+    )
 
     vertices = Point3f0[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]
     mesh = GLNormalUVMesh(
@@ -171,9 +180,9 @@ function colorlegend(scene::Scene, colormap, range, attributes)
     end
     tio = TextBuffer(lscene, Point2)
     rect = map(
-                to_node(range), textsize, textcolor, align,
-                textgap, width, padding, opad, position, scene.px_area
-            ) do r, ts, tc, a, tg, w, pad, opad, position, area
+                to_node(range), textsize, textcolor, align, font,
+                textgap, width, padding, outerpadding, position, scene.px_area
+            ) do r, ts, tc, a, font, tg, w, pad, opad, position, area
 
         start!(tio)
         real_range = to_range(r)
@@ -182,7 +191,10 @@ function colorlegend(scene::Scene, colormap, range, attributes)
             o1 = (i - 1) / (N - 1) # 0 to 1
             pos = Point2f0(w[1] + tg, (ts/2) + o1 * w[2]) .+ pad
             label = string(round(real_range[i], 3))
-            push!(tio, label, pos, textsize = ts, color = tc, rotation = 0.0, align = a, font = "default")
+            push!(
+                tio, label, pos, textsize = ts, color = tc, rotation = 0.0,
+                align = a, font = font
+            )
         end
         finish!(tio)
         limits = data_limits(tio)

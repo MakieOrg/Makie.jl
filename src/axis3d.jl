@@ -31,7 +31,7 @@ function default_theme(scene, ::Type{Axis3D})
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = "default",
+            font = map(dim3, theme(scene, :font)),
             gap = 3
         ),
 
@@ -41,7 +41,7 @@ function default_theme(scene, ::Type{Axis3D})
             textsize =  (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 3,
-            font = "default",
+            font = map(dim3, theme(scene, :font)),
         ),
 
         framestyle = Theme(
@@ -117,7 +117,7 @@ function draw_axis(
                 push!(
                     textbuffer, str, startpos,
                     color = ttextcolor[i], rotation = trotation[i],
-                    textsize = ttextsize[i], align = talign[i], font = tfont
+                    textsize = ttextsize[i], align = talign[i], font = tfont[i]
                 )
             end
             if !isempty(axisnames[i])
@@ -125,7 +125,7 @@ function draw_axis(
                 push!(
                     textbuffer, to_latex(axisnames[i]), pos,
                     textsize = axisnames_size[i], color = axisnames_color[i],
-                    rotation = axisrotation[i], align = axisalign[i], font = axisnames_font
+                    rotation = axisrotation[i], align = axisalign[i], font = axisnames_font[i]
                 )
             end
         end

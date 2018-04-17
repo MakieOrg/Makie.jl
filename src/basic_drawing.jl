@@ -211,13 +211,14 @@ function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
     )
 end
 
+
 function default_theme(scene, ::Type{Text})
     Theme(;
         default_theme(scene)...,
         color = :black,
         strokecolor = (:black, 0.0),
         strokewidth = 0,
-        font = "default",
+        font = theme(scene, :font),
         align = (:left, :bottom),
         rotation = 0.0,
         textsize = 20,

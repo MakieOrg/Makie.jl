@@ -24,7 +24,7 @@ function default_theme(scene, ::Type{Axis2D})
             textsize = (5, 5),
             rotation = (0.0, 0.0),
             align = ((:center, :top), (:right, :center)),
-            font = ("default", "default"),
+            font = map(dim2, theme(scene, :font)),
         ),
 
         gridstyle = Theme(
@@ -41,6 +41,7 @@ function default_theme(scene, ::Type{Axis2D})
             axis_arrow = false,
             arrow_size = 2.5,
             frames = ((false, false), (false, false)),
+            frames = ((false, false), (false, false)),
         ),
 
         titlestyle = Theme(
@@ -49,7 +50,7 @@ function default_theme(scene, ::Type{Axis2D})
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
             align = ((:center, :top), (:center, :bottom)),
-            font = ("default", "default"),
+            font = map(dim2, theme(scene, :font)),
         )
     )
 end
