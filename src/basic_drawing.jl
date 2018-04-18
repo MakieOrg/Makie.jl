@@ -3,6 +3,11 @@ const atomic_funcs = (
         contour(x, y, z)
     Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
     """,
+    :contour3d => """
+        contour3d(x, y, z)
+    Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
+    with z- elevation for each level
+    """,
     :image => """
         image(x, y, image) / image(image)
     Plots an image on range x, y (defaults to dimensions)
@@ -240,6 +245,7 @@ end
 function default_theme(scene, ::Type{Image})
     Theme(;
         default_theme(scene)...,
+        colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
         fxaa = false,
     )
 end

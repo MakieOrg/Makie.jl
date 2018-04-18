@@ -149,10 +149,21 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         visualize(tex, Style(:default), gl_attributes).children[]
     end
 end
+
+
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = (value.(x.args[1:2]))
-        visualize(x.args[3], Style(:default), gl_attributes).children[]
+        lol = (to_range.(value.(x.args[1:2])))
+        gl_attributes[:ranges] = lol
+        img = x[3]
+        if isa(value(img), AbstractMatrix{<: Number})
+            norm = pop!(gl_attributes, :color_norm)
+            cmap = pop!(gl_attributes, :color_map)
+            img = map(img, cmap, norm) do img, cmap, norm
+                interpolated_getindex.((cmap,), img, (norm,))
+            end
+        end
+        visualize(img, Style(:default), gl_attributes).children[]
     end
 end
 

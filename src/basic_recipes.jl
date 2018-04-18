@@ -16,41 +16,69 @@ function resample(x::AbstractVector, len)
     interpolated_getindex.((x,), linspace(0.0, 1.0, len))
 end
 
-function plot!(scene::Scene, ::Type{Contour}, attributes::Attributes, args...)
+function resampled_colors(attributes, levels)
+    cols = if haskey(attributes, :color)
+        c = attribute_convert(value(attributes[:color]), key"color"())
+        repeated(c, levels)
+    else
+        c = attribute_convert(value(attributes[:colormap]), key"colormap"())
+        resample(c, levels)
+    end
+end
+
+function contourlines(::Type{Contour}, contours, cols)
+    result = Point2f0[]
+    colors = RGBA{Float32}[]
+    for (color, c) in zip(cols, Main.Contour.levels(contours))
+        for elem in Main.Contour.lines(c)
+            append!(result, elem.vertices)
+            push!(result, Point2f0(NaN32))
+            append!(colors, fill(color, length(elem.vertices) + 1))
+        end
+    end
+    result, colors
+end
+function contourlines(::Type{Contour3d}, contours, cols)
+    result = Point3f0[]
+    colors = RGBA{Float32}[]
+    for (color, c) in zip(cols, Main.Contour.levels(contours))
+        for elem in Main.Contour.lines(c)
+            for p in elem.vertices
+                push!(result, Point3f0(p[1], p[2], c.level))
+            end
+            push!(result, Point3f0(NaN32))
+            append!(colors, fill(color, length(elem.vertices) + 1))
+        end
+    end
+    result, colors
+end
+plot!(scene::Scene, t::Type{Contour}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+plot!(scene::Scene, t::Type{Contour3d}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+
+function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args...) where T
     attributes, rest = merged_get!(:contour, scene, attributes) do
         default_theme(scene, Contour)
     end
-    calculate_values!(scene, Contour, attributes, args)
-    T = eltype(last(args))
     x, y, z = convert_arguments(Contour, args...)
+    calculate_values!(scene, Contour, attributes, (x, y, z))
+    t = eltype(z)
     contourplot = Combined{:Contour}(scene, attributes, x, y, z)
     if value(attributes[:fillrange])
         attributes[:interpolate] = true
-        heatmap!(contourplot, attributes, x, y, z)
+        if T == Contour
+            heatmap!(contourplot, attributes, x, y, z)
+        else
+            surface!(contourplot, attributes, x, y, z)
+        end
     else
         levels = round(Int, value(attributes[:levels]))
-        T = eltype(z)
-        contours = Main.Contour.contours(to_vector(x, size(z, 1), T), to_vector(y, size(z, 2), T), z, levels)
-        result = Point2f0[]
-        colors = RGBA{Float32}[]
-        cols = if haskey(attributes, :color)
-            c = attribute_convert(value(attributes[:color]), key"color"())
-            repeated(c, levels)
-        else
-            c = attribute_convert(value(attributes[:colormap]), key"colormap"())
-            resample(c, levels)
-        end
-        for (color, c) in zip(cols, Main.Contour.levels(contours))
-            for elem in Main.Contour.lines(c)
-                append!(result, elem.vertices)
-                push!(result, Point2f0(NaN32))
-                append!(colors, fill(color, length(elem.vertices) + 1))
-            end
-        end
+        contours = Main.Contour.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
+        cols = resampled_colors(attributes, levels)
+        result, colors = contourlines(T, contours, cols)
         attributes[:color] = colors
         lines!(contourplot, merge(attributes, rest), result)
     end
-    contourplot
+    plot!(scene, contourplot, rest)
 end
 
 
