@@ -1,7 +1,6 @@
 function calc_drag(buttons, drag, indrag, tracked_mousebutton)
     # only track if still the same button is pressed
     if length(buttons) == 1 && (!indrag[] || tracked_mousebutton[] == first(buttons))
-
         if !indrag[]
             tracked_mousebutton[] = first(buttons); indrag[] = true
             drag[] = Mouse.down # just started, so dragging is still false
@@ -25,7 +24,10 @@ function mousedrag(scene::Scene, native_window)
     drag = RefValue(Mouse.notpressed)
     events = scene.events
     foreach(events.mouseposition, events.mousebuttons) do mp, buttons
-        events.mousedrag[] = calc_drag(buttons, drag, indrag, tracked_mousebutton)
+        d = calc_drag(buttons, drag, indrag, tracked_mousebutton)
+        if (d == Mouse.pressed) || (d != events.mousedrag[])
+            events.mousedrag[] = d
+        end
         return
     end
     return

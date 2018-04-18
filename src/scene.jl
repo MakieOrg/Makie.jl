@@ -67,9 +67,6 @@ function Transformation()
         node(:align, Vec2f0(0))
     )
     model = map_once(scale, translation, rotation, align) do s, o, r, a
-        if a != Vec2f0(0)
-
-        end
         q = Quaternions.Quaternion(1f0, 0f0, 0f0, 0f0)
         transformationmatrix(o, s, q)
     end

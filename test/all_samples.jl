@@ -599,3 +599,11 @@ parent
 sub2.transformation.translation[] = Vec3f0(0, 1.5, 0)
 sub2.plots[1][:model][]
 typeof(sub2) == typeof(parent)
+
+
+using Makie
+image(rand(10, 10))
+Makie.current_scene()
+
+x,y = linspace(0, 4, 50), linspace(0, 4, 50)
+contour3d(x, y, (x,y)-> sin(x) + cos(y), levels = 20)

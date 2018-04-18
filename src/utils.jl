@@ -273,3 +273,13 @@ dim3(x::NTuple{3, Any}) = x
 
 dim2(x) = ntuple(i-> x, Val{2})
 dim2(x::NTuple{2, Any}) = x
+
+
+to_range(x) = linspace(minimum(x), maximum(x), 4)
+function to_range(x::AbstractVector)
+    if length(x) <= 5
+        x
+    else
+        linspace(minimum(x), maximum(x), 5)
+    end
+end

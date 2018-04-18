@@ -87,10 +87,10 @@ function add_pan!(scene::Scene, camera::Camera2D)
     map(
         scene.camera,
         Node.((scene, camera, startpos))...,
-        events.mouseposition, events.mousedrag
-    ) do scene, camera, startpos, mp, dragging
-
+        events.mousedrag
+    ) do scene, camera, startpos, dragging
         pan = camera.panbutton[]
+        mp = events.mouseposition[]
         if ispressed(scene, pan)
             window_area = scene.px_area[]
             if dragging == Mouse.down
@@ -149,7 +149,6 @@ function selection_rect!(
         color = (:black, 0.4),
         visible = false,
         raw = true
-        #drawover = true
     )
     waspressed = RefValue(false)
     dragged_rect = map(scene.camera, scene.events.mousedrag) do drag

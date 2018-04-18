@@ -138,14 +138,7 @@ end
     # :colorlegend => """
     #
 
-to_range(x::VecTypes{2}) = linspace(x[1], x[2], 4)
-function to_range(x::AbstractVector)
-    if length(x) <= 5
-        x
-    else
-        linspace(minimum(x), maximum(x), 5)
-    end
-end
+
 
 """
 colorlegend(scene, colormap, range)
