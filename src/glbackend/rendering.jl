@@ -2,7 +2,7 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     try
         while isopen(screen)
             t = time()
-            GLWindow.poll_glfw() # GLFW poll
+            GLFW.PollEvents() # GLFW poll
             prerender()
             if Base.n_avail(Reactive._messages) > 0
                 GLWindow.reactive_run_till_now()

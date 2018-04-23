@@ -30,6 +30,18 @@ mutable struct Screen <: AbstractScreen
     end
 end
 
+
+function colorbuffer(screen::Screen)
+    GLFW.PollEvents()
+    yield()
+    render_frame(screen) # let it render
+    GLFW.SwapBuffers(to_native(screen))
+    glFinish() # block until opengl is done rendering
+    buffer = gpu_data(screen.framebuffer.color)
+    buffer .= Images.clamp01nan.(buffer)
+    return buffer
+end
+
 const io_lock = ReentrantLock()
 
 function save_print(args...)
