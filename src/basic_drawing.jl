@@ -150,8 +150,7 @@ Fill in values that can only be calculated when we have all other attributes fil
 function calculate_values!(scene::Scenelike, ::Type{T}, attributes, args) where T <: AbstractPlot
     calculate_values!(scene, attributes, args)
 end
-modelmatrix(x::Scene) = x.transformation.model
-modelmatrix(x::Combined) = x.parent.transformation.model
+
 function calculate_values!(scene::Scenelike, attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
@@ -234,10 +233,10 @@ end
 function default_theme(scene, ::Type{Heatmap})
     Theme(;
         default_theme(scene)...,
-        colormap = scene.theme[:colormap],
+        colormap = theme(scene, :colormap),
         linewidth = 0.0,
         levels = 1,
-        fxaa = false,
+        fxaa = true,
         interpolate = false
     )
 end
@@ -265,5 +264,18 @@ function default_theme(scene, ::Type{Mesh})
         fxaa = true,
         interpolate = false,
         shading = true
+    )
+end
+function default_theme(scene, ::Type{Volume})
+    Theme(;
+        default_theme(scene)...,
+        fxaa = true,
+        isovalue = 0.6,
+        algorithm = :iso,
+        absorption = 1f0,
+        isovalue = 0.5f0,
+        isorange = 0.01f0,
+        colormap = theme(scene, :colormap),
+        colornorm = Vec2f0(0, 1)
     )
 end

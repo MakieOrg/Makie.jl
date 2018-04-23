@@ -40,5 +40,6 @@ include("buffers.jl")
 include("legend.jl")
 
 export cam2d!, Scene, update_cam!, Screen, plot!, CairoScreen, axis2d, RGBAf0
+export (..)
 
 end

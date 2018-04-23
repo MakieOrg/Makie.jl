@@ -42,7 +42,9 @@ end
 function data_limits(x::Union{Heatmap, Contour, Image})
     boundingbox(value.((x.args[1], x.args[2]))...)
 end
-
+function data_limits(x::Volume)
+    boundingbox(value.((x.args[1], x.args[2], x.args[3]))...)
+end
 data_limits(x::Union{Surface}) = boundingbox(value.(x.args)...)
 
 data_limits(x::Mesh) = FRect3D(value(x.args[1]))

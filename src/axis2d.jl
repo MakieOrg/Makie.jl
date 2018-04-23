@@ -124,12 +124,12 @@ function generate_ticks(limits)
     zip(ticks, labels)
 end
 function draw_ticks(
-        textbuffer, dim, origin, ticks, scale,
+        textbuffer, dim, origin, ticks,
         linewidth, linecolor, linestyle,
         textcolor, textsize, rotation, align, font
     )
     for (tick, str) in ticks
-        pos = ntuple(i-> i != dim ? origin[i] : (tick .* scale[dim]), Val{2})
+        pos = ntuple(i-> i != dim ? origin[i] : tick, Val{2})
         push!(
             textbuffer,
             str, pos,
@@ -140,13 +140,12 @@ function draw_ticks(
 end
 
 function draw_grid(
-        linebuffer, dim, origin, ticks, scale, dir::NTuple{N},
+        linebuffer, dim, origin, ticks, dir::NTuple{N},
         linewidth, linecolor, linestyle
     ) where N
-    scaleND = Pointf0{N}(ntuple(i-> scale[i], Val{N}))
-    dirf0 = Pointf0{N}(dir) .* scaleND
+    dirf0 = Pointf0{N}(dir)
     for (tick, str) in ticks
-        tup = ntuple(i-> i != dim ? origin[i] : (tick .* scaleND[dim]), Val{N})
+        tup = ntuple(i-> i != dim ? origin[i] : tick, Val{N})
         posf0 = Pointf0{N}(tup)
         append!(
             linebuffer,
@@ -158,7 +157,7 @@ end
 
 
 function draw_frame(
-        linebuffer, limits::NTuple{N, Any}, scale,
+        linebuffer, limits::NTuple{N, Any},
         linewidth, linecolor, linestyle,
         axis_position, axis_arrow, arrow_size
     ) where N
@@ -167,7 +166,6 @@ function draw_frame(
     maxi = maximum.(limits)
     rect = HyperRectangle(Vec(mini), Vec(maxi .- mini))
     origin = Vec{N}(0.0)
-    scalend = to_ndim(Point{N, Float32}, scale, 1f0)
 
     if (origin in rect) && axis_position == :origin
         for i = 1:N
@@ -175,13 +173,13 @@ function draw_frame(
             to = unit(Point{N, Float32}, i) * Float32(maxi[i])
             if false#axis_arrow
                 arrows(
-                    scene, [start .* scalend => to .* scalend],
+                    scene, [start => to],
                     linewidth = linewidth, linecolor = linecolor, linestyle = linestyle,
-                    scale = scale, arrowsize = arrow_size
+                    arrowsize = arrow_size
                 )
             else
                 append!(
-                    linebuffer, [start .* scalend, to .* scalend],
+                    linebuffer, [start => to],
                     linewidth = linewidth, color = linecolor #linestyle = linestyle,
                 )
             end
@@ -198,7 +196,7 @@ function draw_frame(
                     p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val{N})
                     to = Point{N, Float32}(p)
                     append!(
-                        linebuffer, [from .* scalend, to .* scalend],
+                        linebuffer, [from, to],
                         linewidth = linewidth, color = linecolor#, linestyle = linestyle,
                     )
                 end
@@ -209,7 +207,7 @@ end
 
 function draw_titles(
         textbuffer,
-        xticks, yticks, origin, limit_widths, scale,
+        xticks, yticks, origin, limit_widths,
         tickfont, tick_size, tick_gap, tick_title_gap,
         axis_labels,
         textcolor, textsize, rotation, align, font
@@ -226,8 +224,7 @@ function draw_titles(
 
     tickspace = (tickspace_x, tickspace_y)
     title_start = origin .- (tick_gap .+ tickspace .+ tick_title_gap)
-    scale2d = ntuple(i-> scale[i], Val{2})
-    half_width = origin .+ ((limit_widths .* scale2d) ./ 2.0)
+    half_width = origin .+ (limit_widths ./ 2.0)
 
     posx = (half_width[1], title_start[2])
     posy = (title_start[1], half_width[2])
@@ -243,7 +240,7 @@ function draw_titles(
 end
 
 function draw_axis(
-        textbuffer, linebuffer, ranges, scale,
+        textbuffer, linebuffer, ranges,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
 
@@ -272,13 +269,11 @@ function draw_axis(
     t_textsize = t_textsize .* %; t_gap = t_gap .* %;
     t_title_gap = t_title_gap .* %
 
-    scale2d = ntuple(i-> scale[i], Val{2})
-    origin = first.(limits) .* scale2d
-
+    origin = first.(limits)
     dirs = ((0.0, Float64(limit_widths[2])), (Float64(limit_widths[1]), 0.0))
     foreach(1:2, dirs, xyticks) do dim, dir, ticks
         draw_grid(
-            linebuffer, dim, origin, ticks, scale, dir,
+            linebuffer, dim, origin, ticks, dir,
             g_linewidth, g_linecolor, g_linestyle
         )
     end
@@ -287,20 +282,20 @@ function draw_axis(
 
     foreach(1:2, o_offsets, xyticks) do dim, offset, ticks
         draw_ticks(
-            textbuffer, dim, origin .- offset, ticks, scale,
+            textbuffer, dim, origin .- offset, ticks,
             t_linewidth, t_linecolor, t_linestyle,
             t_textcolor, t_textsize, t_rotation, t_align, t_font
         )
     end
 
     draw_frame(
-        linebuffer, limits, scale,
+        linebuffer, limits,
         f_linewidth, f_linecolor, f_linestyle,
         f_axis_position, f_axis_arrow, f_arrow_size
     )
 
     draw_titles(
-        textbuffer, xyticks..., origin, limit_widths, scale,
+        textbuffer, xyticks..., origin, limit_widths,
         t_font, t_textsize, t_gap, t_title_gap,
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
@@ -329,13 +324,13 @@ function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, 
     t_args = getindex.(attributes[:tickstyle][], t_keys)
     ti_args = getindex.(attributes[:titlestyle][], ti_keys)
 
-    scene_unscaled = Scene(scene, transformation = Transformation())
-    cplot = Axis2D(scene_unscaled, attributes, ranges)
+    # scene_unscaled = Scene(scene, transformation = Transformation())
+    cplot = Axis2D(scene, attributes, ranges)
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})
     map_once(
         draw_axis,
-        to_node(textbuffer), to_node(linebuffer), ranges, attributes[:scale],
+        to_node(textbuffer), to_node(linebuffer), ranges,
         g_args..., t_args..., f_args..., ti_args...
     )
     return cplot

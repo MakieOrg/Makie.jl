@@ -554,7 +554,6 @@ function test(scene)
 end
 
 scene = Scene()
-lns = test(scene)
 n = 20
 θ = [0;(0.5:n-0.5)/n;1]
 φ = [(0:2n-2)*2/(2n-1);2]
@@ -566,7 +565,7 @@ pts = vec(Point3f0.(x, y, z))
 
 surface!(scene, x, y, z)
 scene
-
+using Makie, GeometryTypes
 scene = Scene()
 function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
     x = @.r*sin(θ)*cos(ϕ)
@@ -601,9 +600,63 @@ sub2.plots[1][:model][]
 typeof(sub2) == typeof(parent)
 
 
-using Makie
 image(rand(10, 10))
 Makie.current_scene()
 
-x,y = linspace(0, 4, 50), linspace(0, 4, 50)
-contour3d(x, y, (x,y)-> sin(x) + cos(y), levels = 20)
+using Makie, Colors, GeometryTypes
+
+function test(x, y, z)
+    xy = [x, y, z]
+    (xy') * eye(3, 3) * xy
+end
+scene = Scene()
+x = linspace(-2pi, 2pi, 100)
+scene = Scene()
+c1 = contour!(scene, x, x, x, test)
+scene
+xm, ym, zm = minimum(Makie.limits(scene)[])
+s1 = Makie.translated(scene, (:xy, -zm));
+c2 = contour!(scene, x, x, map(v-> v[1, :, :], c1[4])[]);
+scene
+Makie.modelmatrix(c2)[]
+
+heatmap!(translated(scene, (:xz, ym)), x, x, map(v-> v[:, 1, :], c[4]))
+contour!(translated(scene, (:yz, xm)), x, x, map(v-> v[:, :, 1], c[4]), fillrange = true)
+scene
+
+
+scene
+
+
+using Makie, Colors, GeometryTypes
+function test(x, y, z)
+    xy = [x, y, z]
+    (xy') * eye(3, 3) * xy
+end
+x = linspace(-2pi, 2pi, 100)
+scene = Scene()
+c = contour!(scene, x, x, x, test)
+xm, ym, zm = minimum(scene.limits[])
+# c[4] == fourth argument of the above plotting command
+contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
+heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
+contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
+
+
+using Makie, GeometryTypes
+
+s = Scene()
+x, y = rand(10), rand(10)
+s1 = Scene(s, transformation = Makie.Transformation())
+lines!(s1, x, y)
+s2 = Scene(s, transformation = Makie.Transformation())
+lines!(s2, x, y, color = :black)
+s
+xw = (Makie.real_boundingbox(s1) |> maximum)[1]
+s2.transformation.translation[] = Vec3f0(xw, 0, 0)
+
+
+# Layouting + transformations
+# UI elements
+# setindex/getindex, theme merging
+# fix desing of convert_arguments

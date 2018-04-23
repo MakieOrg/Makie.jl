@@ -187,6 +187,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
     set_value!(scene.camera.projection, proj)
     set_value!(scene.camera.view, view)
     set_value!(scene.camera.projectionview, proj * view)
+    set_value!(scene.camera.eyeposition, cam.eyeposition[])
 end
 
 

@@ -52,8 +52,40 @@ function contourlines(::Type{Contour3d}, contours, cols)
     end
     result, colors
 end
-plot!(scene::Scene, t::Type{Contour}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
-plot!(scene::Scene, t::Type{Contour3d}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+plot!(scene::Scenelike, t::Type{Contour}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+plot!(scene::Scenelike, t::Type{Contour3d}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+
+to_levels(x::AbstractVector{<: Number}, cnorm) = x
+function to_levels(x::Integer, cnorm)
+    linspace(cnorm..., x)
+end
+
+function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, x, y, z, vol)
+    attributes, rest = merged_get!(:contour, scene, attributes) do
+        default_theme(scene, Contour)
+    end
+    get!(attributes, :alpha, Signal(0.5))
+    x, y, z, volume = convert_arguments(Contour, x, y, z, vol)
+    @extract attributes (colormap, levels, linewidth, alpha)
+    colornorm = map(x-> Vec2f0(extrema(x)), Signal(volume))
+    cmap = map(colormap, levels, linewidth, alpha, colornorm) do _cmap, l, lw, alpha, cnorm
+        levels = to_levels(l, cnorm)
+        N = length(levels) * 50
+        iso_eps = (N / (cnorm[2] - cnorm[1])) / 2
+        cmap = attribute_convert(_cmap, key"colormap"())
+        # resample colormap and make the empty area between iso surfaces transparent
+        map(1:N) do i
+            i01 = (i-1) / (N - 1)
+            color = interpolated_getindex(cmap, i01)
+            isoval = cnorm[1] + (i01 * (cnorm[2] - cnorm[1]))
+            line = reduce(false, levels) do v0, level
+                v0 || (abs(level - isoval) <= iso_eps)
+            end
+            RGBAf0(color, line ? alpha : 0.0)
+        end
+    end
+    volume!(scene, x, y, z, volume, colormap = cmap, colornorm = colornorm, algorithm = :iso)
+end
 
 function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args...) where T
     attributes, rest = merged_get!(:contour, scene, attributes) do
@@ -66,6 +98,8 @@ function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args..
     if value(attributes[:fillrange])
         attributes[:interpolate] = true
         if T == Contour
+            # TODO normalize linewidth for heatmap
+            attributes[:linewidth] = map(x-> x ./ 10f0, attributes[:linewidth])
             heatmap!(contourplot, attributes, x, y, z)
         else
             surface!(contourplot, attributes, x, y, z)
@@ -82,7 +116,7 @@ function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args..
 end
 
 
-function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, positions::AbstractVector{<: VecTypes{2, T}}) where T <: AbstractFloat
+function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, positions::AbstractVector{<: VecTypes{2, T}}) where T <: AbstractFloat
     attributes, rest = merged_get!(:poly, scene, attributes) do
         Theme(;
             default_theme(scene)...,
@@ -118,7 +152,7 @@ end
 #     attributes[:y] = y
 #     _poly(scene, attributes)
 # end
-function plot!(scene::Scene, ::Type{Poly}, attributes::Attributes, x::AbstractVector{T}) where T <: Union{Circle, Rectangle}
+function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, x::AbstractVector{T}) where T <: Union{Circle, Rectangle}
     position = map(node(:positions, x)) do rects
         map(rects) do rect
             minimum(rect) .+ (widths(rect) ./ 2f0)
@@ -213,7 +247,7 @@ end
 
 
 
-function plot!(scene::Scene, attributes::Attributes, matrix::AbstractMatrix{<: AbstractFloat})
+function plot!(scene::Scenelike, attributes::Attributes, matrix::AbstractMatrix{<: AbstractFloat})
     attributes, rest = merged_get!(:series, scene, attributes) do
         Theme(
             seriescolors = :Set1,
@@ -311,11 +345,11 @@ function arrows(
 end
 
 
-function wireframe(scene::Scene, x::AbstractVector, y::AbstractVector, z::AbstractMatrix, attributes::Dict)
+function wireframe(scene::Scenelike, x::AbstractVector, y::AbstractVector, z::AbstractMatrix, attributes::Dict)
     wireframe(ngrid(x, y)..., z, attributes)
 end
 
-function wireframe!(scene::Scene, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix, attributes::Dict)
+function wireframe!(scene::Scenelike, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix, attributes::Dict)
     if (length(x) != length(y)) || (length(y) != length(z))
         error("x, y and z must have the same length. Found: $(length(x)), $(length(y)), $(length(z))")
     end
@@ -342,7 +376,7 @@ function wireframe!(scene::Scene, x::AbstractMatrix, y::AbstractMatrix, z::Abstr
 end
 
 
-function wireframe(scene::Scene, mesh, attributes::Dict)
+function wireframe(scene::Scenelike, mesh, attributes::Dict)
     mesh = to_node(mesh, x-> to_mesh(scene, x))
     points = lift_node(mesh) do g
         decompose(Point3f0, g) # get the point representation of the geometry
@@ -369,7 +403,7 @@ end
 using Makie: node
 
 function streamlines!(
-        scene::Scene,
+        scene::Scenelike,
         origins::AbstractVector{T},
         directions;
         kw_args...

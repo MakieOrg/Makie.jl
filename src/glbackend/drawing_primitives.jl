@@ -153,8 +153,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        lol = (to_range.(value.(x.args[1:2])))
-        gl_attributes[:ranges] = lol
+        gl_attributes[:ranges] = to_range.(value.(x.args[1:2]))
         img = x[3]
         if isa(value(img), AbstractMatrix{<: Number})
             norm = pop!(gl_attributes, :color_norm)
@@ -199,6 +198,85 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         else
             gl_attributes[:ranges] = value.(x.args[1:2])
             visualize(x.args[3], Style(:surface), gl_attributes).children[]
+        end
+    end
+end
+
+function to_width(x)
+    mini, maxi = extrema(x)
+    maxi - mini
+end
+
+using ModernGL
+using GLAbstraction: LazyShader, enabletransparency, Texture, std_renderobject
+using GLAbstraction: StandardPostrender
+
+function makieshader(paths...)
+    view = Dict{String, String}()
+    if !is_apple()
+        view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
+        view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
+    end
+    LazyShader(
+        paths...,
+        view = view,
+        fragdatalocation = [(0, "fragment_color"), (1, "fragment_groupid")]
+    )
+end
+function volume_prerender()
+    glEnable(GL_DEPTH_TEST)
+    glDepthMask(GL_TRUE)
+    glDepthFunc(GL_LEQUAL)
+    enabletransparency()
+    glEnable(GL_CULL_FACE)
+    glCullFace(GL_FRONT)
+end
+
+function surface_contours(volume::Volume)
+    frag = joinpath(@__DIR__, "surface_contours.frag")
+    paths = assetpath.("shader", ("fragment_output.frag", "util.vert", "volume.vert"))
+    shader = makieshader(paths..., frag)
+    model = volume[:model]
+    x, y, z, vol = volume.args
+    model2 = map(model, x, y, z) do m, xyz...
+        mi = minimum.(xyz)
+        maxi = maximum.(xyz)
+        w = maxi .- mi
+        m2 = Mat4f0(
+            w[1], 0, 0, 0,
+            0, w[2], 0, 0,
+            0, 0, w[3], 0,
+            mi[1], mi[2], mi[3], 1
+        )
+        convert(Mat4f0, m) * m2
+    end
+    modelinv = map(inv, model2)
+    hull = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+    gl_data = Dict(
+        :hull => GLUVWMesh(hull),
+
+        :volumedata => Texture(map(x-> convert(Array{Float32}, x), vol)),
+        :model => model2,
+        :modelinv => modelinv,
+        :colormap => Texture(volume[:colormap]),
+        :colornorm => volume[:colornorm],
+        :fxaa => true
+    )
+    bb = map(m-> m * hull, model)
+    robj = RenderObject(gl_data, shader, volume_prerender, bb)
+    robj.postrenderfunction = StandardPostrender(robj.vertexarray, GL_TRIANGLES)
+    robj
+end
+
+function Base.insert!(screen::Screen, scene::Scene, x::Volume)
+    robj = cached_robj!(screen, scene, x) do gl_attributes
+        if gl_attributes[:algorithm][] == 0
+            surface_contours(x)
+        else
+            dimensions = Vec3f0(to_width.(value.(x.args[1:3])))
+            gl_attributes[:dimensions] = dimensions
+            delete!(gl_attributes, :color)
+            visualize(x[4], Style(:default), gl_attributes).children[]
         end
     end
 end

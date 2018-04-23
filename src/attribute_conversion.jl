@@ -212,3 +212,39 @@ function to_colormap(cs::Union{String, Symbol})
 end
 
 attribute_convert(val, ::key"colormap") = to_colormap(val)
+
+
+
+
+using GLVisualize: IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
+export IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
+
+"""
+    to_volume_algorithm(b, x)
+Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
+"""
+function attribute_convert(value, ::key"algorithm")
+    if isa(value, GLVisualize.RaymarchAlgorithm)
+        return Int32(value)
+    elseif isa(value, Int32) && value in 0:5
+        return value
+    else
+        error("$value is not a valid volume algorithm. Please have a look at the documentation of `to_volume_algorithm`")
+    end
+end
+
+"""
+Symbol/String: iso, absorption, mip, absorptionrgba, indexedabsorption
+"""
+function attribute_convert(value::Union{Symbol, String}, k::key"algorithm")
+    vals = Dict(
+        :iso => IsoValue,
+        :absorption => Absorption,
+        :mip => MaximumIntensityProjection,
+        :absorptionrgba => AbsorptionRGBA,
+        :indexedabsorption => IndexedAbsorptionRGBA,
+    )
+    attribute_convert(get(vals, Symbol(value)) do
+        error("$value not a valid volume algorithm. Needs to be in $(keys(vals))")
+    end, k)
+end
