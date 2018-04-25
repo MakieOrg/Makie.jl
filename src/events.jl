@@ -60,16 +60,16 @@ button_key{T}(x::T) = button_key(T)
 returns true if `button` is pressed in scene[:mousebuttons or :keyboardbuttons]
 You can use nothing, to indicate it should always return true
 """
-function ispressed(scene::Scene, button::Union{Vector, Tuple})
+function ispressed(scene::Scenelike, button::Union{Vector, Tuple})
     all(x-> ispressed(scene, x), button)
 end
 
 # TODO this is a bit shady, but maybe a nice api!
 # So you can use void whenever you don't care what is pressed
-ispressed(scene::Scene, ::Void) = true
+ispressed(scene::Scenelike, ::Void) = true
 
-function ispressed(scene::Scene, button)
-    buttons = getfield(scene.events, button_key(button))[]
+function ispressed(scene::Scenelike, button)
+    buttons = getfield(events(scene), button_key(button))[]
     if isa(button, Set)
         return buttons == button
     else

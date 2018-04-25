@@ -7,7 +7,7 @@ uniform sampler3D volumedata;
 
 uniform vec3 light_position = vec3(1.0, 1.0, 3.0);
 uniform sampler1D colormap;
-uniform vec2 colornorm;
+uniform vec2 colorrange;
 
 uniform vec3 eyeposition;
 
@@ -82,7 +82,7 @@ vec4 contours(vec3 front, vec3 dir, float stepsize)
     pos += stepsize_dir * rand();
     for (i; i < num_samples && (!is_outside(pos) || i < 3) && T > 0.01; ++i, pos += stepsize_dir) {
         float intensity = texture(volumedata, pos).x;
-        intensity = range01(intensity, colornorm.x, colornorm.y);
+        intensity = range01(intensity, colorrange.x, colorrange.y);
         vec4 density = texture(colormap, intensity);
         float opacity = density.a;
         if(opacity > 0.0){

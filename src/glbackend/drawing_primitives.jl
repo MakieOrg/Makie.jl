@@ -11,7 +11,7 @@ function to_glvisualize_key(k)
     k == :linewidth && return :thickness
     k == :marker_offset && return :offset
     k == :colormap && return :color_map
-    k == :colornorm && return :color_norm
+    k == :colorrange && return :color_norm
     k
 end
 
@@ -170,7 +170,11 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
-        visualize(x.args[1], Style(:default), gl_attributes).children[]
+        color = pop!(gl_attributes, :color)
+        mesh = map(x[1], color) do m, c
+            HomogenousMesh(m, Dict{Symbol, Any}(:color => c))
+        end
+        visualize(mesh, Style(:default), gl_attributes).children[]
     end
 end
 
@@ -259,7 +263,7 @@ function surface_contours(volume::Volume)
         :model => model2,
         :modelinv => modelinv,
         :colormap => Texture(volume[:colormap]),
-        :colornorm => volume[:colornorm],
+        :colorrange => map(Vec2f0, volume[:colorrange]),
         :fxaa => true
     )
     bb = map(m-> m * hull, model)

@@ -138,7 +138,9 @@ end
     # :colorlegend => """
     #
 
-
+function colorlegend(scene::Scene, plot::AbstractPlot, attributes)
+    colorlegend(scene, plot[:colormap], plot[:colorrange], attributes)
+end
 
 """
 colorlegend(scene, colormap, range)
@@ -150,7 +152,7 @@ function colorlegend(scene::Scene, colormap, range, attributes)
     end
     lscene = Scene(scene, scene.px_area)
     campixel!(lscene) # map coordinates to pixel
-
+    colormap_n, range_n = to_node.((colormap, range))
     @extract(
         attributes,
         (
@@ -166,24 +168,23 @@ function colorlegend(scene::Scene, colormap, range, attributes)
         texturecoordinates = UV{Float32}[(0, 0), (0, 1), (0, 1), (0, 0)]
     )
 
-    cmap_node = map(to_node(colormap)) do cmap
+    cmap_node = map(colormap_n) do cmap
         c = attribute_convert(cmap, key"colormap"())
         # TODO cover the case of a 1D colormap explicitely in the shader
         reshape(c, (length(c), 1))
     end
     tio = TextBuffer(lscene, Point2)
     rect = map(
-                to_node(range), textsize, textcolor, align, font,
+                range_n, textsize, textcolor, align, font,
                 textgap, width, padding, outerpadding, position, scene.px_area
             ) do r, ts, tc, a, font, tg, w, pad, opad, position, area
 
         start!(tio)
-        real_range = to_range(r)
+        real_range, labels = to_range(r)
         N = length(real_range)
-        for i = 1:N
+        for (i, label) in zip(1:N, labels)
             o1 = (i - 1) / (N - 1) # 0 to 1
             pos = Point2f0(w[1] + tg, (ts/2) + o1 * w[2]) .+ pad
-            label = string(round(real_range[i], 3))
             push!(
                 tio, label, pos, textsize = ts, color = tc, rotation = 0.0,
                 align = a, font = font
@@ -191,8 +192,7 @@ function colorlegend(scene::Scene, colormap, range, attributes)
         end
         finish!(tio)
         limits = data_limits(tio)
-        bbw = limits[2][1] - limits[1][1]
-        bbh = limits[2][2] - limits[1][2]
+        bbw, bbh = widths(limits)
         rect = FRect(
             0, 0,
             w[1] + 2pad + bbw + tg,

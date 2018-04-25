@@ -1,4 +1,12 @@
-convert_arguments(P, y::RealVector) = convert_arguments(0:length(y), y)
+function convert_arguments(P::Type, args::Vararg{Signal, N}) where N
+    args_c = map(args...) do args...
+        convert_arguments(P, args...)
+    end
+    ntuple(Val{N}) do i
+        map(x-> x[i], args_c)
+    end
+end
+convert_arguments(P, y::RealVector) = convert_arguments(0 .. length(y), y)
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
@@ -57,7 +65,7 @@ end
 
 function convert_arguments(P, x::Rect)
     # TODO fix the order of decompose
-    (decompose(Point, x)[[1, 2, 4, 3, 1]],)
+    convert_arguments(P, decompose(Point, x)[[1, 2, 4, 3, 1]])
 end
 
 convert_arguments(::Type{Mesh}, m::AbstractMesh) = (m,)
@@ -75,9 +83,10 @@ function convert_arguments(
     ) where T
     vert3f0 = T != Float32 ? Point3f0.(vertices) : vertices
     vertp3f0 = reinterpret(Point3f0, vert3f0)
-    m = GLNormalMesh(vertp3f0, to_indices(indices))
+    m = GLNormalMesh(vertp3f0, indices)
     (m,)
 end
+
 function convert_arguments(
         MT::Type{Mesh},
         x::RealVector, y::RealVector, z::RealVector
@@ -90,6 +99,9 @@ function convert_arguments(
     ) where T
     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
     convert_arguments(MT, xyz, faces)
+end
+function convert_arguments(MT::Type{Mesh}, xy::AbstractVector{<: VecTypes{2, T}}) where T
+    convert_arguments(MT, Point3f0.(first.(xy), last.(xy), 0.0))
 end
 
 
@@ -176,7 +188,7 @@ function plot!(scene::Scenelike, subscene::AbstractPlot, attributes::Attributes)
         end
         # if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
         #     legend_attributes = plot_attributes[:legend][]
-        #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colornorm], legend_attributes)
+        #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
         # end
         if plot_attributes[:camera][] == :automatic
             cam = cameracontrols(scene)

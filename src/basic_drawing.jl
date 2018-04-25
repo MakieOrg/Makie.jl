@@ -137,12 +137,6 @@ for (func, docs) in atomic_funcs
     end
 end
 
-function to_modelmatrix(b, scale, offset, rotation)
-    map(scale, offset, rotation) do s, o, r
-        q = Quaternion(1f0,0f0,0f0,0f0)
-        transformationmatrix(o, s, q)
-    end
-end
 
 """
 Fill in values that can only be calculated when we have all other attributes filled
@@ -151,15 +145,31 @@ function calculate_values!(scene::Scenelike, ::Type{T}, attributes, args) where 
     calculate_values!(scene, attributes, args)
 end
 
+"""
+Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
+value is nothing
+"""
+function replace_nothing!(f, dict, key)
+    haskey(dict, key) || return (dict[key] = f())
+    val = dict[key]
+    value(val) == nothing && return (dict[key] = f())
+    val
+end
+
 function calculate_values!(scene::Scenelike, attributes, args)
     if haskey(attributes, :colormap)
         delete!(attributes, :color) # color is overwritten by colormap
-        get!(attributes, :colornorm) do
+        replace_nothing!(attributes, :colorrange) do
             map(to_node(args[3])) do arg
-                x = extrema(arg)
-                Vec2f0(x)
+                Vec2f0(extrema(arg))
             end
         end
+    end
+    replace_nothing!(attributes, :model) do
+        replace_nothing!(attributes, :transformation) do
+            Transformation(scene)
+        end
+        attributes[:transformation].model
     end
 end
 function calculate_values!(scene::Scenelike, ::Type{Scatter}, attributes, args)
@@ -176,7 +186,9 @@ function default_theme(scene)
         linewidth = 1,
         visible = true,
         light = light,
-        model = modelmatrix(scene)
+        transformation = nothing,
+        model = nothing,
+        alpha = 1.0,
         #drawover = false,
     )
 end
@@ -191,6 +203,9 @@ function default_theme(scene, ::Type{Scatter})
         glowcolor = RGBA(0, 0, 0, 0),
         glowwidth = 0.0,
         rotations = Billboard(),
+        intensity = nothing,
+        colormap = nothing,
+        colorrange = nothing,
         fxaa = false
     )
 end
@@ -202,6 +217,9 @@ function default_theme(scene, ::Type{Meshscatter})
         marker = Sphere(Point3f0(0), 0.1f0),
         markersize = 0.1,
         rotations = Vec4f0(0, 0, 0, 1),
+        intensity = nothing,
+        colormap = nothing,
+        colorrange = nothing,
         fxaa = true
     )
 end
@@ -276,6 +294,6 @@ function default_theme(scene, ::Type{Volume})
         isovalue = 0.5f0,
         isorange = 0.01f0,
         colormap = theme(scene, :colormap),
-        colornorm = Vec2f0(0, 1)
+        colorrange = Vec2f0(0, 1)
     )
 end

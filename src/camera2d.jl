@@ -10,7 +10,7 @@ struct Camera2D <: AbstractCamera
     padding::Node{Float32}
 end
 
-function cam2d!(scene::Scene; kw_args...)
+function cam2d!(scene::Scenelike; kw_args...)
     cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Theme(
             area = Signal(FRect(0, 0, 1, 1), name = "area"),
@@ -20,117 +20,118 @@ function cam2d!(scene::Scene; kw_args...)
             padding = 0.001
         )
     end
-    camera = from_dict(Camera2D, cam_attributes)
+    cam = from_dict(Camera2D, cam_attributes)
     # remove previously connected camera
-    disconnect!(scene.camera)
-    add_zoom!(scene, camera)
-    add_pan!(scene, camera)
-    correct_ratio!(scene, camera)
-    selection_rect!(scene, camera)
-    scene.camera_controls[] = camera
-    camera
+    disconnect!(camera(scene))
+    add_zoom!(scene, cam)
+    add_pan!(scene, cam)
+    correct_ratio!(scene, cam)
+    selection_rect!(scene, cam)
+    cameracontrols!(scene, cam)
+    cam
 end
 
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
-update_cam!(scene::Scene, area) = update_cam!(scene, scene.camera_controls[], area)
-update_cam!(scene::Scene) = update_cam!(scene, scene.camera_controls[], scene.limits[])
+update_cam!(scene::Scenelike, area) = update_cam!(scene, cameracontrols(scene), area)
+update_cam!(scene::Scenelike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
 
-function update_cam!(scene::Scene, camera::Camera2D, area3d::Rect)
+function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = FRect2D(area3d)
     area = positive_widths(area)
-    px_wh = normalize(widths(scene.px_area[]))
+    pa = pixelarea(scene)[]
+    px_wh = normalize(widths(pa))
     wh = normalize(widths(area))
     ratio = px_wh ./ wh
     if ratio ≈ Vec(1.0, 1.0)
-        camera.area[] = area
+        cam.area[] = area
     else
         # we only want to make the area bigger, to at least show what was selected
         # so we make the minimum 1.0, and grow in the other dimension
         s = ratio ./ minimum(ratio)
         newwh = s .* widths(area)
-        camera.area[] = FRect(minimum(area), newwh)
+        cam.area[] = FRect(minimum(area), newwh)
     end
-    update_cam!(scene, camera)
+    update_cam!(scene, cam)
 end
-function update_cam!(scene::Scene, camera::Camera2D)
-    x, y = minimum(camera.area[])
-    w, h = widths(camera.area[]) ./ 2f0
+function update_cam!(scene::Scenelike, cam::Camera2D)
+    x, y = minimum(cam.area[])
+    w, h = widths(cam.area[]) ./ 2f0
     # These nodes should be final, no one should do map(cam.projection),
     # so we don't push! and just update the value in place
     view = translationmatrix(Vec3f0(-x - w, -y - h, 0))
     projection = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
-    set_value!(scene.camera.view, view)
-    set_value!(scene.camera.projection, projection)
-    set_value!(scene.camera.projectionview, projection * view)
+    set_value!(camera(scene).view, view)
+    set_value!(camera(scene).projection, projection)
+    set_value!(camera(scene).projectionview, projection * view)
     return
 end
 
-function correct_ratio!(scene, camera)
-    lastw = RefValue(widths(scene.px_area[]))
-    map(scene.camera, scene.px_area) do area
+function correct_ratio!(scene, cam)
+    lastw = RefValue(widths(pixelarea(scene)[]))
+    map(camera(scene), pixelarea(scene)) do area
         neww = widths(area)
         change = neww .- lastw[]
         if !(change ≈ Vec(0.0, 0.0))
             s = 1.0 .+ (change ./ lastw[])
             lastw[] = neww
-            camrect = FRect(minimum(camera.area[]), widths(camera.area[]) .* s)
-            camera.area[] = camrect
-            update_cam!(scene, camera)
+            camrect = FRect(minimum(cam.area[]), widths(cam.area[]) .* s)
+            cam.area[] = camrect
+            update_cam!(scene, cam)
         end
         return
     end
 end
-function add_pan!(scene::Scene, camera::Camera2D)
+function add_pan!(scene::Scenelike, cam::Camera2D)
     startpos = RefValue((0.0, 0.0))
-    events = scene.events
+    e = events(scene)
     map(
-        scene.camera,
-        Node.((scene, camera, startpos))...,
-        events.mousedrag
-    ) do scene, camera, startpos, dragging
-        pan = camera.panbutton[]
-        mp = events.mouseposition[]
+        camera(scene),
+        Node.((scene, cam, startpos))...,
+        e.mousedrag
+    ) do scene, cam, startpos, dragging
+        pan = cam.panbutton[]
+        mp = e.mouseposition[]
         if ispressed(scene, pan)
-            window_area = scene.px_area[]
+            window_area = pixelarea(scene)[]
             if dragging == Mouse.down
                 startpos[] = mp
             elseif dragging == Mouse.pressed && ispressed(scene, pan)
                 diff = startpos[] .- mp
                 startpos[] = mp
-                area = camera.area[]
+                area = cam.area[]
                 diff = Vec(diff) .* wscale(window_area, area)
-                camera.area[] = FRect(minimum(area) .+ diff, widths(area))
-                update_cam!(scene, camera)
+                cam.area[] = FRect(minimum(area) .+ diff, widths(area))
+                update_cam!(scene, cam)
             end
         end
         return
     end
 end
 
-function add_zoom!(scene::Scene, camera::Camera2D)
-    events = scene.events
-    map(scene.camera, events.scroll) do x
-        @getfields camera (zoomspeed, zoombutton, area)
+function add_zoom!(scene::Scenelike, cam::Camera2D)
+    e = events(scene)
+    map(camera(scene), e.scroll) do x
+        @getfields cam (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
         if zoom != 0 && ispressed(scene, zoombutton)
             z = 1f0 + (zoom * zoomspeed)
-            mp = Vec2f0(events.mouseposition[])
-            mp = (mp .* wscale(scene.px_area[], area)) + minimum(area)
+            mp = Vec2f0(e.mouseposition[])
+            mp = (mp .* wscale(pixelarea(scene)[], area)) + minimum(area)
             p1, p2 = minimum(area), maximum(area)
             p1, p2 = p1 - mp, p2 - mp # translate to mouse position
             p1, p2 = z * p1, z * p2
             p1, p2 = p1 + mp, p2 + mp
-            camera.area[] = FRect(p1, p2 - p1)
-            update_cam!(scene, camera)
+            cam.area[] = FRect(p1, p2 - p1)
+            update_cam!(scene, cam)
         end
         return
     end
 end
 
-function camspace(scene::Scene, camera::Camera2D, point)
-    point = Vec(point) .* wscale(scene.px_area[], camera.area[])
-    Vec(point) .+ Vec(minimum(camera.area[]))
+function camspace(scene::Scenelike, cam::Camera2D, point)
+    point = Vec(point) .* wscale(pixelarea(scene)[], cam.area[])
+    Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
 function selection_rect!(
@@ -140,7 +141,7 @@ function selection_rect!(
     )
     rect = RefValue(FRect(0, 0, 0, 0))
     lw = 2f0
-    scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(scene.camera))
+    scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
     rect_vis = lines!(
         scene_unscaled,
         rect[],
@@ -151,9 +152,9 @@ function selection_rect!(
         raw = true
     )
     waspressed = RefValue(false)
-    dragged_rect = map(scene.camera, scene.events.mousedrag) do drag
+    dragged_rect = map(camera(scene), events(scene).mousedrag) do drag
         if ispressed(scene, key)# && ispressed(scene, button)
-            mp = scene.events.mouseposition[]
+            mp = events(scene).mouseposition[]
             mp = camspace(scene, cam, mp)
             if drag == Mouse.down
                 waspressed[] = true
@@ -241,16 +242,16 @@ end
 
 struct PixelCamera <: AbstractCamera end
 function campixel!(scene)
-    scene.camera.view[] = eye(Mat4f0)
-    map(scene.camera, scene.px_area) do window_size
+    camera(scene).view[] = eye(Mat4f0)
+    map(camera(scene), pixelarea(scene)) do window_size
         nearclip = -10_000f0
         farclip = 10_000f0
         w, h = Float32.(widths(window_size))
         projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
-        set_value!(scene.camera.projection, projection)
-        set_value!(scene.camera.projectionview, projection)
+        set_value!(camera(scene).projection, projection)
+        set_value!(camera(scene).projectionview, projection)
     end
     cam = PixelCamera()
-    scene.camera_controls[] = cam
+    cameracontrols(scene) = cam
     cam
 end

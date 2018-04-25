@@ -1,5 +1,4 @@
 
-
 attribute_convert(x, key::Key, ::Key) = attribute_convert(x, key)
 attribute_convert(s::Scene, x, key::Key, ::Key) = attribute_convert(s, x, key)
 attribute_convert(s::Scene, x, key::Key) = attribute_convert(x, key)
@@ -15,7 +14,9 @@ function attribute_convert(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
 end
 attribute_convert(c::Billboard, ::key"rotations") = Vec4f0(0, 0, 0, 1)
 attribute_convert(c, ::key"markersize", ::key"scatter") = Vec2f0(c)
+attribute_convert(c::Vector, ::key"markersize", ::key"scatter") = Vec2f0.(c)
 attribute_convert(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
+attribute_convert(c::Vector, ::key"markersize", ::key"meshscatter") = Vec3f0.(c)
 attribute_convert(c, ::key"glowcolor") = attribute_convert(c, key"color"())
 attribute_convert(c, ::key"strokecolor") = attribute_convert(c, key"color"())
 
@@ -94,7 +95,8 @@ attribute_convert(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0
 attribute_convert(r::AbstractVector, k::key"rotation") = attribute_convert.(r, k)
 
 
-attribute_convert(x, k::key"colornorm")::Vec2f0 = Vec2f0(x)
+attribute_convert(x, k::key"colorrange") = Vec2f0(x)
+
 attribute_convert(x, k::key"textsize") = Float32(x)
 attribute_convert(x::AbstractVector{T}, k::key"textsize") where T <: Number = Float32.(x)
 attribute_convert(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = Vec2f0.(x)

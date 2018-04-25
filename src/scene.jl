@@ -59,6 +59,33 @@ struct Transformation
     func::Node{Any}
 end
 
+function Transformation(scene::Scenelike)
+    flip = node(:flip, (false, false, false))
+    scale = node(:scale, Vec3f0(1))
+    scale = map(flip, scale) do f, s
+        map((f, s)-> f ? -s : s, Vec(f), s)
+    end
+    translation, rotation, align = (
+        node(:translation, Vec3f0(0)),
+        node(:rotation, Vec4f0(0, 0, 0, 1)),
+        node(:align, Vec2f0(0))
+    )
+    pmodel = modelmatrix(scene)
+    model = map_once(scale, translation, rotation, align, pmodel) do s, o, r, a, p
+        q = Quaternions.Quaternion(r[4], r[1], r[2], r[3])
+        transformationmatrix(o, s, q) * p
+    end
+    Transformation(
+        translation,
+        scale,
+        rotation,
+        model,
+        flip,
+        align,
+        signal_convert(Node{Any}, identity)
+    )
+end
+
 function Transformation()
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
@@ -104,7 +131,6 @@ mutable struct Scene
     px_area::Node{IRect2D}
     camera::Camera
     camera_controls::RefValue
-
     limits::Node{FRect3D}
 
     transformation::Transformation
@@ -113,6 +139,7 @@ mutable struct Scene
     theme::Attributes
     children::Vector{Scene}
     current_screens::Vector{AbstractScreen}
+
     function Scene(
             events::Events,
             px_area::Node{IRect2D},
@@ -256,6 +283,7 @@ function Scene(scene::Scene, area)
         Transformation(),
         AbstractPlot[],
         Theme(
+            font = "DejaVuSans",
             backgroundcolor = RGBAf0(1,1,1,1),
             color = :black,
             colormap = :YlOrRd
@@ -397,32 +425,54 @@ function Combined{Typ}(scene::Scenelike, attributes, args...) where Typ
     c
 end
 function translated(scene::Scene, translation...)
-    tscene = TranslatedScene(scene, Transformation())
+    tscene = Scene(scene, transformation = Transformation())
     transform!(tscene, translation...)
     tscene
+end
+
+function translated(
+        scene::Scene;
+        translation = Vec3f0(0),
+        scale = Vec3f0(1),
+        rotation = 0.0,
+    )
+    tscene = Scene(scene, transformation = Transformation())
+    translate!(tscene, translation)
+    scale!(tscene, scale)
+    rotate!(tscene, rotation)
+    tscene
+end
+function Scene(
+        scene::TranslatedScene;
+        transformation = transformation(scene)
+    )
+    push!(scene.parent.children, child)
+    child
 end
 
 function data_limits(scene::TranslatedScene)
     modelmatrix(scene)[] * data_limits(scene.parent)
 end
 
+const Transformable = Union{Scenelike, AbstractPlot}
 transformation(scene::Union{Scene, TranslatedScene}) = scene.transformation
 transformation(scene::Scenelike) = transformation(scene.parent)
+transformation(plot::AbstractPlot) = plot[:transformation]
 
-scale(scene::Scenelike) = transformation(scene).scale
-scale!(scene::Scenelike, s) = (scale(scene)[] = to_ndim(Vec3f0, Float32.(s), 1))
-scale!(scene::Scenelike, xyz...) = scale!(scene, xyz)
+scale(scene::Transformable) = transformation(scene).scale
+scale!(scene::Transformable, s) = (scale(scene)[] = to_ndim(Vec3f0, Float32.(s), 1))
+scale!(scene::Transformable, xyz...) = scale!(scene, xyz)
 
-rotation(scene::Scenelike) = rotation(scene).rotation
-rotation!(scene::Scenelike, q) = (rotation(scene)[] = attribute_convert(q, key"rotation"()))
-rotation!(scene::Scenelike, axis_rot...) = rotation!(scene, axis_rot)
+rotation(scene::Transformable) = transformation(scene).rotation
+rotate!(scene::Transformable, q) = (rotation(scene)[] = attribute_convert(q, key"rotation"()))
+rotate!(scene::Transformable, axis_rot...) = rotate!(scene, axis_rot)
 
-translate(scene::Scenelike) = transformation(scene).translation
-translate!(scene::Scenelike, t) = (translate(scene)[] = to_ndim(Vec3f0, Float32.(t), 0))
-translate!(scene::Scenelike, xyz...) = translate!(scene, xyz)
+translation(scene::Transformable) = transformation(scene).translation
+translate!(scene::Transformable, t) = (translation(scene)[] = to_ndim(Vec3f0, Float32.(t), 0))
+translate!(scene::Transformable, xyz...) = translate!(scene, xyz)
 
 
-function transform!(scene::Scenelike, x::Tuple{Symbol, <: Number})
+function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
     plane, dimval = string(x[1]), Float32(x[2])
     if length(plane) != 2 || (!all(x-> x in ('x', 'y', 'z'), plane))
         error("plane needs to define a 2D plane in xyz. It should only contain 2 symbols out of (:x, :y, :z). Found: $plane")
@@ -433,8 +483,8 @@ function transform!(scene::Scenelike, x::Tuple{Symbol, <: Number})
         rotate!(scene, Vec3f0(1, 0, 0), 0.5pi)
         translate!(scene, 0, dimval, 0)
     else #yz plane
-        rotate!(scene, Vec3f0(0, 1, 0), 0.5pi)
-        translate(scene, dimval, 0, 0)
+        rotate!(scene, Vec3f0(0, 1, 0), -0.5pi)
+        translate!(scene, dimval, 0, 0)
     end
     scene
 end
@@ -466,8 +516,18 @@ function Base.push!(scene::Scene, plot::Combined)
     end
 end
 
+events(scene::Scene) = scene.events
+events(scene::Scenelike) = events(scene.parent)
+
+camera(scene::Scene) = scene.camera
+camera(scene::Scenelike) = camera(scene.parent)
+
 cameracontrols(scene::Scene) = scene.camera_controls[]
 cameracontrols(scene::Scenelike) = cameracontrols(scene.parent)
+
+cameracontrols!(scene::Scene, cam) = (scene.camera_controls[] = cam)
+cameracontrols!(scene::Scenelike, cam) = cameracontrols(scene.parent, cam)
+
 pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::Scenelike) = pixelarea(scene.parent)
 

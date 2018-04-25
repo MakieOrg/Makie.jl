@@ -1,7 +1,8 @@
 function default_theme(scene, ::Type{Contour})
     Theme(;
         default_theme(scene)...,
-        colormap = scene.theme[:colormap],
+        colormap = theme(scene, :colormap),
+        colorrange = nothing,
         levels = 5,
         linewidth = 1.0,
         fillrange = false,
@@ -64,30 +65,34 @@ function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, 
     attributes, rest = merged_get!(:contour, scene, attributes) do
         default_theme(scene, Contour)
     end
-    get!(attributes, :alpha, Signal(0.5))
-    colornorm = get!(attributes, :colornorm) do
-        map(x-> Vec2f0(extrema(x)), Signal(volume))
+    replace_nothing!(attributes, :alpha) do
+        Signal(0.5)
     end
-    x, y, z, volume = convert_arguments(Contour, x, y, z, vol)
+    xyz_volume = convert_arguments(Contour, x, y, z, vol)
+    x, y, z, volume = node.((:x, :y, :z, :volume), xyz_volume)
+    colorrange = replace_nothing!(attributes, :colorrange) do
+        map(x-> Vec2f0(extrema(x)), volume)
+    end
     @extract attributes (colormap, levels, linewidth, alpha)
-
-    cmap = map(colormap, levels, linewidth, alpha, colornorm) do _cmap, l, lw, alpha, cnorm
+    cmap = map(colormap, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
         levels = to_levels(l, cnorm)
         N = length(levels) * 50
-        iso_eps = 0.01
+        iso_eps = 0.1
         cmap = attribute_convert(_cmap, key"colormap"())
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
             i01 = (i-1) / (N - 1)
-            color = interpolated_getindex(cmap, i01)
+            c = interpolated_getindex(cmap, i01)
             isoval = cnorm[1] + (i01 * (cnorm[2] - cnorm[1]))
             line = reduce(false, levels) do v0, level
                 v0 || (abs(level - isoval) <= iso_eps)
             end
-            RGBAf0(color, line ? alpha : 0.0)
+            RGBAf0(color(c), line ? alpha : 0.0)
         end
     end
-    volume!(scene, x, y, z, volume, colormap = cmap, colornorm = colornorm, algorithm = :iso)
+    c = Combined{:Contour}(scene, attributes, x, y, z, volume)
+    volume!(c, x, y, z, volume, colormap = cmap, colorrange = colorrange, algorithm = :iso)
+    plot!(scene, c, rest)
 end
 
 function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args...) where T
@@ -200,7 +205,6 @@ function plot!(scene::Scenelike, ::Type{Annotations}, attributes::Attributes, te
     attributes, rest = merged_get!(:annotations, scene, attributes) do
         default_theme(scene, Text)
     end
-
     calculate_values!(scene, Text, attributes, text)
     t_args = (to_node(text), to_node(positions))
     annotations = Combined{:Annotations}(scene, attributes, t_args...)
@@ -391,7 +395,7 @@ function wireframe(scene::Scenelike, mesh, attributes::Dict)
 end
 
 
-function sphere_streamline(linebuffer, ∇ˢf, pt, h=0.01f0, n=5)
+function sphere_streamline(linebuffer, ∇ˢf, pt, h = 0.01f0, n = 5)
     push!(linebuffer, pt)
     df = normalize(∇ˢf(pt[1], pt[2], pt[3]))
     push!(linebuffer, normalize(pt .+ h*df))
@@ -403,7 +407,7 @@ function sphere_streamline(linebuffer, ∇ˢf, pt, h=0.01f0, n=5)
     end
     return
 end
-using Makie: node
+
 
 function streamlines!(
         scene::Scenelike,
@@ -435,4 +439,51 @@ function streamlines!(
     end
     linesegments!(sub, lines, color = sub[:color], linewidth = sub[:linewidth])
     plot!(scene, sub, rest)
+end
+
+function mergekeys(keys::NTuple{N, Symbol}, target::Attributes, source::Attributes) where N
+    result = copy(target)
+    for key in keys
+        get!(result, key, source[key])
+    end
+    result
+end
+
+
+function volumeslices(scene, x, y, z, volume; kw_args...)
+    attributes, rest = merged_get!(:volumeslices, scene, kw_args) do
+        Theme(
+            colormap = theme(scene, :colormap),
+            colorrange = nothing,
+            alpha = 0.1,
+            contour = Attributes(),
+            heatmap = Attributes(),
+        )
+    end
+    xyz_volume = convert_arguments(Contour, x, y, z, volume)
+    x, y, z, volume = node.((:x, :y, :z, :volume), xyz_volume)
+    replace_nothing!(attributes, :colorrange) do
+        map(extrema, volume)
+    end
+    vs = Combined{:VolumeSlices}(scene, attributes, x, y, z, volume)
+    keys = (:colormap, :alpha, :colorrange)
+    cattributes = mergekeys(keys, attributes[:contour][], attributes)
+    plot!(vs, Contour, cattributes, x, y, z, volume)
+    planes = (:xy, :xz, :yz)
+    hattributes = mergekeys(keys, attributes[:heatmap][], attributes)
+    sliders = map(zip(planes, (x, y, z))) do plane_r
+        plane, r = plane_r
+        idx = node(plane, Signal(1))
+        attributes[plane] = idx
+        hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[])))
+        foreach(idx) do i
+            transform!(hmap, (plane, r[][i]))
+            indices = ntuple(Val{3}) do j
+                planes[j] == plane ? i : (:)
+            end
+            hmap[3][] = view(volume[], indices...)
+        end
+        idx
+    end
+    plot!(scene, vs, rest)
 end

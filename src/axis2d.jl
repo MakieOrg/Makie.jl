@@ -49,7 +49,7 @@ function default_theme(scene, ::Type{Axis2D})
             textcolor = (:black, :black),
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
-            align = ((:center, :top), (:center, :bottom)),
+            align = ((:center, :top), (:center, :top)),
             font = map(dim2, theme(scene, :font)),
         )
     )
@@ -173,13 +173,13 @@ function draw_frame(
             to = unit(Point{N, Float32}, i) * Float32(maxi[i])
             if false#axis_arrow
                 arrows(
-                    scene, [start => to],
+                    scene, [start, to],
                     linewidth = linewidth, linecolor = linecolor, linestyle = linestyle,
                     arrowsize = arrow_size
                 )
             else
                 append!(
-                    linebuffer, [start => to],
+                    linebuffer, [start, to],
                     linewidth = linewidth, color = linecolor #linestyle = linestyle,
                 )
             end
@@ -218,10 +218,10 @@ function draw_titles(
         widths(tick_bb)[1]
     end)
 
+
     tickspace_y = widths(text_bb(
         last(first(xticks)), attribute_convert(tickfont[1], Key{:font}()), tick_size[1]
     ))[2]
-
     tickspace = (tickspace_x, tickspace_y)
     title_start = origin .- (tick_gap .+ tickspace .+ tick_title_gap)
     half_width = origin .+ (limit_widths ./ 2.0)
@@ -306,7 +306,7 @@ end
 
 
 
-function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, Any}})
+function axis2d(scene::Scenelike, attributes::Attributes, ranges::Node{<: NTuple{2, Any}})
     attributes, rest = merged_get!(:axis2d, scene, attributes) do
         default_theme(scene, Axis2D)
     end
@@ -324,7 +324,7 @@ function axis2d(scene::Scene, attributes::Attributes, ranges::Node{<: NTuple{2, 
     t_args = getindex.(attributes[:tickstyle][], t_keys)
     ti_args = getindex.(attributes[:titlestyle][], ti_keys)
 
-    # scene_unscaled = Scene(scene, transformation = Transformation())
+    # scene_unscaled = Scenelike(scene, transformation = Transformation())
     cplot = Axis2D(scene, attributes, ranges)
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})

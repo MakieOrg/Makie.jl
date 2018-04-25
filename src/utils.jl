@@ -245,8 +245,8 @@ function interpolated_getindex(cmap::AbstractArray, value::AbstractFloat, norm =
     (downc * (1.0 - interp_val)) + (upc * interp_val)
 end
 
-function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colornorm)
-    interpolated_getindex.((value(colormap),), image, (value(colornorm),))
+function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
+    interpolated_getindex.((value(colormap),), image, (value(colorrange),))
 end
 
 same_length_array(array, value) = repeated(value, length(array))
@@ -276,6 +276,7 @@ dim2(x::NTuple{2, Any}) = x
 
 
 to_range(x) = linspace(minimum(x), maximum(x), 4)
+to_range(x::VecTypes{2}) = optimal_ticks_and_labels((x[1], x[2]))
 function to_range(x::AbstractVector)
     if length(x) <= 5
         x
