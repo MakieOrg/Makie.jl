@@ -55,7 +55,7 @@ function data_limits(x::Text)
     txt = value(x.args[1])
     position = x.attributes[:position][]
     positions, scales = if isa(position, VecTypes)
-        layout_text(txt * last(txt), args...)
+        layout_text(txt * last(txt), position, textsize, font, align, rotation, model)
     elseif  length(txt) == length(position) && length(txt) == length(textsize)
         position, textsize
     else
@@ -199,3 +199,50 @@ end
 # @test dont_touch(x, c, Vec3f0(0.25)) == HyperRectangle(Vec3f0(-1.25, -2.0, -1.25), Vec3f0(1.0, 1.75, 1.0))
 # x = SimpleRectangle(0, 0, 1, 1)
 # SimpleRectangle(HyperRectangle(x))
+
+
+function real_limits(scene::Scene)
+    bb = AABB{Float32}()
+    for plot in flatten_combined(plots_from_camera(scene))
+        bb2 = data_limits(plot)
+        bb == AABB{Float32}() && (bb = bb2)
+        bb = union(bb, bb2)
+    end
+    bb
+end
+
+grid(x::Transformable...; kw_args...) = grid([x...]; kw_args...)
+function grid(plots::Vector{T}; kw_args...) where T <: Transformable
+    N = length(plots)
+    grid = close2square(N)
+    w, h = (0.0, 0.0)
+    pscene = Makie.current_scene()
+    for idx in 1:N
+        i, j = ind2sub(grid, idx)
+        p = Base.parent(plots[idx])
+        translate!(p, w, h, 0.0)
+        swidth = widths(real_limits(p))
+        if i == grid[1]
+            h += (swidth[2] * 1.1)
+            w = 0.0
+        else
+            w += (swidth[1] * 1.1)
+        end
+    end
+    pscene
+end
+
+vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
+function vbox(plots::Vector{T}; kw_args...) where T <: Transformable
+    N = length(plots)
+    w = 0.0
+    pscene = Makie.current_scene()
+    for idx in 1:N
+        p = Base.parent(plots[idx])
+        translate!(p, w, 0.0, 0.0)
+        swidth = widths(real_limits(p))
+        w += (swidth[1] * 1.1)
+    end
+    pscene
+end
+export vbox

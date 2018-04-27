@@ -6,6 +6,7 @@ using Reactive, GeometryTypes, Colors, StaticArrays
 using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
 using StaticArrays, GLWindow, ModernGL, Contour
 import Quaternions
+using Primes
 
 using Base.Iterators: repeated, drop
 using Base: RefValue
@@ -39,7 +40,12 @@ include("axis3d.jl")
 include("buffers.jl")
 include("legend.jl")
 include("output.jl")
-export cam2d!, Scene, update_cam!, Screen, plot!, CairoScreen, axis2d, RGBAf0
-export (..)
+include("gui.jl")
+
+export cam2d!, campixel!, cam3d!, update_cam!, Scene, Screen, plot!, CairoScreen, axis2d, RGBAf0
+export Combined, Theme, node, @extract, translated, translate!, transform!, grid
+# picking
+export mouseover, onpick, pick, @key_str, attribute_convert, Attributes, colorlegend
+export (..) # reexport interval
 
 end

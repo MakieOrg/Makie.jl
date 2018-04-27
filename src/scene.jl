@@ -59,33 +59,6 @@ struct Transformation
     func::Node{Any}
 end
 
-function Transformation(scene::Scenelike)
-    flip = node(:flip, (false, false, false))
-    scale = node(:scale, Vec3f0(1))
-    scale = map(flip, scale) do f, s
-        map((f, s)-> f ? -s : s, Vec(f), s)
-    end
-    translation, rotation, align = (
-        node(:translation, Vec3f0(0)),
-        node(:rotation, Vec4f0(0, 0, 0, 1)),
-        node(:align, Vec2f0(0))
-    )
-    pmodel = modelmatrix(scene)
-    model = map_once(scale, translation, rotation, align, pmodel) do s, o, r, a, p
-        q = Quaternions.Quaternion(r[4], r[1], r[2], r[3])
-        transformationmatrix(o, s, q) * p
-    end
-    Transformation(
-        translation,
-        scale,
-        rotation,
-        model,
-        flip,
-        align,
-        signal_convert(Node{Any}, identity)
-    )
-end
-
 function Transformation()
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
@@ -205,6 +178,13 @@ current_scene() = current_global_scene[]
 
 Scene(::Void) = Scene()
 
+default_theme() = Theme(
+    font = "DejaVuSans",
+    backgroundcolor = RGBAf0(1,1,1,1),
+    color = :black,
+    colormap = :viridis
+)
+
 function Scene(;
         area = nothing,
         resolution = reasonable_resolution()
@@ -227,12 +207,7 @@ function Scene(;
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        Theme(
-            font = "DejaVuSans",
-            backgroundcolor = RGBAf0(1,1,1,1),
-            color = :black,
-            colormap = :YlOrRd
-        ),
+        default_theme(),
         Scene[],
         AbstractScreen[]
     )
@@ -258,12 +233,7 @@ function Scene(
         boundingbox,
         transformation,
         AbstractPlot[],
-        merge(theme, Theme(
-            font = "DejaVuSans",
-            backgroundcolor = RGBAf0(1,1,1,1),
-            color = :black,
-            colormap = :YlOrRd
-        )),
+        merge(theme, default_theme()),
         Scene[],
         current_screens
     )
@@ -282,12 +252,7 @@ function Scene(scene::Scene, area)
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        Theme(
-            font = "DejaVuSans",
-            backgroundcolor = RGBAf0(1,1,1,1),
-            color = :black,
-            colormap = :YlOrRd
-        ),
+        default_theme(),
         Scene[],
         scene.current_screens
     )
@@ -367,6 +332,7 @@ end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    filter!(isopen, scene.current_screens)
     isempty(scene.current_screens) || return
     screen = Screen(scene)
     insert_plots!(scene)
@@ -379,7 +345,7 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
 end
 
 function Base.show(io::IO, m::MIME"text/plain", plot::AbstractPlot)
-    show(io, m, Makie.parent(plot))
+    show(io, m, parent(plot))
     display(TextDisplay(io), m, plot.attributes)
     nothing
 end
@@ -390,19 +356,15 @@ Base.empty!(scene::Scene) = empty!(scene.plots)
 A plot type that combines multiple more primitive plots.
 """
 struct Combined{Typ, T} <: AbstractPlot
+    transformation::Transformation
     args::T
     attributes::Attributes
     parent
     plots::Vector{AbstractPlot}
 end
 
-"""
-A translated Scene
-"""
-struct TranslatedScene <: AbstractPlot
-    parent::Scene
-    transformation::Transformation
-end
+Base.parent(x::Combined) = x.parent
+
 # Since we can use Combined like a scene in some circumstances, we define this alias
 
 # A combined plot can be used like a scene
@@ -412,15 +374,41 @@ function plot!(cplot::Combined, plot::AbstractPlot, attributes::Attributes)
 end
 
 function Combined{Typ}(scene::Combined, attributes, args...) where Typ
-    c = Combined{Typ, typeof(args)}(args, attributes, scene.parent, AbstractPlot[])
+    c = Combined{Typ, typeof(args)}(Transformation(scene), args, attributes, scene.parent, AbstractPlot[])
     push!(scene.plots, c)
     c
 end
 
-const Scenelike = Union{Scene, Combined, TranslatedScene}
+const Scenelike = Union{Scene, Combined}
 
+function Transformation(scene::Scenelike)
+    flip = node(:flip, (false, false, false))
+    scale = node(:scale, Vec3f0(1))
+    scale = map(flip, scale) do f, s
+        map((f, s)-> f ? -s : s, Vec(f), s)
+    end
+    translation, rotation, align = (
+        node(:translation, Vec3f0(0)),
+        node(:rotation, Vec4f0(0, 0, 0, 1)),
+        node(:align, Vec2f0(0))
+    )
+    pmodel = modelmatrix(scene)
+    model = map_once(scale, translation, rotation, align, pmodel) do s, o, r, a, p
+        q = Quaternions.Quaternion(r[4], r[1], r[2], r[3])
+        p * transformationmatrix(o, s, q)
+    end
+    Transformation(
+        translation,
+        scale,
+        rotation,
+        model,
+        flip,
+        align,
+        signal_convert(Node{Any}, identity)
+    )
+end
 function Combined{Typ}(scene::Scenelike, attributes, args...) where Typ
-    c = Combined{Typ, typeof(args)}(args, attributes, scene, AbstractPlot[])
+    c = Combined{Typ, typeof(args)}(Transformation(scene), args, attributes, scene, AbstractPlot[])
     push!(scene, c)
     c
 end
@@ -442,20 +430,12 @@ function translated(
     rotate!(tscene, rotation)
     tscene
 end
-function Scene(
-        scene::TranslatedScene;
-        transformation = transformation(scene)
-    )
-    push!(scene.parent.children, child)
-    child
-end
 
-function data_limits(scene::TranslatedScene)
-    modelmatrix(scene)[] * data_limits(scene.parent)
-end
 
 const Transformable = Union{Scenelike, AbstractPlot}
-transformation(scene::Union{Scene, TranslatedScene}) = scene.transformation
+
+transformation(scene::Scene) = scene.transformation
+transformation(scene::Combined) = scene.transformation
 transformation(scene::Scenelike) = transformation(scene.parent)
 transformation(plot::AbstractPlot) = plot[:transformation]
 
@@ -483,7 +463,9 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
         rotate!(scene, Vec3f0(1, 0, 0), 0.5pi)
         translate!(scene, 0, dimval, 0)
     else #yz plane
-        rotate!(scene, Vec3f0(0, 1, 0), -0.5pi)
+        q1 = Makie.qrotation(Vec3f0(1, 0, 0), -0.5pi)
+        q2 = Makie.qrotation(Vec3f0(0, 0, 1), 0.5pi)
+        Makie.rotate!(scene, Makie.qmul(q2, q1))
         translate!(scene, dimval, 0, 0)
     end
     scene
@@ -500,7 +482,6 @@ theme(x::Scene) = x.theme
 theme(x::Scene, key) = x.theme[key]
 
 
-Base.push!(scene::TranslatedScene, subscene) = push!(scene.parent, subscene)
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
@@ -532,7 +513,6 @@ pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::Scenelike) = pixelarea(scene.parent)
 
 plots(scene::Scenelike) = scene.plots
-plots(scene::TranslatedScene) = scene.parent.plots
 
 
 function merged_get!(defaults::Function, key, scene::Scenelike, input::Attributes)

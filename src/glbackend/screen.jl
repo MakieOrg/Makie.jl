@@ -2,7 +2,6 @@ const ScreenID = UInt8
 const ZIndex = Int
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
-
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
     framebuffer::GLWindow.GLFramebuffer
@@ -11,6 +10,7 @@ mutable struct Screen <: AbstractScreen
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
+    cache2plot::Dict{UInt16, AbstractPlot}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLWindow.GLFramebuffer,
@@ -19,16 +19,18 @@ mutable struct Screen <: AbstractScreen
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             cache::Dict{UInt64, RenderObject},
+            cache2plot::Dict{UInt16, AbstractPlot},
         )
-        obj = new(glscreen, framebuffer, rendertask, screen2scene, screens, renderlist, cache)
+        obj = new(glscreen, framebuffer, rendertask, screen2scene, screens, renderlist, cache, cache2plot)
         jl_finalizer(obj) do obj
             # save_print("Freeing screen")
-            empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene))
+            empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
             return
         end
         obj
     end
 end
+GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
 
 function colorbuffer(screen::Screen)
@@ -41,6 +43,85 @@ function colorbuffer(screen::Screen)
     buffer .= Images.clamp01nan.(buffer)
     return buffer
 end
+
+"""
+Selection of random objects on the screen is realized by rendering an
+object id + plus an arbitrary index into the framebuffer.
+The index can be used for e.g. instanced geometries.
+"""
+struct SelectionID{T <: Integer} <: FieldVector{2, T}
+    id::T
+    index::T
+end
+
+function getscreen(scene::Scene)
+    isempty(scene.current_screens) && return nothing
+    scene.current_screens[1]
+end
+
+function pick_native(scene::Scene, xy::VecTypes{2})
+    screen = getscreen(scene)
+    screen == nothing && return SelectionID{Int}(0, 0)
+    window_size = widths(screen)
+    fb = screen.framebuffer
+    buff = fb.objectid
+    sid = Base.RefValue{SelectionID{UInt16}}()
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    x, y = Int.(floor.(xy))
+    w, h = window_size
+    if x > 0 && y > 0 && x <= w && y <= h
+        glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
+        return convert(SelectionID{Int}, sid[])
+    end
+    return SelectionID{Int}(0, 0)
+end
+
+pick(scene::Scene, xy...) = pick(scene, Float64.(xy))
+
+function pick(scene::Scene, xy::VecTypes{2})
+    sid = pick_native(scene, xy)
+    screen = getscreen(scene)
+    if screen != nothing && haskey(screen.cache2plot, sid.id)
+        plot = screen.cache2plot[sid.id]
+        return (plot, sid.index)
+    end
+    return (nothing, 0)
+end
+
+
+function mouseover(scene::Scene, plots::AbstractPlot...)
+    p, idx = pick(scene, scene.events.mouseposition[])
+    p in plots
+end
+
+
+
+function onpick(f, scene::Scene, plots::AbstractPlot...)
+    map_once(scene.events.mouseposition) do mp
+        p, idx = pick(scene, mp)
+        (p in plots) && f(idx)
+        return
+    end
+end
+
+function pick(screen::Screen, rect::IRect2D)
+    window_size = widths(screen)
+    buff = screen.framebuffer.objectid
+    sid = zeros(SelectionID{UInt16}, widths(rect)...)
+    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    x, y = minimum(rect)
+    rw, rh = widths(rect)
+    w, h = window_size
+    if x > 0 && y > 0 && x <= w && y <= h
+        glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
+        return map(unique(vec(SelectionID{Int}.(sid)))) do sid
+            screen.cache2plot[sid.id], Int(sid.index)
+        end
+    end
+    return SelectionID{Int}[]
+end
+
 
 const io_lock = ReentrantLock()
 
@@ -60,7 +141,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
         k.value != nothing
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
-        id = 1#length(screen.screens) + 1
+        id = length(screen.screens) + 1
         push!(screen.screens, (id, scene.px_area, Node(true), scene.theme[:backgroundcolor]))
         id
     end
@@ -113,7 +194,8 @@ function Screen(scene::Scene; kw_args...)
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
-        Dict{UInt64, RenderObject}()
+        Dict{UInt64, RenderObject}(),
+        Dict{UInt16, AbstractPlot}(),
     )
     screen.rendertask[] = @async(renderloop(screen))
     register_callbacks(scene, to_native(screen))

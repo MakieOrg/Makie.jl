@@ -78,7 +78,8 @@ struct Billboard end
 
 calculate_values!(scene::Scenelike, T, attributes, args) = attributes
 
-Base.parent(x::AbstractPlot) = x.parent
+Base.parent(x::AbstractPlot) = x.parent[]
+
 function Base.getindex(x::AbstractPlot, idx::Integer)
     x.args[idx]
 end
@@ -157,13 +158,16 @@ function replace_nothing!(f, dict, key)
 end
 
 function calculate_values!(scene::Scenelike, attributes, args)
-    if haskey(attributes, :colormap)
+    if haskey(attributes, :colormap) && value(attributes[:colormap]) != nothing
         delete!(attributes, :color) # color is overwritten by colormap
         replace_nothing!(attributes, :colorrange) do
             map(to_node(args[3])) do arg
                 Vec2f0(extrema(arg))
             end
         end
+    else
+        delete!(attributes, :colormap)
+        delete!(attributes, :colorrange)
     end
     replace_nothing!(attributes, :model) do
         replace_nothing!(attributes, :transformation) do
@@ -252,6 +256,7 @@ function default_theme(scene, ::Type{Heatmap})
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
+        colorrange = nothing,
         linewidth = 0.0,
         levels = 1,
         fxaa = true,

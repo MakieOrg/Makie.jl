@@ -66,28 +66,29 @@ Renders a single frame of a `window`
 function render_frame(screen::Screen)
     !isopen(screen) && return
     nw = to_native(screen)
-    fb = (screen.framebuffer)
+    fb = screen.framebuffer
     wh = Int.(GLFW.GetFramebufferSize(nw))
     resize!(fb, wh)
     w, h = wh
     #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glDisable(GL_STENCIL_TEST)
     # setup stencil and backgrounds
-    glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0xff)
-    glClearStencil(0)
+    # glEnable(GL_STENCIL_TEST)
+    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    # glStencilMask(0xff)
+    # glClearStencil(0)
     glClearColor(0,0,0,0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     glEnable(GL_SCISSOR_TEST)
     setup!(screen)
     glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    # deactivate stencil write
-    glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0x00)
+    # # deactivate stencil write
+    # glEnable(GL_STENCIL_TEST)
+    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    # glStencilMask(0x00)
     GLAbstraction.render(screen, true)
     glDisable(GL_STENCIL_TEST)
 
@@ -106,11 +107,11 @@ function render_frame(screen::Screen)
     #prepare for non anti aliased pass
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
-    glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0x00)
+    # glEnable(GL_STENCIL_TEST)
+    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    # glStencilMask(0x00)
     GLAbstraction.render(screen, false)
-    glDisable(GL_STENCIL_TEST)
+    # glDisable(GL_STENCIL_TEST)
     glViewport(0, 0, w, h)
     #Read all the selection queries
     # GLWindow.push_selectionqueries!(window)

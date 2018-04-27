@@ -45,8 +45,11 @@ function cam3d!(scene; kw_args...)
     disconnect!(scene.camera)
     add_translation!(scene, camera, camera.pan_button, camera.move_key)
     add_rotation!(scene, camera, camera.rotate_button, camera.move_key)
-    scene.camera_controls[] = camera
-    update_cam!(scene, camera)
+    cameracontrols!(scene, camera)
+    map(scene.camera, scene.px_area) do area
+        # update cam when screen ratio changes
+        update_cam!(scene, camera)
+    end
     camera
 end
 
@@ -61,7 +64,7 @@ function projection_switch{T <: Real}(
     w = T(h * aspect)
     projection == Perspective && return GLAbstraction.frustum(-w, w, -h, h, near, far)
     h, w = h * zoom, w * zoom
-     GLAbstraction.orthographicprojection(-w, w, -h, h, near, far)
+    GLAbstraction.orthographicprojection(-w, w, -h, h, near, far)
 end
 
 function rotate_cam{T}(
@@ -84,16 +87,19 @@ function rotate_cam{T}(
     rotation
 end
 
+is_mouseinside(scene) = Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
+
 
 function add_translation!(scene, cam, key, button)
     last_mousepos = RefValue(Vec2f0(0, 0))
     map(scene.camera, scene.events.mousedrag) do drag
-        if ispressed(scene, key[]) && ispressed(scene, button[])
+        mp = Vec2f0(scene.events.mouseposition[])
+        if ispressed(scene, key[]) && ispressed(scene, button[]) && is_mouseinside(scene)
             if drag == Mouse.down
                 #just started pressing, nothing to do yet
-                last_mousepos[] = Vec2f0(scene.events.mouseposition[])
+                last_mousepos[] = mp
             elseif drag == Mouse.pressed
-                mousepos = Vec2f0(scene.events.mouseposition[])
+                mousepos = mp
                 diff = (last_mousepos[] - mousepos) * cam.translationspeed[]
                 last_mousepos[] = mousepos
                 translate_cam!(scene, cam, Vec3f0(0f0, diff[1], diff[2]))
@@ -102,18 +108,17 @@ function add_translation!(scene, cam, key, button)
         return
     end
     map(scene.camera, scene.events.scroll) do scroll
-        if ispressed(scene, button[])
+        if ispressed(scene, button[]) && is_mouseinside(scene)
             translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
         end
         return
     end
 end
 
-
 function add_rotation!(scene, cam, button, key)
     last_mousepos = RefValue(Vec2f0(0, 0))
     map(scene.camera, scene.events.mousedrag) do drag
-        if ispressed(scene, button[]) && ispressed(scene, key[])
+        if ispressed(scene, button[]) && ispressed(scene, key[]) && is_mouseinside(scene)
             if drag == Mouse.down
                 last_mousepos[] = Vec2f0(scene.events.mouseposition[])
             elseif drag == Mouse.pressed

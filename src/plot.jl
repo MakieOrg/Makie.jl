@@ -65,7 +65,7 @@ end
 
 function convert_arguments(P, x::Rect)
     # TODO fix the order of decompose
-    convert_arguments(P, decompose(Point, x)[[1, 2, 4, 3, 1]])
+    convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
 
 convert_arguments(::Type{Mesh}, m::AbstractMesh) = (m,)
@@ -142,11 +142,10 @@ function plot!(scene::Scenelike, subscene::AbstractPlot, attributes::Attributes)
         )
     end
 
-    push!(scene, subscene)
+    isa(subscene, Combined) || push!(scene, subscene)
     if plot_attributes[:raw][] == false
         s_limits = limits(scene)
         map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
-            println("limits")
             if limit == :automatic
                 dlimits = data_limits(scene)
                 lim_w = widths(dlimits)
@@ -160,7 +159,6 @@ function plot!(scene::Scenelike, subscene::AbstractPlot, attributes::Attributes)
 
             # not really sure how to scale 3D scenes in a reasonable way
             if scaleit && is2d(scene)
-                println("scale_plot")
                 mini, maxi = minimum(limits), maximum(limits)
                 l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
                 xyzfit = fit_ratio(rect, l)
@@ -170,7 +168,6 @@ function plot!(scene::Scenelike, subscene::AbstractPlot, attributes::Attributes)
             return
         end
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
-            println("axis")
             axis_attributes = plot_attributes[:axis][]
             if is2d(scene)
                 limits2d = map(s_limits) do l
@@ -196,7 +193,6 @@ function plot!(scene::Scenelike, subscene::AbstractPlot, attributes::Attributes)
                 if is2d(scene)
                     cam2d!(scene)
                 else
-                    println("cam3d")
                     cam3d!(scene)
                 end
             end

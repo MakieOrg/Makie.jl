@@ -1,8 +1,11 @@
+
 include("database.jl")
 using Makie
 
 @block SimonDanisch ["2d"] begin
-
+    @cell "colored triangle" [mesh, polygon] begin
+        mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue], shading = false)
+    end
     @cell "Subscenes" [image, scatter, subscene] begin
 
         img = loadasset("doge.png")
@@ -629,6 +632,10 @@ end
             psurf = surface(vx, 1:0.1:2, psurf[:z])
             center!(scene)
         end
+    end
+    @cell "3D Volume Contour with slices" [volume, contour, heatmap, slices, "3d layout", layout] begin
+        r = linspace(-2pi, 2pi, 100)
+        volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
     end
 end
 

@@ -57,6 +57,7 @@ end
 function update_cam!(scene::Scenelike, cam::Camera2D)
     x, y = minimum(cam.area[])
     w, h = widths(cam.area[]) ./ 2f0
+
     # These nodes should be final, no one should do map(cam.projection),
     # so we don't push! and just update the value in place
     view = translationmatrix(Vec3f0(-x - w, -y - h, 0))
@@ -170,7 +171,10 @@ function selection_rect!(
         else
             if drag == Mouse.up && waspressed[]
                 waspressed[] = false
-                update_cam!(scene, cam, rect[])
+                w, h = widths(rect[])
+                if w > 0.0 && h > 0.0
+                    update_cam!(scene, cam, rect[])
+                end
                 #scene.limits[] = FRect3D(rect[])
                 rect[] = FRect(0, 0, 0, 0)
                 rect_vis[:positions] = rect[]

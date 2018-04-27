@@ -68,11 +68,14 @@ end
 # So you can use void whenever you don't care what is pressed
 ispressed(scene::Scenelike, ::Void) = true
 
-function ispressed(scene::Scenelike, button)
-    buttons = getfield(events(scene), button_key(button))[]
+function ispressed(buttons::Set{T}, button) where T <: Union{Keyboard.Button, Mouse.Button}
     if isa(button, Set)
         return buttons == button
     else
         return length(buttons) == 1 && first(buttons) == button
     end
+end
+function ispressed(scene::Scenelike, button)
+    buttons = getfield(events(scene), button_key(button))[]
+    ispressed(buttons, button)
 end

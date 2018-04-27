@@ -19,6 +19,7 @@ attribute_convert(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
 attribute_convert(c::Vector, ::key"markersize", ::key"meshscatter") = Vec3f0.(c)
 attribute_convert(c, ::key"glowcolor") = attribute_convert(c, key"color"())
 attribute_convert(c, ::key"strokecolor") = attribute_convert(c, key"color"())
+attribute_convert(c, ::key"strokewidth") = Float32(c)
 
 attribute_convert(x::Void, ::key"linestyle") = x
 

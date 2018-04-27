@@ -23,6 +23,7 @@ Fontconfig
 FreeType
 FreeTypeAbstraction
 IntervalSets
+Primes
 
 @windows ImageMagick
 @linux ImageMagick

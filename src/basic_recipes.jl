@@ -77,7 +77,7 @@ function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, 
     cmap = map(colormap, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
         levels = to_levels(l, cnorm)
         N = length(levels) * 50
-        iso_eps = 0.1
+        iso_eps = 0.01
         cmap = attribute_convert(_cmap, key"colormap"())
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
@@ -99,10 +99,10 @@ function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args..
     attributes, rest = merged_get!(:contour, scene, attributes) do
         default_theme(scene, Contour)
     end
-    x, y, z = convert_arguments(Contour, args...)
-    calculate_values!(scene, Contour, attributes, (x, y, z))
-    t = eltype(z)
+    x, y, z = convert_arguments(Contour, node.((:x, :y, :z), args)...)
     contourplot = Combined{:Contour}(scene, attributes, x, y, z)
+    calculate_values!(contourplot, Contour, attributes, (x, y, z))
+    t = eltype(z)
     if value(attributes[:fillrange])
         attributes[:interpolate] = true
         if T == Contour
@@ -124,7 +124,7 @@ function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args..
 end
 
 
-function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, positions::AbstractVector{<: VecTypes{2, T}}) where T <: AbstractFloat
+function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, args...)
     attributes, rest = merged_get!(:poly, scene, attributes) do
         Theme(;
             default_theme(scene)...,
@@ -133,7 +133,8 @@ function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, positions
             linestyle = nothing
         )
     end
-    positions_n = to_node(positions)
+
+    positions_n = to_node(convert_arguments(Poly, args...)[1])
     bigmesh = map(positions_n) do p
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
