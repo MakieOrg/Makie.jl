@@ -42,10 +42,20 @@ include("legend.jl")
 include("output.jl")
 include("gui.jl")
 
-export cam2d!, campixel!, cam3d!, update_cam!, Scene, Screen, plot!, CairoScreen, axis2d, RGBAf0
-export Combined, Theme, node, @extract, translated, translate!, transform!, grid
+export Scene, Screen, plot!, CairoScreen, axis2d, RGBAf0
+export Combined, Theme, node, @extract
+export translated, translate!, transform!, scale!, rotate!, grid
+export @key_str, attribute_convert, Attributes, colorlegend
+
+# camera related
+export cam2d!, campixel!, cam3d!, update_cam!
+
 # picking
-export mouseover, onpick, pick, @key_str, attribute_convert, Attributes, colorlegend
+export mouseover, onpick, pick
+
+# gui
+export slider, button, playbutton
+
 export (..) # reexport interval
 
 end
