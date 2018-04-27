@@ -118,6 +118,14 @@ function slider(scene, range; kw_args...)
     splot
 end
 
+function button(func, scene, txt; kw_args...)
+    b = button(scene, txt; kw_args...)
+    foreach(b[:clicks]) do clicks
+        func(clicks)
+        return
+    end
+    b
+end
 function button(scene, txt; kw_args...)
     attributes, rest = merged_get!(:slider, scene, kw_args) do
         Theme(
@@ -157,4 +165,27 @@ function button(scene, txt; kw_args...)
     splot
 end
 
-export slider
+function playbutton(f, scene, range)
+    b = button(scene, "▶ ")
+    isplaying = Ref(false)
+    play_idx = Ref(1)
+    foreach(b[:clicks]) do x
+        if !isplaying[] && x > 0 # check that this isn't before any clicks
+            isplaying[] = true
+            @async begin
+                b.plots[1][1][] = "𝅛𝅛"
+                while isplaying[]
+                    f(range[play_idx[]])
+                    play_idx[] = mod1(play_idx[] + 1, length(range))
+                    yield()
+                end
+                isplaying[] = false
+            end
+        else
+            b.plots[1][1][] = "▶ "
+            isplaying[] = false
+        end
+        nothing
+    end
+    b
+end
