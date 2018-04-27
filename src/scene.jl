@@ -142,7 +142,7 @@ mutable struct Scene
         obj
     end
 end
-
+Base.getindex(scene::Scene, i::Integer) = scene.plots[i]
 
 const current_global_scene = Ref{Any}()
 
@@ -418,19 +418,22 @@ function translated(scene::Scene, translation...)
     tscene
 end
 
-function translated(
-        scene::Scene;
+function translated(scene::Scene; kw_args...)
+    tscene = Scene(scene, transformation = Transformation())
+    transform!(tscene; kw_args...)
+    tscene
+end
+
+function transform!(
+        scene::Scenelike;
         translation = Vec3f0(0),
         scale = Vec3f0(1),
         rotation = 0.0,
     )
-    tscene = Scene(scene, transformation = Transformation())
-    translate!(tscene, translation)
-    scale!(tscene, scale)
-    rotate!(tscene, rotation)
-    tscene
+    translate!(scene, translation)
+    scale!(scene, scale)
+    rotate!(scene, rotation)
 end
-
 
 const Transformable = Union{Scenelike, AbstractPlot}
 
