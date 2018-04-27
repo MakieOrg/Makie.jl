@@ -637,6 +637,15 @@ end
         r = linspace(-2pi, 2pi, 100)
         volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
     end
+    @cell "3d volume animation" [volume, animation, gui, slices, layout] begin
+        r = linspace(-2pi, 2pi, 100)
+        psps = map(1:100) do i
+            broadcast(r, reshape(r, (1, 100, 1)), reshape(r, (1, 1, 100))) do x, y, z
+                j = (i/100)
+                sin(x * j) + cos(y * j) + sin(z)
+            end
+        end
+    end
 end
 
 
