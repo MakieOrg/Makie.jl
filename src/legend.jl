@@ -130,23 +130,17 @@ function legend(scene::Scene, legends::AbstractVector{<:AbstractPlot}, labels::A
     legend_plot
 end
 
-    #
-    # :legend => """
-    #     legend(series, labels)
-    # creates a legend from an array of plots and labels
-    # """,
-    # :colorlegend => """
-    #
-
-function colorlegend(scene::Scene, plot::AbstractPlot, attributes)
-    colorlegend(scene, plot[:colormap], plot[:colorrange], attributes)
-end
-
 """
 colorlegend(scene, colormap, range)
 creates a legend from a colormap
 """
-function colorlegend(scene::Scene, colormap, range, attributes)
+function colorlegend(scene::Scene, plot::AbstractPlot, attributes::Attributes)
+    colorlegend(scene, plot[:colormap], plot[:colorrange], attributes)
+end
+
+
+colorlegend(scene::Scene, colormap, range; kw_args...) = colorlegend(scene, colormap, range, Attributes(kw_args))
+function colorlegend(scene::Scene, colormap, range, attributes::Attributes)
     attributes, rest = merged_get!(:colorlegend, scene, attributes) do
         default_theme(scene, ColorLegend)
     end
