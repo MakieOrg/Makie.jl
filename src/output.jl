@@ -130,7 +130,7 @@ function finish(io::VideoStream, out::String = "video.mkv")
     if typ == ".mkv"
         cp(io.path, out)
     elseif typ == ".mp4"
-        run(`ffmpeg -i $(io.path) -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+        run(`ffmpeg -i $(io.path) -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
     elseif typ == "webm"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf scale=iw:ih -y $out`)
     elseif typ == ".gif"
@@ -177,8 +177,15 @@ usage:
 function record(func, scene, path, iter)
     io = VideoStream(scene)
     for i in iter
+        t1 = time()
         func(i)
         recordframe!(io)
+        diff = time() - t1
+        if diff <= (1/24) && diff > 0.0
+            sleep(diff)
+        else
+            yield()
+        end
     end
     finish(io, path)
 end
