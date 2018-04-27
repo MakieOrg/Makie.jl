@@ -106,11 +106,11 @@ end
 
 
 
-
+child(scene::Scene) = scene
 plot(args...; kw_args...) = plot!(Scene(), Scatter, args...; kw_args...)
-plot(scene::Scenelike, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
-plot(scene::Scenelike, P::Type, args...; kw_args...) = plot!(scene, P, args...; kw_args...)
 plot(P::Type, args...; kw_args...) = plot!(Scene(), P, args...; kw_args...)
+plot(scene::Scenelike, args...; kw_args...) = plot!(child(scene), Scatter, args...; kw_args...)
+plot(scene::Scenelike, P::Type, args...; kw_args...) = plot!(child(scene), P, args...; kw_args...)
 
 plot!(args...; kw_args...) = plot!(current_scene(), Scatter, args...; kw_args...)
 plot!(scene::Scenelike, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
