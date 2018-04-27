@@ -93,7 +93,7 @@ function add_pan!(scene::Scenelike, cam::Camera2D)
     ) do scene, cam, startpos, dragging
         pan = cam.panbutton[]
         mp = e.mouseposition[]
-        if ispressed(scene, pan)
+        if ispressed(scene, pan) && is_mouseinside(scene)
             window_area = pixelarea(scene)[]
             if dragging == Mouse.down
                 startpos[] = mp
@@ -115,7 +115,7 @@ function add_zoom!(scene::Scenelike, cam::Camera2D)
     map(camera(scene), e.scroll) do x
         @getfields cam (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
-        if zoom != 0 && ispressed(scene, zoombutton)
+        if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
             z = 1f0 + (zoom * zoomspeed)
             mp = Vec2f0(e.mouseposition[])
             mp = (mp .* wscale(pixelarea(scene)[], area)) + minimum(area)
@@ -154,7 +154,7 @@ function selection_rect!(
     )
     waspressed = RefValue(false)
     dragged_rect = map(camera(scene), events(scene).mousedrag) do drag
-        if ispressed(scene, key)# && ispressed(scene, button)
+        if ispressed(scene, key) && is_mouseinside(scene)
             mp = events(scene).mouseposition[]
             mp = camspace(scene, cam, mp)
             if drag == Mouse.down
