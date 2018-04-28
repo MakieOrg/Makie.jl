@@ -14,9 +14,9 @@ function attribute_convert(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
 end
 attribute_convert(c::Billboard, ::key"rotations") = Vec4f0(0, 0, 0, 1)
 attribute_convert(c, ::key"markersize", ::key"scatter") = Vec2f0(c)
-attribute_convert(c::Vector, ::key"markersize", ::key"scatter") = Vec2f0.(c)
+attribute_convert(c::Vector, ::key"markersize", ::key"scatter") = convert(Array{Vec2f0}, c)
 attribute_convert(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
-attribute_convert(c::Vector, ::key"markersize", ::key"meshscatter") = Vec3f0.(c)
+attribute_convert(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
 attribute_convert(c, ::key"glowcolor") = attribute_convert(c, key"color"())
 attribute_convert(c, ::key"strokecolor") = attribute_convert(c, key"color"())
 attribute_convert(c, ::key"strokewidth") = Float32(c)

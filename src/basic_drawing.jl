@@ -178,7 +178,7 @@ function calculate_values!(scene::Scenelike, attributes, args)
 end
 function calculate_values!(scene::Scenelike, ::Type{Scatter}, attributes, args)
     calculate_values!(scene, attributes, args)
-    get!(attributes, :marker_offset) do
+    replace_nothing!(attributes, :marker_offset) do
         # default to middle
         map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
     end
@@ -210,6 +210,7 @@ function default_theme(scene, ::Type{Scatter})
         intensity = nothing,
         colormap = nothing,
         colorrange = nothing,
+        marker_offset = nothing,
         fxaa = false
     )
 end

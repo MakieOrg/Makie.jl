@@ -1,17 +1,26 @@
+const _forced_update_scheduled = Ref(false)
+function must_update()
+    val = _forced_update_scheduled[]
+    _forced_update_scheduled[] = false
+    val
+end
+function force_update!()
+    _forced_update_scheduled[] = true
+end
 function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     try
         while isopen(screen)
             t = time()
             GLFW.PollEvents() # GLFW poll
             prerender()
-            if Base.n_avail(Reactive._messages) > 0
+            if (Base.n_avail(Reactive._messages) > 0) || must_update()
                 GLWindow.reactive_run_till_now()
-                make_context_current(screen)
+                #make_context_current(screen)
                 render_frame(screen)
                 GLWindow.swapbuffers(to_native(screen))
             end
-            t = time() - t
-            GLWindow.sleep_pessimistic(framerate - t)
+            diff = framerate - (time() - t)
+            diff > 0 && sleep(diff)
         end
     catch e
         rethrow(e)

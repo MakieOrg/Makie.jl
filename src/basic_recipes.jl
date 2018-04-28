@@ -77,7 +77,7 @@ function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, 
     cmap = map(colormap, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
         levels = to_levels(l, cnorm)
         N = length(levels) * 50
-        iso_eps = 0.01
+        iso_eps = 0.01 # TODO calculate this
         cmap = attribute_convert(_cmap, key"colormap"())
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i

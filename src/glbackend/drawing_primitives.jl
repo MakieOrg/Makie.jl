@@ -40,6 +40,9 @@ function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, Meshscatte
         if isa(x, Scatter)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
+        # TODO either stop using bb's from glvisualize
+        # or don't set them randomly to nothing 
+        gl_attributes[:boundingbox] = nothing
         visualize((value(marker), x.args[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end

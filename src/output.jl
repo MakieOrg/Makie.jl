@@ -180,8 +180,8 @@ function record(func, scene, path, iter)
         t1 = time()
         func(i)
         recordframe!(io)
-        diff = time() - t1
-        if diff <= (1/24) && diff > 0.0
+        diff = (1/24) - (time() - t1)
+        if diff > 0.0
             sleep(diff)
         else
             yield()
