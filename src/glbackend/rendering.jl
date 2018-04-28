@@ -68,6 +68,7 @@ function setup!(screen)
     return
 end
 
+const selection_queries = Function[]
 
 """
 Renders a single frame of a `window`
@@ -123,7 +124,9 @@ function render_frame(screen::Screen)
     # glDisable(GL_STENCIL_TEST)
     glViewport(0, 0, w, h)
     #Read all the selection queries
-    # GLWindow.push_selectionqueries!(window)
+    for query_func in selection_queries
+        query_func()
+    end
     glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
