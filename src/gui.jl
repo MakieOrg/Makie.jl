@@ -39,7 +39,6 @@ function dragslider(scene, slider, button)
     mpos = scene.events.mouseposition
     drag_started = Ref(false)
     startpos = Base.RefValue((0.0, 0.0))
-    xpos = Ref(0.0)
     range = slider[1]
     @extract slider (value, sliderlength)
     foreach(scene.events.mousedrag) do drag
@@ -49,16 +48,16 @@ function dragslider(scene, slider, button)
         elseif drag == Mouse.pressed && drag_started[]
             diff = startpos[] .- mpos[]
             startpos[] = mpos[]
-            spos = xpos[] - diff[1]
+            spos = translation(button)[][1] - diff[1]
             l = sliderlength[] - 17.5
             if spos >= 0 && spos <= l
                 idx = round(Int, ((spos / l) .* (length(range[]) - 1)) + 1)
-                xpos[] = spos
                 value[] = range[][idx]
                 translate!(button, spos, 0, 0)
             end
         else
             drag_started[] = false
+            startpos[] = (0.0, 0.0)
         end
         return
     end
@@ -92,12 +91,13 @@ function slider(scene, range; kw_args...)
     label = map((v, f)-> f(v), attributes[:value], valueprinter)
     lplot = text!(
         splot, label,
+        textsize = 15,
         align = (:left, :center), color = textcolor,
         position = map((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
     )
     lbb = data_limits(lplot) # on purpose static so we hope text won't become too long?
     bg_rect = map(sliderlength, sliderheight) do w, h
-        Makie.IRect(0, 0, w + 5 + widths(lbb)[1], h)
+        Makie.IRect(0, 0, w + 10 + widths(lbb)[1], h)
     end
     poly!(
         splot, bg_rect,
@@ -117,6 +117,16 @@ function slider(scene, range; kw_args...)
     dragslider(scene, splot, button)
     splot
 end
+
+function move!(x::Combined{:Slider}, idx::Integer)
+    r = x[1][]
+    len = x[:sliderlength][]
+    x[:value] = r[idx]
+    xpos = ((idx - 1) / (length(r) - 1)) * len
+    translate!(x.plots[end], xpos, 0, 0)
+    return
+end
+export move!
 
 function button(func, scene, txt; kw_args...)
     b = button(scene, txt; kw_args...)
@@ -145,6 +155,7 @@ function button(scene, txt; kw_args...)
     lplot = text!(
         splot, txt,
         align = (:center, :center), color = textcolor,
+        textsize = 15,
         position = map((wh)-> Point2f0(wh./2), dimensions)
     )
     lbb = data_limits(lplot) # on purpose static so we hope text won't become too long?

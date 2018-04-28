@@ -341,12 +341,14 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     padd = w .* 0.01
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
+    force_update!()
     return
 end
 
 function Base.show(io::IO, m::MIME"text/plain", plot::AbstractPlot)
     show(io, m, parent(plot))
     display(TextDisplay(io), m, plot.attributes)
+    force_update!()
     nothing
 end
 
