@@ -26,7 +26,7 @@ end
 function cam3d!(scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Theme(
-            rotationspeed = 1.0,
+            rotationspeed = 0.3,
             translationspeed = 1.0,
             eyeposition = Vec3f0(3),
             lookat = Vec3f0(0),
