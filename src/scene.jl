@@ -241,6 +241,10 @@ function Scene(
     child
 end
 
+function Base.push!(parent::Scene, child::Scene)
+
+end
+
 function Scene(scene::Scene, area)
     events = scene.events
     px_area = signal_convert(Signal{IRect2D}, area)
@@ -299,9 +303,9 @@ function merge_attributes!(input, theme, rest = Attributes(), merged = Attribute
     for key in union(keys(input), keys(theme))
         if haskey(input, key) && haskey(theme, key)
             val = input[key]
-            if isa(val, Attributes)
-                merged[key] = Attributes()
-                merge_attributes!(val, theme[key][], rest, merged[key])
+            if isa(value(val), Attributes)
+                merged[key] = to_node(Attributes())
+                merge_attributes!(value(val), theme[key][], rest, merged[key][])
             else
                 merged[key] = to_node(val)
             end
@@ -449,12 +453,39 @@ scale!(scene::Transformable, s) = (scale(scene)[] = to_ndim(Vec3f0, Float32.(s),
 scale!(scene::Transformable, xyz...) = scale!(scene, xyz)
 
 rotation(scene::Transformable) = transformation(scene).rotation
-rotate!(scene::Transformable, q) = (rotation(scene)[] = attribute_convert(q, key"rotation"()))
-rotate!(scene::Transformable, axis_rot...) = rotate!(scene, axis_rot)
+function rotate!(::Type{T}, scene::Transformable, q) where T
+    rot = convert_attribute(q, key"rotation"())
+    if T === Accum
+        rot1 = rotation(scene)[]
+        rotation(scene)[] = qmul(rot1, rot)
+    elseif T == Absolute
+        rotation(scene)[] = rot
+    else
+        error("Unknown transformation: $T")
+    end
+    force_update!()
+end
+rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
+rotate!(scene::Transformable, axis_rot...) = rotate!(Absolute, scene, axis_rot)
+rotate!(scene::Transformable, axis_rot::Vec4f0) = rotate!(Absolute, scene, axis_rot)
+rotate!(scene::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, scene, axis_rot)
 
 translation(scene::Transformable) = transformation(scene).translation
-translate!(scene::Transformable, t) = (translation(scene)[] = to_ndim(Vec3f0, Float32.(t), 0))
-translate!(scene::Transformable, xyz...) = translate!(scene, xyz)
+
+struct Accum end; struct Absolute end
+
+function translate!(::Type{T}, scene::Transformable, t) where T
+    offset = to_ndim(Vec3f0, Float32.(t), 0)
+    if T === Accum
+        translation(scene)[] = translation(scene)[] .+ offset
+    elseif T === Absolute
+        translation(scene)[] = offset
+    else
+        error("Unknown translation type: $T")
+    end
+end
+translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
+translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
 
 
 function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
