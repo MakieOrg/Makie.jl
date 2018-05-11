@@ -60,19 +60,6 @@ function getscreen(scene::Scene)
 end
 
 
-
-const io_lock = ReentrantLock()
-
-function save_print(args...)
-    @async begin
-        lock(io_lock)
-        println(args...)
-        unlock(io_lock)
-    end
-end
-
-
-
 Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::Screen, scene::Scene, robj)
     filter!(screen.screen2scene) do k, v

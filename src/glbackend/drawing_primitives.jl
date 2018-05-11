@@ -21,7 +21,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
-            gl_value = map(val-> attribute_convert(val, Key{key}(), plot_key(x)), value)
+            gl_value = map(val-> convert_attribute(val, Key{key}(), plot_key(x)), value)
             gl_key => gl_value
         end
         robj = robj_func(Dict{Symbol, Any}(gl_attributes))
@@ -41,7 +41,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, Meshscatte
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
         # TODO either stop using bb's from glvisualize
-        # or don't set them randomly to nothing 
+        # or don't set them randomly to nothing
         gl_attributes[:boundingbox] = nothing
         visualize((value(marker), x.args[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
@@ -179,6 +179,9 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
             if isa(m, GLPlainMesh) || isa(m, GLNormalUVMesh)
                 get!(gl_attributes, :color, c)
                 m
+            elseif isa(m, GLNormalMesh)
+                get!(gl_attributes, :color, c)
+                GLNormalMesh(m)
             else
                 HomogenousMesh(m, Dict{Symbol, Any}(:color => c))
             end

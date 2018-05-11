@@ -1,5 +1,4 @@
 using Makie, GeometryTypes, Colors
-scene = Scene()
 scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
     marker = [:x, :circle, :cross]

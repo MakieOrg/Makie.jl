@@ -1,11 +1,15 @@
 using Makie
 using GeometryTypes, IntervalSets
 using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
+Makie.log_info(false)
+const logging_io = Base.RefValue(STDOUT)
+logging_io[] == STDOUT
 
 scene = Scene()
 s = scatter!(scene, 1:10, rand(10))
 s2 = scatter!(scene, -1:8, rand(10) .+ 1, color = :black)
 scene
+
 
 nw = scene.current_screens[1].glscreen
 img = GLVisualize.loadasset("doge.png")
@@ -237,9 +241,3 @@ for func in funcs
         println(io, Sugar.getsource!(func))
     end
 end
-code = code_typed(image_preprocess, (
-    Transpiler.gli.GLTexture{Float32, 2}, Tuple{Int, Int}, Float32, Float32, Mat3f0, Float32, Float32
-))[1][1].code
-
-code = filter(x-> x != nothing && !Base.is_linenumber(x) && !Base.is_expr(x, :meta) && !Base.is_expr(x, :inbounds), code)
-Expr(:block, code...)
