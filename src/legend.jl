@@ -163,7 +163,7 @@ function colorlegend(scene::Scene, colormap, range, attributes::Attributes)
     )
 
     cmap_node = map(colormap_n) do cmap
-        c = attribute_convert(cmap, key"colormap"())
+        c = to_colormap(cmap)
         # TODO cover the case of a 1D colormap explicitely in the shader
         reshape(c, (length(c), 1))
     end

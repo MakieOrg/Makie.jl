@@ -214,13 +214,13 @@ function draw_titles(
     )
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
-        tick_bb = text_bb(str, attribute_convert(tickfont[2], Key{:font}()), tick_size[2])
+        tick_bb = text_bb(str, convert_attribute(tickfont[2], Key{:font}()), tick_size[2])
         widths(tick_bb)[1]
     end)
 
 
     tickspace_y = widths(text_bb(
-        last(first(xticks)), attribute_convert(tickfont[1], Key{:font}()), tick_size[1]
+        last(first(xticks)), convert_attribute(tickfont[1], Key{:font}()), tick_size[1]
     ))[2]
     tickspace = (tickspace_x, tickspace_y)
     title_start = origin .- (tick_gap .+ tickspace .+ tick_title_gap)
@@ -324,7 +324,6 @@ function axis2d(scene::Scenelike, attributes::Attributes, ranges::Node{<: NTuple
     t_args = getindex.(attributes[:tickstyle][], t_keys)
     ti_args = getindex.(attributes[:titlestyle][], ti_keys)
 
-    # scene_unscaled = Scenelike(scene, transformation = Transformation())
     cplot = Axis2D(scene, attributes, ranges)
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})

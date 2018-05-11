@@ -19,10 +19,10 @@ end
 
 function resampled_colors(attributes, levels)
     cols = if haskey(attributes, :color)
-        c = attribute_convert(value(attributes[:color]), key"color"())
+        c = get_attribute(attributes, :color)
         repeated(c, levels)
     else
-        c = attribute_convert(value(attributes[:colormap]), key"colormap"())
+        c = get_attribute(attributes, :colormap)
         resample(c, levels)
     end
 end
@@ -78,7 +78,7 @@ function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, 
         levels = to_levels(l, cnorm)
         N = length(levels) * 50
         iso_eps = 0.01 # TODO calculate this
-        cmap = attribute_convert(_cmap, key"colormap"())
+        cmap = to_colormap(_cmap)
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
             i01 = (i-1) / (N - 1)
@@ -181,10 +181,10 @@ function layout_text(
         font, align, rotation, model
     ) where {N, T}
 
-    offset_vec = attribute_convert(align, key"align"())
-    ft_font = attribute_convert(font, key"font"())
-    rscale = attribute_convert(textsize, key"textsize"())
-    rot = attribute_convert(rotation, key"rotation"())
+    offset_vec = to_align(align)
+    ft_font = to_font(font)
+    rscale = to_textsize(textsize)
+    rot = to_rotation(rotation)
 
     atlas = GLVisualize.get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
@@ -224,11 +224,11 @@ function plot!(scene::Scenelike, ::Type{Annotations}, attributes::Attributes, te
         broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
             # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
             # TODO have a better Font type!
-            f = attribute_convert(font, key"font"())
+            f = to_font(font)
             f = isa(f, Font) ? f : f[idx]
-            c = attribute_convert(color, key"color"())
-            rot = attribute_convert(rotation, key"rotation"())
-            ali = attribute_convert(alignment, key"align"())
+            c = to_color(color)
+            rot = to_rotation(rotation)
+            ali = to_align(alignment)
             pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
             print(io, text)
             n = length(pos)
@@ -265,7 +265,7 @@ function plot!(scene::Scenelike, attributes::Attributes, matrix::AbstractMatrix{
     A = node(:series, matrix)
     sub = Combined{:Series}(scene, attributes, A)
     colors = map_once(attributes[:seriescolors], A) do colors, A
-        cmap = attribute_convert(colors, key"colormap"())
+        cmap = to_colormap(colors)
         if size(A, 2) > length(cmap)
             warn("Colormap doesn't have enough distinctive values. Please consider using another value for seriescolors")
             cmap = interpolated_getindex.((cmap,), linspace(0, 1, M))

@@ -1,8 +1,9 @@
 module CairoBackend
 
 import ..Makie
-import ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str, broadcast_foreach
-import ..Makie: attribute_convert, @extractvals, Linesegments, to_ndim, Font
+using ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str, broadcast_foreach
+using ..Makie: convert_attribute, @extractvals, Linesegments, to_ndim, Font
+using ..Makie: @info, @get_attribute
 using Reactive, Colors, GeometryTypes
 
 #using Gtk
@@ -25,7 +26,7 @@ Base.insert!(screen::CairoScreen, scene::Scene, plot) = nothing
 # Default to Gtk Window+Canvas as backing device
 function CairoScreen(scene::Scene)
     w, h = round.(Int, scene.camera.resolution[])
-    info(w, " ", h)
+    @info("Cairo screen: ", w, " ", h)
     surf = CairoRGBSurface(w, h)
     ctx = CairoContext(surf)
     win = GtkWindow()
@@ -64,7 +65,7 @@ end
 
 function cairo_draw(screen::CairoScreen, primitive::Union{Lines, Linesegments})
     scene = screen.scene
-    fields = value.(getindex.(primitive, (:color, :linewidth, :linestyle)))
+    fields = @get_attribute(primitive, (color, linewidth, linestyle))
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
@@ -72,14 +73,13 @@ function cairo_draw(screen::CairoScreen, primitive::Union{Lines, Linesegments})
     Cairo.move_to(ctx, pos[1], pos[2])
     N = length(positions)
     last = pos
-    broadcast_foreach(1:N, positions, fields...) do i, point, color, linewidth, linestyle
+    broadcast_foreach(1:N, positions, fields...) do i, point, c, linewidth, linestyle
         pos = project_position(scene, point, model)
         function stroke()
             Cairo.set_line_width(ctx, Float64(linewidth))
-            c = attribute_convert(color, key"color"())
             Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
             if linestyle != nothing
-                set_dash(ctx, attribute_convert(linestyle, key"linestyle"()), 0.0)
+                set_dash(ctx, linestyle, 0.0)
             end
             Cairo.stroke(ctx)
         end
@@ -99,23 +99,22 @@ end
 
 function cairo_draw(screen::CairoScreen, primitive::Scatter)
     scene = screen.scene
-    fields = value.(getindex.(primitive.attributes, (:color, :markersize, :strokecolor, :strokewidth, :marker)))
+    fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker))
     ctx = screen.context
     model = primitive[:model][]
-    broadcast_foreach(primitive[1][], fields...) do point, color, markersize, strokecolor, strokewidth, marker
+    broadcast_foreach(primitive[1][], fields...) do point, c, markersize, strokecolor, strokewidth, marker
         # TODO: Implement marker
         # TODO: Accept :radius field or similar?
         scale = project_scale(scene, markersize)
         pos = project_position(scene, point, model)
-        c = attribute_convert(color, key"color"())
         Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
         Cairo.arc(ctx, pos[1], pos[2], scale[1] / 2, 0, 2*pi)
         Cairo.fill(ctx)
-        sc = attribute_convert(strokecolor, key"color"())
+        sc = to_color(strokecolor)
         Cairo.set_source_rgba(ctx, red(sc), green(sc), blue(sc), alpha(sc))
         Cairo.set_line_width(ctx, Float64(strokewidth))
         #if linestyle != nothing
-        #    set_dash(ctx, attribute_convert(linestyle, key"linestyle"()), 0.0)
+        #    set_dash(ctx, convert_attribute(linestyle, key"linestyle"()), 0.0)
         #end
         Cairo.arc(ctx, pos[1], pos[2], scale[1], 0, 2*pi)
         Cairo.stroke(ctx)
@@ -172,15 +171,14 @@ end
 function cairo_draw(screen::CairoScreen, primitive::Text)
     scene = screen.scene
     ctx = screen.context
-    @extractvals(primitive, (textsize, color, font, align, rotation, model))
+    @get_attribute(primitive, (textsize, color, font, align, rotation, model))
     txt = value(primitive.args[1])
     position = primitive.attributes[:position][]
     N = length(txt)
-    broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, c, f, r
+    broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
         pos = project_position(scene, Vec2f0(p), model)
         Cairo.move_to(ctx, pos[1], pos[2])
-        cc = attribute_convert(c, key"color"())
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
 
         Cairo.select_font_face(
@@ -194,6 +192,7 @@ function cairo_draw(screen::CairoScreen, primitive::Text)
         mat = scale_matrix(ts...)
         set_font_matrix(ctx, mat)
         # set_font_size(ctx, 16)
+        # TODO this only works in 2d
         rotate(ctx, 2acos(r[4]))
         if N == length(position) # if one position per glyph
             Cairo.show_text(ctx, string(txt[i]))
@@ -250,7 +249,7 @@ function cairo_clear(screen::CairoScreen)
 end
 
 function cairo_finish(screen::CairoScreen{CairoRGBSurface})
-    info("draw")
+    @info("draw")
     showall(screen.pane.window)
     #=@guarded=# draw(screen.pane.canvas) do canvas
         ctx = getgc(canvas)
