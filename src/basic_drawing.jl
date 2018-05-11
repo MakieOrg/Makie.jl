@@ -173,7 +173,7 @@ function calculate_values!(scene::Scenelike, attributes, args)
         replace_nothing!(attributes, :transformation) do
             Transformation(scene)
         end
-        attributes[:transformation].model
+        value(attributes[:transformation]).model
     end
 end
 function calculate_values!(scene::Scenelike, ::Type{Scatter}, attributes, args)
