@@ -9,14 +9,18 @@ import Quaternions
 using Primes
 
 using Base.Iterators: repeated, drop
-using Base: RefValue
 using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
 using IntervalSets
 
+using Base: RefValue
+import Base: push!, isopen
+
+include("logging.jl")
 include("types.jl")
 include("utils.jl")
 include("signals.jl")
 
+#TODO fix this in GLAbstraction
 GLAbstraction.gl_convert(x::Vector{Vec3f0}) = x
 
 include("scene.jl")
@@ -32,6 +36,7 @@ include("events.jl")
 include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")
 
+include("argument_conversion.jl")
 include("plot.jl")
 include("camera2d.jl")
 include("camera3d.jl")
@@ -44,8 +49,8 @@ include("gui.jl")
 
 export Scene, Screen, plot!, CairoScreen, axis2d, RGBAf0
 export Combined, Theme, node, @extract
-export translated, translate!, transform!, scale!, rotate!, grid
-export @key_str, attribute_convert, Attributes, colorlegend
+export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
+export @key_str, convert_attribute, Attributes, colorlegend, Node
 
 # camera related
 export cam2d!, campixel!, cam3d!, update_cam!
