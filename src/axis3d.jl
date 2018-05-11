@@ -4,7 +4,7 @@ function default_theme(scene, ::Type{Axis3D})
     tickrotations3d = (
         qrotation(Vec3f0(0,0,1), -1.5pi),
         q2,
-        qmul(qmul(q2, q1), qrotation(Vec3f0(0, 1, 0), 1pi))
+        qmul(qrotation(Vec3f0(1, 0, 0), -0.5pi), q2)
     )
     axisnames_rotation3d = tickrotations3d
     tickalign3d = (

@@ -37,7 +37,8 @@ function qrotation(axis::StaticVector{N, T}, theta) where {N, T <: Real}
     u = normalize(axis)
     thetaT = convert(eltype(u), theta)
     s = sin(thetaT / T(2))
-    Vec4f0(s * u[1], s * u[2], s * u[3], cos(thetaT / T(2)))
+    x = Vec4f0(s * u[1], s * u[2], s * u[3], cos(thetaT / T(2)))
+    # qnormalize(x)
 end
 
 qabs(q) = sqrt(dot(q, q))
@@ -50,6 +51,7 @@ function qmul(quat::StaticVector{4}, vec::StaticVector{2})
     x3 = qmul(quat, Vec(vec[1], vec[2], 0))
     StaticArrays.similar_type(vec, StaticArrays.Size(2,))(x3[1], x3[2])
 end
+
 function qmul(quat::StaticVector{4}, vec::StaticVector{3})
     num = quat[1] * 2f0;
     num2 = quat[2] * 2f0;
@@ -72,13 +74,12 @@ end
 qconj(q) = Vec4f0(-q[1], -q[2], -q[3], q[4])
 
 function qmul(q::StaticVector{4}, w::StaticVector{4})
-    qq = Vec4f0(
-        q[4] * w[4] - q[1] * w[1] - q[2] * w[2] - q[3] * w[3],
+    Vec4f0(
         q[4] * w[1] + q[1] * w[4] + q[2] * w[3] - q[3] * w[2],
         q[4] * w[2] - q[1] * w[3] + q[2] * w[4] + q[3] * w[1],
         q[4] * w[3] + q[1] * w[2] - q[2] * w[1] + q[3] * w[4],
+        q[4] * w[4] - q[1] * w[1] - q[2] * w[2] - q[3] * w[3],
     )
-    qnormalize(qq)
 end
 
 
@@ -146,26 +147,50 @@ macro extract(scene, args)
     for elem in args.args
         push!(expr.args, :($(esc(elem)) = $(esc(scene))[$(QuoteNode(elem))]))
     end
+    push!(expr.args, esc(args))
     expr
 end
 
+"""
+    @get_attribute scene (a, b, c, d)
 
-
-
-function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
-    mini, maxi = minimum(rectangle), maximum(rectangle)
-    for i = 1:N
-        point[i] in (mini[i]..maxi[i]) || return false
+This will extract attribute `a`, `b`, `c`, `d` from `scene` and apply the correct attribute
+conversions + will extract the value if it's a signal.
+It will make those attributes available as variables and return them as a tuple.
+So the above is equal to:
+will become:
+```example
+begin
+    a = get_attribute(scene, :a)
+    b = get_attribute(scene, :b)
+    c = get_attribute(scene, :c)
+    (a, b, c)
+end
+```
+"""
+macro get_attribute(scene, args)
+    if args.head != :tuple
+        error("Usage: args need to be a tuple. Found: $args")
     end
-    return true
+    expr = Expr(:block)
+    for elem in args.args
+        push!(expr.args, :($(esc(elem)) = get_attribute($(esc(scene)), $(QuoteNode(elem)))))
+    end
+    push!(expr.args, esc(args))
+    expr
 end
 
 """
 usage @extractvals scene (a, b, c, d)
 will become:
-a = value(scene[:a])
-b = value(scene[:b])
-c = value(scene[:c])
+```example
+begin
+    a = value(scene[:a])
+    b = value(scene[:b])
+    c = value(scene[:c])
+    (a, b, c)
+end
+```
 """
 macro extractvals(scene, args)
     if args.head != :tuple
@@ -180,11 +205,16 @@ macro extractvals(scene, args)
 end
 
 """
-usage @extractvals type (a, b, c)
+usage @extractvals struct (a, b, c)
 will become:
-a = value(type.a)
-b = value(type.b)
-c = value(type.c)
+```example
+    begin
+        a = value(type.a)
+        b = value(type.b)
+        c = value(type.c)
+        (a, b, c)
+    end
+```
 """
 macro getfields(val, keys)
     if keys.head != :tuple
@@ -196,8 +226,19 @@ macro getfields(val, keys)
     for key in keys.args
         push!(result.args, :($(esc(key)) = value(getfield($valsym, $(QuoteNode(key))))))
     end
+    push!(result.args, esc(keys))
     result
 end
+
+
+function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
+    mini, maxi = minimum(rectangle), maximum(rectangle)
+    for i = 1:N
+        point[i] in (mini[i]..maxi[i]) || return false
+    end
+    return true
+end
+
 
 
 bs_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
@@ -257,7 +298,7 @@ function same_length_array(arr, value::Vector)
     end
     value
 end
-same_length_array(arr, value, key) = same_length_array(arr, attribute_convert(value, key))
+same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
 
 
