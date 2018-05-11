@@ -63,4 +63,8 @@ export slider, button, playbutton
 
 export (..) # reexport interval
 
+# attribute_conversion shortcuts
+export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
+
+
 end
