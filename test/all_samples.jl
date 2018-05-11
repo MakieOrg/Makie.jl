@@ -503,3 +503,26 @@ center!(scene)
 # ys = vec([I[2] for I in pts])
 # zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
 # wireframe(xs, ys, zs) # stackoverflow
+
+
+#cell
+using Makie
+scene = Scene(resolution = (500, 500), renderloop = false)
+r = linspace(-2, 2, 40)
+function xy_data(x, y)
+    r = sqrt(x*x + y*y)
+    r == 0.0 ? 1f0 : (sin(r)/r)
+end
+surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
+z = surf_func(20)
+surf = surface(r, r, z)
+
+io = VideoStream(scene, joinpath(homedir(), "Desktop"), "test")
+for i in linspace(0, 60, 100)
+    surf[:z] = surf_func(i)
+    recordframe!(io)
+    # or if you don't record:
+    # render_frame(scene)
+end
+finish(io, "mp4")
+scene

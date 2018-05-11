@@ -213,7 +213,17 @@ function render_loop(tsig, screen, framerate = 1/60)
     GLWindow.destroy!(screen)
     return
 end
-
+function poll_loop(tsig, screen, framerate = 1/60)
+    while isopen(screen)
+        t = time()
+        GLWindow.poll_glfw() # GLFW poll
+        push!(tsig, t)
+        t = time() - t
+        GLWindow.sleep_pessimistic(framerate - t)
+    end
+    GLWindow.destroy!(screen)
+    return
+end
 
 include("themes.jl")
 
@@ -242,7 +252,8 @@ function Scene(;
         resolution = nothing,
         position = nothing,
         color = :white,
-        monitor = nothing
+        monitor = nothing,
+        renderloop = true
     )
     w = nothing
     signal_dict = Dict{Symbol, Any}()
@@ -273,7 +284,12 @@ function Scene(;
         w = Screen("Makie", resolution = resolution, color = to_color(nothing, color))
         GLWindow.add_complex_signals!(w)
         tsig = to_node(0.0)
-        render_task[] = @async render_loop(tsig, w)
+        if renderloop
+            render_task[] = @async render_loop(tsig, w)
+        else
+            render_task[] = @async poll_loop(tsig, w)
+        end
+
         signal_dict[:time] = tsig
     end
 
