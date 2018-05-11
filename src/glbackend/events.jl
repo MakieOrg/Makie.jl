@@ -50,7 +50,7 @@ function window_area(scene::Scene, window)
         rect = event[]
         if Vec(w, h) != widths(rect)
             monitor = GLFW.GetPrimaryMonitor()
-            props = GLWindow.MonitorProperties(monitor)
+            props = MonitorProperties(monitor)
             # dpi of a monitor should be the same in x y direction.
             # if not, minimum seems to be a fair default
             dpievent[] = minimum(props.dpi)
@@ -61,7 +61,7 @@ function window_area(scene::Scene, window)
     disconnect!(event); disconnect!(window, window_area)
 
     monitor = GLFW.GetPrimaryMonitor()
-    props = GLWindow.MonitorProperties(monitor)
+    props = MonitorProperties(monitor)
     dpievent[] = minimum(props.dpi)
 
     GLFW.SetFramebufferSizeCallback(window, windowsize)

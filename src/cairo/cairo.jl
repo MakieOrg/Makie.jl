@@ -160,7 +160,7 @@ function fontname(x::Font)
     unsafe_string(ft_rect.family_name)
 end
 
-import GLVisualize
+import ..GLVisualize
 
 function fontscale(scene, c, font, s)
     atlas = GLVisualize.get_texture_atlas()

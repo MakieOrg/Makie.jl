@@ -228,10 +228,6 @@ convert_attribute(val, ::key"colormap") = to_colormap(val)
 
 
 
-
-using GLVisualize: IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
-export IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
-
 """
     to_volume_algorithm(b, x)
 Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`

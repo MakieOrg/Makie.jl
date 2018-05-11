@@ -1,4 +1,4 @@
-import GLVisualize: calc_offset, glyph_uv_width!, glyph_uv_width!, get_texture_atlas, glyph_scale!, calc_position
+import .GLVisualize: calc_offset, glyph_uv_width!, glyph_uv_width!, get_texture_atlas, glyph_scale!, calc_position
 
 function to_glvisualize_key(k)
     k == :rotations && return :rotation
@@ -145,7 +145,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         end
         interp = value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = GLAbstraction.Texture(value(heatmap), minfilter = interp)
+        tex = Texture(value(heatmap), minfilter = interp)
         map_once(heatmap) do x
             update!(tex, x)
         end
@@ -222,10 +222,6 @@ function to_width(x)
     mini, maxi = extrema(x)
     maxi - mini
 end
-
-using ModernGL
-using GLAbstraction: LazyShader, enabletransparency, Texture, std_renderobject
-using GLAbstraction: StandardPostrender
 
 function makieshader(paths...)
     view = Dict{String, String}()

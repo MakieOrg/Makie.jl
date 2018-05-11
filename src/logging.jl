@@ -1,4 +1,4 @@
-using Base: RefValue
+
 # info, debug, gc, signals, performance
 const log_level = RefValue((false, false, false, false, false))
 

@@ -62,9 +62,9 @@ function projection_switch{T <: Real}(
     aspect = T((/)(widths(wh)...))
     h = T(tan(fov / 360.0 * pi) * near)
     w = T(h * aspect)
-    projection == Perspective && return GLAbstraction.frustum(-w, w, -h, h, near, far)
+    projection == Perspective && return frustum(-w, w, -h, h, near, far)
     h, w = h * zoom, w * zoom
-    GLAbstraction.orthographicprojection(-w, w, -h, h, near, far)
+    orthographicprojection(-w, w, -h, h, near, far)
 end
 
 function rotate_cam{T}(

@@ -120,3 +120,5 @@ struct Key{K} end
 macro key_str(arg)
     :(Key{$(QuoteNode(Symbol(arg)))})
 end
+
+@enum RaymarchAlgorithm IsoValue Absorption MaximumIntensityProjection AbsorptionRGBA IndexedAbsorptionRGBA

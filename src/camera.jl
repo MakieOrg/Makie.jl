@@ -1,4 +1,4 @@
-using Makie, GeometryTypes, GLAbstraction
+using Makie, GeometryTypes
 using Makie: to_signal, add_pan, add_zoom, add_mousebuttons, add_mousedrag, selection_rect
 using Base: RefValue
 
@@ -43,7 +43,6 @@ rectviz, rect = selection_rect(scene, cam)
 addcam(rectviz, cam)
 extract_renderable(a.visual)
 
-using GLVisualize, TextParse
 using TextParse
 using TextParse: Record, Field, Numeric, tryparsenext
 
