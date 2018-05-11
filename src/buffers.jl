@@ -2,9 +2,13 @@
 
 function LinesegmentBuffer(
         scene::Scenelike, ::Type{Point{N}} = Point{2};
-        color = RGBAf0[], linewidth = Float32[], raw = true
+        color = RGBAf0[], linewidth = Float32[], raw = true,
+        kw_args...
     ) where N
-    linesegments!(scene, Point{N, Float32}[]; color = color, linewidth = linewidth, raw = raw)
+    linesegments!(
+        scene, Point{N, Float32}[]; color = color,
+        linewidth = linewidth, raw = raw, kw_args...
+    )
 end
 
 function Base.append!(lsb::Linesegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
@@ -43,18 +47,20 @@ function TextBuffer(
         color = RGBAf0[RGBAf0(0,0,0,0)],
         textsize = Float32[0],
         camera = :false,
-        font = [attribute_convert("default", key"font"())],
+        font = [convert_attribute("default", key"font"())],
         align = [Vec2f0(0)],
-        raw = true
+        raw = true,
+        kw_args...
     ) where N
     annotations!(
-        scene, String[" "], [Point{N, Float32}(0)],
+        scene, String[" "], [Point{N, Float32}(0)];
         rotation = rotation,
         color = color,
         textsize = textsize,
         font = font,
         align = align,
-        raw = raw
+        raw = raw,
+        kw_args...
     )
 end
 
