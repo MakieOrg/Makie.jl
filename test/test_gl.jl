@@ -1,9 +1,4 @@
 using Makie
-using GeometryTypes, IntervalSets
-using Makie: LinesegmentBuffer, start!, finish!, Node, Attributes
-Makie.log_info(false)
-const logging_io = Base.RefValue(STDOUT)
-logging_io[] == STDOUT
 
 scene = Scene()
 s = scatter!(scene, 1:10, rand(10))

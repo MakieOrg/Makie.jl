@@ -3,8 +3,8 @@ module Makie
 
 using Reactive, GeometryTypes, Colors, StaticArrays
 
-using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
-using StaticArrays, GLWindow, ModernGL, Contour
+using Colors, GeometryTypes, ColorVectorSpace
+using Contour
 import Quaternions
 using Primes
 
@@ -19,9 +19,7 @@ include("logging.jl")
 include("types.jl")
 include("utils.jl")
 include("signals.jl")
-
-#TODO fix this in GLAbstraction
-GLAbstraction.gl_convert(x::Vector{Vec3f0}) = x
+include("camera_math.jl")
 
 include("scene.jl")
 
@@ -30,7 +28,6 @@ include("basic_recipes.jl")
 include("layouting.jl")
 
 include("attribute_conversion.jl")
-
 
 include("events.jl")
 include("glbackend/glbackend.jl")
@@ -65,6 +62,9 @@ export (..) # reexport interval
 
 # attribute_conversion shortcuts
 export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
+
+# Raymarching algorithms
+export IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 
 
 end

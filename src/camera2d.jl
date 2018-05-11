@@ -1,6 +1,4 @@
-# using GLAbstraction, Makie, GeometryTypes
-using GLAbstraction: orthographicprojection, translationmatrix
-using StaticArrays
+
 
 struct Camera2D <: AbstractCamera
     area::Node{FRect2D}

@@ -4,7 +4,7 @@ const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
-    framebuffer::GLWindow.GLFramebuffer
+    framebuffer::GLFramebuffer
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
@@ -13,7 +13,7 @@ mutable struct Screen <: AbstractScreen
     cache2plot::Dict{UInt16, AbstractPlot}
     function Screen(
             glscreen::GLFW.Window,
-            framebuffer::GLWindow.GLFramebuffer,
+            framebuffer::GLFramebuffer,
             rendertask::RefValue{Task},
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
@@ -42,16 +42,6 @@ function colorbuffer(screen::Screen)
     buffer = gpu_data(screen.framebuffer.color)
     buffer .= Images.clamp01nan.(buffer)
     return buffer
-end
-
-"""
-Selection of random objects on the screen is realized by rendering an
-object id + plus an arbitrary index into the framebuffer.
-The index can be used for e.g. instanced geometries.
-"""
-struct SelectionID{T <: Integer} <: FieldVector{2, T}
-    id::T
-    index::T
 end
 
 function getscreen(scene::Scene)
@@ -112,7 +102,7 @@ function Screen(scene::Scene; kw_args...)
     push!(gl_screens, window)
     GLFW.MakeContextCurrent(window)
     GLFW.SwapInterval(0)
-    fb = GLWindow.GLFramebuffer(map(widths, scene.events.window_area))
+    fb = GLFramebuffer(map(widths, scene.events.window_area))
     screen = Screen(
         window, fb,
         RefValue{Task}(),

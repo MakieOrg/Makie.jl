@@ -14,10 +14,10 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
             GLFW.PollEvents() # GLFW poll
             prerender()
             if (Base.n_avail(Reactive._messages) > 0) || must_update()
-                GLWindow.reactive_run_till_now()
+                reactive_run_till_now()
                 #make_context_current(screen)
                 render_frame(screen)
-                GLWindow.swapbuffers(to_native(screen))
+                GLFW.SwapBuffers(to_native(screen))
             end
             diff = framerate - (time() - t)
             diff > 0 && sleep(diff)

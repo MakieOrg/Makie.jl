@@ -1,12 +1,9 @@
 julia 0.6
 
 Quaternions
-GLVisualize
 StaticArrays 0.6.6
 GeometryTypes 0.4.4
 Reactive 0.6.0
-GLAbstraction 0.6.0
-GLWindow 0.7.1
 AbstractNumbers 0.1.1
 Contour
 FileIO
