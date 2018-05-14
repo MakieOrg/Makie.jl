@@ -187,7 +187,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
     # TODO use boundingbox(scene) for optimal far/near
     far = max(zoom * 5f0, 30f0)
     proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
-    view = GLAbstraction.lookat(eyeposition, lookat, upvector)
+    view = Makie.lookat(eyeposition, lookat, upvector)
 
     set_value!(scene.camera.projection, proj)
     set_value!(scene.camera.view, view)
