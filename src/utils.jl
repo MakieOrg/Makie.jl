@@ -1,7 +1,5 @@
 
-const Vecf0{N} = Vec{N, Float32}
-const Pointf0{N} = Point{N, Float32}
-export Vecf0, Pointf0
+
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 

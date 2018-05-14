@@ -122,3 +122,6 @@ macro key_str(arg)
 end
 
 @enum RaymarchAlgorithm IsoValue Absorption MaximumIntensityProjection AbsorptionRGBA IndexedAbsorptionRGBA
+const Vecf0{N} = Vec{N, Float32}
+const Pointf0{N} = Point{N, Float32}
+export Vecf0, Pointf0
