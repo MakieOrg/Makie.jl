@@ -11,6 +11,7 @@ using Primes
 using Base.Iterators: repeated, drop
 using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
 using IntervalSets
+using PlotUtils, Showoff
 
 using Base: RefValue
 import Base: push!, isopen

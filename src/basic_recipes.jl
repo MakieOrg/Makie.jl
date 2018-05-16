@@ -1,14 +1,3 @@
-function default_theme(scene, ::Type{Contour})
-    Theme(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        levels = 5,
-        linewidth = 1.0,
-        fillrange = false,
-    )
-end
-
 
 function contourlines(::Type{Contour}, contours, cols)
     result = Point2f0[]
@@ -37,15 +26,15 @@ function contourlines(::Type{Contour3d}, contours, cols)
     end
     result, colors
 end
-plot!(scene::Scenelike, t::Type{Contour}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
-plot!(scene::Scenelike, t::Type{Contour3d}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+plot!(scene::SceneLike, t::Type{Contour}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+plot!(scene::SceneLike, t::Type{Contour3d}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
     linspace(cnorm..., x)
 end
 
-function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, x, y, z, vol)
+function contourplot(scene::SceneLike, ::Type{Contour}, attributes::Attributes, x, y, z, vol)
     attributes, rest = merged_get!(:contour, scene, attributes) do
         default_theme(scene, Contour)
     end
@@ -79,7 +68,7 @@ function contourplot(scene::Scenelike, ::Type{Contour}, attributes::Attributes, 
     plot!(scene, c, rest)
 end
 
-function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args...) where T
+function contourplot(scene::SceneLike, ::Type{T}, attributes::Attributes, args...) where T
     attributes, rest = merged_get!(:contour, scene, attributes) do
         default_theme(scene, Contour)
     end
@@ -108,50 +97,47 @@ function contourplot(scene::Scenelike, ::Type{T}, attributes::Attributes, args..
 end
 
 
-function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, args...)
-    attributes, rest = merged_get!(:poly, scene, attributes) do
-        Theme(;
-            default_theme(scene)...,
-            linecolor = RGBAf0(0,0,0,0),
-            linewidth = 0.0,
-            linestyle = nothing
-        )
-    end
-
-    positions_n = to_node(convert_arguments(Poly, args...)[1])
-    bigmesh = map(positions_n) do p
+@recipe function poly(plot, rest, positions)
+    bigmesh = map(positions) do p
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
     end
-    poly = Combined{:Poly}(scene, attributes, positions_n)
-    mesh!(poly, bigmesh, color = attributes[:color])
-    outline = map(positions_n) do p
+    mesh!(plot, bigmesh, color = plot[:color])
+    outline = map(positions) do p
         push!(copy(p), p[1]) # close path
     end
     lines!(
-        poly, outline,
-        color = attributes[:linecolor], linestyle = attributes[:linestyle],
-        linewidth = attributes[:linewidth],
-        visible = map(x-> x > 0.0, attributes[:linewidth])
+        plot, outline,
+        color = plot[:linecolor], linestyle = plot[:linestyle],
+        linewidth = plot[:linewidth],
     )
-    return plot!(scene, poly, rest)
+    return plot!(scene, plot, rest)
 end
 
-
-function plot!(scene::Scenelike, ::Type{Poly}, attributes::Attributes, x::AbstractVector{T}) where T <: Union{Circle, Rectangle}
-    position = map(node(:positions, x)) do rects
+@recipe function poly(plot, rest, positions::AbstractVector{T}) where T <: Union{Circle, Rectangle}
+    position = map(positions) do rects
         map(rects) do rect
             minimum(rect) .+ (widths(rect) ./ 2f0)
         end
     end
-    attributes[:markersize] = map(node(:markersize, x)) do rects
+    attributes[:markersize] = map(positions, name = :markersize) do rects
         widths.(rects)
     end
     attributes[:marker] = T
-    poly = Combined{:Poly}(scene, attributes, x)
-    plot!(poly, Scatter, attributes, position)
-    poly
+    scatter!(plot, attributes, position)
+    plot
 end
+
+function default_theme(scene, ::Type{Poly})
+    Theme(;
+        default_theme(scene)...,
+        linecolor = RGBAf0(0,0,0,0),
+        linewidth = 0.0,
+        linestyle = nothing
+    )
+end
+
+
 
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
@@ -179,17 +165,12 @@ function layout_text(
 end
 
 
-function plot!(scene::Scenelike, ::Type{Annotations}, attributes::Attributes, text::AbstractVector{String}, positions::AbstractVector{<: VecTypes{N, T}}) where {N, T}
-    attributes, rest = merged_get!(:annotations, scene, attributes) do
-        default_theme(scene, Text)
-    end
-    calculate_values!(scene, Text, attributes, text)
-    t_args = (to_node(text), to_node(positions))
-    annotations = Combined{:Annotations}(scene, attributes, t_args...)
+
+@recipe function annotations(scene, plot, rest, text, position)
     sargs = (
-        attributes[:model], attributes[:font],
-        t_args...,
-        getindex.(attributes, (:color, :textsize, :align, :rotation))...,
+        plot[:model], plot[:font],
+        text, position,
+        getindex.(plot, (:color, :textsize, :align, :rotation))...,
     )
     tp = map(sargs...) do model, font, args...
         if length(args[1]) != length(args[2])
@@ -218,7 +199,7 @@ function plot!(scene::Scenelike, ::Type{Annotations}, attributes::Attributes, te
         end
         (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
     end
-    t_attributes = merge(attributes, rest)
+    t_attributes = merge(data(plot), rest)
     t_attributes[:position] = map(x-> x[2], tp)
     t_attributes[:color] = map(x-> x[3], tp)
     t_attributes[:textsize] = map(x-> x[4], tp)
@@ -226,17 +207,6 @@ function plot!(scene::Scenelike, ::Type{Annotations}, attributes::Attributes, te
     t_attributes[:rotation] = map(x-> x[6], tp)
     t_attributes[:align] = map(x-> x[7], tp)
     t_attributes[:model] = eye(Mat4f0)
-    plot!(annotations, Text, t_attributes, map(x->x[1], tp))
-    annotations
-end
-
-
-
-
-function mergekeys(keys::NTuple{N, Symbol}, target::Attributes, source::Attributes) where N
-    result = copy(target)
-    for key in keys
-        get!(result, key, source[key])
-    end
-    result
+    text!(plot, t_attributes, map(x-> x[1], tp))
+    plot
 end
