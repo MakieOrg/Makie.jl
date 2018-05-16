@@ -1,4 +1,3 @@
-abstract type AbstractPlot end
 const Attributes = Dict{Symbol, Any}
 const RealVector{T} = AbstractVector{T} where T <: Number
 const Node = Signal
@@ -75,53 +74,7 @@ function FRect3D(x::Rect2D)
     FRect3D(Vec3f0(minimum(x)..., 0), Vec3f0(widths(x)..., 0.0))
 end
 
-include("iodevices.jl")
 
-struct Events
-    window_area::Node{IRect2D}
-    window_dpi::Node{Float64}
-    window_open::Node{Bool}
-
-    mousebuttons::Node{Set{Mouse.Button}}
-    mouseposition::Node{Point2d{Float64}}
-    mousedrag::Node{Mouse.DragEnum}
-    scroll::Node{Vec2d{Float64}}
-
-    keyboardbuttons::Node{Set{Keyboard.Button}}
-
-    unicode_input::Node{Vector{Char}}
-    dropped_files::Node{Vector{String}}
-    hasfocus::Node{Bool}
-    entered_window::Node{Bool}
-end
-
-function Events()
-    Events(
-        node(:window_area, IRect(0, 0, 1, 1)),
-        node(:window_dpi, 100.0),
-        node(:window_open, false),
-
-        node(:mousebuttons, Set{Mouse.Button}()),
-        node(:mouseposition, (0.0, 0.0)),
-        node(:mousedrag, Mouse.notpressed),
-        node(:scroll, (0.0, 0.0)),
-
-        node(:keyboardbuttons, Set{Keyboard.Button}()),
-
-        node(:unicode_input, Char[]),
-        node(:dropped_files, String[]),
-        node(:hasfocus, false),
-        node(:entered_window, false),
-    )
-end
-
-
-struct Key{K} end
-macro key_str(arg)
-    :(Key{$(QuoteNode(Symbol(arg)))})
-end
-
-@enum RaymarchAlgorithm IsoValue Absorption MaximumIntensityProjection AbsorptionRGBA IndexedAbsorptionRGBA
 const Vecf0{N} = Vec{N, Float32}
 const Pointf0{N} = Point{N, Float32}
 export Vecf0, Pointf0

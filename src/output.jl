@@ -44,15 +44,15 @@ function Juno.render(pane::Juno.PlotPane, plt::Scene)
     end
 end
 
-
-
 immutable VideoStream
     io
     process
     screen
     path::String
 end
+
 const has_ffmpeg = Ref(false)
+
 function __init__()
     has_ffmpeg[] = try
         success(`ffmpeg -h`)

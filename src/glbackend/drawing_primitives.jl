@@ -1,5 +1,7 @@
 import .GLVisualize: calc_offset, glyph_uv_width!, glyph_uv_width!, get_texture_atlas, glyph_scale!, calc_position
 
+gpuvec(x) = GPUVector(GLBuffer(x))
+
 function to_glvisualize_key(k)
     k == :rotations && return :rotation
     k == :markersize && return :scale
