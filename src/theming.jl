@@ -138,17 +138,6 @@ function default_theme(scene, ::Type{Mesh})
     )
 end
 
-function help_kwargs(::Type{T}) where T <: Scatter
-    dict = default_theme(nothing, T)
-    io = IOBuffer()
-    for (key, default_value) in dict
-        if haskey(attribute_help, key)
-            println(io, attribute_help[key])
-        end
-        println(io, "   ", key, " with the default: ", default_value)
-    end
-    String(take!(io))
-end
 
 function default_theme(scene, ::Type{Volume})
     Theme(;

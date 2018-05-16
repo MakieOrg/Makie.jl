@@ -55,8 +55,6 @@ function convert_arguments(P, x::AbstractVector{T1}, y::AbstractVector{T2}, f::F
     (x, y, z)
 end
 
-lines(Rect(0, 0, 1, 1))
-lines([(0, 0), (1, 0), ...])
 
 function convert_arguments(P, x::Rect)
     # TODO fix the order of decompose
