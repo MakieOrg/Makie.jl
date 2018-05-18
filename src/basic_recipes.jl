@@ -1,4 +1,16 @@
+"""
+    contour(x, y, z)
+Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
+"""
+@atomic contour
 
+
+:contour3d =>
+"""
+    contour3d(x, y, z)
+Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
+with z- elevation for each level
+"""
 function contourlines(::Type{Contour}, contours, cols)
     result = Point2f0[]
     colors = RGBA{Float32}[]
@@ -165,7 +177,11 @@ function layout_text(
 end
 
 
+"""
+    annotations(strings::Vector{String}, positions::Vector{Point})
 
+Plots an array of texts at each position in `positions`
+"""
 @recipe function annotations(scene, plot, rest, text, position)
     sargs = (
         plot[:model], plot[:font],
