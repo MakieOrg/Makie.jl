@@ -10,7 +10,6 @@ const Rect3D{T} = Rect{3, T}
 const FRect3D = Rect3D{Float32}
 const IRect3D = Rect3D{Int}
 
-
 const IRect2D = Rect2D{Int}
 
 const Point2d{T} = NTuple{2, T}

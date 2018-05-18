@@ -74,17 +74,6 @@ function drawbrush(scene)
 end
 
 
-function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
-    mini, maxi = minimum(rectangle), maximum(rectangle)
-    for i = 1:N
-        point[i] in (mini[i]..maxi[i]) || return false
-    end
-    return true
-end
-
-to_range(x) = optimal_ticks_and_labels((minimum(x), maximum(x)))
-to_range(x::VecTypes{2}) = optimal_ticks_and_labels((x[1], x[2]))
-
 
 function close2square(n::Real)
     # a cannot be greater than the square root of n
@@ -110,3 +99,22 @@ function close2square(n::Real)
     # Take the largest factor in the list d
     (candidates[end], div(n, candidates[end]))
 end
+to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
+to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)
+same_length_array(array, value::Font) = repeated(value, length(array))
+function extrema_nan(x::ClosedInterval)
+    (minimum(x), maximum(x))
+end
+
+
+
+function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
+    mini, maxi = minimum(rectangle), maximum(rectangle)
+    for i = 1:N
+        point[i] in (mini[i] .. maxi[i]) || return false
+    end
+    return true
+end
+
+to_range(x) = optimal_ticks_and_labels((minimum(x), maximum(x)))
+to_range(x::VecTypes{2}) = optimal_ticks_and_labels((x[1], x[2]))

@@ -8,7 +8,6 @@ function default_theme(scene)
         transformation = nothing,
         model = nothing,
         alpha = 1.0,
-        #drawover = false,
     )
 end
 
