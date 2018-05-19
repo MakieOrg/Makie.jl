@@ -15,31 +15,46 @@
 # adds a plot in-place to the current_scene() as a subscene
 `func!(scene::SceneLike, args...; kw_args...)`
 
-# `[]` means an optional argument. `Attributes` is a Dictionary file of attributes:
+# `[]` means an optional argument. `Attributes` is a Dictionary of attributes:
 `func[!]([scene], kw_args::Attributes, args...)`
 
 """
 
 
-to_func(::Type{T}) where T <: Makie.AbstractPlot = string("Makie.",lowercase(split(string(T),"Makie.")[2]))
-to_type(::Func) where Func <: Function = Type(string("Makie.",titlecase(split(string(Func),"Makie.")[2])))
 
-# choose one to redirect
-help(::Type{T}) where {T = help(to_func(T))}
-#help(::Func) where Func = help(to_type(T))
+"""
+    to_func(Typ)
 
-# choose one to implement the functionality
-function help(f::Function)
-    Typ = to_type(f)
-    help_arguments(f)
-    help_attributes(Typ) #TODO: need to convert type to Makie.AbstractPlot, otherwise this fails
+Maps the input of a Type name to its cooresponding function.
+"""
+function to_func(Typ::Type{T}) where T <: AbstractPlot
+    #TODO: this is not working yet, but will become deprecated in the new branch
+    sym = Typ.name.mt.name
+    string(sym) |> lowercase |> Symbol
+    f = getfield(current_module(), sym)
 end
 
-function help(Typ::Type{T}) where T <: Makie.AbstractPlot
-    f = to_func(Typ)
-    help_arguments(f) #TODO: need to convert type to Function, otherwise this fails
-    help_attributes(Typ)
+# hard-coding for the case of scatter
+function to_func(Typ::Type{T}) where T <: AbstractPlot
+    sym = Symbol("scatter")
+    f = getfield(current_module(), sym)
 end
+
+
+
+"""
+    to_type(func)
+
+Maps the input of a function name to its cooresponding Type.
+"""
+function to_type(func::Function)
+    sym = typeof(func).name.mt.name
+    Typ = titlecase(string(sym))
+end
+
+
+
+help(func; kw_args...) = help(STDOUT, func; kw_args...)
 
 """
     help(func)
@@ -49,24 +64,21 @@ Welcome to Makie.
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 For help on a specific function's attributes, type `help_attributes(function_name)`.
 """
-function help(func::Function)
-    # TODO: this doesn't work 100% yet. help_attributes accepts a Type,
-    # e.g. Makie.Scatter, whereas help_signatures accepts a Function,
-    # e.g. Makie.scatter?
-
-    """
+function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     # Arguments
-    $(func) has the following function signatures (arguments):
-    $(help_arguments(func))
+    help_arguments(io, to_func(input))
 
     # Keyword arguments
-    $(func) accepts the following attrbutes (keyword arguments):
-    $(help_attributes(func))
+    help_attributes(io, input; extended = extended)
 
-    # You can use $(func) in the following way:
-    @query_database [$(func)]
-    """
+    # You can use $(input) in the following way:
+    # @query_database [$(input)]
 end
+
+function help(io::IO, input::Function; extended = false)
+    help(io, to_type(input); extended = extended)
+end
+
 
 
 """
@@ -74,58 +86,59 @@ end
 
 Returns a list of signatures for function `func`.
 """
-function help_arguments(x::Function)
-    # hard-coded for now, per Simon
-    io = IOBuffer()
-
-    println(io, "$x accepts:")
-    println(io, "(Vector, Vector)")
-    println(io, "(Vector, Vector, Vector)")
-    println(io, "(Matrix)")
-    str = String(take!(io))
-    println(str)
+function help_arguments(io, x::Function)
+println(io, "$x has the following function signatures: \n")
+    println(io, "  ", "(Vector, Vector)")
+    println(io, "  ", "(Vector, Vector, Vector)")
+    println(io, "  ", "(Matrix)")
+    println(io, "  ")
 end
 
 
-"""
-    help_attributes(func)
 
-Returns a list of attributes for function `func`.
+"""
+    help_attributes(Typ)
+
+Returns a list of attributes for the plot type `Typ`.
 The attributes returned extend those attribues found in the `default_theme`.
 
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
 """
-function help_attributes(func::Type{T}; extended = false) where T <: Makie.AbstractPlot # TODO: Not sure if this is a good way to generalize for any function
-    # TODO: calling it a func, but it's really a type? e.g. Makie.Scatter
-    # TODO: implement error-catching
-
-    # get list of attributes from function (using Scatter as an example)
+function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.AbstractPlot # TODO: Not sure if this is a good way to generalize for any function
+    # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
-    attributes = Makie.default_theme(nothing, func)
+    attributes = sort(Makie.default_theme(nothing, Typ))
 
     # get list of default attributes to filter out
     # and show only the attributes that are not default attributes
     filter_keys = collect(keys(Makie.default_theme(nothing)))
 
-    io = IOBuffer()
+    # count the character length of the longest key
+    longest = 0
+    for k in keys(attributes)
+        currentlength = length(string(k))
+        if currentlength > longest
+            longest = currentlength
+        end
+    end
+    extra_padding = 2
 
     # increase verbosity if extended kwarg is on
     if extended
-        println("Available attributes for ", func, " are: \n")
+        println(io, "Available attributes and their defaults for $Typ are: \n")
         for (attribute, value) in attributes
             if !(attribute in filter_keys)
-                println(io, "  ", attribute, ", with the default value: ", Makie.value(value))
+                padding = longest - length(string(attribute)) + extra_padding
+                println(io, "  ", attribute, " "^padding, Makie.value(value))
             end
         end
     else
-        println("Available attributes for ", func, " are: \n")
+        println(io, "Available attributes for $Typ are: \n")
         for (attribute, value) in attributes
             if !(attribute in filter_keys)
                 println(io, "  ", attribute)
             end
         end
     end
-    str = String(take!(io))
-    println(str)
 end
