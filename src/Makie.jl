@@ -44,6 +44,15 @@ include("legend.jl")
 include("output.jl")
 include("gui.jl")
 
+include("documentation.jl")
+
+# documentation related
+export help
+export help_arguments
+export help_attributes
+export to_func
+export to_type
+
 export Scene, Screen, plot!, CairoScreen, axis2d, RGBAf0
 export Combined, Theme, node, @extract
 export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
