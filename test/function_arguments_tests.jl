@@ -4,7 +4,12 @@ using StaticArrays.FixedSizeArrays
 
 const FuncOrFuncs{F} = F
 
-# plot function shorthands from Plots.jl
+# ==========================================================
+"""
+    plot_funcs
+
+shorthands for plot functions from Plots.jl
+"""
 plot_funcs = [
 bar,
 barh,
@@ -37,13 +42,27 @@ vspan,
 wireframe
 ]
 
-# function signatures from Plots.jl
+# ==========================================================
+"""
+    signatures
+
+function signatures from Plots.jl
+"""
 signatures = [
     # 1 argument
+
+    # An AbstractMatrix where the type is the union of Integer and AbstractFloat.
     Tuple{AbstractMatrix{T} where T<:Union{Integer,AbstractFloat},},
+
     # Tuple{Formatted{T} where T<:AbstractMatrix,},
+
+    # An AbstractArray where the type is Number, and the dimension is 3
     Tuple{AbstractArray{T,3} where T<:Number,},
+
+    # An AbstractMatrix where the type is of a ColorTypes.Gray
     Tuple{AbstractMatrix{T} where T<:Gray,},
+
+    # An AbstractMatrix where the type is of a ColorTypes.Colorant
     Tuple{AbstractMatrix{T} where T<:Colorant,},
 
     # plotting arbitrary shapes/polygons
@@ -52,22 +71,44 @@ signatures = [
     #Tuple{AbstractMatrix{Shape},},
 
     # function without range... use the current range of the x-axis
+
+    # A function
     Tuple{F} where F<:Function,
 
     # 2 arguments
+
+    # A function and a number
     Tuple{F, Number} where F<:Function,
 
     # 3 arguments
     # 3d line or scatter
+
+    # Three AbstractVector's
     Tuple{AbstractVector,AbstractVector,AbstractVector,},
+
+    # Three AbstractMatrix's
     Tuple{AbstractMatrix,AbstractMatrix,AbstractMatrix,},
+
+    # Two AbstractVector's and a function
     Tuple{AbstractVector,AbstractVector,Function,},
+
+    # Two AbstractVector's and an AbstractMatrix
     Tuple{AbstractVector,AbstractVector,AbstractMatrix,},
+
+    # Two AbstractVector's and an AbstractMatrix with the type ColorTypes.Gray
     Tuple{AbstractVector,AbstractVector,AbstractMatrix{T} where T<:Gray},
+
+    # Two AbstractVector's and an AbstractMatrix with the type ColorTypes.Colorant
     Tuple{AbstractVector,AbstractVector,AbstractMatrix{T} where T<:Colorant},
+
     #parametric functions
+
+    # A function and two numbers
     Tuple{Function, Number, Number,},
+
+    # An AbstractArray of functions, and two numbers
     Tuple{AbstractArray{F}, Number, Number,} where F<:Function,
+
     # Tuple{FuncOrFuncs{F}, FuncOrFuncs{G}, AbstractVector}  where {F<:Function,G<:Function},
     # Tuple{FuncOrFuncs{F}, FuncOrFuncs{G}, Number, Number, Number} where {F<:Function,G<:Function},
     # Tuple{FuncOrFuncs{F}, FuncOrFuncs{G}, FuncOrFuncs{H}, AbstractVector} where {F<:Function,G<:Function,H<:Function},
@@ -77,23 +118,43 @@ signatures = [
     # Tuple{Tuple},
 
     # (x,y) tuples
+
+    # An AbstractVector of the Tuple of R1 and R2, where both R1 and R2 are numbers
     Tuple{AbstractVector{Tuple{R1,R2}}} where {R1<:Number,R2<:Number},
+
+    # A Tuple of R1 and R2, where both R1 and R2 are numbers
     Tuple{Tuple{R1,R2}} where {R1<:Number,R2<:Number},
 
     # (x,y,z) tuples
+
+    # An AbstractVector of the Tuple of R1, R2 and R3, where R1, R2 and R3 are numbers
     Tuple{AbstractVector{Tuple{R1,R2,R3}}} where {R1<:Number,R2<:Number,R3<:Number},
+
+    # A Tuple of R1, R2 and R3, where R1, R2 and R3 are numbers
     Tuple{Tuple{R1,R2,R3}} where {R1<:Number,R2<:Number,R3<:Number},
 
     # these might be points+velocity, or OHLC or something else
+
+    # An AbstractVector of the Tuple of R1, R2, R3 and R4, where R1, R2, R3 and R4 are numbers
     Tuple{AbstractVector{Tuple{R1,R2,R3,R4}}} where {R1<:Number,R2<:Number,R3<:Number,R4<:Number},
+
+    # A Tuple of R1, R2, R3 and R4, where R1, R2, R3 and R4 are numbers
     Tuple{Tuple{R1,R2,R3,R4}} where {R1<:Number,R2<:Number,R3<:Number,R4<:Number},
 
     # 2D Tuple{FixedSizeArrays,},
+
+    # An AbstractVector of a Vector of a fixed size, with the type Number and dimension 2
     Tuple{AbstractVector{FixedSizeArrays.Vec{2,T}}} where {T<:Number},
+
+    # A Vector of a fixed size, with the type Number and dimension 2
     Tuple{FixedSizeArrays.Vec{2,T}} where {T<:Number},
 
     # 3D Tuple{FixedSizeArrays,},
+
+    # An AbstractVector of a Vector of a fixed size, with the type Number and dimension 3
     Tuple{AbstractVector{FixedSizeArrays.Vec{3,T}}} where {T<:Number},
+
+    # A Vector of a fixed size, with the type Number and dimension 3
     Tuple{FixedSizeArrays.Vec{3,T}} where {T<:Number}
 ]
 
