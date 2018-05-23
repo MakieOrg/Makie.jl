@@ -61,6 +61,10 @@ For help on a specific function's arguments, type `help_arguments(function_name)
 For help on a specific function's attributes, type `help_attributes(function_name)`.
 """
 function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+
+    # Print docstrings
+    println(Base.Docs.doc(input))
+
     # Arguments
     help_arguments(io, to_func(input))
     println(io, "Please refer to @ref[convert_arguments] to find the full list of accepted arguments\n")
