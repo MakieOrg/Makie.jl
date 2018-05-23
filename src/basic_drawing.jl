@@ -103,6 +103,9 @@ for (func, docs) in atomic_funcs
     Typ = Symbol(titlecase(string(func)))
     inplace = Symbol(string(func, "!"))
     @eval begin
+        """
+        $($docs)
+        """
         struct $Typ{T} <: AbstractPlot
             args::T
             attributes::Attributes
