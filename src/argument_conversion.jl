@@ -1,3 +1,9 @@
+"""
+    convert_arguments(P, ???)
+
+??? --> Simon said this is to be removed
+P is the plot Type (it is optional).
+"""
 function convert_arguments(P::Type, args::Vararg{Signal, N}) where N
     args_c = map(args...) do args...
         convert_arguments(P, args...)
@@ -213,6 +219,13 @@ function convert_arguments(
     )
     convert_arguments(T, Point3f0.(x, y, z), indices)
 end
+
+"""
+    convert_arguments(Mesh, vertices, indices)::()
+
+Takes an input mesh, a vertices AbstractVector and AbstractVector indices,
+and creates a GLNormalMesh.
+"""
 function convert_arguments(
         ::Type{Mesh},
         vertices::AbstractVector{<: VecTypes{3, T}},
@@ -236,6 +249,13 @@ function convert_arguments(
     )
     convert_arguments(MT, Point3f0.(x, y, z))
 end
+
+"""
+    convert_arguments(MT, xyz)::()
+
+Takes an input mesh and a matrix xyz, reinterprets xyz as GLTriangle's, and
+recursively calls itself.
+"""
 function convert_arguments(
         MT::Type{Mesh},
         xyz::AbstractVector{<: VecTypes{3, T}}
