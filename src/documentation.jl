@@ -45,7 +45,7 @@ Maps the input of a function name to its cooresponding Type.
 """
 function to_type(func::Function)
     sym = typeof(func).name.mt.name
-    Typ = titlecase(string(sym))
+    Typ = getfield(Makie,Symbol(titlecase(string(sym))))
 end
 
 
@@ -63,12 +63,13 @@ For help on a specific function's attributes, type `help_attributes(function_nam
 function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     # Arguments
     help_arguments(io, to_func(input))
+    println(io, "Please refer to @ref[convert_arguments] to find the full list of accepted arguments\n")
 
     # Keyword arguments
     help_attributes(io, input; extended = extended)
 
-    # You can use $(input) in the following way:
-    # @query_database [$(input)]
+    println(io, "You can use $(input) in the following way:\n@query_database [$(input)]")
+
 end
 
 function help(io::IO, input::Function; extended = false)
@@ -83,6 +84,7 @@ end
 Returns a list of signatures for function `func`.
 """
 function help_arguments(io, x::Function)
+#TODO: this is currently hard-coded
 println(io, "$x has the following function signatures: \n")
     println(io, "  ", "(Vector, Vector)")
     println(io, "  ", "(Vector, Vector, Vector)")
@@ -129,6 +131,7 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
                 println(io, "  ", attribute, " "^padding, Makie.value(value))
             end
         end
+        println(io, "  ")
     else
         println(io, "Available attributes for $Typ are: \n")
         for (attribute, value) in attributes
@@ -136,5 +139,6 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
                 println(io, "  ", attribute)
             end
         end
+        println(io, "  ")
     end
 end
