@@ -63,9 +63,21 @@ P is the plot Type (it is optional).
 """
 convert_arguments(P, x::GeometryPrimitive) = (decompose(Point, x),)
 
+"""
+    convert_arguments(P, x)::(Vector)
 
-function convert_arguments(P, x::AbstractVector{Pair{Point{N, T}, Point{N, T}}}) where {N, T}
-    (reinterpret(Point{N, T}, x),)
+Takes a vector of a pair of points (e.g. [Point2(0, 0) => Point2(1, 0), ...])
+to encode e.g. linesegments or directions.
+P is the plot Type (it is optional).
+"""
+function convert_arguments(P, x::AbstractVector{Pair{Point{N, T1}, Point{N, T2}}}) where {N, T1<:Number, T2<:Number}
+    if T1 == T2
+        (reinterpret(Point{N, T1}, x),)
+    else
+        TP = promote_type(T1, T2) #TP = type_promotion
+        xnew = map(pair -> P(pair[1]) => P(pair[2]), x)
+        (reinterpret(Point{N, TP}, xnew),)
+    end
 end
 
 """
