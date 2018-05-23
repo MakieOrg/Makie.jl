@@ -238,6 +238,8 @@ function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
     )
 end
 
+# fixes documentation generation error
+theme(x::Void, sym) = default_theme()[sym]
 
 function default_theme(scene, ::Type{Text})
     Theme(;
@@ -275,7 +277,7 @@ end
 function default_theme(scene, ::Type{Surface})
     Theme(;
         default_theme(scene)...,
-        colormap = scene.theme[:colormap],
+        colormap = theme(scene, :colormap),
         image = nothing,
         fxaa = true,
     )
