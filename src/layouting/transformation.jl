@@ -7,10 +7,10 @@ function Transformation()
     end
     translation, rotation, align = (
         node(:translation, Vec3f0(0)),
-        node(:rotation, Vec4f0(0, 0, 0, 1)),
+        node(:rotation, Quaternionf0(0, 0, 0, 1)),
         node(:align, Vec2f0(0))
     )
-    model = map_once(scale, translation, rotation, align) do s, o, r, a
+    model = map_once(scale, translation, rotation, align) do s, o, q, a
         transformationmatrix(o, s, q)
     end
     Transformation(
@@ -32,7 +32,7 @@ function Transformation(scene::SceneLike)
     end
     translation, rotation, align = (
         node(:translation, Vec3f0(0)),
-        node(:rotation, Vec4f0(0, 0, 0, 1)),
+        node(:rotation, Quaternionf0(0, 0, 0, 1)),
         node(:align, Vec2f0(0))
     )
     pmodel = modelmatrix(scene)
@@ -101,7 +101,7 @@ end
 
 rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
 rotate!(scene::Transformable, axis_rot...) = rotate!(Absolute, scene, axis_rot)
-rotate!(scene::Transformable, axis_rot::Vec4f0) = rotate!(Absolute, scene, axis_rot)
+rotate!(scene::Transformable, axis_rot::Quaternion) = rotate!(Absolute, scene, axis_rot)
 rotate!(scene::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, scene, axis_rot)
 
 translation(scene::Transformable) = transformation(scene).translation

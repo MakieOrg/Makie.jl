@@ -37,20 +37,20 @@ function _boundingbox(x, y, z = (0=>0))
 end
 
 function data_limits(x::Union{Heatmap, Image})
-    _boundingbox(value.((x.args[1], x.args[2]))...)
+    _boundingbox(value.((x[1], x[2]))...)
 end
 
 function data_limits(x::Volume)
-    _boundingbox(value.((x.args[1], x.args[2], x.args[3]))...)
+    _boundingbox(value.((x[1], x[2], x[3]))...)
 end
-data_limits(x::Union{Surface}) = _boundingbox(value.(x.args)...)
+data_limits(x::Union{Surface}) = _boundingbox(value.(x.output_args)...)
 
-data_limits(x::Mesh) = FRect3D(value(x.args[1]))
+data_limits(x::Mesh) = FRect3D(value(x[1]))
 
 
 function data_limits(x::Text)
     @extractvalue x (textsize, font, align, rotation, model)
-    txt = value(x.args[1])
+    txt = value(x[1])
     position = x.attributes[:position][]
     positions, scales = if isa(position, VecTypes)
         layout_text(txt * last(txt), position, textsize, font, align, rotation, model)
@@ -91,12 +91,36 @@ end
 data_limits(s::Scene) = data_limits(plots_from_camera(s))
 data_limits(plot::Combined) = data_limits(plot.plots)
 
+function layout_text(
+        string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
+        font, align, rotation, model
+    ) where {N, T}
+
+    offset_vec = to_align(align)
+    ft_font = to_font(font)
+    rscale = to_textsize(textsize)
+    rot = to_rotation(rotation)
+
+    atlas = get_texture_atlas()
+    mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
+    pos = to_ndim(Point{N, Float32}, mpos, 0)
+
+    positions2d = calc_position(string, Point2f0(0), rscale, ft_font, atlas)
+    aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, ft_font, offset_vec)
+    aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
+    scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c = string]
+    positions = map(positions2d) do p
+        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+        pn .+ (pos)
+    end
+    positions, scales
+end
 function text_bb(str, font, size)
-    # positions, scale = layout_text(
-    #     str, Point2f0(0), size,
-    #     font, Vec2f0(0), Vec4f0(0,0,0,1), eye(Mat4f0)
-    # )
-    AABB(Vec3f0(0), Vec3f0(1))
+    positions, scale = layout_text(
+        str, Point2f0(0), size,
+        font, Vec2f0(0), Quaternionf0(0,0,0,1), eye(Mat4f0)
+    )
+    union(AABB(positions),  AABB(positions .+ scale))
 end
 
 """
@@ -168,7 +192,7 @@ end
 
 
 function align_offset(startpos, lastpos, atlas, rscale, font, align)
-    xscale, yscale = GLVisualize.glyph_scale!('X', rscale)
+    xscale, yscale = glyph_scale!('X', rscale)
     xmove = (lastpos-startpos)[1] + xscale
     if isa(align, GeometryTypes.Vec)
         return -Vec2f0(xmove, yscale) .* align

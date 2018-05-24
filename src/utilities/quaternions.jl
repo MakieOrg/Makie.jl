@@ -2,16 +2,24 @@
 # but first of all we want to keep dependencies small, and second,
 # the bool in Quaternions.Quaternion is annoying for OpenGL + and an array of
 # Quaternions.
+# TODO replace this file by just `using Quaternions`
 using StaticArrays, GeometryTypes
 struct Quaternion{T}
     data::NTuple{4, T}
+    Quaternion{T}(x::NTuple{4, Any}) where T = new{T}(T.(x))
+    Quaternion{T}(x::NTuple{4, T}) where T = new{T}(x)
 end
+
+const Quaternionf0 = Quaternion{Float32}
 function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
     print(io, q[4], pm(q[1]), "im", pm(q[2]), "jm", pm(q[3]), "km")
 end
 
-@inline Quaternion(x1, x2, x3, s) = Quaternion((x1, x2, x3, s))
+@inline (::Type{Quaternion{T}})(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
+@inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
+@inline Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
+@inline Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
 @inline Base.getindex(x::Quaternion, i::Integer) = x.data[i]
 Base.isapprox(x::Quaternion, y::Quaternion) = all((x .≈ y).data)
 
@@ -30,7 +38,8 @@ Base.normalize(q::Quaternion) = q ./ abs(q)
 
 function Base.:(*)(quat::Quaternion, vec::StaticVector{2, T}) where T
     x3 = quat * Vec(vec[1], vec[2], T(0))
-    StaticArrays[4]imilar_type(vec, StaticArrays.Size(2,))(x3[1], x3[2])
+    VT = similar_type(vec, StaticArrays.Size(2,))
+    VT(x3[1], x3[2])
 end
 
 # function (*)(q::Quaternions.Quaternion{T}, v::Vec{3, T}) where T
@@ -51,7 +60,7 @@ function Base.:(*)(quat::Quaternion{T}, vec::StaticVector{3}) where T
     num10 = quat[4] * num
     num11 = quat[4] * num2
     num12 = quat[4] * num3
-    VT = StaticArrays[4]imilar_type(vec, StaticArrays.Size(3,))
+    VT = similar_type(vec, StaticArrays.Size(3,))
     return VT(
         (1f0 - (num5 + num6)) * vec[1] + (num7 - num12) * vec[2] + (num8 + num11) * vec[3],
         (num7 + num12) * vec[1] + (1f0 - (num4 + num6)) * vec[2] + (num9 - num10) * vec[3],

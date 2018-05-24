@@ -177,7 +177,13 @@ function primary_resolution()
 end
 reasonable_resolution() = primary_resolution() .÷ 2
 
-current_scene() = current_global_scene[]
+function current_scene()
+    if isassigned(current_global_scene)
+        current_global_scene[]
+    else
+        Scene()
+    end
+end
 
 Scene(::Void) = Scene()
 

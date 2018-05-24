@@ -147,7 +147,7 @@ Plots a mesh for each element in xyz/positions
         default_theme(scene)...,
         marker = Sphere(Point3f0(0), 0.1f0),
         markersize = 0.1,
-        rotations = Vec4f0(0, 0, 0, 1),
+        rotations = Quaternionf0(0, 0, 0, 1),
         intensity = nothing,
         colormap = nothing,
         colorrange = nothing,
@@ -200,14 +200,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         # do the argument conversion inside a lift
         args = convert_arguments(PlotType, args...)
         PlotType2 = plottype(args...)
-        # if PlotType2 != PlotType
-        #     error(
-        #         "You have pushed a new value to the arguments of $(PlotType),
-        #         which changes the plotting type to $(PlotType2).
-        #         Found arguments: $(args).
-        #         This is not allowed. Please just create a new Plot!"
-        #     )
-        # end
         args
     end
     # now get a signal node/signal for each argument

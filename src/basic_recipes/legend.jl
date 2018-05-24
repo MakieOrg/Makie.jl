@@ -11,7 +11,7 @@
         padding = 10,
         outerpadding = 10,
         align = (:left, :hcenter),
-        rotation = Vec4f0(0, 0, 0, 1),
+        rotation = Quaternionf0(0, 0, 0, 1),
         textcolor = :black,
         textsize = 16,
         font = theme(scene, :font),

@@ -1,17 +1,24 @@
 __precompile__()
 module AbstractPlotting
 
-using Reactive, GeometryTypes, StaticArrays, Quaternions, ColorTypes
+using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors
+
+# Text related packages
+using Packing
+using SignedDistanceFields
+using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
 
 using Base: RefValue
-using Base.Iterators: repeated
+using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, scale!
 
+
+include("utilities/quaternions.jl")
 include("types.jl")
 include("utilities/compat.jl")
 include("utilities/utilities.jl")
-include("utilities/quaternions.jl")
 include("utilities/logging.jl")
+include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 
 # Basic scene/plot/recipe interfaces + types

@@ -221,49 +221,48 @@ Plots an array of texts at each position in `positions`
 end
 
 function plot!(plot::Annotations)
-    return plot
-    # sargs = (
-    #     plot[:model], plot[:font],
-    #     text, position,
-    #     getindex.(plot, (:color, :textsize, :align, :rotation))...,
-    # )
-    # tp = map(sargs...) do model, font, args...
-    #     if length(args[1]) != length(args[2])
-    #         error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
-    #     end
-    #     atlas = GLVisualize.get_texture_atlas()
-    #     io = IOBuffer(); combinedpos = Point{N, Float32}[]; colors = RGBAf0[]
-    #     scales = Vec2f0[]; fonts = Font[]; rotations = Vec4f0[]; alignments = Vec2f0[]
-    #     broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
-    #         # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
-    #         # TODO have a better Font type!
-    #         f = to_font(font)
-    #         f = isa(f, Font) ? f : f[idx]
-    #         c = to_color(color)
-    #         rot = to_rotation(rotation)
-    #         ali = to_align(alignment)
-    #         pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
-    #         print(io, text)
-    #         n = length(pos)
-    #         append!(combinedpos, pos)
-    #         append!(scales, s)
-    #         append!(colors, repeated(c, n))
-    #         append!(fonts,  repeated(f, n))
-    #         append!(rotations, repeated(rot, n))
-    #         append!(alignments, repeated(ali, n))
-    #     end
-    #     (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
-    # end
-    # t_attributes = merge(data(plot), rest)
-    # t_attributes[:position] = map(x-> x[2], tp)
-    # t_attributes[:color] = map(x-> x[3], tp)
-    # t_attributes[:textsize] = map(x-> x[4], tp)
-    # t_attributes[:font] = map(x-> x[5], tp)
-    # t_attributes[:rotation] = map(x-> x[6], tp)
-    # t_attributes[:align] = map(x-> x[7], tp)
-    # t_attributes[:model] = eye(Mat4f0)
-    # text!(plot, t_attributes, map(x-> x[1], tp))
-    # plot
+    sargs = (
+        plot[:model], plot[:font],
+        text, position,
+        getindex.(plot, (:color, :textsize, :align, :rotation))...,
+    )
+    tp = map(sargs...) do model, font, args...
+        if length(args[1]) != length(args[2])
+            error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
+        end
+        atlas = get_texture_atlas()
+        io = IOBuffer(); combinedpos = Point{N, Float32}[]; colors = RGBAf0[]
+        scales = Vec2f0[]; fonts = NativeFont[]; rotations = Quaternionf0[]; alignments = Vec2f0[]
+        broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
+            # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
+            # TODO have a better Font type!
+            f = to_font(font)
+            f = isa(f, NativeFont) ? f : f[idx]
+            c = to_color(color)
+            rot = to_rotation(rotation)
+            ali = to_align(alignment)
+            pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
+            print(io, text)
+            n = length(pos)
+            append!(combinedpos, pos)
+            append!(scales, s)
+            append!(colors, repeated(c, n))
+            append!(fonts,  repeated(f, n))
+            append!(rotations, repeated(rot, n))
+            append!(alignments, repeated(ali, n))
+        end
+        (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
+    end
+    t_attributes = merge(data(plot), rest)
+    t_attributes[:position] = map(x-> x[2], tp)
+    t_attributes[:color] = map(x-> x[3], tp)
+    t_attributes[:textsize] = map(x-> x[4], tp)
+    t_attributes[:font] = map(x-> x[5], tp)
+    t_attributes[:rotation] = map(x-> x[6], tp)
+    t_attributes[:align] = map(x-> x[7], tp)
+    t_attributes[:model] = eye(Mat4f0)
+    text!(plot, t_attributes, map(x-> x[1], tp))
+    plot
 end
 
 

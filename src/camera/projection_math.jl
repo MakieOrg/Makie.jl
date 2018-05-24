@@ -22,7 +22,7 @@ function translationmatrix(t::Vec{3, T}) where T
     )
 end
 
-rotate(angle::T, axis::Vec{3, T}) where {T} = rotationmatrix4(Quaternions.qrotation(convert(Array, axis), angle))
+rotate(angle::T, axis::Vec{3, T}) where {T} = rotationmatrix4(qrotation(convert(Array, axis), angle))
 rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
 
 function rotationmatrix_x(angle::T) where T
@@ -234,7 +234,7 @@ function rotation(u::Vec{3, T}, v::Vec{3, T}) where T
     if (u == -v)
         # 180 degree rotation around any orthogonal vector
         other = (abs(dot(u, Vec{3, T}(1,0,0))) < 1.0) ? Vec{3, T}(1,0,0) : Vec{3, T}(0,1,0)
-        return Quaternions.qrotation(normalize(cross(u, other)), T(180))
+        return qrotation(normalize(cross(u, other)), T(180))
     end
     half = normalize(u+v)
     return Quaternion(cross(u, half)..., dot(u, half))

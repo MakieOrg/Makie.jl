@@ -143,7 +143,7 @@ end
 struct Transformation
     translation::Node{Vec3f0}
     scale::Node{Vec3f0}
-    rotation::Node{Vec4f0}
+    rotation::Node{Quaternionf0}
     model::Node{Mat4f0}
     flip::Node{NTuple{3, Bool}}
     align::Node{Vec2f0}
@@ -194,3 +194,4 @@ immutable Billboard end
 const Vecf0{N} = Vec{N, Float32}
 const Pointf0{N} = Point{N, Float32}
 export Vecf0, Pointf0
+const NativeFont = Vector{Ptr{FreeType.FT_FaceRec}}

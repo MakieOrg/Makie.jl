@@ -75,6 +75,9 @@ macro recipe(theme_func, T::Symbol, args::Symbol...)
         $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)
         $funcname(attributes::Attributes, args...) = plot($T, attributes, args...)
         $funcname!(scene::SceneLike, attributes::Attributes, args...) = plot!(scene, $T, attributes, args...)
+        $funcname!(attributes::Attributes, args...) = plot!(current_scene(), $T, attributes, args...)
+        $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
+
         Base.@__doc__($funcname)
         $(esc(:default_theme))(scene::SceneLike, ::Type{<: $T}) = $theme_func(scene)
 
@@ -102,6 +105,10 @@ macro atomic(theme_func, T::Symbol)
         $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)
         $funcname(attributes::Attributes, args...) = plot($T, attributes, args...)
         $funcname!(scene::SceneLike, attributes::Attributes, args...) = plot!(scene, $T, attributes, args...)
+
+        $funcname!(attributes::Attributes, args...) = plot!(current_scene(), $T, attributes, args...)
+        $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
+
         $(esc(:default_theme))(scene::SceneLike, ::Type{<: $T}) = $theme_func(scene)
 
         export $T, $funcname, $funcname!

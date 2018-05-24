@@ -58,9 +58,11 @@ end
 # function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
 #     (x, y, z)
 # end
+
 # function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z)
 #     convert_arguments(P, to_range(x), to_range(y), z)
 # end
+
 function convert_arguments(P, data::AbstractMatrix)
     n, m = Float64.(size(data))
     (0.0 .. n, 0.0 .. m, data)
@@ -147,7 +149,7 @@ function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     col = convert_attribute(c[1], k)
     RGBAf0(Colors.color(col), c[2])
 end
-convert_attribute(c::Billboard, ::key"rotations") = Vec4f0(0, 0, 0, 1)
+convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
 convert_attribute(c, ::key"markersize", ::key"scatter") = Vec2f0(c)
 convert_attribute(c::Vector, ::key"markersize", ::key"scatter") = convert(Array{Vec2f0}, c)
 convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
@@ -190,15 +192,12 @@ convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f0(c[
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f0(c)
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
-using Colors
-
 """
 Text align, e.g. :
 """
 convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f0(alignment2num.(x))
 convert_attribute(x::Vec2f0, ::key"align") = x
-
-# const _font_cache = Dict{String, Font}()
+const _font_cache = Dict{String, NativeFont}()
 
 """
     font conversion
@@ -206,15 +205,13 @@ a string naming a font, e.g. helvetica
 """
 function convert_attribute(x::Union{Symbol, String}, k::key"font")
     str = string(x)
-    return str
     get!(_font_cache, str) do
         str == "default" && return convert_attribute("DejaVuSans", k)
         newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
     end
 end
-# convert_attribute(x::Font, ::key"font") = x
 convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
-
+convert_attribute(x::NativeFont, k::key"font") = x
 
 
 

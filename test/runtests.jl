@@ -1,14 +1,31 @@
 using AbstractPlotting
 
-@static if VERSION < v"0.7.0-DEV.2005"
+if VERSION < v"0.7.0-DEV.2005"
     using Base.Test
 else
     using Test
 end
 
 # write your own tests here
-sub = scatter(rand(10), rand(10))
-sub = scatter(rand(10), rand(10), rand(10))
+sub = scatter!(rand(10), rand(10))
+sub1 = scatter!(rand(10), rand(10), rand(10))
+@test sub === sub1
+x = rand(10)
+sub1 = scatter(1:10, x)
+sub2 = scatter(1:10, x)
+
+sub = lines!(rand(10), rand(10))
+sub1 = lines!(rand(10), rand(10), rand(10))
+@test sub === sub1
+x = rand(10)
+sub1 = lines(1:10, x)
+sub2 = lines(1:10, x)
+
+scene = Scene()
+x = linspace(0, 6, 100)
+s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
+scene
+
 # using GeometryTypes
 #
 # using Base.Test
