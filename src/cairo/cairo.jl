@@ -2,7 +2,7 @@ module CairoBackend
 
 import ..Makie
 using ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str, broadcast_foreach
-using ..Makie: convert_attribute, @extractvals, Linesegments, to_ndim, Font
+using ..Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, Font
 using ..Makie: @info, @get_attribute
 using Reactive, Colors, GeometryTypes
 
@@ -63,7 +63,7 @@ function project_scale(scene::Scene, s)
     p .* scene.camera.resolution[]
 end
 
-function cairo_draw(screen::CairoScreen, primitive::Union{Lines, Linesegments})
+function cairo_draw(screen::CairoScreen, primitive::Union{Lines, LineSegments})
     scene = screen.scene
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     ctx = screen.context

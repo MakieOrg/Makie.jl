@@ -36,7 +36,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     end
 end
 
-function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, Meshscatter})
+function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         marker = pop!(gl_attributes, :marker)
         if isa(x, Scatter)
@@ -58,7 +58,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
         visualize(x.args[1], Style(:lines), data).children[]
     end
 end
-function Base.insert!(screen::Screen, scene::Scene, x::Linesegments)
+function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -110,6 +110,19 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     end
     positions, toffset, uv_offset_width, scale
 end
+
+function get_texture!(atlas::TextureAtlas = get_texture_atlas())
+    if isnull(atlas.images)
+        atlas.images = Nullable(Texture(
+            atlas.data,
+            minfilter = :linear,
+            magfilter = :linear,
+            anisotropic = 16f0,
+        ))
+    end
+    get(atlas.images)
+end
+
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 

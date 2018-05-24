@@ -2,10 +2,29 @@
     contour(x, y, z)
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
 """
-@atomic contour
+@recipe(Contour) do scene
+    Theme(;
+        default_theme(scene)...,
+        colormap = theme(scene, :colormap),
+        colorrange = nothing,
+        levels = 5,
+        linewidth = 1.0,
+        fillrange = false,
+    )
+end
+
+@recipe(Contour3d) do scene
+    Theme(;
+        default_theme(scene)...,
+        colormap = theme(scene, :colormap),
+        colorrange = nothing,
+        levels = 5,
+        linewidth = 1.0,
+        fillrange = false,
+    )
+end
 
 
-:contour3d =>
 """
     contour3d(x, y, z)
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
@@ -38,8 +57,7 @@ function contourlines(::Type{Contour3d}, contours, cols)
     end
     result, colors
 end
-plot!(scene::SceneLike, t::Type{Contour}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
-plot!(scene::SceneLike, t::Type{Contour3d}, attributes::Attributes, args...) = contourplot(scene, t, attributes, args...)
+
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
@@ -108,8 +126,15 @@ function contourplot(scene::SceneLike, ::Type{T}, attributes::Attributes, args..
     plot!(scene, contourplot, rest)
 end
 
+@recipe(Poly) do scene
+    Theme(
+        linecolor = RGBAf0(0,0,0,0),
+        linewidth = 0.0,
+        linestyle = nothing
+    )
+end
 
-@recipe function poly(plot, rest, positions)
+ function plot!(plot::Poly{Tuple{P}}) where P <: AbstractVector
     bigmesh = map(positions) do p
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
@@ -126,7 +151,7 @@ end
     return plot!(scene, plot, rest)
 end
 
-@recipe function poly(plot, rest, positions::AbstractVector{T}) where T <: Union{Circle, Rectangle}
+function plot!(plot::Poly{Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle}
     position = map(positions) do rects
         map(rects) do rect
             minimum(rect) .+ (widths(rect) ./ 2f0)
@@ -139,16 +164,6 @@ end
     scatter!(plot, attributes, position)
     plot
 end
-
-function default_theme(scene, ::Type{Poly})
-    Theme(;
-        default_theme(scene)...,
-        linecolor = RGBAf0(0,0,0,0),
-        linewidth = 0.0,
-        linestyle = nothing
-    )
-end
-
 
 
 function layout_text(
@@ -174,55 +189,4 @@ function layout_text(
         pn .+ (pos)
     end
     positions, scales
-end
-
-
-"""
-    annotations(strings::Vector{String}, positions::Vector{Point})
-
-Plots an array of texts at each position in `positions`
-"""
-@recipe function annotations(scene, plot, rest, text, position)
-    sargs = (
-        plot[:model], plot[:font],
-        text, position,
-        getindex.(plot, (:color, :textsize, :align, :rotation))...,
-    )
-    tp = map(sargs...) do model, font, args...
-        if length(args[1]) != length(args[2])
-            error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
-        end
-        atlas = GLVisualize.get_texture_atlas()
-        io = IOBuffer(); combinedpos = Point{N, Float32}[]; colors = RGBAf0[]
-        scales = Vec2f0[]; fonts = Font[]; rotations = Vec4f0[]; alignments = Vec2f0[]
-        broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
-            # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
-            # TODO have a better Font type!
-            f = to_font(font)
-            f = isa(f, Font) ? f : f[idx]
-            c = to_color(color)
-            rot = to_rotation(rotation)
-            ali = to_align(alignment)
-            pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
-            print(io, text)
-            n = length(pos)
-            append!(combinedpos, pos)
-            append!(scales, s)
-            append!(colors, repeated(c, n))
-            append!(fonts,  repeated(f, n))
-            append!(rotations, repeated(rot, n))
-            append!(alignments, repeated(ali, n))
-        end
-        (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
-    end
-    t_attributes = merge(data(plot), rest)
-    t_attributes[:position] = map(x-> x[2], tp)
-    t_attributes[:color] = map(x-> x[3], tp)
-    t_attributes[:textsize] = map(x-> x[4], tp)
-    t_attributes[:font] = map(x-> x[5], tp)
-    t_attributes[:rotation] = map(x-> x[6], tp)
-    t_attributes[:align] = map(x-> x[7], tp)
-    t_attributes[:model] = eye(Mat4f0)
-    text!(plot, t_attributes, map(x-> x[1], tp))
-    plot
 end

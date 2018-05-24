@@ -1,15 +1,3 @@
-function default_theme(scene)
-    light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
-    Theme(
-        color = :blue,
-        linewidth = 1,
-        visible = true,
-        light = light,
-        transformation = nothing,
-        model = nothing,
-        alpha = 1.0,
-    )
-end
 
 function calculate_values!(scene::SceneLike, attributes, args)
     if haskey(attributes, :colormap) && value(attributes[:colormap]) != nothing
@@ -39,6 +27,19 @@ function calculate_values!(scene::SceneLike, ::Type{Scatter}, attributes, args)
     end
 end
 
+function default_theme(scene)
+    light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
+    Theme(
+        color = :blue,
+        linewidth = 1,
+        visible = true,
+        light = light,
+        transformation = nothing,
+        model = nothing,
+        alpha = 1.0,
+    )
+end
+
 function default_theme(scene, ::Type{Scatter})
     Theme(;
         default_theme(scene)...,
@@ -58,7 +59,7 @@ function default_theme(scene, ::Type{Scatter})
 end
 
 
-function default_theme(scene, ::Type{Meshscatter})
+function default_theme(scene, ::Type{MeshScatter})
     Theme(;
         default_theme(scene)...,
         marker = Sphere(Point3f0(0), 0.1f0),
@@ -71,7 +72,7 @@ function default_theme(scene, ::Type{Meshscatter})
     )
 end
 
-function default_theme(scene, ::Type{<: Union{Lines, Linesegments}})
+function default_theme(scene, ::Type{<: Union{Lines, LineSegments}})
     Theme(;
         default_theme(scene)...,
         linewidth = 1.0,
@@ -95,13 +96,10 @@ function default_theme(scene, ::Type{Text})
     )
 end
 
-Theme(;kw_args...) = Dict(kw_args)
-struct Heatmap end
-
 function default_theme(scene, ::Type{Heatmap})
     Theme(;
-        #default_theme(scene)...,
-        #colormap = theme(scene, :colormap),
+        default_theme(scene)...,
+        colormap = theme(scene, :colormap),
         colorrange = nothing,
         linewidth = 0.0,
         levels = 1,
@@ -110,7 +108,6 @@ function default_theme(scene, ::Type{Heatmap})
     )
 end
 
-
 function default_theme(scene, ::Type{Image})
     Theme(;
         default_theme(scene)...,
@@ -118,10 +115,11 @@ function default_theme(scene, ::Type{Image})
         fxaa = false,
     )
 end
+
 function default_theme(scene, ::Type{Surface})
     Theme(;
         default_theme(scene)...,
-        colormap = scene.theme[:colormap],
+        colormap = theme(scene, :colormap),
         image = nothing,
         fxaa = true,
     )
@@ -148,19 +146,6 @@ function default_theme(scene, ::Type{Volume})
         isovalue = 0.5f0,
         isorange = 0.01f0,
         colormap = theme(scene, :colormap),
-        colorrange = Vec2f0(0, 1)
-    )
-end
-
-# Basic Recipe themes
-
-function default_theme(scene, ::Type{Contour})
-    Theme(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        levels = 5,
-        linewidth = 1.0,
-        fillrange = false,
+        colorrange = (0, 1)
     )
 end

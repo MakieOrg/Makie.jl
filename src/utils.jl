@@ -101,7 +101,7 @@ function close2square(n::Real)
 end
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
 to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)
-same_length_array(array, value::Font) = repeated(value, length(array))
+same_length_array(array, value::Font) = Iterators.repeated(value, length(array))
 function extrema_nan(x::ClosedInterval)
     (minimum(x), maximum(x))
 end

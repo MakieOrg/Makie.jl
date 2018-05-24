@@ -1,9 +1,10 @@
-using Makie
+using Makie, AbstractPlotting
 
-scene = Scene()
-s = scatter!(scene, 1:10, rand(10))
+scene = Scene();
+
+@which AbstractPlotting.plot!(scene, Scatter, Attributes(), 1:10, rand(10))
+@which Scatter(scene, Attributes(), (1:10, rand(10)))
 s2 = scatter!(scene, -1:8, rand(10) .+ 1, color = :black)
-scene
 
 
 nw = scene.current_screens[1].glscreen

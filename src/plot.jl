@@ -1,19 +1,3 @@
-# TODO what should a child inherit?
-child(scene::Scene) = translated(scene)
-plot(args...; kw_args...) = plot!(Scene(), Scatter, args...; kw_args...)
-plot(P::Type, args...; kw_args...) = plot!(Scene(), P, args...; kw_args...)
-plot(scene::SceneLike, args...; kw_args...) = plot!(child(scene), Scatter, args...; kw_args...)
-plot(scene::SceneLike, P::Type, args...; kw_args...) = plot!(child(scene), P, args...; kw_args...)
-
-plot!(args...; kw_args...) = plot!(current_scene(), Scatter, args...; kw_args...)
-plot!(scene::SceneLike, args...; kw_args...) = plot!(scene, Scatter, args...; kw_args...)
-plot!(P::Type, args...; kw_args...) = plot!(current_scene(), P, Attributes(kw_args), args...)
-plot!(P::Type, attributes::Attributes, args...) = plot!(current_scene(), P, attributes, args...)
-plot!(scene::SceneLike, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
-
-function plot!(scene::SceneLike, P::Type, attributes::Attributes, args...)
-    plot!(scene, P, attributes, convert_arguments(P, args...)...)
-end
 
 is2d(scene::SceneLike) = widths(limits(scene)[])[3] == 0.0
 
