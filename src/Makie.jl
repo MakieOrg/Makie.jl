@@ -3,7 +3,7 @@ module Makie
 
 using AbstractPlotting
 importall AbstractPlotting
-using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer
+using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont
 
 using Reactive, GeometryTypes, Colors, StaticArrays
 
@@ -23,19 +23,11 @@ import Base: push!, isopen
 
 # functions we overload
 
-include("types.jl")
 include("scene.jl")
-
 include("makie_recipes.jl")
-
-include("attribute_conversion.jl")
 include("argument_conversion.jl")
-
 include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")
-
-include("plot.jl")
-include("theming.jl")
 include("output.jl")
 
 export Scene

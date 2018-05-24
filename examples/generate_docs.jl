@@ -1,8 +1,13 @@
-
-
+include("library.jl")
+result = find(database) do x
+    x.title == "Subscenes"
+end
+database[result[1]]
+entry
 function filestring(entry)
     string(entry.file, ':', first(entry.file_range))
 end
+
 function eval_entry(::MIME"text/markdown", entry)
     source = string(entry.toplevel, "\n", entry.source)
     result = eval_string(source, filestring(entry))

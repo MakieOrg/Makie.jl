@@ -12,6 +12,7 @@ struct CellEntry
     groupid::Int
 end
 
+
 database = CellEntry[]
 globaly_shared_code = String[]
 const NO_GROUP = 0
