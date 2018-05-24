@@ -78,7 +78,7 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
     toffset = calc_offset(string, textsize, font, atlas)
     broadcast_foreach(1:length(string), string, startpos, textsize, (font,), align) do idx, char, pos, tsize, font, align
-        _font = isa(font[1], Font) ? font[1] : font[1][idx]
+        _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
         push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
         push!(uv_offset_width, glyph_uv_width!(atlas, char, _font))
@@ -98,7 +98,7 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     rscale = Float32(textsize)
     chars = convert(Vector{Char}, string)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
-    # font is Vector{FreeType.Font} so we need to protec
+    # font is Vector{FreeType.NativeFont} so we need to protec
     toffset = calc_offset(chars, rscale, font, atlas)
     aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
@@ -111,17 +111,6 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     positions, toffset, uv_offset_width, scale
 end
 
-function get_texture!(atlas::TextureAtlas = get_texture_atlas())
-    if isnull(atlas.images)
-        atlas.images = Nullable(Texture(
-            atlas.data,
-            minfilter = :linear,
-            magfilter = :linear,
-            anisotropic = 16f0,
-        ))
-    end
-    get(atlas.images)
-end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes

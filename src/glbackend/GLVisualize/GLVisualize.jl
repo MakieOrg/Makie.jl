@@ -78,8 +78,6 @@ export clicked, dragged_on, is_hovering
 export OR, AND, isnotempty
 export color_lookup
 
-include("texture_atlas.jl")
-
 include(joinpath("visualize", "lines.jl"))
 include(joinpath("visualize", "containers.jl"))
 include(joinpath("visualize", "image_like.jl"))

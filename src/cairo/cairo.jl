@@ -2,7 +2,7 @@ module CairoBackend
 
 import ..Makie
 using ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str, broadcast_foreach
-using ..Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, Font
+using ..Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using ..Makie: @info, @get_attribute
 using Reactive, Colors, GeometryTypes
 
@@ -155,7 +155,7 @@ function set_ft_font(cr, font)
 end
 fontname(x::String) = x
 fontname(x::Symbol) = string(x)
-function fontname(x::Font)
+function fontname(x::NativeFont)
     ft_rect = unsafe_load(x[1])
     unsafe_string(ft_rect.family_name)
 end
