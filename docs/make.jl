@@ -8,7 +8,10 @@ struct DatabaseLookup <: Expanders.ExpanderPipeline end
 
 Selectors.order(::Type{DatabaseLookup}) = 0.5
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
-match_kw(x::String) = ismatch(r"\@library\[example\] ([\"a-zA-Z_0-9 ]+)", x)
+
+const regex_pattern = r"example_database\(([\"a-zA-Z_0-9. ]+)\)"
+
+match_kw(x::String) = ismatch(regex_pattern, x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = match_kw(node)
@@ -32,7 +35,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     matched = nothing
     for elem in x.content
         if isa(elem, AbstractString)
-            matched = match(r"\@library\[example\] ([\"a-zA-Z_0-9 ]+)", elem)
+            matched = match(regex_pattern, elem)
             matched != nothing && break
         end
     end
