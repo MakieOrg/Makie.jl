@@ -36,7 +36,7 @@ function to_func(Typ::Type{T}) where T <: AbstractPlot
     f = getfield(current_module(), sym)
 end
 
-
+to_func(func::Function) = func
 
 """
     to_type(func)
@@ -60,13 +60,14 @@ Welcome to Makie.
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 For help on a specific function's attributes, type `help_attributes(function_name)`.
 """
-function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+    func = to_func(input)
 
     # Print docstrings
     println(Base.Docs.doc(input))
 
     # Arguments
-    help_arguments(io, to_func(input))
+    help_arguments(io, func)
     println(io, "Please refer to @ref[convert_arguments] to find the full list of accepted arguments\n")
 
     # Keyword arguments
@@ -76,11 +77,22 @@ function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
 
 end
 
-function help(io::IO, input::Function; extended = false)
-    help(io, to_type(input); extended = extended)
+function _help(io::IO, input::Function; extended = false)
+    _help(io, to_type(input); extended = extended)
 end
 
 
+function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+    buffer = IOBuffer()
+    _help(buffer, input; extended = extended)
+    Base.Markdown.parse(String(take!(buffer)))
+end
+
+function help(io::IO, input::Function; extended = false)
+    buffer = IOBuffer()
+    _help(buffer, to_type(input); extended = extended)
+    Base.Markdown.parse(String(take!(buffer)))
+end
 
 """
     help_signatures(func)
@@ -89,11 +101,12 @@ Returns a list of signatures for function `func`.
 """
 function help_arguments(io, x::Function)
 #TODO: this is currently hard-coded
-println(io, "$x has the following function signatures: \n")
+    println(io, "`$x` has the following function signatures: \n")
+    println(io, "```")
     println(io, "  ", "(Vector, Vector)")
     println(io, "  ", "(Vector, Vector, Vector)")
     println(io, "  ", "(Matrix)")
-    println(io, "  ")
+    println(io, "```")
 end
 
 
@@ -128,21 +141,23 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
 
     # increase verbosity if extended kwarg is on
     if extended
-        println(io, "Available attributes and their defaults for $Typ are: \n")
+        println(io, "Available attributes and their defaults for `$Typ` are: \n")
+        println(io, "```")
         for (attribute, value) in attributes
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
                 println(io, "  ", attribute, " "^padding, Makie.value(value))
             end
         end
-        println(io, "  ")
+        println(io, "```")
     else
-        println(io, "Available attributes for $Typ are: \n")
+        println(io, "Available attributes for `$Typ` are: \n")
+        println(io, "```")
         for (attribute, value) in attributes
             if !(attribute in filter_keys)
                 println(io, "  ", attribute)
             end
         end
-        println(io, "  ")
+        println(io, "```")
     end
 end
