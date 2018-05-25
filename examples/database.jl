@@ -12,6 +12,41 @@ struct CellEntry
     groupid::Int
 end
 
+# overload Base.show to show output of CellEntry
+function Base.show(io::IO, entry::CellEntry)
+    println(io, "\n_______________________________")
+    println(io, "title: ", entry.title)
+    println(io, "source: ")
+    println(io, "```")
+    println(io, entry.source)
+    println(io, "```")
+    println(io, "_______________________________")
+end
+
+
+"""
+    example_database(input_tags...; title = nothing, author = nothing)
+
+Returns the indices for the entries in examples database that match the input
+search pattern.
+
+`input_tags` are plot tags to be searched for. `title` and `author` are optional
+and are used to filter the search results by title and author.
+"""
+function example_database(input_tags...; title = nothing, author = nothing) # --> return an array cell entries
+    indices = find(database) do entry
+        # find tags
+        tags_found = all(tag -> string(tag) in entry.tags, input_tags) # only works with strings inputs right now
+        # find author, if nothing input is given, then don't filter
+        author_found = (author == nothing) || (entry.author == string(author))
+        # find title, if nothing input is given, then don't filter
+        title_found = (title == nothing) || (entry.title == string(title))
+        # boolean to return the result
+        tags_found && author_found && title_found
+    end
+    return database[indices]
+end
+
 database = CellEntry[]
 globaly_shared_code = String[]
 const NO_GROUP = 0
