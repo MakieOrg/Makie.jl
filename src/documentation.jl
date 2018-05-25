@@ -64,7 +64,7 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     func = to_func(input)
 
     # Print docstrings
-    println(Base.Docs.doc(input))
+    println(io, Base.Docs.doc(input))
 
     # Arguments
     help_arguments(io, func)
@@ -73,8 +73,8 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     # Keyword arguments
     help_attributes(io, input; extended = extended)
 
-    println(io, "You can use $(input) in the following way:\n@query_database [$(input)]")
-
+    println(io, "You can use `$(input)` in the following way:\n")
+    println(io, "example_database($(func))")
 end
 
 function _help(io::IO, input::Function; extended = false)
