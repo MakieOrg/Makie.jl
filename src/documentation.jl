@@ -48,20 +48,30 @@ function to_type(func::Function)
     Typ = getfield(Makie,Symbol(titlecase(string(sym))))
 end
 
+"""
+    to_string(func)
 
+Turns the input of a function name into a string.
+"""
+function to_string(func::Function)
+    str = string(typeof(func).name.mt.name)
+end
 
-help(func; kw_args...) = help(STDOUT, func; kw_args...)
+to_string(Typ::Type{T}) where T <: AbstractPlot = to_string(to_func(Typ))
 
 """
     help(func)
 
-Welcome to Makie.
+Welcome to the main help function of Makie.jl.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
-For help on a specific function's attributes, type `help_attributes(function_name)`.
+For help on a specific function's attributes, type `help_attributes(plot_Type)`.
 """
+help(func; kw_args...) = help(STDOUT, func; kw_args...)
+
 function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     func = to_func(input)
+    str = to_string(input)
 
     # Print docstrings
     println(io, Base.Docs.doc(input))
@@ -74,7 +84,8 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     help_attributes(io, input; extended = extended)
 
     println(io, "You can use `$(input)` in the following way:\n")
-    println(io, "example_database($(func))")
+    println(io, "example_database($(func))\n")
+    println(io, current_module().example_database(str))
 end
 
 function _help(io::IO, input::Function; extended = false)
@@ -95,7 +106,7 @@ function help(io::IO, input::Function; extended = false)
 end
 
 """
-    help_signatures(func)
+    help_arguments(func)
 
 Returns a list of signatures for function `func`.
 """
@@ -112,7 +123,7 @@ end
 
 
 """
-    help_attributes(Typ)
+    help_attributes(Typ; extended = false)
 
 Returns a list of attributes for the plot type `Typ`.
 The attributes returned extend those attribues found in the `default_theme`.
