@@ -47,6 +47,7 @@ include("gui.jl")
 include("documentation.jl")
 
 # documentation related
+export example_database
 export help
 export help_arguments
 export help_attributes
