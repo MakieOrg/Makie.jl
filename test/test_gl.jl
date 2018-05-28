@@ -1,8 +1,13 @@
 using Makie, AbstractPlotting, GeometryTypes
 
 s2 = scatter(-1:8, rand(10) .+ 1, color = :black)
-scene = Scene()
 
+
+text("halalala")
+img = Makie.atlas_texture_cache[] |> Makie.GLAbstraction.gpu_data .|> Colors.Gray;
+using FileIO
+
+save("test.png", Images.clamp01nan.(img));
 
 img = GLVisualize.loadasset("doge.png")
 GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))

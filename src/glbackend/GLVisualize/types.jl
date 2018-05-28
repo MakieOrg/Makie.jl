@@ -205,7 +205,7 @@ end
 
 # For quaternions
 function to_rotation_mat(x::Vec{4, T}) where T
-    Mat4{T}(Quaternions.Quaternion(x[4], x[1], x[2], x[3], true))
+    Mat4{T}(AbstractPlotting.Quaternionf0(x[1], x[2], x[3], x[4]))
 end
 # For relative rotations of a vector
 function to_rotation_mat(x::StaticVector{2, T}) where T
@@ -219,11 +219,11 @@ function to_rotation_mat(x::StaticVector{3, T}) where T
     q = if (u == -v)
         # 180 degree rotation around any orthogonal vector
         other = (abs(dot(u, Vec{3, T}(1,0,0))) < 1.0) ? Vec{3, T}(1,0,0) : Vec{3, T}(0,1,0)
-        Quaternions.qrotation(normalize(cross(u, other)), T(180))
+        AbstractPlotting.qrotation(normalize(cross(u, other)), T(180))
     else
         half = normalize(u+v)
         vc = cross(u, half)
-        Quaternions.Quaternion(dot(u, half), vc[1], vc[2], vc[3])
+        AbstractPlotting.Quaternionf0(dot(u, half), vc[1], vc[2], vc[3])
     end
     Mat4{T}(q)
 end
