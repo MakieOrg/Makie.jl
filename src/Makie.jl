@@ -3,7 +3,7 @@ module Makie
 
 using AbstractPlotting
 importall AbstractPlotting
-using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont
+using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont, Key, @key_str
 
 using Reactive, GeometryTypes, Colors, StaticArrays
 

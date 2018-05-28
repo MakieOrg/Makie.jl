@@ -3,8 +3,8 @@ function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     filter!(isopen, scene.current_screens)
     isempty(scene.current_screens) || return
     screen = Screen(scene)
-    insert_plots!(scene)
-    bb = real_boundingbox(scene)
+    AbstractPlotting.insert_plots!(scene)
+    bb = AbstractPlotting.real_boundingbox(scene)
     w = widths(bb)
     padd = w .* 0.01
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)

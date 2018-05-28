@@ -23,7 +23,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
-            gl_value = map(val-> convert_attribute(val, Key{key}(), plot_key(x)), value)
+            gl_value = map(val-> convert_attribute(val, Key{key}(), Key{AbstractPlotting.plotkey(x)}()), value)
             gl_key => gl_value
         end
         robj = robj_func(Dict{Symbol, Any}(gl_attributes))
@@ -45,7 +45,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatte
         # TODO either stop using bb's from glvisualize
         # or don't set them randomly to nothing
         gl_attributes[:boundingbox] = nothing
-        visualize((value(marker), x.args[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        visualize((value(marker), x[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
 
@@ -55,7 +55,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        visualize(x.args[1], Style(:lines), data).children[]
+        visualize(x[1], Style(:lines), data).children[]
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
@@ -63,7 +63,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        visualize(x.args[1], Style(:linesegment), data).children[]
+        visualize(x[1], Style(:linesegment), data).children[]
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
@@ -113,10 +113,11 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
+    println("rendering text")
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = map(to_gl_text, x.args[1], getindex.(gl_attributes, liftkeys)...)
+        gl_text = map(to_gl_text, x[1], getindex.(gl_attributes, liftkeys)...)
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             map(getindex, gl_text, Signal(i))
@@ -143,8 +144,8 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = (value.(x.args[1:2]))
-        heatmap = map(to_node(x.args[3])) do z
+        gl_attributes[:ranges] = (value.((x[1], x[2])))
+        heatmap = map(to_node(x[3])) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
         interp = value(pop!(gl_attributes, :interpolate))
@@ -161,7 +162,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = to_range.(value.(x.args[1:2]))
+        gl_attributes[:ranges] = to_range.(value.((x[1], x[2])))
         img = x[3]
         if isa(value(img), AbstractMatrix{<: Number})
             norm = pop!(gl_attributes, :color_norm)
@@ -213,11 +214,12 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
             # delete nothing
             delete!(gl_attributes, :image)
         end
-        if all(v-> value(v) isa AbstractMatrix, x.args)
-            visualize(x.args, Style(:surface), gl_attributes).children[]
+        args = x.output_args
+        if all(v-> value(v) isa AbstractMatrix, args)
+            visualize(x[], Style(:surface), gl_attributes).children[]
         else
-            gl_attributes[:ranges] = value.(x.args[1:2])
-            visualize(x.args[3], Style(:surface), gl_attributes).children[]
+            gl_attributes[:ranges] = value.(args[1:2])
+            visualize(args[3], Style(:surface), gl_attributes).children[]
         end
     end
 end
@@ -253,7 +255,7 @@ function surface_contours(volume::Volume)
     paths = assetpath.("shader", ("fragment_output.frag", "util.vert", "volume.vert"))
     shader = makieshader(paths..., frag)
     model = volume[:model]
-    x, y, z, vol = volume.args
+    x, y, z, vol = volume[1], volume[2], volume[3], volume[4]
     model2 = map(model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
@@ -289,7 +291,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Volume)
         if gl_attributes[:algorithm][] == 0
             surface_contours(x)
         else
-            dimensions = Vec3f0(to_width.(value.(x.args[1:3])))
+            dimensions = Vec3f0(to_width.(value.(x.output_args[1:3])))
             gl_attributes[:dimensions] = dimensions
             delete!(gl_attributes, :color)
             visualize(x[4], Style(:default), gl_attributes).children[]
