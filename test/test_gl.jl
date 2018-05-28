@@ -1,13 +1,9 @@
-using Makie, AbstractPlotting
+using Makie, AbstractPlotting, GeometryTypes
 
-scene = Scene();
-
-@which AbstractPlotting.plot!(scene, Scatter, Attributes(), 1:10, rand(10))
-@which Scatter(scene, Attributes(), (1:10, rand(10)))
-s2 = scatter!(scene, -1:8, rand(10) .+ 1, color = :black)
+s2 = scatter(-1:8, rand(10) .+ 1, color = :black)
+scene = Scene()
 
 
-nw = scene.current_screens[1].glscreen
 img = GLVisualize.loadasset("doge.png")
 GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))
 

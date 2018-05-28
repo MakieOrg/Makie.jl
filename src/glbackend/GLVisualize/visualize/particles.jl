@@ -259,11 +259,12 @@ end
 function vec2quaternion(rotation::StaticVector{3})
     rotation_between(Vec3f0(0, 0, 1), Vec3f0(rotation))
 end
-
+using AbstractPlotting
 
 vec2quaternion(rotation::VecTypes{Vec4f0}) = rotation
 vec2quaternion(rotation::VecTypes) = const_lift(x-> vec2quaternion.(x), rotation)
-vec2quaternion(rotation::Signal{<: StaticVector}) = map(vec2quaternion, rotation)
+vec2quaternion(rotation::Signal) = map(vec2quaternion, rotation)
+vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
