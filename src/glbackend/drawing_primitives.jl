@@ -1,5 +1,3 @@
-import .GLVisualize: calc_offset, glyph_uv_width!, glyph_uv_width!, get_texture_atlas, glyph_scale!, calc_position
-
 gpuvec(x) = GPUVector(GLBuffer(x))
 
 function to_glvisualize_key(k)
@@ -72,8 +70,10 @@ function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     end
 end
 
+using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, glyph_scale!, calc_position, calc_offset
+
 function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
-    atlas = GLVisualize.get_texture_atlas()
+    atlas = get_texture_atlas()
     N = length(T)
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
     toffset = calc_offset(string, textsize, font, atlas)
@@ -100,17 +100,32 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
     toffset = calc_offset(chars, rscale, font, atlas)
-    aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
+    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
     uv_offset_width = glyph_uv_width!.(atlas, chars, (font,))
     scale = glyph_scale!.(atlas, chars, (font,), rscale)
     positions = map(positions2d) do p
-        pn = qmul(rot, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ pos
     end
     positions, toffset, uv_offset_width, scale
 end
 
+const atlas_texture_cache = RefValue{Texture{Float16, 2}}()
+function get_texture!(atlas)
+     if isassigned(atlas_texture_cache)
+         atlas_texture_cache[]
+     else
+         tex = Texture(
+             atlas.data,
+             minfilter = :linear,
+             magfilter = :linear,
+             anisotropic = 16f0,
+         )
+         atlas_texture_cache[] = tex
+         return tex
+     end
+ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
     println("rendering text")
@@ -123,7 +138,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             map(getindex, gl_text, Signal(i))
         end
 
-        atlas = GLVisualize.get_texture_atlas()
+        atlas = get_texture_atlas()
         keys = (:color, :stroke_color, :stroke_width, :rotation)
         signals = getindex.(gl_attributes, keys)
 
@@ -136,7 +151,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,
-            distancefield = GLVisualize.get_texture!(atlas)
+            distancefield = get_texture!(atlas)
         ).children[]
     end
 end
