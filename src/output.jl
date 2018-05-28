@@ -7,7 +7,7 @@ colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof
 function scene2image(scene::Scene)
     screen = getscreen(scene)
     isempty(scene.current_screens) && return nothing
-    length(scene.current_screens) && warn("Scene is displayed on multiple screens, will only use first.")
+    length(scene.current_screens) > 1 && warn("Scene is displayed on multiple screens, will only use first.")
     colorbuffer(scene.current_screens[1])
 end
 
