@@ -177,8 +177,6 @@ end
 const atomics = (text, meshscatter, scatter, mesh, linesegments, lines, surface, volume, heatmap, image)
 
 
-calculate_values!(scene::SceneLike, T, attributes, args) = attributes
-
 """
 Fill in values that can only be calculated when we have all other attributes filled
 """
@@ -186,11 +184,41 @@ function calculate_values!(scene::SceneLike, ::Type{T}, attributes, args) where 
     calculate_values!(scene, attributes, args)
 end
 
+function calculate_values!(scene::SceneLike, attributes, args)
+    if haskey(attributes, :colormap) && value(attributes[:colormap]) != nothing
+        delete!(attributes, :color) # color is overwritten by colormap
+        replace_nothing!(attributes, :colorrange) do
+            map(to_node(args[3])) do arg
+                Vec2f0(extrema(arg))
+            end
+        end
+    else
+        delete!(attributes, :colormap)
+        delete!(attributes, :colorrange)
+    end
+    replace_nothing!(attributes, :transformation) do
+        Transformation(scene)
+    end
+    replace_nothing!(attributes, :model) do
+        value(attributes[:transformation]).model
+    end
+    return
+end
+function calculate_values!(scene::SceneLike, ::Type{Scatter}, attributes, args)
+    calculate_values!(scene, attributes, args)
+    replace_nothing!(attributes, :marker_offset) do
+        # default to middle
+        map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
+    end
+end
+
+
 
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, output_args)
     PT(parent, transformation, attributes, input_args, output_args, AbstractPlot[])
 end
 plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(F)
+
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args::Tuple) where Typ
     # make sure all arguments are a node
@@ -213,12 +241,8 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         end
     end
     plot_attributes, rest = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
-    replace_nothing!(plot_attributes, :model) do
-        replace_nothing!(plot_attributes, :transformation) do
-            Transformation(scene)
-        end
-        value(plot_attributes[:transformation]).model
-    end
+    calculate_values!(scene, PlotType, plot_attributes, args_converted)
+
     transformation = pop!(plot_attributes, :transformation)
     # The argument type of the final plot object is the assumened to stay constant after
     # argument conversion. This might not always hold, but it simplifies
@@ -277,41 +301,13 @@ function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     plot!(scene, PlotType, attributes, args...)
 end
 
+plot!(p::Atomic) = p
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, non_plot_kwargs = PlotType(scene, attributes, args)
     # call user defined overload to fill the plot type
-#    plot!(plot_object)
+    plot!(plot_object)
     # call the assembly recipe, that also adds this to the scene
     # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
     plot!(scene, plot_object, non_plot_kwargs)
-end
-
-
-function calculate_values!(scene::SceneLike, attributes, args)
-    if haskey(attributes, :colormap) && value(attributes[:colormap]) != nothing
-        delete!(attributes, :color) # color is overwritten by colormap
-        replace_nothing!(attributes, :colorrange) do
-            map(to_node(args[3])) do arg
-                Vec2f0(extrema(arg))
-            end
-        end
-    else
-        delete!(attributes, :colormap)
-        delete!(attributes, :colorrange)
-    end
-    replace_nothing!(attributes, :model) do
-        replace_nothing!(attributes, :transformation) do
-            Transformation(scene)
-        end
-        value(attributes[:transformation]).model
-    end
-end
-
-function calculate_values!(scene::SceneLike, ::Type{Scatter}, attributes, args)
-    calculate_values!(scene, attributes, args)
-    replace_nothing!(attributes, :marker_offset) do
-        # default to middle
-        map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
-    end
 end

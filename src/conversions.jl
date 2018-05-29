@@ -300,19 +300,19 @@ end
     to_colormap(b, x)
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts
 """
-to_colormap(cm::AbstractVector) = RGBAf0.(cm)
+convert_attribute(cm::AbstractVector, ::key"colormap") = RGBAf0.(cm)
 
 """
 Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
 """
-function to_colormap(cs::Union{Tuple, Pair})
+function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap")
     [to_color.(cs)...]
 end
 
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
 """
-function to_colormap(cs::Union{String, Symbol})
+function convert_attribute(cs::Union{String, Symbol}, ::key"colormap")
     cs_sym = Symbol(cs)
     if cs_sym in colorbrewer_names
         return ColorBrewer.palette(string(cs_sym), 9)
@@ -344,8 +344,6 @@ function to_colormap(cs::Union{String, Symbol})
         error("There is no color gradient named: $cs")
     end
 end
-
-convert_attribute(val, ::key"colormap") = to_colormap(val)
 
 
 

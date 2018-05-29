@@ -174,7 +174,11 @@ parent(x::AbstractPlot) = x.parent
 basetype(::Type{<: Combined}) = Combined
 basetype(::Type{<: Atomic}) = Atomic
 
-plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(string(Typ)))
+function func2string(func::F) where F <: Function
+    string(F.name.mt.name)
+end
+
+plotkey(::Type{<: AbstractPlot{Typ}}) where Typ = Symbol(lowercase(func2string(Typ)))
 plotkey(::T) where T <: AbstractPlot = plotkey(T)
 
 plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func

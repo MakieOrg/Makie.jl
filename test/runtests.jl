@@ -6,9 +6,13 @@ else
     using Test
 end
 
+
 # write your own tests here
-sub = scatter!(rand(10), rand(10))
+using Makie
+
+scene = scatter(rand(10), rand(10), rand(10))
 sub1 = scatter!(rand(10), rand(10), rand(10))
+
 @test sub === sub1
 x = rand(10)
 sub1 = scatter(1:10, x)

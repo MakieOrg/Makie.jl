@@ -215,17 +215,18 @@ end
 
 Plots an array of texts at each position in `positions`
 """
-@recipe(Annotations) do scene
-    Theme()
-
+@recipe(Annotations, text, position) do scene
+    default_theme(scene, Text)
 end
 
 function plot!(plot::Annotations)
+    position = plot[2]
     sargs = (
         plot[:model], plot[:font],
-        text, position,
+        plot[1], position,
         getindex.(plot, (:color, :textsize, :align, :rotation))...,
     )
+    N = value(position) |> eltype |> length
     tp = map(sargs...) do model, font, args...
         if length(args[1]) != length(args[2])
             error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
@@ -253,7 +254,7 @@ function plot!(plot::Annotations)
         end
         (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
     end
-    t_attributes = merge(data(plot), rest)
+    t_attributes = copy(plot.attributes)
     t_attributes[:position] = map(x-> x[2], tp)
     t_attributes[:color] = map(x-> x[3], tp)
     t_attributes[:textsize] = map(x-> x[4], tp)
@@ -261,6 +262,7 @@ function plot!(plot::Annotations)
     t_attributes[:rotation] = map(x-> x[6], tp)
     t_attributes[:align] = map(x-> x[7], tp)
     t_attributes[:model] = eye(Mat4f0)
+    t_attributes[:raw] = true
     text!(plot, t_attributes, map(x-> x[1], tp))
     plot
 end
@@ -284,7 +286,6 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             raw = false
         )
     end
-
     push!(scene.plots, subscene)
     if plot_attributes[:raw][] == false
         s_limits = limits(scene)
@@ -302,19 +303,19 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             end
         end
         area_widths = RefValue(widths(pixelarea(scene)[]))
-        map_once(pixelarea(scene), s_limits, plot_attributes[:scale_plot]) do area, limits, scaleit
-            # not really sure how to scale 3D scenes in a reasonable way
-            if scaleit && is2d(scene) # && area_widths[] != widths(area)
-                area_widths[] = widths(area)
-                mini, maxi = minimum(limits), maximum(limits)
-                l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-                xyzfit = fit_ratio(area, l)
-                s = to_ndim(Vec3f0, xyzfit, 1f0)
-                @info("calculated scaling: ", Tuple(s))
-                scale!(scene, s)
-            end
-            return
-        end
+        # map_once(pixelarea(scene), s_limits, plot_attributes[:scale_plot]) do area, limits, scaleit
+        #     # not really sure how to scale 3D scenes in a reasonable way
+        #     if scaleit && is2d(scene) # && area_widths[] != widths(area)
+        #         area_widths[] = widths(area)
+        #         mini, maxi = minimum(limits), maximum(limits)
+        #         l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
+        #         xyzfit = fit_ratio(area, l)
+        #         s = to_ndim(Vec3f0, xyzfit, 1f0)
+        #         @info("calculated scaling: ", Tuple(s))
+        #         scale!(scene, s)
+        #     end
+        #     return
+        # end
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
             axis_attributes = plot_attributes[:axis][]
             if is2d(scene)

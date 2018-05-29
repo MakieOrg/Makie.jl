@@ -46,11 +46,11 @@ end
 
 function TextBuffer(
         scene::SceneLike, ::Type{Point{N}} = Point{2};
-        rotation = Quaternion[(0,0,0,1)],
+        rotation = [Quaternionf0(0,0,0,1)],
         color = RGBAf0[RGBAf0(0,0,0,0)],
         textsize = Float32[0],
         camera = :false,
-        font = [convert_attribute("default", key"font"())],
+        font = [to_font("default")],
         align = [Vec2f0(0)],
         raw = true,
         kw_args...
@@ -68,43 +68,43 @@ function TextBuffer(
 end
 
 function start!(tb::Annotations)
-    # for i = 1:2
-    #     resize!(tb.args[i][], 0)
-    # end
-    # for key in (:color, :rotation, :textsize, :font, :align)
-    #     resize!(tb[key][], 0)
-    # end
+    for i = 1:2
+        resize!(tb[i][], 0)
+    end
+    for key in (:color, :rotation, :textsize, :font, :align)
+        resize!(tb[key][], 0)
+    end
     return
 end
 
 function finish!(tb::Annotations)
-    # update the signal!
-    # for i = 1:2
-    #     tb.args[i][] = tb.args[i][]
-    # end
-    # for key in (:color, :rotation, :textsize, :font, :align)
-    #     tb[key][] = tb[key][]
-    # end
+    #update the signal!
+    for i = 1:2
+        tb[i][] = tb[i][]
+    end
+    for key in (:color, :rotation, :textsize, :font, :align)
+        tb[key][] = tb[key][]
+    end
     return
 end
 
 
 function push!(tb::Annotations, text::String, position; kw_args...)
-    # N = length(position)
-    # append!(tb, [text], Point{N, Float32}[position]; kw_args...)
+    N = length(position)
+    append!(tb, [text], Point{N, Float32}[position]; kw_args...)
 end
 
 function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
-    # append!(tb.args[1][], text)
-    # append!(tb.args[2][], positions)
-    # kw = Dict(kw_args)
-    # for key in (:color, :rotation, :textsize, :font, :align)
-    #     val = get(kw, key) do
-    #         isempty(tb[key][]) && error("please provide default for $key")
-    #         last(tb[key][])
-    #     end
-    #     val_vec = same_length_array(text, val, Key{key}())
-    #     append!(tb[key][], val_vec)
-    # end
+    append!(tb[1][], text)
+    append!(tb[2][], positions)
+    kw = Dict(kw_args)
+    for key in (:color, :rotation, :textsize, :font, :align)
+        val = get(kw, key) do
+            isempty(tb[key][]) && error("please provide default for $key")
+            last(tb[key][])
+        end
+        val_vec = same_length_array(text, val, Key{key}())
+        append!(tb[key][], val_vec)
+    end
     return
 end

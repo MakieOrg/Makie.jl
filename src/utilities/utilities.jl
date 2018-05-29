@@ -149,7 +149,7 @@ macro get_attribute(scene, args)
     extract_expr(get_attribute, scene, args)
 end
 
-@inline getindex_value(x::Union{Dict, Attributes}, key::Symbol) = value(x[key])
+@inline getindex_value(x::Union{Dict, Attributes, AbstractPlot}, key::Symbol) = value(x[key])
 @inline getindex_value(x, key::Symbol) = value(getfield(x, key))
 
 """
@@ -212,7 +212,7 @@ end
 
 
 
-
+same_length_array(array, value::NativeFont) = repeated(value, length(array))
 same_length_array(array, value) = repeated(value, length(array))
 function same_length_array(arr, value::Vector)
     if length(arr) != length(value)

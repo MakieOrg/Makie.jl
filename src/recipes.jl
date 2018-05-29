@@ -63,14 +63,15 @@ function plot!(plot::MyVolume)
     plot
 end
 """
-macro recipe(theme_func, T::Symbol, args::Symbol...)
-    funcname = to_func_name(T)
+macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
+    funcname = to_func_name(Tsym)
     funcname! = esc(Symbol("$(funcname)!"))
-    T = esc(T)
+    T = esc(Tsym)
     funcname = esc(funcname)
     expr = quote
         $funcname() = not_implemented_for($funcname)
         const $(T){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
+        Base.show(io::IO, ::Type{<: $T}) = print(io, $(string(Tsym)), "{...}")
         $funcname(args...; attributes...) = plot($T, args...; attributes...)
         $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)
         $funcname(attributes::Attributes, args...) = plot($T, attributes, args...)
@@ -91,16 +92,16 @@ macro recipe(theme_func, T::Symbol, args::Symbol...)
 end
 
 
-macro atomic(theme_func, T::Symbol)
-    funcname = to_func_name(T)
+macro atomic(theme_func, Tsym::Symbol)
+    funcname = to_func_name(Tsym)
     funcname! = esc(Symbol("$(funcname)!"))
-    T = esc(T)
+    T = esc(Tsym)
     funcname = esc(funcname)
     quote
         $funcname() = not_implemented_for($funcname)
         Base.@__doc__($funcname)
         const $T{$(esc(:ArgType))} = Atomic{$funcname, $(esc(:ArgType))}
-
+        Base.show(io::IO, ::Type{<: $T}) = print(io, $(string(Tsym)), "{...}")
         $funcname(args...; attributes...) = plot($T, args...; attributes...)
         $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)
         $funcname(attributes::Attributes, args...) = plot($T, attributes, args...)

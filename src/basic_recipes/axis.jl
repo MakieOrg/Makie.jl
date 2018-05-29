@@ -1,8 +1,6 @@
 range_labels(x) = not_implemented(x)
 
 
-
-
 @recipe(Axis2D) do scene
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
@@ -225,7 +223,14 @@ function draw_titles(
     end
 
 end
-generate_ticks(args...) = zip(0:4, string.(0:4))
+
+
+function ticks_and_labels(x)
+    r = linspace(extrema(x)..., 5)
+    zip(r, string.(round.(r, 4)))
+end
+
+
 function draw_axis(
         textbuffer, linebuffer, ranges,
         # grid attributes
@@ -250,7 +255,7 @@ function draw_axis(
     limit_widths = map(x-> x[2] - x[1], limits)
     % = mean(limit_widths) / 100 # percentage
 
-    xyticks = generate_ticks.(limits)
+    xyticks = ticks_and_labels.(limits)
 
     ti_textsize = ti_textsize .* %
     t_textsize = t_textsize .* %; t_gap = t_gap .* %;
@@ -316,6 +321,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         to_node(textbuffer), to_node(linebuffer), cplot[1],
         g_args..., t_args..., f_args..., ti_args...
     )
+    push!(scene.plots, cplot)
     return cplot
 end
 
@@ -418,30 +424,24 @@ function draw_axis(
 end
 
 
-function axis3d(scene::Scene, ranges::Node{<: NTuple{3, Any}}, attributes::Attributes)
-    attributes, rest = merged_get!(:axis3d, scene, attributes) do
-        default_theme(scene, Axis3D)
-    end
-    scene_unscaled = Scene(scene, transformation = Transformation())
-    axis = Axis3D(scene, attributes, ranges)
-    # TODO, how to have an unscaled and scaled scene inside Axis3D?
-    axis2 = Axis3D(scene_unscaled, attributes, ranges)
-    textbuffer = TextBuffer(axis2, Point{3})
+function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
+    axis, non_plot_kwargs = Axis3D(scene, attributes, args)
+    textbuffer = TextBuffer(axis, Point{3})
     linebuffer = LinesegmentBuffer(axis, Point{3})
 
-    tstyle, tickstyle, framestyle = value.(getindex.(attributes, (:titlestyle, :tickstyle, :framestyle)))
-
+    tstyle, tickstyle, framestyle = value.(getindex.(axis, (:titlestyle, :tickstyle, :framestyle)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
     tvals = getindex.(tickstyle, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     framevals = getindex.(framestyle, (:linecolor, :linewidth, :axiscolor))
 
     args = (
-        getindex.(attributes, (:scale, :showaxis, :showticks, :showgrid))...,
+        getindex.(axis, (:scale, :showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals...
     )
     map_once(
         draw_axis,
-        Node(textbuffer), Node(linebuffer), ranges, args...
+        Node(textbuffer), Node(linebuffer), axis[1], args...
     )
+    push!(scene.plots, axis)
     return axis
 end

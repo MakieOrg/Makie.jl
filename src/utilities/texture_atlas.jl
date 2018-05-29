@@ -191,6 +191,12 @@ function sdistancefield(img, downsample = 8, pad = 8*downsample)
     Float16.(sd)
 end
 
+const font_render_callbacks = Function[]
+
+function font_render_callback!(f)
+    push!(font_render_callbacks, f)
+end
+
 function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     #select_font_face(cc, font)
     if glyph == '\n' # don't render  newline
@@ -203,6 +209,9 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     uv = push!(atlas.rectangle_packer, rect) #find out where to place the rectangle
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at GLVisualize if you encounter this") #TODO resize surface
     atlas.data[uv.area] = sd
+    for f in font_render_callbacks
+        f(sd, uv.area)
+    end
     uv.area, extent, Vec2f0(size(bitmap)) ./ downsample, pad
 end
 

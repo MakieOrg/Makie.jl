@@ -18,6 +18,9 @@ end
 
 @inline (::Type{Quaternion{T}})(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
 @inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
+function Base.convert(T::Type{Quaternion{T1}}, x::Quaternion{T2}) where {T1, T2}
+    T(T2.(x.data))
+end
 @inline Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
 @inline Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
 @inline Base.getindex(x::Quaternion, i::Integer) = x.data[i]
