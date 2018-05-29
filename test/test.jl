@@ -223,3 +223,22 @@ my_animation = lift_node(to_node(slider_value)) do t
 end
 surface(viewscreen, -2:2, -2:2, my_animation, colornorm = (0f0, 1f0))
 _view(play_viz, edit_screen[:screen], camera = :fixed_pixel)
+
+
+using Makie, GeometryTypes, FileIO, Colors, Images
+
+using GLVisualize: loadasset, assetpath
+
+scene = Scene(resolution = (500, 500))
+img = loadasset("doge.png");
+m, n = size(img)
+x = 1:m; y = 1:n;
+vertices = vec(Point3f0.(x, y', 0))
+u = linspace(0, 1, m); v = linspace(0, 1, n)
+uv = vec(UV{Float32}.(u, v'))
+faces = decompose(GLTriangle, SimpleRectangle(0, 0, 1, 1), (m, n))
+mesh = GLNormalUVMesh(vertices = vertices, texturecoordinates = uv, faces = faces)
+
+Makie.mesh(mesh, color = img, shading = false)
+
+center!(scene)
