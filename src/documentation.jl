@@ -17,7 +17,8 @@
 # # `[]` means an optional argument. `Attributes` is a Dictionary of attributes:
 # `func[!]([scene], kw_args::Attributes, args...)`
 
-
+# ==========================================================
+# Supporting functions for the help functions
 """
     to_func(Typ)
 
@@ -51,7 +52,7 @@ end
 """
     to_string(func)
 
-Turns the input of a function name into a string.
+Turns the input of a function name or plot Type into a string.
 """
 function to_string(func::Function)
     str = string(typeof(func).name.mt.name)
@@ -59,6 +60,10 @@ end
 
 to_string(Typ::Type{T}) where T <: AbstractPlot = to_string(to_func(Typ))
 
+
+# ==========================================================
+# Help functions
+# help function defaults to STDOUT output when io is not specified
 """
     help(func)
 
@@ -67,8 +72,24 @@ Welcome to the main help function of Makie.jl.
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 For help on a specific function's attributes, type `help_attributes(plot_Type)`.
 """
-help(func; kw_args...) = help(STDOUT, func; kw_args...)
+help(func; kw_args...) = help(STDOUT, func; kw_args...) #defaults to STDOUT
 
+function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
+    buffer = IOBuffer()
+    _help(buffer, input; extended = extended)
+    Base.Markdown.parse(String(take!(buffer)))
+end
+
+function help(io::IO, input::Function; extended = false)
+    buffer = IOBuffer()
+    _help(buffer, to_type(input); extended = extended)
+    Base.Markdown.parse(String(take!(buffer)))
+end
+
+#Don't know if the following is necessary. Probably not!
+# _help(func; kw_args...) = _help(STDOUT, func; kw_args...) #defaults to STDOUT
+
+# Internal help functions
 function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     func = to_func(input)
     str = to_string(input)
@@ -93,18 +114,7 @@ function _help(io::IO, input::Function; extended = false)
 end
 
 
-function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
-    buffer = IOBuffer()
-    _help(buffer, input; extended = extended)
-    Base.Markdown.parse(String(take!(buffer)))
-end
-
-function help(io::IO, input::Function; extended = false)
-    buffer = IOBuffer()
-    _help(buffer, to_type(input); extended = extended)
-    Base.Markdown.parse(String(take!(buffer)))
-end
-
+# Other help functions
 """
     help_arguments(func)
 
