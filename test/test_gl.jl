@@ -1,10 +1,10 @@
 using Makie, AbstractPlotting, GeometryTypes
 
-s2 = scatter(-1:8, rand(10) .+ 1, color = :black)
+s2 = scatter(linspace(0, 1, 10), rand(10), color = :black)
+s2.plots[1]
 
-
+# scatter!(s2, s2.plots[2].plots[1][2], raw = true)
 text("halalala")
-img = Makie.atlas_texture_cache[] |> Makie.GLAbstraction.gpu_data .|> Colors.Gray;
 using FileIO
 
 save("test.png", Images.clamp01nan.(img));
