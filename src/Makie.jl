@@ -53,6 +53,7 @@ export help_arguments
 export help_attributes
 export to_func
 export to_type
+export to_string
 
 export Scene, Screen, plot!, CairoScreen, axis2d, RGBAf0
 export Combined, Theme, node, @extract

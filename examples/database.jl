@@ -47,6 +47,8 @@ function example_database(input_tags...; title = nothing, author = nothing) # --
     return database[indices]
 end
 
+example_database(input::Function) = example_database(to_string(input))
+
 database = CellEntry[]
 globaly_shared_code = String[]
 const NO_GROUP = 0
