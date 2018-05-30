@@ -168,7 +168,9 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
         for (attribute, value) in attributes
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
-                println(io, "  ", attribute, " "^padding, Makie.value(value))
+                print(io, "  ", attribute, " "^padding)
+                show(io, Makie.value(value))
+                print(io, "\n")
             end
         end
         println(io, "```")
