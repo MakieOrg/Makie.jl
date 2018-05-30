@@ -103,9 +103,8 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     # Keyword arguments
     help_attributes(io, input; extended = extended)
 
-    println(io, "You can use `$(input)` in the following way:\n")
-    println(io, "example_database($(func))\n")
-    println(io, current_module().example_database(str))
+    println(io, "You can see usage examples of `$func` by running:\n")
+    println(io, "`example_database($func)`\n")
 end
 
 function _help(io::IO, input::Function; extended = false)
