@@ -55,7 +55,7 @@ function optimal_ticks_and_labels(limits, ticks = nothing)
     unscaled_ticks, labels
 end
 
-function range_labels(limits)
+function AbstractPlotting.ticks_and_labels(limits::Tuple{<: Real, <: Real})
     ticks, labels = optimal_ticks_and_labels(limits, nothing)
     zip(ticks, labels)
 end

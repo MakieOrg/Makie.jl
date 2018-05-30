@@ -1,10 +1,7 @@
 using Makie, AbstractPlotting, GeometryTypes
 
 s2 = scatter(linspace(0, 1, 10), rand(10), color = :black)
-s2.plots[1]
 
-# scatter!(s2, s2.plots[2].plots[1][2], raw = true)
-text("halalala")
 using FileIO
 
 save("test.png", Images.clamp01nan.(img));
