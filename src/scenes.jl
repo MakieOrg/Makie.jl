@@ -49,33 +49,6 @@ Base.length(scene::Scene) = length(scene.plots)
 Base.endof(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 
-# This is a bit confusing, since for a plot it returns the attribute from the arguments
-# and not a plot for integer indexing. But, we want to treat plots as "atomic"
-# so from an interface point of view, one should assume that a plot doesn't contain subplots
-# Combined plots break this assumption in some way, but the way to look at it is,
-# that the plots contained in a Combined plot are not subplots, but _are_ actually
-# the plot itself.
-getindex(plot::AbstractPlot, idx::Integer) = plot.output_args[idx]
-
-function getindex(x::P, key::Symbol) where P <: AbstractPlot
-    argnames = argument_names(P, length(x.output_args))
-    idx = findfirst(argnames, key)
-    if idx == 0
-        return x.attributes[key]
-    else
-        x.output_args[idx]
-    end
-end
-
-function setindex!(x::P, value, key::Symbol) where P <: AbstractPlot
-    argnames = argument_names(P, length(x.output_args))
-    idx = findfirst(argnames, key)
-    if idx == 0
-        return x.attributes[key][] = value
-    else
-        return setindex!(x.output_args[idx], value)
-    end
-end
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.

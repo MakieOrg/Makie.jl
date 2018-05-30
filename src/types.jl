@@ -169,6 +169,14 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     plots::Vector{AbstractPlot}
 end
 
+#dict interface
+haskey(x::AbstractPlot, key) = haskey(x.attributes, key)
+delete!(x::AbstractPlot, key) = delete!(x.attributes, key)
+get!(f::Function, x::AbstractPlot, key) = get!(f, x.attributes, key)
+get!(x::AbstractPlot, key, default) = get!(x.attributes, key, default)
+get(f::Function, x::AbstractPlot, key) = get(f, x.attributes, key)
+get(x::AbstractPlot, key, default) = get(x.attributes, key, default)
+
 parent(x::AbstractPlot) = x.parent
 
 basetype(::Type{<: Combined}) = Combined
@@ -188,6 +196,45 @@ plotfunc(f::Function) = f
 plotfunc2type(x::T) where T = plotfunc2type(T)
 plotfunc2type(x::Type{<: AbstractPlot}) = x
 plotfunc2type(f::Function) = Combined{f}
+
+
+# This is a bit confusing, since for a plot it returns the attribute from the arguments
+# and not a plot for integer indexing. But, we want to treat plots as "atomic"
+# so from an interface point of view, one should assume that a plot doesn't contain subplots
+# Combined plots break this assumption in some way, but the way to look at it is,
+# that the plots contained in a Combined plot are not subplots, but _are_ actually
+# the plot itself.
+getindex(plot::AbstractPlot, idx::Integer) = plot.output_args[idx]
+
+function getindex(x::P, key::Symbol) where P <: AbstractPlot
+    argnames = argument_names(P, length(x.output_args))
+    idx = findfirst(argnames, key)
+    if idx == 0
+        return x.attributes[key]
+    else
+        x.output_args[idx]
+    end
+end
+
+function setindex!(x::P, value, key::Symbol) where P <: AbstractPlot
+    argnames = argument_names(P, length(x.output_args))
+    idx = findfirst(argnames, key)
+    if idx == 0
+        return x.attributes[key][] = value
+    else
+        return setindex!(x.output_args[idx], value)
+    end
+end
+function setindex!(x::P, value::Node, key::Symbol) where P <: AbstractPlot
+    println(key)
+    argnames = argument_names(P, length(x.output_args))
+    idx = findfirst(argnames, key)
+    if idx == 0
+        return x.attributes[key] = value
+    else
+        return setindex!(x.output_args[idx], value)
+    end
+end
 
 """
 Billboard attribute to always have a primitive face the camera.

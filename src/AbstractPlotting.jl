@@ -10,7 +10,7 @@ using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
-import Base: getindex, setindex!, push!, append!, parent, scale!
+import Base: getindex, setindex!, push!, append!, parent, scale!, get, get!, delete!, haskey
 
 
 include("utilities/quaternions.jl")

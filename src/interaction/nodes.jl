@@ -11,13 +11,14 @@ end
 const lift = Reactive.map
 
 
-to_node(x::Node) = x
-to_node(x) = Node(x)
+to_node(::Type{T1}, x::Node{T2}, name = :node) where {T1, T2} = signal_convert(Node{T1}, x, name)
+to_node(x::T, name = :node) where T = to_node(T, x)
+to_node(::Type{T}, x, name = :node) where T = to_node(T, Node(T, x, name = string(name)))
 
-signal_convert(::Type{Signal{T1}}, x::Signal{T1}) where T1 = x
-signal_convert(::Type{Signal{T1}}, x::Signal{T2}) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1)
-signal_convert(::Type{Signal{T1}}, x::T2) where {T1, T2} = Signal(T1, convert(T1, x))
-signal_convert(t, x) = x
+signal_convert(::Type{Signal{T1}}, x::Signal{T1}, name = :node) where T1 = x
+signal_convert(::Type{Signal{T1}}, x::Signal{T2}, name = :node) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1, name = string(name))
+signal_convert(::Type{Signal{T1}}, x::T2, name = :node) where {T1, T2} = Node(T1, convert(T1, x), name = string(name))
+signal_convert(t, x, name = :node) = x
 
 node(name, node) = Node(node, name = string(name))
 node(name, node::Node) = map(identity, node, name = string(name))

@@ -247,10 +247,10 @@ function merge_attributes!(input, theme, rest = Attributes(), merged = Attribute
         if haskey(input, key) && haskey(theme, key)
             val = input[key]
             if isa(value(val), Attributes)
-                merged[key] = to_node(Attributes())
+                merged[key] = to_node(Attributes(), key)
                 merge_attributes!(value(val), theme[key][], rest, merged[key][])
             else
-                merged[key] = to_node(val)
+                merged[key] = to_node(Any, val, key)
             end
         elseif haskey(input, key)
             rest[key] = input[key]

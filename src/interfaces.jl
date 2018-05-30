@@ -1,6 +1,6 @@
 not_implemented_for(x) = error("Not implemented for $(typeof(x)). You might want to put:  `using Makie` into your code!")
 
-Theme(; kw_args...) = Attributes(map(kw-> kw[1] => node(kw[1], kw[2]), kw_args))
+Theme(; kw_args...) = Attributes(map(kw-> kw[1] => to_node(Any, kw[2], kw[1]), kw_args))
 default_theme(scene, T) = not_implemented_for(T)
 
 function default_theme(scene)
@@ -176,39 +176,30 @@ end
 
 const atomics = (text, meshscatter, scatter, mesh, linesegments, lines, surface, volume, heatmap, image)
 
-
 """
+        calculated_attributes!(plot::AbstractPlot)
 Fill in values that can only be calculated when we have all other attributes filled
 """
-function calculate_values!(scene::SceneLike, ::Type{T}, attributes, args) where T <: AbstractPlot
-    calculate_values!(scene, attributes, args)
-end
-
-function calculate_values!(scene::SceneLike, attributes, args)
-    if haskey(attributes, :colormap) && value(attributes[:colormap]) != nothing
-        delete!(attributes, :color) # color is overwritten by colormap
-        replace_nothing!(attributes, :colorrange) do
-            map(to_node(args[3])) do arg
-                Vec2f0(extrema(arg))
+function calculated_attributes!(plot::AbstractPlot)
+    if haskey(plot, :colormap) && value(plot[:colormap]) != nothing
+        delete!(plot, :color) # color is overwritten by colormap
+        replace_nothing!(plot, :colorrange) do
+            map(plot[3]) do arg
+                Vec2f0(extrema_nan(arg))
             end
         end
     else
-        delete!(attributes, :colormap)
-        delete!(attributes, :colorrange)
-    end
-    replace_nothing!(attributes, :transformation) do
-        Transformation(scene)
-    end
-    replace_nothing!(attributes, :model) do
-        value(attributes[:transformation]).model
+        delete!(plot, :colormap)
+        delete!(plot, :colorrange)
     end
     return
 end
-function calculate_values!(scene::SceneLike, ::Type{Scatter}, attributes, args)
-    calculate_values!(scene, attributes, args)
-    replace_nothing!(attributes, :marker_offset) do
+function calculated_attributes!(plot::Scatter)
+    # calculate base case
+    invoke(calculated_attributes!, AbstractPlot, plot)
+    replace_nothing!(plot, :marker_offset) do
         # default to middle
-        map(x-> Vec2f0((x .* (-0.5f0))), attributes[:markersize])
+        map(x-> Vec2f0((x .* (-0.5f0))), plot[:markersize])
     end
 end
 
@@ -241,9 +232,13 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         end
     end
     plot_attributes, rest = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
-    calculate_values!(scene, PlotType, plot_attributes, args_converted)
-
-    transformation = pop!(plot_attributes, :transformation)
+    replace_nothing!(plot_attributes, :transformation) do
+        Transformation(scene)
+    end
+    replace_nothing!(plot_attributes, :model) do
+        value(plot_attributes[:transformation]).model
+    end
+    transformation = value(pop!(plot_attributes, :transformation))
     # The argument type of the final plot object is the assumened to stay constant after
     # argument conversion. This might not always hold, but it simplifies
     # things quite a bit
@@ -253,6 +248,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     FinalType = basetype(PlotType){Typ, ArgTyp}
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, arg_nodes, node_args_seperated)
+    calculated_attributes!(plot_obj)
     plot_obj, rest
 end
 

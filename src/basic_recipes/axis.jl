@@ -343,8 +343,6 @@ end
 _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
 
-to_tickrange(x::Tuple) = linspace(x..., 4)
-
 
 function draw_axis(
         textbuffer, linebuffer, _ranges,
@@ -356,7 +354,9 @@ function draw_axis(
     )
     N = 3
     start!(textbuffer); start!(linebuffer)
-    ranges = to_tickrange.(_ranges)
+    ranges_ticks = ticks_and_labels.(_ranges)
+    ranges = map(x-> x.a, ranges_ticks)
+    ticklabels = map(x-> x.b, ranges_ticks)
     mini, maxi = minimum.(ranges), maximum.(ranges)
 
     origin = Point{N, Float32}(mini)
@@ -384,9 +384,11 @@ function draw_axis(
                 tickdir = unit(Vec{N, Float32}, 1)
                 tickdir, Float32(_widths(ranges[1]) + titlegap) * tickdir
             end
-            for tick in drop(range, 1)
+            for (j, tick) in enumerate(range)
+                # skip zero for x
+                (i != 1) && tick == 0.0 && continue
                 startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2) .* scale
-                str = sprint(io-> print(io, round(tick, 2)))
+                str = ticklabels[i][j]
                 push!(
                     textbuffer, str, startpos,
                     color = ttextcolor[i], rotation = trotation[i],

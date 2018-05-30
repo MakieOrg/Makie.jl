@@ -62,7 +62,7 @@ end
 # function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z)
 #     convert_arguments(P, to_range(x), to_range(y), z)
 # end
-
+using IntervalSets
 function convert_arguments(P, data::AbstractMatrix)
     n, m = Float64.(size(data))
     (0.0 .. n, 0.0 .. m, data)
@@ -229,7 +229,7 @@ convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0
 convert_attribute(r::AbstractVector, k::key"rotation") = convert_attribute.(r, k)
 
 
-convert_attribute(x, k::key"colorrange") = Vec2f0(x)
+convert_attribute(x, k::key"colorrange") = (@show x; Vec2f0(x))
 
 convert_attribute(x, k::key"textsize") = Float32(x)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = Float32.(x)

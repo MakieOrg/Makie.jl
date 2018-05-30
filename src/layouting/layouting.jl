@@ -10,6 +10,7 @@ scalarmin(x::AbstractArray, y::AbstractArray) = min.(x, y)
 scalarmin(x, y) = min(x, y)
 
 extrema_nan(itr::Pair) = (itr[1], itr[2])
+extrema_nan(itr::ClosedInterval) = (minimum(itr), maximum(itr))
 
 function extrema_nan(itr)
     s = start(itr)
