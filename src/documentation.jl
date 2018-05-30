@@ -149,6 +149,8 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
     # get list of default attributes to filter out
     # and show only the attributes that are not default attributes
     filter_keys = collect(keys(Makie.default_theme(nothing)))
+    # manually filter out fxaa attribute (since it's internal to OpenGL)
+    push!(filter_keys, Symbol(:fxaa))
 
     # count the character length of the longest key
     longest = 0
