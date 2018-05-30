@@ -76,8 +76,8 @@ This puts entries of a group into one local scope
 """
 function print_code(
         io, database, idx;
-        scope_start = "let",
-        scope_end = "end",
+        scope_start = "begin\n",
+        scope_end = "end\n",
         indent = " "^4,
         resolution = (entry)-> "resolution = (500, 500)",
         outputfile = (entry, ending)-> Pkg.dir("Makie", "docs", "media", string(entry.unique_name, ending))
@@ -94,7 +94,7 @@ function print_code(
         push!(group, database[idx])
     end
     foreach(entry-> println(io, entry.toplevel), group)
-    println(io, scope_start)
+    print(io, scope_start)
     for entry in group
         for line in split(entry.source, "\n")
             line = replace(line, "@resolution", resolution(entry))
@@ -110,7 +110,7 @@ function print_code(
             println(io, indent, line)
         end
     end
-    println(io, scope_end)
+    print(io, scope_end)
     idx + 1
 end
 
