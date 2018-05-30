@@ -37,7 +37,7 @@ const atomic_funcs = (
         linesegments(x, y, z) / linesegments(x, y) / linesegments(positions)
     Plots a line for each pair of points in xyz/positions
 
-    ## Attributes:
+    **Attributes**:
 
     The same as for [`lines`](@ref)
     """,
