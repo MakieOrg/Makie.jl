@@ -313,12 +313,14 @@ function meshparticle(p, s, data)
             )
         )
     end
-    if position != nothing
-        data[:intensity] = intensity_convert_tex(intensity, position)
-        data[:len] = const_lift(length, position)
-    else
-        data[:intensity] = intensity_convert_tex(intensity, position_x)
-        data[:len] = const_lift(length, position_x)
+    if value(intensity) != nothing
+        if value(position) != nothing
+            data[:intensity] = intensity_convert_tex(intensity, position)
+            data[:len] = const_lift(length, position)
+        else
+            data[:intensity] = intensity_convert_tex(intensity, position_x)
+            data[:len] = const_lift(length, position_x)
+        end
     end
     data
 end

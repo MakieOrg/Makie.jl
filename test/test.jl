@@ -1,11 +1,13 @@
-using Makie, GeometryTypes, Colors
+using Makie, GeometryTypes, Colors, AbstractPlotting
 scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
     marker = [:x, :circle, :cross]
 )
 
-GLVisualize.visualize(("helo", rand(Point3f0, length("helo"))))
+meshscatter(rand(100), rand(100), rand(100))
+heatmap(rand(100, 100))
 
+x = zip(1:10, ["23", "232", "233"])
 scene[:theme][:scatter][:marker] = :cross
 center!(scene)
 

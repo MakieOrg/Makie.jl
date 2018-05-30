@@ -26,6 +26,7 @@ import Base: push!, isopen
 include("scene.jl")
 include("makie_recipes.jl")
 include("argument_conversion.jl")
+include("tickranges.jl")
 include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")
 include("output.jl")
