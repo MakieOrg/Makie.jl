@@ -25,17 +25,16 @@
 Maps the input of a Type name to its cooresponding function.
 """
 function to_func(Typ::Type{T}) where T <: AbstractPlot
-    #TODO: this is not working yet, but will become deprecated in the new branch
-    sym = Typ.name.mt.name
-    string(sym) |> lowercase |> Symbol
+    sym = Typ.body.name.name
+    sym = string(sym) |> lowercase |> Symbol
     f = getfield(current_module(), sym)
 end
 
-# hard-coding for the case of scatter
-function to_func(Typ::Type{T}) where T <: AbstractPlot
-    sym = Symbol("scatter")
-    f = getfield(current_module(), sym)
-end
+# # hard-coding for the case of scatter
+# function to_func(Typ::Type{T}) where T <: AbstractPlot
+#     sym = Symbol("scatter")
+#     f = getfield(current_module(), sym)
+# end
 
 to_func(func::Function) = func
 
