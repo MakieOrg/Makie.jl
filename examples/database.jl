@@ -48,6 +48,7 @@ function example_database(input_tags...; title = nothing, author = nothing) # --
 end
 
 example_database(input::Function) = example_database(to_string(input))
+example_database(input::Vararg{Function,N}) where {N} = example_database(map(x -> to_string(x), inp)...)
 
 database = CellEntry[]
 globaly_shared_code = String[]
