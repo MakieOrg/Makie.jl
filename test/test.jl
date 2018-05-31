@@ -1,21 +1,51 @@
-using Makie, GeometryTypes, Colors, AbstractPlotting
+using Makie
 scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
     marker = [:x, :circle, :cross]
 )
 
 meshscatter(rand(100), rand(100), rand(100))
+
 heatmap(rand(100, 100))
 
-x = zip(1:10, ["23", "232", "233"])
-scene[:theme][:scatter][:marker] = :cross
-center!(scene)
+scene = contour(-1..1, -1..1, rand(100, 100))
 
-x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
-    linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
+function draw_all(screen, scene::Scene)
+    Makie.center!(scene)
+    for elem in scene.plots
+        Makie.CairoBackend.cairo_draw(screen, elem)
+    end
+    foreach(x->draw_all(screen, x), scene.children)
+    Makie.CairoBackend.cairo_finish(screen)
 end
-push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
-center!(scene)
+
+cs = Makie.CairoBackend.CairoScreen(wf, joinpath(homedir(), "Desktop", "test.svg"))
+draw_all(cs, wf)
+
+surface(rand(100, 100))
+surface(-1..1, -1..1, rand(100, 100))
+surface(linspace(-1, 1, 100), linspace(-1, 1, 100) .+ (rand(100) .* 0.1), rand(100, 100))
+N = 40
+r = linspace(-1, 1, N)
+x = map(hcat(repeated(r, N)...)) do x
+   x + (rand() * 0.01)
+end
+y = vcat(repeated(r', N)...)
+surface(x, y, rand(N, N))
+surface(x, y, rand(N, N) * 0.1, color = rand(RGBAf0, N, N))
+
+
+wf = wireframe(linspace(-1, 1, 100), linspace(-1, 1, 100) .+ (rand(100) .* 0.1), rand(100, 100))
+wf = wireframe(-1..1, -1..1, rand(100, 100))
+wf = wireframe(Sphere(Point3f0(0), 1f0))
+wf = wireframe(x, y, rand(N, N))
+
+scene = Scene()
+x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
+    linesegments!(scene, linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
+end
+push!(x, scatter!(scene, linspace(1, 5, 100), rand(100), rand(100)))
+scene
 
 l = Makie.legend(x, ["attribute $i" for i in 1:4])
 io = VideoStream(scene, homedir()*"/Desktop")
