@@ -98,33 +98,35 @@ function contourplot(scene::SceneLike, ::Type{Contour}, attributes::Attributes, 
     plot!(scene, c, rest)
 end
 
-function contourplot(scene::SceneLike, ::Type{T}, attributes::Attributes, args...) where T
-    attributes, rest = merged_get!(:contour, scene, attributes) do
-        default_theme(scene, Contour)
-    end
-    x, y, z = convert_arguments(Contour, node.((:x, :y, :z), args)...)
-    contourplot = Combined{:Contour}(scene, attributes, x, y, z)
-    calculate_values!(contourplot, Contour, attributes, (x, y, z))
-    t = eltype(z)
-    if value(attributes[:fillrange])
-        attributes[:interpolate] = true
+using AbstractPlotting: lift
+
+function plot!(plot::Contour)
+    x, y, z = plot[1:3]
+    if value(plot[:fillrange])
+        plot[:interpolate] = true
         if T == Contour
             # TODO normalize linewidth for heatmap
-            attributes[:linewidth] = map(x-> x ./ 10f0, attributes[:linewidth])
-            heatmap!(contourplot, attributes, x, y, z)
+            plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
+            heatmap!(plot, plot, x, y, z)
         else
-            surface!(contourplot, attributes, x, y, z)
+            surface!(plot, plot, x, y, z)
         end
     else
-        levels = round(Int, value(attributes[:levels]))
-        contours = Main.Contour.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
-        cols = resampled_colors(attributes, levels)
-        result, colors = contourlines(T, contours, cols)
-        attributes[:color] = colors
-        lines!(contourplot, merge(attributes, rest), result)
+        result = lift(x, y, z, plot[:levels]) do x, y, z, levels
+            t = eltype(z)
+            levels = round(Int, levels)
+            contours = Main.Contour.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
+            cols = AbstractPlotting.resampled_colors(plot, levels)
+            contourlines(Contour, contours, cols)
+        end
+        lines!(plot, lift(first, result); color = lift(last, result), raw = true)
     end
-    plot!(scene, contourplot, rest)
+    plot
 end
+function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    AbstractPlotting._boundingbox(value.((x[1], x[2]))...)
+end
+
 
 @recipe(Poly) do scene
     Theme(

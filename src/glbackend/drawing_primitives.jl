@@ -16,12 +16,13 @@ function to_glvisualize_key(k)
 end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
+
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
-            gl_value = map(val-> convert_attribute(val, Key{key}(), Key{AbstractPlotting.plotkey(x)}()), value)
+            gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end
         robj = robj_func(Dict{Symbol, Any}(gl_attributes))
@@ -34,16 +35,41 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     end
 end
 
+index1D(x::SubArray) = parentindexes(x)[1]
+
+handle_view(array::AbstractVector, attributes) = array
+handle_view(array::Signal, attributes) = array
+
+function handle_view(array::SubArray, attributes)
+    A = parent(array)
+    indices = index1D(array)
+    attributes[:indices] = indices
+    A
+end
+function handle_view(array::Signal{T}, attributes) where T <: SubArray
+    A = lift(parent, array)
+    indices = lift(index1D, array)
+    attributes[:indices] = indices
+    A
+end
+
+function lift_convert(key, value, plot)
+    lift(value) do value
+         convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
+     end
+end
+
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        marker = pop!(gl_attributes, :marker)
+        marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
         # TODO either stop using bb's from glvisualize
         # or don't set them randomly to nothing
         gl_attributes[:boundingbox] = nothing
-        visualize((value(marker), x[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        positions = handle_view(x[1], gl_attributes)
+        visualize((value(marker), positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
 
@@ -53,7 +79,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        visualize(x[1], Style(:lines), data).children[]
+        positions = handle_view(x[1], data)
+        visualize(positions, Style(:lines), data).children[]
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
@@ -61,7 +88,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        visualize(x[1], Style(:linesegment), data).children[]
+        positions = handle_view(x[1], data)
+        visualize(positions, Style(:linesegment), data).children[]
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
@@ -234,11 +262,11 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
             # delete nothing
             delete!(gl_attributes, :image)
         end
-        args = x.output_args
+        args = x[1:3]
         if all(v-> value(v) isa AbstractMatrix, args)
-            visualize(x[], Style(:surface), gl_attributes).children[]
+            visualize(args, Style(:surface), gl_attributes).children[]
         else
-            gl_attributes[:ranges] = value.(args[1:2])
+            gl_attributes[:ranges] = to_range.(value.(args[1:2]))
             visualize(args[3], Style(:surface), gl_attributes).children[]
         end
     end

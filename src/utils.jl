@@ -46,8 +46,7 @@ function close2square(n::Real)
     # Take the largest factor in the list d
     (candidates[end], div(n, candidates[end]))
 end
-to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
-to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)
+
 same_length_array(array, value::NativeFont) = Iterators.repeated(value, length(array))
 function extrema_nan(x::ClosedInterval)
     (minimum(x), maximum(x))
@@ -63,5 +62,5 @@ function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
     return true
 end
 
-to_range(x) = optimal_ticks_and_labels((minimum(x), maximum(x)))
-to_range(x::VecTypes{2}) = optimal_ticks_and_labels((x[1], x[2]))
+to_range(x::ClosedInterval) = (minimum(x), maximum(x))
+to_range(x::VecTypes{2}) = x

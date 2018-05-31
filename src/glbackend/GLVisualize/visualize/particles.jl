@@ -565,16 +565,17 @@ function _default(main::Tuple{TOrSignal{S}, P}, s::Style, data::Dict) where {S <
     data[:position] = main[2]
     _default(main[1], s, data)
 end
+import ..Makie: get_texture!, to_font, glyph_uv_width!, glyph_scale!
 
 function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractString
     @gen_defaults! data begin
-        relative_scale  = 4mm #
+        relative_scale  = 4 #
         start_position  = Point2f0(0)
         atlas           = get_texture_atlas()
-        distancefield   = atlas.images
+        distancefield   = get_texture!(atlas)
         stroke_width    = 0f0
         glow_width      = 0f0
-        font            = defaultfont()
+        font            = to_font("default")
         scale_primitive = true
         position        = const_lift(calc_position, main, start_position, relative_scale, font, atlas)
         offset          = const_lift(calc_offset, main, relative_scale, font, atlas)

@@ -63,36 +63,58 @@ function project_scale(scene::Scene, s)
     p .* scene.camera.resolution[]
 end
 
+function draw_segment(scene, ctx, point::Point, model, connect, do_stroke, c, linewidth, linestyle, primitive)
+    pos = project_position(scene, point, model)
+    function stroke()
+        Cairo.set_line_width(ctx, Float64(linewidth))
+        Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
+        if linestyle != nothing
+            #set_dash(ctx, linestyle, 0.0)
+        end
+        Cairo.stroke(ctx)
+    end
+    if !all(isfinite.(pos))
+        connect[] = false
+    else
+        if connect[]
+            Cairo.line_to(ctx, pos[1], pos[2])
+            isa(primitive, LineSegments) && (connect[] = false)
+        end
+        if do_stroke[]
+            stroke(); do_stroke[] = false; connect[] = true
+            Cairo.move_to(ctx, pos[1], pos[2])
+        else
+            do_stroke[] = true
+        end
+    end
+end
+
+function draw_segment(scene, ctx, segment::Tuple{<: Point, <: Point}, model, connect, do_stroke, c, linewidth, linestyle, primitive)
+    A = project_position(scene, segment[1], model)
+    B = project_position(scene, segment[2], model)
+    function stroke()
+        Cairo.set_line_width(ctx, Float64(linewidth))
+        Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
+        if linestyle != nothing
+            #set_dash(ctx, linestyle, 0.0)
+        end
+        Cairo.stroke(ctx)
+    end
+    Cairo.move_to(ctx, A[1], A[2])
+    Cairo.line_to(ctx, B[1], B[2])
+    stroke()
+end
+
 function cairo_draw(screen::CairoScreen, primitive::Union{Lines, LineSegments})
     scene = screen.scene
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
-    pos = project_position(scene, first(positions), model)
-    Cairo.move_to(ctx, pos[1], pos[2])
     N = length(positions)
-    last = pos
+    connect = Ref(true); do_stroke = Ref(true)
     broadcast_foreach(1:N, positions, fields...) do i, point, c, linewidth, linestyle
-        pos = project_position(scene, point, model)
-        function stroke()
-            Cairo.set_line_width(ctx, Float64(linewidth))
-            Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
-            if linestyle != nothing
-                set_dash(ctx, linestyle, 0.0)
-            end
-            Cairo.stroke(ctx)
-        end
-        if isa(primitive, Lines)
-            Cairo.line_to(ctx, pos[1], pos[2])
-            iseven(i) && stroke()
-            Cairo.move_to(ctx, pos[1], pos[2])
-        elseif iseven(i)
-            Cairo.line_to(ctx, pos[1], pos[2])
-            stroke()
-        else
-            Cairo.move_to(ctx, pos[1], pos[2])
-        end
+        draw_segment(scene, ctx, point, model, connect, do_stroke, c, linewidth, linestyle, primitive)
     end
     nothing
 end
@@ -161,10 +183,10 @@ function fontname(x::NativeFont)
 end
 
 import ..GLVisualize
-
+using AbstractPlotting
 function fontscale(scene, c, font, s)
     atlas = GLVisualize.get_texture_atlas()
-    s = (s ./ atlas.scale[GLVisualize.glyph_index!(atlas, c, font)]) ./ 0.02
+    s = (s ./ atlas.scale[AbstractPlotting.glyph_index!(atlas, c, font)]) ./ 0.02
     project_scale(scene, s)
 end
 
@@ -172,12 +194,12 @@ function cairo_draw(screen::CairoScreen, primitive::Text)
     scene = screen.scene
     ctx = screen.context
     @get_attribute(primitive, (textsize, color, font, align, rotation, model))
-    txt = value(primitive.args[1])
+    txt = value(primitive[1])
     position = primitive.attributes[:position][]
     N = length(txt)
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
-        pos = project_position(scene, Vec2f0(p), model)
+        pos = project_position(scene, p, model)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
 
