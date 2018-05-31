@@ -25,7 +25,7 @@ end
 
 
 """
-    example_database(input_tags...; title = nothing, author = nothing)
+    find_indices(input_tags...; title = nothing, author = nothing)
 
 Returns the indices for the entries in examples database that match the input
 search pattern.
@@ -33,10 +33,10 @@ search pattern.
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
 """
-function example_database(input_tags...; title = nothing, author = nothing) # --> return an array cell entries
+function find_indices(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
     indices = find(database) do entry
         # find tags
-        tags_found = all(tag -> string(tag) in entry.tags, input_tags) # only works with strings inputs right now
+        tags_found = all(tags -> string(tags) in entry.tags, input_tags)
         # find author, if nothing input is given, then don't filter
         author_found = (author == nothing) || (entry.author == string(author))
         # find title, if nothing input is given, then don't filter
@@ -44,12 +44,27 @@ function example_database(input_tags...; title = nothing, author = nothing) # --
         # boolean to return the result
         tags_found && author_found && title_found
     end
-    return database[indices]
 end
 
-example_database(input::Function) = example_database(to_string(input))
-example_database(input::Vararg{Function,N}) where {N} = example_database(map(x -> to_string(x), inp)...)
+find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
+find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
 
+
+"""
+    example_database(input_tags...; title = nothing, author = nothing)
+
+Returns the entries in examples database that match the input search pattern.
+
+`input_tags` are plot tags to be searched for. `title` and `author` are optional
+and are used to filter the search results by title and author.
+"""
+function example_database(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
+    indices = find_indices(input_tags...; title = title, author = author)
+    database[indices]
+end
+
+example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)
+example_database(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = example_database(to_string.(input)...; title = title, author = author)
 database = CellEntry[]
 globaly_shared_code = String[]
 const NO_GROUP = 0
