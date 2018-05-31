@@ -1,7 +1,12 @@
 # Functions
 
-Primitive plotting functions.
-These are the most atomic operations from which one can stack together more complex plots
+The follow document lists the primitive plotting functions from `basic_drawing.jl`, and their usage.
+These are the most atomic operations which one can stack together to form more complex plots.
+
+For styling options of each function, see the keyword arguments list for each function -- consult the [Help functions](@ref).
+
+For a general overview of styling and to see the default parameters, refer to the chapter [Themes](@ref).
+
 
 
 ## Scatter
