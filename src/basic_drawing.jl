@@ -1,41 +1,41 @@
 const atomic_funcs = (
     :contour => """
-        contour(x, y, z)
-    Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
+        `contour(x, y, z)`
+    Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix.
     """,
     :contour3d => """
-        contour3d(x, y, z)
+        `contour3d(x, y, z)`
     Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
-    with z- elevation for each level
+    with z- elevation for each level.
     """,
     :image => """
-        image(x, y, image) / image(image)
+        `image(x, y, image)` / `image(image)`
     Plots an image on range x, y (defaults to dimensions)
     """,
     # could be implemented via image, but might be optimized specifically by the backend
     :heatmap => """
-        heatmap(x, y, values) / heatmap(values)
-    Plots a image on heatmap x, y (defaults to dimensions)
+        `heatmap(x, y, values)` or `heatmap(values)`
+    Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
     """,
     :volume => """
-        volume(volume_data)
-    Plots a volume
+        `volume(volume_data)`
+    Plots a volume.
     """,
     # alternatively, mesh2d?
     :poly => """
 
     """,
     :surface => """
-        surface(x, y, z)
-    Plots a surface, where x y z are supposed to lie on a grid
+        `surface(x, y, z)`
+    Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
     """,
     :lines => """
-        lines(x, y, z) / lines(x, y) / lines(positions)
-    Plots a connected line for each element in xyz/positions
+        `lines(x, y, z)` / `lines(x, y)` / or `lines(positions)`
+    Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
     """,
     :linesegments => """
-        linesegments(x, y, z) / linesegments(x, y) / linesegments(positions)
-    Plots a line for each pair of points in xyz/positions
+        `linesegments(x, y, z)` / `linesegments(x, y)` / `linesegments(positions)`
+    Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 
     **Attributes**:
 
@@ -43,34 +43,33 @@ const atomic_funcs = (
     """,
     # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
     :mesh => """
-        mesh(x, y, z) / mesh(mesh_object) / mesh(x, y, z, faces) / mesh(xyz, faces)
-    Plots a 3D mesh
+        `mesh(x, y, z)`, `mesh(mesh_object)`, `mesh(x, y, z, faces)`, or `mesh(xyz, faces)`
+    Plots a 3D mesh.
+    TODO: what about the mesh examples, for example? Should we put them here or in library?
     """,
     :scatter => """
-        scatter(x, y, z) / scatter(x, y) / scatter(positions)
-    Plots a marker for each element in xyz/positions
+        `scatter(x, y, z)` / `scatter(x, y)` / `scatter(positions)`
+    Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
     """,
     :meshscatter => """
-        meshscatter(x, y, z) / meshscatter(x, y) / meshscatter(positions)
-    Plots a mesh for each element in xyz/positions
+        `meshscatter(x, y, z)` / `meshscatter(x, y)` / `meshscatter(positions)`
+    Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
     """,
     # :text => """
     # """,
     # Doesn't really need to be an atomic, could be implemented via lines
     :wireframe => """
-        wireframe(x, y, z) / wireframe(positions) / wireframe(mesh)
-    Draws a wireframe either interpreted as a surface or mesh
+        `wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`
+    Draws a wireframe, either interpreted as a surface or as a mesh.
     """,
 
     :text => """
-        text(string)
-
-    Plots a text
+        `text(string)`
+    Plots a text.
     """,
     :annotations => """
-        annotations(strings::Vector{String}, positions::Vector{Point})
-
-    Plots an array of texts at each position in `positions`
+        `annotations(strings::Vector{String}, positions::Vector{Point})`
+    Plots an array of texts at each position in `positions`.
     """
 )
 struct Billboard end
