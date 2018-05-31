@@ -20,7 +20,7 @@ function Base.show(io::IO, entry::CellEntry)
     println(io, "```")
     println(io, entry.source)
     println(io, "```")
-    println(io, "_______________________________")
+    println(io, "_______________________________\n")
 end
 
 
