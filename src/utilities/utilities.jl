@@ -35,7 +35,7 @@ end
 Resample the color attribute from `attributes`. Resamples `:colormap` if present,
 or repeats `:color`.
 """
-function resampled_colors(attributes::Attributes, levels::Integer)
+function resampled_colors(attributes, levels::Integer)
     cols = if haskey(attributes, :color)
         c = get_attribute(attributes, :color)
         repeated(c, levels)
@@ -286,3 +286,7 @@ struct Key{K} end
 macro key_str(arg)
     :(Key{$(QuoteNode(Symbol(arg)))})
 end
+
+
+to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
+to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)

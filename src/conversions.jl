@@ -1,17 +1,3 @@
-"""
-    convert_arguments(::Type{PlotType}, args...) where PlotType
-
-Converts the arguments to a plot function to a homogenous final type.
-Can be specialized by plotting type
-"""
-function convert_arguments(P::Type, args::Vararg{Signal, N}) where N
-    args_c = map(args...) do args...
-        convert_arguments(P, args...)
-    end
-    ntuple(Val{N}) do i
-        map(x-> x[i], args_c)
-    end
-end
 
 # a few shortcut functions to make attribute conversion easier
 @inline function get_attribute(dict, key)
@@ -33,12 +19,17 @@ convert_attribute(x, key::Key) = x
 # By default, don't apply any conversions
 convert_arguments(P, args...) = args
 
-convert_arguments(P, y::RealVector) = convert_arguments(0 .. length(y), y)
+
+convert_arguments(P, y::RealVector) = convert_arguments(1 .. length(y), y)
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
-convert_arguments(P, x::GeometryPrimitive) = (decompose(Point, x),)
+convert_arguments(::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x::GeometryPrimitive) = (decompose(Point, x),)
+function convert_arguments(P::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x::Rect)
+    # TODO fix the order of decompose
+    convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
+end
 
 
 """
@@ -97,10 +88,6 @@ function convert_arguments(P, x::AbstractVector{T1}, y::AbstractVector{T2}, f::F
 end
 
 
-function convert_arguments(P, x::Rect)
-    # TODO fix the order of decompose
-    convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
-end
 
 
 convert_arguments(::Type{Mesh}, m::AbstractMesh) = (m,)
@@ -229,7 +216,7 @@ convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0
 convert_attribute(r::AbstractVector, k::key"rotation") = convert_attribute.(r, k)
 
 
-convert_attribute(x, k::key"colorrange") = (@show x; Vec2f0(x))
+convert_attribute(x, k::key"colorrange") = Vec2f0(x)
 
 convert_attribute(x, k::key"textsize") = Float32(x)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = Float32.(x)
@@ -376,3 +363,109 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         error("$value not a valid volume algorithm. Needs to be in $(keys(vals))")
     end, k)
 end
+
+
+
+const _marker_map = Dict(
+    :rect => '■',
+    :star5 => '★',
+    :diamond => '◆',
+    :hexagon => '⬢',
+    :cross => '✚',
+    :xcross => '❌',
+    :utriangle => '▲',
+    :dtriangle => '▼',
+    :ltriangle => '◀',
+    :rtriangle => '▶',
+    :pentagon => '⬟',
+    :octagon => '⯄',
+    :star4 => '✦',
+    :star6 => '🟋',
+    :star8 => '✷',
+    :vline => '┃',
+    :hline => '━',
+    :+ => '+',
+    :x => 'x',
+    :circle => '●'
+)
+
+
+"""
+    available_marker_symbols()
+Displays all available marker symbols
+"""
+function available_marker_symbols()
+    println("Marker Symbols:")
+    for (k, v) in _marker_map
+        println("    ", k, " => ", v)
+    end
+end
+
+
+
+"""
+    to_spritemarker(b, x::Circle)
+`GeometryTypes.Circle(Point2(...), radius)`
+"""
+to_spritemarker(x::Circle) = x
+
+"""
+    to_spritemarker(b, ::Type{Circle})
+`Type{GeometryTypes.Circle}`
+"""
+to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
+"""
+    to_spritemarker(b, ::Type{Rectangle})
+`Type{GeometryTypes.Rectangle}`
+"""
+to_spritemarker(::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(x::HyperRectangle) = x
+"""
+    to_spritemarker(b, marker::Char)
+Any `Char`, including unicode
+"""
+to_spritemarker(marker::Char) = marker
+
+"""
+Matrix of AbstractFloat will be interpreted as a distancefield (negative numbers outside shape, positive inside)
+"""
+to_spritemarker(marker::Matrix{<: AbstractFloat}) = Float32.(marker)
+
+"""
+Any AbstractMatrix{<: Colorant} or other image type
+"""
+to_spritemarker(marker::Image) = to_image(marker)
+
+"""
+A `Symbol` - Available options can be printed with `available_marker_symbols()`
+"""
+function to_spritemarker(marker::Symbol)
+    if haskey(_marker_map, marker)
+        return to_spritemarker(_marker_map[marker])
+    else
+        warn("Unsupported marker: $marker, using ● instead")
+        return '●'
+    end
+end
+
+
+to_spritemarker(marker::String) = marker
+to_spritemarker(marker::AbstractVector{Char}) = String(marker)
+
+"""
+Vector of anything that is accepted as a single marker will give each point it's own marker.
+Note that it needs to be a uniform vector with the same element type!
+"""
+function to_spritemarker(marker::AbstractVector)
+    println(typeof(marker))
+    marker = map(marker) do sym
+        to_spritemarker(sym)
+    end
+    if isa(marker, AbstractVector{Char})
+        String(marker)
+    else
+        marker
+    end
+end
+
+convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)

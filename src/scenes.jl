@@ -269,14 +269,11 @@ end
 
 function real_boundingbox(scene::Scene)
     bb = AABB{Float32}()
-    for screen in scene.current_screens
-        for plot in flatten_combined(plots_from_camera(scene))
-            id = object_id(plot)
-            haskey(screen.cache, id) || continue
-            robj = screen.cache[id]
-            bb == AABB{Float32}() && (bb = value(robj.boundingbox))
-            bb = union(bb, value(robj.boundingbox))
-        end
+    for plot in flatten_combined(plots_from_camera(scene))
+        bb1 = data_limits(plot)
+        bb1 = modelmatrix(plot)[] * bb1
+        bb == AABB{Float32}() && (bb = bb1)
+        bb = union(bb, bb1)
     end
     bb
 end

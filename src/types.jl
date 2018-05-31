@@ -193,9 +193,9 @@ plotfunc(::Type{<: AbstractPlot{Func}}) where Func = Func
 plotfunc(::T) where T <: AbstractPlot = plotfunc(T)
 plotfunc(f::Function) = f
 
-plotfunc2type(x::T) where T = plotfunc2type(T)
-plotfunc2type(x::Type{<: AbstractPlot}) = x
-plotfunc2type(f::Function) = Combined{f}
+func2type(x::T) where T = func2type(T)
+func2type(x::Type{<: AbstractPlot}) = x
+func2type(f::Function) = Combined{f}
 
 
 # This is a bit confusing, since for a plot it returns the attribute from the arguments
@@ -205,6 +205,12 @@ plotfunc2type(f::Function) = Combined{f}
 # that the plots contained in a Combined plot are not subplots, but _are_ actually
 # the plot itself.
 getindex(plot::AbstractPlot, idx::Integer) = plot.output_args[idx]
+
+function setindex!(plot::AbstractPlot, value, idx::Integer)
+     plot.input_args[idx][] = value
+ end
+
+getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.output_args[idx]
 
 function getindex(x::P, key::Symbol) where P <: AbstractPlot
     argnames = argument_names(P, length(x.output_args))

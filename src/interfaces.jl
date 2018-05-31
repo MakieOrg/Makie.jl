@@ -174,7 +174,11 @@ Plots a text
     )
 end
 
-const atomics = (text, meshscatter, scatter, mesh, linesegments, lines, surface, volume, heatmap, image)
+const atomic_function_symbols = (
+        :text, :meshscatter, :scatter, :mesh, :linesegments,
+        :lines, :surface, :volume, :heatmap, :image
+)
+const atomic_functions = getfield.(AbstractPlotting, atomic_function_symbols)
 
 """
         calculated_attributes!(plot::AbstractPlot)
@@ -194,9 +198,10 @@ function calculated_attributes!(plot::AbstractPlot)
     end
     return
 end
+
 function calculated_attributes!(plot::Scatter)
     # calculate base case
-    invoke(calculated_attributes!, AbstractPlot, plot)
+    invoke(calculated_attributes!, Tuple{AbstractPlot}, plot)
     replace_nothing!(plot, :marker_offset) do
         # default to middle
         map(x-> Vec2f0((x .* (-0.5f0))), plot[:markersize])
@@ -306,4 +311,13 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     # call the assembly recipe, that also adds this to the scene
     # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
     plot!(scene, plot_object, non_plot_kwargs)
+end
+
+function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
+    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
+    plot_object, non_plot_kwargs = PlotType(scene, attributes, args)
+    # call user defined overload to fill the plot type
+    plot!(plot_object)
+    push!(scene.plots, plot_object)
+    scene
 end

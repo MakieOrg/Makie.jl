@@ -1,5 +1,14 @@
-function data_limits(x)
-    FRect3D(x[1][])
+const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
+
+
+data_limits(x::Plot{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(value(x[1]))
+
+function data_limits(x::Plot{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
+    _boundingbox(value.(x[1:3])...)
+end
+
+function data_limits(x::Plot{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
+    _boundingbox(value.(x[1:2])...)
 end
 
 _isfinite(x) = isfinite(x)
@@ -37,16 +46,15 @@ function _boundingbox(x, y, z = (0=>0))
     FRect3D(mini, maxi .- mini)
 end
 
-function data_limits(x::Union{Heatmap, Image})
+const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
+function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     _boundingbox(value.((x[1], x[2]))...)
 end
 
 function data_limits(x::Volume)
     _boundingbox(value.((x[1], x[2], x[3]))...)
 end
-data_limits(x::Union{Surface}) = _boundingbox(value.(x.output_args)...)
 
-data_limits(x::Mesh) = FRect3D(value(x[1]))
 
 
 function data_limits(x::Text)
@@ -60,7 +68,11 @@ function data_limits(x::Text)
     else
         error("Incompatible sizes found: $(length(textsize)) && $(length(txt)) && $(length(position))")
     end
-    FRect3D(union(HyperRectangle(positions .+ scales), HyperRectangle(positions)))
+    pos_scale = map(scales, positions) do s, p
+        sn = to_ndim(typeof(p), s, 0)
+        sn .+ p
+    end
+    FRect3D(union(HyperRectangle(pos_scale), HyperRectangle(positions)))
 end
 
 function data_limits(x::Combined{:Annotations})

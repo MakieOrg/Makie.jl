@@ -44,8 +44,6 @@ function plot!(arrowplot::Arrows)
     )
 end
 
-
-
 @recipe(Wireframe) do scene
     default_theme(scene, LineSegments)
 end
@@ -55,35 +53,41 @@ function argument_conversion(::Type{Wireframe}, x::AbstractVector, y::AbstractVe
 end
 
 
+xvector(x::AbstractVector, len) = x
+xvector(x::ClosedInterval, len) = linspace(minimum(x), maximum(x), len)
+xvector(x::AbstractMatrix, len) = x
+
+yvector(x, len) = xvector(x, len)'
+yvector(x::AbstractMatrix, len) = x
+
 """
     wireframe(x, y, z) / wireframe(positions) / wireframe(mesh)
 Draws a wireframe either interpreted as a surface or mesh
 """
-function plot!(plot::Wireframe{Tuple{T, T, T}}) where T <: AbstractVector{<: VecTypes}
-    points_faces = lift(getindex.(plot, (:x, :y, :z))) do x, y, z
-        points = argument_convert(vec(x), vec(y), vec(z))
-        NF = (length(z) * 4) - ((size(z, 1) + size(z, 2)) * 2)
-        faces = Vector{Int}(NF)
-        idx = (i, j) -> sub2ind(size(z), i, j)
-        li = 1
-        for i = 1:size(z, 1), j = 1:size(z, 2)
-            if i < size(z, 1)
-                faces[li] = idx(i, j);
-                faces[li + 1] = idx(i + 1, j)
-                li += 2
-            end
-            if j < size(z, 2)
-                faces[li] = idx(i, j)
-                faces[li + 1] = idx(i, j + 1)
-                li += 2
-            end
-        end
+function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
+    points_faces = lift(plot[1:3]...) do x, y, z
+        T = eltype(z); M, N = size(z)
+        points = vec(Point3f0.(xvector(x, M), yvector(y, N), z))
+        # Connect the vetices with faces, as one would use for a 2D Rectangle
+        # grid with M,N grid points
+        faces = decompose(Face{2, GLIndex}, SimpleRectangle(0, 0, 1, 1), (M, N))
         view(points, faces)
     end
-    linesegment!(plot, plot, points_faces)
+    linesegments!(plot, Theme(plot), points_faces)
 end
 
-
+Theme(x::AbstractPlot) = x.attributes
+# function wireframe(
+#         geometry, data::Dict
+#     )
+#     points = const_lift(geometry) do g
+#         decompose(Point3f0, g) # get the point representation of the geometry
+#     end
+#     # Get line index representation
+#     indices = decompose(Face{2, GLIndex}, value(geometry))
+#     data[:indices] = reinterpret(GLuint, indices)
+#     _default(points, style"linesegment"(), data)
+# end
 function plot!(plot::Wireframe{Tuple{T}}) where T
     points = lift(plot[1]) do g
         # get the point representation of the geometry
@@ -91,7 +95,7 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
         points = decompose(Point3f0, g)
         view(points, indices)
     end
-    linesegment!(plot, plot, points)
+    linesegments!(plot, Theme(plot), points)
 end
 
 
@@ -127,7 +131,7 @@ function plot!(plot::StreamLines{<: AbstractVector{T}}) where T
         end
         linebuffer
     end
-    linesegments!(plot, plot, lines)
+    linesegments!(plot, Theme(plot), lines)
 end
 
 @recipe(VolumeSlices, x, y, z, volume) do scene
@@ -352,4 +356,31 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
         end
     end
     scene
+end
+
+
+
+function arc(pmin, pmax, a1, a2)
+
+    xy = Vector{Point2f0}(361)
+
+    xcenter = (x_lin(xmin) + x_lin(xmax)) / 2.0;
+    ycenter = (y_lin(ymin) + y_lin(ymax)) / 2.0;
+    width = abs(x_lin(xmax) - x_lin(xmin)) / 2.0;
+    height = abs(y_lin(ymax) - y_lin(ymin)) / 2.0;
+
+    start = min(a1, a2);
+    stop = max(a1, a2);
+    start += (stop - start) / 360 * 360;
+
+    n = 0;
+    for a in start:stop
+        x[n] = x_log(xcenter + width  * cos(a * M_PI / 180));
+        y[n] = y_log(ycenter + height * sin(a * M_PI / 180));
+        n += 1
+    end
+    if (n > 1)
+        lines(x, y)
+    end
+
 end

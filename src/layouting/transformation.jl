@@ -77,9 +77,7 @@ end
 
 
 transformation(scene::Scene) = scene.transformation
-transformation(scene::Combined) = scene.transformation
-transformation(scene::SceneLike) = transformation(scene.parent)
-transformation(plot::AbstractPlot) = plot[:transformation]
+transformation(plot::AbstractPlot) = plot.transformation
 
 scale(scene::Transformable) = transformation(scene).scale
 scale!(scene::Transformable, s) = (scale(scene)[] = to_ndim(Vec3f0, Float32.(s), 1))
@@ -141,4 +139,4 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
     scene
 end
 
-modelmatrix(x::SceneLike) = transformation(x).model
+modelmatrix(x) = transformation(x).model

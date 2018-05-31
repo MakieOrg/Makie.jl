@@ -1,8 +1,7 @@
 __precompile__()
 module AbstractPlotting
 
-using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors
-
+using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
 # Text related packages
 using Packing
 using SignedDistanceFields
@@ -35,10 +34,10 @@ include("camera/camera3d.jl")
 
 # layoting of plots
 include("layouting/transformation.jl")
-include("layouting/layouting.jl")
 
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
+include("layouting/layouting.jl")
 include("basic_recipes/buffers.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/legend.jl")
@@ -60,7 +59,7 @@ export Node, node, lift, map_once
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
-export broadcast_foreach
+export broadcast_foreach, to_vector
 
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments
