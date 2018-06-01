@@ -2,7 +2,7 @@
 
 Makie overloads the FileIO interface.
 So you can just write e.g.:
-```Julia
+```julia
 save(scene, "test.png")
 save(scene, "test.jpg")
 ```
