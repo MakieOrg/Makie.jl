@@ -21,7 +21,31 @@ function Base.show(io::IO, entry::CellEntry)
     println(io, entry.source)
     println(io, "```")
     println(io, "_______________________________\n")
+# ==========================================================
+# Print source code given database index
+
+function _print_source(io::IO, idx::Int; style = nothing)
+    println(io, style == nothing ? "```\n$(database[idx].source)\n```" :
+        style == "source" ? "```\n$(database[idx].source)\n```" :
+        style == "julia" ? "```julia\n$(database[idx].source)\n```" : nothing )
 end
+
+"""
+    print_source(io::IO, idx::Int; style = nothing)
+
+Print source code of database (hard coded internally) at given index `idx`.
+`style` options are:
+* nothing -> default, prints a quoted code block
+* "source" -> same behaviour as default
+* "julia" -> prints a julia code block (i.e. ```julia)
+"""
+function print_source(io::IO, idx::Int; style = nothing)
+    io = IOBuffer()
+    _print_source(io, idx; style = style)
+    Base.Markdown.parse(String(take!(io)))
+end
+
+print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults to STDOUT
 
 
 """
