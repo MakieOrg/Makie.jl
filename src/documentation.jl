@@ -58,7 +58,7 @@ function to_string(func::Function)
 end
 
 to_string(Typ::Type{T}) where T <: AbstractPlot = to_string(to_func(Typ))
-
+to_string(s::String) = s
 
 # ==========================================================
 # Help functions
