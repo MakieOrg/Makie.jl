@@ -90,6 +90,7 @@ end
 example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)
 example_database(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = example_database(to_string.(input)...; title = title, author = author)
 database = CellEntry[]
+tags_list = []
 globaly_shared_code = String[]
 const NO_GROUP = 0
 unique_names = Set(Symbol[])
@@ -351,6 +352,8 @@ macro block(author, tags, block)
     for cell in cells
         cell_entry = extract_cell(cell, author, parent_tags, setup)
         push!(database, cell_entry)
+        # push a list of all tags to tags_list
+        push!(tags_list, collect(String, cell_entry.tags)...)
     end
 
     groups = args[find(is_group, args)]
