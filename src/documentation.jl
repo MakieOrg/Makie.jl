@@ -30,13 +30,8 @@ function to_func(Typ::Type{T}) where T <: AbstractPlot
     f = getfield(current_module(), sym)
 end
 
-# # hard-coding for the case of scatter
-# function to_func(Typ::Type{T}) where T <: AbstractPlot
-#     sym = Symbol("scatter")
-#     f = getfield(current_module(), sym)
-# end
-
 to_func(func::Function) = func
+
 
 """
     to_type(func)
@@ -69,6 +64,7 @@ to_string(s::String) = s
 Welcome to the main help function of Makie.jl.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
+
 For help on a specific function's attributes, type `help_attributes(plot_Type)`.
 """
 help(func; kw_args...) = help(STDOUT, func; kw_args...) #defaults to STDOUT
@@ -84,9 +80,6 @@ function help(io::IO, input::Function; extended = false)
     _help(buffer, to_type(input); extended = extended)
     Base.Markdown.parse(String(take!(buffer)))
 end
-
-#Don't know if the following is necessary. Probably not!
-# _help(func; kw_args...) = _help(STDOUT, func; kw_args...) #defaults to STDOUT
 
 # Internal help functions
 function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
