@@ -9,7 +9,7 @@ save(scene, "test.jpg")
 
 There is also the option to save a plot as a Julia File (not implemented yet)
 
-```Julia
+```julia
 save(scene, "test.jl")
 ```
 
