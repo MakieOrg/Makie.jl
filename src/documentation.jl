@@ -43,6 +43,8 @@ function to_type(func::Function)
     Typ = getfield(Makie,Symbol(titlecase(string(sym))))
 end
 
+to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
+
 """
     to_string(func)
 
