@@ -10,6 +10,18 @@ Selectors.order(::Type{DatabaseLookup}) = 0.5
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
 
 const regex_pattern = r"example_database\(([\"a-zA-Z_0-9. ]+)\)"
+const atomics = (
+    heatmap,
+    image,
+    lines,
+    linesegments,
+    mesh,
+    meshscatter,
+    scatter,
+    surface,
+    text,
+    Makie.volume
+)
 
 match_kw(x::String) = ismatch(regex_pattern, x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
