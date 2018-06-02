@@ -78,8 +78,25 @@ open(path, "w") do io
 end
 
 # =============================================
-# automatically generate gallery based on tags
-# tags_list = []
+# automatically generate an detailed overview of each of the atomic functions
+atomics_pages = nothing
+atomics_list = String[]
+for func in atomics
+    path = joinpath(@__DIR__, "..", "docs", "src", "atomics_examples", "$(to_string(func)).md")
+    open(path, "w") do io
+        println(io, "# `$(to_string(func))`")
+        # println(io, "## `$func`")
+        try
+            Makie._help(io, func; extended = true)
+        catch
+            println("ERROR: Didn't work with $func\n")
+        end
+        println(io, "\n")
+    end
+    push!(atomics_list, "atomics_examples/$(to_string(func)).md")
+end
+atomics_pages = "Atomic Functions" => atomics_list
+
 tags_list = sort(unique(tags_list))
 path = joinpath(@__DIR__, "..", "docs", "src", "examples-for-tags.md")
 open(path, "w") do io
