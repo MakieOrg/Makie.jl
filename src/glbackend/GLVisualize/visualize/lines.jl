@@ -146,54 +146,6 @@ function _default(positions::Vector{T}, range::Range, s::style"lines", data::Dic
     _default(points2f0(positions, range), s, data)
 end
 
-
-
-function _default(
-        geometry::TOrSignal{G}, s::style"lines", data::Dict
-    ) where G<:GeometryPrimitive{3}
-    wireframe(geometry, data)
-end
-function _default(
-        geometry::TOrSignal{GLNormalMesh}, s::style"lines", data::Dict
-    )
-    wireframe(geometry, data)
-end
-function wireframe(
-        geometry, data::Dict
-    )
-    points = const_lift(geometry) do g
-        decompose(Point3f0, g) # get the point representation of the geometry
-    end
-    # Get line index representation
-    indices = decompose(Face{2, GLIndex}, value(geometry))
-    data[:indices] = reinterpret(GLuint, indices)
-    _default(points, style"linesegment"(), data)
-end
-
-
-struct GridPreRender end
-
-function (::GridPreRender)()
-    glEnable(GL_CULL_FACE)
-    glDepthMask(GL_FALSE)
-    glCullFace(GL_BACK)
-end
-
-function _default(c::TOrSignal{T}, ::Style{:grid}, data) where T<:AABB
-    @gen_defaults! data begin
-        primitive::GLPlainMesh = c
-        bg_color = RGBA{Float32}(0.99,0.99,0.99,1)
-        grid_color = RGBA{Float32}(0.8,0.8,0.8,1)
-        grid_thickness = Vec3f0(0.999)
-        gridsteps = Vec3f0(5)
-        shader = GLVisualizeShader("fragment_output.frag", "grid.vert", "grid.frag")
-        boundingbox = c
-        prerender = GridPreRender()
-        postrender = () -> glDisable(GL_CULL_FACE);
-    end
-end
-
-
 function line_indices(array)
     len = length(array)
     result = Array(GLuint, len*2)

@@ -133,13 +133,12 @@ function plot!(scene::Scene, ::Type{CorrPlot}, attributes::Attributes, mat)
             legend = false,
             margin = 1mm,
             titlefont = font(11),
-            fillcolor = Plots.fg_color(attributes),
-            linecolor = Plots.fg_color(attributes),
-            markeralpha := 0.4,
+            fillcolor = attributes[:color],
+            linecolor = attributes[:],
+            markeralpha = 0.4,
             grad = cgrad(get(attributes, :markercolor, cgrad())),
             indices = reshape(1:n^2, n, n)',
             title = "",
-            seriestype = :histogram2d
         )
     end
     # this is simples way to overwrite plot defaults from the global theme,
@@ -150,39 +149,34 @@ function plot!(scene::Scene, ::Type{CorrPlot}, attributes::Attributes, mat)
 
     labs = pop!(attributes, :label, [""])
     plotgrid = broadcast(1:n, (1:n)') do i, j
-        ylink := setdiff(vec(indices[i,:]), indices[i,i])
         vi = view(mat,:,i)
         vj = view(mat,:,j)
-        subplot := indices[i,j]
-        update_ticks_guides(attributes, labs, i, j, n)
         if i == j # histograms are on the diagonal
-            histogram!(
-                subscene, view(mat,:,i),
-                grid = false,
-                # xformatter = ((i == n) ? :auto : (x -> ""))
-                # yformatter = ((i == 1) ? :auto : (y -> ""))
-            )
+            histogram!(subscene, vi, grid = false)
         elseif i > j
-            #below diag... scatter
-            scatter!(
-                subscene, vj, vi,
-                markercolor = grad[0.5 + 0.5C[i,j]]
-                markerstrokewidth = 0
-                xformatter --> ((i == n) ? :auto : (x -> ""))
-                yformatter --> ((j == 1) ? :auto : (y -> ""))
-            )
+            scatter!(subscene, vj, vi)
         else
-            #above diag... hist2d or
-            plot!(
-                subscene, vj, vi,
-                seriestype = attributes[:seriestype],
-                # if title != "" && i == 1 && j == div(n,2)+1
-                #     title := title
-                # end
-                xformatter --> ((i == n) ? :auto : (x -> ""))
-                yformatter --> ((j == 1) ? :auto : (y -> ""))
-            )
+            plot!(subscene, vj, vi, seriestype = attributes[:seriestype])
         end
     end
     plot!(scene, rest, plotgrid)
+end
+
+
+function plot!(plot::CorrPlot)
+    mat = plot[1]
+    n = size(mat, 2)
+    C = cor(mat)
+    plotgrid = broadcast(1:n, (1:n)') do i, j
+        vi = view(mat,:,i)
+        vj = view(mat,:,j)
+        if i == j # histograms are on the diagonal
+            histogram!(plot, vi, grid = false)
+        elseif i > j
+            scatter!(plot, vj, vi, markercolor = grad[0.5 + 0.5C[i,j]])
+        else
+            plot!(plot, vj, vi, seriestype = attributes[:seriestype])
+        end
+    end
+    plot!(plotgrid) # matrix of plots -> gridlayout
 end

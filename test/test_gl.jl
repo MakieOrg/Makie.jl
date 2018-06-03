@@ -1,12 +1,18 @@
-using Makie
+using Makie, AbstractPlotting, GeometryTypes
 
-scene = Scene()
-s = scatter!(scene, 1:10, rand(10))
-s2 = scatter!(scene, -1:8, rand(10) .+ 1, color = :black)
-scene
+s2 = scatter(linspace(0, 1, 10), rand(10), color = :blue)
+Makie.save(joinpath(homedir(), "Desktop", "test.png"), s2)
 
+AbstractPlotting.data_limits(s2)
+AbstractPlotting.real_boundingbox(s2)
 
-nw = scene.current_screens[1].glscreen
+AbstractPlotting.plots_from_camera(s2)
+@which AbstractPlotting.data_limits(s2.plots[2])
+
+using FileIO
+
+save("test.png", Images.clamp01nan.(img));
+
 img = GLVisualize.loadasset("doge.png")
 GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))
 

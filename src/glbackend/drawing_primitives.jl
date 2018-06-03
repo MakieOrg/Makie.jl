@@ -1,4 +1,4 @@
-import .GLVisualize: calc_offset, glyph_uv_width!, glyph_uv_width!, get_texture_atlas, glyph_scale!, calc_position
+gpuvec(x) = GPUVector(GLBuffer(x))
 
 function to_glvisualize_key(k)
     k == :rotations && return :rotation
@@ -16,12 +16,13 @@ function to_glvisualize_key(k)
 end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
+
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
-            gl_value = map(val-> convert_attribute(val, Key{key}(), plot_key(x)), value)
+            gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end
         robj = robj_func(Dict{Symbol, Any}(gl_attributes))
@@ -34,16 +35,41 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     end
 end
 
-function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, Meshscatter})
+index1D(x::SubArray) = parentindexes(x)[1]
+
+handle_view(array::AbstractVector, attributes) = array
+handle_view(array::Signal, attributes) = array
+
+function handle_view(array::SubArray, attributes)
+    A = parent(array)
+    indices = index1D(array)
+    attributes[:indices] = indices
+    A
+end
+function handle_view(array::Signal{T}, attributes) where T <: SubArray
+    A = lift(parent, array)
+    indices = lift(index1D, array)
+    attributes[:indices] = indices
+    A
+end
+
+function lift_convert(key, value, plot)
+    lift(value) do value
+         convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
+     end
+end
+
+function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        marker = pop!(gl_attributes, :marker)
+        marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
         # TODO either stop using bb's from glvisualize
         # or don't set them randomly to nothing
         gl_attributes[:boundingbox] = nothing
-        visualize((value(marker), x.args[1]), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        positions = handle_view(x[1], gl_attributes)
+        visualize((value(marker), positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
 
@@ -53,15 +79,17 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        visualize(x.args[1], Style(:lines), data).children[]
+        positions = handle_view(x[1], data)
+        visualize(positions, Style(:lines), data).children[]
     end
 end
-function Base.insert!(screen::Screen, scene::Scene, x::Linesegments)
+function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        visualize(x.args[1], Style(:linesegment), data).children[]
+        positions = handle_view(x[1], data)
+        visualize(positions, Style(:linesegment), data).children[]
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::Combined)
@@ -70,13 +98,15 @@ function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     end
 end
 
+using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, glyph_scale!, calc_position, calc_offset
+
 function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
-    atlas = GLVisualize.get_texture_atlas()
+    atlas = get_texture_atlas()
     N = length(T)
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
     toffset = calc_offset(string, textsize, font, atlas)
     broadcast_foreach(1:length(string), string, startpos, textsize, (font,), align) do idx, char, pos, tsize, font, align
-        _font = isa(font[1], Font) ? font[1] : font[1][idx]
+        _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
         push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
         push!(uv_offset_width, glyph_uv_width!(atlas, char, _font))
@@ -96,29 +126,30 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     rscale = Float32(textsize)
     chars = convert(Vector{Char}, string)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
-    # font is Vector{FreeType.Font} so we need to protec
+    # font is Vector{FreeType.NativeFont} so we need to protec
     toffset = calc_offset(chars, rscale, font, atlas)
-    aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
+    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
     uv_offset_width = glyph_uv_width!.(atlas, chars, (font,))
     scale = glyph_scale!.(atlas, chars, (font,), rscale)
     positions = map(positions2d) do p
-        pn = qmul(rot, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ pos
     end
     positions, toffset, uv_offset_width, scale
 end
+
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = map(to_gl_text, x.args[1], getindex.(gl_attributes, liftkeys)...)
+        gl_text = map(to_gl_text, x[1], getindex.(gl_attributes, liftkeys)...)
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             map(getindex, gl_text, Signal(i))
         end
 
-        atlas = GLVisualize.get_texture_atlas()
+        atlas = get_texture_atlas()
         keys = (:color, :stroke_color, :stroke_width, :rotation)
         signals = getindex.(gl_attributes, keys)
 
@@ -131,7 +162,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,
-            distancefield = GLVisualize.get_texture!(atlas)
+            distancefield = get_texture!(atlas)
         ).children[]
     end
 end
@@ -139,8 +170,8 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = (value.(x.args[1:2]))
-        heatmap = map(to_node(x.args[3])) do z
+        gl_attributes[:ranges] = (value.((x[1], x[2])))
+        heatmap = map(x[3]) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
         interp = value(pop!(gl_attributes, :interpolate))
@@ -157,7 +188,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = to_range.(value.(x.args[1:2]))
+        gl_attributes[:ranges] = to_range.(value.((x[1], x[2])))
         img = x[3]
         if isa(value(img), AbstractMatrix{<: Number})
             norm = pop!(gl_attributes, :color_norm)
@@ -209,11 +240,12 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
             # delete nothing
             delete!(gl_attributes, :image)
         end
-        if all(v-> value(v) isa AbstractMatrix, x.args)
-            visualize(x.args, Style(:surface), gl_attributes).children[]
+        args = x[1:3]
+        if all(v-> value(v) isa AbstractMatrix, args)
+            visualize(args, Style(:surface), gl_attributes).children[]
         else
-            gl_attributes[:ranges] = value.(x.args[1:2])
-            visualize(x.args[3], Style(:surface), gl_attributes).children[]
+            gl_attributes[:ranges] = to_range.(value.(args[1:2]))
+            visualize(args[3], Style(:surface), gl_attributes).children[]
         end
     end
 end
@@ -249,7 +281,7 @@ function surface_contours(volume::Volume)
     paths = assetpath.("shader", ("fragment_output.frag", "util.vert", "volume.vert"))
     shader = makieshader(paths..., frag)
     model = volume[:model]
-    x, y, z, vol = volume.args
+    x, y, z, vol = volume[1], volume[2], volume[3], volume[4]
     model2 = map(model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
@@ -285,7 +317,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Volume)
         if gl_attributes[:algorithm][] == 0
             surface_contours(x)
         else
-            dimensions = Vec3f0(to_width.(value.(x.args[1:3])))
+            dimensions = Vec3f0(to_width.(value.(x.output_args[1:3])))
             gl_attributes[:dimensions] = dimensions
             delete!(gl_attributes, :color)
             visualize(x[4], Style(:default), gl_attributes).children[]

@@ -1,12 +1,3 @@
-const _forced_update_scheduled = Ref(false)
-function must_update()
-    val = _forced_update_scheduled[]
-    _forced_update_scheduled[] = false
-    val
-end
-function force_update!()
-    _forced_update_scheduled[] = true
-end
 function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     try
         while isopen(screen)

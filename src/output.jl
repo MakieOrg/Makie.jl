@@ -35,16 +35,24 @@ Media.media(Scene, Media.Plot)
 const use_atom_plot_pane = Ref(false)
 use_plot_pane(x::Bool = true) = (use_atom_plot_pane[] = x)
 
-function Juno.render(pane::Juno.PlotPane, plt::Scene)
-    if use_atom_plot_pane[]
-        img = scene2image(plt)
-        if img != nothing
-            Juno.render(pane, HTML("<img src=\"data:image/png;base64,$(stringmime(MIME("image/png"), img))\">"))
-        end
+function draw_all(screen, scene::Scene)
+    Makie.center!(scene)
+    for elem in scene.plots
+        Makie.CairoBackend.cairo_draw(screen, elem)
     end
+    foreach(x->draw_all(screen, x), scene.children)
+    Makie.CairoBackend.cairo_finish(screen)
 end
 
 
+function Juno.render(pane::Juno.PlotPane, plt::Scene)
+    if use_atom_plot_pane[]
+        path = joinpath(homedir(), "Desktop", "test.svg")
+        cs = Makie.CairoBackend.CairoScreen(plt, path)
+        draw_all(cs, plt)
+        Juno.render(pane, HTML("<img src=\"$path\">"))
+    end
+end
 
 immutable VideoStream
     io
@@ -52,7 +60,9 @@ immutable VideoStream
     screen
     path::String
 end
+
 const has_ffmpeg = Ref(false)
+
 function __init__()
     has_ffmpeg[] = try
         success(`ffmpeg -h`)
