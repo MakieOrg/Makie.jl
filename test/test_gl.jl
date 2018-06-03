@@ -1,6 +1,13 @@
 using Makie, AbstractPlotting, GeometryTypes
 
-s2 = scatter(linspace(0, 1, 10), rand(10), color = :black)
+s2 = scatter(linspace(0, 1, 10), rand(10), color = :blue)
+Makie.save(joinpath(homedir(), "Desktop", "test.png"), s2)
+
+AbstractPlotting.data_limits(s2)
+AbstractPlotting.real_boundingbox(s2)
+
+AbstractPlotting.plots_from_camera(s2)
+@which AbstractPlotting.data_limits(s2.plots[2])
 
 using FileIO
 
