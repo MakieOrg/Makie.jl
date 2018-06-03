@@ -133,9 +133,10 @@ end
 
 makedocs(
     modules = [Makie],
+    doctest = false, clean = true,
     format = :html,
-    sitename = "Plotting in pure Julia",
-    pages = [
+    sitename = "Makie.jl Documentation",
+    pages = Any[
         "Home" => "index.md",
         "Basics" => [
             "scene.md",
