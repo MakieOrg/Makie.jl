@@ -97,25 +97,34 @@ for func in atomics
 end
 atomics_pages = "Atomic Functions" => atomics_list
 
+# =============================================
+# automatically generate gallery based on tags - all examples
 tags_list = sort(unique(tags_list))
 path = joinpath(@__DIR__, "..", "docs", "src", "examples-for-tags.md")
 open(path, "w") do io
-    println(io, "# List of all tags including 1 randomly-selected example from each tag")
-    println(io, "## List of tags")
+    println(io, "# List of all tags including all examples from each tag")
+    println(io, "## List of all tags, sorted alphabetically")
     for tag in tags_list
-        println(io, "* $tag")
+        println(io, "  * [$tag](@ref tag_$(replace(tag, " ", "_")))")
     end
     println(io, "\n")
     for tag in tags_list
+        counter = 1
         # search for the indices where tag is found
         indices = find_indices(tag; title = nothing, author = nothing)
-        # pick a random example from the list
-        idx = indices[rand(1:length(indices))];
-        println(io, "## $tag")
-        try
-            _print_source(io, idx; style = "julia")
-        catch
-            println("ERROR: Didn't work with $tag\n")
+        # # pick a random example from the list
+        # idx = indices[rand(1:length(indices))];
+        println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
+        for idx in indices
+            try
+                println(io, "Example $counter, \"$(database[idx].title)\"")
+                _print_source(io, idx; style = "julia")
+                println(io, "`plot goes here\n`")
+                # TODO: add code to generate + embed plots
+                counter += 1
+            catch
+                println("ERROR: Didn't work with $tag at index $idx\n")
+            end
         end
         println(io, "\n")
     end
