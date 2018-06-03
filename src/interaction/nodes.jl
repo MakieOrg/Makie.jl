@@ -30,11 +30,13 @@ function close_all_nodes(any)
     end
 end
 
+
 function disconnect!(s::Node)
     unpreserve(s)#; empty!(s.actions)
     s.parents = (); close(s, false)
     return
 end
+
 function get_children(x::Signal)
     filter!(x-> x != nothing, map(x-> x.value, Reactive.nodes[Reactive.edges[x.id]]))
 end
@@ -89,11 +91,7 @@ function map_once(
     Reactive.add_action!(action_func, output)
     preserve(output)
 end
-function disconnect!(s::Node)
-    unpreserve(s)#; empty!(s.actions)
-    s.parents = (); close(s, false)
-    return
-end
+
 #
 # call_count = Ref(1)
 # io = IOBuffer()

@@ -1,13 +1,13 @@
 const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
 
 
-data_limits(x::Plot{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(value(x[1]))
+data_limits(x::Atomic{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(value(x[1]))
 
-function data_limits(x::Plot{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
+function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
     _boundingbox(value.(x[1:3])...)
 end
 
-function data_limits(x::Plot{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
+function data_limits(x::Atomic{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
     _boundingbox(value.(x[1:2])...)
 end
 
@@ -75,7 +75,7 @@ function data_limits(x::Text)
     FRect3D(union(HyperRectangle(pos_scale), HyperRectangle(positions)))
 end
 
-function data_limits(x::Combined{:Annotations})
+function data_limits(x::Annotations)
     # data limits is supposed to not include any transformation.
     # for the annotation, we use the model matrix directly, so we need to
     # to inverse that transformation for the correct limits

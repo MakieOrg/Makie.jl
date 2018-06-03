@@ -269,7 +269,7 @@ end
 
 function real_boundingbox(scene::Scene)
     bb = AABB{Float32}()
-    for plot in flatten_combined(plots_from_camera(scene))
+    for plot in plots_from_camera(scene)
         bb1 = data_limits(plot)
         bb1 = modelmatrix(plot)[] * bb1
         bb == AABB{Float32}() && (bb = bb1)

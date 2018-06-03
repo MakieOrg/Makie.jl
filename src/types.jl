@@ -232,7 +232,6 @@ function setindex!(x::P, value, key::Symbol) where P <: AbstractPlot
     end
 end
 function setindex!(x::P, value::Node, key::Symbol) where P <: AbstractPlot
-    println(key)
     argnames = argument_names(P, length(x.output_args))
     idx = findfirst(argnames, key)
     if idx == 0
