@@ -139,28 +139,6 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     positions, toffset, uv_offset_width, scale
 end
 
-const atlas_texture_cache = RefValue{Texture{Float16, 2}}()
-
-function get_texture!(atlas)
-     if isassigned(atlas_texture_cache) && GLAbstraction.is_current_context(atlas_texture_cache[].context)
-         atlas_texture_cache[]
-     else
-         tex = Texture(
-             atlas.data,
-             minfilter = :linear,
-             magfilter = :linear,
-             anisotropic = 16f0,
-         )
-         atlas_texture_cache[] = tex
-         empty!(AbstractPlotting.font_render_callbacks)
-         # update the texture, whenever a new font is added to the atlas
-         AbstractPlotting.font_render_callback!() do distance_field, rectangle
-             tex[rectangle] = distance_field
-         end
-         return tex
-     end
- end
-
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
