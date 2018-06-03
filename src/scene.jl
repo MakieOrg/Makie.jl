@@ -3,8 +3,10 @@
 function center!(scene::Scene, padding = 0.01)
     bb = AbstractPlotting.real_boundingbox(scene)
     w = widths(bb)
+    println(w)
     padd = w .* padding
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
+    println(bb)
     update_cam!(scene, bb)
     force_update!()
 end
