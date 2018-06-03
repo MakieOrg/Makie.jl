@@ -7,7 +7,7 @@ colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof
 function scene2image(scene::Scene)
     screen = getscreen(scene)
     isempty(scene.current_screens) && return nothing
-    length(scene.current_screens) && warn("Scene is displayed on multiple screens, will only use first.")
+    length(scene.current_screens) > 1 && warn("Scene is displayed on multiple screens, will only use first.")
     colorbuffer(scene.current_screens[1])
 end
 
@@ -35,12 +35,22 @@ Media.media(Scene, Media.Plot)
 const use_atom_plot_pane = Ref(false)
 use_plot_pane(x::Bool = true) = (use_atom_plot_pane[] = x)
 
+function draw_all(screen, scene::Scene)
+    Makie.center!(scene)
+    for elem in scene.plots
+        Makie.CairoBackend.cairo_draw(screen, elem)
+    end
+    foreach(x->draw_all(screen, x), scene.children)
+    Makie.CairoBackend.cairo_finish(screen)
+end
+
+
 function Juno.render(pane::Juno.PlotPane, plt::Scene)
     if use_atom_plot_pane[]
-        img = scene2image(plt)
-        if img != nothing
-            Juno.render(pane, HTML("<img src=\"data:image/png;base64,$(stringmime(MIME("image/png"), img))\">"))
-        end
+        path = joinpath(homedir(), "Desktop", "test.svg")
+        cs = Makie.CairoBackend.CairoScreen(plt, path)
+        draw_all(cs, plt)
+        Juno.render(pane, HTML("<img src=\"$path\">"))
     end
 end
 

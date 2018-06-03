@@ -9,10 +9,6 @@ using Reactive, Colors, GeometryTypes
 #using Gtk
 using Cairo
 
-# struct CairoGtkPane
-#     window::GtkWindow
-#     canvas::GtkCanvas
-# end
 
 struct CairoScreen{S}
     scene::Scene

@@ -1,26 +1,19 @@
 using Makie
+
+meshscatter(rand(100), rand(100), rand(100))
+
+AbstractPlotting.current_scene()
+
 scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
     marker = [:x, :circle, :cross]
 )
-
-meshscatter(rand(100), rand(100), rand(100))
-
-heatmap(rand(100, 100))
-
+s = heatmap(rand(100, 100))
+Makie.center!(s)
+s
 scene = contour(-1..1, -1..1, rand(100, 100))
+scene
 
-function draw_all(screen, scene::Scene)
-    Makie.center!(scene)
-    for elem in scene.plots
-        Makie.CairoBackend.cairo_draw(screen, elem)
-    end
-    foreach(x->draw_all(screen, x), scene.children)
-    Makie.CairoBackend.cairo_finish(screen)
-end
-
-cs = Makie.CairoBackend.CairoScreen(wf, joinpath(homedir(), "Desktop", "test.svg"))
-draw_all(cs, wf)
 
 surface(rand(100, 100))
 surface(-1..1, -1..1, rand(100, 100))
