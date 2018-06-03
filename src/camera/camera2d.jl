@@ -159,12 +159,12 @@ function selection_rect!(
                 waspressed[] = true
                 rect_vis[:visible] = true # start displaying
                 rect[] = FRect(mp, 0, 0)
-                rect_vis[:positions] = rect[]
+                rect_vis[1] = rect[]
             elseif drag == Mouse.pressed
                 mini = minimum(rect[])
                 rect[] = FRect(mini, mp - mini)
                 # mini, maxi = min(mini, mp), max(mini, mp)
-                rect_vis[:positions] = rect[]
+                rect_vis[1] = rect[]
             end
         else
             if drag == Mouse.up && waspressed[]
@@ -175,7 +175,7 @@ function selection_rect!(
                 end
                 #scene.limits[] = FRect3D(rect[])
                 rect[] = FRect(0, 0, 0, 0)
-                rect_vis[:positions] = rect[]
+                rect_vis[1] = rect[]
             end
             # always hide if not the right key is pressed
             rect_vis[:visible] = false # hide

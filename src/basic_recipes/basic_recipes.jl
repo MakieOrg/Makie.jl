@@ -307,19 +307,19 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             end
         end
         area_widths = RefValue(widths(pixelarea(scene)[]))
-        # map_once(pixelarea(scene), s_limits, plot_attributes[:scale_plot]) do area, limits, scaleit
-        #     # not really sure how to scale 3D scenes in a reasonable way
-        #     if scaleit && is2d(scene) # && area_widths[] != widths(area)
-        #         area_widths[] = widths(area)
-        #         mini, maxi = minimum(limits), maximum(limits)
-        #         l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-        #         xyzfit = fit_ratio(area, l)
-        #         s = to_ndim(Vec3f0, xyzfit, 1f0)
-        #         @info("calculated scaling: ", Tuple(s))
-        #         scale!(scene, s)
-        #     end
-        #     return
-        # end
+        map_once(pixelarea(scene), s_limits, plot_attributes[:scale_plot]) do area, limits, scaleit
+            # not really sure how to scale 3D scenes in a reasonable way
+            if scaleit && is2d(scene) # && area_widths[] != widths(area)
+                area_widths[] = widths(area)
+                mini, maxi = minimum(limits), maximum(limits)
+                l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
+                xyzfit = fit_ratio(area, l)
+                s = to_ndim(Vec3f0, xyzfit, 1f0)
+                @info("calculated scaling: ", Tuple(s))
+                scale!(scene, s)
+            end
+            return
+        end
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
             axis_attributes = plot_attributes[:axis][]
             if is2d(scene)
