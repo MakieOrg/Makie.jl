@@ -152,7 +152,7 @@ function calc_position(
         atlas, glyph, font,
         scale, lineheight = 1.5
     )
-    advance_x, advance_y = glyph_advance!(atlas, glyph, font, scale)
+    advance_x, advance_y = AbstractPlotting.glyph_advance!(atlas, glyph, font, scale)
     if isnewline(glyph)
         return Point2f0(start_pos[1], last_pos[2] - advance_y * lineheight) #reset to startx
     else
@@ -173,6 +173,8 @@ function calc_position(glyphs, start_pos, scales, fonts, atlas)
     end
     positions
 end
+
+using AbstractPlotting: get_texture_atlas, glyph_bearing!
 
 function calc_offset(glyphs, scales, fonts, atlas)
     offsets = fill(Point2f0(0.0), length(glyphs))

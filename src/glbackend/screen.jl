@@ -40,8 +40,7 @@ function colorbuffer(screen::Screen)
     GLFW.SwapBuffers(to_native(screen))
     glFinish() # block until opengl is done rendering
     buffer = gpu_data(screen.framebuffer.color)
-    buffer .= Images.clamp01nan.(buffer)
-    return buffer
+    return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
 end
 
 function getscreen(scene::Scene)
@@ -57,7 +56,8 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        push!(screen.screens, (id, scene.px_area, Node(true), scene.theme[:backgroundcolor]))
+        bg = AbstractPlotting.signal_convert(Node{RGBAf0}, scene.theme[:backgroundcolor])
+        push!(screen.screens, (id, scene.px_area, Node(true), bg))
         id
     end
     push!(screen.renderlist, (0, screenid, robj))

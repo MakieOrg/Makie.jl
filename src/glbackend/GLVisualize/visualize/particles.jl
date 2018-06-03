@@ -259,11 +259,12 @@ end
 function vec2quaternion(rotation::StaticVector{3})
     rotation_between(Vec3f0(0, 0, 1), Vec3f0(rotation))
 end
-
+using AbstractPlotting
 
 vec2quaternion(rotation::VecTypes{Vec4f0}) = rotation
 vec2quaternion(rotation::VecTypes) = const_lift(x-> vec2quaternion.(x), rotation)
-vec2quaternion(rotation::Signal{<: StaticVector}) = map(vec2quaternion, rotation)
+vec2quaternion(rotation::Signal) = map(vec2quaternion, rotation)
+vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
@@ -312,12 +313,14 @@ function meshparticle(p, s, data)
             )
         )
     end
-    if position != nothing
-        data[:intensity] = intensity_convert_tex(intensity, position)
-        data[:len] = const_lift(length, position)
-    else
-        data[:intensity] = intensity_convert_tex(intensity, position_x)
-        data[:len] = const_lift(length, position_x)
+    if value(intensity) != nothing
+        if value(position) != nothing
+            data[:intensity] = intensity_convert_tex(intensity, position)
+            data[:len] = const_lift(length, position)
+        else
+            data[:intensity] = intensity_convert_tex(intensity, position_x)
+            data[:len] = const_lift(length, position_x)
+        end
     end
     data
 end
@@ -563,15 +566,18 @@ function _default(main::Tuple{TOrSignal{S}, P}, s::Style, data::Dict) where {S <
     _default(main[1], s, data)
 end
 
+import ..AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
+import ..Makie: get_texture!
+
 function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractString
     @gen_defaults! data begin
-        relative_scale  = 4mm #
+        relative_scale  = 4 #
         start_position  = Point2f0(0)
         atlas           = get_texture_atlas()
-        distancefield   = atlas.images
+        distancefield   = get_texture!(atlas)
         stroke_width    = 0f0
         glow_width      = 0f0
-        font            = defaultfont()
+        font            = to_font("default")
         scale_primitive = true
         position        = const_lift(calc_position, main, start_position, relative_scale, font, atlas)
         offset          = const_lift(calc_offset, main, relative_scale, font, atlas)

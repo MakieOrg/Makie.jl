@@ -1,7 +1,7 @@
 using Makie, GeometryTypes, Quaternions, StaticArrays, PlotUtils, Showoff
 using Makie: VecTypes
 
-using Makie: draw_ticks, draw_grid, draw_frame, @extractvals, generate_ticks
+using Makie: draw_ticks, draw_grid, draw_frame, @extractvalue, generate_ticks
 
 function scalescene(scene)
 
@@ -22,7 +22,7 @@ function axis(scene, x, y)
 
 
 
-    @extractvals axis_style (outer_padding, title_size, tick_size, tick_gap, tick_title_gap)
+    @extractvalue axis_style (outer_padding, title_size, tick_size, tick_gap, tick_title_gap)
 
     outer_padding = pscale * outer_padding
     title_size = pscale * title_size
