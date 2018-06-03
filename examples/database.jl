@@ -13,14 +13,26 @@ struct CellEntry
 end
 
 # overload Base.show to show output of CellEntry
-function Base.show(io::IO, entry::CellEntry)
-    println(io, "\n_______________________________")
-    println(io, "title: ", entry.title)
-    println(io, "source: ")
+function Base.show(io::IO, ::MIME"text/plain", entry::CellEntry)
+    # println(io, "_______________________________")
+    # println(io, "title: ", entry.title)
+    # println(io, "source: ")
     println(io, "```")
     println(io, entry.source)
     println(io, "```")
-    println(io, "_______________________________\n")
+    # println(io, "_______________________________\n")
+end
+
+function Base.show(io::IO, ::MIME"text/markdown", entry::CellEntry)
+    # println(io, "_______________________________")
+    # println(io, "title: ", entry.title)
+    # println(io, "source: ")
+    println(io, "```")
+    println(io, entry.source)
+    println(io, "```")
+    # println(io, "_______________________________\n")
+end
+
 # ==========================================================
 # Print source code given database index
 
