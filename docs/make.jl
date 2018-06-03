@@ -28,8 +28,10 @@ match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = match_kw(node)
 
+# ============================================= Simon's implementation
 function look_up_source(database_key)
     entries = find(x-> x.title == database_key, database)
+    # current implementation finds titles, but we can also search for tags too
     isempty(entries) && error("No entry found for database reference $database_key")
     length(entries) > 1 && error("Multiple entries found for database reference $database_key")
     sprint() do io
@@ -60,6 +62,51 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     # Evaluate the code block. We redirect stdout/stderr to `buffer`.
     page.mapping[x] = Markdown.MD(content)
 end
+
+# ============================================= Anthony's implementation
+# function look_up_source(database_keys...; title = nothing, author = nothing)
+#     entries = find(database) do entry
+#         # find tags
+#         keys_found = all(key -> string(key) in entry.tags, database_keys) # only works with strings inputs right now
+#         # find author, if nothing input is given, then don't filter
+#         author_found = (author == nothing) || (entry.author == string(author))
+#         # find title, if nothing input is given, then don't filter
+#         title_found = (title == nothing) || (entry.title == string(title))
+#         # boolean to return the result
+#         entries = keys_found && author_found && title_found
+#     end
+#     # current implementation finds titles, but we can also search for tags too
+#     isempty(entries) && error("No entry found for database reference $database_keys")
+#     length(entries) > 1 && warn("Multiple entries found for database reference $database_keys")
+#     sprint() do io #TODO: this currently only prints the first entry, even if we found multiple
+#         print_code(
+#             io, database, entries[1],
+#             scope_start = "",
+#             scope_end = "",
+#             indent = "",
+#             resolution = (entry)-> "resolution = (500, 500)",
+#             outputfile = (entry, ending)-> Pkg.dir("Makie", "docs", "media", string(entry.unique_name, ending))
+#         )
+#     end
+# end
+#
+# function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
+#     matched = nothing
+#     for elem in x.content
+#         if isa(elem, AbstractString)
+#             matched = match(regex_pattern, elem)
+#             matched != nothing && break
+#         end
+#     end
+#     matched == nothing && error("No match: $x")
+#     # The sandboxed module -- either a new one or a cached one from this page.
+#     database_keys = filter(x-> !(x in ("", " ")), split(matched[1], '"'))
+#     content = map(database_keys) do database_key
+#         Markdown.Code("julia", look_up_source(database_key))
+#     end
+#     # Evaluate the code block. We redirect stdout/stderr to `buffer`.
+#     page.mapping[x] = Markdown.MD(content)
+# end
 
 # =============================================
 # automatically generate an overview of the atomic functions
