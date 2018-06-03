@@ -139,23 +139,31 @@ makedocs(
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
-            "scene.md",
-            "conversions.md",
-            "functions.md",
-            "documentation.md",
-            "backends.md",
-            "extending.md",
-            "themes.md",
-            "interaction.md",
-            "axis.md",
-            "legends.md",
-            "output.md",
-            "reflection.md",
-            "layout.md"
+            # "scene.md",
+            # "conversions.md",
+            "help_functions.md",
+            "functions-autogen.md",
+            "functions.md"
+            # "documentation.md",
+            # "backends.md",
+            # "extending.md",
+            # "themes.md",
+            # "interaction.md",
+            # "axis.md",
+            # "legends.md",
+            # "output.md",
+            # "reflection.md",
+            # "layout.md"
         ],
-        "Developper Documentation" => [
-            "devdocs.md",
-        ],
+        atomics_pages,
+        "Examples" => [
+            "examples-for-tags.md",
+            "tags_wordcloud.md",
+            "linking-test.md"
+        ]
+        # "Developper Documentation" => [
+        #     "devdocs.md",
+        # ],
     ]
 )
 
