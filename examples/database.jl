@@ -39,7 +39,7 @@ end
 function _print_source(io::IO, idx::Int; style = nothing)
     println(io, style == nothing ? "```\n$(database[idx].source)\n```" :
         style == "source" ? "```\n$(database[idx].source)\n```" :
-        style == "julia" ? "```julia\n$(database[idx].source)\n```" : nothing )
+        style == "julia" ? "```julia\n$(database[idx].source)\n```" : "" )
 end
 
 """
