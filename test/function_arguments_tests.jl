@@ -53,17 +53,21 @@ signatures = [
 
     # An AbstractMatrix where the type is the union of Integer and AbstractFloat.
     Tuple{AbstractMatrix{T} where T<:Union{Integer,AbstractFloat},},
+    # --> supported by function convert_arguments(P, data::AbstractMatrix)
 
     # Tuple{Formatted{T} where T<:AbstractMatrix,},
 
     # An AbstractArray where the type is Number, and the dimension is 3
     Tuple{AbstractArray{T,3} where T<:Number,},
+    # --> supported by function convert_arguments(MT::Type{Mesh, xyz::AbstractVector{<: VecTypes{3, T}})
 
     # An AbstractMatrix where the type is of a ColorTypes.Gray
     Tuple{AbstractMatrix{T} where T<:Gray,},
+    # --> handled by convert_attribute
 
     # An AbstractMatrix where the type is of a ColorTypes.Colorant
     Tuple{AbstractMatrix{T} where T<:Colorant,},
+    # --> handled by convert_attribute
 
     # plotting arbitrary shapes/polygons
     #Tuple{Shape,},
@@ -85,21 +89,26 @@ signatures = [
 
     # Three AbstractVector's
     Tuple{AbstractVector,AbstractVector,AbstractVector,},
+    # --> supported by function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
 
     # Three AbstractMatrix's
     Tuple{AbstractMatrix,AbstractMatrix,AbstractMatrix,},
+    # --> supported by function convert_arguments(P, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
 
     # Two AbstractVector's and a function
     Tuple{AbstractVector,AbstractVector,Function,},
 
     # Two AbstractVector's and an AbstractMatrix
     Tuple{AbstractVector,AbstractVector,AbstractMatrix,},
+    # --> supported by function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
 
     # Two AbstractVector's and an AbstractMatrix with the type ColorTypes.Gray
     Tuple{AbstractVector,AbstractVector,AbstractMatrix{T} where T<:Gray},
+    # --> supported like above with AVeC, AVec, AMat
 
     # Two AbstractVector's and an AbstractMatrix with the type ColorTypes.Colorant
     Tuple{AbstractVector,AbstractVector,AbstractMatrix{T} where T<:Colorant},
+    # --> supported like above with AVeC, AVec, AMat
 
     #parametric functions
 
@@ -191,6 +200,14 @@ function to_values(::Type{T}) where T <: Tuple
     (to_values(T1), to_values(Ttail)...)
 end
 
+
+# for signature in signatures
+#     # println(to_values(signature))
+#     Plots.scatter(to_values(signature))
+# end
+#
+# Plots.scatter(to_values(signatures[1]))
+# generated_values = to_values.(signatures)
 
 # ==========================================================
 # batch testing
