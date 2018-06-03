@@ -17,9 +17,16 @@ scatter
 
 @library[example] "Scatter Function" "Stars" "Unicode Marker"
 
+The below is automatically inserted using `example_database("scatter", "surface")`
+
+example_database("scatter", "surface")
+
+The below is automatically inserted using `example_database("scatter")`
+
+example_database("scatter")
 
 
-# Meshscatter
+## Meshscatter
 
 ```@docs
 meshscatter
@@ -47,6 +54,21 @@ surface
 
 @library[example] "Surface Function" "Surface with image"
 
+## Contour
+
+```@docs
+contour
+```
+
+@library[example] "contour"
+
+The below is automatically inserted using `@example_database(contour)`
+
+@example_database(contour)
+
+The below is automatically inserted using `example_database(contour)`
+
+example_database(contour)
 
 ## Wireframe
 
