@@ -85,6 +85,9 @@ end
 find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
 find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
 
+# TODO: handle edge case of different argument types, e.g. one function and one string as input
+# find_indices(input::Vararg{T,N}; title = nothing, author = nothing) where {T<:Union{Function,String}, N} = find_indices(to_string.(input)...; title = title, author = author)
+
 
 """
     example_database(input_tags...; title = nothing, author = nothing)
@@ -101,6 +104,7 @@ end
 
 example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)
 example_database(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = example_database(to_string.(input)...; title = title, author = author)
+
 database = CellEntry[]
 tags_list = []
 globaly_shared_code = String[]
