@@ -1,17 +1,8 @@
 using Makie, AbstractPlotting, GeometryTypes
 
-s2 = scatter(linspace(0, 1, 10), rand(10), color = :blue)
+s2 = scatter(linspace(0, 1, 10), rand(10))
+s2 = scatter(linspace(0, 1, 10), rand(10), rand(10))
 Makie.save(joinpath(homedir(), "Desktop", "test.png"), s2)
-
-AbstractPlotting.data_limits(s2)
-AbstractPlotting.real_boundingbox(s2)
-
-AbstractPlotting.plots_from_camera(s2)
-@which AbstractPlotting.data_limits(s2.plots[2])
-
-using FileIO
-
-save("test.png", Images.clamp01nan.(img));
 
 img = GLVisualize.loadasset("doge.png")
 GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))
@@ -48,8 +39,8 @@ scene
 r = linspace(-10, 10, 512)
 z = ((x, y)-> sin(x) + cos(y)).(r, r')
 scene = Scene()
-c = heatmap!(scene, r, r, z, levels = 5)
-s = scatter!(scene, rand(-10:10, 10), rand(-10:10, 10))
+# c = heatmap!(scene, r, r, z, levels = 5)
+# s = scatter!(scene, rand(-10:10, 10), rand(-10:10, 10))
 s2 = contour!(scene, r, r, z, levels = 5)
 scene
 

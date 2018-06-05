@@ -62,11 +62,9 @@ include("types.jl")
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 
 include("config.jl")
-
 include("boundingbox.jl")
 
 include("visualize_interface.jl")
-export _view #push renderobject into renderlist of the default screen, or supplied screen
 export visualize # Visualize an object
 export visualize_default # get the default parameter for a visualization
 
@@ -74,9 +72,6 @@ include("utils.jl")
 export y_partition, y_partition_abs
 export x_partition, x_partition_abs
 export loop, bounce
-export clicked, dragged_on, is_hovering
-export OR, AND, isnotempty
-export color_lookup
 
 include(joinpath("visualize", "lines.jl"))
 include(joinpath("visualize", "containers.jl"))

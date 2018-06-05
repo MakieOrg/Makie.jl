@@ -8,6 +8,7 @@ scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
     marker = [:x, :circle, :cross]
 )
+
 s = heatmap(rand(100, 100))
 Makie.center!(s)
 s
