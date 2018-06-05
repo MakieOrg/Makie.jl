@@ -281,7 +281,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             show_axis = true,
             show_legend = false,
             scale_plot = true,
-            center = false,
+            center = true,
             axis = Attributes(),
             legend = Attributes(),
             camera = :automatic,
@@ -355,6 +355,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             end
         end
     end
+    value(plot_attributes[:center]) && center!(scene)
     scene
 end
 

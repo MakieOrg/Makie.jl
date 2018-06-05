@@ -289,3 +289,13 @@ function insert_plots!(scene::Scene)
     foreach(insert_plots!, scene.children)
 end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
+
+
+function center!(scene::Scene, padding = 0.01)
+    bb = AbstractPlotting.real_boundingbox(scene)
+    w = widths(bb)
+    padd = w .* padding
+    bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
+    update_cam!(scene, bb)
+    force_update!()
+end
