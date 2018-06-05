@@ -64,3 +64,4 @@ end
 
 to_range(x::ClosedInterval) = (minimum(x), maximum(x))
 to_range(x::VecTypes{2}) = x
+to_range(x::Range) = (minimum(x), maximum(x))

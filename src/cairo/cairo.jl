@@ -279,4 +279,14 @@ function cairo_finish(screen::CairoScreen{CairoRGBSurface})
 end
 cairo_finish(screen::CairoScreen) = finish(screen.surface)
 
+function draw_all(screen, scene::Scene)
+    Makie.center!(scene)
+    for elem in scene.plots
+        cairo_draw(screen, elem)
+    end
+    foreach(x->draw_all(screen, x), scene.children)
+    cairo_finish(screen)
+end
+
+
 end

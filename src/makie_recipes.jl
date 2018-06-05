@@ -33,8 +33,8 @@ with z- elevation for each level
 function contourlines(::Type{Contour}, contours, cols)
     result = Point2f0[]
     colors = RGBA{Float32}[]
-    for (color, c) in zip(cols, Main.Contour.levels(contours))
-        for elem in Main.Contour.lines(c)
+    for (color, c) in zip(cols, ContourLib.levels(contours))
+        for elem in ContourLib.lines(c)
             append!(result, elem.vertices)
             push!(result, Point2f0(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
@@ -46,8 +46,8 @@ end
 function contourlines(::Type{Contour3d}, contours, cols)
     result = Point3f0[]
     colors = RGBA{Float32}[]
-    for (color, c) in zip(cols, Main.Contour.levels(contours))
-        for elem in Main.Contour.lines(c)
+    for (color, c) in zip(cols, ContourLib.levels(contours))
+        for elem in ContourLib.lines(c)
             for p in elem.vertices
                 push!(result, Point3f0(p[1], p[2], c.level))
             end

@@ -1,7 +1,6 @@
 function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalAttributeMesh
     @gen_defaults! data begin
         main = mesh
-        boundingbox = const_lift(GLBoundingBox, mesh)
         shading = true
         color = nothing
         shader = GLVisualizeShader(
@@ -16,8 +15,6 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalM
         shading = true
         main = mesh
         color = default(RGBA{Float32}, s)
-        boundingbox = const_lift(GLBoundingBox, mesh)
-
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "standard.vert", "standard.frag",
             view = Dict("light_calc" => light_calc(shading))
@@ -29,7 +26,6 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalU
         shading = true
         main = mesh
         color = default(RGBA{Float32}, s) => Texture
-        boundingbox = const_lift(GLBoundingBox, mesh)
 
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "uv_normal.vert", "standard.frag",
@@ -59,7 +55,6 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLPlainMe
     @gen_defaults! data begin
         primitive::GLPlainMesh = mesh
         color = default(RGBA, s, 1)
-        boundingbox = const_lift(GLBoundingBox, mesh)
         shader = GLVisualizeShader("fragment_output.frag", "plain.vert", "plain.frag")
     end
 end
