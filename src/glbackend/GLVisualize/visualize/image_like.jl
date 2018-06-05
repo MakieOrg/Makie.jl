@@ -25,7 +25,6 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
             xmax, ymax = maximum(r[1]), maximum(r[2])
             SimpleRectangle{Float32}(x, y, xmax - x, ymax - y)
         end
-        boundingbox           = const_lift(GLBoundingBox, primitive)
         preferred_camera      = :orthographic_pixel
         fxaa                  = false
         shader                = GLVisualizeShader(
@@ -38,7 +37,6 @@ function _default(main::VecTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
         image                 = main => (Texture, "image, can be a Texture or Array of colors")
         primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0, 0f0, length(value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
-        boundingbox           = const_lift(GLBoundingBox, primitive)
         preferred_camera      = :orthographic_pixel
         fxaa                  = false
         shader                = GLVisualizeShader(
@@ -65,7 +63,6 @@ function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: Intensity
         stroke_width::Float32 = 0.05f0
         levels::Float32       = 5f0
         stroke_color          = RGBA{Float32}(1,1,1,1)
-        boundingbox           = GLBoundingBox(primitive)
         shader                = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
         preferred_camera      = :orthographic_pixel
         fxaa                  = false
@@ -194,7 +191,6 @@ _default(func::String, s::Style{:shader}, data::Dict) = @gen_defaults! data begi
     dimensions            = (120f0, 120f0)
     primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0,0f0, dimensions...)
     preferred_camera      = :orthographic_pixel
-    boundingbox           = GLBoundingBox(primitive)
     fxaa                  = false
     shader                = GLVisualizeShader(
         "fragment_output.frag", "parametric.vert", "parametric.frag",
@@ -259,7 +255,6 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         color            = color_map == nothing ? default(RGBA, s) : nothing
 
         algorithm        = MaximumIntensityProjection
-        boundingbox      = hull
         absorption       = 1f0
         isovalue         = 0.5f0
         isorange         = 0.01f0
@@ -290,7 +285,6 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
         color            = color_map == nothing ? default(RGBA, s) : nothing
 
         algorithm        = AbsorptionRGBA
-        boundingbox      = hull
         shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
         prerender        = VolumePrerender()
         postrender       = () -> begin
@@ -317,7 +311,6 @@ function _default(main::IndirectArray{T}, s::Style, data::Dict) where T <: RGBA
         color            = nothing
 
         algorithm        = IndexedAbsorptionRGBA
-        boundingbox      = hull
         shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
         prerender        = VolumePrerender()
         postrender       = () -> begin

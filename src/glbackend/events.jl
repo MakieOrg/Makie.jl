@@ -32,6 +32,8 @@ function window_open(scene::Scene, window::GLFW.Window)
     event[] = isopen(window)
     GLFW.SetWindowCloseCallback(window, windowclose)
 end
+
+import AbstractPlotting: disconnect!
 function disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
 end

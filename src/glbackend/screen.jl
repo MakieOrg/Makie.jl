@@ -32,6 +32,32 @@ mutable struct Screen <: AbstractScreen
 end
 GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
+function insertplots!(screen::Screen, scene::Scene)
+    for elem in scene.plots
+        insert!(screen, scene, elem)
+    end
+    foreach(insertplots!, scene.children)
+end
+
+function Base.empty!(screen::Screen)
+    empty!(screen.renderlist)
+    empty!(screen.screen2scene)
+    empty!(screen.screens)
+    empty!(screen.cache)
+    empty!(screen.cache2plot)
+end
+
+function Base.resize!(screen::Screen, w, h)
+    GLFW.SetWindowSize(screen.glscreen, round(Int, w), round(Int, h))
+end
+
+function Base.display(screen::Screen, scene::Scene)
+    empty!(screen)
+    resize!(screen, widths(AbstractPlotting.pixelarea(scene)[])...)
+    register_callbacks(scene, to_native(screen))
+    insertplots!(screen, scene)
+    return
+end
 
 function colorbuffer(screen::Screen)
     GLFW.PollEvents()
@@ -41,11 +67,6 @@ function colorbuffer(screen::Screen)
     glFinish() # block until opengl is done rendering
     buffer = gpu_data(screen.framebuffer.color)
     return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
-end
-
-function getscreen(scene::Scene)
-    isempty(scene.current_screens) && return nothing
-    scene.current_screens[1]
 end
 
 
@@ -67,6 +88,7 @@ end
 to_native(x::Screen) = x.glscreen
 const gl_screens = GLFW.Window[]
 
+
 """
 OpenGL shares all data containers between shared contexts, but not vertexarrays -.-
 So to share a robjs between a context, we need to rewrap the vertexarray into a new one for that
@@ -83,14 +105,14 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     )
 end
 
-function Screen(scene::Scene; kw_args...)
+function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
             isopen(elem) && destroy!(elem)
         end
         empty!(gl_screens)
     end
-    window = GLFW.Window(name = "Makie", resolution = widths(scene.px_area[]), kw_args...)
+    window = GLFW.Window(name = "Makie", resolution = resolution, kw_args...)
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     GLAbstraction.new_context()
@@ -101,8 +123,18 @@ function Screen(scene::Scene; kw_args...)
     # end
     push!(gl_screens, window)
     GLFW.MakeContextCurrent(window)
+    if visible
+        GLFW.ShowWindow(window)
+    else
+        GLFW.HideWindow(window)
+    end
     GLFW.SwapInterval(0)
-    fb = GLFramebuffer(map(widths, scene.events.window_area))
+    resolution_signal = Signal(resolution)
+    GLFW.SetFramebufferSizeCallback(
+        window,
+        (window, w::Cint, h::Cint)-> push!(resolution_signal, Int.((w, h)))
+    )
+    fb = GLFramebuffer(resolution_signal)
     screen = Screen(
         window, fb,
         RefValue{Task}(),
@@ -113,9 +145,17 @@ function Screen(scene::Scene; kw_args...)
         Dict{UInt16, AbstractPlot}(),
     )
     screen.rendertask[] = @async(renderloop(screen))
-    register_callbacks(scene, to_native(screen))
-    push!(scene.current_screens, screen)
     screen
+end
+
+const _global_gl_screen = Ref{Screen}()
+function global_gl_screen()
+    if isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
+        _global_gl_screen[]
+    else
+        _global_gl_screen[] = Screen()
+        _global_gl_screen[]
+    end
 end
 
 

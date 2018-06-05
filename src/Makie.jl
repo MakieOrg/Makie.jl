@@ -1,25 +1,42 @@
 __precompile__(true)
 module Makie
 
+const has_ffmpeg = Ref(false)
+
+function __init__()
+    has_ffmpeg[] = try
+        success(`ffmpeg -h`)
+    catch
+        false
+    end
+end
+
 using AbstractPlotting
+using Reactive, GeometryTypes, Colors, StaticArrays
+import IntervalSets
+using IntervalSets: ClosedInterval, (..)
 importall AbstractPlotting
 using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont, Key, @key_str
 
-using Reactive, GeometryTypes, Colors, StaticArrays
+# conflicting identifiers
+using AbstractPlotting: Text, volume, VecTypes
+using GeometryTypes: width
+
 
 using Colors, GeometryTypes, ColorVectorSpace
-using Contour
+import Contour
+const ContourLib = Contour
+
 import Quaternions
 using Primes
 
 using Base.Iterators: repeated, drop
 using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
-using IntervalSets
 using PlotUtils, Showoff
 
 using Base: RefValue
 
-import Base: push!, isopen
+import Base: push!, isopen, show
 
 # functions we overload
 
@@ -31,6 +48,7 @@ include("utils.jl")
 include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")
 include("output.jl")
+include("video_io.jl")
 
 export Scene
 # Abstract/Concrete scene + plot types
@@ -74,7 +92,7 @@ export Billboard
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
-export RGBAf0, VecTypes, RealVector, IRect, FRect, FRect2D, IRect, IRect2D
+export RGBAf0, VecTypes, RealVector, FRect, FRect2D, IRect, IRect2D
 export FRect3D, IRect3D, Rect3D, Transformation, RGBAf0, Quaternionf0
 export Point2f0, Vec2f0, Vec3f0, Point3f0
 export GLNormalMesh, GLUVmesh, GLNormalUVMesh, Sphere

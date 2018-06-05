@@ -77,7 +77,6 @@ function _default(position::Union{VecTypes{T}, MatTypes{T}}, s::style"lines", da
         pattern             = nothing
         fxaa                = false
         preferred_camera    = :orthographic_pixel
-        boundingbox         = const_lift(x-> GLBoundingBox(to_cpu_mem(x)), p_vec)
         indices             = const_lift(length, p_vec) => to_index_buffer
         shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag")
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
@@ -124,7 +123,6 @@ function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) whe
         indices             = const_lift(length, positions) => to_index_buffer
         preferred_camera    = :orthographic_pixel
         # TODO update boundingbox
-        boundingbox         = const_lift(x-> GLBoundingBox(to_cpu_mem(x)), positions)
         shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag")
         gl_primitive        = GL_LINES
     end

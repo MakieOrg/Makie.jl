@@ -287,11 +287,7 @@ function meshparticle(p, s, data)
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
     end
-    inst = _Instances(
-        position, position_x, position_y, position_z,
-        scale, scale_x, scale_y, scale_z,
-        rotation, value(primitive)
-    )
+
     @gen_defaults! data begin
         color_map  = nothing => Texture
         color_norm = nothing
@@ -303,7 +299,6 @@ function meshparticle(p, s, data)
         end => to_meshcolor
 
         instances = const_lift(length, position)
-        boundingbox = const_lift(GLBoundingBox, inst)
         shading = true
         shader = GLVisualizeShader(
             "util.vert", "particles.vert", "fragment_output.frag", "standard.frag",
@@ -337,7 +332,6 @@ _default(position::VecTypes{T}, s::style"speed", data::Dict) where {T <: Point} 
     color_norm   = nothing  => Vec2f0
     intensity = nothing  => GLBuffer
     point_size   = 2f0
-    #boundingbox = ParticleBoundingBox(position, Vec3f0(1), SimpleRectangle(-point_size/2,-point_size/2, point_size, point_size))
     prerender    = ()->glPointSize(point_size)
     shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
     gl_primitive = GL_POINTS
@@ -512,11 +506,7 @@ function sprites(p, s, data)
         scale = const_lift(s-> Vec2f0(glyph_scale!(p[1], s)), scale)
         data[:scale] = scale
     end
-    inst = _Instances(
-        position, position_x, position_y, position_z,
-        scale, scale_x, scale_y, scale_z,
-        rotation, SimpleRectangle{Float32}(0,0,1,1)
-    )
+
     @gen_defaults! data begin
         offset          = primitive_offset(p[1], scale) => GLBuffer
         intensity       = nothing => GLBuffer
@@ -532,7 +522,6 @@ function sprites(p, s, data)
 
         distancefield   = primitive_distancefield(p[1]) => Texture
         indices         = const_lift(length, p[2]) => to_index_buffer
-        boundingbox     = const_lift(GLBoundingBox, inst)
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f0(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         preferred_camera = :orthographic_pixel
