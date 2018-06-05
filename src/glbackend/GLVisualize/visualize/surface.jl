@@ -13,7 +13,6 @@ function _default(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, s::Style{:
         position_x = main[1] => (Texture, "x position, must be an `Matrix{Float}`")
         position_y = main[2] => (Texture, "y position, must be an `Matrix{Float}`")
         position_z = main[3] => (Texture, "z position, must be an `Matrix{Float}`")
-        boundingbox = surfboundingbox(position_x, position_y, position_z)
         scale = Vec3f0(0) => "scale must be 0, for a surfacemesh"
     end
     surface(position_z, s, data)
@@ -35,7 +34,6 @@ function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) w
         position    = main[1] =>" Position given as a `Grid{2}`.
         Can be constructed e.g. `Grid(linspace(0,2,N1), linspace(0,3, N2))`"
         position_z  = main[2] => (Texture, "height offset for the surface, must be `Matrix{Float}`")
-        boundingbox = surfboundingbox(position, position_z)
         scale       = Vec3f0(xscale, yscale, 1) => "scale of the grid planes forming the surface. Can be made smaller, to let the grid show"
     end
     surface(position_z, s, data)
@@ -73,7 +71,6 @@ function surface(main, s::Style{:surface}, data::Dict)
         position_x  = nothing => Texture
         position_y  = nothing => Texture
         position_z  = nothing => Texture
-        boundingbox = nothing
         wireframe   = false
         glow_color       = RGBA{Float32}(0,0,0,0) => GLBuffer
         stroke_color     = RGBA{Float32}(0,0,0,1) => GLBuffer
