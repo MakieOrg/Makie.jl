@@ -36,7 +36,7 @@ function insertplots!(screen::Screen, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
-    foreach(insertplots!, scene.children)
+    foreach(s-> insertplots!(screen, s), scene.children)
 end
 
 function Base.empty!(screen::Screen)
