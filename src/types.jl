@@ -36,7 +36,7 @@ const VecTypes{N, T} = Union{StaticVector{N, T}, NTuple{N, T}}
 const RGBAf0 = RGBA{Float32}
 
 
-abstract type AbstractScreen end
+abstract type AbstractScreen <: Display end
 
 
 function IRect(x, y, w, h)

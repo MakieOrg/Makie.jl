@@ -74,7 +74,7 @@ export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, campixel
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 
 # picking + interactive use cases + events
-export mouseover, onpick, pick, Events
+export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse
 export register_callbacks
 export window_area
 export window_open
@@ -99,8 +99,9 @@ export Billboard
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
-export RGBAf0, VecTypes, RealVector, IRect, FRect, FRect2D, IRect, IRect2D
+export RGBAf0, VecTypes, RealVector, FRect, FRect2D, IRect2D
 export FRect3D, IRect3D, Rect3D, Transformation
+export IRect, FRect, Rect
 #export (..) # reexport interval
 
 export plot!, plot

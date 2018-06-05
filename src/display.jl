@@ -1,6 +1,6 @@
 
+Base.mimewritable(::MIME"text/plain", scene::Scene) = true
 
-function show(io::IO, ::MIME"plain/text", scene::Scene)
-    
-
+function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
+    print(io, summary(scene))
 end

@@ -97,7 +97,7 @@ function slider(scene, range; kw_args...)
     )
     lbb = data_limits(lplot) # on purpose static so we hope text won't become too long?
     bg_rect = map(sliderlength, sliderheight) do w, h
-        Makie.IRect(0, 0, w + 10 + widths(lbb)[1], h)
+        IRect(0, 0, w + 10 + widths(lbb)[1], h)
     end
     poly!(
         splot, bg_rect,
@@ -160,7 +160,7 @@ function button(scene, txt; kw_args...)
     )
     lbb = data_limits(lplot) # on purpose static so we hope text won't become too long?
     bg_rect = map(dimensions) do wh
-        Makie.IRect(0, 0, Vec(wh))
+        IRect(0, 0, Vec(wh))
     end
     p = poly!(
         splot, bg_rect,
