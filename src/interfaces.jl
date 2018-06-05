@@ -6,7 +6,7 @@ default_theme(scene, T) = not_implemented_for(T)
 function default_theme(scene)
     light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     Theme(
-        color = :blue,
+        color = theme(scene, :color),
         linewidth = 1,
         visible = true,
         light = light,
@@ -163,7 +163,6 @@ Plots a text
 @atomic(Text) do scene
     Theme(;
         default_theme(scene)...,
-        color = :black,
         strokecolor = (:black, 0.0),
         strokewidth = 0,
         font = theme(scene, :font),
