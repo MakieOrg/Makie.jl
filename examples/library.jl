@@ -4,23 +4,31 @@ using Makie
 
 @block SimonDanisch ["2d"] begin
     @cell "colored triangle" [mesh, polygon] begin
+        scene = Scene(@resolution)
+        # TODO: doesn't work
+        # ERROR (unhandled task failure): glTexImage 2D: width too large. Width: 849439543
+        # ERROR: can't splice Array{ColorTypes.RGBA{Float32},1} into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true
         mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue], shading = false)
     end
     @cell "Subscenes" [image, scatter, subscene] begin
 
-        img = loadasset("doge.png")
+        # TODO: had to use Makie.loadasset
+        img = Makie.loadasset("doge.png")
         scene = Scene(@resolution)
-
+        # TODO: fails here with ERROR: MethodError: no method matching isless(::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}}, ::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}})
         is = image(img)
-        center!(scene)
-        subscene = Scene(scene, Signal(SimpleRectangle(0, 0, 200, 200)))
+        # TODO: had to use Makie.center!
+        Makie.center!(scene)
+        # TODO: had to do Makie.Signal
+        subscene = Scene(scene, Makie.Signal(SimpleRectangle(0, 0, 200, 200)))
         scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-        center!(scene)
+        # TODO: had to use Makie.center!
+        Makie.center!(scene)
         scene
     end
 
     @cell "Contour Function" [contour] begin
-
+        # TODO: doesn't work -- blank plot window?
         scene = Scene(@resolution)
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
@@ -31,11 +39,14 @@ using Makie
     @cell "Contour Simple" [contour] begin
         scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
+        # TODO: ERROR: MethodError: no method matching to_vector(::AbstractPlotting.Scene, ::Int64, ::Type{Float64})
         contour(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
+        # TODO: contour throws that error, but contour! doesn't?
     end
 
 
     @cell "Heatmap" [heatmap] begin
+        # TODO: it works, but Y Axis label is cut off through the bounding box (Simon knows this)
         scene = Scene(@resolution)
         heatmap!(scene, rand(32, 32))
     end
@@ -44,6 +55,7 @@ using Makie
         scene = Scene(@resolution)
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
         s = scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
+        # TODO: ERROR: UndefVarError: @outputfile not defined
         io = VideoStream(scene, @outputfile)
         @inbounds for i in 2:length(r)
             s[:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
@@ -53,6 +65,7 @@ using Makie
     end
 
     @cell "Text Annotation" [text, align] begin
+        # TODO: it works, but the plot appears very small, and only on the bottom-left corner. Doing center! doesn't change zoom or its location.
         scene = Scene(@resolution)
         text(
             ". This is an annotation!",
@@ -65,6 +78,7 @@ using Makie
     end
 
     @cell "Text rotation" [text, rotation] begin
+        # TODO: this works, but it works more reliably when you do scene = Scene(@resolution); scatter!(scene, posis, markersize = 10) (i.e. do it in one line vs multiple lines)
         using GeometryTypes
         scene = Scene(@resolution)
         pos = (500, 500)
@@ -89,7 +103,9 @@ end
 
     @cell "Sample 7" [scatter, similar] begin
         scene = Scene(@resolution)
+        # TODO: successfully plots, even though it ERROR (unhandled task failure): glTexImage 2D: width too large. Width: 849439543
         sv = scatter(rand(Point3f0, 100))
+        # TODO: ERROR: function similar does not accept keyword arguments
         similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
     end
 
@@ -138,6 +154,7 @@ end
         end
         rotationsC = [Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
         # plot
+        # TODO: again this only works if the Scene() command and the meshscatter! command are issued in the same line
         scene = Scene(@resolution)
         hm = meshscatter!(
             scene, pG[edges[:, 1]],
@@ -154,7 +171,7 @@ end
     end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
-
+        using Colors #necessary to use RGBA()
         scene = Scene(@resolution)
         large_sphere = HyperSphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
@@ -165,16 +182,17 @@ end
     end
 
     @cell "Simple meshscatter" [meshscatter] begin
+        # TODO: this works
         using Colors
         scene = Scene(@resolution)
-        large_sphere = HyperSphere(Point3f0(0), 1f0)
-        positions = decompose(Point3f0, large_sphere)
+        large_sphere = Makie.HyperSphere(Point3f0(0), 1f0)
+        positions = Makie.decompose(Point3f0, large_sphere)
         meshscatter(positions, color = RGBA(0.9, 0.2, 0.4, 1))
         scene
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
-
+        # TODO: Doesn't work - surf_func
         scene = Scene(@resolution)
 
         function xy_data(x, y)
@@ -184,6 +202,9 @@ end
 
         r = linspace(-2, 2, 40)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
+        # TODO: errors out here ERROR: DomainError:
+        # Exponentiation yielding a complex result requires a complex argument.
+        # Replace x^y with (x+0im)^y, Complex(x)^y, or similar.
         z = surf_func(20)
         surf = surface(r, r, z)
 
@@ -203,13 +224,14 @@ end
     end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
+        # TODO: this works!
         scene = Scene(@resolution)
-        x = loadasset("cat.obj")
+        x = Makie.loadasset("cat.obj")
         mesh(x.vertices, x.faces, color = :black)
         pos = map(x.vertices, x.normals) do p, n
             p => p .+ (normalize(n) .* 0.05f0)
         end
-        linesegment(pos)
+        linesegments(pos)
         scene
     end
 
@@ -217,6 +239,9 @@ end
 
 
     @cell "Sphere Mesh" [mesh] begin
+    # TODO: doesn't work
+    # Error showing value of type AbstractPlotting.Scene:
+    # ERROR: MethodError: no method matching GeometryTypes.HomogenousMesh(::Array{Void,1}, ::Array{Void,1})
         scene = Scene(@resolution)
         mesh(Sphere(Point3f0(0), 1f0))
         center!(scene)
@@ -225,8 +250,14 @@ end
 
 
     @cell "Stars" [scatter, glow] begin
-        scene = Scene(resolution = (500, 500), color = :black)
+        # scene = Scene(resolution = (500, 500), color = :black)
+        scene = Scene(@resolution)
         stars = 100_000
+        # TODO: doesn't work
+        # Error showing value of type AbstractPlotting.Scene:
+        # ERROR: MethodError: Cannot `convert` an object of type Float64 to an object of type GeometryTypes.Vec{2,Float32}
+        # This may have arisen from a call to the constructor GeometryTypes.Vec{2,Float32}(...),
+        # since type constructors fall back to convert methods.
         scatter((rand(Point3f0, stars) .- 0.5) .* 10,
             glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
             markersize = rand(linspace(0.0001, 0.01, 100), stars)
@@ -235,14 +266,16 @@ end
     end
 
     @cell "Unicode Marker" [scatter, axis, marker] begin
+        # TODO: plot shows, but axis not defined error
         scene = Scene(@resolution)
         scatter(Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
+        # TODO: ERROR: UndefVarError: axis not defined?
         axis(scene, linspace(0, 1, 4), linspace(0, 1, 4), linspace(0, 1, 4))
         center!(scene);
     end
 
     @cell "Line Gif" [lines, animated, gif, offset] begin
-
+        # TODO: didn't test this yet
         scene = Scene(@resolution)
         lineplots = []
         axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
@@ -277,9 +310,13 @@ end
         vy = -1:0.01:1;
 
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
+        # TODO: Error showing value of type AbstractPlotting.Scene:
+        # ERROR: MethodError: no method matching to_range(::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}})
         psurf = surface(vx, vy, f)
 
+        # TODO: ERROR: UndefVarError: axis not defined
         a = axis(linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
+        # TODO: ERROR: UndefVarError: center! not defined
         center!(scene, 0)
 
         a[:axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
