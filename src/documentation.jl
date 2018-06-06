@@ -24,10 +24,8 @@
 
 Maps the input of a Type name to its cooresponding function.
 """
-function to_func(Typ::Type{T}) where T <: AbstractPlot
-    sym = Typ.body.name.name
-    sym = string(sym) |> lowercase |> Symbol
-    f = getfield(current_module(), sym)
+function to_func(Typ::Type{<: AbstractPlot{F}}) where F
+    F
 end
 
 to_func(func::Function) = func
@@ -39,8 +37,11 @@ to_func(func::Function) = func
 Maps the input of a function name to its cooresponding Type.
 """
 function to_type(func::Function)
-    sym = typeof(func).name.mt.name
-    Typ = getfield(Makie,Symbol(titlecase(string(sym))))
+    if func in AbstractPlotting.atomic_functions
+        Atomic{func}
+    else
+        Combined{func}
+    end
 end
 
 to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
@@ -89,11 +90,11 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     str = to_string(input)
 
     # Print docstrings
-    println(io, Base.Docs.doc(input))
+    println(io, Base.Docs.doc(func))
 
     # Arguments
     help_arguments(io, func)
-    println(io, "Please refer to @ref[convert_arguments] to find the full list of accepted arguments\n")
+    println(io, "Please refer to [`convert_arguments`](@ref) to find the full list of accepted arguments\n")
 
     # Keyword arguments
     help_attributes(io, input; extended = extended)
