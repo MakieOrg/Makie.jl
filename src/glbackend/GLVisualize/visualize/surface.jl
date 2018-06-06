@@ -89,7 +89,7 @@ function surface(main, s::Style{:surface}, data::Dict)
             "must be single color value, must be nothing for color_map")
         color_map  = (!wireframe && color == nothing ? default(Vector{RGBA}, s) : nothing) => (Texture,
         "must be `Vector{Color}`, `color` must be nothing")
-        color_norm = (!wireframe && color_map != nothing ? const_lift(_extrema, boundingbox) : nothing) => begin
+        color_norm = (!wireframe && color_map != nothing ? Vec2f0(0, 1) : nothing) => begin
             "normalizes the heightvalues before looking up color in `color_map`."
         end
         instances  = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"

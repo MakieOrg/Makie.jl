@@ -31,7 +31,7 @@ function CairoScreen(scene::Scene)
     CairoScreen(scene, surf, ctx, CairoGtkPane(win, canv))
 end
 
-function CairoScreen(scene::Scene, path::String; mode=:svg)
+function CairoScreen(scene::Scene, path::Union{String, IO}; mode=:svg)
     w, h = round.(Int, scene.camera.resolution[])
     # TODO: Add other surface types (PDF, etc.)
     if mode == :svg

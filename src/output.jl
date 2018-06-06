@@ -28,9 +28,16 @@ function save(path::String, scene::Scene)
 end
 
 import Juno, Media
+
 Media.media(Scene, Media.Plot)
+
 Juno.@render Juno.PlotPane p::Scene begin
-    HTML(stringmime("image/svg+xml", p))
+    try
+        HTML(stringmime("image/svg+xml", p))
+    catch e
+        Base.show_backtrace(STDERR, Base.catch_backtrace())
+        rethrow(e)
+    end
 end
 
 # Base.mimewritable(::MIME"text/html", scene::VideoStream) = true
@@ -52,21 +59,21 @@ function show(io::IO, mime::MIME"text/html", scene::Scene)
     print(io, "\">")
 end
 
-function svg(scene::Scene, path::String)
+function svg(scene::Scene, path::Union{String, IO})
     cs = CairoBackend.CairoScreen(scene, path)
     CairoBackend.draw_all(cs, scene)
 end
 
-function svg(scene::Scene, io::IO)
-    mktempdir() do dir
-        path = joinpath(dir, "output.svg")
-        svg(scene, path)
-        write(io, open(read, path))
-    end
-end
+# function svg(scene::Scene, io::IO)
+#     mktempdir() do dir
+#         path = joinpath(dir, "output.svg")
+#         svg(scene, path)
+#         write(io, open(read, path))
+#     end
+# end
 
 function show(io::IO, m::MIME"image/svg+xml", scene::Scene)
-    if AbstractPlotting.is2d(scene)
+    if false#AbstractPlotting.is2d(scene)
         svg(scene, io)
     else
         show(io, MIME"text/html"(), scene)
