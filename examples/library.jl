@@ -13,15 +13,15 @@ using Makie
     @cell "Subscenes" [image, scatter, subscene] begin
 
         # TODO: had to use Makie.loadasset
-        img = Makie.loadasset("doge.png")
+        img = rand(RGBAf0, 100, 100)
         scene = Scene(@resolution)
         # TODO: fails here with ERROR: MethodError: no method matching isless(::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}}, ::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}})
         is = image(img)
-        AbstractPlotting.center!(scene)
+        center!(scene)
         # TODO: had to do Makie.Signal
-        subscene = Scene(scene, Makie.Signal(SimpleRectangle(0, 0, 200, 200)))
+        subscene = Scene(scene, Node(SimpleRectangle(0, 0, 200, 200)))
         scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-        AbstractPlotting.center!(scene)
+        center!(scene)
         scene
     end
 
@@ -31,44 +31,33 @@ using Makie
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
         contour!(scene, r, r, z, levels = 5, color = :RdYlBu)
-        Makie.save(joinpath(homedir(), "Desktop", "contour.png"), scene)
     end
 
 
     @cell "Contour Simple" [contour] begin
-        scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
-        contour!(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
-        # TODO: contour throws this error, but contour! doesn't?
-        # TODO: ERROR: MethodError: no method matching to_vector(::AbstractPlotting.Scene, ::Int64, ::Type{Float64})
-        # TODO: pinch to zoom is backwards (at least on my laptop??)
+        contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
     end
 
 
     @cell "Heatmap" [heatmap] begin
         # TODO: it works, but Y Axis label is cut off through the bounding box (Simon knows this)
-        scene = Scene(@resolution); heatmap!(scene, rand(32, 32))
-        Makie.save(joinpath(homedir(), "Desktop", "heatmap.png"), scene)
-
+        heatmap(rand(32, 32))
     end
 
     @cell "Animated Scatter" [animation, scatter, updating] begin
         scene = Scene(@resolution)
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
         s = scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
-        # TODO: ERROR: UndefVarError: @outputfile not defined
-        io = VideoStream(scene, @outputfile)
-        @inbounds for i in 2:length(r)
-            s[:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
-            recordframe!(io)
+        #TODO make this work
+        record(scene, @outpufile, r) do r
+            s[:positions] = Point2f0.(view(r, :, 1), view(r, :, 2))
         end
-        io
     end
 
     @cell "Text Annotation" [text, align] begin
         # TODO: it works, but the plot appears very small, and only on the bottom-left corner.
         # TODO: Doing center! doesn't change zoom or its location.
-        scene = Scene(@resolution)
         text(
             ". This is an annotation!",
             position = (300, 200),
@@ -76,7 +65,6 @@ using Makie
             textsize = 60,
             font = "URW Chancery L"
         )
-        scene
     end
 
     @cell "Text rotation" [text, rotation] begin
@@ -108,7 +96,8 @@ end
         # TODO: successfully plots, even though it ERROR (unhandled task failure): glTexImage 2D: width too large. Width: 849439543
         sv = scatter(rand(Point3f0, 100))
         # TODO: ERROR: function similar does not accept keyword arguments
-        similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
+        # Simon says: maybe we won't keep similar
+        # similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
     end
 
     @cell "Fluctuation 3D" [animated, mesh, meshscatter, axis] begin
@@ -160,41 +149,32 @@ end
         rotationsC = [Makie.Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
         # plot
         # TODO: again this only works if the Scene() command and the meshscatter! command are issued in the same line
-        scene = Scene(@resolution)
         hm = meshscatter!(
             scene, pG[edges[:, 1]],
             color = colorsC, marker = meshC,
             markersize = sizesC,  rotations = rotationsC,
-            raw = true
         )
         hp = meshscatter!(
             scene, pG,
             color = colorsp, marker = meshS, markersize = radius,
-            raw = true
         )
 
     end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
-        # TODO: works, needed to add Makie.
-        using Colors #necessary to use RGBA()
         scene = Scene(@resolution)
         large_sphere = Makie.HyperSphere(Point3f0(0), 1f0)
         positions = Makie.decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
         lines!(scene, linepos, linewidth = 0.1, color = :black)
-        scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBA(0.9, 0.2, 0.4, 0.6))
+        scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
         scene
     end
 
     @cell "Simple meshscatter" [meshscatter] begin
-        # TODO: this works
-        using Colors
-        scene = Scene(@resolution)
-        large_sphere = Makie.HyperSphere(Point3f0(0), 1f0)
-        positions = Makie.decompose(Point3f0, large_sphere)
-        meshscatter(positions, color = RGBA(0.9, 0.2, 0.4, 1))
-        scene
+        large_sphere = Sphere(Point3f0(0), 1f0)
+        positions = decompose(Point3f0, large_sphere)
+        meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1))
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
@@ -202,43 +182,40 @@ end
         scene = Scene(@resolution)
 
         function xy_data(x, y)
-            r = sqrt(x^x + y^y)
+            r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
 
-        r = linspace(-2, 2, 40)
+        r = linspace(1, 3, 40)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
         # TODO: errors out here ERROR: DomainError:
         # Exponentiation yielding a complex result requires a complex argument.
         # Replace x^y with (x+0im)^y, Complex(x)^y, or similar.
         z = surf_func(20)
-        surf = surface(r, r, z)
+        surf = surface!(scene, r, r, z)[1]
 
-        wf = wireframe(r, r, surf[:z] .+ 1.0,
-            linewidth = 2f0, color = lift_node(x-> x[5], surf[:colormap])
+        wf = wireframe!(scene, r, r, lift(x-> x .+ 1.0, surf[3]),
+            linewidth = 2f0, color = lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        xy = linspace(-2.1, 2.1, 4)
-        Makie.axis3d(xy, xy, linspace(0, 2, 4))
-        AbstractPlotting.center!(scene)
-
-        io = VideoStream(scene, @outputfile)
-        for i in linspace(0, 60, 100)
-            surf[:z] = surf_func(i)
-            recordframe!(io)
-        end
         scene
+        # io = VideoStream(scene, @outputfile)
+        for i in linspace(0, 60, 100)
+            surf[3] = surf_func(i)
+            sleep(1/60)
+            AbstractPlotting.force_update!()
+            # recordframe!(io)
+        end
+        # scene
     end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
-        # TODO: this works!
         scene = Scene(@resolution)
         x = Makie.loadasset("cat.obj")
-        mesh(x.vertices, x.faces, color = :black)
+        mesh!(scene, x.vertices, x.faces, color = :black)
         pos = map(x.vertices, x.normals) do p, n
             p => p .+ (normalize(n) .* 0.05f0)
         end
-        linesegments(pos)
-        Makie.save(joinpath(homedir(), "Desktop", "cat-normals.png"), scene)
+        linesegments!(scene, pos)
         scene
     end
 
@@ -246,45 +223,33 @@ end
 
 
     @cell "Sphere Mesh" [mesh] begin
-    # TODO: doesn't work. changing to mesh! also doesn't work.
-    # Error showing value of type AbstractPlotting.Scene:
-    # ERROR: MethodError: no method matching GeometryTypes.HomogenousMesh(::Array{Void,1}, ::Array{Void,1})
-        scene = Scene(@resolution)
-        mesh(Sphere(Point3f0(0), 1f0))
-        AbstractPlotting.center!(scene)
-        scene
+        mesh(Sphere(Point3f0(0), 1f0), color = :blue)
     end
 
 
-    @cell "Stars" [scatter, glow] begin
-        # scene = Scene(resolution = (500, 500), color = :black)
-        scene = Scene(@resolution)
+    @cell "Stars" [scatter, glow, update_cam!] begin
+        using Makie, GeometryTypes
         stars = 100_000
-        # TODO: doesn't work
-        # Error showing value of type AbstractPlotting.Scene:
-        # ERROR: MethodError: Cannot `convert` an object of type Float64 to an object of type GeometryTypes.Vec{2,Float32}
-        # This may have arisen from a call to the constructor GeometryTypes.Vec{2,Float32}(...),
-        # since type constructors fall back to convert methods.
-        scatter((rand(Point3f0, stars) .- 0.5) .* 10,
-            glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
-            markersize = rand(linspace(0.0001, 0.01, 100), stars)
+        scene = Scene()
+        scene.theme[:backgroundcolor] = RGBAf0(0, 0, 0, 1)
+        scatter!(
+            scene,
+            (rand(Point3f0, stars) .- 0.5) .* 10,
+            glowwidth = 0.005, glowcolor = :white, color = RGBAf0(0.8, 0.9, 0.95, 0.4),
+            markersize = rand(linspace(0.0001, 0.01, 100), stars),
+            show_axis = false
         )
+        update_cam!(scene, FRect3D(Vec3f0(-2), Vec3f0(4)))
         scene
     end
 
     @cell "Unicode Marker" [scatter, axis, marker] begin
-        # TODO: plot shows, but axis not defined error
-        scene = Scene(@resolution)
         scatter(Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
-        Makie.axis3d(scene, linspace(0, 1, 4), linspace(0, 1, 4), linspace(0, 1, 4))
-        AbstractPlotting.center!(scene);
     end
 
     @cell "Line Gif" [lines, animated, gif, offset] begin
         scene = Scene(@resolution)
         lineplots = []
-        axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
-        AbstractPlotting.center!(scene)
         us = linspace(0, 1, 100)
 
         mktempdir() do path
@@ -318,11 +283,11 @@ end
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
         # TODO: Error showing value of type AbstractPlotting.Scene:
         # ERROR: MethodError: no method matching to_range(::StepRangeLen{Float64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}})
-        psurf = surface(vx, vy, f)
+        psurf = surface!(scene, vx, vy, f, show_axis = false)
 
-        a = Makie.axis2d(linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
+        a = Makie.axis3d!(scene, linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
         # TODO: ERROR: UndefVarError: center! not defined
-        AbstractPlotting.center!(scene, 0)
+        AbstractPlotting.center!(scene)
 
         # TODO: ERROR: KeyError: key :axisnames not found --> axis.jl line 310?
         # TODO: all of these keys are not defined
@@ -388,7 +353,7 @@ end
             using GeometryTypes
             # To simplify the example, we take the already existing GeometryTypes.Circle type, which
             # can already be decomposed into positions
-            function Makie.to_positions(backend, x::Circle)
+            function AbstractPlotting.convert_arguments(P, x::Circle)
                 # Convert to a type to_positions can handle.
                 # Everything that usually works in e.g. scatter/lines should be allowed here.
                 positions = decompose(Point2f0, x, 50)
@@ -397,11 +362,10 @@ end
                 # that are not visible in the user facing API.
                 Makie.to_positions(backend, positions)
             end
-            scene = Scene(@resolution)
             # TODO: lines() and scatter() seem to not add to the plot, but replace the previous plot?
             # TODO: I thought that would be the behaviour of the inplace functions
-            p1 = lines(Makie.Circle(Point2f0(0), 5f0))
-            p2 = scatter(Makie.Circle(Point2f0(0), 6f0))
+            p1 = lines!(Makie.Circle(Point2f0(0), 5f0))
+            p2 = scatter!(Makie.Circle(Point2f0(0), 6f0))
             AbstractPlotting.center!(scene)
         end
 
@@ -413,38 +377,25 @@ end
     end
 
     @cell "Volume Function" ["3d", volume] begin
-        scene = Scene(@resolution)
-        # TODO: Error showing value of type AbstractPlotting.Scene:
-        # TODO: ERROR: UndefVarError: GLVisualize not defined
-        volume(rand(32, 32, 32), algorithm = :iso)
-        AbstractPlotting.center!(scene)
+        volume(rand(32, 32, 32), algorithm = :mip)
     end
 
     @cell "Heatmap Function" ["2d", heatmap] begin
-        # TODO: this works
-        scene = Scene(@resolution)
         heatmap(rand(32, 32))
-        AbstractPlotting.center!(scene)
     end
 
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
-        scene = Scene(@resolution)
-        cat = Makie.loadasset("cat.obj")
+        cat = GeometryTypes.GLNormalUVMesh(Makie.loadasset("cat.obj"))
         # TODO: original: cat = load(assetpath("cat.obj"), GLNormalUVMesh)
         mesh(cat, color = Makie.loadasset("diffusemap.tga"))
-        AbstractPlotting.center!(scene)
     end
     @cell "Load Mesh" ["3d", mesh, cat] begin
         # TODO: this works
         scene = Scene(@resolution)
         mesh(Makie.loadasset("cat.obj"))
-        r = linspace(-0.1, 1, 4)
-        AbstractPlotting.center!(scene)
-        scene
     end
     @cell "Colored Mesh" ["3d", mesh, axis] begin
 
-        scene = Scene(@resolution);
         x = [0, 1, 2, 0]
         y = [0, 0, 1, 2]
         z = [0, 2, 0, 1]
@@ -457,45 +408,31 @@ end
         # TODO:
         # ERROR: MethodError: no method matching GeometryTypes.HomogenousMesh{GeometryTypes.Point{3,Float32},GeometryTypes.Face{3,GeometryTypes.OffsetInteger{-1,UInt32}},GeometryTypes.Normal{3,Float32},Void,Void,Void,Void}(::Array{GeometryTypes.Point{3,Float32},1}, ::Array{Int64,1})
         mesh(x, y, z, indices, color = color)
-        r = linspace(-0.5, 2.5, 4)
-        Makie.axis3d(r, r, r)
-        AbstractPlotting.center!(scene)
     end
     @cell "Wireframe of a Mesh" ["3d", mesh, wireframe, cat] begin
-        scene = Scene(@resolution)
-        # TODO: ERROR: MethodError: no method matching isnan(::Tuple{GeometryTypes.Point{3,Float32},GeometryTypes.Point{3,Float32}})
         wireframe(Makie.loadasset("cat.obj"))
-        AbstractPlotting.center!(scene)
     end
     @cell "Wireframe of Sphere" ["3d", wireframe] begin
-        scene = Scene(@resolution)
-        # TODO: ERROR: MethodError: Cannot `convert` an object of type Tuple{Int64,Int64,Int64} to an object of type GeometryTypes.OffsetInteger{-1,UInt32}
-        # This may have arisen from a call to the constructor GeometryTypes.OffsetInteger{-1,UInt32}(...), since type constructors fall back to convert methods.
         wireframe(Sphere(Point3f0(0), 1f0))
-        AbstractPlotting.center!(scene)
     end
     @cell "Wireframe of a Surface" ["3d", surface, wireframe] begin
-        scene = Scene(@resolution)
-        # TODO:
-        # ERROR: MethodError: AbstractPlotting.plot!(::Wireframe{...}, ::Type{Any}, ::Dict{Symbol,Any}) is amb
-        # iguous. Candidates:
-        #   plot!(scene::AbstractPlotting.Combined, ::Type{PlotType}, attributes::Dict{Symbol,Any}, args...) w
-        # here PlotType in AbstractPlotting at C:\Users\Anthony\AppData\Local\JuliaPro-0.6.2.2\pkgs-0.6.2.2\v0
-        # .6\AbstractPlotting\src\interfaces.jl:317
-        #   plot!(scene::Union{AbstractPlotting.AbstractScene, AbstractPlotting.ScenePlot}, ::Type{Any}, attri
-        # butes::Dict{Symbol,Any}, args...) in AbstractPlotting at C:\Users\Anthony\AppData\Local\JuliaPro-0.6
-        # .2.2\pkgs-0.6.2.2\v0.6\AbstractPlotting\src\interfaces.jl:300
-        # Possible fix, define
-        #   plot!(::AbstractPlotting.Combined, ::Type{Any}, ::Dict{Symbol,Any}, ::Vararg{Any,N} where N)
-        surf = wireframe(range, range, z)
-        AbstractPlotting.center!(scene)
+        function xy_data(x, y)
+            r = sqrt(x^2 + y^2)
+            r == 0.0 ? 1f0 : (sin(r)/r)
+        end
+        N = 30
+        lspace = linspace(-10, 10, N)
+        # TODO: ERROR: DomainError: (it doesn't say anything here)
+        z = Float32[xy_data(x, y) for x in lspace, y in lspace]
+        range = linspace(0, 3, N)
+        wireframe(range, range, z)
     end
     @cell "Surface Function" ["3d", surface] begin
         # TODO: didn't work -> see later comments
         scene = Scene(@resolution)
         N = 32
         function xy_data(x, y)
-            r = sqrt(x^x + y^y)
+            r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
         lspace = linspace(-10, 10, 32)
@@ -506,78 +443,58 @@ end
         AbstractPlotting.center!(scene)
     end
     @cell "Surface with image" ["3d", surface, image] begin
-        scene = Scene(@resolution)
-
-        N = 60
-
         function xy_data(x, y)
-            r = sqrt(x^x + y^y)
+            r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
-
-        r = linspace(-2, 2, 40)
-        # TODO: originally it was xy_data(x*i, y*i)) but I changed it to xy_data(x*im, y*im))?
-        # TODO: but if I change it to x*im then it gives ERROR: InexactError()
-        surf_func(i) = [Float32(xy_data(x*im, y*im)) for x = r, y = r]
-        # TODO: ERROR: DomainError:
+        r = linspace(-2, 2, 30)
+        surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
         surface(
             r, r, surf_func(10),
-            color = Makie.loadasset("doge.png")
+            image = rand(RGBAf0, 124, 124)
         )
-        AbstractPlotting.center!(scene)
-        scene
     end
     @cell "Line Function" ["2d", lines] begin
-        # TODO: this works
-        scene = Scene(@resolution)
         x = linspace(0, 3pi)
         lines(x, sin.(x))
-        AbstractPlotting.center!(scene)
     end
 
     @cell "Meshscatter Function" ["3d", meshscatter] begin
         # TODO: this works
         scene = Scene(@resolution)
-        large_sphere = HyperSphere(Point3f0(0), 1f0)
-        positions = decompose(Point3f0, large_sphere)
-        colS = [RGB(rand(), rand(), rand()) for i = 1:length(positions)]
+        large_sphere = Sphere(Point3f0(0), 1f0)
+        positions = GeometryTypes.decompose(Point3f0, large_sphere)
+        colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
         sizesS = [rand(Point3f0) .* 0.5f0 for i = 1:length(positions)]
         meshscatter(positions, color = colS, markersize = sizesS)
-        AbstractPlotting.center!(scene)
     end
 
     @cell "Scatter Function" ["2d", scatter] begin
         # TODO: this works
-        scene = Scene(@resolution)
         scatter(rand(20), rand(20))
-        AbstractPlotting.center!(scene)
     end
 
     @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
         scene = Scene(@resolution)
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
-
-        # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
-        p1 = scatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), scene[:time]))
-        # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
-        p2 = scatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), scene[:time]))
-        AbstractPlotting.center!(scene)
-        # you can now reference to life attributes from the above plots:
-
-        # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
-        lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
+        time = Node(0.0)
+        p1 = scatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), time))[1]
+        p2 = scatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), time))[end]
+        center!(scene)
+        lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
-
-        # TODO: ERROR: UndefVarError: linesegment not defined
-        linesegment(lines)
+        linesegments!(scene, lines)
 
         AbstractPlotting.center!(scene)
         io = VideoStream(scene, @outputfile)
         # record a video
-        for i = 1:300
-            recordframe!(io)
+        for i = linspace(0, 10, 300)
+            push!(time, i)
+            sleep(1/60)
+            AbstractPlotting.force_update!()
+            #recordframe!(io)
         end
         io
     end
@@ -585,11 +502,11 @@ end
         scene = Scene(@resolution)
         # TODO: ERROR: UndefVarError: linesegment not defined
         plots = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
-            linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
+            linesegments!(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
         end
 
         # TODO: ERROR: MethodError: no method matching push!(::AbstractPlotting.#plots, ::AbstractPlotting.Scene)
-        push!(plots, scatter(linspace(1, 5, 100), rand(100), rand(100)))
+        push!(plots, scatter!(linspace(1, 5, 100), rand(100), rand(100)))
 
         AbstractPlotting.center!(scene)
 
@@ -646,25 +563,25 @@ end
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
         # TODO: ERROR: UndefVarError: to_node not defined
-        t = to_node(time()) # create a life signal
-        p1 = meshscatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), t))
-        p2 = meshscatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t))
-        AbstractPlotting.center!(scene)
+        t = Node(Base.time()) # create a life signal
+        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t))[1]
+        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t))[end]
 
         # you can now reference to life attributes from the above plots:
         # TODO: ERROR: UndefVarError: lift_node not defined
-        lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
+        lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
 
-        linesegment(lines, linestyle = :dot)
-
-        AbstractPlotting.center!(scene)
+        linesegments!(scene, lines, linestyle = :dot)
+        display(Makie.global_gl_screen(), scene)
         # record a video
         io = VideoStream(scene, @outputfile)
         for i = 1:300
-            push!(t, time())
-            recordframe!(io)
+            push!(t, Base.time())
+            sleep(1/30)
+            AbstractPlotting.force_update!()
+            #recordframe!(io)
         end
         finish(io, "mp4") # could also be gif, webm or mkv
     end
@@ -672,21 +589,18 @@ end
 
     @group begin
         @cell "Theming Step 1" ["3d", scatter, surface] begin
-            # TODO: didn't work
-            scene = Scene(@resolution)
+            scene = Scene()
             vx = -1:0.1:1;
             vy = -1:0.1:1;
-
             f(x, y) = (sin(x*10) + cos(y*10)) / 4
-            psurf = surface(vx, vy, f)
+            psurf = surface!(vx, vy, f)[1]
 
             # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
-            pos = lift_node(psurf[:x], psurf[:y], psurf[:z]) do x, y, z
+            pos = lift(psurf[1], psurf[2], psurf[3]) do x, y, z
                 vec(Point3f0.(x, y', z .+ 0.5))
             end
-            pscat = scatter(pos)
-            plines = lines(view(pos, 1:2:length(pos)))
-            AbstractPlotting.center!(scene)
+            pscat = scatter!(pos)
+            plines = lines!(lift(view, pos, lift(x->1:2:length(x), pos)))
         end
 
         @cell "Theming Step 2" ["3d", scatter, surface] begin
@@ -760,6 +674,5 @@ end
         end
     end
 end
-
 
 database

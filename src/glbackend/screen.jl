@@ -48,7 +48,9 @@ function Base.empty!(screen::Screen)
 end
 
 function Base.resize!(screen::Screen, w, h)
-    GLFW.SetWindowSize(screen.glscreen, round(Int, w), round(Int, h))
+    if isopen(screen)
+        GLFW.SetWindowSize(screen.glscreen, round(Int, w), round(Int, h))
+    end
 end
 
 function Base.display(screen::Screen, scene::Scene)
