@@ -1,10 +1,18 @@
 # Functions
 
-Primitive plotting functions.
-These are the most atomic operations from which one can stack together more complex plots
+The follow document lists the primitive plotting functions from `atomics.jl`, and their usage.
+These are the most atomic operations which one can stack together to form more complex plots.
 
+For styling options of each function, see the keyword arguments list for each function.
+For a general overview of styling and to see the default parameters, refer to the chapter [Themes](@ref).
+
+# Scatter plots
 
 ## Scatter
+
+The `scatter` function can be called either as
+`scatter(x, y, z)`, `scatter(x, y)`, or `scatter(positions)`.
+The function plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
 ```@example
 using Makie
@@ -20,7 +28,21 @@ save("scatter.png", scene); nothing # hide
 scatter
 ```
 
-# Meshscatter
+Available keyword arguments for `scatter` are:
+* either one of: `color` or `colormap` (if you use colormap, you'll also need to provide the `intensities`)
+* `marker`
+* `markersize`
+* `strokecolor`
+* `strokewidth`
+* `glowcolor`
+* `glowwidth`
+* `rotations`
+
+
+## Meshscatter
+
+Similar to `scatter`, `meshscatter` plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions`.
+Usage: `meshscatter(x, y, z)`, `meshscatter(x, y)`, or `meshscatter(positions)`.
 
 ```@example
 using Makie, GLVisualize, GeometryTypes
@@ -35,8 +57,17 @@ save("meshscatter.png", scene); nothing # hide
 ```@docs
 meshscatter
 ```
+Available keyword arguments for `meshscatter`are:
+* either one of: `color` or `colormap` (if you use colormap, you'll also need to provide the `intensities`)
+* `marker`
+* `markersize`
+* `rotations`
 
-## Lines
+
+# Lines
+
+`lines` creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
+Usage: `lines(x, y, z)`, `lines(x, y)`, or `lines(positions)`.
 
 ```@example
 using Makie
@@ -53,7 +84,18 @@ save("lines.png", scene); nothing # hide
 lines
 ```
 
-## Surface
+Available keyword arguments for `lines` are:
+* either one of: `color` or `colormap` (if you use colormap, you'll also need to provide the `intensities`)
+* `linecolor`
+* `linewidth`
+* `linestyle`
+* `drawoever`
+
+
+# Surface
+
+`surface` plots a surface, where `(x, y, z)` are supposed to lie on a grid.
+Usage: `surface(x, y, z)`.
 
 ```@example surf
 using Makie
@@ -72,11 +114,20 @@ surf = surface(range, range, z, colormap = :Spectral)
 center!(scene)
 save("surface.png", scene); nothing # hide
 ```
-
 ![](surface.png)
 
+The plotted surface can be textured, or painted, with one of the following:
+* `colormap`
+* `colormap` with `image`
+* `color`
+* `image`
 
-## Wireframe
+
+# Wireframe
+
+The `wireframe` function can be called either as
+`wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`.
+The function draws a wireframe, either interpreted as a surface or as a mesh.
 
 ```@docs
 wireframe
@@ -92,7 +143,11 @@ save("wireframe.png", scene); nothing # hide
 ![](wireframe.png)
 
 
-## Mesh
+# Mesh
+
+The `mesh` function can be called either as
+`mesh(x, y, z)`, `mesh(mesh_object)`, `mesh(x, y, z, faces)`, or `mesh(xyz, faces)`.
+This function plots a 3D mesh.
 
 ```@docs
 mesh
@@ -112,7 +167,7 @@ j = [1, 2, 3, 2]
 k = [2, 3, 1, 3]
 
 indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
-mesh(x, y, z, indices, color = color)
+m = mesh(x, y, z, indices, color = color)
 r = linspace(-0.5, 2.5, 4)
 axis(r, r, r)
 center!(scene)
@@ -120,6 +175,16 @@ save("coloredmesh.png", scene); nothing # hide
 ```
 ![](coloredmesh.png)
 
+Additionally, it is possible to combine `mesh` with `wireframe` to generate an "outlined" mesh plot:
+```
+using GLVisualize: loadasset, assetpath
+wireframe(m[:mesh], color = :black, linewidth = 10)
+center!(scene)
+save("coloredmesh.png", scene); nothing # hide
+```
+![](coloredmesh-wireframe.png)
+
+`mesh` can also plot using externally-loaded assets as `mesh_object` (using `FileIO`):
 
 ```@example mesh
 scene = Scene(resolution = (500, 500))
@@ -141,7 +206,17 @@ save("texturemesh.png", scene); nothing # hide
 ```
 ![](texturemesh.png)
 
-## Heatmap
+Available keyword arguments for `mesh` are:
+* `indices`
+* `shading`
+* `attribute_id`
+
+
+# Heatmap
+
+The `heatmap` function can be called either as
+`heatmap(x, y, values)` or `heatmap(values)`.
+The function plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
 
 ```@docs
 heatmap
@@ -156,8 +231,27 @@ save("heatmap.png", scene); nothing # hide
 ```
 ![](heatmap.png)
 
+Available keyword arguments for `heatmap` are:
+* `colormap`
+* `linewidth`
+* `levels`
+* `interpolate`
 
-## Volume
+The `interpolate` keyword argument can be used to generate almost organic-looking plots:
+```@example heatmap
+using Makie
+scene = Scene(resolution = (500, 500))
+heatmap(rand(32, 32), colormap = :Spectral, interpolate = true)
+center!(scene)
+save("heatmap.png", scene); nothing # hide
+```
+![](heatmap-interpolated.png)
+
+
+# Volume
+
+`volume` plots a volume.
+Usage: `volume(volume_data)`.
 
 ```@docs
 volume
@@ -165,7 +259,6 @@ volume
 ```
 
 ```@example volume
-#julia
 using Makie
 scene = Scene()
 volume(rand(32, 32, 32), algorithm = :iso)
@@ -174,7 +267,15 @@ save("volume.png", scene); nothing # hide
 ```
 ![](volume.png)
 
+Available keyword arguments for `volume` are:
+* either one of: `color` or `colormap`
+* `algorithm`
+* `absorption`
+* `isovalue`
+* `isorange`
 
+
+# TODOs
 ```
 image
 volume
