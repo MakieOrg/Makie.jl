@@ -1,9 +1,5 @@
 include("library.jl")
-result = find(database) do x
-    x.title == "Subscenes"
-end
-database[result[1]]
-entry
+
 function filestring(entry)
     string(entry.file, ':', first(entry.file_range))
 end
