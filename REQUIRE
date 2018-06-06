@@ -5,6 +5,8 @@ StaticArrays 0.6.6
 GeometryTypes 0.4.5
 Reactive 0.6.0
 AbstractNumbers 0.1.1
+Color
+ColorVectorSpace
 Contour
 FileIO
 Images
@@ -21,6 +23,10 @@ FreeType
 FreeTypeAbstraction
 IntervalSets
 Primes
+
+Cairo
+Showoff
+PlotUtils
 
 @windows ImageMagick
 @linux ImageMagick
