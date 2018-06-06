@@ -267,16 +267,6 @@ function flatten_combined(plots::Vector, flat = AbstractPlot[])
 end
 
 
-function boundingbox(scene::Scene)
-    bb = AABB{Float32}()
-    for plot in plots_from_camera(scene)
-        bb1 = data_limits(plot) #TODO use boundingbox
-        bb1 = modelmatrix(plot)[] * bb1
-        bb == AABB{Float32}() && (bb = bb1)
-        bb = union(bb, bb1)
-    end
-    bb
-end
 
 
 
