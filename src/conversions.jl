@@ -20,6 +20,13 @@ convert_attribute(x, key::Key) = x
 convert_arguments(P, args...) = args
 
 
+function convert_arguments(P, positions::AbstractVector{<: NTuple{N, <: Number}}) where N
+    (convert(Vector{Point{N, Float32}}, positions),)
+end
+function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{<: NTuple{2, T}}) where T <: VecTypes
+    (reinterpret(T, positions),)
+end
+
 convert_arguments(P, y::RealVector) = convert_arguments(1 .. length(y), y)
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
@@ -125,6 +132,9 @@ end
 function convert_arguments(MT::Type{<:Mesh}, xy::AbstractVector{<: VecTypes{2, T}}) where T
     convert_arguments(MT, Point3f0.(first.(xy), last.(xy), 0.0))
 end
+function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
+    (GLNormalMesh(geom),)
+end
 
 using ColorBrewer
 
@@ -140,13 +150,18 @@ convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
 convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
 convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 
-convert_attribute(c, ::key"markersize", ::key"scatter") = Vec2f0(c)
-convert_attribute(c::Vector, ::key"markersize", ::key"scatter") = convert(Array{Vec2f0}, c)
+convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
 convert_attribute(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
+
+to_2d_scale(x::Number) = Vec2f0(x)
+to_2d_scale(x::StaticVector) = to_ndim(Vec2f0, x, 1)
+to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
+
+convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
-convert_attribute(c, ::key"strokewidth") = Float32(c)
+convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
 convert_attribute(x::Void, ::key"linestyle") = x
 
@@ -342,7 +357,7 @@ end
 Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
 """
 function convert_attribute(value, ::key"algorithm")
-    if isa(value, GLVisualize.RaymarchAlgorithm)
+    if isa(value, RaymarchAlgorithm)
         return Int32(value)
     elseif isa(value, Int32) && value in 0:5
         return value

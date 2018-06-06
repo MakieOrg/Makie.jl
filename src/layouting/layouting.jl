@@ -2,6 +2,11 @@ const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
 
 
 data_limits(x::Atomic{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(value(x[1]))
+# TODO makes this generically work
+data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{N, <: Number}}}}) where {Typ, N} = FRect3D(Point{N, Float32}.(value(x[1])))
+function data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{2, T}}}}) where {Typ, T <: VecTypes}
+    FRect3D(reinterpret(T, value(x[1])))
+end
 
 function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
     _boundingbox(value.(x[1:3])...)
@@ -56,9 +61,15 @@ function data_limits(x::Volume)
 end
 
 
-
+function text_limits(x::VecTypes)
+    p = to_ndim(Vec3f0, x, 0.0)
+    FRect3D(p, p)
+end
+function text_limits(x::AbstractVector)
+    FRect3D(x)
+end
 function data_limits(x::Text)
-    AABB(value(x[:position]))
+    text_limits(value(x[:position]))
 end
 
 function boundingox(x::Text)
@@ -78,9 +89,7 @@ function boundingox(x::Text)
     end
     start_pos = pos_per_char ? first(position) : position
     c1 = first(txt)
-    if pos_per_char
     aoffsetn = to_ndim(Point{N, Float32}, align, 0f0)
-    for i = 1:length(txt)
     broadcast_foreach(position, rotation, font, scale, align) do position, rotation, font, scale, align
         c1 = first(txt)
         last_pos = start_pos

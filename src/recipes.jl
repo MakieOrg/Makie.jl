@@ -80,7 +80,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
 
         Base.@__doc__($funcname)
-        $(esc(:default_theme))(scene::SceneLike, ::Type{<: $T}) = $theme_func(scene)
+        $(esc(:default_theme))(scene, ::Type{<: $T}) = $theme_func(scene)
 
         export $T, $funcname, $funcname!
     end
@@ -110,7 +110,7 @@ macro atomic(theme_func, Tsym::Symbol)
         $funcname!(attributes::Attributes, args...) = plot!(current_scene(), $T, attributes, args...)
         $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
 
-        $(esc(:default_theme))(scene::SceneLike, ::Type{<: $T}) = $theme_func(scene)
+        $(esc(:default_theme))(scene, ::Type{<: $T}) = $theme_func(scene)
 
         export $T, $funcname, $funcname!
     end

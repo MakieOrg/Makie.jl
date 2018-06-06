@@ -74,7 +74,7 @@ limits(scene::SceneLike) = scene.parent.limits
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::Scene) = x.theme
 theme(x::Scene, key) = x.theme[key]
-
+theme(::Void, key::Symbol) = default_theme()[key]
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 function Base.push!(scene::Scene, plot::AbstractPlot)
@@ -270,7 +270,7 @@ end
 function boundingbox(scene::Scene)
     bb = AABB{Float32}()
     for plot in plots_from_camera(scene)
-        bb1 = boundingbox(plot)
+        bb1 = data_limits(plot) #TODO use boundingbox
         bb1 = modelmatrix(plot)[] * bb1
         bb == AABB{Float32}() && (bb = bb1)
         bb = union(bb, bb1)
@@ -290,10 +290,11 @@ update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 
 function center!(scene::Scene, padding = 0.01)
-    bb = real_boundingbox(scene)
+    bb = boundingbox(scene)
     w = widths(bb)
     padd = w .* padding
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     force_update!()
+    scene
 end
