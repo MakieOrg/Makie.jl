@@ -1,17 +1,33 @@
-using Makie, AbstractPlotting, GeometryTypes
+using Makie
+doge = rand(RGBAf0, 100, 100)
+# For rectangles + rotation
+
+scatter(
+    Point3f0[(1,0,0), (0,1,0), (0,0,1)],
+    marker = [doge, doge, doge],
+    # rotation around axis... can you Vec4f0(...) for a quaternion
+    rotations = [(Vec3f0(0, 1, 0), 0.5pi), (Vec3f0(1, 0, 0), -0.5pi), (Vec3f0(0, 0, 1), -1.2pi)]
+)
+
+# for more control:
+scene = Scene(resolution = (500, 500))
+mesh = GLNormalUVMesh(GeometryTypes.SimpleRectangle(0, 0, 1, 1))
+# note, you can change the mesh.vertices to arbitrary values
+Makie.mesh(mesh, color = doge, shading = false)
 
 s2 = scatter(linspace(0, 1, 10), rand(10))
 s2 = scatter(linspace(0, 1, 10), rand(10), rand(10))
-Makie.save(joinpath(homedir(), "Desktop", "test.png"), s2)
 
-img = GLVisualize.loadasset("doge.png")
-GLFW.SetWindowIcon(nw, reinterpret(NTuple{4, UInt8}, img))
-
-using Makie
 scene = Scene()
 x = linspace(0, 6, 100)
 s = surface!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 scene
+
+scene = Scene()
+r = linspace(-10, 10, 512)
+z = ((x, y)-> sin(x) + cos(y)).(r, r')
+contour!(scene, r, r, z, levels = 5, color = :RdYlBu)
+Makie.save(joinpath(homedir(), "Desktop", "contour.png"), scene)
 
 scene = Scene()
 x = linspace(0, 6, 100)

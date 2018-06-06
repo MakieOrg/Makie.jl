@@ -225,12 +225,14 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
+        @show haskey(gl_attributes, :image)
         if haskey(gl_attributes, :image) && gl_attributes[:image][] != nothing
+            println("not noting")
             img = pop!(gl_attributes, :image)
             norm = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
 
-            img = if isa(value(img), AbstractMatrix{<: Number})
+            if isa(value(img), AbstractMatrix{<: Number})
                 img = map(img, cmap, norm) do img, cmap, norm
                     interpolated_getindex.((cmap,), img, (norm,))
                 end
@@ -298,17 +300,16 @@ function surface_contours(volume::Volume)
     hull = AABB{Float32}(Vec3f0(0), Vec3f0(1))
     gl_data = Dict(
         :hull => GLUVWMesh(hull),
-
         :volumedata => Texture(map(x-> convert(Array{Float32}, x), vol)),
         :model => model2,
         :modelinv => modelinv,
-        :colormap => Texture(volume[:colormap]),
+        :colormap => Texture(map(to_colormap, volume[:colormap])),
         :colorrange => map(Vec2f0, volume[:colorrange]),
         :fxaa => true
     )
     bb = map(m-> m * hull, model)
     robj = RenderObject(gl_data, shader, volume_prerender, bb)
-    robj.postrenderfunction = StandardPostrender(robj.vertexarray, GL_TRIANGLES)
+    robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
     robj
 end
 
