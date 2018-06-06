@@ -5,6 +5,9 @@
 # We can then continue to generate files for visual regression tests
 # snoop compiling and even create ijulia notebooks with cells containing this.
 
+#TODO: remove all mentions of "center" and "center!" since the new implementation
+# automatically centers the plot
+
 #setup
 using Makie, GLFW, GeometryTypes, Reactive, FileIO, ColorBrewer, Colors
 using GLVisualize

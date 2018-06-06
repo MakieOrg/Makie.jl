@@ -12,8 +12,101 @@ struct CellEntry
     groupid::Int
 end
 
+# overload Base.show to show output of CellEntry
+function Base.show(io::IO, ::MIME"text/plain", entry::CellEntry)
+    # println(io, "_______________________________")
+    # println(io, "title: ", entry.title)
+    # println(io, "source: ")
+    println(io, "```")
+    println(io, entry.source)
+    println(io, "```")
+    # println(io, "_______________________________\n")
+end
+
+function Base.show(io::IO, ::MIME"text/markdown", entry::CellEntry)
+    # println(io, "_______________________________")
+    # println(io, "title: ", entry.title)
+    # println(io, "source: ")
+    println(io, "```")
+    println(io, entry.source)
+    println(io, "```")
+    # println(io, "_______________________________\n")
+end
+
+# ==========================================================
+# Print source code given database index
+
+function _print_source(io::IO, idx::Int; style = nothing)
+    println(io, style == nothing ? "```\n$(database[idx].source)\n```" :
+        style == "source" ? "```\n$(database[idx].source)\n```" :
+        style == "julia" ? "```julia\n$(database[idx].source)\n```" : "" )
+end
+
+"""
+    print_source(io::IO, idx::Int; style = nothing)
+
+Print source code of database (hard coded internally) at given index `idx`.
+`style` options are:
+* nothing -> default, prints a quoted code block
+* "source" -> same behaviour as default
+* "julia" -> prints a julia code block (i.e. ```julia)
+"""
+function print_source(io::IO, idx::Int; style = nothing)
+    io = IOBuffer()
+    _print_source(io, idx; style = style)
+    Base.Markdown.parse(String(take!(io)))
+end
+
+print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults to STDOUT
+
+
+"""
+    find_indices(input_tags...; title = nothing, author = nothing)
+
+Returns the indices for the entries in examples database that match the input
+search pattern.
+
+`input_tags` are plot tags to be searched for. `title` and `author` are optional
+and are used to filter the search results by title and author.
+"""
+function find_indices(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
+    indices = find(database) do entry
+        # find tags
+        tags_found = all(tags -> string(tags) in entry.tags, input_tags)
+        # find author, if nothing input is given, then don't filter
+        author_found = (author == nothing) || (entry.author == string(author))
+        # find title, if nothing input is given, then don't filter
+        title_found = (title == nothing) || (entry.title == string(title))
+        # boolean to return the result
+        tags_found && author_found && title_found
+    end
+end
+
+find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
+find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
+
+# TODO: handle edge case of different argument types, e.g. one function and one string as input
+# find_indices(input::Vararg{T,N}; title = nothing, author = nothing) where {T<:Union{Function,String}, N} = find_indices(to_string.(input)...; title = title, author = author)
+
+
+"""
+    example_database(input_tags...; title = nothing, author = nothing)
+
+Returns the entries in examples database that match the input search pattern.
+
+`input_tags` are plot tags to be searched for. `title` and `author` are optional
+and are used to filter the search results by title and author.
+"""
+function example_database(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
+    indices = find_indices(input_tags...; title = title, author = author)
+    database[indices]
+end
+
+example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)
+example_database(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = example_database(to_string.(input)...; title = title, author = author)
 
 database = CellEntry[]
+tags_list = []
 globaly_shared_code = String[]
 const NO_GROUP = 0
 unique_names = Set(Symbol[])
@@ -40,8 +133,8 @@ This puts entries of a group into one local scope
 """
 function print_code(
         io, database, idx;
-        scope_start = "let",
-        scope_end = "end",
+        scope_start = "begin\n",
+        scope_end = "end\n",
         indent = " "^4,
         resolution = (entry)-> "resolution = (500, 500)",
         outputfile = (entry, ending)-> Pkg.dir("Makie", "docs", "media", string(entry.unique_name, ending))
@@ -58,7 +151,7 @@ function print_code(
         push!(group, database[idx])
     end
     foreach(entry-> println(io, entry.toplevel), group)
-    println(io, scope_start)
+    print(io, scope_start)
     for entry in group
         for line in split(entry.source, "\n")
             line = replace(line, "@resolution", resolution(entry))
@@ -74,7 +167,7 @@ function print_code(
             println(io, indent, line)
         end
     end
-    println(io, scope_end)
+    print(io, scope_end)
     idx + 1
 end
 
@@ -275,6 +368,8 @@ macro block(author, tags, block)
     for cell in cells
         cell_entry = extract_cell(cell, author, parent_tags, setup)
         push!(database, cell_entry)
+        # push a list of all tags to tags_list
+        push!(tags_list, collect(String, cell_entry.tags)...)
     end
 
     groups = args[find(is_group, args)]

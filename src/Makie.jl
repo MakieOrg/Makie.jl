@@ -65,6 +65,7 @@ export Node, node, lift, map_once
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
 
 # conversion infrastructure
+include("documentation.jl")
 export @key_str, convert_attribute, convert_arguments
 export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
 export to_ndim
