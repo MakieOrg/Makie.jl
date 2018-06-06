@@ -68,6 +68,7 @@ export to_ndim
 
 # Transformations
 export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
+export boundingbox, insertplots!, center!
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, campixel!, cam3d!, update_cam!

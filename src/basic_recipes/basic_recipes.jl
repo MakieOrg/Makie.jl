@@ -275,6 +275,8 @@ end
 
 is2d(scene::SceneLike) = widths(limits(scene)[])[3] == 0.0
 
+
+
 function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(

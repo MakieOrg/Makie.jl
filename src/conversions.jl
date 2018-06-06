@@ -137,6 +137,9 @@ function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     RGBAf0(Colors.color(col), c[2])
 end
 convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
+convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
+convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
+
 convert_attribute(c, ::key"markersize", ::key"scatter") = Vec2f0(c)
 convert_attribute(c::Vector, ::key"markersize", ::key"scatter") = convert(Array{Vec2f0}, c)
 convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
@@ -434,7 +437,7 @@ to_spritemarker(marker::Matrix{<: AbstractFloat}) = Float32.(marker)
 """
 Any AbstractMatrix{<: Colorant} or other image type
 """
-to_spritemarker(marker::Image) = to_image(marker)
+to_spritemarker(marker::AbstractMatrix{<: Colorant}) = marker
 
 """
 A `Symbol` - Available options can be printed with `available_marker_symbols()`
