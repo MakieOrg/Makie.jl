@@ -330,7 +330,7 @@ to_spritemarker(b, marker::Matrix{<: AbstractFloat}) = Float32.(marker)
 """
 Any AbstractMatrix{<: Colorant} or other image type
 """
-to_spritemarker(b, marker::Image) = to_image(marker)
+to_spritemarker(b, marker::Image) = to_image(b, marker)
 
 """
 A `Symbol` - Available options can be printed with `available_marker_symbols()`
@@ -353,7 +353,6 @@ Vector of anything that is accepted as a single marker will give each point it's
 Note that it needs to be a uniform vector with the same element type!
 """
 function to_spritemarker(b, marker::AbstractVector)
-    println(typeof(marker))
     marker = map(marker) do sym
         to_spritemarker(b, sym)
     end
@@ -412,7 +411,8 @@ to_rotations(b, x::Billboard) = x
 """
 Any AbstractArray which elements can be converted to Vec4 (as a quaternion x, y, z, w)
 """
-to_rotations(b, x::AbstractVector) = to_static_vec(b, x)
+to_rotations(b, x::AbstractVector) = to_rotation.(b, x)
+to_rotations(b, x::Union{StaticVector, Tuple}) = to_rotation(b, x)
 
 """
     to_markersize2d(b, x)

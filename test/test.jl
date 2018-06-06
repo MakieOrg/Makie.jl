@@ -1,9 +1,21 @@
 using Makie, GeometryTypes, Colors
 scene = Scene()
+doge = GLVisualize.loadasset("doge.png")
+# For rectangles + rotation
 scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
-    marker = [:x, :circle, :cross]
+    marker = [doge, doge, doge],
+    # rotation around axis... can you Vec4f0(...) for a quaternion
+    rotations = [(Vec3f0(0, 1, 0), 0.5pi), (Vec3f0(1, 0, 0), -0.5pi), (Vec3f0(0, 0, 1), -1.2pi)]
 )
+
+# for more control:
+scene = Scene(resolution = (500, 500))
+mesh = GLNormalUVMesh(SimpleRectangle(0, 0, 1, 1))
+# note, you can change the mesh.vertices to arbitrary values
+Makie.mesh(mesh, color = doge, shading = false)
+center!(scene)
+
 
 GLVisualize.visualize(("helo", rand(Point3f0, length("helo"))))
 

@@ -12,8 +12,12 @@ function expand_for_glvisualize(kw_args)
 
         if k == :rotations
             k = :rotation
-            v = Vec4f0(0, 0, 0, 1)
-            result[:billboard] = true
+            if to_value(v) == Billboard()
+                v = Vec4f0(0, 0, 0, 1)
+                result[:billboard] = true
+            else
+                v
+            end
         end
         if k == :markersize
             k = :scale
@@ -77,7 +81,7 @@ function _scatter(scene, kw_args)
     attributes = scatter_defaults(scene, kw_args)
     gl_data = expand_for_glvisualize(attributes)
     shape = to_signal(attributes[:marker])
-    main = (shape, to_signal(attributes[:positions]))
+    main = (value(shape), to_signal(attributes[:positions]))
     viz = visualize(main, Style(:default), gl_data)
     insert_scene!(scene, :scatter, viz, attributes)
 end

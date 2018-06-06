@@ -34,7 +34,7 @@ end
 
 
 #cell
-img = loadasset("doge.png")
+img = GLVisualize.loadasset("doge.png")
 scene = Scene(resolution = (500, 500))
 
 display(scene)
@@ -154,6 +154,7 @@ contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
 center!(scene)
 
 #cell
+using Makie, GeometryTypes
 scene = Scene(resolution = (500, 500))
 # define points/edges
 perturbfactor = 4e1
