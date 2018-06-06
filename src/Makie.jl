@@ -17,7 +17,6 @@ import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 import Contour
 const ContourLib = Contour
-import Quaternions
 using Primes
 
 using Base.Iterators: repeated, drop
