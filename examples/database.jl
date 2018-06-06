@@ -402,3 +402,9 @@ macro resolution()
     # only for marking
     nothing
 end
+
+const output_fallback = joinpath(mktempdir(), "test.mp4")
+macro outputfile()
+    # only for marking
+    output_fallback
+end

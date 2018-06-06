@@ -28,9 +28,16 @@ function save(path::String, scene::Scene)
 end
 
 import Juno, Media
+
 Media.media(Scene, Media.Plot)
+
 Juno.@render Juno.PlotPane p::Scene begin
-    HTML(stringmime("image/svg+xml", p))
+    try
+        HTML(stringmime("image/svg+xml", p))
+    catch e
+        Base.show_backtrace(STDERR, Base.catch_backtrace())
+        rethrow(e)
+    end
 end
 
 # Base.mimewritable(::MIME"text/html", scene::VideoStream) = true
