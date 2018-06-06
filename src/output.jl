@@ -52,21 +52,21 @@ function show(io::IO, mime::MIME"text/html", scene::Scene)
     print(io, "\">")
 end
 
-function svg(scene::Scene, path::String)
+function svg(scene::Scene, path::Union{String, IO})
     cs = CairoBackend.CairoScreen(scene, path)
     CairoBackend.draw_all(cs, scene)
 end
 
-function svg(scene::Scene, io::IO)
-    mktempdir() do dir
-        path = joinpath(dir, "output.svg")
-        svg(scene, path)
-        write(io, open(read, path))
-    end
-end
+# function svg(scene::Scene, io::IO)
+#     mktempdir() do dir
+#         path = joinpath(dir, "output.svg")
+#         svg(scene, path)
+#         write(io, open(read, path))
+#     end
+# end
 
 function show(io::IO, m::MIME"image/svg+xml", scene::Scene)
-    if AbstractPlotting.is2d(scene)
+    if false#AbstractPlotting.is2d(scene)
         svg(scene, io)
     else
         show(io, MIME"text/html"(), scene)

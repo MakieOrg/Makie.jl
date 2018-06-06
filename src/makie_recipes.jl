@@ -166,29 +166,3 @@ function plot!(plot::Poly{Tuple{<: AbstractVector{T}}}) where T <: Union{Circle,
     scatter!(plot, attributes, position)
     plot
 end
-
-
-function layout_text(
-        string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
-        font, align, rotation, model
-    ) where {N, T}
-
-    offset_vec = to_align(align)
-    ft_font = to_font(font)
-    rscale = to_textsize(textsize)
-    rot = to_rotation(rotation)
-
-    atlas = GLVisualize.get_texture_atlas()
-    mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    pos = to_ndim(Point{N, Float32}, mpos, 0)
-
-    positions2d = GLVisualize.calc_position(string, Point2f0(0), rscale, ft_font, atlas)
-    aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, ft_font, offset_vec)
-    aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
-    scales = Vec2f0[GLVisualize.glyph_scale!(atlas, c, ft_font, rscale) for c = string]
-    positions = map(positions2d) do p
-        pn = qmul(rot, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
-        pn .+ (pos)
-    end
-    positions, scales
-end
