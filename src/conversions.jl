@@ -19,9 +19,16 @@ convert_attribute(x, key::Key) = x
 # By default, don't apply any conversions
 convert_arguments(P, args...) = args
 
-"""
-    convert_arguments(P, y)::(Vector)
+function convert_arguments(P, positions::AbstractVector{<: NTuple{N, <: Number}}) where N
+    (convert(Vector{Point{N, Float32}}, positions),)
+end
+function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{<: NTuple{2, T}}) where T <: VecTypes
+    (reinterpret(T, positions),)
+end
 
+
+"""
+    convert_arguments(P, y)::Vector
 Takes vector y and generates a range from 1 to the length of y, for plotting on
 an arbitrary x axis.
 P is the plot Type (it is optional).
@@ -265,6 +272,9 @@ the type and the 3D points of the values from x, y and z = 0.0.
 function convert_arguments(MT::Type{<:Mesh}, xy::AbstractVector{<: VecTypes{2, T}}) where T
     convert_arguments(MT, Point3f0.(first.(xy), last.(xy), 0.0))
 end
+function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
+    (GLNormalMesh(geom),)
+end
 
 using ColorBrewer
 
@@ -277,13 +287,21 @@ function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     RGBAf0(Colors.color(col), c[2])
 end
 convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
-convert_attribute(c, ::key"markersize", ::key"scatter") = Vec2f0(c)
-convert_attribute(c::Vector, ::key"markersize", ::key"scatter") = convert(Array{Vec2f0}, c)
+convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
+convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
+
+convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
 convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
 convert_attribute(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
+
+to_2d_scale(x::Number) = Vec2f0(x)
+to_2d_scale(x::StaticVector) = to_ndim(Vec2f0, x, 1)
+to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
+
+convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
-convert_attribute(c, ::key"strokewidth") = Float32(c)
+convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
 convert_attribute(x::Void, ::key"linestyle") = x
 
@@ -479,7 +497,7 @@ end
 Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
 """
 function convert_attribute(value, ::key"algorithm")
-    if isa(value, GLVisualize.RaymarchAlgorithm)
+    if isa(value, RaymarchAlgorithm)
         return Int32(value)
     elseif isa(value, Int32) && value in 0:5
         return value
@@ -574,7 +592,7 @@ to_spritemarker(marker::Matrix{<: AbstractFloat}) = Float32.(marker)
 """
 Any AbstractMatrix{<: Colorant} or other image type
 """
-to_spritemarker(marker::Image) = to_image(marker)
+to_spritemarker(marker::AbstractMatrix{<: Colorant}) = marker
 
 """
 A `Symbol` - Available options can be printed with `available_marker_symbols()`

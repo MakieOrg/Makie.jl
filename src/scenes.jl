@@ -74,7 +74,7 @@ limits(scene::SceneLike) = scene.parent.limits
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::Scene) = x.theme
 theme(x::Scene, key) = x.theme[key]
-
+theme(::Void, key::Symbol) = default_theme()[key]
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 function Base.push!(scene::Scene, plot::AbstractPlot)
@@ -267,10 +267,10 @@ function flatten_combined(plots::Vector, flat = AbstractPlot[])
 end
 
 
-function real_boundingbox(scene::Scene)
+function boundingbox(scene::Scene)
     bb = AABB{Float32}()
     for plot in plots_from_camera(scene)
-        bb1 = data_limits(plot)
+        bb1 = data_limits(plot) #TODO use boundingbox
         bb1 = modelmatrix(plot)[] * bb1
         bb == AABB{Float32}() && (bb = bb1)
         bb = union(bb, bb1)
@@ -280,22 +280,21 @@ end
 
 
 
-function insert_plots!(scene::Scene)
-    for screen in scene.current_screens
-        for elem in scene.plots
-            insert!(screen, scene, elem)
-        end
+function insertplots!(screen::Display, scene::Scene)
+    for elem in scene.plots
+        insert!(screen, scene, elem)
     end
-    foreach(insert_plots!, scene.children)
+    foreach(s-> insertplots!(screen, s), scene.children)
 end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 
 function center!(scene::Scene, padding = 0.01)
-    bb = AbstractPlotting.real_boundingbox(scene)
+    bb = boundingbox(scene)
     w = widths(bb)
     padd = w .* padding
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
     update_cam!(scene, bb)
     force_update!()
+    scene
 end

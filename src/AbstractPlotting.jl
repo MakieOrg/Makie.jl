@@ -68,6 +68,7 @@ export to_ndim
 
 # Transformations
 export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
+export boundingbox, insertplots!, center!
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, campixel!, cam3d!, update_cam!
@@ -99,9 +100,10 @@ export Billboard
 
 # Reexports of
 # Color/Vector types convenient for 3d/2d graphics
-export RGBAf0, VecTypes, RealVector, FRect, FRect2D, IRect2D
+export RGBAf0, RGBf0, VecTypes, RealVector, FRect, FRect2D, IRect2D
 export FRect3D, IRect3D, Rect3D, Transformation
-export IRect, FRect, Rect
+export IRect, FRect, Rect, Sphere
+export Vec3f0, Vec2f0, Point3f0, Point2f0
 #export (..) # reexport interval
 
 export plot!, plot

@@ -2,6 +2,11 @@ const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
 
 
 data_limits(x::Atomic{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(value(x[1]))
+# TODO makes this generically work
+data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{N, <: Number}}}}) where {Typ, N} = FRect3D(Point{N, Float32}.(value(x[1])))
+function data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{2, T}}}}) where {Typ, T <: VecTypes}
+    FRect3D(reinterpret(T, value(x[1])))
+end
 
 function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
     _boundingbox(value.(x[1:3])...)
@@ -56,21 +61,52 @@ function data_limits(x::Volume)
 end
 
 
-
+function text_limits(x::VecTypes)
+    p = to_ndim(Vec3f0, x, 0.0)
+    FRect3D(p, p)
+end
+function text_limits(x::AbstractVector)
+    FRect3D(x)
+end
 function data_limits(x::Text)
-    @extractvalue x (textsize, font, align, rotation, model)
+    text_limits(value(x[:position]))
+end
+
+function boundingox(x::Text)
     txt = value(x[1])
-    position = x.attributes[:position][]
-    positions, scales = if isa(position, VecTypes)
-        layout_text(txt * last(txt), position, textsize, font, align, rotation, model)
-    elseif  length(txt) == length(position) && length(txt) == length(textsize)
-        position, textsize
+    position = value(x[:position])
+    @get_attribute x (textsize, font, align, rotation, model)
+
+    atlas = get_texture_atlas()
+    pos_per_char = if isa(position, Point)
+        # one start position for one string
+        false
+    elseif isa(position, AbstractVector{<: Point}) && length(position) == length(txt)
+        # one position per character/glyph
+        true
     else
-        error("Incompatible sizes found: $(length(textsize)) && $(length(txt)) && $(length(position))")
+        error("Unknown Text position/string combination: text: $(typeof(txt)), positions: $(typeof(position))")
     end
-    pos_scale = map(scales, positions) do s, p
-        sn = to_ndim(typeof(p), s, 0)
-        sn .+ p
+    start_pos = pos_per_char ? first(position) : position
+    c1 = first(txt)
+    aoffsetn = to_ndim(Point{N, Float32}, align, 0f0)
+    broadcast_foreach(position, rotation, font, scale, align) do position, rotation, font, scale, align
+        c1 = first(txt)
+        last_pos = start_pos
+        for (i, (c2, scale, font)) in enumerate(zip(string, scale, font))
+            c2 == '\r' && continue # stupid windows!
+            pos = if pos_per_char
+                position[i]
+            else
+                calc_position(last_pos, start_pos, atlas, c2, font, scale)
+            end
+            offset = Point2f0(glyph_bearing!(atlas, c2, font, scale))
+            s = glyph_scale!(atlas, c2, font, scale)
+            pn = qmul(rotation, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+            pn .+ (pos)
+            c1 = c2
+            last_pos = pos
+        end
     end
     FRect3D(union(HyperRectangle(pos_scale), HyperRectangle(positions)))
 end
