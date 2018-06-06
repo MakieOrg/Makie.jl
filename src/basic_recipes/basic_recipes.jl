@@ -256,7 +256,7 @@ function plot!(plot::Annotations)
             append!(rotations, repeated(rot, n))
             append!(alignments, repeated(ali, n))
         end
-        (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
+        (String(take!(io)), combinedpos, colors, scales, fonts, rotations)
     end
     t_attributes = copy(plot.attributes)
     t_attributes[:position] = map(x-> x[2], tp)
@@ -264,7 +264,7 @@ function plot!(plot::Annotations)
     t_attributes[:textsize] = map(x-> x[4], tp)
     t_attributes[:font] = map(x-> x[5], tp)
     t_attributes[:rotation] = map(x-> x[6], tp)
-    t_attributes[:align] = map(x-> x[7], tp)
+    t_attributes[:align] = Vec2f0(0)
     t_attributes[:model] = eye(Mat4f0)
     t_attributes[:raw] = true
     text!(plot, t_attributes, map(x-> x[1], tp))
