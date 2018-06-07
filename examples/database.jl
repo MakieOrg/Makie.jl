@@ -40,7 +40,8 @@ end
 function _print_source(io::IO, idx::Int; style = nothing)
     println(io, style == nothing ? "```\n$(database[idx].source)\n```" :
         style == "source" ? "```\n$(database[idx].source)\n```" :
-        style == "julia" ? "```julia\n$(database[idx].source)\n```" : "" )
+        style == "julia" ? "```julia\n$(database[idx].source)\n```" :
+        style == "example" ? "```example\n$(database[idx].source)\n```" : "" )
 end
 
 """
@@ -51,6 +52,7 @@ Print source code of database (hard coded internally) at given index `idx`.
 * nothing -> default, prints a quoted code block
 * "source" -> same behaviour as default
 * "julia" -> prints a julia code block (i.e. ```julia)
+* "example" -> prints an example code block (i.e. ```example)
 """
 function print_source(io::IO, idx::Int; style = nothing)
     io = IOBuffer()
