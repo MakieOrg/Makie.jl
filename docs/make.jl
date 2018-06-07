@@ -203,6 +203,52 @@ open(path, "w") do io
     end
 end
 
+# =============================================
+# automatically generate gallery based on looping through the database - all examples
+# TODO: FYI: database[44].title == "Theming Step 1"
+path = joinpath(@__DIR__, "..", "docs", "src", "examples-database.md")
+open(path, "w") do io
+    println(io, "# All examples from the example database")
+    counter = 1
+    groupid_last = NO_GROUP
+    for (i, entry) in enumerate(database)
+        # print bibliographic stuff
+        println(io, "## $(entry.title)")
+        println(io, "line(s): $(entry.file_range)")
+        println(io, "Tags")
+        print(io, "$(collect(entry.tags))\n")
+        if isgroup(entry) && entry.groupid == groupid_last
+            try
+                println(io, "group ID = $(entry.groupid)")
+                println(io, "Example $counter, \"$(entry.title)\"")
+                _print_source(io, i; style = "example")
+                println(io, "`plot goes here\n`")
+            catch
+                println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+            end
+        elseif isgroup(entry)
+            try
+                println(io, "group ID = $(entry.groupid)")
+                groupid_last = entry.groupid
+                println(io, "Example $counter, \"$(entry.title)\"")
+                _print_source(io, i; style = "example")
+                println(io, "`plot goes here\n`")
+            catch
+                println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+            end
+        else
+            try
+                println(io, "Example $counter, \"$(entry.title)\"")
+                _print_source(io, i; style = "example")
+                println(io, "`plot goes here\n`")
+                counter += 1
+                groupid_last = entry.groupid
+            catch
+                println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+            end
+        end
+    end
+end
 
 makedocs(
     modules = [Makie],
