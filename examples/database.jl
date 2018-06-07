@@ -12,6 +12,8 @@ struct CellEntry
     groupid::Int
 end
 
+isgroup(x::CellEntry) = x.groupid != NO_GROUP
+
 # overload Base.show to show output of CellEntry
 function Base.show(io::IO, ::MIME"text/plain", entry::CellEntry)
     println(io, "```")
