@@ -29,58 +29,58 @@ end
 
 """
     convert_arguments(P, y)::Vector
-Takes vector y and generates a range from 1 to the length of y, for plotting on
-an arbitrary x axis.
-P is the plot Type (it is optional).
+Takes vector `y` and generates a range from 1 to the length of `y`, for plotting on
+an arbitrary `x` axis.
+`P` is the plot Type (it is optional).
 """
 convert_arguments(P, y::RealVector) = convert_arguments(1 .. length(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
 
-Takes vectors x and y and turns it into a vector of 2D points of the values
-from x and y.
-P is the plot Type (it is optional).
+Takes vectors `x` and `y` and turns it into a vector of 2D points of the values
+from `x` and `y`.
+`P` is the plot Type (it is optional).
 """
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 
 """
     convert_arguments(P, x, y, z)::(Vector)
 
-Takes vectors x, y, and z and turns it into a vector of 3D points of the values
-from x, y, and z.
-P is the plot Type (it is optional).
+Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the values
+from `x`, `y`, and `z`.
+`P` is the plot Type (it is optional).
 """
 convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
 
 """
     convert_arguments(x)::(String)
 
-Takes an input AbstractString x and converts it to a string.
+Takes an input AbstractString `x` and converts it to a string.
 """
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 
 """
     convert_arguments(P, x)::(Vector)
 
-Accepts a vector x of the types in VecTypes.
-P is the plot Type (it is optional).
+Accepts a vector `x` of the types in VecTypes.
+`P` is the plot Type (it is optional).
 """
 convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 
 """
     convert_arguments(P, x)::(Vector)
 
-Takes an input GeometryPrimitive x and decomposes it to points.
-P is the plot Type (it is optional).
+Takes an input GeometryPrimitive `x` and decomposes it to points.
+`P` is the plot Type (it is optional).
 """
 convert_arguments(::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x::GeometryPrimitive) = (decompose(Point, x),)
 
 """
     convert_arguments(P, x)::(Vector)
 
-Takes an input HyperRectangle x and decomposes it to points.
-P is the plot Type (it is optional).
+Takes an input `HyperRectangle` `x` and decomposes it to points.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x::Rect)
     # TODO fix the order of decompose
@@ -89,7 +89,7 @@ end
 
 
 """
-Accepts a Vector of Pair of Points (e.g. [Point(0, 0) => Point(1, 1), ...])
+Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
 function convert_arguments(P, x::AbstractVector{Pair{Point{N, T}, Point{N, T}}}) where {N, T}
@@ -100,9 +100,9 @@ end
 """
     convert_arguments(P, x, y, z)::Tuple{Matrix, Matrix, Matrix}
 
-Takes 3 inputs of AbstractMatrix x, y, and z, converts them to Float32 and
+Takes 3 inputs of AbstractMatrix `x`, `y`, and `z`, converts them to `Float32` and
 outputs them in a Tuple.
-P is the plot Type (it is optional).
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
     (Float32.(x), Float32.(y), Float32.(z))
@@ -111,8 +111,8 @@ end
 """
     convert_arguments(P, x, y, z)::Tuple{Vector, Vector, Matrix}
 
-Takes 2 AbstractVector's x, y, and an AbstractMatrix z, and puts them in a Tuple.
-P is the plot Type (it is optional).
+Takes 2 AbstractVector's `x`, `y`, and an AbstractMatrix `z`, and puts them in a Tuple.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (x, y, z)
@@ -129,9 +129,9 @@ using IntervalSets
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
-Takes a matrix, converts the dimesions n and m into closed intervals,
-and stores the closed intervals to n and m, plus the original matrix in a Tuple.
-P is the plot Type (it is optional).
+Takes an AbstractMatrix, converts the dimesions `n` and `m` into closed intervals,
+and stores the closed intervals to `n` and `m`, plus the original matrix in a Tuple.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, data::AbstractMatrix)
     n, m = Float64.(size(data))
@@ -141,9 +141,9 @@ end
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
 
-Takes an array of {T, 3}, converts the dimesions n, m and k into closed intervals,
-and stores the closed intervals to n, m and k, plus the original array in a Tuple.
-P is the plot Type (it is optional).
+Takes an array of `{T, 3}`, converts the dimesions `n`, `m` and `k` into closed intervals,
+and stores the closed intervals to `n`, `m` and `k`, plus the original array in a Tuple.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, data::Array{T, 3}) where T
     n, m, k = Float64.(size(data))
@@ -153,8 +153,8 @@ end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
 
-Takes vectors x, y, and z and the matrix i, and puts everything in a Tuple.
-P is the plot Type (it is optional).
+Takes vectors `x`, `y`, and `z` and the AbstractMatrix `i`, and puts everything in a Tuple.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
     (x, y, z, i)
@@ -166,9 +166,9 @@ end
 """
     convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
 
-Takes vectors x, y, and z and the function f, evaluates the function on the volume
-spanned by x, y and z, and puts x, y, z and f(x,y,z) in a Tuple.
-P is the plot Type (it is optional).
+Takes vectors `x`, `y`, and `z` and the function `f`, evaluates the function on the volume
+spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
     _x, _y, _z = ntuple(Val{3}) do i
@@ -181,9 +181,9 @@ end
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
 
-Takes vectors x and y and the function f, and applies f on the grid that x and y span.
-This is equivalent to f.(x, y').
-P is the plot Type (it is optional).
+Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that `x` and `y` span.
+This is equivalent to `f.(x, y')`.
+`P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
     if !applicable(f, x[1], y[1])
@@ -198,17 +198,17 @@ end
 
 
 """
-    convert_arguments(x)::(String)
+    convert_arguments(mesh)::(mesh)
 
-Takes an input Mesh x and stores it in a Tuple.
+Takes an input `mesh` and stores it in a Tuple.
 """
 convert_arguments(::Type{Mesh}, m::AbstractMesh) = (m,)
 
 """
     convert_arguments(T, x, y, z, indices)::Tuple{Type, Matrix, Vector}
 
-Takes an input mesh, RealVector's x, y and z, and an AbstractVector indices,
-and puts it in a Tuple with the Type, the 3D points of the values from x, y and z,
+Takes an input `mesh`, RealVector's `x`, `y` and `z`, and an AbstractVector indices,
+and puts it in a Tuple with the Type, the 3D points of the values from `x`, `y` and `z`,
 and the indices.
 """
 function convert_arguments(
@@ -222,8 +222,8 @@ end
 """
     convert_arguments(Mesh, vertices, indices)::()
 
-Takes an input mesh, a vertices AbstractVector and AbstractVector indices,
-and creates a GLNormalMesh.
+Takes an input `mesh`, an AbstractVector `vertices` and AbstractVector `indices`,
+and creates a `GLNormalMesh`.
 """
 function convert_arguments(
         ::Type{<:Mesh},
@@ -239,8 +239,8 @@ end
 """
     convert_arguments(MT, x, y, z)::Tuple{Type, Matrix}
 
-Takes an input mesh, RealVector's x, y and z, and puts them in a Tuple with
-the type and the 3D points of the values from x, y and z.
+Takes an input `mesh`, RealVector's `x`, `y` and `z`, and puts them in a Tuple with
+the type and the 3D points of the values from `x`, `y` and `z`.
 """
 function convert_arguments(
         MT::Type{<:Mesh},
@@ -252,7 +252,7 @@ end
 """
     convert_arguments(MT, xyz)::()
 
-Takes an input mesh and a matrix xyz, reinterprets xyz as GLTriangle's, and
+Takes an input mesh and a matrix `xyz`, reinterprets `xyz` as `GLTriangle`'s, and
 recursively calls itself.
 """
 function convert_arguments(
@@ -266,8 +266,8 @@ end
 """
     convert_arguments(MT, xy)::Tuple{Type, Matrix}
 
-Takes an input mesh, AbstractVector xy, and puts them in a Tuple with
-the type and the 3D points of the values from x, y and z = 0.0.
+Takes an input mesh, AbstractVector `xy`, and puts them in a Tuple with
+the type and the 3D points of the values from `x`, `y` and `z` = 0.0.
 """
 function convert_arguments(MT::Type{<:Mesh}, xy::AbstractVector{<: VecTypes{2, T}}) where T
     convert_arguments(MT, Point3f0.(first.(xy), last.(xy), 0.0))
@@ -306,12 +306,14 @@ convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 convert_attribute(x::Void, ::key"linestyle") = x
 
 """
-`AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. E.g.
+    `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
+
 [0.5, 0.8, 1.2] will result in 0.5 filled, 0.3 unfilled, 0.4 filled. 1.0 unit is one linewidth!
 """
 convert_attribute(A::AbstractVector, ::key"linestyle") = A
+
 """
-A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
+    A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 """
 function convert_attribute(ls::Symbol, ::key"linestyle")
     return if ls == :dash
@@ -338,7 +340,7 @@ convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = 
 convert_attribute(c::VecTypes{N}, ::key"position") where N = Point{N, Float32}(c)
 
 """
-Text align, e.g. :
+    Text align, e.g.:
 """
 convert_attribute(x::Tuple{Symbol, Symbol}, ::key"align") = Vec2f0(alignment2num.(x))
 convert_attribute(x::Vec2f0, ::key"align") = x
@@ -346,6 +348,7 @@ const _font_cache = Dict{String, NativeFont}()
 
 """
     font conversion
+
 a string naming a font, e.g. helvetica
 """
 function convert_attribute(x::Union{Symbol, String}, k::key"font")
@@ -431,7 +434,7 @@ const colorbrewer_names = Symbol[
 """
     available_gradients()
 
-Prints all available gradient names
+Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
@@ -443,7 +446,8 @@ end
 
 """
     to_colormap(b, x)
-An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts
+
+An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
 convert_attribute(cm::AbstractVector, ::key"colormap") = RGBAf0.(cm)
 
@@ -494,6 +498,7 @@ end
 
 """
     to_volume_algorithm(b, x)
+
 Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
 """
 function convert_attribute(value, ::key"algorithm")
@@ -550,7 +555,8 @@ const _marker_map = Dict(
 
 """
     available_marker_symbols()
-Displays all available marker symbols
+
+Displays all available marker symbols.
 """
 function available_marker_symbols()
     println("Marker Symbols:")
@@ -563,23 +569,27 @@ end
 
 """
     to_spritemarker(b, x::Circle)
+
 `GeometryTypes.Circle(Point2(...), radius)`
 """
 to_spritemarker(x::Circle) = x
 
 """
     to_spritemarker(b, ::Type{Circle})
+
 `Type{GeometryTypes.Circle}`
 """
 to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
 """
     to_spritemarker(b, ::Type{Rectangle})
+
 `Type{GeometryTypes.Rectangle}`
 """
 to_spritemarker(::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
 to_spritemarker(x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)
+    
 Any `Char`, including unicode
 """
 to_spritemarker(marker::Char) = marker
