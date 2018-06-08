@@ -211,6 +211,7 @@ function reactive_run_till_now()
     end
 end
 function Base.isopen(window::GLFW.Window)
+    was_destroyed(window) && return false
     window.handle == C_NULL && return false
     !GLFW.WindowShouldClose(window)
 end

@@ -2,6 +2,9 @@ using Makie
 doge = rand(RGBAf0, 100, 100)
 # For rectangles + rotation
 
+x = [heatmap(rand(100, 100)) for i = 1:3, j = 1:3]
+grid(x)
+
 scatter(
     Point3f0[(1,0,0), (0,1,0), (0,0,1)],
     marker = [doge, doge, doge],
@@ -34,9 +37,9 @@ x = linspace(0, 6, 100)
 s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 scene
 
-scene = Scene()
-p = plot!(scene, Makie.Attributes(), rand(10, 5))
-scene
+using Makie
+p = series(rand(10, 5));
+
 
 # Makie.campixel!(scene)
 # image!(scene, GLVisualize.loadasset("doge.png"), raw = true)
