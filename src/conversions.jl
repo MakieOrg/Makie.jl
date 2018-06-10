@@ -33,7 +33,7 @@ Takes vector y and generates a range from 1 to the length of y, for plotting on
 an arbitrary x axis.
 P is the plot Type (it is optional).
 """
-convert_arguments(P, y::RealVector) = convert_arguments(1 .. length(y), y)
+convert_arguments(P, y::RealVector) = convert_arguments(P, 1 .. length(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -43,6 +43,7 @@ from x and y.
 P is the plot Type (it is optional).
 """
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
+convert_arguments(P, x::ClosedInterval, y::RealVector) = (Point2f0.(linspace(minimum(x), maximum(x), length(y)), y),)
 
 """
     convert_arguments(P, x, y, z)::(Vector)

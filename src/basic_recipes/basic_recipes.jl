@@ -177,9 +177,9 @@ end
         seriestype = :lines
     )
 end
-
+convert_arguments(::Type{<: Series}, A::AbstractMatrix{<: Number}) = (A,)
 function plot!(sub::Series)
-    A = sub[:series]
+    A = sub[1]
     colors = map_once(sub[:seriescolors], A) do colors, A
         cmap = to_colormap(colors)
         if size(A, 2) > length(cmap)
@@ -188,27 +188,26 @@ function plot!(sub::Series)
         end
         cmap
     end
-    plots = map_once(A, sub[:seriestype]) do A, stype
+    map_once(A, sub[:seriestype]) do A, stype
         empty!(sub.plots)
         N, M = size(A)
-        map(1:M) do i
+        for i = 1:M
             c = map(getindex, colors, Node(i))
             attributes = Theme(color = c)
-            subsub = Combined{:LineScatter}(sub, attributes, A)
-            a_view = A[:, i]
+            a_view = view(A, :, i)
             if stype in (:lines, :scatter_lines)
-                lines!(subsub, attributes, a_view)
+                lines!(sub, attributes, a_view)
             end
-            if stype in (:scatter, :scatter_lines)
-                scatter!(subsub, attributes, a_view)
-            end
-            subsub
+            # if stype in (:scatter, :scatter_lines)
+            #     scatter!(subsub, attributes, a_view)
+            # end
+            # subsub
         end
     end
     labels = get(sub, :labels) do
-        map(i-> "y $i", 1:size(matrix, 2))
+        map(i-> "y $i", 1:size(A[], 2))
     end
-    legend!(sub, plots[], labels, rest)
+    legend!(sub, copy(sub.plots), labels)
     sub
 end
 

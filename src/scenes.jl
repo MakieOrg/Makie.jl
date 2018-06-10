@@ -288,3 +288,5 @@ function center!(scene::Scene, padding = 0.01)
     force_update!()
     scene
 end
+parent_scene(x::Combined) = parent_scene(parent(x))
+parent_scene(x::Scene) = x

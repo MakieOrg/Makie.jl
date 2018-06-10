@@ -1,6 +1,7 @@
 
-@recipe(Legend, plots, labels) do
+@recipe(Legend, plots, labels) do scene
     Theme(
+        outer_area = IRect(0, 0, 1, 1),
         backgroundcolor = :white,
         strokecolor = RGBA(0.3, 0.3, 0.3, 0.9),
         strokewidth = 1,
@@ -26,7 +27,7 @@ end
 
 creates a legend from a colormap
 """
-@recipe(ColorLegend, colormap, colorrange) do
+@recipe(ColorLegend, colormap, colorrange) do scene
     Theme(
         width = (20, 200),
         backgroundcolor = :white,
@@ -59,47 +60,42 @@ function make_label(scene, plot, labeltext, i, attributes)
     return if isa(plot, Union{Lines, LineSegments})
         linesegments!(
             scene, map(scale, lpattern, w, padding, gap, tsize),
-            color = plot[:color], linestyle = plot[:linestyle],
-            raw = true
+            color = plot[:color], linestyle = plot[:linestyle]
         )
     else
         scatter!(
             scene, map(scale, mpattern, w, padding, gap, tsize),
-            markersize = msize, color = plot[:color],
-            raw = true
+            markersize = msize, color = plot[:color]
         )
     end
 end
 
+outerbox(x::AbstractPlot) = outerbox(x.parent)
+outerbox(x::Scene) = pixelarea(x)
+
+convert_argument(::Type{<:Legend}, plots::AbstractVector, labels::AbstractVector{<: AbstractString}) = (plots, labels)
 
 function plot!(plot::Legend)
-    @extractvalue plot (plots, labels)
-    isempty(plots) && return
-
-    attributes, rest = merged_get!(:legend, scene, attributes) do
-        default_theme(scene, Legend)
-    end
-
-    N = length(plots)
-
-    position, color, stroke, strokecolor, padding, opad = getindex.(attributes, (
+    @extract plot (plots, labels)
+    scene = detach!(plot)
+#    cam2d!(scene)
+    isempty(plots[]) && return
+    N = length(plots[])
+    position, color, stroke, strokecolor, padding, opad = getindex.(plot, (
         :position, :backgroundcolor, :strokewidth, :strokecolor, :padding,
         :outerpadding
     ))
 
-    lscene = Scene(scene, scene.px_area)
-    campixel!(lscene) # map coordinates to pixel
-    plot = Legend(lscene, attributes, plots, labels)
     textbuffer = TextBuffer(plot, Point2)
 
-    args = getindex.(attributes, (
+    args = getindex.(plot, (
         :labelwidth, :gap, :textgap, :padding,
         :textsize, :textcolor, :rotation, :align, :font
     ))
 
-    legends = make_label.(plot, plots, labels, 1:N, attributes)
+    legends = make_label.(plot, plots[], labels[], 1:N, plot)
 
-    map_once(to_node(labels), args...) do labels, w, gap, tgap, padding, font...
+    map_once(labels, args...) do labels, w, gap, tgap, padding, font...
         start!(textbuffer)
         for i = 1:length(labels)
             yposition = (i - 1) * gap
@@ -115,8 +111,8 @@ function plot!(plot::Legend)
         finish!(textbuffer)
         return
     end
-    legendarea = map_once(position, scene.px_area, opad, args[4:5]..., args[1:3]...) do xy, area, opad, padding, unused...
-        bb = data_limits(plot)
+    legendarea = map_once(position, outerbox(plot), opad, args[4:5]..., args[1:3]...) do xy, area, opad, padding, unused...
+        bb = boundingbox(plot)
         mini = minimum(bb)
         wx, wy, _ = widths(bb) .+ mini
         xy = (Vec2f0(xy) .* widths(area))
@@ -126,13 +122,10 @@ function plot!(plot::Legend)
             (0, 0)
         end
         rect = dont_touch(area, IRect(xy[1], xy[2], w, h), Vec2f0(opad))
-        lscene.transformation.translation[] = Vec3f0(minimum(rect)..., 0)
+        translate!(plot, minimum(rect)..., 0)
         FRect2D(rect)
     end
-    bg = Scene(scene, scene.px_area)
-    campixel!(bg)
-    lines!(bg, legendarea, raw = true)
-    plot
+    lines!(plot, legendarea)
 end
 
 
