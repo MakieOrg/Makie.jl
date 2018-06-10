@@ -5,6 +5,7 @@ StaticArrays
 GeometryTypes 0.4.5
 ColorTypes
 Colors
+ColorBrewer
 IntervalSets
 FreeType
 UnicodeFun
