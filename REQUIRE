@@ -1,6 +1,7 @@
 julia 0.6
 
 Reactive
+StaticArrays
 GeometryTypes 0.4.5
 FreeType
 FreeTypeAbstraction
