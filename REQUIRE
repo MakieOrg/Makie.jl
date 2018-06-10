@@ -3,7 +3,12 @@ julia 0.6
 Reactive
 StaticArrays
 GeometryTypes 0.4.5
+ColorTypes
+Colors
+IntervalSets
 FreeType
+UnicodeFun
+Fontconfig
 FreeTypeAbstraction
 Packing
 SignedDistanceFields

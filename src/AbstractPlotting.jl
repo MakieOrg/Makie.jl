@@ -2,6 +2,8 @@ __precompile__()
 module AbstractPlotting
 
 using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
+using ColorBrewer
+
 # Text related packages
 using Packing
 using SignedDistanceFields

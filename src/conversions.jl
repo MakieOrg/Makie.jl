@@ -383,7 +383,6 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
 
-using ColorBrewer
 
 const colorbrewer_names = Symbol[
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
