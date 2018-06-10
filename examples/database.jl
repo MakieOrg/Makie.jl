@@ -39,15 +39,44 @@ end
 # ==========================================================
 # Print source code given database index
 
-function _print_source(io::IO, idx::Int; style = nothing)
-    println(io, style == nothing ? "```\n$(database[idx].source)\n```" :
-        style == "source" ? "```\n$(database[idx].source)\n```" :
-        style == "julia" ? "```julia\n$(database[idx].source)\n```" :
-        style == "example" ? "```example\n$(database[idx].source)\n```" : "" )
+function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
+    if isnan(example_counter)
+        println(io, style == nothing ? "```" :
+            style == "source" ? "```" :
+            style == "julia" ? "```julia" :
+            style == "eval" ? "```@eval" :
+            style == "example" ? "```@example" : "" )
+        println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
+        println(io, "pathroot = joinpath(pwd(), \"..\", \"src\") # hide")
+        println(io, "imgpath = joinpath(pathroot, \"plots\") # hide")
+        # println(io, "path = joinpath(pathroot, \"examples-database.md\")")
+        for line in split(database[idx].source, "\n")
+            line = replace(line, "@resolution", nothing)
+            println(io, line)
+        end
+        println(io, "AbstractPlotting.force_update!(); # hide")
+        println(io, "```")
+    else
+        println(io, style == nothing ? "```" :
+            style == "source" ? "```" :
+            style == "julia" ? "```julia" :
+            style == "eval" ? "```@eval" :
+            style == "example" ? "```@example $(example_counter)" : "" )
+        println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
+        println(io, "pathroot = joinpath(pwd(), \"..\", \"src\") # hide")
+        println(io, "imgpath = joinpath(pathroot, \"plots\") # hide")
+        # println(io, "path = joinpath(pathroot, \"examples-database.md\")")
+        for line in split(database[idx].source, "\n")
+            line = replace(line, "@resolution", nothing)
+            println(io, line)
+        end
+        println(io, "AbstractPlotting.force_update!(); # hide")
+        println(io, "```")
+    end
 end
 
 """
-    print_source(io::IO, idx::Int; style = nothing)
+    print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
 
 Print source code of database (hard coded internally) at given index `idx`.
 `style` options are:
@@ -55,10 +84,16 @@ Print source code of database (hard coded internally) at given index `idx`.
 * "source" -> same behaviour as default
 * "julia" -> prints a julia code block (i.e. ```julia)
 * "example" -> prints an example code block (i.e. ```example)
+
+`example_counter` can optionally print an example number (useful for Documenter example blocks), e.g.:
+* ```example 1
+* ```example 2
+* some explanation text
+* ```example 2 # continuation of the same example - more code to be evaluated
 """
-function print_source(io::IO, idx::Int; style = nothing)
+function print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
     io = IOBuffer()
-    _print_source(io, idx; style = style)
+    _print_source(io, idx; style = style, example_counter = example_counter)
     Base.Markdown.parse(String(take!(io)))
 end
 
@@ -90,8 +125,6 @@ end
 find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
 find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
 
-# TODO: handle edge case of different argument types, e.g. one function and one string as input
-# find_indices(input::Vararg{T,N}; title = nothing, author = nothing) where {T<:Union{Function,String}, N} = find_indices(to_string.(input)...; title = title, author = author)
 
 
 """
