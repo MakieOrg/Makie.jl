@@ -206,7 +206,10 @@ end
 # =============================================
 # automatically generate gallery based on looping through the database - all examples
 # TODO: FYI: database[44].title == "Theming Step 1"
-path = joinpath(@__DIR__, "..", "docs", "src", "examples-database.md")
+pathroot = joinpath(@__DIR__, "..", "docs", "src")
+buildpath = joinpath(@__DIR__, "build")
+imgpath = joinpath(pathroot, "plots")
+path = joinpath(pathroot, "examples-database.md")
 open(path, "w") do io
     println(io, "# All examples from the example database")
     counter = 1
@@ -214,33 +217,65 @@ open(path, "w") do io
     for (i, entry) in enumerate(database)
         # print bibliographic stuff
         println(io, "## $(entry.title)")
-        println(io, "line(s): $(entry.file_range)")
-        println(io, "Tags")
-        print(io, "$(collect(entry.tags))\n")
+        # println(io, "line(s): $(entry.file_range)\n")
+        println(io, "Tags:\n")
+        foreach(tag -> println(io, "* `$tag`"), collect(entry.tags))
+        print(io, "\n\n")
+        # print(io, "$(collect(entry.tags))\n\n")
         if isgroup(entry) && entry.groupid == groupid_last
             try
-                println(io, "group ID = $(entry.groupid)")
-                println(io, "Example $counter, \"$(entry.title)\"")
-                _print_source(io, i; style = "example")
-                println(io, "`plot goes here\n`")
+                # println(io, "condition 2 -- group continuation\n")
+                # println(io, "group ID = $(entry.groupid)\n")
+                println(io, "Example $counter, \"$(entry.title)\"\n")
+                _print_source(io, i; style = "example", example_counter = counter)
+                filename = string(entry.unique_name)
+                # plotting
+                    println(io, "```@example $counter")
+                    # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
+                    # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
+                    println(io, "Makie.save(\"$(filename).png\", scene)")
+                    println(io, "```")
+                # embed plot
+                # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
+                println(io, "![]($(filename).png)")
             catch
                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
             end
         elseif isgroup(entry)
             try
-                println(io, "group ID = $(entry.groupid)")
+                # println(io, "condition 1 -- new group encountered!\n")
+                # println(io, "group ID = $(entry.groupid)\n")
                 groupid_last = entry.groupid
-                println(io, "Example $counter, \"$(entry.title)\"")
-                _print_source(io, i; style = "example")
-                println(io, "`plot goes here\n`")
+                println(io, "Example $counter, \"$(entry.title)\"\n")
+                _print_source(io, i; style = "example", example_counter = counter)
+                filename = string(entry.unique_name)
+                # plotting
+                    println(io, "```@example $counter")
+                    # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
+                    # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
+                    println(io, "Makie.save(\"$(filename).png\", scene)")
+                    println(io, "```")
+                # embed plot
+                # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
+                println(io, "![]($(filename).png)")
             catch
                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
             end
         else
             try
-                println(io, "Example $counter, \"$(entry.title)\"")
-                _print_source(io, i; style = "example")
-                println(io, "`plot goes here\n`")
+                # println(io, "condition 3 -- not part of a group\n")
+                println(io, "Example $counter, \"$(entry.title)\"\n")
+                _print_source(io, i; style = "example", example_counter = counter)
+                filename = string(entry.unique_name)
+                # plotting
+                    println(io, "```@example $counter")
+                    # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
+                    # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
+                    println(io, "Makie.save(\"$(filename).png\", scene)")
+                    println(io, "```")
+                # embed plot
+                # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
+                println(io, "![]($(filename).png)")
                 counter += 1
                 groupid_last = entry.groupid
             catch
