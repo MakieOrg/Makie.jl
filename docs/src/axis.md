@@ -8,6 +8,8 @@ An Axis object can be created from any boundingbox and inserted into any plot.
 axis
 ```
 
+## Raw mode
+When the axis is accessed using `axis2d` or `axis3d`, the plotting will be in raw mode, i.e. the camera will not be activated.
 
 @library[example] "Axis 2D"
 

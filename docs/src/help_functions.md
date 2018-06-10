@@ -8,12 +8,10 @@ help
 
 Example usage:
 ```@example
+using Makie # hide
 help(scatter)
 ```
 
-```@example
-_help(STDOUT, scatter)
-```
 
 ## help_arguments
 
@@ -23,6 +21,7 @@ help_arguments
 
 Example usage:
 ```@example
+using Makie # hide
 help_arguments(STDOUT, scatter)
 ```
 
@@ -34,5 +33,6 @@ help_attributes
 
 Example usage:
 ```@example
+using Makie # hide
 help_attributes(STDOUT, Scatter; extended = true)
 ```

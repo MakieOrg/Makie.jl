@@ -1,7 +1,7 @@
 # Functions
 
-The follow document lists the primitive plotting functions from `basic_drawing.jl`, and their usage.
-These are the most atomic operations which one can stack together to form more complex plots.
+The follow document lists the atomic plotting functions and their usage.
+These are the most atomic primitive which one can stack together to form more complex plots.
 
 For styling options of each function, see the keyword arguments list for each function -- consult the [Help functions](@ref).
 
