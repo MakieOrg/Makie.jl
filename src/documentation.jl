@@ -64,7 +64,7 @@ to_string(s::String) = s
 """
     help(func)
 
-Welcome to the main help function of Makie.jl.
+Welcome to the main help function of `Makie.jl`.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 
