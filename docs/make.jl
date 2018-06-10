@@ -289,7 +289,7 @@ makedocs(
     modules = [Makie],
     doctest = false, clean = true,
     format = :html,
-    sitename = "Makie.jl Documentation",
+    sitename = "Makie.jl",
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
