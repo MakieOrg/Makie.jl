@@ -194,7 +194,7 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     lower_corner = minimum(bb)
     middle = maximum(bb) - half_width
     camera.lookat[] = middle
-    neweyepos = middle + (width*1.2f0)
+    neweyepos = middle + 1.5half_width
     camera.eyeposition[] = neweyepos
     camera.upvector[] = Vec3f0(0,0,1)
     camera.near[] = 0.1f0 * norm(widths(bb))
