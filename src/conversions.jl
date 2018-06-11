@@ -296,7 +296,7 @@ convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
 convert_attribute(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
 
 to_2d_scale(x::Number) = Vec2f0(x)
-to_2d_scale(x::StaticVector) = to_ndim(Vec2f0, x, 1)
+to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
 
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
