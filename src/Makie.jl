@@ -33,7 +33,7 @@ end
 # Unexported names
 using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont, Key, @key_str
 
-export (..)
+export (..), GLNormalUVMesh
 # conflicting identifiers
 using AbstractPlotting: Text, volume, VecTypes
 using GeometryTypes: width
