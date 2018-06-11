@@ -33,9 +33,10 @@ function boundingbox(x::Text)
 
     atlas = get_texture_atlas()
     N = endof(text)
-    pos_per_char = !isa(position, Point)
-    start_pos = pos_per_char ? first(position) : position
-    last_pos = start_pos
+    pos_per_char = !isa(position, VecTypes)
+    start_pos = Vec(pos_per_char ? first(position) : position)
+    start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
+    last_pos = start_pos2D
     c = first(text); text_state = start(text)
     c, text_state = next(text, text_state)
     aoffsetn = to_ndim(Vec3f0, align, 0f0)
@@ -46,14 +47,13 @@ function boundingbox(x::Text)
             pos = if pos_per_char
                 to_ndim(Vec3f0, position[i], 0.0)
             else
-                p = calc_position(last_pos, start_pos, atlas, c, font, scale)
-                rotation * (to_ndim(Vec3f0, p, 0.0) .+ aoffsetn)
+                last_pos = calc_position(last_pos, start_pos2D, atlas, c, font, scale)
+                rotation * (start_pos3d .+ to_ndim(Vec3f0, last_pos, 0.0) .+ aoffsetn)
             end
             s = glyph_scale!(atlas, c, font, scale)
             srot = rotation * to_ndim(Vec3f0, s, 0.0)
             bb = GeometryTypes.update(bb, pos)
             bb = GeometryTypes.update(bb, pos .+ srot)
-            last_pos = pos
         end
         if !done(text, text_state)
             c, text_state = next(text, text_state)
