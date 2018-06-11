@@ -170,11 +170,13 @@ end
 
 
 
+bs_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 bs_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 bs_length(x::AbstractArray) = length(x)
 bs_length(x::AbstractString) = length(x)
 bs_length(x) = 1
 
+bs_getindex(x::NativeFont, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 bs_getindex(x::VecTypes, i) = x # these are our rules, and for what we do, Vecs are usually scalars
 bs_getindex(x::AbstractArray, i) = x[i]
 bs_getindex(x::AbstractString, i) = x[i]
