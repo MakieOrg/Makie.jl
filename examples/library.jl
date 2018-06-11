@@ -210,22 +210,9 @@ end
         wf = wireframe!(scene, r, r, lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        scene
-        # io = VideoStream(scene, @outputfile)
-        for i in linspace(5, 40, 100)
+        record(scene, @outputfile, linspace(5, 40, 100)) do i
             surf[3] = surf_func(i)
-            sleep(1/24)
-            AbstractPlotting.force_update!()
-            # recordframe!(io)
         end
-        sleep(1/2)
-        for i in linspace(40, 5, 100)
-            surf[3] = surf_func(i)
-            sleep(1/24)
-            AbstractPlotting.force_update!()
-            # recordframe!(io)
-        end
-        scene
     end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
