@@ -175,7 +175,7 @@ function print_code(
         scope_end = "end\n",
         indent = " "^4,
         resolution = (entry)-> "resolution = (500, 500)",
-        outputfile = (entry, ending)-> Pkg.dir("Makie", "docs", "media", string(entry.unique_name, ending))
+        outputfile = (entry, ending)-> "/docs/media/" * string(entry.unique_name, ending)
     )
     entry = database[idx]
     groupid = entry.groupid
@@ -193,12 +193,12 @@ function print_code(
     for entry in group
         for line in split(entry.source, "\n")
             line = replace(line, "@resolution", resolution(entry))
-            filematch = match(r"(@outputfile)(\(.+\))?" , line)
+            filematch = match(r"(@outputfile)(\(.+?\))?" , line)
             if filematch != nothing
                 ending = filematch.captures[2]
-                replacement = outputfile(entry, ending == nothing ? "" : ending)
+                replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
                 line = replace(
-                    line, r"(@outputfile)(\(.+\))?",
+                    line, r"(@outputfile)(\(.+?\))?",
                     string('"', escape_string(replacement), '"')
                 )
             end
