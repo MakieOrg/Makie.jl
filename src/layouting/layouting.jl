@@ -1,144 +1,3 @@
-const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
-
-
-data_limits(x::Atomic{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(value(x[1]))
-# TODO makes this generically work
-data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{N, <: Number}}}}) where {Typ, N} = FRect3D(Point{N, Float32}.(value(x[1])))
-function data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{2, T}}}}) where {Typ, T <: VecTypes}
-    FRect3D(reinterpret(T, value(x[1])))
-end
-
-function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
-    _boundingbox(value.(x[1:3])...)
-end
-
-function data_limits(x::Atomic{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
-    _boundingbox(value.(x[1:2])...)
-end
-
-_isfinite(x) = isfinite(x)
-_isfinite(x::VecTypes) = all(isfinite, x)
-scalarmax(x::AbstractArray, y::AbstractArray) = max.(x, y)
-scalarmax(x, y) = max(x, y)
-scalarmin(x::AbstractArray, y::AbstractArray) = min.(x, y)
-scalarmin(x, y) = min(x, y)
-
-extrema_nan(itr::Pair) = (itr[1], itr[2])
-extrema_nan(itr::ClosedInterval) = (minimum(itr), maximum(itr))
-
-function extrema_nan(itr)
-    s = start(itr)
-    done(itr, s) && throw(ArgumentError("collection must be non-empty"))
-    (v, s) = next(itr, s)
-    vmin = vmax = v
-    while !_isfinite(v) && !done(itr, s)
-        (v, s) = next(itr, s)
-        vmin = vmax = v
-    end
-    while !done(itr, s)
-        (x, s) = next(itr, s)
-        _isfinite(x) || continue
-        vmax = scalarmax(x, vmax)
-        vmin = scalarmin(x, vmin)
-    end
-    return (vmin, vmax)
-end
-
-
-function _boundingbox(x, y, z = (0=>0))
-    minmax = extrema_nan.((x, y, z))
-    mini, maxi = first.(minmax), last.(minmax)
-    FRect3D(mini, maxi .- mini)
-end
-
-const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
-function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    _boundingbox(value.((x[1], x[2]))...)
-end
-
-function data_limits(x::Volume)
-    _boundingbox(value.((x[1], x[2], x[3]))...)
-end
-
-
-function text_limits(x::VecTypes)
-    p = to_ndim(Vec3f0, x, 0.0)
-    FRect3D(p, p)
-end
-function text_limits(x::AbstractVector)
-    FRect3D(x)
-end
-function data_limits(x::Text)
-    text_limits(value(x[:position]))
-end
-
-function boundingox(x::Text)
-    txt = value(x[1])
-    position = value(x[:position])
-    @get_attribute x (textsize, font, align, rotation, model)
-
-    atlas = get_texture_atlas()
-    pos_per_char = if isa(position, Point)
-        # one start position for one string
-        false
-    elseif isa(position, AbstractVector{<: Point}) && length(position) == length(txt)
-        # one position per character/glyph
-        true
-    else
-        error("Unknown Text position/string combination: text: $(typeof(txt)), positions: $(typeof(position))")
-    end
-    start_pos = pos_per_char ? first(position) : position
-    c1 = first(txt)
-    aoffsetn = to_ndim(Point{N, Float32}, align, 0f0)
-    broadcast_foreach(position, rotation, font, scale, align) do position, rotation, font, scale, align
-        c1 = first(txt)
-        last_pos = start_pos
-        for (i, (c2, scale, font)) in enumerate(zip(string, scale, font))
-            c2 == '\r' && continue # stupid windows!
-            pos = if pos_per_char
-                position[i]
-            else
-                calc_position(last_pos, start_pos, atlas, c2, font, scale)
-            end
-            offset = Point2f0(glyph_bearing!(atlas, c2, font, scale))
-            s = glyph_scale!(atlas, c2, font, scale)
-            pn = qmul(rotation, to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
-            pn .+ (pos)
-            c1 = c2
-            last_pos = pos
-        end
-    end
-    FRect3D(union(HyperRectangle(pos_scale), HyperRectangle(positions)))
-end
-
-function data_limits(x::Annotations)
-    # data limits is supposed to not include any transformation.
-    # for the annotation, we use the model matrix directly, so we need to
-    # to inverse that transformation for the correct limits
-    bb = data_limits(x.plots[1])
-    inv(value(x[:model])) * bb
-end
-
-Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
-
-function data_limits(plots::Vector)
-    isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
-    idx = start(plots)
-    bb = FRect3D()
-    while !done(plots, idx)
-        plot, idx = next(plots, idx)
-        # axis shouldn't be part of the data limit
-        isaxis(plot) && continue
-        bb2 = data_limits(plot)
-        isfinite(bb) || (bb = bb2)
-        isfinite(bb2) || continue
-        bb = union(bb, bb2)
-    end
-    bb
-end
-
-data_limits(s::Scene) = data_limits(plots_from_camera(s))
-data_limits(plot::Combined) = data_limits(plot.plots)
 
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
@@ -262,32 +121,24 @@ function alignment2num(x::Symbol)
 end
 
 
-
-
-
-
-
-function real_limits(scene::Scene)
-    bb = AABB{Float32}()
-    for plot in flatten_combined(plots_from_camera(scene))
-        bb2 = data_limits(plot)
-        bb == AABB{Float32}() && (bb = bb2)
-        bb = union(bb, bb2)
-    end
-    bb
-end
-
 grid(x::Transformable...; kw_args...) = grid([x...]; kw_args...)
-function grid(plots::Vector{T}; kw_args...) where T <: Transformable
+function grid(plots::Vector{<: Transformable}; kw_args...)
     N = length(plots)
     grid = close2square(N)
+    grid(reshape(plots, grid))
+end
+function grid(plots::Matrix{<: Transformable}; kw_args...)
+    N = length(plots)
+    grid = size(plots)
     w, h = (0.0, 0.0)
-    pscene = Makie.current_scene()
+    pscene = Scene()
+    cam2d!(pscene)
     for idx in 1:N
         i, j = ind2sub(grid, idx)
-        p = Base.parent(plots[idx])
-        translate!(p, w, h, 0.0)
-        swidth = widths(real_limits(p))
+        child = plots[idx]
+        push!(pscene.children, child)
+        translate!(child, w, h, 0.0)
+        swidth = widths(boundingbox(child))
         if i == grid[1]
             h += (swidth[2] * 1.1)
             w = 0.0
@@ -295,6 +146,7 @@ function grid(plots::Vector{T}; kw_args...) where T <: Transformable
             w += (swidth[1] * 1.1)
         end
     end
+    center!(pscene)
     pscene
 end
 
@@ -303,13 +155,13 @@ vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 function vbox(plots::Vector{T}; kw_args...) where T <: Transformable
     N = length(plots)
     w = 0.0
-    pscene = Makie.current_scene()
+    pscene = Scene()
     for idx in 1:N
-        p = Base.parent(plots[idx])
+        p = plots[idx]
         translate!(p, w, 0.0, 0.0)
-        swidth = widths(real_limits(p))
+        swidth = widths(boundingbox(p))
         w += (swidth[1] * 1.1)
+        push!(pscene.children, p)
     end
     pscene
 end
-export vbox

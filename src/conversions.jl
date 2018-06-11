@@ -33,7 +33,7 @@ Takes vector `y` and generates a range from 1 to the length of `y`, for plotting
 an arbitrary `x` axis.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P, y::RealVector) = convert_arguments(1 .. length(y), y)
+convert_arguments(P, y::RealVector) = convert_arguments(P, 1 .. length(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -43,6 +43,7 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
+convert_arguments(P, x::ClosedInterval, y::RealVector) = (Point2f0.(linspace(minimum(x), maximum(x), length(y)), y),)
 
 """
     convert_arguments(P, x, y, z)::(Vector)
@@ -295,7 +296,7 @@ convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
 convert_attribute(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
 
 to_2d_scale(x::Number) = Vec2f0(x)
-to_2d_scale(x::StaticVector) = to_ndim(Vec2f0, x, 1)
+to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
 
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
@@ -385,7 +386,6 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
 
-using ColorBrewer
 
 const colorbrewer_names = Symbol[
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:

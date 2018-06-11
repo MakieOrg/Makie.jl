@@ -298,12 +298,12 @@ plot!(P::Type, attributes::Attributes, args...) = plot!(current_scene(), P, attr
 plot!(scene::SceneLike, args...; kw_args...) = plot!(scene, Any, args...; kw_args...)
 plot!(scene::SceneLike, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
 
-function plot!(scene::SceneLike, plot::Combined{F, Arg}) where {F, Arg}
-    plot!(plot, arguments(plot)...; attributes(plot)...)
-end
-function plot!(scene::SceneLike, plot::Atomic{F, Arg}) where {F, Arg}
-    plot!(plot, arguments(plot)...; attributes(plot)...)
-end
+# function plot!(scene::SceneLike, plot::Combined{F, Arg}) where {F, Arg}
+#     plot!(plot, arguments(plot)...; attributes(plot)...)
+# end
+# function plot!(scene::SceneLike, plot::Atomic{F, Arg}) where {F, Arg}
+#     plot!(plot, arguments(plot)...; attributes(plot)...)
+# end
 
 function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     PlotType = plottype(value.(args)...)
@@ -311,6 +311,7 @@ function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
 end
 
 plot!(p::Atomic) = p
+
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, non_plot_kwargs = PlotType(scene, attributes, args)

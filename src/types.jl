@@ -183,6 +183,26 @@ parent(x::AbstractPlot) = x.parent
 basetype(::Type{<: Combined}) = Combined
 basetype(::Type{<: Atomic}) = Atomic
 
+
+
+
+"""
+Remove `combined` from the current parent, and add it to a new subscene of the
+parent scene. Returns the new parent.
+"""
+function detach!(x::Combined)
+    p1 = parent(x)
+    filter!(p-> p != x, p1.plots) # remove from parent
+
+    p2 = parent_scene(x) # first scene that parents this node
+
+    sub = Scene(p2, pixelarea(p2)) # subscene
+    push!(x.plots, x)
+
+    sub
+end
+
+
 function func2string(func::F) where F <: Function
     string(F.name.mt.name)
 end

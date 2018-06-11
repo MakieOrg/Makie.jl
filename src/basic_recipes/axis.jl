@@ -42,7 +42,7 @@ range_labels(x) = not_implemented(x)
             textcolor = (:black, :black),
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
-            align = ((:center, :top), (:center, :top)),
+            align = ((:center, :top), (:center, :bottom)),
             font = map(dim2, theme(scene, :font)),
         )
     )
@@ -203,11 +203,13 @@ function draw_titles(
         widths(tick_bb)[1]
     end)
 
-
     tickspace_y = widths(text_bb(
         last(first(xticks)), to_font(tickfont[1]), tick_size[1]
     ))[2]
-    tickspace = (tickspace_x, tickspace_y)
+
+    model_inv = inv(modelmatrix(textbuffer)[])
+
+    tickspace = transform(model_inv, (tickspace_x, tickspace_y))
     title_start = origin .- (tick_gap .+ tickspace .+ tick_title_gap)
     half_width = origin .+ (limit_widths ./ 2.0)
 
@@ -230,6 +232,15 @@ function ticks_and_labels(x)
     zip(r, string.(round.(r, 4)))
 end
 
+function transform(model::Mat4, x::T) where T
+    x4d = to_ndim(Vec4f0, x, 0.0)
+    to_ndim(T, model * x4d, 0.0)
+end
+un_transform(model::Mat4, x) = transform(inv(model), x)
+
+
+to2tuple(x) = ntuple(i-> x, Val{2})
+to2tuple(x::Tuple{<:Any, <: Any}) = x
 
 function draw_axis(
         textbuffer, linebuffer, ranges,
@@ -256,10 +267,12 @@ function draw_axis(
     % = mean(limit_widths) / 100 # percentage
 
     xyticks = ticks_and_labels.(limits)
+    model_inv = inv(modelmatrix(textbuffer)[])
 
     ti_textsize = ti_textsize .* %
-    t_textsize = t_textsize .* %; t_gap = t_gap .* %;
-    t_title_gap = t_title_gap .* %
+    t_textsize = t_textsize .* %
+    t_gap = transform(model_inv, to2tuple(t_gap .* %))
+    t_title_gap = transform(model_inv, to2tuple(t_title_gap .* %))
 
     origin = first.(limits)
     dirs = ((0.0, Float64(limit_widths[2])), (Float64(limit_widths[1]), 0.0))
@@ -269,8 +282,7 @@ function draw_axis(
             g_linewidth, g_linecolor, g_linestyle
         )
     end
-
-    o_offsets = ((0.0, Float64(t_gap)), (t_gap, Float64(0.0)))
+    o_offsets = ((0.0, Float64(t_gap[2])), (Float64(t_gap[1]), Float64(0.0)))
 
     foreach(1:2, o_offsets, xyticks) do dim, offset, ticks
         draw_ticks(

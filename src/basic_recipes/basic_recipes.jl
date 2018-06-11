@@ -178,9 +178,9 @@ end
         seriestype = :lines
     )
 end
-
+convert_arguments(::Type{<: Series}, A::AbstractMatrix{<: Number}) = (A,)
 function plot!(sub::Series)
-    A = sub[:series]
+    A = sub[1]
     colors = map_once(sub[:seriescolors], A) do colors, A
         cmap = to_colormap(colors)
         if size(A, 2) > length(cmap)
@@ -189,27 +189,26 @@ function plot!(sub::Series)
         end
         cmap
     end
-    plots = map_once(A, sub[:seriestype]) do A, stype
+    map_once(A, sub[:seriestype]) do A, stype
         empty!(sub.plots)
         N, M = size(A)
-        map(1:M) do i
+        for i = 1:M
             c = map(getindex, colors, Node(i))
             attributes = Theme(color = c)
-            subsub = Combined{:LineScatter}(sub, attributes, A)
-            a_view = A[:, i]
+            a_view = view(A, :, i)
             if stype in (:lines, :scatter_lines)
-                lines!(subsub, attributes, a_view)
+                lines!(sub, attributes, a_view)
             end
-            if stype in (:scatter, :scatter_lines)
-                scatter!(subsub, attributes, a_view)
-            end
-            subsub
+            # if stype in (:scatter, :scatter_lines)
+            #     scatter!(subsub, attributes, a_view)
+            # end
+            # subsub
         end
     end
     labels = get(sub, :labels) do
-        map(i-> "y $i", 1:size(matrix, 2))
+        map(i-> "y $i", 1:size(A[], 2))
     end
-    legend!(sub, plots[], labels, rest)
+    legend!(sub, copy(sub.plots), labels)
     sub
 end
 
@@ -257,7 +256,7 @@ function plot!(plot::Annotations)
             append!(rotations, repeated(rot, n))
             append!(alignments, repeated(ali, n))
         end
-        (String(take!(io)), combinedpos, colors, scales, fonts, rotations, rotations)
+        (String(take!(io)), combinedpos, colors, scales, fonts, rotations)
     end
     t_attributes = copy(plot.attributes)
     t_attributes[:position] = map(x-> x[2], tp)
@@ -265,7 +264,7 @@ function plot!(plot::Annotations)
     t_attributes[:textsize] = map(x-> x[4], tp)
     t_attributes[:font] = map(x-> x[5], tp)
     t_attributes[:rotation] = map(x-> x[6], tp)
-    t_attributes[:align] = map(x-> x[7], tp)
+    t_attributes[:align] = Vec2f0(0)
     t_attributes[:model] = eye(Mat4f0)
     t_attributes[:raw] = true
     text!(plot, t_attributes, map(x-> x[1], tp))

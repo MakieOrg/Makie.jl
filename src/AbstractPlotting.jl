@@ -2,6 +2,8 @@ __precompile__()
 module AbstractPlotting
 
 using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
+using ColorBrewer
+
 # Text related packages
 using Packing
 using SignedDistanceFields
@@ -32,12 +34,16 @@ include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 
-# layoting of plots
-include("layouting/transformation.jl")
+
 
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
+# layouting of plots
+include("layouting/transformation.jl")
+include("layouting/data_limits.jl")
 include("layouting/layouting.jl")
+include("layouting/boundingbox.jl")
+# more default recipes
 include("basic_recipes/buffers.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/legend.jl")
