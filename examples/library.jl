@@ -210,7 +210,7 @@ end
         wf = wireframe!(scene, r, r, lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        record(scene, @outputfile, linspace(5, 40, 100)) do i
+        record(scene, @outputfile(mp4), linspace(5, 40, 100)) do i
             surf[3] = surf_func(i)
         end
     end
@@ -263,7 +263,7 @@ end
     #     #
     #     # mktempdir() do path
     #     #     # TODO: MethodError: no method matching Makie.VideoStream(::AbstractPlotting.Scene, ::String)
-    #     #     io = VideoStream(scene, @outputfile)
+    #     #     io = VideoStream(scene, @outputfile(mp4))
     #     #     for i = 1:100
     #     #         if length(lineplots) < 20
     #     #             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
@@ -550,18 +550,9 @@ end
         end
         linesegments!(scene, lines)
 
-        AbstractPlotting.center!(scene)
-
-        # TODO: VideoStream
-        # io = VideoStream(scene, @outputfile)
-        # record a video
-        for i = linspace(0, 10, 100)
+        record(scene, @outputfile(mp4), linspace(0, 10, 100)) do i
             push!(time, i)
-            sleep(1/30)
-            AbstractPlotting.force_update!()
-            #recordframe!(io)
         end
-        # io
     end
     # @cell "Legend" ["3d", legend, lines, linestyle, scatter] begin
     #     # scene = Scene(@resolution)
@@ -578,7 +569,7 @@ end
     #     # # plot a legend for the plots with an array of names
     #     # l = Makie.legend(plots, ["attribute $i" for i in 1:4])
     #     #
-    #     # ann = VideoAnnotation(scene, @outputfile, "Themes")
+    #     # ann = VideoAnnotation(scene, @outputfile(mp4), "Themes")
     #     #
     #     # io = ann
     #     # # TODO: ERROR: UndefVarError: recordstep! not defined
@@ -610,7 +601,7 @@ end
     #     # cmap = collect(linspace(to_color(:red), to_color(:blue), 20))
     #     # # TODO: ERROR: MethodError: no method matching (::AbstractPlotting.##384#385{AbstractPlotting.Scene})(::AbstractPlotting.Scene)
     #     # l = Makie.legend(cmap, 1:4)
-    #     # ann = VideoAnnotation(scene, @outputfile, "Color Map Legend:")
+    #     # ann = VideoAnnotation(scene, @outputfile(mp4), "Color Map Legend:")
     #     # recordstep!(io, "Color Map Legend:", 3)
     #     # l[:position] = (1.0, 1.0)
     #     # recordstep!(io, "Change Position")
@@ -645,7 +636,7 @@ end
     #     # linesegments!(scene, lines, linestyle = :dot)
     #     # display(Makie.global_gl_screen(), scene)
     #     # # record a video
-    #     # io = VideoStream(scene, @outputfile)
+    #     # io = VideoStream(scene, @outputfile(mp4))
     #     # for i = 1:300
     #     #     push!(t, Base.time())
     #     #     sleep(1/30)

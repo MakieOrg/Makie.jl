@@ -19,7 +19,7 @@ open("global_form.jl", "w") do io
     sort!(database, by = (x)-> x.groupid)
     i = start(database)
     while length(database) >= i
-        i = print_code(io, database, i)
+        i = print_code(io, database, i, scope_start = "let\n")
     end
 end
 

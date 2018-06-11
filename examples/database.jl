@@ -175,7 +175,7 @@ function print_code(
         scope_end = "end\n",
         indent = " "^4,
         resolution = (entry)-> "resolution = (500, 500)",
-        outputfile = (entry, ending)-> "/docs/media/" * string(entry.unique_name, ending)
+        outputfile = (entry, ending)-> "./docs/media/" * string(entry.unique_name, ending)
     )
     entry = database[idx]
     groupid = entry.groupid
@@ -197,6 +197,7 @@ function print_code(
             if filematch != nothing
                 ending = filematch.captures[2]
                 replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
+                @show replacement entry.unique_name
                 line = replace(
                     line, r"(@outputfile)(\(.+?\))?",
                     string('"', escape_string(replacement), '"')
@@ -441,8 +442,8 @@ macro resolution()
     nothing
 end
 
-const output_fallback = joinpath(mktempdir(), "test.mp4")
-macro outputfile()
+const output_fallback = joinpath(mktempdir(), "test.")
+macro outputfile(ending = :mp4)
     # only for marking
-    output_fallback
+    string(output_fallback, ending)
 end
