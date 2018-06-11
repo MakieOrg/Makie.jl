@@ -1,24 +1,27 @@
-using Makie
-doge = rand(RGBAf0, 100, 100)
+using Makie, FileIO
+logo = load(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.png"))
 # For rectangles + rotation
+
+scatter(
+    Point3f0[(1,0,0), (0,1,0), (0,0,1)],
+    marker = [logo, logo, logo], markersize = reverse(size(logo) ./ 1500),
+    # rotation around axis... can you Vec4f0(...) for a quaternion
+    rotations = [(Vec3f0(0, 1, 0), 0.5pi), (Vec3f0(1, 0, 0), -0.5pi), (Vec3f0(0, 0, 1), -1.2pi)]
+)
+
+
 
 x = [heatmap(rand(100, 100)) for i = 1:3, j = 1:3]
 grid(x)
 
-scatter(
-    Point3f0[(1,0,0), (0,1,0), (0,0,1)],
-    marker = [doge, doge, doge],
-    # rotation around axis... can you Vec4f0(...) for a quaternion
-    rotations = [(Vec3f0(0, 1, 0), 0.5pi), (Vec3f0(1, 0, 0), -0.5pi), (Vec3f0(0, 0, 1), -1.2pi)]
-)
 
 # for more control:
 scene = Scene(resolution = (500, 500))
 mesh = GLNormalUVMesh(GeometryTypes.SimpleRectangle(0, 0, 1, 1))
 # note, you can change the mesh.vertices to arbitrary values
-Makie.mesh(mesh, color = doge, shading = false)
+Makie.mesh(mesh, color = logo, shading = false)
 
-s2 = scatter(linspace(0, 1, 10), rand(10))
+s2 = scatter(linspace(0, 10, 10), rand(10))
 s2 = scatter(linspace(0, 1, 10), rand(10), rand(10))
 
 scene = Scene()
