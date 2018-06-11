@@ -11,7 +11,9 @@ cd(Pkg.dir("Makie"))
 sort!(database, by = (x)-> x.groupid)
 
 index = start(database)
-# mkdir("docs/media")
+
+isdir("docs/media") || mkdir("docs/media")
+
 while length(database) >= index
     uname = string(database[index].unique_name)
     str = sprint() do io
