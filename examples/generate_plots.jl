@@ -5,34 +5,33 @@ using Makie, GLFW, GeometryTypes, Reactive, FileIO
 using GLVisualize, ColorBrewer, Colors
 using GLVisualize: loadasset, assetpath
 
-open("plot_me.jl", "w") do io
-# stuff removed -> don't need to make a new file
-end
 
 cd(Pkg.dir("Makie"))
+
 sort!(database, by = (x)-> x.groupid)
-isladjfk = start(database)
-while length(database) >= isladjfk
-    uname = string(database[isladjfk].unique_name)
+
+index = start(database)
+# mkdir("docs/media")
+while length(database) >= index
+    uname = string(database[index].unique_name)
     str = sprint() do io
-        global isladjfk
-        isladjfk = print_code(io, database, isladjfk; scope_start = "let\n")
-        # println(io, "Makie.save(\"$uname.png\"), scene")
+        global index
+        index = print_code(io, database, index; scope_start = "", scope_end = "")
     end
-    println(isladjfk)
-    # println(str)
+    println(index)
     tmpmod = eval(:(module $(gensym(uname)); end))
     try
         result = eval(tmpmod, Expr(:call, :include_string, str, uname))
         if isa(result, String) && isfile(result)
-            println(STDOUT, "it's a path!")
-            println(STDOUT, result)
-            # mv(path, joinpath(pwd(), basename(path)))
+            println("it's a path!")
+            println(result)
         elseif isa(result, AbstractPlotting.Scene)
-            println(STDOUT, "it's a plot")
-            Makie.save("$uname.png", result)
+            println("it's a plot")
+            Makie.save("docs/media/$uname.png", result)
         else
-            warn("something went really badly with $isladjfk")
+            warn("something went really badly with $index & $(typeof(result))")
         end
+    catch e
+        Base.showerror(STDERR, e)
     end
 end

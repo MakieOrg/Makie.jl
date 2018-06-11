@@ -25,8 +25,9 @@ function VideoStream(scene::Scene)
     end
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
-    path = joinpath(dir, "video.mkv")
+    path = joinpath(dir, "$(gensym(:video)).mkv")
     screen = global_gl_screen()
+    display(screen, scene)
     _xdim, _ydim = widths(pixelarea(scene)[])
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
