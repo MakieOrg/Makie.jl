@@ -26,10 +26,7 @@ function VideoStream(scene::Scene)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "video.mkv")
-    if isempty(scene.current_screens)
-        error("Scene doesn't contain any screen")
-    end
-    screen = first(scene.current_screens)
+    screen = global_gl_screen()
     _xdim, _ydim = widths(pixelarea(scene)[])
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
@@ -46,14 +43,17 @@ function recordframe!(io::VideoStream)
     _xdim, _ydim = size(frame)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    buff = zeros(RGB{N0f8}, xdim, ydim)
-    view(buff, 1:_xdim, 1:_ydim) .= RGB{N0f8}.(frame)
-    write(io.io, buff)
+    frame_out = fill(RGB{N0f8}(1, 1, 1), ydim, xdim)
+    for x in 1:_xdim, y in 1:_ydim
+        c = frame[(_xdim + 1) - x, y]
+        frame_out[y, x] = RGB{N0f8}(c)
+    end
+    write(io.io, frame_out)
     return
 end
 
 """
-    finish(io::VideoStream, path = "video.mkv")
+    save(path::String, io::VideoStream)
 
 Flushes the video stream and converts the file to the extension found in `path` which can
 be `mkv` is default and doesn't need convert, `gif`, `mp4` and `webm`.
@@ -61,29 +61,29 @@ mp4 is recommended for the internet, since it's the most supported format.
 webm yields the smallest file size, mp4 and mk4 are marginally bigger and gifs are up to
 6 times bigger with same quality!
 """
-function finish(io::VideoStream, out::String = "video.mkv")
+function save(path::String, io::VideoStream)
     flush(io.io)
     close(io.io)
     wait(io.process)
-    p, typ = splitext(out)
+    p, typ = splitext(path)
     if typ == ".mkv"
         cp(io.path, out)
     elseif typ == ".mp4"
-        run(`ffmpeg -i $(io.path) -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+        run(`ffmpeg -i $(io.path) -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == "webm"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf scale=iw:ih -y $out`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
         palette_path = mktempdir()
         pname = joinpath(palette_path, "palette.png")
         filters = "fps=15,scale=iw:ih:flags=lanczos"
         run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-        run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
+        run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
     else
         rm(io.path)
         error("Video type $typ not known")
     end
     rm(io.path)
-    return out
+    return path
 end
 
 
@@ -102,8 +102,9 @@ usage:
 function record(func, scene, path)
     io = VideoStream(scene)
     func(io)
-    finish(io, path)
+    save(path, io)
 end
+
 """
     record(func, scene, path, iter)
 usage:
@@ -126,7 +127,7 @@ function record(func, scene, path, iter)
             yield()
         end
     end
-    finish(io, path)
+    save(path, io)
 end
 
 
