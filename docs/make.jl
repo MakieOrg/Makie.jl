@@ -84,17 +84,17 @@ buildpath = joinpath(@__DIR__, "build")
 imgpath = joinpath(pathroot, "plots")
 path = joinpath(pathroot, "examples-database.md")
 open(path, "w") do io
-    println(io, "# All examples from the example database")
+    println(io, "# Examples gallery")
     counter = 1
     groupid_last = NO_GROUP
     for (i, entry) in enumerate(database)
         # print bibliographic stuff
         println(io, "## $(entry.title)")
         # println(io, "line(s): $(entry.file_range)\n")
-        println(io, "Tags:\n")
-        foreach(tag -> println(io, "* `$tag`"), collect(entry.tags))
-        print(io, "\n\n")
-        # print(io, "$(collect(entry.tags))\n\n")
+        print(io, "Tags: ")
+        tags = collect(entry.tags)
+        for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
+        println(io, "`$(tags[end])`.\n")
         if isgroup(entry) && entry.groupid == groupid_last
             try
                 # println(io, "condition 2 -- group continuation\n")
@@ -106,7 +106,7 @@ open(path, "w") do io
                     println(io, "```@example $counter")
                     # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
                     # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
-                    println(io, "Makie.save(\"$(filename).png\", scene)")
+                    println(io, "Makie.save(\"$(filename).png\", scene) # hide")
                     println(io, "```")
                 # embed plot
                 # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
@@ -126,7 +126,7 @@ open(path, "w") do io
                     println(io, "```@example $counter")
                     # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
                     # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
-                    println(io, "Makie.save(\"$(filename).png\", scene)")
+                    println(io, "Makie.save(\"$(filename).png\", scene) # hide")
                     println(io, "```")
                 # embed plot
                 # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
@@ -144,7 +144,7 @@ open(path, "w") do io
                     println(io, "```@example $counter")
                     # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
                     # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
-                    println(io, "Makie.save(\"$(filename).png\", scene)")
+                    println(io, "Makie.save(\"$(filename).png\", scene) # hide")
                     println(io, "```")
                 # embed plot
                 # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
