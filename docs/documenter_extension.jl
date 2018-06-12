@@ -59,3 +59,21 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     # Evaluate the code block. We redirect stdout/stderr to `buffer`.
     page.mapping[x] = Markdown.MD(content)
 end
+
+"""
+    embed_video(relapath::AbstractString)
+
+Generates a MD-formatted string for embedding video into Markdown files
+(since `Documenter.jl` doesn't support directly embedding mp4's).
+"""
+function embed_video(relapath::AbstractString)
+    return str = """
+        ```@raw html
+        <video controls autoplay>
+          <source src="$(relapath)" type="video/mp4">
+          Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
+        </video>
+        ```
+        """
+end
+
