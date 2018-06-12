@@ -2,16 +2,11 @@ include("library.jl")
 cd(@__DIR__)
 
 using Makie, GLFW, GeometryTypes, Reactive, FileIO
-using GLVisualize, ColorBrewer, Colors
-using GLVisualize: loadasset, assetpath
-
 
 cd(Pkg.dir("Makie"))
 
 sort!(database, by = (x)-> x.groupid)
-
 index = start(database)
-
 isdir("docs/media") || mkdir("docs/media")
 
 while length(database) >= index
