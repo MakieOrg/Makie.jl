@@ -33,8 +33,8 @@ with z- elevation for each level
 function contourlines(::Type{Contour}, contours, cols)
     result = Point2f0[]
     colors = RGBA{Float32}[]
-    for (color, c) in zip(cols, ContourLib.levels(contours))
-        for elem in ContourLib.lines(c)
+    for (color, c) in zip(cols, Contours.levels(contours))
+        for elem in Contours.lines(c)
             append!(result, elem.vertices)
             push!(result, Point2f0(NaN32))
             append!(colors, fill(color, length(elem.vertices) + 1))
@@ -46,8 +46,8 @@ end
 function contourlines(::Type{Contour3d}, contours, cols)
     result = Point3f0[]
     colors = RGBA{Float32}[]
-    for (color, c) in zip(cols, ContourLib.levels(contours))
-        for elem in ContourLib.lines(c)
+    for (color, c) in zip(cols, Contours.levels(contours))
+        for elem in Contours.lines(c)
             for p in elem.vertices
                 push!(result, Point3f0(p[1], p[2], c.level))
             end
@@ -116,14 +116,16 @@ end
 
 
 @recipe(Poly) do scene
-    Theme(
+    Theme(;
+        color = theme(scene, :color),
         linecolor = RGBAf0(0,0,0,0),
         linewidth = 0.0,
         linestyle = nothing
     )
 end
 
- function plot!(plot::Poly{Tuple{P}}) where P <: AbstractVector
+function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P
+    positions = plot[1]
     bigmesh = map(positions) do p
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
@@ -137,19 +139,17 @@ end
         color = plot[:linecolor], linestyle = plot[:linestyle],
         linewidth = plot[:linewidth],
     )
-    return plot!(scene, plot, rest)
 end
 
-function plot!(plot::Poly{Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle}
-    position = map(positions) do rects
+function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle}
+    positions = plot[1]
+    position = lift(positions) do rects
         map(rects) do rect
-            minimum(rect) .+ (widths(rect) ./ 2f0)
+            Point(minimum(rect) .+ (widths(rect) ./ 2f0))
         end
     end
-    attributes[:markersize] = map(positions, name = :markersize) do rects
+    markersize = lift(positions, name = "markersize") do rects
         widths.(rects)
     end
-    attributes[:marker] = T
-    scatter!(plot, attributes, position)
-    plot
+    scatter!(plot, position, marker = T, markersize = markersize)
 end
