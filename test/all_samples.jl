@@ -287,30 +287,7 @@ wireframe(Sphere(Point3f0(0), 1f0))
 center!(scene)
 scene
 
-#cell
-scene = Scene(resolution = (500, 500))
-heatmap(rand(32, 32))
-center!(scene)
 
-#cell
-scene = Scene(resolution = (500, 500), color = :black)
-stars = 100_000
-scatter((rand(Point3f0, stars) .- 0.5) .* 10,
-    glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
-    markersize = rand(linspace(0.0001, 0.01, 100), stars)
-)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-Makie.volume(rand(32, 32, 32), algorithm = :iso)
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-scatter(Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker=[:x, :circle, :cross])
-axis(scene, linspace(0, 1, 4), linspace(0, 1, 4), linspace(0, 1, 4))
-center!(scene);
 
 
 #cell
@@ -376,52 +353,21 @@ using Makie, GeometryTypes
 # end
 
 
+
+
 #cell
-function animtest1(r)
-    mktempdir() do path
-        scene = Scene(resolution = (600, 600))
-        axis(linspace(-25, 25, 4), linspace(-25, 25, 4))
-        scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
-        center!(scene)
-        io = VideoStream(scene, path, "interaction")
-        @inbounds for i in 2:length(r)
-            scene[:scatter][:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
-            recordframe!(io)
-        end
-        finish(io, "mp4") # could also be gif, webm or mkv
-    end
-    nothing
-end
-r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
-animtest1(r)
-
-
 using Makie
-scene = Scene()
-text(
-    ". This is an annotation!",
-    position = (300, 200),
-    align = (:center,  :center),
-    textsize = 60,
-    font = "URW Chancery L"
-)
-
-
-
-#cell
-using Makie, UnicodeFun, GeometryTypes
 scene = Scene()
 vx = -1:0.01:1;
 vy = -1:0.01:1;
 
 f(x, y) = (sin(x*10) + cos(y*10)) / 4
-psurf = surface(vx, vy, f)
+psurf = surface!(scene, vx, vy, f)
+a = scene[2]
+t = a[:titlestyle][]
 
-a = axis(linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
-center!(scene, 0)
-
-a[:axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-a[:axisnames_size] = (0.15, 0.15, 0.15)
+t[:axisnames][] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
+a[:textsize] = (0.15, 0.15, 0.15)
 a[:axisnames_color] = (:black, :black, :black)
 a[:axisnames_font] = "Palatino"
 
@@ -460,66 +406,8 @@ scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
 center!(scene);
 text_overlay!(scene, :scatter, 1=>"test1", 2=>"test2", textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
 
-
 #cell
 
-using Makie, GeometryTypes
-scene = Scene()
-points = decompose(Point2f0, Circle(Point2f0(0), 1f0))
-pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :black)
-
-# Optimized forms
-# y = poly!(scene, [Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
-# x = poly!(scene, [Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
-x = linesegments!(scene,
-    [Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple
-)
-scene
-#cell
-using Makie, Colors
-scene = Scene(resolution = (500, 500))
-heatmap!(scene, rand(32, 32))
-image!(scene, map(x->RGB(x,0.5, 0.5), rand(32,32)))
-scene
-
-# #cell
-# using Makie
-#
-# scene = Scene(resolution = (500, 500))
-# pts = CartesianRange((10, 10))
-# xs = vec([I[1] for I in pts])
-# ys = vec([I[2] for I in pts])
-# zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
-# wireframe(xs, ys, zs) # stackoverflow
-
-
-using Makie, GeometryTypes
-
-n = 20
-f   = (x,y,z) -> x*exp(cos(y)*z)
-∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
-∇ˢf = (x,y,z) -> ∇f(x,y,z) - Point3f0(x,y,z)*dot(Point3f0(x,y,z), ∇f(x,y,z))
-
-θ = [0;(0.5:n-0.5)/n;1]
-φ = [(0:2n-2)*2/(2n-1);2]
-x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
-y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
-z = [cospi(θ) for θ in θ, φ in φ]
-
-pts = vec(Point3f0.(x, y, z))
-∇ˢF = vec(∇ˢf.(x, y, z))
-
-scene = Scene();
-surface!(scene , x, y, z)
-
-Makie.arrows(
-    scene, pts, ∇ˢF,
-    arrowsize = 0.03, linecolor = :gray, linewidth = 3
-)
-scene
-
-
-using Makie, GeometryTypes
 
 # needs to be in a function for ∇ˢf to be fast and inferable
 function test(scene)
@@ -540,104 +428,4 @@ function test(scene)
     lns[:h] = 0.06
     lns[:linewidth] = 1.0
     lns
-end
-
-scene = Scene()
-n = 20
-θ = [0;(0.5:n-0.5)/n;1]
-φ = [(0:2n-2)*2/(2n-1);2]
-x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
-y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
-z = [cospi(θ) for θ in θ, φ in φ]
-rand([-1f0, 1f0], 3)
-pts = vec(Point3f0.(x, y, z))
-
-surface!(scene, x, y, z)
-scene
-using Makie, GeometryTypes
-scene = Scene()
-function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
-    x = @.r*sin(θ)*cos(ϕ)
-    y = @.r*sin(θ)*sin(ϕ)
-    z = @.r*cos(θ)
-    Point3f0.(x, y, z)
-end
-
-n = 128^2 #number of points to generate
-r = ones(n);
-θ = acos.(1 .- 2 .* rand(n));
-φ = 2π * rand(n);
-pts = SphericalToCartesian(r,θ,φ);
-s = Makie.arrows(scene, pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02)
-scene
-
-
-parent = Scene();
-n = 128
-θ = [0;(0.5:n-0.5)/n;1]
-φ = [(0:2n-2)*2/(2n-1);2]
-x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
-y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
-z = [cospi(θ) for θ in θ, φ in φ]
-sub1 = Scene(parent);
-s = surface!(sub1, x, y, z, image = rand(size(xyz)), colormap = :viridis)
-sub2 = Scene(parent, transformation = Makie.Transformation())
-s = surface!(sub2, x, y, z, image = rand(size(xyz)), colormap = :viridis)
-parent
-sub2.transformation.translation[] = Vec3f0(0, 1.5, 0)
-sub2.plots[1][:model][]
-typeof(sub2) == typeof(parent)
-
-
-image(rand(10, 10))
-Makie.current_scene()
-
-using Makie, Colors, GeometryTypes
-
-function test(x, y, z)
-    xy = [x, y, z]
-    (xy') * eye(3, 3) * xy
-end
-scene = Scene()
-x = linspace(-2pi, 2pi, 100)
-scene = Scene()
-c1 = contour!(scene, x, x, x, test)
-scene
-xm, ym, zm = minimum(Makie.limits(scene)[])
-s1 = Makie.translated(scene, (:xy, -zm));
-c2 = contour!(scene, x, x, map(v-> v[1, :, :], c1[4])[]);
-scene
-Makie.modelmatrix(c2)[]
-
-heatmap!(translated(scene, (:xz, ym)), x, x, map(v-> v[:, 1, :], c[4]))
-contour!(translated(scene, (:yz, xm)), x, x, map(v-> v[:, :, 1], c[4]), fillrange = true)
-scene
-
-
-scene
-
-
-using Makie
-function test(x, y, z)
-    xy = [x, y, z]
-    ((xy') * eye(3, 3) * xy) / 20
-end
-x = linspace(-2pi, 2pi, 100)
-scene = Scene()
-c = contour!(scene, x, x, x, test, levels = 10)[1]
-scene
-xm, ym, zm = minimum(scene.limits[])
-# c[4] == fourth argument of the above plotting command
-contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
-heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
-contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
-
-scene = Scene()
-N = 50
-r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
-s = scatter!(scene, r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))[1]
-
-record(scene, joinpath(homedir(), "Desktop", "test.mp4"), r) do m
-    s[1] = m[:, 1]
-    s[2] = m[:, 2]
 end
