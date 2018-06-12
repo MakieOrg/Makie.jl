@@ -64,28 +64,22 @@ function to_levels(x::Integer, cnorm)
     linspace(cnorm..., x)
 end
 
-function contourplot(scene::SceneLike, ::Type{Contour}, attributes::Attributes, x, y, z, vol)
-    attributes, rest = merged_get!(:contour, scene, attributes) do
-        default_theme(scene, Contour)
-    end
-    replace_nothing!(attributes, :alpha) do
-        Signal(0.5)
-    end
-    xyz_volume = convert_arguments(Contour, x, y, z, vol)
-    x, y, z, volume = node.((:x, :y, :z, :volume), xyz_volume)
-    colorrange = replace_nothing!(attributes, :colorrange) do
+function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
+    replace_nothing!(()-> Signal(0.5), plot, :alpha)
+    x, y, z, volume = plot[1:4]
+    @extract plot (colormap, levels, linewidth, alpha)
+    colorrange = replace_nothing!(plot, :colorrange) do
         map(x-> Vec2f0(extrema(x)), volume)
     end
-    @extract attributes (colormap, levels, linewidth, alpha)
-    cmap = map(colormap, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
+    cmap = lift(colormap, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
         levels = to_levels(l, cnorm)
         N = length(levels) * 50
-        iso_eps = 0.01 # TODO calculate this
+        iso_eps = 0.1 # TODO calculate this
         cmap = to_colormap(_cmap)
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
             i01 = (i-1) / (N - 1)
-            c = interpolated_getindex(cmap, i01)
+            c = AbstractPlotting.interpolated_getindex(cmap, i01)
             isoval = cnorm[1] + (i01 * (cnorm[2] - cnorm[1]))
             line = reduce(false, levels) do v0, level
                 v0 || (abs(level - isoval) <= iso_eps)
@@ -93,24 +87,16 @@ function contourplot(scene::SceneLike, ::Type{Contour}, attributes::Attributes, 
             RGBAf0(color(c), line ? alpha : 0.0)
         end
     end
-    c = Combined{:Contour}(scene, attributes, x, y, z, volume)
-    volume!(c, x, y, z, volume, colormap = cmap, colorrange = colorrange, algorithm = :iso)
-    plot!(scene, c, rest)
+    volume!(plot, x, y, z, volume, colormap = cmap, colorrange = colorrange, algorithm = :iso)
 end
-
-using AbstractPlotting: lift
 
 function plot!(plot::Contour)
     x, y, z = plot[1:3]
     if value(plot[:fillrange])
         plot[:interpolate] = true
-        if T == Contour
-            # TODO normalize linewidth for heatmap
-            plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
-            heatmap!(plot, plot, x, y, z)
-        else
-            surface!(plot, plot, x, y, z)
-        end
+        # TODO normalize linewidth for heatmap
+        plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
+        heatmap!(plot, plot.attributes, x, y, z)
     else
         result = lift(x, y, z, plot[:levels]) do x, y, z, levels
             t = eltype(z)
@@ -123,6 +109,7 @@ function plot!(plot::Contour)
     end
     plot
 end
+
 function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     AbstractPlotting._boundingbox(value.((x[1], x[2]))...)
 end
