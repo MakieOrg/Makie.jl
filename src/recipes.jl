@@ -70,7 +70,9 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname)
     expr = quote
         $funcname() = not_implemented_for($funcname)
-        const $(T){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
+        if !isdefined($(QuoteNode(Tsym)))# make this work with interactive usage
+            const $(T){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
+        end
         Base.show(io::IO, ::Type{<: $T}) = print(io, $(string(Tsym)), "{...}")
         $funcname(args...; attributes...) = plot($T, args...; attributes...)
         $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)

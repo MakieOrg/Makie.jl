@@ -26,21 +26,21 @@ function plot!(arrowplot::Arrows)
     @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor)
     headstart = lift(points, directions, lengthscale) do points, directions, s
         map(points, directions) do p1, dir
-            dir = attributes[:normalize][] ? StaticArrays.normalize(dir) : dir
+            dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
             p1 => p1 .+ (dir .* Float32(s))
         end
     end
     linesegments!(
-        arrowplot, get(arrowplot, :color => :linecolor, :linewidth, :linestyle),
-        map(reinterpret, Signal(Point3f0), headstart),
-    )
-    scatterfun(T)(
         arrowplot,
-        get(arrowplot,
-            marker = :arrowhead, markersize = :arrowsize,
-            color = :arrowcolor, rotations = :directions
-        ),
-        map(x-> last.(x), headstart)
+        map(reinterpret, Node(Point3f0), headstart),
+        color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
+        linestyle = arrowplot[:linestyle],
+    )
+    meshscatter!(
+        arrowplot,
+        map(x-> last.(x), headstart),
+        marker = arrowhead, markersize = arrowsize,
+        color = arrowcolor, rotations = directions
     )
 end
 

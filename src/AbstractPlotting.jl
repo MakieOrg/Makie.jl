@@ -58,14 +58,14 @@ export AbstractScene, SceneLike, Scene, AbstractScreen
 export AbstractPlot, Combined, Atomic
 
 # Theming, working with Plots
-export Attributes, Theme, attributes, arguments, default_theme
+export Attributes, Theme, attributes, arguments, default_theme, theme
 
 # Node/Signal related
 export Node, node, lift, map_once
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
-export broadcast_foreach, to_vector
+export broadcast_foreach, to_vector, replace_nothing!
 
 # conversion infrastructure
 export @key_str, convert_attribute, convert_arguments

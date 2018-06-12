@@ -206,13 +206,16 @@ function calculated_attributes!(plot::AbstractPlot)
     end
     return
 end
+function calculated_attributes!(plot::Image)
+    return
+end
 
 function calculated_attributes!(plot::Scatter)
     # calculate base case
     invoke(calculated_attributes!, Tuple{AbstractPlot}, plot)
     replace_nothing!(plot, :marker_offset) do
         # default to middle
-        map(x-> Vec2f0((x .* (-0.5f0))), plot[:markersize])
+        lift(x-> Vec2f0.((x .* (-0.5f0))), plot[:markersize])
     end
 end
 
@@ -245,13 +248,19 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         end
     end
     plot_attributes, rest = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
-    replace_nothing!(plot_attributes, :transformation) do
+    trans = get(plot_attributes, :transformation, nothing)
+    transformation = if to_value(trans) == nothing
         Transformation(scene)
+    elseif isa(to_value(trans), Transformation)
+        to_value(trans)
+    else
+        t = Transformation(scene)
+        transform!(t, to_value(trans))
+        t
     end
     replace_nothing!(plot_attributes, :model) do
-        value(plot_attributes[:transformation]).model
+        transformation.model
     end
-    transformation = value(pop!(plot_attributes, :transformation))
     # The argument type of the final plot object is the assumened to stay constant after
     # argument conversion. This might not always hold, but it simplifies
     # things quite a bit

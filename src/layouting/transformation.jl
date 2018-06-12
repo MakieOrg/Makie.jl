@@ -76,12 +76,13 @@ end
 
 
 
-transformation(scene::Scene) = scene.transformation
-transformation(plot::AbstractPlot) = plot.transformation
+transformation(t::Scene) = t.transformation
+transformation(t::AbstractPlot) = t.transformation
+transformation(t::Transformation) = t
 
-scale(scene::Transformable) = transformation(scene).scale
-scale!(scene::Transformable, s) = (scale(scene)[] = to_ndim(Vec3f0, Float32.(s), 1))
-scale!(scene::Transformable, xyz...) = scale!(scene, xyz)
+scale(t::Transformable) = transformation(t).scale
+scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f0, Float32.(s), 1))
+scale!(t::Transformable, xyz...) = scale!(t, xyz)
 
 rotation(scene::Transformable) = transformation(scene).rotation
 function rotate!(::Type{T}, scene::Transformable, q) where T
@@ -94,7 +95,6 @@ function rotate!(::Type{T}, scene::Transformable, q) where T
     else
         error("Unknown transformation: $T")
     end
-    force_update!()
 end
 
 rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
@@ -131,9 +131,9 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
         rotate!(scene, Vec3f0(1, 0, 0), 0.5pi)
         translate!(scene, 0, dimval, 0)
     else #yz plane
-        q1 = Makie.qrotation(Vec3f0(1, 0, 0), -0.5pi)
-        q2 = Makie.qrotation(Vec3f0(0, 0, 1), 0.5pi)
-        Makie.rotate!(scene, Makie.qmul(q2, q1))
+        q1 = qrotation(Vec3f0(1, 0, 0), -0.5pi)
+        q2 = qrotation(Vec3f0(0, 0, 1), 0.5pi)
+        rotate!(scene, q2 * q1)
         translate!(scene, dimval, 0, 0)
     end
     scene

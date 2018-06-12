@@ -1,8 +1,9 @@
 import Reactive: set_value!
 
 Base.getindex(x::Node) = value(x)
-function Base.setindex!(x::Node, value)
-    set_value!(x, value)
+function Base.setindex!(x::Node{T}, value) where T
+    set_value!(x, convert(T, value))
+    force_update!()
     push!(x, value)
 end
 
@@ -10,6 +11,8 @@ end
 # TODO should this become it's own function?
 const lift = Reactive.map
 
+to_value(x) = value(x)
+to_value(x::Void) = x
 
 to_node(::Type{T1}, x::Node{T2}, name = :node) where {T1, T2} = signal_convert(Node{T1}, x, name)
 to_node(x::T, name = :node) where T = to_node(T, x)
