@@ -9,11 +9,9 @@
 # automatically centers the plot
 
 #setup
-using Makie, GLFW, GeometryTypes, Reactive, FileIO, ColorBrewer, Colors
-using GLVisualize
-using GLVisualize: loadasset, assetpath
+using Makie
 
-cd(@__DIR__) do 
+cd(@__DIR__) do
 function xy_data(x, y)
     r = sqrt(x*x + y*y)
     r == 0.0 ? 1f0 : (sin(r)/r)
@@ -38,19 +36,10 @@ end
 
 
 #cell
-img = loadasset("doge.png")
-scene = Scene(resolution = (500, 500))
-
-display(scene)
-show(scene)
-println(scene)
-
-is = image(img)
-center!(scene)
-subscene = Scene(scene, Signal(SimpleRectangle(0, 0, 200, 200)))
-scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-center!(scene)
-
+img = Makie.logo()
+scene1 = image!(scene, img)
+scene2 = scatter(rand(100), rand(100), markersize = 0.05)
+AbstractPlotting.vbox(scene1, scene2)
 #cell
 scene = Scene(resolution = (500, 500));
 x = [0, 1, 2, 0];
@@ -68,14 +57,10 @@ axis(r, r, r);
 center!(scene);
 
 #cell
-scene = Scene(resolution = (500, 500))
-Makie.Makie.volume(rand(32, 32, 32), algorithm = :iso)
-center!(scene)
+Makie.volume(rand(32, 32, 32), algorithm = :iso)
 
 #cell
-scene = Scene(resolution = (500, 500))
 heatmap(rand(32, 32))
-center!(scene)
 
 #cell
 scene = Scene(resolution = (500, 500))
@@ -632,35 +617,27 @@ scene
 scene
 
 
-using Makie, Colors, GeometryTypes
+using Makie
 function test(x, y, z)
     xy = [x, y, z]
-    (xy') * eye(3, 3) * xy
+    ((xy') * eye(3, 3) * xy) / 20
 end
 x = linspace(-2pi, 2pi, 100)
 scene = Scene()
-c = contour!(scene, x, x, x, test)
+c = contour!(scene, x, x, x, test, levels = 10)[1]
+scene
 xm, ym, zm = minimum(scene.limits[])
 # c[4] == fourth argument of the above plotting command
 contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
 heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
 contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
 
+scene = Scene()
+N = 50
+r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
+s = scatter!(scene, r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))[1]
 
-using Makie, GeometryTypes
-
-s = Scene()
-x, y = rand(10), rand(10)
-s1 = Scene(s, transformation = Makie.Transformation())
-lines!(s1, x, y)
-s2 = Scene(s, transformation = Makie.Transformation())
-lines!(s2, x, y, color = :black)
-s
-xw = (Makie.real_boundingbox(s1) |> maximum)[1]
-s2.transformation.translation[] = Vec3f0(xw, 0, 0)
-
-
-# Layouting + transformations
-# UI elements
-# setindex/getindex, theme merging
-# fix desing of convert_arguments
+record(scene, joinpath(homedir(), "Desktop", "test.mp4"), r) do m
+    s[1] = m[:, 1]
+    s[2] = m[:, 2]
+end
