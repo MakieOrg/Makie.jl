@@ -11,6 +11,10 @@ function __init__()
     end
 end
 
+function logo()
+    FileIO.load(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.png"))
+end
+
 using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
