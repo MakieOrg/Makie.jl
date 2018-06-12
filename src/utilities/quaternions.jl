@@ -37,7 +37,9 @@ end
 
 Base.abs(q::Quaternion) = sqrt(sum(q.data.^2))
 
-Base.normalize(q::Quaternion) = q ./ abs(q)
+Base.normalize(q::Quaternion) = q / abs(q)
+
+Base.:(/)(q::Quaternion, x::Real) = Quaternion(q[1] / x, q[2] / x, q[3] / x, q[4] / x)
 
 function Base.:(*)(quat::Quaternion, vec::StaticVector{2, T}) where T
     x3 = quat * Vec(vec[1], vec[2], T(0))
@@ -109,4 +111,22 @@ function (::Type{M})(q::Quaternion{T}) where {T, M <: Mat3}
         xy-sz,      T1-(xx+zz), yz+sx,
         xz+sy,      yz-sx,      T1-(xx+yy)
     )
+end
+
+function orthogonal(v::T) where T <: StaticVector{3}
+    x, y, z = abs.(v)
+    other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
+    return cross(v, other)
+end
+
+
+function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
+    k_cos_theta = dot(u, v)
+    k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
+    if (k_cos_theta / k) ≈ T(-1)
+        # 180 degree rotation around any orthogonal vector
+        Quaternion(T(0), normalize(orthogonal(u))...)
+    else
+        normalize(Quaternion(k_cos_theta + k, cross(u, v)...))
+    end
 end

@@ -74,6 +74,7 @@ limits(scene::SceneLike) = scene.parent.limits
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::Scene) = x.theme
 theme(x::Scene, key) = x.theme[key]
+theme(x::AbstractPlot, key) = x.attributes
 theme(::Void, key::Symbol) = default_theme()[key]
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation

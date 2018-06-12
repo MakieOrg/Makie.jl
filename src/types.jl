@@ -141,7 +141,7 @@ mutable struct Camera
     steering_nodes::Vector{Node}
 end
 
-struct Transformation
+struct Transformation <: Transformable
     translation::Node{Vec3f0}
     scale::Node{Vec3f0}
     rotation::Node{Quaternionf0}
@@ -246,8 +246,10 @@ end
 function setindex!(x::P, value, key::Symbol) where P <: AbstractPlot
     argnames = argument_names(P, length(x.output_args))
     idx = findfirst(argnames, key)
-    if idx == 0
+    if idx == 0 && haskey(x.attributes, key)
         return x.attributes[key][] = value
+    elseif !haskey(x.attributes, key)
+        x.attributes[key] = to_node(value)
     else
         return setindex!(x.output_args[idx], value)
     end
