@@ -63,7 +63,6 @@ webm yields the smallest file size, mp4 and mk4 are marginally bigger and gifs a
 6 times bigger with same quality!
 """
 function save(path::String, io::VideoStream)
-    flush(io.io)
     close(io.io)
     wait(io.process)
     p, typ = splitext(path)
@@ -74,11 +73,16 @@ function save(path::String, io::VideoStream)
     elseif typ == "webm"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
-        palette_path = mktempdir()
-        pname = joinpath(palette_path, "palette.png")
         filters = "fps=15,scale=iw:ih:flags=lanczos"
-        run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-        run(`ffmpeg -loglevel quiet -v warning -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        palette_path = dirname(io.path)
+        pname = joinpath(palette_path, "palette.png")
+        fio, process = open(`ffmpeg -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+        close(fio)
+        wait(process)
+        fio, process = open(`ffmpeg -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        close(fio)
+        wait(process)
+        rm(pname, force = true)
     else
         rm(io.path)
         error("Video type $typ not known")
