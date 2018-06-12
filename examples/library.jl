@@ -4,7 +4,7 @@ using Makie
 
 @block SimonDanisch ["2d"] begin
     # @cell "colored triangle" [mesh, polygon] begin
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     scene = Scene(@resolution)
     #     # TODO: doesn't work
     #     # ERROR: MethodError: AbstractPlotting.convert_arguments(::Type{Mesh{...}}, ::Array{Tuple{Float64,Float64},1}) is ambiguous.
@@ -14,7 +14,7 @@ using Makie
     #     # mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue], shading = false)
     # end
     # @cell "Subscenes" [image, scatter, subscene] begin
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     scene = Scene(@resolution)
     #     # # TODO: had to use Makie.loadasset
     #     # img = rand(RGBAf0, 100, 100)
@@ -28,9 +28,20 @@ using Makie
     #     # center!(scene)
     #     # scene
     # end
-
+    @cell "Polygons" [poly, polygon, linesegments] begin
+        using GeometryTypes
+        scene = Scene()
+        points = decompose(Point2f0, Circle(Point2f0(100), 100f0))
+        pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :black)
+        # Optimized forms
+        poly!(scene, [Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
+        poly!(scene, [Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
+        linesegments!(scene,
+            [Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple
+        )
+    end
     @cell "Contour Function" [contour] begin
-        using Makie, AbstractPlotting, GeometryTypes
+
         scene = Scene(@resolution)
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
@@ -39,14 +50,14 @@ using Makie
 
 
     @cell "Contour Simple" [contour] begin
-        using Makie, AbstractPlotting, GeometryTypes
+
         scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
         contour!(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
     end
 
-    @cell "contour" [contour, Anthony] begin
-        using Makie, AbstractPlotting, GeometryTypes
+    @cell "contour" [contour] begin
+
         scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
         contour!(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
@@ -54,17 +65,15 @@ using Makie
 
 
     @cell "Heatmap" [heatmap] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         heatmap!(scene, rand(32, 32))
     end
 
-    @cell "Animated Scatter" [animation, scatter, updating] begin
-        using Makie, AbstractPlotting, GeometryTypes
-        scene = Scene(@resolution)
+    @cell "Animated Scatter" [animated, scatter, updating] begin
         N = 50
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
-        s = scatter!(scene, r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))[1]
+        scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
+        s = scene[1] # first plot in scene
         record(scene, @outputfile(mp4), r) do m
             s[1] = m[:, 1]
             s[2] = m[:, 2]
@@ -72,11 +81,8 @@ using Makie
     end
 
     @cell "Text Annotation" [text, align] begin
-        # TODO: it works, but the annotations are a bit out of whack
-        using Makie, AbstractPlotting, GeometryTypes
-        scene = Scene(@resolution)
-        text!(
-            scene, ". This is an annotation!",
+        text(
+            ". This is an annotation!",
             position = (300, 200),
             align = (:center,  :center),
             textsize = 60,
@@ -85,7 +91,6 @@ using Makie
     end
 
     @cell "Text rotation" [text, rotation] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         pos = (500, 500)
         posis = Point2f0[]
@@ -106,7 +111,6 @@ end
 
 @block SimonDanisch ["3d"] begin
     @cell "Sample 7" [scatter, similar] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         sv = scatter!(scene, rand(Point3f0, 100), markersize = 0.05)
         # TODO: ERROR: function similar does not accept keyword arguments
@@ -115,7 +119,7 @@ end
     end
 
     @cell "Fluctuation 3D" [animated, mesh, meshscatter, axis] begin
-        using Makie, AbstractPlotting, GeometryTypes, Colors
+        using GeometryTypes, Colors
         scene = Scene(@resolution)
         # define points/edges
         perturbfactor = 4e1
@@ -143,12 +147,12 @@ end
         lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]) .^ 2, 2))
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         sizesC = [Vec3f0(1., 1., 1.) for i = 1:ne]
-        colorsp = [Colors.RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:np]
+        colorsp = [RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:np]
         colorsC = [(colorsp[edges[i, 1]] + colorsp[edges[i, 2]]) / 2. for i = 1:ne]
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         Qlist = zeros(ne, 4)
         for k = 1:ne
-            ct = Makie.Cylinder{3, Float32}(
+            ct = GeometryTypes.Cylinder{3, Float32}(
                 Point3f0(pts[edges[k, 1], 1], pts[edges[k, 1], 2], pts[edges[k, 1], 3]),
                 Point3f0(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
                 Float32(1)
@@ -173,7 +177,6 @@ end
     end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         large_sphere = Makie.HyperSphere(Point3f0(0), 1f0)
         positions = Makie.decompose(Point3f0, large_sphere)
@@ -184,7 +187,6 @@ end
     end
 
     @cell "Simple meshscatter" [meshscatter] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
@@ -192,9 +194,7 @@ end
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
-
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
@@ -217,7 +217,6 @@ end
     end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         x = Makie.loadasset("cat.obj")
         mesh!(scene, x.vertices, x.faces, color = :black)
@@ -230,14 +229,12 @@ end
 
 
     @cell "Sphere Mesh" [mesh] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         mesh!(scene, Sphere(Point3f0(0), 1f0), color = :blue)
     end
 
 
     @cell "Stars" [scatter, glow, update_cam!] begin
-        using Makie, AbstractPlotting, GeometryTypes
         stars = 100_000
         scene = Scene(@resolution)
         scene.theme[:backgroundcolor] = RGBAf0(0, 0, 0, 1)
@@ -253,7 +250,6 @@ end
     end
 
     @cell "Unicode Marker" [scatter, axis, marker] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
     end
@@ -282,7 +278,7 @@ end
     #     #     end
     #     #     finish(io, "gif")
     #     # end
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     scene = Scene(@resolution)
     # end
 
@@ -337,7 +333,7 @@ end
     #     # # TODO: ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::Array{Float64,2}, ::Symbol)
     #     # psurf[:z] = f.(vx .+ 0.5, (vy .+ 0.5)')
     #     # scene
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     scene = Scene(@resolution)
     # end
 end
@@ -346,7 +342,6 @@ end
 @block SimonDanisch [documentation] begin
     @group begin
         @cell "Axis 2D" [axis] begin
-            using Makie, AbstractPlotting, GeometryTypes
             scene = Scene(@resolution)
             scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
             aviz = Makie.axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
@@ -355,7 +350,6 @@ end
         end
 
         @cell "Axis 3D" [axis] begin
-            using Makie, AbstractPlotting, GeometryTypes
             aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
             AbstractPlotting.center!(scene)
             # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
@@ -369,7 +363,7 @@ end
             # aviz[:gridcolors] = (:gray, :gray, :gray)
             # aviz[:axiscolors] = (:red, :black, :black)
             # aviz[:showticks] = (true, true, false)
-            using Makie, AbstractPlotting, GeometryTypes
+
             scene = Scene(@resolution)
             println("placeholder")
         end
@@ -394,7 +388,7 @@ end
     #         # p1 = lines!(Makie.Circle(Point2f0(0), 5f0))
     #         # p2 = scatter!(Makie.Circle(Point2f0(0), 6f0))
     #         # AbstractPlotting.center!(scene)
-    #         using Makie, AbstractPlotting, GeometryTypes
+    #
     #         scene = Scene(@resolution)
     #     end
     #
@@ -402,16 +396,13 @@ end
     #         # # TODO: ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::GeometryTypes.HyperSphere{2,Float32}, ::Symbol)
     #         # p2[:positions] = Makie.Circle(Point2f0(0), 7f0)
     #         # AbstractPlotting.center!(scene)
-    #         using Makie, AbstractPlotting, GeometryTypes
+    #
     #         scene = Scene(@resolution)
     #     end
     # end
 
     @cell "Volume Function" ["3d", volume] begin
-        # TODO: since both Makie and AbstractPlotting export volume, need to specify one
-        using Makie, AbstractPlotting, GeometryTypes
-        scene = Scene(@resolution)
-        Makie.volume!(scene, rand(32, 32, 32), algorithm = :mip)
+        volume(rand(32, 32, 32), algorithm = :mip)
     end
 
     #TODO: document all of the algorithm types
@@ -422,20 +413,16 @@ end
     # :indexedabsorption => IndexedAbsorptionRGBA,
 
     @cell "Heatmap Function" ["2d", heatmap] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         heatmap!(scene, rand(32, 32))
     end
 
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
-        using Makie, AbstractPlotting, GeometryTypes
-        scene = Scene(@resolution)
-        catmesh = GeometryTypes.GLNormalUVMesh(Makie.loadasset("cat.obj"))
-        # TODO: original: cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-        mesh!(scene, catmesh, color = Makie.loadasset("diffusemap.tga"))
+        using FileIO
+        catmesh = FileIO.load(Makie.assetpath("cat.obj"), GLNormalUVMesh)
+        mesh(catmesh, color = Makie.loadasset("diffusemap.tga"))
     end
     @cell "Load Mesh" ["3d", mesh, cat] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         mesh!(scene, Makie.loadasset("cat.obj"))
     end
@@ -453,21 +440,20 @@ end
     #     # # TODO:
     #     # # ERROR: MethodError: no method matching GeometryTypes.HomogenousMesh{GeometryTypes.Point{3,Float32},GeometryTypes.Face{3,GeometryTypes.OffsetInteger{-1,UInt32}},GeometryTypes.Normal{3,Float32},Void,Void,Void,Void}(::Array{GeometryTypes.Point{3,Float32},1}, ::Array{Int64,1})
     #     # mesh(x, y, z, indices, color = color)
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     scene = Scene(@resolution)
     # end
     @cell "Wireframe of a Mesh" ["3d", mesh, wireframe, cat] begin
-        using Makie, AbstractPlotting, GeometryTypes
+
         scene = Scene(@resolution)
         wireframe!(scene, Makie.loadasset("cat.obj"))
     end
     @cell "Wireframe of Sphere" ["3d", wireframe] begin
-        using Makie, AbstractPlotting, GeometryTypes
+
         scene = Scene(@resolution)
         wireframe!(scene, Sphere(Point3f0(0), 1f0))
     end
     @cell "Wireframe of a Surface" ["3d", surface, wireframe] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
@@ -480,7 +466,6 @@ end
         wireframe!(scene, range, range, z)
     end
     @cell "Surface Function" ["3d", surface] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         N = 32
         function xy_data(x, y)
@@ -493,7 +478,7 @@ end
         surf = surface!(scene, range, range, z, colormap = :Spectral)
     end
     @cell "Surface with image" ["3d", surface, image] begin
-        using Makie, AbstractPlotting, GeometryTypes
+
         scene = Scene(@resolution)
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
@@ -508,7 +493,6 @@ end
         )
     end
     @cell "Line Function" ["2d", lines] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         x = linspace(0, 3pi)
         lines!(scene, x, sin.(x))
@@ -517,29 +501,25 @@ end
     end
 
     @cell "Meshscatter Function" ["3d", meshscatter] begin
-        using Makie, AbstractPlotting, GeometryTypes
-        scene = Scene(@resolution)
+        using GeometryTypes
         large_sphere = Sphere(Point3f0(0), 1f0)
-        positions = GeometryTypes.decompose(Point3f0, large_sphere)
+        positions = decompose(Point3f0, large_sphere)
         colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
         sizesS = [rand(Point3f0) .* 0.5f0 for i = 1:length(positions)]
-        meshscatter!(scene, positions, color = colS, markersize = sizesS)
+        meshscatter(positions, color = colS, markersize = sizesS)
     end
 
     @cell "Scatter Function" ["2d", scatter] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         scatter!(scene, rand(20), rand(20), markersize = 0.03)
     end
 
     @cell "Marker sizes" ["2d", scatter, Anthony] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
         scatter!(scene, rand(20), rand(20), markersize = rand(20)./20)
     end
 
     @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
-        using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
@@ -594,7 +574,7 @@ end
     #     # l[:markersize] = 2f0
     #     # recordstep!(io, "Change Marker Size")
     #     # io
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     println("placeholder")
     # end
 
@@ -615,7 +595,7 @@ end
     #     # l[:textgap] = 5
     #     # recordstep!(io, "Change everything!")
     #     # ann
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     println("placeholder")
     # end
 
@@ -646,14 +626,14 @@ end
     #     #     #recordframe!(io)
     #     # end
     #     # finish(io, "mp4") # could also be gif, webm or mkv
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     println("placeholder")
     # end
 
 
     @group begin
         @cell "Theming Step 1" ["3d", scatter, surface] begin
-            using Makie, AbstractPlotting, GeometryTypes
+
             scene = Scene(@resolution)
             vx = -1:0.05:1;
             vy = -1:0.05:1;
@@ -690,7 +670,7 @@ end
             # scene[:theme, :scatter] = theme
             # scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
             # scene
-            using Makie, AbstractPlotting, GeometryTypes
+
             scene = Scene(@resolution)
             println("placeholder")
         end
@@ -721,7 +701,7 @@ end
             # # From now everything will be plotted with new theme
             # psurf = surface(vx, 1:0.1:2, psurf[:z])
             # AbstractPlotting.center!(scene)
-            using Makie, AbstractPlotting, GeometryTypes
+
             scene = Scene(@resolution)
             println("placeholder")
         end
@@ -737,9 +717,23 @@ end
     #     # # ecision{Float64},Base.TwicePrecision{Float64}}, ::StepRangeLen{Float64,Base.TwicePrecision{Float64},
     #     # # Base.TwicePrecision{Float64}}, ::##119#120) is ambiguous.
     #     # Makie.volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     println("placeholder")
     # end
+    @cell "3D Contour with 2D contour slices" [volume, contour, heatmap, "3d", transformation] begin
+        function test(x, y, z)
+            xy = [x, y, z]
+            ((xy') * eye(3, 3) * xy) / 20
+        end
+        x = linspace(-2pi, 2pi, 100)
+        scene = Scene()
+        c = contour!(scene, x, x, x, test, levels = 10)[1]
+        xm, ym, zm = minimum(scene.limits[])
+        # c[4] == fourth argument of the above plotting command
+        contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
+        heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
+        contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
+    end
     # @cell "3d volume animation" [volume, animation, gui, slices, layout] begin
     #     # # TODO: is this example unfinished?
     #     # scene = Scene(@resolution)
@@ -750,9 +744,60 @@ end
     #     #         sin(x * j) + cos(y * j) + sin(z)
     #     #     end
     #     # end
-    #     using Makie, AbstractPlotting, GeometryTypes
+    #
     #     println("placeholder")
     # end
+
+    @cell "Arrows 3D" [arrows, "3d"] begin
+        function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
+            x = @.r*sin(θ)*cos(ϕ)
+            y = @.r*sin(θ)*sin(ϕ)
+            z = @.r*cos(θ)
+            Point3f0.(x, y, z)
+        end
+        n = 100^2 #number of points to generate
+        r = ones(n);
+        θ = acos.(1 .- 2 .* rand(n))
+        φ = 2π * rand(n)
+        pts = SphericalToCartesian(r,θ,φ)
+        arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02, linecolor = :green)
+    end
+
+    @cell "Image on Surface Sphere" [surface, sphere, "3d", image] begin
+        n = 20
+        θ = [0;(0.5:n-0.5)/n;1]
+        φ = [(0:2n-2)*2/(2n-1);2]
+        x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+        y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+        z = [cospi(θ) for θ in θ, φ in φ]
+        rand([-1f0, 1f0], 3)
+        pts = vec(Point3f0.(x, y, z))
+        surface(x, y, z, image = Makie.logo())
+    end
+    @cell "Arrows on Sphere" [surface, sphere, arrows, "3d"] begin
+        n = 20
+        f   = (x,y,z) -> x*exp(cos(y)*z)
+        ∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
+        ∇ˢf = (x,y,z) -> ∇f(x,y,z) - Point3f0(x,y,z)*dot(Point3f0(x,y,z), ∇f(x,y,z))
+
+        θ = [0;(0.5:n-0.5)/n;1]
+        φ = [(0:2n-2)*2/(2n-1);2]
+        x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+        y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+        z = [cospi(θ) for θ in θ, φ in φ]
+
+        pts = vec(Point3f0.(x, y, z))
+        ∇ˢF = vec(∇ˢf.(x, y, z)) .* 0.1f0
+        surface(x, y, z)
+        arrows!(
+            pts, ∇ˢF,
+            arrowsize = 0.03, linecolor = :gray, linewidth = 3
+        )
+    end
+    @cell "Test heatmap + image overlap" [image, heatmap, transparency, "2d"] begin
+        heatmap(rand(32, 32))
+        image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
+    end
 end
 
 database

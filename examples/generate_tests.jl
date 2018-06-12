@@ -1,9 +1,7 @@
 include("library.jl")
 cd(@__DIR__)
 
-using Makie, GLFW, GeometryTypes, Reactive, FileIO
-using GLVisualize, ColorBrewer, Colors
-using GLVisualize: loadasset, assetpath
+using Makie
 
 open("function_form.jl", "w") do io
     sort!(database, by = (x)-> x.groupid)

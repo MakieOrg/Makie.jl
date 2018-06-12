@@ -242,7 +242,6 @@ end
 function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
     k_cos_theta = dot(u, v)
     k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
-
     q = if (k_cos_theta / k) ≈ T(-1)
         # 180 degree rotation around any orthogonal vector
         Quaternion(T(0), normalize(orthogonal(u))...)
@@ -261,7 +260,7 @@ function vec2quaternion(rotation::StaticVector{3})
 end
 using AbstractPlotting
 
-vec2quaternion(rotation::VecTypes{Vec4f0}) = rotation
+vec2quaternion(rotation::Vec4f0) = rotation
 vec2quaternion(rotation::VecTypes) = const_lift(x-> vec2quaternion.(x), rotation)
 vec2quaternion(rotation::Signal) = map(vec2quaternion, rotation)
 vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)

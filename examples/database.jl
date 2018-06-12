@@ -181,7 +181,7 @@ function print_code(
         entry = database[idx]
         push!(group, entry)
     end
-    foreach(entry-> println(io, entry.toplevel), group)
+    foreach(entry-> (println(io, "using Makie"); println(io, entry.toplevel)), group)
     print(io, scope_start)
     for entry in group
         for line in split(entry.source, "\n")

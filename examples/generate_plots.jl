@@ -1,7 +1,7 @@
 include("library.jl")
 cd(@__DIR__)
 
-using Makie, GLFW, GeometryTypes, Reactive, FileIO
+using Makie
 
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
