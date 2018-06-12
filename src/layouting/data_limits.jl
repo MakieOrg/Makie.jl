@@ -1,5 +1,11 @@
 const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
 
+argtypes(x::Plot{T, A}) where {T, A} = A
+argtypes(x) = Any
+
+function data_limits(x)
+    error("No datalimits for $(typeof(x)) and $(argtypes(x))")
+end
 """
 Data limits calculate a minimal boundingbox from the data points in a plot.
 This doesn't include any transformations, markers etc.
