@@ -186,7 +186,8 @@ function print_code(
     while groupid != NO_GROUP && entry.groupid == groupid
         idx += 1
         done(database, idx) && break
-        push!(group, database[idx])
+        entry = database[idx]
+        push!(group, entry)
     end
     foreach(entry-> println(io, entry.toplevel), group)
     print(io, scope_start)

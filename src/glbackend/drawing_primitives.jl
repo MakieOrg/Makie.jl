@@ -196,6 +196,9 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
             img = map(img, cmap, norm) do img, cmap, norm
                 interpolated_getindex.((cmap,), img, (norm,))
             end
+        elseif isa(value(img), AbstractMatrix{<: Colorant})
+            delete!(gl_attributes, :color_norm)
+            delete!(gl_attributes, :color_map)
         end
         visualize(img, Style(:default), gl_attributes).children[]
     end
@@ -225,9 +228,7 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
-        @show haskey(gl_attributes, :image)
         if haskey(gl_attributes, :image) && gl_attributes[:image][] != nothing
-            println("not noting")
             img = pop!(gl_attributes, :image)
             norm = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
