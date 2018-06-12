@@ -46,9 +46,10 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
             style == "julia" ? "```julia" :
             style == "eval" ? "```@eval" :
             style == "example" ? "```@example" : "" )
-        println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
+        # println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
+        print(io, isempty(database[idx].toplevel) ? "" : "$(database[idx].toplevel)\n")
         for line in split(database[idx].source, "\n")
-            line = replace(line, "@resolution", nothing)
+            line = replace(line, "@resolution", "resolution = (500, 500)")
             println(io, line)
         end
         println(io, "```")
@@ -58,9 +59,10 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
             style == "julia" ? "```julia" :
             style == "eval" ? "```@eval" :
             style == "example" ? "```@example $(example_counter)" : "" )
-        println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
+        # println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
+        print(io, isempty(database[idx].toplevel) ? "" : "$(database[idx].toplevel)\n")
         for line in split(database[idx].source, "\n")
-            line = replace(line, "@resolution", nothing)
+            line = replace(line, "@resolution", "resolution = (500, 500)")
             println(io, line)
         end
         println(io, "```")
