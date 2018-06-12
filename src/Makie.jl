@@ -19,8 +19,13 @@ using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
-import Contour
-const ContourLib = Contour
+
+module ContoursTemp
+    import Contour
+end
+using .ContoursTemp
+const Contours = ContoursTemp.Contour
+
 using Primes
 
 using Base.Iterators: repeated, drop
