@@ -47,14 +47,10 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
             style == "eval" ? "```@eval" :
             style == "example" ? "```@example" : "" )
         println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
-        println(io, "pathroot = joinpath(pwd(), \"..\", \"src\") # hide")
-        println(io, "imgpath = joinpath(pathroot, \"plots\") # hide")
-        # println(io, "path = joinpath(pathroot, \"examples-database.md\")")
         for line in split(database[idx].source, "\n")
             line = replace(line, "@resolution", nothing)
             println(io, line)
         end
-        println(io, "AbstractPlotting.force_update!(); # hide")
         println(io, "```")
     else
         println(io, style == nothing ? "```" :
@@ -63,14 +59,10 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
             style == "eval" ? "```@eval" :
             style == "example" ? "```@example $(example_counter)" : "" )
         println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
-        println(io, "pathroot = joinpath(pwd(), \"..\", \"src\") # hide")
-        println(io, "imgpath = joinpath(pathroot, \"plots\") # hide")
-        # println(io, "path = joinpath(pathroot, \"examples-database.md\")")
         for line in split(database[idx].source, "\n")
             line = replace(line, "@resolution", nothing)
             println(io, line)
         end
-        println(io, "AbstractPlotting.force_update!(); # hide")
         println(io, "```")
     end
 end
