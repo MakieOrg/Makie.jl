@@ -60,14 +60,15 @@ using Makie
     end
 
     @cell "Animated Scatter" [animation, scatter, updating] begin
-        # TODO: make this work
-        # record(scene, @outpufile, r) do r
-        #     s[:positions] = Point2f0.(view(r, :, 1), view(r, :, 2))
-        # end
         using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
-        r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
-        s = scatter!(scene, r[1][:, 1], r[1][:, 2], markersize = 1)
+        N = 50
+        r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
+        s = scatter!(scene, r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))[1]
+        record(scene, @outputfile(mp4), r) do m
+            s[1] = m[:, 1]
+            s[2] = m[:, 2]
+        end
     end
 
     @cell "Text Annotation" [text, align] begin
@@ -107,7 +108,7 @@ end
     @cell "Sample 7" [scatter, similar] begin
         using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
-        sv = scatter!(scene, rand(Point3f0, 100))
+        sv = scatter!(scene, rand(Point3f0, 100), markersize = 0.05)
         # TODO: ERROR: function similar does not accept keyword arguments
         # Simon says: maybe we won't keep similar
         # similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
@@ -187,7 +188,7 @@ end
         scene = Scene(@resolution)
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
-        meshscatter!(scene, positions, color = RGBAf0(0.9, 0.2, 0.4, 1))
+        meshscatter!(scene, positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.2)
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
@@ -207,8 +208,8 @@ end
         z = surf_func(20)
         surf = surface!(scene, r, r, z)[1]
 
-        wf = wireframe!(scene, r, r, lift(x-> x .+ 1.0, surf[3]),
-            linewidth = 2f0, color = lift(x-> to_colormap(x)[5], surf[:colormap])
+        wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
+            linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap])
         )
         record(scene, @outputfile(mp4), linspace(5, 40, 100)) do i
             surf[3] = surf_func(i)
@@ -369,6 +370,7 @@ end
             # aviz[:axiscolors] = (:red, :black, :black)
             # aviz[:showticks] = (true, true, false)
             using Makie, AbstractPlotting, GeometryTypes
+            scene = Scene(@resolution)
             println("placeholder")
         end
     end
@@ -527,13 +529,13 @@ end
     @cell "Scatter Function" ["2d", scatter] begin
         using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
-        scatter!(scene, rand(20), rand(20))
+        scatter!(scene, rand(20), rand(20), markersize = 0.03)
     end
 
-    @cell "scatter" ["2d", scatter, Anthony] begin
+    @cell "Marker sizes" ["2d", scatter, Anthony] begin
         using Makie, AbstractPlotting, GeometryTypes
         scene = Scene(@resolution)
-        scatter!(scene, rand(20), rand(20))
+        scatter!(scene, rand(20), rand(20), markersize = rand(20)./20)
     end
 
     @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
@@ -689,6 +691,7 @@ end
             # scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
             # scene
             using Makie, AbstractPlotting, GeometryTypes
+            scene = Scene(@resolution)
             println("placeholder")
         end
 
@@ -719,6 +722,7 @@ end
             # psurf = surface(vx, 1:0.1:2, psurf[:z])
             # AbstractPlotting.center!(scene)
             using Makie, AbstractPlotting, GeometryTypes
+            scene = Scene(@resolution)
             println("placeholder")
         end
     end
