@@ -79,10 +79,98 @@ end
 # =============================================
 # automatically generate gallery based on looping through the database - all examples
 # TODO: FYI: database[44].title == "Theming Step 1"
-pathroot = joinpath(@__DIR__, "..", "docs", "src")
-buildpath = joinpath(@__DIR__, "build")
-imgpath = joinpath(pathroot, "plots")
-path = joinpath(pathroot, "examples-database.md")
+# pathroot = joinpath(@__DIR__, "..", "docs", "src")
+# buildpath = joinpath(@__DIR__, "build")
+# imgpath = joinpath(pathroot, "plots")
+# path = joinpath(pathroot, "examples-database.md")
+# open(path, "w") do io
+#     println(io, "# Examples gallery")
+#     counter = 1
+#     groupid_last = NO_GROUP
+#     for (i, entry) in enumerate(database)
+#         # print bibliographic stuff
+#         println(io, "## $(entry.title)")
+#         # println(io, "line(s): $(entry.file_range)\n")
+#         print(io, "Tags: ")
+#         tags = collect(entry.tags)
+#         for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
+#         println(io, "`$(tags[end])`.\n")
+#         if isgroup(entry) && entry.groupid == groupid_last
+#             try
+#                 # println(io, "condition 2 -- group continuation\n")
+#                 # println(io, "group ID = $(entry.groupid)\n")
+#                 println(io, "Example $counter, \"$(entry.title)\"\n")
+#                 _print_source(io, i; style = "example", example_counter = counter)
+#                 filename = string(entry.unique_name)
+#                 # plotting
+#                     println(io, "```@example $counter")
+#                     # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
+#                     # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
+#                     println(io, "Makie.save(\"$(filename).png\", scene) # hide")
+#                     println(io, "```")
+#                 # embed plot
+#                 # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
+#                 println(io, "![]($(filename).png)")
+#             catch
+#                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+#             end
+#         elseif isgroup(entry)
+#             try
+#                 # println(io, "condition 1 -- new group encountered!\n")
+#                 # println(io, "group ID = $(entry.groupid)\n")
+#                 groupid_last = entry.groupid
+#                 println(io, "Example $counter, \"$(entry.title)\"\n")
+#                 _print_source(io, i; style = "example", example_counter = counter)
+#                 filename = string(entry.unique_name)
+#                 # plotting
+#                     println(io, "```@example $counter")
+#                     # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
+#                     # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
+#                     println(io, "Makie.save(\"$(filename).png\", scene) # hide")
+#                     println(io, "```")
+#                 # embed plot
+#                 # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
+#                 println(io, "![]($(filename).png)")
+#             catch
+#                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+#             end
+#         else
+#             try
+#                 # println(io, "condition 3 -- not part of a group\n")
+#                 println(io, "Example $counter, \"$(entry.title)\"\n")
+#                 _print_source(io, i; style = "example", example_counter = counter)
+#                 filename = string(entry.unique_name)
+#                 # plotting
+#                     println(io, "```@example $counter")
+#                     # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
+#                     # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
+#                     println(io, "Makie.save(\"$(filename).png\", scene) # hide")
+#                     println(io, "```")
+#                 # embed plot
+#                 # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
+#                 println(io, "![]($(filename).png)")
+#                 counter += 1
+#                 groupid_last = entry.groupid
+#             catch
+#                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+#             end
+#         end
+#     end
+# end
+
+# =============================================
+# automatically generate gallery based on looping through the database
+# using pre-generated plots from generate_plots.jl
+pathroot = Pkg.dir("Makie")
+docspath = Pkg.dir("Makie", "docs")
+srcpath = joinpath(pathroot, "docs", "src")
+buildpath = joinpath(pathroot, "docs", "build")
+mediapath = joinpath(pathroot, "docs", "media")
+path = joinpath(srcpath, "examples-database.md")
+cd(docspath)
+
+medialist = readdir(mediapath)
+
 open(path, "w") do io
     println(io, "# Examples gallery")
     counter = 1
@@ -92,26 +180,30 @@ open(path, "w") do io
         println(io, "## $(entry.title)")
         # println(io, "line(s): $(entry.file_range)\n")
         print(io, "Tags: ")
-        tags = collect(entry.tags)
+        tags = sort(collect(entry.tags))
         for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
         println(io, "`$(tags[end])`.\n")
         if isgroup(entry) && entry.groupid == groupid_last
             try
                 # println(io, "condition 2 -- group continuation\n")
                 # println(io, "group ID = $(entry.groupid)\n")
-                println(io, "Example $counter, \"$(entry.title)\"\n")
-                _print_source(io, i; style = "example", example_counter = counter)
-                filename = string(entry.unique_name)
-                # plotting
-                    println(io, "```@example $counter")
-                    # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
-                    # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
-                    println(io, "Makie.save(\"$(filename).png\", scene) # hide")
-                    println(io, "```")
-                # embed plot
-                # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
-                println(io, "![]($(filename).png)")
-            catch
+                # println(io, "### Example $counter, \"$(entry.title)\"\n")
+                _print_source(io, i; style = "julia", example_counter = counter)
+                uname = string(entry.unique_name)
+                # check if destination the file is png or mp4, then embed
+                if "$(uname).png" in medialist
+                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+                    println(io, "![lines $(entry.file_range)]($(embedpath))")
+                elseif "$(uname).mp4" in medialist
+                    embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
+                    println(io, embedcode)
+                else
+                    warn("file with unknown file extension in mediapath")
+                end
+                # println(io, "![]($(uname).png)")
+                embedpath = nothing
+            catch e
+                Base.showerror(STDERR, e)
                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
             end
         elseif isgroup(entry)
@@ -119,39 +211,48 @@ open(path, "w") do io
                 # println(io, "condition 1 -- new group encountered!\n")
                 # println(io, "group ID = $(entry.groupid)\n")
                 groupid_last = entry.groupid
-                println(io, "Example $counter, \"$(entry.title)\"\n")
-                _print_source(io, i; style = "example", example_counter = counter)
-                filename = string(entry.unique_name)
-                # plotting
-                    println(io, "```@example $counter")
-                    # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
-                    # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
-                    println(io, "Makie.save(\"$(filename).png\", scene) # hide")
-                    println(io, "```")
-                # embed plot
-                # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
-                println(io, "![]($(filename).png)")
-            catch
+                # println(io, "### Example $counter, \"$(entry.title)\"\n")
+                _print_source(io, i; style = "julia", example_counter = counter)
+                uname = string(entry.unique_name)
+                # check if destination the file is png or mp4, then embed
+                if "$(uname).png" in medialist
+                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+                    println(io, "![lines $(entry.file_range)]($(embedpath))")
+                elseif "$(uname).mp4" in medialist
+                    embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
+                    println(io, embedcode)
+                else
+                    warn("file with unknown file extension in mediapath")
+                end
+                # println(io, "![]($(uname).png)")
+                embedpath = nothing
+            catch e
+                Base.showerror(STDERR, e)
                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
             end
         else
             try
                 # println(io, "condition 3 -- not part of a group\n")
-                println(io, "Example $counter, \"$(entry.title)\"\n")
-                _print_source(io, i; style = "example", example_counter = counter)
-                filename = string(entry.unique_name)
-                # plotting
-                    println(io, "```@example $counter")
-                    # println(io, "println(STDOUT, \"Example $(counter) \", \"$(entry.title)\", \" index $i\")")
-                    # println(io, "Makie.save(joinpath(imgpath, \"$(filename).png\"), scene)")
-                    println(io, "Makie.save(\"$(filename).png\", scene) # hide")
-                    println(io, "```")
-                # embed plot
-                # println(io, "![]($(joinpath(relpath(imgpath, buildpath), "$(filename).png")))")
-                println(io, "![]($(filename).png)")
+                # println(io, "### Example $counter, \"$(entry.title)\"\n")
+                _print_source(io, i; style = "julia", example_counter = counter)
+                uname = string(entry.unique_name)
+                # check if destination the file is png or mp4, then embed
+                if "$(uname).png" in medialist
+                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+                    println(io, "![lines $(entry.file_range)]($(embedpath))")
+                elseif "$(uname).mp4" in medialist
+                    embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
+                    println(io, embedcode)
+                else
+                    warn("file with unknown file extension in mediapath")
+                end
+                # println(io, "![]($(uname).png)")
+                embedpath = nothing
+
                 counter += 1
                 groupid_last = entry.groupid
-            catch
+            catch e
+                Base.showerror(STDERR, e)
                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
             end
         end
