@@ -7,6 +7,32 @@ For styling options of each function, see the keyword arguments list for each fu
 
 For a general overview of styling and to see the default parameters, refer to the chapter [Themes](@ref).
 
+## General function signatures and usage
+
+`func` are the function names, e.g. `lines`, `scatter`, `surface`, etc.
+
+`func(args...; kw_args...)`
+
+# creates a new plot + scene object
+
+
+`func(scene::SceneLike, args...; kw_args...)`
+
+# creates a new plot as a subscene of a scene object
+
+`func!(args...; kw_args...)`
+
+# adds a plot in-place to the `current_scene()`
+
+
+`func!(scene::SceneLike, args...; kw_args...)`
+
+# adds a plot in-place to the `current_scene()` as a subscene
+
+
+`func[!]([scene], kw_args::Attributes, args...)`
+
+# `[]` means an optional argument. `Attributes` is a Dictionary of attributes.
 
 
 ## Scatter
