@@ -2,7 +2,7 @@ using Documenter, Makie
 cd(@__DIR__)
 include("../examples/library.jl")
 include("documenter_extension.jl")
-using Makie: to_string
+import AbstractPlotting: _help, to_string, to_func, to_type
 
 # =============================================
 # automatically generate an overview of the atomic functions
@@ -12,7 +12,7 @@ open(path, "w") do io
     for func in atomics
         println(io, "## `$(to_string(func))`")
         try
-            Makie._help(io, func; extended = true)
+            _help(io, func; extended = true)
         catch
             println("ERROR: Didn't work with $func\n")
         end
@@ -33,7 +33,7 @@ for func in atomics
         println(io, "# `$(to_string(func))`")
         # println(io, "## `$func`")
         try
-            Makie._help(io, func; extended = true)
+            _help(io, func; extended = true)
         catch
             println("ERROR: Didn't work with $func\n")
         end
@@ -178,7 +178,7 @@ open(path, "w") do io
 end
 
 makedocs(
-    modules = [Makie],
+    modules = [Makie, AbstractPlotting],
     doctest = false, clean = true,
     format = :html,
     sitename = "Makie.jl",
