@@ -57,7 +57,6 @@ Plots a volume.
     Theme(;
         default_theme(scene)...,
         fxaa = true,
-        isovalue = 0.6,
         algorithm = :iso,
         absorption = 1f0,
         isovalue = 0.5f0,
