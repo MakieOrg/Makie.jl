@@ -30,7 +30,7 @@ using Makie
     # end
     @cell "Polygons" [poly, polygon, linesegments] begin
         using GeometryTypes
-        scene = Scene()
+        scene = Scene(@resolution)
         points = decompose(Point2f0, Circle(Point2f0(100), 100f0))
         pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :black)
         # Optimized forms
@@ -70,6 +70,7 @@ using Makie
     end
 
     @cell "Animated Scatter" [animated, scatter, updating] begin
+        scene = Scene(@resolution)
         N = 50
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
@@ -187,6 +188,7 @@ end
     end
 
     @cell "Simple meshscatter" [meshscatter] begin
+        using GeometryTypes
         scene = Scene(@resolution)
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
@@ -402,6 +404,7 @@ end
     # end
 
     @cell "Volume Function" ["3d", volume] begin
+        scene = Scene(@resolution)
         volume(rand(32, 32, 32), algorithm = :mip)
     end
 
@@ -419,6 +422,7 @@ end
 
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
         using FileIO
+        scene = Scene(@resolution)
         catmesh = FileIO.load(Makie.assetpath("cat.obj"), GLNormalUVMesh)
         mesh(catmesh, color = Makie.loadasset("diffusemap.tga"))
     end
@@ -467,7 +471,7 @@ end
     end
     @cell "Surface Function" ["3d", surface] begin
         scene = Scene(@resolution)
-        N = 32
+        N = 30
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
