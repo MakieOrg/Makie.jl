@@ -5,15 +5,16 @@ Like getindex, but accepts values between 0..1 and interpolates those to the ful
 You can use `norm`, to change the range of 0..1 to whatever you want.
 
 """
-function interpolated_getindex(cmap::AbstractArray, value::AbstractFloat, norm = (0.0, 1.0))
+function interpolated_getindex(cmap::AbstractArray{T}, value::AbstractFloat, norm = (0.0, 1.0)) where T
     cmin, cmax = norm
     i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
     i1len = (i01 * (length(cmap) - 1)) + 1
     down = floor(Int, i1len)
     up = ceil(Int, i1len)
-    interp_val = up - i1len
+    down == up && return cmap[down]
+    interp_val = i1len - down
     downc, upc = cmap[down], cmap[up]
-    (downc * (1.0 - interp_val)) + (upc * interp_val)
+    convert(T, (downc * (1.0 - interp_val)) + (upc * interp_val))
 end
 
 function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
