@@ -4,7 +4,7 @@
 """
     help(func)
 
-Welcome to the main help function of `Makie.jl`.
+Welcome to the main help function of `Makie.jl` / `AbstractArray.jl`.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 
@@ -75,14 +75,14 @@ The attributes returned extend those attribues found in the `default_theme`.
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
 """
-function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.AbstractPlot # TODO: Not sure if this is a good way to generalize for any function
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: AbstractPlot
     # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
-    attributes = sort(Makie.default_theme(nothing, Typ))
+    attributes = sort(default_theme(nothing, Typ))
 
     # get list of default attributes to filter out
     # and show only the attributes that are not default attributes
-    filter_keys = collect(keys(Makie.default_theme(nothing)))
+    filter_keys = collect(keys(default_theme(nothing)))
     # manually filter out fxaa attribute (since it's internal to OpenGL)
     push!(filter_keys, Symbol(:fxaa))
 
@@ -104,7 +104,7 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
                 print(io, "  ", attribute, " "^padding)
-                show(io, Makie.value(value))
+                show(io, AbstractPlotting.value(value))
                 print(io, "\n")
             end
         end
@@ -121,6 +121,9 @@ function help_attributes(io, Typ::Type{T}; extended = false) where T <: Makie.Ab
     end
 end
 
+function help_attributes(io::IO, func::Function; extended = false)
+    help_attributes(io, to_type(func); extended = extended)
+end
 
 # ==========================================================
 # Supporting functions for the help functions
