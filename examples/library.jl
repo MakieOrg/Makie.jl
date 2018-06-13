@@ -75,7 +75,7 @@ using Makie
         scene = Scene(@resolution)
         N = 50
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
-        scene = scatter!(scene, r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
+        scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
         s = scene[1] # first plot in scene
         record(scene, @outputfile(mp4), r) do m
             s[1] = m[:, 1]
@@ -84,9 +84,7 @@ using Makie
     end
 
     @cell "Text Annotation" [text, align] begin
-        scene = Scene(@resolution)
-        text!(
-            scene,
+        text(
             ". This is an annotation!",
             position = (300, 200),
             align = (:center,  :center),
@@ -409,7 +407,7 @@ end
 
     @cell "Volume Function" ["3d", volume] begin
         scene = Scene(@resolution)
-        volume!(scene, rand(32, 32, 32), algorithm = :mip)
+        volume(rand(32, 32, 32), algorithm = :mip)
     end
 
     #TODO: document all of the algorithm types
@@ -428,7 +426,7 @@ end
         using FileIO
         scene = Scene(@resolution)
         catmesh = FileIO.load(Makie.assetpath("cat.obj"), GLNormalUVMesh)
-        mesh!(scene, catmesh, color = Makie.loadasset("diffusemap.tga"))
+        mesh(catmesh, color = Makie.loadasset("diffusemap.tga"))
     end
     @cell "Load Mesh" ["3d", mesh, cat] begin
         scene = Scene(@resolution)
@@ -513,13 +511,12 @@ end
     end
 
     @cell "Meshscatter Function" ["3d", meshscatter] begin
-        scene = Scene(@resolution)
         using GeometryTypes
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
         sizesS = [rand(Point3f0) .* 0.5f0 for i = 1:length(positions)]
-        meshscatter!(scene, positions, color = colS, markersize = sizesS)
+        meshscatter(positions, color = colS, markersize = sizesS)
     end
 
     @cell "Scatter Function" ["2d", scatter] begin
@@ -734,13 +731,12 @@ end
     #     println("placeholder")
     # end
     @cell "3D Contour with 2D contour slices" [volume, contour, heatmap, "3d", transformation] begin
-        scene = Scene(@resolution)
-
         function test(x, y, z)
             xy = [x, y, z]
             ((xy') * eye(3, 3) * xy) / 20
         end
         x = linspace(-2pi, 2pi, 100)
+        scene = Scene()
         c = contour!(scene, x, x, x, test, levels = 10)[1]
         xm, ym, zm = minimum(scene.limits[])
         # c[4] == fourth argument of the above plotting command
@@ -763,7 +759,6 @@ end
     # end
 
     @cell "Arrows 3D" [arrows, "3d"] begin
-        scene = Scene(@resolution)
         function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
             x = @.r*sin(θ)*cos(ϕ)
             y = @.r*sin(θ)*sin(ϕ)
@@ -775,11 +770,10 @@ end
         θ = acos.(1 .- 2 .* rand(n))
         φ = 2π * rand(n)
         pts = SphericalToCartesian(r,θ,φ)
-        arrows!(scene, pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02, linecolor = :green)
+        arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02, linecolor = :green)
     end
 
     @cell "Image on Surface Sphere" [surface, sphere, "3d", image] begin
-        scene = Scene(@resolution)
         n = 20
         θ = [0;(0.5:n-0.5)/n;1]
         φ = [(0:2n-2)*2/(2n-1);2]
@@ -788,10 +782,9 @@ end
         z = [cospi(θ) for θ in θ, φ in φ]
         rand([-1f0, 1f0], 3)
         pts = vec(Point3f0.(x, y, z))
-        surface!(scene, x, y, z, image = Makie.logo())
+        surface(x, y, z, image = Makie.logo())
     end
     @cell "Arrows on Sphere" [surface, sphere, arrows, "3d"] begin
-        scene = Scene(@resolution)
         n = 20
         f   = (x,y,z) -> x*exp(cos(y)*z)
         ∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
@@ -805,17 +798,15 @@ end
 
         pts = vec(Point3f0.(x, y, z))
         ∇ˢF = vec(∇ˢf.(x, y, z)) .* 0.1f0
-        surface!(scene, x, y, z)
+        surface(x, y, z)
         arrows!(
-            scene,
             pts, ∇ˢF,
             arrowsize = 0.03, linecolor = :gray, linewidth = 3
         )
     end
     @cell "Test heatmap + image overlap" [image, heatmap, transparency, "2d"] begin
-        scene = Scene(@resolution)
-        heatmap!(scene, rand(32, 32))
-        image!(scene, map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
+        heatmap(rand(32, 32))
+        image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
     end
 end
 
