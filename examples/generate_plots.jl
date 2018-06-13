@@ -29,7 +29,7 @@ while dblen - 1 >= index
             info("it's a path! -- video")
             info("path is: $result")
             info("generating video thumbnail")
-            run(`ffmpeg -ss 0.5 -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -f image2 "./docs/media/thumb-$(uname).jpg"`)
+            run(`ffmpeg -ss 0.5 -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -f image2 "./docs/media/thumb-$(uname).png"`)
         elseif isa(result, AbstractPlotting.Scene)
             info("it's a plot")
             Makie.save("docs/media/$uname.png", result)
