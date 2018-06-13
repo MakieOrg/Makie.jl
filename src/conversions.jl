@@ -462,7 +462,7 @@ A Symbol/String naming the gradient. For more on what names are available please
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap")
     cs_sym = Symbol(cs)
     if cs_sym in colorbrewer_names
-        return ColorBrewer.palette(string(cs_sym), 9)
+        return resample(ColorBrewer.palette(string(cs_sym), 9), 20)
     elseif lowercase(string(cs_sym)) == "viridis"
         return [
             to_color("#440154FF"),
