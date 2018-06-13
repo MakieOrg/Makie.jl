@@ -1,22 +1,3 @@
-# TODO: figure out where to put the below
-# General function signatures and usage
-# `func` are the function names, e.g. `lines`, `scatter`, `surface`, etc.
-#
-# # creates a new plot + scene object
-# `func(args...; kw_args...)`
-#
-# # creates a new plot as a subscene of a scene object
-# `func(scene::SceneLike, args...; kw_args...)`
-#
-# # adds a plot in-place to the current_scene()
-# `func!(args...; kw_args...)`
-#
-# # adds a plot in-place to the current_scene() as a subscene
-# `func!(scene::SceneLike, args...; kw_args...)`
-#
-# # `[]` means an optional argument. `Attributes` is a Dictionary of attributes:
-# `func[!]([scene], kw_args::Attributes, args...)`
-
 # ==========================================================
 # Supporting functions for the help functions
 """
