@@ -52,6 +52,11 @@ include("basic_recipes/legend.jl")
 include("interaction/events.jl")
 include("interaction/gui.jl")
 
+# documentation and help functions
+include("documentation.jl")
+
+# help functions and supporting functions
+export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, AbstractScreen
