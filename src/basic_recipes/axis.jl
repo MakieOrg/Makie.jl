@@ -34,7 +34,6 @@ range_labels(x) = not_implemented(x)
             axis_arrow = false,
             arrow_size = 2.5,
             frames = ((false, false), (false, false)),
-            frames = ((false, false), (false, false)),
         ),
 
         titlestyle = Theme(
@@ -370,12 +369,12 @@ function draw_axis(
     ranges = map(x-> x.a, ranges_ticks)
     ticklabels = map(x-> x.b, ranges_ticks)
     mini, maxi = minimum.(ranges), maximum.(ranges)
-
     origin = Point{N, Float32}(mini)
     limit_widths = maxi .- mini
     % = minimum(limit_widths) / 100 # percentage
     ttextsize = (%) .* ttextsize
     axisnames_size = (%) .* axisnames_size
+
     titlegap = (%) .* titlegap
     tgap = (%) .* tgap
     for i = 1:N
