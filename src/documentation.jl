@@ -111,11 +111,11 @@ end
 
 # Other help functions
 """
-    help_arguments(func)
+    help_arguments(io, func)
 
 Returns a list of signatures for function `func`.
 """
-function help_arguments(io, x::Function)
+function help_arguments(io::IO, x::Function)
 #TODO: this is currently hard-coded
     println(io, "`$x` has the following function signatures: \n")
     println(io, "```")
