@@ -77,6 +77,39 @@ function embed_video(relapath::AbstractString)
         """
 end
 
+
+"""
+    embed_thumbnail(func::Function)
+
+Insert thumbnails matching a search tag.
+"""
+function embed_thumbnail(io::IO, func::Function)
+    indices = find_indices(func)
+    # namesdict = Dict(database[idx].unique_name => database[idx].title for idx in indices)
+    for idx in indices
+        uname = database[idx].unique_name
+        title = database[idx].title
+        # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+        testpath1 = joinpath(mediapath, "thumb-$uname.png")
+        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+        if isfile(testpath1)
+            embedpath = relpath(testpath1, atomicspath)
+            println(io, "![]($(embedpath))")
+            # [![Alt text](/path/to/img.jpg)](http://example.net/)
+            # println(io, "[![$title]($(embedpath))](@ref)")
+        elseif isfile(testpath2)
+            embedpath = relpath(testpath2, atomicspath)
+            println(io, "![]($(embedpath))")
+            # println(io, "[![$title]($(embedpath))](@ref)")
+        else
+            warn("thumbnail for index $idx with uname $uname not found")
+            embedpath = "not_found"
+        end
+        embedpath = []
+    end
+end
+
+
 """
     generate_thumbnail(path::AbstractString; sz::Int = 200)
 
