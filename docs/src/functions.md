@@ -32,7 +32,7 @@ For a general overview of styling and to see the default parameters, refer to th
 
 `func[!]([scene], kw_args::Attributes, args...)`
 
-# `[]` means an optional argument. `Attributes` is a Dictionary of attributes.
+`[]` means an optional argument. `Attributes` is a Dictionary of attributes.
 
 
 ## Scatter
