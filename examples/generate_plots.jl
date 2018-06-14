@@ -10,7 +10,7 @@ sort!(database, by = (x)-> x.groupid)
 
 index = start(database)
 dblen = length(database)
-thumbnail_size = 200
+thumbnail_size = 150
 while dblen - 1 >= index
     # use the unique_name of the database entry as filename
     uname = string(database[index].unique_name)
@@ -29,7 +29,12 @@ while dblen - 1 >= index
             info("it's a path! -- video")
             info("path is: $result")
             info("generating video thumbnail")
-            run(`ffmpeg -ss 0.5 -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -f image2 "./docs/media/thumb-$(uname).png"`)
+            try
+                # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+                run(`ffmpeg -ss 0.1 -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -f image2 "./docs/media/thumb-$(uname).jpg"`)
+            catch err
+                Base.showerror(STDERR, err)
+            end
         elseif isa(result, AbstractPlotting.Scene)
             info("it's a plot")
             Makie.save("docs/media/$uname.png", result)
