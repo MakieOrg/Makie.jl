@@ -32,7 +32,7 @@ function boundingbox(x::Text)
     @get_attribute x (textsize, font, align, rotation, model)
 
     atlas = get_texture_atlas()
-    N = endof(text)
+    N = length(text)
     pos_per_char = !isa(position, VecTypes)
     start_pos = Vec(pos_per_char ? first(position) : position)
     start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
