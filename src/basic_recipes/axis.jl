@@ -4,7 +4,6 @@ range_labels(x) = not_implemented(x)
 @recipe(Axis2D) do scene
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
-        scale = Vec3f0(1),
         tickstyle = Theme(
             gap = 3,
             title_gap = 3,
@@ -320,10 +319,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
 
-    g_args = getindex.(cplot[:gridstyle][], g_keys)
-    f_args = getindex.(cplot[:framestyle][], f_keys)
-    t_args = getindex.(cplot[:tickstyle][], t_keys)
-    ti_args = getindex.(cplot[:titlestyle][], ti_keys)
+    g_args = getindex.(cplot[:gridstyle], g_keys)
+    f_args = getindex.(cplot[:framestyle], f_keys)
+    t_args = getindex.(cplot[:tickstyle], t_keys)
+    ti_args = getindex.(cplot[:titlestyle], ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})
@@ -354,15 +353,20 @@ end
 _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
 
+to3tuple(x::Tuple{Any, Any, Any}) = x
+to3tuple(x) = ntuple(i-> x, Val{3})
 
-function draw_axis(
-        textbuffer, linebuffer, _ranges,
-        scale, showaxis, showticks, showgrid,
+function draw_axis(textbuffer, linebuffer, _ranges, args...)
+    # make sure we extend all args to 3D
+    args3d = to3tuple.(args)
+    (
+        showaxis, showticks, showgrid,
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
         gridcolors, gridthickness, axiscolors,
         ttextcolor, trotation, ttextsize, talign, tfont, tgap
-    )
+    ) = args3d # splat to names
+
     N = 3
     start!(textbuffer); start!(linebuffer)
     ranges_ticks = ticks_and_labels.(_ranges)
@@ -390,24 +394,27 @@ function draw_axis(
             tickdir = unit(Point{N, Float32}, j)
             tickdir, offset2 = if i != 2
                 tickdir = unit(Vec{N, Float32}, j)
-                tickdir, Float32(_widths(ranges[j]) + titlegap) * tickdir
+                tickdir, Float32(_widths(ranges[j]) + titlegap[i]) * tickdir
             else
                 tickdir = unit(Vec{N, Float32}, 1)
-                tickdir, Float32(_widths(ranges[1]) + titlegap) * tickdir
+                tickdir, Float32(_widths(ranges[1]) + titlegap[i]) * tickdir
             end
             for (j, tick) in enumerate(range)
-                # skip zero for x
-                (i != 1) && tick == 0.0 && continue
-                startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2) .* scale
-                str = ticklabels[i][j]
-                push!(
-                    textbuffer, str, startpos,
-                    color = ttextcolor[i], rotation = trotation[i],
-                    textsize = ttextsize[i], align = talign[i], font = tfont[i]
-                )
+                labels = ticklabels[i]
+                if !isempty(labels)
+                    # skip zero for x
+                    (i != 1) && tick == 0.0 && continue
+                    startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2)
+                    str = ticklabels[i][j]
+                    push!(
+                        textbuffer, str, startpos,
+                        color = ttextcolor[i], rotation = trotation[i],
+                        textsize = ttextsize[i], align = talign[i], font = tfont[i]
+                    )
+                end
             end
             if !isempty(axisnames[i])
-                pos = (labelposition(ranges, i, tickdir, origin) .+ offset2) .* scale
+                pos = (labelposition(ranges, i, tickdir, origin) .+ offset2)
                 push!(
                     textbuffer, to_latex(axisnames[i]), pos,
                     textsize = axisnames_size[i], color = axisnames_color[i],
@@ -446,9 +453,8 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
     tvals = getindex.(tickstyle, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     framevals = getindex.(framestyle, (:linecolor, :linewidth, :axiscolor))
-
     args = (
-        getindex.(axis, (:scale, :showaxis, :showticks, :showgrid))...,
+        getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals...
     )
     map_once(
