@@ -69,16 +69,16 @@ function save(path::String, io::VideoStream)
     if typ == ".mkv"
         cp(io.path, out)
     elseif typ == ".mp4"
-        run(`ffmpeg -i $(io.path) -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == "webm"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
         filters = "fps=15,scale=iw:ih:flags=lanczos"
         palette_path = dirname(io.path)
-        pname = joinpath(palette_path, "palette.png")
+        pname = joinpath(palette_path, "palette.bmp")
         isfile(pname) && rm(pname, force = true)
-        run(`ffmpeg -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-        run(`ffmpeg -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
         rm(pname, force = true)
     else
         rm(io.path)

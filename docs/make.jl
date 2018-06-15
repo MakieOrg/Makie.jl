@@ -41,8 +41,9 @@ for func in atomics
         try
             _help(io, func; extended = true)
             embed_thumbnail(io, func)
-        catch
+        catch e
             println("ERROR: Didn't work with $func\n")
+            Base.showerror(STDERR, e)
         end
         println(io, "\n")
     end
