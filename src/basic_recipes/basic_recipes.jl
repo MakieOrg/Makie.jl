@@ -134,42 +134,6 @@ function plot!(plot::StreamLines{<: AbstractVector{T}}) where T
     linesegments!(plot, Theme(plot), lines)
 end
 
-@recipe(VolumeSlices, x, y, z, volume) do scene
-    Theme(
-        colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        alpha = 0.1,
-        contour = Theme(),
-        heatmap = Theme(),
-    )
-end
-
-convert_arguments(::Type{<: VolumeSlices}, x, y, z, volume) = convert_arguments(Contour, x, y, z, volume)
-function plot!(vs::VolumeSlices)
-    @extract vs (x, y, z, volume)
-    replace_nothing!(vs, :colorrange) do
-        map(extrema, volume)
-    end
-    keys = (:colormap, :alpha, :colorrange)
-    contour!(vs, vs[:contour], x, y, z, volume)
-    planes = (:xy, :xz, :yz)
-    hattributes = vs[:heatmap]
-    sliders = map(zip(planes, (x, y, z))) do plane_r
-        plane, r = plane_r
-        idx = node(plane, Signal(1))
-        attributes[plane] = idx
-        hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[])))
-        foreach(idx) do i
-            transform!(hmap, (plane, r[][i]))
-            indices = ntuple(Val{3}) do j
-                planes[j] == plane ? i : (:)
-            end
-            hmap[3][] = view(volume[], indices...)
-        end
-        idx
-    end
-    plot!(scene, vs, rest)
-end
 
 @recipe(Series, series) do scene
     Theme(
@@ -257,7 +221,7 @@ function plot!(plot::Annotations)
         end
         (String(take!(io)), combinedpos, colors, scales, fonts, rotations)
     end
-    t_attributes = copy(plot.attributes)
+    t_attributes = Attributes()
     t_attributes[:position] = map(x-> x[2], tp)
     t_attributes[:color] = map(x-> x[3], tp)
     t_attributes[:textsize] = map(x-> x[4], tp)
@@ -291,14 +255,13 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             raw = false
         )
     end
-    push!(scene.plots, subscene)
     if plot_attributes[:raw][] == false
         s_limits = limits(scene)
         map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
             if limit == :automatic
                 @info("calculating limits")
                 @log_performance "calculating limits" begin
-                    dlimits = data_limits(scene)
+                    dlimits = union(data_limits(scene), data_limits(subscene))
                     lim_w = widths(dlimits)
                     padd_abs = lim_w .* Vec3f0(padd)
                     s_limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
@@ -322,7 +285,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             return
         end
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
-            axis_attributes = plot_attributes[:axis][]
+            axis_attributes = plot_attributes[:axis]
             if is2d(scene)
                 limits2d = map(s_limits) do l
                     l2d = FRect2D(l)
@@ -336,7 +299,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
                     tuple.(Tuple.((mini, maxi))...)
                 end
                 @info("Creating axis 3D")
-                axis3d!(scene, limits3d, axis_attributes)
+                axis3d!(scene, axis_attributes, limits3d)
             end
         end
         # if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
@@ -356,6 +319,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             end
         end
     end
+    push!(scene.plots, subscene)
     value(plot_attributes[:center]) && center!(scene)
     scene
 end
