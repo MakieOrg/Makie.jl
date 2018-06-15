@@ -59,3 +59,79 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     # Evaluate the code block. We redirect stdout/stderr to `buffer`.
     page.mapping[x] = Markdown.MD(content)
 end
+
+"""
+    embed_video(relapath::AbstractString)
+
+Generates a MD-formatted string for embedding video into Markdown files
+(since `Documenter.jl` doesn't support directly embedding mp4's).
+"""
+function embed_video(relapath::AbstractString)
+    return str = """
+        ```@raw html
+        <video controls autoplay>
+          <source src="$(relapath)" type="video/mp4">
+          Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
+        </video>
+        ```
+        """
+end
+
+
+"""
+    embed_thumbnail(func::Function)
+
+Insert thumbnails matching a search tag.
+"""
+function embed_thumbnail(io::IO, func::Function)
+    indices = find_indices(func)
+    # namesdict = Dict(database[idx].unique_name => database[idx].title for idx in indices)
+    for idx in indices
+        uname = database[idx].unique_name
+        title = database[idx].title
+        # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+        testpath1 = joinpath(mediapath, "thumb-$uname.png")
+        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+        if isfile(testpath1)
+            embedpath = relpath(testpath1, atomicspath)
+            println(io, "![]($(embedpath))")
+            # [![Alt text](/path/to/img.jpg)](http://example.net/)
+            # println(io, "[![$title]($(embedpath))](@ref)")
+        elseif isfile(testpath2)
+            embedpath = relpath(testpath2, atomicspath)
+            println(io, "![]($(embedpath))")
+            # println(io, "[![$title]($(embedpath))](@ref)")
+        else
+            warn("thumbnail for index $idx with uname $uname not found")
+            embedpath = "not_found"
+        end
+        embedpath = []
+    end
+end
+
+
+"""
+    generate_thumbnail(path::AbstractString; sz::Int = 200)
+
+Generates a (proportionally-scaled) thumbnail with maximum side dimension `sz`.
+`sz` must be an integer, and the default value is 200 pixels.
+"""
+function generate_thumbnail(path::AbstractString; sz::Int = 200)
+    !isfile(path) && warn("Input argument must be a file!")
+    dir = dirname(path)
+    origname = basename(path)
+    thumbname = "thumb-$(origname)"
+
+    img = Images.load(path)
+    (height, width) = size(img)
+
+    scale_height = sz / height
+    scale_width = sz / width
+
+    scale = min(scale_height, scale_width)
+
+    (new_height, new_width) = (height, width) .* scale
+
+    newimg = Images.imresize(img, round.(Int, (new_height, new_width)))
+    Makie.save(joinpath(dir, thumbname), newimg)
+end

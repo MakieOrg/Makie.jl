@@ -58,8 +58,8 @@ end
 
 Flushes the video stream and converts the file to the extension found in `path` which can
 be `mkv` is default and doesn't need convert, `gif`, `mp4` and `webm`.
-mp4 is recommended for the internet, since it's the most supported format.
-webm yields the smallest file size, mp4 and mk4 are marginally bigger and gifs are up to
+`mp4` is recommended for the internet, since it's the most supported format.
+`webm` yields the smallest file size, `mp4` and `mk4` are marginally bigger and `gif`s are up to
 6 times bigger with same quality!
 """
 function save(path::String, io::VideoStream)
