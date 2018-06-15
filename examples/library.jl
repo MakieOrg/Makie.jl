@@ -28,18 +28,20 @@ using Makie
     #     # center!(scene)
     #     # scene
     # end
+
     @cell "Polygons" [poly, polygon, linesegments] begin
         using GeometryTypes
-        scene = Scene()
-        points = decompose(Point2f0, Circle(Point2f0(100), 100f0))
-        pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :black)
+        scene = Scene(@resolution)
+        points = decompose(Point2f0, Circle(Point2f0(50), 50f0))
+        pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :red)
         # Optimized forms
-        poly!(scene, [Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
-        poly!(scene, [Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
+        poly!(scene, [Circle(Point2f0(50+i, 50+i), 10f0) for i = 1:100:400])
+        poly!(scene, [Rectangle{Float32}(50+i, 50+i, 20, 20) for i = 1:100:400], strokewidth = 10, strokecolor = :black)
         linesegments!(scene,
-            [Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple
+            [Point2f0(50+i, 50+i) => Point2f0(i + 80, i + 80) for i = 1:100:400], linewidth = 8, color = :purple
         )
     end
+
     @cell "Contour Function" [contour] begin
 
         scene = Scene(@resolution)
@@ -70,6 +72,7 @@ using Makie
     end
 
     @cell "Animated Scatter" [animated, scatter, updating] begin
+        scene = Scene(@resolution)
         N = 50
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
@@ -440,6 +443,7 @@ end
     # end
 
     @cell "Volume Function" ["3d", volume] begin
+        scene = Scene(@resolution)
         volume(rand(32, 32, 32), algorithm = :mip)
     end
 
@@ -457,6 +461,7 @@ end
 
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
         using FileIO
+        scene = Scene(@resolution)
         catmesh = FileIO.load(Makie.assetpath("cat.obj"), GLNormalUVMesh)
         mesh(catmesh, color = Makie.loadasset("diffusemap.tga"))
     end
@@ -505,26 +510,30 @@ end
     end
     @cell "Surface Function" ["3d", surface] begin
         scene = Scene(@resolution)
-        N = 32
+        N = 30
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
-        lspace = linspace(-10, 10, 32)
+        lspace = linspace(-10, 10, N)
         z = Float32[xy_data(x, y) for x in lspace, y in lspace]
         range = linspace(0, 3, N)
-        surf = surface!(scene, range, range, z, colormap = :Spectral)
+        surf = surface!(
+            scene,
+            range, range, z,
+            colormap = :Spectral
+        )
     end
     @cell "Surface with image" ["3d", surface, image] begin
-
         scene = Scene(@resolution)
+        N = 30
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
-        r = linspace(-2, 2, 30)
+        r = linspace(-2, 2, N)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-        surface!(
+        surf = surface!(
             scene,
             r, r, surf_func(10),
             image = rand(RGBAf0, 124, 124)
@@ -813,6 +822,18 @@ end
     @cell "Test heatmap + image overlap" [image, heatmap, transparency, "2d"] begin
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
+    end
+end
+
+@block AnthonyWang [documentation] begin
+    @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
+        scene = Scene(@resolution)
+        scatter!(
+            scene,
+            rand(20), rand(20),
+            markersize = rand(20) ./20 + 0.02,
+            color = rand(RGBf0, 20)
+        )
     end
 end
 
