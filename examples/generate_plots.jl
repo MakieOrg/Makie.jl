@@ -30,5 +30,6 @@ while length(database) >= index
         end
     catch e
         Base.showerror(STDERR, e)
+        println(str)
     end
 end
