@@ -43,32 +43,19 @@ using Makie
     end
 
     @cell "Contour Function" [contour] begin
-
-        scene = Scene(@resolution)
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
-        contour!(scene, r, r, z, levels = 5, color = :RdYlBu)
+        contour(r, r, z, levels = 5, color = :RdYlBu)
     end
 
-
-    @cell "Contour Simple" [contour] begin
-
-        scene = Scene(@resolution)
-        y = linspace(-0.997669, 0.997669, 23)
-        contour!(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
-    end
 
     @cell "contour" [contour] begin
-
-        scene = Scene(@resolution)
         y = linspace(-0.997669, 0.997669, 23)
-        contour!(scene, linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
+        contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
     end
 
-
     @cell "Heatmap" [heatmap] begin
-        scene = Scene(@resolution)
-        heatmap!(scene, rand(32, 32))
+        heatmap(rand(32, 32))
     end
 
     @cell "Animated Scatter" [animated, scatter, updating] begin
@@ -443,7 +430,6 @@ end
     # end
 
     @cell "Volume Function" ["3d", volume] begin
-        scene = Scene(@resolution)
         volume(rand(32, 32, 32), algorithm = :mip)
     end
 
@@ -454,10 +440,6 @@ end
     # :absorptionrgba => AbsorptionRGBA,
     # :indexedabsorption => IndexedAbsorptionRGBA,
 
-    @cell "Heatmap Function" ["2d", heatmap] begin
-        scene = Scene(@resolution)
-        heatmap!(scene, rand(32, 32))
-    end
 
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
         using FileIO
@@ -556,9 +538,8 @@ end
         meshscatter(positions, color = colS, markersize = sizesS)
     end
 
-    @cell "Scatter Function" ["2d", scatter] begin
-        scene = Scene(@resolution)
-        scatter!(scene, rand(20), rand(20), markersize = 0.03)
+    @cell "scatter" ["2d", scatter] begin
+        scatter(rand(20), rand(20), markersize = 0.03)
     end
 
     @cell "Marker sizes" ["2d", scatter] begin
@@ -814,14 +795,54 @@ end
         pts = vec(Point3f0.(x, y, z))
         ∇ˢF = vec(∇ˢf.(x, y, z)) .* 0.1f0
         surface(x, y, z)
+        # TODO arrows seem pretty wrong
         arrows!(
             pts, ∇ˢF,
-            arrowsize = 0.03, linecolor = :gray, linewidth = 3
+            arrowsize = 0.03, linecolor = :white, linewidth = 3
         )
     end
     @cell "Test heatmap + image overlap" [image, heatmap, transparency, "2d"] begin
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
+    end
+    @cell "Interaction with Mouse" [interactive, scatter, lines, marker] begin
+        scene = Scene()
+        r = linspace(0, 3, 4)
+        cam2d!(scene)
+        time = Node(0.0)
+        pos = lift(scene.events.mouseposition, time) do mpos, t
+            map(linspace(0, 2pi, 60)) do i
+                circle = Point2f0(sin(i), cos(i))
+                mouse = to_world(scene, Point2f0(mpos))
+                secondary = (sin((i * 10f0) + t) * 0.09) * normalize(circle)
+                (secondary .+ circle) .+ mouse
+            end
+        end
+        scene = lines!(scene, pos, raw = true)
+        p1 = scene[end]
+        p2 = scatter!(
+            scene,
+            pos, markersize = 0.1f0,
+            marker = :star5,
+            color = p1[:color],
+            raw = true
+        )[end]
+
+        display(scene)
+
+        p1[:color] = RGBAf0(1, 0, 0, 0.1)
+        p2[:marker] = 'π'
+        p2[:markersize] = 0.2
+        p2[:marker] = 'o'
+
+        # push a reasonable mouse position in case this is executed as part
+        # of the documentation
+        push!(scene.events.mouseposition, (250.0, 250.0))
+        record(scene, @outputfile(mp4), linspace(0.01, 0.4, 100)) do i
+            push!(scene.events.mouseposition, (250.0, 250.0))
+            p2[:markersize] = i
+            push!(time, time[] + 0.1)
+        end
     end
 end
 
