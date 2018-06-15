@@ -57,8 +57,7 @@ axis(r, r, r);
 center!(scene);
 
 #cell
-Makie.volume(rand(32, 32, 32), algorithm = :iso)
-
+scene = Makie.volume(rand(32, 32, 32), algorithm = :iso)
 #cell
 heatmap(rand(32, 32))
 
@@ -320,70 +319,6 @@ l[:strokewidth] = 1
 l[:textsize] = 15
 l[:textgap] = 5
 scene
-
-#cell
-using Makie, GeometryTypes
-
-
-# mktempdir() do path
-#     scene = Scene()
-#     lineplots = []
-#     axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
-#     center!(scene)
-#     us = linspace(0, 1, 100)
-#     io = VideoStream(scene, path, "lines")
-#
-#     for i = 1:100
-#         if length(lineplots) < 20
-#             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
-#         else
-#             lineplots = circshift(lineplots, 1)
-#             lp = first(lineplots)
-#             lp[:positions] = Point3f0.(us, sin.(us .+ time()), zeros(100))
-#             lp[:offset] = Vec3f0(0)
-#         end
-#         for lp in lineplots
-#             z = to_value(lp, :offset)[3]
-#             lp[:offset] = Vec3f0(0, 0, z + 0.1)
-#         end
-#         sleep(1/30)
-#         recordframe!(io)
-#     end
-#     finish(io, "gif")
-# end
-
-
-
-
-#cell
-using Makie
-scene = Scene()
-vx = -1:0.01:1;
-vy = -1:0.01:1;
-
-f(x, y) = (sin(x*10) + cos(y*10)) / 4
-psurf = surface!(scene, vx, vy, f)
-a = scene[2]
-t = a[:titlestyle][]
-
-t[:axisnames][] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-a[:textsize] = (0.15, 0.15, 0.15)
-a[:axisnames_color] = (:black, :black, :black)
-a[:axisnames_font] = "Palatino"
-
-psurf[:colormap] = :RdYlBu
-wh = widths(scene)
-t = text(
-    "Multipole Representation of first resonances of U-238",
-    position = (wh[1] / 2.0, wh[2] - 20.0),
-    align = (:center,  :center),
-    textsize = 20,
-    font = "Palatino",
-    camera = :pixel
-)
-c = lines(Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
-#update surface
-psurf[:z] = f.(vx .+ 0.5, (vy .+ 0.5)')
 
 
 
