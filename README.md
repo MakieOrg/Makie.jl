@@ -1,6 +1,9 @@
-[![code](https://github.com/SimonDanisch/Makie.jl/blob/master/docs/header.png?raw=true)](https://github.com/SimonDanisch/Makie.jl/blob/master/test/makie_header.jl)
+
+![](https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png)
 
 # Makie
+
+[![code](https://github.com/SimonDanisch/Makie.jl/blob/master/docs/header.png?raw=true)](https://github.com/SimonDanisch/Makie.jl/blob/master/test/makie_header.jl)
 
 From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
