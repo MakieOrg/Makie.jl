@@ -108,30 +108,3 @@ function embed_thumbnail(io::IO, func::Function)
         embedpath = []
     end
 end
-
-
-"""
-    generate_thumbnail(path::AbstractString; sz::Int = 200)
-
-Generates a (proportionally-scaled) thumbnail with maximum side dimension `sz`.
-`sz` must be an integer, and the default value is 200 pixels.
-"""
-function generate_thumbnail(path::AbstractString; sz::Int = 200)
-    !isfile(path) && warn("Input argument must be a file!")
-    dir = dirname(path)
-    origname = basename(path)
-    thumbname = "thumb-$(origname)"
-
-    img = Images.load(path)
-    (height, width) = size(img)
-
-    scale_height = sz / height
-    scale_width = sz / width
-
-    scale = min(scale_height, scale_width)
-
-    (new_height, new_width) = (height, width) .* scale
-
-    newimg = Images.imresize(img, round.(Int, (new_height, new_width)))
-    Makie.save(joinpath(dir, thumbname), newimg)
-end
