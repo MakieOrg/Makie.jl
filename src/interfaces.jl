@@ -19,8 +19,9 @@ function default_theme(scene)
 end
 
 """
-    image(x, y, image) / image(image)
-Plots an image on range x, y (defaults to dimensions)
+    `image(x, y, image)` / `image(image)`
+
+Plots an image on range `x, y` (defaults to dimensions).
 """
 @atomic(Image) do scene
     Theme(;
@@ -33,8 +34,9 @@ end
 
 # could be implemented via image, but might be optimized specifically by the backend
 """
-    heatmap(x, y, values) / heatmap(values)
-Plots a image on heatmap x, y (defaults to dimensions)
+    `heatmap(x, y, values)` or `heatmap(values)`
+
+Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
 """
 @atomic(Heatmap) do scene
     Theme(;
@@ -49,8 +51,9 @@ Plots a image on heatmap x, y (defaults to dimensions)
 end
 
 """
-    volume(volume_data)
-Plots a volume
+    `volume(volume_data)`
+
+Plots a volume.
 """
 @atomic(Volume) do scene
     Theme(;
@@ -66,8 +69,9 @@ Plots a volume
 end
 
 """
-    surface(x, y, z)
-Plots a surface, where x y z are supposed to lie on a grid
+    `surface(x, y, z)`
+
+Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
 """
 @atomic(Surface) do scene
     Theme(;
@@ -79,8 +83,9 @@ Plots a surface, where x y z are supposed to lie on a grid
 end
 
 """
-    lines(x, y, z) / lines(x, y) / lines(positions)
-Plots a connected line for each element in xyz/positions
+    `lines(x, y, z)` / `lines(x, y)` / or `lines(positions)`
+
+Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
 """
 @atomic(Lines) do scene
     Theme(;
@@ -92,11 +97,11 @@ Plots a connected line for each element in xyz/positions
 end
 
 """
-    linesegments(x, y, z) / linesegments(x, y) / linesegments(positions)
-Plots a line for each pair of points in xyz/positions
+    `linesegments(x, y, z)` / `linesegments(x, y)` / `linesegments(positions)`
 
-## Attributes:
+Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 
+**Attributes**:
 The same as for [`lines`](@ref)
 """
 @atomic(LineSegments) do scene
@@ -105,8 +110,9 @@ end
 
 # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
-    mesh(x, y, z) / mesh(mesh_object) / mesh(x, y, z, faces) / mesh(xyz, faces)
-Plots a 3D mesh
+    `mesh(x, y, z)`, `mesh(mesh_object)`, `mesh(x, y, z, faces)`, or `mesh(xyz, faces)`
+
+Plots a 3D mesh.
 """
 @atomic(Mesh) do scene
     Theme(;
@@ -118,8 +124,9 @@ Plots a 3D mesh
 end
 
 """
-    scatter(x, y, z) / scatter(x, y) / scatter(positions)
-Plots a marker for each element in xyz/positions
+    `scatter(x, y, z)` / `scatter(x, y)` / `scatter(positions)`
+
+Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 """
 @atomic(Scatter) do scene
     Theme(;
@@ -140,8 +147,9 @@ Plots a marker for each element in xyz/positions
 end
 
 """
-    meshscatter(x, y, z) / meshscatter(x, y) / meshscatter(positions)
-Plots a mesh for each element in xyz/positions
+    `meshscatter(x, y, z)` / `meshscatter(x, y)` / `meshscatter(positions)`
+
+Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
 """
 @atomic(MeshScatter) do scene
     Theme(;
@@ -157,9 +165,9 @@ Plots a mesh for each element in xyz/positions
 end
 
 """
-    text(string)
+    `text(string)`
 
-Plots a text
+Plots a text.
 """
 @atomic(Text) do scene
     Theme(;
@@ -181,7 +189,8 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(AbstractPlotting, atomic_function_symbols)
 
 """
-        calculated_attributes!(plot::AbstractPlot)
+    `calculated_attributes!(plot::AbstractPlot)`
+
 Fill in values that can only be calculated when we have all other attributes filled
 """
 function calculated_attributes!(plot::AbstractPlot)
@@ -270,11 +279,11 @@ end
 
 
 """
-    plot_type(plot_args...)
+    `plot_type(plot_args...)`
 
 The default plot type for any argument is `lines`.
 Any custom argument combination that has only one meaningful way to be plotted should overload this.
-E.g:
+e.g.:
 ```example
     # make plot(rand(5, 5, 5)) plot as a volume
     plottype(x::Array{<: AbstractFlot, 3}) = Volume
