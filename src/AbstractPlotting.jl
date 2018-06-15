@@ -55,7 +55,7 @@ include("interaction/gui.jl")
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, AbstractScreen
-export AbstractPlot, Combined, Atomic
+export AbstractPlot, Combined, Atomic, Axis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, arguments, default_theme, theme
@@ -74,10 +74,11 @@ export to_ndim
 
 # Transformations
 export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
-export boundingbox, insertplots!, center!
+export boundingbox, insertplots!, center!, translation
 
 # camera related
-export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, campixel!, cam3d!, update_cam!
+export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
+export campixel!, campixel, cam3d!, update_cam!, rotate_cam!, translate_cam!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 
 # picking + interactive use cases + events
@@ -108,7 +109,7 @@ export Billboard
 # Color/Vector types convenient for 3d/2d graphics
 export RGBAf0, RGBf0, VecTypes, RealVector, FRect, FRect2D, IRect2D
 export FRect3D, IRect3D, Rect3D, Transformation
-export IRect, FRect, Rect, Sphere
+export IRect, FRect, Rect, Sphere, Circle
 export Vec3f0, Vec2f0, Point3f0, Point2f0
 #export (..) # reexport interval
 
