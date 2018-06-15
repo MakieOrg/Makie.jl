@@ -45,9 +45,12 @@ using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont
 export (..), GLNormalUVMesh
 # conflicting identifiers
 using AbstractPlotting: Text, volume, VecTypes
-using GeometryTypes: width
+using GeometryTypes: widths
+export widths, decompose
 
-
+# NamedTuple shortcut for 0.6, for easy creation of nested attributes
+const NT = Theme
+export NT
 
 # functions we overload
 
