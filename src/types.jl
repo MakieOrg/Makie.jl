@@ -1,12 +1,13 @@
 # this is a bit of a weird name, but all scenes and plots are transformable
 # so that's what they all have in common. This might be better expressed as traits
 abstract type Transformable end
+
 abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
 
 const SceneLike = Union{AbstractScene, ScenePlot}
-const Attributes = Dict{Symbol, Any}
+# const Attributes = Dict{Symbol, Any}
 
 abstract type AbstractCamera end
 
@@ -151,6 +152,53 @@ struct Transformation <: Transformable
     func::Node{Any}
 end
 
+#
+struct Attributes
+    attributes::Dict{Symbol, Node}
+end
+
+node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, pair[2], pair[1]))
+node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
+Base.convert(::Type{<: Node}, x::Attributes) = Node(x)
+
+Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
+Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
+Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))
+Base.keys(x::Attributes) = keys(x.attributes)
+Base.values(x::Attributes) = values(x.attributes)
+Base.start(x::Attributes) = start(x.attributes)
+Base.next(x::Attributes, state) = next(x.attributes, state)
+Base.done(x::Attributes, state) = done(x.attributes, state)
+Base.copy(x::Attributes) = Attributes(copy(x.attributes))
+Base.merge(x::Attributes...) = Attributes(merge(map(a-> a.attributes, x)...))
+Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
+Base.empty!(x::Attributes) = empty!(x.attributes)
+Base.length(x::Attributes) = length(x.attributes)
+
+function getindex(x::Attributes, key::Symbol)
+    x = x.attributes[key]
+    to_value(x) isa Attributes ? to_value(x) : x
+end
+function setindex!(x::Attributes, value, key::Symbol)
+    if haskey(x, key)
+        x.attributes[key][] = value
+    else
+        x.attributes[key] = to_node(Any, value, key)
+    end
+end
+function setindex!(x::Attributes, value::Node, key::Symbol)
+    if haskey(x, key)
+        # error("You're trying to update an attribute node with a new node. This is not supported right now.
+        # You can do this manually like this:
+        # lift(val-> attributes[$key] = val, node::$(typeof(value)))
+        # ")
+        return x.attributes[key] = value
+    else
+        #TODO make this error. Attributes should be sort of immutable
+        return x.attributes[key] = value
+    end
+end
+
 # There are only two types of plots. Atomic Plots, which are the most basic building blocks.
 # Then you can combine them to form more complex plots in the form of a Combined plot.
 struct Atomic{Typ, T} <: AbstractPlot{Typ}
@@ -158,7 +206,7 @@ struct Atomic{Typ, T} <: AbstractPlot{Typ}
     transformation::Transformation
     attributes::Attributes
     input_args::Tuple # we push new values to this
-    output_args::Tuple # these are the arguments we actually work with in the backend/recipe
+    converted::Tuple # these are the arguments we actually work with in the backend/recipe
 end
 
 struct Combined{Typ, T} <: ScenePlot{Typ}
@@ -166,18 +214,86 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     transformation::Transformation
     attributes::Attributes
     input_args::Tuple
-    output_args::Tuple
+    converted::Tuple
     plots::Vector{AbstractPlot}
 end
 
 #dict interface
-haskey(x::AbstractPlot, key) = haskey(x.attributes, key)
-delete!(x::AbstractPlot, key) = delete!(x.attributes, key)
-get!(f::Function, x::AbstractPlot, key) = get!(f, x.attributes, key)
-get!(x::AbstractPlot, key, default) = get!(x.attributes, key, default)
-get(f::Function, x::AbstractPlot, key) = get(f, x.attributes, key)
-get(x::AbstractPlot, key, default) = get(x.attributes, key, default)
+const AttributeOrPlot = Union{AbstractPlot, Attributes}
+haskey(x::AttributeOrPlot, key) = haskey(x.attributes, key)
+delete!(x::AttributeOrPlot, key) = delete!(x.attributes, key)
+function get!(f::Function, x::AttributeOrPlot, key::Symbol)
+    if haskey(x, key)
+        return x[key]
+    else
+        val = f()
+        x[key] = val
+        return x[key]
+    end
+end
 
+get!(x::AttributeOrPlot, key, default::Symbol) = get!(()-> default, x, key)
+get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
+get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
+
+# This is a bit confusing, since for a plot it returns the attribute from the arguments
+# and not a plot for integer indexing. But, we want to treat plots as "atomic"
+# so from an interface point of view, one should assume that a plot doesn't contain subplots
+# Combined plots break this assumption in some way, but the way to look at it is,
+# that the plots contained in a Combined plot are not subplots, but _are_ actually
+# the plot itself.
+# the plot itself.
+getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
+getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
+setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = value)
+
+
+
+function getindex(x::AbstractPlot, key::Symbol)
+    argnames = argument_names(typeof(x), length(x.converted))
+    idx = findfirst(argnames, key)
+    if idx == 0
+        return x.attributes[key]
+    else
+        x.converted[idx]
+    end
+end
+
+function setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, rest::Symbol...)
+    dict = to_value(x[key])
+    dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
+    dict[key2, rest...] = value
+end
+
+function setindex!(x::AbstractPlot, value, key::Symbol)
+    argnames = argument_names(typeof(x), length(x.converted))
+    idx = findfirst(argnames, key)
+    if idx == 0 && haskey(x.attributes, key)
+        return x.attributes[key][] = value
+    elseif !haskey(x.attributes, key)
+        x.attributes[key] = to_node(value)
+    else
+        return setindex!(x.converted[idx], value)
+    end
+end
+
+function setindex!(x::AbstractPlot, value::Node, key::Symbol)
+    argnames = argument_names(typeof(x), length(x.converted))
+    idx = findfirst(argnames, key)
+    if idx == 0
+        if haskey(x, key)
+            # error("You're trying to update an attribute node with a new node. This is not supported right now.
+            # You can do this manually like this:
+            # lift(val-> attributes[$key] = val, node::$(typeof(value)))
+            # ")
+            return x.attributes[key] = value
+        else
+            return x.attributes[key] = value
+        end
+    else
+        return setindex!(x.converted[idx], value)
+    end
+end
 parent(x::AbstractPlot) = x.parent
 
 basetype(::Type{<: Combined}) = Combined
@@ -219,50 +335,6 @@ func2type(x::Type{<: AbstractPlot}) = x
 func2type(f::Function) = Combined{f}
 
 
-# This is a bit confusing, since for a plot it returns the attribute from the arguments
-# and not a plot for integer indexing. But, we want to treat plots as "atomic"
-# so from an interface point of view, one should assume that a plot doesn't contain subplots
-# Combined plots break this assumption in some way, but the way to look at it is,
-# that the plots contained in a Combined plot are not subplots, but _are_ actually
-# the plot itself.
-getindex(plot::AbstractPlot, idx::Integer) = plot.output_args[idx]
-
-function setindex!(plot::AbstractPlot, value, idx::Integer)
-     plot.input_args[idx][] = value
- end
-
-getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.output_args[idx]
-
-function getindex(x::P, key::Symbol) where P <: AbstractPlot
-    argnames = argument_names(P, length(x.output_args))
-    idx = findfirst(argnames, key)
-    if idx == 0
-        return x.attributes[key]
-    else
-        x.output_args[idx]
-    end
-end
-
-function setindex!(x::P, value, key::Symbol) where P <: AbstractPlot
-    argnames = argument_names(P, length(x.output_args))
-    idx = findfirst(argnames, key)
-    if idx == 0 && haskey(x.attributes, key)
-        return x.attributes[key][] = value
-    elseif !haskey(x.attributes, key)
-        x.attributes[key] = to_node(value)
-    else
-        return setindex!(x.output_args[idx], value)
-    end
-end
-function setindex!(x::P, value::Node, key::Symbol) where P <: AbstractPlot
-    argnames = argument_names(P, length(x.output_args))
-    idx = findfirst(argnames, key)
-    if idx == 0
-        return x.attributes[key] = value
-    else
-        return setindex!(x.output_args[idx], value)
-    end
-end
 
 """
 Billboard attribute to always have a primitive face the camera.

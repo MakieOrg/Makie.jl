@@ -74,7 +74,7 @@ value is nothing
 function replace_nothing!(f, dict, key)
     haskey(dict, key) || return (dict[key] = f())
     val = dict[key]
-    value(val) == nothing && return (dict[key] = f())
+    to_value(val) == nothing && return (dict[key] = f())
     val
 end
 
@@ -250,10 +250,18 @@ function merge_attributes!(input, theme, rest = Attributes(), merged = Attribute
         if haskey(input, key) && haskey(theme, key)
             val = input[key]
             if isa(value(val), Attributes)
-                merged[key] = to_node(Attributes(), key)
-                merge_attributes!(value(val), theme[key][], rest, merged[key][])
+                # special casing having an empty dict of attributes, so that one can just do the following in a theme:
+                # t = Theme(lineplot_style = Attributes())
+                # lines!(scene, t[:lineplot_style], args...)
+                # TODO is this okay!?
+                if isempty(theme[key])
+                    merged[key] = value(val)
+                else
+                    merged[key] = Attributes()
+                    merge_attributes!(value(val), value(theme[key]), rest, value(merged[key]))
+                end
             else
-                merged[key] = to_node(Any, val, key)
+                merged[key] = val
             end
         elseif haskey(input, key)
             rest[key] = input[key]
@@ -269,7 +277,7 @@ function merged_get!(defaults::Function, key, scene, input::Vector{Any})
 end
 
 function merged_get!(defaults::Function, key, scene::SceneLike, input::Attributes)
-    return merge_attributes!(input, get!(defaults, theme(scene), key))
+    return merge_attributes!(input, value(get!(defaults, theme(scene), key)))
 end
 
 function assemble(theme::SceneLike, ::Type{Any}, attributes::Attributes, args)

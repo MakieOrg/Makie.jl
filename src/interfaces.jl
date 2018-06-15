@@ -1,6 +1,8 @@
 not_implemented_for(x) = error("Not implemented for $(typeof(x)). You might want to put:  `using Makie` into your code!")
 
-Theme(; kw_args...) = Attributes(map(kw-> kw[1] => to_node(Any, kw[2], kw[1]), kw_args))
+#TODO only have one?
+const Theme = Attributes
+
 default_theme(scene, T) = not_implemented_for(T)
 
 function default_theme(scene)
@@ -211,8 +213,8 @@ end
 
 
 
-function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, output_args)
-    PT(parent, transformation, attributes, input_args, output_args, AbstractPlot[])
+function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
+    PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
 plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(F)
 
@@ -248,6 +250,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         transform!(t, to_value(trans))
         t
     end
+
     replace_nothing!(plot_attributes, :model) do
         transformation.model
     end

@@ -45,16 +45,44 @@ mutable struct Scene <: AbstractScene
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
+Base.start(scene::Scene) = 1
+Base.done(scene::Scene, idx) = idx > length(scene)
+Base.next(scene::Scene, idx) = (scene[idx], idx + 1)
 Base.length(scene::Scene) = length(scene.plots)
 Base.endof(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
+GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
+struct Axis end
+
+child(scene::Scene) = Scene(scene, pixelarea(scene))
+
+"""
+Creates a subscene with a pixel camera
+"""
+function cam2d(scene::Scene)
+    sub = child(scene)
+    cam2d!(sub)
+    sub
+end
+function campixel(scene::Scene)
+    sub = child(scene)
+    campixel!(sub)
+    sub
+end
+
+function getindex(scene::Scene, ::Type{Axis})
+    for plot in scene
+        isaxis(plot) && return plot
+    end
+    nothing
+end
 
 
 """
 Each argument can be named for a certain plot type `P`. Falls back to `arg1`, `arg2`, etc.
 """
 function argument_names(plot::P) where P <: AbstractPlot
-    argument_names(P, length(plot.output_args))
+    argument_names(P, length(plot.converted))
 end
 
 
