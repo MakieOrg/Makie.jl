@@ -321,7 +321,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Volume)
         if gl_attributes[:algorithm][] == 0
             surface_contours(x)
         else
-            dimensions = Vec3f0(to_width.(value.(x.output_args[1:3])))
+            dimensions = Vec3f0(to_width.(value.(x[1:3])))
             gl_attributes[:dimensions] = dimensions
             delete!(gl_attributes, :color)
             visualize(x[4], Style(:default), gl_attributes).children[]
