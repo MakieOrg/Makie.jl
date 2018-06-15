@@ -78,7 +78,7 @@ in addition the default values of each attribute.
 function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: AbstractPlot
     # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
-    attributes = sort(default_theme(nothing, Typ))
+    attributes = default_theme(nothing, Typ)
 
     # get list of default attributes to filter out
     # and show only the attributes that are not default attributes
@@ -88,7 +88,7 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
 
     # count the character length of the longest key
     longest = 0
-    for k in keys(attributes)
+    for k in sort(collect(keys(attributes)))
         currentlength = length(string(k))
         if currentlength > longest
             longest = currentlength
