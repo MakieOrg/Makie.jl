@@ -126,7 +126,9 @@ function add_rotation!(scene, cam, button, key)
     end
 end
 
-function translate_cam!(scene, cam, translation)
+translate_cam!(scene::Scene, translation::VecTypes) = translate_cam!(scene, cameracontrols(scene), translation)
+function translate_cam!(scene::Scene, cam::Camera3D, _translation::VecTypes)
+    translation = Vec3f0(_translation)
     translation == Vec3f0(0) && return
     @extractvalue cam (projectiontype, lookat, eyeposition, upvector)
 
@@ -154,7 +156,10 @@ function translate_cam!(scene, cam, translation)
     return
 end
 
-function rotate_cam!(scene, cam, theta_v)
+rotate_cam!(scene::Scene, theta_v::Number...) = rotate_cam!(scene, cameracontrols(scene), theta_v)
+rotate_cam!(scene::Scene, theta_v::VecTypes) = rotate_cam!(scene, cameracontrols(scene), theta_v)
+function rotate_cam!(scene::Scene, cam::Camera3D, _theta_v::VecTypes)
+    theta_v = Vec3f0(_theta_v)
     theta_v == Vec3f0(0) && return #nothing to do!
     @extractvalue cam (eyeposition, lookat, upvector)
 
@@ -199,6 +204,16 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     camera.upvector[] = Vec3f0(0,0,1)
     camera.near[] = 0.1f0 * norm(widths(bb))
     camera.far[] = 3f0 * norm(widths(bb))
+    update_cam!(scene, camera)
+    return
+end
+
+update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f0(0, 0, 1)) = update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
+
+function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = Vec3f0(0, 0, 1))
+    camera.lookat[] = Vec3f0(lookat)
+    camera.eyeposition[] = Vec3f0(eyeposition)
+    camera.upvector[] = Vec3f0(up)
     update_cam!(scene, camera)
     return
 end
