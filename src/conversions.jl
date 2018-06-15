@@ -75,7 +75,7 @@ convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 Takes an input GeometryPrimitive x and decomposes it to points.
 P is the plot Type (it is optional).
 """
-convert_arguments(::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x::GeometryPrimitive) = (decompose(Point, x),)
+convert_arguments(::Type{<: Union{MeshScatter, LineSegments, Lines, Scatter}}, x::GeometryPrimitive) = (decompose(Point, x),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -83,11 +83,18 @@ convert_arguments(::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x:
 Takes an input HyperRectangle x and decomposes it to points.
 P is the plot Type (it is optional).
 """
-function convert_arguments(P::Type{<: Union{MeshScatter, LineSegment, Lines, Scatter}}, x::Rect)
+function convert_arguments(P::Type{<: Union{MeshScatter, LineSegments, Lines, Scatter}}, x::Rect2D)
     # TODO fix the order of decompose
     convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
-
+function convert_arguments(P::Type{<: Union{MeshScatter, LineSegments, Lines, Scatter}}, x::Rect3D)
+    inds = [
+        1, 2, 3, 4, 5, 6, 7, 8,
+        1, 5, 5, 7, 7, 3, 1, 3,
+        4, 8, 8, 6, 2, 4, 2, 6
+    ]
+    convert_arguments(P, decompose(Point3f0, x)[inds])
+end
 
 """
 Accepts a Vector of Pair of Points (e.g. [Point(0, 0) => Point(1, 1), ...])
@@ -456,13 +463,15 @@ function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap")
     [to_color.(cs)...]
 end
 
+to_colormap(x::Union{String, Symbol}, n::Integer) = convert_attribute(x, key"colormap"(), n)
+
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
 """
-function convert_attribute(cs::Union{String, Symbol}, ::key"colormap")
+function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
     cs_sym = Symbol(cs)
     if cs_sym in colorbrewer_names
-        return resample(ColorBrewer.palette(string(cs_sym), 9), 20)
+        return resample(ColorBrewer.palette(string(cs_sym), 9), n)
     elseif lowercase(string(cs_sym)) == "viridis"
         return [
             to_color("#440154FF"),
