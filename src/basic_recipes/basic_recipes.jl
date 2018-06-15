@@ -61,8 +61,9 @@ yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
 """
-    wireframe(x, y, z) / wireframe(positions) / wireframe(mesh)
-Draws a wireframe either interpreted as a surface or mesh
+    `wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`
+
+Draws a wireframe, either interpreted as a surface or as a mesh.
 """
 function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
     points_faces = lift(plot[1:3]...) do x, y, z
@@ -178,9 +179,9 @@ end
 
 
 """
-    annotations(strings::Vector{String}, positions::Vector{Point})
+    `annotations(strings::Vector{String}, positions::Vector{Point})`
 
-Plots an array of texts at each position in `positions`
+Plots an array of texts at each position in `positions`.
 """
 @recipe(Annotations, text, position) do scene
     default_theme(scene, Text)
