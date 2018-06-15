@@ -117,10 +117,49 @@ end
         # Simon says: maybe we won't keep similar
         # similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
     end
+    @cell "Axis + Surface" [axis, surface, interaction, manipulation] bein
+        vx = -1:0.01:1;
+        vy = -1:0.01:1;
+
+        f(x, y) = (sin(x*10) + cos(y*10)) / 4
+
+        # One way to style the axis is to pass a nested dictionary to it.
+        scene = surface(vx, vy, f, axis = NT(framestyle = NT(linewidth = 2.0)))
+        psurf = scene[1]
+        # One can also directly get the axis object and manipulate it
+        axis = scene[Axis] # get axis
+
+        # You can access nested attributes likes this:
+        axis[:titlestyle, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
+        tstyle = axis[:titlestyle] # or just get the nested attributes and work directly with them
+
+        tstyle[:textsize] = 10
+        tstyle[:textcolor] = (:red, :green, :black)
+        tstyle[:font] = "Palatino"
+
+
+        psurf[:colormap] = :RdYlBu
+        wh = widths(scene)
+        t = text!(
+            campixel(scene),
+            "Multipole Representation of first resonances of U-238",
+            position = (wh[1] / 2.0, wh[2] - 20.0),
+            align = (:center,  :center),
+            textsize = 20,
+            font = "Palatino",
+            raw = :true
+        )
+        c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
+        scene
+        #update surface
+        psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
+        scene
+
+    end
 
     @cell "Fluctuation 3D" [animated, mesh, meshscatter, axis] begin
         using GeometryTypes, Colors
-        scene = Scene(@resolution)
+        scene = Scene()
         # define points/edges
         perturbfactor = 4e1
         N = 3; nbfacese = 30; radius = 0.02
@@ -177,20 +216,18 @@ end
     end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
-        scene = Scene(@resolution)
-        large_sphere = Makie.HyperSphere(Point3f0(0), 1f0)
-        positions = Makie.decompose(Point3f0, large_sphere)
+        large_sphere = HyperSphere(Point3f0(0), 1f0)
+        positions = decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
-        lines!(scene, linepos, linewidth = 0.1, color = :black)
+        scene = lines(linepos, linewidth = 0.1, color = :black)
         scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
         scene
     end
 
     @cell "Simple meshscatter" [meshscatter] begin
-        scene = Scene(@resolution)
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
-        meshscatter!(scene, positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.2)
+        meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.5)
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
@@ -254,6 +291,51 @@ end
         scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
     end
 
+    @cell "Moire" [lines, camera, update_cam!, rotate_cam!, linesegments, record, mp4] begin
+        function cartesian(ll::Point2)
+            return Point3(
+                cos(ll[1]) * sin(ll[2]),
+                sin(ll[1]) * sin(ll[2]),
+                cos(ll[2])
+            )
+        end
+        fract(x) = x - floor(x)
+        function calcpositions(rings, index, time, audio)
+            movement, radius, speed, spin = 1, 2, 3, 4;
+            position = Point3f0(0.0)
+            precision = 0.2f0
+            for ring in rings
+                position += ring[radius] * cartesian(
+                    precision *
+                    index *
+                    Point2f0(ring[spin] + Point2f0(sin(time * ring[speed]), cos(time * ring[speed])) * ring[movement])
+                )
+            end
+            amplitude = audio[round(Int, clamp(fract(position[1] * 0.1), 0, 1) * (25000-1)) + 1]; # index * 0.002
+            position *= 1.0 + amplitude * 0.5;
+            position
+        end
+        rings = [(0.1f0, 1.0f0, 0.00001f0, Point2f0(0.2, 0.1)), (0.1f0, 0.0f0, 0.0002f0, Point2f0(0.052, 0.05))]
+        N = 25000
+        t_audio = sin.(linspace(0, 10pi, N)) .+ (cos.(linspace(-3, 7pi, N)) .* 0.6) .+ (rand(Float32, N) .* 0.1) ./ 2f0
+        start = time()
+        t = (time() - start) * 100
+        pos = calcpositions.((rings,), 1:N, t, (t_audio,))
+        scene = lines(pos, color = RGBAf0.(colormap("RdBu", N), 0.6), thickness = 0.6f0, show_axis = false)
+        linesegments!(scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true, linewidth = 3, linestyle = :dot)
+        eyepos = Vec3f0(5, 1.5, 0.5)
+        lookat = Vec3f0(0)
+        update_cam!(scene, eyepos, lookat)
+        l = scene[1]
+        record(scene, @outputfile(mp4), 1:300) do i
+            t = (time() - start) * 700
+            pos .= calcpositions.((rings,), 1:N, t, (t_audio,))
+            l[1] = pos # update argument 1
+            rotate_cam!(scene, 0.0, 0.01, 0.01)
+        end
+
+    end
+
     # @cell "Line GIF" [lines, animated, gif, offset] begin
     #     # lineplots = []
     #     # us = linspace(0, 1, 100)
@@ -282,60 +364,6 @@ end
     #     scene = Scene(@resolution)
     # end
 
-    # @cell "Complex Axis" [surface, axis, text] begin
-    #     # # TODO: figure out the axis configuration options like :axisnames, etc
-    #     # scene = Scene(@resolution)
-    #     # vx = -1:0.01:1;
-    #     # vy = -1:0.01:1;
-    #     #
-    #     # f(x, y) = (sin(x*10) + cos(y*10)) / 4
-    #     #
-    #     # psurf = surface!(scene, vx, vy, f, show_axis = false)
-    #     #
-    #     # a = Makie.axis3d!(scene, linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
-    #     #
-    #     # # Testing
-    #     # a = Makie.axis3d(linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4), axisnames = ("A", "B", "C"))
-    #     #
-    #     # scene
-    #     # AbstractPlotting.center!(scene)
-    #     # AbstractPlotting.force_update!()
-    #     #
-    #     # # TODO: ERROR: KeyError: key :axisnames not found --> axis.jl line 310?
-    #     # # TODO: all of these keys are not defined
-    #     # TODO: aviz[:titlestyle] shows a Dict in a Dict, with :axisnames inside --> how to access this?
-    #     # a[:axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-    #     # a[:axisnames_size] = (0.15, 0.15, 0.15)
-    #     # a[:axisnames_color] = (:black, :black, :black)
-    #     # a[:axisnames_font] = "Palatino"
-    #     #
-    #     # # Testing
-    #     # a[:titlestyle]
-    #     # :titlestyle in keys(a.attributes)
-    #     #
-    #     # # available_gradients() print gradients
-    #     # # TODO: ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::Symbol, ::Symbol)
-    #     # psurf[:colormap] = :RdYlBu
-    #     # # TODO: ERROR: UndefVarError: widths not defined
-    #     # wh = Makie.widths(scene)
-    #     # t = text(
-    #     #     "Multipole Representation of first resonances of U-238",
-    #     #     position = (wh[1] / 2.0, wh[2] - 20.0),
-    #     #     align = (:center,  :center),
-    #     #     textsize = 20,
-    #     #     font = "Palatino",
-    #     #     camera = :pixel
-    #     # )
-    #     # # TODO: ERROR: UndefVarError: Circle not defined -> had to use Makie.Circle
-    #     # # TODO: this gets plotted and replaces the surface plot from earlier -- probably not intended behaviour?
-    #     # c = lines(Makie.Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
-    #     # #update surface
-    #     # # TODO: ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::Array{Float64,2}, ::Symbol)
-    #     # psurf[:z] = f.(vx .+ 0.5, (vy .+ 0.5)')
-    #     # scene
-    #
-    #     scene = Scene(@resolution)
-    # end
 end
 
 
@@ -599,36 +627,28 @@ end
     #     println("placeholder")
     # end
 
-    # @cell "VideoStream" ["3d", VideoStream, meshscatter, linesegment] begin
-    #     # # TODO: didn't work
-    #     # scene = Scene(@resolution)
-    #     #
-    #     # f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
-    #     # # TODO: ERROR: UndefVarError: to_node not defined
-    #     # t = Node(Base.time()) # create a life signal
-    #     # p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t))[1]
-    #     # p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t))[end]
-    #     #
-    #     # # you can now reference to life attributes from the above plots:
-    #     # # TODO: ERROR: UndefVarError: lift_node not defined
-    #     # lines = lift(p1[1], p2[1]) do pos1, pos2
-    #     #     map((a, b)-> (a, b), pos1, pos2)
-    #     # end
-    #     #
-    #     # linesegments!(scene, lines, linestyle = :dot)
-    #     # display(Makie.global_gl_screen(), scene)
-    #     # # record a video
-    #     # io = VideoStream(scene, @outputfile(mp4))
-    #     # for i = 1:300
-    #     #     push!(t, Base.time())
-    #     #     sleep(1/30)
-    #     #     AbstractPlotting.force_update!()
-    #     #     #recordframe!(io)
-    #     # end
-    #     # finish(io, "mp4") # could also be gif, webm or mkv
-    #
-    #     println("placeholder")
-    # end
+    @cell "VideoStream" ["3d", VideoStream, meshscatter, linesegment] begin
+        # # TODO: didn't work
+        scene = Scene()
+
+        f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
+        # TODO: ERROR: UndefVarError: to_node not defined
+        t = Node(Base.time()) # create a life signal
+        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.5)[1]
+        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.5)[end]
+
+        # you can now reference to life attributes from the above plots:
+        # TODO: ERROR: UndefVarError: lift_node not defined
+        lines = lift(p1[1], p2[1]) do pos1, pos2
+            map((a, b)-> (a, b), pos1, pos2)
+        end
+
+        linesegments!(scene, lines, linestyle = :dot)
+        # record a video
+        record(scene, "test.mp4", 1:300) do i
+            push!(t, Base.time())
+        end
+    end
 
 
     @group begin
