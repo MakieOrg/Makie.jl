@@ -85,7 +85,7 @@ export boundingbox, insertplots!, center!, translation
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, update_cam!, rotate_cam!, translate_cam!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
-
+export to_world
 # picking + interactive use cases + events
 export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse
 export register_callbacks

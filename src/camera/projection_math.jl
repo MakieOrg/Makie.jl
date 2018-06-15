@@ -242,15 +242,17 @@ end
 
 
 
-function to_world(point::T, cam) where T <: StaticVector
+function to_world(scene::Scene, point::T) where T <: StaticVector
+    cam = scene.camera
     x = to_world(
         point,
-         inv(Reactive.value(cam.view)) * inv(Reactive.value(cam.projection)),
-        T(widths(Reactive.value(cam.window_size)))
+        inv(Reactive.value(cam.view)) * inv(Reactive.value(cam.projection)),
+        T(widths(Reactive.value(pixelarea(scene))))
     )
     Point2f0(x[1], x[2])
 end
-
+w_component(x::Point) = 1.0
+w_component(x::Vec) = 0.0
 function to_world(
         p::StaticVector{N, T},
         prj_view_inv::Mat4,
@@ -261,7 +263,7 @@ function to_world(
     pix_space = Vec{4, T}(
         clip_space[1],
         clip_space[2],
-        T(0), GLAbstraction.w_component(p)
+        T(0), w_component(p)
     )
     ws = prj_view_inv * pix_space
     ws ./ ws[4]
