@@ -372,8 +372,8 @@ primitive_uv_offset_width(x) = Vec4f0(0,0,1,1)
 Gets the texture atlas if primitive is a char.
 """
 primitive_distancefield(x) = nothing
-primitive_distancefield(::Char) = get_texture_atlas().images
-primitive_distancefield(::Signal{Char}) = get_texture_atlas().images
+primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
+primitive_distancefield(::Signal{Char}) = get_texture!(get_texture_atlas())
 
 
 
