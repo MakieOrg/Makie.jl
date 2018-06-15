@@ -73,7 +73,7 @@ using Makie
         N = 50
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
-        s = scene[1] # first plot in scene
+        s = scene[end] # last plot in scene
         record(scene, @outputfile(mp4), r) do m
             s[1] = m[:, 1]
             s[2] = m[:, 2]
@@ -117,15 +117,15 @@ end
         # Simon says: maybe we won't keep similar
         # similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
     end
-    @cell "Axis + Surface" [axis, surface, interaction, manipulation] bein
-        vx = -1:0.01:1;
-        vy = -1:0.01:1;
+    @cell "Axis + Surface" [axis, surface, interaction, manipulation] begin
+        vx = -1:0.01:1
+        vy = -1:0.01:1
 
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
 
         # One way to style the axis is to pass a nested dictionary to it.
         scene = surface(vx, vy, f, axis = NT(framestyle = NT(linewidth = 2.0)))
-        psurf = scene[1]
+        psurf = scene[end] # the surface we last plotted to scene
         # One can also directly get the axis object and manipulate it
         axis = scene[Axis] # get axis
 
@@ -216,7 +216,7 @@ end
     end
 
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
-        large_sphere = HyperSphere(Point3f0(0), 1f0)
+        large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
         scene = lines(linepos, linewidth = 0.1, color = :black)
@@ -243,7 +243,7 @@ end
         # Exponentiation yielding a complex result requires a complex argument.
         # Replace x^y with (x+0im)^y, Complex(x)^y, or similar.
         z = surf_func(20)
-        surf = surface!(scene, r, r, z)[1]
+        surf = surface!(scene, r, r, z)[end]
 
         wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap])
@@ -292,8 +292,8 @@ end
     end
 
     @cell "Moire" [lines, camera, update_cam!, rotate_cam!, linesegments, record, mp4] begin
-        function cartesian(ll::Point2)
-            return Point3(
+        function cartesian(ll)
+            return Point3f0(
                 cos(ll[1]) * sin(ll[2]),
                 sin(ll[1]) * sin(ll[2]),
                 cos(ll[2])
@@ -321,7 +321,8 @@ end
         start = time()
         t = (time() - start) * 100
         pos = calcpositions.((rings,), 1:N, t, (t_audio,))
-        scene = lines(pos, color = RGBAf0.(colormap("RdBu", N), 0.6), thickness = 0.6f0, show_axis = false)
+
+        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N), 0.6), thickness = 0.6f0, show_axis = false)
         linesegments!(scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true, linewidth = 3, linestyle = :dot)
         eyepos = Vec3f0(5, 1.5, 0.5)
         lookat = Vec3f0(0)
@@ -336,34 +337,41 @@ end
 
     end
 
-    # @cell "Line GIF" [lines, animated, gif, offset] begin
-    #     # lineplots = []
-    #     # us = linspace(0, 1, 100)
-    #     #
-    #     # mktempdir() do path
-    #     #     # TODO: MethodError: no method matching Makie.VideoStream(::AbstractPlotting.Scene, ::String)
-    #     #     io = VideoStream(scene, @outputfile(mp4))
-    #     #     for i = 1:100
-    #     #         if length(lineplots) < 20
-    #     #             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
-    #     #         else
-    #     #             lineplots = circshift(lineplots, 1)
-    #     #             lp = first(lineplots)
-    #     #             lp[:positions] = Point3f0.(us, sin.(us .+ time()), zeros(100))
-    #     #             lp[:offset] = Vec3f0(0)
-    #     #         end
-    #     #         for lp in lineplots
-    #     #             z = to_value(lp, :offset)[3]
-    #     #             lp[:offset] = Vec3f0(0, 0, z + 0.1)
-    #     #         end
-    #     #         recordframe!(io)
-    #     #     end
-    #     #     finish(io, "gif")
-    #     # end
-    #
-    #     scene = Scene(@resolution)
-    # end
-
+    @cell "Line GIF" [lines, animated, gif, offset] begin
+        us = linspace(0, 1, 100)
+        scene = Scene()
+        scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
+        p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth = 3)[end]
+        lineplots = [p]
+        translate!(p, 0, 0, 0)
+        colors = to_colormap(:RdYlBu)
+        #display(scene) # would be needed without the record
+        path = record(scene, @outputfile(gif), 1:200) do i
+            global lineplots, scene
+            if length(lineplots) < 20
+                p = lines!(
+                    scene,
+                    us, sin.(us .+ time()), zeros(100),
+                    color = colors[length(lineplots)],
+                    linewidth = 3
+                )[end]
+                unshift!(lineplots, p)
+                translate!(p, 0, 0, 0)
+                #TODO automatically insert new plots
+                insert!(Makie.global_gl_screen(), scene, p)
+            else
+                lineplots = circshift(lineplots, 1)
+                lp = first(lineplots)
+                lp[2] = sin.(us .+ time())
+                translate!(lp, 0, 0, 0)
+            end
+            for lp in Iterators.drop(lineplots, 1)
+                z = translation(lp)[][3]
+                translate!(lp, 0, 0, z + 0.1)
+            end
+        end
+        path
+    end
 end
 
 
@@ -375,6 +383,7 @@ end
             aviz = Makie.axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
             AbstractPlotting.center!(scene)
             cam2d!(scene)
+            scene
         end
 
         @cell "Axis 3D" [axis] begin
@@ -382,6 +391,7 @@ end
             AbstractPlotting.center!(scene)
             # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
             cam3d!(scene)
+            scene
         end
 
         @cell "Axis Custom" [axis] begin
@@ -542,9 +552,8 @@ end
         scatter!(scene, rand(20), rand(20), markersize = 0.03)
     end
 
-    @cell "Marker sizes" ["2d", scatter, Anthony] begin
-        scene = Scene(@resolution)
-        scatter!(scene, rand(20), rand(20), markersize = rand(20)./20)
+    @cell "Marker sizes" ["2d", scatter] begin
+        scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
     end
 
     @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
@@ -552,14 +561,12 @@ end
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
         time = Node(0.0)
-        p1 = scatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), time))[1]
+        p1 = scatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), time))[end]
         p2 = scatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), time))[end]
-        AbstractPlotting.center!(scene)
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines)
-
         record(scene, @outputfile(mp4), linspace(0, 10, 100)) do i
             push!(time, i)
         end
@@ -628,13 +635,13 @@ end
     # end
 
     @cell "VideoStream" ["3d", VideoStream, meshscatter, linesegment] begin
-        # # TODO: didn't work
         scene = Scene()
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
         # TODO: ERROR: UndefVarError: to_node not defined
         t = Node(Base.time()) # create a life signal
-        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.5)[1]
+        limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
+        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.5)[end]
         p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.5)[end]
 
         # you can now reference to life attributes from the above plots:
@@ -642,8 +649,7 @@ end
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
-
-        linesegments!(scene, lines, linestyle = :dot)
+        linesegments!(scene, lines, linestyle = :dot, limits = limits)
         # record a video
         record(scene, "test.mp4", 1:300) do i
             push!(t, Base.time())
@@ -727,18 +733,8 @@ end
         end
     end
     # @cell "3D Volume Contour with slices" [volume, contour, heatmap, slices, "3d layout", layout] begin
-    #     # scene = Scene(@resolution)
-    #     # r = linspace(-2pi, 2pi, 100)
-    #     # # TODO: WARNING: Base.rest is deprecated, use Base.Iterators.rest instead.
-    #     # # likely near no file:0
-    #     # # TODO:
-    #     # # ERROR: MethodError: AbstractPlotting.convert_arguments(::Type{VolumeSlices{...}}, ::StepRangeLen{Flo
-    #     # # at64,Base.TwicePrecision{Float64},Base.TwicePrecision{Float64}}, ::StepRangeLen{Float64,Base.TwicePr
-    #     # # ecision{Float64},Base.TwicePrecision{Float64}}, ::StepRangeLen{Float64,Base.TwicePrecision{Float64},
-    #     # # Base.TwicePrecision{Float64}}, ::##119#120) is ambiguous.
-    #     # Makie.volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
-    #
-    #     println("placeholder")
+    #     r = linspace(-2pi, 2pi, 100)
+    #     volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
     # end
     @cell "3D Contour with 2D contour slices" [volume, contour, heatmap, "3d", transformation] begin
         function test(x, y, z)
@@ -747,7 +743,7 @@ end
         end
         x = linspace(-2pi, 2pi, 100)
         scene = Scene()
-        c = contour!(scene, x, x, x, test, levels = 10)[1]
+        c = contour!(scene, x, x, x, test, levels = 10)[end]
         xm, ym, zm = minimum(scene.limits[])
         # c[4] == fourth argument of the above plotting command
         contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
