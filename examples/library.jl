@@ -3,6 +3,31 @@ include("database.jl")
 using Makie
 
 @block SimonDanisch ["2d"] begin
+    @cell "FEM mesh 2D" [fem, mesh] begin
+        coordinates = [
+            0.0 0.0;
+            0.5 0.0;
+            1.0 0.0;
+            0.0 0.5;
+            0.5 0.5;
+            1.0 0.5;
+            0.0 1.0;
+            0.5 1.0;
+            1.0 1.0;
+        ]
+        connectivity = [
+            1 2 5;
+            1 4 5;
+            2 3 6;
+            2 5 6;
+            4 5 8;
+            4 7 8;
+            5 6 9;
+            5 8 9;
+        ]
+        color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
+        mesh(coordinates, connectivity, color = color)
+    end
     @cell "colored triangle" [mesh, polygon] begin
         mesh(
             [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
@@ -103,6 +128,19 @@ using Makie
 end
 
 @block SimonDanisch ["3d"] begin
+    @cell "FEM mesh 3D" [mesh, fem] begin
+        using GeometryTypes
+        cat = Makie.loadasset("cat.obj")
+        vertices = decompose(Point3f0, cat)
+        faces = decompose(Face{3, Int}, cat)
+        coordinates = [vertices[i][j] for i = 1:length(vertices), j = 1:3]
+        connectivity = [faces[i][j] for i = 1:length(faces), j = 1:3]
+        mesh(
+            coordinates, connectivity,
+            color = rand(length(vertices))
+        )
+    end
+
     @cell "Sample 7" [scatter, similar] begin
         scene = Scene(@resolution)
         sv = scatter!(scene, rand(Point3f0, 100), markersize = 0.05)
@@ -145,9 +183,9 @@ end
         c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
         scene
         #update surface
+        # TODO explain and improve the situation here
         psurf.converted[3][] = f.(vx .+ 0.5, (vy .+ 0.5)')
         scene
-
     end
 
     @cell "Fluctuation 3D" [animated, mesh, meshscatter, axis] begin
@@ -248,18 +286,16 @@ end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
         x = Makie.loadasset("cat.obj")
-        mesh!(scene, x.vertices, x.faces, color = :black)
+        mesh(x, color = :black)
         pos = map(x.vertices, x.normals) do p, n
             p => p .+ (normalize(n) .* 0.05f0)
         end
-        linesegments(pos, color = :blue)
+        linesegments!(pos, color = :blue)
     end
-
 
     @cell "Sphere Mesh" [mesh] begin
         mesh(Sphere(Point3f0(0), 1f0), color = :blue)
     end
-
 
     @cell "Stars" [scatter, glow, update_cam!] begin
         stars = 100_000
