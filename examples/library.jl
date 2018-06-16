@@ -661,7 +661,7 @@ end
         end
         linesegments!(scene, lines, linestyle = :dot, limits = limits)
         # record a video
-        record(scene, "test.mp4", 1:300) do i
+        record(scene, @outputfile(mp4), 1:300) do i
             push!(t, Base.time())
         end
     end
