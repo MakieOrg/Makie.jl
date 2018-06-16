@@ -37,7 +37,6 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalV
     @gen_defaults! data begin
         shading = true
         main = mesh
-        boundingbox = const_lift(GLBoundingBox, mesh)
         color = nothing
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "vertexcolor.vert", "standard.frag",
