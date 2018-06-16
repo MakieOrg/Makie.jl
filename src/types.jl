@@ -232,7 +232,7 @@ function get!(f::Function, x::AttributeOrPlot, key::Symbol)
     end
 end
 
-get!(x::AttributeOrPlot, key, default::Symbol) = get!(()-> default, x, key)
+get!(x::AttributeOrPlot, key::Symbol, default) = get!(()-> default, x, key)
 get(f::Function, x::AttributeOrPlot, key::Symbol) = haskey(x, key) ? x[key] : f()
 get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 

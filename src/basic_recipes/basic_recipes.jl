@@ -11,7 +11,7 @@
         lengthscale = 1.0f0
     )
     # connect arrow + linecolor by default
-    theme[:arrowcolor] = theme[:linecolor]
+    get!(theme, :arrowcolor, theme[:linecolor])
     theme
 end
 
