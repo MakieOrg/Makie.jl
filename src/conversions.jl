@@ -227,6 +227,39 @@ function convert_arguments(
     convert_arguments(T, Point3f0.(x, y, z), indices)
 end
 
+function to_gl_indices(x::AbstractVector{Int})
+    idx0 = UInt32.(x .- 1)
+    to_gl_indices(idx0)
+end
+function to_gl_indices(idx0::AbstractVector{UInt32})
+    reinterpret(GLTriangle, idx0)
+end
+function to_gl_indices(faces::AbstractVector{Face{3, T}}) where T
+    convert(Vector{GLTriangle}, faces)
+end
+function to_gl_indices(faces::AbstractMatrix{T}) where T <: Integer
+    let N = Val{size(faces, 2)}, lfaces = faces
+        broadcast(1:size(faces, 1), N) do fidx, n
+            to_ndim(GLTriangle, ntuple(i-> lfaces[fidx, i], n), 0.0)
+        end
+    end
+end
+
+function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
+    vert3f0 = T != Float32 ? Point3f0.(verts) : verts
+    reinterpret(Point3f0, vert3f0)
+end
+function to_vertices(verts::AbstractVector{<: VecTypes{2, T}}) where T
+    to_vertices(map(x-> Point3f0(x[1], x[2], 0.0), verts))
+end
+function to_vertices(verts::AbstractMatrix{T}) where T <: Number
+    let N = Val{size(verts, 2)}, lverts = verts
+        broadcast(1:size(verts, 1), N) do vidx, n
+            to_ndim(Point3f0, ntuple(i-> lverts[vidx, i], n), 0.0)
+        end
+    end
+end
+
 """
     convert_arguments(Mesh, vertices, indices)::()
 
@@ -235,15 +268,22 @@ and creates a `GLNormalMesh`.
 """
 function convert_arguments(
         ::Type{<:Mesh},
-        vertices::AbstractVector{<: VecTypes{3, T}},
-        indices::AbstractVector
-    ) where T
-    vert3f0 = T != Float32 ? Point3f0.(vertices) : vertices
-    vertp3f0 = reinterpret(Point3f0, vert3f0)
-    m = GLNormalMesh(vertp3f0, indices)
+        vertices::AbstractArray,
+        indices::AbstractArray
+    )
+    m = GLNormalMesh(to_vertices(vertices), to_gl_indices(indices))
     (m,)
 end
-
+function convert_arguments(
+        ::Type{<: Mesh},
+        vertices::AbstractVector{<: Tuple{Number, Number}},
+    )
+    point2f0 = convert(Vector{Point2f0}, vertices)
+    vert3f0 = map(x-> Point3f0(x[1], x[2], 0.0), point2f0)
+    indices = reinterpret(GLTriangle, [UInt32.(0:length(vert3f0)-1);])
+    m = GLNormalMesh(vert3f0, indices)
+    (m,)
+end
 """
     convert_arguments(MT, x, y, z)::Tuple{Type, Matrix}
 
@@ -600,7 +640,7 @@ to_spritemarker(::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
 to_spritemarker(x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)
-    
+
 Any `Char`, including unicode
 """
 to_spritemarker(marker::Char) = marker
