@@ -113,11 +113,14 @@ open(path, "w") do io
                 if "$(uname).png" in medialist
                     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
                     println(io, "![lines $(entry.file_range)]($(embedpath))")
+                elseif "$(uname).gif" in medialist
+                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
+                    println(io, "![lines $(entry.file_range)]($(embedpath))")
                 elseif "$(uname).mp4" in medialist
                     embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
                     println(io, embedcode)
                 else
-                    warn("file with unknown extension in mediapath or file nonexistent")
+                    warn("file $(uname) with unknown extension in mediapath or file nonexistent")
                 end
                 # println(io, "![]($(uname).png)")
                 embedpath = nothing
@@ -137,11 +140,14 @@ open(path, "w") do io
                 if "$(uname).png" in medialist
                     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
                     println(io, "![lines $(entry.file_range)]($(embedpath))")
+                elseif "$(uname).gif" in medialist
+                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
+                    println(io, "![lines $(entry.file_range)]($(embedpath))")
                 elseif "$(uname).mp4" in medialist
                     embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
                     println(io, embedcode)
                 else
-                    warn("file with unknown file extension in mediapath")
+                    warn("file $(uname) with unknown extension in mediapath or file nonexistent")
                 end
                 # println(io, "![]($(uname).png)")
                 embedpath = nothing
@@ -159,11 +165,14 @@ open(path, "w") do io
                 if "$(uname).png" in medialist
                     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
                     println(io, "![lines $(entry.file_range)]($(embedpath))")
+                elseif "$(uname).gif" in medialist
+                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
+                    println(io, "![lines $(entry.file_range)]($(embedpath))")
                 elseif "$(uname).mp4" in medialist
                     embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
                     println(io, embedcode)
                 else
-                    warn("file with unknown file extension in mediapath")
+                    warn("file $(uname) with unknown extension in mediapath or file nonexistent")
                 end
                 # println(io, "![]($(uname).png)")
                 embedpath = nothing
