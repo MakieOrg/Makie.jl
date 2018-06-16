@@ -77,6 +77,7 @@ Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
+        colorrange = nothing,
         image = nothing,
         fxaa = true,
     )
@@ -119,7 +120,9 @@ Plots a 3D mesh.
         default_theme(scene)...,
         fxaa = true,
         interpolate = false,
-        shading = true
+        shading = true,
+        colormap = theme(scene, :colormap),
+        colorrange = nothing,
     )
 end
 
@@ -205,6 +208,22 @@ function calculated_attributes!(plot::AbstractPlot)
         delete!(plot, :colormap)
         delete!(plot, :colorrange)
     end
+    return
+end
+function calculated_attributes!(plot::Mesh)
+    if isa(value(plot[:color]), AbstractArray{<: Number})
+        replace_nothing!(plot, :colorrange) do
+            lift(plot[:color]) do arg
+                Vec2f0(extrema_nan(arg))
+            end
+        end
+        args = (plot[:colormap], plot[:color], plot[:colorrange])
+        plot[:color] = lift(args...) do cmap, colors, crange
+            interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
+        end
+    end
+    delete!(plot, :colormap)
+    delete!(plot, :colorrange)
     return
 end
 function calculated_attributes!(plot::Image)
