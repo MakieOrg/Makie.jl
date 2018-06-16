@@ -3,16 +3,19 @@ include("database.jl")
 using Makie
 
 @block SimonDanisch ["2d"] begin
-    # @cell "colored triangle" [mesh, polygon] begin
-    #
-    #     scene = Scene(@resolution)
-    #     # TODO: doesn't work
-    #     # ERROR: MethodError: AbstractPlotting.convert_arguments(::Type{Mesh{...}}, ::Array{Tuple{Float64,Float64},1}) is ambiguous.
-    #     # ERROR (unhandled task failure): glTexImage 2D: width too large. Width: 849439543
-    #     # ERROR: can't splice Array{ColorTypes.RGBA{Float32},1} into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true
-    #     # scene = Scene(@resolution)
-    #     # mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue], shading = false)
-    # end
+    @cell "colored triangle" [mesh, polygon] begin
+        mesh(
+            [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
+            shading = false
+        )
+    end
+    @cell "colored triangle" [polygon] begin
+        poly(
+            [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
+            color = [:red, :green, :blue],
+            linecolor = :black, linewidth = 2
+        )
+    end
     # @cell "Subscenes" [image, scatter, subscene] begin
     #
     #     scene = Scene(@resolution)
@@ -244,20 +247,17 @@ end
     end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
-        scene = Scene(@resolution)
         x = Makie.loadasset("cat.obj")
         mesh!(scene, x.vertices, x.faces, color = :black)
         pos = map(x.vertices, x.normals) do p, n
             p => p .+ (normalize(n) .* 0.05f0)
         end
-        linesegments!(scene, pos, color = :blue)
-        scene
+        linesegments(pos, color = :blue)
     end
 
 
     @cell "Sphere Mesh" [mesh] begin
-        scene = Scene(@resolution)
-        mesh!(scene, Sphere(Point3f0(0), 1f0), color = :blue)
+        mesh(Sphere(Point3f0(0), 1f0), color = :blue)
     end
 
 
@@ -370,9 +370,9 @@ end
         @cell "Axis 2D" [axis] begin
             scene = Scene(@resolution)
             scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
-            aviz = Makie.axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
-            AbstractPlotting.center!(scene)
+            aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
             cam2d!(scene)
+            center!(scene)
             scene
         end
 
@@ -448,38 +448,27 @@ end
         mesh(catmesh, color = Makie.loadasset("diffusemap.tga"))
     end
     @cell "Load Mesh" ["3d", mesh, cat] begin
-        scene = Scene(@resolution)
-        mesh!(scene, Makie.loadasset("cat.obj"))
+        mesh(Makie.loadasset("cat.obj"))
     end
-    # @cell "Colored Mesh" ["3d", mesh, axis] begin
-    #     # scene = Scene(@resolution)
-    #     # x = [0, 1, 2, 0]
-    #     # y = [0, 0, 1, 2]
-    #     # z = [0, 2, 0, 1]
-    #     # color = [:red, :green, :blue, :yellow]
-    #     # i = [0, 0, 0, 1]
-    #     # j = [1, 2, 3, 2]
-    #     # k = [2, 3, 1, 3]
-    #     #
-    #     # indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
-    #     # # TODO:
-    #     # # ERROR: MethodError: no method matching GeometryTypes.HomogenousMesh{GeometryTypes.Point{3,Float32},GeometryTypes.Face{3,GeometryTypes.OffsetInteger{-1,UInt32}},GeometryTypes.Normal{3,Float32},Void,Void,Void,Void}(::Array{GeometryTypes.Point{3,Float32},1}, ::Array{Int64,1})
-    #     # mesh(x, y, z, indices, color = color)
-    #
-    #     scene = Scene(@resolution)
-    # end
+    @cell "Colored Mesh" ["3d", mesh, axis] begin
+        x = [0, 1, 2, 0]
+        y = [0, 0, 1, 2]
+        z = [0, 2, 0, 1]
+        color = [:red, :green, :blue, :yellow]
+        i = [0, 0, 0, 1]
+        j = [1, 2, 3, 2]
+        k = [2, 3, 1, 3]
+        # indices interpreted as triangles (every 3 sequential indices)
+        indices = [1, 2, 3,   1, 3, 4,   1, 4, 2,   2, 3, 4]
+        mesh(x, y, z, indices, color = color)
+    end
     @cell "Wireframe of a Mesh" ["3d", mesh, wireframe, cat] begin
-
-        scene = Scene(@resolution)
-        wireframe!(scene, Makie.loadasset("cat.obj"))
+        wireframe(Makie.loadasset("cat.obj"))
     end
     @cell "Wireframe of Sphere" ["3d", wireframe] begin
-
-        scene = Scene(@resolution)
-        wireframe!(scene, Sphere(Point3f0(0), 1f0))
+        wireframe(Sphere(Point3f0(0), 1f0))
     end
     @cell "Wireframe of a Surface" ["3d", surface, wireframe] begin
-        scene = Scene(@resolution)
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
@@ -488,10 +477,9 @@ end
         lspace = linspace(-10, 10, N)
         z = Float32[xy_data(x, y) for x in lspace, y in lspace]
         range = linspace(0, 3, N)
-        wireframe!(scene, range, range, z)
+        wireframe(range, range, z)
     end
-    @cell "Surface Function" ["3d", surface] begin
-        scene = Scene(@resolution)
+    @cell "Surface" ["3d", surface] begin
         N = 30
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
@@ -500,14 +488,12 @@ end
         lspace = linspace(-10, 10, N)
         z = Float32[xy_data(x, y) for x in lspace, y in lspace]
         range = linspace(0, 3, N)
-        surf = surface!(
-            scene,
+        surface(
             range, range, z,
             colormap = :Spectral
         )
     end
     @cell "Surface with image" ["3d", surface, image] begin
-        scene = Scene(@resolution)
         N = 30
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
@@ -515,18 +501,16 @@ end
         end
         r = linspace(-2, 2, N)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-        surf = surface!(
-            scene,
+        surface(
             r, r, surf_func(10),
             image = rand(RGBAf0, 124, 124)
         )
     end
     @cell "Line Function" ["2d", lines] begin
-        scene = Scene(@resolution)
+        scene = Scene()
         x = linspace(0, 3pi)
         lines!(scene, x, sin.(x))
-        # TODO: adding plot series using lines! doesn't seem to work?
-        # lines!(scene, x, cos.(x), color = :blue)
+        lines!(scene, x, cos.(x), color = :blue)
     end
 
     @cell "Meshscatter Function" ["3d", meshscatter] begin

@@ -212,14 +212,11 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
         gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
         mesh = map(x[1], color) do m, c
-            if isa(m, GLPlainMesh) || isa(m, GLNormalUVMesh)
+            if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalUVMesh) || isa(m, GLNormalMesh))
                 get!(gl_attributes, :color, c)
                 m
-            elseif isa(m, GLNormalMesh)
-                get!(gl_attributes, :color, c)
-                GLNormalMesh(m)
             else
-                HomogenousMesh(m, Dict{Symbol, Any}(:color => c))
+                HomogenousMesh(GLNormalMesh(m), Dict{Symbol, Any}(:color => c))
             end
         end
         visualize(mesh, Style(:default), gl_attributes).children[]
