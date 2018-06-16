@@ -15,6 +15,8 @@ function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
     print(io, q[4], pm(q[1]), "im", pm(q[2]), "jm", pm(q[3]), "km")
 end
+Base.rand(mt::MersenneTwister, ::Type{Quaternion}) where T = rand(mt, Quaternion{Float64})
+Base.rand(mt::MersenneTwister, ::Type{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
 @inline (::Type{Quaternion{T}})(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
 @inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
