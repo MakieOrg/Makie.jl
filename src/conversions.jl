@@ -123,7 +123,11 @@ Takes 2 AbstractVector's `x`, `y`, and an AbstractMatrix `z`, and puts them in a
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+    println(P)
     (x, y, z)
+end
+function convert_arguments(::Type{<: Scatter}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+    (vec(Point3f0.(x, y', z)),)
 end
 # function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
 #     (x, y, z)
@@ -143,8 +147,10 @@ and stores the closed intervals to `n` and `m`, plus the original matrix in a Tu
 """
 function convert_arguments(P, data::AbstractMatrix)
     n, m = Float64.(size(data))
-    (0.0 .. n, 0.0 .. m, data)
+    (0.0 .. m, 0.0 .. n, data)
 end
+
+
 
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
