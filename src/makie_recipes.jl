@@ -13,6 +13,11 @@ Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
     )
 end
 
+"""
+    contour3d(x, y, z)
+Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
+with z- elevation for each level
+"""
 @recipe(Contour3d) do scene
     Theme(;
         default_theme(scene)...,
@@ -25,11 +30,6 @@ end
 end
 
 
-"""
-    contour3d(x, y, z)
-Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
-with z- elevation for each level
-"""
 function contourlines(::Type{Contour}, contours, cols)
     result = Point2f0[]
     colors = RGBA{Float32}[]
@@ -43,7 +43,7 @@ function contourlines(::Type{Contour}, contours, cols)
     result, colors
 end
 
-function contourlines(::Type{Contour3d}, contours, cols)
+function contourlines(::Type{<: Contour3d}, contours, cols)
     result = Point3f0[]
     colors = RGBA{Float32}[]
     for (color, c) in zip(cols, Contours.levels(contours))
@@ -90,7 +90,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     volume!(plot, x, y, z, volume, colormap = cmap, colorrange = colorrange, algorithm = :iso)
 end
 
-function plot!(plot::Contour)
+function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
     if value(plot[:fillrange])
         plot[:interpolate] = true
@@ -101,9 +101,9 @@ function plot!(plot::Contour)
         result = lift(x, y, z, plot[:levels]) do x, y, z, levels
             t = eltype(z)
             levels = round(Int, levels)
-            contours = Main.Contour.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
+            contours = Contours.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
             cols = AbstractPlotting.resampled_colors(plot, levels)
-            contourlines(Contour, contours, cols)
+            contourlines(T, contours, cols)
         end
         lines!(plot, lift(first, result); color = lift(last, result), raw = true)
     end
