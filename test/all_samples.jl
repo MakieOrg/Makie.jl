@@ -1,7 +1,6 @@
 #setup
 using Makie
 
-cd(@__DIR__) do
 function xy_data(x, y)
     r = sqrt(x*x + y*y)
     r == 0.0 ? 1f0 : (sin(r)/r)
