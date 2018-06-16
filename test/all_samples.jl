@@ -1,13 +1,3 @@
-# this is a bit of an odd design, but I think it does it's job.
-# This file contains statements spereated by the comment # cell (without space),
-# which makes it possible to extract each cell out of this file.
-# There is also the setup cell indicated by # setup.
-# We can then continue to generate files for visual regression tests
-# snoop compiling and even create ijulia notebooks with cells containing this.
-
-#TODO: remove all mentions of "center" and "center!" since the new implementation
-# automatically centers the plot
-
 #setup
 using Makie
 
@@ -37,36 +27,10 @@ end
 
 #cell
 img = Makie.logo()
-scene1 = image!(scene, img)
+scene1 = image(img)
 scene2 = scatter(rand(100), rand(100), markersize = 0.05)
 AbstractPlotting.vbox(scene1, scene2)
-#cell
-scene = Scene(resolution = (500, 500));
-x = [0, 1, 2, 0];
-y = [0, 0, 1, 2];
-z = [0, 2, 0, 1];
-color = [:red, :green, :blue, :yellow];
-i = [0, 0, 0, 1];
-j = [1, 2, 3, 2];
-k = [2, 3, 1, 3];
 
-indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4];
-mesh(x, y, z, indices, color = color);
-r = linspace(-0.5, 2.5, 4);
-axis(r, r, r);
-center!(scene);
-
-#cell
-scene = Makie.volume(rand(32, 32, 32), algorithm = :iso)
-#cell
-heatmap(rand(32, 32))
-
-#cell
-scene = Scene(resolution = (500, 500))
-r = linspace(-10, 10, 512)
-z = ((x, y)-> sin(x) + cos(y)).(r, r')
-Makie.contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
-center!(scene)
 
 #cell
 scene = Scene(resolution = (500, 500))
@@ -95,12 +59,6 @@ custom_theme(scene)
 # From now everything will be plotted with new theme
 psurf = surface(vx, 1:0.1:2, psurf[:z])
 center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-sv = scatter(rand(Point3f0, 100))
-similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
-scene
 
 
 
