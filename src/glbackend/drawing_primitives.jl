@@ -212,7 +212,10 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
         gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
         mesh = map(x[1], color) do m, c
-            if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalUVMesh) || isa(m, GLNormalMesh))
+            if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
+                get!(gl_attributes, :color, c)
+                m
+            elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
                 get!(gl_attributes, :color, c)
                 m
             else
