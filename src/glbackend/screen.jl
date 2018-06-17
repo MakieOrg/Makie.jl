@@ -104,7 +104,7 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     RenderObject{Pre}(
         robj.main,
         robj.uniforms,
-        GLVertexArray(robj.vertexarray),
+        VertexArray(robj.vertexarray),
         robj.prerenderfunction,
         robj.postrenderfunction,
         robj.boundingbox,

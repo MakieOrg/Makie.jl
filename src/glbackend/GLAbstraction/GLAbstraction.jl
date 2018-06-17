@@ -75,7 +75,7 @@ export std_renderobject            # creates a renderobject with standard parame
 export instanced_renderobject    # simplification for creating a RenderObject which renders instances
 export extract_renderable
 export set_arg!
-export GLVertexArray            # VertexArray wrapper object
+export VertexArray            # VertexArray wrapper object
 export Buffer                 # OpenGL Buffer object wrapper
 export indexbuffer              # Shortcut to create an OpenGL Buffer object for indexes (1D, cardinality of one and GL_ELEMENT_ARRAY_BUFFER set)
 export opengl_compatible        # infers if a type is opengl compatible and returns stats like cardinality and eltype (will be deprecated)
