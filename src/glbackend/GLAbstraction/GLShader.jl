@@ -111,7 +111,7 @@ struct LazyShader <: AbstractLazyShader
     end
 end
 
-gl_convert(shader::GLProgram, data) = shader
+gl_convert(shader::Program, data) = shader
 
 
 
@@ -123,7 +123,7 @@ gl_convert(shader::GLProgram, data) = shader
 const _template_cache = Dict{String, Vector{String}}()
 # path --> Dict{template_replacements --> Shader)
 const _shader_cache = Dict{String, Dict{Any, Shader}}()
-const _program_cache = Dict{Any, GLProgram}()
+const _program_cache = Dict{Any, Program}()
 
 
 function empty_shader_cache!()
@@ -207,7 +207,7 @@ function compile_program(shaders, fragdatalocation)
     # generate the link locations
     nametypedict = uniform_name_type(program)
     uniformlocationdict = uniformlocations(nametypedict, program)
-    GLProgram(program, shaders, nametypedict, uniformlocationdict)
+    Program(program, shaders, nametypedict, uniformlocationdict)
 end
 
 function get_view(kw_dict)

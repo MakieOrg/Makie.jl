@@ -68,7 +68,6 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     end
 
     face = eltype(indices) <: Integer ? gl_face_enum(eltype(indices)) : gl_face_enum(facelength)
-    println(typeof(arrays))
     ninst  = 1
     nverts = 0
     buffers = map(arrays) do array
@@ -96,7 +95,6 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
                 nverts = nverts_
             end
         end
-        println(typeof(array))
         convert(Buffer, array)
     end
     #TODO Cleanup

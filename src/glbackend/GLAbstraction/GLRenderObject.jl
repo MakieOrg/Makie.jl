@@ -1,5 +1,10 @@
 const RENDER_OBJECT_ID_COUNTER = Ref(zero(GLushort))
 
+#Renderobject will become a renderable, were first it will be focussed on GL,
+#but nothing would stop you to use something else to render it
+
+
+
 mutable struct RenderObject{Pre} <: Composable{DeviceUnit}
     main                 # main object
     uniforms            ::Dict{Symbol, Any}
@@ -8,7 +13,7 @@ mutable struct RenderObject{Pre} <: Composable{DeviceUnit}
     postrenderfunction
     id                  ::GLushort
     boundingbox          # workaround for having lazy boundingbox queries, while not using multiple dispatch for boundingbox function (No type hierarchy for RenderObjects)
-    program             ::GLProgram #TODO this needs to go to renderpass
+    program             ::Program #TODO this needs to go to renderpass
     function RenderObject{Pre}(
             main, uniforms::Dict{Symbol, Any}, vertexarray::VertexArray,
             prerenderfunctions, postrenderfunctions,
@@ -277,7 +282,7 @@ end
 # If you have an array of OptimizedPrograms, you only need to put PreRender in front.
 # """
 # type OptimizedProgram{PreRender}
-#     program::GLProgram
+#     program::Program
 #     uniforms::FixedDict
 #     vertexarray::VertexArray
 #     gl_parameters::PreRender

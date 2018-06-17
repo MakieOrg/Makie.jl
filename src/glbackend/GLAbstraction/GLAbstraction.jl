@@ -63,7 +63,7 @@ include("GLTypes.jl")
 include("framebuffer.jl")
 export FrameBuffer
 export AbstractContext
-export GLProgram                # Shader/program object
+export Program                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
 export TextureParameters
 export TextureBuffer            # OpenGL texture buffer
@@ -121,6 +121,9 @@ include("GLInfo.jl")
 export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
+
+include("renderpass.jl")
+include("pipeline.jl")
 
 dir(dirs...) = joinpath(dirname(@__FILE__), "..", dirs...)
 

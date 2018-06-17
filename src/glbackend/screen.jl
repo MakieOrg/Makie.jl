@@ -1,30 +1,29 @@
-import .GLAbstraction: defaultframebuffer
-
-
+import .GLAbstraction: Pipeline
 const ScreenID = UInt8
 const ZIndex = Int
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
-    framebuffer::FrameBuffer #Color, Luma, needs to be more general?
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
+    pipeline::Pipeline
+    fullscreenvao::Int
     function Screen(
             glscreen::GLFW.Window,
-            framebuffer::FrameBuffer,
             rendertask::RefValue{Task},
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt16, AbstractPlot},
+            pipeline::Pipeline
         )
-        obj = new(glscreen, framebuffer, rendertask, screen2scene, screens, renderlist, cache, cache2plot)
+        obj = new(glscreen, rendertask, screen2scene, screens, renderlist, cache, cache2plot, pipeline)
         jl_finalizer(obj) do obj
             # save_print("Freeing screen")
             empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
@@ -33,7 +32,7 @@ mutable struct Screen <: AbstractScreen
         obj
     end
 end
-GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
+# GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
 function insertplots!(screen::Screen, scene::Scene)
     for elem in scene.plots
@@ -70,7 +69,8 @@ function colorbuffer(screen::Screen)
     render_frame(screen) # let it render
     GLFW.SwapBuffers(to_native(screen))
     glFinish() # block until opengl is done rendering
-    buffer = gpu_data(screen.framebuffer, 1) #This assumes that the color is stored
+    #very ugly
+    buffer = gpu_data(screen.pipeline.passes.target, 1) #This assumes that the color is stored
                                              #in GL_COLOR_ATTACHMENT0
     return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
 end
@@ -142,14 +142,15 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     )
     fb = defaultframebuffer(value(resolution_signal))
     screen = Screen(
-        window, fb,
+        window,
         RefValue{Task}(),
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
-    )
+        default_pipeline(fb),
+        glGenVertexArrays())
     screen.rendertask[] = @async(renderloop(screen))
     screen
 end

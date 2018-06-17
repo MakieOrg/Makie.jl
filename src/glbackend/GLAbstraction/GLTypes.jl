@@ -88,31 +88,109 @@ function Base.show(io::IO, shader::Shader)
     print_with_lines(io, String(shader.source))
 end
 
-mutable struct GLProgram
+######## NEW
+islinked(program::GLuint) = glGetProgramiv(program, GL_LINK_STATUS) == GL_TRUE
+
+abstract type AbstractProgram end
+mutable struct Program <: AbstractProgram
     id          ::GLuint
-    shader      ::Vector{Shader}
+    shaders     ::Vector{Shader}
     nametype    ::Dict{Symbol, GLenum}
     uniformloc  ::Dict{Symbol, Tuple}
     context     ::AbstractContext
-    function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol, GLenum}, uniformloc::Dict{Symbol, Tuple})
-        obj = new(id, shader, nametype, uniformloc, current_context())
-        finalizer(obj, free)
-        obj
-    end
-end
-function Base.show(io::IO, p::GLProgram)
-    println(io, "GLProgram: $(p.id)")
-    println(io, "Shaders:")
-    for shader in p.shader
-        println(io, shader)
-    end
-    println(io, "uniforms:")
-    for (name, typ) in p.nametype
-        println(io, "   ", name, "::", GLENUM(typ).name)
+    function Program(shaders::Vector{Shader}, fragdatalocation::Vector{Tuple{Int, String}})
+        # Remove old shaders
+        exists_context()
+        program = glCreateProgram()::GLuint
+        glUseProgram(program)
+        #attach new ones
+        foreach(shaders) do shader
+            glAttachShader(program, shader.id)
+        end
+
+        #Bind frag data
+        for (location, name) in fragdatalocation
+            glBindFragDataLocation(program, location, ascii(name))
+        end
+
+        #link program
+        glLinkProgram(program)
+        if !islinked(program)
+            for shader in shaders
+                write(STDOUT, shader.source)
+                println("---------------------------")
+            end
+            error(
+                "program $program not linked. Error in: \n",
+                join(map(x-> string(x.name), shaders), " or "), "\n", getinfolog(program)
+            )
+        end
+
+        # generate the link locations
+        nametypedict = uniform_nametype(program)
+        uniformlocationdict = uniformlocations(nametypedict, program)
+        new(program, shaders, nametypedict, uniformlocationdict, current_context())
     end
 end
 
+function Program(sh_string_typ...)
+    shaders = Shader[]
+    for (source, typ) in sh_string_typ
+        push!(shaders, Shader(gensym(), typ, Vector{UInt8}(source)))
+    end
+    Program(shaders, Tuple{Int, String}[])
+end
 
+
+bind(program::Program) = glUseProgram(program.id)
+unbind(program::AbstractProgram) = glUseProgram(0)
+
+mutable struct LazyProgram <: AbstractProgram
+    sources::Vector
+    data::Dict
+    compiled_program::Union{Program, Void}
+end
+LazyProgram(sources...; data...) = LazyProgram(Vector(sources), Dict(data), nothing)
+
+function Program(lazy_program::LazyProgram)
+    fragdatalocation = get(lazy_program.data, :fragdatalocation, Tuple{Int, String}[])
+    shaders = haskey(lazy_program.data, :arguments) ? Shader.(lazy_program.sources, Ref(lazy_program.data[:arguments])) : Shader.()
+    return Program([shaders...], fragdatalocation)
+end
+function bind(program::LazyProgram)
+    iscompiled_orcompile!(program)
+    bind(program.compiled_program)
+end
+
+function iscompiled_orcompile!(program::LazyProgram)
+    if program.compiled_program == nothing
+        program.compiled_program = Program(program)
+    end
+end
+
+##########
+# freeing
+
+# OpenGL has the annoying habit of reusing id's when creating a new context
+# We need to make sure to only free the current one
+function free(x::Program)
+    if !is_current_context(x.context)
+        return # don't free from other context
+    end
+    try
+        glDeleteProgram(x.id)
+    catch e
+        free_handle_error(e)
+    end
+    return
+end
+
+function free_handle_error(e)
+    #ignore, since freeing is not needed if context is not available
+    isa(e, ContextNotAvailable) && return
+    rethrow(e)
+end
+####################NEW
 ########################################################################################
 # OpenGL Arrays
 
@@ -144,81 +222,6 @@ include("texture.jl")
 ########################################################################
 
 include("vertexarray.jl")
-# """
-# Represents an OpenGL vertex array type.
-# Can be created from a dict of buffers and an opengl Program.
-# Keys with the name `indices` will get special treatment and will be used as
-# the indexbuffer.
-# """
-# mutable struct VertexArray{T}
-#     program      ::GLProgram
-#     id           ::GLuint
-#     bufferlength ::Int
-#     buffers      ::Dict{String, Buffer}
-#     indices      ::T
-#     context      ::AbstractContext
-#
-#     function VertexArray{T}(program, id, bufferlength, buffers, indices) where T
-#         new(program, id, bufferlength, buffers, indices, current_context())
-#     end
-# end
-# """
-# returns the length of the vertex array.
-# This is amount of primitives stored in the vertex array, needed for `glDrawArrays`
-# """
-# function length(vao::VertexArray)
-#     length(first(vao.buffers)[2]) # all buffers have same length, so first should do!
-# end
-# function VertexArray(vao::VertexArray)
-#     VertexArray(vao.buffers, vao.program)
-# end
-# function VertexArray(bufferdict::Dict, program::GLProgram)
-#     #get the size of the first array, to assert later, that all have the same size
-#     indexes = -1
-#     len = -1
-#     id = glGenVertexArrays()
-#     glBindVertexArray(id)
-#     lenbuffer = 0
-#     buffers = Dict{String, Buffer}()
-#     for (name, buffer) in bufferdict
-#         if isa(buffer, Buffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
-#             bind(buffer)
-#             indexes = buffer
-#         elseif Symbol(name) == :indices
-#             indexes = buffer
-#         else
-#             attribute = string(name)
-#             len == -1 && (len = length(buffer))
-#             # TODO: use glVertexAttribDivisor to allow multiples of the longest buffer
-#             len != length(buffer) && error(
-#               "buffer $attribute has not the same length as the other buffers.
-#               Has: $(length(buffer)). Should have: $len"
-#             )
-#             bind(buffer)
-#             attribLocation = get_attribute_location(program.id, attribute)
-#             (attribLocation == -1) && continue
-#             glVertexAttribPointer(attribLocation, cardinality(buffer), julia2glenum(eltype(buffer)), GL_FALSE, 0, C_NULL)
-#             glEnableVertexAttribArray(attribLocation)
-#             buffers[attribute] = buffer
-#             lenbuffer = buffer
-#         end
-#     end
-#     glBindVertexArray(0)
-#     if indexes == -1
-#         indexes = len
-#     end
-#     obj = VertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
-#     finalizer(obj, free)
-#     obj
-# end
-# function Base.show(io::IO, vao::VertexArray)
-#     show(io, vao.program)
-#     println(io, "VertexArray $(vao.id):")
-#     print(  io, "VertexArray $(vao.id) buffers: ")
-#     writemime(io, MIME("text/plain"), vao.buffers)
-#     println(io, "\nVertexArray $(vao.id) indices: ", vao.indices)
-# end
-
 
 ##################################################################################
 
@@ -228,25 +231,4 @@ include("GLRenderObject.jl")
 
 
 
-####################################################################################
-# freeing
-
-# OpenGL has the annoying habit of reusing id's when creating a new context
-# We need to make sure to only free the current one
-function free(x::GLProgram)
-    if !is_current_context(x.context)
-        return # don't free from other context
-    end
-    try
-        glDeleteProgram(x.id)
-    catch e
-        free_handle_error(e)
-    end
-    return
-end
-
-function free_handle_error(e)
-    #ignore, since freeing is not needed if context is not available
-    isa(e, ContextNotAvailable) && return
-    rethrow(e)
-end
+##########################################################################

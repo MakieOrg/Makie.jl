@@ -63,70 +63,120 @@ end
 
 const selection_queries = Function[]
 
+
+import .GLAbstraction: defaultframebuffer, RenderPass, Pipeline, setup
+
+default_pipeline(fbo)=Pipeline(:default, [default_renderpass(fbo), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
+
+default_renderpass(fbo) =
+    RenderPass(:default, [loadshader("fullscreen.vert"), loadshader("default.frag")], fbo)
+postprocess_renderpass(fbo) =
+    RenderPass(:postprocess, [loadshader("fullscreen.vert"), loadshader("postprocess.frag")], fbo)
+fxaa_renderpass(fbo) =
+    Renderpass(:fxaa, [loadshader("fullscreen.vert"), loadshader("fxaa.frag")], fbo)
+
+final_renderpass(fbo) =
+    Renderpass(:final, [loadshader("fullscreen.vert"), loadshader("copy.frag")], fbo)
+#Defaults for pipeline and renderpasses. This could probably be put somewhere else.
+#This could probably also be a bit cleaner with some thought
+
+#Implementation of the setup interface for the default pipeline.
+function setup(pipe::Pipeline{:default})
+
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0xff)
+    glClearStencil(0)
+    glViewport(0, 0, w, h) #This used to be in between default render pass and
+                           #postprocess1
+
+end
+
+function setup(rp::RenderPass{:default})
+    bind(rp.target)
+    draw(rp.target, 1:2)
+    clear!(rp.target) #this clears everything,
+                      #so if textures get reused then we need to clear more
+                      #specifically, lets try this first
+end
+
+#Implementation of the rendering interfaces
+function (rp::RenderPass{:default})(screen::Screen)
+    if isempty(screen.renderlist)
+        return
+    end
+    glEnable(GL_SCISSOR_TEST)
+    setup!(screen)
+    glDisable(GL_SCISSOR_TEST)
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+
+    for (zindex, screenid, elem) in screen.renderlist
+        found, rect = id2rect(screen, screenid)
+        found || continue
+        a = rect[]
+        glViewport(minimum(a)..., widths(a)...)
+        glStencilFunc(GL_EQUAL, screenid, 0xff)
+        render(elem)
+    end
+
+    glDisable(GL_STENCIL_TEST)
+end
+
+function setup(rp::RenderPass{:postprocess})
+    glDepthMask(GL_TRUE)
+    glDisable(GL_DEPTH_TEST)
+    glDisable(GL_BLEND)
+    glDisable(GL_STENCIL_TEST)
+    glStencilMask(0xff)
+    glDisable(GL_CULL_FACE)
+#target doesn't need to be bound since it's still bound from before I think
+    draw(rp.target, 3) #only the color part of the fbo
+end
+
+#this has the luma FBO
+function (rp::RenderPass{:postprocess})(screen::Screen)
+    program = rp.program
+    location, target = program.uniformloc[:color_texture]
+    gluniform(location, target, textures(rp.target)[1])
+    draw_fullscreen(screen.fullscreenvao)
+end
+
+#maybe glviewport needs to be here
+function setup(rp::RenderPass{:fxaa})
+    draw(rp.target, 1) #copy back to original color
+end
+
+function (rp::RenderPass{:fxaa})(screen::Screen)
+    location, target = program.uniformloc[:color_texture]
+    rcploc = program.uniformloc[:RCPFrame]
+    gluniform(location, target, textures(rp.target)[3])
+    gluniform(rcploc, size(rp.target))
+    draw_fullscreen(screen.fullscreenvao)
+end
+
+function setup(rp::RenderPass{:final})
+    unbind(rp.target)
+    glClearColor(0, 0, 0, 0)
+    glClear(GL_COLOR_BUFFER_BIT)
+end
+
+function (rp::RenderPass{:final})(screen::Screen)
+    program = rp.program
+    location, target = program.uniformloc[:color_texture]
+    gluniform(location, target, textures(rp.target)[1])
+    draw_fullscreen(screen.fullscreenvao)
+end
+
 """
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen)
     !isopen(screen) && return
     nw = to_native(screen)
-    fb = screen.framebuffer
     wh = Int.(GLFW.GetFramebufferSize(nw))
-    resize!(fb, wh)
-    w, h = wh
-    #prepare for geometry in need of anti aliasing
-    bind(fb)
-    draw(fb, 1:2)
-    glDisable(GL_STENCIL_TEST)
-    # setup stencil and backgrounds
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0xff)
-    # glClearStencil(0)
-    glClearColor(0,0,0,0)
-    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-    glEnable(GL_SCISSOR_TEST)
-    setup!(screen)
-    glDisable(GL_SCISSOR_TEST)
-    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    # # deactivate stencil write
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
-    GLAbstraction.render(screen, true)
-    glDisable(GL_STENCIL_TEST)
 
-    #very badd for performance, this needs to go once the renderpipeline works
-    # texts = textures(fb)
-    # ppasses = postprocess(texts[1], texts[3], size(texts[1]))
-    # transfer color to luma buffer and apply fxaa
-    # luma framebuffer
-    # draw(fb, 3)
-    # glClearColor(0,0,0,0)
-    # glClear(GL_COLOR_BUFFER_BIT)
-    # glViewport(0, 0, w, h)
-    # GLAbstraction.render(ppasses[1]) # add luma and preprocess
-
-    # glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
-    # draw(fb, 1)
-    # GLAbstraction.render(ppasses[2]) # copy with fxaa postprocess
-
-    #prepare for non anti aliased pass
-    # draw(fb, 1:2)
-    #
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
-    # GLAbstraction.render(screen, false)
-    # glDisable(GL_STENCIL_TEST)
-    # glViewport(0, 0, w, h)
-    #Read all the selection queries
-    for query_func in selection_queries
-        query_func()
-    end
-    # unbind(fb)
-    # glClearColor(0, 0, 0, 0)
-    # glClear(GL_COLOR_BUFFER_BIT)
-    # GLAbstraction.render(ppasses[3]) # copy postprocess
+    resize_targets!(screen.pipeline, wh)
+    render(screen.pipeline, screen)
     return
 end
 
@@ -136,23 +186,4 @@ function id2rect(screen, id1)
         id1 == id2 && return true, rect
     end
     false, IRect(0,0,0,0)
-end
-
-function GLAbstraction.render(screen::Screen, fxaa::Bool)
-    if isopen(screen)
-        for (zindex, screenid, elem) in screen.renderlist
-            found, rect = id2rect(screen, screenid)
-            found || continue
-            a = rect[]
-            glViewport(minimum(a)..., widths(a)...)
-            glStencilFunc(GL_EQUAL, screenid, 0xff)
-            if fxaa && elem[:fxaa][]
-                render(elem)
-            end
-            if !fxaa && !elem[:fxaa][]
-                render(elem)
-            end
-        end
-    end
-    return
 end
