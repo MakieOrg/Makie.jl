@@ -1,3 +1,92 @@
+const RENDER_OBJECT_ID_COUNTER = Ref(zero(GLushort))
+
+mutable struct RenderObject{Pre} <: Composable{DeviceUnit}
+    main                 # main object
+    uniforms            ::Dict{Symbol, Any}
+    vertexarray         ::VertexArray
+    prerenderfunction   ::Pre
+    postrenderfunction
+    id                  ::GLushort
+    boundingbox          # workaround for having lazy boundingbox queries, while not using multiple dispatch for boundingbox function (No type hierarchy for RenderObjects)
+    program             ::GLProgram #TODO this needs to go to renderpass
+    function RenderObject{Pre}(
+            main, uniforms::Dict{Symbol, Any}, vertexarray::VertexArray,
+            prerenderfunctions, postrenderfunctions,
+            boundingbox, program
+        ) where Pre
+        RENDER_OBJECT_ID_COUNTER[] += one(GLushort)
+        new(
+            main, uniforms, vertexarray,
+            prerenderfunctions, postrenderfunctions,
+            RENDER_OBJECT_ID_COUNTER[], boundingbox, program
+        )
+    end
+end
+
+
+function RenderObject(
+        data::Dict{Symbol, Any}, program,
+        pre::Pre, post,
+        bbs=Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
+        main=nothing
+    ) where Pre
+    targets = get(data, :gl_convert_targets, Dict())
+    delete!(data, :gl_convert_targets)
+    passthrough = Dict{Symbol, Any}() # we also save a few non opengl related values in data
+    for (k,v) in data # convert everything to OpenGL compatible types
+        if haskey(targets, k)
+            # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
+            # e.g. Texture{T,1} and Buffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
+            # but in some cases we want a Texture, sometimes a Buffer or TextureBuffer
+            data[k] = gl_convert(targets[k], v)
+        else
+            k in (:indices, :visible, :fxaa) && continue
+            if isa_gl_struct(v) # structs are treated differently, since they have to be composed into their fields
+                merge!(data, gl_convert_struct(v, k))
+            elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
+                data[k] = gl_convert(v)
+            else # put it in passthrough
+                delete!(data, k)
+                passthrough[k] = v
+            end
+        end
+    end
+    # handle meshes seperately, since they need expansion
+    meshs = filter((key, value) -> isa(value, NativeMesh), data)
+    if !isempty(meshs)
+        merge!(data, [v.data for (k,v) in meshs]...)
+    end
+
+    if haskey(data, :indices) && !isa(data[:indices], Reactive.Signal)
+        indices = pop!(data, :indices)
+    elseif haskey(data, :faces)
+        indices = pop!(data, :faces)
+    else
+        indices = nothing
+    end
+    #very ugly and bad
+    buffers  = [val for (key,val) in filter((key, value) -> isa(value, Buffer), data)]
+    vao = indices == nothing ? VertexArray((buffers...); facelength=3) : VertexArray((buffers...), indices)
+    uniforms = filter((key, value) -> !isa(value, Buffer) && key != :indices, data)
+    get!(data, :visible, true) # make sure, visibility is set
+    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
+    p = gl_convert(Reactive.value(program), data) # "compile" lazyshader
+    robj = RenderObject{Pre}(
+        main,
+        uniforms,
+        vao,
+        pre,
+        post,
+        bbs,
+        p
+    )
+    # automatically integrate object ID, will be discarded if shader doesn't use it
+    robj[:objectid] = robj.id
+    robj
+end
+
+
+
 function RenderObject(
         data::Dict{Symbol}, program, pre,
         bbs = Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
@@ -80,7 +169,7 @@ function (::StandardPrerender)()
 end
 
 struct StandardPostrender
-    vao::GLVertexArray
+    vao::VertexArray
     primitive::GLenum
 end
 function (sp::StandardPostrender)()
@@ -88,7 +177,7 @@ function (sp::StandardPostrender)()
 end
 struct StandardPostrenderInstanced{T}
     main::T
-    vao::GLVertexArray
+    vao::VertexArray
     primitive::GLenum
 end
 function (sp::StandardPostrenderInstanced)()
@@ -190,7 +279,7 @@ end
 # type OptimizedProgram{PreRender}
 #     program::GLProgram
 #     uniforms::FixedDict
-#     vertexarray::GLVertexArray
+#     vertexarray::VertexArray
 #     gl_parameters::PreRender
 #     renderfunc::Callable
 #     visible::Boolean
