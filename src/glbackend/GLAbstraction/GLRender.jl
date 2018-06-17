@@ -57,7 +57,7 @@ a lot of objects.
 function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if Bool(Reactive.value(renderobject.uniforms[:visible]))
         renderobject.prerenderfunction()
-        program = vertexarray.program
+        program = renderobject.program
         glUseProgram(program.id)
         for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)
@@ -82,19 +82,19 @@ end
 Renders a vertexarray, which consists of the usual buffers plus a vector of
 unitranges which defines the segments of the buffers to be rendered
 """
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: VecOrSignal{UnitRange{Int}}
+function render(vao::VertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: VecOrSignal{UnitRange{Int}}
     for elem in Reactive.value(vao.indices)
         glDrawArrays(mode, max(first(elem)-1, 0), length(elem)+1)
     end
      return nothing
 end
 
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
+function render(vao::VertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
     r = Reactive.value(vao.indices)
     glDrawArrays(mode, max(first(r)-1, 0), length(r)+1)
     return nothing
 end
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{Int}
+function render(vao::VertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{Int}
     r = Reactive.value(vao.indices)
     glDrawArrays(mode, 0, r)
     return nothing
@@ -105,7 +105,7 @@ end
 """
 Renders a vertex array which supplies an indexbuffer
 """
-function render(vao::GLVertexArray{Buffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, Face}
+function render(vao::VertexArray{Buffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, Face}
     glDrawElements(
         mode,
         length(vao.indices) * cardinality(vao.indices),
@@ -116,7 +116,7 @@ end
 """
 Renders a normal vertex array only containing the usual buffers buffers.
 """
-function render(vao::GLVertexArray, mode::GLenum=GL_TRIANGLES)
+function render(vao::VertexArray, mode::GLenum=GL_TRIANGLES)
     glDrawArrays(mode, 0, length(vao))
     return
 end
@@ -124,19 +124,19 @@ end
 """
 Render instanced geometry
 """
-renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced(vao, length(a), primitive)
+renderinstanced(vao::VertexArray, a, primitive=GL_TRIANGLES) = renderinstanced(vao, length(a), primitive)
 
 """
 Renders `amount` instances of an indexed geometry
 """
-function renderinstanced(vao::GLVertexArray{Buffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, Face}
+function renderinstanced(vao::VertexArray{Buffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, Face}
     glDrawElementsInstanced(primitive, length(vao.indices)*cardinality(vao.indices), julia2glenum(T), C_NULL, amount)
     return
 end
 """
 Renders `amount` instances of an not indexed geoemtry geometry
 """
-function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIANGLES)
+function renderinstanced(vao::VertexArray, amount::Integer, primitive=GL_TRIANGLES)
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)
     return
 end

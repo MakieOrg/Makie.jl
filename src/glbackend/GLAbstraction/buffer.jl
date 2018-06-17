@@ -1,5 +1,5 @@
-# import Base.Iterators.Repeated
-
+import Base.Iterators: Repeated
+#TODO I don't think structs are already handled
 mutable struct Buffer{T} <: GPUArray{T, 1}
     id          ::GLuint
     size        ::Tuple{Int}
