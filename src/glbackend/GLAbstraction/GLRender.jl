@@ -47,35 +47,35 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
     return
 end
 
-"""
-Renders a RenderObject
-Note, that this function is not optimized at all!
-It uses dictionaries and doesn't care about OpenGL call optimizations.
-So rewriting this function could get us a lot of performance for scenes with
-a lot of objects.
-"""
-function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
-    if Bool(Reactive.value(renderobject.uniforms[:visible]))
-        renderobject.prerenderfunction()
-        program = renderobject.program
-        glUseProgram(program.id)
-        for (key, value) in program.uniformloc
-            if haskey(renderobject.uniforms, key)
-                if length(value) == 1
-                    gluniform(value[1], renderobject.uniforms[key])
-                elseif length(value) == 2
-                    gluniform(value[1], value[2], renderobject.uniforms[key])
-                else
-                    error("Uniform tuple too long: $(length(value))")
-                end
-            end
-        end
-        glBindVertexArray(vertexarray.id)
-        renderobject.postrenderfunction()
-        glBindVertexArray(0)
-    end
-    return
-end
+# """
+# Renders a RenderObject
+# Note, that this function is not optimized at all!
+# It uses dictionaries and doesn't care about OpenGL call optimizations.
+# So rewriting this function could get us a lot of performance for scenes with
+# a lot of objects.
+# """
+# function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
+#     if Bool(Reactive.value(renderobject.uniforms[:visible]))
+#         renderobject.prerenderfunction()
+#         program = renderobject.program
+#         glUseProgram(program.id)
+#         for (key, value) in program.uniformloc
+#             if haskey(renderobject.uniforms, key)
+#                 if length(value) == 1
+#                     gluniform(value[1], renderobject.uniforms[key])
+#                 elseif length(value) == 2
+#                     gluniform(value[1], value[2], renderobject.uniforms[key])
+#                 else
+#                     error("Uniform tuple too long: $(length(value))")
+#                 end
+#             end
+#         end
+#         glBindVertexArray(vertexarray.id)
+#         renderobject.postrenderfunction()
+#         glBindVertexArray(0)
+#     end
+#     return
+# end
 
 
 """

@@ -7,7 +7,7 @@ const GLSL_COMPATIBLE_NUMBER_TYPES = (GLfloat, GLint, GLuint, GLdouble)
 const NATIVE_TYPES = Union{
     StaticArray, GLSL_COMPATIBLE_NUMBER_TYPES...,
     ZeroIndex{GLint}, ZeroIndex{GLuint},
-    Buffer, GPUArray, Shader, GLProgram, NativeMesh
+    Buffer, GPUArray, Shader, Program, NativeMesh
 }
 
 opengl_prefix(T)  = error("Object $T is not a supported uniform element type")

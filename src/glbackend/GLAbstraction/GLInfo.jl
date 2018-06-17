@@ -6,7 +6,7 @@ getShaderNames() 	  = getnames(glIsShader)
 getVertexArrayNames() = getnames(glIsVertexArray)
 
 # display info for all active uniforms in a program
-function getUniformsInfo(p::GLProgram) 
+function getUniformsInfo(p::Program) 
 	program = p.id
 	# Get uniforms info (not in named blocks)
 	@show activeUnif = glGetProgramiv(program, GL_ACTIVE_UNIFORMS)
@@ -56,7 +56,7 @@ end
 
 
 # display the values for uniforms in the default block
-function getUniformInfo(p::GLProgram, uniName::Symbol) 
+function getUniformInfo(p::Program, uniName::Symbol) 
 	# is it a program ?
 	@show program 				  = p.id
 	@show loc 	  				  = glGetUniformLocation(program, uniName)
@@ -65,7 +65,7 @@ end
 
 
 # display the values for a uniform in a named block
-function getUniformInBlockInfo(p::GLProgram, 
+function getUniformInBlockInfo(p::Program, 
 				blockName, 
 				uniName) 
 
@@ -88,7 +88,7 @@ end
 
 
 # display information for a program's attributes
-function getAttributesInfo(p::GLProgram) 
+function getAttributesInfo(p::Program) 
 
 	program = p.id
 	# how many attribs?
@@ -102,7 +102,7 @@ end
 
 
 # display program's information
-function getProgramInfo(p::GLProgram) 
+function getProgramInfo(p::Program) 
 	# check if name is really a program
 	@show program = p.id
 	# Get the shader's name
