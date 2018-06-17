@@ -14,7 +14,7 @@ const VolumeTypes{T} = ArrayTypes{T, 3}
 @enum Projection PERSPECTIVE ORTHOGRAPHIC
 @enum MouseButton MOUSE_LEFT MOUSE_MIDDLE MOUSE_RIGHT
 
-const GLContext = Symbol
+# const GLContext = Symbol
 
 """
 Returns the cardinality of a type. falls back to length
@@ -23,29 +23,45 @@ cardinality(x) = length(x)
 cardinality(x::Number) = 1
 cardinality(x::Type{T}) where {T <: Number} = 1
 
+
+#Context and current_context should be overloaded by users of the library! They are standard Symbols
+abstract type AbstractContext end
+
+struct DummyContext <: AbstractContext
+    id::Symbol
+end
 #=
 We need to track the current OpenGL context.
 Since we can't do this via pointer identity  (OpenGL may reuse the same pointers)
 We go for this slightly ugly version.
+In the future, this should probably be part of GLWindow.
 =#
-const context = Base.RefValue{GLContext}(:none)
+const context = Base.RefValue{AbstractContext}(DummyContext(:none))
+new_context() = (context[] = DummyContext(gensym()))
+current_context() = context[]
+is_current_context(x) = x == context[]
+clear_context!() = (context[] = DummyContext(:none))
+set_context!(x) = (context[] = x)
 
-function current_context()
-    context[]
+Base.Symbol(c::DummyContext) = c.id
+Base.convert(::Type{Symbol}, c::DummyContext) = c.id
+
+function exists_context()
+    if current_context().id == :none
+        error("Couldn't find valid OpenGL Context. OpenGL Context active?")
+    end
 end
-function is_current_context(x)
-    x == context[]
-end
-function new_context()
-    context[] = gensym()
-end
+
+#These have to get overloaded for the pipeline to work!
+swapbuffers(c::AbstractContext) = return
+Base.clear!(c::AbstractContext) = return
 
 struct Shader
     name::Symbol
     source::Vector{UInt8}
     typ::GLenum
     id::GLuint
-    context::GLContext
+    context::AbstractContext
     function Shader(name, source, typ, id)
         new(name, source, typ, id, current_context())
     end
@@ -77,7 +93,7 @@ mutable struct GLProgram
     shader      ::Vector{Shader}
     nametype    ::Dict{Symbol, GLenum}
     uniformloc  ::Dict{Symbol, Tuple}
-    context     ::GLContext
+    context     ::AbstractContext
     function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol, GLenum}, uniformloc::Dict{Symbol, Tuple})
         obj = new(id, shader, nametype, uniformloc, current_context())
         finalizer(obj, free)
@@ -96,49 +112,6 @@ function Base.show(io::IO, p::GLProgram)
     end
 end
 
-
-############################################
-# Framebuffers and the like
-
-struct RenderBuffer
-    id      ::GLuint
-    format  ::GLenum
-    context ::GLContext
-    function RenderBuffer(format, dimension)
-        @assert length(dimensions) == 2
-        id = GLuint[0]
-        glGenRenderbuffers(1, id)
-        glBindRenderbuffer(GL_RENDERBUFFER, id[1])
-        glRenderbufferStorage(GL_RENDERBUFFER, format, dimension...)
-        new(id, format, current_context())
-    end
-end
-function resize!(rb::RenderBuffer, newsize::AbstractArray)
-    if length(newsize) != 2
-        error("RenderBuffer needs to be 2 dimensional. Dimension found: ", newsize)
-    end
-    glBindRenderbuffer(GL_RENDERBUFFER, rb.id)
-    glRenderbufferStorage(GL_RENDERBUFFER, rb.format, newsize...)
-end
-
-struct FrameBuffer{T}
-    id          ::GLuint
-    attachments ::Vector{Any}
-    context     ::GLContext
-    function FrameBuffer{T}(dimensions::Signal) where T
-        fb = glGenFramebuffers()
-        glBindFramebuffer(GL_FRAMEBUFFER, fb)
-        new(id, attachments, current_context())
-    end
-end
-function resize!(fbo::FrameBuffer, newsize::AbstractArray)
-    if length(newsize) != 2
-        error("FrameBuffer needs to be 2 dimensional. Dimension found: ", newsize)
-    end
-    for elem in fbo.attachments
-        resize!(elem)
-    end
-end
 
 ########################################################################################
 # OpenGL Arrays
@@ -161,10 +134,11 @@ julia2glenum(x::Type{GLfloat})  = GL_FLOAT
 julia2glenum(x::Type{GLdouble}) = GL_DOUBLE
 julia2glenum(x::Type{Float16})  = GL_HALF_FLOAT
 function julia2glenum(::Type{T}) where T
-    error("Type: $T not supported as opengl number datatype")
+    glasserteltype(T)
+    julia2glenum(eltype(T))
 end
 
-include("GLBuffer.jl")
+include("buffer.jl")
 include("GLTexture.jl")
 
 ########################################################################
@@ -180,9 +154,9 @@ mutable struct GLVertexArray{T}
     program      ::GLProgram
     id           ::GLuint
     bufferlength ::Int
-    buffers      ::Dict{String, GLBuffer}
+    buffers      ::Dict{String, Buffer}
     indices      ::T
-    context      ::GLContext
+    context      ::AbstractContext
 
     function GLVertexArray{T}(program, id, bufferlength, buffers, indices) where T
         new(program, id, bufferlength, buffers, indices, current_context())
@@ -205,9 +179,9 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     id = glGenVertexArrays()
     glBindVertexArray(id)
     lenbuffer = 0
-    buffers = Dict{String, GLBuffer}()
+    buffers = Dict{String, Buffer}()
     for (name, buffer) in bufferdict
-        if isa(buffer, GLBuffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
+        if isa(buffer, Buffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
             bind(buffer)
             indexes = buffer
         elseif Symbol(name) == :indices
@@ -285,8 +259,8 @@ function RenderObject(
     for (k,v) in data # convert everything to OpenGL compatible types
         if haskey(targets, k)
             # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
-            # e.g. Texture{T,1} and GLBuffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
-            # but in some cases we want a Texture, sometimes a GLBuffer or TextureBuffer
+            # e.g. Texture{T,1} and Buffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
+            # but in some cases we want a Texture, sometimes a Buffer or TextureBuffer
             data[k] = gl_convert(targets[k], v)
         else
             k in (:indices, :visible, :fxaa) && continue
@@ -305,8 +279,8 @@ function RenderObject(
     if !isempty(meshs)
         merge!(data, [v.data for (k,v) in meshs]...)
     end
-    buffers  = filter((key, value) -> isa(value, GLBuffer) || key == :indices, data)
-    uniforms = filter((key, value) -> !isa(value, GLBuffer) && key != :indices, data)
+    buffers  = filter((key, value) -> isa(value, Buffer) || key == :indices, data)
+    uniforms = filter((key, value) -> !isa(value, Buffer) && key != :indices, data)
     get!(data, :visible, true) # make sure, visibility is set
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     p = gl_convert(Reactive.value(program), data) # "compile" lazyshader
@@ -345,7 +319,7 @@ function free(x::GLProgram)
     end
     return
 end
-function free(x::GLBuffer)
+function free(x::Buffer)
     if !is_current_context(x.context)
         return # don't free from other context
     end

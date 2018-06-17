@@ -7,7 +7,7 @@ const GLSL_COMPATIBLE_NUMBER_TYPES = (GLfloat, GLint, GLuint, GLdouble)
 const NATIVE_TYPES = Union{
     StaticArray, GLSL_COMPATIBLE_NUMBER_TYPES...,
     ZeroIndex{GLint}, ZeroIndex{GLuint},
-    GLBuffer, GPUArray, Shader, GLProgram, NativeMesh
+    Buffer, GPUArray, Shader, GLProgram, NativeMesh
 }
 
 opengl_prefix(T)  = error("Object $T is not a supported uniform element type")
@@ -115,7 +115,7 @@ function toglsltype_string(x::T) where T
         error("can't splice $T into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
     end
 end
-toglsltype_string(t::Union{GLBuffer{T}, GPUVector{T}}) where {T} = string("in ", glsl_typename(T))
+toglsltype_string(t::Union{Buffer{T}, GPUVector{T}}) where {T} = string("in ", glsl_typename(T))
 # Gets used to access a
 function glsl_variable_access(keystring, t::Texture{T, D}) where {T,D}
     fields = SubString("rgba", 1, length(T))
@@ -124,7 +124,7 @@ function glsl_variable_access(keystring, t::Texture{T, D}) where {T,D}
     end
     return string("getindex(", keystring, "index).", fields, ";")
 end
-function glsl_variable_access(keystring, ::Union{Real, GLBuffer, GPUVector, StaticArray, Colorant})
+function glsl_variable_access(keystring, ::Union{Real, Buffer, GPUVector, StaticArray, Colorant})
     string(keystring, ";")
 end
 function glsl_variable_access(keystring, s::Signal)

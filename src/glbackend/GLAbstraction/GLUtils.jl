@@ -247,7 +247,7 @@ function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
     attribs = attributes(m)
     @materialize! vertices, faces = attribs
-    result[:vertices] = GLBuffer(vertices)
+    result[:vertices] = Buffer(vertices)
     result[:faces]    = indexbuffer(faces)
     for (field, val) in attribs
         if field in (:texturecoordinates, :normals, :attribute_id, :color)
@@ -255,7 +255,7 @@ function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
                 field = :vertex_color
             end
             if isa(val, Vector)
-                result[field] = GLBuffer(val)
+                result[field] = Buffer(val)
             end
         else
             result[field] = Texture(val)
@@ -269,7 +269,7 @@ function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
     mv = Reactive.value(m)
     attribs = attributes(mv)
     @materialize! vertices, faces = attribs
-    result[:vertices] = GLBuffer(vertices)
+    result[:vertices] = Buffer(vertices)
     result[:faces]    = indexbuffer(faces)
     for (field, val) in attribs
         if field in (:texturecoordinates, :normals, :attribute_id, :color)
@@ -277,7 +277,7 @@ function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
                 field = :vertex_color
             end
             if isa(val, Vector)
-                result[field] = GLBuffer(val)
+                result[field] = Buffer(val)
             end
         else
             result[field] = Texture(val)
@@ -294,4 +294,13 @@ function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
         end
     end
     MT(result)
+end
+
+## added utils from refactor...
+function glasserteltype(::Type{T}) where T
+    try
+        length(T)
+    except
+        error("Error only types with well defined lengths are allowed")
+    end
 end

@@ -26,7 +26,7 @@ const empty_signal = Signal(false)
 post_empty() = push!(empty_signal, false)
 
 """
-Function which sets an argument of a Context/RenderObject.
+Function which sets an argument of a Composition/RenderObject.
 If multiple RenderObjects are supplied, it'll try to set the same argument in all
 of them.
 """
@@ -38,7 +38,7 @@ function set_arg!(robj::RenderObject, sym, value)
     post_empty()
     nothing
 end
-function set_arg!(robj::Context, sym, value)
+function set_arg!(robj::Composition, sym, value)
     set_arg!(robj.children, sym, value)
     nothing
 end
@@ -122,7 +122,7 @@ prerendertype(::RenderObject{Pre}) where {Pre} = Pre
 extract_renderable(context::Vector{RenderObject}) = context
 extract_renderable(context::RenderObject) = RenderObject[context]
 extract_renderable(context::Vector{T}) where {T <: Composable} = map(extract_renderable, context)
-function extract_renderable(context::Context)
+function extract_renderable(context::Composition)
     result = extract_renderable(context.children[1])
     for elem in context.children[2:end]
         push!(result, extract_renderable(elem)...)
@@ -140,7 +140,7 @@ end
 function _translate!(c::RenderObject, trans::TOrSignal{Mat4f0})
     c[:model] = const_lift(*, trans, c[:model])
 end
-function _translate!(c::Context, m::TOrSignal{Mat4f0})
+function _translate!(c::Composition, m::TOrSignal{Mat4f0})
     for elem in c.children
         _translate!(elem, m)
     end
@@ -162,9 +162,9 @@ end
 """
 Copy function for a context. We only need to copy the children
 """
-function Base.copy(c::Context{T}) where T
+function Base.copy(c::Composition{T}) where T
     new_children = [copy(child) for child in c.children]
-    Context{T}(new_children, c.boundingbox, c.transformation)
+    Composition{T}(new_children, c.boundingbox, c.transformation)
 end
 
 
@@ -181,7 +181,7 @@ function Base.copy(robj::RenderObject{Pre}) where Pre
         robj.postrenderfunction,
         robj.boundingbox,
     )
-    Context(robj)
+    Composition(robj)
 end
 
 # """

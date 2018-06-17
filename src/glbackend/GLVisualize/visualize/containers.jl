@@ -22,7 +22,7 @@ function visualize(grid::Array{T, N}, s::Style, data::Dict) where {T <: Composab
             ) # update transformation matrix
         )
     end
-    Context(grid...)
+    Composition(grid...)
 end
 
 function list_translation(lastposition, gap, direction, bb)
@@ -46,7 +46,7 @@ function visualize(list::Vector{T}, s::Style, data::Dict) where T <: Composable
         GLAbstraction.translate!(elem, map(first, transl_nextpos))
         lastposition = map(last, transl_nextpos)
     end
-    Context(list...)
+    Composition(list...)
 end
 
 
@@ -90,5 +90,5 @@ function visualize(
         lines, :linesegment, thickness = 0.25mm,
         color = RGBA{Float32}(0.9, 0.9, 0.9, 1.0)
     )
-    Context(label_vis, line_vis, robjs...)
+    Composition(label_vis, line_vis, robjs...)
 end

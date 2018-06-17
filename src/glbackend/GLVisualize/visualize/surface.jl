@@ -72,11 +72,11 @@ function surface(main, s::Style{:surface}, data::Dict)
         position_y  = nothing => Texture
         position_z  = nothing => Texture
         wireframe   = false
-        glow_color       = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color     = RGBA{Float32}(0,0,0,1) => GLBuffer
+        glow_color       = RGBA{Float32}(0,0,0,0) => Buffer
+        stroke_color     = RGBA{Float32}(0,0,0,1) => Buffer
         stroke_width     = wireframe ? 0.03f0 : 0f0
         glow_width       = 0f0
-        uv_offset_width  = Vec4f0(0) => GLBuffer
+        uv_offset_width  = Vec4f0(0) => Buffer
         shape            = RECTANGLE
         wireframe        = false
         image            = nothing => Texture
@@ -162,7 +162,7 @@ function _position_calc(
     "pos = vec3(texelFetch(position_x, index).x, position_y, position_z);"
 end
 function _position_calc(
-        position_x::VecTypes{T}, position_y::T, position_z::T, target::Type{GLBuffer}
+        position_x::VecTypes{T}, position_y::T, position_z::T, target::Type{Buffer}
     ) where T <: AbstractFloat
     "pos = vec3(position_x, position_y, position_z);"
 end
@@ -172,7 +172,7 @@ function _position_calc(
     "pos = texelFetch(position, index).xyz;"
 end
 function _position_calc(
-        position_xyz::VecTypes{T}, target::Type{GLBuffer}
+        position_xyz::VecTypes{T}, target::Type{Buffer}
     ) where T <: StaticVector
     len = length(T)
     filler = join(ntuple(x->0, 3-len), ", ")
@@ -191,7 +191,7 @@ function _position_calc(
 end
 function _position_calc(
         position_x::VecTypes{T}, position_y::VecTypes{T}, position_z::VecTypes{T},
-        target::Type{GLBuffer}
+        target::Type{Buffer}
     ) where T<:AbstractFloat
     "pos = vec3(
         position_x,
@@ -215,7 +215,7 @@ function _position_calc(
     "
 end
 function _position_calc(
-        position::Grid{2}, ::VecTypes{T}, target::Type{GLBuffer}
+        position::Grid{2}, ::VecTypes{T}, target::Type{Buffer}
     ) where T
     "
     ivec2 index2D = ind2sub(position.dims, index);

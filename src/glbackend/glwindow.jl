@@ -1,3 +1,5 @@
+import .GLAbstraction: bind
+
 """
 Selection of random objects on the screen is realized by rendering an
 object id + plus an arbitrary index into the framebuffer.
@@ -27,16 +29,6 @@ function (sp::PostprocessPrerender)()
 end
 
 const PostProcessROBJ = RenderObject{PostprocessPrerender}
-mutable struct GLFramebuffer
-    id         ::NTuple{2, GLuint}
-    color      ::Texture{RGBA{N0f8}, 2}
-    objectid   ::Texture{Vec{2, GLushort}, 2}
-    depth      ::GLuint
-    color_luma ::Texture{RGBA{N0f8}, 2}
-    postprocess::NTuple{3, PostProcessROBJ}
-end
-
-Base.size(fb::GLFramebuffer) = size(fb.color) # it's guaranteed, that they all have the same size
 
 loadshader(name) = joinpath(@__DIR__, "GLVisualize", "assets", "shader", name)
 
@@ -88,70 +80,70 @@ function postprocess(color, color_luma, framebuffer_size)
     (pass1, pass2, pass3)
 end
 
-function attach_framebuffer(t::Texture{T, 2}, attachment) where T
-    glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
-end
+# function attach_framebuffer(t::Texture{T, 2}, attachment) where T
+#     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
+# end
 
 
 
-function GLFramebuffer(fb_size)
-    render_framebuffer = glGenFramebuffers()
+# function GLFramebuffer(fb_size)
+#     render_framebuffer = glGenFramebuffers()
+#
+#     glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
+#
+#     buffersize = tuple(value(fb_size)...)
+#
+#     color_buffer = Texture(RGBA{N0f8}, buffersize, minfilter=:nearest, x_repeat=:clamp_to_edge)
+#
+#     objectid_buffer = Texture(Vec{2, GLushort}, buffersize, minfilter=:nearest, x_repeat=:clamp_to_edge)
+#
+#     depth_stencil_rb = Ref{GLuint}()
+#     glGenRenderbuffers(1, depth_stencil_rb)
+#     glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_rb[])
+#     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, buffersize...)
+#
+#     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_stencil_rb[])
+#     glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth_stencil_rb[])
+#
+#     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
+#
+#     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
+#
+#     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
+#     @assert status == GL_FRAMEBUFFER_COMPLETE
+#
+#     color_luma = Texture(RGBA{N0f8}, buffersize, minfilter=:linear, x_repeat=:clamp_to_edge)
+#     color_luma_framebuffer = glGenFramebuffers()
+#     glBindFramebuffer(GL_FRAMEBUFFER, color_luma_framebuffer)
+#     attach_framebuffer(color_luma, GL_COLOR_ATTACHMENT0)
+#     @assert status == GL_FRAMEBUFFER_COMPLETE
+#
+#     glBindFramebuffer(GL_FRAMEBUFFER, 0)
+#
+#     p = postprocess(color_buffer, color_luma, fb_size)
+#
+#     fb = GLFramebuffer(
+#         (render_framebuffer, color_luma_framebuffer),
+#         color_buffer, objectid_buffer, depth_stencil_rb[],
+#         color_luma,
+#         p
+#     )
+#     fb
+# end
 
-    glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
-
-    buffersize = tuple(value(fb_size)...)
-
-    color_buffer = Texture(RGBA{N0f8}, buffersize, minfilter=:nearest, x_repeat=:clamp_to_edge)
-
-    objectid_buffer = Texture(Vec{2, GLushort}, buffersize, minfilter=:nearest, x_repeat=:clamp_to_edge)
-
-    depth_stencil_rb = Ref{GLuint}()
-    glGenRenderbuffers(1, depth_stencil_rb)
-    glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_rb[])
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, buffersize...)
-
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_stencil_rb[])
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth_stencil_rb[])
-
-    attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
-
-    attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
-
-    status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
-    @assert status == GL_FRAMEBUFFER_COMPLETE
-
-    color_luma = Texture(RGBA{N0f8}, buffersize, minfilter=:linear, x_repeat=:clamp_to_edge)
-    color_luma_framebuffer = glGenFramebuffers()
-    glBindFramebuffer(GL_FRAMEBUFFER, color_luma_framebuffer)
-    attach_framebuffer(color_luma, GL_COLOR_ATTACHMENT0)
-    @assert status == GL_FRAMEBUFFER_COMPLETE
-
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
-
-    p = postprocess(color_buffer, color_luma, fb_size)
-
-    fb = GLFramebuffer(
-        (render_framebuffer, color_luma_framebuffer),
-        color_buffer, objectid_buffer, depth_stencil_rb[],
-        color_luma,
-        p
-    )
-    fb
-end
-
-function Base.resize!(fb::GLFramebuffer, window_size)
-    ws = window_size[1], window_size[2]
-    if ws!=size(fb) && all(x->x>0, window_size)
-        buffersize = tuple(window_size...)
-        resize_nocopy!(fb.color, buffersize)
-        resize_nocopy!(fb.color_luma, buffersize)
-        resize_nocopy!(fb.objectid, buffersize)
-        glBindRenderbuffer(GL_RENDERBUFFER, fb.depth)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, buffersize...)
-        glBindRenderbuffer(GL_RENDERBUFFER, 0)
-    end
-    nothing
-end
+# function Base.resize!(fb::GLFramebuffer, window_size)
+#     ws = window_size[1], window_size[2]
+#     if ws!=size(fb) && all(x->x>0, window_size)
+#         buffersize = tuple(window_size...)
+#         resize_nocopy!(fb.color, buffersize)
+#         resize_nocopy!(fb.color_luma, buffersize)
+#         resize_nocopy!(fb.objectid, buffersize)
+#         glBindRenderbuffer(GL_RENDERBUFFER, fb.depth)
+#         glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, buffersize...)
+#         glBindRenderbuffer(GL_RENDERBUFFER, 0)
+#     end
+#     nothing
+# end
 
 
 struct MonitorProperties
@@ -178,11 +170,9 @@ function MonitorProperties(monitor::GLFW.Monitor)
     MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
 end
 
-abstract type AbstractContext end
-
 mutable struct GLContext <: AbstractContext
     window::GLFW.Window
-    framebuffer::GLFramebuffer
+    framebuffer::FrameBuffer
     visible::Bool
     cache::Dict
 end
