@@ -57,7 +57,7 @@ function postprocess(color, color_luma, framebuffer_size)
     )
     data2 = Dict{Symbol, Any}(
         :color_texture => color_luma,
-        :RCPFrame => map(rcpframe, framebuffer_size)
+        :RCPFrame => rcpframe(framebuffer_size)
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
 

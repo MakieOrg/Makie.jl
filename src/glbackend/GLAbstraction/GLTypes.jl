@@ -139,7 +139,7 @@ function julia2glenum(::Type{T}) where T
 end
 
 include("buffer.jl")
-include("GLTexture.jl")
+include("texture.jl")
 
 ########################################################################
 

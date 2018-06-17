@@ -176,6 +176,7 @@ function draw(fb::FrameBuffer, i::AbstractUnitRange)
     ntexts = length(textures(fb)[i])
     glDrawBuffers(GLuint(ntexts), GL_COLOR_ATTACHMENT.(i.-1))
 end
+
 function Base.clear!(fb::FrameBuffer, color)
     glClearColor(GLfloat(color[1]), GLfloat(color[2]), GLfloat(color[3]), GLfloat(color[4]))
     draw(fb)
