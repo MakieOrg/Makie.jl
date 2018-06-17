@@ -16,7 +16,7 @@ end
 intensity_convert(intensity, verts) = intensity
 function intensity_convert(intensity::VecOrSignal{T}, verts) where T
     if length(value(intensity)) == length(value(verts))
-        GLBuffer(intensity)
+        Buffer(intensity)
     else
         Texture(intensity)
     end
@@ -68,11 +68,11 @@ function _default(position::Union{VecTypes{T}, MatTypes{T}}, s::style"lines", da
             sz = ndims(p) == 1 ? (length(p), 1) : size(p)
             Vec{2, Int32}(sz)
         end
-        vertex              = p_vec => GLBuffer
+        vertex              = p_vec => Buffer
         intensity           = nothing
         color_map           = nothing => Texture
         color_norm          = nothing
-        color               = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
+        color               = (color_map == nothing ? default(RGBA, s) : nothing) => Buffer
         thickness::Float32  = 2f0
         pattern             = nothing
         fxaa                = false
@@ -87,7 +87,7 @@ function _default(position::Union{VecTypes{T}, MatTypes{T}}, s::style"lines", da
                 (i == l || isnan(vec[min(i+1, l)])) && return Float32(1) # end
                 Float32(2) # segment
             end
-        end => GLBuffer
+        end => Buffer
     end
     if pattern != nothing
         if !isa(pattern, Texture)
@@ -99,7 +99,7 @@ function _default(position::Union{VecTypes{T}, MatTypes{T}}, s::style"lines", da
         end
         @gen_defaults! data begin
             pattern_length = Float32(last(pattern))
-            lastlen   = const_lift(sumlengths, p_vec) => GLBuffer
+            lastlen   = const_lift(sumlengths, p_vec) => Buffer
             maxlength = const_lift(last, lastlen)
         end
     end
@@ -114,9 +114,9 @@ _default(positions::VecTypes{LineSegment{T}}, s::Style, data::Dict) where {T <: 
 
 function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) where T <: Point
     @gen_defaults! data begin
-        vertex              = positions           => GLBuffer
-        color               = default(RGBA, s, 1) => GLBuffer
-        thickness           = 2f0                 => GLBuffer
+        vertex              = positions           => Buffer
+        color               = default(RGBA, s, 1) => Buffer
+        thickness           = 2f0                 => Buffer
         shape               = RECTANGLE
         pattern             = nothing
         fxaa                = false
@@ -160,12 +160,12 @@ Fast, non anti aliased lines
 """
 function _default(position::VecTypes{T}, s::style"speedlines", data::Dict) where T <: Point
     @gen_defaults! data begin
-        vertex       = position => GLBuffer
+        vertex       = position => Buffer
         color_map    = nothing  => Vec2f0
         indices      = const_lift(line_indices, position) => to_index_buffer
-        color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => Buffer
         color_norm   = nothing  => Vec2f0
-        intensity    = nothing  => GLBuffer
+        intensity    = nothing  => Buffer
         shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
         gl_primitive = GL_LINES
     end
