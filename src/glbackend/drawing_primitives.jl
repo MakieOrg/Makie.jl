@@ -1,4 +1,4 @@
-gpuvec(x) = GPUVector(GLBuffer(x))
+gpuvec(x) = GPUVector(Buffer(x))
 
 function to_glvisualize_key(k)
     k == :rotations && return :rotation

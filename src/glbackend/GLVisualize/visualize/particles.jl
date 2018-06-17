@@ -316,12 +316,12 @@ This is the most primitive particle system, which uses simple points as primitiv
 This is supposed to be the fastest way of displaying particles!
 """
 _default(position::VecTypes{T}, s::style"speed", data::Dict) where {T <: Point} = @gen_defaults! data begin
-    vertex       = position => GLBuffer
+    vertex       = position => Buffer
     color_map    = nothing  => Vec2f0
-    color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+    color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => Buffer
 
     color_norm   = nothing  => Vec2f0
-    intensity = nothing  => GLBuffer
+    intensity = nothing  => Buffer
     point_size   = 2f0
     prerender    = ()->glPointSize(point_size)
     shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
@@ -439,10 +439,10 @@ function _default(
         ) where {Pr <: Sprites, G <: Tuple}
     @gen_defaults! data begin
         shape      = const_lift(primitive_shape, p[1])
-        position   = nothing => GLBuffer
-        position_x = p[2][1] => GLBuffer
-        position_y = p[2][2] => GLBuffer
-        position_z = length(p[2]) > 2 ? p[2][3] : 0f0 => GLBuffer
+        position   = nothing => Buffer
+        position_x = p[2][1] => Buffer
+        position_y = p[2][2] => Buffer
+        position_z = length(p[2]) > 2 ? p[2][3] : 0f0 => Buffer
     end
     sprites(p, s, data)
 end
@@ -458,17 +458,17 @@ function sprites(p, s, data)
 
     @gen_defaults! data begin
         shape       = const_lift(x-> Int32(primitive_shape(x)), p[1])
-        position    = p[2]    => GLBuffer
-        position_x  = nothing => GLBuffer
-        position_y  = nothing => GLBuffer
-        position_z  = nothing => GLBuffer
+        position    = p[2]    => Buffer
+        position_x  = nothing => Buffer
+        position_y  = nothing => Buffer
+        position_z  = nothing => Buffer
 
-        scale       = const_lift(primitive_scale, p[1]) => GLBuffer
-        scale_x     = nothing                => GLBuffer
-        scale_y     = nothing                => GLBuffer
-        scale_z     = nothing                => GLBuffer
+        scale       = const_lift(primitive_scale, p[1]) => Buffer
+        scale_x     = nothing                => Buffer
+        scale_y     = nothing                => Buffer
+        scale_z     = nothing                => Buffer
 
-        rotation    = rot => GLBuffer
+        rotation    = rot => Buffer
         image       = nothing => Texture
     end
     # TODO don't make this dependant on some shady type dispatch
@@ -478,17 +478,17 @@ function sprites(p, s, data)
     end
 
     @gen_defaults! data begin
-        offset          = primitive_offset(p[1], scale) => GLBuffer
-        intensity       = nothing => GLBuffer
+        offset          = primitive_offset(p[1], scale) => Buffer
+        intensity       = nothing => Buffer
         color_map       = nothing => Texture
         color_norm      = nothing
-        color           = (color_map == nothing ? default(RGBA, s) : nothing) => GLBuffer
+        color           = (color_map == nothing ? default(RGBA, s) : nothing) => Buffer
 
-        glow_color      = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color    = RGBA{Float32}(0,0,0,0) => GLBuffer
+        glow_color      = RGBA{Float32}(0,0,0,0) => Buffer
+        stroke_color    = RGBA{Float32}(0,0,0,0) => Buffer
         stroke_width    = 0f0
         glow_width      = 0f0
-        uv_offset_width = const_lift(primitive_uv_offset_width, p[1]) => GLBuffer
+        uv_offset_width = const_lift(primitive_uv_offset_width, p[1]) => Buffer
 
         distancefield   = primitive_distancefield(p[1]) => Texture
         indices         = const_lift(length, p[2]) => to_index_buffer
@@ -499,7 +499,7 @@ function sprites(p, s, data)
         shader           = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "sprites.geom",
             "sprites.vert", "distance_shape.frag",
-            view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, GLBuffer))
+            view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, Buffer))
         )
         gl_primitive = GL_POINTS
     end

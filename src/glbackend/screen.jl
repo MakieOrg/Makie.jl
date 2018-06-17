@@ -1,10 +1,13 @@
+import GLAbstraction.defaultframebuffer
+
+
 const ScreenID = UInt8
 const ZIndex = Int
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
-    framebuffer::GLFramebuffer
+    framebuffer::FrameBuffer
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
@@ -13,7 +16,7 @@ mutable struct Screen <: AbstractScreen
     cache2plot::Dict{UInt16, AbstractPlot}
     function Screen(
             glscreen::GLFW.Window,
-            framebuffer::GLFramebuffer,
+            framebuffer::FrameBuffer,
             rendertask::RefValue{Task},
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
@@ -62,17 +65,14 @@ function Base.display(screen::Screen, scene::Scene)
 end
 
 function colorbuffer(screen::Screen)
-    if isopen(screen)
-        GLFW.PollEvents()
-        yield()
-        render_frame(screen) # let it render
-        GLFW.SwapBuffers(to_native(screen))
-        glFinish() # block until opengl is done rendering
-        buffer = gpu_data(screen.framebuffer.color)
-        return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
-    else
-        error("Screen not open!")
-    end
+    GLFW.PollEvents()
+    yield()
+    render_frame(screen) # let it render
+    GLFW.SwapBuffers(to_native(screen))
+    glFinish() # block until opengl is done rendering
+    buffer = gpu_data(screen.framebuffer, 1) #This assumes that the color is stored
+                                             #in GL_COLOR_ATTACHMENT0
+    return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
 end
 
 
@@ -155,8 +155,12 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         GLFW.HideWindow(window)
     end
     GLFW.SwapInterval(0)
-
-    fb = GLFramebuffer(Int.(resolution))
+    resolution_signal = Signal(resolution)
+    GLFW.SetFramebufferSizeCallback(
+        window,
+        (window, w::Cint, h::Cint)-> push!(resolution_signal, Int.((w, h)))
+    )
+    fb = GLAbstraction.defaultframebuffer(value(resolution_signal))
     screen = Screen(
         window, fb,
         RefValue{Task}(),

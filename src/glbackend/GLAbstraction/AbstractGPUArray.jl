@@ -73,7 +73,7 @@ end
 
 function update!(A::GPUArray{T, N}, value::Array{T, N}) where {T, N}
     if length(A) != length(value)
-        if isa(A, GLBuffer)
+        if isa(A, Buffer)
             resize!(A, length(value))
         elseif isa(A, Texture) && ndims(A) == 2
             resize_nocopy!(A, size(value))
@@ -111,7 +111,7 @@ end
 GPUVector(x::GPUArray) = GPUVector{eltype(x)}(x, size(x), length(x))
 
 function update!(A::GPUVector{T}, value::Vector{T}) where T
-    if isa(A, GLBuffer) && (length(A) != length(value))
+    if isa(A, Buffer) && (length(A) != length(value))
         resize!(A, length(value))
     end
     dims = map(x->1:x, size(A))

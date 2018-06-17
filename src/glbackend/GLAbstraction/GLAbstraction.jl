@@ -47,7 +47,7 @@ import ModernGL.glViewport
 import ModernGL.glScissor
 
 include("composition.jl")
-export Composable, Context, convert!, boundingbox
+export Composable, Composition, convert!, boundingbox
 
 
 include("GLUtils.jl")
@@ -58,6 +58,9 @@ export close_to_square
 export AND, OR, isnotempty
 
 include("GLTypes.jl")
+include("framebuffer.jl")
+export FrameBuffer
+export AbstractContext
 export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
 export TextureParameters
@@ -73,7 +76,7 @@ export instanced_renderobject    # simplification for creating a RenderObject wh
 export extract_renderable
 export set_arg!
 export GLVertexArray            # VertexArray wrapper object
-export GLBuffer                 # OpenGL Buffer object wrapper
+export Buffer                 # OpenGL Buffer object wrapper
 export indexbuffer              # Shortcut to create an OpenGL Buffer object for indexes (1D, cardinality of one and GL_ELEMENT_ARRAY_BUFFER set)
 export opengl_compatible        # infers if a type is opengl compatible and returns stats like cardinality and eltype (will be deprecated)
 export cardinality              # returns the cardinality of the elements of a buffer
