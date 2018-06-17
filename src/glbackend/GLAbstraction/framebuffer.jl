@@ -176,17 +176,33 @@ function draw(fb::FrameBuffer, i::AbstractUnitRange)
     ntexts = length(textures(fb)[i])
     glDrawBuffers(GLuint(ntexts), GL_COLOR_ATTACHMENT.(i.-1))
 end
-
+#All this is not very focussed on performance yet
 function Base.clear!(fb::FrameBuffer, color)
     glClearColor(GLfloat(color[1]), GLfloat(color[2]), GLfloat(color[3]), GLfloat(color[4]))
     draw(fb)
     glClear(GL_COLOR_BUFFER_BIT)
-    glClear(GL_DEPTH_BUFFER_BIT)
+    fm = depthformat(fb)
+    if fm <: DepthStencil
+        glClear(GL_STENCIL_BUFFER_BIT)
+        glClear(GL_DEPTH_BUFFER_BIT)
+    elseif fm <: Depth
+        glClear(GL_DEPTH_BUFFER_BIT)
+    end
 end
 Base.clear!(fb::FrameBuffer) = clear!(fb, (0.0, 0.0, 0.0, 0.0))
 
 textures(fb::FrameBuffer) =
     fb.attachments[find(x -> !(x <: DepthFormat), eltypes(fb))]
+depthbuffer(fb::FrameBuffer) = fb.attachments[findfirst(x -> x <: DepthFormat, eltypes(fb))]
+
+function depthformat(fb::FrameBuffer)
+    id = findfirst(x -> x <: DepthFormat, eltypes(fb))
+    if id != 0
+        return eltypes(fb)[id]
+    else
+        return Void
+    end
+end
 
 gpu_data(fb::FrameBuffer, i) = gpu_data(textures(fb)[i])
 
