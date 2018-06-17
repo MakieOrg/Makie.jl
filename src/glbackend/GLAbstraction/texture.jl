@@ -800,6 +800,8 @@ is_texturebuffer(t::Texture) = t.texturetype == GL_TEXTURE_BUFFER
 bind(t::Texture) = glBindTexture(t.texturetype, t.id)
 bind(t::Texture, id) = glBindTexture(t.texturetype, id)
 
+Base.size(t::Texture) = t.size
+
 function resize_nocopy!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     bind(t)
     glTexImage(t.texturetype, 0, t.internalformat, newdims..., 0, t.format, t.pixeltype, C_NULL)

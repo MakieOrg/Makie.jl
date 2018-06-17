@@ -1,4 +1,4 @@
-import .GLAbstraction: bind, draw
+import .GLAbstraction: bind, draw, textures, unbind
 
 function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     try
@@ -69,35 +69,38 @@ function render_frame(screen::Screen)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     GLAbstraction.render(screen, true)
 
+    #very badd for performance, this needs to go once the renderpipeline works
+    texts = textures(fb)
+    ppasses = postprocess(texts[1], texts[3], size(texts[1]))
     # transfer color to luma buffer and apply fxaa
     # luma framebuffer
-    # draw(fb, 3)
-    # glClearColor(0,0,0,0)
-    # glClear(GL_COLOR_BUFFER_BIT)
-    # glViewport(0, 0, w, h)
-    # GLAbstraction.render(fb.postprocess[1]) # add luma and preprocess
+    draw(fb, 3)
+    glClearColor(0,0,0,0)
+    glClear(GL_COLOR_BUFFER_BIT)
+    glViewport(0, 0, w, h)
+    GLAbstraction.render(ppasses[1]) # add luma and preprocess
 
     # glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
-    # glDrawBuffer(GL_COLOR_ATTACHMENT0)
-    # GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
+    draw(fb, 1)
+    GLAbstraction.render(ppasses[2]) # copy with fxaa postprocess
 
     #prepare for non anti aliased pass
-    # glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    draw(fb, 1:2)
 
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
-    # GLAbstraction.render(screen, false)
-    # glDisable(GL_STENCIL_TEST)
-    # glViewport(0, 0, w, h)
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
+    GLAbstraction.render(screen, false)
+    glDisable(GL_STENCIL_TEST)
+    glViewport(0, 0, w, h)
     #Read all the selection queries
     for query_func in selection_queries
         query_func()
     end
-    # glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
-    # glClearColor(0, 0, 0, 0)
-    # glClear(GL_COLOR_BUFFER_BIT)
-    # GLAbstraction.render(fb.postprocess[3]) # copy postprocess
+    unbind(fb)
+    glClearColor(0, 0, 0, 0)
+    glClear(GL_COLOR_BUFFER_BIT)
+    GLAbstraction.render(ppasses[3]) # copy postprocess
     return
 end
 

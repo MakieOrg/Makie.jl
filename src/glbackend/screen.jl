@@ -1,4 +1,4 @@
-import GLAbstraction.defaultframebuffer
+import .GLAbstraction: defaultframebuffer
 
 
 const ScreenID = UInt8
@@ -7,7 +7,7 @@ const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
-    framebuffer::FrameBuffer
+    framebuffer::FrameBuffer #Color, Luma, needs to be more general?
     rendertask::RefValue{Task}
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
@@ -160,7 +160,7 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         window,
         (window, w::Cint, h::Cint)-> push!(resolution_signal, Int.((w, h)))
     )
-    fb = GLAbstraction.defaultframebuffer(value(resolution_signal))
+    fb = defaultframebuffer(value(resolution_signal))
     screen = Screen(
         window, fb,
         RefValue{Task}(),
