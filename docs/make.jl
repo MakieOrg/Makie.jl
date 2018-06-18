@@ -71,9 +71,13 @@ open(path, "w") do io
         println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
         for idx in indices
             try
-                println(io, "### Example $counter, \"$(database[idx].title)\"")
+                entry = database[idx]
+                uname = string(entry.unique_name)
+                src_lines = entry.file_range
+                println(io, "### Example $counter, \"$(entry.title)\"")
                 _print_source(io, idx; style = "julia")
-                println(io, "`plot thumbnails go here\n`")
+                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
+                # println(io, "`plots go here\n`")
                 # TODO: add code to embed plot thumbnails
                 counter += 1
             catch e
@@ -108,21 +112,10 @@ open(path, "w") do io
                 # println(io, "condition 2 -- group continuation\n")
                 # println(io, "group ID = $(entry.groupid)\n")
                 # println(io, "### Example $counter, \"$(entry.title)\"\n")
-                _print_source(io, i; style = "julia", example_counter = counter)
                 uname = string(entry.unique_name)
-                # check if destination the file is png or mp4, then embed
-                if "$(uname).png" in medialist
-                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
-                    println(io, "![lines $(entry.file_range)]($(embedpath))")
-                elseif "$(uname).gif" in medialist
-                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
-                    println(io, "![lines $(entry.file_range)]($(embedpath))")
-                elseif "$(uname).mp4" in medialist
-                    embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
-                    println(io, embedcode)
-                else
-                    warn("file $(uname) with unknown extension in mediapath or file nonexistent")
-                end
+                src_lines = entry.file_range
+                _print_source(io, i; style = "julia", example_counter = counter)
+                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
                 # println(io, "![]($(uname).png)")
                 embedpath = nothing
             catch e
@@ -137,19 +130,7 @@ open(path, "w") do io
                 # println(io, "### Example $counter, \"$(entry.title)\"\n")
                 _print_source(io, i; style = "julia", example_counter = counter)
                 uname = string(entry.unique_name)
-                # check if destination the file is png or mp4, then embed
-                if "$(uname).png" in medialist
-                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
-                    println(io, "![lines $(entry.file_range)]($(embedpath))")
-                elseif "$(uname).gif" in medialist
-                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
-                    println(io, "![lines $(entry.file_range)]($(embedpath))")
-                elseif "$(uname).mp4" in medialist
-                    embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
-                    println(io, embedcode)
-                else
-                    warn("file $(uname) with unknown extension in mediapath or file nonexistent")
-                end
+                embed_plot(io, uname, mediapath, buildpath; src_lines = entry.file_range)
                 # println(io, "![]($(uname).png)")
                 embedpath = nothing
             catch e
@@ -162,19 +143,7 @@ open(path, "w") do io
                 # println(io, "### Example $counter, \"$(entry.title)\"\n")
                 _print_source(io, i; style = "julia", example_counter = counter)
                 uname = string(entry.unique_name)
-                # check if destination the file is png or mp4, then embed
-                if "$(uname).png" in medialist
-                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
-                    println(io, "![lines $(entry.file_range)]($(embedpath))")
-                elseif "$(uname).gif" in medialist
-                    embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
-                    println(io, "![lines $(entry.file_range)]($(embedpath))")
-                elseif "$(uname).mp4" in medialist
-                    embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
-                    println(io, embedcode)
-                else
-                    warn("file $(uname) with unknown extension in mediapath or file nonexistent")
-                end
+                embed_plot(io, uname, mediapath, buildpath; src_lines = entry.file_range)
                 # println(io, "![]($(uname).png)")
                 embedpath = nothing
                 counter += 1
