@@ -3,6 +3,9 @@ include("database.jl")
 using Makie
 
 @block SimonDanisch ["2d"] begin
+    @cell "image" [image] begin
+        image(Makie.logo(), scale_plot = false)
+    end
     @cell "FEM mesh 2D" [fem, mesh] begin
         coordinates = [
             0.0 0.0;
@@ -254,7 +257,14 @@ end
         scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
         scene
     end
-
+    @cell "image scatter" [image, scatter] begin
+        scatter(
+            1:10, 1:10, rand(10, 10) .* 10,
+            rotations = normalize.(rand(Quaternionf0, 10*10)),
+            markersize = 1,
+            marker = Makie.logo() # can also be an array of images for each point
+        )
+    end
     @cell "Simple meshscatter" [meshscatter] begin
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
@@ -759,6 +769,15 @@ end
         contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
         heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
         contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
+    end
+
+    @cell "Contour3d" begin [contour3d] begin
+        function xy_data(x, y)
+            r = sqrt(x*x + y*y)
+            r == 0.0 ? 1f0 : (sin(r)/r)
+        end
+        r = linspace(-1, 1, 100)
+        contour3d(r, r, (x,y)-> xy_data(10x, 10y), levels = 20, linewidth = 3)
     end
     # @cell "3d volume animation" [volume, animation, gui, slices, layout] begin
     #     # # TODO: is this example unfinished?

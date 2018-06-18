@@ -33,7 +33,7 @@ atomics_pages = nothing
 atomics_list = String[]
 atomicspath = joinpath(srcpath, "atomics_examples")
 isdir(atomicspath) || mkdir(atomicspath)
-for func in atomics
+for func in (atomics..., contour)
     path = joinpath(atomicspath, "$(to_string(func)).md")
     open(path, "w") do io
         println(io, "# `$(to_string(func))`")
