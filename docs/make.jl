@@ -37,7 +37,6 @@ for func in (atomics..., contour)
     path = joinpath(atomicspath, "$(to_string(func)).md")
     open(path, "w") do io
         println(io, "# `$(to_string(func))`")
-        # println(io, "## `$func`")
         try
             _help(io, func; extended = true)
             embed_thumbnail(io, func)
@@ -66,8 +65,6 @@ open(path, "w") do io
         counter = 1
         # search for the indices where tag is found
         indices = find_indices(tag; title = nothing, author = nothing)
-        # # pick a random example from the list
-        # idx = indices[rand(1:length(indices))];
         println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
         for idx in indices
             try
@@ -77,8 +74,6 @@ open(path, "w") do io
                 println(io, "### Example $counter, \"$(entry.title)\"")
                 _print_source(io, idx; style = "julia")
                 embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                # println(io, "`plots go here\n`")
-                # TODO: add code to embed plot thumbnails
                 counter += 1
             catch e
                 println("ERROR: Didn't work with $tag at index $idx\n")
@@ -102,21 +97,20 @@ open(path, "w") do io
     for (i, entry) in enumerate(database)
         # print bibliographic stuff
         println(io, "## $(entry.title)")
-        # println(io, "line(s): $(entry.file_range)\n")
         print(io, "Tags: ")
         tags = sort(collect(entry.tags))
         for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
         println(io, "`$(tags[end])`.\n")
+        # There are 3 possible conditions:
+        #  cond 1: entry is part of a group, and is in same group as last example (continuation)
+        #  cond 2: entry is part of a new group
+        #  cond 3: entry is not part of a group
         if isgroup(entry) && entry.groupid == groupid_last
             try
-                # println(io, "condition 2 -- group continuation\n")
-                # println(io, "group ID = $(entry.groupid)\n")
-                # println(io, "### Example $counter, \"$(entry.title)\"\n")
                 uname = string(entry.unique_name)
                 src_lines = entry.file_range
                 _print_source(io, i; style = "julia", example_counter = counter)
                 embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                # println(io, "![]($(uname).png)")
                 embedpath = nothing
             catch e
                 Base.showerror(STDERR, e)
@@ -124,14 +118,11 @@ open(path, "w") do io
             end
         elseif isgroup(entry)
             try
-                # println(io, "condition 1 -- new group encountered!\n")
-                # println(io, "group ID = $(entry.groupid)\n")
                 groupid_last = entry.groupid
-                # println(io, "### Example $counter, \"$(entry.title)\"\n")
-                _print_source(io, i; style = "julia", example_counter = counter)
                 uname = string(entry.unique_name)
-                embed_plot(io, uname, mediapath, buildpath; src_lines = entry.file_range)
-                # println(io, "![]($(uname).png)")
+                src_lines = entry.file_range
+                _print_source(io, i; style = "julia", example_counter = counter)
+                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
                 embedpath = nothing
             catch e
                 Base.showerror(STDERR, e)
@@ -139,12 +130,10 @@ open(path, "w") do io
             end
         else
             try
-                # println(io, "condition 3 -- not part of a group\n")
-                # println(io, "### Example $counter, \"$(entry.title)\"\n")
-                _print_source(io, i; style = "julia", example_counter = counter)
                 uname = string(entry.unique_name)
-                embed_plot(io, uname, mediapath, buildpath; src_lines = entry.file_range)
-                # println(io, "![]($(uname).png)")
+                src_lines = entry.file_range
+                _print_source(io, i; style = "julia", example_counter = counter)
+                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
                 embedpath = nothing
                 counter += 1
                 groupid_last = entry.groupid
