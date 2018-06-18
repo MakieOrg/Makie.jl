@@ -15,8 +15,8 @@ end
 
 """
     contour3d(x, y, z)
-Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
-with z- elevation for each level
+Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
+with z-elevation for each level
 """
 @recipe(Contour3d) do scene
     Theme(;
