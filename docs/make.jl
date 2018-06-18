@@ -52,7 +52,7 @@ atomics_pages = "Atomic Functions" => atomics_list
 
 # =============================================
 # automatically generate gallery based on tags - all examples
-tags_list = sort(unique(tags_list))
+tags_list = sort!(unique(tags_list), by = x -> lowercase(x))
 path = joinpath(srcpath, "examples-for-tags.md")
 open(path, "w") do io
     println(io, "# Examples gallery, sorted by tag")
