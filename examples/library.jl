@@ -418,36 +418,36 @@ end
 
 
 @block SimonDanisch [documentation] begin
-    @group begin
-        @cell "Axis 2D" [axis] begin
-            scene = Scene(@resolution)
-            scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
-            aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
-            cam2d!(scene)
-            center!(scene)
-            scene
-        end
-
-        @cell "Axis 3D" [axis] begin
-            aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
-            AbstractPlotting.center!(scene)
-            # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
-            cam3d!(scene)
-            scene
-        end
-
-        @cell "Axis Custom" [axis] begin
-            # always tuples of xyz for most attributes that are applied to each axis
-            # TODO: aviz[:titlestyle] shows a Dict in a Dict, with :axisnames inside --> how to access this?
-            # TODO: aviz[:showticks] works
-            # aviz[:gridcolors] = (:gray, :gray, :gray)
-            # aviz[:axiscolors] = (:red, :black, :black)
-            # aviz[:showticks] = (true, true, false)
-
-            scene = Scene(@resolution)
-            println("placeholder")
-        end
-    end
+    # @group begin
+    #     @cell "Axis 2D" [axis] begin
+    #         scene = Scene(@resolution)
+    #         scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
+    #         aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
+    #         cam2d!(scene)
+    #         center!(scene)
+    #         scene
+    #     end
+    #
+    #     @cell "Axis 3D" [axis] begin
+    #         aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
+    #         AbstractPlotting.center!(scene)
+    #         # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
+    #         cam3d!(scene)
+    #         scene
+    #     end
+    #
+    #     @cell "Axis Custom" [axis] begin
+    #         # always tuples of xyz for most attributes that are applied to each axis
+    #         # TODO: aviz[:titlestyle] shows a Dict in a Dict, with :axisnames inside --> how to access this?
+    #         # TODO: aviz[:showticks] works
+    #         # aviz[:gridcolors] = (:gray, :gray, :gray)
+    #         # aviz[:axiscolors] = (:red, :black, :black)
+    #         # aviz[:showticks] = (true, true, false)
+    #
+    #         scene = Scene(@resolution)
+    #         println("placeholder")
+    #     end
+    # end
 
     # @group begin
     #     @cell "overload to position" [axis] begin
