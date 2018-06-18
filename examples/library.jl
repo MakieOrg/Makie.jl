@@ -6,6 +6,9 @@ using Makie
     @cell "image" [image] begin
         image(Makie.logo(), scale_plot = false)
     end
+    @cell "scatter colormap" [scatter, colormap] begin
+        scatter(rand(10), rand(10), intensity = rand(Float32, 10), colormap = :Spectral, colorrange = (0.0, 1.0))
+    end
     @cell "FEM mesh 2D" [fem, mesh] begin
         coordinates = [
             0.0 0.0;
