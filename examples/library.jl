@@ -771,7 +771,7 @@ end
         contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
     end
 
-    @cell "Contour3d" begin [contour3d] begin
+    @cell "Contour3d" [contour3d] begin
         function xy_data(x, y)
             r = sqrt(x*x + y*y)
             r == 0.0 ? 1f0 : (sin(r)/r)
