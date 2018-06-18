@@ -5,7 +5,6 @@ variables:
 .test_template: &test_definition
   before_script:
     - apt-get -qq update
-    - apt-get install -y libclfft-dev
     # glfw
     - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev
     # cairo etc
