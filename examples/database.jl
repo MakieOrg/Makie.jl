@@ -127,8 +127,8 @@ function find_indices(input_tags...; title = nothing, author = nothing, match_al
     end
 end
 
-find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
-find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
+find_indices(input::Function; title = nothing, author = nothing, match_all::Bool = true) = find_indices(to_string(input); title = title, author = author, match_all = match_all)
+find_indices(input::Vararg{Function,N}; title = nothing, author = nothing, match_all::Bool = true) where {N} = find_indices(to_string.(input)...; title = title, author = author, match_all = match_all)
 
 
 
