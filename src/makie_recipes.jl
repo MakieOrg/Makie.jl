@@ -30,7 +30,7 @@ with z- elevation for each level
 end
 
 
-function contourlines(::Type{Contour}, contours, cols)
+function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f0[]
     colors = RGBA{Float32}[]
     for (color, c) in zip(cols, Contours.levels(contours))
