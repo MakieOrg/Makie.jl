@@ -141,8 +141,7 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         glowcolor = RGBA(0, 0, 0, 0),
         glowwidth = 0.0,
         rotations = Billboard(),
-        intensity = nothing,
-        colormap = nothing,
+        colormap = theme(scene, :colormap),
         colorrange = nothing,
         marker_offset = nothing,
         fxaa = false
@@ -232,7 +231,15 @@ end
 
 function calculated_attributes!(plot::Scatter)
     # calculate base case
-    invoke(calculated_attributes!, Tuple{AbstractPlot}, plot)
+    if isa(value(plot[:color]), AbstractArray{<: Number})
+        intensities = pop!(plot, :color)
+        replace_nothing!(plot, :colorrange) do
+            lift(intensities) do arg
+                Vec2f0(extrema_nan(arg))
+            end
+        end
+        plot[:intensity] = lift(x-> convert(Vector{Float32}, x), intensities)
+    end
     replace_nothing!(plot, :marker_offset) do
         # default to middle
         lift(x-> Vec2f0.((x .* (-0.5f0))), plot[:markersize])
