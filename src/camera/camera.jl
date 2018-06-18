@@ -3,15 +3,22 @@ function Base.copy(x::Camera)
         getfield(x, i)
     end...)
 end
-
+function Base.:(==)(a::Camera, b::Camera)
+    value(a.view) == value(b.view) &&
+    value(a.projection) == value(b.projection) &&
+    value(a.resolution) == value(b.resolution)
+end
 function disconnect!(c::Camera)
-    for node in c.steering_nodes
-        disconnect!(node)
-    end
-    empty!(c.steering_nodes)
+    disconnect!(c.steering_nodes)
     return
 end
-
+function disconnect!(nodes::Vector)
+    for node in nodes
+        disconnect!(node)
+    end
+    empty!(nodes)
+    return
+end
 """
 When mapping over nodes for the camera, we store them in the steering_node vector,
 to make it easier to disconnect the camera steering signals later!
