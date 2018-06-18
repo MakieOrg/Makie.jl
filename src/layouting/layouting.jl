@@ -32,7 +32,7 @@ function text_bb(str, font, size)
 end
 
 """
-calculates how much `child` needs to move to not touch `parent`
+calculates how much `child` rectangle needs to move to not touch the `parent`
 """
 function move_from_touch(
         parent::GeometryPrimitive{N, T}, child::GeometryPrimitive{N},
@@ -161,7 +161,9 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Transformable
         translate!(p, w, 0.0, 0.0)
         swidth = widths(boundingbox(p))
         w += (swidth[1] * 1.1)
-        push!(pscene.children, p)
+        push!(pscene, p)
     end
+    cam2d!(pscene)
+    center!(pscene)
     pscene
 end

@@ -120,6 +120,21 @@ function Base.push!(scene::Scene, plot::Combined)
     end
 end
 
+function connect!(scene::Scene, child::Scene)
+
+end
+
+function Base.push!(scene::Scene, child::Scene)
+    push!(scene.children, child)
+    disconnect!(child.camera)
+    nodes = map([:view, :projection, :projectionview, :resolution, :eyeposition]) do field
+        lift(getfield(scene.camera, field)) do val
+            push!(getfield(child.camera, field), val)
+        end
+    end
+    cameracontrols!(child, nodes)
+end
+
 events(scene::Scene) = scene.events
 events(scene::SceneLike) = events(scene.parent)
 
@@ -130,7 +145,7 @@ cameracontrols(scene::Scene) = scene.camera_controls[]
 cameracontrols(scene::SceneLike) = cameracontrols(scene.parent)
 
 cameracontrols!(scene::Scene, cam) = (scene.camera_controls[] = cam)
-cameracontrols!(scene::SceneLike, cam) = cameracontrols(scene.parent, cam)
+cameracontrols!(scene::SceneLike, cam) = cameracontrols!(parent(scene), cam)
 
 pixelarea(scene::Scene) = scene.px_area
 pixelarea(scene::SceneLike) = pixelarea(scene.parent)
@@ -279,7 +294,7 @@ plots_from_camera(scene::Scene) = plots_from_camera(scene, scene.camera)
 function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
     append!(list, scene.plots)
     for child in scene.children
-        child.camera === camera && plots_from_camera(child, camera, list)
+        child.camera == camera && plots_from_camera(child, camera, list)
     end
     list
 end
