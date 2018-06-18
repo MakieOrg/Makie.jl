@@ -260,7 +260,8 @@ function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
     vert3f0 = T != Float32 ? Point3f0.(verts) : verts
     reinterpret(Point3f0, vert3f0)
 end
-function to_vertices(verts::AbstractVector{<: VecTypes{2, T}}) where T
+
+function to_vertices(verts::AbstractVector{<: VecTypes})
     to_vertices(map(x-> Point3f0(x[1], x[2], 0.0), verts))
 end
 function to_vertices(verts::AbstractMatrix{T}) where T <: Number
@@ -307,26 +308,22 @@ recursively calls itself.
 """
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector{<: VecTypes{3, T}}
-    ) where T
+        xyz::AbstractVector
+    )
     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
     convert_arguments(MT, xyz, faces)
 end
-
-"""
-    convert_arguments(MT, xy)::Tuple{Type, Matrix}
-
-Takes an input mesh, AbstractVector `xy`, and puts them in a Tuple with
-the type and the 3D points of the values from `x`, `y` and `z` = 0.0.
-"""
-function convert_arguments(MT::Type{<:Mesh}, xy::AbstractVector{<: VecTypes{2, T}}) where T
-    convert_arguments(MT, Point3f0.(first.(xy), last.(xy), 0.0))
+# ambigious case
+function convert_arguments(
+        MT::Type{<:Mesh},
+        xyz::AbstractVector{<: VecTypes{N, T}}
+    ) where {T, N}
+    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
+    convert_arguments(MT, xyz, faces)
 end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     (GLNormalMesh(geom),)
 end
-
-using ColorBrewer
 
 convert_attribute(c::Colorant, ::key"color") = RGBA{Float32}(c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
@@ -420,11 +417,17 @@ convert_attribute(x::NativeFont, k::key"font") = x
     to_rotation(b, vec4)
 """
 convert_attribute(s::Quaternion, ::key"rotation") = s
-convert_attribute(s::VecTypes{4}, ::key"rotation") = Quaternion(s...)
-convert_attribute(s::VecTypes{3}, ::key"rotation") = rotation_between(Vec3f0(0, 0, 1), Vec3f0(s))
+function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
+    if N == 4
+        Quaternion(s...)
+    else
+        rotation_between(Vec3f0(0, 0, 1), to_ndim(Vec3f0, s, 0.0))
+    end
+end
 
-convert_attribute(s::Tuple{<:VecTypes{3}, <: AbstractFloat}, ::key"rotation") = qrotation(s[1], s[2])
-convert_attribute(s::Tuple{<:VecTypes{2}, <: AbstractFloat}, ::key"rotation") = qrotation(Vec3f0(s[1][1], s[1][2], 0), s[2])
+function convert_attribute(s::Tuple{VecTypes, AbstractFloat}, ::key"rotation")
+    qrotation(to_ndim(Vec3f0, s[1], 0.0), s[2])
+end
 convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0, 1), angle)
 convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
 
