@@ -33,11 +33,11 @@ function generate_thumbnail(path::AbstractString; sz::Int = 200)
 end
 
 
-function record_examples(tags = nothing)
+function record_examples(tags...)
     examples = sort(database, by = (x)-> x.groupid)
-    if tags != nothing
+    if !isempty(tags)
         filter!(examples) do entry
-            all(x-> string(x) in entry.tags, tags)
+            all(x-> String(x) in entry.tags, tags)
         end
     end
     index = start(examples)

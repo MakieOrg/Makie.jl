@@ -1,10 +1,3 @@
-#setup
-using Makie
-
-function xy_data(x, y)
-    r = sqrt(x*x + y*y)
-    r == 0.0 ? 1f0 : (sin(r)/r)
-end
 
 function custom_theme(scene)
     @theme theme = begin
@@ -25,13 +18,15 @@ end
 
 
 #cell
+using Makie
 img = Makie.logo()
-scene1 = image(img)
+scene1 = image(0..1, 0..1, img)
 scene2 = scatter(rand(100), rand(100), markersize = 0.05)
-AbstractPlotting.vbox(scene1, scene2)
+scene3 = AbstractPlotting.vbox(scene1, scene2)
+boundingbox(scene2)
 
-
-#cell
+scene3
+scene3.children[2].plots[2].transformation.model[]
 scene = Scene(resolution = (500, 500))
 vx = -1:0.1:1;
 vy = -1:0.1:1;
