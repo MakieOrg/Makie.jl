@@ -56,8 +56,8 @@ atomics_pages = "Atomic Functions" => atomics_list
 tags_list = sort(unique(tags_list))
 path = joinpath(srcpath, "examples-for-tags.md")
 open(path, "w") do io
-    println(io, "# List of all tags including all examples from each tag")
-    println(io, "## List of all tags, sorted alphabetically")
+    println(io, "# Examples gallery, sorted by tag")
+    println(io, "## Tags")
     for tag in tags_list
         println(io, "  * [$tag](@ref tag_$(replace(tag, " ", "_")))")
     end
