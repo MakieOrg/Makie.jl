@@ -76,8 +76,9 @@ open(path, "w") do io
                 println(io, "`plot thumbnails go here\n`")
                 # TODO: add code to embed plot thumbnails
                 counter += 1
-            catch
+            catch e
                 println("ERROR: Didn't work with $tag at index $idx\n")
+                Base.showerror(STDERR, e)
             end
         end
         println(io, "\n")
