@@ -19,8 +19,12 @@ convert_attribute(x, key::Key) = x
 # By default, don't apply any conversions
 convert_arguments(P, args...) = args
 
-function convert_arguments(P, positions::AbstractVector{<: NTuple{N, <: Number}}) where N
+function convert_arguments(P, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
     (convert(Vector{Point{N, Float32}}, positions),)
+end
+function convert_arguments(P, positions::SubArray)
+    # TODO figure out a good subarray solution
+    (positions,)
 end
 function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{<: NTuple{2, T}}) where T <: VecTypes
     (reinterpret(T, positions),)
@@ -113,7 +117,7 @@ outputs them in a Tuple.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
-    (Float32.(x), Float32.(y), Float32.(z))
+    (convert(Matrix{Float32}, x), convert(Matrix{Float32}, y), convert(Matrix{Float32}, z))
 end
 
 """
@@ -123,19 +127,17 @@ Takes 2 AbstractVector's `x`, `y`, and an AbstractMatrix `z`, and puts them in a
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    println(P)
     (x, y, z)
 end
+
+"""
+Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
+spanning z over the grid spanned by x y
+"""
 function convert_arguments(::Type{<: Scatter}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f0.(x, y', z)),)
 end
-# function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
-#     (x, y, z)
-# end
 
-# function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z)
-#     convert_arguments(P, to_range(x), to_range(y), z)
-# end
 using IntervalSets
 
 """
@@ -185,6 +187,9 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+    if !applicable(f, x[1], y[1], z[1])
+        error("You need to pass a function with signature f(x, y, z). Found: $f")
+    end
     _x, _y, _z = ntuple(Val{3}) do i
         A = (x, y, z)[i]
         reshape(A, ntuple(j-> j != i ? 1 : length(A), Val{3}))
@@ -226,7 +231,7 @@ and puts it in a Tuple with the Type, the 3D points of the values from `x`, `y` 
 and the indices.
 """
 function convert_arguments(
-        T::Type{<:Mesh},
+        T::Type{<: Mesh},
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
@@ -280,16 +285,7 @@ function convert_arguments(
     m = GLNormalMesh(to_vertices(vertices), to_gl_indices(indices))
     (m,)
 end
-function convert_arguments(
-        ::Type{<: Mesh},
-        vertices::AbstractVector{<: Tuple{Number, Number}},
-    )
-    point2f0 = convert(Vector{Point2f0}, vertices)
-    vert3f0 = map(x-> Point3f0(x[1], x[2], 0.0), point2f0)
-    indices = reinterpret(GLTriangle, [UInt32.(0:length(vert3f0)-1);])
-    m = GLNormalMesh(vert3f0, indices)
-    (m,)
-end
+
 """
     convert_arguments(MT, x, y, z)::Tuple{Type, Matrix}
 
