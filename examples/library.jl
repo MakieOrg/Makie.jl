@@ -29,7 +29,8 @@ using Makie
             5 8 9;
         ]
         color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-        mesh(coordinates, connectivity, color = color)
+        scene = mesh(coordinates, connectivity, color = color, shading = false)
+        wireframe!(scene[end][1], color = (:black, 0.6), linewidth = 3)
     end
     @cell "colored triangle" [mesh, polygon] begin
         mesh(
@@ -262,7 +263,9 @@ end
             1:10, 1:10, rand(10, 10) .* 10,
             rotations = normalize.(rand(Quaternionf0, 10*10)),
             markersize = 1,
-            marker = Makie.logo() # can also be an array of images for each point
+            # can also be an array of images for each point
+            # need to be the same size for best performance, though
+            marker = Makie.logo()
         )
     end
     @cell "Simple meshscatter" [meshscatter] begin
