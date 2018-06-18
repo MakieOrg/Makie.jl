@@ -85,8 +85,8 @@ function Base.:(*)(q::Quaternion, w::Quaternion)
     )
 end
 
-function (::Type{M})(q::Quaternion{T}) where {T, M <: Mat4}
-    ET = concrete_type(eltype(M), T)
+(::Type{Mat{N}})(q::Quaternion{T}) where {N, T} = Mat4{T}(q)
+function (::Type{Mat4{ET}})(q::Quaternion{T}) where {T, ET}
     sx, sy, sz = 2q[4]*q[1],  2q[4]*q[2],   2q[4]*q[3]
     xx, xy, xz = 2q[1]^2,    2q[1]*q[2],  2q[1]*q[3]
     yy, yz, zz = 2q[2]^2,    2q[2]*q[3],  2q[3]^2
@@ -102,8 +102,7 @@ end
 concrete_type(::Type{Any}, ::Type{T}) where T = T
 concrete_type(::Type{T}, x) where T = T
 
-function (::Type{M})(q::Quaternion{T}) where {T, M <: Mat3}
-    ET = concrete_type(eltype(M), T)
+function (::Type{Mat{3, ET}})(q::Quaternion{T}) where {T, ET}
     sx, sy, sz = 2q[4]*q[1], 2q[4]*q[2],  2q[4]*q[3]
     xx, xy, xz = 2q[1]^2,   2q[1]*q[2], 2q[1]*q[3]
     yy, yz, zz = 2q[2]^2,   2q[2]*q[3], 2q[3]^2
