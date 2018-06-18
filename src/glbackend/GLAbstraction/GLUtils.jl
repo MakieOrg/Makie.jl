@@ -300,7 +300,7 @@ end
 function glasserteltype(::Type{T}) where T
     try
         length(T)
-    except
+    catch
         error("Error only types with well defined lengths are allowed")
     end
 end

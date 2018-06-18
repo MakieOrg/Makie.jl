@@ -77,6 +77,14 @@ fxaa_renderpass(fbo) =
 
 final_renderpass(fbo) =
     Renderpass(:final, [loadshader("fullscreen.vert"), loadshader("copy.frag")], fbo)
+
+#TODO run through all the visualize things and add the pipelines!
+function makiepipeline(pipesym::Symbol, fbo)
+    pipesym == :default     && return default_renderpass(fbo)
+    pipesym == :postprocess && return postprocess_renderpass(fbo)
+    pipesym == :fxaa        && return fxaa_renderpass(fbo)
+    pipesym == :final       && return final_renderpass(fbo)
+end
 #Defaults for pipeline and renderpasses. This could probably be put somewhere else.
 #This could probably also be a bit cleaner with some thought
 
@@ -98,6 +106,14 @@ function setup(rp::RenderPass{:default})
     clear!(rp.target) #this clears everything,
                       #so if textures get reused then we need to clear more
                       #specifically, lets try this first
+    glEnable(GL_DEPTH_TEST)
+    glDepthMask(GL_TRUE)
+    glDepthFunc(GL_LEQUAL)
+    # Disable cullface for now, untill all rendering code is corrected!
+    glDisable(GL_CULL_FACE)
+    # glCullFace(GL_BACK)
+    enabletransparency()
+
 end
 
 #Implementation of the rendering interfaces
@@ -111,6 +127,7 @@ function (rp::RenderPass{:default})(screen::Screen)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
 
     for (zindex, screenid, elem) in screen.renderlist
+        elem[:visible] || continue
         found, rect = id2rect(screen, screenid)
         found || continue
         a = rect[]

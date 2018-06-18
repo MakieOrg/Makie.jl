@@ -112,10 +112,9 @@ export toglsltype_string        # infers a glsl type string from a julia type. E
 export gl_convert
 
 
-include("GLRender.jl")
+include("render.jl")
 export render  #renders arbitrary objects
 export enabletransparency # can be pushed to an renderobject, enables transparency
-export renderinstanced # renders objects instanced
 
 include("GLInfo.jl")
 export getUniformsInfo

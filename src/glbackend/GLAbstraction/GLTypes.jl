@@ -226,7 +226,7 @@ include("vertexarray.jl")
 ##################################################################################
 
 
-include("GLRenderObject.jl")
+include("renderobject.jl")
 
 
 
