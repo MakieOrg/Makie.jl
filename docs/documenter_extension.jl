@@ -83,8 +83,12 @@ end
 
 Insert thumbnails matching a search tag.
 """
-function embed_thumbnail(io::IO, func::Function)
+function embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
     indices = find_indices(func)
+    !ispath(currpath) && warn("currepath does not exist!")
+    # if isempty(atomicspath) || !ispath(atomicspath)
+    #     atomicspath = joinpath(srcpath, "atomics_examples")
+    # end
     # namesdict = Dict(database[idx].unique_name => database[idx].title for idx in indices)
     for idx in indices
         uname = database[idx].unique_name
@@ -93,12 +97,12 @@ function embed_thumbnail(io::IO, func::Function)
         testpath1 = joinpath(mediapath, "thumb-$uname.png")
         testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
         if isfile(testpath1)
-            embedpath = relpath(testpath1, atomicspath)
+            embedpath = relpath(testpath1, currpath)
             println(io, "![]($(embedpath))")
             # [![Alt text](/path/to/img.jpg)](http://example.net/)
             # println(io, "[![$title]($(embedpath))](@ref)")
         elseif isfile(testpath2)
-            embedpath = relpath(testpath2, atomicspath)
+            embedpath = relpath(testpath2, currpath)
             println(io, "![]($(embedpath))")
             # println(io, "[![$title]($(embedpath))](@ref)")
         else
@@ -108,6 +112,8 @@ function embed_thumbnail(io::IO, func::Function)
         embedpath = []
     end
 end
+
+embed_thumbnail(io::IO, func::Function) = embed_thumbnail(io::IO, func::Function, atomicspath)
 
 
 """
