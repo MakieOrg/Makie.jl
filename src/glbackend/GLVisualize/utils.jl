@@ -25,24 +25,14 @@ end
 
 
 function assemble_shader(data)
-    shader = data[:shader]
-    delete!(data, :shader)
-    default_bb = Signal(GeometryTypes.centered(AABB))
+    default_bb = Signal(centered(AABB))
     bb  = get(data, :boundingbox, default_bb)
     if bb == nothing || isa(bb, Signal{Void})
         bb = default_bb
     end
-    glp = get(data, :gl_primitive, GL_TRIANGLES)
-    robj = assemble_robj(
-        data, shader, bb, glp,
-        get(data, :prerender, nothing),
-        get(data, :postrender, nothing)
-    )
+    robj = RenderObject(data, bb)
     Composition(robj)
 end
-
-
-
 
 function y_partition_abs(area, amount)
     a = round(Int, amount)

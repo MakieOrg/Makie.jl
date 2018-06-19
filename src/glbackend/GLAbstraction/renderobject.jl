@@ -3,24 +3,19 @@ const RENDER_OBJECT_ID_COUNTER = Ref(zero(GLushort))
 #Renderobject will become a renderable, were first it will be focussed on GL,
 #but nothing would stop you to use something else to render it
 
-
-
 mutable struct RenderObject <: Composable{DeviceUnit}
     main                 # main object
-    uniforms            ::Dict{Symbol, Any}
-    vertexarray         ::VertexArray
-    id                  ::GLushort
+    uniforms   ::Dict{Symbol, Any}
+    vao        ::VertexArray
+    id         ::GLushort
     boundingbox          # workaround for having lazy boundingbox queries, while not using multiple dispatch for boundingbox function (No type hierarchy for RenderObjects)
     function RenderObject(
             main, uniforms::Dict{Symbol, Any}, vertexarray::VertexArray,
             boundingbox
         )
         RENDER_OBJECT_ID_COUNTER[] += one(GLushort)
-        new(
-            main, uniforms, vertexarray,
-            prerenderfunctions, postrenderfunctions,
-            RENDER_OBJECT_ID_COUNTER[], boundingbox, program
-        )
+        new(main, uniforms, vertexarray,
+            RENDER_OBJECT_ID_COUNTER[], boundingbox)
     end
 end
 
@@ -63,8 +58,10 @@ function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0
     buffers  = [val for (key,val) in filter((key, value) -> isa(value, Buffer), data)]
     vao = indices == nothing ? VertexArray((buffers...); facelength=3) : VertexArray((buffers...), indices)
     uniforms = filter((key, value) -> !isa(value, Buffer) && key != :indices, data)
-    get!(data, :visible, true) # make sure, visibility is set
-    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
+    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
+    #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
+    uniforms[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
+    uniforms[:visible] = true
     robj = RenderObject(main, uniforms, vao, bbs)
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
@@ -192,6 +189,8 @@ function Base.copy(c::Composition{T}) where T
     new_children = [copy(child) for child in c.children]
     Composition{T}(new_children, c.boundingbox, c.transformation)
 end
+
+draw(robj::RenderObject) = (bind(robj.vao); draw(robj.vao);)
 # """
 # If you have an array of OptimizedPrograms, you only need to put PreRender in front.
 # """

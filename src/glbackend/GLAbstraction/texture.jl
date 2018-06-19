@@ -190,7 +190,8 @@ function Texture(
         format::GLenum         = default_colorformat(T),
         parameters...
     ) where T
-    glasserteltype(T)
+    # I don't quite remember what exactly these things are supposed to check
+    # glasserteltype(T)
     texparams = TextureParameters(T, 2; parameters...)
     id = glGenTextures()
 
@@ -227,7 +228,8 @@ You just need to pass the wanted color/vector type and the dimensions.
 To which values the texture gets initialized is driver dependent
 """
 function Texture(::Type{T}, dims::NTuple{N, Int}; kw_args...) where {T, N}
-    glasserteltype(T)
+    # I don't quite remember what exactly these things are supposed to check
+    # glasserteltype(T)
     Texture(convert(Ptr{T}, C_NULL), dims; kw_args...)::Texture{T, N}
 end
 
@@ -238,7 +240,8 @@ Array{Vec1/2/3/4, 2} == Texture2D with 1/2/3/4D Colorant dimension
 Colors from Colors.jl should mostly work as well
 """
 function Texture(image::Array{T, NDim}; kw_args...) where {T, NDim}
-    glasserteltype(T)
+    # I don't quite remember what exactly these things are supposed to check
+    # glasserteltype(T)
     Texture(pointer(image), size(image); kw_args...)::Texture{T, NDim}
 end
 
