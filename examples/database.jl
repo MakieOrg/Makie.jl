@@ -120,7 +120,7 @@ function find_indices(input_tags...; title = nothing, author = nothing, match_al
         tags_found && author_found && title_found
     end
     if isempty(indices)
-        info("no examples found matching the search criteria")
+        info("no examples found matching the search criteria $(input_tags)")
         indices
     else
         indices
