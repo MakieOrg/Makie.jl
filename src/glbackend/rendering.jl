@@ -1,4 +1,6 @@
-import .GLAbstraction: bind, draw, textures, unbind
+import .GLAbstraction: bind, draw, textures, unbind, resize_targets!, draw_fullscreen
+import FileIO: load
+
 
 function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
     try
@@ -65,25 +67,26 @@ const selection_queries = Function[]
 
 
 import .GLAbstraction: defaultframebuffer, RenderPass, Pipeline, setup
+import .GLVisualize: GLVisualizeShader
 
-default_pipeline(fbo)=Pipeline(:default, [default_renderpass(fbo), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
+default_pipeline(fbo, program)=
+    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), final_renderpass(fbo)])
+    # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
 
-default_renderpass(fbo) =
-    RenderPass(:default, [loadshader("fullscreen.vert"), loadshader("default.frag")], fbo)
+#TODO shadercleanup: cleanup gl_convert GLVisualizeShader etc
+default_renderpass(fbo, program) = RenderPass(:default, program, fbo)
+
 postprocess_renderpass(fbo) =
-    RenderPass(:postprocess, [loadshader("fullscreen.vert"), loadshader("postprocess.frag")], fbo)
+    RenderPass(:postprocess, gl_convert(LazyShader(loadshader("fullscreen.vert"),loadshader("postprocess.frag")),Dict{Symbol, Any}()), fbo)
 fxaa_renderpass(fbo) =
-    Renderpass(:fxaa, [loadshader("fullscreen.vert"), loadshader("fxaa.frag")], fbo)
+    RenderPass(:fxaa, gl_convert(LazyShader(loadshader("fullscreen.vert"),loadshader("fxaa.frag")),Dict{Symbol, Any}()), fbo)
 
 final_renderpass(fbo) =
-    Renderpass(:final, [loadshader("fullscreen.vert"), loadshader("copy.frag")], fbo)
+    RenderPass(:final,gl_convert(LazyShader(loadshader("fullscreen.vert"),loadshader("copy.frag")),Dict{Symbol, Any}()), fbo)
 
 #TODO run through all the visualize things and add the pipelines!
-function makiepipeline(pipesym::Symbol, fbo)
-    pipesym == :default     && return default_renderpass(fbo)
-    pipesym == :postprocess && return postprocess_renderpass(fbo)
-    pipesym == :fxaa        && return fxaa_renderpass(fbo)
-    pipesym == :final       && return final_renderpass(fbo)
+function makiepipeline(pipesym::Symbol, args...)
+    pipesym == :default && return default_pipeline(args...)
 end
 #Defaults for pipeline and renderpasses. This could probably be put somewhere else.
 #This could probably also be a bit cleaner with some thought
@@ -95,8 +98,6 @@ function setup(pipe::Pipeline{:default})
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0xff)
     glClearStencil(0)
-    glViewport(0, 0, w, h) #This used to be in between default render pass and
-                           #postprocess1
 
 end
 
@@ -117,7 +118,7 @@ function setup(rp::RenderPass{:default})
 end
 
 #Implementation of the rendering interfaces
-function (rp::RenderPass{:default})(screen::Screen)
+function (rp::RenderPass{:default})(screen::Screen, renderlist)
     if isempty(screen.renderlist)
         return
     end
@@ -126,16 +127,16 @@ function (rp::RenderPass{:default})(screen::Screen)
     glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
 
-    for (zindex, screenid, elem) in screen.renderlist
-        elem[:visible] || continue
+    for (zindex, screenid, elem) in renderlist
+        Reactive.value(elem[:visible]) || continue
         found, rect = id2rect(screen, screenid)
-        found || continue
+        Reactive.value(found) || continue
         a = rect[]
         glViewport(minimum(a)..., widths(a)...)
         glStencilFunc(GL_EQUAL, screenid, 0xff)
-        render(elem)
+        draw(elem)
     end
-
+    unbind(renderlist[end][3].vao)
     glDisable(GL_STENCIL_TEST)
 end
 
@@ -151,7 +152,7 @@ function setup(rp::RenderPass{:postprocess})
 end
 
 #this has the luma FBO
-function (rp::RenderPass{:postprocess})(screen::Screen)
+function (rp::RenderPass{:postprocess})(screen::Screen, args...)
     program = rp.program
     location, target = program.uniformloc[:color_texture]
     gluniform(location, target, textures(rp.target)[1])
@@ -163,11 +164,12 @@ function setup(rp::RenderPass{:fxaa})
     draw(rp.target, 1) #copy back to original color
 end
 
-function (rp::RenderPass{:fxaa})(screen::Screen)
+function (rp::RenderPass{:fxaa})(screen::Screen, args...)
+    program = rp.program
     location, target = program.uniformloc[:color_texture]
     rcploc = program.uniformloc[:RCPFrame]
     gluniform(location, target, textures(rp.target)[3])
-    gluniform(rcploc, size(rp.target))
+    gluniform(rcploc[1], GLuint.([size(rp.target)...]))
     draw_fullscreen(screen.fullscreenvao)
 end
 
@@ -177,7 +179,7 @@ function setup(rp::RenderPass{:final})
     glClear(GL_COLOR_BUFFER_BIT)
 end
 
-function (rp::RenderPass{:final})(screen::Screen)
+function (rp::RenderPass{:final})(screen::Screen, args...)
     program = rp.program
     location, target = program.uniformloc[:color_texture]
     gluniform(location, target, textures(rp.target)[1])
@@ -189,11 +191,17 @@ Renders a single frame of a `window`
 """
 function render_frame(screen::Screen)
     !isopen(screen) && return
+                           #postprocess1
     nw = to_native(screen)
     wh = Int.(GLFW.GetFramebufferSize(nw))
+    #TODO framebuffercleanup: resizing framebuffers == GLViewport... ?
+    glViewport(0, 0, wh[1], wh[2])
 
-    resize_targets!(screen.pipeline, wh)
-    render(screen.pipeline, screen)
+    #run through all the pipes in the queue and push the robjs linked to them through them.
+    for pipe in screen.pipelines
+        resize_targets!(pipe, wh)
+        render(pipe, screen, screen.renderlist[pipe.name])
+    end
     return
 end
 
