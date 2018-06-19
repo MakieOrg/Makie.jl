@@ -34,13 +34,16 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
 
     # Arguments
     help_arguments(io, func)
-    println(io, "Please refer to [`convert_arguments`](@ref) to find the full list of accepted arguments\n")
+	if extended
+		println(io, "Please refer to [`convert_arguments`](@ref) to find the full list of accepted arguments\n")
+	end
 
     # Keyword arguments
     help_attributes(io, input; extended = extended)
-
-    println(io, "You can see usage examples of `$func` by running:\n")
-    println(io, "`example_database($func)`\n")
+	if extended
+	    println(io, "You can see usage examples of `$func` by running:\n")
+	    println(io, "`example_database($func)`\n")
+	end
 end
 
 function _help(io::IO, input::Function; extended = false)
