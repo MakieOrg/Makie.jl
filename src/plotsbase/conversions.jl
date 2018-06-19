@@ -36,7 +36,7 @@ to_scale(b, s::Number) = Vec3f0(s)
 """
     to_scale(b, s::VecLike)::Point
 """
-to_scale(b, s::VecLike{2}) = Vec3f0(s[1], s[2], 1)
+to_scale(b, s::VecLike) = Vec3f0(s[1], s[2], 1)
 to_scale(b, s::VecLike{3}) = Vec3f0(s)
 
 """
@@ -46,13 +46,18 @@ to_offset(b, s::Number) = Point3f0(s)
 """
     to_scale(b, s::VecLike)::Point
 """
-to_offset(b, s::VecLike{2}) = Point3f0(s[1], s[2], 0)
-to_offset(b, s::VecLike{3}) = Point3f0(s)
+function to_offset(b, s::VecLike{N}) where N
+    if N === 3
+        Point3f0(s)
+    else
+        Point3f0(s[1], s[2], 0)
+    end
+end
 
 """
     to_rotation(b, vec4)
 """
-to_rotation(b, s::VecLike{4}) = Vec4f0(s)
+to_rotation(b, s::VecLike) = Vec4f0(s)
 """
     to_rotation(b, quaternion)
 """
@@ -61,9 +66,10 @@ to_rotation(b, s::Quaternion) = Vec4f0(s.v1, s.v2, s.v3, s.s)
 """
     to_rotation(b, tuple_float)
 """
-to_rotation(b, s::Tuple{<:VecLike{3}, <: AbstractFloat}) = qrotation(s[1], s[2])
 to_rotation(b, s::AbstractFloat) = qrotation(Vec3f0(0, 0, 1), s)
-to_rotation(b, s::Tuple{<:VecLike{2}, <: AbstractFloat}) = qrotation(Vec3f0(s[1][1], s[1][2], 0), s[2])
+function to_rotation(b, s::Tuple{VecLike, AbstractFloat})
+    qrotation(Vec3f0(to_nd(s[1], Val{3}, 0.0)), s[2])
+end
 
 
 
