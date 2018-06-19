@@ -33,13 +33,14 @@ end
 path = joinpath(srcpath, "functions-overview.md")
 open(path, "w") do io
     println(io, "# Atomic functions overview")
+    tarpath = joinpath(buildpath, "examples-database.html")
     for func in (atomics..., contour)
         println(io, "## `$(to_string(func))`\n")
         try
             println(io, "```@docs")
             println(io, "$(to_string(func))")
             println(io, "```\n")
-            embed_thumbnail(io, func, srcpath)
+            embed_thumbnail_link(io, func, buildpath, tarpath)
         catch e
             println("ERROR: Didn't work with $func\n")
             Base.showerror(STDERR, e)

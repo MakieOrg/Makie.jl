@@ -117,6 +117,41 @@ embed_thumbnail(io::IO, func::Function) = embed_thumbnail(io::IO, func::Function
 
 
 """
+    embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
+
+Insert thumbnails matching a search tag.
+"""
+function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
+    indices = find_indices(func)
+    !ispath(currpath) && warn("currepath does not exist!")
+    !ispath(tarpath) && warn("tarpath does not exist!")
+    for idx in indices
+        uname = database[idx].unique_name
+        title = database[idx].title
+        # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+        testpath1 = joinpath(mediapath, "thumb-$uname.png")
+        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+        link = relpath(tarpath, currpath)
+        if isfile(testpath1)
+            embedpath = relpath(testpath1, currpath)
+            # println(io, "![]($(embedpath))")
+            println(io, "[![]($(embedpath))]($(link))")
+            # [![](..\media\thumb-heatmap_1.png)](.\examples-database.html)
+        elseif isfile(testpath2)
+            embedpath = relpath(testpath2, currpath)
+            println(io, "[![]($(embedpath))]($(link))")
+        else
+            warn("thumbnail for index $idx with uname $uname not found")
+            embedpath = "not_found"
+        end
+        embedpath = []
+    end
+end
+
+# embed_thumbnail_link(io::IO, func::Function) = embed_thumbnail_link(io::IO, func::Function, atomicspath)
+
+
+"""
     embed_plot(io::IO, uname::AbstractString, mediapath::AbstractString, buildpath::AbstractString)
 
 Outputs markdown code for embedding plots in `Documenter.jl`.
