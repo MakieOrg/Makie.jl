@@ -9,7 +9,7 @@ help
 Example usage:
 ```@example
 using Makie # hide
-help(scatter)
+help(scatter; extended = true)
 ```
 
 
