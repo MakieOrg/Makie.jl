@@ -85,13 +85,16 @@ function Base.:(*)(q::Quaternion, w::Quaternion)
     )
 end
 
-(::Type{Mat{N}})(q::Quaternion{T}) where {N, T} = Mat4{T}(q)
-function (::Type{Mat4{ET}})(q::Quaternion{T}) where {T, ET}
+const SMat{N, L} = Mat{N, N, T, L} where T
+
+SMat{N, L}(q::Quaternion{T}) where {N, T, L} = Mat{N, N, T, L}(q)
+
+function Mat4{ET}(q::Quaternion{T}) where {T, ET}
     sx, sy, sz = 2q[4]*q[1],  2q[4]*q[2],   2q[4]*q[3]
     xx, xy, xz = 2q[1]^2,    2q[1]*q[2],  2q[1]*q[3]
     yy, yz, zz = 2q[2]^2,    2q[2]*q[3],  2q[3]^2
     T0, T1 = zero(ET), one(ET)
-    Mat{4}(
+    Mat{4, 4, ET}(
         T1-(yy+zz), xy+sz,      xz-sy,      T0,
         xy-sz,      T1-(xx+zz), yz+sx,      T0,
         xz+sy,      yz-sx,      T1-(xx+yy), T0,
@@ -102,12 +105,12 @@ end
 concrete_type(::Type{Any}, ::Type{T}) where T = T
 concrete_type(::Type{T}, x) where T = T
 
-function (::Type{Mat{3, ET}})(q::Quaternion{T}) where {T, ET}
+function Mat3{ET}(q::Quaternion{T}) where {T, ET}
     sx, sy, sz = 2q[4]*q[1], 2q[4]*q[2],  2q[4]*q[3]
     xx, xy, xz = 2q[1]^2,   2q[1]*q[2], 2q[1]*q[3]
     yy, yz, zz = 2q[2]^2,   2q[2]*q[3], 2q[3]^2
     T0, T1 = zero(ET), one(ET)
-    Mat{3}(
+    Mat{3, 3, ET}(
         T1-(yy+zz), xy+sz,      xz-sy,
         xy-sz,      T1-(xx+zz), yz+sx,
         xz+sy,      yz-sx,      T1-(xx+yy)
