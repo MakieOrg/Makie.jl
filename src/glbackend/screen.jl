@@ -36,7 +36,8 @@ mutable struct Screen <: AbstractScreen
             size::Tuple{Int,Int},
             pipelines::Vector{Pipeline}
         )
-        obj = new(glscreen, rendertask, screen2scene, screens, renderlist, cache, cache2plot, size, pipelines)
+        #TODO not sure if this is very correct
+        obj = new(glscreen, rendertask, screen2scene, screens, renderlist, cache, cache2plot, glGenVertexArrays(), size, pipelines)
         jl_finalizer(obj) do obj
             # save_print("Freeing screen")
             empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
@@ -84,7 +85,10 @@ function colorbuffer(screen::Screen)
     GLFW.SwapBuffers(to_native(screen))
     glFinish() # block until opengl is done rendering
     #very ugly
-    buffer = gpu_data(screen.pipeline.passes.target, 1) #This assumes that the color is stored
+    #TODO screencleanup: What if multiple pipelines rendered?
+    # Should we use the same main color framebuffer everywhere?
+    # Ask Simon
+    buffer = gpu_data(screen.pipelines[1].passes[1].target, 1) #This assumes that the color is stored
                                              #in GL_COLOR_ATTACHMENT0
     return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
 end
@@ -94,6 +98,7 @@ Base.size(screen::Screen) = screen.size
 Base.isopen(x::Screen) = isopen(x.glscreen)
 
 # TEMP with regards to the pipeline <=> RObj system
+
 function Base.push!(screen::Screen, scene::Scene, robj)
     filter!(screen.screen2scene) do k, v
         k.value != nothing
@@ -104,10 +109,12 @@ function Base.push!(screen::Screen, scene::Scene, robj)
         push!(screen.screens, (id, scene.px_area, Node(true), bg))
         id
     end
-    #TEMP hack this can be done better I think
+    #TEMP this might be done better
+    #TODO shadercleanup
+    #TODO screencleanup: fbo should be created somewhere else
     pipesym = get(robj.uniforms, :pipeline, :default)
     if !haskey(screen.renderlist, pipesym)
-        push!(screen, makiepipeline(pipesym, defaultframebuffer(size(screen))))
+        push!(screen, makiepipeline(pipesym, defaultframebuffer(size(screen)), robj.uniforms[:shader]))
         screen.renderlist[pipesym] = [(0, screenid, robj)]
     else
         push!(screen.renderlist[pipesym], (0, screenid, robj))
@@ -196,8 +203,7 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
         resolution,
-        Pipeline[],
-        glGenVertexArrays())
+        Pipeline[])
     screen.rendertask[] = @async(renderloop(screen))
     screen
 end
