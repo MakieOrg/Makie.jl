@@ -119,19 +119,37 @@ end
     Theme(;
         color = theme(scene, :color),
         linecolor = RGBAf0(0,0,0,0),
+        colormap = theme(scene, :colormap),
+        colorrange = nothing,
         linewidth = 0.0,
         linestyle = nothing
+    )
+end
+convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Mesh, args...)
+AbstractPlotting.calculated_attributes!(plot::Poly) = plot
+
+function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
+    bigmesh = lift(GLNormalMesh, plot[1])
+    mesh!(
+        plot, bigmesh,
+        color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
+        shading = false
+    )
+    wireframe!(
+        plot, bigmesh,
+        color = plot[:linecolor], linestyle = plot[:linestyle],
+        linewidth = plot[:linewidth],
     )
 end
 
 function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P
     positions = plot[1]
-    bigmesh = map(positions) do p
+    bigmesh = lift(positions) do p
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
     end
     mesh!(plot, bigmesh, color = plot[:color])
-    outline = map(positions) do p
+    outline = lift(positions) do p
         push!(copy(p), p[1]) # close path
     end
     lines!(
