@@ -1,9 +1,12 @@
 # Functions
 
 The follow document lists the atomic plotting functions and their usage.
-These are the most atomic primitive which one can stack together to form more complex plots.
+These are the most atomic primitives which one can stack together to form more complex plots.
 
-For styling options of each function, see the keyword arguments list for each function -- consult the [Help functions](@ref).
+For general help about each function, consult the [Help functions](@ref).
+
+See [Plot function signatures](@ref) for the available plot function signatures.
+See [Plot attributes](@ref) for the available plot attributes.
 
 For a general overview of styling and to see the default parameters, refer to the chapter [Themes](@ref).
 
@@ -13,8 +16,6 @@ For a general overview of styling and to see the default parameters, refer to th
 ```@docs
 scatter
 ```
-
-The below is automatically inserted using `@example_database("scatter")`
 
 @example_database("scatter")
 @example_database("Stars")
@@ -47,15 +48,6 @@ surface
 
 @example_database("Surface")
 @example_database("Surface with image")
-
-
-## Contour
-
-```@docs
-contour
-```
-
-@example_database("contour")
 
 
 ## Wireframe
@@ -93,17 +85,43 @@ heatmap
 
 ```@docs
 volume
-
 ```
 
 @example_database("Volume Function")
 
 
-## TODOs
+## Image
 
-```
+```@docs
 image
-volume
+```
+
+@example_database("image")
+
+
+## Text
+
+```@docs
 text
+```
+
+@example_database("Text Annotation")
+@example_database("Text rotation")
+
+
+## Poly
+
+```@docs
 poly
 ```
+
+@example_database("Polygons")
+
+
+## Contour
+
+```@docs
+contour
+```
+
+@example_database("contour")
