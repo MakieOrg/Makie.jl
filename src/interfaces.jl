@@ -231,7 +231,7 @@ end
 
 function calculated_attributes!(plot::Scatter)
     # calculate base case
-    if isa(value(plot[:color]), AbstractArray{<: Number})
+    crange = if isa(value(plot[:color]), AbstractArray{<: Number})
         intensities = pop!(plot, :color)
         replace_nothing!(plot, :colorrange) do
             lift(intensities) do arg
@@ -239,6 +239,9 @@ function calculated_attributes!(plot::Scatter)
             end
         end
         plot[:intensity] = lift(x-> convert(Vector{Float32}, x), intensities)
+    else
+        delete!(plot, :colorrange)
+        delete!(plot, :colormap)
     end
     replace_nothing!(plot, :marker_offset) do
         # default to middle
