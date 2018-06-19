@@ -216,12 +216,6 @@ end
 
 
 
-"""
-    convert_arguments(mesh)::(mesh)
-
-Takes an input `mesh` and stores it in a Tuple.
-"""
-convert_arguments(::Type{Mesh}, m::AbstractMesh) = (m,)
 
 """
     convert_arguments(T, x, y, z, indices)::Tuple{Type, Matrix, Vector}
