@@ -12,7 +12,6 @@ variables:
     - apt-get install -y ffmpeg
 
   script:
-    - export DISPLAY=:0
     - glxinfo | grep version
     - julia -e 'Pkg.init();Pkg.clone("https://github.com/JuliaPlots/AbstractPlotting.jl.git")'
     # actual testing
