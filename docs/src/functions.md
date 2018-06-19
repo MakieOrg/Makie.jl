@@ -14,10 +14,6 @@ For a general overview of styling and to see the default parameters, refer to th
 scatter
 ```
 
-The below is automatically inserted using `@example_database("scatter", "surface")`
-
-@example_database("scatter", "surface")
-
 The below is automatically inserted using `@example_database("scatter")`
 
 @example_database("scatter")
@@ -42,8 +38,6 @@ lines
 
 @example_database("Line Function")
 
-![](lines.png)
-
 
 ## Surface
 
@@ -54,6 +48,7 @@ surface
 @example_database("Surface")
 @example_database("Surface with image")
 
+
 ## Contour
 
 ```@docs
@@ -62,13 +57,6 @@ contour
 
 @example_database("contour")
 
-The below is automatically inserted using `@example_database(contour)`
-
-@example_database(contour)
-
-The below is automatically inserted using `example_database(contour)`
-
-example_database(contour)
 
 ## Wireframe
 
@@ -79,6 +67,7 @@ wireframe
 @example_database("Wireframe of a Surface")
 @example_database("Wireframe of a Mesh")
 @example_database("Wireframe of Sphere")
+
 
 ## Mesh
 
