@@ -69,7 +69,7 @@ Generates a MD-formatted string for embedding video into Markdown files
 function embed_video(relapath::AbstractString)
     return str = """
         ```@raw html
-        <video controls autoplay>
+        <video controls autoplay loop muted>
           <source src="$(relapath)" type="video/mp4">
           Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
         </video>
@@ -107,4 +107,36 @@ function embed_thumbnail(io::IO, func::Function)
         end
         embedpath = []
     end
+end
+
+
+"""
+    embed_plot(io::IO, uname::AbstractString, mediapath::AbstractString, buildpath::AbstractString)
+
+Outputs markdown code for embedding plots in `Documenter.jl`.
+"""
+function embed_plot(
+        io::IO,
+        uname::AbstractString,
+        mediapath::AbstractString,
+        buildpath::AbstractString;
+        src_lines::Range = nothing
+    )
+    isa(uname, AbstractString) ? nothing : error("uname must be a string!")
+    isa(mediapath, AbstractString) ? nothing : error("mediapath must be a string!")
+    isa(buildpath, AbstractString) ? nothing : error("buildpath must be a string!")
+    medialist = readdir(mediapath)
+    if "$(uname).png" in medialist
+        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+        println(io, "![library lines $(src_lines)]($(embedpath))")
+    elseif "$(uname).gif" in medialist
+        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
+        println(io, "![library lines $(src_lines)]($(embedpath))")
+    elseif "$(uname).mp4" in medialist
+        embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
+        println(io, embedcode)
+    else
+        warn("file $(uname) with unknown extension in mediapath, or file nonexistent")
+    end
+    print(io, "\n")
 end

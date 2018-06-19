@@ -95,18 +95,23 @@ print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults 
 
 
 """
-    find_indices(input_tags...; title = nothing, author = nothing)
+    find_indices(input_tags...; title = nothing, author = nothing, match_all = true)
 
 Returns the indices for the entries in examples database that match the input
 search pattern.
 
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
+`match_all` specifies if the result has to match all input tags, or just any.
 """
-function find_indices(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
+function find_indices(input_tags...; title = nothing, author = nothing, match_all::Bool = true) # --> return an array of cell entries
     indices = find(database) do entry
         # find tags
-        tags_found = all(tags -> string(tags) in entry.tags, input_tags)
+        if match_all
+            tags_found = all(tags -> string(tags) in entry.tags, input_tags)
+        else
+            tags_found = any(tags -> string(tags) in entry.tags, input_tags)
+        end
         # find author, if nothing input is given, then don't filter
         author_found = (author == nothing) || (entry.author == string(author))
         # find title, if nothing input is given, then don't filter
@@ -114,24 +119,33 @@ function find_indices(input_tags...; title = nothing, author = nothing) # --> re
         # boolean to return the result
         tags_found && author_found && title_found
     end
+    if isempty(indices)
+        info("no examples found matching the search criteria")
+        indices
+    else
+        indices
+    end
 end
 
-find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
-find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
+find_indices(input::Function; title = nothing, author = nothing, match_all::Bool = true) = find_indices(to_string(input); title = title, author = author, match_all = match_all)
+find_indices(input::Vararg{Function,N}; title = nothing, author = nothing, match_all::Bool = true) where {N} = find_indices(to_string.(input)...; title = title, author = author, match_all = match_all)
 
 
 
 """
-    example_database(input_tags...; title = nothing, author = nothing)
+    example_database(input_tags...; title = nothing, author = nothing, match_all = true)
 
 Returns the entries in examples database that match the input search pattern.
 
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
+`match_all` specifies if the result has to match all input tags, or just any.
 """
-function example_database(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
-    indices = find_indices(input_tags...; title = title, author = author)
-    database[indices]
+function example_database(input_tags...; title = nothing, author = nothing, match_all::Bool = true) # --> return an array of cell entries
+    indices = find_indices(input_tags...; title = title, author = author, match_all = match_all)
+    if !isempty(indices)
+        database[indices]
+    end
 end
 
 example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)

@@ -9,26 +9,27 @@ For a general overview of styling and to see the default parameters, refer to th
 
 ## General function signatures and usage
 
-`func` are the function names, e.g. `lines`, `scatter`, `surface`, etc.
-
 `func(args...; kw_args...)`
 
-# creates a new plot + scene object
+where `func` are the function names, e.g. `lines`, `scatter`, `surface`, etc.
 
+
+### Create a new plot + scene object
 
 `func(scene::SceneLike, args...; kw_args...)`
 
-# creates a new plot as a subscene of a scene object
+
+### Create a new plot as a subscene of a scene object
 
 `func!(args...; kw_args...)`
 
-# adds a plot in-place to the `current_scene()`
 
+### Add a plot in-place to the `current_scene()`
 
 `func!(scene::SceneLike, args...; kw_args...)`
 
-# adds a plot in-place to the `current_scene()` as a subscene
 
+### Add a plot in-place to the `current_scene()` as a subscene
 
 `func[!]([scene], kw_args::Attributes, args...)`
 
@@ -41,15 +42,15 @@ For a general overview of styling and to see the default parameters, refer to th
 scatter
 ```
 
-@library[example] "Scatter Function" "Stars" "Unicode Marker"
+The below is automatically inserted using `@example_database("scatter", "surface")`
 
-The below is automatically inserted using `example_database("scatter", "surface")`
+@example_database("scatter", "surface")
 
-example_database("scatter", "surface")
+The below is automatically inserted using `@example_database("scatter")`
 
-The below is automatically inserted using `example_database("scatter")`
-
-example_database("scatter")
+@example_database("scatter")
+@example_database("Stars")
+@example_database("Unicode Marker")
 
 
 ## Meshscatter
@@ -58,7 +59,7 @@ example_database("scatter")
 meshscatter
 ```
 
-@library[example] "Meshscatter Function"
+@example_database("Meshscatter Function")
 
 
 ## Lines
@@ -67,7 +68,7 @@ meshscatter
 lines
 ```
 
-@library[example] "Line Function"
+@example_database("Line Function")
 
 ![](lines.png)
 
@@ -78,7 +79,8 @@ lines
 surface
 ```
 
-@library[example] "Surface Function" "Surface with image"
+@example_database("Surface")
+@example_database("Surface with image")
 
 ## Contour
 
@@ -86,7 +88,7 @@ surface
 contour
 ```
 
-@library[example] "contour"
+@example_database("contour")
 
 The below is automatically inserted using `@example_database(contour)`
 
@@ -102,8 +104,9 @@ example_database(contour)
 wireframe
 ```
 
-@library[example] "Wireframe of a Surface" "Wireframe of a Mesh" "Wireframe of Sphere"
-
+@example_database("Wireframe of a Surface")
+@example_database("Wireframe of a Mesh")
+@example_database("Wireframe of Sphere")
 
 ## Mesh
 
@@ -111,8 +114,9 @@ wireframe
 mesh
 ```
 
-
-@library[example] "Colored Mesh" "Load Mesh" "Textured Mesh"
+@example_database("Load Mesh")
+@example_database("Colored Mesh")
+@example_database("Textured Mesh")
 
 
 ## Heatmap
@@ -121,7 +125,7 @@ mesh
 heatmap
 ```
 
-@library[example] "Heatmap Function"
+@example_database("Heatmap")
 
 
 ## Volume
@@ -131,8 +135,10 @@ volume
 
 ```
 
-@library[example] "Volume Function"
+@example_database("Volume Function")
 
+
+## TODOs
 
 ```
 image

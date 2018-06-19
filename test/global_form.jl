@@ -1,18 +1,37 @@
 using Makie
 
-let
+try
+scene = let
     image(Makie.logo(), scale_plot = false)
     
 end
-using Makie
-
-let
-    scatter(rand(10), rand(10), intensity = rand(Float32, 10), colormap = :Spectral, colorrange = (0.0, 1.0))
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 
-let
+try
+scene = let
+    scatter(rand(10), rand(10), intensity = rand(Float32, 10), colormap = :Spectral, colorrange = (0.0, 1.0))
+    
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
+using Makie
+
+try
+scene = let
     coordinates = [
         0.0 0.0;
         0.5 0.0;
@@ -39,18 +58,36 @@ let
     wireframe!(scene[end][1], color = (:black, 0.6), linewidth = 3)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     mesh(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
         shading = false
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     poly(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
         color = [:red, :green, :blue],
@@ -58,10 +95,19 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 using GeometryTypes
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     points = decompose(Point2f0, Circle(Point2f0(50), 50f0))
     pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :red)
@@ -73,30 +119,66 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     r = linspace(-10, 10, 512)
     z = ((x, y)-> sin(x) + cos(y)).(r, r')
     contour(r, r, z, levels = 5, color = :RdYlBu)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     y = linspace(-0.997669, 0.997669, 23)
     contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
     
 end
-using Makie
-
-let
-    heatmap(rand(32, 32))
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 
-let
+try
+scene = let
+    heatmap(rand(32, 32))
+    
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
+using Makie
+
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     N = 50
     r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
@@ -108,9 +190,18 @@ let
     end
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     text(
         ". This is an annotation!",
         position = (300, 200),
@@ -120,9 +211,18 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     pos = (500, 500)
     posis = Point2f0[]
@@ -140,10 +240,19 @@ let
     scatter!(scene, posis, markersize = 10)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 using GeometryTypes
 
-let
+try
+scene = let
     cat = Makie.loadasset("cat.obj")
     vertices = decompose(Point3f0, cat)
     faces = decompose(Face{3, Int}, cat)
@@ -155,9 +264,18 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     sv = scatter!(scene, rand(Point3f0, 100), markersize = 0.05)
     # TODO: ERROR: function similar does not accept keyword arguments
@@ -165,9 +283,18 @@ let
     # similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     vx = -1:0.01:1
     vy = -1:0.01:1
     
@@ -207,10 +334,19 @@ let
     scene
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 using GeometryTypes, Colors
 
-let
+try
+scene = let
     scene = Scene()
     # define points/edges
     perturbfactor = 4e1
@@ -267,9 +403,18 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     large_sphere = Sphere(Point3f0(0), 1f0)
     positions = decompose(Point3f0, large_sphere)
     linepos = view(positions, rand(1:length(positions), 1000))
@@ -278,9 +423,18 @@ let
     scene
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scatter(
         1:10, 1:10, rand(10, 10) .* 10,
         rotations = normalize.(rand(Quaternionf0, 10*10)),
@@ -291,17 +445,35 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     large_sphere = Sphere(Point3f0(0), 1f0)
     positions = decompose(Point3f0, large_sphere)
     meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.5)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
@@ -324,9 +496,18 @@ let
     end
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     x = Makie.loadasset("cat.obj")
     mesh(x, color = :black)
     pos = map(x.vertices, x.normals) do p, n
@@ -335,15 +516,33 @@ let
     linesegments!(pos, color = :blue)
     
 end
-using Makie
-
-let
-    mesh(Sphere(Point3f0(0), 1f0), color = :blue)
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 
-let
+try
+scene = let
+    mesh(Sphere(Point3f0(0), 1f0), color = :blue)
+    
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
+using Makie
+
+try
+scene = let
     stars = 100_000
     scene = Scene(resolution = (500, 500))
     scene.theme[:backgroundcolor] = RGBAf0(0, 0, 0, 1)
@@ -358,16 +557,34 @@ let
     scene
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     function cartesian(ll)
         return Point3f0(
             cos(ll[1]) * sin(ll[2]),
@@ -412,9 +629,18 @@ let
     end
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     us = linspace(0, 1, 100)
     scene = Scene()
     scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
@@ -450,30 +676,66 @@ let
     path
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     volume(rand(32, 32, 32), algorithm = :mip)
     
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 using FileIO
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     catmesh = FileIO.load(Makie.assetpath("cat.obj"), GLNormalUVMesh)
     mesh(catmesh, color = Makie.loadasset("diffusemap.tga"))
     
 end
-using Makie
-
-let
-    mesh(Makie.loadasset("cat.obj"))
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 
-let
+try
+scene = let
+    mesh(Makie.loadasset("cat.obj"))
+    
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
+using Makie
+
+try
+scene = let
     x = [0, 1, 2, 0]
     y = [0, 0, 1, 2]
     z = [0, 2, 0, 1]
@@ -486,21 +748,48 @@ let
     mesh(x, y, z, indices, color = color)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     wireframe(Makie.loadasset("cat.obj"))
     
 end
-using Makie
-
-let
-    wireframe(Sphere(Point3f0(0), 1f0))
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 
-let
+try
+scene = let
+    wireframe(Sphere(Point3f0(0), 1f0))
+    
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
+using Makie
+
+try
+scene = let
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r)/r)
@@ -512,9 +801,18 @@ let
     wireframe(range, range, z)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     N = 30
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
@@ -529,9 +827,18 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     N = 30
     function xy_data(x, y)
         r = sqrt(x^2 + y^2)
@@ -545,19 +852,37 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene()
     x = linspace(0, 3pi)
     lines!(scene, x, sin.(x))
     lines!(scene, x, cos.(x), color = :blue)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 using GeometryTypes
 
-let
+try
+scene = let
     large_sphere = Sphere(Point3f0(0), 1f0)
     positions = decompose(Point3f0, large_sphere)
     colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
@@ -565,21 +890,48 @@ let
     meshscatter(positions, color = colS, markersize = sizesS)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scatter(rand(20), rand(20), markersize = 0.03)
     
 end
-using Makie
-
-let
-    scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end
 using Makie
 
-let
+try
+scene = let
+    scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
+    
+end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
+using Makie
+
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
@@ -595,9 +947,18 @@ let
     end
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene()
     
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
@@ -619,9 +980,18 @@ let
     end
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     function test(x, y, z)
         xy = [x, y, z]
         ((xy') * eye(3, 3) * xy) / 20
@@ -636,9 +1006,18 @@ let
     contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     function xy_data(x, y)
         r = sqrt(x*x + y*y)
         r == 0.0 ? 1f0 : (sin(r)/r)
@@ -647,9 +1026,18 @@ let
     contour3d(r, r, (x,y)-> xy_data(10x, 10y), levels = 20, linewidth = 3)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
         x = @.r*sin(θ)*cos(ϕ)
         y = @.r*sin(θ)*sin(ϕ)
@@ -664,9 +1052,18 @@ let
     arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02, linecolor = :green)
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     n = 20
     θ = [0;(0.5:n-0.5)/n;1]
     φ = [(0:2n-2)*2/(2n-1);2]
@@ -678,9 +1075,18 @@ let
     surface(x, y, z, image = Makie.logo())
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     n = 20
     f   = (x,y,z) -> x*exp(cos(y)*z)
     ∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
@@ -702,16 +1108,34 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     heatmap(rand(32, 32))
     image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene()
     r = linspace(0, 3, 4)
     cam2d!(scene)
@@ -751,9 +1175,18 @@ let
     end
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
-let
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     scatter!(
         scene,
@@ -763,31 +1196,22 @@ let
     )
     
 end
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
+end
 using Makie
 
 using Makie
 
 using Makie
 
-using Makie
-
-let
-    scene = Scene(resolution = (500, 500))
-    scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
-    aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
-    cam2d!(scene)
-    center!(scene)
-    scene
-    
-    aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
-    AbstractPlotting.center!(scene)
-    # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
-    cam3d!(scene)
-    scene
-    
-    scene = Scene(resolution = (500, 500))
-    println("placeholder")
-    
+try
+scene = let
     scene = Scene(resolution = (500, 500))
     vx = -1:0.05:1;
     vy = -1:0.05:1;
@@ -804,21 +1228,18 @@ let
     # ERROR: Not a valid index type: Reactive.Signal{StepRange{Int64,Int64}}. Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them
     # plines = lines!(scene, lift(view, pos, lift(x->1:2:length(x), pos)))
     
+    scene = Scene(resolution = (500, 500))
+    println("placeholder")
+    
+    scene = Scene(resolution = (500, 500))
+    println("placeholder")
+    
 end
-using Makie
-
-using Makie
-
-using Makie
-
-let
-    scene = Scene(resolution = (500, 500))
-    println("placeholder")
-    
-    scene = Scene(resolution = (500, 500))
-    println("placeholder")
-    
-    scene = Scene(resolution = (500, 500))
-    println("placeholder")
-    
+if isa(scene, String)
+    println(saved, scene)
+else
+    save("test.jpg", scene)
+end
+catch e
+    Base.showerror(STDERR, e)
 end

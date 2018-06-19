@@ -6,6 +6,9 @@ using Makie
     @cell "image" [image] begin
         image(Makie.logo(), scale_plot = false)
     end
+    @cell "scatter colormap" [scatter, colormap] begin
+        scatter(rand(10), rand(10), color = rand(10))
+    end
     @cell "FEM mesh 2D" [fem, mesh] begin
         coordinates = [
             0.0 0.0;
@@ -29,7 +32,8 @@ using Makie
             5 8 9;
         ]
         color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-        mesh(coordinates, connectivity, color = color)
+        scene = mesh(coordinates, connectivity, color = color, shading = false)
+        wireframe!(scene[end][1], color = (:black, 0.6), linewidth = 3)
     end
     @cell "colored triangle" [mesh, polygon] begin
         mesh(
@@ -262,7 +266,9 @@ end
             1:10, 1:10, rand(10, 10) .* 10,
             rotations = normalize.(rand(Quaternionf0, 10*10)),
             markersize = 1,
-            marker = Makie.logo() # can also be an array of images for each point
+            # can also be an array of images for each point
+            # need to be the same size for best performance, though
+            marker = Makie.logo()
         )
     end
     @cell "Simple meshscatter" [meshscatter] begin
@@ -413,36 +419,36 @@ end
 
 
 @block SimonDanisch [documentation] begin
-    @group begin
-        @cell "Axis 2D" [axis] begin
-            scene = Scene(@resolution)
-            scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
-            aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
-            cam2d!(scene)
-            center!(scene)
-            scene
-        end
-
-        @cell "Axis 3D" [axis] begin
-            aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
-            AbstractPlotting.center!(scene)
-            # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
-            cam3d!(scene)
-            scene
-        end
-
-        @cell "Axis Custom" [axis] begin
-            # always tuples of xyz for most attributes that are applied to each axis
-            # TODO: aviz[:titlestyle] shows a Dict in a Dict, with :axisnames inside --> how to access this?
-            # TODO: aviz[:showticks] works
-            # aviz[:gridcolors] = (:gray, :gray, :gray)
-            # aviz[:axiscolors] = (:red, :black, :black)
-            # aviz[:showticks] = (true, true, false)
-
-            scene = Scene(@resolution)
-            println("placeholder")
-        end
-    end
+    # @group begin
+    #     @cell "Axis 2D" [axis] begin
+    #         scene = Scene(@resolution)
+    #         scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
+    #         aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
+    #         cam2d!(scene)
+    #         center!(scene)
+    #         scene
+    #     end
+    #
+    #     @cell "Axis 3D" [axis] begin
+    #         aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
+    #         AbstractPlotting.center!(scene)
+    #         # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
+    #         cam3d!(scene)
+    #         scene
+    #     end
+    #
+    #     @cell "Axis Custom" [axis] begin
+    #         # always tuples of xyz for most attributes that are applied to each axis
+    #         # TODO: aviz[:titlestyle] shows a Dict in a Dict, with :axisnames inside --> how to access this?
+    #         # TODO: aviz[:showticks] works
+    #         # aviz[:gridcolors] = (:gray, :gray, :gray)
+    #         # aviz[:axiscolors] = (:red, :black, :black)
+    #         # aviz[:showticks] = (true, true, false)
+    #
+    #         scene = Scene(@resolution)
+    #         println("placeholder")
+    #     end
+    # end
 
     # @group begin
     #     @cell "overload to position" [axis] begin
