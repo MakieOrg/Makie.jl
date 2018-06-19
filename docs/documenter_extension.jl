@@ -79,7 +79,7 @@ end
 
 
 """
-    embed_thumbnail(func::Function)
+    embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
 
 Insert thumbnails matching a search tag.
 """
