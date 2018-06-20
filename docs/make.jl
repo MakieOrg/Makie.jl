@@ -13,27 +13,28 @@ expdbpath = joinpath(buildpath, "examples-database.html")
 
 # =============================================
 # automatically generate an overview of the atomic functions
-path = joinpath(srcpath, "functions-overview.md")
-open(path, "w") do io
-    println(io, "# Atomic functions overview")
-    for func in (atomics..., contour)
-        println(io, "## `$(to_string(func))`\n")
-        try
-            println(io, "```@docs")
-            println(io, "$(to_string(func))")
-            println(io, "```\n")
-            embed_thumbnail_link(io, func, buildpath, expdbpath)
-        catch e
-            println("ERROR: Didn't work with $func\n")
-            Base.showerror(STDERR, e)
-        end
-        println(io, "\n")
-    end
-end
+# path = joinpath(srcpath, "functions-overview.md")
+# open(path, "w") do io
+#     println(io, "# Atomic functions overview")
+#     for func in (atomics..., contour)
+#         expdbpath = joinpath(buildpath, "examples-$func.html")
+#         println(io, "## `$(to_string(func))`\n")
+#         try
+#             println(io, "```@docs")
+#             println(io, "$(to_string(func))")
+#             println(io, "```\n")
+#             embed_thumbnail_link(io, func, buildpath, expdbpath)
+#         catch e
+#             println("ERROR: Didn't work with $func\n")
+#             Base.showerror(STDERR, e)
+#         end
+#         println(io, "\n")
+#     end
+# end
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
-path = joinpath(srcpath, "functions-autogen.md")
+path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
     println(io, "# Atomic functions overview")
@@ -120,64 +121,73 @@ end
 # automatically generate gallery based on looping through the database
 # using pre-generated plots from generate_plots.jl
 cd(docspath)
-path = joinpath(srcpath, "examples-database.md")
 medialist = readdir(mediapath)
-open(path, "w") do io
-    println(io, "# Examples gallery")
-    counter = 1
-    groupid_last = NO_GROUP
-    for (i, entry) in enumerate(database)
-        # print bibliographic stuff
-        println(io, "## $(entry.title)")
-        print(io, "Tags: ")
-        tags = sort(collect(entry.tags))
-        for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
-        println(io, "`$(tags[end])`.\n")
-        # There are 3 possible conditions:
-        #  cond 1: entry is part of a group, and is in same group as last example (continuation)
-        #  cond 2: entry is part of a new group
-        #  cond 3: entry is not part of a group
-        if isgroup(entry) && entry.groupid == groupid_last
-            try
-                uname = string(entry.unique_name)
-                src_lines = entry.file_range
-                _print_source(io, i; style = "julia", example_counter = counter)
-                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                embedpath = nothing
-            catch e
-                Base.showerror(STDERR, e)
-                println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
-            end
-        elseif isgroup(entry)
-            try
-                groupid_last = entry.groupid
-                uname = string(entry.unique_name)
-                src_lines = entry.file_range
-                _print_source(io, i; style = "julia", example_counter = counter)
-                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                embedpath = nothing
-            catch e
-                Base.showerror(STDERR, e)
-                println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
-            end
-        else
-            try
-                uname = string(entry.unique_name)
-                src_lines = entry.file_range
-                _print_source(io, i; style = "julia", example_counter = counter)
-                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                embedpath = nothing
-                counter += 1
-                groupid_last = entry.groupid
-            catch e
-                Base.showerror(STDERR, e)
-                println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+example_pages = nothing
+example_list = String[]
+for func in (atomics..., contour)
     fname = to_string(func)
     info("generating examples database for $fname")
+    path = joinpath(srcpath, "examples-$fname.md")
+    indices = find_indices(func)
+    open(path, "w") do io
+        println(io, "# `$fname`")
+        counter = 1
+        groupid_last = NO_GROUP
+        for i in indices
+            entry = database[i]
+            # print bibliographic stuff
+            println(io, "## \"$(entry.title)\"")
+            print(io, "Tags: ")
+            tags = sort(collect(entry.tags))
+            for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
+            println(io, "`$(tags[end])`.\n")
+            # There are 3 possible conditions:
+            #  cond 1: entry is part of a group, and is in same group as last example (continuation)
+            #  cond 2: entry is part of a new group
+            #  cond 3: entry is not part of a group
+            if isgroup(entry) && entry.groupid == groupid_last
+                try
+                    uname = string(entry.unique_name)
+                    src_lines = entry.file_range
+                    _print_source(io, i; style = "julia", example_counter = counter)
+                    embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
+                    embedpath = nothing
+                catch e
+                    Base.showerror(STDERR, e)
+                    println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+                end
+            elseif isgroup(entry)
+                try
+                    groupid_last = entry.groupid
+                    uname = string(entry.unique_name)
+                    src_lines = entry.file_range
+                    _print_source(io, i; style = "julia", example_counter = counter)
+                    embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
+                    embedpath = nothing
+                catch e
+                    Base.showerror(STDERR, e)
+                    println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+                end
+            else
+                try
+                    uname = string(entry.unique_name)
+                    src_lines = entry.file_range
+                    _print_source(io, i; style = "julia", example_counter = counter)
+                    embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
+                    embedpath = nothing
+                    counter += 1
+                    groupid_last = entry.groupid
+                catch e
+                    Base.showerror(STDERR, e)
+                    println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+                end
             end
         end
     end
+    push!(example_list, "examples-$fname.md")
 end
+example_pages = "Examples" => example_list
+
 
 makedocs(
     modules = [Makie, AbstractPlotting],
