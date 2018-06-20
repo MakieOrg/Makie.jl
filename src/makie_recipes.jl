@@ -125,7 +125,9 @@ end
         linestyle = nothing
     )
 end
-convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Mesh, args...)
+AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = convert_arguments(Scatter, v)
+AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle}}) = (v,)
+AbstractPlotting.convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Mesh, args...)
 AbstractPlotting.calculated_attributes!(plot::Poly) = plot
 
 function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
