@@ -5,11 +5,7 @@ function isa_image(x::Type{T}) where T<:Matrix
     eltype(T) <: Union{Colorant, Colors.Fractional}
 end
 isa_image(x::Matrix) = isa_image(typeof(x))
-# if !isdefined(Images, :ImageAxes)
-#     include_string("""
-#     isa_image(x::Images.Image) = true
-#     """)
-# end
+
 isa_image(x) = false
 
 # Splits a dictionary in two dicts, via a condition
@@ -54,7 +50,7 @@ end
 function assemble_shader(data)
     shader = data[:shader]
     delete!(data, :shader)
-    default_bb = Signal(centered(AABB))
+    default_bb = Signal(GeometryTypes.centered(AABB))
     bb  = get(data, :boundingbox, default_bb)
     if bb == nothing || isa(bb, Signal{Void})
         bb = default_bb
