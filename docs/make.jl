@@ -9,21 +9,20 @@ docspath = Pkg.dir("Makie", "docs")
 srcpath = joinpath(pathroot, "docs", "src")
 buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "media")
-
+expdbpath = joinpath(buildpath, "examples-database.html")
 
 # =============================================
 # automatically generate an overview of the atomic functions
 path = joinpath(srcpath, "functions-overview.md")
 open(path, "w") do io
     println(io, "# Atomic functions overview")
-    tarpath = joinpath(buildpath, "examples-database.html")
     for func in (atomics..., contour)
         println(io, "## `$(to_string(func))`\n")
         try
             println(io, "```@docs")
             println(io, "$(to_string(func))")
             println(io, "```\n")
-            embed_thumbnail_link(io, func, buildpath, tarpath)
+            embed_thumbnail_link(io, func, buildpath, expdbpath)
         catch e
             println("ERROR: Didn't work with $func\n")
             Base.showerror(STDERR, e)
@@ -45,7 +44,7 @@ for func in (atomics..., contour)
         println(io, "# `$(to_string(func))`")
         try
             _help(io, func; extended = true)
-            embed_thumbnail(io, func)
+            embed_thumbnail_link(io, func, atomicspath, expdbpath)
         catch e
             println("ERROR: Didn't work with $func\n")
             Base.showerror(STDERR, e)
