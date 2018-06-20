@@ -200,23 +200,24 @@ makedocs(
             # "scene.md",
             # "conversions.md",
             "help_functions.md",
-            "functions-autogen.md",
-            "functions.md"
+            "functions-overview.md",
+            "signatures.md",
+            "attributes.md",
             # "documentation.md",
             # "backends.md",
             # "extending.md",
             # "themes.md",
-            # "interaction.md",
+            "interaction.md",
             # "axis.md",
             # "legends.md",
-            # "output.md",
+            "output.md",
+            # "docs-test.md"
             # "reflection.md",
             # "layout.md"
         ],
-        atomics_pages,
+        # atomics_pages,
         "Examples" => [
-            "examples-for-tags.md",
-            "examples-database.md",
+            example_list
             # "tags_wordcloud.md",
             #"linking-test.md"
         ]
