@@ -82,37 +82,37 @@ end
 
 # =============================================
 # automatically generate gallery based on tags - all examples
-tags_list = sort!(unique(tags_list), by = x -> lowercase(x))
-path = joinpath(srcpath, "examples-for-tags.md")
-open(path, "w") do io
-    println(io, "# Examples gallery, sorted by tag")
-    println(io, "## Tags")
-    for tag in tags_list
-        println(io, "  * [$tag](@ref tag_$(replace(tag, " ", "_")))")
-    end
-    println(io, "\n")
-    for tag in tags_list
-        counter = 1
-        # search for the indices where tag is found
-        indices = find_indices(tag; title = nothing, author = nothing)
-        println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
-        for idx in indices
-            try
-                entry = database[idx]
-                uname = string(entry.unique_name)
-                src_lines = entry.file_range
-                println(io, "### Example $counter, \"$(entry.title)\"")
-                _print_source(io, idx; style = "julia")
-                embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                counter += 1
-            catch e
-                println("ERROR: Didn't work with $tag at index $idx\n")
-                Base.showerror(STDERR, e)
-            end
-        end
-        println(io, "\n")
-    end
-end
+# tags_list = sort!(unique(tags_list), by = x -> lowercase(x))
+# path = joinpath(srcpath, "examples-database-tags.md")
+# open(path, "w") do io
+#     println(io, "# Examples gallery, sorted by tag")
+#     println(io, "## Tags")
+#     for tag in tags_list
+#         println(io, "  * [$tag](@ref tag_$(replace(tag, " ", "_")))")
+#     end
+#     println(io, "\n")
+#     for tag in tags_list
+#         counter = 1
+#         # search for the indices where tag is found
+#         indices = find_indices(tag; title = nothing, author = nothing)
+#         println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
+#         for idx in indices
+#             try
+#                 entry = database[idx]
+#                 uname = string(entry.unique_name)
+#                 src_lines = entry.file_range
+#                 println(io, "### Example $counter, \"$(entry.title)\"")
+#                 _print_source(io, idx; style = "julia")
+#                 embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
+#                 counter += 1
+#             catch e
+#                 println("ERROR: Didn't work with $tag at index $idx\n")
+#                 Base.showerror(STDERR, e)
+#             end
+#         end
+#         println(io, "\n")
+#     end
+# end
 
 # =============================================
 # automatically generate gallery based on looping through the database
