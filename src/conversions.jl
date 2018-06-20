@@ -395,8 +395,18 @@ a string naming a font, e.g. helvetica
 function convert_attribute(x::Union{Symbol, String}, k::key"font")
     str = string(x)
     get!(_font_cache, str) do
-        str == "default" && return convert_attribute("DejaVuSans", k)
-        newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
+        str == "default" && return convert_attribute("Dejavu Sans", k)
+        fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
+        font = FreeTypeAbstraction.findfont(str, additional_fonts = fontpath)
+        if font == nothing
+            warn("Could not find $str")
+            if "dejavu sans" == lowercase(str)
+                # since we fall back to dejavu sans, we need to check for recursion
+                error("recursion, font path seems to not contain dejavu sans: $fontpath")
+            end
+            return convert_attribute("Dejavu Sans", k)
+        end
+        [font] # TODO do we really need the array around it!??!?
     end
 end
 convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
