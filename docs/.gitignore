@@ -1,7 +1,6 @@
 build
-examples-database.md
-examples-for-tags.md
-functions-autogen.md
+examples-*.md
+functions-overview.md
 atomics_examples/
 *.png
 *.jpg
