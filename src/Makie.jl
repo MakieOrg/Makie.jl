@@ -19,6 +19,7 @@ using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
+using ImageCore
 
 module ContoursTemp
     import Contour
@@ -29,7 +30,7 @@ const Contours = ContoursTemp.Contour
 using Primes
 
 using Base.Iterators: repeated, drop
-using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
+using FreeType, FreeTypeAbstraction, UnicodeFun
 using PlotUtils, Showoff
 using Base: RefValue
 import Base: push!, isopen, show
@@ -63,7 +64,6 @@ include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")
 include("output.jl")
 include("video_io.jl")
-
 
 # conversion infrastructure
 include("documentation.jl")
