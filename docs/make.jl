@@ -41,14 +41,16 @@ open(path, "w") do io
     println(io, src)
     print(io, "\n")
     for func in (atomics..., contour)
-        println(io, "## `$(to_string(func))`\n")
+        fname = to_string(func)
+        expdbpath = joinpath(buildpath, "examples-$fname.html")
+        println(io, "## `$fname`\n")
         try
             println(io, "```@docs")
-            println(io, "$(to_string(func))")
+            println(io, "$fname")
             println(io, "```\n")
             embed_thumbnail_link(io, func, buildpath, expdbpath)
         catch e
-            println("ERROR: Didn't work with $func\n")
+            println("ERROR: Didn't work with $fname\n")
             Base.showerror(STDERR, e)
         end
         println(io, "\n")
@@ -170,6 +172,8 @@ open(path, "w") do io
             catch e
                 Base.showerror(STDERR, e)
                 println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
+    fname = to_string(func)
+    info("generating examples database for $fname")
             end
         end
     end
