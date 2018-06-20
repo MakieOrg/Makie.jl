@@ -19,6 +19,7 @@ using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
+using ImageCore
 
 module ContoursTemp
     import Contour
