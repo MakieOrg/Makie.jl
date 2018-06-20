@@ -32,28 +32,53 @@ open(path, "w") do io
 end
 
 # =============================================
-# automatically generate an detailed overview of each of the atomic functions
-# includes plot thumbnails
-atomics_pages = nothing
-atomics_list = String[]
-atomicspath = joinpath(srcpath, "atomics_examples")
-isdir(atomicspath) || mkdir(atomicspath)
-for func in (atomics..., contour)
-    path = joinpath(atomicspath, "$(to_string(func)).md")
-    open(path, "w") do io
-        println(io, "# `$(to_string(func))`")
+# automatically generate an overview of the atomic functions, using a source md file
+path = joinpath(srcpath, "functions-autogen.md")
+srcdocpath = joinpath(srcpath, "src-functions.md")
+open(path, "w") do io
+    println(io, "# Atomic functions overview")
+    src = read(srcdocpath, String)
+    println(io, src)
+    print(io, "\n")
+    for func in (atomics..., contour)
+        println(io, "## `$(to_string(func))`\n")
         try
-            _help(io, func; extended = true)
-            embed_thumbnail_link(io, func, atomicspath, expdbpath)
+            println(io, "```@docs")
+            println(io, "$(to_string(func))")
+            println(io, "```\n")
+            embed_thumbnail_link(io, func, buildpath, expdbpath)
         catch e
             println("ERROR: Didn't work with $func\n")
             Base.showerror(STDERR, e)
         end
         println(io, "\n")
     end
-    push!(atomics_list, "atomics_examples/$(to_string(func)).md")
 end
-atomics_pages = "Atomic Functions" => atomics_list
+
+
+# =============================================
+# automatically generate an detailed overview of each of the atomic functions
+# includes plot thumbnails
+# atomics_pages = nothing
+# atomics_list = String[]
+# atomicspath = joinpath(srcpath, "atomics_details")
+# isdir(atomicspath) || mkdir(atomicspath)
+# for func in (atomics..., contour)
+#     path = joinpath(atomicspath, "$(to_string(func)).md")
+#     open(path, "w") do io
+#         println(io, "# `$(to_string(func))`")
+#         try
+#             _help(io, func; extended = true)
+#             embed_thumbnail_link(io, func, atomicspath, expdbpath)
+#         catch e
+#             println("ERROR: Didn't work with $func\n")
+#             Base.showerror(STDERR, e)
+#         end
+#         println(io, "\n")
+#     end
+#     push!(atomics_list, "atomics_details/$(to_string(func)).md")
+# end
+# atomics_pages = "Atomic functions details" => atomics_list
 
 # =============================================
 # automatically generate gallery based on tags - all examples
