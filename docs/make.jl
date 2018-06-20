@@ -10,23 +10,6 @@ srcpath = joinpath(pathroot, "docs", "src")
 buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "media")
 
-# =============================================
-# automatically generate an overview of the atomic functions
-path = joinpath(srcpath, "functions-autogen.md")
-open(path, "w") do io
-    println(io, "# Atomic functions")
-    for func in (atomics..., contour)
-        println(io, "## `$(to_string(func))`")
-        try
-            _help(io, func; extended = false)
-            embed_thumbnail(io, func)
-        catch e
-            println("ERROR: Didn't work with $func\n")
-            Base.showerror(STDERR, e)
-        end
-        println(io, "\n")
-    end
-end
 
 # =============================================
 # automatically generate an overview of the atomic functions
