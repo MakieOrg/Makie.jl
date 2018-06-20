@@ -19,7 +19,7 @@ In the backend, `ImageMagick` is used for the image format conversions.
 
 ## Animated plots
 
-It is also possible to output animated plots as videos (note that this requires [`ffmpeg`](https://ffmpeg.org/) to be installed and properly configured on your computer.)
+It is also possible to output animated plots as videos (note that this requires [`ffmpeg`](https://ffmpeg.org/) to be installed and properly configured on your computer (test this by running `ffmpeg -version` from a terminal window).)
 
 ```@docs
 record
