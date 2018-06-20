@@ -27,7 +27,7 @@ function plot!(arrowplot::Arrows)
     headstart = lift(points, directions, lengthscale) do points, directions, s
         map(points, directions) do p1, dir
             dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
-            p1 => p1 .+ (dir .* Float32(s))
+            Point3f0(p1) => Point3f0(p1 .+ (dir .* Float32(s)))
         end
     end
     linesegments!(
