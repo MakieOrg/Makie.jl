@@ -4,6 +4,11 @@ import FileIO: save
 colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
 
 
+"""
+    scene2image(scene::Scene)
+
+Buffers the `scene` in an image buffer.
+"""
 function scene2image(scene::Scene)
     d = global_gl_screen()
     display(d, scene)
@@ -17,6 +22,11 @@ function scene2image(scene::Scene)
 end
 
 
+"""
+    save(path::String, scene::Scene)
+
+Saves an image of the `scene` at the specified `path`.
+"""
 function save(path::String, scene::Scene)
     img = scene2image(scene)
     if img != nothing

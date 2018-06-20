@@ -1,24 +1,36 @@
 # Interaction
 
 Makie offers a sophisticated referencing system to share attributes across the Scene
-in your plot. This is great for animations and saving resources - also if the backend
+in your plot. This is great for animations and saving resources -- also if the backend
 decides to put data on the GPU you might even share those in GPU memory.
 
 
-### Using Mouse and Time to animate plots
+## Using Mouse and Time to animate plots
 
-The simples form is just to use getindex into a scene, which returns a life node!
-Which means, if you do anything with that node, your resulting data will also be life!
-`lift_node` creates a new node from a list of input nodes, which updates every time any
-of the inputs updates.
+### Interaction using time
+
+To animate a scene, you need to create a `Node`, e.g.:
+
+```julia
+time = Node(0.0)
+```
+
+and then use `lift` on the node to access the values live. Then, any plot that is based on the `lift` will be updated every time the input node updates!
+
+@example_database("Interaction")
 
 
-@library[example] "Interaction"
+### Interaction using the mouse
 
+To interact with a scene using the mouse cursor, simply `lift` the cursor, e.g.:
 
+```julia
+pos = lift(scene.events.mouseposition, time)
+```
 
-## Soon to be implemented
+@example_database("Interaction with Mouse")
 
+For more info, consult the [Examples gallery](@ref).
 
 ### Animating and sharing on the GPU
 

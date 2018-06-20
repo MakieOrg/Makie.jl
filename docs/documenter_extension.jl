@@ -79,12 +79,16 @@ end
 
 
 """
-    embed_thumbnail(func::Function)
+    embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
 
 Insert thumbnails matching a search tag.
 """
-function embed_thumbnail(io::IO, func::Function)
+function embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
     indices = find_indices(func)
+    !ispath(currpath) && warn("currepath does not exist!")
+    # if isempty(atomicspath) || !ispath(atomicspath)
+    #     atomicspath = joinpath(srcpath, "atomics_examples")
+    # end
     # namesdict = Dict(database[idx].unique_name => database[idx].title for idx in indices)
     for idx in indices
         uname = database[idx].unique_name
@@ -93,12 +97,12 @@ function embed_thumbnail(io::IO, func::Function)
         testpath1 = joinpath(mediapath, "thumb-$uname.png")
         testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
         if isfile(testpath1)
-            embedpath = relpath(testpath1, atomicspath)
+            embedpath = relpath(testpath1, currpath)
             println(io, "![]($(embedpath))")
             # [![Alt text](/path/to/img.jpg)](http://example.net/)
             # println(io, "[![$title]($(embedpath))](@ref)")
         elseif isfile(testpath2)
-            embedpath = relpath(testpath2, atomicspath)
+            embedpath = relpath(testpath2, currpath)
             println(io, "![]($(embedpath))")
             # println(io, "[![$title]($(embedpath))](@ref)")
         else
@@ -108,6 +112,43 @@ function embed_thumbnail(io::IO, func::Function)
         embedpath = []
     end
 end
+
+embed_thumbnail(io::IO, func::Function) = embed_thumbnail(io::IO, func::Function, atomicspath)
+
+
+"""
+    embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
+
+Insert thumbnails matching a search tag.
+"""
+function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
+    indices = find_indices(func)
+    !ispath(currpath) && warn("currepath does not exist!")
+    !ispath(tarpath) && warn("tarpath does not exist!")
+    for idx in indices
+        uname = database[idx].unique_name
+        title = database[idx].title
+        # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+        testpath1 = joinpath(mediapath, "thumb-$uname.png")
+        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+        link = relpath(tarpath, currpath)
+        if isfile(testpath1)
+            embedpath = relpath(testpath1, currpath)
+            # println(io, "![]($(embedpath))")
+            println(io, "[![]($(embedpath))]($(link))")
+            # [![](..\media\thumb-heatmap_1.png)](.\examples-database.html)
+        elseif isfile(testpath2)
+            embedpath = relpath(testpath2, currpath)
+            println(io, "[![]($(embedpath))]($(link))")
+        else
+            warn("thumbnail for index $idx with uname $uname not found")
+            embedpath = "not_found"
+        end
+        embedpath = []
+    end
+end
+
+# embed_thumbnail_link(io::IO, func::Function) = embed_thumbnail_link(io::IO, func::Function, atomicspath)
 
 
 """
