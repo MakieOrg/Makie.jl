@@ -17,6 +17,9 @@ expdbpath = joinpath(buildpath, "examples-database.html")
 path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    medialist = readdir(mediapath)
+    isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     println(io, "# Atomic functions overview")
     src = read(srcdocpath, String)
     println(io, src)
@@ -47,6 +50,7 @@ medialist = readdir(mediapath)
 example_pages = nothing
 example_list = String[]
 for func in (atomics..., contour)
+    isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     fname = to_string(func)
     info("generating examples database for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
