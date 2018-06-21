@@ -7,7 +7,7 @@ using ColorBrewer
 # Text related packages
 using Packing
 using SignedDistanceFields
-using Fontconfig, FreeType, FreeTypeAbstraction, UnicodeFun
+using FreeType, FreeTypeAbstraction, UnicodeFun
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
