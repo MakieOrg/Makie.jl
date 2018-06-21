@@ -73,7 +73,7 @@ end
     help_attributes(Typ; extended = false)
 
 Returns a list of attributes for the plot type `Typ`.
-The attributes returned extend those attribues found in the `default_theme`.
+The attributes returned extend those attributes found in the `default_theme`.
 
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
