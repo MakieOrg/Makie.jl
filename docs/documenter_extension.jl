@@ -124,7 +124,7 @@ Insert thumbnails matching a search tag.
 function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
     indices = find_indices(func)
     !ispath(currpath) && warn("currepath does not exist!")
-    !ispath(tarpath) && warn("tarpath does not exist!")
+    !ispath(tarpath) && warn("tarpath does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
     for idx in indices
         entry = database[idx]
         uname = entry.unique_name
