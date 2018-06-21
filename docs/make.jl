@@ -11,26 +11,6 @@ buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 
-# =============================================
-# automatically generate an overview of the atomic functions
-# path = joinpath(srcpath, "functions-overview.md")
-# open(path, "w") do io
-#     println(io, "# Atomic functions overview")
-#     for func in (atomics..., contour)
-#         expdbpath = joinpath(buildpath, "examples-$func.html")
-#         println(io, "## `$(to_string(func))`\n")
-#         try
-#             println(io, "```@docs")
-#             println(io, "$(to_string(func))")
-#             println(io, "```\n")
-#             embed_thumbnail_link(io, func, buildpath, expdbpath)
-#         catch e
-#             println("ERROR: Didn't work with $func\n")
-#             Base.showerror(STDERR, e)
-#         end
-#         println(io, "\n")
-#     end
-# end
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
@@ -58,64 +38,6 @@ open(path, "w") do io
     end
 end
 
-
-# =============================================
-# automatically generate an detailed overview of each of the atomic functions
-# includes plot thumbnails
-# atomics_pages = nothing
-# atomics_list = String[]
-# atomicspath = joinpath(srcpath, "atomics_details")
-# isdir(atomicspath) || mkdir(atomicspath)
-# for func in (atomics..., contour)
-#     path = joinpath(atomicspath, "$(to_string(func)).md")
-#     open(path, "w") do io
-#         println(io, "# `$(to_string(func))`")
-#         try
-#             _help(io, func; extended = true)
-#             embed_thumbnail_link(io, func, atomicspath, expdbpath)
-#         catch e
-#             println("ERROR: Didn't work with $func\n")
-#             Base.showerror(STDERR, e)
-#         end
-#         println(io, "\n")
-#     end
-#     push!(atomics_list, "atomics_details/$(to_string(func)).md")
-# end
-# atomics_pages = "Atomic functions details" => atomics_list
-
-# =============================================
-# automatically generate gallery based on tags - all examples
-# tags_list = sort!(unique(tags_list), by = x -> lowercase(x))
-# path = joinpath(srcpath, "examples-database-tags.md")
-# open(path, "w") do io
-#     println(io, "# Examples gallery, sorted by tag")
-#     println(io, "## Tags")
-#     for tag in tags_list
-#         println(io, "  * [$tag](@ref tag_$(replace(tag, " ", "_")))")
-#     end
-#     println(io, "\n")
-#     for tag in tags_list
-#         counter = 1
-#         # search for the indices where tag is found
-#         indices = find_indices(tag; title = nothing, author = nothing)
-#         println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
-#         for idx in indices
-#             try
-#                 entry = database[idx]
-#                 uname = string(entry.unique_name)
-#                 src_lines = entry.file_range
-#                 println(io, "### Example $counter, \"$(entry.title)\"")
-#                 _print_source(io, idx; style = "julia")
-#                 embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-#                 counter += 1
-#             catch e
-#                 println("ERROR: Didn't work with $tag at index $idx\n")
-#                 Base.showerror(STDERR, e)
-#             end
-#         end
-#         println(io, "\n")
-#     end
-# end
 
 # =============================================
 # automatically generate gallery based on looping through the database
