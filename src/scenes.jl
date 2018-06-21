@@ -205,7 +205,7 @@ end
 Scene(::Void) = Scene()
 
 default_theme() = Theme(
-    font = "DejaVuSans",
+    font = "Dejavu Sans",
     backgroundcolor = RGBAf0(1,1,1,1),
     color = :black,
     colormap = :viridis

@@ -19,15 +19,18 @@ convert_attribute(x, key::Key) = x
 # By default, don't apply any conversions
 convert_arguments(P, args...) = args
 
-function convert_arguments(P, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
+const PointBased = Union{MeshScatter, Scatter, Lines, LineSegments}
+
+function convert_arguments(::Type{<: PointBased}, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
     (convert(Vector{Point{N, Float32}}, positions),)
 end
-function convert_arguments(P, positions::SubArray)
+
+function convert_arguments(::Type{<: PointBased}, positions::SubArray)
     # TODO figure out a good subarray solution
     (positions,)
 end
-function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{<: NTuple{2, T}}) where T <: VecTypes
-    (reinterpret(T, positions),)
+function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{<: NTuple{2, <: VecTypes{N, T}}}) where {N, T}
+    (convert(Vector{Point{N, Float32}}, reinterpret(Point{N, T}, positions)),)
 end
 
 
@@ -65,13 +68,6 @@ Takes an input AbstractString `x` and converts it to a string.
 """
 convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 
-"""
-    convert_arguments(P, x)::(Vector)
-
-Accepts a vector `x` of the types in VecTypes.
-`P` is the plot Type (it is optional).
-"""
-convert_arguments(P, x::AbstractVector{<: VecTypes}) = (x,)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -395,8 +391,18 @@ a string naming a font, e.g. helvetica
 function convert_attribute(x::Union{Symbol, String}, k::key"font")
     str = string(x)
     get!(_font_cache, str) do
-        str == "default" && return convert_attribute("DejaVuSans", k)
-        newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
+        str == "default" && return convert_attribute("Dejavu Sans", k)
+        fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
+        font = FreeTypeAbstraction.findfont(str, additional_fonts = fontpath)
+        if font == nothing
+            warn("Could not find font $str, using Dejavu Sans")
+            if "dejavu sans" == lowercase(str)
+                # since we fall back to dejavu sans, we need to check for recursion
+                error("recursion, font path seems to not contain dejavu sans: $fontpath")
+            end
+            return convert_attribute("dejavu sans", k)
+        end
+        [font] # TODO do we really need the array around it!??!?
     end
 end
 convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)
