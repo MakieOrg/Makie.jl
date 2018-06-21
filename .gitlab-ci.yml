@@ -13,8 +13,6 @@ variables:
 
   script:
     - glxinfo | grep version
-    - julia -e 'Pkg.init();Pkg.clone("https://github.com/JuliaPlots/AbstractPlotting.jl.git")'
-    - julia -e 'Pkg.checkout("FreeTypeAbstraction"); Pkg.checkout("FreeTypeAbstraction", "sd/06")'
     # actual testing
     - julia -e "symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
                 Pkg.resolve();
