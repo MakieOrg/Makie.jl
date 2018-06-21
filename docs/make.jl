@@ -115,6 +115,34 @@ end
 example_pages = "Examples" => example_list
 
 
+# =============================================
+# automatically generate an overview of the plot attributes (keyword arguments), using a source md file
+attr_list = []
+for func in (atomics..., contour)
+    Typ = to_type(func)
+    attr = keys(default_theme(nothing, Typ))
+    push!(attr_list, attr...)
+end
+attr_list = string.(sort!(unique(attr_list)))
+# filter out fxaa attribute
+attr_list = filter!(x -> x ≠ "fxaa", attr_list)
+
+path = joinpath(srcpath, "attributes.md")
+srcdocpath = joinpath(srcpath, "src-attributes.md")
+open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    println(io, "# Plot attributes")
+    src = read(srcdocpath, String)
+    println(io, src)
+    print(io, "\n")
+    for attr in attr_list
+        println(io, "## [`$attr`](@id $attr)\n")
+        # println(io, "  * [$attr](@ref attr)")
+        println(io, "docstrings go here\n")
+    end
+end
+
+
 makedocs(
     modules = [Makie, AbstractPlotting],
     doctest = false, clean = true,
