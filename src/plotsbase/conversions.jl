@@ -786,8 +786,13 @@ function to_font(scene, x::Union{Symbol, String})
     if str == "default"
         return GLVisualize.defaultfont()
     end
-    newface(format(match(Fontconfig.Pattern(string(x))), "%{file}"))
+    x = findfont(string(x))
+    if x == nothing
+        warn("Could not find font $x")
+        return GLVisualize.defaultfont()
+    end
 end
+
 const Font = Vector{Ptr{FreeType.FT_FaceRec}}
 to_font(scene, x::Font) = x
 function to_font(scene, x)
