@@ -173,13 +173,7 @@ end
         )
     end
 
-    @cell "Sample 7" [scatter, similar] begin
-        scene = Scene(@resolution)
-        sv = scatter!(scene, rand(Point3f0, 100), markersize = 0.05)
-        # TODO: ERROR: function similar does not accept keyword arguments
-        # Simon says: maybe we won't keep similar
-        # similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
-    end
+
     @cell "Axis + Surface" [axis, surface, interaction, manipulation] begin
         vx = -1:0.01:1
         vy = -1:0.01:1
@@ -226,9 +220,7 @@ end
         # define points/edges
         perturbfactor = 4e1
         N = 3; nbfacese = 30; radius = 0.02
-        # TODO: Need Makie.HyperSphere to work
-        large_sphere = HyperSphere(Point3f0(0), 1f0)
-        # TODO: Makie.decompose
+        large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere, 30)
         np = length(positions)
         pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
@@ -311,9 +303,6 @@ end
 
         r = linspace(-2, 2, 50)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-        # TODO: errors out here ERROR: DomainError:
-        # Exponentiation yielding a complex result requires a complex argument.
-        # Replace x^y with (x+0im)^y, Complex(x)^y, or similar.
         z = surf_func(20)
         surf = surface!(scene, r, r, z)[end]
 
@@ -472,6 +461,7 @@ end
     #
     #         scene = Scene(@resolution)
     #         println("placeholder")
+    #         scene
     #     end
     # end
 
@@ -490,7 +480,7 @@ end
     #         #     # that are not visible in the user facing API.
     #         #     Makie.to_positions(backend, positions)
     #         # end
-    #         # # TODO: ERROR: MethodError: AbstractPlotting.convert_arguments(::Type{Lines{...}}, ::GeometryTypes.HyperSphere{2,Float32}) is ambiguous.
+    #         # # : ERROR: MethodError: AbstractPlotting.convert_arguments(::Type{Lines{...}}, ::GeometryTypes.HyperSphere{2,Float32}) is ambiguous.
     #         # p1 = lines!(Makie.Circle(Point2f0(0), 5f0))
     #         # p2 = scatter!(Makie.Circle(Point2f0(0), 6f0))
     #         # AbstractPlotting.center!(scene)
@@ -499,7 +489,7 @@ end
     #     end
     #
     #     @cell "change size" [axis] begin
-    #         # # TODO: ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::GeometryTypes.HyperSphere{2,Float32}, ::Symbol)
+    #         # # : ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::GeometryTypes.HyperSphere{2,Float32}, ::Symbol)
     #         # p2[:positions] = Makie.Circle(Point2f0(0), 7f0)
     #         # AbstractPlotting.center!(scene)
     #
@@ -690,14 +680,11 @@ end
         scene = Scene()
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
-        # TODO: ERROR: UndefVarError: to_node not defined
         t = Node(Base.time()) # create a life signal
         limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
         p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.5)[end]
         p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.5)[end]
 
-        # you can now reference to life attributes from the above plots:
-        # TODO: ERROR: UndefVarError: lift_node not defined
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
@@ -709,81 +696,81 @@ end
     end
 
 
-    @group begin
-        @cell "Theming Step 1" ["3d", scatter, surface] begin
-
-            scene = Scene(@resolution)
-            vx = -1:0.05:1;
-            vy = -1:0.05:1;
-            f(x, y) = (sin(x*10) + cos(y*10)) / 4
-            psurf = surface!(scene, vx, vy, f)[1]
-            scene
-
-            # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
-            pos = lift(psurf[1], psurf[2], psurf[3]) do x, y, z
-                vec(Point3f0.(x, y', z .+ 0.5))
-            end
-            pscat = scatter!(scene, pos)
-            # TODO: the following errors out
-            # ERROR: Not a valid index type: Reactive.Signal{StepRange{Int64,Int64}}. Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them
-            # plines = lines!(scene, lift(view, pos, lift(x->1:2:length(x), pos)))
-        end
-
-        @cell "Theming Step 2" ["3d", scatter, surface] begin
-            # # TODO: didn't work
-            # @theme theme = begin
-            #     # TODO: ERROR: UndefVarError: to_markersize2d not defined
-            #     markersize = to_markersize2d(0.01)
-            #     strokecolor = to_color(:white)
-            #     # TODO: ERROR: UndefVarError: to_float not defined
-            #     strokewidth = to_float(0.01)
-            # end
-            # # this pushes all the values from theme to the plot
-            # # TODO: ERROR: UndefVarError: theme not defined
-            # # --> I guess it is from the above @theme block?
-            # push!(pscat, theme)
-            # # Update the entire surface node with this
-            # scene[:scatter] = theme
-            # # Or permananently (to be more precise: just for this session) change the theme for scatter
-            # scene[:theme, :scatter] = theme
-            # scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
-            # scene
-
-            scene = Scene(@resolution)
-            println("placeholder")
-        end
-
-        @cell "Theming Step 3" ["3d", scatter, surface] begin
-            # TODO: didn't work
-            # Make a completely new theme
-            # function custom_theme(scene)
-            #     @theme theme = begin
-            #         linewidth = to_float(3)
-            #         colormap = to_colormap(:RdPu)
-            #         scatter = begin
-            #             marker = to_spritemarker(Circle)
-            #             markersize = to_float(0.03)
-            #             strokecolor = to_color(:white)
-            #             strokewidth = to_float(0.01)
-            #             glowcolor = to_color(RGBA(0, 0, 0, 0.4))
-            #             glowwidth = to_float(0.1)
-            #         end
-            #     end
-            #     # update theme values
-            #     scene[:theme] = theme
-            # end
-            #
-            # # apply it to the scene
-            # custom_theme(scene)
-            #
-            # # From now everything will be plotted with new theme
-            # psurf = surface(vx, 1:0.1:2, psurf[:z])
-            # AbstractPlotting.center!(scene)
-
-            scene = Scene(@resolution)
-            println("placeholder")
-        end
-    end
+    # @group begin
+    #     @cell "Theming Step 1" ["3d", scatter, surface] begin
+    #
+    #         # scene = Scene(@resolution)
+    #         # vx = -1:0.05:1;
+    #         # vy = -1:0.05:1;
+    #         # f(x, y) = (sin(x*10) + cos(y*10)) / 4
+    #         # psurf = surface!(scene, vx, vy, f)[1]
+    #         # scene
+    #         #
+    #         # # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
+    #         # pos = lift(psurf[1], psurf[2], psurf[3]) do x, y, z
+    #         #     vec(Point3f0.(x, y', z .+ 0.5))
+    #         # end
+    #         # pscat = scatter!(scene, pos)
+    #         # TODO: the following errors out
+    #         # ERROR: Not a valid index type: Reactive.Signal{StepRange{Int64,Int64}}. Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them
+    #         # plines = lines!(scene, lift(view, pos, lift(x->1:2:length(x), pos)))
+    #     end
+    #
+    #     @cell "Theming Step 2" ["3d", scatter, surface] begin
+    #         # # TODO: didn't work
+    #         # @theme theme = begin
+    #         #     # TODO: ERROR: UndefVarError: to_markersize2d not defined
+    #         #     markersize = to_markersize2d(0.01)
+    #         #     strokecolor = to_color(:white)
+    #         #     # TODO: ERROR: UndefVarError: to_float not defined
+    #         #     strokewidth = to_float(0.01)
+    #         # end
+    #         # # this pushes all the values from theme to the plot
+    #         # # TODO: ERROR: UndefVarError: theme not defined
+    #         # # --> I guess it is from the above @theme block?
+    #         # push!(pscat, theme)
+    #         # # Update the entire surface node with this
+    #         # scene[:scatter] = theme
+    #         # # Or permananently (to be more precise: just for this session) change the theme for scatter
+    #         # scene[:theme, :scatter] = theme
+    #         # scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
+    #         # scene
+    #
+    #         scene = Scene(@resolution)
+    #         println("placeholder")
+    #     end
+    #
+    #     @cell "Theming Step 3" ["3d", scatter, surface] begin
+    #         # TODO: didn't work
+    #         # Make a completely new theme
+    #         # function custom_theme(scene)
+    #         #     @theme theme = begin
+    #         #         linewidth = to_float(3)
+    #         #         colormap = to_colormap(:RdPu)
+    #         #         scatter = begin
+    #         #             marker = to_spritemarker(Circle)
+    #         #             markersize = to_float(0.03)
+    #         #             strokecolor = to_color(:white)
+    #         #             strokewidth = to_float(0.01)
+    #         #             glowcolor = to_color(RGBA(0, 0, 0, 0.4))
+    #         #             glowwidth = to_float(0.1)
+    #         #         end
+    #         #     end
+    #         #     # update theme values
+    #         #     scene[:theme] = theme
+    #         # end
+    #         #
+    #         # # apply it to the scene
+    #         # custom_theme(scene)
+    #         #
+    #         # # From now everything will be plotted with new theme
+    #         # psurf = surface(vx, 1:0.1:2, psurf[:z])
+    #         # AbstractPlotting.center!(scene)
+    #
+    #         scene = Scene(@resolution)
+    #         println("placeholder")
+    #     end
+    # end
     # @cell "3D Volume Contour with slices" [volume, contour, heatmap, slices, "3d layout", layout] begin
     #     r = linspace(-2pi, 2pi, 100)
     #     volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
@@ -899,7 +886,7 @@ end
             raw = true
         )[end]
 
-        display(scene)
+        display(Makie.global_gl_screen(), scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
         p2[:marker] = 'π'

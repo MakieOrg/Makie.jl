@@ -126,20 +126,20 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
     !ispath(currpath) && warn("currepath does not exist!")
     !ispath(tarpath) && warn("tarpath does not exist!")
     for idx in indices
-        uname = database[idx].unique_name
-        title = database[idx].title
+        entry = database[idx]
+        uname = entry.unique_name
+        title = entry.title
+        src_lines = entry.file_range
         # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
         testpath1 = joinpath(mediapath, "thumb-$uname.png")
         testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
         link = relpath(tarpath, currpath)
         if isfile(testpath1)
             embedpath = relpath(testpath1, currpath)
-            # println(io, "![]($(embedpath))")
-            println(io, "[![]($(embedpath))]($(link))")
-            # [![](..\media\thumb-heatmap_1.png)](.\examples-database.html)
+            println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
         elseif isfile(testpath2)
             embedpath = relpath(testpath2, currpath)
-            println(io, "[![]($(embedpath))]($(link))")
+            println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
         else
             warn("thumbnail for index $idx with uname $uname not found")
             embedpath = "not_found"

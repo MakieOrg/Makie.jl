@@ -88,7 +88,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
-        positions = handle_view(x[1], data)
+        positions = handle_view(x.converted[1], data)
         visualize(positions, Style(:linesegment), data).children[]
     end
 end

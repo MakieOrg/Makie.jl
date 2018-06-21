@@ -5,11 +5,7 @@ function isa_image(x::Type{T}) where T<:Matrix
     eltype(T) <: Union{Colorant, Colors.Fractional}
 end
 isa_image(x::Matrix) = isa_image(typeof(x))
-# if !isdefined(Images, :ImageAxes)
-#     include_string("""
-#     isa_image(x::Images.Image) = true
-#     """)
-# end
+
 isa_image(x) = false
 
 # Splits a dictionary in two dicts, via a condition
