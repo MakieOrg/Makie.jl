@@ -53,7 +53,12 @@ end
 """
     `volume(volume_data)`
 
-Plots a volume.
+Plots a volume. Available algorithms are:
+* `:iso` => IsoValue
+* `:absorption` => Absorption
+* `:mip` => MaximumIntensityProjection
+* `:absorptionrgba` => AbsorptionRGBA
+* `:indexedabsorption` => IndexedAbsorptionRGBA
 """
 @atomic(Volume) do scene
     Theme(;
