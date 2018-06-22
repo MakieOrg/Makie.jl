@@ -8,7 +8,7 @@ pathroot = Pkg.dir("Makie")
 docspath = Pkg.dir("Makie", "docs")
 srcpath = joinpath(pathroot, "docs", "src")
 buildpath = joinpath(pathroot, "docs", "build")
-mediapath = joinpath(pathroot, "docs", "media")
+mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 
 
@@ -142,6 +142,8 @@ open(path, "w") do io
     end
 end
 
+# TODO can we teach this to documenter somehow?
+cp(Pkg.dir("Makie", "docs", "media"), mediapath)
 
 makedocs(
     modules = [Makie, AbstractPlotting],
@@ -185,14 +187,14 @@ makedocs(
 #
 # ENV["TRAVIS_BRANCH"] = "latest"
 # ENV["TRAVIS_PULL_REQUEST"] = "false"
-# ENV["TRAVIS_REPO_SLUG"] = "github.com/SimonDanisch/MakieDocs.git"
-# ENV["TRAVIS_TAG"] = "tag"
+# ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
+# ENV["TRAVIS_TAG"] = "v1.0.0"
 # ENV["TRAVIS_OS_NAME"] = "linux"
 # ENV["TRAVIS_JULIA_VERSION"] = "0.6"
 #
 # deploydocs(
 #     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-#     repo   = "github.com/SimonDanisch/MakieDocs.git",
+#     repo   = "github.com/JuliaPlots/Makie.jl.git",
 #     julia  = "0.6",
 #     target = "build",
 #     osname = "linux",

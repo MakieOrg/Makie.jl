@@ -68,7 +68,7 @@ function colorbuffer(screen::Screen)
     GLFW.SwapBuffers(to_native(screen))
     glFinish() # block until opengl is done rendering
     buffer = gpu_data(screen.framebuffer.color)
-    return rotl90(RGB{N0f8}.(ImageCore.clamp01nan.(buffer)))
+    return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
 end
 
 

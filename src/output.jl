@@ -28,7 +28,7 @@ Saves an image of the `scene` at the specified `path`.
 function save(path::String, scene::Scene)
     img = scene2image(scene)
     if img != nothing
-        save(path, img)
+        FileIO.save(path, img)
     else
         # TODO create a screen
         error("Scene isn't displayed on a screen")
