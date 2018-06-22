@@ -13,7 +13,7 @@ variables:
 
   script:
     # actual testing
-    - julia -e "println(ispath(joinpath(homedir(),".julia")));
+    - julia -e "println(ispath(joinpath(homedir(),\".julia\")));
                 Pkg.init();
                 symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
                 Pkg.resolve();
