@@ -131,7 +131,7 @@ function finish(io::VideoStream, typ = "mkv"; remove_mkv = true)
     out = joinpath(path, name * ".$typ")
 
     if typ == "mp4"
-        run(`ffmpeg -i $(io.path) -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf 22 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
         remove_mkv && rm(io.path)
         return out
     elseif typ == "webm"

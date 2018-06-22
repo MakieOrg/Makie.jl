@@ -27,16 +27,16 @@ makedocs(
     ]
 )
 
-ENV["TRAVIS_BRANCH"] = "latest"
+ENV["TRAVIS_BRANCH"] = "stable"
 ENV["TRAVIS_PULL_REQUEST"] = "false"
-ENV["TRAVIS_REPO_SLUG"] = "github.com/SimonDanisch/Makie.jl.git"
-ENV["TRAVIS_TAG"] = "tag"
+ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
+ENV["TRAVIS_TAG"] = "v0.0.1"
 ENV["TRAVIS_OS_NAME"] = "linux"
 ENV["TRAVIS_JULIA_VERSION"] = "0.6"
 
 deploydocs(
     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-    repo   = "github.com/SimonDanisch/Makie.jl.git",
+    repo   = "github.com/JuliaPlots/Makie.jl.git",
     julia  = "0.6",
     target = "build",
     osname = "linux",
