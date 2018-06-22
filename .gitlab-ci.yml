@@ -13,6 +13,7 @@ variables:
 
   script:
     - glxinfo | grep version
+    - ls /root/.julia
     # actual testing
     - julia -e "Pkg.init();
                 symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
