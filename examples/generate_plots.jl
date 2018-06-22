@@ -64,7 +64,7 @@ function record_examples(tags...)
                     Base.showerror(STDERR, err)
                 end
             elseif isa(result, AbstractPlotting.Scene)
-                FileIO.save("docs/media/$uname.png", result)
+                Makie.save("docs/media/$uname.png", result)
                 generate_thumbnail("docs/media/$uname.png"; sz = thumbnail_size)
             else
                 warn("something went really badly with index $index & $(typeof(result))")
