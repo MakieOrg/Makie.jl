@@ -1,27 +1,22 @@
 julia 0.6
 
-Quaternions
-GLVisualize
 StaticArrays 0.6.6
 GeometryTypes 0.4.4
 Reactive 0.6.0
-GLAbstraction 0.6.0
-GLWindow 0.7.1
 AbstractNumbers 0.1.1
 Contour
 FileIO
 Images
 UnicodeFun
 ColorBrewer
-Interact # for displaying signals of Image - a bit unfortunate
 Hiccup
 Media
 Juno
 ModernGL
 GLFW 1.4.1
 FreeType
-FreeTypeAbstraction
-
+FreeTypeAbstraction 0.2.0 #for findfont
 @windows ImageMagick
 @linux ImageMagick
 @osx QuartzImageIO
+AbstractPlotting

@@ -5,6 +5,12 @@ site_author:      Simon Danisch
 
 theme: cinder
 
+# Options
+extra:
+  logo: images/logo.png
+  author: SimonDanisch
+  github: JuliaPlots
+
 extra_css:
   - assets/Documenter.css
 
