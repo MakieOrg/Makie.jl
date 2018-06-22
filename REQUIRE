@@ -19,3 +19,4 @@ FreeTypeAbstraction 0.2.0 #for findfont
 @linux ImageMagick
 @osx QuartzImageIO
 AbstractPlotting
+Primes
