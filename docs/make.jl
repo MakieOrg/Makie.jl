@@ -11,32 +11,15 @@ buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 
-# =============================================
-# automatically generate an overview of the atomic functions
-# path = joinpath(srcpath, "functions-overview.md")
-# open(path, "w") do io
-#     println(io, "# Atomic functions overview")
-#     for func in (atomics..., contour)
-#         expdbpath = joinpath(buildpath, "examples-$func.html")
-#         println(io, "## `$(to_string(func))`\n")
-#         try
-#             println(io, "```@docs")
-#             println(io, "$(to_string(func))")
-#             println(io, "```\n")
-#             embed_thumbnail_link(io, func, buildpath, expdbpath)
-#         catch e
-#             println("ERROR: Didn't work with $func\n")
-#             Base.showerror(STDERR, e)
-#         end
-#         println(io, "\n")
-#     end
-# end
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
 path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    medialist = readdir(mediapath)
+    isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     println(io, "# Atomic functions overview")
     src = read(srcdocpath, String)
     println(io, src)
@@ -60,64 +43,6 @@ end
 
 
 # =============================================
-# automatically generate an detailed overview of each of the atomic functions
-# includes plot thumbnails
-# atomics_pages = nothing
-# atomics_list = String[]
-# atomicspath = joinpath(srcpath, "atomics_details")
-# isdir(atomicspath) || mkdir(atomicspath)
-# for func in (atomics..., contour)
-#     path = joinpath(atomicspath, "$(to_string(func)).md")
-#     open(path, "w") do io
-#         println(io, "# `$(to_string(func))`")
-#         try
-#             _help(io, func; extended = true)
-#             embed_thumbnail_link(io, func, atomicspath, expdbpath)
-#         catch e
-#             println("ERROR: Didn't work with $func\n")
-#             Base.showerror(STDERR, e)
-#         end
-#         println(io, "\n")
-#     end
-#     push!(atomics_list, "atomics_details/$(to_string(func)).md")
-# end
-# atomics_pages = "Atomic functions details" => atomics_list
-
-# =============================================
-# automatically generate gallery based on tags - all examples
-# tags_list = sort!(unique(tags_list), by = x -> lowercase(x))
-# path = joinpath(srcpath, "examples-database-tags.md")
-# open(path, "w") do io
-#     println(io, "# Examples gallery, sorted by tag")
-#     println(io, "## Tags")
-#     for tag in tags_list
-#         println(io, "  * [$tag](@ref tag_$(replace(tag, " ", "_")))")
-#     end
-#     println(io, "\n")
-#     for tag in tags_list
-#         counter = 1
-#         # search for the indices where tag is found
-#         indices = find_indices(tag; title = nothing, author = nothing)
-#         println(io, "## [$tag](@id tag_$(replace(tag, " ", "_")))")
-#         for idx in indices
-#             try
-#                 entry = database[idx]
-#                 uname = string(entry.unique_name)
-#                 src_lines = entry.file_range
-#                 println(io, "### Example $counter, \"$(entry.title)\"")
-#                 _print_source(io, idx; style = "julia")
-#                 embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-#                 counter += 1
-#             catch e
-#                 println("ERROR: Didn't work with $tag at index $idx\n")
-#                 Base.showerror(STDERR, e)
-#             end
-#         end
-#         println(io, "\n")
-#     end
-# end
-
-# =============================================
 # automatically generate gallery based on looping through the database
 # using pre-generated plots from generate_plots.jl
 cd(docspath)
@@ -125,6 +50,7 @@ medialist = readdir(mediapath)
 example_pages = nothing
 example_list = String[]
 for func in (atomics..., contour)
+    isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     fname = to_string(func)
     info("generating examples database for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
@@ -187,6 +113,34 @@ for func in (atomics..., contour)
     push!(example_list, "examples-$fname.md")
 end
 example_pages = "Examples" => example_list
+
+
+# =============================================
+# automatically generate an overview of the plot attributes (keyword arguments), using a source md file
+attr_list = []
+for func in (atomics..., contour)
+    Typ = to_type(func)
+    attr = keys(default_theme(nothing, Typ))
+    push!(attr_list, attr...)
+end
+attr_list = string.(sort!(unique(attr_list)))
+# filter out fxaa attribute
+attr_list = filter!(x -> x ≠ "fxaa", attr_list)
+
+path = joinpath(srcpath, "attributes.md")
+srcdocpath = joinpath(srcpath, "src-attributes.md")
+open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    println(io, "# Plot attributes")
+    src = read(srcdocpath, String)
+    println(io, src)
+    print(io, "\n")
+    for attr in attr_list
+        println(io, "## [`$attr`](@id $attr)\n")
+        # println(io, "  * [$attr](@ref attr)")
+        println(io, "docstrings go here\n")
+    end
+end
 
 
 makedocs(

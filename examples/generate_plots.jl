@@ -43,7 +43,7 @@ function record_examples(tags...)
     index = start(examples)
     dblen = length(examples)
     thumbnail_size = 150
-    while dblen - 1 >= index
+    while dblen >= index
         # use the unique_name of the database entry as filename
         uname = string(examples[index].unique_name)
         println(index)
