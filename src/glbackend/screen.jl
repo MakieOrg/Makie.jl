@@ -78,6 +78,7 @@ function Base.display(screen::Screen, scene::Scene)
     return
 end
 
+###WIP shadercleanup
 function colorbuffer(screen::Screen)
     GLFW.PollEvents()
     yield()
@@ -98,7 +99,7 @@ Base.size(screen::Screen) = screen.size
 Base.isopen(x::Screen) = isopen(x.glscreen)
 
 # TEMP with regards to the pipeline <=> RObj system
-
+###WIP shadercleanup
 function Base.push!(screen::Screen, scene::Scene, robj)
     filter!(screen.screen2scene) do k, v
         k.value != nothing

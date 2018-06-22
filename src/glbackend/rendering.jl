@@ -70,6 +70,7 @@ import .GLAbstraction: defaultframebuffer, RenderPass, Pipeline, setup
 import .GLVisualize: GLVisualizeShader
 
 default_pipeline(fbo, program)=
+    # Pipeline(:default, [default_renderpass(fbo, program)])
     Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), final_renderpass(fbo)])
     # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
 
@@ -93,18 +94,21 @@ end
 
 #Implementation of the setup interface for the default pipeline.
 function setup(pipe::Pipeline{:default})
-
-    glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0xff)
-    glClearStencil(0)
-
+    glDisable(GL_STENCIL_TEST)
+    # glEnable(GL_STENCIL_TEST)
+    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    # glStencilMask(0xff)
+    # glClearStencil(0)
+    #
 end
 
+###WIP shadercleanup
 function setup(rp::RenderPass{:default})
     bind(rp.target)
     draw(rp.target, 1:2)
-    clear!(rp.target) #this clears everything,
+    glClearColor(0,0,0,0)
+    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    # clear!(rp.target) #this clears everything,
                       #so if textures get reused then we need to clear more
                       #specifically, lets try this first
     glEnable(GL_DEPTH_TEST)
@@ -113,7 +117,7 @@ function setup(rp::RenderPass{:default})
     # Disable cullface for now, untill all rendering code is corrected!
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
-    enabletransparency()
+    # enabletransparency()
 
 end
 
@@ -133,7 +137,19 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
         Reactive.value(found) || continue
         a = rect[]
         glViewport(minimum(a)..., widths(a)...)
-        glStencilFunc(GL_EQUAL, screenid, 0xff)
+        glStencilFunc(GL_EQUAL, screenid, 0xff) #TODO rendercleanup: Can this be somewhere else?
+        # for (key,value) in rp.program.uniformloc #TODO uniformbuffer: This should be inside a buffer I think
+        #     if haskey(elem.uniforms, key) && elem.uniforms[key] != nothing
+        #         if length(value) == 1
+        #             gluniform(value[1], elem.uniforms[key])
+        #         elseif length(value) == 2
+        #             println(key)
+        #             gluniform(value[1], value[2], elem.uniforms[key])
+        #         else
+        #             error("Uniform tuple too long: $(length(value))")
+        #         end
+        #     end
+        # end
         draw(elem)
     end
     unbind(renderlist[end][3].vao)
@@ -190,7 +206,7 @@ end
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen)
-    !isopen(screen) && return
+    (!isopen(screen) || isempty(screen.pipelines)) && return
                            #postprocess1
     nw = to_native(screen)
     wh = Int.(GLFW.GetFramebufferSize(nw))
@@ -199,6 +215,8 @@ function render_frame(screen::Screen)
 
     #run through all the pipes in the queue and push the robjs linked to them through them.
     for pipe in screen.pipelines
+        !haskey(screen.renderlist, pipe.name) && return #TODO what is going on here??
+
         resize_targets!(pipe, wh)
         render(pipe, screen, screen.renderlist[pipe.name])
     end

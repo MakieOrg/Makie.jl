@@ -17,7 +17,7 @@ end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
-function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
+function setup_cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
@@ -33,6 +33,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         push!(screen, scene, robj)
         robj
     end
+
 end
 
 index1D(x::SubArray) = parentindexes(x)[1]
@@ -58,9 +59,9 @@ function lift_convert(key, value, plot)
          convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
      end
 end
-
+#### WIP shadercleanup
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
@@ -75,7 +76,7 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Lines)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
@@ -84,7 +85,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
@@ -97,7 +98,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Combined)
         insert!(screen, scene, elem)
     end
 end
-
+#####
 using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, glyph_scale!, calc_position, calc_offset
 
 function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
@@ -142,7 +143,7 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
         gl_text = map(to_gl_text, x[1], getindex.(gl_attributes, liftkeys)...)
@@ -171,7 +172,7 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = (value.((x[1], x[2])))
         heatmap = map(x[3]) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
@@ -189,7 +190,7 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = to_range.(value.((x[1], x[2])))
         img = x[3]
         if isa(value(img), AbstractMatrix{<: Number})
@@ -207,7 +208,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
@@ -228,7 +229,7 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         if haskey(gl_attributes, :image) && gl_attributes[:image][] != nothing
             img = pop!(gl_attributes, :image)
@@ -317,7 +318,7 @@ function surface_contours(volume::Volume)
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Volume)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         if gl_attributes[:algorithm][] == 0
             surface_contours(x)
         else
