@@ -26,37 +26,12 @@ As you can see, the first argument is the backend, so you can overload this for 
 or for a specific position type.
 This can look something like this:
 
-```@example to_position
-using Makie, GeometryTypes
-
-# To simplify the example, we take the already existing GeometryTypes.Circle type, which
-# can already be decomposed into positions
-function Makie.to_positions(backend, x::Circle)
-    # Convert to a type to_positions can handle.
-    # Everything that usually works in e.g. scatter/lines should be allowed here.
-    positions = decompose(Point2f0, x, 50)
-    # Pass your position data to to_positions,
-    # just in case the backend has some extra converts
-    # that are not visible in the user facing API.
-    Makie.to_positions(backend, positions)
-end
-scene = Scene(resolution = (500, 500))
-p1 = lines(Circle(Point2f0(0), 5f0))
-p2 = scatter(Circle(Point2f0(0), 6f0))
-center!(scene)
-save("ext_plot1.png", scene); nothing # hide
-```
-![](ext_plot1.png)
+@library[example] "overload to position"
 
 since the pipeline for converting attributes also knows about Circle now,
 we can update the attribute directly with our own type
 
-```@example to_position
-p2[:positions] = Circle(Point2f0(0), 7f0)
-center!(scene)
-save("ext_plot2.png", scene); nothing # hide
-```
-![](ext_plot2.png)
+@library[example] "change size"
 
 ## Option 3
 
