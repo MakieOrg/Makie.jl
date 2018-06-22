@@ -23,17 +23,8 @@ function Base.split(condition::Function, associative::Associative)
 end
 
 
-
-function assemble_shader(data)
-    default_bb = Signal(centered(AABB))
-    bb  = get(data, :boundingbox, default_bb)
-    if bb == nothing || isa(bb, Signal{Void})
-        bb = default_bb
-    end
-    robj = RenderObject(data, bb)
-    Composition(robj)
-end
-
+######## shadercleanup
+####
 function y_partition_abs(area, amount)
     a = round(Int, amount)
     p = const_lift(area) do r

@@ -30,6 +30,7 @@ setup(pipe::Pipeline) = return
 stop(pipe::Pipeline) = stop(pipe.passes[end])
 
 resize_targets!(pipe::Pipeline, w, h) = resize_targets!(pipe, (w, h))
+###WIP shadercleanup
 function resize_targets!(pipe::Pipeline, wh)
     for pass in pipe.passes
         resize_target!(pass, wh)
