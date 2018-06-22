@@ -73,21 +73,13 @@ using Makie
             linecolor = :black, linewidth = 2
         )
     end
-    # @cell "Subscenes" [image, scatter, subscene] begin
-    #
-    #     scene = Scene(@resolution)
-    #     # # TODO: had to use Makie.loadasset
-    #     # img = rand(RGBAf0, 100, 100)
-    #     # scene = Scene(@resolution)
-    #     # # TODO: fails here with ERROR: MethodError: no method matching isless(::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}}, ::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}})
-    #     # is = image(img)
-    #     # center!(scene)
-    #     # # TODO: had to do Makie.Signal
-    #     # subscene = Scene(scene, Node(Makie.SimpleRectangle(0, 0, 200, 200)))
-    #     # scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-    #     # center!(scene)
-    #     # scene
-    # end
+    @cell "Subscenes" [image, scatter, subscene] begin
+        img = rand(RGBAf0, 100, 100)
+        scene = image(img, show_axis = false)
+        subscene = Scene(scene, IRect(100, 100, 300, 300))
+        scatter!(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
+        scene;
+    end
 
     @cell "Polygons" [poly, polygon, linesegments] begin
         using GeometryTypes
@@ -136,7 +128,7 @@ using Makie
             position = (300, 200),
             align = (:center,  :center),
             textsize = 60,
-            font = "URW Chancery L"
+            font = "Black Chancery"
         )
     end
 
