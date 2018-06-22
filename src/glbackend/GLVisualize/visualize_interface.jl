@@ -18,7 +18,7 @@ while the key word arguments just alter the parameters of one visualization.
 Always returns a context, which can be displayed on a window via view(::Composition, [display]).
 """
 visualize(main::ANY, s::Symbol=:default; kw_args...) = visualize(main, Style{s}(), Dict{Symbol, Any}(kw_args))::Composition
-visualize(main::ANY, s::Style, data::Dict) = assemble_shader(default(main, s, data))::Composition
+visualize(main::ANY, s::Style, data::Dict) = Composition(default(main, s, data))::Composition
 visualize(c::Composable, s::Symbol=:default; kw_args...) = Composition(c)
 visualize(c::Composable, s::Style, data::Dict) = Composition(c)
 

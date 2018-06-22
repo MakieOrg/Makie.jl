@@ -9,6 +9,27 @@ mutable struct Composition{Unit} <: Composable{Unit}
     boundingbox
     transformation
 end
+
+Composition() = Composition{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Signal(eye(Mat{4,4, Float32})))
+Composition(trans::Signal{Mat{4,4, Float32}}) = Composition{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), trans)
+function Composition(a::Composable...; parent=Composition())
+    append!(parent, a)
+    parent
+end
+"Create a composition from GLdata. This was previously in GLVisualize utils as `assemble_shader`"
+function Composition(data::Dict)
+    shader =
+    default_bb = Signal(centered(AABB))
+    bb  = get(data, :boundingbox, default_bb)
+    if bb == nothing || isa(bb, Signal{Void})
+        bb = default_bb
+    end
+    robj = RenderObject(data, bb)
+    Composition(robj)
+end
+boundingbox(c::Composable) = c.boundingbox
+transformation(c::Composable) = c.transformation
+
 function scale_trans(b)
     m = minimum(b)
     w = widths(b)
@@ -65,14 +86,6 @@ end
 export layout!
 
 
-Composition() = Composition{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Signal(eye(Mat{4,4, Float32})))
-Composition(trans::Signal{Mat{4,4, Float32}}) = Composition{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), trans)
-function Composition(a::Composable...; parent=Composition())
-    append!(parent, a)
-    parent
-end
-boundingbox(c::Composable) = c.boundingbox
-transformation(c::Composable) = c.transformation
 
 function transform!(c::Composable, model)
     c.transformation = const_lift(*, model, transformation(c))

@@ -1,4 +1,3 @@
-render(robj::RenderObject) = render(robj.vertexarray)
 ##############################################################################################
 #  Generic render functions
 #####
