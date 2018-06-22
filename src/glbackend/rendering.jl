@@ -43,17 +43,16 @@ end
 
 function setup!(screen)
     if isopen(screen)
+        glEnable(GL_SCISSOR_TEST)
         for (id, rect, clear, color) in screen.screens
             a = rect[]
             glScissor(minimum(a)..., widths(a)...)
-            glClearStencil(id)
-            bits = GL_STENCIL_BUFFER_BIT
             if clear[]
                 c = color[]
                 glClearColor(red(c), green(c), blue(c), alpha(c))
-                bits |= GL_COLOR_BUFFER_BIT
+                glClear(GL_COLOR_BUFFER_BIT)
             end
-            glClear(bits)
+
         end
     end
     return
@@ -71,34 +70,28 @@ function render_frame(screen::Screen)
     wh = Int.(GLFW.GetFramebufferSize(nw))
     resize!(fb, wh)
     w, h = wh
+    glDisable(GL_STENCIL_TEST)
     #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
-    glDisable(GL_STENCIL_TEST)
-    # setup stencil and backgrounds
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0xff)
-    # glClearStencil(0)
     glClearColor(0,0,0,0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-    glEnable(GL_SCISSOR_TEST)
     setup!(screen)
-    glDisable(GL_SCISSOR_TEST)
+    # glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     # # deactivate stencil write
     # glEnable(GL_STENCIL_TEST)
     # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     # glStencilMask(0x00)
     GLAbstraction.render(screen, true)
-    glDisable(GL_STENCIL_TEST)
+    # glDisable(GL_STENCIL_TEST)
 
     # transfer color to luma buffer and apply fxaa
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
     glDrawBuffer(GL_COLOR_ATTACHMENT0)
+    glViewport(0, 0, w, h)
     glClearColor(0,0,0,0)
     glClear(GL_COLOR_BUFFER_BIT)
-    glViewport(0, 0, w, h)
     GLAbstraction.render(fb.postprocess[1]) # add luma and preprocess
 
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
@@ -108,9 +101,6 @@ function render_frame(screen::Screen)
     #prepare for non anti aliased pass
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
     GLAbstraction.render(screen, false)
     # glDisable(GL_STENCIL_TEST)
     glViewport(0, 0, w, h)
@@ -140,7 +130,6 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
             found || continue
             a = rect[]
             glViewport(minimum(a)..., widths(a)...)
-            glStencilFunc(GL_EQUAL, screenid, 0xff)
             if fxaa && elem[:fxaa][]
                 render(elem)
             end
