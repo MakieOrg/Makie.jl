@@ -1,10 +1,7 @@
 include("library.jl")
 cd(@__DIR__)
 
-using Makie
-using ImageTransformations
-using FileIO
-
+using Makie, ImageTransformations, FileIO
 
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
@@ -46,7 +43,7 @@ function record_examples(tags...)
     index = start(examples)
     dblen = length(examples)
     thumbnail_size = 150
-    while dblen - 1 >= index
+    while dblen >= index
         # use the unique_name of the database entry as filename
         uname = string(examples[index].unique_name)
         println(index)
@@ -67,7 +64,7 @@ function record_examples(tags...)
                     Base.showerror(STDERR, err)
                 end
             elseif isa(result, AbstractPlotting.Scene)
-                Makie.save("docs/media/$uname.png", result)
+                FileIO.save("docs/media/$uname.png", result)
                 generate_thumbnail("docs/media/$uname.png"; sz = thumbnail_size)
             else
                 warn("something went really badly with index $index & $(typeof(result))")
