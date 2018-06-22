@@ -1,6 +1,3 @@
-import Hiccup, Media, Images, Juno, FileIO, ModernGL
-import FileIO: save
-
 colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
 
 
@@ -19,15 +16,9 @@ end
 
 function save(path::String, scene::Scene)
     img = scene2image(scene)
-    if img != nothing
-        save(path, img)
-    else
-        # TODO create a screen
-        error("Scene isn't displayed on a screen")
-    end
+    FileIO.save(path, img)
 end
 
-import Juno, Media
 
 Media.media(Scene, Media.Plot)
 

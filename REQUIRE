@@ -5,7 +5,9 @@ GeometryTypes 0.4.4
 Reactive 0.6.0
 Contour
 FileIO
-Images
+ImageCore
+ImageMetadata
+ImageTransformations
 UnicodeFun
 ColorBrewer
 Hiccup
@@ -20,3 +22,7 @@ FreeTypeAbstraction 0.2.0 #for findfont
 @osx QuartzImageIO
 AbstractPlotting
 Primes
+PlotUtils
+Cairo
+IntervalSets
+Showoff

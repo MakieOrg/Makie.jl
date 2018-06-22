@@ -2,6 +2,9 @@ include("library.jl")
 cd(@__DIR__)
 
 using Makie
+using ImageTransformations
+using FileIO
+
 
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
@@ -28,8 +31,8 @@ function generate_thumbnail(path::AbstractString; sz::Int = 200)
 
     (new_height, new_width) = (height, width) .* scale
 
-    newimg = Images.imresize(img, round.(Int, (new_height, new_width)))
-    Makie.save(joinpath(dir, thumbname), newimg)
+    newimg = ImageTransformations.imresize(img, round.(Int, (new_height, new_width)))
+    FileIO.save(joinpath(dir, thumbname), newimg)
 end
 
 
