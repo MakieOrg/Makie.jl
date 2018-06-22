@@ -499,15 +499,6 @@ end
     @cell "Volume Function" ["3d", volume] begin
         volume(rand(32, 32, 32), algorithm = :mip)
     end
-
-    #TODO: document all of the algorithm types
-    # :iso => IsoValue,
-    # :absorption => Absorption,
-    # :mip => MaximumIntensityProjection,
-    # :absorptionrgba => AbsorptionRGBA,
-    # :indexedabsorption => IndexedAbsorptionRGBA,
-
-
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
         using FileIO
         scene = Scene(@resolution)
