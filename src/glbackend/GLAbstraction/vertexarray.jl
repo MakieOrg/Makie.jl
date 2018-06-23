@@ -2,23 +2,23 @@
 function attach2vao(buffer::Buffer{T}, attrib_location, instanced=false) where T
     bind(buffer)
     if !is_glsl_primitive(T)
+        # This is for a buffer that holds all the attributes in a OpenGL defined way.
+        # This requires us to find the fieldoffset
         for i = 1:nfields(T)
             FT = fieldtype(T, i); ET = eltype(FT)
-            glVertexAttribPointer(
-                attrib_location,
-                cardinality(FT), julia2glenum(ET),
-                GL_FALSE, sizeof(T), Ptr{Void}(fieldoffset(T, i)) # the fieldoffset is because here we have one buffer having all the attributes
-            )
+            glVertexAttribPointer(attrib_location,
+                                  cardinality(FT), julia2glenum(ET),
+                                  GL_FALSE, sizeof(T), Ptr{Void}(fieldoffset(T, i)))
             glEnableVertexAttribArray(attrib_location)
             attrib_location += 1
         end
     else
+        # This is for when the buffer holds a single attribute, no need to
+        # calculate fieldoffsets and stuff like that.
         FT = T; ET = eltype(FT)
-        glVertexAttribPointer(
-            attrib_location,
-            cardinality(FT), julia2glenum(ET),
-            GL_FALSE, 0, C_NULL
-        )
+        glVertexAttribPointer(attrib_location,
+                              cardinality(FT), julia2glenum(ET),
+                              GL_FALSE, 0, C_NULL)
         glEnableVertexAttribArray(attrib_location)
         if instanced
             glVertexAttribDivisor(attrib_location, 1)
@@ -40,7 +40,10 @@ function attach2vao(buffers, attrib_location, kind)
 end
 
 @enum VaoKind simple elements elements_instanced
-
+#TODO speedup: Maybe it would be better for performance making our vertex arrays
+#              primitives, i.e. making the buffers an NTuple instead of a vector.
+#              I think that should be possible since nobody really wants to change
+#              the vao after it's made anyway?
 struct VertexArray{Vertex, Kind}
     id::GLuint
     buffers::Vector{<:Buffer}
@@ -54,6 +57,7 @@ struct VertexArray{Vertex, Kind}
     end
 end
 
+#TODO vertexarraycleanup: Does this really need to be a tuple?
 function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0)
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -116,6 +120,49 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
 end
 VertexArray(buffers...; args...) = VertexArray((buffers...), nothing; args...)
 VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
+
+
+#TODO vertexarraycleanup: It would be nice if we don't need to explicitely pass through
+#                         the shader to put the attribdata in the correct order.
+#                         Ideally we would push the attribs always in the same order,
+#                         but that might not be so versatile. This might also not
+#                         belong here. It does make everything more flexible though!
+#                         Maybe one could create a "sortbuffers(dict, program)" function
+#                         that constructs the correct order of the buffers to be
+#                         passed to the vao constructor.
+
+# Creates a vao from the passed in buffer dictionary, linking it to the correct
+# attribute inside the program. Most flexible way of creating a vao, allows
+# buffers to be passed in in any order and get linked to any name inside the program.
+# This does assume that each attribute inside the program is linked to a single buffer,
+# i.e. no "compound" buffers.
+# Before buffers were saved as Dict{attributename::String, buffer::Buffer}.
+# I don't think that gets used anywhere so we just push it inside the buffer vector.
+function VertexArray(bufferdict::Dict, program::Program)
+    if haskey(bufferdict, :indices)
+        attriblen = length(bufferdict)-1
+        indbuf    = pop!(bufferdict, :indices)
+    elseif haskey(bufferdict, :faces)
+        attriblen = length(bufferdict)-1
+        indbuf    = pop!(bufferdict, :faces)
+    else
+        attriblen = length(bufferdict)
+        indbuf    = nothing
+    end
+    attribbuflen = -1 #This might be wrong
+    attribbufs   = Vector{Buffer}(attriblen)
+    for (name, buffer) in bufferdict
+        attribname = string(name)
+        attribbuflen = attribbuflen == -1 ? length(buffer) : attribbuflen
+        @assert length(buffer) == attribbuflen error("buffer $attribute has not
+            the same length as the other buffers.
+            Has: $(length(buffer)). Should have: $len")
+        attribindex = get_attribute_location(program.id, attribname) + 1
+        attribbufs[attribindex] = buffer
+    end
+    #TODO vertexarraycleanup: facelength=3 I think thats used everywhere not sure.
+    VertexArray((attribbufs...), indbuf, facelength=2)
+end
 
 # TODO
 Base.convert(::Type{VertexArray}, x) = VertexArray(x)

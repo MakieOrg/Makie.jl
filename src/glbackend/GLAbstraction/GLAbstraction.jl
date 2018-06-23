@@ -58,6 +58,8 @@ export close_to_square
 export AND, OR, isnotempty
 
 include("GLTypes.jl")
+include("buffer.jl")
+include("texture.jl")
 include("framebuffer.jl")
 export FrameBuffer
 export AbstractContext
@@ -91,6 +93,8 @@ export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
 include("GLExtendedFunctions.jl")
 export glTexImage # Julian wrapper for glTexImage1D, glTexImage2D, glTexImage3D
 include("GLShader.jl")
+include("vertexarray.jl")
+include("renderobject.jl")
 export Shader                 #Shader Type
 export readshader             #reads a shader
 export glsl_variable_access # creates access string from julia variable for the use in glsl shaders
