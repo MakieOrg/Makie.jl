@@ -117,7 +117,7 @@ function setup(rp::RenderPass{:default})
     # Disable cullface for now, untill all rendering code is corrected!
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
-    # enabletransparency()
+    enabletransparency()
 
 end
 
@@ -130,30 +130,29 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
     setup!(screen)
     glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-
+    bind(rp.program)
     for (zindex, screenid, elem) in renderlist
         Reactive.value(elem[:visible]) || continue
         found, rect = id2rect(screen, screenid)
         Reactive.value(found) || continue
         a = rect[]
         glViewport(minimum(a)..., widths(a)...)
-        glStencilFunc(GL_EQUAL, screenid, 0xff) #TODO rendercleanup: Can this be somewhere else?
-        # for (key,value) in rp.program.uniformloc #TODO uniformbuffer: This should be inside a buffer I think
-        #     if haskey(elem.uniforms, key) && elem.uniforms[key] != nothing
-        #         if length(value) == 1
-        #             gluniform(value[1], elem.uniforms[key])
-        #         elseif length(value) == 2
-        #             println(key)
-        #             gluniform(value[1], value[2], elem.uniforms[key])
-        #         else
-        #             error("Uniform tuple too long: $(length(value))")
-        #         end
-        #     end
-        # end
+        # glStencilFunc(GL_EQUAL, screenid, 0xff) #TODO rendercleanup: Can this be somewhere else?
+        for (key,value) in rp.program.uniformloc #TODO uniformbuffer: This should be inside a buffer I think
+            if haskey(elem.uniforms, key) && elem.uniforms[key] != nothing
+                if length(value) == 1
+                    gluniform(value[1], elem.uniforms[key])
+                elseif length(value) == 2
+                    gluniform(value[1], value[2], elem.uniforms[key])
+                else
+                    error("Uniform tuple too long: $(length(value))")
+                end
+            end
+        end
         draw(elem)
     end
     unbind(renderlist[end][3].vao)
-    glDisable(GL_STENCIL_TEST)
+    # glDisable(GL_STENCIL_TEST)
 end
 
 function setup(rp::RenderPass{:postprocess})

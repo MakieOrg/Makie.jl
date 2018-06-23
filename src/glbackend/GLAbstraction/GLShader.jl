@@ -173,8 +173,6 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
     end
     v = get_view(kw_dict)
     fragdatalocation = get(kw_dict, :fragdatalocation, Tuple{Int, String}[])
-    println(fragdatalocation)
-    println(lazyshader.paths)
     # Tuple(Source, ShaderType)
     if all(paths) do x
             isa(x, Tuple) && length(x) == 2 &&

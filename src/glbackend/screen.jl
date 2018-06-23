@@ -89,7 +89,12 @@ function colorbuffer(screen::Screen)
     #TODO screencleanup: What if multiple pipelines rendered?
     # Should we use the same main color framebuffer everywhere?
     # Ask Simon
-    buffer = gpu_data(screen.pipelines[1].passes[1].target, 1) #This assumes that the color is stored
+    buffer = !isempty(screen.pipelines) ?
+                gpu_data(screen.pipelines[1].passes[1].target, 1) :
+                zeros(RGB{N0f8}, size(screen))
+
+
+    #This assumes that the color is stored
                                              #in GL_COLOR_ATTACHMENT0
     return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
 end
