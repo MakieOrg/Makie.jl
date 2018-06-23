@@ -1,6 +1,7 @@
 #!/usr/bin/julia
 # Shadercleanup:
 #   -> For now I will leave the shitty push! robj + pipeline situation as it is to later implement a better way, redoing all the visualizes into also returning what pipeline
+
 # Rendering issues:
 #   -> I'm not sure where the issue lies, but for sure it's not at vao or fbo stage,
 #      it worked with those in there already. It has to be around the rendering.
@@ -10,6 +11,7 @@
 #      which should be handled by the vao alread.
 
 #   -> glClear clears all colors?
+#   -> I think I isolated the issue to the vertexarray + shader!
 
 # Renderingcleanup:
 #   -> Right now the way that the screenbuffer is displayed to the plot window requires there to be
