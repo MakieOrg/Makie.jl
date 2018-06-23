@@ -1,34 +1,23 @@
 __precompile__(true)
 module Makie
 
-const has_ffmpeg = Ref(false)
 
-function __init__()
-    has_ffmpeg[] = try
-        success(`ffmpeg -h`)
-    catch
-        false
-    end
-end
-
-function logo()
-    FileIO.load(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.png"))
-end
 
 using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore
+import Media, Juno
+import FileIO
 
-module ContoursTemp
+module ContoursHygiene
     import Contour
 end
-using .ContoursTemp
-const Contours = ContoursTemp.Contour
+using .ContoursHygiene
+const Contours = ContoursHygiene.Contour
 
 using Primes
-
 using Base.Iterators: repeated, drop
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using PlotUtils, Showoff
@@ -53,9 +42,19 @@ export widths, decompose
 const NT = Theme
 export NT
 
-# functions we overload
+const has_ffmpeg = Ref(false)
+function __init__()
+    has_ffmpeg[] = try
+        success(`ffmpeg -h`)
+    catch
+        false
+    end
+end
 
-include("scene.jl")
+function logo()
+    FileIO.load(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.png"))
+end
+
 include("makie_recipes.jl")
 include("argument_conversion.jl")
 include("tickranges.jl")
@@ -64,10 +63,6 @@ include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")
 include("output.jl")
 include("video_io.jl")
-
-# conversion infrastructure
-include("documentation.jl")
-
 
 
 end

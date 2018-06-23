@@ -16,7 +16,6 @@ function custom_theme(scene)
     scene[:theme] = theme
 end
 
-
 #cell
 using Makie
 img = Makie.logo()
@@ -130,4 +129,22 @@ function test(scene)
     lns[:h] = 0.06
     lns[:linewidth] = 1.0
     lns
+end
+
+
+using Makie
+main = Scene()
+cam3d!(main)
+main
+plots = [
+    heatmap(0..1, 0..1, rand(100, 100)),
+    meshscatter(rand(10), rand(10), rand(10)),
+    scatter(rand(10), rand(10)),
+    mesh(Makie.loadasset("cat.obj")),
+    volume(0..1, 0..1, 0..1, rand(100, 100, 100)),
+]
+
+for p in plots
+    push!(main, p)
+    translate!(p, rand()*3, rand()*3, rand()*3)
 end
