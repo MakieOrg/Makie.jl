@@ -1,3 +1,4 @@
+
 const RENDER_OBJECT_ID_COUNTER = Ref(zero(GLushort))
 
 #Renderobject will become a renderable, were first it will be focussed on GL,
@@ -21,8 +22,7 @@ end
 
 function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0), Vec3f0(1))), main=nothing)
     targets = get(data, :gl_convert_targets, Dict())
-    signals = filter((k,v) -> isa(v, Signal), data)
-    # println(keys(signals))
+    # println(keys(data))
     delete!(data, :gl_convert_targets)
     passthrough = Dict{Symbol, Any}() # we also save a few non opengl related values in data
     for (k,v) in data # convert everything to OpenGL compatible types
@@ -54,11 +54,31 @@ function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0
             data[k] = Reactive.value(v)
         end
     end
+    #TODO renderobjectioncleanup: ugly crap here!
+
     bufferdict  = filter((key, value) -> isa(value, Buffer), data)
     #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
+
+    facelen = 1
+    prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : data[:primitive]
+    if prim == GL_POINTS
+        facelen = 1
+    elseif prim == GL_LINES
+        facelen = 2
+    elseif prim == GL_TRIANGLES
+        facelen = 3
+    elseif prim == GL_QUADS
+        facelen = 4
+    else
+        facelen = 1
+    end
     program = gl_convert(Reactive.value(passthrough[:shader]), data)
-    vao = VertexArray(bufferdict, program)
+    if haskey(data,:instances)
+        vao = VertexArray(bufferdict, program, facelen, data[:instances])
+    else
+        vao = VertexArray(bufferdict, program, facelen)
+    end
     uniforms = deepcopy(data) #TODO renderobjectcleanup: This could be handled better
     uniforms[:shader] = program
     uniforms[:visible] = true

@@ -58,7 +58,7 @@ struct VertexArray{Vertex, Kind}
 end
 
 #TODO vertexarraycleanup: Does this really need to be a tuple?
-function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0)
+function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0, instances=0)
     id = glGenVertexArrays()
     glBindVertexArray(id)
 
@@ -75,13 +75,13 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     ninst  = 1
     nverts = 0
     buffers = map(arrays) do array
-        if typeof(array) <: Repeated
+        if typeof(array) <: Repeated || instances != 0
             ninst_  = length(array)
             if kind == elements_instanced && ninst_ != ninst
                 error("Amount of instances is not equal.")
             end
-            ninst = ninst_
-            nverts_ = length(array.xs.x)
+            ninst = instances
+            nverts_ = length(array)
             kind = elements_instanced
         else
             if kind == elements_instanced
@@ -138,7 +138,7 @@ VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
 # i.e. no "compound" buffers.
 # Before buffers were saved as Dict{attributename::String, buffer::Buffer}.
 # I don't think that gets used anywhere so we just push it inside the buffer vector.
-function VertexArray(bufferdict::Dict, program::Program)
+function VertexArray(bufferdict::Dict, program::Program, facelength::Int, instances=0)
     if haskey(bufferdict, :indices)
         attriblen = length(bufferdict)-1
         indbuf    = pop!(bufferdict, :indices)
@@ -160,8 +160,8 @@ function VertexArray(bufferdict::Dict, program::Program)
         attribindex = get_attribute_location(program.id, attribname) + 1
         attribbufs[attribindex] = buffer
     end
-    #TODO vertexarraycleanup: facelength=3 I think thats used everywhere not sure.
-    VertexArray((attribbufs...), indbuf, facelength=2)
+        #TODO vertexarraycleanup: facelength=3 I think thats used everywhere not sure.
+    VertexArray((attribbufs...), indbuf, facelength=facelength, instances=instances)
 end
 
 # TODO
@@ -192,7 +192,7 @@ end
 _typeof{T}(::Type{T}) = Type{T}
 _typeof{T}(::T) = T
 
-function free!(x::VertexArray)
+ function free!(x::VertexArray)
     if !is_current_context(x.context)
         return x
     end
