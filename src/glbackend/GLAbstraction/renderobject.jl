@@ -58,9 +58,9 @@ function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0
     buffers  = [val for (key,val) in filter((key, value) -> isa(value, Buffer), data)]
     vao = indices == nothing ? VertexArray((buffers...); facelength=3) : VertexArray((buffers...), indices)
     uniforms = filter((key, value) -> !isa(value, Buffer) && key != :indices, data)
+    uniforms[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
     #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
-    uniforms[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
     uniforms[:visible] = true
     robj = RenderObject(main, uniforms, vao, bbs)
     # automatically integrate object ID, will be discarded if shader doesn't use it
