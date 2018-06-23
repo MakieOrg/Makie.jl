@@ -20,9 +20,8 @@ function drawbrush(scene)
     end
 end
 
-"""
-Returns (N1, N2) with `N1 x N2 == n`. N2 might become 1
-"""
+
+
 function close2square(n::Real)
     # a cannot be greater than the square root of n
     # b cannot be smaller than the square root of n
@@ -54,8 +53,7 @@ function extrema_nan(x::ClosedInterval)
 end
 
 
-# TODO upgrade GeometryTypes to do these kind of things.
-# Problem: I don't really want to introduce a depedency on intervals
+
 function Base.in(point::StaticVector{N}, rectangle::HyperRectangle{N}) where N
     mini, maxi = minimum(rectangle), maximum(rectangle)
     for i = 1:N

@@ -112,7 +112,7 @@ function play(buffer::Array{T, 2}, video_stream, t) where T
 end
 
 
-unwrap(img::ImageMetadata.ImageMeta) = unwrap(data(img))
+unwrap(img::Images.ImageMeta) = unwrap(data(img))
 unwrap(img::AxisArrays.AxisArray) = unwrap(img.data)
 unwrap(img::AbstractArray) = img
 

@@ -47,16 +47,17 @@ end
 
 function setup!(screen)
     if isopen(screen)
-        glEnable(GL_SCISSOR_TEST)
         for (id, rect, clear, color) in screen.screens
             a = rect[]
             glScissor(minimum(a)..., widths(a)...)
+            glClearStencil(id)
+            bits = GL_STENCIL_BUFFER_BIT
             if clear[]
                 c = color[]
                 glClearColor(red(c), green(c), blue(c), alpha(c))
-                glClear(GL_COLOR_BUFFER_BIT)
+                bits |= GL_COLOR_BUFFER_BIT
             end
-
+            glClear(bits)
         end
     end
     return
@@ -127,7 +128,7 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
     end
     glEnable(GL_SCISSOR_TEST)
     setup!(screen)
-    # glDisable(GL_SCISSOR_TEST)
+    glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
 
     for (zindex, screenid, elem) in renderlist
