@@ -58,6 +58,8 @@ bind(buffer::Buffer, other_target) = glBindBuffer(buffer.buffertype, other_targe
 
 Base.convert(::Type{Buffer}, x::Buffer)   = x
 Base.convert(::Type{Buffer}, x::Array)    = Buffer(x)
+
+Base.length(b::Buffer) = b.size[1]
 # Base.convert(::Type{Buffer}, x::Repeated) = convert(Buffer, x.xs.x)
 
 function Base.start(buffer::Buffer{T}) where T
