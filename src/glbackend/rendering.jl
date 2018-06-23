@@ -130,15 +130,15 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
     setup!(screen)
     glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    bind(rp.program)
     for (zindex, screenid, elem) in renderlist
+        bind(elem.uniforms[:shader])
         Reactive.value(elem[:visible]) || continue
         found, rect = id2rect(screen, screenid)
         Reactive.value(found) || continue
         a = rect[]
         glViewport(minimum(a)..., widths(a)...)
         # glStencilFunc(GL_EQUAL, screenid, 0xff) #TODO rendercleanup: Can this be somewhere else?
-        for (key,value) in rp.program.uniformloc #TODO uniformbuffer: This should be inside a buffer I think
+        for (key,value) in elem.uniforms[:shader].uniformloc #TODO uniformbuffer: This should be inside a buffer I think
             if haskey(elem.uniforms, key) && elem.uniforms[key] != nothing
                 if length(value) == 1
                     gluniform(value[1], elem.uniforms[key])

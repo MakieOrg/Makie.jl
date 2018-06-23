@@ -21,6 +21,8 @@ end
 
 function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0), Vec3f0(1))), main=nothing)
     targets = get(data, :gl_convert_targets, Dict())
+    signals = filter((k,v) -> isa(v, Signal), data)
+    # println(keys(signals))
     delete!(data, :gl_convert_targets)
     passthrough = Dict{Symbol, Any}() # we also save a few non opengl related values in data
     for (k,v) in data # convert everything to OpenGL compatible types
@@ -46,21 +48,19 @@ function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0
     if !isempty(meshs)
         merge!(data, [v.data for (k,v) in meshs]...)
     end
-
-    if haskey(data, :indices) && !isa(data[:indices], Reactive.Signal)
-        indices = pop!(data, :indices)
-    elseif haskey(data, :faces)
-        indices = pop!(data, :faces)
-    else
-        indices = nothing
+    for (k, v) in data
+        if isa(v, Reactive.Signal) #NO REACTIVE ERROR
+        # if isa(v, Reactive.Signal) && (typeof(value(v))<: Vector || k ==:indices)         #REACTIVE ERROR
+            data[k] = Reactive.value(v)
+        end
     end
-    #very ugly and bad
-    buffers  = [val for (key,val) in filter((key, value) -> isa(value, Buffer), data)]
-    vao = indices == nothing ? VertexArray((buffers...); facelength=3) : VertexArray((buffers...), indices)
-    uniforms = filter((key, value) -> !isa(value, Buffer) && key != :indices, data)
-    uniforms[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
-    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
+    bufferdict  = filter((key, value) -> isa(value, Buffer), data)
     #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
+    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
+    program = gl_convert(Reactive.value(passthrough[:shader]), data)
+    vao = VertexArray(bufferdict, program)
+    uniforms = deepcopy(data) #TODO renderobjectcleanup: This could be handled better
+    uniforms[:shader] = program
     uniforms[:visible] = true
     robj = RenderObject(main, uniforms, vao, bbs)
     # automatically integrate object ID, will be discarded if shader doesn't use it
