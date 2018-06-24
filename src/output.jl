@@ -61,7 +61,8 @@ end
 function show(io::IO, mime::MIME"text/html", scene::Scene)
     print(io, "<img src=\"data:image/png;base64,")
     b64pipe = Base64EncodePipe(io)
-    show(b64pipe, MIME"image/png"(), scene2image(scene))
+    img = scene2image(scene)
+    FileIO.save(FileIO.Stream(FileIO.format"PNG", b64pipe), img)
     print(io, "\">")
 end
 
