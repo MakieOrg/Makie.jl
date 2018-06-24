@@ -77,14 +77,8 @@ function render_frame(screen::Screen)
     glClearColor(0,0,0,0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     setup!(screen)
-    # glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
-    # # deactivate stencil write
-    # glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0x00)
     GLAbstraction.render(screen, true)
-    # glDisable(GL_STENCIL_TEST)
 
     # transfer color to luma buffer and apply fxaa
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
@@ -102,7 +96,6 @@ function render_frame(screen::Screen)
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
     GLAbstraction.render(screen, false)
-    # glDisable(GL_STENCIL_TEST)
     glViewport(0, 0, w, h)
     #Read all the selection queries
     for query_func in selection_queries
