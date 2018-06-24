@@ -117,16 +117,6 @@ example_pages = "Examples" => example_list
 
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
-attr_list = []
-for func in (atomics..., contour)
-    Typ = to_type(func)
-    attr = keys(default_theme(nothing, Typ))
-    push!(attr_list, attr...)
-end
-attr_list = string.(sort!(unique(attr_list)))
-# filter out fxaa attribute
-attr_list = filter!(x -> x ≠ "fxaa", attr_list)
-
 path = joinpath(srcpath, "attributes.md")
 srcdocpath = joinpath(srcpath, "src-attributes.md")
 open(path, "w") do io
