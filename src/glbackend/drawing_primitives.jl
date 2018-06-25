@@ -69,7 +69,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatte
         # or don't set them randomly to nothing
         gl_attributes[:boundingbox] = nothing
         positions = handle_view(x[1], gl_attributes)
-        visualize((value(marker), positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
 
