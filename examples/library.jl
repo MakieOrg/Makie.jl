@@ -66,6 +66,14 @@ using Makie
             shading = false
         )
     end
+    @cell "heatmap interpolation" [heatmap, interpolate] begin
+        p1 = heatmap(rand(100, 100), interpolate = true)
+        p2 = heatmap(rand(100, 100), interpolate = false)
+        scene = AbstractPlotting.vbox(p1, p2)
+        text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        scene
+    end
     @cell "colored triangle" [polygon] begin
         poly(
             [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
@@ -78,7 +86,7 @@ using Makie
         scene = image(img, show_axis = false)
         subscene = Scene(scene, IRect(100, 100, 300, 300))
         scatter!(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-        scene;
+        scene
     end
 
     @cell "Polygons" [poly, polygon, linesegments] begin
@@ -111,7 +119,6 @@ using Makie
     end
 
     @cell "Animated Scatter" [animated, scatter, updating] begin
-        scene = Scene(@resolution)
         N = 50
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
@@ -287,7 +294,7 @@ end
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
-        scene = Scene(@resolution)
+        scene = Scene();
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
@@ -319,10 +326,9 @@ end
         mesh(Sphere(Point3f0(0), 1f0), color = :blue)
     end
 
-    @cell "Stars" [scatter, glow, update_cam!] begin
+    @cell "Stars" [scatter, glow, update_cam!, camera] begin
         stars = 100_000
-        scene = Scene(@resolution)
-        scene.theme[:backgroundcolor] = RGBAf0(0, 0, 0, 1)
+        scene = Scene(backgroundcolor = :black)
         scatter!(
             scene,
             (rand(Point3f0, stars) .- 0.5) .* 10,
@@ -867,13 +873,12 @@ end
             color = p1[:color],
             raw = true
         )[end]
-
+        scene
         display(Makie.global_gl_screen(), scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
         p2[:marker] = 'π'
         p2[:markersize] = 0.2
-        p2[:marker] = 'o'
 
         # push a reasonable mouse position in case this is executed as part
         # of the documentation
@@ -888,9 +893,7 @@ end
 
 @block AnthonyWang [documentation] begin
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
-        scene = Scene(@resolution)
-        scatter!(
-            scene,
+        scatter(
             rand(20), rand(20),
             markersize = rand(20) ./20 + 0.02,
             color = rand(RGBf0, 20)
