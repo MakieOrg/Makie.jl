@@ -152,18 +152,32 @@ end
 
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 
+estimated_space(x, N, w) = 1/N
+
+
+
 function vbox(plots::Vector{T}; kw_args...) where T <: Transformable
     N = length(plots)
     w = 0.0
     pscene = Scene()
+    area = pixelarea(pscene)
+
     for idx in 1:N
         p = plots[idx]
-        translate!(p, w, 0.0, 0.0)
-        swidth = widths(boundingbox(p))
-        w += (swidth[1] * 1.1)
-        push!(pscene, p)
+        foreach(area) do a
+            # TODO this is terrible!
+            w2 = widths(a) .* Vec((1/N), 1)
+            push!(pixelarea(p), IRect(minimum(a) .+ Vec((idx - 1) * w2[1], 0), w2))
+            center!(p)
+        end
+        push!(pscene.children, p)
+        nodes = map(fieldnames(Events)) do field
+            if field != :window_area
+                foreach(getfield(pscene.events, field)) do val
+                    push!(getfield(p.events, field), val)
+                end
+            end
+        end
     end
-    cam2d!(pscene)
-    center!(pscene)
     pscene
 end
