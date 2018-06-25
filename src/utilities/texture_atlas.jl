@@ -20,7 +20,8 @@ function TextureAtlas(initial_size = (2048, 2048))
         FontExtent{Float64}[]
     )
 end
-assetpath(files...) = Pkg.dir("Makie", "src", "glbackend", "GLVisualize", "assets", files...)
+
+assetpath(files...) = joinpath(@__DIR__, "..", "..", "assets", files...)
 
 begin #basically a singleton for the textureatlas
     # random list of chars we cache
