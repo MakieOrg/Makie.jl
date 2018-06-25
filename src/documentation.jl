@@ -83,15 +83,13 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     # this is a symbolic dictionary, with symbols as the keys
     attributes = default_theme(nothing, Typ)
 
-    # get list of default attributes to filter out
-    # and show only the attributes that are not default attributes
-    filter_keys = collect(keys(default_theme(nothing)))
-    # manually filter out fxaa attribute (since it's internal to OpenGL)
-    push!(filter_keys, Symbol(:fxaa))
+    # manually filter out some attribute (since it's internal to OpenGL)
+    filter_keys = Symbol.([:fxaa, :model, :transformation, :light])
 
     # count the character length of the longest key
     longest = 0
-    for k in sort(collect(keys(attributes)))
+    allkeys = sort(collect(keys(attributes)))
+    for k in allkeys
         currentlength = length(string(k))
         if currentlength > longest
             longest = currentlength
@@ -103,7 +101,8 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     if extended
         println(io, "Available attributes and their defaults for `$Typ` are: \n")
         println(io, "```")
-        for (attribute, value) in attributes
+        for attribute in allkeys
+            value = attributes[attribute]
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
                 print(io, "  ", attribute, " "^padding)
@@ -115,7 +114,8 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     else
         println(io, "Available attributes for `$Typ` are: \n")
         println(io, "```")
-        for (attribute, value) in attributes
+        for attribute in allkeys
+            value = attributes[attribute]
             if !(attribute in filter_keys)
                 println(io, "  ", attribute)
             end
