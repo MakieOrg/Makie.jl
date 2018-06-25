@@ -225,7 +225,7 @@ function to_meshcolor(color)
     color
 end
 
-function to_mesh(mesh::GeometryPrimitive)
+function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
     gl_convert(const_lift(GLNormalMesh, mesh))
 end
 
