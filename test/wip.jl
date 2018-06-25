@@ -31,6 +31,3 @@ surf = surface!(scene, r, r, z)[end]
 
 wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
     linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap]))
-
-screen = Makie.global_gl_screen()
-Makie.renderloop(screen)
