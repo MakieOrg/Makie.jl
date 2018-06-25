@@ -14,12 +14,12 @@ function optimal_ticks_and_labels(limits, ticks = nothing)
     # TODO: maybe: non-trivial scale (:ln, :log2, :log10) for date/datetime
     # get a list of well-laid-out ticks
     if ticks == nothing
-        scaled_ticks = optimize_ticks(
+        scaled_ticks, mini, maxi = optimize_ticks(
             sf(amin),
             sf(amax);
             k_min = 4, # minimum number of ticks
             k_max = 8, # maximum number of ticks
-        )[1]
+        )
     elseif isa(ticks, Integer) # a single integer for number of ticks
         scaled_ticks, viewmin, viewmax = optimize_ticks(
             sf(amin),
@@ -35,7 +35,6 @@ function optimal_ticks_and_labels(limits, ticks = nothing)
         scaled_ticks = map(sf, (filter(t -> amin <= t <= amax, ticks)))
     end
     unscaled_ticks = map(invscale, scaled_ticks)
-
     labels = if any(isfinite, unscaled_ticks)
         formatter = :auto #axis[:formatter]
         if formatter == :auto
