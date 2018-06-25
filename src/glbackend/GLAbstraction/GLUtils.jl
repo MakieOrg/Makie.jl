@@ -304,3 +304,50 @@ function glasserteltype(::Type{T}) where T
         error("Error only types with well defined lengths are allowed")
     end
 end
+
+
+
+#TODO vertexarraycleanup: transform the instanced data into the correct one.
+function gl_convert_data!(data)
+    # position I think are the vertices
+
+    # gl_convert_targets are what everythign should be converted to!
+    # println(length(data[:uv_offset_width]))
+    targets = get(data, :gl_convert_targets, Dict())
+    delete!(data, :gl_convert_targets)
+    passthrough = Dict{Symbol, Any}() # we also save a few non opengl related values in data
+    for (k,v) in data # convert everything to OpenGL compatible types
+        if haskey(targets, k)
+            # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
+            # e.g. Texture{T,1} and Buffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
+            # but in some cases we want a Texture, sometimes a Buffer or TextureBuffer
+            data[k] = gl_convert(targets[k], v)
+        else
+            k in (:indices, :visible) && continue
+            if isa_gl_struct(v) # structs are treated differently, since they have to be composed into their fields
+                merge!(data, gl_convert_struct(v, k))
+            elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
+                data[k] = gl_convert(v)
+            else # put it in passthrough
+                delete!(data, k)
+                passthrough[k] = v
+            end
+        end
+    end
+    passthrough[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
+    # handle meshes seperately, since they need expansion
+    meshs = filter((key, value) -> isa(value, NativeMesh), data)
+    if !isempty(meshs)
+        merge!(data, [v.data for (k,v) in meshs]...)
+    end
+    for (k, v) in data
+        if isa(v, Reactive.Signal) #NO REACTIVE ERROR
+        # if isa(v, Reactive.Signal) && (typeof(value(v))<: Vector || k ==:indices)         #REACTIVE ERROR
+            data[k] = Reactive.value(v)
+        end
+    end
+    #TODO renderobjectioncleanup: ugly crap here!
+
+    #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
+    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
+end
