@@ -2,6 +2,7 @@ include("library.jl")
 cd(@__DIR__)
 
 using Makie, ImageTransformations, FileIO
+using ImageFiltering  # needed for Gaussian-filtering images during resize
 
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
