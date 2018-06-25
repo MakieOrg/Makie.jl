@@ -79,7 +79,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        bg = AbstractPlotting.signal_convert(Node{RGBAf0}, scene.theme[:backgroundcolor])
+        bg = map(to_color, scene.theme[:backgroundcolor])
         push!(screen.screens, (id, scene.px_area, Node(true), bg))
         id
     end
