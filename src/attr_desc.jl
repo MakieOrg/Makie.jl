@@ -1,35 +1,43 @@
+# attr_list = []
+# for func in (atomics..., contour)
+#     Typ = to_type(func)
+#     attr = keys(default_theme(nothing, Typ))
+#     push!(attr_list, attr...)
+# end
+# attr_list = string.(sort!(unique(attr_list)))
+# # filter out fxaa attribute
+# attr_list = filter!(x -> x ≠ "fxaa", attr_list)
+
 const attr_desc = Dict{Symbol,Any}(
-:absorption        => "description",
-:algorithm        => "description",
-:align        => "(:pos, :pos) Specify the text alignment, where :pos can be :left, :center, or :right.",
+:absorption        => "Float32. Sets the absorption value for `volume` plots.",
+:algorithm        => "Algorithm to be used for `volume` plots. Can be one of `:iso`, `:absorption`, `:mip`, `:absorptionrgba`, or `:indexedabsorption`.",
+:align        => "`(:pos, :pos)`. Specify the text alignment, where `:pos` can be `:left`, `:center`, or `:right`.",
 :alpha        => "Float in [0,1]. The alpha value (transparency).",
-:color        => "The color of the main plot.",
+:color        => "The color of the main plot element (markers, lines, etc.).",
 :colormap        => "The color map of the main plot.",
-:colorrange        => "description",
-:fillrange        => "Number or AbstractVector. Fills area from this to y for line-types, sets the base for bar/stick types, and similar for other types.",
-:font        => "String or Symbol.  Default font family for title, legend entries, tick labels and guides.",
-:glowcolor        => "Color Type. Color of the marker glow (outside the border).",
-:glowwidth        => "Number. Width of the marker glow (in pixels).",
+:colorrange        => "NTuple{2,Float}, `(x, y)` where `x` and `y` are in [0,1]. Specifies the range of color from the colormap to use.",
+:fillrange        => "Bool. Toggles range filling in `contour` plots.",
+:font        => "String or Symbol. Specifies the font for title, legend entries, tick labels and guides.",
+:glowcolor        => "Color Type. Color of the marker glow (outside the border) in `scatter` plots.",
+:glowwidth        => "Number. Width of the marker glow in `scatter` plots.",
 :image        => "The image to be plotted on the plot.",
-:intensity        => "description",
-:interpolate        => "description",
-:isorange        => "description",
-:isovalue        => "description",
-:levels        => "Integer. Number of levels for a contour-type plot.",
-:light        => "description",
-:linestyle        => "Symbol. Style of the line (for path and bar stroke).",
-:linewidth        => "Number. Width of the line (in pixels).",
+:interpolate        => "Bool. For `heatmap` and `images`. Toggles color interpolation between nearby pixels.",
+:isorange        => "Float32. Sets the isorange for `volume` plots.",
+:isovalue        => "Float32. Sets the isovalue for `volume` plots.",
+:levels        => "Integer. Number of levels for a `contour`-type plot.",
+:linestyle        => "Symbol. Style of the line (for `line` and `linesegments` plots). Available styles are `:dash`, `:dot`, `:dashdot`, and `:dashdotdot`.",
+:linewidth        => "Number. Width of the line in `line` and `linesegments` plots.",
 :marker        => "Symbol, Shape, or AbstractVector.",
-:marker_offset        => "description",
-:markersize        => "Number or AbstractVector. Size (radius pixels) of the markers.",
-:model        => "description",
-:position        => "(x, y). Specify the coordinates to position text at.",
-:rotation        => "Number. Degrees rotation.",
-:rotations        => "AbstractVector. Similar to :rotation, except specifies the rotation for each element in the plot.",
+:marker_offset        => "Array of `GeometryTypes.Point`'s. Specifies the offset coordinates for the markers. See the [\"Marker offset\"](@ref) example.",
+:markersize        => "Number or AbstractVector. Specifies size (radius pixels) of the markers.",
+:model        => "",
+:position        => "NTuple{2,Float}, `(x, y)`. Specify the coordinates to position text at.",
+:rotation        => "Number. Specifies the rotation in degrees.",
+:rotations        => "AbstractVector. Similar to `:rotation`, except it specifies the rotation for each element in the plot.",
 :shading        => "Bool. Specifies if shading should be on or not (for meshes).",
 :strokecolor        => "Color Type. Color of the marker stroke (border).",
 :strokewidth        => "Number. Width of the marker stroke (in pixels).",
 :textsize        => "Integer. Font pointsize for text.",
-:transformation        => "(:plane, location). Transforms the :plane to the specified location.",
-:visible        => "description"
+:transformation        => "`(:plane, location)`. Transforms the `:plane` to the specified location. Possible `:plane`'s are `:xy`, `:yz`, and `:xz`.",
+:visible        => "Bool. Toggle visibility of plot."
 )
