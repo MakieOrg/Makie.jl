@@ -43,16 +43,14 @@ end
 
 function setup!(screen)
     if isopen(screen)
-        glEnable(GL_SCISSOR_TEST)
         for (id, rect, clear, color) in screen.screens
             a = rect[]
-            glScissor(minimum(a)..., widths(a)...)
+            glViewport(minimum(a)..., widths(a)...)
             if clear[]
                 c = color[]
                 glClearColor(red(c), green(c), blue(c), alpha(c))
                 glClear(GL_COLOR_BUFFER_BIT)
             end
-
         end
     end
     return
