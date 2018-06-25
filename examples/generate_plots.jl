@@ -4,6 +4,8 @@ cd(@__DIR__)
 using Makie, ImageTransformations, FileIO
 using ImageFiltering  # needed for Gaussian-filtering images during resize
 
+AbstractPlotting.set_theme!(resolution = (500, 500))
+
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
 
@@ -77,7 +79,7 @@ function record_examples(tags...)
     while dblen >= index
         # use the unique_name of the database entry as filename
         uname = string(examples[index].unique_name)
-        println(index)
+        println(examples[index].title)
         str = sprint() do io
             # declare global index so it can be modified by the function inside loop
             index = print_code(io, examples, index; scope_start = "", scope_end = "")
