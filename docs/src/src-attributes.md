@@ -3,7 +3,7 @@ Below is the list of all of the available plot attributes for Makie.
 You can also get this by doing
 
 ```julia
-keys(default_theme(nothing, Typ))
+help_attributes(Typ[; extended = true])
 ```
 
 where `Typ` is the plot type.
