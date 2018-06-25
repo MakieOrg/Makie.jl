@@ -896,6 +896,14 @@ end
             color = rand(RGBf0, 20)
         )
     end
+
+    @cell "Marker offset" [scatter, marker_offset] begin
+        scene = Scene(@resolution)
+        points = Point2f0[(0,0), (1,1), (2,2)]
+        offset = rand(Point2f0, 3)./5
+        scatter!(scene, points)
+        scatter!(scene, points, marker_offset = offset, color = :red)
+    end
 end
 
 database
