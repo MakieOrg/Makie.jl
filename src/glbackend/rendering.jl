@@ -72,7 +72,7 @@ import .GLVisualize: GLVisualizeShader
 default_pipeline(fbo, program)=
     # Pipeline(:default, [default_renderpass(fbo, program)])
     # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), final_renderpass(fbo)])
-    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
+    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo),final_renderpass(fbo)])
 
 #TODO shadercleanup: cleanup gl_convert GLVisualizeShader etc
 default_renderpass(fbo, program) = RenderPass(:default, program, fbo)
@@ -157,6 +157,7 @@ end
 
 function setup(rp::RenderPass{:postprocess})
     draw(rp.target, 3) #only the color part of the fbo
+    bind(rp.program)
     glDepthMask(GL_TRUE)
     glDisable(GL_DEPTH_TEST)
     glDisable(GL_BLEND)
@@ -178,6 +179,7 @@ end
 #maybe glviewport needs to be here
 function setup(rp::RenderPass{:fxaa})
     bind(rp.target)
+    bind(rp.program)
     draw(rp.target, 1) #copy back to original color
 end
 
@@ -192,6 +194,7 @@ end
 
 function setup(rp::RenderPass{:final})
     unbind(rp.target)
+    bind(rp.program)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
 end
