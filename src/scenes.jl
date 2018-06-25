@@ -221,23 +221,21 @@ function set_theme!(new_theme::Attributes = minimal_default)
     merge!(_current_default_theme, minimal_default, new_theme)
     return
 end
-
+function set_theme!(;kw_args...)
+    set_theme!(Attributes(; kw_args...))
+end
 
 
 function Scene(;
-        area = nothing,
-        resolution = reasonable_resolution(),
         kw_args...
     )
     events = Events()
-    if area == nothing
-        px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
-            wh = widths(w_area)
-            wh = (wh == Vec(0, 0)) ? widths(v0) : wh
-            IRect(0, 0, wh)
-        end
-    else
-        px_area = signal_convert(Signal{IRect2D}, area)
+    theme = current_default_theme(; kw_args...)
+    resolution = theme[:resolution][]
+    px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
+        wh = widths(w_area)
+        wh = (wh == Vec(0, 0)) ? widths(v0) : wh
+        IRect(0, 0, wh)
     end
     scene = Scene(
         events,
@@ -247,7 +245,7 @@ function Scene(;
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        current_default_theme(; kw_args...),
+        theme,
         Scene[],
         AbstractScreen[]
     )
