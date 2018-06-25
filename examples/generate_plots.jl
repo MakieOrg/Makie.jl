@@ -70,9 +70,10 @@ function record_examples(tags...)
                 warn("something went really badly with index $index & $(typeof(result))")
             end
         catch e
-            Base.show_backtrace(STDERR, Base.catch_backtrace())
             Base.showerror(STDERR, e)
-            println()
+            println(STDERR)
+            Base.show_backtrace(STDERR, Base.catch_backtrace())
+            println(STDERR)
             println(str)
         end
     end
