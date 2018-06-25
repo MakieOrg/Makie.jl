@@ -71,8 +71,8 @@ import .GLVisualize: GLVisualizeShader
 
 default_pipeline(fbo, program)=
     # Pipeline(:default, [default_renderpass(fbo, program)])
-    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), final_renderpass(fbo)])
-    # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
+    # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), final_renderpass(fbo)])
+    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
 
 #TODO shadercleanup: cleanup gl_convert GLVisualizeShader etc
 default_renderpass(fbo, program) = RenderPass(:default, program, fbo)
@@ -156,14 +156,15 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
 end
 
 function setup(rp::RenderPass{:postprocess})
+    draw(rp.target, 3) #only the color part of the fbo
     glDepthMask(GL_TRUE)
     glDisable(GL_DEPTH_TEST)
     glDisable(GL_BLEND)
     glDisable(GL_STENCIL_TEST)
     glStencilMask(0xff)
     glDisable(GL_CULL_FACE)
-#target doesn't need to be bound since it's still bound from before I think
-    draw(rp.target, 3) #only the color part of the fbo
+    glClearColor(0,0,0,0)
+    glClear(GL_COLOR_BUFFER_BIT)
 end
 
 #this has the luma FBO
@@ -176,6 +177,7 @@ end
 
 #maybe glviewport needs to be here
 function setup(rp::RenderPass{:fxaa})
+    bind(rp.target)
     draw(rp.target, 1) #copy back to original color
 end
 

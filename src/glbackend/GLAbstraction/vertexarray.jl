@@ -71,17 +71,17 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
         ind_buf = nothing
     end
 
-    face = eltype(indices) <: Integer ? gl_face_enum(eltype(indices)) : gl_face_enum(facelength)
+    face = eltype(indices) <: Integer ? face2glenum(eltype(indices)) : face2glenum(facelength)
     ninst  = 1
     nverts = 0
     buffers = map(arrays) do array
-        if typeof(array) <: Repeated || instances != 0
+        if typeof(array) <: Repeated
             ninst_  = length(array)
             if kind == elements_instanced && ninst_ != ninst
                 error("Amount of instances is not equal.")
             end
-            ninst = instances
-            nverts_ = length(array)
+            ninst = ninst_
+            nverts_ = length(array.xs.x)
             kind = elements_instanced
         else
             if kind == elements_instanced
@@ -138,7 +138,11 @@ VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
 # i.e. no "compound" buffers.
 # Before buffers were saved as Dict{attributename::String, buffer::Buffer}.
 # I don't think that gets used anywhere so we just push it inside the buffer vector.
-function VertexArray(bufferdict::Dict, program::Program, facelength::Int, instances=0)
+function VertexArray(data::Dict, program::Program)
+    prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : GL_POINTS
+    facelen = glenum2face(prim)
+
+    bufferdict = filter((k, v) -> isa(v, Buffer), data)
     if haskey(bufferdict, :indices)
         attriblen = length(bufferdict)-1
         indbuf    = pop!(bufferdict, :indices)
@@ -157,18 +161,21 @@ function VertexArray(bufferdict::Dict, program::Program, facelength::Int, instan
         @assert length(buffer) == attribbuflen error("buffer $attribute has not
             the same length as the other buffers.
             Has: $(length(buffer)). Should have: $len")
-        attribindex = get_attribute_location(program.id, attribname) + 1
-        attribbufs[attribindex] = buffer
+        if attribbuflen != -1
+            attribindex = get_attribute_location(program.id, attribname) + 1
+            attribbufs[attribindex] = buffer
+        end
     end
         #TODO vertexarraycleanup: facelength=3 I think thats used everywhere not sure.
-    VertexArray((attribbufs...), indbuf, facelength=facelength, instances=instances)
+    instances = haskey(data, :instances) ? data[:instances] : 0
+    VertexArray((attribbufs...), indbuf, facelength=facelen, instances=instances)
 end
 
 # TODO
 Base.convert(::Type{VertexArray}, x) = VertexArray(x)
 Base.convert(::Type{VertexArray}, x::VertexArray) = x
 
-function gl_face_enum(face)
+function face2glenum(face)
     facelength = typeof(face) <: Integer ? face : length(face)
     if facelength == 1
         return GL_POINTS
@@ -178,6 +185,20 @@ function gl_face_enum(face)
         return GL_TRIANGLES
     elseif facelength == 4
         return GL_QUADS
+    end
+end
+
+function glenum2face(glenum)
+    if glenum == GL_POINTS
+        facelen = 1
+    elseif glenum == GL_LINES
+        facelen = 2
+    elseif glenum == GL_TRIANGLES
+        facelen = 3
+    elseif glenum == GL_QUADS
+        facelen = 4
+    else
+        facelen = 1
     end
 end
 

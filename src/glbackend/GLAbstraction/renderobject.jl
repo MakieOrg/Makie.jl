@@ -21,75 +21,17 @@ mutable struct RenderObject <: Composable{DeviceUnit}
 end
 
 function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0), Vec3f0(1))), main=nothing)
-    targets = get(data, :gl_convert_targets, Dict())
-    # println(keys(data))
-    delete!(data, :gl_convert_targets)
-    passthrough = Dict{Symbol, Any}() # we also save a few non opengl related values in data
-    for (k,v) in data # convert everything to OpenGL compatible types
-        if haskey(targets, k)
-            # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
-            # e.g. Texture{T,1} and Buffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
-            # but in some cases we want a Texture, sometimes a Buffer or TextureBuffer
-            data[k] = gl_convert(targets[k], v)
-        else
-            k in (:indices, :visible) && continue
-            if isa_gl_struct(v) # structs are treated differently, since they have to be composed into their fields
-                merge!(data, gl_convert_struct(v, k))
-            elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
-                data[k] = gl_convert(v)
-            else # put it in passthrough
-                delete!(data, k)
-                passthrough[k] = v
-            end
-        end
-    end
-    # handle meshes seperately, since they need expansion
-    meshs = filter((key, value) -> isa(value, NativeMesh), data)
-    if !isempty(meshs)
-        merge!(data, [v.data for (k,v) in meshs]...)
-    end
-    for (k, v) in data
-        if isa(v, Reactive.Signal) #NO REACTIVE ERROR
-        # if isa(v, Reactive.Signal) && (typeof(value(v))<: Vector || k ==:indices)         #REACTIVE ERROR
-            data[k] = Reactive.value(v)
-        end
-    end
-    #TODO renderobjectioncleanup: ugly crap here!
-
-    bufferdict  = filter((key, value) -> isa(value, Buffer), data)
-    #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
-    merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
-
-    facelen = 1
-    prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : data[:primitive]
-    if prim == GL_POINTS
-        facelen = 1
-    elseif prim == GL_LINES
-        facelen = 2
-    elseif prim == GL_TRIANGLES
-        facelen = 3
-    elseif prim == GL_QUADS
-        facelen = 4
-    else
-        facelen = 1
-    end
-    program = gl_convert(Reactive.value(passthrough[:shader]), data)
-    if haskey(data,:instances)
-        vao = VertexArray(bufferdict, program, facelen, data[:instances])
-    else
-        vao = VertexArray(bufferdict, program, facelen)
-    end
+    gl_convert_data!(data)
+    #data[:primitive] is the mesh!!
+    vao = VertexArray(data, data[:shader])
     uniforms = deepcopy(data) #TODO renderobjectcleanup: This could be handled better
-    uniforms[:shader] = program
+    uniforms[:shader] = data[:shader]
     uniforms[:visible] = true
     robj = RenderObject(main, uniforms, vao, bbs)
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
     robj
 end
-
-
-
 function RenderObject(
         data::Dict{Symbol}, program, pre,
         bbs = Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
