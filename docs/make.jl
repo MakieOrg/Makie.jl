@@ -126,10 +126,7 @@ open(path, "w") do io
     src = read(srcdocpath, String)
     println(io, src)
     print(io, "\n")
-    for attr in keys(attr_desc)
-        println(io, "## [`$attr`](@id $attr)\n")
-        println(io, "$(attr_desc[attr])\n")
-    end
+    print_table(io, attr_desc)
 end
 
 # TODO can we teach this to documenter somehow?
