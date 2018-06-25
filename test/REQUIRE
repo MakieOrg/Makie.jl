@@ -1,2 +1,8 @@
 #VisualRegressionTests
 MeshIO
+<<<<<<< HEAD
+=======
+
+#generate_plots
+ImageFiltering # needed for Gaussian-filtering images during resize
+>>>>>>> 2b6634b747dd208a6df7e692f793432ebbdb79f7
