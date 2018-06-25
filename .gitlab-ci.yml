@@ -16,7 +16,7 @@ variables:
     - julia -e "Pkg.init();
                 symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
                 Pkg.resolve();
-                Pkg.checkout("AbstractPlotting");
+                Pkg.checkout(\"AbstractPlotting\");
                 Pkg.build(\"$package\");
                 Pkg.test(\"$package\")"
 
