@@ -163,13 +163,25 @@ function VertexArray(data::Dict, program::Program)
             Has: $(length(buffer)). Should have: $len")
         if attribbuflen != -1
             attribindex = get_attribute_location(program.id, attribname) + 1
-            attribbufs[attribindex] = buffer
+            #TODO vertexarraycleanup: why does this happen?
+            if attribindex != 0
+                attribbufs[attribindex] = buffer
+            end
         end
     end
-        #TODO vertexarraycleanup: facelength=3 I think thats used everywhere not sure.
+
+    #TODO vertexarraycleanup: Why are some buffers undefined??
+    attribbufs_ = Vector{Buffer}()
+    for i=1:length(attribbufs)
+        if isdefined(attribbufs, i)
+            push!(attribbufs_, attribbufs[i])
+        end
+    end
     instances = haskey(data, :instances) ? data[:instances] : 0
-    VertexArray((attribbufs...), indbuf, facelength=facelen, instances=instances)
+    VertexArray((attribbufs_...), indbuf, facelength=facelen, instances=instances)
 end
+
+insert!
 
 # TODO
 Base.convert(::Type{VertexArray}, x) = VertexArray(x)
