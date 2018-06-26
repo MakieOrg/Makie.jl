@@ -152,7 +152,7 @@ function gpu_resize!(buffer::Buffer{T}, newdims::NTuple{1, Int}) where T
     bind(buffer)
     glBufferData(buffer.buffertype, newlength*sizeof(T), C_NULL, buffer.usage)
     bind(buffer, 0)
-    buffer.length = newdims
+    buffer.size = (newdims[1],)
     if oldlen>0
         max_len = min(length(old_data), newlength) #might also shrink
         buffer[1:max_len] = old_data[1:max_len]

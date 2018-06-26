@@ -141,7 +141,6 @@ VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
 function VertexArray(data::Dict, program::Program)
     prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : GL_POINTS
     facelen = glenum2face(prim)
-
     bufferdict = filter((k, v) -> isa(v, Buffer), data)
     if haskey(bufferdict, :indices)
         attriblen = length(bufferdict)-1
@@ -149,9 +148,11 @@ function VertexArray(data::Dict, program::Program)
     elseif haskey(bufferdict, :faces)
         attriblen = length(bufferdict)-1
         indbuf    = pop!(bufferdict, :faces)
+        facelen   = length(eltype(indbuf))
     else
         attriblen = length(bufferdict)
         indbuf    = nothing
+        facelen   = 1
     end
     attribbuflen = -1 #This might be wrong
     attribbufs   = Vector{Buffer}(attriblen)
