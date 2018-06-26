@@ -401,7 +401,7 @@ function draw_axis(textbuffer, linebuffer, _ranges, args...)
             end
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
-                if !isempty(labels)
+                if length(labels) >= j
                     str = labels[j]
                     if !isempty(str)
                         startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2)
