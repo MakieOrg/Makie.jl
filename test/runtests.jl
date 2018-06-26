@@ -75,4 +75,5 @@ function test_examples(record = false)
 end
 cd(@__DIR__)
 isdir("media") || mkdir("media")
+AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(false)
