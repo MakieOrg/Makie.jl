@@ -1,25 +1,74 @@
-variables:
-  JULIA_PKGDIR: "$CI_PROJECT_DIR/.julia/"
-  package: 'Makie'
+before_script:
+  - apt-get -qq update
+  # glfw
+  - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev mesa-utils
+  # cairo etc
+  - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16-2
+  - apt-get install -y ffmpeg
 
-.test_template: &test_definition
-  before_script:
-    - apt-get -qq update
-    # glfw
-    - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev mesa-utils
-    # cairo etc
-    - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16-2
-    - apt-get install -y ffmpeg
+variables:
+  JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
+
+stages:
+  - test
+  - postprocess
+
+## testing
+.test_template: &test_template
 
   script:
-    - glxinfo | grep version
+    #- mkdir $JULIA_DEPOT_PATH # Pkg3.jl#325
     - julia -e "Pkg.init();
-                symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
-                Pkg.resolve();
-                Pkg.checkout(\"AbstractPlotting\");
-                Pkg.build(\"$package\");
-                Pkg.test(\"$package\")"
+            isdir(Pkg.dir(\"$package\")) && rm(Pkg.dir(\"$package\"), force = true, recursive = true);
+            symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
+            Pkg.resolve();
+            Pkg.checkout(\"AbstractPlotting\");
+            Pkg.build(\"$package\");
+            Pkg.test(\"$package\"; coverage=true)"
+  artifacts:
+    paths:
+      - test/testresults/*
 
-test:0.6:
+
+test:v0.6:
+  stage: test
   image: juliagpu/julia:v0.6-opengl
-  <<: *test_definition
+  <<: *test_template
+
+## post-processing
+
+coverage:
+  stage: postprocess
+  image: juliagpu/julia:v0.6-opengl
+  dependencies:
+    - test:v0.6
+  script:
+    - julia -e 'Pkg.add("Coverage")'
+    - julia -e 'using Coverage;
+                cl, tl = get_summary(process_folder());
+                println("(", cl/tl*100, "%) covered");
+                Codecov.submit_local(process_folder(), ".")'
+  coverage: '/\(\d+.\d+\%\) covered/'
+
+# Documenter.jl's `deploydocs` really is only made to work with Travis,
+# so we need to fake quite a bit of environment in order for it to work.
+# TODO: create an unconditional `deploydocs`, and pick when to deploy in here.
+documentation:
+  stage: postprocess
+  image: juliagpu/julia:v0.6-opengl
+  variables:
+    DOCUMENTER_DEBUG: "true"
+    TRAVIS_REPO_SLUG: "github.com/JuliaPlots/Makie.jl.git"
+    TRAVIS_BRANCH: $CI_COMMIT_REF_NAME
+    TRAVIS_TAG: $CI_COMMIT_TAG
+  dependencies:
+    - test:v0.6
+  script:
+    # gitlab-ce#15280
+    - apt update && apt install -y jq
+    - export PR_ID=$(curl -s "http://gitlab.ca/api/v4/projects/${CI_PROJECT_ID}/merge_requests?private_token=${OAUTH_TOKEN}&state=opened" | jq -r ".[]|select(.sha == \"$CI_COMMIT_SHA\")|.iid")
+    - export TRAVIS_PULL_REQUEST=$(if [ "$PR_ID" == "" ]; then echo "false"; else echo "true"; fi)
+
+    - apt install -y openssh-client && mkdir /root/.ssh
+    - julia -e 'Pkg.add("Documenter")'
+    #- julia docs/make.jl

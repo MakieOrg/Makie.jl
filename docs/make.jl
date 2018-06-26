@@ -189,7 +189,6 @@ makedocs(
     ]
 )
 
-
 #
 # ENV["TRAVIS_BRANCH"] = "latest"
 # ENV["TRAVIS_PULL_REQUEST"] = "false"
