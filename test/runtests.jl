@@ -64,10 +64,10 @@ function test_examples(record = false)
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
                     diff = approx_difference(image, refimage, sigma, eps)
-                    if diff >= 0.05
+                    if diff >= 0.07
                         save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
                     end
-                    @test diff < 0.05
+                    @test diff < 0.07
                 end
             end
         end
