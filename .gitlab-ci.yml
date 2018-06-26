@@ -7,7 +7,8 @@ before_script:
   - apt-get install -y ffmpeg
 
 variables:
-  JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
+  JULIA_PKGDIR: "$CI_PROJECT_DIR/.julia/"
+  package: 'Makie'
 
 stages:
   - test
@@ -19,7 +20,6 @@ stages:
   script:
     #- mkdir $JULIA_DEPOT_PATH # Pkg3.jl#325
     - julia -e "Pkg.init();
-            isdir(Pkg.dir(\"$package\")) && rm(Pkg.dir(\"$package\"), force = true, recursive = true);
             symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
             Pkg.resolve();
             Pkg.checkout(\"AbstractPlotting\");
