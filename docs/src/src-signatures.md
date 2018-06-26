@@ -1,5 +1,3 @@
-# Plot function signatures
-
 
 ## General function signatures and usage
 
@@ -21,6 +19,10 @@ For a list of the available atomics functions, see [Atomic functions overview](@
 ### Add a plot in-place to the specified `scene` as a subscene
 `func!(scene::SceneLike, args...; kw_args...)`
 
+## Detailed function signatures
+The input arguments are handled by the `convert_arguments` function, which handles
+a large variety of inputs.
+The signatures accepted by `convert_arguments` are also those accepted by the
+plotting functions.
 
-
-See [Plot attributes](@ref) for the available plot attributes.
+Accepted signatures are as follows:
