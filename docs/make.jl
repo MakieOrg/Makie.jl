@@ -7,18 +7,24 @@ import AbstractPlotting: _help, to_string, to_func, to_type
 pathroot = Pkg.dir("Makie")
 docspath = Pkg.dir("Makie", "docs")
 srcpath = joinpath(pathroot, "docs", "src")
+srcmediapath = joinpath(pathroot, "docs", "media")
 buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 
+# generate plots (saved to srcmediapath)
+info("Auto-generation of docs pages")
+info("Generating all plots... number of examples = $(length(database))")
+include("../examples/generate_plots.jl")
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
+info("Generating functions overview")
 path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
-    medialist = readdir(mediapath)
+    medialist = readdir(srcmediapath)
     isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     println(io, "# Atomic functions overview")
     src = read(srcdocpath, String)
@@ -46,14 +52,13 @@ end
 # =============================================
 # automatically generate gallery based on looping through the database
 # using pre-generated plots from generate_plots.jl
-cd(docspath)
-medialist = readdir(mediapath)
+medialist = readdir(srcmediapath)
 example_pages = nothing
 example_list = String[]
 for func in (atomics..., contour)
     isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     fname = to_string(func)
-    info("generating examples database for $fname")
+    info("Generating examples gallery for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
     indices = find_indices(func)
     open(path, "w") do io
@@ -118,6 +123,7 @@ example_pages = "Examples" => example_list
 
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
+info("Generating attributes page")
 include("../src/attr_desc.jl")
 path = joinpath(srcpath, "attributes.md")
 srcdocpath = joinpath(srcpath, "src-attributes.md")
@@ -132,6 +138,7 @@ end
 
 
 # automatically generate an overview of the function signatures, using a source md file
+info("Generating signatures page")
 path = joinpath(srcpath, "signatures.md")
 srcdocpath = joinpath(srcpath, "src-signatures.md")
 open(path, "w") do io
@@ -147,10 +154,7 @@ open(path, "w") do io
     println(io, "See [Plot attributes](@ref) for the available plot attributes.")
 end
 
-
-# TODO can we teach this to documenter somehow?
-cp(Pkg.dir("Makie", "docs", "media"), mediapath)
-
+info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
 makedocs(
     modules = [Makie, AbstractPlotting],
     doctest = false, clean = true,
@@ -178,7 +182,7 @@ makedocs(
             # "layout.md"
         ],
         # atomics_pages,
-        "Examples" => [
+        "Examples gallery" => [
             example_list
             # "tags_wordcloud.md",
             #"linking-test.md"
@@ -188,6 +192,12 @@ makedocs(
         # ],
     ]
 )
+
+# copy all generated media files to final path for online docs
+# TODO maybe we should `mv` these files instead?
+# TODO can we teach this to documenter somehow?
+info("Copying media files to docs/build/media")
+cp(srcmediapath, mediapath)
 
 #
 # ENV["TRAVIS_BRANCH"] = "latest"
