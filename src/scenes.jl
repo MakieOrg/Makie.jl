@@ -102,8 +102,8 @@ limits(scene::SceneLike) = scene.parent.limits
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::Scene) = x.theme
 theme(x::Scene, key) = x.theme[key]
-theme(x::AbstractPlot, key) = x.attributes
-theme(::Void, key::Symbol) = default_theme()[key]
+theme(x::AbstractPlot, key) = x.attributes[key]
+theme(::Void, key::Symbol) = current_default_theme()[key]
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 function Base.push!(scene::Scene, plot::AbstractPlot)
@@ -204,26 +204,38 @@ end
 
 Scene(::Void) = Scene()
 
-default_theme() = Theme(
+const minimal_default = Attributes(
     font = "Dejavu Sans",
     backgroundcolor = RGBAf0(1,1,1,1),
     color = :black,
-    colormap = :viridis
+    colormap = :viridis,
+    resolution = reasonable_resolution()
 )
 
+const _current_default_theme = copy(minimal_default)
+
+current_default_theme(; kw_args...) = merge(_current_default_theme, Attributes(;kw_args...))
+
+function set_theme!(new_theme::Attributes = minimal_default)
+    empty!(_current_default_theme)
+    merge!(_current_default_theme, minimal_default, new_theme)
+    return
+end
+function set_theme!(;kw_args...)
+    set_theme!(Attributes(; kw_args...))
+end
+
+
 function Scene(;
-        area = nothing,
-        resolution = reasonable_resolution()
+        kw_args...
     )
     events = Events()
-    if area == nothing
-        px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
-            wh = widths(w_area)
-            wh = (wh == Vec(0, 0)) ? widths(v0) : wh
-            IRect(0, 0, wh)
-        end
-    else
-        px_area = signal_convert(Signal{IRect2D}, area)
+    theme = current_default_theme(; kw_args...)
+    resolution = theme[:resolution][]
+    px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
+        wh = widths(w_area)
+        wh = (wh == Vec(0, 0)) ? widths(v0) : wh
+        IRect(0, 0, wh)
     end
     scene = Scene(
         events,
@@ -233,7 +245,7 @@ function Scene(;
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        default_theme(),
+        theme,
         Scene[],
         AbstractScreen[]
     )
@@ -260,7 +272,7 @@ function Scene(
         boundingbox,
         transformation,
         AbstractPlot[],
-        merge(theme, default_theme()),
+        merge(theme, current_default_theme()),
         Scene[],
         current_screens
     )
@@ -279,7 +291,7 @@ function Scene(scene::Scene, area)
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        default_theme(),
+        current_default_theme(),
         Scene[],
         scene.current_screens
     )

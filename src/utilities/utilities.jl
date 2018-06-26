@@ -266,7 +266,12 @@ function merge_attributes!(input, theme, rest = Attributes(), merged = Attribute
         elseif haskey(input, key)
             rest[key] = input[key]
         else # haskey(theme) must be true!
-            merged[key] = theme[key]
+            val = theme[key]
+            if isa(value(val), Attributes)
+                merged[key] = val
+            else
+                merged[key] = lift(identity, val, typ = Any) # lift identity -> copy signal
+            end
         end
     end
     return merged, rest
@@ -277,7 +282,14 @@ function merged_get!(defaults::Function, key, scene, input::Vector{Any})
 end
 
 function merged_get!(defaults::Function, key, scene::SceneLike, input::Attributes)
-    return merge_attributes!(input, value(get!(defaults, theme(scene), key)))
+    d = defaults()
+    if haskey(theme(scene), key)
+        # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
+        # TODO have a mark that says "theme uncomplete" and only then get the defaults
+        merge!(d, value(theme(scene, key)))
+    end
+    theme(scene)[key] = d
+    return merge_attributes!(input, d)
 end
 
 function assemble(theme::SceneLike, ::Type{Any}, attributes::Attributes, args)

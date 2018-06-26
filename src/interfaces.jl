@@ -259,7 +259,7 @@ end
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
-plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(F)
+plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(typeof(F).name.mt.name)
 
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args::Tuple) where Typ
