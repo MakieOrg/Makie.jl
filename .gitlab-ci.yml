@@ -28,6 +28,11 @@ stages:
   artifacts:
     paths:
       - test/testresults/*
+      - .julia/
+      - src/*.cov
+      - src/*/*.cov
+      - src/*/*/*.cov
+
 
 
 test:v0.6:
