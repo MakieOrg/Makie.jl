@@ -58,9 +58,9 @@ end
     )
     axisnames_rotation3d = tickrotations3d
     tickalign3d = (
-        (:hcenter, :left), # x axis
-        (:right, :vcenter), # y axis
-        (:right, :vcenter), # z axis
+        (:left, :center), # x axis
+        (:right, :center), # y axis
+        (:right, :center), # z axis
     )
     axisnames_align3d = tickalign3d
     tick_color = RGBAf0(0.5, 0.5, 0.5, 0.6)
@@ -82,7 +82,7 @@ end
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
             font = map(dim3, theme(scene, :font)),
-            gap = 3
+            gap = 1
         ),
 
         tickstyle = Theme(
@@ -90,7 +90,7 @@ end
             rotation = tickrotations3d,
             textsize =  (tsize, tsize, tsize),
             align = tickalign3d,
-            gap = 3,
+            gap = 1,
             font = map(dim3, theme(scene, :font)),
         ),
 
@@ -335,12 +335,12 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     return cplot
 end
 
-function labelposition(ranges, dim, dir, origin::StaticVector{N}) where N
+function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
     a, b = extrema(ranges[dim])
     whalf = Float32(((b - a) / 2))
     halfaxis = unit(Point{N, Float32}, dim) .* whalf
 
-    origin .+ (halfaxis .+ (dir * (whalf / 3f0)))
+    origin .+ (halfaxis .+ (normalize(dir) * tgap))
 end
 
 
@@ -370,9 +370,9 @@ function draw_axis(textbuffer, linebuffer, _ranges, args...)
     N = 3
     start!(textbuffer); start!(linebuffer)
     ranges_ticks = ticks_and_labels.(_ranges)
-    ranges = map(x-> x.a, ranges_ticks)
-    ticklabels = map(x-> x.b, ranges_ticks)
-    mini, maxi = minimum.(ranges), maximum.(ranges)
+    mini, maxi = minimum.(_ranges), maximum.(_ranges)
+    ranges = map(i-> [mini[i]; ranges_ticks[i].a; maxi[i]], 1:3)
+    ticklabels = map(x-> [""; x.b; ""], ranges_ticks)
     origin = Point{N, Float32}(mini)
     limit_widths = maxi .- mini
     % = minimum(limit_widths) / 100 # percentage
@@ -394,27 +394,32 @@ function draw_axis(textbuffer, linebuffer, _ranges, args...)
             tickdir = unit(Point{N, Float32}, j)
             tickdir, offset2 = if i != 2
                 tickdir = unit(Vec{N, Float32}, j)
-                tickdir, Float32(_widths(ranges[j]) + titlegap[i]) * tickdir
+                tickdir, Float32(_widths(ranges[j]) + tgap[i]) * tickdir
             else
                 tickdir = unit(Vec{N, Float32}, 1)
-                tickdir, Float32(_widths(ranges[1]) + titlegap[i]) * tickdir
+                tickdir, Float32(_widths(ranges[1]) + tgap[i]) * tickdir
             end
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
-                if !isempty(labels)
-                    # skip zero for x
-                    (i != 1) && tick == 0.0 && continue
-                    startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2)
-                    str = ticklabels[i][j]
-                    push!(
-                        textbuffer, str, startpos,
-                        color = ttextcolor[i], rotation = trotation[i],
-                        textsize = ttextsize[i], align = talign[i], font = tfont[i]
-                    )
+                if length(labels) >= j
+                    str = labels[j]
+                    if !isempty(str)
+                        startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2)
+                        push!(
+                            textbuffer, str, startpos,
+                            color = ttextcolor[i], rotation = trotation[i],
+                            textsize = ttextsize[i], align = talign[i], font = tfont[i]
+                        )
+                    end
                 end
             end
             if !isempty(axisnames[i])
-                pos = (labelposition(ranges, i, tickdir, origin) .+ offset2)
+                tick_widths = if length(ticklabels[i]) >= 3
+                    widths(text_bb(ticklabels[i][end-1], to_font(tfont[i]), ttextsize[i]))[1]
+                else
+                    0f0
+                end
+                pos = (labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2)
                 push!(
                     textbuffer, to_latex(axisnames[i]), pos,
                     textsize = axisnames_size[i], color = axisnames_color[i],
@@ -451,8 +456,8 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
 
     tstyle, tickstyle, framestyle = value.(getindex.(axis, (:titlestyle, :tickstyle, :framestyle)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
-    tvals = getindex.(tickstyle, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     framevals = getindex.(framestyle, (:linecolor, :linewidth, :axiscolor))
+    tvals = getindex.(tickstyle, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals...

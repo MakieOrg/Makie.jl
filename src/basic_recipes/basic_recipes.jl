@@ -262,7 +262,12 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             if limit == :automatic
                 @info("calculating limits")
                 @log_performance "calculating limits" begin
-                    dlimits = union(data_limits(scene), data_limits(subscene))
+                    x = data_limits(scene)
+                    dlimits = if x == FRect3D(Vec3f0(0), Vec3f0(0))
+                        data_limits(subscene)
+                    else
+                        union(x, data_limits(subscene))
+                    end
                     lim_w = widths(dlimits)
                     padd_abs = lim_w .* Vec3f0(padd)
                     s_limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
