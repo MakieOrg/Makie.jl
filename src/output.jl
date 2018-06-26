@@ -1,5 +1,3 @@
-import Hiccup, Media, Images, Juno, FileIO, ModernGL, Interact
-import FileIO: save
 
 colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
 
@@ -30,14 +28,12 @@ Saves an image of the `scene` at the specified `path`.
 function save(path::String, scene::Scene)
     img = scene2image(scene)
     if img != nothing
-        save(path, img)
+        FileIO.save(path, img)
     else
         # TODO create a screen
         error("Scene isn't displayed on a screen")
     end
 end
-
-import Juno, Media
 
 Media.media(Scene, Media.Plot)
 
@@ -65,7 +61,8 @@ end
 function show(io::IO, mime::MIME"text/html", scene::Scene)
     print(io, "<img src=\"data:image/png;base64,")
     b64pipe = Base64EncodePipe(io)
-    show(b64pipe, MIME"image/png"(), scene2image(scene))
+    img = scene2image(scene)
+    FileIO.save(FileIO.Stream(FileIO.format"PNG", b64pipe), img)
     print(io, "\">")
 end
 

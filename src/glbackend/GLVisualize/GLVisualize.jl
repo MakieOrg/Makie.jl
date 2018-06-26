@@ -9,7 +9,6 @@ using StaticArrays
 using GeometryTypes
 using Colors
 using Reactive
-using Quaternions
 using FixedPointNumbers
 using FileIO
 using Packing
@@ -18,15 +17,19 @@ using FreeType
 import IterTools
 using Base.Markdown
 using FreeTypeAbstraction
-using Images
+using ImageCore
 import ColorVectorSpace
+
+import ImageMetadata
+import ImageCore
+import AxisArrays, ImageAxes
 
 import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
 
-import AxisArrays, ImageAxes
+
 using IndirectArrays
-const HasAxesArray{T, N} = Union{AxisArrays.AxisArray{T, N}, Images.ImageMetadata.ImageMetaAxis{T, N}}
+const HasAxesArray{T, N} = Union{AxisArrays.AxisArray{T, N}, ImageMetadata.ImageMetaAxis{T, N}}
 const AxisMatrix{T} = HasAxesArray{T, 2}
 
 

@@ -28,6 +28,7 @@ end
 
 const PostProcessROBJ = RenderObject{PostprocessPrerender}
 mutable struct GLFramebuffer
+    resolution ::Node{NTuple{2, Int}}
     id         ::NTuple{2, GLuint}
     color      ::Texture{RGBA{N0f8}, 2}
     objectid   ::Texture{Vec{2, GLushort}, 2}
@@ -94,45 +95,42 @@ end
 
 
 
-function GLFramebuffer(fb_size)
+function GLFramebuffer(fb_size::NTuple{2, Int})
     render_framebuffer = glGenFramebuffers()
 
     glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
 
-    buffersize = tuple(value(fb_size)...)
+    color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter=:nearest, x_repeat=:clamp_to_edge)
 
-    color_buffer = Texture(RGBA{N0f8}, buffersize, minfilter=:nearest, x_repeat=:clamp_to_edge)
+    objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter=:nearest, x_repeat=:clamp_to_edge)
 
-    objectid_buffer = Texture(Vec{2, GLushort}, buffersize, minfilter=:nearest, x_repeat=:clamp_to_edge)
+    depth_buffer = Ref{GLuint}()
+    glGenRenderbuffers(1, depth_buffer)
+    glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer[])
+    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, fb_size...)
 
-    depth_stencil_rb = Ref{GLuint}()
-    glGenRenderbuffers(1, depth_stencil_rb)
-    glBindRenderbuffer(GL_RENDERBUFFER, depth_stencil_rb[])
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, buffersize...)
-
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_stencil_rb[])
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_STENCIL_ATTACHMENT, GL_RENDERBUFFER, depth_stencil_rb[])
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer[])
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
-
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
 
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
-    color_luma = Texture(RGBA{N0f8}, buffersize, minfilter=:linear, x_repeat=:clamp_to_edge)
+    color_luma = Texture(RGBA{N0f8}, fb_size, minfilter=:linear, x_repeat=:clamp_to_edge)
     color_luma_framebuffer = glGenFramebuffers()
     glBindFramebuffer(GL_FRAMEBUFFER, color_luma_framebuffer)
     attach_framebuffer(color_luma, GL_COLOR_ATTACHMENT0)
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
-
-    p = postprocess(color_buffer, color_luma, fb_size)
+    fb_size_node = Node(fb_size)
+    p = postprocess(color_buffer, color_luma, fb_size_node)
 
     fb = GLFramebuffer(
+        fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
-        color_buffer, objectid_buffer, depth_stencil_rb[],
+        color_buffer, objectid_buffer, depth_buffer[],
         color_luma,
         p
     )
@@ -140,15 +138,15 @@ function GLFramebuffer(fb_size)
 end
 
 function Base.resize!(fb::GLFramebuffer, window_size)
-    ws = window_size[1], window_size[2]
-    if ws!=size(fb) && all(x->x>0, window_size)
-        buffersize = tuple(window_size...)
-        resize_nocopy!(fb.color, buffersize)
-        resize_nocopy!(fb.color_luma, buffersize)
-        resize_nocopy!(fb.objectid, buffersize)
+    ws = Int.((window_size[1], window_size[2]))
+    if ws != size(fb) && all(x-> x > 0, window_size)
+        resize_nocopy!(fb.color, ws)
+        resize_nocopy!(fb.color_luma, ws)
+        resize_nocopy!(fb.objectid, ws)
         glBindRenderbuffer(GL_RENDERBUFFER, fb.depth)
-        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, buffersize...)
+        glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH24_STENCIL8, ws...)
         glBindRenderbuffer(GL_RENDERBUFFER, 0)
+        push!(fb.resolution, ws)
     end
     nothing
 end

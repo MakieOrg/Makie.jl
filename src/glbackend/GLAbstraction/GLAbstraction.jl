@@ -1,7 +1,5 @@
 module GLAbstraction
 
-import Quaternions
-const Q = Quaternions # save some writing!
 using StaticArrays
 using GeometryTypes
 using ModernGL
