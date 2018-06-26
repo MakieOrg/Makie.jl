@@ -31,3 +31,33 @@ surf = surface!(scene, r, r, z)[end]
 
 wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
     linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap]))
+
+
+mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],shading = false)
+
+begin
+    coordinates = [
+        0.0 0.0;
+        0.5 0.0;
+        1.0 0.0;
+        0.0 0.5;
+        0.5 0.5;
+        1.0 0.5;
+        0.0 1.0;
+        0.5 1.0;
+        1.0 1.0;
+    ]
+    connectivity = [
+        1 2 5;
+        1 4 5;
+        2 3 6;
+        2 5 6;
+        4 5 8;
+        4 7 8;
+        5 6 9;
+        5 8 9;
+    ]
+    color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
+    scene = mesh(coordinates, connectivity, color = color, shading = false)
+    wireframe!(scene[end][1], color = (:black, 0.6), linewidth = 3)
+end
