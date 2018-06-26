@@ -152,7 +152,6 @@ function VertexArray(data::Dict, program::Program)
     else
         attriblen = length(bufferdict)
         indbuf    = nothing
-        facelen   = 1
     end
     attribbuflen = -1 #This might be wrong
     attribbufs   = Vector{Buffer}(attriblen)
@@ -165,7 +164,7 @@ function VertexArray(data::Dict, program::Program)
         if attribbuflen != -1
             attribindex = get_attribute_location(program.id, attribname) + 1
             #TODO vertexarraycleanup: why does this happen?
-            if attribindex != 0
+            if attribindex != 0 && attribindex <= length(attribbufs) #TODO why can these things happen??
                 attribbufs[attribindex] = buffer
             end
         end
@@ -189,30 +188,19 @@ Base.convert(::Type{VertexArray}, x) = VertexArray(x)
 Base.convert(::Type{VertexArray}, x::VertexArray) = x
 
 function face2glenum(face)
-    facelength = typeof(face) <: Integer ? face : length(face)
-    if facelength == 1
-        return GL_POINTS
-    elseif facelength == 2
-        return GL_LINES
-    elseif facelength == 3
-        return GL_TRIANGLES
-    elseif facelength == 4
-        return GL_QUADS
-    end
+    facelength = typeof(face) <: Integer ? face : (face <: Integer ? 1 : length(face))
+    facelength == 1 && return GL_POINTS
+    facelength == 2 && return GL_LINES
+    facelength == 3 && return GL_TRIANGLES
+    facelength == 4 && return GL_QUADS
 end
 
 function glenum2face(glenum)
-    if glenum == GL_POINTS
-        facelen = 1
-    elseif glenum == GL_LINES
-        facelen = 2
-    elseif glenum == GL_TRIANGLES
-        facelen = 3
-    elseif glenum == GL_QUADS
-        facelen = 4
-    else
-        facelen = 1
-    end
+    glenum == GL_POINTS    && return 1
+    glenum == GL_LINES     && return 2
+    glenum == GL_TRIANGLES && return 3
+    glenum == GL_QUADS     && return 4
+    return 1
 end
 
 is_struct{T}(::Type{T}) = !(sizeof(T) != 0 && nfields(T) == 0)
