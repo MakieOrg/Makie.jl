@@ -12,6 +12,20 @@ struct CellEntry
     groupid::Int
 end
 
+function Base.merge(x::Vector{CellEntry})
+    e1 = first(x)
+    CellEntry(
+        e1.author,
+        e1.title,
+        e1.unique_name,
+        unique(map(x-> x.tags, x)),
+        e1.file,
+        e1.file_range,
+        join(map(x-> x.toplevel, x), "\n"),
+        join(map(x-> x.source, x), "\n"),
+        NO_GROUP
+    )
+end
 isgroup(x::CellEntry) = x.groupid != NO_GROUP
 
 # overload Base.show to show output of CellEntry
@@ -178,47 +192,37 @@ Prints the source of an entry in the database at `idx`.
 This puts entries of a group into one local scope
 """
 function print_code(
-        io, database, idx;
+        io, entry;
         scope_start = "begin\n",
         scope_end = "end\n",
         indent = " "^4,
+        replace_nframes = false,
         resolution = (entry)-> "resolution = (500, 500)",
         outputfile = (entry, ending)-> "./docs/media/" * string(entry.unique_name, ending)
     )
-    entry = database[idx]
-    groupid = entry.groupid
-    if entry.groupid != NO_GROUP
-        idx = findprev(x-> x.groupid != groupid, database, idx) + 1
-    end
-    group = [entry]
-    while groupid != NO_GROUP && entry.groupid == groupid
-        idx += 1
-        done(database, idx) && break
-        entry = database[idx]
-        push!(group, entry)
-    end
-    foreach(entry-> (println(io, "using Makie"); println(io, entry.toplevel)), group)
+    println(io, "using Makie")
+    println(io, entry.toplevel)
     print(io, scope_start)
-    for entry in group
-        for line in split(entry.source, "\n")
-            line = replace(line, "@resolution", resolution(entry))
-            filematch = match(r"(@outputfile)(\(.+?\))?" , line)
-            if filematch != nothing
-                ending = filematch.captures[2]
-                replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
-                @show replacement entry.unique_name
-                line = replace(
-                    line, r"(@outputfile)(\(.+?\))?",
-                    string('"', escape_string(replacement), '"')
-                )
-            end
-            println(io, indent, line)
+    for line in split(entry.source, "\n")
+        line = replace(line, "@resolution", resolution(entry))
+        filematch = match(r"(@outputfile)(\(.+?\))?" , line)
+        if filematch != nothing
+            ending = filematch.captures[2]
+            replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
+            line = replace(
+                line, r"(@outputfile)(\(.+?\))?",
+                string('"', escape_string(replacement), '"')
+            )
         end
+        if replace_nframes
+            line = replace(line, r"(record\(.*)N(.*\) do .*)", s"\1 10 \2")
+        end
+        println(io, indent, line)
     end
     print(io, scope_end)
-    idx + 1
+    return
 end
-
+@which replace("test", r"lol", s"lal", 0)
 
 function extract_tags(expr)
     if !any(x-> isa(x, String) || isa(x, Symbol), expr.args) || expr.head != :vect
@@ -455,4 +459,64 @@ const output_fallback = joinpath(mktempdir(), "test.")
 macro outputfile(ending = :mp4)
     # only for marking
     string(output_fallback, ending)
+end
+
+"""
+Walks through every example matching `tags`, and calls f on the example.
+Merges groups of examples into one example entry.
+"""
+function enumerate_examples(f, tags...)
+    sort!(database, by = (x)-> x.groupid)
+    group_tmp = CellEntry[]
+    last_id = NO_GROUP
+    for entry in database
+        all(x-> string(x) in entry.tags, tags) || continue
+        if last_id != NO_GROUP && (entry.groupid != last_id)
+            last_id = entry.groupid # if already NO_GROUP, we set it to NO_GROUP
+            if !isempty(group_tmp)
+                f(merge(group_tmp))
+                empty!(group_tmp)
+            end
+        elseif last_id != NO_GROUP && last_id == entry.groupid
+            push!(group_tmp, entry)
+        else
+            f(entry)
+        end
+    end
+    return
+end
+
+
+"""
+Walks through all examples matching tags and calls `f(entry, source)`, with
+source being the source of the example as a string
+"""
+function examples2source(f, tags...; kw_args...)
+    enumerate_examples(tags...) do entry
+        f(entry, sprint(io-> print_code(io, entry; kw_args...)))
+    end
+end
+
+"""
+Walks through examples and evalueates them. Returns the evaluated value and calls
+`f(entry, value)`.
+"""
+function eval_examples(f, tags...; kw_args...)
+    examples2source(tags...; kw_args..., scope_start = "", scope_end = "") do entry, source
+        uname = entry.unique_name
+        tmpmod = eval(:(module $(gensym(uname)); end))
+        result = try
+            eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
+        catch e
+            Base.showerror(STDERR, e)
+            println(STDERR)
+            Base.show_backtrace(STDERR, Base.catch_backtrace())
+            println(STDERR)
+            println(STDERR, "failed to evaluate the example:")
+            println(STDERR, "```julia")
+            println(STDERR, source)
+            println(STDERR, "```")
+        end
+        f(entry, result)
+    end
 end

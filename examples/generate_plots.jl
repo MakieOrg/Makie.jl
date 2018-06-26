@@ -4,10 +4,6 @@ cd(@__DIR__)
 using Makie, ImageTransformations, FileIO
 using ImageFiltering  # needed for Gaussian-filtering images during resize
 
-AbstractPlotting.set_theme!(resolution = (500, 500))
-
-cd(Pkg.dir("Makie"))
-isdir("docs/media") || mkdir("docs/media")
 
 """
     generate_thumbnail(path::AbstractString; sz::Int = 200)
@@ -15,11 +11,8 @@ isdir("docs/media") || mkdir("docs/media")
 Generates a (proportionally-scaled) thumbnail with maximum side dimension `sz`.
 `sz` must be an integer, and the default value is 200 pixels.
 """
-function generate_thumbnail(path::AbstractString; sz::Int = 200)
+function generate_thumbnail(path::AbstractString, thumb_path::AbstractString; sz::Int = 200)
     !isfile(path) && warn("Input argument must be a file!")
-    dir = dirname(path)
-    origname = basename(path)
-    thumbname = "thumb-$(origname)"
     img = Images.load(path)
 
     # calculate new image size `newsz`
@@ -34,9 +27,8 @@ function generate_thumbnail(path::AbstractString; sz::Int = 200)
     kern = KernelFactors.gaussian(σ)   # from ImageFiltering
     imgf = ImageFiltering.imfilter(img, kern, NA())
     newimg = ImageTransformations.imresize(imgf, newsz)
-
     # save image
-    FileIO.save(joinpath(dir, thumbname), newimg)
+    FileIO.save(thumb_path, newimg)
 end
 
 
@@ -66,51 +58,30 @@ function get_video_duration(path::AbstractString)
 end
 
 
-function record_examples(tags...)
-    examples = sort(database, by = (x)-> x.groupid)
-    if !isempty(tags)
-        filter!(examples) do entry
-            all(x-> String(x) in entry.tags, tags)
-        end
-    end
-    index = start(examples)
-    dblen = length(examples)
-    thumbnail_size = 150
-    while dblen >= index
-        # use the unique_name of the database entry as filename
-        uname = string(examples[index].unique_name)
-        println(examples[index].title)
-        str = sprint() do io
-            # declare global index so it can be modified by the function inside loop
-            index = print_code(io, examples, index; scope_start = "", scope_end = "")
-        end
-        # sandbox the string in a module
-        tmpmod = eval(:(module $(gensym(uname)); end))
-        # eval the sandboxed module using include_string
-        try
-            result = eval(tmpmod, Expr(:call, :include_string, str, uname))
-            if isa(result, String) && isfile(result)
-                try
-                    # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
-                    # seek to the middle of the video and grab a frame
-                    seektime = (get_video_duration(result))/2
-                    run(`ffmpeg -loglevel quiet -ss $seektime -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -y -f image2 "./docs/media/thumb-$(uname).jpg"`)
-                catch err
-                    Base.showerror(STDERR, err)
-                end
-            elseif isa(result, AbstractPlotting.Scene)
-                Makie.save("docs/media/$uname.png", result)
-                generate_thumbnail("docs/media/$uname.png"; sz = thumbnail_size)
-            else
-                warn("something went really badly with index $index & $(typeof(result))")
+function record_examples(path, tags...; thumbnails = true, thumbnail_size = 128)
+    eval_examples(tags...) do entry, result
+        uname = entry.unique_name
+        full_path = joinpath(path, "$(uname)")
+        thumb_path = joinpath(path, "thumb-$(uname).jpg")
+        info("Recording example: $(entry.title)")
+        if isa(result, String) && isfile(result)
+            # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+            # seek to the middle of the video and grab a frame
+            cp(result, full_path * "mp4")
+            seektime = get_video_duration(result) / 2
+            if thumbnails
+                run(`ffmpeg -loglevel quiet -ss $seektime -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -y -f image2 $thumb_path`)
             end
-        catch e
-            Base.showerror(STDERR, e)
-            println(STDERR)
-            Base.show_backtrace(STDERR, Base.catch_backtrace())
-            println(STDERR)
-            println(str)
+        elseif isa(result, Scene)
+            Makie.save(full_path * ".jpg", result)
+            thumbnails && generate_thumbnail(full_path * ".jpg", thumb_path; sz = thumbnail_size)
+        else
+            warn("Unsupported return type with example $(entry.title) and $(typeof(result))")
         end
     end
 end
-record_examples()
+
+AbstractPlotting.set_theme!(resolution = (500, 500))
+cd(Pkg.dir("Makie"))
+isdir("docs/media") || mkdir("docs/media")
+record_examples("docs/media", :heatmap, thumbnails = true)
