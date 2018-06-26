@@ -6,7 +6,7 @@ include("../examples/library.jl")
 refpath = Pkg.dir("ReferenceImages", "Makie")
 
 if !isdir(refpath)
-    Pkg.clone("ReferenceImages")
+    Pkg.clone("https://github.com/SimonDanisch/ReferenceImages.git")
 end
 
 isdir(refpath) || mkpath(refpath)
