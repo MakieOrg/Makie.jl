@@ -70,7 +70,7 @@ end
 
 
 """
-    help_attributes(Typ; extended = false)
+    help_attributes(io, Typ; extended = false)
 
 Returns a list of attributes for the plot type `Typ`.
 The attributes returned extend those attributes found in the `default_theme`.
@@ -83,7 +83,7 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     # this is a symbolic dictionary, with symbols as the keys
     attributes = default_theme(nothing, Typ)
 
-    # manually filter out some attribute (since it's internal to OpenGL)
+    # manually filter out some attributes
     filter_keys = Symbol.([:fxaa, :model, :transformation, :light])
 
     # count the character length of the longest key
@@ -100,7 +100,11 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     # increase verbosity if extended kwarg is on
     if extended
         println(io, "Available attributes and their defaults for `$Typ` are: \n")
-        println(io, "```")
+    else
+        println(io, "Available attributes for `$Typ` are: \n")
+    end
+    println(io, "```")
+    if extended
         for attribute in allkeys
             value = attributes[attribute]
             if !(attribute in filter_keys)
@@ -110,18 +114,15 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
                 print(io, "\n")
             end
         end
-        println(io, "```")
     else
-        println(io, "Available attributes for `$Typ` are: \n")
-        println(io, "```")
         for attribute in allkeys
             value = attributes[attribute]
             if !(attribute in filter_keys)
                 println(io, "  ", attribute)
             end
         end
-        println(io, "```")
     end
+    println(io, "```")
 end
 
 function help_attributes(io::IO, func::Function; extended = false)
