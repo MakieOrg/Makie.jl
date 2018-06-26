@@ -66,6 +66,14 @@ using Makie
             shading = false
         )
     end
+    @cell "heatmap interpolation" [heatmap, interpolate] begin
+        p1 = heatmap(rand(100, 100), interpolate = true)
+        p2 = heatmap(rand(100, 100), interpolate = false)
+        scene = AbstractPlotting.vbox(p1, p2)
+        text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        scene
+    end
     @cell "colored triangle" [polygon] begin
         poly(
             [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
@@ -73,21 +81,13 @@ using Makie
             linecolor = :black, linewidth = 2
         )
     end
-    # @cell "Subscenes" [image, scatter, subscene] begin
-    #
-    #     scene = Scene(@resolution)
-    #     # # TODO: had to use Makie.loadasset
-    #     # img = rand(RGBAf0, 100, 100)
-    #     # scene = Scene(@resolution)
-    #     # # TODO: fails here with ERROR: MethodError: no method matching isless(::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}}, ::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}})
-    #     # is = image(img)
-    #     # center!(scene)
-    #     # # TODO: had to do Makie.Signal
-    #     # subscene = Scene(scene, Node(Makie.SimpleRectangle(0, 0, 200, 200)))
-    #     # scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-    #     # center!(scene)
-    #     # scene
-    # end
+    @cell "Subscenes" [image, scatter, subscene] begin
+        img = rand(RGBAf0, 100, 100)
+        scene = image(img, show_axis = false)
+        subscene = Scene(scene, IRect(100, 100, 300, 300))
+        scatter!(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
+        scene
+    end
 
     @cell "Polygons" [poly, polygon, linesegments] begin
         using GeometryTypes
@@ -119,8 +119,7 @@ using Makie
     end
 
     @cell "Animated Scatter" [animated, scatter, updating] begin
-        scene = Scene(@resolution)
-        N = 50
+        N = 10
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
         s = scene[end] # last plot in scene
@@ -136,7 +135,7 @@ using Makie
             position = (300, 200),
             align = (:center,  :center),
             textsize = 60,
-            font = "URW Chancery L"
+            font = "Black Chancery"
         )
     end
 
@@ -295,7 +294,7 @@ end
     end
 
     @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
-        scene = Scene(@resolution)
+        scene = Scene();
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
@@ -309,7 +308,8 @@ end
         wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        record(scene, @outputfile(mp4), linspace(5, 40, 100)) do i
+        N = 150
+        record(scene, @outputfile(mp4), linspace(5, 40, N)) do i
             surf[3] = surf_func(i)
         end
     end
@@ -327,10 +327,9 @@ end
         mesh(Sphere(Point3f0(0), 1f0), color = :blue)
     end
 
-    @cell "Stars" [scatter, glow, update_cam!] begin
+    @cell "Stars" [scatter, glow, update_cam!, camera] begin
         stars = 100_000
-        scene = Scene(@resolution)
-        scene.theme[:backgroundcolor] = RGBAf0(0, 0, 0, 1)
+        scene = Scene(backgroundcolor = :black)
         scatter!(
             scene,
             (rand(Point3f0, stars) .- 0.5) .* 10,
@@ -372,21 +371,22 @@ end
             position
         end
         rings = [(0.1f0, 1.0f0, 0.00001f0, Point2f0(0.2, 0.1)), (0.1f0, 0.0f0, 0.0002f0, Point2f0(0.052, 0.05))]
-        N = 25000
-        t_audio = sin.(linspace(0, 10pi, N)) .+ (cos.(linspace(-3, 7pi, N)) .* 0.6) .+ (rand(Float32, N) .* 0.1) ./ 2f0
+        N2 = 25000
+        t_audio = sin.(linspace(0, 10pi, N2)) .+ (cos.(linspace(-3, 7pi, N2)) .* 0.6) .+ (rand(Float32, N2) .* 0.1) ./ 2f0
         start = time()
         t = (time() - start) * 100
-        pos = calcpositions.((rings,), 1:N, t, (t_audio,))
+        pos = calcpositions.((rings,), 1:N2, t, (t_audio,))
 
-        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N), 0.6), thickness = 0.6f0, show_axis = false)
+        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N2), 0.6), thickness = 0.6f0, show_axis = false)
         linesegments!(scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true, linewidth = 3, linestyle = :dot)
         eyepos = Vec3f0(5, 1.5, 0.5)
         lookat = Vec3f0(0)
         update_cam!(scene, eyepos, lookat)
         l = scene[1]
-        record(scene, @outputfile(mp4), 1:300) do i
+        N = 150
+        record(scene, @outputfile(mp4), 1:N) do i
             t = (time() - start) * 700
-            pos .= calcpositions.((rings,), 1:N, t, (t_audio,))
+            pos .= calcpositions.((rings,), 1:N2, t, (t_audio,))
             l[1] = pos # update argument 1
             rotate_cam!(scene, 0.0, 0.01, 0.01)
         end
@@ -402,7 +402,8 @@ end
         translate!(p, 0, 0, 0)
         colors = to_colormap(:RdYlBu)
         #display(scene) # would be needed without the record
-        path = record(scene, @outputfile(gif), 1:200) do i
+        N = 150
+        path = record(scene, @outputfile(gif), 1:N) do i
             global lineplots, scene
             if length(lineplots) < 20
                 p = lines!(
@@ -599,7 +600,8 @@ end
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines)
-        record(scene, @outputfile(mp4), linspace(0, 10, 100)) do i
+        N = 150
+        record(scene, @outputfile(mp4), linspace(0, 10, N)) do i
             push!(time, i)
         end
     end
@@ -680,7 +682,8 @@ end
         end
         linesegments!(scene, lines, linestyle = :dot, limits = limits)
         # record a video
-        record(scene, @outputfile(mp4), 1:300) do i
+        N = 150
+        record(scene, @outputfile(mp4), 1:N) do i
             push!(t, Base.time())
         end
     end
@@ -875,18 +878,18 @@ end
             color = p1[:color],
             raw = true
         )[end]
-
+        scene
         display(Makie.global_gl_screen(), scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
         p2[:marker] = 'π'
         p2[:markersize] = 0.2
-        p2[:marker] = 'o'
 
         # push a reasonable mouse position in case this is executed as part
         # of the documentation
         push!(scene.events.mouseposition, (250.0, 250.0))
-        record(scene, @outputfile(mp4), linspace(0.01, 0.4, 100)) do i
+        N = 50
+        record(scene, @outputfile(mp4), linspace(0.01, 0.4, N)) do i
             push!(scene.events.mouseposition, (250.0, 250.0))
             p2[:markersize] = i
             push!(time, time[] + 0.1)
@@ -896,13 +899,19 @@ end
 
 @block AnthonyWang [documentation] begin
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
-        scene = Scene(@resolution)
-        scatter!(
-            scene,
+        scatter(
             rand(20), rand(20),
             markersize = rand(20) ./20 + 0.02,
             color = rand(RGBf0, 20)
         )
+    end
+
+    @cell "Marker offset" [scatter, marker_offset] begin
+        scene = Scene(@resolution)
+        points = Point2f0[(0,0), (1,1), (2,2)]
+        offset = rand(Point2f0, 3)./5
+        scatter!(scene, points)
+        scatter!(scene, points, marker_offset = offset, color = :red)
     end
 end
 

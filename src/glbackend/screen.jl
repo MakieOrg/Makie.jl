@@ -68,7 +68,7 @@ function colorbuffer(screen::Screen)
     GLFW.SwapBuffers(to_native(screen))
     glFinish() # block until opengl is done rendering
     buffer = gpu_data(screen.framebuffer.color)
-    return rotl90(RGB{N0f8}.(ImageCore.clamp01nan.(buffer)))
+    return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
 end
 
 
@@ -79,7 +79,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        bg = AbstractPlotting.signal_convert(Node{RGBAf0}, scene.theme[:backgroundcolor])
+        bg = map(to_color, scene.theme[:backgroundcolor])
         push!(screen.screens, (id, scene.px_area, Node(true), bg))
         id
     end
@@ -114,7 +114,22 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         end
         empty!(gl_screens)
     end
-    window = GLFW.Window(name = "Makie", resolution = resolution, kw_args...)
+    window = GLFW.Window(
+        name = "Makie", resolution = resolution,
+        windowhints = [
+            (GLFW.SAMPLES,      0),
+            (GLFW.DEPTH_BITS,   0),
+
+            (GLFW.ALPHA_BITS,   0),
+            (GLFW.RED_BITS,     8),
+            (GLFW.GREEN_BITS,   8),
+            (GLFW.BLUE_BITS,    8),
+
+            (GLFW.STENCIL_BITS, 0),
+            (GLFW.AUX_BUFFERS,  0)
+        ],
+        kw_args...
+    )
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     GLAbstraction.new_context()
@@ -131,12 +146,8 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         GLFW.HideWindow(window)
     end
     GLFW.SwapInterval(0)
-    resolution_signal = Signal(resolution)
-    GLFW.SetFramebufferSizeCallback(
-        window,
-        (window, w::Cint, h::Cint)-> push!(resolution_signal, Int.((w, h)))
-    )
-    fb = GLFramebuffer(resolution_signal)
+
+    fb = GLFramebuffer(Int.(resolution))
     screen = Screen(
         window, fb,
         RefValue{Task}(),

@@ -225,7 +225,7 @@ function to_meshcolor(color)
     color
 end
 
-function to_mesh(mesh::GeometryPrimitive)
+function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
     gl_convert(const_lift(GLNormalMesh, mesh))
 end
 
@@ -239,26 +239,17 @@ function orthogonal(v::T) where T <: StaticVector{3}
     return cross(v, other)
 end
 
-function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
-    k_cos_theta = dot(u, v)
-    k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
-    q = if (k_cos_theta / k) ≈ T(-1)
-        # 180 degree rotation around any orthogonal vector
-        Quaternion(T(0), normalize(orthogonal(u))...)
-    else
-        normalize(Quaternion(k_cos_theta + k, cross(u, v)...))
-    end
-    Vec4f0(q.v1, q.v2, q.v3, q.s)
-end
+using AbstractPlotting
+
+
 vec2quaternion(rotation::StaticVector{4}) = rotation
 
 function vec2quaternion(r::StaticVector{2})
     vec2quaternion(Vec3f0(r[1], r[2], 0))
 end
 function vec2quaternion(rotation::StaticVector{3})
-    rotation_between(Vec3f0(0, 0, 1), Vec3f0(rotation))
+    AbstractPlotting.rotation_between(Vec3f0(0, 0, 1), Vec3f0(rotation))
 end
-using AbstractPlotting
 
 vec2quaternion(rotation::Vec4f0) = rotation
 vec2quaternion(rotation::VecTypes) = const_lift(x-> vec2quaternion.(x), rotation)
@@ -375,27 +366,6 @@ primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
 primitive_distancefield(::Signal{Char}) = get_texture!(get_texture_atlas())
 
-
-
-
-# if isdefined(Images, :ImageAxes)
-#     """
-#     Particles with an image as primitive
-#     """
-#     function _default{Pr <: HasAxesArray, P <: Point}(
-#         p::Tuple{TOrSignal{Pr}, VecTypes{P}}, s::Style, data::Dict
-#     )
-#         _default((const_lift(img -> gl_convert(img), p[1]), p[2]), s, data)
-#     end
-# else
-#     include_string("""
-#     function _default{Pr <: Images.Image, P <: Point}(
-#             p::Tuple{TOrSignal{Pr}, VecTypes{P}}, s::Style, data::Dict
-#         )
-#         _default((const_lift(img -> img.data, p[1]), p[2]), s, data)
-#     end
-#     """)
-# end
 function _default(
         p::Tuple{TOrSignal{Matrix{C}}, VecTypes{P}}, s::Style, data::Dict
     ) where {C <: Colorant, P <: Point}

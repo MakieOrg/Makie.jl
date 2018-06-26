@@ -181,3 +181,53 @@ function embed_plot(
     end
     print(io, "\n")
 end
+
+
+"""
+    print_table(io::IO, dict::Dict)
+
+Print a Markdown-formatted table with the entries from `dict` to specified `io`.
+"""
+function print_table(io::IO, dict::Dict)
+    # get max length of the keys
+    k = string.("`", collect(keys(attr_desc)), "`")
+    maxlen_k = max(length.(k)...)
+
+    # get max length of the values
+    v = string.(collect(values(attr_desc)))
+    maxlen_v = max(length.(v)...)
+
+    j = sort(collect(attr_desc), by = x -> x[1])
+
+    # column labels
+    labels = ["Symbol", "Description"]
+
+    # print top header
+    print(io, "|")
+    print(io, "$(labels[1])")
+    print(io, " "^(maxlen_k - length(labels[1])))
+    print(io, "|")
+    print(io, "$(labels[2])")
+    print(io, " "^(maxlen_v - length(labels[2])))
+    print(io, "|")
+    print(io, "\n")
+
+    # print second line (toprule)
+    print(io, "|")
+    print(io, "-"^maxlen_k)
+    print(io, "|")
+    print(io, "-"^maxlen_v)
+    print(io, "|")
+    print(io, "\n")
+
+    for (idx, entry) in enumerate(j)
+        print(io, "|")
+        print(io, "`$(entry[1])`")
+        print(io, " "^(maxlen_k - length(string(entry[1])) - 2))
+        print(io, "|")
+        print(io, "$(entry[2])")
+        print(io, " "^(maxlen_v - length(entry[2])))
+        print(io, "|")
+        print(io, "\n")
+    end
+end

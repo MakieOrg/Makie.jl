@@ -1,27 +1,44 @@
+using Makie
+new_theme = Theme(
+    linewidth = 3,
+    colormap = :RdYlGn,
+    color = :red,
+    scatter = Theme(
+        marker = '⊝',
+        markersize = 0.03,
+        strokecolor = :black,
+        strokewidth = 0.1,
+    ),
+)
+AbstractPlotting.set_theme!(new_theme)
+scene2 = scatter(rand(100), rand(100))
+new_theme[:color] = :blue
+new_theme[:scatter, :marker] = '◍'
+new_theme[:scatter, :markersize] = 0.05
+new_theme[:scatter, :strokewidth] = 0.1
+new_theme[:scatter, :strokecolor] = :green
+scene2 = scatter(rand(100), rand(100))
+scene2[end][:marker] = 'π'
 
-function custom_theme(scene)
-    @theme theme = begin
-        linewidth = to_float(3)
-        colormap = to_colormap(:RdYlGn)#to_colormap(:RdPu)
-        scatter = begin
-            marker = to_spritemarker(Circle)
-            markersize = to_float(0.03)
-            strokecolor = to_color(:white)
-            strokewidth = to_float(0.01)
-            glowcolor = to_color(RGBA(0, 0, 0, 0.4))
-            glowwidth = to_float(0.1)
-        end
-    end
-    # update theme values
-    scene[:theme] = theme
-end
+r = linspace(-0.5pi, pi + pi/4, 100)
+AbstractPlotting.set_theme!(new_theme)
+scene = surface(r, r, (x, y)-> sin(2x) + cos(2y))
+scene[end][:colormap] = :PuOr
+scene
+surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+AbstractPlotting.set_theme!()
+scene = surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
 
 
 #cell
 using Makie
 img = Makie.logo()
 scene1 = image(0..1, 0..1, img)
-scene2 = scatter(rand(100), rand(100), markersize = 0.05)
+
+scene2 = scatter(rand(100), rand(100))
+
+
+
 scene3 = AbstractPlotting.vbox(scene1, scene2)
 boundingbox(scene2)
 
@@ -130,4 +147,22 @@ function test(scene)
     lns[:h] = 0.06
     lns[:linewidth] = 1.0
     lns
+end
+
+
+using Makie
+main = Scene()
+cam3d!(main)
+main
+plots = [
+    heatmap(0..1, 0..1, rand(100, 100)),
+    meshscatter(rand(10), rand(10), rand(10)),
+    scatter(rand(10), rand(10)),
+    mesh(Makie.loadasset("cat.obj")),
+    volume(0..1, 0..1, 0..1, rand(32, 32, 32)),
+]
+
+for p in plots
+    push!(main, p)
+    translate!(p, rand()*3, rand()*3, rand()*3)
 end

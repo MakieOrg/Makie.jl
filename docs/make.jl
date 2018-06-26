@@ -8,7 +8,7 @@ pathroot = Pkg.dir("Makie")
 docspath = Pkg.dir("Makie", "docs")
 srcpath = joinpath(pathroot, "docs", "src")
 buildpath = joinpath(pathroot, "docs", "build")
-mediapath = joinpath(pathroot, "docs", "media")
+mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 
 
@@ -117,16 +117,7 @@ example_pages = "Examples" => example_list
 
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
-attr_list = []
-for func in (atomics..., contour)
-    Typ = to_type(func)
-    attr = keys(default_theme(nothing, Typ))
-    push!(attr_list, attr...)
-end
-attr_list = string.(sort!(unique(attr_list)))
-# filter out fxaa attribute
-attr_list = filter!(x -> x ≠ "fxaa", attr_list)
-
+include("../src/attr_desc.jl")
 path = joinpath(srcpath, "attributes.md")
 srcdocpath = joinpath(srcpath, "src-attributes.md")
 open(path, "w") do io
@@ -135,13 +126,11 @@ open(path, "w") do io
     src = read(srcdocpath, String)
     println(io, src)
     print(io, "\n")
-    for attr in attr_list
-        println(io, "## [`$attr`](@id $attr)\n")
-        # println(io, "  * [$attr](@ref attr)")
-        println(io, "docstrings go here\n")
-    end
+    print_table(io, attr_desc)
 end
 
+# TODO can we teach this to documenter somehow?
+cp(Pkg.dir("Makie", "docs", "media"), mediapath)
 
 makedocs(
     modules = [Makie, AbstractPlotting],
@@ -181,18 +170,17 @@ makedocs(
     ]
 )
 
-
 #
 # ENV["TRAVIS_BRANCH"] = "latest"
 # ENV["TRAVIS_PULL_REQUEST"] = "false"
-# ENV["TRAVIS_REPO_SLUG"] = "github.com/SimonDanisch/MakieDocs.git"
-# ENV["TRAVIS_TAG"] = "tag"
+# ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
+# ENV["TRAVIS_TAG"] = "v1.0.0"
 # ENV["TRAVIS_OS_NAME"] = "linux"
 # ENV["TRAVIS_JULIA_VERSION"] = "0.6"
 #
 # deploydocs(
 #     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-#     repo   = "github.com/SimonDanisch/MakieDocs.git",
+#     repo   = "github.com/JuliaPlots/Makie.jl.git",
 #     julia  = "0.6",
 #     target = "build",
 #     osname = "linux",
