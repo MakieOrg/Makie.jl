@@ -119,7 +119,7 @@ using Makie
     end
 
     @cell "Animated Scatter" [animated, scatter, updating] begin
-        N = 50
+        N = 10
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
         s = scene[end] # last plot in scene
@@ -308,7 +308,8 @@ end
         wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        record(scene, @outputfile(mp4), linspace(5, 40, 100)) do i
+        N = 150
+        record(scene, @outputfile(mp4), linspace(5, 40, N)) do i
             surf[3] = surf_func(i)
         end
     end
@@ -370,21 +371,22 @@ end
             position
         end
         rings = [(0.1f0, 1.0f0, 0.00001f0, Point2f0(0.2, 0.1)), (0.1f0, 0.0f0, 0.0002f0, Point2f0(0.052, 0.05))]
-        N = 25000
-        t_audio = sin.(linspace(0, 10pi, N)) .+ (cos.(linspace(-3, 7pi, N)) .* 0.6) .+ (rand(Float32, N) .* 0.1) ./ 2f0
+        N2 = 25000
+        t_audio = sin.(linspace(0, 10pi, N2)) .+ (cos.(linspace(-3, 7pi, N2)) .* 0.6) .+ (rand(Float32, N2) .* 0.1) ./ 2f0
         start = time()
         t = (time() - start) * 100
-        pos = calcpositions.((rings,), 1:N, t, (t_audio,))
+        pos = calcpositions.((rings,), 1:N2, t, (t_audio,))
 
-        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N), 0.6), thickness = 0.6f0, show_axis = false)
+        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N2), 0.6), thickness = 0.6f0, show_axis = false)
         linesegments!(scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true, linewidth = 3, linestyle = :dot)
         eyepos = Vec3f0(5, 1.5, 0.5)
         lookat = Vec3f0(0)
         update_cam!(scene, eyepos, lookat)
         l = scene[1]
-        record(scene, @outputfile(mp4), 1:300) do i
+        N = 150
+        record(scene, @outputfile(mp4), 1:N) do i
             t = (time() - start) * 700
-            pos .= calcpositions.((rings,), 1:N, t, (t_audio,))
+            pos .= calcpositions.((rings,), 1:N2, t, (t_audio,))
             l[1] = pos # update argument 1
             rotate_cam!(scene, 0.0, 0.01, 0.01)
         end
@@ -400,7 +402,8 @@ end
         translate!(p, 0, 0, 0)
         colors = to_colormap(:RdYlBu)
         #display(scene) # would be needed without the record
-        path = record(scene, @outputfile(gif), 1:200) do i
+        N = 150
+        path = record(scene, @outputfile(gif), 1:N) do i
             global lineplots, scene
             if length(lineplots) < 20
                 p = lines!(
@@ -597,7 +600,8 @@ end
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines)
-        record(scene, @outputfile(mp4), linspace(0, 10, 100)) do i
+        N = 150
+        record(scene, @outputfile(mp4), linspace(0, 10, N)) do i
             push!(time, i)
         end
     end
@@ -678,7 +682,8 @@ end
         end
         linesegments!(scene, lines, linestyle = :dot, limits = limits)
         # record a video
-        record(scene, @outputfile(mp4), 1:300) do i
+        N = 150
+        record(scene, @outputfile(mp4), 1:N) do i
             push!(t, Base.time())
         end
     end
@@ -883,7 +888,8 @@ end
         # push a reasonable mouse position in case this is executed as part
         # of the documentation
         push!(scene.events.mouseposition, (250.0, 250.0))
-        record(scene, @outputfile(mp4), linspace(0.01, 0.4, 100)) do i
+        N = 50
+        record(scene, @outputfile(mp4), linspace(0.01, 0.4, N)) do i
             push!(scene.events.mouseposition, (250.0, 250.0))
             p2[:markersize] = i
             push!(time, time[] + 0.1)
