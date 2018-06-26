@@ -32,8 +32,9 @@ function look_up_source(database_key)
     isempty(entries) && error("No entry found for database reference $database_key")
     length(entries) > 1 && error("Multiple entries found for database reference $database_key")
     sprint() do io
+        idx = entries[1]
         print_code(
-            io, database, entries[1],
+            io, database[idx],
             scope_start = "",
             scope_end = "",
             indent = "",

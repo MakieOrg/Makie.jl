@@ -86,4 +86,4 @@ end
 AbstractPlotting.set_theme!(resolution = (500, 500))
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
-record_examples("docs/media", :heatmap, thumbnails = true)
+record_examples("docs/media", thumbnails = true)
