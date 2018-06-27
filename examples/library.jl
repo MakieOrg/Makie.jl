@@ -856,6 +856,26 @@ end
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
     end
+    @cell "Mouse Picker" [interactive, scatter, heatmap] begin
+        img = rand(100, 100)
+        scene = Scene()
+        heatmap!(scene, img, scale_plot = false)
+        #Woops, points can't be empty, needs fixing in the boundingbox algirithm
+        clicks = Node(Point2f0[])
+        foreach(scene.events.mousebuttons) do buttons
+            if ispressed(scene, Mouse.left)
+                pos = to_world(scene, Point2f0(scene.events.mouseposition[]))
+                # one push! for adding to clicks, another to update the node!
+                push!(clicks, push!(clicks[], pos))
+            end
+            return
+        end
+        scatter!(scene, clicks, color = :red, marker = '+', markersize = 10, raw = true)
+        record(scene, @outputfile(mp4), 1:10) do i
+            # fake mouse clicks for non interactive run
+            push!(clicks, push!(clicks[], rand(Point2f0)* 100f0))
+        end
+    end
     @cell "Interaction with Mouse" [interactive, scatter, lines, marker] begin
         scene = Scene()
         r = linspace(0, 3, 4)
