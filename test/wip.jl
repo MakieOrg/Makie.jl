@@ -14,15 +14,15 @@
 #
 # VertexArraycleanup:
 #   -> Instancing is now done the other way around to what it should be.
-#   -> All different meshscatters etc don't work due to this issue.
-#   -> :position is where the instancing happens.
+#
+#
 #
 # generalcleanup:
 #   -> Put finalizer(free) for all the GLobjects!
 #   -> So many speedups possible!
 #
 # What doesn't work:
-#   -> everything with instancing
+#   -> contour
 #   -> heatmap
 
 
@@ -56,3 +56,8 @@ xm, ym, zm = minimum(scene.limits[])
 contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
 heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
 contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange=true, transformation = (:yz, xm))
+
+y = linspace(-0.997669, 0.997669, 23)
+@edit contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
+
+@edit contour
