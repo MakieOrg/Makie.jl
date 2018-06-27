@@ -37,21 +37,22 @@ end
 r = linspace(-2, 2, 50)
 surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
 z = surf_func(20)
-surf = surface!(scene, r, r, z)
-empty!(scene.plots)
+surf = surface!(scene, r, r, z)[end]
 
 
 wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
     linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap]))
 
-begin
-    large_sphere = Sphere(Point3f0(0), 1f0)
-    positions = decompose(Point3f0, large_sphere)
-    meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.5)
+
+function test(x, y, z)
+    xy = [x, y, z]
+    ((xy') * eye(3, 3) * xy) / 20
 end
-
-mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue], shading = false)
-
-
-heatmap(rand(32, 32))
-2401/3
+x = linspace(-2pi, 2pi, 100)
+scene = Scene()
+c = contour!(scene, x, x, x, test, levels = 10)[end]
+xm, ym, zm = minimum(scene.limits[])
+# c[4] == fourth argument of the above plotting command
+contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
+heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
+contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange=true, transformation = (:yz, xm))
