@@ -312,9 +312,13 @@ function surface_contours(volume::Volume)
         :fxaa => true
     )
     bb = map(m-> m * hull, model)
-    robj = RenderObject(gl_data, shader, volume_prerender, bb)
-    robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
-    robj
+    #TODO renderobjectcleanup: This should change!
+    #TODO shadercleanup: This should change!
+    gl_data[:shader] = shader
+    robj = RenderObject(gl_data, bb)
+    # robj = RenderObject(gl_data, shader, volume_prerender, bb)
+    # robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
+    # robj
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Volume)

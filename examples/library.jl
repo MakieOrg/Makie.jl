@@ -777,7 +777,7 @@ end
         xm, ym, zm = minimum(scene.limits[])
         # c[4] == fourth argument of the above plotting command
         contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
-        heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
+        # heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
         contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
     end
 

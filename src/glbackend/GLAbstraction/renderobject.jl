@@ -33,11 +33,11 @@ function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0
     robj
 end
 function RenderObject(
-        data::Dict{Symbol}, program, pre,
+        data::Dict{Symbol},
         bbs = Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
         main = nothing
     )
-    RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
+    RenderObject(convert(Dict{Symbol,Any}, data), bbs, main)
 end
 
 function Base.show(io::IO, obj::RenderObject)
