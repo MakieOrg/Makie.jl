@@ -319,7 +319,7 @@ function surface_contours(volume::Volume)
         :colormap => Texture(map(to_colormap, volume[:colormap])),
         :colorrange => map(Vec2f0, volume[:colorrange]),
         :fxaa => true,
-        :pipeline => :volume
+        :pipeline => :default
     )
     bb = map(m-> m * hull, model)
     #TODO renderobjectcleanup: This should change!
