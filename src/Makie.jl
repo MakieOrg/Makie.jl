@@ -1,111 +1,68 @@
 __precompile__(true)
 module Makie
 
-using Colors, GeometryTypes, GLVisualize, GLAbstraction, ColorVectorSpace
-using StaticArrays, GLWindow, ModernGL, Contour, Quaternions
 
+
+using AbstractPlotting
+using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
+import IntervalSets
+using IntervalSets: ClosedInterval, (..)
+using ImageCore
+import Media, Juno
+import FileIO
+
+module ContoursHygiene
+    import Contour
+end
+using .ContoursHygiene
+const Contours = ContoursHygiene.Contour
+
+using Primes
 using Base.Iterators: repeated, drop
-using Base: RefValue
 using FreeType, FreeTypeAbstraction, UnicodeFun
+using PlotUtils, Showoff
+using Base: RefValue
+import Base: push!, isopen, show
 
-struct Backend{B} end
+for name in names(AbstractPlotting)
+    @eval import AbstractPlotting: $(name)
+    @eval export $(name)
+end
 
+# Unexported names
+using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont, Key, @key_str
 
-include("plotutils/utils.jl")
+export (..), GLNormalUVMesh
+# conflicting identifiers
+using AbstractPlotting: Text, volume, VecTypes
+using GeometryTypes: widths
+export widths, decompose
 
-include("plotsbase/scene.jl")
-include("plotsbase/conversions.jl")
-include("plotutils/units.jl")
+# NamedTuple shortcut for 0.6, for easy creation of nested attributes
+const NT = Theme
+export NT
 
-const makie = Scene{:makie}
-
-
-# Until I find a non breaking way to integrate this into GLAbstraction, it lives here.
-GLAbstraction.gl_convert(a::Vector{T}) where T = convert(Vector{GLAbstraction.gl_promote(T)}, a)
-
-include("plotutils/layout.jl")
-
-include("plotsbase/atomics.jl")
-    # The actual implementation
-    include("atomics/shared.jl")
-    include("atomics/scatter.jl")
-    include("atomics/lines.jl")
-    include("atomics/poly.jl")
-    include("atomics/text.jl")
-    include("atomics/surface.jl")
-    include("atomics/mesh.jl")
-    include("atomics/imagelike.jl")
-    include("atomics/gui.jl")
-    include("plotsbase/legend.jl")
-    include("plotsbase/basic_recipes.jl")
-
-include("plotsbase/axis.jl")
-include("plotsbase/output.jl")
-include("iodevices.jl")
-include("camera2d.jl")
-# include("camera3d.jl")
-
-export Scene, Node
-
-export scatter, lines, linesegment, mesh, surface, wireframe, axis, text, text_overlay!
-export @ref, @theme, @default, to_node, to_value, lift_node, to_world, save
-export available_marker_symbols, available_gradients, render_frame
-
-# conversion
-
-export to_float, to_markersize2d, to_spritemarker, to_linestyle, to_pattern
-export to_color, to_colormap, to_colornorm, to_array, to_mesh, to_surface
-
-export to_scale
-export to_offset
-export to_rotation
-export to_image
-export to_bool
-export to_index_buffer
-export to_index_buffer
-export to_positions
-export to_position
-export to_array
-export to_scalefunc
-export to_text
-export to_font
-export to_intensity
-export to_surface
-export to_spritemarker
-export to_static_vec
-export to_rotations
-export to_markersize2d
-export to_markersize3d
-export to_linestyle
-export to_normals
-export to_faces
-export to_attribut_id
-export to_mesh
-export to_float
-export to_color
-export to_colornorm
-export to_colormap
-export available_gradients
-export to_spatial_order
-export to_interval
-export to_volume_algorithm
-export to_3floats
-export to_2floats
-export to_textalign
-export arrows
 const has_ffmpeg = Ref(false)
-
 function __init__()
     has_ffmpeg[] = try
         success(`ffmpeg -h`)
     catch
         false
     end
-    if !has_ffmpeg[]
-        warn("You don't have ffmpeg in your path. Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
-            Makie will still work, but won't be able to save gifs or videos"
-        )
-    end
 end
 
-end # module
+function logo()
+    FileIO.load(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.png"))
+end
+
+include("makie_recipes.jl")
+include("argument_conversion.jl")
+include("tickranges.jl")
+include("utils.jl")
+include("glbackend/glbackend.jl")
+include("cairo/cairo.jl")
+include("output.jl")
+include("video_io.jl")
+
+
+end

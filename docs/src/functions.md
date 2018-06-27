@@ -1,80 +1,100 @@
 # Functions
 
-Primitive plotting functions.
-These are the most atomic operations from which one can stack together more complex plots
+The follow document lists the atomic plotting functions and their usage.
+These are the most atomic primitive which one can stack together to form more complex plots.
+
+For styling options of each function, see the keyword arguments list for each function -- consult the [Help functions](@ref).
+
+For a general overview of styling and to see the default parameters, refer to the chapter [Themes](@ref).
+
+## General function signatures and usage
+
+`func` are the function names, e.g. `lines`, `scatter`, `surface`, etc.
+
+`func(args...; kw_args...)`
+
+# creates a new plot + scene object
+
+
+`func(scene::SceneLike, args...; kw_args...)`
+
+# creates a new plot as a subscene of a scene object
+
+`func!(args...; kw_args...)`
+
+# adds a plot in-place to the `current_scene()`
+
+
+`func!(scene::SceneLike, args...; kw_args...)`
+
+# adds a plot in-place to the `current_scene()` as a subscene
+
+
+`func[!]([scene], kw_args::Attributes, args...)`
+
+`[]` means an optional argument. `Attributes` is a Dictionary of attributes.
 
 
 ## Scatter
-
-```@example
-using Makie
-scene = Scene(resolution = (500, 500))
-scatter(rand(10), rand(10))
-center!(scene)
-save("scatter.png", scene); nothing # hide
-```
-
-![](scatter.png)
 
 ```@docs
 scatter
 ```
 
-# Meshscatter
+@library[example] "Scatter Function" "Stars" "Unicode Marker"
 
-```@example
-using Makie, GLVisualize, GeometryTypes
-scene = Scene(resolution = (500, 500))
-meshscatter(Sphere(Point3f0(0), 1f0), marker = loadasset("cat.obj"), markersize = 0.2)
-center!(scene)
-save("meshscatter.png", scene); nothing # hide
-```
-![](meshscatter.png)
+The below is automatically inserted using `example_database("scatter", "surface")`
 
+example_database("scatter", "surface")
+
+The below is automatically inserted using `example_database("scatter")`
+
+example_database("scatter")
+
+
+## Meshscatter
 
 ```@docs
 meshscatter
 ```
 
+@library[example] "Meshscatter Function"
+
+
 ## Lines
-
-```@example
-using Makie
-scene = Scene(resolution = (500, 500))
-x = linspace(0, 3pi)
-lines(x, sin.(x))
-center!(scene)
-save("lines.png", scene); nothing # hide
-```
-
-![](lines.png)
 
 ```@docs
 lines
 ```
 
+@library[example] "Line Function"
+
+![](lines.png)
+
+
 ## Surface
 
-```@example surf
-using Makie
-scene = Scene(resolution = (500, 500))
-N = 32
-function xy_data(x,y,i, N)
-    x = ((x/N)-0.5)*i
-    y = ((y/N)-0.5)*i
-    r = sqrt(x*x + y*y)
-    res = (sin(r)/r)
-    isnan(res) ? 1 : res
-end
-z = [Float32(xy_data(x, y, 20, 32)) + 0.5 for x=1:32, y=1:32]
-range = linspace(0, 3, N)
-surf = surface(range, range, z, colormap = :Spectral)
-center!(scene)
-save("surface.png", scene); nothing # hide
+```@docs
+surface
 ```
 
-![](surface.png)
+@library[example] "Surface Function" "Surface with image"
 
+## Contour
+
+```@docs
+contour
+```
+
+@library[example] "contour"
+
+The below is automatically inserted using `@example_database(contour)`
+
+@example_database(contour)
+
+The below is automatically inserted using `example_database(contour)`
+
+example_database(contour)
 
 ## Wireframe
 
@@ -82,14 +102,7 @@ save("surface.png", scene); nothing # hide
 wireframe
 ```
 
-```@example surf
-using Makie
-scene = Scene(resolution = (500, 500))
-surf = wireframe(range, range, z)
-center!(scene)
-save("wireframe.png", scene); nothing # hide
-```
-![](wireframe.png)
+@library[example] "Wireframe of a Surface" "Wireframe of a Mesh" "Wireframe of Sphere"
 
 
 ## Mesh
@@ -98,48 +111,9 @@ save("wireframe.png", scene); nothing # hide
 mesh
 ```
 
-```@example mesh
-using Makie
-using GLVisualize: loadasset, assetpath
 
-scene = Scene(resolution = (500, 500))
-x = [0, 1, 2, 0]
-y = [0, 0, 1, 2]
-z = [0, 2, 0, 1]
-color = [:red, :green, :blue, :yellow]
-i = [0, 0, 0, 1]
-j = [1, 2, 3, 2]
-k = [2, 3, 1, 3]
+@library[example] "Colored Mesh" "Load Mesh" "Textured Mesh"
 
-indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
-mesh(x, y, z, indices, color = color)
-r = linspace(-0.5, 2.5, 4)
-axis(r, r, r)
-center!(scene)
-save("coloredmesh.png", scene); nothing # hide
-```
-![](coloredmesh.png)
-
-
-```@example mesh
-scene = Scene(resolution = (500, 500))
-mesh(loadasset("cat.obj"))
-axis(r, r, r)
-center!(scene)
-save("loadedmesh.png", scene); nothing # hide
-```
-![](loadedmesh.png)
-
-```@example mesh
-using Makie, GeometryTypes, FileIO, GLVisualize
-
-scene = Scene(resolution = (500, 500))
-cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-Makie.mesh(cat, color = loadasset("diffusemap.tga"))
-center!(scene)
-save("texturemesh.png", scene); nothing # hide
-```
-![](texturemesh.png)
 
 ## Heatmap
 
@@ -147,14 +121,7 @@ save("texturemesh.png", scene); nothing # hide
 heatmap
 ```
 
-```@example heatmap
-using Makie
-scene = Scene(resolution = (500, 500))
-heatmap(rand(32, 32))
-center!(scene)
-save("heatmap.png", scene); nothing # hide
-```
-![](heatmap.png)
+@library[example] "Heatmap Function"
 
 
 ## Volume
@@ -164,15 +131,7 @@ volume
 
 ```
 
-```@example volume
-#julia
-using Makie
-scene = Scene()
-volume(rand(32, 32, 32), algorithm = :iso)
-center!(scene)
-save("volume.png", scene); nothing # hide
-```
-![](volume.png)
+@library[example] "Volume Function"
 
 
 ```

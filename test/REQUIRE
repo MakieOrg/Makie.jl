@@ -1,1 +1,4 @@
-VisualRegressionTests
+MeshIO
+#generate_plots
+ImageFiltering # needed for Gaussian-filtering images during resize
+Images
