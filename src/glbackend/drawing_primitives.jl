@@ -290,14 +290,6 @@ function makieshader(paths...)
         fragdatalocation = [(0, "fragment_color"), (1, "fragment_groupid")]
     )
 end
-function volume_prerender()
-    glEnable(GL_DEPTH_TEST)
-    glDepthMask(GL_TRUE)
-    glDepthFunc(GL_LEQUAL)
-    enabletransparency()
-    glEnable(GL_CULL_FACE)
-    glCullFace(GL_FRONT)
-end
 
 function surface_contours(volume::Volume)
     frag = joinpath(@__DIR__, "surface_contours.frag")
@@ -326,7 +318,8 @@ function surface_contours(volume::Volume)
         :modelinv => modelinv,
         :colormap => Texture(map(to_colormap, volume[:colormap])),
         :colorrange => map(Vec2f0, volume[:colorrange]),
-        :fxaa => true
+        :fxaa => true,
+        :pipeline => :volume
     )
     bb = map(m-> m * hull, model)
     #TODO renderobjectcleanup: This should change!
