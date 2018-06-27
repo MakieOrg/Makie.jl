@@ -312,7 +312,6 @@ function gl_convert_data!(data)
     # position I think are the vertices
 
     # gl_convert_targets are what everythign should be converted to!
-    # println(length(data[:uv_offset_width]))
     targets = get(data, :gl_convert_targets, Dict())
     delete!(data, :gl_convert_targets)
     passthrough = Dict{Symbol, Any}() # we also save a few non opengl related values in data
