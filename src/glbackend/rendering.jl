@@ -107,9 +107,9 @@ end
 function setup(pipe::Pipeline{:default})
     glDisable(GL_STENCIL_TEST)
      glEnable(GL_STENCIL_TEST)
-    # glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    # glStencilMask(0xff)
-    # glClearStencil(0)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0xff)
+    glClearStencil(0)
     #
 end
 
