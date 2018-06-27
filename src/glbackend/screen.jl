@@ -119,8 +119,15 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     #TODO shadercleanup
     #TODO screencleanup: fbo should be created somewhere else
     pipesym = get(robj.uniforms, :pipeline, :default)
+    #TODO rendercleanup: one fbo per pipeline could be ok, but then we need a
+    #                    final render pass that combines all of them. Right now
+    #                    that is not there, and so we render everything to the first
+    #                    fbo. Also clearing needs to get attention!
+    fbo = length(screen.renderlist) >= 1 ?
+        screen.pipelines[1].passes[1].target :
+        defaultframebuffer(size(screen))
     if !haskey(screen.renderlist, pipesym)
-        push!(screen, makiepipeline(pipesym, defaultframebuffer(size(screen)), robj.uniforms[:shader]))
+        push!(screen, makiepipeline(pipesym, fbo, robj.uniforms[:shader]))
         screen.renderlist[pipesym] = [(0, screenid, robj)]
     else
         push!(screen.renderlist[pipesym], (0, screenid, robj))
