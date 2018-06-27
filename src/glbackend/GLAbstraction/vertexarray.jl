@@ -58,7 +58,7 @@ struct VertexArray{Vertex, Kind}
 end
 
 #TODO vertexarraycleanup: Does this really need to be a tuple?
-function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0, instances=0)
+function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0)
     id = glGenVertexArrays()
     glBindVertexArray(id)
 
@@ -115,7 +115,6 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     else
         vert_type = Tuple{eltype.((buffers...,))...}
     end
-
     return VertexArray{vert_type, kind}(id, [buffers...], ind_buf, nverts, ninst, face)
 end
 VertexArray(buffers...; args...) = VertexArray((buffers...), nothing; args...)
@@ -173,15 +172,29 @@ function VertexArray(data::Dict, program::Program)
     #TODO vertexarraycleanup: Why are some buffers undefined??
     attribbufs_ = Vector{Buffer}()
     for i=1:length(attribbufs)
-        if isdefined(attribbufs, i)
+        if isassigned(attribbufs, i)
             push!(attribbufs_, attribbufs[i])
         end
     end
-    instances = haskey(data, :instances) ? data[:instances] : 0
-    VertexArray((attribbufs_...), indbuf, facelength=facelen, instances=instances)
+    if !haskey(data,:instances)
+        VertexArray((attribbufs_...), indbuf, facelength=facelen)
+    else #TODO vertexarraycleanup: This is for the surface
+        instanced_vertexarray(attribbufs_[1], indbuf, data[:instances])
+    end
 end
 
-insert!
+function instanced_vertexarray(vertbuf, indices, instances)
+    id = glGenVertexArrays()
+    glBindVertexArray(id)
+    face = face2glenum(eltype(indices))
+    indbuf = indexbuffer(indices)
+    bind(indbuf)
+    kind = elements_instanced
+    attach2vao(vertbuf, 0)
+    nverts = length(indbuf)*cardinality(indbuf)
+    glBindVertexArray(0)
+    VertexArray{Tuple{eltype(vertbuf)}, kind}(id, [vertbuf], indbuf, nverts, instances, face)
+end
 
 # TODO
 Base.convert(::Type{VertexArray}, x) = VertexArray(x)
