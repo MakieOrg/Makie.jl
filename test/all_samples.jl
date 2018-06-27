@@ -1,86 +1,49 @@
-# this is a bit of an odd design, but I think it does it's job.
-# This file contains statements spereated by the comment # cell (without space),
-# which makes it possible to extract each cell out of this file.
-# There is also the setup cell indicated by # setup.
-# We can then continue to generate files for visual regression tests
-# snoop compiling and even create ijulia notebooks with cells containing this.
+using Makie
+new_theme = Theme(
+    linewidth = 3,
+    colormap = :RdYlGn,
+    color = :red,
+    scatter = Theme(
+        marker = '⊝',
+        markersize = 0.03,
+        strokecolor = :black,
+        strokewidth = 0.1,
+    ),
+)
+AbstractPlotting.set_theme!(new_theme)
+scene2 = scatter(rand(100), rand(100))
+new_theme[:color] = :blue
+new_theme[:scatter, :marker] = '◍'
+new_theme[:scatter, :markersize] = 0.05
+new_theme[:scatter, :strokewidth] = 0.1
+new_theme[:scatter, :strokecolor] = :green
+scene2 = scatter(rand(100), rand(100))
+scene2[end][:marker] = 'π'
 
-#setup
-using Makie, GLFW, GeometryTypes, Reactive, FileIO, ColorBrewer, Colors
-using GLVisualize
-using GLVisualize: loadasset, assetpath
-
-function xy_data(x, y)
-    r = sqrt(x*x + y*y)
-    r == 0.0 ? 1f0 : (sin(r)/r)
-end
-
-function custom_theme(scene)
-    @theme theme = begin
-        linewidth = to_float(3)
-        colormap = to_colormap(:RdYlGn)#to_colormap(:RdPu)
-        scatter = begin
-            marker = to_spritemarker(Circle)
-            markersize = to_float(0.03)
-            strokecolor = to_color(:white)
-            strokewidth = to_float(0.01)
-            glowcolor = to_color(RGBA(0, 0, 0, 0.4))
-            glowwidth = to_float(0.1)
-        end
-    end
-    # update theme values
-    scene[:theme] = theme
-end
+r = linspace(-0.5pi, pi + pi/4, 100)
+AbstractPlotting.set_theme!(new_theme)
+scene = surface(r, r, (x, y)-> sin(2x) + cos(2y))
+scene[end][:colormap] = :PuOr
+scene
+surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+AbstractPlotting.set_theme!()
+scene = surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
 
 
 #cell
-img = GLVisualize.loadasset("doge.png")
-scene = Scene(resolution = (500, 500))
+using Makie
+img = Makie.logo()
+scene1 = image(0..1, 0..1, img)
 
-display(scene)
-show(scene)
-println(scene)
+scene2 = scatter(rand(100), rand(100))
 
-is = image(img)
-center!(scene)
-subscene = Scene(scene, Signal(SimpleRectangle(0, 0, 200, 200)))
-scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-center!(scene)
 
-#cell
-scene = Scene(resolution = (500, 500));
-x = [0, 1, 2, 0];
-y = [0, 0, 1, 2];
-z = [0, 2, 0, 1];
-color = [:red, :green, :blue, :yellow];
-i = [0, 0, 0, 1];
-j = [1, 2, 3, 2];
-k = [2, 3, 1, 3];
 
-indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4];
-mesh(x, y, z, indices, color = color);
-r = linspace(-0.5, 2.5, 4);
-axis(r, r, r);
-center!(scene);
+scene3 = AbstractPlotting.vbox(scene1, scene2)
+boundingbox(scene2)
 
-#cell
-scene = Scene(resolution = (500, 500))
-Makie.Makie.volume(rand(32, 32, 32), algorithm = :iso)
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-heatmap(rand(32, 32))
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-r = linspace(-10, 10, 512)
-z = ((x, y)-> sin(x) + cos(y)).(r, r')
-Makie.contour(r, r, z, levels = 5, color = ColorBrewer.palette("RdYlBu", 5))
-center!(scene)
-
-#cell
+scene3
+scene3.children[2].plots[2].transformation.model[]
 scene = Scene(resolution = (500, 500))
 vx = -1:0.1:1;
 vy = -1:0.1:1;
@@ -108,221 +71,6 @@ custom_theme(scene)
 psurf = surface(vx, 1:0.1:2, psurf[:z])
 center!(scene)
 
-#cell
-scene = Scene(resolution = (500, 500))
-sv = scatter(rand(Point3f0, 100))
-similar(sv, rand(10), rand(10), rand(10), color = :black, markersize = 0.4)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-large_sphere = HyperSphere(Point3f0(0), 1f0)
-positions = decompose(Point3f0, large_sphere)
-colS = [Colors.RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:length(positions)]
-sizesS = [rand(Vec3f0) .* 0.5f0 for i = 1:length(positions)]
-meshscatter(positions, color = colS, markersize = sizesS)
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-y = [
-    -0.997669
-    -0.979084
-    -0.942261
-    -0.887885
-    -0.81697
-    -0.730836
-    -0.631088
-    -0.519584
-    -0.398401
-    -0.269797
-    -0.136167
-    0.0
-    0.136167
-    0.269797
-    0.398401
-    0.519584
-    0.631088
-    0.730836
-    0.81697
-    0.887885
-    0.942261
-    0.979084
-    0.997669
-]
-contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
-center!(scene)
-
-#cell
-using Makie, GeometryTypes
-scene = Scene(resolution = (500, 500))
-# define points/edges
-perturbfactor = 4e1
-N = 3; nbfacese = 30; radius = 0.02
-large_sphere = HyperSphere(Point3f0(0), 1f0)
-positions = decompose(Point3f0, large_sphere, 30)
-np = length(positions)
-pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
-pts = vcat(pts, 1.1 * pts + randn(size(pts)) / perturbfactor) # light position influence ?
-edges = hcat(collect(1:np), collect(1:np) + np)
-ne = size(edges, 1); np = size(pts, 1)
-# define markers meshes
-meshC = GeometryTypes.GLNormalMesh(GeometryTypes.Cylinder{3, Float32}(
-                                   GeometryTypes.Point3f0(0., 0., 0.),
-                                   GeometryTypes.Point3f0(0., 0, 1.),
-                                   Float32(1)), nbfacese)
-
-meshS = GeometryTypes.GLNormalMesh(large_sphere, 20)
-# define colors, markersizes and rotations
-pG = [GeometryTypes.Point3f0(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
-lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]) .^ 2, 2))
-sizesC = [GeometryTypes.Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
-sizesC = [Vec3f0(1., 1., 1.) for i = 1:ne]
-colorsp = [Colors.RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:np]
-colorsC = [(colorsp[edges[i, 1]] + colorsp[edges[i, 2]]) / 2. for i = 1:ne]
-sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
-Qlist = zeros(ne, 4)
-for k = 1:ne
-    ct = GeometryTypes.Cylinder{3, Float32}(
-                GeometryTypes.Point3f0(pts[edges[k, 1], 1], pts[edges[k, 1], 2], pts[edges[k, 1], 3]),
-                GeometryTypes.Point3f0(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
-                Float32(1))
-    Q = GeometryTypes.rotation(ct)
-    r = 0.5 * sqrt(1 + Q[1, 1] + Q[2, 2] + Q[3, 3]); Qlist[k, 4] = r
-    Qlist[k, 1] = (Q[3, 2] - Q[2, 3]) / (4 * r)
-    Qlist[k, 2] = (Q[1, 3] - Q[3, 1]) / (4 * r)
-    Qlist[k, 3] = (Q[2, 1] - Q[1, 2]) / (4 * r)
-end
-rotationsC = AbstractVector[Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
-# plot
-hm = Makie.meshscatter(pG[edges[:, 1]], color = colorsC, marker = meshC,
-                       markersize = sizesC,  rotations = rotationsC)
-hp = Makie.meshscatter(pG, color = colorsp, marker = meshS, markersize = radius)
-
-r = linspace(-1.3, 1.3, 4); Makie.axis(r, r, r)
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-large_sphere = HyperSphere(Point3f0(0), 1f0)
-positions = decompose(Point3f0, large_sphere)
-linepos = view(positions, rand(1:length(positions), 1000))
-lines(linepos, linewidth = 0.1, color = :black)
-scatter(positions, strokewidth = 0.02, strokecolor = :white, color = RGBA(0.9, 0.2, 0.4, 0.6))
-r = linspace(-1.5, 1.5, 5)
-axis(r, r, r)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-large_sphere = HyperSphere(Point3f0(0), 1f0)
-positions = decompose(Point3f0, large_sphere)
-meshscatter(positions, color = RGBA(0.9, 0.2, 0.4, 1))
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-
-r = linspace(-2, 2, 40)
-surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-z = surf_func(20)
-surf = surface(r, r, z)
-
-wf = wireframe(r, r, surf[:z] .+ 1.0,
-    linewidth = 2f0, color = lift_node(x-> x[5], surf[:colormap])
-)
-xy = linspace(-2.1, 2.1, 4)
-axis(xy, xy, linspace(0, 2, 4))
-center!(scene)
-
-io = VideoStream(scene)
-for i in linspace(0, 60, 100)
-    surf[:z] = surf_func(i)
-    recordframe!(io)
-end
-scene
-
-
-#cell
-scene = Scene(resolution = (500, 500))
-
-N = 40
-r = linspace(-2, 2, 40)
-surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-surface(
-    r, r, surf_func(10),
-    color = GLVisualize.loadasset("doge.png")
-)
-center!(scene)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-x = GLVisualize.loadasset("cat.obj")
-Makie.mesh(x.vertices, x.faces, color = :black)
-pos = map(x.vertices, x.normals) do p, n
-    p => p .+ (normalize(n) .* 0.05f0)
-end
-linesegment(pos)
-scene
-
-
-#cell
-scene = Scene(resolution = (500, 500))
-mesh(GLVisualize.loadasset("cat.obj"))
-r = linspace(-0.1, 1, 4)
-center!(scene)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-cat = load(assetpath("cat.obj"), GLNormalUVMesh)
-Makie.mesh(cat, color = loadasset("diffusemap.tga"))
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-Makie.mesh(Sphere(Point3f0(0), 1f0))
-center!(scene)
-scene
-
-
-#cell
-scene = Scene(resolution = (500, 500))
-wireframe(GLVisualize.loadasset("cat.obj"))
-center!(scene)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-wireframe(Sphere(Point3f0(0), 1f0))
-center!(scene)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-heatmap(rand(32, 32))
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500), color = :black)
-stars = 100_000
-scatter((rand(Point3f0, stars) .- 0.5) .* 10,
-    glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
-    markersize = rand(linspace(0.0001, 0.01, 100), stars)
-)
-scene
-
-#cell
-scene = Scene(resolution = (500, 500))
-Makie.volume(rand(32, 32, 32), algorithm = :iso)
-center!(scene)
-
-#cell
-scene = Scene(resolution = (500, 500))
-scatter(Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker=[:x, :circle, :cross])
-axis(scene, linspace(0, 1, 4), linspace(0, 1, 4), linspace(0, 1, 4))
-center!(scene);
 
 
 #cell
@@ -356,101 +104,6 @@ l[:textsize] = 15
 l[:textgap] = 5
 scene
 
-#cell
-using Makie, GeometryTypes
-
-
-# mktempdir() do path
-#     scene = Scene()
-#     lineplots = []
-#     axis(linspace(-0.1, 1.1, 4), linspace(-2, 2, 4), linspace(0, 2, 4))
-#     center!(scene)
-#     us = linspace(0, 1, 100)
-#     io = VideoStream(scene, path, "lines")
-#
-#     for i = 1:100
-#         if length(lineplots) < 20
-#             push!(lineplots, lines(us, sin.(us .+ time()), zeros(100)))
-#         else
-#             lineplots = circshift(lineplots, 1)
-#             lp = first(lineplots)
-#             lp[:positions] = Point3f0.(us, sin.(us .+ time()), zeros(100))
-#             lp[:offset] = Vec3f0(0)
-#         end
-#         for lp in lineplots
-#             z = to_value(lp, :offset)[3]
-#             lp[:offset] = Vec3f0(0, 0, z + 0.1)
-#         end
-#         sleep(1/30)
-#         recordframe!(io)
-#     end
-#     finish(io, "gif")
-# end
-
-
-#cell
-function animtest1(r)
-    mktempdir() do path
-        scene = Scene(resolution = (600, 600))
-        axis(linspace(-25, 25, 4), linspace(-25, 25, 4))
-        scatter(r[1][:, 1], r[1][:, 2], markersize = 1)
-        center!(scene)
-        io = VideoStream(scene, path, "interaction")
-        @inbounds for i in 2:length(r)
-            scene[:scatter][:positions] = Point2f0.(view(r[i], :, 1), view(r[i], :, 2))
-            recordframe!(io)
-        end
-        finish(io, "mp4") # could also be gif, webm or mkv
-    end
-    nothing
-end
-r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:200]
-animtest1(r)
-
-
-using Makie
-scene = Scene()
-text(
-    ". This is an annotation!",
-    position = (300, 200),
-    align = (:center,  :center),
-    textsize = 60,
-    font = "URW Chancery L"
-)
-
-
-
-#cell
-using Makie, UnicodeFun, GeometryTypes
-scene = Scene()
-vx = -1:0.01:1;
-vy = -1:0.01:1;
-
-f(x, y) = (sin(x*10) + cos(y*10)) / 4
-psurf = surface(vx, vy, f)
-
-a = axis(linspace(extrema(vx)..., 4), linspace(extrema(vy)..., 4), linspace(-1, 1, 4))
-center!(scene, 0)
-
-a[:axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-a[:axisnames_size] = (0.15, 0.15, 0.15)
-a[:axisnames_color] = (:black, :black, :black)
-a[:axisnames_font] = "Palatino"
-
-psurf[:colormap] = :RdYlBu
-wh = widths(scene)
-t = text(
-    "Multipole Representation of first resonances of U-238",
-    position = (wh[1] / 2.0, wh[2] - 20.0),
-    align = (:center,  :center),
-    textsize = 20,
-    font = "Palatino",
-    camera = :pixel
-)
-c = lines(Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
-#update surface
-psurf[:z] = f.(vx .+ 0.5, (vy .+ 0.5)')
-
 
 
 #cell
@@ -472,58 +125,44 @@ scatter([Point2f0(1.0f0,1.0f0),Point2f0(1.0f0,0.0f0)])
 center!(scene);
 text_overlay!(scene, :scatter, 1=>"test1", 2=>"test2", textsize=200,color= RGBA(0.0f0,0.0f0,0.0f0,1.0f0))
 
-
 #cell
-using Makie, GeometryTypes
-scene = Scene()
-points = decompose(Point2f0, Circle(Point2f0(0), 500f0))
-pol = poly(points, color = :gray, linewidth = 10, linecolor = :black)
-pol[:positions] = Circle(Point2f0(250), 500f0)
-pol[:linewidth] = 2
-# Optimized forms
-y = poly([Circle(Point2f0(600+i, i), 50f0) for i = 1:150:800])
-x = poly([Rectangle{Float32}(600+i, i, 100, 100) for i = 1:150:800], strokewidth = 10, strokecolor = :black)
-x = linesegment([Point2f0(600+i, i) => Point2f0(i + 700, i + 100) for i = 1:150:800], linewidth = 20, color = :purple)
-center!(scene)
-
-#cell
-using Makie, Colors
-scene = Scene(resolution = (500, 500))
-heatmap(rand(32, 32))
-center!(scene)
-image(map(x->RGB(x,0.5, 0.5), rand(32,32)))
-center!(scene)
 
 
-# #cell
-# using Makie
-#
-# scene = Scene(resolution = (500, 500))
-# pts = CartesianRange((10, 10))
-# xs = vec([I[1] for I in pts])
-# ys = vec([I[2] for I in pts])
-# zs = vec([sin(I[1]/10*2pi)+sin(I[2]/10*2pi) for I in pts])
-# wireframe(xs, ys, zs) # stackoverflow
+# needs to be in a function for ∇ˢf to be fast and inferable
+function test(scene)
+    n = 20
+    f   = (x,y,z) -> x*exp(cos(y)*z)
+    ∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
+    ∇ˢf = (x,y,z) -> ∇f(x,y,z) - Point3f0(x,y,z)*dot(Point3f0(x,y,z), ∇f(x,y,z))
+    θ = [0;(0.5:n-0.5)/n;1]
+    φ = [(0:2n-2)*2/(2n-1);2]
+    x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+    y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+    z = [cospi(θ) for θ in θ, φ in φ]
+
+    pts = vec(Point3f0.(x, y, z))
+    lns = Makie.streamlines!(scene, pts, ∇ˢf)
+    # those can be changed interactively:
+    lns[:color] = :black
+    lns[:h] = 0.06
+    lns[:linewidth] = 1.0
+    lns
+end
 
 
-#cell
 using Makie
-scene = Scene(resolution = (500, 500), renderloop = false)
-r = linspace(-2, 2, 40)
-function xy_data(x, y)
-    r = sqrt(x*x + y*y)
-    r == 0.0 ? 1f0 : (sin(r)/r)
-end
-surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-z = surf_func(20)
-surf = surface(r, r, z)
+main = Scene()
+cam3d!(main)
+main
+plots = [
+    heatmap(0..1, 0..1, rand(100, 100)),
+    meshscatter(rand(10), rand(10), rand(10)),
+    scatter(rand(10), rand(10)),
+    mesh(Makie.loadasset("cat.obj")),
+    volume(0..1, 0..1, 0..1, rand(32, 32, 32)),
+]
 
-io = VideoStream(scene, joinpath(homedir(), "Desktop"), "test")
-for i in linspace(0, 60, 100)
-    surf[:z] = surf_func(i)
-    recordframe!(io)
-    # or if you don't record:
-    # render_frame(scene)
+for p in plots
+    push!(main, p)
+    translate!(p, rand()*3, rand()*3, rand()*3)
 end
-finish(io, "mp4")
-scene

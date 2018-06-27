@@ -1,67 +1,51 @@
-# Input Output
+# Output
 
-Makie overloads the FileIO interface.
-So you can just write e.g.:
-```Julia
-save("test.png", scene)
-save("test.jpg", scene)
+Makie overloads the `FileIO` interface, so it is simple to save plots as images or videos.
+
+
+## Static plots
+
+To save a scene as an image, you can just write e.g.:
+
+```julia
+Makie.save("plot.png", scene)
+Makie.save("plot.jpg", scene)
 ```
 
-There is also the option to save a plot as a Julia File (not implemented yet)
+where `scene` is the scene handle.
 
-```Julia
-save("test.jl", scene)
-```
-
-This will try to reproduce the plotting commands as closely as possible to recreate the current scene.
-You can specify if you want to save the defaults explicitly or if you not want to store them, so that
-whenever you change defaults and the saved code gets loaded it will take the new defaults.
+In the backend, `ImageMagick` is used for the image format conversions.
 
 
-# VideoStream
+## Animated plots
 
+It is also possible to output animated plots as videos (note that this requires [`ffmpeg`](https://ffmpeg.org/) to be installed and properly configured on your computer (test this by running `ffmpeg -version` from a terminal window).)
 
 ```@docs
-
-VideoStream
-finish
+record
 ```
 
-```@example
-using Makie
-
-scene = Scene(resolution = (500, 500))
-
-f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
-t = to_node(time()) # create a life signal
-p1 = meshscatter(lift_node(t-> f.(t, linspace(0, 2pi, 50), 1), t))
-p2 = meshscatter(lift_node(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t))
-center!(scene)
-nothing
-# you can now reference to life attributes from the above plots:
-
-lines = lift_node(p1[:positions], p2[:positions]) do pos1, pos2
-    map((a, b)-> (a, b), pos1, pos2)
+For recording of videos (either as .mp4 or .gif), you can do:
+```julia
+record(scene, "video.mp4", itr) do i
+    func(i) # or some other animation in scene
 end
+```
 
-linesegment(lines, linestyle = :dot)
+where `itr` is an iterator and `scene` is the scene handle.
 
-center!(scene)
-# record a video
-io = VideoStream(scene, ".", "output_vid")
-for i = 1:300
-    push!(t, time())
-    recordframe!(io)
-    yield()
-    sleep(1/30)
+It is also possible to `record` to gifs:
+```julia
+record(scene, "video.gif", itr) do i
+    func(i) # or some other animation in scene
 end
-finish(io, "mp4") # could also be gif, webm or mkv
-nothing
 ```
 
-```@raw html
-<video controls autoplay>
-  <source src="output_vid.mp4" type="video/mp4">
-  Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
-</video>
-```
+In both cases, the returned value is a path pointing to the location of the recorded file.
+
+
+### Example usage
+
+@example_database("VideoStream")
+
+For more info, consult the [Examples gallery](@ref).
