@@ -27,11 +27,13 @@ stages:
             Pkg.test(\"$package\"; coverage=true)"
   artifacts:
     paths:
+      - docs/media/*
       - test/testresults/*
       - .julia/
       - src/*.cov
       - src/*/*.cov
       - src/*/*/*.cov
+      - src/*/*/*/*.cov
 
 
 
