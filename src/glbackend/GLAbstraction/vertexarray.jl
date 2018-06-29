@@ -179,7 +179,6 @@ function VertexArray(data::Dict, program::Program)
     if !haskey(data,:instances)
         VertexArray((attribbufs_...), indbuf, facelength=facelen)
     else #TODO vertexarraycleanup: This is for the surface
-        println("instanced")
         instanced_vertexarray(attribbufs_, indbuf, data[:instances])
     end
 end
