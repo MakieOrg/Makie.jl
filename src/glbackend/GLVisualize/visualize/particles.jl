@@ -225,7 +225,7 @@ function to_meshcolor(color)
     color
 end
 
-function to_mesh(mesh::GeometryPrimitive)
+function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
     gl_convert(const_lift(GLNormalMesh, mesh))
 end
 
@@ -239,17 +239,10 @@ function orthogonal(v::T) where T <: StaticVector{3}
     return cross(v, other)
 end
 
-function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
-    k_cos_theta = dot(u, v)
-    k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
-    q = if (k_cos_theta / k) ≈ T(-1)
-        # 180 degree rotation around any orthogonal vector
-        Quaternion(T(0), normalize(orthogonal(u))...)
-    else
-        normalize(Quaternion(k_cos_theta + k, cross(u, v)...))
-    end
-    Vec4f0(q.v1, q.v2, q.v3, q.s)
-end
+using AbstractPlotting
+using AbstractPlotting: get_texture_atlas
+
+
 vec2quaternion(rotation::StaticVector{4}) = rotation
 
 function vec2quaternion(r::StaticVector{2})

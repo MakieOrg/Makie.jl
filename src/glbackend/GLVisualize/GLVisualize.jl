@@ -55,13 +55,9 @@ end
 export assetpath, loadasset
 
 
-include("StructsOfArrays.jl")
-using .StructsOfArrays
-
 include("types.jl")
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 
-include("config.jl")
 include("boundingbox.jl")
 
 include("visualize_interface.jl")
@@ -74,11 +70,9 @@ export x_partition, x_partition_abs
 export loop, bounce
 
 include(joinpath("visualize", "lines.jl"))
-include(joinpath("visualize", "containers.jl"))
 include(joinpath("visualize", "image_like.jl"))
 include(joinpath("visualize", "mesh.jl"))
 include(joinpath("visualize", "particles.jl"))
 include(joinpath("visualize", "surface.jl"))
-include(joinpath("visualize", "text.jl"))
 
 end # module
