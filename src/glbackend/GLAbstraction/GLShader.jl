@@ -254,6 +254,8 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
         template_keys[i] = template
         replacements[i] = String[mustache2replacement(t, v, data) for t in template]
     end
+    println(paths)
+    println(replacements)
     program = get!(_program_cache, (paths, replacements)) do
         # when we're here, this means there were uncached shaders, meaning we definitely have
         # to compile a new program

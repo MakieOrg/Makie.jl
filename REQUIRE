@@ -6,7 +6,6 @@ Reactive 0.6.0
 Contour
 FileIO
 ImageCore
-ImageMetadata
 ImageTransformations
 UnicodeFun
 ColorBrewer
@@ -26,3 +25,11 @@ PlotUtils
 Cairo
 IntervalSets
 Showoff
+ColorTypes
+Colors
+ColorVectorSpace
+FixedPointNumbers
+IterTools
+AxisArrays
+ImageAxes
+IndirectArrays
