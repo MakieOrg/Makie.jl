@@ -337,7 +337,6 @@ mutable struct Program <: AbstractProgram
         program = glCreateProgram()::GLuint
         glUseProgram(program)
         #attach new ones
-        println(shaders)
         foreach(shaders) do shader
             glAttachShader(program, shader.id)
         end
