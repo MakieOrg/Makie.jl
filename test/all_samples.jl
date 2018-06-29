@@ -1,3 +1,24 @@
+using Makie
+new_theme = Theme(
+    linewidth = 3,
+    colormap = :RdYlGn,
+    color = :red,
+    scatter = Theme(
+        marker = '⊝',
+        markersize = 0.03,
+        strokecolor = :black,
+        strokewidth = 0.1,
+    ),
+)
+AbstractPlotting.set_theme!(new_theme)
+scene2 = scatter(rand(100), rand(100))
+new_theme[:color] = :blue
+new_theme[:scatter, :marker] = '◍'
+new_theme[:scatter, :markersize] = 0.05
+new_theme[:scatter, :strokewidth] = 0.1
+new_theme[:scatter, :strokecolor] = :green
+scene2 = scatter(rand(100), rand(100))
+scene2[end][:marker] = 'π'
 
 
 
