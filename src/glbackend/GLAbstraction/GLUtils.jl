@@ -333,7 +333,6 @@ function gl_convert_data!(data)
             end
         end
     end
-    passthrough[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
     # handle meshes seperately, since they need expansion
     meshs = filter((key, value) -> isa(value, NativeMesh), data)
     if !isempty(meshs)
@@ -347,6 +346,7 @@ function gl_convert_data!(data)
     end
     #TODO renderobjectioncleanup: ugly crap here!
 
+    passthrough[:shader] = gl_convert(Reactive.value(passthrough[:shader]), data)
     #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
 end

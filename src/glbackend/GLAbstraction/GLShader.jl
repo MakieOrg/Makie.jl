@@ -207,10 +207,9 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
             tr = Dict(zip(template_keys[i], replacements[i]))
             shaders[i] = get_shader!(path, tr, v, data)
         end
-        Program(shaders, fragdatalocation)
+        Program([shaders...], fragdatalocation)
     end
 end
-
 
 function insert_from_view(io, replace_view::Function, keyword::AbstractString)
     print(io, replace_view(keyword))
@@ -338,6 +337,7 @@ mutable struct Program <: AbstractProgram
         program = glCreateProgram()::GLuint
         glUseProgram(program)
         #attach new ones
+        println(shaders)
         foreach(shaders) do shader
             glAttachShader(program, shader.id)
         end
