@@ -11,8 +11,6 @@ using Colors
 using Reactive
 using FixedPointNumbers
 using FileIO
-using Packing
-using SignedDistanceFields
 using FreeType
 import IterTools
 using Base.Markdown
@@ -20,7 +18,6 @@ using FreeTypeAbstraction
 using ImageCore
 import ColorVectorSpace
 
-import ImageMetadata
 import ImageCore
 import AxisArrays, ImageAxes
 
@@ -29,7 +26,7 @@ using Base.Iterators: Repeated, repeated
 
 
 using IndirectArrays
-const HasAxesArray{T, N} = Union{AxisArrays.AxisArray{T, N}, ImageMetadata.ImageMetaAxis{T, N}}
+const HasAxesArray{T, N} = AxisArrays.AxisArray{T, N}
 const AxisMatrix{T} = HasAxesArray{T, 2}
 
 
