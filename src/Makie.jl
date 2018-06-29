@@ -55,7 +55,6 @@ export NT
 
 # functions we overload
 
-include("scene.jl")
 include("makie_recipes.jl")
 include("tickranges.jl")
 include("utils.jl")
@@ -65,7 +64,6 @@ include("output.jl")
 include("video_io.jl")
 
 # conversion infrastructure
-include("documentation.jl")
 
 
 
