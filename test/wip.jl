@@ -6,6 +6,7 @@
 #   -> For now I will leave the shitty push! robj + pipeline situation as it is
 #      to later implement a better way, redoing all the visualizes into also
 #      returning what pipeline.
+#   -> Reason why shader for heatmap doesn't compile is that it can't find certain things in the data!
 #
 # Renderingcleanup:
 #   -> Right now the way that the screenbuffer is displayed to the plot window
@@ -42,6 +43,7 @@ surf = surface!(scene, r, r, z)[end]
 
 wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
     linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap]))
+
 
 
 function test(x, y, z)
