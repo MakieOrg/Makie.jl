@@ -182,8 +182,9 @@ makedocs(
             # "layout.md"
         ],
         # atomics_pages,
-        "Examples gallery" => [
-            example_list
+        "Examples" => [
+            "index-examples.md",
+            example_list...
             # "tags_wordcloud.md",
             #"linking-test.md"
         ]
