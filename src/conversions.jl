@@ -485,7 +485,9 @@ const colorbrewer_names = Symbol[
     :RdGy,
     :PuOr,
 
-    #The number of colors a qualitative color scheme can have depends on the scheme. The available qualitative color schemes are:
+    #The number of colors a qualitative color scheme can have depends on the scheme.
+    #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
+    #The available qualitative color schemes are:
     :Set1,
     :Set2,
     :Set3,
@@ -494,6 +496,14 @@ const colorbrewer_names = Symbol[
     :Paired,
     :Pastel1,
     :Pastel2
+]
+
+const colorbrewer_8color_names = Symbol[
+    #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
+    :Accent,
+    :Dark2,
+    :Pastel2,
+    :Set2
 ]
 
 """
@@ -531,7 +541,11 @@ A Symbol/String naming the gradient. For more on what names are available please
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
     cs_sym = Symbol(cs)
     if cs_sym in colorbrewer_names
-        return resample(ColorBrewer.palette(string(cs_sym), 9), n)
+        if cs_sym in colorbrewer_8color_names
+            return resample(ColorBrewer.palette(string(cs_sym), 8), n)
+        else
+            return resample(ColorBrewer.palette(string(cs_sym), 9), n)
+        end
     elseif lowercase(string(cs_sym)) == "viridis"
         return [
             to_color("#440154FF"),
