@@ -486,7 +486,6 @@ const colorbrewer_names = Symbol[
     :PuOr,
 
     #The number of colors a qualitative color scheme can have depends on the scheme. The available qualitative color schemes are:
-    :Name,
     :Set1,
     :Set2,
     :Set3,
