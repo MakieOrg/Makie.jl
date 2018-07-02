@@ -503,7 +503,7 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in colorbrewer_names
+    for name in sort(colorbrewer_names)
         println("    ", name)
     end
     println("    ", "Viridis")
