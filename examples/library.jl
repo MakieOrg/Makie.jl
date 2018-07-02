@@ -913,6 +913,21 @@ end
         scatter!(scene, points)
         scatter!(scene, points, marker_offset = offset, color = :red)
     end
+
+    @cell "colormaps" [image, translate, colormap, colorbrewer, meta] begin
+        height = 0.0
+        scene = Scene()
+        cam2d!(scene)
+        plot = map(AbstractPlotting.colorbrewer_names) do cmap
+            global height
+            c = to_colormap(cmap)
+            cbar = image!(scene, linspace(0, 10, length(c)), linspace(0, 1, length(c)), reshape(c, (1, length(c))), show_axis = false)[end]
+            text!(scene, string(cmap, ":"), position = Point2f0(-0.1, 0.5 + height), align = (:right, :center), show_axis = false, textsize = 0.4)
+            translate!(cbar, 0, height, 0)
+            height -= 1 - 0.1
+        end
+        scene
+    end
 end
 
 database
