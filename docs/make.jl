@@ -118,7 +118,7 @@ for func in (atomics..., contour)
     end
     push!(example_list, "examples-$fname.md")
 end
-example_pages = "Examples" => example_list
+# example_pages = "Examples" => example_list
 
 
 # =============================================
