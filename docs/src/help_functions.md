@@ -1,6 +1,6 @@
 # Help functions
 
-## help
+## `help`
 
 ```@docs
 help
@@ -13,7 +13,7 @@ help(scatter; extended = true)
 ```
 
 
-## help_arguments
+## `help_arguments`
 
 ```@docs
 help_arguments
@@ -25,7 +25,7 @@ using Makie # hide
 help_arguments(STDOUT, scatter)
 ```
 
-## help_attributes
+## `help_attributes`
 
 ```@docs
 help_attributes
