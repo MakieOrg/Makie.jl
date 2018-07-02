@@ -48,4 +48,4 @@ In both cases, the returned value is a path pointing to the location of the reco
 
 @example_database("VideoStream")
 
-For more info, consult the [Examples gallery](@ref).
+For more info, consult the [Examples index](@ref).

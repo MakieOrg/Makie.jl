@@ -30,7 +30,7 @@ pos = lift(scene.events.mouseposition, time)
 
 @example_database("Interaction with Mouse")
 
-For more info, consult the [Examples gallery](@ref).
+For more info, consult the [Examples index](@ref).
 
 ### Animating and sharing on the GPU
 
