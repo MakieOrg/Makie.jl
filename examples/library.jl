@@ -928,6 +928,35 @@ end
         end
         scene
     end
+
+    @cell "Available markers" [markers, meta] begin
+        using GeometryTypes
+        i = 1
+        scene = Scene(@resolution)
+        cam2d!(scene)
+        plot = map(collect(AbstractPlotting._marker_map)) do mmap
+            global i
+            coord = Point2f0(0, 0 + i)
+            mkr = scatter!(
+                scene,
+                coord,
+                marker = mmap[1],
+                markersize = 1,
+                show_axis = false
+                )
+            # translate!(mkr, 0, i, 0)
+            ann = text!(
+                scene,
+                string(":", mmap[1]),
+                position = coord,
+                align = (:right, :center),
+                show_axis = true,
+                textsize = 0.4
+                )
+            i += 1
+        end
+        scene
+    end
 end
 
 database
