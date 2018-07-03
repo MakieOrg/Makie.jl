@@ -4,7 +4,18 @@
     convert_attribute(value(dict[key]), Key{key}())
 end
 
+"""
+    to_color(color)
+
+Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
+"""
 to_color(color) = convert_attribute(color, key"color"())
+
+"""
+    to_colormap(cm[, N = 20])
+
+Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+"""
 to_colormap(color) = convert_attribute(color, key"colormap"())
 to_rotation(color) = convert_attribute(color, key"rotation"())
 to_font(color) = convert_attribute(color, key"font"())
