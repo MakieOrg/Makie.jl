@@ -10,7 +10,7 @@ srcpath = joinpath(pathroot, "docs", "src")
 srcmediapath = joinpath(pathroot, "docs", "media")
 buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "build", "media")
-expdbpath = joinpath(buildpath, "examples-database.html")
+expdbpath = joinpath(buildpath, "index-examples.html")
 
 # generate plots (saved to srcmediapath)
 info("Auto-generation of docs pages")
