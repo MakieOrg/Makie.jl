@@ -943,7 +943,7 @@ end
         scene
     end
 
-    @cell "Available markers" [markers, meta] begin
+    @cell "Available markers" [annotations, markers, meta] begin
         using GeometryTypes
         scene = Scene()
         marker = collect(AbstractPlotting._marker_map)
