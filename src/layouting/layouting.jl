@@ -156,7 +156,7 @@ estimated_space(x, N, w) = 1/N
 
 
 
-function vbox(plots::Vector{T}; kw_args...) where T <: Transformable
+function vbox(plots::Vector{T}; kw_args...) where T <: Scene
     N = length(plots)
     w = 0.0
     pscene = Scene()
@@ -180,4 +180,14 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Transformable
         end
     end
     pscene
+end
+function vbox(plots::Vector{T}; kw_args...) where T <: AbstractPlot
+    N = length(plots)
+    w = 0.0
+    for idx in 1:N
+        p = plots[idx]
+        translate!(p, w, 0.0, 0.0)
+        swidth = widths(boundingbox(p))
+        w += (swidth[1] * 1.1)
+    end
 end

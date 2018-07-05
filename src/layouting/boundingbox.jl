@@ -26,29 +26,44 @@ function boundingbox(plots::Vector)
 end
 
 
-function boundingbox(x::Text)
-    text = value(x[1])
+function boundingbox(x::Text, text::String)
     position = value(x[:position])
     @get_attribute x (textsize, font, align, rotation, model)
+    boundingbox(text, position, textsize, font, align, rotation, model)
+end
+boundingbox(x::Text) = boundingbox(x, value(x[1]))
 
+function boundingbox(
+        text::String, position, textsize;
+        font = "default", align = (:left, :bottom), rotation = 0.0,
+        model::Mat4f0 = eye(Mat4f0)
+    )
+    boundingbox(
+        text, position, textsize,
+        to_font(font), to_align(align), to_rotation(rotation), model
+    )
+
+end
+
+function boundingbox(text::String, position, textsize, font, align, rotation, model)
     atlas = get_texture_atlas()
     N = length(text)
     pos_per_char = !isa(position, VecTypes)
     start_pos = Vec(pos_per_char ? first(position) : position)
     start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
-    last_pos = start_pos2D
+    last_pos = Point2f0(0, 0)
     c = first(text); text_state = start(text)
     c, text_state = next(text, text_state)
     aoffsetn = to_ndim(Vec3f0, align, 0f0)
     start_pos3d = to_ndim(Vec3f0, start_pos, 0.0)
-    bb = AABB(start_pos3d, start_pos3d)
+    bb = AABB(start_pos3d, Vec3f0(0))
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         if c != '\r'
             pos = if pos_per_char
                 to_ndim(Vec3f0, position[i], 0.0)
             else
-                last_pos = calc_position(last_pos, start_pos2D, atlas, c, font, scale)
-                rotation * (start_pos3d .+ to_ndim(Vec3f0, last_pos, 0.0) .+ aoffsetn)
+                last_pos = calc_position(last_pos, Point2f0(0, 0), atlas, c, font, scale)
+                rotation * (start_pos3d .+ to_ndim(Vec3f0, last_pos, 0.0))
             end
             s = glyph_scale!(atlas, c, font, scale)
             srot = rotation * to_ndim(Vec3f0, s, 0.0)
@@ -59,5 +74,5 @@ function boundingbox(x::Text)
             c, text_state = next(text, text_state)
         end
     end
-    bb
+    FRect3D(minimum(bb) .- (widths(bb) .* aoffsetn), widths(bb))
 end
