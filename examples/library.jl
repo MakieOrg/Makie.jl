@@ -898,6 +898,17 @@ end
 end
 
 @block AnthonyWang [documentation] begin
+    @cell "pulsing marker" [animated, scatter, markersize, updating] begin
+        N = 100
+        r = [cos(i)+1 for i = linspace(0, 10pi, N)] ./ 5 + 1
+        scene = scatter([0], [0], marker = Makie.logo(), markersize = 0.5, raw = true)
+        scene
+        s = scene[end] # last plot in scene
+        record(scene, @outputfile(mp4), r) do i
+            push!(s[:markersize], i)
+        end
+    end
+
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
         scatter(
             rand(20), rand(20),
