@@ -7,6 +7,8 @@ decides to put data on the GPU you might even share those in GPU memory.
 
 ## Using Mouse and Time to animate plots
 
+Animations are enabled using `Reactive.jl` signals.
+
 ### Interaction using time
 
 To animate a scene, you need to create a `Node`, e.g.:
