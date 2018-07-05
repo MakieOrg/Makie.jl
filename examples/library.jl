@@ -927,6 +927,37 @@ end
         end
         scatter!(scene, clicks, color = :red, marker = '+', markersize = 10, raw = true)
     end
+    @cell "Theming" [theme, scatter, surface, set_theme] begin
+        new_theme = Theme(
+            linewidth = 3,
+            colormap = :RdYlGn,
+            color = :red,
+            scatter = Theme(
+                marker = '⊝',
+                markersize = 0.03,
+                strokecolor = :black,
+                strokewidth = 0.1,
+            ),
+        )
+        AbstractPlotting.set_theme!(new_theme)
+        scene2 = scatter(rand(100), rand(100))
+        new_theme[:color] = :blue
+        new_theme[:scatter, :marker] = '◍'
+        new_theme[:scatter, :markersize] = 0.05
+        new_theme[:scatter, :strokewidth] = 0.1
+        new_theme[:scatter, :strokecolor] = :green
+        scene2 = scatter(rand(100), rand(100))
+        scene2[end][:marker] = 'π'
+
+        r = linspace(-0.5pi, pi + pi/4, 100)
+        AbstractPlotting.set_theme!(new_theme)
+        scene = surface(r, r, (x, y)-> sin(2x) + cos(2y))
+        scene[end][:colormap] = :PuOr
+        scene
+        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+        AbstractPlotting.set_theme!()
+        scene = surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+    end
 end
 
 database
