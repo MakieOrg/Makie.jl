@@ -921,47 +921,40 @@ end
 @block AnthonyWang [documentation] begin
     @cell "pong" [animated, scatter, updating] begin
         # init speed and velocity vector
-        pos1 = rand(2)
-        pos2 = rand(2)
-        vel1 = rand(2) .* 5
-        vel2 = rand(2) .* 5
-
+        xyvec = rand(Point2f0, (2)) .* 5 .+ 1
+        velvec = rand(Point2f0, (2)) .* 10
         # define some other parameters
         t = 0
-        ts = 0.1
-        ballRadius = 1
-        xBoundary = 10
-        yBoundary = 10
+        ts = 0.03
+        balldiameter = 1
+        origin = Point2f0(0, 0)
+        xybounds = Point2f0(10, 10)
 
-        iter = 300
-        for it = 1:iter
-            # calculate new ball position
-            t = t + ts
-            pos1_new = pos1[:,end] + vel1 .* ts
-            pos1 = hcat(pos1, pos1_new)
-            pos2_new = pos2[:,end] + vel2 .* ts
-            pos2 = hcat(pos2, pos2_new)
-
-            # boundary checking and bounce if necessary
-            if(pos1_new[1] > xBoundary || pos1_new[1] < 0) vel1[1] *= -1 end
-            if(pos1_new[2] > yBoundary || pos1_new[2] < 0) vel1[2] *= -1 end
-            if(pos2_new[1] > xBoundary || pos2_new[1] < 0) vel2[1] *= -1 end
-            if(pos2_new[2] > yBoundary || pos2_new[2] < 0) vel2[2] *= -1 end
-        end
+        iter = 200
 
         scene = scatter(
-            pos1[:,1],
-            pos2[:,1],
-            markersize = ballRadius,
+            xyvec,
+            markersize = balldiameter,
             color = rand(RGBf0, 2),
-            limits = FRect(0, 0, xBoundary, yBoundary)
+            limits = FRect(0, 0, xybounds)
         )
         scene
         s = scene[end] # last plot in scene
 
         record(scene, @outputfile(mp4), 1:iter) do i
-            s[1] = pos1[:,i]
-            s[2] = pos2[:,i]
+            # calculate new ball position
+            global t = t + ts
+            global xyvec = xyvec .+ velvec .* ts
+            global velvec = map(xyvec, xybounds, origin, velvec) do p, b, o, vel
+                boolvec = ((p .+ balldiameter/2) .> b) .| ((p .- balldiameter/2) .< o)
+                velvec = map(boolvec, vel) do b, v
+                    b ? -v : v
+                end
+            end
+
+            # plot
+            s[1] = xyvec
+            # s[2] = pos2[:,i]
         end
     end
 
