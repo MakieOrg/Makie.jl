@@ -605,6 +605,27 @@ end
             push!(time, i)
         end
     end
+
+    # @cell ":position" ["test"] begin
+    #     scene = Scene(resolution = (500, 500))
+    #
+    #     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
+    #     t = Node(0.0) # create a life signal
+    #     p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t))[end]
+    #     p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t))[end]
+    #     # you can now reference to life attributes from the above plots:
+    #     lines = lift(p1[:position], p2[:position]) do pos1, pos2
+    #         map((a, b)-> (a, b), pos1, pos2)
+    #     end
+    #
+    #     linesegment(lines, linestyle = :dot)
+    #
+    #     N = 150
+    #     record(scene, @outputfile(mp4), linspace(0, 10, N)) do i
+    #         push!(t, i)
+    #     end
+    # end
+
     # @cell "Legend" ["3d", legend, lines, linestyle, scatter] begin
     #     # scene = Scene(@resolution)
     #     # # TODO: ERROR: UndefVarError: linesegment not defined
