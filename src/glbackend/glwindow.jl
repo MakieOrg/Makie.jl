@@ -109,7 +109,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     glBindRenderbuffer(GL_RENDERBUFFER, depth_buffer[])
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT32, fb_size...)
 
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer[])
+    glFramebufferRenderbuffer(GL_RENDERBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depth_buffer[])
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
