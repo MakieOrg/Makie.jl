@@ -930,7 +930,7 @@ end
         origin = Point2f0(0, 0)
         xybounds = Point2f0(10, 10)
 
-        iter = 200
+        N = 200
 
         scene = scatter(
             xyvec,
@@ -941,7 +941,7 @@ end
         scene
         s = scene[end] # last plot in scene
 
-        record(scene, @outputfile(mp4), 1:iter) do i
+        record(scene, @outputfile(mp4), 1:N) do i
             # calculate new ball position
             global t = t + ts
             global xyvec = xyvec .+ velvec .* ts
