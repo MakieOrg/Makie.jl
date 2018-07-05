@@ -115,64 +115,6 @@ function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y
 end
 
 
-@recipe(Poly) do scene
-    Theme(;
-        color = theme(scene, :color),
-        linecolor = RGBAf0(0,0,0,0),
-        colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        linewidth = 0.0,
-        linestyle = nothing
-    )
-end
-AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = convert_arguments(Scatter, v)
-AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle}}) = (v,)
-AbstractPlotting.convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Mesh, args...)
-AbstractPlotting.calculated_attributes!(plot::Poly) = plot
-
-function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
-    bigmesh = lift(GLNormalMesh, plot[1])
-    mesh!(
-        plot, bigmesh,
-        color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = false
-    )
-    wireframe!(
-        plot, bigmesh,
-        color = plot[:linecolor], linestyle = plot[:linestyle],
-        linewidth = plot[:linewidth],
-    )
-end
-
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P
-    positions = plot[1]
-    bigmesh = lift(positions) do p
-        polys = GeometryTypes.split_intersections(p)
-        merge(GLPlainMesh.(polys))
-    end
-    mesh!(plot, bigmesh, color = plot[:color])
-    outline = lift(positions) do p
-        push!(copy(p), p[1]) # close path
-    end
-    lines!(
-        plot, outline,
-        color = plot[:linecolor], linestyle = plot[:linestyle],
-        linewidth = plot[:linewidth],
-    )
-end
-
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle}
-    positions = plot[1]
-    position = lift(positions) do rects
-        map(rects) do rect
-            Point(minimum(rect) .+ (widths(rect) ./ 2f0))
-        end
-    end
-    markersize = lift(positions, name = "markersize") do rects
-        widths.(rects)
-    end
-    scatter!(plot, position, marker = T, markersize = markersize)
-end
 
 @recipe(VolumeSlices, x, y, z, volume) do scene
     Theme(
