@@ -589,7 +589,7 @@ end
         scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
     end
 
-    @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
+    @cell "Interaction" ["2d", scatter, linesegment, animated, VideoStream] begin
         scene = Scene(@resolution)
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
