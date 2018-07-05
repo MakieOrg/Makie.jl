@@ -149,7 +149,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         colormap = theme(scene, :colormap),
         colorrange = nothing,
         marker_offset = nothing,
-        fxaa = false
+        fxaa = false,
+        transform_marker = false, # Applies the plots transformation to marker
     )
 end
 
@@ -254,7 +255,16 @@ function calculated_attributes!(plot::Scatter)
     end
 end
 
-
+# # to allow one color per edge
+# function calculated_attributes!(plot::LineSegments)
+#     plot[:color] = lift(plot[:color], plot[1]) do c, p
+#         if (length(p) ÷ 2) == length(c)
+#             [c[k] for k in 1:length(c), l in 1:2]
+#         else
+#             c
+#         end
+#     end
+# end
 
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
