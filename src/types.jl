@@ -159,7 +159,8 @@ end
 
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, pair[2], pair[1]))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
-Base.convert(::Type{<: Node}, x::Attributes) = Node(x)
+Base.convert(::Type{<: Node}, x) = Node(x)
+Base.convert(::Type{T}, x::T) where T <: Node = x
 
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
