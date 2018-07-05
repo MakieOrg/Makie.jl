@@ -462,7 +462,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals...
     )
-    println(value(axis[1]))
     map_once(
         draw_axis,
         Node(textbuffer), Node(linebuffer), axis[1], args...

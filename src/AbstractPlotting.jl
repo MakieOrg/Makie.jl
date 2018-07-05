@@ -12,7 +12,6 @@ using FreeType, FreeTypeAbstraction, UnicodeFun
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, scale!, get, get!, delete!, haskey
-using LinearAlgebra
 
 
 include("utilities/quaternions.jl")
