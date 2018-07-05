@@ -898,6 +898,52 @@ end
 end
 
 @block AnthonyWang [documentation] begin
+    @cell "pong" [animated, scatter, updating] begin
+        # init speed and velocity vector
+        pos1 = rand(2)
+        pos2 = rand(2)
+        vel1 = rand(2) .* 5
+        vel2 = rand(2) .* 5
+
+        # define some other parameters
+        t = 0
+        ts = 0.1
+        ballRadius = 1
+        xBoundary = 10
+        yBoundary = 10
+
+        iter = 300
+        for it = 1:iter
+            # calculate new ball position
+            t = t + ts
+            pos1_new = pos1[:,end] + vel1 .* ts
+            pos1 = hcat(pos1, pos1_new)
+            pos2_new = pos2[:,end] + vel2 .* ts
+            pos2 = hcat(pos2, pos2_new)
+
+            # boundary checking and bounce if necessary
+            if(pos1_new[1] > xBoundary || pos1_new[1] < 0) vel1[1] *= -1 end
+            if(pos1_new[2] > yBoundary || pos1_new[2] < 0) vel1[2] *= -1 end
+            if(pos2_new[1] > xBoundary || pos2_new[1] < 0) vel2[1] *= -1 end
+            if(pos2_new[2] > yBoundary || pos2_new[2] < 0) vel2[2] *= -1 end
+        end
+
+        scene = scatter(
+            pos1[:,1],
+            pos2[:,1],
+            markersize = ballRadius,
+            color = rand(RGBf0, 2),
+            limits = FRect(0, 0, xBoundary, yBoundary)
+        )
+        scene
+        s = scene[end] # last plot in scene
+
+        record(scene, @outputfile(mp4), 1:iter) do i
+            s[1] = pos1[:,i]
+            s[2] = pos2[:,i]
+        end
+    end
+
     @cell "pulsing marker" [animated, scatter, markersize, updating] begin
         N = 100
         r = [cos(i)+1 for i = linspace(0, 10pi, N)] ./ 5 + 1
