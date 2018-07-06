@@ -82,36 +82,36 @@ AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(false)
 
 
-function test_examples(record = false)
-    srand(42)
-    @testset "Cairo" begin
-        eval_examples("2d", replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
-            sigma = [1,1]; eps = 0.02
-            toimages(example, value, record) do image, refimage
-                @testset "$(example.title):" begin
-                    diff = approx_difference(image, refimage, sigma, eps)
-                    if diff >= 0.07
-                        save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
-                    end
-                    @test diff < 0.07
-                end
-            end
-        end
-    end
-end
+# function test_examples(record = false)
+#     srand(42)
+#     @testset "Cairo" begin
+#         eval_examples("2d", replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+#             sigma = [1,1]; eps = 0.02
+#             toimages(example, value, record) do image, refimage
+#                 @testset "$(example.title):" begin
+#                     diff = approx_difference(image, refimage, sigma, eps)
+#                     if diff >= 0.07
+#                         save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
+#                     end
+#                     @test diff < 0.07
+#                 end
+#             end
+#         end
+#     end
+# end
 
-cairo_unsupported = (:surface, :volume, :heatmap)
-
-eval_examples("2d", replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
-    if example.tags
-    sigma = [1,1]; eps = 0.02
-    toimages(example, value, record) do image, refimage
-        @testset "$(example.title):" begin
-            diff = approx_difference(image, refimage, sigma, eps)
-            if diff >= 0.07
-                save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
-            end
-            @test diff < 0.07
-        end
-    end
-end
+# cairo_unsupported = (:surface, :volume, :heatmap)
+#
+# eval_examples("2d", replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+#     if example.tags
+#     sigma = [1,1]; eps = 0.02
+#     toimages(example, value, record) do image, refimage
+#         @testset "$(example.title):" begin
+#             diff = approx_difference(image, refimage, sigma, eps)
+#             if diff >= 0.07
+#                 save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
+#             end
+#             @test diff < 0.07
+#         end
+#     end
+# end
