@@ -64,6 +64,7 @@ function to_levels(x::Integer, cnorm)
     linspace(cnorm..., x)
 end
 
+AbstractPlotting.convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
 AbstractPlotting.convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     replace_nothing!(()-> Signal(0.5), plot, :alpha)
