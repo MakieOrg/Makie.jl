@@ -346,3 +346,5 @@ function center!(scene::Scene, padding = 0.01)
 end
 parent_scene(x::Combined) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
+
+Base.isopen(x::SceneLike) = events(x).window_open[]

@@ -14,35 +14,84 @@ function Button(scene::Scene, txt::String)
     Button(value, txt, butt)
 end
 
-struct Slider{T <: Number}
-    value::Node{T}
-    range::Range
-    visual::AbstractPlot
+
+default_printer(v) = string(round(v, 3))
+@recipe(Slider) do scene
+    Theme(
+        value = 0,
+        sliderlength = 200,
+        sliderheight = 50,
+        backgroundcolor = (:gray, 0.01),
+        strokecolor = (:black, 0.4),
+        strokewidth = 1,
+        textcolor = :black,
+        slidercolor = (:gray, 0.6),
+        buttoncolor = :white,
+        buttonsize = 15,
+        buttonstroke = 1.5,
+        textsize = 15,
+        buttonstrokecolor = :black,
+        valueprinter = default_printer
+    )
 end
 
-function Slider(scene::Scene, range::Range)
-    slider = Combined{:Slider}(scene, Attributes(), txt)
-    tvis = text!(slider, txt)
-    value = node(:slider_value, false)
-    ondrag(slider) do val
-        value[] = val
+mouseover() = error("not implemented")
+export mouseover
+convert_arguments(::Type{<: Slider}, x::Range) = (x,)
+
+function range_label_bb(tplot, printer_func, range)
+    bb = boundingbox(tplot, printer_func(first(range)))
+    for elem in Iterators.drop(range, 1)
+        bb = union(bb, boundingbox(tplot, printer_func(elem)))
     end
-    Button(value, txt, slid)
+    bb
+end
+function plot!(slider::Slider)
+    @extract(slider, (
+        backgroundcolor, strokecolor, strokewidth, slidercolor, buttonstroke,
+        buttonstrokecolor, buttonsize, buttoncolor, valueprinter,
+        sliderlength, sliderheight, textcolor, textsize
+    ))
+    range = slider[1]
+    val = slider[:value]
+    push!(val, first(value(range)))
+    label = lift((v, f)-> f(v), val, valueprinter)
+    lplot = text!(
+        slider, label,
+        textsize = textsize,
+        align = (:left, :center), color = textcolor,
+        position = map((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
+    ).plots[end]
+    lbb = lift(range_label_bb, Node(lplot), valueprinter, range)
+    bg_rect = lift(sliderlength, sliderheight, lbb) do w, h, bb
+        FRect(0, 0, w + 10 + widths(bb)[1], h)
+    end
+    poly!(
+        slider, bg_rect,
+        color = backgroundcolor, linecolor = strokecolor,
+        linewidth = strokewidth
+    )
+    line = lift(sliderlength, sliderheight) do w, h
+        Point2f0[(10, h / 2), (w - 10, h / 2)]
+    end
+
+    linesegments!(slider, line, color = slidercolor)
+    button = scatter!(
+        slider, map(x-> x[1:1], line),
+        markersize = buttonsize, color = buttoncolor, strokewidth = buttonstroke,
+        strokecolor = buttonstrokecolor
+    ).plots[end]
+    dragslider(slider, button)
 end
 
-struct CheckBox
-    value::Node{Bool}
-    visual::AbstractPlot
-end
-
-function dragslider(scene, slider, button)
-    mpos = scene.events.mouseposition
+function dragslider(slider, button)
+    mpos = events(slider).mouseposition
     drag_started = Ref(false)
     startpos = Base.RefValue((0.0, 0.0))
     range = slider[1]
     @extract slider (value, sliderlength)
-    foreach(scene.events.mousedrag) do drag
-        if drag == Mouse.down && mouseover(scene, button)
+    foreach(events(slider).mousedrag) do drag
+        if drag == Mouse.down && mouseover(slider, button)
             startpos[] = mpos[]
             drag_started[] = true
         elseif drag == Mouse.pressed && drag_started[]
@@ -63,62 +112,7 @@ function dragslider(scene, slider, button)
     end
 end
 
-function slider(scene, range; kw_args...)
-    attributes, rest = merged_get!(:slider, scene, kw_args) do
-        Theme(
-            value = 0,
-            sliderlength = 200,
-            sliderheight = 50,
-            backgroundcolor = (:gray, 0.01),
-            strokecolor = (:black, 0.4),
-            strokewidth = 1,
-            textcolor = :black,
-            slidercolor = (:gray, 0.6),
-            buttoncolor = :white,
-            buttonsize = 15,
-            buttonstroke = 1.5,
-            buttonstrokecolor = :black,
-            valueprinter = v-> string(round(v, 3))
-        )
-    end
-    @extract(attributes, (
-        backgroundcolor, strokecolor, strokewidth, slidercolor, buttonstroke,
-        buttonstrokecolor, buttonsize, buttoncolor, valueprinter,
-        sliderlength, sliderheight, textcolor
-    ))
-    splot = Combined{:Slider}(scene, attributes, node(:range, range))
-    push!(attributes[:value], first(range))
-    label = map((v, f)-> f(v), attributes[:value], valueprinter)
-    lplot = text!(
-        splot, label,
-        textsize = 15,
-        align = (:left, :center), color = textcolor,
-        position = map((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
-    )
-    lbb = data_limits(lplot) # on purpose static so we hope text won't become too long?
-    bg_rect = map(sliderlength, sliderheight) do w, h
-        IRect(0, 0, w + 10 + widths(lbb)[1], h)
-    end
-    poly!(
-        splot, bg_rect,
-        color = backgroundcolor, linecolor = strokecolor,
-        linewidth = strokewidth
-    )
-    line = map(sliderlength, sliderheight) do w, h
-        Point2f0[(10, h / 2), (w - 10, h / 2)]
-    end
-
-    linesegments!(splot, line, color = slidercolor)
-    button = scatter!(
-        splot, map(x-> x[1:1], line),
-        markersize = buttonsize, color = buttoncolor, strokewidth = buttonstroke,
-        strokecolor = buttonstrokecolor
-    )
-    dragslider(scene, splot, button)
-    splot
-end
-
-function move!(x::Combined{:Slider}, idx::Integer)
+function move!(x::Slider, idx::Integer)
     r = x[1][]
     len = x[:sliderlength][]
     x[:value] = r[idx]
