@@ -49,3 +49,8 @@ poly!([Rect(5, 0, -5, 10)], strokewidth = 2, strokecolor = (:gray, 0.4), color =
 histogram(rand(100000))
 y = rand(10)
 x = bar(1:10, y, color = y)
+
+# @test begin
+    lines(Rect(0, 0, 1, 1), linewidth = 4, scale_plot = false)
+    scatter!([Point2f0(0.5, 0.5)], markersize = 1, marker = 'I', scale_plot = false)
+# end
