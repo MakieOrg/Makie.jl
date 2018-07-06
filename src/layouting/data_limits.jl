@@ -37,7 +37,7 @@ extrema_nan(itr::ClosedInterval) = (minimum(itr), maximum(itr))
 
 function extrema_nan(itr)
     s = start(itr)
-    done(itr, s) && throw(ArgumentError("collection must be non-empty"))
+    done(itr, s) && return (NaN, NaN)
     (v, s) = next(itr, s)
     vmin = vmax = v
     while !_isfinite(v) && !done(itr, s)

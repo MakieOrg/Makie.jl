@@ -49,7 +49,6 @@ function TextBuffer(
         rotation = [Quaternionf0(0,0,0,1)],
         color = RGBAf0[RGBAf0(0,0,0,0)],
         textsize = Float32[0],
-        camera = :false,
         font = [to_font("default")],
         align = [Vec2f0(0)],
         raw = true,
