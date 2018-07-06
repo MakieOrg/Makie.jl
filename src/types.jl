@@ -173,7 +173,7 @@ Base.copy(x::Attributes) = Attributes(copy(x.attributes))
 Base.merge(x::Attributes...) = Attributes(merge(map(a-> a.attributes, x)...))
 Base.merge!(x::Attributes...) = merge!(map(a-> a.attributes, x)...)
 Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
-Base.empty!(x::Attributes) = empty!(x.attributes)
+Base.empty!(x::Attributes) = (empty!(x.attributes); x)
 Base.length(x::Attributes) = length(x.attributes)
 
 function getindex(x::Attributes, key::Symbol)
