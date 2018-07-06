@@ -58,10 +58,10 @@ function approx_difference(
     return d / (length(Af) * diffscale)
 end
 
-function test_examples(record = false)
+function test_examples(record, tags...)
     srand(42)
     @testset "Visual Regression" begin
-        eval_examples(replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+        eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
             sigma = [1,1]; eps = 0.02
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
@@ -72,6 +72,7 @@ function test_examples(record = false)
                     @test diff < 0.07
                 end
             end
+            AbstractPlotting.set_theme!(resolution = (500, 500))
         end
     end
 end
@@ -80,7 +81,6 @@ isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(false)
-
 
 # function test_examples(record = false)
 #     srand(42)
