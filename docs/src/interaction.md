@@ -1,9 +1,56 @@
+```@meta
+CurrentModule = Makie
+```
+
+```@setup animation_tutorial
+using Makie
+```
+
 # Interaction
 
 Makie offers a sophisticated referencing system to share attributes across the Scene
 in your plot. This is great for animations and saving resources -- also if the backend
 decides to put data on the GPU you might even share those in GPU memory.
 
+Animations in Makie are handled by using `Reactive.jl` signals.
+These signals are called `Node`s in Makie, and can be continuously updated by pushing a value to it.
+Here is a brief tutorial:
+
+First, create a `Node`:
+
+```@example animation_tutorial
+x = Node(0.0) # set up a Node, and give it a default value of 0.0
+```
+
+You can then derive a signal off of the value of the Node by using `lift`:
+
+```@example animation_tutorial
+y = lift(a -> a^2, x)
+```
+
+Now, for every value of the Node `x`, the derived Node `y` will hold the square of the value.
+
+To update the value of the Node, `push!` to it:
+
+```@example animation_tutorial
+push!(x, 5.0)
+```
+
+Note how the value of `y` has been changed as well, in addition to `x`:
+
+```@example animation_tutorial
+for i in (x, y)
+    println(i.value)
+end
+```
+
+That is to say, the Node `y` maps the function `f` (`a -> a^2` in this case) to `x` whenever the Node `x` is updated, and returns the corresponding signal to `y`.
+This is the basis of signal updating, and is used for updating plots in Makie.
+
+Note: `lift` is just an alias for `Reactive.map`,
+and `Node` is just an alias for `Reactive.Signal`.
+
+For more information, check out [`Reactive.jl`'s documentation](https://juliagizmos.github.io/Reactive.jl/).
 
 ## Using Mouse and Time to animate plots
 
