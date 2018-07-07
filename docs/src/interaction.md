@@ -25,10 +25,11 @@ x = Node(0.0) # set up a Node, and give it a default value of 0.0
 You can then derive a signal off of the value of the Node by using `lift`:
 
 ```@example animation_tutorial
-y = lift(a -> a^2, x)
+f(a) = a^2
+y = lift(a -> f(a), x)
 ```
 
-Now, for every value of the Node `x`, the derived Node `y` will hold the square of the value.
+Now, for every value of the Node `x`, the derived Node `y` will hold the value `f(x)`.
 
 To update the value of the Node, `push!` to it:
 
@@ -44,7 +45,7 @@ for i in (x, y)
 end
 ```
 
-That is to say, the Node `y` maps the function `f` (`a -> a^2` in this case) to `x` whenever the Node `x` is updated, and returns the corresponding signal to `y`.
+That is to say, the Node `y` maps the function `f` (`a -> a^2` in this case) on `x` whenever the Node `x` is updated, and returns the corresponding signal to `y`.
 This is the basis of signal updating, and is used for updating plots in Makie.
 
 Note: `lift` is just an alias for `Reactive.map`,
