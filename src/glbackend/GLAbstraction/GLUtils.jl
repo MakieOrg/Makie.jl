@@ -1,3 +1,4 @@
+# import Base.Iterators: filter
 macro gputime(codeblock)
     quote
         local const query        = GLuint[1]

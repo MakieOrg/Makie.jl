@@ -1,4 +1,4 @@
-import Base.Iterators: filter
+# import Base.Iterators: filter
 GL_COLOR_ATTACHMENT(i) = GLuint(GL_COLOR_ATTACHMENT0 + i)
 
 abstract type DepthFormat end
