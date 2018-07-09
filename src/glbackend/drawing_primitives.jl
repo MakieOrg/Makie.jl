@@ -210,7 +210,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
             norm = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
             img = map(img, cmap, norm) do img, cmap, norm
-                interpolated_getindex.((cmap,), img, (norm,))
+                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
         elseif isa(value(img), AbstractMatrix{<: Colorant})
             delete!(gl_attributes, :color_norm)
