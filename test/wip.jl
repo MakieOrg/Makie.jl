@@ -23,44 +23,35 @@
 #   -> So many speedups possible!
 #
 # What doesn't work:
-#   -> contour
-#   -> heatmap
-
+#   -> poly colormap
 
 
 using Makie
-scene = Scene()
-function xy_data(x, y)
-    r = sqrt(x^2 + y^2)
-    r == 0.0 ? 1f0 : (sin(r)/r)
+
+begin
+    coordinates = [
+        0.0 0.0;
+        0.5 0.0;
+        1.0 0.0;
+        0.0 0.5;
+        0.5 0.5;
+        1.0 0.5;
+        0.0 1.0;
+        0.5 1.0;
+        1.0 1.0;
+    ]
+    connectivity = [
+        1 2 5;
+        1 4 5;
+        2 3 6;
+        2 5 6;
+        4 5 8;
+        4 7 8;
+        5 6 9;
+        5 8 9;
+    ]
+    color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
+    poly(coordinates, connectivity, color = color, linecolor = (:black, 0.6), linewidth = 4)
 end
-
-r = linspace(-2, 2, 50)
-surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
-z = surf_func(20)
-surf = surface!(scene, r, r, z)[end]
-
-
-wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
-    linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap]))
 
 screen = Makie.global_gl_screen()
-
-
-function test(x, y, z)
-    xy = [x, y, z]
-    ((xy') * eye(3, 3) * xy) / 20
-end
-x = linspace(-2pi, 2pi, 100)
-scene = Scene()
-c = contour!(scene, x, x, x, test, levels = 10)[end]
-xm, ym, zm = minimum(scene.limits[])
-# c[4] == fourth argument of the above plotting command
-contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
-heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
-contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange=true, transformation = (:yz, xm))
-
-y = linspace(-0.997669, 0.997669, 23)
-@edit contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
-
-@edit contour
