@@ -155,6 +155,12 @@ vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 estimated_space(x, N, w) = 1/N
 
 
+function resize!(scene::Scene, rect::Rect2D)
+    pixelarea(p)[] = rect
+    force_update!()
+    yield()
+end
+
 
 function vbox(plots::Vector{T}; kw_args...) where T <: Scene
     N = length(plots)
@@ -167,7 +173,7 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Scene
         foreach(area) do a
             # TODO this is terrible!
             w2 = widths(a) .* Vec((1/N), 1)
-            push!(pixelarea(p), IRect(minimum(a) .+ Vec((idx - 1) * w2[1], 0), w2))
+            resize!(p, IRect(minimum(a) .+ Vec((idx - 1) * w2[1], 0), w2))
             center!(p)
         end
         push!(pscene.children, p)
@@ -181,6 +187,8 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Scene
     end
     pscene
 end
+
+
 function vbox(plots::Vector{T}; kw_args...) where T <: AbstractPlot
     N = length(plots)
     w = 0.0
