@@ -48,6 +48,7 @@ Juno.@render Juno.PlotPane p::Scene begin
         Base.show_backtrace(STDERR, Base.catch_backtrace())
         rethrow(e)
     end
+    return nothing
 end
 
 # Base.mimewritable(::MIME"text/html", scene::VideoStream) = true

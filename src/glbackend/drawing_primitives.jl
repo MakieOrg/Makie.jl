@@ -12,6 +12,7 @@ function to_glvisualize_key(k)
     k == :marker_offset && return :offset
     k == :colormap && return :color_map
     k == :colorrange && return :color_norm
+    k == :transform_marker && return :scale_primitive
     k
 end
 
@@ -59,11 +60,24 @@ function lift_convert(key, value, plot)
          convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
      end
 end
-#### WIP shadercleanup
+
+to_pixelspace(scene, msize::Number) = to_pixelspace(scene, Point2f0(msize))[1]
+function to_pixelspace(scene, msize::StaticVector{2})
+    # TODO figure out why Vec(x, y) doesn't work correctly
+    p0 = AbstractPlotting.to_world(scene, Point2f0(0.0))
+    p1 = AbstractPlotting.to_world(scene, Point2f0(msize))
+    diff = p1 - p0
+    diff
+end
+
+to_pixelspace(scene, msize::AbstractVector) = to_pixelspace.(scene, msize)
+
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
+            msize = pop!(gl_attributes, :stroke_width)
+            gl_attributes[:stroke_width] = lift(to_pixelspace, Node(scene), msize)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
         # TODO either stop using bb's from glvisualize
@@ -197,7 +211,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
             norm = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
             img = map(img, cmap, norm) do img, cmap, norm
-                interpolated_getindex.((cmap,), img, (norm,))
+                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
         elseif isa(value(img), AbstractMatrix{<: Colorant})
             delete!(gl_attributes, :color_norm)

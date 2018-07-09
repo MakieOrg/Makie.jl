@@ -115,6 +115,9 @@ function cairo_draw(screen::CairoScreen, primitive::Union{Lines, LineSegments})
     nothing
 end
 
+# function cairo_draw(screen::CairoScreen, primitive::Image)
+#     set_source_surface(cr, image, 0, 0);
+# end
 function cairo_draw(screen::CairoScreen, primitive::Scatter)
     scene = screen.scene
     fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker))
@@ -269,7 +272,7 @@ end
 function cairo_finish(screen::CairoScreen{CairoRGBSurface})
     @info("draw")
     showall(screen.pane.window)
-    #=@guarded=# draw(screen.pane.canvas) do canvas
+    draw(screen.pane.canvas) do canvas
         ctx = getgc(canvas)
         w, h = Cairo.width(ctx), Cairo.height(ctx)
         info(w, " ", h)
