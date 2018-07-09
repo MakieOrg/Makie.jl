@@ -86,17 +86,15 @@ end
 #TODO rendercleanup: clearing should be done somewhere else probably
 function setup(pipe::Pipeline{:default})
     glDisable(GL_STENCIL_TEST)
-     glEnable(GL_STENCIL_TEST)
-    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
-    glStencilMask(0xff)
-    glClearStencil(0)
+    # glStencilMask(0xff)
+    # glClearStencil(0)
     #
 end
 
 function setup(rp::RenderPass{:default})
     bind(rp.target)
     draw(rp.target, 1:2)
-    # clear!(rp.target) #this clears everything,
+    clear!(rp.target) #this clears everything,
                       #so if textures get reused then we need to clear more
                       #specifically, lets try this first
     glEnable(GL_DEPTH_TEST)
@@ -114,9 +112,7 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
     if isempty(screen.renderlist)
         return
     end
-    glEnable(GL_SCISSOR_TEST)
     setup!(screen)
-    glDisable(GL_SCISSOR_TEST)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     for (zindex, screenid, elem) in renderlist
         bind(elem.uniforms[:shader])
@@ -124,7 +120,6 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
         found, rect = id2rect(screen, screenid)
         Reactive.value(found) || continue
         a = rect[]
-        glViewport(minimum(a)..., widths(a)...)
         # glStencilFunc(GL_EQUAL, screenid, 0xff) #TODO rendercleanup: Can this be somewhere else?
         for (key,value) in elem.uniforms[:shader].uniformloc #TODO uniformbuffer: This should be inside a buffer I think
             if haskey(elem.uniforms, key) && elem.uniforms[key] != nothing
@@ -153,7 +148,7 @@ function setup(rp::RenderPass{:postprocess})
     glStencilMask(0xff)
     glDisable(GL_CULL_FACE)
     glClearColor(0,0,0,0)
-    glClear(GL_COLOR_BUFFER_BIT)
+    # glClear(GL_COLOR_BUFFER_BIT)
 end
 
 #this has the luma FBO
