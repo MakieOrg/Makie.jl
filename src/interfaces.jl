@@ -240,6 +240,8 @@ function calculated_attributes!(plot::Image{<: Tuple{X, Y, <: AbstractMatrix{<: 
     end
 end
 function calculated_attributes!(plot::Image)
+    delete!(plot, :colormap)
+    delete!(plot, :colorrange)
     return
 end
 

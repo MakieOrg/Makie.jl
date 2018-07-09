@@ -155,8 +155,8 @@ vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 estimated_space(x, N, w) = 1/N
 
 
-function resize!(scene::Scene, rect::Rect2D)
-    pixelarea(p)[] = rect
+function Base.resize!(scene::Scene, rect::Rect2D)
+    pixelarea(scene)[] = rect
     force_update!()
     yield()
 end
