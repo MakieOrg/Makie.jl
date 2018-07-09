@@ -27,6 +27,7 @@ Plots an image on range `x, y` (defaults to dimensions).
     Theme(;
         default_theme(scene)...,
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
+        colorrange = nothing,
         fxaa = false,
     )
 end
@@ -230,6 +231,13 @@ function calculated_attributes!(plot::Mesh)
     delete!(plot, :colormap)
     delete!(plot, :colorrange)
     return
+end
+function calculated_attributes!(plot::Image{<: Tuple{X, Y, <: AbstractMatrix{<: Number}}}) where {X, Y}
+    replace_nothing!(plot, :colorrange) do
+        lift(plot[3]) do arg
+            Vec2f0(extrema_nan(arg))
+        end
+    end
 end
 function calculated_attributes!(plot::Image)
     return
