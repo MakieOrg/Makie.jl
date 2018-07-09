@@ -116,6 +116,7 @@ function translate!(::Type{T}, scene::Transformable, t) where T
         error("Unknown translation type: $T")
     end
 end
+translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xyz)
 translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
 translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
 
