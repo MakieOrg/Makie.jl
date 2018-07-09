@@ -938,7 +938,6 @@ end
             color = rand(RGBf0, 2),
             limits = FRect(0, 0, xybounds)
         )
-        scene
         s = scene[end] # last plot in scene
 
         record(scene, @outputfile(mp4), 1:N) do i
