@@ -929,9 +929,7 @@ end
         balldiameter = 1
         origin = Point2f0(0, 0)
         xybounds = Point2f0(10, 10)
-
         N = 200
-
         scene = scatter(
             xyvec,
             markersize = balldiameter,
@@ -950,10 +948,8 @@ end
                     b ? -v : v
                 end
             end
-
             # plot
             s[1] = xyvec
-            # s[2] = pos2[:,i]
         end
     end
 
