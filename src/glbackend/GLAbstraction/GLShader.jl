@@ -183,7 +183,6 @@ end
 function compile_program(shaders, fragdatalocation)
     # Remove old shaders
     program = createprogram()
-    glUseProgram(program)
     #attach new ones
     foreach(shaders) do shader
         glAttachShader(program, shader.id)
