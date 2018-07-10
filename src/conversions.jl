@@ -519,7 +519,7 @@ end
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-convert_attribute(cm::AbstractVector, ::key"colormap") = RGBAf0.(cm)
+convert_attribute(cm::AbstractVector, ::key"colormap") = to_color.(cm)
 
 """
 Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
