@@ -347,6 +347,21 @@ end
         scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
     end
 
+    @cell "Merged color Mesh" [mesh, color] begin
+        x = Vec3f0(0)
+        baselen = 0.2f0
+        dirlen = 1f0
+        # create an array of differently colored boxes in the direction of the 3 axes
+        rectangles = [
+            (HyperRectangle(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBA(1f0,0f0,0f0,1f0)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBA(0f0,1f0,0f0,1f0)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBA(0f0,0f0,1f0,1f0))
+        ]
+        meshes = map(GLNormalMesh, rectangles)
+        sc = merge(sc)
+        mesh(sc)
+    end
+
     @cell "Moire" [lines, camera, update_cam!, rotate_cam!, linesegments, record, mp4] begin
         function cartesian(ll)
             return Point3f0(
