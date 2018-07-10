@@ -558,7 +558,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             return resample(ColorBrewer.palette(string(cs_sym), 9), n)
         end
     elseif lowercase(string(cs_sym)) == "viridis"
-        return [
+        cm = [
             to_color("#440154FF"),
             to_color("#481567FF"),
             to_color("#482677FF"),
@@ -580,6 +580,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             to_color("#DCE319FF"),
             to_color("#FDE725FF"),
         ]
+        return resample(cm, n)
     else
         #TODO integrate PlotUtils color gradients
         error("There is no color gradient named: $cs")
