@@ -968,6 +968,12 @@ end
         end
     end
 
+
+    @cell "Viridis scatter" ["2d", scatter, color, viridis, colormap] begin
+        N = 30
+        scatter(1:N, 1:N, markersize = 2, color = to_colormap(:viridis, N))
+    end
+
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
         scatter(
             rand(20), rand(20),
