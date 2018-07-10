@@ -504,7 +504,7 @@ Walks through examples and evalueates them. Returns the evaluated value and call
 function eval_examples(f, tags...; kw_args...)
     examples2source(tags...; kw_args..., scope_start = "", scope_end = "") do entry, source
         uname = entry.unique_name
-        tmpmod = eval(:(module $(gensym(uname)); end))
+        tmpmod = Module(gensym(uname))
         result = try
             eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
         catch e
@@ -517,6 +517,11 @@ function eval_examples(f, tags...; kw_args...)
             println(STDERR, source)
             println(STDERR, "```")
         end
-        f(entry, result)
+        try
+            f(entry, result)
+        catch e
+            warn("Calling $f failed with example: $(entry.title)")
+            rethrow(e)
+        end
     end
 end
