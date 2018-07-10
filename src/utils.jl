@@ -1,24 +1,4 @@
 
-function drawbrush(scene)
-    brush = to_node(Point2f0[])
-    waspressed_t_lastpos = Ref((false, time(), Point2f0(0)))
-    cam = scene[:screen].cameras[:orthographic_pixel]
-    Makie.to_world(Point2f0(0,0), cam)
-    lift_node(scene, :mouseposition) do mp
-        if ispressed(scene, Makie.Mouse.left)
-            waspressed, t, lastpos = waspressed_t_lastpos[]
-            append!(brush, [Makie.to_world(Point2f0(mp), cam)])
-            if !waspressed
-                waspressed_t_lastpos[] = (true, time(), mp)
-            else
-                waspressed_t_lastpos[] = (true, t, mp)
-            end
-        else
-            waspressed_t_lastpos[] = (false, 0, Point2f0(0))
-        end
-        return
-    end
-end
 
 """
 Returns (N1, N2) with `N1 x N2 == n`. N2 might become 1
