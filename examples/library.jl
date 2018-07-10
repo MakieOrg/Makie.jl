@@ -348,18 +348,16 @@ end
     end
 
     @cell "Merged color Mesh" [mesh, color] begin
-        x = Vec3f0(0)
-        baselen = 0.2f0
-        dirlen = 1f0
+        using GeometryTypes
+        x = Vec3f0(0); baselen = 0.2f0; dirlen = 1f0
         # create an array of differently colored boxes in the direction of the 3 axes
         rectangles = [
-            (HyperRectangle(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBA(1f0,0f0,0f0,1f0)),
-            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBA(0f0,1f0,0f0,1f0)),
-            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBA(0f0,0f0,1f0,1f0))
+            (HyperRectangle(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBAf0(1,0,0,1)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBAf0(0,1,0,1)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBAf0(0,0,1,1))
         ]
         meshes = map(GLNormalMesh, rectangles)
-        sc = merge(sc)
-        mesh(sc)
+        mesh(merge(meshes))
     end
 
     @cell "Moire" [lines, camera, update_cam!, rotate_cam!, linesegments, record, mp4] begin
