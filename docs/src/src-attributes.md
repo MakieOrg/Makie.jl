@@ -1,3 +1,6 @@
+```@setup plot_attributes
+using Makie
+```
 
 Below is the list of all of the available plot attributes for Makie.
 You can also get this by doing
