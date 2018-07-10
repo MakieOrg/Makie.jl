@@ -133,6 +133,7 @@ open(path, "w") do io
     src = read(srcdocpath, String)
     println(io, src)
     print(io, "\n")
+    println(io, "## List of attributes")
     print_table(io, attr_desc)
 end
 
