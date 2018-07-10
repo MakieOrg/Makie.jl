@@ -968,10 +968,36 @@ end
         end
     end
 
+    @cell "Travelling wave" [animated, lines, updating, interaction] begin
+        scene = Scene()
+        time = Node(0.0)
+        f(v, t) = sin(v + t)
+        scene = lines!(
+            scene,
+            lift(t -> f.(linspace(0, 2pi, 50), t), time),
+            color = :blue
+        )
+        p1 = scene[end];
+        N = 100
+        record(scene, @outputfile(mp4), linspace(0, 4pi, N)) do i
+            push!(time, i)
+        end
+    end
 
     @cell "Viridis scatter" ["2d", scatter, color, viridis, colormap] begin
         N = 30
         scatter(1:N, 1:N, markersize = 2, color = to_colormap(:viridis, N))
+    end
+
+    @cell "Viridis meshscatter" ["3d", scatter, color, viridis, colormap] begin
+        N = 30
+        R = 2
+        theta = 4pi
+        h = 5
+        x = [R .* cos(t) for t = linspace(0, theta, N)]
+        y = [R .* sin(t) for t = linspace(0, theta, N)]
+        z = linspace(0, h, N)
+        meshscatter(x, y, z, markersize = 5, color = to_colormap(:viridis, N))
     end
 
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
