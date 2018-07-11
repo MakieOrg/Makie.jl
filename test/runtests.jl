@@ -1,24 +1,47 @@
 using ImageFiltering, Base.Test
-using Images
+using Images, BinaryProvider
 
 include("../examples/library.jl")
 
-refpath = Pkg.dir("ReferenceImages", "Makie")
-
-if !isdir(Pkg.dir("ReferenceImages"))
-    Pkg.clone("https://github.com/SimonDanisch/ReferenceImages.git")
-else
-    Pkg.checkout("ReferenceImages")
+download_dir = joinpath(@__DIR__, "testimages")
+tarfile = joinpath(download_dir, "images.zip")
+version = v"0.0.2"
+url = "https://github.com/SimonDanisch/ReferenceImages/archive/v$(version).tar.gz"
+refpath = joinpath(download_dir, "ReferenceImages-$(version)")
+recordpath = Pkg.dir("ReferenceImages")
+# refpath = Pkg.dir("ReferenceImages")
+function url2hash(url)
+    path = download(url)
+    open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
 end
-
-
-isdir(refpath) || mkpath(refpath)
+url2hash(url) |> println
+if !isdir(refpath)
+    download_images() = BinaryProvider.download_verify(
+        url, "98affb1ae06962cd6f5d4ea1e10344179fcbd57e25fd3d62eadc13e1cc352571",
+        tarfile
+    )
+    try
+        download_images()
+    catch e
+        if isa(e, ErrorException) && contains(e.msg, "Hash Mismatch")
+            rm(tarfile, force = true)
+            download_images()
+        else
+            rethrow(e)
+        end
+    end
+    BinaryProvider.unpack(tarfile, download_dir)
+    # check again after download
+    if !isdir(refpath)
+        error("Something went wrong while downloading reference images. Plots can't be compared to references")
+    end
+end
 
 function toimages(f, example, x::Scene, record)
     image = Makie.scene2image(x)
     rpath = joinpath(refpath, "$(example.unique_name).jpg")
     if record || !isfile(rpath)
-        FileIO.save(rpath, image)
+        FileIO.save(joinpath(recordpath, "$(example.unique_name).jpg"), image)
     else
         refimage = FileIO.load(joinpath(refpath, "$(example.unique_name).jpg"))
         f(image, refimage)
@@ -30,8 +53,9 @@ function toimages(f, example, path::String, record)
     filepath, ext = splitext(path)
     rpath = joinpath(refpath, basename(filepath))
     if record || !isdir(rpath)
-        isdir(rpath) || mkpath(rpath)
-        run(`ffmpeg -loglevel quiet -i $path -vf fps=1 -y $rpath\\frames%04d.jpg`)
+        rpath2 = joinpath(recordpath, basename(filepath))
+        isdir(rpath2) || mkpath(rpath2)
+        run(`ffmpeg -loglevel quiet -i $(abspath(path)) -y $rpath2\\frames%04d.jpg`)
     else
         filepath, ext = splitext(path)
         isdir(filepath) || mkdir(filepath)
@@ -43,7 +67,8 @@ function toimages(f, example, path::String, record)
         end
     end
 end
-# The version in images.jl throws an error... whyyyyy!?
+
+# The version in Images.jl throws an error... whyyyyy!?
 function approx_difference(
         A::AbstractArray, B::AbstractArray,
         sigma::AbstractVector{T} = ones(ndims(A)),
@@ -66,25 +91,35 @@ function test_examples(record, tags...)
     @testset "Visual Regression" begin
         eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
             sigma = [1,1]; eps = 0.02
+            maxdiff = 0.01
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
                     diff = approx_difference(image, refimage, sigma, eps)
-                    if diff >= 0.07
+                    if diff >= maxdiff
                         save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
                     end
-                    @test diff < 0.07
+                    @test diff < maxdiff
                 end
             end
             AbstractPlotting.set_theme!(resolution = (500, 500))
         end
     end
 end
+
 cd(@__DIR__)
 isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(false)
 
+#
+# example = example_database(:cat)[3]
+# scene = eval_example(example)
+# using Makie
+#
+# mesh(Makie.loadasset("cat.obj"))
+#
+# Makie.save(joinpath(@__DIR__, "test.png"), AbstractPlotting.current_scene())
 # function test_examples(record = false)
 #     srand(42)
 #     @testset "Cairo" begin
