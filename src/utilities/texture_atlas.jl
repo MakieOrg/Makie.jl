@@ -197,6 +197,10 @@ function font_render_callback!(f)
     push!(font_render_callbacks, f)
 end
 
+function remove_font_render_callback!(f)
+    filter!(f2-> f2 != f, font_render_callbacks)
+end
+
 function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     #select_font_face(cc, font)
     if glyph == '\n' # don't render  newline
