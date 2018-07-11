@@ -159,11 +159,12 @@ end
     `meshscatter(x, y, z)` / `meshscatter(x, y)` / `meshscatter(positions)`
 
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
+`markersize` is a scaling applied to the primitive passed as `marker`
 """
 @atomic(MeshScatter) do scene
     Theme(;
         default_theme(scene)...,
-        marker = Sphere(Point3f0(0), 0.1f0),
+        marker = Sphere(Point3f0(0), 1f0),
         markersize = 0.1,
         rotations = Quaternionf0(0, 0, 0, 1),
         intensity = nothing,
