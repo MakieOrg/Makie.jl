@@ -51,8 +51,10 @@ function native_switch_context!(x)
 end
 
 function switch_context!(x)
-    context[] = x
-    native_switch_context!(x)
+    if !is_current_context(x)
+        context[] = x
+        native_switch_context!(x)
+    end
 end
 
 struct Shader
