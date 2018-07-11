@@ -98,7 +98,7 @@ function test_examples(record, tags...)
                     if diff >= maxdiff
                         save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
                     end
-                    #@test diff < maxdiff
+                    @test diff < maxdiff
                 end
             end
             AbstractPlotting.set_theme!(resolution = (500, 500))

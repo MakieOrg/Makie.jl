@@ -27,6 +27,7 @@ stages:
             Pkg.build(\"$package\");
             Pkg.test(\"$package\"; coverage=true)"
   artifacts:
+    when: always
     paths:
       - docs/media/*
       - test/testresults/*
