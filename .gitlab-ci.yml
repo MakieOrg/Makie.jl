@@ -8,6 +8,7 @@ before_script:
 
 variables:
   JULIA_PKGDIR: "$CI_PROJECT_DIR/.julia/"
+  MODERNGL_DEBUGGING: "true"
   package: 'Makie'
 
 stages:
