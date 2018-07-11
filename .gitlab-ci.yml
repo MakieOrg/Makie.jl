@@ -24,6 +24,8 @@ stages:
             symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
             Pkg.resolve();
             Pkg.checkout(\"AbstractPlotting\");
+            Pkg.checkout(\"FreeTypeAbstraction\");
+            Pkg.checkout(\"FreeTypeAbstraction\", \"sd/fuzzy_search\");
             Pkg.build(\"$package\");
             Pkg.test(\"$package\"; coverage=true)"
   artifacts:
@@ -37,8 +39,6 @@ stages:
       - src/*/*/*.cov
       - src/*/*/*/*.cov
       - src/*/*/*/*/*.cov
-
-
 
 test:v0.6:
   stage: test
