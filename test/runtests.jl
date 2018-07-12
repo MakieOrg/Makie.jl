@@ -2,8 +2,8 @@ using ImageFiltering, Base.Test
 using Images, BinaryProvider
 include("../examples/library.jl")
 
-record_reference_images = false
-version = v"0.0.3"
+record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
+version = v"0.0.4"
 
 download_dir = joinpath(@__DIR__, "testimages")
 tarfile = joinpath(download_dir, "images.zip")
@@ -11,17 +11,20 @@ url = "https://github.com/SimonDanisch/ReferenceImages/archive/v$(version).tar.g
 refpath = joinpath(download_dir, "ReferenceImages-$(version)")
 recordpath = Pkg.dir("ReferenceImages")
 
-function url2hash(url::String)
-    path = download(url)
-    open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
-end
+# function url2hash(url::String)
+#     path = download(url)
+#     open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
+# end
 # url2hash(url) |> println
 
 
 if !record_reference_images
-    if !isdir(refpath)
+    if get(ENV, "USE_REFERENCE_IMAGES", "false") == "true"
+        info("Using Local reference image repository")
+        refpath = recordpath
+    elseif !isdir(refpath)
         download_images() = BinaryProvider.download_verify(
-            url, "56ed2f26aa5fc6046eaf42a759d27334d7f23993d9403bcd2c5090ac9b9c2f15",
+            url, "16163c21e7558d7f27542316e64b270a484940d9a05f52240041a545d8ec4e3b",
             tarfile
         )
         try
