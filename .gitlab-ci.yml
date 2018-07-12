@@ -23,6 +23,7 @@ stages:
     - julia -e "Pkg.init();
             symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
             Pkg.resolve();
+            Pkg.checkout(\"ModernGL\", \"sd/debug\");
             Pkg.checkout(\"AbstractPlotting\");
             Pkg.checkout(\"FreeTypeAbstraction\", \"sd/fuzzy_search\");
             Pkg.build(\"$package\");
