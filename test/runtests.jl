@@ -102,7 +102,7 @@ function test_examples(record, tags...)
     @testset "Visual Regression" begin
         eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
             sigma = [1,1]; eps = 0.02
-            maxdiff = 0.01
+            maxdiff = 0.03
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
                     diff = approx_difference(image, refimage, sigma, eps)
