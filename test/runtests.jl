@@ -1,41 +1,42 @@
 using ImageFiltering, Base.Test
 using Images, BinaryProvider
-
 include("../examples/library.jl")
+
+record_reference_images = false
+version = v"0.0.3"
 
 download_dir = joinpath(@__DIR__, "testimages")
 tarfile = joinpath(download_dir, "images.zip")
-version = v"0.0.2"
 url = "https://github.com/SimonDanisch/ReferenceImages/archive/v$(version).tar.gz"
 refpath = joinpath(download_dir, "ReferenceImages-$(version)")
 recordpath = Pkg.dir("ReferenceImages")
-# refpath = Pkg.dir("ReferenceImages")
-function url2hash(url)
-    path = download(url)
-    open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
-end
-url2hash(url) |> println
-if !isdir(refpath)
-    download_images() = BinaryProvider.download_verify(
-        url, "98affb1ae06962cd6f5d4ea1e10344179fcbd57e25fd3d62eadc13e1cc352571",
-        tarfile
-    )
-    try
-        download_images()
-    catch e
-        if isa(e, ErrorException) && contains(e.msg, "Hash Mismatch")
-            rm(tarfile, force = true)
+
+if !record_reference_images
+    if !isdir(refpath)
+        download_images() = BinaryProvider.download_verify(
+            url, "98affb1ae06962cd6f5d4ea1e10344179fcbd57e25fd3d62eadc13e1cc352571",
+            tarfile
+        )
+        try
             download_images()
-        else
-            rethrow(e)
+        catch e
+            if isa(e, ErrorException) && contains(e.msg, "Hash Mismatch")
+                rm(tarfile, force = true)
+                download_images()
+            else
+                rethrow(e)
+            end
+        end
+        BinaryProvider.unpack(tarfile, download_dir)
+        # check again after download
+        if !isdir(refpath)
+            error("Something went wrong while downloading reference images. Plots can't be compared to references")
         end
     end
-    BinaryProvider.unpack(tarfile, download_dir)
-    # check again after download
-    if !isdir(refpath)
-        error("Something went wrong while downloading reference images. Plots can't be compared to references")
-    end
+else
+    refpath = Pkg.dir("ReferenceImages")
 end
+
 
 function toimages(f, example, x::Scene, record)
     image = Makie.scene2image(x)
@@ -101,6 +102,8 @@ function test_examples(record, tags...)
                     @test diff < maxdiff
                 end
             end
+            # reset global states
+            srand(42)
             AbstractPlotting.set_theme!(resolution = (500, 500))
         end
     end
@@ -110,7 +113,7 @@ cd(@__DIR__)
 isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
-test_examples(false)
+test_examples(record_reference_images)
 
 #
 # example = example_database(:cat)[3]
