@@ -11,10 +11,17 @@ url = "https://github.com/SimonDanisch/ReferenceImages/archive/v$(version).tar.g
 refpath = joinpath(download_dir, "ReferenceImages-$(version)")
 recordpath = Pkg.dir("ReferenceImages")
 
+function url2hash(url::String)
+    path = download(url)
+    open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
+end
+# url2hash(url) |> println
+
+
 if !record_reference_images
     if !isdir(refpath)
         download_images() = BinaryProvider.download_verify(
-            url, "98affb1ae06962cd6f5d4ea1e10344179fcbd57e25fd3d62eadc13e1cc352571",
+            url, "56ed2f26aa5fc6046eaf42a759d27334d7f23993d9403bcd2c5090ac9b9c2f15",
             tarfile
         )
         try
