@@ -14,7 +14,7 @@ const VolumeTypes{T} = ArrayTypes{T, 3}
 @enum Projection PERSPECTIVE ORTHOGRAPHIC
 @enum MouseButton MOUSE_LEFT MOUSE_MIDDLE MOUSE_RIGHT
 
-const GLContext = Symbol
+const GLContext = Any
 
 """
 Returns the cardinality of a type. falls back to length
@@ -36,8 +36,25 @@ end
 function is_current_context(x)
     x == context[]
 end
-function new_context()
-    context[] = gensym()
+
+function native_context_active(x)
+    error("Not implemented for $(typeof(x))")
+end
+
+function is_context_active(x)
+    is_current_context(x) &&
+    native_context_active(x)
+end
+
+function native_switch_context!(x)
+    error("Not implemented for $(typeof(x))")
+end
+
+function switch_context!(x)
+    if !is_current_context(x)
+        context[] = x
+        native_switch_context!(x)
+    end
 end
 
 struct Shader
@@ -335,9 +352,7 @@ include("GLRenderObject.jl")
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
 function free(x::GLProgram)
-    if !is_current_context(x.context)
-        return # don't free from other context
-    end
+    is_context_active(x.context) || return
     try
         glDeleteProgram(x.id)
     catch e
@@ -346,9 +361,8 @@ function free(x::GLProgram)
     return
 end
 function free(x::GLBuffer)
-    if !is_current_context(x.context)
-        return # don't free from other context
-    end
+    # don't free from other context
+    is_context_active(x.context) || return
     id = [x.id]
     try
         glDeleteBuffers(1, id)
@@ -358,9 +372,7 @@ function free(x::GLBuffer)
     return
 end
 function free(x::Texture)
-    if !is_current_context(x.context)
-        return # don't free from other context
-    end
+    is_context_active(x.context) || return
     id = [x.id]
     try
         glDeleteTextures(x.id)
@@ -371,9 +383,7 @@ function free(x::Texture)
 end
 
 function free(x::GLVertexArray)
-    if !is_current_context(x.context)
-        return # don't free from other context
-    end
+    is_context_active(x.context) || return
     id = [x.id]
     try
         glDeleteVertexArrays(1, id)

@@ -118,14 +118,9 @@ search pattern.
 and are used to filter the search results by title and author.
 `match_all` specifies if the result has to match all input tags, or just any.
 """
-function find_indices(input_tags...; title = nothing, author = nothing, match_all::Bool = true) # --> return an array of cell entries
+function find_indices(input_tags::NTuple{N, String}; title = nothing, author = nothing, match::Function = all) where N # --> return an array of cell entries
     indices = find(database) do entry
-        # find tags
-        if match_all
-            tags_found = all(tags -> string(tags) in entry.tags, input_tags)
-        else
-            tags_found = any(tags -> string(tags) in entry.tags, input_tags)
-        end
+        tags_found = match(tags -> tags in entry.tags, input_tags)
         # find author, if nothing input is given, then don't filter
         author_found = (author == nothing) || (entry.author == string(author))
         # find title, if nothing input is given, then don't filter
@@ -134,7 +129,7 @@ function find_indices(input_tags...; title = nothing, author = nothing, match_al
         tags_found && author_found && title_found
     end
     if isempty(indices)
-        info("no examples found matching the search criteria $(input_tags)")
+        warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
         indices
     else
         indices
@@ -155,15 +150,18 @@ Returns the entries in examples database that match the input search pattern.
 and are used to filter the search results by title and author.
 `match_all` specifies if the result has to match all input tags, or just any.
 """
-function example_database(input_tags...; title = nothing, author = nothing, match_all::Bool = true) # --> return an array of cell entries
-    indices = find_indices(input_tags...; title = title, author = author, match_all = match_all)
+function example_database(tags::NTuple{N, String}; kw_args...) where N # --> return an array of cell entries
+    indices = find_indices(tags; kw_args...)
     if !isempty(indices)
         database[indices]
     end
 end
+function example_database(input_tags::Union{Symbol, String}...; kw_args...) # --> return an array of cell entries
+    example_database(string.(input_tags); kw_args...)
+end
 
-example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)
-example_database(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = example_database(to_string.(input)...; title = title, author = author)
+example_database(input::Function; kw_args...) = example_database((to_string(input),); kw_args...)
+example_database(a::Function, rest::Function...; kw_args...) = example_database(to_string.((a, rest...,)); kw_args...)
 
 database = CellEntry[]
 tags_list = []
@@ -487,14 +485,38 @@ function enumerate_examples(f, tags...)
 end
 
 
+
+example2source(entry; kw_args...) = sprint(io-> print_code(io, entry; kw_args...))
+
 """
 Walks through all examples matching tags and calls `f(entry, source)`, with
 source being the source of the example as a string
 """
 function examples2source(f, tags...; kw_args...)
     enumerate_examples(tags...) do entry
-        f(entry, sprint(io-> print_code(io, entry; kw_args...)))
+        f(entry, example2source(entry; kw_args...))
     end
+end
+
+
+function eval_example(entry; kw_args...)
+    source = example2source(entry; kw_args..., scope_start = "", scope_end = "")
+    uname = entry.unique_name
+    tmpmod = Module(gensym(uname))
+    result = nothing
+    try
+        result = eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
+    catch e
+        Base.showerror(STDERR, e)
+        println(STDERR)
+        Base.show_backtrace(STDERR, Base.catch_backtrace())
+        println(STDERR)
+        println(STDERR, "failed to evaluate the example:")
+        println(STDERR, "```julia")
+        println(STDERR, source)
+        println(STDERR, "```")
+    end
+    result
 end
 
 """
@@ -502,21 +524,8 @@ Walks through examples and evalueates them. Returns the evaluated value and call
 `f(entry, value)`.
 """
 function eval_examples(f, tags...; kw_args...)
-    examples2source(tags...; kw_args..., scope_start = "", scope_end = "") do entry, source
-        uname = entry.unique_name
-        tmpmod = eval(:(module $(gensym(uname)); end))
-        result = try
-            eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
-        catch e
-            Base.showerror(STDERR, e)
-            println(STDERR)
-            Base.show_backtrace(STDERR, Base.catch_backtrace())
-            println(STDERR)
-            println(STDERR, "failed to evaluate the example:")
-            println(STDERR, "```julia")
-            println(STDERR, source)
-            println(STDERR, "```")
-        end
+    enumerate_examples(tags...) do entry
+        result = eval_example(entry; kw_args...)
         try
             f(entry, result)
         catch e
