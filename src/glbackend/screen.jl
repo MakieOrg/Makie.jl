@@ -62,13 +62,17 @@ function Base.display(screen::Screen, scene::Scene)
 end
 
 function colorbuffer(screen::Screen)
-    GLFW.PollEvents()
-    yield()
-    render_frame(screen) # let it render
-    GLFW.SwapBuffers(to_native(screen))
-    glFinish() # block until opengl is done rendering
-    buffer = gpu_data(screen.framebuffer.color)
-    return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
+    if isopen(screen)
+        GLFW.PollEvents()
+        yield()
+        render_frame(screen) # let it render
+        GLFW.SwapBuffers(to_native(screen))
+        glFinish() # block until opengl is done rendering
+        buffer = gpu_data(screen.framebuffer.color)
+        return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
+    else
+        error("Screen not open!")
+    end
 end
 
 
@@ -106,7 +110,13 @@ function rewrap(robj::RenderObject{Pre}) where Pre
         robj.boundingbox,
     )
 end
+function GLAbstraction.native_switch_context!(x::GLFW.Window)
+    GLFW.MakeContextCurrent(x)
+end
 
+function GLAbstraction.native_context_active(x::GLFW.Window)
+    isopen(x)
+end
 function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
@@ -132,14 +142,13 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     )
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
-    GLAbstraction.new_context()
+    GLAbstraction.switch_context!(window)
     GLAbstraction.empty_shader_cache!()
     # else
     #     # share OpenGL Context
     #     create_glcontext("Makie"; parent = first(gl_screens), kw_args...)
     # end
     push!(gl_screens, window)
-    GLFW.MakeContextCurrent(window)
     if visible
         GLFW.ShowWindow(window)
     else

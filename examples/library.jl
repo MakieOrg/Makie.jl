@@ -119,7 +119,7 @@ using Makie
         heatmap(rand(32, 32))
     end
 
-    @cell "Animated Scatter" [animated, scatter, updating] begin
+    @cell "Animated Scatter" [animated, scatter, updating, record] begin
         N = 10
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
@@ -136,7 +136,7 @@ using Makie
             position = (300, 200),
             align = (:center,  :center),
             textsize = 60,
-            font = "Black Chancery"
+            font = "Blackchancery"
         )
     end
 
@@ -192,7 +192,7 @@ end
 
         tstyle[:textsize] = 10
         tstyle[:textcolor] = (:red, :green, :black)
-        tstyle[:font] = "Palatino"
+        tstyle[:font] = "helvetica"
 
 
         psurf[:colormap] = :RdYlBu
@@ -203,7 +203,7 @@ end
             position = (wh[1] / 2.0, wh[2] - 20.0),
             align = (:center,  :center),
             textsize = 20,
-            font = "Palatino",
+            font = "helvetica",
             raw = :true
         )
         c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
@@ -275,7 +275,7 @@ end
         positions = decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
         scene = lines(linepos, linewidth = 0.1, color = :black)
-        scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
+        scatter!(scene, positions, strokewidth = 10, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
         scene
     end
     @cell "image scatter" [image, scatter] begin
@@ -291,10 +291,10 @@ end
     @cell "Simple meshscatter" [meshscatter] begin
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
-        meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.5)
+        meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.05)
     end
 
-    @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
+    @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video, record] begin
         scene = Scene();
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
@@ -347,6 +347,19 @@ end
         scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
     end
 
+    @cell "Merged color Mesh" [mesh, color] begin
+        using GeometryTypes
+        x = Vec3f0(0); baselen = 0.2f0; dirlen = 1f0
+        # create an array of differently colored boxes in the direction of the 3 axes
+        rectangles = [
+            (HyperRectangle(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBAf0(1,0,0,1)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBAf0(0,1,0,1)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBAf0(0,0,1,1))
+        ]
+        meshes = map(GLNormalMesh, rectangles)
+        mesh(merge(meshes))
+    end
+
     @cell "Moire" [lines, camera, update_cam!, rotate_cam!, linesegments, record, mp4] begin
         function cartesian(ll)
             return Point3f0(
@@ -394,7 +407,7 @@ end
 
     end
 
-    @cell "Line GIF" [lines, animated, gif, offset] begin
+    @cell "Line GIF" [lines, animated, gif, offset, record] begin
         us = linspace(0, 1, 100)
         scene = Scene()
         scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
@@ -515,7 +528,7 @@ end
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
-        sizesS = [rand(Point3f0) .* 0.5f0 for i = 1:length(positions)]
+        sizesS = [rand(Point3f0) .* 0.05f0 for i = 1:length(positions)]
         meshscatter(positions, color = colS, markersize = sizesS)
     end
 
@@ -527,7 +540,7 @@ end
         scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
     end
 
-    @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
+    @cell "Interaction" ["2d", scatter, linesegment, record] begin
         scene = Scene(@resolution)
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
@@ -544,14 +557,14 @@ end
         end
     end
 
-    @cell "VideoStream" ["3d", VideoStream, meshscatter, linesegment] begin
+    @cell "Record Video" ["3d", record, meshscatter, linesegment] begin
         scene = Scene()
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
         t = Node(Base.time()) # create a life signal
         limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
-        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.5)[end]
-        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.5)[end]
+        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.05)[end]
+        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.05)[end]
 
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
@@ -653,7 +666,7 @@ end
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
     end
-    @cell "Interaction with Mouse" [interactive, scatter, lines, marker] begin
+    @cell "Interaction with Mouse" [interactive, scatter, lines, marker, record] begin
         scene = Scene()
         r = linspace(0, 3, 4)
         cam2d!(scene)
