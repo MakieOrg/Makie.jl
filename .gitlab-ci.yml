@@ -23,10 +23,7 @@ stages:
     - julia -e "Pkg.init();
             symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
             Pkg.resolve();
-            Pkg.checkout(\"ModernGL\");
-            Pkg.build(\"ModernGL\");
             Pkg.checkout(\"AbstractPlotting\");
-            Pkg.checkout(\"FreeTypeAbstraction\", \"sd/fuzzy_search\");
             Pkg.build(\"$package\");
             Pkg.test(\"$package\"; coverage=true)"
   artifacts:
@@ -50,6 +47,7 @@ test:v0.6:
 
 coverage:
   stage: postprocess
+  allow_failure: true
   image: juliagpu/julia:v0.6-opengl
   dependencies:
     - test:v0.6
@@ -66,6 +64,7 @@ coverage:
 # TODO: create an unconditional `deploydocs`, and pick when to deploy in here.
 documentation:
   stage: postprocess
+  allow_failure: true
   image: juliagpu/julia:v0.6-opengl
   variables:
     DOCUMENTER_DEBUG: "true"
