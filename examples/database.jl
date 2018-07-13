@@ -517,6 +517,11 @@ function eval_examples(f, tags...; kw_args...)
             println(STDERR, source)
             println(STDERR, "```")
         end
-        f(entry, result)
+        try
+            f(entry, result)
+        catch e
+            warn("Calling $f failed with example: $(entry.title)")
+            rethrow(e)
+        end
     end
 end

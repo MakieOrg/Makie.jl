@@ -154,11 +154,11 @@ end
 function get_shader!(path, template_replacement, view, attributes)
     # this should always be in here, since we already have the template keys
     shader_dict = _shader_cache[path]
-    get!(shader_dict, template_replacement) do
-        template_source = readstring(path)
-        source = mustache_replace(template_replacement, template_source)
-        compile_shader(path, source)::Shader
-    end::Shader
+    # get!(shader_dict, template_replacement) do
+    template_source = readstring(path)
+    source = mustache_replace(template_replacement, template_source)
+    compile_shader(path, source)
+    # end::Shader
 end
 function get_template!(path, view, attributes)
     get!(_template_cache, path) do
@@ -254,9 +254,7 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
         template_keys[i] = template
         replacements[i] = String[mustache2replacement(t, v, data) for t in template]
     end
-    println(paths)
-    println(replacements)
-    program = get!(_program_cache, (paths, replacements)) do
+    # program = get!(_program_cache, (paths, replacements)) do
         # when we're here, this means there were uncached shaders, meaning we definitely have
         # to compile a new program
         shaders = Vector{Shader}(length(paths))
@@ -264,8 +262,8 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
             tr = Dict(zip(template_keys[i], replacements[i]))
             shaders[i] = get_shader!(path, tr, v, data)
         end
-        compile_program(shaders, fragdatalocation)
-    end
+        program = compile_program(shaders, fragdatalocation)
+    # end
 end
 
 

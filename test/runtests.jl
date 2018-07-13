@@ -13,8 +13,9 @@ isdir(refpath) || mkpath(refpath)
 
 function toimages(f, example, x::Scene, record)
     image = Makie.scene2image(x)
-    if record
-        FileIO.save(joinpath(refpath, "$(example.unique_name).jpg"), image)
+    rpath = joinpath(refpath, "$(example.unique_name).jpg")
+    if record || !isfile(rpath)
+        FileIO.save(rpath, image)
     else
         refimage = FileIO.load(joinpath(refpath, "$(example.unique_name).jpg"))
         f(image, refimage)
@@ -23,9 +24,9 @@ end
 
 function toimages(f, example, path::String, record)
     isfile(path) || error("Not a file: $path")
-    if record
-        filepath, ext = splitext(path)
-        rpath = joinpath(refpath, basename(filepath))
+    filepath, ext = splitext(path)
+    rpath = joinpath(refpath, basename(filepath))
+    if record || !isdir(rpath)
         isdir(rpath) || mkpath(rpath)
         run(`ffmpeg -loglevel quiet -i $path -vf fps=1 -y $rpath\\frames%04d.jpg`)
     else
@@ -56,10 +57,11 @@ function approx_difference(
     d = Images.sad(Af, Bf)
     return d / (length(Af) * diffscale)
 end
-function test_examples(record = false)
+
+function test_examples(record, tags...)
     srand(42)
     @testset "Visual Regression" begin
-        eval_examples(replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+        eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
             sigma = [1,1]; eps = 0.02
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
@@ -70,6 +72,7 @@ function test_examples(record = false)
                     @test diff < 0.07
                 end
             end
+            AbstractPlotting.set_theme!(resolution = (500, 500))
         end
     end
 end
@@ -78,3 +81,37 @@ isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(false)
+
+# function test_examples(record = false)
+#     srand(42)
+#     @testset "Cairo" begin
+#         eval_examples("2d", replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+#             sigma = [1,1]; eps = 0.02
+#             toimages(example, value, record) do image, refimage
+#                 @testset "$(example.title):" begin
+#                     diff = approx_difference(image, refimage, sigma, eps)
+#                     if diff >= 0.07
+#                         save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
+#                     end
+#                     @test diff < 0.07
+#                 end
+#             end
+#         end
+#     end
+# end
+
+# cairo_unsupported = (:surface, :volume, :heatmap)
+#
+# eval_examples("2d", replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+#     if example.tags
+#     sigma = [1,1]; eps = 0.02
+#     toimages(example, value, record) do image, refimage
+#         @testset "$(example.title):" begin
+#             diff = approx_difference(image, refimage, sigma, eps)
+#             if diff >= 0.07
+#                 save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
+#             end
+#             @test diff < 0.07
+#         end
+#     end
+# end
