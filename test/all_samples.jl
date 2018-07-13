@@ -1,41 +1,3 @@
-using Makie
-new_theme = Theme(
-    linewidth = 3,
-    colormap = :RdYlGn,
-    color = :red,
-    scatter = Theme(
-        marker = '⊝',
-        markersize = 0.03,
-        strokecolor = :black,
-        strokewidth = 0.1,
-    ),
-)
-AbstractPlotting.set_theme!(new_theme)
-scene2 = scatter(rand(100), rand(100))
-new_theme[:color] = :blue
-new_theme[:scatter, :marker] = '◍'
-new_theme[:scatter, :markersize] = 0.05
-new_theme[:scatter, :strokewidth] = 0.1
-new_theme[:scatter, :strokecolor] = :green
-scene2 = scatter(rand(100), rand(100))
-scene2[end][:marker] = 'π'
-
-r = linspace(-0.5pi, pi + pi/4, 100)
-AbstractPlotting.set_theme!(new_theme)
-scene = surface(r, r, (x, y)-> sin(2x) + cos(2y))
-scene[end][:colormap] = :PuOr
-scene
-surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
-AbstractPlotting.set_theme!()
-scene = surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
-
-
-#cell
-using Makie
-img = Makie.logo()
-scene1 = image(0..1, 0..1, img)
-
-scene2 = scatter(rand(100), rand(100))
 
 
 
@@ -166,3 +128,113 @@ for p in plots
     push!(main, p)
     translate!(p, rand()*3, rand()*3, rand()*3)
 end
+
+
+using Makie, GeometryTypes
+scene = Scene()
+ui = Scene(scene, lift(x-> IRect(0, 0, widths(x)[1], 100), pixelarea(scene)))
+plots = Scene(scene, lift(x-> IRect(0, 100, widths(x) .- Vec(0, 100)), pixelarea(scene)))
+campixel!(ui)
+s1 = slider!(ui, 1:10, raw = true)[end]
+s2 = slider!(ui, 1:10, raw = true)[end]
+s3 = slider!(ui, linspace(0, 1, 100), raw = true)[end]
+AbstractPlotting.vbox(s1, s2, s3)
+heatmap!(plots, rand(100, 100))
+scene
+
+@inline function collide(p, bounds)
+    mini = p .<= minimum(bounds)
+    any(mini) && return true, normalize(Point3f0(mini))
+    maxi = p .>= maximum(bounds)
+    any(maxi) && return true, normalize(-Point3f0(maxi))
+    false, p
+end
+
+@inline function particle_inner(posj, posi, vel)
+    d = posj - posi
+    distsq = dot(d, d) + 1f0
+    vel .+ (reverse(d)/distsq)
+end
+
+function solve_particles!(
+        positions::AbstractVector{P}, velocity::AbstractVector, bounds, dt::T = T(0.01)
+    ) where P <: Point{N, T} where {N, T}
+    @inbounds for i in eachindex(positions)
+        vel = velocity[i]
+        posi = positions[i]
+        for j in eachindex(positions)
+            posj = positions[j]
+            d = posj .- posi
+            distsq = dot(d, d) + T(1)
+            vel = vel .+ (d ./ distsq)
+            any(x-> abs(x) > T(0.8), vel) && break # restrict velocity
+        end
+        col, normal = collide(posi, bounds)
+        if col
+            vel = -2f0 * (dot(vel, normal) * normal + vel)
+        end
+        velocity[i] = vel
+        positions[i] = posi .+ dt*vel
+    end
+    return
+end
+
+
+startpositions(N::Integer, radius::T, n) where T = startpositions(Val{N}(), radius, n)
+function startpositions(::Val{N}, radius::T, n) where {N, T}
+    sphere = HyperSphere(Point{N, T}(0), T(radius))
+    n = N == 3 ? floor(Int, sqrt(n)) : n # n must be n^2 for 3D Sphere
+    pos = decompose(Point{N, T}, sphere, n)
+    map!(pos, pos) do p
+        p .+ ((rand(Point{N, T}) .- 0.5) .* radius * T(0.1))
+    end
+end
+using GeometryTypes
+FRect3D = HyperRectangle
+bounds = FRect3D(Vec3f0(-1), Vec3f0(2))
+N = 3; T = Float32; n = 10^5
+positions = startpositions(N, T(0.5), n)
+velocities = rand(Point3f0, length(positions))
+
+using Makie
+scene = scatter(positions, markersize = 0.006, color = norm.(velocities))
+particles = scene[end]
+linesegments!(scene, bounds)
+display(Makie.global_gl_screen(), scene)
+
+@async while isopen(scene)
+    @time solve_particles!(positions, velocities, bounds)
+    particles[1] = positions
+    sleep(1/60)
+end
+# keep_runnin[] = true
+scene
+velocities
+solve_particles2!(positions, velocities, bounds, 0.1f0)
+
+Profile.print()
+any.(x-> abs(x) > T(0.8), velocities)
+
+
+using Makie
+import RDatasets
+singers = RDatasets.dataset("lattice","singer")
+
+keys = unique(singers[:VoicePart])
+map(typeof, singers[:VoicePart])
+findfirst
+first(keys) == first(singers[:VoicePart])
+findfirst(keys, first(singers[:VoicePart]))
+
+x = map(x-> findfirst(keys, x), singers[:VoicePart])
+
+box(x, singers[:Height])
+
+
+scene = Scene()
+cam2d!(scene)
+axis2d!(scene, ((-3, 4), (3, 8)))
+center!(scene)
+scene
+@which AbstractPlotting.plots_from_camera(scene)
+@which boundingbox()

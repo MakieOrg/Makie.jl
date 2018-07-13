@@ -171,8 +171,10 @@ function global_gl_screen()
     end
 end
 
+# TODO per scene screen
+getscreen(scene) = global_gl_screen()
 
-function pick_native(scene::Scene, xy::VecTypes{2}, sid = Base.RefValue{SelectionID{UInt16}}())
+function pick_native(scene::SceneLike, xy::VecTypes{2}, sid = Base.RefValue{SelectionID{UInt16}}())
     screen = getscreen(scene)
     screen == nothing && return SelectionID{Int}(0, 0)
     window_size = widths(screen)
@@ -189,9 +191,9 @@ function pick_native(scene::Scene, xy::VecTypes{2}, sid = Base.RefValue{Selectio
     return SelectionID{Int}(0, 0)
 end
 
-pick(scene::Scene, xy...) = pick(scene, Float64.(xy))
+pick(scene::SceneLike, xy...) = pick(scene, Float64.(xy))
 
-function pick(scene::Scene, xy::VecTypes{2})
+function pick(scene::SceneLike, xy::VecTypes{2})
     sid = pick_native(scene, xy)
     screen = getscreen(scene)
     if screen != nothing && haskey(screen.cache2plot, sid.id)
@@ -203,7 +205,7 @@ end
 
 # TODO does this actually needs to be a global?
 const _mouse_selection_id = Base.RefValue{SelectionID{UInt16}}()
-function mouse_selection_native(scene::Scene)
+function mouse_selection_native(scene::SceneLike)
     function query_mouse()
         screen = getscreen(scene)
         screen == nothing && return SelectionID{Int}(0, 0)
@@ -211,7 +213,7 @@ function mouse_selection_native(scene::Scene)
         fb = screen.framebuffer
         buff = fb.objectid
         glReadBuffer(GL_COLOR_ATTACHMENT1)
-        xy = scene.events.mouseposition[]
+        xy = events(scene).mouseposition[]
         x, y = Int.(floor.(xy))
         w, h = window_size
         if x > 0 && y > 0 && x <= w && y <= h
@@ -224,7 +226,7 @@ function mouse_selection_native(scene::Scene)
     end
     convert(SelectionID{Int}, _mouse_selection_id[])
 end
-function mouse_selection(scene::Scene)
+function mouse_selection(scene::SceneLike)
     sid = mouse_selection_native(scene)
     screen = getscreen(scene)
     if screen != nothing && haskey(screen.cache2plot, sid.id)
@@ -233,13 +235,13 @@ function mouse_selection(scene::Scene)
     end
     return (nothing, 0)
 end
-function mouseover(scene::Scene, plots::AbstractPlot...)
+function mouseover(scene::SceneLike, plots::AbstractPlot...)
     p, idx = mouse_selection(scene)
     p in plots
 end
 
-function onpick(f, scene::Scene, plots::AbstractPlot...)
-    map_once(scene.events.mouseposition) do mp
+function onpick(f, scene::SceneLike, plots::AbstractPlot...)
+    map_once(events(scene).mouseposition) do mp
         p, idx = mouse_selection(scene, mp)
         (p in plots) && f(idx)
         return
