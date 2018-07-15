@@ -233,6 +233,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
             elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
                 get!(gl_attributes, :color, c)
                 m
+            elseif isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
+                m
             else
                 HomogenousMesh(GLNormalMesh(m), Dict{Symbol, Any}(:color => c))
             end

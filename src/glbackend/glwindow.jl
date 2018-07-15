@@ -68,8 +68,35 @@ function reactive_run_till_now()
         yield()
     end
 end
+
+function was_destroyed(nw)
+    if isdefined(GLFW, :_window_callbacks)
+        !haskey(GLFW._window_callbacks, nw)
+    elseif !isimmutable(nw)
+        nw.handle == C_NULL
+    else
+        error("Unknown GLFW.jl version. Can't verify if window is destroyed")
+    end
+end
+
+function destroy!(nw::GLFW.Window)
+    if nw.handle != C_NULL
+        was_destroyed(nw) || GLFW.DestroyWindow(nw)
+        # GLFW.jl compat - newer versions are immutable and don't need to be set to C_NULL
+        if !isimmutable(nw)
+            nw.handle = C_NULL
+        end
+    end
+end
+
 function Base.isopen(window::GLFW.Window)
     was_destroyed(window) && return false
     window.handle == C_NULL && return false
-    !GLFW.WindowShouldClose(window)
+    try
+        !GLFW.WindowShouldClose(window)
+    catch e
+        # can't be open if GLFW is already terminated
+        e.code == GLFW.NOT_INITIALIZED && return false
+        rethrow(e)
+    end
 end
