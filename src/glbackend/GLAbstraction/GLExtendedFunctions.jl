@@ -146,18 +146,18 @@ function glDeleteTextures(id::GLuint)
   glDeleteTextures(1, arr)
 end
 function glDeleteVertexArrays(id::GLuint)
-  arr = [id]
-  glDeleteVertexArrays(1, arr)
+    arr = [id]
+    glDeleteVertexArrays(1, arr)
 end
 function glDeleteBuffers(id::GLuint)
-  arr = [id]
-  glDeleteBuffers(1, arr)
+    arr = [id]
+    glDeleteBuffers(1, arr)
 end
 
 function glGetTexLevelParameteriv(target::GLenum, level, name::GLenum)
-  result = GLint[0]
-  glGetTexLevelParameteriv(target, level, name, result)
-  result[1]
+    result = GLint[0]
+    glGetTexLevelParameteriv(target, level, name, result)
+    result[1]
 end
 
 glViewport(x::SimpleRectangle) = glViewport(x.x, x.y, x.w, x.h)
