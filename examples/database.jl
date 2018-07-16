@@ -12,6 +12,20 @@ struct CellEntry
     groupid::Int
 end
 
+function Base.merge(x::Vector{CellEntry})
+    e1 = first(x)
+    CellEntry(
+        e1.author,
+        e1.title,
+        e1.unique_name,
+        unique(map(x-> x.tags, x)),
+        e1.file,
+        e1.file_range,
+        join(map(x-> x.toplevel, x), "\n"),
+        join(map(x-> x.source, x), "\n"),
+        NO_GROUP
+    )
+end
 isgroup(x::CellEntry) = x.groupid != NO_GROUP
 
 # overload Base.show to show output of CellEntry
@@ -95,18 +109,18 @@ print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults 
 
 
 """
-    find_indices(input_tags...; title = nothing, author = nothing)
+    find_indices(input_tags...; title = nothing, author = nothing, match_all = true)
 
 Returns the indices for the entries in examples database that match the input
 search pattern.
 
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
+`match_all` specifies if the result has to match all input tags, or just any.
 """
-function find_indices(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
+function find_indices(input_tags::NTuple{N, String}; title = nothing, author = nothing, match::Function = all) where N # --> return an array of cell entries
     indices = find(database) do entry
-        # find tags
-        tags_found = all(tags -> string(tags) in entry.tags, input_tags)
+        tags_found = match(tags -> tags in entry.tags, input_tags)
         # find author, if nothing input is given, then don't filter
         author_found = (author == nothing) || (entry.author == string(author))
         # find title, if nothing input is given, then don't filter
@@ -114,28 +128,40 @@ function find_indices(input_tags...; title = nothing, author = nothing) # --> re
         # boolean to return the result
         tags_found && author_found && title_found
     end
+    if isempty(indices)
+        warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
+        indices
+    else
+        indices
+    end
 end
 
-find_indices(input::Function; title = nothing, author = nothing) = find_indices(to_string(input); title = title, author = author)
-find_indices(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = find_indices(to_string.(input)...; title = title, author = author)
+find_indices(input::Function; title = nothing, author = nothing, match_all::Bool = true) = find_indices(to_string(input); title = title, author = author, match_all = match_all)
+find_indices(input::Vararg{Function,N}; title = nothing, author = nothing, match_all::Bool = true) where {N} = find_indices(to_string.(input)...; title = title, author = author, match_all = match_all)
 
 
 
 """
-    example_database(input_tags...; title = nothing, author = nothing)
+    example_database(input_tags...; title = nothing, author = nothing, match_all = true)
 
 Returns the entries in examples database that match the input search pattern.
 
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
+`match_all` specifies if the result has to match all input tags, or just any.
 """
-function example_database(input_tags...; title = nothing, author = nothing) # --> return an array of cell entries
-    indices = find_indices(input_tags...; title = title, author = author)
-    database[indices]
+function example_database(tags::NTuple{N, String}; kw_args...) where N # --> return an array of cell entries
+    indices = find_indices(tags; kw_args...)
+    if !isempty(indices)
+        database[indices]
+    end
+end
+function example_database(input_tags::Union{Symbol, String}...; kw_args...) # --> return an array of cell entries
+    example_database(string.(input_tags); kw_args...)
 end
 
-example_database(input::Function; title = nothing, author = nothing) = example_database(to_string(input); title = title, author = author)
-example_database(input::Vararg{Function,N}; title = nothing, author = nothing) where {N} = example_database(to_string.(input)...; title = title, author = author)
+example_database(input::Function; kw_args...) = example_database((to_string(input),); kw_args...)
+example_database(a::Function, rest::Function...; kw_args...) = example_database(to_string.((a, rest...,)); kw_args...)
 
 database = CellEntry[]
 tags_list = []
@@ -164,47 +190,37 @@ Prints the source of an entry in the database at `idx`.
 This puts entries of a group into one local scope
 """
 function print_code(
-        io, database, idx;
+        io, entry;
         scope_start = "begin\n",
         scope_end = "end\n",
         indent = " "^4,
+        replace_nframes = false,
         resolution = (entry)-> "resolution = (500, 500)",
         outputfile = (entry, ending)-> "./docs/media/" * string(entry.unique_name, ending)
     )
-    entry = database[idx]
-    groupid = entry.groupid
-    if entry.groupid != NO_GROUP
-        idx = findprev(x-> x.groupid != groupid, database, idx) + 1
-    end
-    group = [entry]
-    while groupid != NO_GROUP && entry.groupid == groupid
-        idx += 1
-        done(database, idx) && break
-        entry = database[idx]
-        push!(group, entry)
-    end
-    foreach(entry-> (println(io, "using Makie"); println(io, entry.toplevel)), group)
+    println(io, "using Makie")
+    println(io, entry.toplevel)
     print(io, scope_start)
-    for entry in group
-        for line in split(entry.source, "\n")
-            line = replace(line, "@resolution", resolution(entry))
-            filematch = match(r"(@outputfile)(\(.+?\))?" , line)
-            if filematch != nothing
-                ending = filematch.captures[2]
-                replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
-                @show replacement entry.unique_name
-                line = replace(
-                    line, r"(@outputfile)(\(.+?\))?",
-                    string('"', escape_string(replacement), '"')
-                )
-            end
-            println(io, indent, line)
+    for line in split(entry.source, "\n")
+        line = replace(line, "@resolution", resolution(entry))
+        filematch = match(r"(@outputfile)(\(.+?\))?" , line)
+        if filematch != nothing
+            ending = filematch.captures[2]
+            replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
+            line = replace(
+                line, r"(@outputfile)(\(.+?\))?",
+                string('"', escape_string(replacement), '"')
+            )
         end
+        if replace_nframes
+            line = replace(line, r"(record\(.*)N(.*\) do .*)", s"\1 10 \2")
+        end
+        println(io, indent, line)
     end
     print(io, scope_end)
-    idx + 1
+    return
 end
-
+@which replace("test", r"lol", s"lal", 0)
 
 function extract_tags(expr)
     if !any(x-> isa(x, String) || isa(x, Symbol), expr.args) || expr.head != :vect
@@ -441,4 +457,80 @@ const output_fallback = joinpath(mktempdir(), "test.")
 macro outputfile(ending = :mp4)
     # only for marking
     string(output_fallback, ending)
+end
+
+"""
+Walks through every example matching `tags`, and calls f on the example.
+Merges groups of examples into one example entry.
+"""
+function enumerate_examples(f, tags...)
+    sort!(database, by = (x)-> x.groupid)
+    group_tmp = CellEntry[]
+    last_id = NO_GROUP
+    for entry in database
+        all(x-> string(x) in entry.tags, tags) || continue
+        if last_id != NO_GROUP && (entry.groupid != last_id)
+            last_id = entry.groupid # if already NO_GROUP, we set it to NO_GROUP
+            if !isempty(group_tmp)
+                f(merge(group_tmp))
+                empty!(group_tmp)
+            end
+        elseif last_id != NO_GROUP && last_id == entry.groupid
+            push!(group_tmp, entry)
+        else
+            f(entry)
+        end
+    end
+    return
+end
+
+
+
+example2source(entry; kw_args...) = sprint(io-> print_code(io, entry; kw_args...))
+
+"""
+Walks through all examples matching tags and calls `f(entry, source)`, with
+source being the source of the example as a string
+"""
+function examples2source(f, tags...; kw_args...)
+    enumerate_examples(tags...) do entry
+        f(entry, example2source(entry; kw_args...))
+    end
+end
+
+
+function eval_example(entry; kw_args...)
+    source = example2source(entry; kw_args..., scope_start = "", scope_end = "")
+    uname = entry.unique_name
+    tmpmod = Module(gensym(uname))
+    result = nothing
+    try
+        result = eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
+    catch e
+        Base.showerror(STDERR, e)
+        println(STDERR)
+        Base.show_backtrace(STDERR, Base.catch_backtrace())
+        println(STDERR)
+        println(STDERR, "failed to evaluate the example:")
+        println(STDERR, "```julia")
+        println(STDERR, source)
+        println(STDERR, "```")
+    end
+    result
+end
+
+"""
+Walks through examples and evalueates them. Returns the evaluated value and calls
+`f(entry, value)`.
+"""
+function eval_examples(f, tags...; kw_args...)
+    enumerate_examples(tags...) do entry
+        result = eval_example(entry; kw_args...)
+        try
+            f(entry, result)
+        catch e
+            warn("Calling $f failed with example: $(entry.title)")
+            rethrow(e)
+        end
+    end
 end

@@ -3,26 +3,40 @@ using ModernGL, GLFW, FixedPointNumbers
 include("GLAbstraction/GLAbstraction.jl")
 using .GLAbstraction
 
-const atlas_texture_cache = RefValue{Texture{Float16, 2}}()
+const atlas_texture_cache = Dict{GLAbstraction.AbstractContext, Tuple{Texture{Float16, 2}, Function}}()
 
 function get_texture!(atlas)
-     if isassigned(atlas_texture_cache) && GLAbstraction.is_current_context(atlas_texture_cache[].context)
-         atlas_texture_cache[]
-     else
+    # clean up dead context!
+    filter!(atlas_texture_cache) do ctx, tex_func
+        if !GLAbstraction.is_context_active(ctx)
+            AbstractPlotting.remove_font_render_callback!(tex_func[2])
+            false
+        else
+            true
+        end
+    end
+    tex, func = get!(atlas_texture_cache, GLAbstraction.current_context()) do
          tex = Texture(
              atlas.data,
              minfilter = :linear,
              magfilter = :linear,
              anisotropic = 16f0,
          )
-         atlas_texture_cache[] = tex
          empty!(AbstractPlotting.font_render_callbacks)
          # update the texture, whenever a new font is added to the atlas
-         AbstractPlotting.font_render_callback!() do distance_field, rectangle
-             tex[rectangle] = distance_field
+         function callback(distance_field, rectangle)
+             ctx = tex.context
+             if GLAbstraction.is_context_active(ctx)
+                 prev_ctx = GLAbstraction.current_context()
+                 GLAbstraction.set_context!(ctx)
+                 tex[rectangle] = distance_field
+                 GLAbstraction.set_context!(prev_ctx)
+             end
          end
-         return tex
+         AbstractPlotting.font_render_callback!(callback)
+         return (tex, callback)
      end
+     tex
  end
 
 

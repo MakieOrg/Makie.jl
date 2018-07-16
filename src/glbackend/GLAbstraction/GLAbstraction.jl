@@ -49,7 +49,7 @@ import ModernGL.glViewport
 import ModernGL.glScissor
 
 include("composition.jl")
-export Composable, Context, convert!, boundingbox
+export Composable, Composition, convert!, boundingbox
 
 
 include("GLUtils.jl")
@@ -60,7 +60,12 @@ export close_to_square
 export AND, OR, isnotempty
 
 include("GLTypes.jl")
-export GLProgram                # Shader/program object
+include("buffer.jl")
+include("texture.jl")
+include("framebuffer.jl")
+export FrameBuffer
+export AbstractContext
+export Program                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
 export TextureParameters
 export TextureBuffer            # OpenGL texture buffer
@@ -74,8 +79,8 @@ export std_renderobject            # creates a renderobject with standard parame
 export instanced_renderobject    # simplification for creating a RenderObject which renders instances
 export extract_renderable
 export set_arg!
-export GLVertexArray            # VertexArray wrapper object
-export GLBuffer                 # OpenGL Buffer object wrapper
+export VertexArray            # VertexArray wrapper object
+export Buffer                 # OpenGL Buffer object wrapper
 export indexbuffer              # Shortcut to create an OpenGL Buffer object for indexes (1D, cardinality of one and GL_ELEMENT_ARRAY_BUFFER set)
 export opengl_compatible        # infers if a type is opengl compatible and returns stats like cardinality and eltype (will be deprecated)
 export cardinality              # returns the cardinality of the elements of a buffer
@@ -90,6 +95,8 @@ export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
 include("GLExtendedFunctions.jl")
 export glTexImage # Julian wrapper for glTexImage1D, glTexImage2D, glTexImage3D
 include("GLShader.jl")
+include("vertexarray.jl")
+include("renderobject.jl")
 export Shader                 #Shader Type
 export readshader             #reads a shader
 export glsl_variable_access # creates access string from julia variable for the use in glsl shaders
@@ -109,15 +116,17 @@ export toglsltype_string        # infers a glsl type string from a julia type. E
 export gl_convert
 
 
-include("GLRender.jl")
+include("render.jl")
 export render  #renders arbitrary objects
 export enabletransparency # can be pushed to an renderobject, enables transparency
-export renderinstanced # renders objects instanced
 
 include("GLInfo.jl")
 export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
+
+include("renderpass.jl")
+include("pipeline.jl")
 
 dir(dirs...) = joinpath(dirname(@__FILE__), "..", dirs...)
 

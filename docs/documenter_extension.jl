@@ -69,7 +69,7 @@ Generates a MD-formatted string for embedding video into Markdown files
 function embed_video(relapath::AbstractString)
     return str = """
         ```@raw html
-        <video controls autoplay>
+        <video controls autoplay loop muted>
           <source src="$(relapath)" type="video/mp4">
           Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
         </video>
@@ -79,12 +79,16 @@ end
 
 
 """
-    embed_thumbnail(func::Function)
+    embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
 
 Insert thumbnails matching a search tag.
 """
-function embed_thumbnail(io::IO, func::Function)
+function embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
     indices = find_indices(func)
+    !ispath(currpath) && warn("currepath does not exist!")
+    # if isempty(atomicspath) || !ispath(atomicspath)
+    #     atomicspath = joinpath(srcpath, "atomics_examples")
+    # end
     # namesdict = Dict(database[idx].unique_name => database[idx].title for idx in indices)
     for idx in indices
         uname = database[idx].unique_name
@@ -93,12 +97,12 @@ function embed_thumbnail(io::IO, func::Function)
         testpath1 = joinpath(mediapath, "thumb-$uname.png")
         testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
         if isfile(testpath1)
-            embedpath = relpath(testpath1, atomicspath)
+            embedpath = relpath(testpath1, currpath)
             println(io, "![]($(embedpath))")
             # [![Alt text](/path/to/img.jpg)](http://example.net/)
             # println(io, "[![$title]($(embedpath))](@ref)")
         elseif isfile(testpath2)
-            embedpath = relpath(testpath2, atomicspath)
+            embedpath = relpath(testpath2, currpath)
             println(io, "![]($(embedpath))")
             # println(io, "[![$title]($(embedpath))](@ref)")
         else
@@ -106,5 +110,124 @@ function embed_thumbnail(io::IO, func::Function)
             embedpath = "not_found"
         end
         embedpath = []
+    end
+end
+
+embed_thumbnail(io::IO, func::Function) = embed_thumbnail(io::IO, func::Function, atomicspath)
+
+
+"""
+    embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
+
+Insert thumbnails matching a search tag.
+"""
+function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
+    indices = find_indices(func)
+    !ispath(currpath) && warn("currepath does not exist!")
+    !ispath(tarpath) && warn("tarpath does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
+    for idx in indices
+        entry = database[idx]
+        uname = entry.unique_name
+        title = entry.title
+        src_lines = entry.file_range
+        # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+        testpath1 = joinpath(mediapath, "thumb-$uname.png")
+        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+        link = relpath(tarpath, currpath)
+        if isfile(testpath1)
+            embedpath = relpath(testpath1, currpath)
+            println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
+        elseif isfile(testpath2)
+            embedpath = relpath(testpath2, currpath)
+            println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
+        else
+            warn("thumbnail for index $idx with uname $uname not found")
+            embedpath = "not_found"
+        end
+        embedpath = []
+    end
+end
+
+# embed_thumbnail_link(io::IO, func::Function) = embed_thumbnail_link(io::IO, func::Function, atomicspath)
+
+
+"""
+    embed_plot(io::IO, uname::AbstractString, mediapath::AbstractString, buildpath::AbstractString)
+
+Outputs markdown code for embedding plots in `Documenter.jl`.
+"""
+function embed_plot(
+        io::IO,
+        uname::AbstractString,
+        mediapath::AbstractString,
+        buildpath::AbstractString;
+        src_lines::Range = nothing
+    )
+    isa(uname, AbstractString) ? nothing : error("uname must be a string!")
+    isa(mediapath, AbstractString) ? nothing : error("mediapath must be a string!")
+    isa(buildpath, AbstractString) ? nothing : error("buildpath must be a string!")
+    medialist = readdir(mediapath)
+    if "$(uname).png" in medialist
+        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+        println(io, "![library lines $(src_lines)]($(embedpath))")
+    elseif "$(uname).gif" in medialist
+        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
+        println(io, "![library lines $(src_lines)]($(embedpath))")
+    elseif "$(uname).mp4" in medialist
+        embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
+        println(io, embedcode)
+    else
+        warn("file $(uname) with unknown extension in mediapath, or file nonexistent")
+    end
+    print(io, "\n")
+end
+
+
+"""
+    print_table(io::IO, dict::Dict)
+
+Print a Markdown-formatted table with the entries from `dict` to specified `io`.
+"""
+function print_table(io::IO, dict::Dict)
+    # get max length of the keys
+    k = string.("`", collect(keys(attr_desc)), "`")
+    maxlen_k = max(length.(k)...)
+
+    # get max length of the values
+    v = string.(collect(values(attr_desc)))
+    maxlen_v = max(length.(v)...)
+
+    j = sort(collect(attr_desc), by = x -> x[1])
+
+    # column labels
+    labels = ["Symbol", "Description"]
+
+    # print top header
+    print(io, "|")
+    print(io, "$(labels[1])")
+    print(io, " "^(maxlen_k - length(labels[1])))
+    print(io, "|")
+    print(io, "$(labels[2])")
+    print(io, " "^(maxlen_v - length(labels[2])))
+    print(io, "|")
+    print(io, "\n")
+
+    # print second line (toprule)
+    print(io, "|")
+    print(io, "-"^maxlen_k)
+    print(io, "|")
+    print(io, "-"^maxlen_v)
+    print(io, "|")
+    print(io, "\n")
+
+    for (idx, entry) in enumerate(j)
+        print(io, "|")
+        print(io, "`$(entry[1])`")
+        print(io, " "^(maxlen_k - length(string(entry[1])) - 2))
+        print(io, "|")
+        print(io, "$(entry[2])")
+        print(io, " "^(maxlen_v - length(entry[2])))
+        print(io, "|")
+        print(io, "\n")
     end
 end

@@ -66,6 +66,14 @@ using Makie
             shading = false
         )
     end
+    @cell "heatmap interpolation" [heatmap, interpolate] begin
+        p1 = heatmap(rand(100, 100), interpolate = true)
+        p2 = heatmap(rand(100, 100), interpolate = false)
+        scene = AbstractPlotting.vbox(p1, p2)
+        text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        scene
+    end
     @cell "colored triangle" [polygon] begin
         poly(
             [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
@@ -73,32 +81,25 @@ using Makie
             linecolor = :black, linewidth = 2
         )
     end
-    # @cell "Subscenes" [image, scatter, subscene] begin
-    #
-    #     scene = Scene(@resolution)
-    #     # # TODO: had to use Makie.loadasset
-    #     # img = rand(RGBAf0, 100, 100)
-    #     # scene = Scene(@resolution)
-    #     # # TODO: fails here with ERROR: MethodError: no method matching isless(::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}}, ::ColorTypes.RGBA{FixedPointNumbers.Normed{UInt8,8}})
-    #     # is = image(img)
-    #     # center!(scene)
-    #     # # TODO: had to do Makie.Signal
-    #     # subscene = Scene(scene, Node(Makie.SimpleRectangle(0, 0, 200, 200)))
-    #     # scatter(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
-    #     # center!(scene)
-    #     # scene
-    # end
+    @cell "Subscenes" [image, scatter, subscene] begin
+        img = rand(RGBAf0, 100, 100)
+        scene = image(img, show_axis = false)
+        subscene = Scene(scene, IRect(100, 100, 300, 300))
+        scatter!(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
+        scene
+    end
 
     @cell "Polygons" [poly, polygon, linesegments] begin
         using GeometryTypes
-        scene = Scene(@resolution)
+        scene = Scene(resolution = (500, 500))
         points = decompose(Point2f0, Circle(Point2f0(50), 50f0))
-        pol = poly!(scene, points, color = :gray, linewidth = 10, linecolor = :red)
+        pol = poly!(scene, points, color = :gray, strokewidth = 10, strokecolor = :red)
         # Optimized forms
-        poly!(scene, [Circle(Point2f0(50+i, 50+i), 10f0) for i = 1:100:400])
-        poly!(scene, [Rectangle{Float32}(50+i, 50+i, 20, 20) for i = 1:100:400], strokewidth = 10, strokecolor = :black)
+        poly!(scene, [Circle(Point2f0(50+300), 50f0)], color = :gray, strokewidth = 10, strokecolor = :red)
+        poly!(scene, [Circle(Point2f0(50+i, 50+i), 10f0) for i = 1:100:400], color = :red)
+        poly!(scene, [Rectangle{Float32}(50+i, 50+i, 20, 20) for i = 1:100:400], strokewidth = 2, strokecolor = :green)
         linesegments!(scene,
-            [Point2f0(50+i, 50+i) => Point2f0(i + 80, i + 80) for i = 1:100:400], linewidth = 8, color = :purple
+            [Point2f0(50 + i, 50 + i) => Point2f0(i + 70, i + 70) for i = 1:100:400], linewidth = 8, color = :purple
         )
     end
 
@@ -118,9 +119,8 @@ using Makie
         heatmap(rand(32, 32))
     end
 
-    @cell "Animated Scatter" [animated, scatter, updating] begin
-        scene = Scene(@resolution)
-        N = 50
+    @cell "Animated Scatter" [animated, scatter, updating, record] begin
+        N = 10
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
         s = scene[end] # last plot in scene
@@ -136,7 +136,7 @@ using Makie
             position = (300, 200),
             align = (:center,  :center),
             textsize = 60,
-            font = "URW Chancery L"
+            font = "Blackchancery"
         )
     end
 
@@ -179,9 +179,9 @@ end
         vy = -1:0.01:1
 
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
-
+        scene = Scene(resolution = (500, 500))
         # One way to style the axis is to pass a nested dictionary to it.
-        scene = surface(vx, vy, f, axis = NT(framestyle = NT(linewidth = 2.0)))
+        surface!(scene, vx, vy, f, axis = NT(framestyle = NT(linewidth = 2.0)))
         psurf = scene[end] # the surface we last plotted to scene
         # One can also directly get the axis object and manipulate it
         axis = scene[Axis] # get axis
@@ -192,7 +192,7 @@ end
 
         tstyle[:textsize] = 10
         tstyle[:textcolor] = (:red, :green, :black)
-        tstyle[:font] = "Palatino"
+        tstyle[:font] = "helvetica"
 
 
         psurf[:colormap] = :RdYlBu
@@ -203,7 +203,7 @@ end
             position = (wh[1] / 2.0, wh[2] - 20.0),
             align = (:center,  :center),
             textsize = 20,
-            font = "Palatino",
+            font = "helvetica",
             raw = :true
         )
         c = lines!(scene, Circle(Point2f0(0.1, 0.5), 0.1f0), color = :red, offset = Vec3f0(0, 0, 1))
@@ -275,7 +275,7 @@ end
         positions = decompose(Point3f0, large_sphere)
         linepos = view(positions, rand(1:length(positions), 1000))
         scene = lines(linepos, linewidth = 0.1, color = :black)
-        scatter!(scene, positions, strokewidth = 0.02, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
+        scatter!(scene, positions, strokewidth = 10, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
         scene
     end
     @cell "image scatter" [image, scatter] begin
@@ -291,11 +291,11 @@ end
     @cell "Simple meshscatter" [meshscatter] begin
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
-        meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.5)
+        meshscatter(positions, color = RGBAf0(0.9, 0.2, 0.4, 1), markersize = 0.05)
     end
 
-    @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video] begin
-        scene = Scene(@resolution)
+    @cell "Animated surface and wireframe" [wireframe, animated, surface, axis, video, record] begin
+        scene = Scene();
         function xy_data(x, y)
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
@@ -309,7 +309,8 @@ end
         wf = wireframe!(scene, r, r, Makie.lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        record(scene, @outputfile(mp4), linspace(5, 40, 100)) do i
+        N = 150
+        record(scene, @outputfile(mp4), linspace(5, 40, N)) do i
             surf[3] = surf_func(i)
         end
     end
@@ -327,10 +328,9 @@ end
         mesh(Sphere(Point3f0(0), 1f0), color = :blue)
     end
 
-    @cell "Stars" [scatter, glow, update_cam!] begin
+    @cell "Stars" [scatter, glow, update_cam!, camera] begin
         stars = 100_000
-        scene = Scene(@resolution)
-        scene.theme[:backgroundcolor] = RGBAf0(0, 0, 0, 1)
+        scene = Scene(backgroundcolor = :black)
         scatter!(
             scene,
             (rand(Point3f0, stars) .- 0.5) .* 10,
@@ -345,6 +345,19 @@ end
     @cell "Unicode Marker" [scatter, axis, marker] begin
         scene = Scene(@resolution)
         scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
+    end
+
+    @cell "Merged color Mesh" [mesh, color] begin
+        using GeometryTypes
+        x = Vec3f0(0); baselen = 0.2f0; dirlen = 1f0
+        # create an array of differently colored boxes in the direction of the 3 axes
+        rectangles = [
+            (HyperRectangle(Vec3f0(x), Vec3f0(dirlen, baselen, baselen)), RGBAf0(1,0,0,1)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, dirlen, baselen)), RGBAf0(0,1,0,1)),
+            (HyperRectangle(Vec3f0(x), Vec3f0(baselen, baselen, dirlen)), RGBAf0(0,0,1,1))
+        ]
+        meshes = map(GLNormalMesh, rectangles)
+        mesh(merge(meshes))
     end
 
     @cell "Moire" [lines, camera, update_cam!, rotate_cam!, linesegments, record, mp4] begin
@@ -372,28 +385,29 @@ end
             position
         end
         rings = [(0.1f0, 1.0f0, 0.00001f0, Point2f0(0.2, 0.1)), (0.1f0, 0.0f0, 0.0002f0, Point2f0(0.052, 0.05))]
-        N = 25000
-        t_audio = sin.(linspace(0, 10pi, N)) .+ (cos.(linspace(-3, 7pi, N)) .* 0.6) .+ (rand(Float32, N) .* 0.1) ./ 2f0
+        N2 = 25000
+        t_audio = sin.(linspace(0, 10pi, N2)) .+ (cos.(linspace(-3, 7pi, N2)) .* 0.6) .+ (rand(Float32, N2) .* 0.1) ./ 2f0
         start = time()
         t = (time() - start) * 100
-        pos = calcpositions.((rings,), 1:N, t, (t_audio,))
+        pos = calcpositions.((rings,), 1:N2, t, (t_audio,))
 
-        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N), 0.6), thickness = 0.6f0, show_axis = false)
+        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N2), 0.6), thickness = 0.6f0, show_axis = false)
         linesegments!(scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true, linewidth = 3, linestyle = :dot)
         eyepos = Vec3f0(5, 1.5, 0.5)
         lookat = Vec3f0(0)
         update_cam!(scene, eyepos, lookat)
         l = scene[1]
-        record(scene, @outputfile(mp4), 1:300) do i
+        N = 150
+        record(scene, @outputfile(mp4), 1:N) do i
             t = (time() - start) * 700
-            pos .= calcpositions.((rings,), 1:N, t, (t_audio,))
+            pos .= calcpositions.((rings,), 1:N2, t, (t_audio,))
             l[1] = pos # update argument 1
             rotate_cam!(scene, 0.0, 0.01, 0.01)
         end
 
     end
 
-    @cell "Line GIF" [lines, animated, gif, offset] begin
+    @cell "Line GIF" [lines, animated, gif, offset, record] begin
         us = linspace(0, 1, 100)
         scene = Scene()
         scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
@@ -402,7 +416,8 @@ end
         translate!(p, 0, 0, 0)
         colors = to_colormap(:RdYlBu)
         #display(scene) # would be needed without the record
-        path = record(scene, @outputfile(gif), 1:200) do i
+        N = 150
+        path = record(scene, @outputfile(gif), 1:N) do i
             global lineplots, scene
             if length(lineplots) < 20
                 p = lines!(
@@ -431,83 +446,12 @@ end
 end
 
 
-@block SimonDanisch [documentation] begin
-    # @group begin
-    #     @cell "Axis 2D" [axis] begin
-    #         scene = Scene(@resolution)
-    #         scene.theme[:backgroundcolor] = RGBAf0(0.2, 0.4, 0.6, 1)
-    #         aviz = axis2d!(scene, linspace(0, 2, 4), linspace(0, 2, 4))
-    #         cam2d!(scene)
-    #         center!(scene)
-    #         scene
-    #     end
-    #
-    #     @cell "Axis 3D" [axis] begin
-    #         aviz = Makie.axis3d!(scene, linspace(0, 2, 4), linspace(0, 2, 4), linspace(0, 2, 4))
-    #         AbstractPlotting.center!(scene)
-    #         # TODO: This kinda works, but only shows a 2D axis plane in 3D projection?
-    #         cam3d!(scene)
-    #         scene
-    #     end
-    #
-    #     @cell "Axis Custom" [axis] begin
-    #         # always tuples of xyz for most attributes that are applied to each axis
-    #         # TODO: aviz[:titlestyle] shows a Dict in a Dict, with :axisnames inside --> how to access this?
-    #         # TODO: aviz[:showticks] works
-    #         # aviz[:gridcolors] = (:gray, :gray, :gray)
-    #         # aviz[:axiscolors] = (:red, :black, :black)
-    #         # aviz[:showticks] = (true, true, false)
-    #
-    #         scene = Scene(@resolution)
-    #         println("placeholder")
-    #         scene
-    #     end
-    # end
 
-    # @group begin
-    #     @cell "overload to position" [axis] begin
-    #         # scene = Scene(@resolution)
-    #         # using GeometryTypes
-    #         # # To simplify the example, we take the already existing GeometryTypes.Circle type, which
-    #         # # can already be decomposed into positions
-    #         # function AbstractPlotting.convert_arguments(P, x::Circle)
-    #         #     # Convert to a type to_positions can handle.
-    #         #     # Everything that usually works in e.g. scatter/lines should be allowed here.
-    #         #     positions = Makie.decompose(Point2f0, x, 50)
-    #         #     # Pass your position data to to_positions,
-    #         #     # just in case the backend has some extra converts
-    #         #     # that are not visible in the user facing API.
-    #         #     Makie.to_positions(backend, positions)
-    #         # end
-    #         # # : ERROR: MethodError: AbstractPlotting.convert_arguments(::Type{Lines{...}}, ::GeometryTypes.HyperSphere{2,Float32}) is ambiguous.
-    #         # p1 = lines!(Makie.Circle(Point2f0(0), 5f0))
-    #         # p2 = scatter!(Makie.Circle(Point2f0(0), 6f0))
-    #         # AbstractPlotting.center!(scene)
-    #
-    #         scene = Scene(@resolution)
-    #     end
-    #
-    #     @cell "change size" [axis] begin
-    #         # # : ERROR: MethodError: no method matching setindex!(::AbstractPlotting.Scene, ::GeometryTypes.HyperSphere{2,Float32}, ::Symbol)
-    #         # p2[:positions] = Makie.Circle(Point2f0(0), 7f0)
-    #         # AbstractPlotting.center!(scene)
-    #
-    #         scene = Scene(@resolution)
-    #     end
-    # end
+@block SimonDanisch [documentation] begin
 
     @cell "Volume Function" ["3d", volume] begin
         volume(rand(32, 32, 32), algorithm = :mip)
     end
-
-    #TODO: document all of the algorithm types
-    # :iso => IsoValue,
-    # :absorption => Absorption,
-    # :mip => MaximumIntensityProjection,
-    # :absorptionrgba => AbsorptionRGBA,
-    # :indexedabsorption => IndexedAbsorptionRGBA,
-
-
     @cell "Textured Mesh" ["3d", mesh, texture, cat] begin
         using FileIO
         scene = Scene(@resolution)
@@ -585,7 +529,7 @@ end
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
         colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
-        sizesS = [rand(Point3f0) .* 0.5f0 for i = 1:length(positions)]
+        sizesS = [rand(Point3f0) .* 0.05f0 for i = 1:length(positions)]
         meshscatter(positions, color = colS, markersize = sizesS)
     end
 
@@ -597,7 +541,7 @@ end
         scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
     end
 
-    @cell "Interaction" ["2d", scatter, linesegment, VideoStream] begin
+    @cell "Interaction" ["2d", scatter, linesegment, record] begin
         scene = Scene(@resolution)
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
@@ -608,172 +552,33 @@ end
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines)
-        record(scene, @outputfile(mp4), linspace(0, 10, 100)) do i
+        N = 150
+        record(scene, @outputfile(mp4), linspace(0, 10, N)) do i
             push!(time, i)
         end
     end
-    # @cell "Legend" ["3d", legend, lines, linestyle, scatter] begin
-    #     # scene = Scene(@resolution)
-    #     # # TODO: ERROR: UndefVarError: linesegment not defined
-    #     # plots = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
-    #     #     linesegments!(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
-    #     # end
-    #     #
-    #     # # TODO: ERROR: MethodError: no method matching push!(::AbstractPlotting.#plots, ::AbstractPlotting.Scene)
-    #     # push!(plots, scatter!(linspace(1, 5, 100), rand(100), rand(100)))
-    #     #
-    #     # AbstractPlotting.center!(scene)
-    #     #
-    #     # # plot a legend for the plots with an array of names
-    #     # l = Makie.legend(plots, ["attribute $i" for i in 1:4])
-    #     #
-    #     # ann = VideoAnnotation(scene, @outputfile(mp4), "Themes")
-    #     #
-    #     # io = ann
-    #     # # TODO: ERROR: UndefVarError: recordstep! not defined
-    #     # recordstep!(io, "Interact with Legend:")
-    #     # # Change some attributes interactively
-    #     # l[:position] = (0.4, 0.7)
-    #     # recordstep!(io, "Change Position")
-    #     # l[:backgroundcolor] = RGBA(0.95, 0.95, 0.95)
-    #     # recordstep!(io, "Change Background")
-    #     # l[:strokecolor] = RGB(0.8, 0.8, 0.8)
-    #     # recordstep!(io, "Change Stroke Color")
-    #     # l[:gap] = 30
-    #     # recordstep!(io, "Change Gaps")
-    #     # l[:textsize] = 19
-    #     # recordstep!(io, "Change Textsize")
-    #     # l[:linepattern] = Point2f0[(0,-0.2), (0.5, 0.2), (0.5, 0.2), (1.0, -0.2)]
-    #     # recordstep!(io, "Change Line Pattern")
-    #     # l[:scatterpattern] = decompose(Point2f0, Circle(Point2f0(0.5, 0), 0.3f0), 9)
-    #     # recordstep!(io, "Change Scatter Pattern")
-    #     # l[:markersize] = 2f0
-    #     # recordstep!(io, "Change Marker Size")
-    #     # io
-    #
-    #     println("placeholder")
-    # end
 
-    # @cell "Color Legend" ["2d", colorlegend, legend] begin
-    #     # scene = Scene(@resolution)
-    #     # cmap = collect(linspace(to_color(:red), to_color(:blue), 20))
-    #     # # TODO: ERROR: MethodError: no method matching (::AbstractPlotting.##384#385{AbstractPlotting.Scene})(::AbstractPlotting.Scene)
-    #     # l = Makie.legend(cmap, 1:4)
-    #     # ann = VideoAnnotation(scene, @outputfile(mp4), "Color Map Legend:")
-    #     # recordstep!(io, "Color Map Legend:", 3)
-    #     # l[:position] = (1.0, 1.0)
-    #     # recordstep!(io, "Change Position")
-    #     # l[:textcolor] = :blue
-    #     # l[:strokecolor] = :black
-    #     # recordstep!(io, "Change Colors")
-    #     # l[:strokewidth] = 1
-    #     # l[:textsize] = 15
-    #     # l[:textgap] = 5
-    #     # recordstep!(io, "Change everything!")
-    #     # ann
-    #
-    #     println("placeholder")
-    # end
-
-    @cell "VideoStream" ["3d", VideoStream, meshscatter, linesegment] begin
+    @cell "Record Video" ["3d", record, meshscatter, linesegment] begin
         scene = Scene()
 
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
         t = Node(Base.time()) # create a life signal
         limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
-        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.5)[end]
-        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.5)[end]
+        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.05)[end]
+        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.05)[end]
 
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines, linestyle = :dot, limits = limits)
         # record a video
-        record(scene, @outputfile(mp4), 1:300) do i
+        N = 150
+        record(scene, @outputfile(mp4), 1:N) do i
             push!(t, Base.time())
         end
     end
 
 
-    # @group begin
-    #     @cell "Theming Step 1" ["3d", scatter, surface] begin
-    #
-    #         # scene = Scene(@resolution)
-    #         # vx = -1:0.05:1;
-    #         # vy = -1:0.05:1;
-    #         # f(x, y) = (sin(x*10) + cos(y*10)) / 4
-    #         # psurf = surface!(scene, vx, vy, f)[1]
-    #         # scene
-    #         #
-    #         # # TODO: ERROR: MethodError: no method matching getindex(::AbstractPlotting.Scene, ::Symbol)
-    #         # pos = lift(psurf[1], psurf[2], psurf[3]) do x, y, z
-    #         #     vec(Point3f0.(x, y', z .+ 0.5))
-    #         # end
-    #         # pscat = scatter!(scene, pos)
-    #         # TODO: the following errors out
-    #         # ERROR: Not a valid index type: Reactive.Signal{StepRange{Int64,Int64}}. Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them
-    #         # plines = lines!(scene, lift(view, pos, lift(x->1:2:length(x), pos)))
-    #     end
-    #
-    #     @cell "Theming Step 2" ["3d", scatter, surface] begin
-    #         # # TODO: didn't work
-    #         # @theme theme = begin
-    #         #     # TODO: ERROR: UndefVarError: to_markersize2d not defined
-    #         #     markersize = to_markersize2d(0.01)
-    #         #     strokecolor = to_color(:white)
-    #         #     # TODO: ERROR: UndefVarError: to_float not defined
-    #         #     strokewidth = to_float(0.01)
-    #         # end
-    #         # # this pushes all the values from theme to the plot
-    #         # # TODO: ERROR: UndefVarError: theme not defined
-    #         # # --> I guess it is from the above @theme block?
-    #         # push!(pscat, theme)
-    #         # # Update the entire surface node with this
-    #         # scene[:scatter] = theme
-    #         # # Or permananently (to be more precise: just for this session) change the theme for scatter
-    #         # scene[:theme, :scatter] = theme
-    #         # scatter(lift_node(x-> x .+ (Point3f0(0, 0, 1),), pos)) # will now use new theme
-    #         # scene
-    #
-    #         scene = Scene(@resolution)
-    #         println("placeholder")
-    #     end
-    #
-    #     @cell "Theming Step 3" ["3d", scatter, surface] begin
-    #         # TODO: didn't work
-    #         # Make a completely new theme
-    #         # function custom_theme(scene)
-    #         #     @theme theme = begin
-    #         #         linewidth = to_float(3)
-    #         #         colormap = to_colormap(:RdPu)
-    #         #         scatter = begin
-    #         #             marker = to_spritemarker(Circle)
-    #         #             markersize = to_float(0.03)
-    #         #             strokecolor = to_color(:white)
-    #         #             strokewidth = to_float(0.01)
-    #         #             glowcolor = to_color(RGBA(0, 0, 0, 0.4))
-    #         #             glowwidth = to_float(0.1)
-    #         #         end
-    #         #     end
-    #         #     # update theme values
-    #         #     scene[:theme] = theme
-    #         # end
-    #         #
-    #         # # apply it to the scene
-    #         # custom_theme(scene)
-    #         #
-    #         # # From now everything will be plotted with new theme
-    #         # psurf = surface(vx, 1:0.1:2, psurf[:z])
-    #         # AbstractPlotting.center!(scene)
-    #
-    #         scene = Scene(@resolution)
-    #         println("placeholder")
-    #     end
-    # end
-    # @cell "3D Volume Contour with slices" [volume, contour, heatmap, slices, "3d layout", layout] begin
-    #     r = linspace(-2pi, 2pi, 100)
-    #     volumeslices(r, r, r, (x, y, z)-> sin(x) + cos(y) + sin(z))
-    # end
     @cell "3D Contour with 2D contour slices" [volume, contour, heatmap, "3d", transformation] begin
         function test(x, y, z)
             xy = [x, y, z]
@@ -785,7 +590,7 @@ end
         xm, ym, zm = minimum(scene.limits[])
         # c[4] == fourth argument of the above plotting command
         contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm))
-        heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
+        # heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
         contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
     end
 
@@ -862,7 +667,7 @@ end
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
     end
-    @cell "Interaction with Mouse" [interactive, scatter, lines, marker] begin
+    @cell "Interaction with Mouse" [interactive, scatter, lines, marker, record] begin
         scene = Scene()
         r = linspace(0, 3, 4)
         cam2d!(scene)
@@ -884,18 +689,18 @@ end
             color = p1[:color],
             raw = true
         )[end]
-
+        scene
         display(Makie.global_gl_screen(), scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
         p2[:marker] = 'π'
         p2[:markersize] = 0.2
-        p2[:marker] = 'o'
 
         # push a reasonable mouse position in case this is executed as part
         # of the documentation
         push!(scene.events.mouseposition, (250.0, 250.0))
-        record(scene, @outputfile(mp4), linspace(0.01, 0.4, 100)) do i
+        N = 50
+        record(scene, @outputfile(mp4), linspace(0.01, 0.4, N)) do i
             push!(scene.events.mouseposition, (250.0, 250.0))
             p2[:markersize] = i
             push!(time, time[] + 0.1)
@@ -905,13 +710,66 @@ end
 
 @block AnthonyWang [documentation] begin
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
-        scene = Scene(@resolution)
-        scatter!(
-            scene,
+        scatter(
             rand(20), rand(20),
             markersize = rand(20) ./20 + 0.02,
             color = rand(RGBf0, 20)
         )
+    end
+
+    @cell "Marker offset" [scatter, marker_offset] begin
+        scene = Scene(@resolution)
+        points = Point2f0[(0,0), (1,1), (2,2)]
+        offset = rand(Point2f0, 3)./5
+        scatter!(scene, points)
+        scatter!(scene, points, marker_offset = offset, color = :red)
+    end
+    @cell "Mouse Picking" [scatter, heatmap, interactive] begin
+        img = rand(100, 100)
+        scene = Scene()
+        heatmap!(scene, img, scale_plot = false)
+        clicks = Node(Point2f0[(0,0)])
+        foreach(scene.events.mousebuttons) do buttons
+           if ispressed(scene, Mouse.left)
+               pos = to_world(scene, Point2f0(scene.events.mouseposition[]))
+               push!(clicks, push!(clicks[], pos))
+           end
+           return
+        end
+        scatter!(scene, clicks, color = :red, marker = '+', markersize = 10, raw = true)
+    end
+    @cell "Theming" [theme, scatter, surface, set_theme] begin
+        new_theme = Theme(
+            resolution = (500, 500),
+            linewidth = 3,
+            colormap = :RdYlGn,
+            color = :red,
+            scatter = Theme(
+                marker = '⊝',
+                markersize = 0.03,
+                strokecolor = :black,
+                strokewidth = 0.1,
+            ),
+        )
+        AbstractPlotting.set_theme!(new_theme)
+        scene2 = scatter(rand(100), rand(100))
+        new_theme[:color] = :blue
+        new_theme[:scatter, :marker] = '◍'
+        new_theme[:scatter, :markersize] = 0.05
+        new_theme[:scatter, :strokewidth] = 0.1
+        new_theme[:scatter, :strokecolor] = :green
+        scene2 = scatter(rand(100), rand(100))
+        scene2[end][:marker] = 'π'
+
+        r = linspace(-0.5pi, pi + pi/4, 100)
+
+        AbstractPlotting.set_theme!(new_theme)
+        scene = surface(r, r, (x, y)-> sin(2x) + cos(2y))
+        scene[end][:colormap] = :PuOr
+        scene
+        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+        AbstractPlotting.set_theme!(resolution = (500, 500))
+        surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
     end
 end
 

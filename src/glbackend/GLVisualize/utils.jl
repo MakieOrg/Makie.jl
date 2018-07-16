@@ -23,50 +23,8 @@ function Base.split(condition::Function, associative::Associative)
 end
 
 
-function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
-    pre = if pre_fun != nothing
-        () -> (GLAbstraction.StandardPrerender(); pre_fun())
-    else
-        GLAbstraction.StandardPrerender()
-    end
-    robj = RenderObject(data, program, pre, nothing, bb, nothing)
-    post = if haskey(data, :instances)
-        GLAbstraction.StandardPostrenderInstanced(data[:instances], robj.vertexarray, primitive)
-    else
-        GLAbstraction.StandardPostrender(robj.vertexarray, primitive)
-    end
-    robj.postrenderfunction = if post_fun != nothing
-        () -> begin
-            post()
-            post_fun()
-        end
-    else
-        post
-    end
-    robj
-end
-
-
-function assemble_shader(data)
-    shader = data[:shader]
-    delete!(data, :shader)
-    default_bb = Signal(GeometryTypes.centered(AABB))
-    bb  = get(data, :boundingbox, default_bb)
-    if bb == nothing || isa(bb, Signal{Void})
-        bb = default_bb
-    end
-    glp = get(data, :gl_primitive, GL_TRIANGLES)
-    robj = assemble_robj(
-        data, shader, bb, glp,
-        get(data, :prerender, nothing),
-        get(data, :postrender, nothing)
-    )
-    Context(robj)
-end
-
-
-
-
+######## shadercleanup
+####
 function y_partition_abs(area, amount)
     a = round(Int, amount)
     p = const_lift(area) do r
@@ -148,7 +106,7 @@ end
 """
 Converts index arrays to the OpenGL equivalent.
 """
-to_index_buffer(x::GLBuffer) = x
+to_index_buffer(x::Buffer) = x
 to_index_buffer(x::TOrSignal{Int}) = x
 to_index_buffer(x::VecOrSignal{UnitRange{Int}}) = x
 to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
@@ -158,7 +116,7 @@ For integers, we transform it to 0 based indices
 to_index_buffer(x::Vector{I}) where {I<:Integer} = indexbuffer(map(i-> Cuint(i-1), x))
 function to_index_buffer(x::Signal{Vector{I}}) where I<:Integer
     x = map(x-> Cuint[i-1 for i=x], x)
-    gpu_mem = GLBuffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
+    gpu_mem = Buffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
     preserve(const_lift(update!, gpu_mem, x))
     gpu_mem
 end
@@ -167,12 +125,12 @@ If already GLuint, we assume its 0 based (bad heuristic, should better be solved
 """
 to_index_buffer(x::Vector{I}) where {I<:GLuint} = indexbuffer(x)
 function to_index_buffer(x::Signal{Vector{I}}) where I<:GLuint
-    gpu_mem = GLBuffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
+    gpu_mem = Buffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
     preserve(const_lift(update!, gpu_mem, x))
     gpu_mem
 end
 function to_index_buffer(x::Signal{Vector{I}}) where I <: Face{2, GLIndex}
-    gpu_mem = GLBuffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
+    gpu_mem = Buffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
     preserve(const_lift(update!, gpu_mem, x))
     gpu_mem
 end

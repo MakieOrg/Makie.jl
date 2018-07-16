@@ -4,11 +4,31 @@ abstract type Composable{unit} end
 
 struct DeviceUnit <: Unit end
 
-mutable struct Context{Unit} <: Composable{Unit}
+mutable struct Composition{Unit} <: Composable{Unit}
     children
     boundingbox
     transformation
 end
+
+Composition() = Composition{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Signal(eye(Mat{4,4, Float32})))
+Composition(trans::Signal{Mat{4,4, Float32}}) = Composition{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), trans)
+function Composition(a::Composable...; parent=Composition())
+    append!(parent, a)
+    parent
+end
+"Create a composition from GLdata. This was previously in GLVisualize utils as `assemble_shader`"
+function Composition(data::Dict)
+    default_bb = Signal(centered(AABB))
+    bb  = get(data, :boundingbox, default_bb)
+    if bb == nothing || isa(bb, Signal{Void})
+        bb = default_bb
+    end
+    robj = RenderObject(data, bb)
+    Composition(robj)
+end
+boundingbox(c::Composable) = c.boundingbox
+transformation(c::Composable) = c.transformation
+
 function scale_trans(b)
     m = minimum(b)
     w = widths(b)
@@ -65,14 +85,6 @@ end
 export layout!
 
 
-Context() = Context{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Signal(eye(Mat{4,4, Float32})))
-Context(trans::Signal{Mat{4,4, Float32}}) = Context{DeviceUnit}(Composable[], Signal(AABB{Float32}(Vec3f0(0), Vec3f0(0))), trans)
-function Context(a::Composable...; parent=Context())
-    append!(parent, a)
-    parent
-end
-boundingbox(c::Composable) = c.boundingbox
-transformation(c::Composable) = c.transformation
 
 function transform!(c::Composable, model)
     c.transformation = const_lift(*, model, transformation(c))
@@ -91,14 +103,14 @@ end
 
 convert!(::Type{unit}, x::Composable) where {unit <: Unit} = x # We don't do units just yet
 
-function Base.append!(context::Context{unit}, x::Union{Vector{Composable}, NTuple{N, Composable}}) where {unit <: Unit, N}
+function Base.append!(context::Composition{unit}, x::Union{Vector{Composable}, NTuple{N, Composable}}) where {unit <: Unit, N}
     for elem in x
         push!(context, elem)
     end
     context
 end
 
-function Base.push!(context::Context{unit}, x::Composable) where unit <: Unit
+function Base.push!(context::Composition{unit}, x::Composable) where unit <: Unit
     x = convert!(unit, x)
     context.boundingbox = const_lift(transformation(x), transformation(context), boundingbox(x), boundingbox(context)) do transa, transb, a,b
         a = transa*a

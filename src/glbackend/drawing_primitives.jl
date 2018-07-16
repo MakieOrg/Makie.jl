@@ -1,4 +1,4 @@
-gpuvec(x) = GPUVector(GLBuffer(x))
+gpuvec(x) = GPUVector(Buffer(x))
 
 function to_glvisualize_key(k)
     k == :rotations && return :rotation
@@ -12,12 +12,13 @@ function to_glvisualize_key(k)
     k == :marker_offset && return :offset
     k == :colormap && return :color_map
     k == :colorrange && return :color_norm
+    k == :transform_marker && return :scale_primitive
     k
 end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
-function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
+function setup_cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, object_id(x)) do
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
@@ -33,6 +34,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         push!(screen, scene, robj)
         robj
     end
+
 end
 
 index1D(x::SubArray) = parentindexes(x)[1]
@@ -59,23 +61,36 @@ function lift_convert(key, value, plot)
      end
 end
 
+pixel2world(scene, msize::Number) = pixel2world(scene, Point2f0(msize))[1]
+function pixel2world(scene, msize::StaticVector{2})
+    # TODO figure out why Vec(x, y) doesn't work correctly
+    p0 = AbstractPlotting.to_world(scene, Point2f0(0.0))
+    p1 = AbstractPlotting.to_world(scene, Point2f0(msize))
+    diff = p1 - p0
+    diff
+end
+
+pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
+
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
+            msize = pop!(gl_attributes, :stroke_width)
+            gl_attributes[:stroke_width] = lift(pixel2world, Node(scene), msize)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
         # TODO either stop using bb's from glvisualize
         # or don't set them randomly to nothing
         gl_attributes[:boundingbox] = nothing
         positions = handle_view(x[1], gl_attributes)
-        visualize((value(marker), positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Lines)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
@@ -84,7 +99,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
     end
 end
 function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
@@ -97,7 +112,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Combined)
         insert!(screen, scene, elem)
     end
 end
-
+#####
 using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, glyph_scale!, calc_position, calc_offset
 
 function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
@@ -142,7 +157,7 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
         gl_text = map(to_gl_text, x[1], getindex.(gl_attributes, liftkeys)...)
@@ -171,7 +186,7 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = (value.((x[1], x[2])))
         heatmap = map(x[3]) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
@@ -189,14 +204,14 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = to_range.(value.((x[1], x[2])))
         img = x[3]
         if isa(value(img), AbstractMatrix{<: Number})
             norm = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
             img = map(img, cmap, norm) do img, cmap, norm
-                interpolated_getindex.((cmap,), img, (norm,))
+                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
         elseif isa(value(img), AbstractMatrix{<: Colorant})
             delete!(gl_attributes, :color_norm)
@@ -207,7 +222,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
@@ -217,6 +232,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
                 m
             elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
                 get!(gl_attributes, :color, c)
+                m
+            elseif isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
                 m
             else
                 HomogenousMesh(GLNormalMesh(m), Dict{Symbol, Any}(:color => c))
@@ -228,7 +245,7 @@ end
 
 
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         if haskey(gl_attributes, :image) && gl_attributes[:image][] != nothing
             img = pop!(gl_attributes, :image)
@@ -272,14 +289,6 @@ function makieshader(paths...)
         fragdatalocation = [(0, "fragment_color"), (1, "fragment_groupid")]
     )
 end
-function volume_prerender()
-    glEnable(GL_DEPTH_TEST)
-    glDepthMask(GL_TRUE)
-    glDepthFunc(GL_LEQUAL)
-    enabletransparency()
-    glEnable(GL_CULL_FACE)
-    glCullFace(GL_FRONT)
-end
 
 function surface_contours(volume::Volume)
     frag = joinpath(@__DIR__, "surface_contours.frag")
@@ -308,16 +317,21 @@ function surface_contours(volume::Volume)
         :modelinv => modelinv,
         :colormap => Texture(map(to_colormap, volume[:colormap])),
         :colorrange => map(Vec2f0, volume[:colorrange]),
-        :fxaa => true
+        :fxaa => true,
+        :pipeline => :default
     )
     bb = map(m-> m * hull, model)
-    robj = RenderObject(gl_data, shader, volume_prerender, bb)
-    robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
-    robj
+    #TODO renderobjectcleanup: This should change!
+    #TODO shadercleanup: This should change!
+    gl_data[:shader] = shader
+    robj = RenderObject(gl_data, bb)
+    # robj = RenderObject(gl_data, shader, volume_prerender, bb)
+    # robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
+    # robj
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Volume)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+    robj = setup_cached_robj!(screen, scene, x) do gl_attributes
         if gl_attributes[:algorithm][] == 0
             surface_contours(x)
         else

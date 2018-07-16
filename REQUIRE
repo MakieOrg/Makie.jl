@@ -19,13 +19,16 @@ Juno
 ModernGL
 GLFW 2.0.0-alpha
 FreeType
-FreeTypeAbstraction
-IntervalSets
+FreeTypeAbstraction 0.3.0 #for findfont
+@windows ImageMagick
+@linux ImageMagick
+@osx QuartzImageIO
+AbstractPlotting
 Primes
 
 Cairo
 Showoff
-PlotUtils
+Colors
 
 @windows ImageMagick
 @linux ImageMagick

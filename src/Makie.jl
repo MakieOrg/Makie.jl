@@ -53,11 +53,27 @@ export widths, decompose
 const NT = Theme
 export NT
 
-# functions we overload
+const has_ffmpeg = Ref(false)
 
-include("scene.jl")
+struct MakieDisplay <: Display
+end
+
+# Hacky workaround, for the difficulty of removing closed screens from the display stack
+# So we just leave the makiedisplay on stack, and then just get the singleton gl display for now!
+function Base.display(::MakieDisplay, scene::Scene)
+    display(global_gl_screen(), scene)
+end
+
+function __init__()
+    has_ffmpeg[] = try
+        success(`ffmpeg -h`)
+    catch
+        false
+    end
+    pushdisplay(MakieDisplay())
+end
+
 include("makie_recipes.jl")
-include("argument_conversion.jl")
 include("tickranges.jl")
 include("utils.jl")
 include("glbackend/glbackend.jl")
@@ -66,7 +82,6 @@ include("output.jl")
 include("video_io.jl")
 
 # conversion infrastructure
-include("documentation.jl")
 
 
 

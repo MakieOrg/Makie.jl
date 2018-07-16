@@ -7,7 +7,7 @@ const GLSL_COMPATIBLE_NUMBER_TYPES = (GLfloat, GLint, GLuint, GLdouble)
 const NATIVE_TYPES = Union{
     StaticArray, GLSL_COMPATIBLE_NUMBER_TYPES...,
     ZeroIndex{GLint}, ZeroIndex{GLuint},
-    GLBuffer, GPUArray, Shader, GLProgram, NativeMesh
+    Buffer, GPUArray, Shader, Program, NativeMesh
 }
 
 opengl_prefix(T)  = error("Object $T is not a supported uniform element type")
@@ -115,7 +115,7 @@ function toglsltype_string(x::T) where T
         error("can't splice $T into an OpenGL shader. Make sure all fields are of a concrete type and isbits(FieldType)-->true")
     end
 end
-toglsltype_string(t::Union{GLBuffer{T}, GPUVector{T}}) where {T} = string("in ", glsl_typename(T))
+toglsltype_string(t::Union{Buffer{T}, GPUVector{T}}) where {T} = string("in ", glsl_typename(T))
 # Gets used to access a
 function glsl_variable_access(keystring, t::Texture{T, D}) where {T,D}
     fields = SubString("rgba", 1, length(T))
@@ -124,7 +124,7 @@ function glsl_variable_access(keystring, t::Texture{T, D}) where {T,D}
     end
     return string("getindex(", keystring, "index).", fields, ";")
 end
-function glsl_variable_access(keystring, ::Union{Real, GLBuffer, GPUVector, StaticArray, Colorant})
+function glsl_variable_access(keystring, ::Union{Real, Buffer, GPUVector, StaticArray, Colorant})
     string(keystring, ";")
 end
 function glsl_variable_access(keystring, s::Signal)
@@ -232,7 +232,7 @@ gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
 gl_convert(x::SMatrix{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
 
 
-gl_convert(a::Vector{T}) where {T <: Face} = indexbuffer(s)
+# gl_convert(a::Vector{T}) where {T <: Face} = indexbuffer(s)
 # gl_convert(a::Vector{T}) where T = convert(Vector{gl_promote(T)}, a)
 
 gl_convert(::Type{T}, a::NATIVE_TYPES; kw_args...) where {T <: NATIVE_TYPES} = a

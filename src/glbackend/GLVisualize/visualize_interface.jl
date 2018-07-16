@@ -15,15 +15,15 @@ Creates a default visualization for any value.
 The defaults can be customized via the key word arguments and the style parameter.
 The style can change the the look completely (e.g points displayed as lines, or particles),
 while the key word arguments just alter the parameters of one visualization.
-Always returns a context, which can be displayed on a window via view(::Context, [display]).
+Always returns a context, which can be displayed on a window via view(::Composition, [display]).
 """
-visualize(main::ANY, s::Symbol=:default; kw_args...) = visualize(main, Style{s}(), Dict{Symbol, Any}(kw_args))::Context
-visualize(main::ANY, s::Style, data::Dict) = assemble_shader(default(main, s, data))::Context
-visualize(c::Composable, s::Symbol=:default; kw_args...) = Context(c)
-visualize(c::Composable, s::Style, data::Dict) = Context(c)
+visualize(main::ANY, s::Symbol=:default; kw_args...) = visualize(main, Style{s}(), Dict{Symbol, Any}(kw_args))::Composition
+visualize(main::ANY, s::Style, data::Dict) = Composition(default(main, s, data))::Composition
+visualize(c::Composable, s::Symbol=:default; kw_args...) = Composition(c)
+visualize(c::Composable, s::Style, data::Dict) = Composition(c)
 
-visualize(c::Context, s::Symbol=:default; kw_args...) = c
-visualize(c::Context, s::Style, data::Dict) = c
+visualize(c::Composition, s::Symbol=:default; kw_args...) = c
+visualize(c::Composition, s::Style, data::Dict) = c
 #
 
 function _view(
