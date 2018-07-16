@@ -800,6 +800,60 @@ end
         scatter!(scene, points)
         scatter!(scene, points, marker_offset = offset, color = :red)
     end
+
+    @cell "colormaps" [image, translate, colormap, colorbrewer, meta] begin
+        h = 0.0
+        offset = 0.1
+        scene = Scene()
+        cam2d!(scene)
+        plot = map(AbstractPlotting.colorbrewer_names) do cmap
+            global h
+            c = to_colormap(cmap)
+            cbar = image!(
+                scene,
+                linspace(0, 10, length(c)),
+                linspace(0, 1, length(c)),
+                reshape(c, (1, length(c))),
+                show_axis = false
+            )[end]
+            text!(
+                scene,
+                string(cmap, ":"),
+                position = Point2f0(-0.1, 0.5 + h),
+                align = (:right, :center),
+                show_axis = false,
+                textsize = 0.4
+            )
+            translate!(cbar, 0, h, 0)
+            h -= (1 + offset)
+        end
+        scene
+    end
+
+    @cell "Available markers" [annotations, markers, meta] begin
+        using GeometryTypes
+        scene = Scene()
+        marker = collect(AbstractPlotting._marker_map)
+        positions = Point2f0.(0, 1:length(marker))
+        scatter!(
+            scene,
+            positions,
+            marker = last.(marker),
+            markersize = 0.8,
+            raw = true,
+            marker_offset = Vec2f0(0.5, -0.4)
+        )
+        cam2d!(scene)
+        annotations!(
+            scene,
+            string.(":", first.(marker)),
+            positions,
+            align = (:right, :center),
+            textsize = 0.4,
+            raw = true
+        )
+    end
+
     @cell "Mouse Picking" [scatter, heatmap, interactive] begin
         img = rand(100, 100)
         scene = Scene()
@@ -814,6 +868,7 @@ end
         end
         scatter!(scene, clicks, color = :red, marker = '+', markersize = 10, raw = true)
     end
+    
     @cell "Theming" [theme, scatter, surface, set_theme] begin
         new_theme = Theme(
             resolution = (500, 500),
