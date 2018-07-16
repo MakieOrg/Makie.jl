@@ -82,5 +82,3 @@ plot = meshscatter!(
     colormap = cmap, colorrange = (0, 1)
 )
 scene
-record(scene, "lolz.mp4", 1:300) do i
-end
