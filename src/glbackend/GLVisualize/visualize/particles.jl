@@ -240,6 +240,7 @@ function orthogonal(v::T) where T <: StaticVector{3}
 end
 
 using AbstractPlotting
+using AbstractPlotting: get_texture_atlas
 
 
 vec2quaternion(rotation::StaticVector{4}) = rotation
