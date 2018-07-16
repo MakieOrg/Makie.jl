@@ -3,7 +3,7 @@
 # the bool in Quaternions.Quaternion is annoying for OpenGL + and an array of
 # Quaternions.
 # TODO replace this file by just `using Quaternions`
-using StaticArrays, GeometryTypes
+using StaticArrays, GeometryTypes, Random
 struct Quaternion{T}
     data::NTuple{4, T}
     Quaternion{T}(x::NTuple{4, Any}) where T = new{T}(T.(x))
@@ -15,8 +15,8 @@ function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
     print(io, q[4], pm(q[1]), "im", pm(q[2]), "jm", pm(q[3]), "km")
 end
-Base.rand(mt::MersenneTwister, ::Type{Quaternion}) = rand(mt, Quaternion{Float64})
-Base.rand(mt::MersenneTwister, ::Type{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
+Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
+Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
 @inline (::Type{Quaternion{T}})(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
 @inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)

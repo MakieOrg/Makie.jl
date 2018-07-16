@@ -45,7 +45,7 @@ function get_children(x::Signal)
 end
 function children_with(action::AT, signal::Signal, rest::Signal...) where AT
     c = filter!(get_children(signal)) do x
-        contains(isa, x.actions, AT)
+        any(y-> isa(y, AT), x.actions)
     end
     isempty(c) && return false, Signal(nothing)
     node = first(c) # what if more?

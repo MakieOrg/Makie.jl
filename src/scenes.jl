@@ -49,7 +49,7 @@ Base.start(scene::Scene) = 1
 Base.done(scene::Scene, idx) = idx > length(scene)
 Base.next(scene::Scene, idx) = (scene[idx], idx + 1)
 Base.length(scene::Scene) = length(scene.plots)
-Base.endof(scene::Scene) = length(scene.plots)
+Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
