@@ -62,13 +62,17 @@ function Base.display(screen::Screen, scene::Scene)
 end
 
 function colorbuffer(screen::Screen)
-    GLFW.PollEvents()
-    yield()
-    render_frame(screen) # let it render
-    GLFW.SwapBuffers(to_native(screen))
-    glFinish() # block until opengl is done rendering
-    buffer = gpu_data(screen.framebuffer.color)
-    return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
+    if isopen(screen)
+        GLFW.PollEvents()
+        yield()
+        render_frame(screen) # let it render
+        GLFW.SwapBuffers(to_native(screen))
+        glFinish() # block until opengl is done rendering
+        buffer = gpu_data(screen.framebuffer.color)
+        return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
+    else
+        error("Screen not open!")
+    end
 end
 
 
@@ -109,6 +113,7 @@ end
 function GLAbstraction.native_switch_context!(x::GLFW.Window)
     GLFW.MakeContextCurrent(x)
 end
+
 function GLAbstraction.native_context_active(x::GLFW.Window)
     isopen(x)
 end
