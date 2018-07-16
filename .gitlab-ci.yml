@@ -8,6 +8,7 @@ before_script:
 
 variables:
   JULIA_PKGDIR: "$CI_PROJECT_DIR/.julia/"
+  MODERNGL_DEBUGGING: "true"
   package: 'Makie'
 
 stages:
@@ -26,14 +27,16 @@ stages:
             Pkg.build(\"$package\");
             Pkg.test(\"$package\"; coverage=true)"
   artifacts:
+    when: always
     paths:
+      - docs/media/*
       - test/testresults/*
       - .julia/
       - src/*.cov
       - src/*/*.cov
       - src/*/*/*.cov
-
-
+      - src/*/*/*/*.cov
+      - src/*/*/*/*/*.cov
 
 test:v0.6:
   stage: test
@@ -44,6 +47,7 @@ test:v0.6:
 
 coverage:
   stage: postprocess
+  allow_failure: true
   image: juliagpu/julia:v0.6-opengl
   dependencies:
     - test:v0.6
@@ -60,6 +64,7 @@ coverage:
 # TODO: create an unconditional `deploydocs`, and pick when to deploy in here.
 documentation:
   stage: postprocess
+  allow_failure: true
   image: juliagpu/julia:v0.6-opengl
   variables:
     DOCUMENTER_DEBUG: "true"

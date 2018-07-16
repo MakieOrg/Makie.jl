@@ -12,6 +12,7 @@ function to_glvisualize_key(k)
     k == :marker_offset && return :offset
     k == :colormap && return :color_map
     k == :colorrange && return :color_norm
+    k == :transform_marker && return :scale_primitive
     k
 end
 
@@ -59,10 +60,23 @@ function lift_convert(key, value, plot)
      end
 end
 
+pixel2world(scene, msize::Number) = pixel2world(scene, Point2f0(msize))[1]
+function pixel2world(scene, msize::StaticVector{2})
+    # TODO figure out why Vec(x, y) doesn't work correctly
+    p0 = AbstractPlotting.to_world(scene, Point2f0(0.0))
+    p1 = AbstractPlotting.to_world(scene, Point2f0(msize))
+    diff = p1 - p0
+    diff
+end
+
+pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
+
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
+            msize = pop!(gl_attributes, :stroke_width)
+            gl_attributes[:stroke_width] = lift(pixel2world, Node(scene), msize)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
         # TODO either stop using bb's from glvisualize
@@ -196,7 +210,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
             norm = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
             img = map(img, cmap, norm) do img, cmap, norm
-                interpolated_getindex.((cmap,), img, (norm,))
+                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
         elseif isa(value(img), AbstractMatrix{<: Colorant})
             delete!(gl_attributes, :color_norm)
@@ -217,6 +231,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
                 m
             elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
                 get!(gl_attributes, :color, c)
+                m
+            elseif isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
                 m
             else
                 HomogenousMesh(GLNormalMesh(m), Dict{Symbol, Any}(:color => c))

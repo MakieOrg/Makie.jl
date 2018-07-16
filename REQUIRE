@@ -16,7 +16,7 @@ Juno
 ModernGL
 GLFW 1.4.1
 FreeType
-FreeTypeAbstraction 0.2.0 #for findfont
+FreeTypeAbstraction 0.3.0 #for findfont
 @windows ImageMagick
 @linux ImageMagick
 @osx QuartzImageIO
@@ -26,3 +26,4 @@ PlotUtils
 Cairo
 IntervalSets
 Showoff
+Colors
