@@ -27,6 +27,7 @@ Plots an image on range `x, y` (defaults to dimensions).
     Theme(;
         default_theme(scene)...,
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
+        colorrange = nothing,
         fxaa = false,
     )
 end
@@ -149,7 +150,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         colormap = theme(scene, :colormap),
         colorrange = nothing,
         marker_offset = nothing,
-        fxaa = false
+        fxaa = false,
+        transform_marker = false, # Applies the plots transformation to marker
     )
 end
 
@@ -157,11 +159,12 @@ end
     `meshscatter(x, y, z)` / `meshscatter(x, y)` / `meshscatter(positions)`
 
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
+`markersize` is a scaling applied to the primitive passed as `marker`
 """
 @atomic(MeshScatter) do scene
     Theme(;
         default_theme(scene)...,
-        marker = Sphere(Point3f0(0), 0.1f0),
+        marker = Sphere(Point3f0(0), 1f0),
         markersize = 0.1,
         rotations = Quaternionf0(0, 0, 0, 1),
         intensity = nothing,
@@ -230,7 +233,16 @@ function calculated_attributes!(plot::Mesh)
     delete!(plot, :colorrange)
     return
 end
+function calculated_attributes!(plot::Image{<: Tuple{X, Y, <: AbstractMatrix{<: Number}}}) where {X, Y}
+    replace_nothing!(plot, :colorrange) do
+        lift(plot[3]) do arg
+            Vec2f0(extrema_nan(arg))
+        end
+    end
+end
 function calculated_attributes!(plot::Image)
+    delete!(plot, :colormap)
+    delete!(plot, :colorrange)
     return
 end
 
@@ -254,7 +266,16 @@ function calculated_attributes!(plot::Scatter)
     end
 end
 
-
+# # to allow one color per edge
+# function calculated_attributes!(plot::LineSegments)
+#     plot[:color] = lift(plot[:color], plot[1]) do c, p
+#         if (length(p) ÷ 2) == length(c)
+#             [c[k] for k in 1:length(c), l in 1:2]
+#         else
+#             c
+#         end
+#     end
+# end
 
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])

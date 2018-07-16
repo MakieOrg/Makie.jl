@@ -1,3 +1,70 @@
+
+@recipe(Poly) do scene
+    Theme(;
+        color = theme(scene, :color),
+        strokecolor = RGBAf0(0,0,0,0),
+        colormap = theme(scene, :colormap),
+        colorrange = nothing,
+        strokewidth = 0.0,
+        linestyle = nothing
+    )
+end
+AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = convert_arguments(Scatter, v)
+AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle}}) = (v,)
+AbstractPlotting.convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Scatter, args...)
+AbstractPlotting.convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+AbstractPlotting.calculated_attributes!(plot::Poly) = plot
+
+function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
+    mesh!(
+        plot, plot[1],
+        color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
+        shading = false
+    )
+    wireframe!(
+        plot, plot[1],
+        color = plot[:strokecolor], linestyle = plot[:linestyle],
+        linewidth = plot[:strokewidth],
+    )
+end
+
+function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P
+    positions = plot[1]
+    bigmesh = lift(positions) do p
+        polys = GeometryTypes.split_intersections(p)
+        merge(GLPlainMesh.(polys))
+    end
+    mesh!(plot, bigmesh, color = plot[:color])
+    outline = lift(positions) do p
+        push!(copy(p), p[1]) # close path
+    end
+    lines!(
+        plot, outline,
+        color = plot[:strokecolor], linestyle = plot[:linestyle],
+        linewidth = plot[:strokewidth],
+    )
+end
+
+function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
+    positions = plot[1]
+    position = lift(positions) do rects
+        Point.(minimum.(rects))
+    end
+    markersize = lift(positions, name = "markersize") do rects
+        widths.(rects)
+    end
+    scatter!(
+        plot, position,
+        marker = T, markersize = markersize, transform_marker = true,
+        marker_offset = Vec2f0(0),
+        color = plot[:color],
+        strokecolor = plot[:strokecolor],
+        colormap = plot[:colormap],
+        colorrange = plot[:colorrange],
+        strokewidth = plot[:strokewidth],
+    )
+end
+
 @recipe(Arrows, points, directions) do scene
     theme = Theme(
         arrowhead = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0),

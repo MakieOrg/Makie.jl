@@ -31,6 +31,7 @@ convert_attribute(x, key::Key) = x
 convert_arguments(P, args...) = args
 
 const PointBased = Union{MeshScatter, Scatter, Lines, LineSegments}
+const XYBased = PointBased
 
 function convert_arguments(::Type{<: PointBased}, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
     (convert(Vector{Point{N, Float32}}, positions),)
@@ -40,7 +41,37 @@ function convert_arguments(::Type{<: PointBased}, positions::SubArray)
     # TODO figure out a good subarray solution
     (positions,)
 end
-function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{<: NTuple{2, <: VecTypes{N, T}}}) where {N, T}
+
+"""
+Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
+spanning z over the grid spanned by x y
+"""
+function convert_arguments(::Type{<: PointBased}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+    (vec(Point3f0.(x, y', z)),)
+end
+"""
+    convert_arguments(P, x, y, z)::(Vector)
+
+Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the values
+from `x`, `y`, and `z`.
+`P` is the plot Type (it is optional).
+"""
+convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
+
+"""
+    convert_arguments(P, x)::(Vector)
+
+Takes an input GeometryPrimitive `x` and decomposes it to points.
+`P` is the plot Type (it is optional).
+"""
+convert_arguments(::Type{<: PointBased}, x::GeometryPrimitive) = (decompose(Point, x),)
+
+
+"""
+Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
+to encode e.g. linesegments or directions.
+"""
+function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
     (convert(Vector{Point{N, Float32}}, reinterpret(Point{N, T}, positions)),)
 end
 
@@ -52,7 +83,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P, y::RealVector) = convert_arguments(P, 1 .. length(y), y)
+convert_arguments(P::Type{<: XYBased}, y::RealVector) = convert_arguments(P, 1:length(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -62,18 +93,20 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
-convert_arguments(P, x::ClosedInterval, y::RealVector) = (Point2f0.(linspace(minimum(x), maximum(x), length(y)), y),)
-
+convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
+convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(linspace(minimum(x), maximum(x), length(y)), y)
+to_linspace(interval, N) = linspace(minimum(interval), maximum(interval), N)
 """
-    convert_arguments(P, x, y, z)::(Vector)
+    convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
-Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the values
-from `x`, `y`, and `z`.
-
+Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the closed range to
+linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
+function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z)
+    convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
+end
+
 
 """
     convert_arguments(x)::(String)
@@ -86,24 +119,15 @@ convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
 """
     convert_arguments(P, x)::(Vector)
 
-Takes an input `GeometryPrimitive` `x` and decomposes it to points.
-
-`P` is the plot Type (it is optional).
-"""
-convert_arguments(::Type{<: Union{MeshScatter, LineSegments, Lines, Scatter}}, x::GeometryPrimitive) = (decompose(Point, x),)
-
-"""
-    convert_arguments(P, x)::(Vector)
-
 Takes an input `HyperRectangle` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::Type{<: Union{MeshScatter, LineSegments, Lines, Scatter}}, x::Rect2D)
+function convert_arguments(P::Type{<: PointBased}, x::Rect2D)
     # TODO fix the order of decompose
     convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
-function convert_arguments(P::Type{<: Union{MeshScatter, LineSegments, Lines, Scatter}}, x::Rect3D)
+function convert_arguments(P::Type{<: PointBased}, x::Rect3D)
     inds = [
         1, 2, 3, 4, 5, 6, 7, 8,
         1, 5, 5, 7, 7, 3, 1, 3,
@@ -112,14 +136,8 @@ function convert_arguments(P::Type{<: Union{MeshScatter, LineSegments, Lines, Sc
     convert_arguments(P, decompose(Point3f0, x)[inds])
 end
 
-"""
-Accepts an `AbstractVector` of a Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
-to encode e.g. linesegments or directions.
-"""
-function convert_arguments(P, x::AbstractVector{Pair{Point{N, T}, Point{N, T}}}) where {N, T}
-    (reinterpret(Point{N, T}, x),)
-end
 
+const SurfaceLike = Union{Surface, Heatmap, Image}
 
 """
     convert_arguments(P, x, y, z)::Tuple{Matrix, Matrix, Matrix}
@@ -129,7 +147,7 @@ outputs them in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
+function convert_arguments(::Type{<: SurfaceLike}, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
     (convert(Matrix{Float32}, x), convert(Matrix{Float32}, y), convert(Matrix{Float32}, z))
 end
 
@@ -139,22 +157,9 @@ end
 Takes 2 `AbstractVector` `x`, `y`, and an AbstractMatrix `z`, and puts them in a Tuple.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (x, y, z)
 end
-
-"""
-    convert_arguments(P, x, y, z)::Tuple{Vector, Vector, Matrix}
-
-Specifically for where the Type `P` is of `Scatter`.
-Takes 2 `AbstractVector` `x`, `y`, and an `AbstractMatrix` `z`, and enables
-to use `scatter` like a surface plot over the grid spanned by `x` and `y`.
-"""
-function convert_arguments(::Type{<: Scatter}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    (vec(Point3f0.(x, y', z)),)
-end
-
-using IntervalSets
 
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -164,13 +169,29 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, data::AbstractMatrix)
+function convert_arguments(::Type{<: SurfaceLike}, data::AbstractMatrix)
     n, m = Float64.(size(data))
     (0.0 .. m, 0.0 .. n, data)
 end
 
+"""
+    convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
 
+Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that `x` and `y` span.
+This is equivalent to `f.(x, y')`.
+`P` is the plot Type (it is optional).
+"""
+function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+    if !applicable(f, x[1], y[1])
+        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
+    end
+    T = typeof(f(x[1], y[1]))
+    z = similar(x, T, (length(x), length(y)))
+    z .= f.(x, y')
+    (x, y, z)
+end
 
+const VolumeLike = Union{Volume}
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
 
@@ -179,7 +200,7 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, data::Array{T, 3}) where T
+function convert_arguments(::Type{<: VolumeLike}, data::Array{T, 3}) where T
     n, m, k = Float64.(size(data))
     (0.0 .. n, 0.0 .. m, 0.0 .. k, data)
 end
@@ -191,7 +212,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
+function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
     (x, y, z, i)
 end
 # function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::ClosedInterval, i::AbstractArray{T, 3}) where T
@@ -206,7 +227,7 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
@@ -217,32 +238,50 @@ function convert_arguments(P, x::AbstractVector, y::AbstractVector, z::AbstractV
     (x, y, z, f.(_x, _y, _z))
 end
 
-"""
-    convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
 
-Takes `AbstractVector` `x` and `y` and the function `f`, and applies `f` on the grid spanned by `x` and `y`.
-This is equivalent to `f.(x, y')`.
 
-`P` is the plot Type (it is optional).
+
 """
-function convert_arguments(P, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
-    if !applicable(f, x[1], y[1])
-        error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
-    end
-    T = typeof(f(x[1], y[1]))
-    z = similar(x, T, (length(x), length(y)))
-    z .= f.(x, y')
-    (x, y, z)
+    convert_arguments(Mesh, x, y, z)::GLNormalMesh
+
+Takes real vectors x, y, z and constructs a mesh out of those, under the assumption that
+every 3 points form a triangle.
+"""
+function convert_arguments(
+        T::Type{<:Mesh},
+        x::RealVector, y::RealVector, z::RealVector
+    )
+    convert_arguments(T, Point3f0.(x, y, z))
 end
-
-
-
-
 """
-    convert_arguments(T, x, y, z, indices)::(GLNormalMesh)
+    convert_arguments(Mesh, xyz::AbstractVector)::GLNormalMesh
 
-Takes an input `Mesh`, 3 `RealVector` `x`, `y` and `z`, and an `AbstractVector` `indices`,
-and outputs a `GLNormalMesh`.
+Takes an input mesh and a vector `xyz` representing the vertices of the mesh, and
+creates indices under the assumption, that each triplet in `xyz` forms a triangle.
+"""
+function convert_arguments(
+        MT::Type{<:Mesh},
+        xyz::AbstractVector
+    )
+    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
+    convert_arguments(MT, xyz, faces)
+end
+# # ambigious case
+# function convert_arguments(
+#         MT::Type{<:Mesh},
+#         xyz::AbstractVector{<: VecTypes{N, T}}
+#     ) where {T, N}
+#     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
+#     convert_arguments(MT, xyz, faces)
+# end
+function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
+    (GLNormalMesh(geom),)
+end
+"""
+    convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
+
+Takes real vectors x, y, z and constructs a triangle mesh out of those, using the
+faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryTypes.Face{N, <: Integer}.
 """
 function convert_arguments(
         T::Type{<: Mesh},
@@ -252,17 +291,17 @@ function convert_arguments(
     convert_arguments(T, Point3f0.(x, y, z), indices)
 end
 
-function to_gl_indices(x::AbstractVector{Int})
+function to_triangles(x::AbstractVector{Int})
     idx0 = UInt32.(x .- 1)
-    to_gl_indices(idx0)
+    to_triangles(idx0)
 end
-function to_gl_indices(idx0::AbstractVector{UInt32})
+function to_triangles(idx0::AbstractVector{UInt32})
     reinterpret(GLTriangle, idx0)
 end
-function to_gl_indices(faces::AbstractVector{Face{3, T}}) where T
+function to_triangles(faces::AbstractVector{Face{3, T}}) where T
     convert(Vector{GLTriangle}, faces)
 end
-function to_gl_indices(faces::AbstractMatrix{T}) where T <: Integer
+function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
     let N = Val{size(faces, 2)}, lfaces = faces
         broadcast(1:size(faces, 1), N) do fidx, n
             to_ndim(GLTriangle, ntuple(i-> lfaces[fidx, i], n), 0.0)
@@ -287,56 +326,22 @@ function to_vertices(verts::AbstractMatrix{T}) where T <: Number
 end
 
 """
-    convert_arguments(Mesh, vertices, indices)::(GLNormalMesh)
+    convert_arguments(Mesh, vertices, indices)::GLNormalMesh
 
-Takes an input `Mesh`, 2 `AbstractVector` `vertices` and `indices`,
-and outputs a `GLNormalMesh`.
+Takes `vertices` and `indices`, and creates a triangle mesh out of those.
+See [to_vertices](@ref) and [to_triangles](@ref) for more informations about
+accepted types.
 """
 function convert_arguments(
         ::Type{<:Mesh},
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = GLNormalMesh(to_vertices(vertices), to_gl_indices(indices))
+    m = GLNormalMesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
 
-"""
-    convert_arguments(MT, x, y, z)::(GLNormalMesh)
 
-Takes an input `Mesh`, 2 `RealVector` `x`, `y` and `z`, and outputs a `GLNormalMesh`.
-"""
-function convert_arguments(
-        MT::Type{<:Mesh},
-        x::RealVector, y::RealVector, z::RealVector
-    )
-    convert_arguments(MT, Point3f0.(x, y, z))
-end
-
-"""
-    convert_arguments(MT, xyz)::(GLNormalMesh)
-
-Takes an input `Mesh` and an `AbstractVector` `xyz`, reinterprets `xyz` as `GLTriangle`, and
-outputs a `GLNormalMesh`.
-"""
-function convert_arguments(
-        MT::Type{<:Mesh},
-        xyz::AbstractVector
-    )
-    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
-    convert_arguments(MT, xyz, faces)
-end
-# ambigious case
-function convert_arguments(
-        MT::Type{<:Mesh},
-        xyz::AbstractVector{<: VecTypes{N, T}}
-    ) where {T, N}
-    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
-    convert_arguments(MT, xyz, faces)
-end
-function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
-    (GLNormalMesh(geom),)
-end
 
 convert_attribute(c::Colorant, ::key"color") = RGBA{Float32}(c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
@@ -535,7 +540,7 @@ end
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-convert_attribute(cm::AbstractVector, ::key"colormap") = RGBAf0.(cm)
+convert_attribute(cm::AbstractVector, ::key"colormap") = to_color.(cm)
 
 """
 Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
@@ -679,6 +684,7 @@ to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
 `Type{GeometryTypes.Rectangle}`
 """
 to_spritemarker(::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
+to_spritemarker(::Type{<: Rect}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
 to_spritemarker(x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)

@@ -26,8 +26,8 @@ signal_convert(t, x, name = :node) = x
 node(name, node) = Node(node, name = string(name))
 node(name, node::Node) = map(identity, node, name = string(name))
 
-function close_all_nodes(any)
-    for field in fieldnames(any)
+function close_all_nodes(any::T) where T
+    for field in fieldnames(T)
         value = getfield(any, field)
         (value isa Node) && close(value, true)
     end
