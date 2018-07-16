@@ -149,7 +149,7 @@ function setup(rp::RenderPass{:postprocess})
     glStencilMask(0xff)
     glDisable(GL_CULL_FACE)
     glClearColor(0,0,0,0)
-    # glClear(GL_COLOR_BUFFER_BIT)
+    glClear(GL_COLOR_BUFFER_BIT)
 end
 
 #this has the luma FBO
@@ -172,7 +172,7 @@ function (rp::RenderPass{:fxaa})(screen::Screen, args...)
     location, target = program.uniformloc[:color_texture]
     rcploc = program.uniformloc[:RCPFrame]
     gluniform(location, target, textures(rp.target)[3])
-    gluniform(rcploc[1], rcpframe(rp.target))
+    gluniform(rcploc[1], rcpframe(size(rp.target)))
     draw_fullscreen(screen.fullscreenvao)
 end
 

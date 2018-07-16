@@ -23,7 +23,7 @@ end
 function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0), Vec3f0(1))), main=nothing)
     gl_convert_data!(data)
     vao = VertexArray(data, data[:shader])
-    uniforms = deepcopy(data) #TODO renderobjectcleanup: This could be handled better
+    uniforms = copy(data) #TODO renderobjectcleanup: This could be handled better
     uniforms[:shader] = data[:shader]
     uniforms[:visible] = true
     robj = RenderObject(main, uniforms, vao, bbs)
