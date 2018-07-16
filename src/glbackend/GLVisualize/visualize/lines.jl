@@ -48,7 +48,14 @@ function ticks(points, resolution)
 end
 
 
-function _default(position::Union{VecTypes{T}, MatTypes{T}}, s::style"lines", data::Dict) where T<:Point
+# ambigious signature
+function _default(position::VecTypes{<: Point}, s::style"lines", data::Dict)
+    line_visualization(position, data)
+end
+function _default(position::MatTypes{<:Point}, s::style"lines", data::Dict)
+    line_visualization(position, data)
+end
+function line_visualization(position::Union{VecTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
     pv = value(position)
     p_vec = if isa(position, GPUArray)
         position

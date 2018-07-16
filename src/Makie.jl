@@ -8,7 +8,6 @@ using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore
-import Media, Juno
 import FileIO
 
 module ContoursHygiene

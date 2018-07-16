@@ -1,5 +1,5 @@
-using ImageFiltering, Base.Test
-using Images, BinaryProvider
+using Test
+using BinaryProvider, FileIO
 include("../examples/library.jl")
 
 record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
@@ -79,23 +79,7 @@ function toimages(f, example, path::String, record)
     end
 end
 
-# The version in Images.jl throws an error... whyyyyy!?
-function approx_difference(
-        A::AbstractArray, B::AbstractArray,
-        sigma::AbstractVector{T} = ones(ndims(A)),
-        eps::AbstractFloat = 1e-2
-    ) where T<:Real
-
-    if length(sigma) != ndims(A)
-        error("Invalid sigma in test_approx_eq_sigma_eps. Should be ndims(A)-length vector of the number of pixels to blur.  Got: $sigma")
-    end
-    kern = KernelFactors.IIRGaussian(sigma)
-    Af = imfilter(A, kern, NA())
-    Bf = imfilter(B, kern, NA())
-    diffscale = max(Images.maxabsfinite(A), Images.maxabsfinite(B))
-    d = Images.sad(Af, Bf)
-    return d / (length(Af) * diffscale)
-end
+include("visualregression.jl")
 
 function test_examples(record, tags...)
     srand(42)
@@ -105,11 +89,11 @@ function test_examples(record, tags...)
             maxdiff = 0.03
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
-                    diff = approx_difference(image, refimage, sigma, eps)
-                    if diff >= maxdiff
+                    # diff = approx_difference(image, refimage, sigma, eps)
+                    # if diff >= maxdiff
                         save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
-                    end
-                    @test diff < maxdiff
+                    # end
+                    # @test diff < maxdiff
                 end
             end
             # reset global states
@@ -125,6 +109,22 @@ isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(record_reference_images)
 
+@inline test2(x) = Int(x)
+@noinline test3(x) = test2(x)
+function test()
+    @testset "test" begin
+        map(1:2) do i
+            map(1:1) do j
+                @testset "test2" begin
+                    x = eval(:(rand()))
+                    test2(x)
+                    @test true
+                end
+            end
+        end
+    end
+end
+test()
 #
 # example = example_database(:cat)[3]
 # scene = eval_example(example)
