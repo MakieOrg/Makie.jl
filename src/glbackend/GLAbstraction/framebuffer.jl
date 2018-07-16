@@ -42,7 +42,7 @@ end
 Holds the id, format and attachment of an OpenGL RenderBuffer.
 RenderBuffers cannot be read by Shaders.
 """
-struct RenderBuffer
+mutable struct RenderBuffer
     id        ::GLuint
     format    ::GLenum
     attachment::GLenum
@@ -88,46 +88,49 @@ A FrameBuffer holds all the data related to the usual OpenGL FrameBufferObjects.
 The `attachments` field gets mapped to the different possible GL_COLOR_ATTACHMENTs, which is bound by GL_MAX_COLOR_ATTACHMENTS,
 and to one of either a GL_DEPTH_ATTACHMENT or GL_DEPTH_STENCIL_ATTACHMENT.
 """
-struct FrameBuffer{ElementTypes, Internal}
+mutable struct FrameBuffer{ElementTypes, Internal}
     id::GLuint
     attachments::Internal
+    function FrameBuffer(fb_size::Tuple{<: Integer, <: Integer}, texture_types::NTuple{N, Any}) where N
+        dimensions = Int.(fb_size)
+
+        framebuffer = glGenFramebuffers()
+        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
+        max_ca = glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS)
+
+        invalid_types = Iterators.filter(x -> !(x <: DepthFormat || x <: GLArrayEltypes), texture_types)
+        ###wth is this
+        # glassert.(texture_types)
+        @assert isempty(invalid_types) "Types $invalid_types are not valid, supported types are:\n  $GLArrayEltypes\n  DepthFormat."
+        if N > max_ca
+            error("The length of texture types exceeds the maximum amount of framebuffer color attachments! Found: $N, allowed: $max_ca")
+        end
+        if length(collect(Iterators.filter(x-> x <: DepthFormat, texture_types))) > 1
+            error("The amount of DepthFormat types in texture types exceeds the maximum of 1.")
+        end
+
+        _attachments = []
+        color_id = -1
+        for T in texture_types
+            attachment, color_id = create_attachment(T, dimensions, color_id)
+            attach2framebuffer(attachment, GL_COLOR_ATTACHMENT(color_id))
+            push!(_attachments, attachment)
+        end
+
+        #this is done so it's a tuple. Not entirely sure why thats better than an
+        #array?
+        attachments = (_attachments...,)
+
+        @assert glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE
+        glBindFramebuffer(GL_FRAMEBUFFER, 0)
+        obj = new{Tuple{texture_types...}, typeof(attachments)}(framebuffer, attachments)
+        finalizer(obj, free!)
+        return obj
+    end
 end
+
 FrameBuffer(fb_size::Tuple{<: Integer, <: Integer}, texture_types...) = FrameBuffer(fb_size, texture_types)
 
-function FrameBuffer(fb_size::Tuple{<: Integer, <: Integer}, texture_types::NTuple{N, Any}) where N
-    dimensions = Int.(fb_size)
-
-    framebuffer = glGenFramebuffers()
-    glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
-    max_ca = glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS)
-
-    invalid_types = Iterators.filter(x -> !(x <: DepthFormat || x <: GLArrayEltypes), texture_types)
-    ###wth is this
-    # glassert.(texture_types)
-    @assert isempty(invalid_types) "Types $invalid_types are not valid, supported types are:\n  $GLArrayEltypes\n  DepthFormat."
-    if N > max_ca
-        error("The length of texture types exceeds the maximum amount of framebuffer color attachments! Found: $N, allowed: $max_ca")
-    end
-    if length(collect(filter(x-> x <: DepthFormat, texture_types))) > 1
-        error("The amount of DepthFormat types in texture types exceeds the maximum of 1.")
-    end
-
-    _attachments = []
-    color_id = -1
-    for T in texture_types
-        attachment, color_id = create_attachment(T, dimensions, color_id)
-        attach2framebuffer(attachment, GL_COLOR_ATTACHMENT(color_id))
-        push!(_attachments, attachment)
-    end
-
-    #this is done so it's a tuple. Not entirely sure why thats better than an
-    #array?
-    attachments = (_attachments...,)
-
-    @assert glCheckFramebufferStatus(GL_FRAMEBUFFER) == GL_FRAMEBUFFER_COMPLETE
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
-    return FrameBuffer{Tuple{texture_types...}, typeof(attachments)}(framebuffer, attachments)
-end
 defaultframebuffer(fb_size) = FrameBuffer(fb_size, DepthStencil{Float24, N0f8}, RGBA{N0f8}, Vec{2, GLushort}, RGBA{N0f8})
 #quite possibly this should have some color attachments as well idk
 #quite possibly this should have some context as well....
