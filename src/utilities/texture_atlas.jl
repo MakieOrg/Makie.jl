@@ -20,7 +20,6 @@ function TextureAtlas(initial_size = (2048, 2048))
         FontExtent{Float64}[]
     )
 end
-
 assetpath(files...) = joinpath(@__DIR__, "..", "..", "assets", files...)
 
 begin #basically a singleton for the textureatlas
@@ -92,7 +91,7 @@ begin #basically a singleton for the textureatlas
             mkdir(dirname(_cache_path))
         end
         open(_cache_path, "w") do io
-            dict = Dict(map(fieldnames(atlas)) do name
+            dict = Dict(map(fieldnames(typeof(atlas))) do name
                 name => getfield(atlas, name)
             end)
             serialize(io, dict)
@@ -196,6 +195,10 @@ const font_render_callbacks = Function[]
 
 function font_render_callback!(f)
     push!(font_render_callbacks, f)
+end
+
+function remove_font_render_callback!(f)
+    filter!(f2-> f2 != f, font_render_callbacks)
 end
 
 function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
