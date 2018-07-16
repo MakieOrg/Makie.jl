@@ -80,23 +80,19 @@ end
 
 ###WIP shadercleanup
 function colorbuffer(screen::Screen)
-    GLFW.PollEvents()
-    yield()
-    render_frame(screen) # let it render
-    GLFW.SwapBuffers(to_native(screen))
-    glFinish() # block until opengl is done rendering
-    #very ugly
-    #TODO screencleanup: What if multiple pipelines rendered?
-    # Should we use the same main color framebuffer everywhere?
-    # Ask Simon
+    if isopen(screen)
+        GLFW.PollEvents()
+        yield()
+        render_frame(screen) # let it render
+        GLFW.SwapBuffers(to_native(screen))
+        glFinish() # block until opengl is done rendering
+        return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
+    else
+        error("Screen not open!")
+    end
     buffer = !isempty(screen.pipelines) ?
                 gpu_data(screen.pipelines[1].passes[1].target, 1) :
                 zeros(RGB{N0f8}, size(screen))
-
-
-    #This assumes that the color is stored
-                                             #in GL_COLOR_ATTACHMENT0
-    return rotl90(RGB{N0f8}.(Images.clamp01nan.(buffer)))
 end
 
 Base.size(screen::Screen) = screen.size
