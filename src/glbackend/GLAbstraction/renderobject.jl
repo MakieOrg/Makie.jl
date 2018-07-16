@@ -22,7 +22,6 @@ end
 
 function RenderObject(data::Dict{Symbol, Any}, bbs=Signal(AABB{Float32}(Vec3f0(0), Vec3f0(1))), main=nothing)
     gl_convert_data!(data)
-    #data[:primitive] is the mesh!!
     vao = VertexArray(data, data[:shader])
     uniforms = deepcopy(data) #TODO renderobjectcleanup: This could be handled better
     uniforms[:shader] = data[:shader]
@@ -152,7 +151,10 @@ function Base.copy(c::Composition{T}) where T
     Composition{T}(new_children, c.boundingbox, c.transformation)
 end
 
-draw(robj::RenderObject) = (bind(robj.vao); draw(robj.vao);)
+function draw(robj::RenderObject)
+    bind(robj.vao)
+    draw(robj.vao)
+end
 # """
 # If you have an array of OptimizedPrograms, you only need to put PreRender in front.
 # """

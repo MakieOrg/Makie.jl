@@ -50,7 +50,8 @@ import .GLAbstraction: defaultframebuffer, RenderPass, Pipeline, setup
 import .GLVisualize: GLVisualizeShader
 #TODO rendering: This definitely could be better! Rethink this entire thing!
 default_pipeline(fbo, program)=
-    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo),final_renderpass(fbo)])
+    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo),final_renderpass(fbo)])
+    # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo),final_renderpass(fbo)])
 
 volume_pipeline(fbo, program)=
     Pipeline(:volume, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
@@ -108,7 +109,6 @@ end
 
 #Implementation of the rendering interfaces
 function (rp::RenderPass{:default})(screen::Screen, renderlist)
-
     if isempty(screen.renderlist)
         return
     end
@@ -120,6 +120,7 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
         found, rect = id2rect(screen, screenid)
         Reactive.value(found) || continue
         a = rect[]
+        glViewport(minimum(a)..., widths(a)...)
         # glStencilFunc(GL_EQUAL, screenid, 0xff) #TODO rendercleanup: Can this be somewhere else?
         for (key,value) in elem.uniforms[:shader].uniformloc #TODO uniformbuffer: This should be inside a buffer I think
             if haskey(elem.uniforms, key) && elem.uniforms[key] != nothing
@@ -135,10 +136,10 @@ function (rp::RenderPass{:default})(screen::Screen, renderlist)
         draw(elem)
     end
     unbind(renderlist[end][3].vao)
-    # glDisable(GL_STENCIL_TEST)
 end
 
 function setup(rp::RenderPass{:postprocess})
+    bind(rp.target)
     draw(rp.target, 3) #only the color part of the fbo
     bind(rp.program)
     glDepthMask(GL_TRUE)
@@ -171,7 +172,7 @@ function (rp::RenderPass{:fxaa})(screen::Screen, args...)
     location, target = program.uniformloc[:color_texture]
     rcploc = program.uniformloc[:RCPFrame]
     gluniform(location, target, textures(rp.target)[3])
-    gluniform(rcploc[1], GLuint.([size(rp.target)...]))
+    gluniform(rcploc[1], rcpframe(rp.target))
     draw_fullscreen(screen.fullscreenvao)
 end
 
