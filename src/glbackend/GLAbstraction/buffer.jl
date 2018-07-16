@@ -199,9 +199,7 @@ end
 # We need to make sure to only free the current one
 
 function free!(x::Buffer)
-    if !is_current_context(x.context)
-        return x
-    end
+    is_context_active(x.context) || return
     id = [x.id]
     try
         glDeleteBuffers(1, id)

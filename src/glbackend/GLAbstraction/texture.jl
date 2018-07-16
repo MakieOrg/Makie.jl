@@ -305,7 +305,7 @@ function gpu_resize!(t::Texture{T, ND}, newdims::NTuple{ND, Int}) where {T, ND}
     old_size = size(t)
     gpu_setindex!(newtex, t)
     t.size   = newdims
-    free(t)
+    free!(t)
     t.id     = newtex.id
     return t
 end
@@ -415,9 +415,7 @@ function similar(t::Texture{T, NDim}, newdims::NTuple{NDim, Int}) where {T, NDim
 end
 
 function free!(x::Texture)
-    if !is_current_context(x.context)
-        return x
-    end
+    is_context_active(x.context) || return
     id = [x.id]
     try
         glDeleteTextures(x.id)

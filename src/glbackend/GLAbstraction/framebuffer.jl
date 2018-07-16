@@ -51,7 +51,9 @@ struct RenderBuffer
     function RenderBuffer(format::GLenum, attachment::GLenum, dimensions)
         @assert length(dimensions) == 2
         id = glGenRenderbuffers(format, attachment, dimensions)
-        new(id, format, attachment, current_context(), dimensions)
+        obj = new(id, format, attachment, current_context(), dimensions)
+        finalizer(obj, free!)
+        obj
     end
 end
 
@@ -61,9 +63,7 @@ function RenderBuffer(depth_format, dimensions)
 end
 
 function free!(rb::RenderBuffer)
-    if !is_current_context(rb.context)
-        return rb
-    end
+    is_context_active(rb.context) || return
     id = [rb.id]
     try
         glDeleteRenderbuffers(1, id)
@@ -101,7 +101,7 @@ function FrameBuffer(fb_size::Tuple{<: Integer, <: Integer}, texture_types::NTup
     glBindFramebuffer(GL_FRAMEBUFFER, framebuffer)
     max_ca = glGetIntegerv(GL_MAX_COLOR_ATTACHMENTS)
 
-    invalid_types = filter(x -> !(x <: DepthFormat || x <: GLArrayEltypes), texture_types)
+    invalid_types = Iterators.filter(x -> !(x <: DepthFormat || x <: GLArrayEltypes), texture_types)
     ###wth is this
     # glassert.(texture_types)
     @assert isempty(invalid_types) "Types $invalid_types are not valid, supported types are:\n  $GLArrayEltypes\n  DepthFormat."
@@ -211,9 +211,7 @@ function free!(fb::FrameBuffer)
     if isempty(fb.attachments)
         return
     end
-    if !is_current_context(fb.attachments[1].context)
-        return fb # don't free from other context
-    end
+    is_context_active(fb.attachments[1].context) || return
     for attachment in fb.attachments
         free!(attachment)
     end
