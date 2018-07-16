@@ -361,7 +361,9 @@ mutable struct Program <: AbstractProgram
         # generate the link locations
         nametypedict = uniform_name_type(program)
         uniformlocationdict = uniformlocations(nametypedict, program)
-        new(program, shaders, nametypedict, uniformlocationdict, current_context())
+        obj = new(program, shaders, nametypedict, uniformlocationdict, current_context())
+        finalizer(obj, free!)
+        obj
     end
 end
 
@@ -406,10 +408,8 @@ end
 
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
-function free(x::Program)
-    if !is_current_context(x.context)
-        return # don't free from other context
-    end
+function free!(x::Program)
+    is_context_active(x.context) || return
     try
         glDeleteProgram(x.id)
     catch e

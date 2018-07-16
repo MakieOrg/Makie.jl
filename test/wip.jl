@@ -25,13 +25,7 @@
 # What doesn't work:
 #   -> poly colormap
 #   -> contours
-
-
-#Rendering Issues:
-#   -> I get an 1282 error trying to draw certain things, they all have GL_POINTS as facelength.
-#      They seemingly have the wrong amount of vertices/bufferlengths
-#
-
+#   -> during the multiple polygon test, does the bottom circle get fully drawn?
 using Makie
 
 begin
@@ -68,4 +62,12 @@ begin
     )
 end
 
-#The moire pattern one also does not show the coloring.
+N = 10
+r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
+scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
+s = scene[end] # last plot in scene
+
+record(scene, "test/tmp/blabla.mp4", r) do m
+    s[1] = m[:, 1]
+    s[2] = m[:, 2]
+end

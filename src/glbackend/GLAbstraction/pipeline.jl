@@ -17,9 +17,7 @@ function render(pipe::Pipeline, args...)
 end
 
 function free!(pipe::Pipeline)
-    if !is_current_context(pipe.context)
-        return pipe
-    end
+    is_context_active(pipe.context) || return
     for pass in pipe.passes
         free!(pass)
     end

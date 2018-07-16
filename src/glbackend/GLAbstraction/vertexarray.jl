@@ -53,7 +53,9 @@ struct VertexArray{Vertex, Kind}
     face::GLenum
     context::AbstractContext
     function (::Type{VertexArray{Vertex, Kind}})(id, buffers, indices, nverts, ninst, face) where {Vertex, Kind}
-        new{Vertex, Kind}(id, buffers, indices, Int32(nverts), Int32(ninst), face, current_context())
+        obj = new{Vertex, Kind}(id, buffers, indices, Int32(nverts), Int32(ninst), face, current_context())
+        finalizer(obj, free!)
+        obj
     end
 end
 
@@ -244,9 +246,7 @@ _typeof{T}(::Type{T}) = Type{T}
 _typeof{T}(::T) = T
 
  function free!(x::VertexArray)
-    if !is_current_context(x.context)
-        return x
-    end
+    is_context_active(x.context) || return
     id = [x.id]
     for buffer in x.buffers
         free!(buffer)
