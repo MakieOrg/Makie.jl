@@ -30,11 +30,26 @@ cardinality(::GLBuffer{T}) where {T} = cardinality(T)
 
 #Function to deal with any Immutable type with Real as Subtype
 function GLBuffer(
+        buffer::Union{Base.ReinterpretArray{T, 1}, DenseVector{T}};
+        buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
+    ) where T <: GLArrayEltypes
+    GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
+end
+
+function GLBuffer(
         buffer::DenseVector{T};
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
     ) where T <: GLArrayEltypes
     GLBuffer{T}(pointer(buffer), length(buffer), buffertype, usage)
 end
+
+function GLBuffer(
+        buffer::AbstractVector{T};
+        kw_args...
+    ) where T <: GLArrayEltypes
+    GLBuffer(collect(buffer); kw_args...)
+end
+
 function GLBuffer(
         ::Type{T}, len::Int;
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW
@@ -44,7 +59,7 @@ end
 
 
 function indexbuffer(
-        buffer::Vector{T};
+        buffer::AbstractVector{T};
         usage::GLenum = GL_STATIC_DRAW
     ) where T<:GLArrayEltypes
     GLBuffer(buffer, buffertype = GL_ELEMENT_ARRAY_BUFFER, usage=usage)

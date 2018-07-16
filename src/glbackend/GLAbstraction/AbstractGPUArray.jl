@@ -71,7 +71,7 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     nothing
 end
 
-function update!(A::GPUArray{T, N}, value::Array{T, N}) where {T, N}
+function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     if length(A) != length(value)
         if isa(A, GLBuffer)
             resize!(A, length(value))
@@ -98,7 +98,7 @@ end
 function getindex(A::GPUArray{T, N}, rect::SimpleRectangle) where {T, N}
     A[rect.x+1:rect.x+rect.w, rect.y+1:rect.y+rect.h]
 end
-function setindex!(A::GPUArray{T, N}, value::Array{T, N}, rect::SimpleRectangle) where {T, N}
+function setindex!(A::GPUArray{T, N}, value::AbstractArray{T, N}, rect::SimpleRectangle) where {T, N}
     A[rect.x+1:rect.x+rect.w, rect.y+1:rect.y+rect.h] = value
 end
 
@@ -110,7 +110,7 @@ mutable struct GPUVector{T} <: GPUArray{T, 1}
 end
 GPUVector(x::GPUArray) = GPUVector{eltype(x)}(x, size(x), length(x))
 
-function update!(A::GPUVector{T}, value::Vector{T}) where T
+function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
     if isa(A, GLBuffer) && (length(A) != length(value))
         resize!(A, length(value))
     end
@@ -143,7 +143,7 @@ function grow_dimensions(real_length::Int, _size::Int, additonal_size::Int, grow
     new_dim = round(Int, real_length*growfactor)
     return max(new_dim, additonal_size+_size)
 end
-function Base.push!(v::GPUVector{T}, x::Vector{T}) where T
+function Base.push!(v::GPUVector{T}, x::AbstractVector{T}) where T
     lv, lx = length(v), length(x)
     if (v.real_length < lv+lx)
         resize!(v.buffer, grow_dimensions(v.real_length, lv, lx))

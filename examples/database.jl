@@ -293,6 +293,8 @@ is_cell(x) = false
 is_group(x::Expr) = x.head == :macrocall && x.args[1] == Symbol("@group")
 is_group(x) = false
 
+is_linenumber(x) = false
+is_linenumber(x::LineNumberNode) = true
 
 find_lastline(arg::Any) = 0
 function find_lastline(arg::Expr)
@@ -300,19 +302,19 @@ function find_lastline(arg::Expr)
 end
 function find_lastline(args::Vector)
     isempty(args) && return 0
-    idx = findlast(Base.is_linenumber, args)
-    line_number = if idx == 0
+    idx = findlast(is_linenumber, args)
+    line_number = if idx == nothing
         0
     else
-        args[idx].args[1]
+        args[idx].line
     end
     max(mapreduce(find_lastline, max, args), line_number)
 end
 function find_startend(args::Vector)
-    firstidx = findfirst(Base.is_linenumber, args)
-    first_linenumber, file = args[firstidx].args
+    firstline = args[findfirst(is_linenumber, args)]
+    first_linenumber = firstline.line
     last_linenumber = find_lastline(args)
-    string(file), first_linenumber:last_linenumber
+    string(firstline.file), first_linenumber:last_linenumber
 end
 
 remove_toplevel(x) = x
@@ -330,7 +332,7 @@ function flatten2block(args::Vector)
     for elem in args
         if elem.head == :block
             append!(res.args, elem.args)
-        elseif Base.is_linenumber(elem) # ignore
+        elseif is_linenumber(elem) # ignore
         else
             push!(res.args, elem)
         end
@@ -339,6 +341,7 @@ function flatten2block(args::Vector)
 end
 
 function extract_cell(cell, author, parent_tags, setup, groupid = NO_GROUP)
+    filter!(x-> !is_linenumber(x), cell.args)
     if !(length(cell.args) in (4, 5))
         error(
             "You need to supply 3 or 4 arguments to `@cell`. E.g.:
@@ -362,7 +365,6 @@ function extract_cell(cell, author, parent_tags, setup, groupid = NO_GROUP)
 
     file, startend = find_startend(cblock.args)
     toplevel, source = extract_source(file, startend)
-    unique_name =
     CellEntry(
         author, title, parent_tags ∪ extract_tags(ctags),
         file, startend, toplevel, source, groupid
@@ -507,14 +509,15 @@ function eval_example(entry; kw_args...)
     try
         result = eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
     catch e
-        Base.showerror(STDERR, e)
-        println(STDERR)
-        Base.show_backtrace(STDERR, Base.catch_backtrace())
-        println(STDERR)
-        println(STDERR, "failed to evaluate the example:")
-        println(STDERR, "```julia")
-        println(STDERR, source)
-        println(STDERR, "```")
+        Base.showerror(stderr, e)
+        println(stderr)
+        println(stderr, "failed to evaluate the example:")
+        println(stderr, "```julia")
+        println(stderr, source)
+        println(stderr, "```")
+        println(stderr, "stacktrace:")
+        Base.show_backtrace(stderr, Base.catch_backtrace())
+        println(stderr)
     end
     result
 end
