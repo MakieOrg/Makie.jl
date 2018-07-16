@@ -28,8 +28,9 @@ cardinality(x::Type{T}) where {T <: Number} = 1
 abstract type AbstractContext end
 
 struct DummyContext <: AbstractContext
-    id::Symbol
+    id::Any
 end
+
 #=
 We need to track the current OpenGL context.
 Since we can't do this via pointer identity  (OpenGL may reuse the same pointers)
@@ -37,11 +38,24 @@ We go for this slightly ugly version.
 In the future, this should probably be part of GLWindow.
 =#
 const context = Base.RefValue{AbstractContext}(DummyContext(:none))
+
 new_context() = (context[] = DummyContext(gensym()))
 current_context() = context[]
 is_current_context(x) = x == context[]
 clear_context!() = (context[] = DummyContext(:none))
-set_context!(x) = (context[] = x)
+set_context!(x::DummyContext) = (context[] = x)
+function native_context_active(x)
+    error("Not implemented for $(typeof(x))")
+end
+
+function is_context_active(x::DummyContext)
+    is_current_context(x) &&
+    native_context_active(x.id)
+end
+
+function native_switch_context!(x)
+    error("Not implemented for $(typeof(x))")
+end
 
 Base.Symbol(c::DummyContext) = c.id
 Base.convert(::Type{Symbol}, c::DummyContext) = c.id

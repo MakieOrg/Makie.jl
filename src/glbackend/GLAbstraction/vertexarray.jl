@@ -115,6 +115,7 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     else
         vert_type = Tuple{eltype.((buffers...,))...}
     end
+
     return VertexArray{vert_type, kind}(id, [buffers...], ind_buf, nverts, ninst, face)
 end
 VertexArray(buffers...; args...) = VertexArray((buffers...), nothing; args...)
@@ -138,9 +139,11 @@ VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
 # Before buffers were saved as Dict{attributename::String, buffer::Buffer}.
 # I don't think that gets used anywhere so we just push it inside the buffer vector.
 function VertexArray(data::Dict, program::Program)
+    # println(keys(data))
     prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : GL_POINTS
     facelen = glenum2face(prim)
     bufferdict = filter((k, v) -> isa(v, Buffer), data)
+    # println(keys(bufferdict))
     if haskey(bufferdict, :indices)
         attriblen = length(bufferdict)-1
         indbuf    = pop!(bufferdict, :indices)
@@ -157,7 +160,7 @@ function VertexArray(data::Dict, program::Program)
     for (name, buffer) in bufferdict
         attribname = string(name)
         attribbuflen = attribbuflen == -1 ? length(buffer) : attribbuflen
-        @assert length(buffer) == attribbuflen error("buffer $attribute has not
+        @assert length(buffer) == attribbuflen error("Buffer $attribute has not
             the same length as the other buffers.
             Has: $(length(buffer)). Should have: $len")
         if attribbuflen != -1
@@ -216,6 +219,8 @@ function face2glenum(face)
     facelength == 2 && return GL_LINES
     facelength == 3 && return GL_TRIANGLES
     facelength == 4 && return GL_QUADS
+    facelength == 11 && return GL_LINE_STRIP_ADJACENCY
+    return GL_TRIANGLES
 end
 
 function glenum2face(glenum)
@@ -223,6 +228,7 @@ function glenum2face(glenum)
     glenum == GL_LINES     && return 2
     glenum == GL_TRIANGLES && return 3
     glenum == GL_QUADS     && return 4
+    glenum == GL_LINE_STRIP_ADJACENCY && return 11
     return 1
 end
 

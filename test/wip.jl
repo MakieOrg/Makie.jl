@@ -24,7 +24,13 @@
 #
 # What doesn't work:
 #   -> poly colormap
+#   -> contours
 
+
+#Rendering Issues:
+#   -> I get an 1282 error trying to draw certain things, they all have GL_POINTS as facelength.
+#      They seemingly have the wrong amount of vertices/bufferlengths
+#
 
 using Makie
 
@@ -50,8 +56,16 @@ begin
         5 6 9;
         5 8 9;
     ]
-    color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    poly(coordinates, connectivity, color = color, linecolor = (:black, 0.6), linewidth = 4)
+    color = [0.0, 0.0, 0.0, 0.0, -0.675, 0.0, 0.0, 0.0,-0.675]
+    poly(coordinates, connectivity, color = color, linecolor = (:black, 0.6), linewidth = 4, shading=false)
 end
 
-screen = Makie.global_gl_screen()
+#this also does not work, putting shading =true shows some color.
+begin
+    mesh(
+        [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
+        shading = false
+    )
+end
+
+#The moire pattern one also does not show the coloring.

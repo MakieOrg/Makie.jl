@@ -334,7 +334,7 @@ function gl_convert_data!(data)
             end
         end
     end
-    # handle meshes seperately, since they need expansion
+    # gl_convert_targets are what everythign should be converted to!    # handle meshes seperately, since they need expansion
 
     meshs = filter((key, value) -> isa(value, NativeMesh), data)
     if !isempty(meshs)
