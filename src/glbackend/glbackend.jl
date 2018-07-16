@@ -3,7 +3,7 @@ using ModernGL, GLFW, FixedPointNumbers
 include("GLAbstraction/GLAbstraction.jl")
 using .GLAbstraction
 
-const atlas_texture_cache = Dict{GLFW.Window, Tuple{Texture{Float16, 2}, Function}}()
+const atlas_texture_cache = Dict{GLAbstraction.AbstractContext, Tuple{Texture{Float16, 2}, Function}}()
 
 function get_texture!(atlas)
     # clean up dead context!
@@ -28,9 +28,9 @@ function get_texture!(atlas)
              ctx = tex.context
              if GLAbstraction.is_context_active(ctx)
                  prev_ctx = GLAbstraction.current_context()
-                 GLAbstraction.switch_context!(ctx)
+                 GLAbstraction.set_context!(ctx)
                  tex[rectangle] = distance_field
-                 GLAbstraction.switch_context!(prev_ctx)
+                 GLAbstraction.set_context!(prev_ctx)
              end
          end
          AbstractPlotting.font_render_callback!(callback)

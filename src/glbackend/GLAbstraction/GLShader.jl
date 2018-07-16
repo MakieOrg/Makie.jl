@@ -335,17 +335,16 @@ mutable struct Program <: AbstractProgram
         # Remove old shaders
         exists_context()
         program = glCreateProgram()::GLuint
-        glUseProgram(program)
+        @assert program > 0 "couldn't create program. Most likely, opengl context is not active"
+        # glUseProgram(program)
         #attach new ones
         foreach(shaders) do shader
             glAttachShader(program, shader.id)
         end
-
         #Bind frag data
         for (location, name) in fragdatalocation
             glBindFragDataLocation(program, location, ascii(name))
         end
-
         #link program
         glLinkProgram(program)
         if !islinked(program)
@@ -426,12 +425,6 @@ function free_handle_error(e)
 end
 
 islinked(program::GLuint) = glGetProgramiv(program, GL_LINK_STATUS) == GL_TRUE
-
-function createprogram()
-    program = glCreateProgram()
-    @assert program > 0 "couldn't create program. Most likely, opengl context is not active"
-    program::GLuint
-end
 
 shadertype(s::Shader) = s.typ
 function shadertype(f::File{format"GLSLShader"})

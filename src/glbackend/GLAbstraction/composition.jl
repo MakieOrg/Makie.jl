@@ -18,7 +18,6 @@ function Composition(a::Composable...; parent=Composition())
 end
 "Create a composition from GLdata. This was previously in GLVisualize utils as `assemble_shader`"
 function Composition(data::Dict)
-    shader =
     default_bb = Signal(centered(AABB))
     bb  = get(data, :boundingbox, default_bb)
     if bb == nothing || isa(bb, Signal{Void})
