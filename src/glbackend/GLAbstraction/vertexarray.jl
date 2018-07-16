@@ -44,7 +44,7 @@ end
 #              primitives, i.e. making the buffers an NTuple instead of a vector.
 #              I think that should be possible since nobody really wants to change
 #              the vao after it's made anyway?
-struct VertexArray{Vertex, Kind}
+mutable struct VertexArray{Vertex, Kind}
     id::GLuint
     buffers::Vector{<:Buffer}
     indices::Union{Buffer, Void}

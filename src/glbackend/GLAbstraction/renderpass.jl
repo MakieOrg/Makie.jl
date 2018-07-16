@@ -32,7 +32,7 @@ function RenderPass(name::Symbol, shaders::Vector{Tuple{String, UInt32}}, target
     end
 
     prog   = Program(pass_shaders, Tuple{Int, String}[])
-    return RenderPass{name}(name, prog, target)
+    return RenderPass(name, prog, target)
 end
 RenderPass(name::Symbol, shaders) = RenderPass(name, shaders, contextfbo())
 
