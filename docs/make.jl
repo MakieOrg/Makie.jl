@@ -75,7 +75,7 @@ for func in (atomics..., contour)
         println(io, "# `$fname`")
         examples2source(fname, scope_start = "", scope_end = "", indent = "") do entry, source
             # print bibliographic stuff
-            println(io, "## \"$(entry.title)\"")
+            println(io, "## $(entry.title)")
             print(io, "Tags: ")
             tags = sort(collect(entry.tags))
             for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
