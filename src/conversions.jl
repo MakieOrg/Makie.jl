@@ -4,7 +4,18 @@
     convert_attribute(value(dict[key]), Key{key}())
 end
 
+"""
+    to_color(color)
+
+Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
+"""
 to_color(color) = convert_attribute(color, key"color"())
+
+"""
+    to_colormap(cm[, N = 20])
+
+Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+"""
 to_colormap(color) = convert_attribute(color, key"colormap"())
 to_rotation(color) = convert_attribute(color, key"rotation"())
 to_font(color) = convert_attribute(color, key"font"())
@@ -490,7 +501,9 @@ const colorbrewer_names = Symbol[
     :RdGy,
     :PuOr,
 
-    #The number of colors a qualitative color scheme can have depends on the scheme. The available qualitative color schemes are:
+    #The number of colors a qualitative color scheme can have depends on the scheme.
+    #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
+    #The available qualitative color schemes are:
     :Set1,
     :Set2,
     :Set3,
@@ -501,6 +514,14 @@ const colorbrewer_names = Symbol[
     :Pastel2
 ]
 
+const colorbrewer_8color_names = Symbol[
+    #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
+    :Accent,
+    :Dark2,
+    :Pastel2,
+    :Set2
+]
+
 """
     available_gradients()
 
@@ -508,7 +529,7 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in colorbrewer_names
+    for name in sort(colorbrewer_names)
         println("    ", name)
     end
     println("    ", "Viridis")
@@ -536,9 +557,13 @@ A Symbol/String naming the gradient. For more on what names are available please
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
     cs_sym = Symbol(cs)
     if cs_sym in colorbrewer_names
-        return resample(ColorBrewer.palette(string(cs_sym), 9), n)
+        if cs_sym in colorbrewer_8color_names
+            return resample(ColorBrewer.palette(string(cs_sym), 8), n)
+        else
+            return resample(ColorBrewer.palette(string(cs_sym), 9), n)
+        end
     elseif lowercase(string(cs_sym)) == "viridis"
-        return [
+        cm = [
             to_color("#440154FF"),
             to_color("#481567FF"),
             to_color("#482677FF"),
@@ -560,6 +585,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             to_color("#DCE319FF"),
             to_color("#FDE725FF"),
         ]
+        return resample(cm, n)
     else
         #TODO integrate PlotUtils color gradients
         error("There is no color gradient named: $cs")
