@@ -1,9 +1,10 @@
-
 using Documenter: Selectors, Expanders, Markdown
 using Documenter.Markdown: Link, Paragraph
 struct DatabaseLookup <: Expanders.ExpanderPipeline end
+struct PlotLookup <: Expanders.ExpanderPipeline end
 
 Selectors.order(::Type{DatabaseLookup}) = 0.5
+Selectors.order(::Type{PlotLookup}) = 0.2 # change this to de-prioritize this lookup
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
 
 const regex_pattern = r"example_database\(([\"a-zA-Z_0-9. ]+)\)"
@@ -24,6 +25,7 @@ match_kw(x::String) = ismatch(regex_pattern, x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = match_kw(node)
+Selectors.matcher(::Type{PlotLookup}, node, page, doc) = match_kw(node)
 
 # ============================================= Simon's implementation
 function look_up_source(database_key)
@@ -43,6 +45,7 @@ function look_up_source(database_key)
         )
     end
 end
+
 function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     matched = nothing
     for elem in x.content
@@ -60,6 +63,69 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     # Evaluate the code block. We redirect stdout/stderr to `buffer`.
     page.mapping[x] = Markdown.MD(content)
 end
+
+function Selectors.runner(::Type{PlotLookup}, x, page, doc)
+    # TODO: trying to implement this like the RawBlock selector from Documenter
+    # TODO: https://github.com/JuliaDocs/Documenter.jl/blob/9c7119fe8b6f81572b555cbd36f941bf3f902284/src/Expanders.jl#L589-L593
+    # TODO: currently running into errors with embedding the raw code
+    matched = nothing
+    for elem in x.content
+        if isa(elem, AbstractString)
+            matched = match(regex_pattern, elem)
+            matched != nothing && break
+        end
+    end
+    matched == nothing && error("No match: $x")
+    # The sandboxed module -- either a new one or a cached one from this page.
+    database_keys = filter(x-> !(x in ("", " ")), split(matched[1], '"'))
+
+    map(database_keys) do database_key
+        # embed plot
+        idx = find(x-> x.title == database_key, database)
+        entry = database[idx[1]]
+        uname = string(entry.unique_name)
+        lines = entry.file_range
+
+        io = IOBuffer()
+        embed_plot(io, uname, mediapath, buildpath; src_lines = lines)
+        str = String(take!(io))
+
+        page.mapping[x] = Documenter.Documents.RawHTML(str) # this works but leaves the "```@raw" parts of the embed code showing, which is normally parsed by Documenter
+        # page.mapping[x] = Documenter.Documents.RawNode(Symbol(matched[1]), str)
+        # Markdown.Code("HTML", String(take!(io)))
+    end
+end
+    # page.mapping[x] = Markdown.MD(content)
+    # page.mapping[x] = Documenter.Documents.RawHTML(content)
+
+
+    # map(database_keys) do database_key
+    #     # embed plot
+    #     idx = find(x-> x.title == database_key, database)
+    #     entry = database[idx[1]]
+    #     uname = string(entry.unique_name)
+    #     lines = entry.file_range
+    #     io = IOBuffer()
+    #     embed_plot(io, uname, mediapath, buildpath; src_lines = lines)
+    #     page.mapping[x] = Documenter.Documents.RawHTML(String(take!(io))) # this works but leaves the @raw parts of the code showing
+    #     # page.mapping[x] = Documenter.render(String(take!(io)))
+    #     # page.mapping[x] = Documenter.Writers.MarkdownWriter.render(String(take!(io)))
+    #     # page.mapping[x] = Documenter.Documents.RawNode(String(take!(io)))
+    #     # page.mapping[x] = Documenter.Documents.RawNode(Symbol(matched[1]), String(take!(io)))
+    #     # page.mapping[x] = Markdown.MD(String(take!(io)))
+    # end
+
+
+    # embed plot
+    # get unique name of the database entry
+    # idx = find(x-> x.title == database_key, database)
+    # entry = database[idx]
+    # uname = entry.unique_name
+    # lines = entry.file_range
+    # info("$uname")
+    # info("$lines")
+    # embed_plot(STDOUT, uname, mediapath, buildpath, lines)
+
 
 """
     embed_video(relapath::AbstractString)
