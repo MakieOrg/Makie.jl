@@ -87,61 +87,33 @@ function Selectors.runner(::Type{PlotLookup}, x, page, doc)
         lines = entry.file_range
 
         io = IOBuffer()
-        embed_plot(io, uname, mediapath, buildpath; src_lines = lines)
+        embed_plot(io, uname, mediapath, buildpath; src_lines = lines, raw_mode = false)
         str = String(take!(io))
 
-        page.mapping[x] = Documenter.Documents.RawHTML(str) # this works but leaves the "```@raw" parts of the embed code showing, which is normally parsed by Documenter
-        # page.mapping[x] = Documenter.Documents.RawNode(Symbol(matched[1]), str)
-        # Markdown.Code("HTML", String(take!(io)))
+        # write raw HTML using Documenter
+        page.mapping[x] = Documenter.Documents.RawHTML(str)
     end
 end
-    # page.mapping[x] = Markdown.MD(content)
-    # page.mapping[x] = Documenter.Documents.RawHTML(content)
-
-
-    # map(database_keys) do database_key
-    #     # embed plot
-    #     idx = find(x-> x.title == database_key, database)
-    #     entry = database[idx[1]]
-    #     uname = string(entry.unique_name)
-    #     lines = entry.file_range
-    #     io = IOBuffer()
-    #     embed_plot(io, uname, mediapath, buildpath; src_lines = lines)
-    #     page.mapping[x] = Documenter.Documents.RawHTML(String(take!(io))) # this works but leaves the @raw parts of the code showing
-    #     # page.mapping[x] = Documenter.render(String(take!(io)))
-    #     # page.mapping[x] = Documenter.Writers.MarkdownWriter.render(String(take!(io)))
-    #     # page.mapping[x] = Documenter.Documents.RawNode(String(take!(io)))
-    #     # page.mapping[x] = Documenter.Documents.RawNode(Symbol(matched[1]), String(take!(io)))
-    #     # page.mapping[x] = Markdown.MD(String(take!(io)))
-    # end
-
-
-    # embed plot
-    # get unique name of the database entry
-    # idx = find(x-> x.title == database_key, database)
-    # entry = database[idx]
-    # uname = entry.unique_name
-    # lines = entry.file_range
-    # info("$uname")
-    # info("$lines")
-    # embed_plot(STDOUT, uname, mediapath, buildpath, lines)
 
 
 """
-    embed_video(relapath::AbstractString)
+    embed_video(relpath::AbstractString[; raw_mode::Bool = true])
 
 Generates a MD-formatted string for embedding video into Markdown files
 (since `Documenter.jl` doesn't support directly embedding mp4's).
 """
-function embed_video(relapath::AbstractString)
-    return str = """
-        ```@raw html
+function embed_video(relpath::AbstractString; raw_mode::Bool = true)
+    embed_code = """
         <video controls autoplay loop muted>
-          <source src="$(relapath)" type="video/mp4">
+          <source src="$(relpath)" type="video/mp4">
           Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
         </video>
-        ```
-        """
+    """
+    if raw_mode
+        return str = "```@raw html\n" * embed_code * "```"
+    else
+        return embed_code
+    end
 end
 
 
@@ -215,7 +187,8 @@ end
 
 
 """
-    embed_plot(io::IO, uname::AbstractString, mediapath::AbstractString, buildpath::AbstractString)
+    embed_plot(io::IO, uname::AbstractString, mediapath::AbstractString, buildpath::AbstractString[;
+    raw_mode::Bool = true])
 
 Outputs markdown code for embedding plots in `Documenter.jl`.
 """
@@ -224,7 +197,8 @@ function embed_plot(
         uname::AbstractString,
         mediapath::AbstractString,
         buildpath::AbstractString;
-        src_lines::Range = nothing
+        src_lines::Range = nothing,
+        raw_mode::Bool = true
     )
     isa(uname, AbstractString) ? nothing : error("uname must be a string!")
     isa(mediapath, AbstractString) ? nothing : error("mediapath must be a string!")
@@ -240,7 +214,7 @@ function embed_plot(
         embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
         println(io, "![library lines $(src_lines)]($(embedpath))")
     elseif "$(uname).mp4" in medialist
-        embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"))
+        embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"); raw_mode = raw_mode)
         println(io, embedcode)
     else
         warn("file $(uname) with unknown extension in mediapath, or file nonexistent")
