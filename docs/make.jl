@@ -150,19 +150,12 @@ makedocs(
 )
 # move it back
 mv(tmp_path, mediapath)
-#
-# ENV["TRAVIS_BRANCH"] = "latest"
-# ENV["TRAVIS_PULL_REQUEST"] = "false"
-# ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
-# ENV["TRAVIS_TAG"] = "v1.0.0"
-# ENV["TRAVIS_OS_NAME"] = "linux"
-# ENV["TRAVIS_JULIA_VERSION"] = "0.6"
-#
-# deploydocs(
-#     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-#     repo   = "github.com/JuliaPlots/Makie.jl.git",
-#     julia  = "0.6",
-#     target = "build",
-#     osname = "linux",
-#     make = nothing
-# )
+
+deploydocs(
+    deps = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
+    repo = "github.com/JuliaPlots/Makie.jl.git",
+    julia = "",
+    osname = "",
+    target = "build",
+    make = nothing
+)
