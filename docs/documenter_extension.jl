@@ -32,6 +32,7 @@ function look_up_source(database_key)
     isempty(entries) && error("No entry found for database reference $database_key")
     length(entries) > 1 && error("Multiple entries found for database reference $database_key")
     sprint() do io
+        idx = entries[1]
         print_code(
             io, database[entries[1]],
             scope_start = "",
@@ -86,16 +87,12 @@ Insert thumbnails matching a search tag.
 function embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
     indices = find_indices(func)
     !ispath(currpath) && warn("currepath does not exist!")
-    # if isempty(atomicspath) || !ispath(atomicspath)
-    #     atomicspath = joinpath(srcpath, "atomics_examples")
-    # end
-    # namesdict = Dict(database[idx].unique_name => database[idx].title for idx in indices)
     for idx in indices
         uname = database[idx].unique_name
         title = database[idx].title
         # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
-        testpath1 = joinpath(mediapath, "thumb-$uname.png")
-        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+        testpath1 = joinpath(srcmediapath, "thumb-$uname.png")
+        testpath2 = joinpath(srcmediapath, "thumb-$uname.jpg")
         if isfile(testpath1)
             embedpath = relpath(testpath1, currpath)
             println(io, "![]($(embedpath))")
@@ -124,7 +121,7 @@ Insert thumbnails matching a search tag.
 function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
     indices = find_indices(func)
     !ispath(currpath) && warn("currepath does not exist!")
-    !ispath(tarpath) && warn("tarpath does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
+    !ispath(tarpath) && warn("$(tarpath) does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
     for idx in indices
         entry = database[idx]
         uname = entry.unique_name
@@ -169,6 +166,9 @@ function embed_plot(
     medialist = readdir(mediapath)
     if "$(uname).png" in medialist
         embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+        println(io, "![library lines $(src_lines)]($(embedpath))")
+    elseif "$(uname).jpg" in medialist
+        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).jpg")
         println(io, "![library lines $(src_lines)]($(embedpath))")
     elseif "$(uname).gif" in medialist
         embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
