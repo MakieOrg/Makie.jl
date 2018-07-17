@@ -18,7 +18,7 @@ function save_example(entry, x::Scene)
     Makie.save(path, x)
     path
 end
-save_example(entry, x::String) = x # to do
+save_example(entry, x::String) = x # nothing to do
 AbstractPlotting.set_theme!(resolution = (500, 500))
 eval_examples(outputfile = output_path) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
