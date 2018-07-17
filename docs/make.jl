@@ -10,7 +10,23 @@ srcpath = joinpath(pathroot, "docs", "src")
 buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
-
+# TODO can we teach this to documenter somehow?
+ispath(mediapath) || mkpath(mediapath)
+output_path(entry, ending) = joinpath(mediapath, string(entry.unique_name, ending))
+function save_example(entry, x::Scene)
+    path = output_path(entry, ".jpg")
+    Makie.save(path, x)
+    path
+end
+save_example(entry, x::String) = x # to do
+AbstractPlotting.set_theme!(resolution = (500, 500))
+eval_examples(outputfile = output_path) do example, value
+    AbstractPlotting.set_theme!(resolution = (500, 500))
+    srand(42)
+    path = save_example(example, value)
+    name = string("thumb-", example.unique_name, ".jpg")
+    generate_thumbnail(path, joinpath(dirname(path), name))
+end
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
@@ -41,73 +57,34 @@ open(path, "w") do io
     end
 end
 
-
 # =============================================
 # automatically generate gallery based on looping through the database
 # using pre-generated plots from generate_plots.jl
 cd(docspath)
-medialist = readdir(mediapath)
 example_pages = nothing
 example_list = String[]
 for func in (atomics..., contour)
-    isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     fname = to_string(func)
     info("generating examples database for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
     indices = find_indices(func)
     open(path, "w") do io
         println(io, "# `$fname`")
-        counter = 1
-        groupid_last = NO_GROUP
-        for i in indices
-            entry = database[i]
+        examples2source(fname) do entry, source
             # print bibliographic stuff
             println(io, "## \"$(entry.title)\"")
             print(io, "Tags: ")
             tags = sort(collect(entry.tags))
             for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
             println(io, "`$(tags[end])`.\n")
-            # There are 3 possible conditions:
-            #  cond 1: entry is part of a group, and is in same group as last example (continuation)
-            #  cond 2: entry is part of a new group
-            #  cond 3: entry is not part of a group
-            if isgroup(entry) && entry.groupid == groupid_last
-                try
-                    uname = string(entry.unique_name)
-                    src_lines = entry.file_range
-                    _print_source(io, i; style = "julia", example_counter = counter)
-                    embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                    embedpath = nothing
-                catch e
-                    Base.showerror(STDERR, e)
-                    println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
-                end
-            elseif isgroup(entry)
-                try
-                    groupid_last = entry.groupid
-                    uname = string(entry.unique_name)
-                    src_lines = entry.file_range
-                    _print_source(io, i; style = "julia", example_counter = counter)
-                    embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                    embedpath = nothing
-                catch e
-                    Base.showerror(STDERR, e)
-                    println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
-                end
-            else
-                try
-                    uname = string(entry.unique_name)
-                    src_lines = entry.file_range
-                    _print_source(io, i; style = "julia", example_counter = counter)
-                    embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
-                    embedpath = nothing
-                    counter += 1
-                    groupid_last = entry.groupid
-                catch e
-                    Base.showerror(STDERR, e)
-                    println("ERROR: Didn't work with \"$(entry.title)\" at index $i\n")
-                end
-            end
+            uname = string(entry.unique_name)
+            src_lines = entry.file_range
+            println(io, """
+            ```julia
+            $source
+            ```
+            """)
+            embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
         end
     end
     push!(example_list, "examples-$fname.md")
@@ -129,8 +106,10 @@ open(path, "w") do io
     print_table(io, attr_desc)
 end
 
-# TODO can we teach this to documenter somehow?
-cp(Pkg.dir("Makie", "docs", "media"), mediapath)
+# documenter deletes everything in build, so we need to move the media out and then back in again.
+tmp_path = joinpath(mktempdir(), "media")
+ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
+cp(mediapath, tmp_path)
 
 makedocs(
     modules = [Makie, AbstractPlotting],
@@ -169,7 +148,8 @@ makedocs(
         # ],
     ]
 )
-
+# move it back
+mv(tmp_path, mediapath)
 #
 # ENV["TRAVIS_BRANCH"] = "latest"
 # ENV["TRAVIS_PULL_REQUEST"] = "false"
