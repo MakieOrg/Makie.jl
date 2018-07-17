@@ -37,13 +37,18 @@ using Makie # hide
 help_attributes(STDOUT, Scatter; extended = true)
 ```
 
+
 # Plot styling options
 Use these functions to find out the styling options.
+
+## `available_marker_symbols`
 
 ```@example
 using AbstractPlotting # hide
 AbstractPlotting.available_marker_symbols()
 ```
+
+## `available_gradients`
 
 ```@example
 using AbstractPlotting # hide
