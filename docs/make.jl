@@ -70,7 +70,7 @@ for func in (atomics..., contour)
     indices = find_indices(func)
     open(path, "w") do io
         println(io, "# `$fname`")
-        examples2source(fname) do entry, source
+        examples2source(fname, scope_start = "", scope_end = "", indent = "") do entry, source
             # print bibliographic stuff
             println(io, "## \"$(entry.title)\"")
             print(io, "Tags: ")
