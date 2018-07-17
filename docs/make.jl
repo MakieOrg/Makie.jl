@@ -7,6 +7,7 @@ import AbstractPlotting: _help, to_string, to_func, to_type
 pathroot = Pkg.dir("Makie")
 docspath = Pkg.dir("Makie", "docs")
 srcpath = joinpath(pathroot, "docs", "src")
+srcmediapath = joinpath(pathroot, "docs", "media")
 buildpath = joinpath(pathroot, "docs", "build")
 mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
@@ -30,6 +31,7 @@ end
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
+info("Generating functions overview")
 path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
@@ -48,6 +50,7 @@ open(path, "w") do io
             println(io, "```@docs")
             println(io, "$fname")
             println(io, "```\n")
+            help_attributes(io, func; extended = true)
             embed_thumbnail_link(io, func, buildpath, expdbpath)
         catch e
             println("ERROR: Didn't work with $fname\n")
@@ -65,7 +68,7 @@ example_pages = nothing
 example_list = String[]
 for func in (atomics..., contour)
     fname = to_string(func)
-    info("generating examples database for $fname")
+    info("Generating examples gallery for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
     indices = find_indices(func)
     open(path, "w") do io
@@ -89,11 +92,12 @@ for func in (atomics..., contour)
     end
     push!(example_list, "examples-$fname.md")
 end
-example_pages = "Examples" => example_list
+# example_pages = "Examples" => example_list
 
 
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
+info("Generating attributes page")
 include("../src/attr_desc.jl")
 path = joinpath(srcpath, "attributes.md")
 srcdocpath = joinpath(srcpath, "src-attributes.md")
@@ -103,7 +107,25 @@ open(path, "w") do io
     src = read(srcdocpath, String)
     println(io, src)
     print(io, "\n")
+    println(io, "## List of attributes")
     print_table(io, attr_desc)
+end
+
+# automatically generate an overview of the function signatures, using a source md file
+info("Generating signatures page")
+path = joinpath(srcpath, "signatures.md")
+srcdocpath = joinpath(srcpath, "src-signatures.md")
+open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    println(io, "# Plot function signatures")
+    src = read(srcdocpath, String)
+    println(io, src)
+    print(io, "\n")
+    println(io, "```@docs")
+    println(io, "convert_arguments")
+    println(io, "```\n")
+
+    println(io, "See [Plot attributes](@ref) for the available plot attributes.")
 end
 
 # documenter deletes everything in build, so we need to move the media out and then back in again.
@@ -111,6 +133,7 @@ tmp_path = joinpath(mktempdir(), "media")
 ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
 cp(mediapath, tmp_path)
 
+info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
 makedocs(
     modules = [Makie, AbstractPlotting],
     doctest = false, clean = true,
@@ -139,7 +162,8 @@ makedocs(
         ],
         # atomics_pages,
         "Examples" => [
-            example_list
+            "index-examples.md",
+            example_list...
             # "tags_wordcloud.md",
             #"linking-test.md"
         ]

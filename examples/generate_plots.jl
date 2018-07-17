@@ -11,7 +11,9 @@ function record_examples(path, tags...; thumbnails = true, thumbnail_size = 128)
         if isa(result, String) && isfile(result)
             # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
             # seek to the middle of the video and grab a frame
-            cp(result, full_path * "mp4")
+            if abspath(result) != abspath(full_path * ".mp4")
+                cp(result, full_path * ".mp4")
+            end
             seektime = get_video_duration(result) / 2
             if thumbnails
                 run(`ffmpeg -loglevel quiet -ss $seektime -i $result -vframes 1 -vf "scale=$(thumbnail_size):-2" -y -f image2 $thumb_path`)
@@ -28,4 +30,4 @@ end
 AbstractPlotting.set_theme!(resolution = (500, 500))
 cd(Pkg.dir("Makie"))
 isdir("docs/media") || mkdir("docs/media")
-record_examples("docs/media", :heatmap, thumbnails = true)
+record_examples("docs/media", thumbnails = true)
