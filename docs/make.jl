@@ -36,7 +36,7 @@ path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
-    medialist = readdir(srcmediapath)
+    medialist = readdir(mediapath)
     isempty(medialist) && error("media folder is empty -- perhaps you forgot to generate the plots? :)")
     println(io, "# Atomic functions overview")
     src = read(srcdocpath, String)
