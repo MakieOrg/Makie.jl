@@ -779,10 +779,10 @@ end
         R = 2
         theta = 4pi
         h = 5
-        x = [R .* cos(t) for t = linspace(0, theta, N)]
-        y = [R .* sin(t) for t = linspace(0, theta, N)]
+        x = [R .* (t/3) .* cos(t) for t = linspace(0, theta, N)]
+        y = [R .* (t/3) .* sin(t) for t = linspace(0, theta, N)]
         z = linspace(0, h, N)
-        meshscatter(x, y, z, markersize = 5, color = to_colormap(:viridis, N))
+        meshscatter(x, y, z, markersize = 0.5, color = to_colormap(:viridis, N))
     end
 
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
@@ -868,7 +868,7 @@ end
         end
         scatter!(scene, clicks, color = :red, marker = '+', markersize = 10, raw = true)
     end
-    
+
     @cell "Theming" [theme, scatter, surface, set_theme] begin
         new_theme = Theme(
             resolution = (500, 500),
