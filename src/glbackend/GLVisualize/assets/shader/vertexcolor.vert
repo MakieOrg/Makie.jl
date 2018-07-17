@@ -1,8 +1,8 @@
 {{GLSL_VERSION}}
 
 in vec3 vertices;
-in vec3 normals;
 in vec4 vertex_color;
+in vec3 normals;
 
 uniform vec3 light[4];
 

@@ -23,51 +23,16 @@
 #   -> So many speedups possible!
 #
 # What doesn't work:
-#   -> poly colormap
 #   -> contours
 #   -> during the multiple polygon test, does the bottom circle get fully drawn?
 using Makie
 
+
 begin
-    coordinates = [
-        0.0 0.0;
-        0.5 0.0;
-        1.0 0.0;
-        0.0 0.5;
-        0.5 0.5;
-        1.0 0.5;
-        0.0 1.0;
-        0.5 1.0;
-        1.0 1.0;
-    ]
-    connectivity = [
-        1 2 5;
-        1 4 5;
-        2 3 6;
-        2 5 6;
-        4 5 8;
-        4 7 8;
-        5 6 9;
-        5 8 9;
-    ]
-    color = [0.0, 0.0, 0.0, 0.0, -0.675, 0.0, 0.0, 0.0,-0.675]
-    poly(coordinates, connectivity, color = color, linecolor = (:black, 0.6), linewidth = 4, shading=false)
-end
-
-#this also does not work, putting shading =true shows some color.
-begin
-    mesh(
-        [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
-        shading = false
-    )
-end
-
-N = 10
-r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
-scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
-s = scene[end] # last plot in scene
-
-record(scene, "test/tmp/blabla.mp4", r) do m
-    s[1] = m[:, 1]
-    s[2] = m[:, 2]
+    function xy_data(x, y)
+        r = sqrt(x*x + y*y)
+        r == 0.0 ? 1f0 : (sin(r)/r)
+    end
+    r = linspace(-1, 1, 100)
+    contour3d(r, r, (x,y)-> xy_data(10x, 10y), levels = 20, linewidth = 3)
 end
