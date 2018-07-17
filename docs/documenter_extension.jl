@@ -128,8 +128,8 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
         title = entry.title
         src_lines = entry.file_range
         # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
-        testpath1 = joinpath(srcmediapath, "thumb-$uname.png")
-        testpath2 = joinpath(srcmediapath, "thumb-$uname.jpg")
+        testpath1 = joinpath(mediapath, "thumb-$uname.png")
+        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
         link = relpath(tarpath, currpath)
         if isfile(testpath1)
             embedpath = relpath(testpath1, currpath)
@@ -163,7 +163,7 @@ function embed_plot(
     isa(uname, AbstractString) ? nothing : error("uname must be a string!")
     isa(mediapath, AbstractString) ? nothing : error("mediapath must be a string!")
     isa(buildpath, AbstractString) ? nothing : error("buildpath must be a string!")
-    medialist = readdir(srcmediapath)
+    medialist = readdir(mediapath)
     if "$(uname).png" in medialist
         embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
         println(io, "![library lines $(src_lines)]($(embedpath))")
