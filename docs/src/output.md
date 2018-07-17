@@ -46,6 +46,6 @@ In both cases, the returned value is a path pointing to the location of the reco
 
 ### Example usage
 
-@example_database("VideoStream")
+@example_database("Record Video")
 
 For more info, consult the [Examples gallery](@ref).
