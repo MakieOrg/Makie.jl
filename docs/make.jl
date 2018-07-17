@@ -111,11 +111,6 @@ open(path, "w") do io
     print_table(io, attr_desc)
 end
 
-# documenter deletes everything in build, so we need to move the media out and then back in again.
-tmp_path = joinpath(mktempdir(), "media")
-ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
-cp(mediapath, tmp_path)
-
 # automatically generate an overview of the function signatures, using a source md file
 info("Generating signatures page")
 path = joinpath(srcpath, "signatures.md")
@@ -132,6 +127,11 @@ open(path, "w") do io
 
     println(io, "See [Plot attributes](@ref) for the available plot attributes.")
 end
+
+# documenter deletes everything in build, so we need to move the media out and then back in again.
+tmp_path = joinpath(mktempdir(), "media")
+ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
+cp(mediapath, tmp_path)
 
 info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
 makedocs(
