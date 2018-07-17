@@ -109,14 +109,14 @@ print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults 
 
 
 """
-    find_indices(input_tags...; title = nothing, author = nothing, match_all = true)
+    find_indices(input_tags...; title = nothing, author = nothing, match = all)
 
 Returns the indices for the entries in examples database that match the input
 search pattern.
 
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
-`match_all` specifies if the result has to match all input tags, or just any.
+`match` specifies a matching function, e.g. any/all which gets applied to the input tags.
 """
 function find_indices(input_tags::NTuple{N, String}; title = nothing, author = nothing, match::Function = all) where N # --> return an array of cell entries
     indices = find(database) do entry
@@ -136,9 +136,10 @@ function find_indices(input_tags::NTuple{N, String}; title = nothing, author = n
     end
 end
 
-find_indices(input::Function; title = nothing, author = nothing, match_all::Bool = true) = find_indices(to_string(input); title = title, author = author, match_all = match_all)
-find_indices(input::Vararg{Function,N}; title = nothing, author = nothing, match_all::Bool = true) where {N} = find_indices(to_string.(input)...; title = title, author = author, match_all = match_all)
+to_tag(x::Union{Symbol, String}) = string(x)
+to_tag(x::Function) = AbstractPlotting.to_string(x)
 
+find_indices(tags...; kw_args...) = find_indices(to_tag.(tags); kw_args...)
 
 
 """
