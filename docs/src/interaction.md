@@ -96,6 +96,7 @@ push!(time, Base.time())
 
 @example_database("Interaction")
 
+@example_database("pong")
 
 ## Interaction using the mouse
 A few default Nodes are already implemented in a `scene`'s Events (see them in `scene.events`), so to use them in your interaction pipeline, you can simply `lift` them.

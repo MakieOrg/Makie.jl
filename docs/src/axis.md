@@ -10,17 +10,16 @@ You can access the axis of a `scene` by doing
 axis = scene[Axis]
 ```
 
+@example_database("Unicode Marker")
+
+@example_database("Axis + Surface")
+
 
 ## Raw mode
 When the axis is accessed using `axis2d` or `axis3d`, the plotting will be in raw mode, i.e. the camera will not be activated.
 
-@library[example] "Axis 2D"
 
-
-@library[example] "Axis 3D"
 
 ### Interacting with the Axis
 
 One can quite easily interact with the attributes of the axis like with any other plot:
-
-@library[example] "Axis Custom"
