@@ -4,7 +4,7 @@ range_labels(x) = not_implemented(x)
 @recipe(Axis2D) do scene
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
-        tickstyle = Theme(
+        ticks = Theme(
             gap = 3,
             title_gap = 3,
 
@@ -19,13 +19,13 @@ range_labels(x) = not_implemented(x)
             font = map(dim2, theme(scene, :font)),
         ),
 
-        gridstyle = Theme(
+        grid = Theme(
             linewidth = (0.5, 0.5),
             linecolor = ((:black, 0.3), (:black, 0.3)),
             linestyle = (nothing, nothing),
         ),
 
-        framestyle = Theme(
+        frame = Theme(
             linewidth = 1.0,
             linecolor = :black,
             linestyle = nothing,
@@ -35,7 +35,7 @@ range_labels(x) = not_implemented(x)
             frames = ((false, false), (false, false)),
         ),
 
-        titlestyle = Theme(
+        names = Theme(
             axisnames = ("X Axis", "Y Axis"),
             textcolor = (:black, :black),
             textsize = (6, 6),
@@ -75,7 +75,7 @@ end
         showgrid = (true, true, true),
         scale = Vec3f0(1),
 
-        titlestyle = Theme(
+        names = Theme(
             axisnames = ("X Axis", "Y Axis", "Z Axis"),
             textcolor = (darktext, darktext, darktext),
             rotation = axisnames_rotation3d,
@@ -85,7 +85,7 @@ end
             gap = 1
         ),
 
-        tickstyle = Theme(
+        ticks = Theme(
             textcolor = (tick_color, tick_color, tick_color),
             rotation = tickrotations3d,
             textsize =  (tsize, tsize, tsize),
@@ -94,7 +94,7 @@ end
             font = map(dim3, theme(scene, :font)),
         ),
 
-        framestyle = Theme(
+        frame = Theme(
             linecolor = (grid_color, grid_color, grid_color),
             linewidth = (grid_thickness, grid_thickness, grid_thickness),
             axiscolor = (darktext, darktext, darktext),
@@ -319,16 +319,16 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
 
-    g_args = getindex.(cplot[:gridstyle], g_keys)
-    f_args = getindex.(cplot[:framestyle], f_keys)
-    t_args = getindex.(cplot[:tickstyle], t_keys)
-    ti_args = getindex.(cplot[:titlestyle], ti_keys)
+    g_args = getindex.(cplot[:grid], g_keys)
+    f_args = getindex.(cplot[:frame], f_keys)
+    t_args = getindex.(cplot[:ticks], t_keys)
+    ti_args = getindex.(cplot[:names], ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})
     map_once(
         draw_axis,
-        to_node(textbuffer), to_node(linebuffer), cplot[1],
+        to_node(textbuffer), to_node(linebuffer), cplot[1:2],
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
@@ -454,10 +454,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     textbuffer = TextBuffer(axis, Point{3})
     linebuffer = LinesegmentBuffer(axis, Point{3})
 
-    tstyle, tickstyle, framestyle = value.(getindex.(axis, (:titlestyle, :tickstyle, :framestyle)))
+    tstyle, ticks, frame = value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
-    framevals = getindex.(framestyle, (:linecolor, :linewidth, :axiscolor))
-    tvals = getindex.(tickstyle, (:textcolor, :rotation, :textsize, :align, :font, :gap))
+    framevals = getindex.(frame, (:linecolor, :linewidth, :axiscolor))
+    tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals...
@@ -468,4 +468,8 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     )
     push!(scene.plots, axis)
     return axis
+end
+
+function help_attributes(x)
+    always_type_now = to_type(x)
 end
