@@ -5,8 +5,7 @@ struct DatabaseLookup <: Expanders.ExpanderPipeline end
 Selectors.order(::Type{DatabaseLookup}) = 0.5
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
 
-const regex_src_pattern = r"example_database\(([\"a-zA-Z_0-9. ]+)\)"
-const regex_plot_pattern = r"example_plot\(([\"a-zA-Z_0-9. ]+)\)"
+const regex_pattern = r"\@example_database\(([\"a-zA-Z_0-9.+ ]+)(?:, )?(plot|code)?\)"
 
 const atomics = (
     heatmap,
@@ -21,7 +20,7 @@ const atomics = (
     Makie.volume
 )
 
-match_kw(x::String) = ismatch(regex_src_pattern, x)
+match_kw(x::String) = ismatch(regex_pattern, x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 
@@ -50,45 +49,46 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     matched = nothing
     for elem in x.content
         if isa(elem, AbstractString)
-            matched = match(regex_src_pattern, elem)
+            matched = match(regex_pattern, elem)
             matched != nothing && break
         end
     end
     matched == nothing && error("No match: $x")
-    # The sandboxed module -- either a new one or a cached one from this page.
-    database_keys = filter(x-> !(x in ("", " ")), split(matched[1], '"'))
-    content = map(database_keys) do database_key
-        Markdown.Code("julia", look_up_source(database_key))
-    end
-    # Evaluate the code block. We redirect stdout/stderr to `buffer`.
-    page.mapping[x] = Markdown.MD(content)
-end
+    capture = matched[1]
+    embed = matched[2]
 
-function Selectors.runner(::Type{PlotLookup}, x, page, doc)
-    matched = nothing
-    for elem in x.content
-        if isa(elem, AbstractString)
-            matched = match(regex_plot_pattern, elem)
-            matched != nothing && break
-        end
-    end
-    matched == nothing && error("No match: $x")
     # The sandboxed module -- either a new one or a cached one from this page.
-    database_keys = filter(x-> !(x in ("", " ")), split(matched[1], '"'))
-
+    database_keys = filter(x-> !(x in ("", " ")), split(capture, '"'))
+    # info("$database_keys with embed option $embed")
     map(database_keys) do database_key
-        # embed plot
-        idx = find(x-> x.title == database_key, database)
-        entry = database[idx[1]]
-        uname = string(entry.unique_name)
-        lines = entry.file_range
+        # buffer for content
+        content = []
 
-        io = IOBuffer()
-        embed_plot(io, uname, mediapath, buildpath; src_lines = lines, raw_mode = false)
-        str = String(take!(io))
+        # print source code for the example
+        if embed == nothing || isequal(embed, "code")
+            source = Markdown.Code("julia", look_up_source(database_key))
+            src_code = Markdown.MD(source)
+            push!(content, src_code)
+        end
 
-        # write raw HTML using Documenter
-        page.mapping[x] = Documenter.Documents.RawHTML(str)
+        # embed plot for the example
+        if embed == nothing || isequal(embed, "plot")
+            idx = find(x-> x.title == database_key, database)
+            entry = database[idx[1]]
+            uname = string(entry.unique_name)
+            lines = entry.file_range
+
+            # print to buffer
+            io = IOBuffer()
+            embed_plot(io, uname, mediapath, buildpath; src_lines = lines, raw_mode = false)
+            str = String(take!(io))
+
+            # print code for embedding plot
+            src_plot = Documenter.Documents.RawHTML(str)
+            push!(content, src_plot)
+        end
+        # finally, map the content back to the page
+        page.mapping[x] = content
     end
 end
 
@@ -96,8 +96,9 @@ end
 """
     embed_video(relpath::AbstractString[; raw_mode::Bool = true])
 
-Generates a MD-formatted string for embedding video into Markdown files
-(since `Documenter.jl` doesn't support directly embedding mp4's).
+Generates a MD-formatted string for embedding video into Documenter Markdown files
+(since `Documenter.jl` doesn't support directly embedding mp4's using ![]() syntax).
+`raw_mode` specifies whether to print the @raw block for use in Documenter.
 """
 function embed_video(relpath::AbstractString; raw_mode::Bool = true)
     embed_code = """
