@@ -1,12 +1,9 @@
 using Documenter: Selectors, Expanders, Markdown
 using Documenter.Markdown: Link, Paragraph
 struct DatabaseLookup <: Expanders.ExpanderPipeline end
-struct PlotLookup <: Expanders.ExpanderPipeline end
 
 Selectors.order(::Type{DatabaseLookup}) = 0.5
-Selectors.order(::Type{PlotLookup}) = 0.5
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
-Selectors.matcher(::Type{PlotLookup}, node, page, doc) = false
 
 const regex_src_pattern = r"example_database\(([\"a-zA-Z_0-9. ]+)\)"
 const regex_plot_pattern = r"example_plot\(([\"a-zA-Z_0-9. ]+)\)"
@@ -28,12 +25,7 @@ match_kw(x::String) = ismatch(regex_src_pattern, x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 
-match_kw2(x::String) = ismatch(regex_plot_pattern, x)
-match_kw2(x::Paragraph) = any(match_kw2, x.content)
-match_kw2(x::Any) = false
-
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = match_kw(node)
-Selectors.matcher(::Type{PlotLookup}, node, page, doc) = match_kw2(node)
 
 # ============================================= Simon's implementation
 function look_up_source(database_key)
