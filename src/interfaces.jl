@@ -1,9 +1,9 @@
-not_implemented_for(x) = error("Not implemented for $(typeof(x)). You might want to put:  `using Makie` into your code!")
+not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
 
 #TODO only have one?
 const Theme = Attributes
 
-default_theme(scene, T) = not_implemented_for(T)
+default_theme(scene, T) = Attributes()
 
 function default_theme(scene)
     light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
@@ -344,9 +344,18 @@ e.g.:
     plottype(x::Array{<: AbstractFlot, 3}) = Volume
 ```
 """
-plottype(plot_args...) = Lines
+plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}}
 
 
+function Plot(args::Vararg{Any, N}) where N
+    Combined{Any, <: Tuple{args...}}
+end
+Base.@pure function Plot(::Type{T}) where T
+    Combined{Any, <: Tuple{T}}
+end
+Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1, T2}
+    Combined{Any, <: Tuple{T1, T2}}
+end
 # creates a new scene
 plot(args...; kw_args...) = plot!(Scene(), Any, args...; kw_args...)
 plot(P::Type, args...; kw_args...) = plot!(Scene(), P, args...; kw_args...)
