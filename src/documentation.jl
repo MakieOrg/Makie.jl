@@ -78,7 +78,7 @@ The attributes returned extend those attributes found in the `default_theme`.
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
 """
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: AbstractPlot
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Union{AbstractPlot, Axis2D, Axis3D}
     # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
     attributes = default_theme(nothing, Typ)
