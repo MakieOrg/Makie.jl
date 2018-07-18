@@ -1,6 +1,6 @@
-const Plot{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
+const PlotTypes{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
 
-argtypes(x::Plot{T, A}) where {T, A} = A
+argtypes(x::PlotTypes{T, A}) where {T, A} = A
 argtypes(x) = Any
 
 function data_limits(x)
