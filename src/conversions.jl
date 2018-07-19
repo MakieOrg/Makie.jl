@@ -363,7 +363,10 @@ end
 
 convert_attribute(c::Colorant, ::key"color") = RGBA{Float32}(c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
-convert_attribute(c::String, ::key"color") = parse(RGBA{Float32}, c)
+function convert_attribute(c::String, ::key"color")
+    c in all_gradient_names && return to_colormap(c)
+    parse(RGBA{Float32}, c)
+end
 convert_attribute(c::Union{Tuple, AbstractArray}, k::key"color") = convert_attribute.(c, k)
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     col = convert_attribute(c[1], k)
@@ -489,7 +492,6 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
 
-
 const colorbrewer_names = Symbol[
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
     :Blues,
@@ -535,13 +537,15 @@ const colorbrewer_names = Symbol[
     :Pastel2
 ]
 
-const colorbrewer_8color_names = Symbol[
+const colorbrewer_8color_names = String[
     #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
     :Accent,
     :Dark2,
     :Pastel2,
     :Set2
 ]
+
+const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
 
 """
     available_gradients()
@@ -550,10 +554,9 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in sort(colorbrewer_names)
+    for name in sort(all_gradient_names)
         println("    ", name)
     end
-    println("    ", "Viridis")
 end
 
 """
@@ -576,14 +579,9 @@ to_colormap(x::Union{String, Symbol}, n::Integer) = convert_attribute(x, key"col
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
 """
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
-    cs_sym = Symbol(cs)
-    if cs_sym in colorbrewer_names
-        if cs_sym in colorbrewer_8color_names
-            return resample(ColorBrewer.palette(string(cs_sym), 8), n)
-        else
-            return resample(ColorBrewer.palette(string(cs_sym), 9), n)
-        end
-    elseif lowercase(string(cs_sym)) == "viridis"
+    cs_string = string(cs)
+
+    if lowercase(cs_string) == "viridis"
         cm = [
             to_color("#440154FF"),
             to_color("#481567FF"),
@@ -607,6 +605,12 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             to_color("#FDE725FF"),
         ]
         return resample(cm, n)
+    elseif cs_string in all_gradient_names
+        if cs_string in colorbrewer_8color_names
+            return resample(ColorBrewer.palette(cs_string, 8), n)
+        else
+            return resample(ColorBrewer.palette(cs_string, 9), n)
+        end
     else
         #TODO integrate PlotUtils color gradients
         error("There is no color gradient named: $cs")

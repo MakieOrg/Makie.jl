@@ -4,7 +4,7 @@
         color = theme(scene, :color),
         strokecolor = RGBAf0(0,0,0,0),
         colormap = theme(scene, :colormap),
-        colorrange = nothing,
+        colorrange = automatic,
         strokewidth = 0.0,
         linestyle = nothing
     )
