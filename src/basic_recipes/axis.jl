@@ -328,7 +328,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     linebuffer = LinesegmentBuffer(cplot, Point{2})
     map_once(
         draw_axis,
-        to_node(textbuffer), to_node(linebuffer), cplot[1:2],
+        to_node(textbuffer), to_node(linebuffer), cplot[1],
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
