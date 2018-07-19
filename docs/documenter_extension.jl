@@ -80,7 +80,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
 
             # print to buffer
             io = IOBuffer()
-            embed_plot(io, uname, mediapath, buildpath; src_lines = lines, raw_mode = false)
+            embed_plot(io, uname, mediapath, buildpath; src_lines = lines, pure_html = true)
             str = String(take!(io))
 
             # print code for embedding plot
@@ -94,20 +94,20 @@ end
 
 
 """
-    embed_video(relpath::AbstractString[; raw_mode::Bool = true])
+    embed_video(relpath::AbstractString[; pure_html::Bool = false])
 
 Generates a MD-formatted string for embedding video into Documenter Markdown files
 (since `Documenter.jl` doesn't support directly embedding mp4's using ![]() syntax).
 `raw_mode` specifies whether to print the @raw block for use in Documenter.
 """
-function embed_video(relpath::AbstractString; raw_mode::Bool = true)
+function embed_video(relpath::AbstractString; pure_html::Bool = false)
     embed_code = """
         <video controls autoplay loop muted>
           <source src="$(relpath)" type="video/mp4">
           Your browser does not support mp4. Please use a modern browser like Chrome or Firefox.
         </video>
     """
-    if raw_mode
+    if !pure_html
         return str = "```@raw html\n" * embed_code * "```"
     else
         return embed_code
@@ -186,7 +186,7 @@ end
 
 """
     embed_plot(io::IO, uname::AbstractString, mediapath::AbstractString, buildpath::AbstractString[;
-    raw_mode::Bool = true])
+    pure_html::Bool = false])
 
 Outputs markdown code for embedding plots in `Documenter.jl`.
 """
@@ -196,27 +196,52 @@ function embed_plot(
         mediapath::AbstractString,
         buildpath::AbstractString;
         src_lines::Range = nothing,
-        raw_mode::Bool = true
+        pure_html::Bool = false
     )
     isa(uname, AbstractString) ? nothing : error("uname must be a string!")
     isa(mediapath, AbstractString) ? nothing : error("mediapath must be a string!")
     isa(buildpath, AbstractString) ? nothing : error("buildpath must be a string!")
     medialist = readdir(mediapath)
-    if "$(uname).png" in medialist
-        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
-        println(io, "![library lines $(src_lines)]($(embedpath))")
-    elseif "$(uname).jpg" in medialist
-        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).jpg")
-        println(io, "![library lines $(src_lines)]($(embedpath))")
-    elseif "$(uname).gif" in medialist
-        embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
-        println(io, "![library lines $(src_lines)]($(embedpath))")
-    elseif "$(uname).mp4" in medialist
-        embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"); raw_mode = raw_mode)
-        println(io, embedcode)
-    else
-        warn("file $(uname) with unknown extension in mediapath, or file nonexistent")
+
+    extensions = [".jpg", ".gif"]
+    for i in extensions
+        if ("$(uname)" * i) in medialist
+            println("$(uname)" * i)
+            embedpath = joinpath(relpath(mediapath, buildpath), "$(uname)" * i)
+            if pure_html
+                embed_code = """
+                    <img src="$(embedpath)" alt="library lines $(src_lines)">
+                """
+                println(io, embed_code)
+            else
+                println(io, "![library lines $(src_lines)]($(embedpath))")
+            end
+            break
+        elseif "$(uname).mp4" in medialist
+            println("$(uname).mp4")
+            embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"); pure_html = pure_html)
+            println(io, embedcode)
+            break
+        else
+            warn("file $(uname)$i with unknown extension in mediapath, or file nonexistent")
+        end
     end
+    #
+    # if "$(uname).png" in medialist
+    #     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
+    #     println(io, "![library lines $(src_lines)]($(embedpath))")
+    # elseif "$(uname).jpg" in medialist
+    #     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).jpg")
+    #     println(io, "![library lines $(src_lines)]($(embedpath))")
+    # elseif "$(uname).gif" in medialist
+    #     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
+    #     println(io, "![library lines $(src_lines)]($(embedpath))")
+    # elseif "$(uname).mp4" in medialist
+    #     embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"); raw_mode = raw_mode)
+    #     println(io, embedcode)
+    # else
+    #     warn("file $(uname) with unknown extension in mediapath, or file nonexistent")
+    # end
     print(io, "\n")
 end
 
