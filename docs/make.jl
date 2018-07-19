@@ -98,9 +98,9 @@ end
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
 info("Generating attributes page")
-include("../src/attr_desc.jl")
-path = joinpath(srcpath, "attributes.md")
-srcdocpath = joinpath(srcpath, "src-attributes.md")
+include("../src/plot_attr_desc.jl")
+path = joinpath(srcpath, "plot-attributes.md")
+srcdocpath = joinpath(srcpath, "src-plot-attributes.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
     println(io, "# Plot attributes")
@@ -147,7 +147,7 @@ makedocs(
             "help_functions.md",
             "functions-overview.md",
             "signatures.md",
-            "attributes.md",
+            "plot-attributes.md",
             # "documentation.md",
             # "backends.md",
             # "extending.md",
