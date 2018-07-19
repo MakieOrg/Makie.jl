@@ -3,10 +3,11 @@
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
 """
 @recipe(Contour) do scene
+    default = default_theme(scene)
+    pop!(default, :color)
     Theme(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
-        colorrange = nothing,
+        default...,
+        color = theme(scene, :colormap),
         levels = 5,
         linewidth = 1.0,
         fillrange = false,
@@ -19,14 +20,7 @@ Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level
 """
 @recipe(Contour3d) do scene
-    Theme(;
-        default_theme(scene)...,
-        colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        levels = 5,
-        linewidth = 1.0,
-        fillrange = false,
-    )
+    default_theme(scene, Contour)
 end
 
 
@@ -67,13 +61,12 @@ end
 AbstractPlotting.convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
 AbstractPlotting.convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
-    replace_nothing!(()-> Signal(0.5), plot, :alpha)
     x, y, z, volume = plot[1:4]
-    @extract plot (colormap, levels, linewidth, alpha)
-    colorrange = replace_nothing!(plot, :colorrange) do
+    @extract plot (color, levels, linewidth, alpha)
+    colorrange = replace_automatic!(plot, :colorrange) do
         map(x-> Vec2f0(extrema(x)), volume)
     end
-    cmap = lift(colormap, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
+    cmap = lift(color, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
         levels = to_levels(l, cnorm)
         N = length(levels) * 50
         iso_eps = 0.1 # TODO calculate this
@@ -86,7 +79,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             line = reduce(false, levels) do v0, level
                 v0 || (abs(level - isoval) <= iso_eps)
             end
-            RGBAf0(color(c), line ? alpha : 0.0)
+            RGBAf0(Colors.color(c), line ? alpha : 0.0)
         end
     end
     volume!(plot, x, y, z, volume, colormap = cmap, colorrange = colorrange, algorithm = :iso)
@@ -107,7 +100,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
             cols = AbstractPlotting.resampled_colors(plot, levels)
             contourlines(T, contours, cols)
         end
-        lines!(plot, lift(first, result); color = lift(last, result), raw = true)
+        lines!(plot, lift(first, result); color = lift(last, result), linewidth = plot[:linewidth])
     end
     plot
 end
@@ -131,7 +124,7 @@ end
 convert_arguments(::Type{<: VolumeSlices}, x, y, z, volume) = convert_arguments(Contour, x, y, z, volume)
 function plot!(vs::VolumeSlices)
     @extract vs (x, y, z, volume)
-    replace_nothing!(vs, :colorrange) do
+    replace_automatic!(vs, :colorrange) do
         map(extrema, volume)
     end
     keys = (:colormap, :alpha, :colorrange)

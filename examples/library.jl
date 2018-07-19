@@ -2,9 +2,14 @@
 include("database.jl")
 using Makie
 
+
 @block SimonDanisch ["2d"] begin
     @cell "image" [image] begin
-        image(Makie.logo(), scale_plot = false)
+        AbstractPlotting.vbox(
+            image(Makie.logo(), scale_plot = false),
+            image(rand(100, 500), scale_plot = false),
+        )
+
     end
     @cell "scatter colormap" [scatter, colormap] begin
         scatter(rand(10), rand(10), color = rand(10))
@@ -106,7 +111,7 @@ using Makie
     @cell "Contour Function" [contour] begin
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
-        contour(r, r, z, levels = 5, color = :RdYlBu)
+        contour(r, r, z, levels = 5, color = :viridis, linewidth = 10)
     end
 
 
@@ -180,7 +185,7 @@ end
 
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
         scene = Scene(resolution = (500, 500))
-        # One way to style the axis is to pass a nested dictionary to it.
+        # One way to style the axis is to pass a nested dictionary / named tuple to it.
         surface!(scene, vx, vy, f, axis = NT(frame = NT(linewidth = 2.0)))
         psurf = scene[end] # the surface we last plotted to scene
         # One can also directly get the axis object and manipulate it
@@ -310,6 +315,7 @@ end
             linewidth = 2f0, color = Makie.lift(x-> to_colormap(x)[5], surf[:colormap])
         )
         N = 150
+        scene
         record(scene, @outputfile(mp4), linspace(5, 40, N)) do i
             surf[3] = surf_func(i)
         end
@@ -513,7 +519,7 @@ end
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
         surface(
             r, r, surf_func(10),
-            image = rand(RGBAf0, 124, 124)
+            color = rand(RGBAf0, 124, 124)
         )
     end
     @cell "Line Function" ["2d", lines] begin
