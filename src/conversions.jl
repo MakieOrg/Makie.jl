@@ -37,7 +37,7 @@ function convert_arguments(::Type{<: PointBased}, positions::AbstractVector{<: V
     (convert(Vector{Point{N, Float32}}, positions),)
 end
 
-function convert_arguments(::Type{<: PointBased}, positions::SubArray)
+function convert_arguments(::Type{<: PointBased}, positions::SubArray{<: VecTypes, 1})
     # TODO figure out a good subarray solution
     (positions,)
 end
@@ -65,6 +65,11 @@ Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(::Type{<: PointBased}, x::GeometryPrimitive) = (decompose(Point, x),)
+
+function convert_arguments(::Type{<: PointBased}, pos::AbstractMatrix{<: Number})
+    (to_vertices(pos),)
+end
+
 
 
 """
@@ -317,7 +322,20 @@ end
 function to_vertices(verts::AbstractVector{<: VecTypes})
     to_vertices(map(x-> Point3f0(x[1], x[2], 0.0), verts))
 end
-function to_vertices(verts::AbstractMatrix{T}) where T <: Number
+
+function to_vertices(verts::AbstractMatrix{<: Number})
+    if size(verts, 1) in (2, 3)
+        to_vertices(verts, Val{1}())
+    elseif size(verts, 2) in (2, 3)
+        to_vertices(verts, Val{2}())
+    else
+        error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
+    end
+end
+function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
+    reinterpret(Point{size(verts, 1), T}, convert(Vector{T}, vec(verts)), (size(verts, 2),))
+end
+function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
     let N = Val{size(verts, 2)}, lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
             to_ndim(Point3f0, ntuple(i-> lverts[vidx, i], n), 0.0)
@@ -356,12 +374,15 @@ convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
 convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
-convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
-convert_attribute(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
+convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
 
 to_2d_scale(x::Number) = Vec2f0(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
+
+to_3d_scale(x::Number) = Vec3f0(x)
+to_3d_scale(x::VecTypes) = to_ndim(Vec3f0, x, 1)
+to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
