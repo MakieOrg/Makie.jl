@@ -187,8 +187,8 @@ end
         axis = scene[Axis] # get axis
 
         # You can access nested attributes likes this:
-        axis[:titlestyle, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-        tstyle = axis[:titlestyle] # or just get the nested attributes and work directly with them
+        axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
+        tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
         tstyle[:textsize] = 10
         tstyle[:textcolor] = (:red, :green, :black)
