@@ -57,11 +57,17 @@ function native_switch_context!(x)
     error("Not implemented for $(typeof(x))")
 end
 
-function switch_context!(x::Symbol)
-    # for reverting to none
-    x == :none || error("Need to to switch to none, to invalidate current context")
-    context[] = x
+"""
+Invalidates the current context
+"""
+function switch_context!()
+    # for reverting to no context
+    context[] = :none
 end
+
+"""
+Switches to a new context `x`. Is a noop if `x` is already current
+"""
 function switch_context!(x)
     if !is_current_context(x)
         context[] = x

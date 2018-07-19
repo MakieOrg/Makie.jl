@@ -8,7 +8,6 @@ struct SelectionID{T <: Integer} <: FieldVector{2, T}
     index::T
 end
 
-
 function draw_fullscreen(vao_id)
     glBindVertexArray(vao_id)
     glDrawArrays(GL_TRIANGLES, 0, 3)
@@ -219,9 +218,16 @@ function was_destroyed(nw)
     end
 end
 
+function GLAbstraction.native_switch_context!(x::GLFW.Window)
+    GLFW.MakeContextCurrent(x)
+end
+
+function GLAbstraction.native_context_alive(x::GLFW.Window)
+    !was_destroyed(x)
+end
+
 function destroy!(nw::GLFW.Window)
-    println("destroying $nw")
-    GLAbstraction.switch_context!(:none)
+    GLAbstraction.is_current_context(nw) && GLAbstraction.switch_context!()
     if nw.handle != C_NULL
         was_destroyed(nw) || GLFW.DestroyWindow(nw)
         # GLFW.jl compat - newer versions are immutable and don't need to be set to C_NULL
@@ -233,7 +239,6 @@ end
 
 function Base.isopen(window::GLFW.Window)
     was_destroyed(window) && return false
-    window.handle == C_NULL && return false
     try
         !GLFW.WindowShouldClose(window)
     catch e

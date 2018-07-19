@@ -135,7 +135,7 @@ ModernGL.register_debug_callback!() do err, f, args...
     error(ModernGL.GLENUM(err).name |> string)
 end
 
-display(arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20))
+arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 
 
 

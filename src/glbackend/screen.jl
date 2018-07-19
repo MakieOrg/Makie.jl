@@ -58,6 +58,7 @@ function Base.display(screen::Screen, scene::Scene)
     resize!(screen, widths(AbstractPlotting.pixelarea(scene)[])...)
     register_callbacks(scene, to_native(screen))
     insertplots!(screen, scene)
+    force_update!()
     return
 end
 
@@ -110,13 +111,7 @@ function rewrap(robj::RenderObject{Pre}) where Pre
         robj.boundingbox,
     )
 end
-function GLAbstraction.native_switch_context!(x::GLFW.Window)
-    GLFW.MakeContextCurrent(x)
-end
 
-function GLAbstraction.native_context_alive(x::GLFW.Window)
-    isopen(x)
-end
 function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
