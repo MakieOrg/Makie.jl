@@ -31,25 +31,37 @@ We go for this slightly ugly version.
 const context = Base.RefValue{GLContext}(:none)
 
 function current_context()
+    context[] == :none && error("No active context")
     context[]
 end
+
 function is_current_context(x)
     x == context[]
 end
 
-function native_context_active(x)
+function native_context_alive(x)
     error("Not implemented for $(typeof(x))")
 end
 
-function is_context_active(x)
-    is_current_context(x) &&
-    native_context_active(x)
-end
+"""
+Is current context & is alive
+"""
+is_context_active(x) = is_current_context(x) && context_alive(x)
+
+"""
+Has context been destroyed or is it still living?
+"""
+context_alive(x) = native_context_alive(x)
 
 function native_switch_context!(x)
     error("Not implemented for $(typeof(x))")
 end
 
+function switch_context!(x::Symbol)
+    # for reverting to none
+    x == :none || error("Need to to switch to none, to invalidate current context")
+    context[] = x
+end
 function switch_context!(x)
     if !is_current_context(x)
         context[] = x
@@ -353,43 +365,27 @@ include("GLRenderObject.jl")
 # We need to make sure to only free the current one
 function free(x::GLProgram)
     is_context_active(x.context) || return
-    try
-        glDeleteProgram(x.id)
-    catch e
-        free_handle_error(e)
-    end
+    glDeleteProgram(x.id)
     return
 end
 function free(x::GLBuffer)
     # don't free from other context
     is_context_active(x.context) || return
-    id = [x.id]
-    try
-        glDeleteBuffers(1, id)
-    catch e
-        free_handle_error(e)
-    end
+    id = Ref(x.id)
+    glDeleteBuffers(1, id)
     return
 end
 function free(x::Texture)
     is_context_active(x.context) || return
-    id = [x.id]
-    try
-        glDeleteTextures(x.id)
-    catch e
-        free_handle_error(e)
-    end
+    id = Ref(x.id)
+    glDeleteTextures(x.id)
     return
 end
 
 function free(x::GLVertexArray)
     is_context_active(x.context) || return
-    id = [x.id]
-    try
-        glDeleteVertexArrays(1, id)
-    catch e
-        free_handle_error(e)
-    end
+    id = Ref(x.id)
+    glDeleteVertexArrays(1, id)
     return
 end
 

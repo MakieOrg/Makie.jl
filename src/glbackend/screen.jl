@@ -114,7 +114,7 @@ function GLAbstraction.native_switch_context!(x::GLFW.Window)
     GLFW.MakeContextCurrent(x)
 end
 
-function GLAbstraction.native_context_active(x::GLFW.Window)
+function GLAbstraction.native_context_alive(x::GLFW.Window)
     isopen(x)
 end
 function Screen(;resolution = (10, 10), visible = true, kw_args...)
@@ -144,10 +144,6 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     # This is important for resource tracking, and only needed for the first context
     GLAbstraction.switch_context!(window)
     GLAbstraction.empty_shader_cache!()
-    # else
-    #     # share OpenGL Context
-    #     create_glcontext("Makie"; parent = first(gl_screens), kw_args...)
-    # end
     push!(gl_screens, window)
     if visible
         GLFW.ShowWindow(window)

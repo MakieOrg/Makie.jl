@@ -64,6 +64,7 @@ gluniform(location::Integer, target::Integer, t::GPUVector) = gluniform(GLint(lo
 gluniform(location::Integer, target::Integer, t::Signal)    = gluniform(GLint(location), GLint(target), Reactive.value(t))
 gluniform(location::Integer, target::Integer, t::TextureBuffer) = gluniform(GLint(location), GLint(target), t.texture)
 function gluniform(location::GLint, target::GLint, t::Texture)
+    @show is_context_active(t.context)
     activeTarget = GL_TEXTURE0 + UInt32(target)
     glActiveTexture(activeTarget)
     glBindTexture(t.texturetype, t.id)
