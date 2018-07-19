@@ -51,6 +51,12 @@ y = rand(10)
 x = bar(1:10, y, color = y)
 
 # @test begin
-    lines(Rect(0, 0, 1, 1), linewidth = 4, scale_plot = false)
-    scatter!([Point2f0(0.5, 0.5)], markersize = 1, marker = 'I', scale_plot = false)
+lines(Rect(0, 0, 1, 1), linewidth = 4, scale_plot = false)
+scatter!([Point2f0(0.5, 0.5)], markersize = 1, marker = 'I', scale_plot = false)
 # end
+
+using Makie
+lines(rand(10), rand(10), color = rand(10), linewidth = 10)
+lines(rand(10), rand(10), color = rand(RGBAf0, 10), linewidth = 10)
+meshscatter(rand(10), rand(10), rand(10), color = rand(10))
+meshscatter(rand(10), rand(10), rand(10), color = rand(RGBAf0, 10))

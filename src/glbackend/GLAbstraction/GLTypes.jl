@@ -367,36 +367,38 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
+function free(x)
+    try
+        unsafe_free(x)
+    catch e
+        isa(e, ContextNotAvailable) || rethrow(e)
+    end
+end
+
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
-function free(x::GLProgram)
+function unsafe_free(x::GLProgram)
     is_context_active(x.context) || return
     glDeleteProgram(x.id)
     return
 end
-function free(x::GLBuffer)
+function unsafe_free(x::GLBuffer)
     # don't free from other context
     is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteBuffers(1, id)
     return
 end
-function free(x::Texture)
+function unsafe_free(x::Texture)
     is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteTextures(x.id)
     return
 end
 
-function free(x::GLVertexArray)
+function unsafe_free(x::GLVertexArray)
     is_context_active(x.context) || return
     id = Ref(x.id)
     glDeleteVertexArrays(1, id)
     return
-end
-
-function free_handle_error(e)
-    #ignore, since freeing is not needed if context is not available
-    isa(e, ContextNotAvailable) && return
-    rethrow(e)
 end
