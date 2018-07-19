@@ -60,6 +60,8 @@ mutable struct VertexArray{Vertex, Kind}
 end
 
 #TODO vertexarraycleanup: Does this really need to be a tuple?
+#TODO just improve this, basically only rely on facelength being defined...
+#     then you can still define different Vao constructors for point indices etc...
 function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0)
     id = glGenVertexArrays()
     glBindVertexArray(id)
@@ -73,7 +75,11 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
         ind_buf = nothing
     end
 
-    face = eltype(indices) <: Integer ? face2glenum(eltype(indices)) : face2glenum(facelength)
+    if facelength == 1
+        face = eltype(indices) <: Integer ? face2glenum(eltype(indices)) : face2glenum(facelength)
+    else
+        face = face2glenum(facelength)
+    end
     ninst  = 1
     nverts = 0
     buffers = map(arrays) do array
@@ -107,7 +113,6 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     nverts = ind_buf == nothing ? nverts : length(ind_buf)*cardinality(ind_buf)
     attach2vao(buffers, attrib_location, kind)
     glBindVertexArray(0)
-    println(kind)
     if length(buffers) == 1
         if !is_glsl_primitive(eltype(buffers[1]))
             vert_type = eltype(buffers[1])
