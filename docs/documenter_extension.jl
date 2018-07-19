@@ -253,14 +253,14 @@ Print a Markdown-formatted table with the entries from `dict` to specified `io`.
 """
 function print_table(io::IO, dict::Dict)
     # get max length of the keys
-    k = string.("`", collect(keys(attr_desc)), "`")
+    k = string.("`", collect(keys(dict)), "`")
     maxlen_k = max(length.(k)...)
 
     # get max length of the values
-    v = string.(collect(values(attr_desc)))
+    v = string.(collect(values(dict)))
     maxlen_v = max(length.(v)...)
 
-    j = sort(collect(attr_desc), by = x -> x[1])
+    j = sort(collect(dict), by = x -> x[1])
 
     # column labels
     labels = ["Symbol", "Description"]
