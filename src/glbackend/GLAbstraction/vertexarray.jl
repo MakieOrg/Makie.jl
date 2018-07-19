@@ -273,7 +273,7 @@ draw(vao::VertexArray{V, elements} where V) = glDrawElements(vao.face, vao.nvert
 
 draw(vao::VertexArray{V, elements_instanced} where V) = glDrawElementsInstanced(vao.face, totverts(vao), glitype(vao), C_NULL, vao.ninst)
 
-draw(vao::VertexArray{V, simple} where V) = glDrawArrays(vao.face, 0, totverts(vao))
+draw(vao::VertexArray{V, simple} where V) = glDrawArrays(vao.face, 0, totverts(vao)+1)
 
 function Base.show(io::IO, vao::VertexArray)
     fields = filter(x->x != :buffers && x!=:indices, fieldnames(vao))
