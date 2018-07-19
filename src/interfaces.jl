@@ -251,10 +251,7 @@ function calculated_attributes!(::Type{<: Scatter}, plot)
 end
 
 function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
-    # calculate base case
     color_and_colormap!(plot)
-    delete!(plot, :colormap)
-    delete!(plot, :colorrange)
 end
 
 
