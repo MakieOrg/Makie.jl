@@ -181,14 +181,14 @@ end
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
         scene = Scene(resolution = (500, 500))
         # One way to style the axis is to pass a nested dictionary to it.
-        surface!(scene, vx, vy, f, axis = NT(framestyle = NT(linewidth = 2.0)))
+        surface!(scene, vx, vy, f, axis = NT(frame = NT(linewidth = 2.0)))
         psurf = scene[end] # the surface we last plotted to scene
         # One can also directly get the axis object and manipulate it
         axis = scene[Axis] # get axis
 
         # You can access nested attributes likes this:
-        axis[:titlestyle, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
-        tstyle = axis[:titlestyle] # or just get the nested attributes and work directly with them
+        axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
+        tstyle = axis[:names] # or just get the nested attributes and work directly with them
 
         tstyle[:textsize] = 10
         tstyle[:textcolor] = (:red, :green, :black)

@@ -220,6 +220,8 @@ function was_destroyed(nw)
 end
 
 function destroy!(nw::GLFW.Window)
+    println("destroying $nw")
+    GLAbstraction.switch_context!(:none)
     if nw.handle != C_NULL
         was_destroyed(nw) || GLFW.DestroyWindow(nw)
         # GLFW.jl compat - newer versions are immutable and don't need to be set to C_NULL
