@@ -2,13 +2,15 @@
 # Help functions
 # help function defaults to STDOUT output when io is not specified
 """
-    help(func)
+    help(func[; extended = false])
 
 Welcome to the main help function of `Makie.jl` / `AbstractArray.jl`.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 
 For help on a specific function's attributes, type `help_attributes(plot_Type)`.
+
+Use the optional `extended = true` keyword argument to see more details.
 """
 help(func; kw_args...) = help(STDOUT, func; kw_args...) #defaults to STDOUT
 
@@ -70,7 +72,7 @@ end
 
 
 """
-    help_attributes(io, Typ; extended = false)
+    help_attributes(io, Typ[; extended = false])
 
 Returns a list of attributes for the plot type `Typ`.
 The attributes returned extend those attributes found in the `default_theme`.
