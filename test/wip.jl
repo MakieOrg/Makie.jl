@@ -15,25 +15,13 @@
 #
 # VertexArraycleanup:
 #   -> Instancing is now done the other way around to what it should be.
-#
+#   -> Really redo how attriblocations are assigned very error prone!
+#   -> Rewrite constructor
 #
 #
 # generalcleanup:
-#   -> Put finalizer(free) for all the GLobjects!
 #   -> So many speedups possible!
 #
-# What doesn't work:
-#   -> contours
-#   -> during the multiple polygon test, does the bottom circle get fully drawn?
-#   -> All of these are related to linesegments I think
-#
-# linesegmentsissues:
-#   -> does not get fully drawn
-#   -> does not get colored
-#   -> sometimes has other weirdness such as moire
-#   -> sometimes produces an error like connected sphere (ptrVoid 0 ???)
-#   -> linewidth on contour3d does not work
-
 
 
 
@@ -41,33 +29,10 @@ using Makie
 
 
 begin
-    function xy_data(x, y)
-        r = sqrt(x*x + y*y)
-        r == 0.0 ? 1f0 : (sin(r)/r)
-    end
-    r = linspace(-1, 1, 100)
-    contour3d(r, r, (x,y)-> xy_data(10x, 10y), levels = 20, linewidth = 200000)
-end
-
-begin
-    large_sphere = Sphere(Point3f0(0), 1f0)
-    positions = decompose(Point3f0, large_sphere)
-    linepos = view(positions, rand(1:length(positions), 1000))
-    scene = lines(linepos, linewidth = 0.1, color = :black)
-    scatter!(scene, positions, strokewidth = 10, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
+    p1 = heatmap(rand(100, 100), interpolate = true)
+    p2 = heatmap(rand(100, 100), interpolate = false)
+    scene = AbstractPlotting.vbox(p1, p2)
+    text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+    text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
     scene
-end
-
-begin
-    using GeometryTypes
-    scene = Scene(resolution = (500, 500))
-    points = decompose(Point2f0, Circle(Point2f0(50), 50f0))
-    pol = poly!(scene, points, color = :gray, strokewidth = 10, strokecolor = :red)
-    # Optimized forms
-    poly!(scene, [Circle(Point2f0(50+300), 50f0)], color = :gray, strokewidth = 10, strokecolor = :red)
-    poly!(scene, [Circle(Point2f0(50+i, 50+i), 10f0) for i = 1:100:400], color = :red)
-    poly!(scene, [Rectangle{Float32}(50+i, 50+i, 20, 20) for i = 1:100:400], strokewidth = 2, strokecolor = :green)
-    linesegments!(scene,
-        [Point2f0(50 + i, 50 + i) => Point2f0(i + 70, i + 70) for i = 1:100:400], linewidth = 8, color = :purple
-    )
 end

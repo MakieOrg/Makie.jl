@@ -50,8 +50,8 @@ import .GLAbstraction: defaultframebuffer, RenderPass, Pipeline, setup
 import .GLVisualize: GLVisualizeShader
 #TODO rendering: This definitely could be better! Rethink this entire thing!
 default_pipeline(fbo, program)=
-    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo),final_renderpass(fbo)])
-    # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo),final_renderpass(fbo)])
+    # Pipeline(:default, [default_renderpass(fbo, program), fxaa_renderpass(fbo),final_renderpass(fbo)])
+    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo),final_renderpass(fbo)])
 
 volume_pipeline(fbo, program)=
     Pipeline(:volume, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
@@ -150,6 +150,8 @@ function setup(rp::RenderPass{:postprocess})
     glDisable(GL_CULL_FACE)
     glClearColor(0,0,0,0)
     glClear(GL_COLOR_BUFFER_BIT)
+    w, h = size(rp.target)
+    glViewport(0, 0, w, h)
 end
 
 #this has the luma FBO
@@ -164,6 +166,8 @@ end
 function setup(rp::RenderPass{:fxaa})
     bind(rp.target)
     bind(rp.program)
+    w, h = size(rp.target)
+    glViewport(0, 0, w, h)
     draw(rp.target, 1) #copy back to original color
 end
 
@@ -179,6 +183,8 @@ end
 function setup(rp::RenderPass{:final})
     unbind(rp.target)
     bind(rp.program)
+    w, h = size(rp.target)
+    glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
 end
@@ -199,17 +205,11 @@ function render_frame(screen::Screen)
                            #postprocess1
     nw = to_native(screen)
     wh = Int.(GLFW.GetFramebufferSize(nw))
+    setup!(screen)
     #TODO framebuffercleanup: resizing framebuffers == GLViewport... ?
-    glViewport(0, 0, wh[1], wh[2])
-##
-#TODO rendercleanup: clearing really shouldn't be here I think
-    fbo = screen.pipelines[1].passes[1].target
-    bind(fbo)
-    draw(fbo, 1:2)
-    glClearColor(0,0,0,0)
-    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
-    unbind(fbo)
-###
+
+    # glViewport(0, 0, wh[1], wh[2])
+
     #run through all the pipes in the queue and push the robjs linked to them through them.
     for pipe in screen.pipelines
         !haskey(screen.renderlist, pipe.name) && return #TODO what is going on here??

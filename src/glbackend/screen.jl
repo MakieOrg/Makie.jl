@@ -23,7 +23,6 @@ mutable struct Screen <: AbstractScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
     fullscreenvao::Int
-    size::Tuple{Int,Int}
     pipelines::Vector{Pipeline}
     function Screen(
             glscreen::GLFW.Window,
@@ -33,11 +32,10 @@ mutable struct Screen <: AbstractScreen
             renderlist::Dict{Symbol, Vector{Tuple{ZIndex, ScreenID, RenderObject}}},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt16, AbstractPlot},
-            size::Tuple{Int,Int},
             pipelines::Vector{Pipeline}
         )
         #TODO not sure if this is very correct
-        obj = new(glscreen, rendertask, screen2scene, screens, renderlist, cache, cache2plot, glGenVertexArrays(), size, pipelines)
+        obj = new(glscreen, rendertask, screen2scene, screens, renderlist, cache, cache2plot, glGenVertexArrays(),  pipelines)
         jl_finalizer(obj) do obj
             # save_print("Freeing screen")
             empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
@@ -46,7 +44,8 @@ mutable struct Screen <: AbstractScreen
         obj
     end
 end
-# GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
+Base.size(x::Screen) = Int.(GLFW.GetFramebufferSize(to_native(x)))
+GeometryTypes.widths(x::Screen) = size(x)
 
 function insertplots!(screen::Screen, scene::Scene)
     #I presume the elem are all the robjs that compose the plot
@@ -163,7 +162,7 @@ function GLAbstraction.set_context!(x::Screen)
     GLAbstraction.set_context!(GLAbstraction.DummyContext(x))
     GLAbstraction.native_switch_context!(x)
 end
-function Screen(;resolution = (10, 10), visible = true, kw_args...)
+function Screen(;resolution = (960, 540), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
             isopen(elem) && destroy!(elem)
@@ -199,11 +198,7 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         GLFW.HideWindow(window)
     end
     GLFW.SwapInterval(0)
-    resolution_signal = Signal(resolution)
-    GLFW.SetFramebufferSizeCallback(
-        window,
-        (window, w::Cint, h::Cint)-> push!(resolution_signal, Int.((w, h)))
-    )
+
     screen = Screen(
         window,
         RefValue{Task}(),
@@ -212,7 +207,6 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         Dict{Symbol, Vector{Tuple{ZIndex, ScreenID, RenderObject}}}(),
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
-        resolution,
         Pipeline[])
     GLAbstraction.set_context!(screen)
     GLAbstraction.empty_shader_cache!()
