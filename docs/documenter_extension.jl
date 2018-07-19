@@ -226,22 +226,6 @@ function embed_plot(
             warn("file $(uname)$i with unknown extension in mediapath, or file nonexistent")
         end
     end
-    #
-    # if "$(uname).png" in medialist
-    #     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).png")
-    #     println(io, "![library lines $(src_lines)]($(embedpath))")
-    # elseif "$(uname).jpg" in medialist
-    #     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).jpg")
-    #     println(io, "![library lines $(src_lines)]($(embedpath))")
-    # elseif "$(uname).gif" in medialist
-    #     embedpath = joinpath(relpath(mediapath, buildpath), "$(uname).gif")
-    #     println(io, "![library lines $(src_lines)]($(embedpath))")
-    # elseif "$(uname).mp4" in medialist
-    #     embedcode = embed_video(joinpath(relpath(mediapath, buildpath), "$(uname).mp4"); raw_mode = raw_mode)
-    #     println(io, embedcode)
-    # else
-    #     warn("file $(uname) with unknown extension in mediapath, or file nonexistent")
-    # end
     print(io, "\n")
 end
 
