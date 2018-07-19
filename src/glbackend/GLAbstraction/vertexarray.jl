@@ -107,7 +107,7 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     nverts = ind_buf == nothing ? nverts : length(ind_buf)*cardinality(ind_buf)
     attach2vao(buffers, attrib_location, kind)
     glBindVertexArray(0)
-
+    println(kind)
     if length(buffers) == 1
         if !is_glsl_primitive(eltype(buffers[1]))
             vert_type = eltype(buffers[1])
@@ -117,7 +117,6 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     else
         vert_type = Tuple{eltype.((buffers...,))...}
     end
-
     return VertexArray{vert_type, kind}(id, [buffers...], ind_buf, nverts, ninst, face)
 end
 VertexArray(buffers...; args...) = VertexArray((buffers...), nothing; args...)
@@ -140,24 +139,26 @@ VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
 # i.e. no "compound" buffers.
 # Before buffers were saved as Dict{attributename::String, buffer::Buffer}.
 # I don't think that gets used anywhere so we just push it inside the buffer vector.
+
+#TODO BIG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+# issues that I have been having for a long time were due to certain attributes inside shaders
+# to be `nothing` == no buffer. i.e. existing buffers would be assigned to wrong attrib locations!
 function VertexArray(data::Dict, program::Program)
-    # println(keys(data))
     prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : GL_POINTS
     facelen = glenum2face(prim)
     bufferdict = filter((k, v) -> isa(v, Buffer), data)
-    # println(keys(bufferdict))
+    attriblen = length(bufferdict)
     if haskey(bufferdict, :indices)
-        attriblen = length(bufferdict)-1
+        attriblen -= 1
         indbuf    = pop!(bufferdict, :indices)
     elseif haskey(bufferdict, :faces)
-        attriblen = length(bufferdict)-1
+        attriblen -= 1
         indbuf    = pop!(bufferdict, :faces)
         facelen   = length(eltype(indbuf))
     else
-        attriblen = length(bufferdict)
         indbuf    = nothing
     end
-    attribbuflen = -1 #This might be wrong
+    attribbuflen = -1
     attribbufs   = Vector{Buffer}(attriblen)
     for (name, buffer) in bufferdict
         attribname = string(name)
@@ -167,7 +168,7 @@ function VertexArray(data::Dict, program::Program)
             Has: $(length(buffer)). Should have: $len")
         if attribbuflen != -1
             attribindex = get_attribute_location(program.id, attribname) + 1
-            #TODO vertexarraycleanup: why does this happen?
+            #TODO vertexarraycleanup: why does this happen? normals etc !
             if attribindex != 0 && attribindex <= length(attribbufs) #TODO why can these things happen??
                 attribbufs[attribindex] = buffer
             end
@@ -273,7 +274,7 @@ draw(vao::VertexArray{V, elements} where V) = glDrawElements(vao.face, vao.nvert
 
 draw(vao::VertexArray{V, elements_instanced} where V) = glDrawElementsInstanced(vao.face, totverts(vao), glitype(vao), C_NULL, vao.ninst)
 
-draw(vao::VertexArray{V, simple} where V) = glDrawArrays(vao.face, 0, totverts(vao)+1)
+draw(vao::VertexArray{V, simple} where V) = glDrawArrays(vao.face, 0, totverts(vao))
 
 function Base.show(io::IO, vao::VertexArray)
     fields = filter(x->x != :buffers && x!=:indices, fieldnames(vao))

@@ -6,12 +6,11 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 };
 
 {{vertex_type}} vertex;
-
-
-in float lastlen;
-{{startend_type}} startend;
-
 {{color_type}}      color;
+
+{{startend_type}} startend;
+in float lastlen;
+
 {{color_map_type}}  color_map;
 {{intensity_type}}  intensity;
 {{color_norm_type}} color_norm;
@@ -47,6 +46,7 @@ void main()
     int index = gl_VertexID;
     g_id = uvec2(objectid, index+1);
     g_startend = get_startend(startend);
+    //g_color = _color(color, intensity, color_map, color_norm, index, dims.x*dims.y);
     g_color = _color(color, intensity, color_map, color_norm, index, dims.x*dims.y);
     g_line_connections = uint(index/dims.x);
     gl_Position = projection*view*model*to_vec4(vertex);
