@@ -50,8 +50,8 @@ import .GLAbstraction: defaultframebuffer, RenderPass, Pipeline, setup
 import .GLVisualize: GLVisualizeShader
 #TODO rendering: This definitely could be better! Rethink this entire thing!
 default_pipeline(fbo, program)=
-    # Pipeline(:default, [default_renderpass(fbo, program), fxaa_renderpass(fbo),final_renderpass(fbo)])
-    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo),final_renderpass(fbo)])
+    Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo),default_renderpass(fbo, program), final_renderpass(fbo)])
+    # Pipeline(:default, [default_renderpass(fbo, program), postprocess_renderpass(fbo),fxaa_renderpass(fbo),final_renderpass(fbo)])
 
 volume_pipeline(fbo, program)=
     Pipeline(:volume, [default_renderpass(fbo, program), postprocess_renderpass(fbo), fxaa_renderpass(fbo), final_renderpass(fbo)])
@@ -151,7 +151,7 @@ function setup(rp::RenderPass{:postprocess})
     glClearColor(0,0,0,0)
     glClear(GL_COLOR_BUFFER_BIT)
     w, h = size(rp.target)
-    glViewport(0, 0, w, h)
+    # glViewport(0, 0, w, h)
 end
 
 #this has the luma FBO
