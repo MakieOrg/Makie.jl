@@ -7,6 +7,8 @@ range_labels(x) = not_implemented(x)
         ticks = Theme(
             gap = 3,
             title_gap = 3,
+            # labels = automatic,
+            # formatter = string,
 
             linewidth = (1, 1),
             linecolor = ((:black, 0.4), (:black, 0.4)),
@@ -328,7 +330,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     linebuffer = LinesegmentBuffer(cplot, Point{2})
     map_once(
         draw_axis,
-        to_node(textbuffer), to_node(linebuffer), cplot[1:2],
+        to_node(textbuffer), to_node(linebuffer), cplot[1],
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)

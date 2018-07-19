@@ -343,7 +343,18 @@ func2type(f::Function) = Combined{f}
 Billboard attribute to always have a primitive face the camera.
 Can be used for rotation.
 """
-immutable Billboard end
+struct Billboard end
+
+"""
+Type to indicate that an attribute will get calculated automatically
+"""
+struct Automatic end
+
+"""
+Singleton instance to indicate that an attribute will get calculated automatically
+"""
+const automatic = Automatic()
+
 
 const Vecf0{N} = Vec{N, Float32}
 const Pointf0{N} = Point{N, Float32}

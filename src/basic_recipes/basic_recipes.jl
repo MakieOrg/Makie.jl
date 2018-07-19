@@ -397,29 +397,26 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
     scene
 end
 
+@recipe(Arc, origin, radius, start_angle, stop_angle) do scene
+    Theme(;
+        default_theme(scene, Lines)...,
+        resolution = 361,
+    )
+end
 
-
-function arc(pmin, pmax, a1, a2)
-
-    xy = Vector{Point2f0}(361)
-
-    xcenter = (x_lin(xmin) + x_lin(xmax)) / 2.0;
-    ycenter = (y_lin(ymin) + y_lin(ymax)) / 2.0;
-    width = abs(x_lin(xmax) - x_lin(xmin)) / 2.0;
-    height = abs(y_lin(ymax) - y_lin(ymin)) / 2.0;
-
-    start = min(a1, a2);
-    stop = max(a1, a2);
-    start += (stop - start) / 360 * 360;
-
-    n = 0;
-    for a in start:stop
-        x[n] = x_log(xcenter + width  * cos(a * M_PI / 180));
-        y[n] = y_log(ycenter + height * sin(a * M_PI / 180));
-        n += 1
+function plot!(p::Arc)
+    args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
+    positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
+        map(linspace(start_angle, stop_angle, resolution)) do angle
+            origin .+ (Point2f0(sin(angle), cos(angle)) .* radius)
+        end
     end
-    if (n > 1)
-        lines(x, y)
-    end
+    lines!(p, Theme(p), positions)
+end
 
+
+
+function AbstractPlotting.plot!(plot::Plot(AbstractVector{<: Complex}))
+    plot[:axis, :labels] = ("Re(x)", "Im(x)")
+    lines!(plot, lift(im-> Point2f0.(real.(im), imag.(im)), x[1]))
 end
