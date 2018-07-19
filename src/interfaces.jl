@@ -12,8 +12,8 @@ function default_theme(scene)
         linewidth = 1,
         visible = true,
         light = light,
-        transformation = nothing,
-        model = nothing,
+        transformation = automatic,
+        model = automatic,
         alpha = 1.0,
     )
 end
@@ -27,7 +27,7 @@ Plots an image on range `x, y` (defaults to dimensions).
     Theme(;
         default_theme(scene)...,
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
-        colorrange = nothing,
+        colorrange = automatic,
         fxaa = false,
     )
 end
@@ -43,7 +43,7 @@ Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions)
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
-        colorrange = nothing,
+        colorrange = automatic,
         linewidth = 0.0,
         levels = 1,
         fxaa = true,
@@ -83,8 +83,7 @@ Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        image = nothing,
+        colorrange = automatic,
         fxaa = true,
     )
 end
@@ -98,6 +97,8 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
     Theme(;
         default_theme(scene)...,
         linewidth = 1.0,
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
         linestyle = nothing,
         fxaa = false
     )
@@ -128,7 +129,7 @@ Plots a 3D mesh.
         interpolate = false,
         shading = true,
         colormap = theme(scene, :colormap),
-        colorrange = nothing,
+        colorrange = automatic,
     )
 end
 
@@ -148,8 +149,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         glowwidth = 0.0,
         rotations = Billboard(),
         colormap = theme(scene, :colormap),
-        colorrange = nothing,
-        marker_offset = nothing,
+        colorrange = automatic,
+        marker_offset = automatic,
         fxaa = false,
         transform_marker = false, # Applies the plots transformation to marker
     )
@@ -167,9 +168,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         marker = Sphere(Point3f0(0), 1f0),
         markersize = 0.1,
         rotations = Quaternionf0(0, 0, 0, 1),
-        intensity = nothing,
-        colormap = nothing,
-        colorrange = nothing,
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
         fxaa = true
     )
 end
@@ -198,73 +198,65 @@ const atomic_function_symbols = (
 )
 const atomic_functions = getfield.(AbstractPlotting, atomic_function_symbols)
 
+
+function color_and_colormap!(plot::T) where T
+    if haskey(plot, :color) && isa(plot[:color][], AbstractArray{<: Number})
+        haskey(plot, :colormap) || error("Plot $T needs to have a colormap to allow the attribute color to be an array of numbers")
+        replace_automatic!(plot, :colorrange) do
+            lift(extrema_nan, plot[:color])
+        end
+        true
+    else
+        delete!(plot, :colorrange)
+        false
+    end
+end
+
+
 """
     `calculated_attributes!(plot::AbstractPlot)`
 
 Fill in values that can only be calculated when we have all other attributes filled
 """
-function calculated_attributes!(plot::AbstractPlot)
-    if haskey(plot, :colormap) && value(plot[:colormap]) != nothing
-        delete!(plot, :color) # color is overwritten by colormap
-        replace_nothing!(plot, :colorrange) do
-            map(plot[3]) do arg
-                Vec2f0(extrema_nan(arg))
-            end
-        end
-    else
-        delete!(plot, :colormap)
-        delete!(plot, :colorrange)
-    end
-    return
-end
-function calculated_attributes!(plot::Mesh)
-    if isa(value(plot[:color]), AbstractArray{<: Number})
-        replace_nothing!(plot, :colorrange) do
-            lift(plot[:color]) do arg
-                Vec2f0(extrema_nan(arg))
-            end
-        end
-        args = (plot[:colormap], plot[:color], plot[:colorrange])
-        plot[:color] = lift(args...) do cmap, colors, crange
-            interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
-        end
-    end
-    delete!(plot, :colormap)
-    delete!(plot, :colorrange)
-    return
-end
-function calculated_attributes!(plot::Image{<: Tuple{X, Y, <: AbstractMatrix{<: Number}}}) where {X, Y}
-    replace_nothing!(plot, :colorrange) do
-        lift(plot[3]) do arg
-            Vec2f0(extrema_nan(arg))
-        end
-    end
-end
-function calculated_attributes!(plot::Image)
-    delete!(plot, :colormap)
-    delete!(plot, :colorrange)
+calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
+
+"""
+    `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
+trait version of calculated_attributes
+"""
+calculated_attributes!(trait, plot) = nothing
+
+function calculated_attributes!(::Type{<: Mesh}, plot)
+    need_cmap = color_and_colormap!(plot)
+    need_cmap || delete!(plot, :colormap)
     return
 end
 
-function calculated_attributes!(plot::Scatter)
+function calculated_attributes!(::Type{<: Union{Heatmap, Image, Surface}}, plot)
+    plot[:color] = plot[3]
+    color_and_colormap!(plot)
+end
+
+function calculated_attributes!(::Type{<: MeshScatter}, plot)
+    color_and_colormap!(plot)
+end
+
+function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
-    crange = if isa(value(plot[:color]), AbstractArray{<: Number})
-        intensities = pop!(plot, :color)
-        replace_nothing!(plot, :colorrange) do
-            lift(intensities) do arg
-                Vec2f0(extrema_nan(arg))
-            end
-        end
-        plot[:intensity] = lift(x-> convert(Vector{Float32}, x), intensities)
-    else
-        delete!(plot, :colorrange)
-        delete!(plot, :colormap)
-    end
-    replace_nothing!(plot, :marker_offset) do
+    color_and_colormap!(plot)
+    replace_automatic!(plot, :marker_offset) do
         # default to middle
         lift(x-> Vec2f0.((x .* (-0.5f0))), plot[:markersize])
     end
 end
+
+function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
+    # calculate base case
+    color_and_colormap!(plot)
+    delete!(plot, :colormap)
+    delete!(plot, :colorrange)
+end
+
 
 # # to allow one color per edge
 # function calculated_attributes!(plot::LineSegments)
@@ -304,8 +296,8 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         end
     end
     plot_attributes, rest = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
-    trans = get(plot_attributes, :transformation, nothing)
-    transformation = if to_value(trans) == nothing
+    trans = get(plot_attributes, :transformation, automatic)
+    transformation = if to_value(trans) == automatic
         Transformation(scene)
     elseif isa(to_value(trans), Transformation)
         to_value(trans)
@@ -315,7 +307,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         t
     end
 
-    replace_nothing!(plot_attributes, :model) do
+    replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
     # The argument type of the final plot object is the assumened to stay constant after

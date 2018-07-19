@@ -7,8 +7,8 @@ range_labels(x) = not_implemented(x)
         ticks = Theme(
             gap = 3,
             title_gap = 3,
-            # labels = automatic,
-            # formatter = string,
+            labels = automatic,
+            formatter = string,
 
             linewidth = (1, 1),
             linecolor = ((:black, 0.4), (:black, 0.4)),
