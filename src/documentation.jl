@@ -80,7 +80,7 @@ The attributes returned extend those attributes found in the `default_theme`.
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
 """
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Union{AbstractPlot, Axis2D, Axis3D}
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: AbstractPlot
     # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
     attributes = default_theme(nothing, Typ)
@@ -131,6 +131,18 @@ function help_attributes(io::IO, func::Function; extended = false)
     help_attributes(io, to_type(func); extended = extended)
 end
 
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Union{Axis2D, Axis3D}
+    if extended
+        println(io, "Axis attributes and their defaults for `$Typ` are: \n")
+    else
+        println(io, "Axis attributes for `$Typ` are: \n")
+    end
+    attributes = default_theme(nothing, Typ)
+    println(io, "```")
+    print_rec(io, attributes, 1; extended = extended)
+    println(io, "```")
+end
+
 # ==========================================================
 # Supporting functions for the help functions
 """
@@ -172,3 +184,31 @@ end
 to_string(Typ::Type{T}) where T <: AbstractPlot = to_string(to_func(Typ))
 to_string(s::Symbol) = string(s)
 to_string(s::String) = s
+
+"""
+    print_rec(io::IO, dict, indent::Int = 1[; extended = false])
+
+Traverses a dictionary `dict` and recursively print out its keys and values
+in a nicely-indented format.
+
+Use the optional `extended = true` keyword argument to see more details.
+"""
+function print_rec(io::IO, dict, indent::Int = 1; extended = false)
+    for (k, v) in dict
+        print(io, " "^(indent*4), k)
+        if isa(Reactive.value(v), AbstractPlotting.Attributes)
+            print(": ")
+            println(io)
+            print_rec(io, v[], indent + 1; extended = extended)
+        elseif isa(v, Reactive.Signal)
+            if extended
+                print(": ")
+                println(io, Reactive.value(v))
+            else
+                println(io)
+            end
+        else
+            println(io, v)
+        end
+    end
+end
