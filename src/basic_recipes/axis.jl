@@ -469,7 +469,3 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     push!(scene.plots, axis)
     return axis
 end
-
-function help_attributes(x)
-    always_type_now = to_type(x)
-end
