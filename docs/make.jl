@@ -108,7 +108,7 @@ open(path, "w") do io
     println(io, src)
     print(io, "\n")
     println(io, "## List of attributes")
-    print_table(io, attr_desc)
+    print_table(io, plot_attr_desc)
 end
 
 # automatically generate an overview of the function signatures, using a source md file
