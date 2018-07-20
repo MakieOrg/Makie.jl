@@ -232,11 +232,13 @@ function calculated_attributes!(::Type{<: Mesh}, plot)
     return
 end
 
-function calculated_attributes!(::Type{<: Union{Heatmap, Image, Surface}}, plot)
+function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
     plot[:color] = plot[3]
     color_and_colormap!(plot)
 end
-
+function calculated_attributes!(::Type{<: Surface}, plot)
+    color_and_colormap!(plot)
+end
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
