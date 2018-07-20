@@ -461,7 +461,7 @@ macro outputfile(ending = :mp4)
 end
 
 """
-Walks through every example matching `tags`, and calls f on the example.
+Walks through every example matching `tags`, and calls `f` on the example.
 Merges groups of examples into one example entry.
 """
 function enumerate_examples(f, tags...)
@@ -521,7 +521,7 @@ function eval_example(entry; kw_args...)
 end
 
 """
-Walks through examples and evalueates them. Returns the evaluated value and calls
+Walks through examples and evaluates them. Returns the evaluated value and calls
 `f(entry, value)`.
 """
 function eval_examples(f, tags...; kw_args...)
