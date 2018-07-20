@@ -645,7 +645,7 @@ end
         z = [cospi(θ) for θ in θ, φ in φ]
         rand([-1f0, 1f0], 3)
         pts = vec(Point3f0.(x, y, z))
-        surface(x, y, z, image = Makie.logo())
+        surface(x, y, z, color = Makie.logo())
     end
     @cell "Arrows on Sphere" [surface, sphere, arrows, "3d"] begin
         n = 20

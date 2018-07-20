@@ -276,17 +276,21 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         color = pop!(gl_attributes, :color)
-        cmap = pop!(gl_attributes, :color_map)
-        crange = pop!(gl_attributes, :color_norm)
+
         img = nothing
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if isa(value(color), AbstractMatrix{<: Number}) && !(value(color) === value(x[3]))
+            crange = pop!(gl_attributes, :color_norm)
+            cmap = pop!(gl_attributes, :color_map)
             img = map(color, cmap, crange) do img, cmap, norm
                 AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
         elseif isa(value(color), AbstractMatrix{<: Colorant})
             img = color
+            gl_attributes[:color_map] = nothing
+            gl_attributes[:color] = nothing
+            gl_attributes[:color_norm] = nothing
         end
         gl_attributes[:color] = img
         args = x[1:3]
