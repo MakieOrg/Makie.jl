@@ -8,7 +8,7 @@
 # # filter out fxaa attribute
 # attr_list = filter!(x -> x ≠ "fxaa", attr_list)
 
-const attr_desc = Dict(
+const plot_attr_desc = Dict(
     :absorption => "Float32. Sets the absorption value for `volume` plots.",
     :algorithm => "Algorithm to be used for `volume` plots. Can be one of `:iso`, `:absorption`, `:mip`, `:absorptionrgba`, or `:indexedabsorption`.",
     :align => "`(:pos, :pos)`. Specify the text alignment, where `:pos` can be `:left`, `:center`, or `:right`.",
