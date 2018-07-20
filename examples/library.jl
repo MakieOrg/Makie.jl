@@ -181,7 +181,7 @@ end
         f(x, y) = (sin(x*10) + cos(y*10)) / 4
         scene = Scene(resolution = (500, 500))
         # One way to style the axis is to pass a nested dictionary to it.
-        surface!(scene, vx, vy, f, axis = NT(frame = NT(linewidth = 8.0)))
+        surface!(scene, vx, vy, f, axis = NT(frame = NT(linewidth = 2.0)))
         psurf = scene[end] # the surface we last plotted to scene
         # One can also directly get the axis object and manipulate it
         axis = scene[Axis] # get axis
