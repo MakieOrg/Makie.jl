@@ -13,20 +13,51 @@ mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 # TODO can we teach this to documenter somehow?
 ispath(mediapath) || mkpath(mediapath)
-output_path(entry, ending) = joinpath(mediapath, string(entry.unique_name, ending))
+
+function output_path(entry, ending; subdir = nothing)
+    if subdir == nothing
+        joinpath(mediapath, string(entry.unique_name, ending))
+    else
+        joinpath(mediapath, subdir, string(entry.unique_name, ending))
+    end
+end
+
+
 function save_example(entry, x::Scene)
     path = output_path(entry, ".jpg")
     Makie.save(path, x)
     path
 end
+
 save_example(entry, x::String) = x # nothing to do
+
+function save_example(entry, x::Makie.Stepper) #TODO: this breaks thumbnail generation
+    println(x.step)
+    path = [output_path(entry, "-$i.jpg"; subdir = string(entry.unique_name)) for i = 1:x.step - 1]
+    info(path)
+    return path
+    # return a list of all file names
+end
+
 AbstractPlotting.set_theme!(resolution = (500, 500))
 eval_examples(outputfile = output_path) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
     srand(42)
     path = save_example(example, value)
-    name = string("thumb-", example.unique_name, ".jpg")
-    generate_thumbnail(path, joinpath(dirname(path), name))
+    if isa(value, Makie.Stepper)
+        name = [string.("thumb-", example.unique_name, "-$i", ".jpg") for i = 1:value.step - 1]
+    else
+        name = string("thumb-", example.unique_name, ".jpg")
+    end
+    try
+        generate_thumbnail.(path, joinpath.(dirname.(path), name))
+    catch e
+        warn("generate_thumbnail failed with path $path, entry $(example.unique_name), and filename $name")
+        Base.showerror(STDERR, e)
+        println(STDERR)
+        Base.show_backtrace(STDERR, Base.catch_backtrace())
+        println(STDERR)
+    end
 end
 
 # =============================================

@@ -902,6 +902,43 @@ end
         AbstractPlotting.set_theme!(resolution = (500, 500))
         surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
     end
+
+    @cell "stepper test" [stepper, axis] begin
+        using GeometryTypes
+        scene = Scene()
+        points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
+        lines!(
+            scene,
+            points,
+            linewidth = 8,
+            color = :black
+        )
+
+        axis = scene[Axis] # get axis
+
+        st = Stepper(scene, @outputfile)
+        step!(st)
+        axis[:frame][:linewidth] = 5
+        step!(st)
+        axis[:grid][:linewidth] = (1, 5)
+        step!(st)
+        axis[:grid][:linecolor] = ((:red, 0.3), (:blue, 0.5))
+        step!(st)
+        axis[:names][:axisnames] = ("x", "y")
+        step!(st)
+        axis[:names][:textcolor] = ((:red, 0.3), (:blue, 0.5))
+        step!(st)
+        axis[:ticks][:font] = ("Dejavu Sans", "Helvetica")
+        step!(st)
+        axis[:ticks][:rotation] = (0.0, -pi/4)
+        step!(st)
+        axis[:ticks][:textsize] = (5, 10)
+        step!(st)
+        axis[:ticks][:title_gap] = 0
+        step!(st)
+        axis[:ticks][:gap] = 5
+        step!(st)
+    end
 end
 
 database
