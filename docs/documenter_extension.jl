@@ -5,7 +5,7 @@ struct DatabaseLookup <: Expanders.ExpanderPipeline end
 Selectors.order(::Type{DatabaseLookup}) = 0.5
 Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = false
 
-const regex_pattern = r"\@example_database\(([\"a-zA-Z_0-9.+ ]+)(?:, )?(plot|code)?\)"
+const regex_pattern = r"\@example_database\(([\"a-zA-Z_0-9.+ ]+)(?:, )?(plot|code|stepperplot)?\)"
 
 const atomics = (
     heatmap,
@@ -61,8 +61,24 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     database_keys = filter(x-> !(x in ("", " ")), split(capture, '"'))
     # info("$database_keys with embed option $embed")
     map(database_keys) do database_key
+        is_stepper = false
+
         # buffer for content
         content = []
+
+        # bibliographic stuff
+        idx = find(x-> x.title == database_key, database)
+        entry = database[idx[1]]
+        uname = string(entry.unique_name)
+        lines = entry.file_range
+        tags = entry.tags
+
+        # check whether the example is a stepper or not
+        is_stepper = contains(==, tags, "stepper")
+
+        if is_stepper && isequal(embed, "plot")
+            warn("you tried to output an @example_database(\"entry\", plot) but the entry type is a stepper!")
+        end
 
         # print source code for the example
         if embed == nothing || isequal(embed, "code")
@@ -72,12 +88,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
         end
 
         # embed plot for the example
-        if embed == nothing || isequal(embed, "plot")
-            idx = find(x-> x.title == database_key, database)
-            entry = database[idx[1]]
-            uname = string(entry.unique_name)
-            lines = entry.file_range
-
+        if (embed == nothing && !is_stepper) || isequal(embed, "plot")
             # print to buffer
             io = IOBuffer()
             embed_plot(io, uname, mediapath, buildpath; src_lines = lines, pure_html = true)
@@ -87,6 +98,35 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
             src_plot = Documenter.Documents.RawHTML(str)
             push!(content, src_plot)
         end
+
+        # use stepper for the example
+        if (embed == nothing && is_stepper) || isequal(embed, "stepperplot")
+            warn("stepper detected!")
+
+            # get all of the plots from the stepper
+            steppermediapath = joinpath(mediapath, uname)
+            plots_list = readdir(steppermediapath)
+            filter!(x -> !startswith(x, "thumb"), plots_list)
+
+            # the plot step indices always start with 1
+            steps = length(plots_list)
+
+            # print to buffer
+            io = IOBuffer()
+
+            for step = 1:steps
+                println("$uname-$step")
+                println(io, "<strong>Step $step</strong>")
+                println(io)
+                embed_plot(io, string(uname, "-", step), steppermediapath, buildpath; src_lines = lines, pure_html = true)
+                str = String(take!(io))
+
+                # print code for embedding plot
+                src_plot = Documenter.Documents.RawHTML(str)
+                push!(content, src_plot)
+            end
+        end
+
         # finally, map the content back to the page
         page.mapping[x] = content
     end
