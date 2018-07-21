@@ -903,7 +903,7 @@ end
         surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
     end
 
-    @cell "stepper test" [stepper, axis] begin
+    @cell "stepper test" [stepper, axis, lines] begin
         using GeometryTypes
         scene = Scene()
         points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
