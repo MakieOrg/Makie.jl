@@ -160,7 +160,7 @@ function VertexArray(data::Dict, program::Program)
     if !haskey(data, :instances)
         VertexArray(buffers, attriblocs, indbuf, facelength = facelen)
     else #TODO vertexarraycleanup: This is for the surface
-        VertexArray(buffers, attriblocs, indbuf, instances=data[:instances])
+        VertexArray(buffers, attriblocs, indbuf, facelength=facelen, instances=data[:instances])
     end
 end
 
