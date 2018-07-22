@@ -29,10 +29,16 @@ using Makie
 
 
 begin
-    p1 = heatmap(rand(100, 100), interpolate = true)
-    p2 = heatmap(rand(100, 100), interpolate = false)
-    scene = AbstractPlotting.vbox(p1, p2)
-    text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-    text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-    scene
+    N = 30
+    function xy_data(x, y)
+        r = sqrt(x^2 + y^2)
+        r == 0.0 ? 1f0 : (sin(r)/r)
+    end
+    lspace = linspace(-10, 10, N)
+    z = Float32[xy_data(x, y) for x in lspace, y in lspace]
+    range = linspace(0, 3, N)
+    surface(
+        range, range, z,
+        colormap = :Spectral
+    )
 end

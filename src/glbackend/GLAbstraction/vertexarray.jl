@@ -91,7 +91,11 @@ function VertexArray(buffers::Vector{Buffer}, attriblocs, indices::Union{Void, V
     if ind_buf != nothing
         nverts = length(ind_buf)*cardinality(ind_buf)
     end
-    attach2vao(buffers, attriblocs, kind)
+    if kind == elements_instanced #TODO we definitely need to fix this mess
+        attach2vao(buffers, attriblocs, elements)
+    else
+        attach2vao(buffers, attriblocs, kind)
+    end
 
     glBindVertexArray(0)
     if length(buffers) == 1
@@ -156,31 +160,8 @@ function VertexArray(data::Dict, program::Program)
     if !haskey(data, :instances)
         VertexArray(buffers, attriblocs, indbuf, facelength = facelen)
     else #TODO vertexarraycleanup: This is for the surface
-        instanced_vertexarray(buffers, indbuf, data[:instances])
+        VertexArray(buffers, attriblocs, indbuf, instances=data[:instances])
     end
-end
-
-function instanced_vertexarray(buffers, indices, instances)
-    id = glGenVertexArrays()
-    glBindVertexArray(id)
-    face = face2glenum(eltype(indices))
-    indbuf = indexbuffer(indices)
-    bind(indbuf)
-    kind = elements_instanced
-    attach2vao(buffers, 0, elements)
-    nverts = length(indbuf)*cardinality(indbuf)
-    glBindVertexArray(0)
-    if length(buffers) == 1
-        if !is_glsl_primitive(eltype(buffers[1]))
-            verttype = eltype(buffers[1])
-        else
-            verttype = Tuple{eltype(buffers[1])}
-        end
-    else
-        verttype = Tuple{eltype.((buffers...,))...}
-    end
-
-    VertexArray{verttype, kind}(id, buffers, indbuf, nverts, instances, face)
 end
 
 # TODO
