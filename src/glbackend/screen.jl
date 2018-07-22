@@ -162,7 +162,7 @@ function GLAbstraction.set_context!(x::Screen)
     GLAbstraction.set_context!(GLAbstraction.DummyContext(x))
     GLAbstraction.native_switch_context!(x)
 end
-function Screen(;resolution = (960, 540), visible = true, kw_args...)
+function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
             isopen(elem) && destroy!(elem)
@@ -185,12 +185,6 @@ function Screen(;resolution = (960, 540), visible = true, kw_args...)
         ],
         kw_args...
     )
-    # tell GLAbstraction that we created a new context.
-    # This is important for resource tracking, and only needed for the first context
-    # else
-    #     # share OpenGL Context
-    #     create_glcontext("Makie"; parent = first(gl_screens), kw_args...)
-    # end
     push!(gl_screens, window)
     if visible
         GLFW.ShowWindow(window)

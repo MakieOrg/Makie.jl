@@ -80,6 +80,7 @@ Base.size(b::RenderBuffer) = b.size
 
 function resize_nocopy!(b::RenderBuffer, dimensions)
     bind(b)
+    b.size = dimensions
     glRenderbufferStorage(GL_RENDERBUFFER, b.format, dimensions...)
 end
 

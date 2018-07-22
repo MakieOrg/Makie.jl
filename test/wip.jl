@@ -26,19 +26,3 @@
 
 
 using Makie
-
-
-begin
-    N = 30
-    function xy_data(x, y)
-        r = sqrt(x^2 + y^2)
-        r == 0.0 ? 1f0 : (sin(r)/r)
-    end
-    lspace = linspace(-10, 10, N)
-    z = Float32[xy_data(x, y) for x in lspace, y in lspace]
-    range = linspace(0, 3, N)
-    surface(
-        range, range, z,
-        colormap = :Spectral
-    )
-end

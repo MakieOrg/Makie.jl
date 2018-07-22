@@ -340,14 +340,10 @@ function gl_convert_data!(data)
     if !isempty(meshs)
         merge!(data, [v.data for (k,v) in meshs]...)
     end
-    for (k, v) in data
-        if isa(v, Reactive.Signal) #NO REACTIVE ERROR
-        # if isa(v, Reactive.Signal) && (typeof(value(v))<: Vector || k ==:indices)         #REACTIVE ERROR
-            data[k] = Reactive.value(v)
-        end
-    end
     #TODO renderobjectioncleanup: ugly crap here!
-
+    if haskey(data, :instances)
+        data[:instances] = value(data[:instances])
+    end
     #TODO shadercleanup. This needs to not be inside the robj, and also not done here very hacky!!!!!!
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple lelkek
     data[:shader] = gl_convert(Reactive.value(data[:shader]), data)

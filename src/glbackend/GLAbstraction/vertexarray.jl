@@ -1,3 +1,4 @@
+@enum VaoKind simple elements elements_instanced
 # the instanced ones assume that there is at least one buffer with the vertextype (=has fields, bit whishy washy) and the others are the instanced things
 function attach2vao(buffer::Buffer{T}, attrib_location, instanced=false) where T
     bind(buffer)
@@ -35,14 +36,13 @@ function attach2vao(buffers::Vector{Buffer}, attrib_location::Vector{Int}, kind)
     end
 end
 
-@enum VaoKind simple elements elements_instanced
 #TODO speedup: Maybe it would be better for performance making our vertex arrays
 #              primitives, i.e. making the buffers an NTuple instead of a vector.
 #              I think that should be possible since nobody really wants to change
 #              the vao after it's made anyway?
 mutable struct VertexArray{Vertex, Kind}
     id::GLuint
-    buffers::Vector{<:Buffer}
+    buffers::Vector{<:Buffer} #do we even need the buffers
     indices::Union{Buffer, Void}
     nverts::Int32 #total vertices to be drawn in drawcall
     ninst::Int32
@@ -55,7 +55,6 @@ mutable struct VertexArray{Vertex, Kind}
     end
 end
 
-#TODO vertexarraycleanup: Does this really need to be a tuple?
 #TODO just improve this, basically only rely on facelength being defined...
 #     then you can still define different Vao constructors for point indices etc...
 function VertexArray(buffers::Vector{Buffer}, attriblocs, indices::Union{Void, Vector, Buffer}; facelength = 1, instances=1)
@@ -127,12 +126,6 @@ VertexArray(buffers::Tuple; args...) = VertexArray([buffers...]; args...)
 # buffers to be passed in in any order and get linked to any name inside the program.
 # This does assume that each attribute inside the program is linked to a single buffer,
 # i.e. no "compound" buffers.
-# Before buffers were saved as Dict{attributename::String, buffer::Buffer}.
-# I don't think that gets used anywhere so we just push it inside the buffer vector.
-
-#TODO BIG !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-# issues that I have been having for a long time were due to certain attributes inside shaders
-# to be `nothing` == no buffer. i.e. existing buffers would be assigned to wrong attrib locations!
 function VertexArray(data::Dict, program::Program)
     prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : GL_POINTS
     facelen = glenum2face(prim)
