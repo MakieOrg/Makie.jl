@@ -10,7 +10,6 @@ function attach2vao(buffer::Buffer{T}, attrib_location, instanced=false) where T
                                   cardinality(FT), julia2glenum(ET),
                                   GL_FALSE, sizeof(T), Ptr{Void}(fieldoffset(T, i)))
             glEnableVertexAttribArray(attrib_location)
-            attrib_location += 1
         end
     else
         # This is for when the buffer holds a single attribute, no need to
@@ -23,20 +22,17 @@ function attach2vao(buffer::Buffer{T}, attrib_location, instanced=false) where T
         if instanced
             glVertexAttribDivisor(attrib_location, 1)
         end
-        attrib_location += 1
     end
-    return attrib_location
 end
 
-function attach2vao(buffers, attrib_location, kind)
-    for b in buffers
+function attach2vao(buffers::Vector{Buffer}, attrib_location::Vector{Int}, kind)
+    for (b, loc) in zip(buffers, attrib_location)
         if kind == elements_instanced
-            attrib_location = attach2vao(b, attrib_location, true)
+            attach2vao(b, loc, true)
         else
-            attrib_location = attach2vao(b, attrib_location)
+            attach2vao(b, loc)
         end
     end
-    return attrib_location
 end
 
 @enum VaoKind simple elements elements_instanced
@@ -62,7 +58,7 @@ end
 #TODO vertexarraycleanup: Does this really need to be a tuple?
 #TODO just improve this, basically only rely on facelength being defined...
 #     then you can still define different Vao constructors for point indices etc...
-function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facelength = 1, attrib_location=0)
+function VertexArray(buffers::Vector{Buffer}, attriblocs, indices::Union{Void, Vector, Buffer}; facelength = 1, instances=1)
     id = glGenVertexArrays()
     glBindVertexArray(id)
 
@@ -80,38 +76,23 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     else
         face = face2glenum(facelength)
     end
-    ninst  = 1
-    nverts = 0
-    buffers = map(arrays) do array
-        if typeof(array) <: Repeated
-            ninst_  = length(array)
-            if kind == elements_instanced && ninst_ != ninst
-                error("Amount of instances is not equal.")
-            end
-            ninst = ninst_
-            nverts_ = length(array.xs.x)
-            kind = elements_instanced
-        else
-            if kind == elements_instanced
-                ninst_ = length(array)
-                if ninst_ != ninst
-                    error("Amount of instances is not equal.")
-                end
-                ninst = ninst_
-                nverts_ = length(array.xs.x)
-            else
-                nverts_ = length(array)
-                if nverts != 0 && nverts != nverts_
-                    error("Amount of vertices is not equal.")
-                end
-                nverts = nverts_
-            end
-        end
-        convert(Buffer, array)
+    if instances != 1
+        kind = elements_instanced
     end
-    #TODO Cleanup
-    nverts = ind_buf == nothing ? nverts : length(ind_buf)*cardinality(ind_buf)
-    attach2vao(buffers, attrib_location, kind)
+    #check such that all buffers have the same amount of vertices
+    nverts = 0
+    for b in buffers
+        nverts_ = length(b)
+        if nverts != 0 && nverts != nverts_
+            error("Amount of vertices is not equal.")
+        end
+        nverts = nverts_
+    end
+    if ind_buf != nothing
+        nverts = length(ind_buf)*cardinality(ind_buf)
+    end
+    attach2vao(buffers, attriblocs, kind)
+
     glBindVertexArray(0)
     if length(buffers) == 1
         if !is_glsl_primitive(eltype(buffers[1]))
@@ -122,10 +103,10 @@ function VertexArray(arrays::Tuple, indices::Union{Void, Vector, Buffer}; facele
     else
         vert_type = Tuple{eltype.((buffers...,))...}
     end
-    return VertexArray{vert_type, kind}(id, [buffers...], ind_buf, nverts, ninst, face)
+    return VertexArray{vert_type, kind}(id, buffers, ind_buf, nverts, instances, face)
 end
-VertexArray(buffers...; args...) = VertexArray((buffers...), nothing; args...)
-VertexArray(buffers::Tuple; args...) = VertexArray(buffers, nothing; args...)
+VertexArray(buffers; args...) = VertexArray(buffers, nothing, 0:length(buffers)-1; args...)
+VertexArray(buffers::Tuple; args...) = VertexArray([buffers...]; args...)
 
 
 #TODO vertexarraycleanup: It would be nice if we don't need to explicitely pass through
@@ -152,45 +133,30 @@ function VertexArray(data::Dict, program::Program)
     prim = haskey(data,:gl_primitive) ? data[:gl_primitive] : GL_POINTS
     facelen = glenum2face(prim)
     bufferdict = filter((k, v) -> isa(v, Buffer), data)
-    attriblen = length(bufferdict)
     if haskey(bufferdict, :indices)
-        attriblen -= 1
         indbuf    = pop!(bufferdict, :indices)
     elseif haskey(bufferdict, :faces)
-        attriblen -= 1
         indbuf    = pop!(bufferdict, :faces)
         facelen   = length(eltype(indbuf))
     else
         indbuf    = nothing
     end
-    attribbuflen = -1
-    attribbufs   = Vector{Buffer}(attriblen)
+
+    buffers    = Vector{Buffer}()
+    attriblocs = Int[]
     for (name, buffer) in bufferdict
         attribname = string(name)
-        attribbuflen = attribbuflen == -1 ? length(buffer) : attribbuflen
-        @assert length(buffer) == attribbuflen error("Buffer $attribute has not
-            the same length as the other buffers.
-            Has: $(length(buffer)). Should have: $len")
-        if attribbuflen != -1
-            attribindex = get_attribute_location(program.id, attribname) + 1
-            #TODO vertexarraycleanup: why does this happen? normals etc !
-            if attribindex != 0 && attribindex <= length(attribbufs) #TODO why can these things happen??
-                attribbufs[attribindex] = buffer
-            end
+        attribloc = get_attribute_location(program.id, attribname)
+        if attribloc != -1 && length(buffer) != 0
+            push!(attriblocs, attribloc)
+            push!(buffers, buffer)
         end
     end
 
-    #TODO vertexarraycleanup: Why are some buffers undefined??
-    attribbufs_ = Vector{Buffer}()
-    for i=1:length(attribbufs)
-        if isassigned(attribbufs, i)
-            push!(attribbufs_, attribbufs[i])
-        end
-    end
-    if !haskey(data,:instances)
-        VertexArray((attribbufs_...), indbuf, facelength=facelen)
+    if !haskey(data, :instances)
+        VertexArray(buffers, attriblocs, indbuf, facelength = facelen)
     else #TODO vertexarraycleanup: This is for the surface
-        instanced_vertexarray(attribbufs_, indbuf, data[:instances])
+        instanced_vertexarray(buffers, indbuf, data[:instances])
     end
 end
 
