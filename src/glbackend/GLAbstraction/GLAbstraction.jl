@@ -50,14 +50,14 @@ include("composition.jl")
 export Composable, Composition, convert!, boundingbox
 
 
-include("GLUtils.jl")
+include("utils.jl")
 export @gputime # measures the time an OpenGL call takes on the GPU (usually OpenGL calls return immidiately)
 export @materialize #splats keywords from a dict into variables
 export @materialize!  #splats keywords from a dict into variables and deletes them from the dict
 export close_to_square
 export AND, OR, isnotempty
 
-include("GLTypes.jl")
+include("types.jl")
 include("buffer.jl")
 include("texture.jl")
 include("framebuffer.jl")
@@ -90,9 +90,9 @@ export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
 
 
 
-include("GLExtendedFunctions.jl")
+include("extendedfunctions.jl")
 export glTexImage # Julian wrapper for glTexImage1D, glTexImage2D, glTexImage3D
-include("GLShader.jl")
+include("shader.jl")
 include("vertexarray.jl")
 include("renderobject.jl")
 export Shader                 #Shader Type
@@ -106,7 +106,7 @@ export @vert_str
 export @geom_str
 export AbstractLazyShader, LazyShader
 
-include("GLUniforms.jl")
+include("uniforms.jl")
 export gluniform                # wrapper of all the OpenGL gluniform functions, which call the correct gluniform function via multiple dispatch. Example: gluniform(location, x::Matrix4x4) = gluniformMatrix4fv(location, x)
 export toglsltype_string        # infers a glsl type string from a julia type. Example: Matrix4x4 -> uniform mat4
 # Also exports Macro generated GLSL alike aliases for Float32 Matrices and Vectors
@@ -118,7 +118,7 @@ include("render.jl")
 export render  #renders arbitrary objects
 export enabletransparency # can be pushed to an renderobject, enables transparency
 
-include("GLInfo.jl")
+include("info.jl")
 export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
