@@ -15,14 +15,18 @@
 #
 # VertexArraycleanup:
 #   -> Instancing is now done the other way around to what it should be.
-#   -> Really redo how attriblocations are assigned very error prone!
 #   -> Rewrite constructor
 #
 #
 # generalcleanup:
 #   -> So many speedups possible!
 #
-
-
-
 using Makie
+begin
+    large_sphere = Sphere(Point3f0(0), 1f0)
+    positions = decompose(Point3f0, large_sphere)
+    linepos = view(positions, rand(1:length(positions), 1000))
+    scene = lines(linepos, linewidth = 0.1, color = :black)
+    scatter!(scene, positions, strokewidth = 10, strokecolor = :white, color = RGBAf0(0.9, 0.2, 0.4, 0.6))
+    scene
+end

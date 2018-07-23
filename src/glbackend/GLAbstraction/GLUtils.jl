@@ -302,7 +302,7 @@ function glasserteltype(::Type{T}) where T
     try
         length(T)
     catch
-        error("Error only types with well defined lengths are allowed")
+        error("Error only types with well defined lengths are allowed.\nType was $T.")
     end
 end
 
@@ -321,6 +321,9 @@ function gl_convert_data!(data)
             # glconvert is designed to just convert everything to a fitting opengl datatype, but sometimes exceptions are needed
             # e.g. Texture{T,1} and Buffer{T} are both usable as an native conversion canditate for a Julia's Array{T, 1} type.
             # but in some cases we want a Texture, sometimes a Buffer or TextureBuffer
+            #glvisualize.to_mesh
+            #glvisualize.to_indexbuffer
+            #glvisualize.to_meshcolor
             data[k] = gl_convert(targets[k], v)
         else
             k in (:indices, :visible) && continue

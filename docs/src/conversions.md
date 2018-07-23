@@ -22,7 +22,7 @@ to_image
 
 to_bool
 
-to_index_buffer
+to_indexbuffer
 
 to_positions
 

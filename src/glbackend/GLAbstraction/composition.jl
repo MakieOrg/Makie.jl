@@ -84,8 +84,6 @@ end
 
 export layout!
 
-
-
 function transform!(c::Composable, model)
     c.transformation = const_lift(*, model, transformation(c))
     for elem in c.children

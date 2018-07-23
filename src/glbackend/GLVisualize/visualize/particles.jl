@@ -491,7 +491,7 @@ function sprites(p, s, data)
         uv_offset_width = const_lift(primitive_uv_offset_width, p[1]) => Buffer
 
         distancefield   = primitive_distancefield(p[1]) => Texture
-        indices         = const_lift(length, p[2]) => to_index_buffer
+        indices         = const_lift(length, p[2]) => to_indexbuffer
         # rotation and billboard don't go along
         billboard        = rotation == Vec4f0(0,0,0,1) => "if `billboard` == true, particles will always face camera"
         preferred_camera = :orthographic_pixel

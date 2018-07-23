@@ -11,6 +11,10 @@ const VecTypes{T} = ArrayTypes{T, 1}
 const MatTypes{T} = ArrayTypes{T, 2}
 const VolumeTypes{T} = ArrayTypes{T, 3}
 
+
+#definitions for length of certain GLTypes
+Base.length(::Type{GLuint}) = 1
+
 @enum Projection PERSPECTIVE ORTHOGRAPHIC
 @enum MouseButton MOUSE_LEFT MOUSE_MIDDLE MOUSE_RIGHT
 
