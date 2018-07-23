@@ -103,8 +103,8 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
         if (embed == nothing && is_stepper) || isequal(embed, "stepperplot")
             warn("stepper detected!")
 
-            steps = enumerate_stepper_examples(mediapath, uname::String; filter = "thumb")
-            
+            steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
+
             # print to buffer
             io = IOBuffer()
 
@@ -144,6 +144,11 @@ function enumerate_stepper_examples(mediapath::AbstractString, uname::String; fi
     # the plot step indices always start with 1
     steps = length(plots_list)
 end
+
+function enumerate_stepper_examples(mediapath::AbstractString, uname::Symbol; filter = nothing)
+    enumerate_stepper_examples(mediapath, String(uname); filter = filter)
+end
+
 
 """
     embed_video(relpath::AbstractString[; pure_html::Bool = false])
