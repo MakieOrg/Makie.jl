@@ -39,7 +39,7 @@ const Axis2D_attr_names = Dict(
     :align => "`(:pos, :pos)`. Specify the text alignment, where `:pos` can be `:left`, `:center`, or `:right`.",
     :axisnames => "NTuple{2,String}. Specifies the text labels for the axes.",
     :font => "NTuple{2,String}. Specifies the font and can name any font available on the system.",
-    :rotation => "",
+    :rotation => "NTuple{3,Float32}. Specifies the rotations for each axis's label, in radians.",
     :textcolor => "NTuple{2,Symbol or Colorant}. Specifies the color of the axes labels. Can be a color symbol/string like :red, or a Colorant.",
     :textsize => "Integer. Font pointsize for text."
 )
@@ -52,7 +52,7 @@ const Axis2D_attr_ticks = Dict(
     :linecolor => "NTuple{2,Symbol or Colorant}. Specifies the color of the grid lines. Can be a color symbol/string like :red, or a Colorant.",
     :linestyle => "",
     :linewidth => "NTuple{2,Number}. Width of the axes ticks.",
-    :rotation => "NTuple{3,Float32}. Specifies the rotations for each axis's ticks in radians.",
+    :rotation => "NTuple{3,Float32}. Specifies the rotations for each axis's ticks, in radians.",
     :textcolor => "NTuple{2,Symbol or Colorant}. Specifies the color of the axes ticks. Can be a color symbol/string like :red, or a Colorant.",
     :textsize => "NTuple{2,Int}. Font pointsize for tick labels.",
     :title_gap => "Number. Specifies the gap (in pixels) between the axis titles and the axis tick labels."
