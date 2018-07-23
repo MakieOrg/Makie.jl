@@ -918,7 +918,7 @@ end
 		scene
     end
 
-    @cell "stepper test" [stepper, axis, lines] begin
+    @cell "Axis theming" [stepper, axis, lines] begin
         using GeometryTypes
         scene = Scene()
         points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
@@ -930,26 +930,29 @@ end
         )
 
         axis = scene[Axis] # get axis
+		scene
 
         st = Stepper(scene, @outputfile)
         step!(st)
         axis[:frame][:linewidth] = 5
         step!(st)
-        axis[:grid][:linewidth] = (1, 5)
+		axis[:grid][:linewidth] = (1, 5)
+		step!(st)
+		axis[:grid][:linecolor] = ((:red, 0.3), (:blue, 0.5))
+		step!(st)
+        axis[:names][:axisnames] = ("x", "y   ")
+		step!(st)
+		axis[:ticks][:title_gap] = 1
+		step!(st)
+		axis[:names][:rotation] = (0.0, -3/8*pi)
         step!(st)
-        axis[:grid][:linecolor] = ((:red, 0.3), (:blue, 0.5))
-        step!(st)
-        axis[:names][:axisnames] = ("x", "y")
-        step!(st)
-        axis[:names][:textcolor] = ((:red, 0.3), (:blue, 0.5))
+        axis[:names][:textcolor] = ((:red, 1.0), (:blue, 1.0))
         step!(st)
         axis[:ticks][:font] = ("Dejavu Sans", "Helvetica")
         step!(st)
-        axis[:ticks][:rotation] = (0.0, -pi/4)
+        axis[:ticks][:rotation] = (0.0, -pi/2)
         step!(st)
-        axis[:ticks][:textsize] = (5, 10)
-        step!(st)
-        axis[:ticks][:title_gap] = 0
+        axis[:ticks][:textsize] = (3, 7)
         step!(st)
         axis[:ticks][:gap] = 5
         step!(st)
