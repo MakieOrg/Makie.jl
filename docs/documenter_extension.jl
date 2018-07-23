@@ -216,23 +216,46 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
     !ispath(currpath) && warn("currepath does not exist!")
     !ispath(tarpath) && warn("$(tarpath) does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
     for idx in indices
+        is_stepper = false
+
         entry = database[idx]
         uname = entry.unique_name
         title = entry.title
         src_lines = entry.file_range
-        # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
-        testpath1 = joinpath(mediapath, "thumb-$uname.png")
-        testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
-        link = relpath(tarpath, currpath)
-        if isfile(testpath1)
-            embedpath = relpath(testpath1, currpath)
-            println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
-        elseif isfile(testpath2)
-            embedpath = relpath(testpath2, currpath)
-            println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
+        tags = entry.tags
+
+        # check whether the example is a stepper or not
+        is_stepper = contains(==, tags, "stepper")
+
+        if is_stepper
+            steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
+            println(io, "```@raw html\n")
+            for i = 1:steps
+                info("stepper number $i")
+                divblock = """<div style="display:inline-block"><p style="display:inline-block; text-align: center">"""
+                caption = "Step $i<br>"
+                imgpath = "media/$uname/thumb-$uname-$i.jpg"
+                imgsrc = """<img src="$imgpath" alt="$caption" /></p></div>"""
+                println(STDOUT, divblock * caption * imgsrc)
+                println(io, divblock * caption * imgsrc)
+            end
+            println(io, "```")
+            break
         else
-            warn("thumbnail for index $idx with uname $uname not found")
-            embedpath = "not_found"
+            # TODO: currently exporting video thumbnails as .jpg because of ImageMagick issue#120
+            testpath1 = joinpath(mediapath, "thumb-$uname.png")
+            testpath2 = joinpath(mediapath, "thumb-$uname.jpg")
+            link = relpath(tarpath, currpath)
+            if isfile(testpath1)
+                embedpath = relpath(testpath1, currpath)
+                println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
+            elseif isfile(testpath2)
+                embedpath = relpath(testpath2, currpath)
+                println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
+            else
+                warn("thumbnail for index $idx with uname $uname not found")
+                embedpath = "not_found"
+            end
         end
         embedpath = []
     end
