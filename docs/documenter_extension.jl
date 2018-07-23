@@ -104,6 +104,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
             warn("stepper detected!")
 
             steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
+            steppermediapath = joinpath(mediapath, uname)
 
             # print to buffer
             io = IOBuffer()
@@ -283,6 +284,19 @@ function embed_plot(
     isa(buildpath, AbstractString) ? nothing : error("buildpath must be a string!")
     medialist = readdir(mediapath)
 
+    if ("$(uname)") in medialist
+        steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
+        println(io, "```@raw html\n")
+        for i = 1:steps
+            info("stepper number $i")
+            divblock = """<div style="display:inline-block"><p style="display:inline-block; text-align: center">"""
+            caption = "Step $i<br>"
+            imgpath = "media/$uname/thumb-$uname-$i.jpg"
+            imgsrc = """<img src="$imgpath" alt="$caption" /></p></div>"""
+            println(io, divblock * caption * imgsrc)
+        end
+        println(io, "```")
+    end
     extensions = [".jpg", ".gif"]
     for i in extensions
         if ("$(uname)" * i) in medialist
