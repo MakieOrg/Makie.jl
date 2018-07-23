@@ -67,8 +67,8 @@ using Makie
         )
     end
     @cell "heatmap interpolation" [heatmap, interpolate] begin
-        p1 = heatmap(rand(100, 100), interpolate = true)
-        p2 = heatmap(rand(100, 100), interpolate = false)
+        p1 = heatmap(rand(100, 50), interpolate = true)
+        p2 = heatmap(rand(100, 50), interpolate = false)
         scene = AbstractPlotting.vbox(p1, p2)
         text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
         text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
