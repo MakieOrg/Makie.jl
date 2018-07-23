@@ -103,14 +103,8 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
         if (embed == nothing && is_stepper) || isequal(embed, "stepperplot")
             warn("stepper detected!")
 
-            # get all of the plots from the stepper
-            steppermediapath = joinpath(mediapath, uname)
-            plots_list = readdir(steppermediapath)
-            filter!(x -> !startswith(x, "thumb"), plots_list)
-
-            # the plot step indices always start with 1
-            steps = length(plots_list)
-
+            steps = enumerate_stepper_examples(mediapath, uname::String; filter = "thumb")
+            
             # print to buffer
             io = IOBuffer()
 
@@ -132,6 +126,24 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
     end
 end
 
+
+"""
+    enumerate_stepper_examples(filter!(x -> !startswith(x, "thumb"), plots_list))
+
+Enumerates the stepper plots from the `mediapath` from the example with the name `uname`.
+Accepts an optional `filter` argument to filter for specific files starting with this text.
+"""
+function enumerate_stepper_examples(mediapath::AbstractString, uname::String; filter = nothing)
+    # get all of the plots from the stepper
+    steppermediapath = joinpath(mediapath, uname)
+    plots_list = readdir(steppermediapath)
+    if filter != nothing
+        filter!(x -> !startswith(x, "$filter"), plots_list)
+    end
+
+    # the plot step indices always start with 1
+    steps = length(plots_list)
+end
 
 """
     embed_video(relpath::AbstractString[; pure_html::Bool = false])
