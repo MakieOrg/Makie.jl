@@ -32,11 +32,9 @@ end
 save_example(entry, x::String) = x # nothing to do
 
 function save_example(entry, x::Makie.Stepper) #TODO: this breaks thumbnail generation
-    println(x.step)
-    path = [output_path(entry, "-$i.jpg"; subdir = string(entry.unique_name)) for i = 1:x.step - 1]
-    info(path)
-    return path
     # return a list of all file names
+    path = [output_path(entry, "-$i.jpg"; subdir = string(entry.unique_name)) for i = 1:x.step - 1]
+    return path
 end
 
 AbstractPlotting.set_theme!(resolution = (500, 500))

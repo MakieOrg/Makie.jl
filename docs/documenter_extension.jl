@@ -101,7 +101,6 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
 
         # use stepper for the example
         if (embed == nothing && is_stepper) || isequal(embed, "stepperplot")
-            warn("stepper detected!")
 
             steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
             steppermediapath = joinpath(mediapath, uname)
@@ -232,12 +231,10 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
             steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
             println(io, "```@raw html\n")
             for i = 1:steps
-                info("stepper number $i")
                 divblock = """<div style="display:inline-block"><p style="display:inline-block; text-align: center">"""
                 caption = "Step $i<br>"
                 imgpath = "media/$uname/thumb-$uname-$i.jpg"
                 imgsrc = """<img src="$imgpath" alt="$caption" /></p></div>"""
-                println(STDOUT, divblock * caption * imgsrc)
                 println(io, divblock * caption * imgsrc)
             end
             println(io, "```")
@@ -288,7 +285,6 @@ function embed_plot(
         steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")
         println(io, "```@raw html\n")
         for i = 1:steps
-            info("stepper number $i")
             divblock = """<div style="display:inline-block"><p style="display:inline-block; text-align: center">"""
             caption = "Step $i<br>"
             imgpath = "media/$uname/thumb-$uname-$i.jpg"
