@@ -91,7 +91,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot[:interpolate] = true
         # TODO normalize linewidth for heatmap
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
-        heatmap!(plot, plot.attributes, x, y, z)
+        heatmap!(plot, Theme(plot), x, y, z)
     else
         result = lift(x, y, z, plot[:levels]) do x, y, z, levels
             t = eltype(z)
