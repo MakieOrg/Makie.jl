@@ -261,6 +261,11 @@ function getindex(x::AbstractPlot, key::Symbol)
         x.converted[idx]
     end
 end
+function getindex(x::AttributeOrPlot, key::Symbol, key2::Symbol, rest::Symbol...)
+    dict = to_value(x[key])
+    dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
+    dict[key2, rest...]
+end
 
 function setindex!(x::AttributeOrPlot, value, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
