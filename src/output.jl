@@ -120,3 +120,28 @@ end
 
 
 export VideoStream, recordframe!, finish, record
+
+# Stepper for generating progressive plot examples
+mutable struct Stepper
+    scene::Scene
+    folder::String
+    step::Int
+end
+
+function Stepper(scene, path)
+    ispath(path) || mkpath(path)
+    Stepper(scene, path, 1)
+end
+
+"""
+    step!(s::Stepper)
+steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
+This is useful for generating progressive plot examples.
+"""
+function step!(s::Stepper)
+    Makie.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).jpg"), s.scene)
+    s.step += 1
+    return s
+end
+
+export Stepper, step!
