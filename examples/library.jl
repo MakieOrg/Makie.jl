@@ -902,21 +902,21 @@ end
         AbstractPlotting.set_theme!(resolution = (500, 500))
         surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
     end
+    
+    @cell "surface + contour3d" [surface, contour3d, subscene] begin
+        vx = -1:0.01:1
+        vy = -1:0.01:1
 
-	# @cell "surface + contour3d" [surface, contour3d, subscene] begin
-	# 	vx = -1:0.01:1
-	# 	vy = -1:0.01:1
-	#
-	# 	f(x, y) = (sin(x*10) + cos(y*10)) / 4
-	#
-	# 	p1 = surface(vx, vy, f)
-	# 	p2 = contour3d(vx, vy, (x, y) -> f(x,y), levels = 15, linewidth = 3)
-	#
-	# 	scene = AbstractPlotting.vbox(p1, p2)
-	# 	text!(campixel(p1), "surface", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-	# 	text!(campixel(p2), "contour3d", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-	# 	scene
-    # end
+        f(x, y) = (sin(x*10) + cos(y*10)) / 4
+
+        p1 = surface(vx, vy, f)
+        p2 = contour3d(vx, vy, (x, y) -> f(x,y), levels = 15, linewidth = 3)
+
+        scene = AbstractPlotting.vbox(p1, p2)
+        text!(campixel(p1), "surface", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        text!(campixel(p2), "contour3d", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
+        scene
+    end
 
     @cell "Axis theming" [stepper, axis, lines] begin
         using GeometryTypes
