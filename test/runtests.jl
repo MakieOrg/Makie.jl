@@ -125,28 +125,8 @@ isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(record_reference_images)
 
-using Makie
-
-ModernGL.register_debug_callback!() do err, f, args...
-    ctx = Makie.GLAbstraction.current_context()
-    println(ctx)
-    println(Makie.GLAbstraction.is_context_active(ctx))
-    println(f)
-    error(ModernGL.GLENUM(err).name |> string)
-end
-
-arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 
 
-
-
-
-
-dict = Dict()
-for (num, sym) in x
-    vec = get!(dict, num, [])
-    push!(vec, sym)
-end
 #
 # example = example_database(:cat)[3]
 # scene = eval_example(example)
