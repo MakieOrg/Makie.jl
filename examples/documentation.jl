@@ -233,7 +233,7 @@
         step!(st)
     end
 end
-# 
+#
 # using Makie
 #
 # scene = scatter(rand(100), rand(100))
