@@ -182,7 +182,7 @@ makedocs(
             # "extending.md",
             # "themes.md",
             "interaction.md",
-            # "axis.md",
+            "axis.md",
             # "legends.md",
             "output.md",
             # "docs-test.md"
