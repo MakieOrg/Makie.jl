@@ -158,23 +158,95 @@
             ),
         )
         AbstractPlotting.set_theme!(new_theme)
-        scene2 = scatter(rand(100), rand(100))
+        scene = scatter(rand(100), rand(100))
+        st = Stepper(scene, @outputfile)
+        step!(st)
         new_theme[:color] = :blue
+        step!(st)
         new_theme[:scatter, :marker] = '◍'
+        step!(st)
         new_theme[:scatter, :markersize] = 0.05
+        step!(st)
         new_theme[:scatter, :strokewidth] = 0.1
+        step!(st)
         new_theme[:scatter, :strokecolor] = :green
-        scene2 = scatter(rand(100), rand(100))
-        scene2[end][:marker] = 'π'
+        step!(st)
+        empty!(scene)
+        scene = scatter!(rand(100), rand(100))
+        step!(st)
+        scene[end][:marker] = 'π'
+        step!(st)
 
         r = linspace(-0.5pi, pi + pi/4, 100)
-
         AbstractPlotting.set_theme!(new_theme)
-        scene = surface(r, r, (x, y)-> sin(2x) + cos(2y))
+        empty!(scene)
+        @show scene.theme
+        scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
+        step!(st)
         scene[end][:colormap] = :PuOr
-        scene
+        step!(st)
         surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+        step!(st)
         AbstractPlotting.set_theme!(resolution = (500, 500))
-        surface(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+        empty!(scene)
+        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+        step!(st)
+    end
+
+    @cell "Axis theming" [stepper, axis, lines] begin
+        using GeometryTypes
+        scene = Scene()
+        points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
+        lines!(
+            scene,
+            points,
+            linewidth = 8,
+            color = :black
+        )
+
+        axis = scene[Axis] # get axis
+        scene
+
+        st = Stepper(scene, @outputfile)
+        step!(st)
+        axis[:frame][:linewidth] = 5
+        step!(st)
+        axis[:grid][:linewidth] = (1, 5)
+        step!(st)
+        axis[:grid][:linecolor] = ((:red, 0.3), (:blue, 0.5))
+        step!(st)
+        axis[:names][:axisnames] = ("x", "y   ")
+        step!(st)
+        axis[:ticks][:title_gap] = 1
+        step!(st)
+        axis[:names][:rotation] = (0.0, -3/8*pi)
+        step!(st)
+        axis[:names][:textcolor] = ((:red, 1.0), (:blue, 1.0))
+        step!(st)
+        axis[:ticks][:font] = ("Dejavu Sans", "Helvetica")
+        step!(st)
+        axis[:ticks][:rotation] = (0.0, -pi/2)
+        step!(st)
+        axis[:ticks][:textsize] = (3, 7)
+        step!(st)
+        axis[:ticks][:gap] = 5
+        step!(st)
     end
 end
+# 
+# using Makie
+#
+# scene = scatter(rand(100), rand(100))
+# empty!(scene)
+# scene = scatter!(rand(100), rand(100))
+#
+# r = linspace(-0.5pi, pi + pi/4, 100)
+# empty!(scene)
+# scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
+# scene.camera_controls[]
+#
+# scene[end][:colormap] = :PuOr
+# surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+# AbstractPlotting.set_theme!(resolution = (500, 500))
+# empty!(scene)
+# surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))

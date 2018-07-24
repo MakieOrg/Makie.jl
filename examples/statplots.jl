@@ -11,8 +11,6 @@ import AbstractPlotting: convert_arguments, plot!, convert_arguments, extrema_na
         width = nothing
     )
 end
-function AbstractPlotting.calculated_attributes!(plot::Bar)
-end
 
 function AbstractPlotting.data_limits(p::Bar)
     xy = p.plots[1][1][]
@@ -223,29 +221,7 @@ end
 end
 AbstractPlotting.convert_arguments(::Type{<: CorrPlot}, x) = (x,)
 
-function grid!(parent, plots::Matrix; kw_args...)
-    N = length(plots)
-    grid = size(plots)
-    x, y = (0.0, 0.0)
-    w, h = widths(pixelarea(parent)[]) ./ Vec(grid)
-    println(grid)
-    @show w h
-    for i in 1:size(plots, 1), j in 1:size(plots, 2)
-        child = plots[i, j]
-        @show i j
-        push!(pixelarea(child), IRect(x, y, w, h))
-        yield()
-        center!(child)
-        if j == grid[1]
-            y += h
-            x = 0.0
-        else
-            x += w
-        end
-        println(x, " ", y)
-        yield()
-    end
-end
+
 
 function AbstractPlotting.plot!(scene::Scene, ::Type{CorrPlot}, attributes::Attributes, mat)
     n = size(mat, 2)
