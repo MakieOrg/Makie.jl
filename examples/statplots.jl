@@ -12,6 +12,8 @@ import AbstractPlotting: convert_arguments, plot!, convert_arguments, extrema_na
     )
 end
 
+export bar
+
 function AbstractPlotting.data_limits(p::Bar)
     xy = p.plots[1][1][]
     msize = p.plots[1][:markersize][]

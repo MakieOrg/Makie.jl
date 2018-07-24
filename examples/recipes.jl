@@ -10,7 +10,7 @@
         function default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
             Theme(
                 advance = 0,
-                molecule_sizes = [0.04, 0.02, 0.02],
+                molecule_sizes = [0.08, 0.04, 0.04],
                 molecule_colors = [:maroon, :deepskyblue2, :deepskyblue2]
             )
         end
@@ -47,11 +47,11 @@
 
         # To write out a video of the whole simulation
         using Makie
-        n = 10
+        n = 5
         grid = Point3f0.(linspace(-1, 1, n), reshape(linspace(-1, 1, n), (1, n, 1)), reshape(linspace(-1, 1, n), (1, 1, n)))
         molecules = map(1:(n^3) * 3) do i
             i3 = ((i - 1) ÷ 3) + 1
-            xy = 0.05; z = 0.04
+            xy = 0.1; z = 0.08
             i % 3 == 1 && return grid[i3]
             i % 3 == 2 && return grid[i3] + Point3f0(xy, xy, z)
             i % 3 == 0 && return grid[i3] + Point3f0(-xy, xy, z)

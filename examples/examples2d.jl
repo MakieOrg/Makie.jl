@@ -22,11 +22,11 @@
             push!(time, i)
         end
     end
-    @cell "bar" [bar] begin
-        bar(1:10, rand(10))
-        bar(rand(10))
-        bar(rand(10), color = rand(10))
-        bar(rand(3), color = [:red, :blue, :green])
+    @cell "barplot" [barplot] begin
+        # barplot(1:10, rand(10))
+        # barplot(rand(10))
+        barplot(rand(10), color = rand(10))
+        # barplot(rand(3), color = [:red, :blue, :green])
     end
     @cell "quiver" [quiver, arrows, vectorfield, gradiend] begin
         using ImageFiltering
@@ -144,7 +144,7 @@
     @cell "Contour Function" [contour] begin
         r = linspace(-10, 10, 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
-        contour(r, r, z, levels = 5, color = :viridis, linewidth = 10)
+        contour(r, r, z, levels = 5, color = :viridis, linewidth = 3)
     end
 
 
