@@ -13,7 +13,6 @@ AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecType
 AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle}}) = (v,)
 AbstractPlotting.convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Scatter, args...)
 AbstractPlotting.convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
-AbstractPlotting.calculated_attributes!(plot::Poly) = plot
 
 function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
@@ -64,10 +63,17 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circ
         strokewidth = plot[:strokewidth],
     )
 end
+function data_limits(p::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
+    xyz = p.plots[1][1][]
+    msize = p.plots[1][:markersize][]
+    xybb = FRect3D(xyz)
+    mwidth = FRect3D(xyz .+ msize)
+    union(mwidth, xybb)
+end
 
 @recipe(Arrows, points, directions) do scene
     theme = Theme(
-        arrowhead = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0),
+        arrowhead = automatic,
         arrowtail = nothing,
         linecolor = :black,
         linewidth = 1,
@@ -82,31 +88,40 @@ end
     theme
 end
 
-arrow_head(::Type{<: Point{3}}) = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
-arrow_head(::Type{<: Point{2}}) = '▲'
+# For the matlab/matplotlib users
+const quiver = arrows
+const quiver! = arrows!
+export quiver, quiver!
 
-scatterfun(::Type{<: Point{2}}) = scatter!
-scatterfun(::Type{<: Point{3}}) = meshscatter!
+arrow_head(N, marker) = marker
+arrow_head(N, marker::Automatic) = N == 2 ? '▲' : Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
+
+scatterfun(N) = N == 2 ? scatter! : meshscatter!
 
 
-function plot!(arrowplot::Arrows)
+convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f0.(x, y), Vec2f0.(u, v))
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    (vec(Point2f0.(x, y')), vec(Vec2f0.(u, v)))
+end
+convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Vec3f0.(u, v, w))
+
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
     @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor)
     headstart = lift(points, directions, lengthscale) do points, directions, s
         map(points, directions) do p1, dir
             dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
-            Point3f0(p1) => Point3f0(p1 .+ (dir .* Float32(s)))
+            Point{N, Float32}(p1) => Point{N, Float32}(p1 .+ (dir .* Float32(s)))
         end
     end
     linesegments!(
-        arrowplot,
-        map(reinterpret, Node(Point3f0), headstart),
+        arrowplot, headstart,
         color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
         linestyle = arrowplot[:linestyle],
     )
-    meshscatter!(
+    scatterfun(N)(
         arrowplot,
         map(x-> last.(x), headstart),
-        marker = arrowhead, markersize = arrowsize,
+        marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
         color = arrowcolor, rotations = directions
     )
 end
@@ -360,12 +375,8 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
             axis_attributes = plot_attributes[:axis]
             if is2d(scene)
-                limits2d = map(s_limits) do l
-                    l2d = FRect2D(l)
-                    Tuple.((minimum(l2d), maximum(l2d)))
-                end
                 @info("Creating axis 2D")
-                axis2d!(scene, axis_attributes, limits2d)
+                axis2d!(scene, axis_attributes, s_limits)
             else
                 limits3d = map(s_limits) do l
                     mini, maxi = minimum(l), maximum(l)

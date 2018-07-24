@@ -472,8 +472,13 @@ convert_attribute(s::Quaternion, ::key"rotation") = s
 function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     if N == 4
         Quaternion(s...)
-    else
+    elseif N == 3
         rotation_between(Vec3f0(0, 0, 1), to_ndim(Vec3f0, s, 0.0))
+    elseif N == 2
+
+        rotation_between(Vec3f0(0, 1, 0), to_ndim(Vec3f0, s, 0.0))
+    else
+        error("$N dimensional vector $s can't be converted to a rotation")
     end
 end
 
