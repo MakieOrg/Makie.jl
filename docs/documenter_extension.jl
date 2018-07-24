@@ -109,10 +109,11 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
             io = IOBuffer()
 
             for step = 1:steps
-                println("$uname-$step")
-                println(io, "<strong>Step $step</strong>")
-                println(io)
-                embed_plot(io, string(uname, "-", step), steppermediapath, buildpath; src_lines = lines, pure_html = true)
+				divblock = """<div style="display:inline-block"><p style="display:inline-block; text-align: center">"""
+	            caption = "Step $step<br>"
+	            imgpath = "media/$uname/thumb-$uname-$step.jpg"
+	            imgsrc = """<img src="$imgpath" alt="$caption" /></p></div>"""
+	            println(io, divblock * caption * imgsrc)
                 str = String(take!(io))
 
                 # print code for embedding plot
