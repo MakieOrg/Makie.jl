@@ -22,13 +22,7 @@ function AbstractPlotting.data_limits(p::Bar)
     bb = AbstractPlotting._boundingbox(first.(xy), y)
     union(bb, xybb)
 end
-function AbstractPlotting.data_limits(p::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
-    xyz = p.plots[1][1][]
-    msize = p.plots[1][:markersize][]
-    xybb = FRect3D(xyz)
-    mwidth = FRect3D(xyz .+ msize)
-    union(mwidth, xybb)
-end
+
 
 AbstractPlotting.convert_arguments(::Type{<: Bar}, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}) = (x, y)
 function AbstractPlotting.plot!(p::Bar)
@@ -213,7 +207,6 @@ function plot!(plot::BoxPlot)
         strokewidth = plot[:strokewidth]
     )
 end
-
 
 
 
