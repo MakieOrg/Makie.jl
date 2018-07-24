@@ -31,7 +31,3 @@ You can access the nested attributes in multiple ways. Take the nested attribute
 @example_database("Axis + Surface")
 
 @example_database("Axis theming")
-
-
-## Raw mode
-When the axis is accessed using `axis2d` or `axis3d`, the plotting will be in raw mode, i.e., the camera will not be activated.

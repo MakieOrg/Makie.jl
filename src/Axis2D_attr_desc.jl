@@ -9,12 +9,6 @@ const Axis2D_attr_desc = Dict(
     :ticks => "See the detailed descriptions for `ticks` attributes."
 )
 
-Axis2D_attr_groups = [
-    "Axis2D_attr_frame",
-    "Axis2D_attr_grid",
-    "Axis2D_attr_names",
-    "Axis2D_attr_ticks"
-]
 
 # frame
 const Axis2D_attr_frame = Dict(
@@ -56,4 +50,12 @@ const Axis2D_attr_ticks = Dict(
     :textcolor => "NTuple{2,Symbol or Colorant}. Specifies the color of the axes ticks. Can be a color symbol/string like :red, or a Colorant.",
     :textsize => "NTuple{2,Int}. Font pointsize for tick labels.",
     :title_gap => "Number. Specifies the gap (in pixels) between the axis titles and the axis tick labels."
+)
+
+
+const Axis2D_attr_groups = Dict(
+    :frame => Axis2D_attr_frame,
+    :grid => Axis2D_attr_grid,
+    :names => Axis2D_attr_names,
+    :ticks => Axis2D_attr_ticks
 )
