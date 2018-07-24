@@ -140,6 +140,43 @@ open(path, "w") do io
     print_table(io, plot_attr_desc)
 end
 
+# =============================================
+# automatically generate an overview of the axis attributes, using a source md file
+info("Generating axis page")
+path = joinpath(srcpath, "axis.md")
+srcdocpath = joinpath(srcpath, "src-axis.md")
+include("../src/Axis2D_attr_desc.jl")
+include("../src/Axis3D_attr_desc.jl")
+
+open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    src = read(srcdocpath, String)
+    println(io, src)
+    print(io)
+    # Axis2D section
+    println(io, "## `Axis2D`")
+    println(io, "### `Axis2D` attributes groups")
+    print_table(io, Axis2D_attr_desc)
+    print(io)
+    for (k, v) in Axis2D_attr_groups
+        # info(k)
+        println(io, "#### `:$k`\n")
+        print_table(io, v)
+        println(io)
+    end
+    # Axis3D section
+    println(io, "## `Axis3D`")
+    println(io, "### `Axis3D` attributes groups")
+    print_table(io, Axis3D_attr_desc)
+    print(io)
+    for (k, v) in Axis3D_attr_groups
+        # info(k)
+        println(io, "#### `:$k`\n")
+        print_table(io, v)
+        println(io)
+    end
+end
+
 # automatically generate an overview of the function signatures, using a source md file
 info("Generating signatures page")
 path = joinpath(srcpath, "signatures.md")
