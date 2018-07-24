@@ -19,11 +19,6 @@ const Axis3D_attr_desc = Dict(
     :ticks => "See the detailed descriptions for `ticks` attributes."
 )
 
-Axis3D_attr_groups = [
-    "Axis3D_attr_frame",
-    "Axis3D_attr_names",
-    "Axis3D_attr_ticks"
-]
 
 # frame
 const Axis3D_attr_frame = Dict(
@@ -51,4 +46,11 @@ const Axis3D_attr_ticks = Dict(
     :rotation => "NTuple{3,Quaternion{Float32}}. Specifies the rotations for each axis's ticks, in radians.",
     :textcolor => "NTuple{3,Symbol or Colorant}. Specifies the color of the axes ticks. Can be a color symbol/string like :red, or a Colorant.",
     :textsize => "Integer. Font pointsize for text."
+)
+
+
+const Axis3D_attr_groups = Dict(
+    :frame => Axis3D_attr_frame,
+    :names => Axis3D_attr_names,
+    :ticks => Axis3D_attr_ticks
 )
