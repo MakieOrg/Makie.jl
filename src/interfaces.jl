@@ -277,7 +277,7 @@ plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(typeof(F).name.mt.name)
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, args::Tuple) where Typ
     # make sure all arguments are a node
     # with a sensible name
-    arg_nodes = node.(argument_names(PlotType, length(args)), args)
+    arg_nodes = node.(ntuple(i-> Symbol("input $i"), length(args)), args)
     args_converted = map(arg_nodes...) do args...
         # do the argument conversion inside a lift
         args = convert_arguments(PlotType, args...)
@@ -285,8 +285,10 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         args
     end
     # now get a signal node/signal for each argument
-    node_args_seperated = ntuple(length(value(args_converted))) do i
-        map(args_converted) do x
+    N = length(value(args_converted))
+    names = argument_names(PlotType, N)
+    node_args_seperated = ntuple(N) do i
+        map(args_converted, name = string(names[i])) do x
             if i <= length(x)
                 x[i]
             else
