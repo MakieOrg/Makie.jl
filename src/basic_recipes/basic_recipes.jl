@@ -4,7 +4,7 @@
         color = theme(scene, :color),
         strokecolor = RGBAf0(0,0,0,0),
         colormap = theme(scene, :colormap),
-        colorrange = nothing,
+        colorrange = automatic,
         strokewidth = 0.0,
         linestyle = nothing
     )
@@ -13,7 +13,6 @@ AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecType
 AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle}}) = (v,)
 AbstractPlotting.convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Scatter, args...)
 AbstractPlotting.convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
-AbstractPlotting.calculated_attributes!(plot::Poly) = plot
 
 function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
@@ -64,10 +63,17 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circ
         strokewidth = plot[:strokewidth],
     )
 end
+function data_limits(p::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
+    xyz = p.plots[1][1][]
+    msize = p.plots[1][:markersize][]
+    xybb = FRect3D(xyz)
+    mwidth = FRect3D(xyz .+ msize)
+    union(mwidth, xybb)
+end
 
 @recipe(Arrows, points, directions) do scene
     theme = Theme(
-        arrowhead = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0),
+        arrowhead = automatic,
         arrowtail = nothing,
         linecolor = :black,
         linewidth = 1,
@@ -82,31 +88,40 @@ end
     theme
 end
 
-arrow_head(::Type{<: Point{3}}) = Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
-arrow_head(::Type{<: Point{2}}) = '▲'
+# For the matlab/matplotlib users
+const quiver = arrows
+const quiver! = arrows!
+export quiver, quiver!
 
-scatterfun(::Type{<: Point{2}}) = scatter!
-scatterfun(::Type{<: Point{3}}) = meshscatter!
+arrow_head(N, marker) = marker
+arrow_head(N, marker::Automatic) = N == 2 ? '▲' : Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
+
+scatterfun(N) = N == 2 ? scatter! : meshscatter!
 
 
-function plot!(arrowplot::Arrows)
+convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f0.(x, y), Vec2f0.(u, v))
+function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    (vec(Point2f0.(x, y')), vec(Vec2f0.(u, v)))
+end
+convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Vec3f0.(u, v, w))
+
+function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
     @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor)
     headstart = lift(points, directions, lengthscale) do points, directions, s
         map(points, directions) do p1, dir
             dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
-            Point3f0(p1) => Point3f0(p1 .+ (dir .* Float32(s)))
+            Point{N, Float32}(p1) => Point{N, Float32}(p1 .+ (dir .* Float32(s)))
         end
     end
     linesegments!(
-        arrowplot,
-        map(reinterpret, Node(Point3f0), headstart),
+        arrowplot, headstart,
         color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
         linestyle = arrowplot[:linestyle],
     )
-    meshscatter!(
+    scatterfun(N)(
         arrowplot,
         map(x-> last.(x), headstart),
-        marker = arrowhead, markersize = arrowsize,
+        marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
         color = arrowcolor, rotations = directions
     )
 end
@@ -360,12 +375,8 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
             axis_attributes = plot_attributes[:axis]
             if is2d(scene)
-                limits2d = map(s_limits) do l
-                    l2d = FRect2D(l)
-                    Tuple.((minimum(l2d), maximum(l2d)))
-                end
                 @info("Creating axis 2D")
-                axis2d!(scene, axis_attributes, limits2d)
+                axis2d!(scene, axis_attributes, s_limits)
             else
                 limits3d = map(s_limits) do l
                     mini, maxi = minimum(l), maximum(l)
@@ -397,29 +408,84 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
     scene
 end
 
+@recipe(Arc, origin, radius, start_angle, stop_angle) do scene
+    Theme(;
+        default_theme(scene, Lines)...,
+        resolution = 361,
+    )
+end
 
-
-function arc(pmin, pmax, a1, a2)
-
-    xy = Vector{Point2f0}(361)
-
-    xcenter = (x_lin(xmin) + x_lin(xmax)) / 2.0;
-    ycenter = (y_lin(ymin) + y_lin(ymax)) / 2.0;
-    width = abs(x_lin(xmax) - x_lin(xmin)) / 2.0;
-    height = abs(y_lin(ymax) - y_lin(ymin)) / 2.0;
-
-    start = min(a1, a2);
-    stop = max(a1, a2);
-    start += (stop - start) / 360 * 360;
-
-    n = 0;
-    for a in start:stop
-        x[n] = x_log(xcenter + width  * cos(a * M_PI / 180));
-        y[n] = y_log(ycenter + height * sin(a * M_PI / 180));
-        n += 1
+function plot!(p::Arc)
+    args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
+    positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
+        map(linspace(start_angle, stop_angle, resolution)) do angle
+            origin .+ (Point2f0(sin(angle), cos(angle)) .* radius)
+        end
     end
-    if (n > 1)
-        lines(x, y)
-    end
+    lines!(p, Theme(p), positions)
+end
 
+
+
+function AbstractPlotting.plot!(plot::Plot(AbstractVector{<: Complex}))
+    plot[:axis, :labels] = ("Re(x)", "Im(x)")
+    lines!(plot, lift(im-> Point2f0.(real.(im), imag.(im)), x[1]))
+end
+
+
+
+
+@recipe(BarPlot, x, y) do scene
+    Theme(;
+        fillto = 0.0,
+        color = theme(scene, :color),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        marker = Rect,
+        width = nothing
+    )
+end
+
+function data_limits(p::BarPlot)
+    xy = p.plots[1][1][]
+    msize = p.plots[1][:markersize][]
+    xybb = FRect3D(xy)
+    y = last.(msize) .+ last.(xy)
+    bb = AbstractPlotting._boundingbox(first.(xy), y)
+    union(bb, xybb)
+end
+
+
+convert_arguments(::Type{<: BarPlot}, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}) = (x, y)
+convert_arguments(::Type{<: BarPlot}, y::AbstractVector{<: Number}) = (1:length(y), y)
+
+
+function AbstractPlotting.plot!(p::BarPlot)
+    pos_scale = lift(p[1], p[2], p[:fillto], p[:width]) do x, y, fillto, hw
+        nx, ny = length(x), length(y)
+        cv = x
+        x = if nx == ny
+            cv
+        elseif nx == ny + 1
+            0.5diff(cv) + cv[1:end-1]
+        else
+            error("bar recipe: x must be same length as y (centers), or one more than y (edges).\n\t\tlength(x)=$(length(x)), length(y)=$(length(y))")
+        end
+        # compute half-width of bars
+        if hw == nothing
+            hw = mean(diff(x)) # TODO ignore nan?
+        end
+        # make fillto a vector... default fills to 0
+        positions = Point2f0.(cv, Float32.(fillto))
+        scales = Vec2f0.(abs.(hw), y)
+        offset = Vec2f0.(hw ./ -2f0, 0)
+        positions, scales, offset
+    end
+    scatter!(
+        p, lift(first, pos_scale),
+        marker = p[:marker], marker_offset = lift(last, pos_scale),
+        markersize = lift(getindex, pos_scale, Node(2)),
+        color = p[:color], colormap = p[:colormap], colorrange = p[:colorrange],
+        transform_marker = true
+    )
 end
