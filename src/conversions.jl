@@ -550,7 +550,7 @@ const colorbrewer_8color_names = String[
     :Set2
 ]
 
-const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
+const all_gradient_names = Set(vcat(string.(colorbrewer_names), "Viridis"))
 
 """
     available_gradients()
@@ -559,7 +559,7 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in sort(all_gradient_names)
+    for name in sort(collect(all_gradient_names))
         println("    ", name)
     end
 end
