@@ -82,7 +82,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
 
         Base.@__doc__($funcname)
-        AbstractPlotting.default_theme(scene, ::Type{<: $T}) = $theme_func(scene)
+        AbstractPlotting.default_theme(scene, ::Type{<: $T}) = $(esc(theme_func))(scene)
 
         export $T, $funcname, $funcname!
     end
