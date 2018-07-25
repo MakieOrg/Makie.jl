@@ -240,20 +240,27 @@ makedocs(
     ]
 )
 # move it back
-# mv(tmp_path, mediapath)
-#
-# ENV["TRAVIS_BRANCH"] = "latest"
-# ENV["TRAVIS_PULL_REQUEST"] = "false"
-# ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
-# ENV["TRAVIS_TAG"] = "v1.0.0"
-# ENV["TRAVIS_OS_NAME"] = "linux"
-# ENV["TRAVIS_JULIA_VERSION"] = "0.6"
-#
-# deploydocs(
-#     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-#     repo   = "github.com/JuliaPlots/Makie.jl.git",
-#     julia  = "0.6",
-#     target = "build",
-#     osname = "linux",
-#     make = nothing
-# )
+
+ENV["DOCUMENTER_DEBUG"] = "true"
+if !haskey(ENV, "DOCUMENTER_KEY")
+    # Workaround for when deploying locally and silly Windows truncating the env variable
+    # on the CI these should be set!
+    ENV["TRAVIS_BRANCH"] = "latest"
+    ENV["TRAVIS_PULL_REQUEST"] = "false"
+    ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
+    ENV["TRAVIS_TAG"] = "v1.0.0"
+    ENV["TRAVIS_OS_NAME"] = ""
+    ENV["TRAVIS_JULIA_VERSION"] = ""
+    ENV["PATH"] = string(ENV["PATH"], raw";C:\Python27\Scripts")
+    ENV["DOCUMENTER_KEY"] = open(x->String(read(x)), joinpath(homedir(), "documenter.key"))
+end
+
+deploydocs(
+    deps = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
+    repo = "github.com/JuliaPlots/Makie.jl.git",
+    julia = "",
+    osname = "",
+    latest = "v1.0.0",
+    target = "build",
+    make = nothing
+)

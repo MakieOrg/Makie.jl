@@ -81,4 +81,4 @@ documentation:
 
     - apt install -y openssh-client && mkdir /root/.ssh
     - julia -e 'Pkg.add("Documenter")'
-    #- julia docs/make.jl
+    - julia docs/make.jl
