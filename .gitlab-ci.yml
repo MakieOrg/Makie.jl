@@ -24,6 +24,7 @@ stages:
             symlink(\"$CI_PROJECT_DIR\", Pkg.dir(\"$package\"));
             Pkg.resolve();
             Pkg.checkout(\"AbstractPlotting\");
+            Pkg.checkout(\"AbstractPlotting\", \"sd/axis_recipes\");
             Pkg.build(\"$package\");
             Pkg.test(\"$package\"; coverage=true)"
   artifacts:
