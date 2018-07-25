@@ -39,7 +39,8 @@ Media.media(Scene, Media.Plot)
 
 Juno.@render Juno.PlotPane p::Scene begin
     try
-        HTML(stringmime("image/svg+xml", p))
+        # HTML(stringmime("image/svg+xml", p))
+        display(p)
     catch e
         Base.show_backtrace(STDERR, Base.catch_backtrace())
         rethrow(e)
@@ -92,6 +93,9 @@ function show(io::IO, m::MIME"image/png", scene::Scene)
     img = scene2image(scene)
     FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end
+
+
+
 # function Base.show(io::IO, mime::MIME"image/png", scene::Scene)
 #     s = map(scene.events.entered_window) do value
 #         scene2image(scene)
@@ -116,3 +120,28 @@ end
 
 
 export VideoStream, recordframe!, finish, record
+
+# Stepper for generating progressive plot examples
+mutable struct Stepper
+    scene::Scene
+    folder::String
+    step::Int
+end
+
+function Stepper(scene, path)
+    ispath(path) || mkpath(path)
+    Stepper(scene, path, 1)
+end
+
+"""
+    step!(s::Stepper)
+steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
+This is useful for generating progressive plot examples.
+"""
+function step!(s::Stepper)
+    Makie.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).jpg"), s.scene)
+    s.step += 1
+    return s
+end
+
+export Stepper, step!

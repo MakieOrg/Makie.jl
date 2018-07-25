@@ -45,8 +45,8 @@ const selection_queries = Function[]
 Renders a single frame of a `window`
 """
 function render_frame(screen::Screen)
-    !isopen(screen) && return
     nw = to_native(screen)
+    GLAbstraction.is_context_active(nw) || return
     fb = screen.framebuffer
     wh = Int.(GLFW.GetFramebufferSize(nw))
     resize!(fb, wh)
@@ -98,18 +98,16 @@ function id2rect(screen, id1)
 end
 
 function GLAbstraction.render(screen::Screen, fxaa::Bool)
-    if isopen(screen)
-        for (zindex, screenid, elem) in screen.renderlist
-            found, rect = id2rect(screen, screenid)
-            found || continue
-            a = rect[]
-            glViewport(minimum(a)..., widths(a)...)
-            if fxaa && elem[:fxaa][]
-                render(elem)
-            end
-            if !fxaa && !elem[:fxaa][]
-                render(elem)
-            end
+    for (zindex, screenid, elem) in screen.renderlist
+        found, rect = id2rect(screen, screenid)
+        found || continue
+        a = rect[]
+        glViewport(minimum(a)..., widths(a)...)
+        if fxaa && elem[:fxaa][]
+            render(elem)
+        end
+        if !fxaa && !elem[:fxaa][]
+            render(elem)
         end
     end
     return
