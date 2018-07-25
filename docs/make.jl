@@ -13,6 +13,7 @@ mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 # TODO can we teach this to documenter somehow?
 ispath(mediapath) || mkpath(mediapath)
+plotting_functions = (atomics..., contour, arrows, barplot, poly)
 
 function output_path(entry, ending; subdir = nothing)
     if subdir == nothing
@@ -71,7 +72,7 @@ open(path, "w") do io
     src = read(srcdocpath, String)
     println(io, src)
     print(io, "\n")
-    for func in (atomics..., contour)
+    for func in plotting_functions
         fname = to_string(func)
         expdbpath = joinpath(buildpath, "examples-$fname.html")
         println(io, "## `$fname`\n")
@@ -95,7 +96,7 @@ end
 cd(docspath)
 example_pages = nothing
 example_list = String[]
-for func in (atomics..., contour)
+for func in plotting_functions
     fname = to_string(func)
     info("Generating examples gallery for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
@@ -195,14 +196,14 @@ open(path, "w") do io
 end
 
 # documenter deletes everything in build, so we need to move the media out and then back in again.
-tmp_path = joinpath(mktempdir(), "media")
-ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
-cp(mediapath, tmp_path)
+# tmp_path = joinpath(mktempdir(), "media")
+# ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
+# cp(tmp_path, mediapath)
 
 info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
 makedocs(
     modules = [Makie, AbstractPlotting],
-    doctest = false, clean = true,
+    doctest = false, clean = false,
     format = :html,
     sitename = "Makie.jl",
     pages = Any[
@@ -239,7 +240,7 @@ makedocs(
     ]
 )
 # move it back
-mv(tmp_path, mediapath)
+# mv(tmp_path, mediapath)
 #
 # ENV["TRAVIS_BRANCH"] = "latest"
 # ENV["TRAVIS_PULL_REQUEST"] = "false"

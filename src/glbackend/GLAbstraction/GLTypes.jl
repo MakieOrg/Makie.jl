@@ -31,25 +31,43 @@ We go for this slightly ugly version.
 const context = Base.RefValue{GLContext}(:none)
 
 function current_context()
+    context[] == :none && error("No active context")
     context[]
 end
+
 function is_current_context(x)
     x == context[]
 end
 
-function native_context_active(x)
+function native_context_alive(x)
     error("Not implemented for $(typeof(x))")
 end
 
-function is_context_active(x)
-    is_current_context(x) &&
-    native_context_active(x)
-end
+"""
+Is current context & is alive
+"""
+is_context_active(x) = is_current_context(x) && context_alive(x)
+
+"""
+Has context been destroyed or is it still living?
+"""
+context_alive(x) = native_context_alive(x)
 
 function native_switch_context!(x)
     error("Not implemented for $(typeof(x))")
 end
 
+"""
+Invalidates the current context
+"""
+function switch_context!()
+    # for reverting to no context
+    context[] = :none
+end
+
+"""
+Switches to a new context `x`. Is a noop if `x` is already current
+"""
 function switch_context!(x)
     if !is_current_context(x)
         context[] = x
@@ -349,52 +367,38 @@ include("GLRenderObject.jl")
 ####################################################################################
 # freeing
 
+function free(x)
+    try
+        unsafe_free(x)
+    catch e
+        isa(e, ContextNotAvailable) || rethrow(e)
+    end
+end
+
 # OpenGL has the annoying habit of reusing id's when creating a new context
 # We need to make sure to only free the current one
-function free(x::GLProgram)
+function unsafe_free(x::GLProgram)
     is_context_active(x.context) || return
-    try
-        glDeleteProgram(x.id)
-    catch e
-        free_handle_error(e)
-    end
+    glDeleteProgram(x.id)
     return
 end
-function free(x::GLBuffer)
+function unsafe_free(x::GLBuffer)
     # don't free from other context
     is_context_active(x.context) || return
-    id = [x.id]
-    try
-        glDeleteBuffers(1, id)
-    catch e
-        free_handle_error(e)
-    end
+    id = Ref(x.id)
+    glDeleteBuffers(1, id)
     return
 end
-function free(x::Texture)
+function unsafe_free(x::Texture)
     is_context_active(x.context) || return
-    id = [x.id]
-    try
-        glDeleteTextures(x.id)
-    catch e
-        free_handle_error(e)
-    end
+    id = Ref(x.id)
+    glDeleteTextures(x.id)
     return
 end
 
-function free(x::GLVertexArray)
+function unsafe_free(x::GLVertexArray)
     is_context_active(x.context) || return
-    id = [x.id]
-    try
-        glDeleteVertexArrays(1, id)
-    catch e
-        free_handle_error(e)
-    end
+    id = Ref(x.id)
+    glDeleteVertexArrays(1, id)
     return
-end
-
-function free_handle_error(e)
-    #ignore, since freeing is not needed if context is not available
-    isa(e, ContextNotAvailable) && return
-    rethrow(e)
 end

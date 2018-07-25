@@ -221,8 +221,8 @@ function print_code(
     print(io, scope_end)
     return
 end
-@which replace("test", r"lol", s"lal", 0)
 
+extract_tags(expr::Vector) = Set(String.(expr))
 function extract_tags(expr)
     if !any(x-> isa(x, String) || isa(x, Symbol), expr.args) || expr.head != :vect
         error("Tags need to be an array of strings/variables. Found: $(expr)")
@@ -339,31 +339,37 @@ function flatten2block(args::Vector)
     res
 end
 
-function extract_cell(cell, author, parent_tags, setup, groupid = NO_GROUP)
-    if !(length(cell.args) in (4, 5))
+function extract_cell(cell, author, parent_tags, setup, pfile, lastline, groupid = NO_GROUP)
+    if !(length(cell.args) in (2, 4, 5))
         error(
-            "You need to supply 3 or 4 arguments to `@cell`. E.g.:
+            "You need to supply 1 3 or 4 arguments to `@cell`. E.g.:
                 `@cell \"Title\" [\"tags\"] begin ... end`
             or
                 `@cell \"Author\" \"Title\" [\"tags\"] begin ... end`
+            or
+                `@cell plot(...)`
 
             Found: $(join(cell.args[2:end], " "))"
         )
     end
-
     author, title, ctags, cblock = if length(cell.args) == 4
         (author, cell.args[2:end]...)
-    else
+    elseif length(cell.args) == 5
         cell.args[2:end]
+    elseif length(cell.args) == 2
+        "No Author", "Test", [], cell.args[2]
     end
 
     if !isa(title, String)
         error("Title need to be a string. Found: $(title) with type: $(typeof(title))")
     end
-
-    file, startend = find_startend(cblock.args)
-    toplevel, source = extract_source(file, startend)
-    unique_name =
+    toplevel = ""; file = pfile; startend = lastline:lastline;
+    if Meta.isexpr(cblock, :block)
+        file, startend = find_startend(cblock.args)
+        toplevel, source = extract_source(file, startend)
+    else
+        source = string(cblock) # single cell e.g. @cell scatter(...)
+    end
     CellEntry(
         author, title, parent_tags ∪ extract_tags(ctags),
         file, startend, toplevel, source, groupid
@@ -417,7 +423,7 @@ macro block(author, tags, block)
     setup = join(globaly_shared_code, "\n")
 
     for cell in cells
-        cell_entry = extract_cell(cell, author, parent_tags, setup)
+        cell_entry = extract_cell(cell, author, parent_tags, setup, pfile, 1)
         push!(database, cell_entry)
         # push a list of all tags to tags_list
         push!(tags_list, collect(String, cell_entry.tags)...)
@@ -442,6 +448,8 @@ macro cell(author, title, tags, block)
     # implementation in block, this only marks
 end
 macro cell(title, tags, block)
+end
+macro cell(block)
 end
 
 # Group macro
