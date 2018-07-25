@@ -28,7 +28,7 @@
         barplot(rand(10), color = rand(10))
         # barplot(rand(3), color = [:red, :blue, :green])
     end
-    @cell "quiver" [quiver, arrows, vectorfield, gradiend] begin
+    @cell "quiver" [quiver, arrows, vectorfield, gradient] begin
         using ImageFiltering
         x = linspace(-2, 2, 21)
         y = x
