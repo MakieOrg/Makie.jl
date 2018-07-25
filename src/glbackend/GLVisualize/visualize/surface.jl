@@ -87,7 +87,7 @@ function surface(main, s::Style{:surface}, data::Dict)
     @gen_defaults! data begin
         color      = (wireframe ? RGBA{Float32}(0,0,0,0) : nothing) => (Texture,
             "must be single color value, must be nothing for color_map")
-        color_map  = (!wireframe && color == nothing ? default(Vector{RGBA}, s) : nothing) => (Texture,
+        color_map  = ((!wireframe && color == nothing) ? default(Vector{RGBA}, s) : nothing) => (Texture,
         "must be `Vector{Color}`, `color` must be nothing")
         color_norm = (!wireframe && color_map != nothing ? Vec2f0(0, 1) : nothing) => begin
             "normalizes the heightvalues before looking up color in `color_map`."

@@ -125,6 +125,8 @@ isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 test_examples(record_reference_images)
 
+
+
 #
 # example = example_database(:cat)[3]
 # scene = eval_example(example)
