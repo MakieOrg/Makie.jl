@@ -67,7 +67,6 @@ function logo()
 end
 
 include("makie_recipes.jl")
-include("tickranges.jl")
 include("utils.jl")
 include("glbackend/glbackend.jl")
 include("cairo/cairo.jl")

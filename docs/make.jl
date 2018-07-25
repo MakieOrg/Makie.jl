@@ -13,20 +13,50 @@ mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 # TODO can we teach this to documenter somehow?
 ispath(mediapath) || mkpath(mediapath)
-output_path(entry, ending) = joinpath(mediapath, string(entry.unique_name, ending))
+plotting_functions = (atomics..., contour, arrows, barplot, poly)
+
+function output_path(entry, ending; subdir = nothing)
+    if subdir == nothing
+        joinpath(mediapath, string(entry.unique_name, ending))
+    else
+        joinpath(mediapath, subdir, string(entry.unique_name, ending))
+    end
+end
+
+
 function save_example(entry, x::Scene)
     path = output_path(entry, ".jpg")
     Makie.save(path, x)
     path
 end
+
 save_example(entry, x::String) = x # nothing to do
+
+function save_example(entry, x::Makie.Stepper) #TODO: this breaks thumbnail generation
+    # return a list of all file names
+    path = [output_path(entry, "-$i.jpg"; subdir = string(entry.unique_name)) for i = 1:x.step - 1]
+    return path
+end
+
 AbstractPlotting.set_theme!(resolution = (500, 500))
 eval_examples(outputfile = output_path) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
     srand(42)
     path = save_example(example, value)
-    name = string("thumb-", example.unique_name, ".jpg")
-    generate_thumbnail(path, joinpath(dirname(path), name))
+    if isa(value, Makie.Stepper)
+        name = [string.("thumb-", example.unique_name, "-$i", ".jpg") for i = 1:value.step - 1]
+    else
+        name = string("thumb-", example.unique_name, ".jpg")
+    end
+    try
+        generate_thumbnail.(path, joinpath.(dirname.(path), name))
+    catch e
+        warn("generate_thumbnail failed with path $path, entry $(example.unique_name), and filename $name")
+        Base.showerror(STDERR, e)
+        println(STDERR)
+        Base.show_backtrace(STDERR, Base.catch_backtrace())
+        println(STDERR)
+    end
 end
 
 # =============================================
@@ -42,7 +72,7 @@ open(path, "w") do io
     src = read(srcdocpath, String)
     println(io, src)
     print(io, "\n")
-    for func in (atomics..., contour)
+    for func in plotting_functions
         fname = to_string(func)
         expdbpath = joinpath(buildpath, "examples-$fname.html")
         println(io, "## `$fname`\n")
@@ -66,7 +96,7 @@ end
 cd(docspath)
 example_pages = nothing
 example_list = String[]
-for func in (atomics..., contour)
+for func in plotting_functions
     fname = to_string(func)
     info("Generating examples gallery for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
@@ -75,7 +105,7 @@ for func in (atomics..., contour)
         println(io, "# `$fname`")
         examples2source(fname, scope_start = "", scope_end = "", indent = "") do entry, source
             # print bibliographic stuff
-            println(io, "## \"$(entry.title)\"")
+            println(io, "## $(entry.title)")
             print(io, "Tags: ")
             tags = sort(collect(entry.tags))
             for j = 1:length(tags) - 1; print(io, "`$(tags[j])`, "); end
@@ -98,9 +128,9 @@ end
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
 info("Generating attributes page")
-include("../src/attr_desc.jl")
-path = joinpath(srcpath, "attributes.md")
-srcdocpath = joinpath(srcpath, "src-attributes.md")
+include("../src/plot_attr_desc.jl")
+path = joinpath(srcpath, "plot-attributes.md")
+srcdocpath = joinpath(srcpath, "src-plot-attributes.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
     println(io, "# Plot attributes")
@@ -108,7 +138,44 @@ open(path, "w") do io
     println(io, src)
     print(io, "\n")
     println(io, "## List of attributes")
-    print_table(io, attr_desc)
+    print_table(io, plot_attr_desc)
+end
+
+# =============================================
+# automatically generate an overview of the axis attributes, using a source md file
+info("Generating axis page")
+path = joinpath(srcpath, "axis.md")
+srcdocpath = joinpath(srcpath, "src-axis.md")
+include("../src/Axis2D_attr_desc.jl")
+include("../src/Axis3D_attr_desc.jl")
+
+open(path, "w") do io
+    !ispath(srcdocpath) && error("source document doesn't exist!")
+    src = read(srcdocpath, String)
+    println(io, src)
+    print(io)
+    # Axis2D section
+    println(io, "## `Axis2D`")
+    println(io, "### `Axis2D` attributes groups")
+    print_table(io, Axis2D_attr_desc)
+    print(io)
+    for (k, v) in Axis2D_attr_groups
+        # info(k)
+        println(io, "#### `:$k`\n")
+        print_table(io, v)
+        println(io)
+    end
+    # Axis3D section
+    println(io, "## `Axis3D`")
+    println(io, "### `Axis3D` attributes groups")
+    print_table(io, Axis3D_attr_desc)
+    print(io)
+    for (k, v) in Axis3D_attr_groups
+        # info(k)
+        println(io, "#### `:$k`\n")
+        print_table(io, v)
+        println(io)
+    end
 end
 
 # automatically generate an overview of the function signatures, using a source md file
@@ -129,14 +196,14 @@ open(path, "w") do io
 end
 
 # documenter deletes everything in build, so we need to move the media out and then back in again.
-tmp_path = joinpath(mktempdir(), "media")
-ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
-cp(mediapath, tmp_path)
+# tmp_path = joinpath(mktempdir(), "media")
+# ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
+# cp(tmp_path, mediapath)
 
 info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
 makedocs(
     modules = [Makie, AbstractPlotting],
-    doctest = false, clean = true,
+    doctest = false, clean = false,
     format = :html,
     sitename = "Makie.jl",
     pages = Any[
@@ -147,13 +214,13 @@ makedocs(
             "help_functions.md",
             "functions-overview.md",
             "signatures.md",
-            "attributes.md",
+            "plot-attributes.md",
             # "documentation.md",
             # "backends.md",
             # "extending.md",
             # "themes.md",
             "interaction.md",
-            # "axis.md",
+            "axis.md",
             # "legends.md",
             "output.md",
             # "docs-test.md"
@@ -173,20 +240,27 @@ makedocs(
     ]
 )
 # move it back
-mv(tmp_path, mediapath)
-#
-# ENV["TRAVIS_BRANCH"] = "latest"
-# ENV["TRAVIS_PULL_REQUEST"] = "false"
-# ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
-# ENV["TRAVIS_TAG"] = "v1.0.0"
-# ENV["TRAVIS_OS_NAME"] = "linux"
-# ENV["TRAVIS_JULIA_VERSION"] = "0.6"
-#
-# deploydocs(
-#     deps   = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
-#     repo   = "github.com/JuliaPlots/Makie.jl.git",
-#     julia  = "0.6",
-#     target = "build",
-#     osname = "linux",
-#     make = nothing
-# )
+
+ENV["DOCUMENTER_DEBUG"] = "true"
+if !haskey(ENV, "DOCUMENTER_KEY")
+    # Workaround for when deploying locally and silly Windows truncating the env variable
+    # on the CI these should be set!
+    ENV["TRAVIS_BRANCH"] = "latest"
+    ENV["TRAVIS_PULL_REQUEST"] = "false"
+    ENV["TRAVIS_REPO_SLUG"] = "github.com/JuliaPlots/Makie.jl.git"
+    ENV["TRAVIS_TAG"] = "v1.0.0"
+    ENV["TRAVIS_OS_NAME"] = ""
+    ENV["TRAVIS_JULIA_VERSION"] = ""
+    ENV["PATH"] = string(ENV["PATH"], raw";C:\Python27\Scripts")
+    ENV["DOCUMENTER_KEY"] = open(x->String(read(x)), joinpath(homedir(), "documenter.key"))
+end
+
+deploydocs(
+    deps = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
+    repo = "github.com/JuliaPlots/Makie.jl.git",
+    julia = "",
+    osname = "",
+    latest = "v1.0.0",
+    target = "build",
+    make = nothing
+)

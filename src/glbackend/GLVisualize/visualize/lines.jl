@@ -121,7 +121,6 @@ function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) whe
         pattern             = nothing
         fxaa                = false
         indices             = const_lift(length, positions) => to_index_buffer
-        preferred_camera    = :orthographic_pixel
         # TODO update boundingbox
         shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "line_segment.vert", "line_segment.geom", "lines.frag")
         gl_primitive        = GL_LINES

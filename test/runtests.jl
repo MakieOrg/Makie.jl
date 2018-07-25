@@ -3,14 +3,14 @@ using Images, BinaryProvider
 include("../examples/library.jl")
 
 record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
-version = v"0.0.4"
+version = v"0.0.5"
 
 download_dir = joinpath(@__DIR__, "testimages")
 tarfile = joinpath(download_dir, "images.zip")
 url = "https://github.com/SimonDanisch/ReferenceImages/archive/v$(version).tar.gz"
 refpath = joinpath(download_dir, "ReferenceImages-$(version)")
 recordpath = Pkg.dir("ReferenceImages")
-
+#
 # function url2hash(url::String)
 #     path = download(url)
 #     open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
@@ -24,7 +24,7 @@ if !record_reference_images
         refpath = recordpath
     elseif !isdir(refpath)
         download_images() = BinaryProvider.download_verify(
-            url, "16163c21e7558d7f27542316e64b270a484940d9a05f52240041a545d8ec4e3b",
+            url, "f893d1fc97985c479d797cbb40165d7d9f2896661347b317d7608ad22d3b9700",
             tarfile
         )
         try
@@ -59,18 +59,36 @@ function toimages(f, example, x::Scene, record)
     end
 end
 
+is_image_file(path) = lowercase(splitext(path)[2]) in (".png", ".jpg", ".jpeg")
+
+function toimages(f, example, s::Stepper, record)
+    ispath(s.folder) || error("Not a path: $(s.folder)")
+    if record
+        # just copy the stepper files from s.folder into the recordpath
+        rpath2 = joinpath(recordpath, basename(s.folder))
+        cp(s.folder, rpath2)
+    else
+        for frame in readdir(s.folder)
+            is_image_file(frame) || continue
+            image = FileIO.load(joinpath(s.folder, frame))
+            refimage = FileIO.load(joinpath(refpath, basename(s.folder), frame))
+            f(image, refimage)
+        end
+    end
+end
 function toimages(f, example, path::String, record)
     isfile(path) || error("Not a file: $path")
     filepath, ext = splitext(path)
     rpath = joinpath(refpath, basename(filepath))
-    if record || !isdir(rpath)
+
+    if record
         rpath2 = joinpath(recordpath, basename(filepath))
         isdir(rpath2) || mkpath(rpath2)
         run(`ffmpeg -loglevel quiet -i $(abspath(path)) -y $rpath2\\frames%04d.jpg`)
     else
         filepath, ext = splitext(path)
         isdir(filepath) || mkdir(filepath)
-        run(`ffmpeg -loglevel quiet -i $path -vf fps=1 -y $filepath\\frames%04d.jpg`)
+        run(`ffmpeg -loglevel quiet -i $path -y $filepath\\frames%04d.jpg`)
         for frame in readdir(filepath)
             image = FileIO.load(joinpath(filepath, frame))
             refimage = FileIO.load(joinpath(refpath, basename(filepath), frame))
@@ -123,7 +141,21 @@ cd(@__DIR__)
 isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
+
 test_examples(record_reference_images)
+
+# AbstractPlotting.bar(1:10, rand(10))
+# import AbstractPlotting: bar!, child
+# y = rand(10)
+# p = Scene()
+#
+# plots = [
+#     bar(1:10, y) bar(y)
+#     bar(child(p), y, color = y) bar(child(p), rand(3), color = [:red, :blue, :green])
+# ]
+# for pl in plots
+#     push!
+# AbstractPlotting.grid!(p, plots)
 
 #
 # example = example_database(:cat)[3]

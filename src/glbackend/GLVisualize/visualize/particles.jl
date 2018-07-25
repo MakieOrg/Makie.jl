@@ -299,8 +299,8 @@ function meshparticle(p, s, data)
             )
         )
     end
-    if value(intensity) != nothing
-        if value(position) != nothing
+    if AbstractPlotting.to_value(intensity) != nothing
+        if AbstractPlotting.to_value(position) != nothing
             data[:intensity] = intensity_convert_tex(intensity, position)
             data[:len] = const_lift(length, position)
         else
