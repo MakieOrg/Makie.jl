@@ -431,3 +431,61 @@ function AbstractPlotting.plot!(plot::Plot(AbstractVector{<: Complex}))
     plot[:axis, :labels] = ("Re(x)", "Im(x)")
     lines!(plot, lift(im-> Point2f0.(real.(im), imag.(im)), x[1]))
 end
+
+
+
+
+@recipe(BarPlot, x, y) do scene
+    Theme(;
+        fillto = 0.0,
+        color = theme(scene, :color),
+        colormap = theme(scene, :colormap),
+        colorrange = automatic,
+        marker = Rect,
+        width = nothing
+    )
+end
+
+function data_limits(p::BarPlot)
+    xy = p.plots[1][1][]
+    msize = p.plots[1][:markersize][]
+    xybb = FRect3D(xy)
+    y = last.(msize) .+ last.(xy)
+    bb = AbstractPlotting._boundingbox(first.(xy), y)
+    union(bb, xybb)
+end
+
+
+convert_arguments(::Type{<: BarPlot}, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}) = (x, y)
+convert_arguments(::Type{<: BarPlot}, y::AbstractVector{<: Number}) = (1:length(y), y)
+
+
+function AbstractPlotting.plot!(p::BarPlot)
+    pos_scale = lift(p[1], p[2], p[:fillto], p[:width]) do x, y, fillto, hw
+        nx, ny = length(x), length(y)
+        cv = x
+        x = if nx == ny
+            cv
+        elseif nx == ny + 1
+            0.5diff(cv) + cv[1:end-1]
+        else
+            error("bar recipe: x must be same length as y (centers), or one more than y (edges).\n\t\tlength(x)=$(length(x)), length(y)=$(length(y))")
+        end
+        # compute half-width of bars
+        if hw == nothing
+            hw = mean(diff(x)) # TODO ignore nan?
+        end
+        # make fillto a vector... default fills to 0
+        positions = Point2f0.(cv, Float32.(fillto))
+        scales = Vec2f0.(abs.(hw), y)
+        offset = Vec2f0.(hw ./ -2f0, 0)
+        positions, scales, offset
+    end
+    scatter!(
+        p, lift(first, pos_scale),
+        marker = p[:marker], marker_offset = lift(last, pos_scale),
+        markersize = lift(getindex, pos_scale, Node(2)),
+        color = p[:color], colormap = p[:colormap], colorrange = p[:colorrange],
+        transform_marker = true
+    )
+end
