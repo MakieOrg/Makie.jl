@@ -223,7 +223,14 @@ function GLAbstraction.native_switch_context!(x::GLFW.Window)
 end
 
 function GLAbstraction.native_context_alive(x::GLFW.Window)
-    !was_destroyed(x)
+    # TODO merge `is_initialized` to GLFW + and use tagged version without this check
+    if isdefined(GLFW, :is_initialized)
+        GLFW.is_initialized() && !was_destroyed(x)
+    else
+        # This will lead to errors when using OpenGL debugging, since it can
+        # happen that the opengl finalizers run after GLFW.Terminate has run
+        !was_destroyed(x)
+    end
 end
 
 function destroy!(nw::GLFW.Window)
