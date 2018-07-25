@@ -199,11 +199,11 @@ const atomic_function_symbols = (
 const atomic_functions = getfield.(AbstractPlotting, atomic_function_symbols)
 
 
-function color_and_colormap!(plot::T) where T
-    if haskey(plot, :color) && isa(plot[:color][], AbstractArray{<: Number})
+function color_and_colormap!(plot, intensity = plot[:color])
+    if isa(intensity[], AbstractArray{<: Number})
         haskey(plot, :colormap) || error("Plot $T needs to have a colormap to allow the attribute color to be an array of numbers")
         replace_automatic!(plot, :colorrange) do
-            lift(extrema_nan, plot[:color])
+            lift(extrema_nan, intensity)
         end
         true
     else
@@ -237,7 +237,7 @@ function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
     color_and_colormap!(plot)
 end
 function calculated_attributes!(::Type{<: Surface}, plot)
-    color_and_colormap!(plot)
+    color_and_colormap!(plot, plot[3])
 end
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
