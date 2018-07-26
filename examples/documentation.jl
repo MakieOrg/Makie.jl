@@ -180,7 +180,6 @@
         r = linspace(-0.5pi, pi + pi/4, 100)
         AbstractPlotting.set_theme!(new_theme)
         empty!(scene)
-        @show scene.theme
         scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
         step!(st)
         scene[end][:colormap] = :PuOr
@@ -191,6 +190,7 @@
         empty!(scene)
         surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
         step!(st)
+        st
     end
 
     @cell "Axis theming" [stepper, axis, lines] begin

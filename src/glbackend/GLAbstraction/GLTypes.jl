@@ -361,17 +361,26 @@ end
 
 include("GLRenderObject.jl")
 
-
-
-
 ####################################################################################
 # freeing
+
+function log_finalizer(x)
+    open("finalizer_log.txt", "a") do io
+        print(io, x)
+        print(io, '\n')
+    end
+end
 
 function free(x)
     try
         unsafe_free(x)
     catch e
-        isa(e, ContextNotAvailable) || rethrow(e)
+        isa(e, ContextNotAvailable) && return # if context got destroyed no need to worry!
+        if :msg in fieldnames(e)
+            log_finalizer(e.msg)
+        else
+            log_finalizer(typeof(e))
+        end
     end
 end
 
