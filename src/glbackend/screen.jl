@@ -64,6 +64,7 @@ end
 
 function colorbuffer(screen::Screen)
     if isopen(screen)
+        force_update!()
         GLFW.PollEvents()
         yield()
         render_frame(screen) # let it render
