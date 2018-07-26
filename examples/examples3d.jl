@@ -500,4 +500,18 @@
         end
         path
     end
+
+    @cell "Surface + wireframe + contour" [surface, wireframe, contour, transformation] begin
+        N = 51
+        x = linspace(-2, 2, N)
+        y = x
+        z = (-x .* exp.(-x .^ 2 .- (y') .^ 2)) .* 4
+
+        scene = wireframe(x, y, z)
+        xm, ym, zm = minimum(scene.limits[])
+        scene = surface!(scene, x, y, z)
+        contour!(scene, x, y, z, levels = 15, linewidth = 2, transformation = (:xy, zm))
+        scene
+    end
+
 end
