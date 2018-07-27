@@ -550,7 +550,7 @@ const colorbrewer_8color_names = String[
     :Set2
 ]
 
-const all_gradient_names = Set(vcat(string.(colorbrewer_names), "Viridis"))
+const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
 
 """
     available_gradients()
