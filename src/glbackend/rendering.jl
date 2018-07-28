@@ -70,6 +70,7 @@ function render_frame(screen::Screen)
     GLAbstraction.render(fb.postprocess[1]) # add luma and preprocess
 
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
+    glViewport(0, 0, w, h)
     glDrawBuffer(GL_COLOR_ATTACHMENT0)
     GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
 
@@ -77,12 +78,12 @@ function render_frame(screen::Screen)
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
     GLAbstraction.render(screen, false)
-    glViewport(0, 0, w, h)
     #Read all the selection queries
     for query_func in selection_queries
         query_func()
     end
     glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
+    glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
     GLAbstraction.render(fb.postprocess[3]) # copy postprocess
