@@ -3,3 +3,7 @@ MeshIO
 ImageFiltering # needed for Gaussian-filtering images during resize
 Images
 BinaryProvider
+
+#for some examples
+DataFrames
+RDatasets
