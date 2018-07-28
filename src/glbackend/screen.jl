@@ -120,8 +120,9 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         end
         empty!(gl_screens)
     end
+
     window = GLFW.Window(
-        name = "Makie", resolution = resolution,
+        name = "Makie", resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
         windowhints = [
             (GLFW.SAMPLES,      0),
             (GLFW.DEPTH_BITS,   0),
@@ -136,6 +137,7 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0)
         ],
+        visible = false,
         kw_args...
     )
     # tell GLAbstraction that we created a new context.
@@ -143,14 +145,18 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     GLAbstraction.switch_context!(window)
     GLAbstraction.empty_shader_cache!()
     push!(gl_screens, window)
-    if visible
-        GLFW.ShowWindow(window)
-    else
-        GLFW.HideWindow(window)
-    end
+
     GLFW.SwapInterval(0)
 
+    # Retina screens on osx have a different scaling!
+    wh = GLFW.GetWindowSize(window)
+    whpix = GLFW.GetFramebufferSize(window)
+    retina_scale = whpix .÷ wh
+    resolution = retina_scale .* resolution
+    # Set the resolution for real now!
+    GLFW.SetWindowSize(window, resolution...)
     fb = GLFramebuffer(Int.(resolution))
+
     screen = Screen(
         window, fb,
         RefValue{Task}(),
@@ -161,6 +167,11 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         Dict{UInt16, AbstractPlot}(),
     )
     screen.rendertask[] = @async(renderloop(screen))
+    if visible
+        GLFW.ShowWindow(window)
+    else
+        GLFW.HideWindow(window)
+    end
     screen
 end
 
