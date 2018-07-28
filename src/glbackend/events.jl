@@ -149,9 +149,20 @@ function disconnect!(window::GLFW.Window, ::typeof(unicode_input))
     GLFW.SetCharCallback(window, nothing)
 end
 
+# TODO memoise? Or to bug ridden for the small performance gain?
+function retina_scaling_factor(w, fb)
+    (w[1] == 0 || w[2] == 0) && return (1.0, 1.0)
+    fb ./ w
+end
+function retina_scaling_factor(window::GLFW.Window)
+    w, fb = GLFW.GetWindowSize(window), GLFW.GetFramebufferSize(window)
+    retina_scaling_factor(w, fb)
+end
+
 function correct_mouse(window::GLFW.Window, w, h)
-    fb = GLFW.GetFramebufferSize(window)
-    (w, fb[2] - h)
+    ws, fb = GLFW.GetWindowSize(window), GLFW.GetFramebufferSize(window)
+    s = retina_scaling_factor(ws, fb)
+    (w * s[1], fb[2] - (h * s[2]))
 end
 
 """
