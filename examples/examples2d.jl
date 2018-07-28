@@ -169,7 +169,7 @@
         end
     end
 
-    @cell "Text Annotation" [text, align] begin
+    @cell "Text Annotation" [text, align, annotation] begin
         text(
             ". This is an annotation!",
             position = (300, 200),
