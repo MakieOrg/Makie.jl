@@ -47,11 +47,15 @@ function Base.empty!(screen::Screen)
     empty!(screen.cache2plot)
 end
 
-function Base.resize!(screen::Screen, w, h)
-    if isopen(screen)
-        GLFW.SetWindowSize(screen.glscreen, round(Int, w), round(Int, h))
+function Base.resize!(window::GLFW.Window, resolution...)
+    if isopen(window)
+        retina_scale = retina_scaling_factor(window)
+        w, h = retina_scale .* resolution
+        GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
     end
 end
+
+Base.resize!(screen::Screen, w, h) = resize!(screen.glscreen, w, h)
 
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
@@ -149,10 +153,8 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     GLFW.SwapInterval(0)
 
     # Retina screens on osx have a different scaling!
-    wh = GLFW.GetWindowSize(window)
-    whpix = GLFW.GetFramebufferSize(window)
-    retina_scale = whpix .÷ wh
-    resolution = retina_scale .* resolution
+    retina_scale = retina_scaling_factor(window)
+    resolution = round.(Int, retina_scale .* resolution)
     # Set the resolution for real now!
     GLFW.SetWindowSize(window, resolution...)
     fb = GLFramebuffer(Int.(resolution))
