@@ -11,10 +11,11 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://makie.juliaplots.org/stable/)
 
 
-IJulia examples:
+## IJulia examples:
 
 [![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
 
+## Examples from the documenation: 
 
 [![](http://makie.juliaplots.org/stable/media/thumb-3d_contour_with_2d_contour_slices.jpg)](http://makie.juliaplots.org/stable/examples-volume.html#3D-Contour-with-2D-contour-slices-1)
 [![](http://makie.juliaplots.org/stable/media/thumb-animated_scatter.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Animated-Scatter-1)
