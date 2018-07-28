@@ -50,7 +50,7 @@ end
 function Base.resize!(window::GLFW.Window, resolution...)
     if isopen(window)
         retina_scale = retina_scaling_factor(window)
-        w, h = retina_scale .* resolution
+        w, h = resolution ./ retina_scale
         GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
     end
 end
