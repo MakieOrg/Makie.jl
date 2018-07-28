@@ -232,6 +232,36 @@
         axis[:ticks][:gap] = 5
         step!(st)
     end
+
+    @cell "Stepper demo" [stepper, text, annotation] begin
+        scene = Scene()
+        function inc_pos(pos::NTuple{2, Int})
+            map(x -> x + 100, pos)
+        end
+        pos = (50, 50)
+        steps = ["Step 1", "Step 2", "Step 3"]
+        colors = AbstractPlotting.to_colormap(:Set1, length(steps))
+        lines!(scene, Rect(0,0,500,500), linewidth = 0.0001)
+
+        # initialize the stepper and give it an output destination
+        st = Stepper(scene, @outputfile)
+
+        for i = 1:length(steps)
+            text!(
+                scene,
+                steps[i],
+                position = pos,
+                align = (:left, :bottom),
+                textsize = 100,
+                font = "Blackchancery",
+                color = colors[i],
+                scale_plot = false
+            )
+            pos = inc_pos(pos)
+            step!(st) # saves the step and increments the step by one
+        end
+        st
+    end
 end
 #
 # using Makie
