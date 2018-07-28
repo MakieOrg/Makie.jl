@@ -126,7 +126,9 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
             (GLFW.SAMPLES,      0),
             (GLFW.DEPTH_BITS,   0),
 
-            (GLFW.ALPHA_BITS,   0),
+            # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
+            # WITHOUT ANY ERROR -.-
+            (GLFW.ALPHA_BITS,   8),
             (GLFW.RED_BITS,     8),
             (GLFW.GREEN_BITS,   8),
             (GLFW.BLUE_BITS,    8),
