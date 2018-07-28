@@ -142,6 +142,7 @@ isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 
+info("number of examples in database: $(length(database))")
 test_examples(record_reference_images)
 
 # AbstractPlotting.bar(1:10, rand(10))
