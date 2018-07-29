@@ -435,7 +435,7 @@ end
 map_texture_paramers(s::NTuple{N, Symbol}) where {N} = map(map_texture_paramers, s)
 
 function map_texture_paramers(s::Symbol)
-    
+
     s == :clamp_to_edge && return GL_CLAMP_TO_EDGE
     s == :mirrored_repeat && return GL_MIRRORED_REPEAT
     s == :repeat && return GL_REPEAT

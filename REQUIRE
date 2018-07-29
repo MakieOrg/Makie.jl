@@ -9,9 +9,6 @@ ImageCore
 ImageTransformations
 UnicodeFun
 ColorBrewer
-Hiccup
-Media
-Juno
 ModernGL
 GLFW 1.4.1
 FreeType
@@ -22,7 +19,7 @@ FreeTypeAbstraction 0.3.0 #for findfont
 AbstractPlotting
 Primes
 PlotUtils
-Cairo
+#Cairo
 IntervalSets
 Showoff
 ColorTypes

@@ -1,9 +1,12 @@
 build
+axis.md
 examples-database.md
 examples-for-tags.md
 functions-autogen.md
 examples-*.md
 functions-overview.md
+plot-attributes.md
+signatures.md
 atomics_examples/
 *.png
 *.jpg

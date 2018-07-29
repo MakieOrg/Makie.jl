@@ -156,12 +156,13 @@ function retina_scaling_factor(w, fb)
 end
 function retina_scaling_factor(window::GLFW.Window)
     w, fb = GLFW.GetWindowSize(window), GLFW.GetFramebufferSize(window)
+    retina_scaling_factor(w, fb)
 end
 
 function correct_mouse(window::GLFW.Window, w, h)
     ws, fb = GLFW.GetWindowSize(window), GLFW.GetFramebufferSize(window)
     s = retina_scaling_factor(ws, fb)
-    (w, fb[2] - h) .* s
+    (w * s[1], fb[2] - (h * s[2]))
 end
 
 """

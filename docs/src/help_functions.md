@@ -1,6 +1,6 @@
 # Help functions
 
-## help
+## `help`
 
 ```@docs
 help
@@ -13,7 +13,7 @@ help(scatter; extended = true)
 ```
 
 
-## help_arguments
+## `help_arguments`
 
 ```@docs
 help_arguments
@@ -25,7 +25,7 @@ using Makie # hide
 help_arguments(STDOUT, scatter)
 ```
 
-## help_attributes
+## `help_attributes`
 
 ```@docs
 help_attributes
@@ -36,3 +36,23 @@ Example usage:
 using Makie # hide
 help_attributes(STDOUT, Scatter; extended = true)
 ```
+
+
+# Plot styling options
+Use these functions to find out the styling options.
+
+## `available_marker_symbols`
+
+```@example
+using AbstractPlotting # hide
+AbstractPlotting.available_marker_symbols()
+```
+
+## `available_gradients`
+
+```@example
+using AbstractPlotting # hide
+AbstractPlotting.available_gradients()
+```
+
+For other plot attributes and their usage, see the section [Plot attributes](@ref).
