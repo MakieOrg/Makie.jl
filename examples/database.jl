@@ -109,14 +109,14 @@ print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults 
 
 
 """
-    find_indices(input_tags...; title = nothing, author = nothing, match_all = true)
+    find_indices(input_tags...; title = nothing, author = nothing, match = all)
 
 Returns the indices for the entries in examples database that match the input
 search pattern.
 
 `input_tags` are plot tags to be searched for. `title` and `author` are optional
 and are used to filter the search results by title and author.
-`match_all` specifies if the result has to match all input tags, or just any.
+`match` specifies a matching function, e.g. any/all which gets applied to the input tags.
 """
 function find_indices(input_tags::NTuple{N, String}; title = nothing, author = nothing, match::Function = all) where N # --> return an array of cell entries
     indices = find(database) do entry
@@ -136,9 +136,10 @@ function find_indices(input_tags::NTuple{N, String}; title = nothing, author = n
     end
 end
 
-find_indices(input::Function; title = nothing, author = nothing, match_all::Bool = true) = find_indices(to_string(input); title = title, author = author, match_all = match_all)
-find_indices(input::Vararg{Function,N}; title = nothing, author = nothing, match_all::Bool = true) where {N} = find_indices(to_string.(input)...; title = title, author = author, match_all = match_all)
+to_tag(x::Union{Symbol, String}) = string(x)
+to_tag(x::Function) = AbstractPlotting.to_string(x)
 
+find_indices(tags...; kw_args...) = find_indices(to_tag.(tags); kw_args...)
 
 
 """
@@ -220,8 +221,8 @@ function print_code(
     print(io, scope_end)
     return
 end
-@which replace("test", r"lol", s"lal", 0)
 
+extract_tags(expr::Vector) = Set(String.(expr))
 function extract_tags(expr)
     if !any(x-> isa(x, String) || isa(x, Symbol), expr.args) || expr.head != :vect
         error("Tags need to be an array of strings/variables. Found: $(expr)")
@@ -340,31 +341,40 @@ function flatten2block(args::Vector)
     res
 end
 
-function extract_cell(cell, author, parent_tags, setup, groupid = NO_GROUP)
+
+function extract_cell(cell, author, parent_tags, setup, pfile, lastline, groupid = NO_GROUP)
     filter!(x-> !is_linenumber(x), cell.args)
-    if !(length(cell.args) in (4, 5))
+    if !(length(cell.args) in (2, 4, 5))
         error(
-            "You need to supply 3 or 4 arguments to `@cell`. E.g.:
+            "You need to supply 1 3 or 4 arguments to `@cell`. E.g.:
                 `@cell \"Title\" [\"tags\"] begin ... end`
             or
                 `@cell \"Author\" \"Title\" [\"tags\"] begin ... end`
+            or
+                `@cell plot(...)`
 
             Found: $(join(cell.args[2:end], " "))"
         )
     end
-
     author, title, ctags, cblock = if length(cell.args) == 4
         (author, cell.args[2:end]...)
-    else
+    elseif length(cell.args) == 5
         cell.args[2:end]
+    elseif length(cell.args) == 2
+        "No Author", "Test", [], cell.args[2]
     end
 
     if !isa(title, String)
         error("Title need to be a string. Found: $(title) with type: $(typeof(title))")
     end
 
-    file, startend = find_startend(cblock.args)
-    toplevel, source = extract_source(file, startend)
+    toplevel = ""; file = pfile; startend = lastline:lastline;
+    if Meta.isexpr(cblock, :block)
+        file, startend = find_startend(cblock.args)
+        toplevel, source = extract_source(file, startend)
+    else
+        source = string(cblock) # single cell e.g. @cell scatter(...)
+    end
     CellEntry(
         author, title, parent_tags ∪ extract_tags(ctags),
         file, startend, toplevel, source, groupid
@@ -418,7 +428,7 @@ macro block(author, tags, block)
     setup = join(globaly_shared_code, "\n")
 
     for cell in cells
-        cell_entry = extract_cell(cell, author, parent_tags, setup)
+        cell_entry = extract_cell(cell, author, parent_tags, setup, pfile, 1)
         push!(database, cell_entry)
         # push a list of all tags to tags_list
         push!(tags_list, collect(String, cell_entry.tags)...)
@@ -444,6 +454,8 @@ macro cell(author, title, tags, block)
 end
 macro cell(title, tags, block)
 end
+macro cell(block)
+end
 
 # Group macro
 macro group(block_of_grouped_cells)
@@ -462,7 +474,7 @@ macro outputfile(ending = :mp4)
 end
 
 """
-Walks through every example matching `tags`, and calls f on the example.
+Walks through every example matching `tags`, and calls `f` on the example.
 Merges groups of examples into one example entry.
 """
 function enumerate_examples(f, tags...)
@@ -523,7 +535,7 @@ function eval_example(entry; kw_args...)
 end
 
 """
-Walks through examples and evalueates them. Returns the evaluated value and calls
+Walks through examples and evaluates them. Returns the evaluated value and calls
 `f(entry, value)`.
 """
 function eval_examples(f, tags...; kw_args...)

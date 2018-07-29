@@ -1,8 +1,6 @@
 __precompile__(true)
 module Makie
 
-
-
 using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
@@ -66,10 +64,9 @@ function logo()
 end
 
 include("makie_recipes.jl")
-include("tickranges.jl")
 include("utils.jl")
 include("glbackend/glbackend.jl")
-include("cairo/cairo.jl")
+# include("cairo/cairo.jl")
 include("output.jl")
 include("video_io.jl")
 

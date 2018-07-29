@@ -36,6 +36,12 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     end
 end
 
+function remove_automatic!(attributes)
+    filter!(attributes) do k, v
+        value(v) != automatic
+    end
+end
+
 index1D(x::SubArray) = parentindexes(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
@@ -71,6 +77,17 @@ end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
 
+function handle_intensities!(attributes)
+    if haskey(attributes, :color) && attributes[:color][] isa AbstractVector{<: Number}
+        c = pop!(attributes, :color)
+        attributes[:intensity] = lift(x-> convert(Vector{Float32}, x), c)
+    else
+        delete!(attributes, :intensity)
+        delete!(attributes, :color_map)
+        delete!(attributes, :color_norm)
+    end
+end
+
 function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
@@ -79,10 +96,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatte
             gl_attributes[:stroke_width] = lift(pixel2world, Node(scene), msize)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
         end
-        # TODO either stop using bb's from glvisualize
-        # or don't set them randomly to nothing
-        gl_attributes[:boundingbox] = nothing
         positions = handle_view(x[1], gl_attributes)
+        handle_intensities!(gl_attributes)
         visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
     end
 end
@@ -94,6 +109,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
         positions = handle_view(x[1], data)
+        handle_intensities!(data)
         visualize(positions, Style(:lines), data).children[]
     end
 end
@@ -103,6 +119,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = value(linestyle)
         positions = handle_view(x.converted[1], data)
+        delete!(data, :color_map)
+        delete!(data, :color_norm)
         visualize(positions, Style(:linesegment), data).children[]
     end
 end
@@ -193,6 +211,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         interp = value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         tex = Texture(value(heatmap), minfilter = interp)
+        pop!(gl_attributes, :color)
         map_once(heatmap) do x
             update!(tex, x)
         end
@@ -202,30 +221,41 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
 end
 
 
+function vec2color(colors, cmap, crange)
+    AbstractPlotting.interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
+end
+
+function get_image(plot)
+    if isa(plot[:color][], AbstractMatrix{<: Number})
+        lift(vec2color, pop!.(plot, (:color, :color_map, :color_norm))...)
+    else
+        delete!(plot, :color_norm)
+        delete!(plot, :color_map)
+        return pop!(plot, :color)
+    end
+end
+
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = to_range.(value.((x[1], x[2])))
-        img = x[3]
-        if isa(value(img), AbstractMatrix{<: Number})
-            norm = pop!(gl_attributes, :color_norm)
-            cmap = pop!(gl_attributes, :color_map)
-            img = map(img, cmap, norm) do img, cmap, norm
-                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
-            end
-        elseif isa(value(img), AbstractMatrix{<: Colorant})
-            delete!(gl_attributes, :color_norm)
-            delete!(gl_attributes, :color_map)
-        end
+        img = get_image(gl_attributes)
+        # remove_automatic!(gl_attributes)
         visualize(img, Style(:default), gl_attributes).children[]
     end
 end
+
+convert_mesh_color(c::AbstractVector{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
+convert_mesh_color(c, cmap, crange) = c
 
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
-        mesh = map(x[1], color) do m, c
+        cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
+        crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
+        mesh = map(x[1], color, cmap, crange) do m, c, cmap, crange
+            c = convert_mesh_color(c, cmap, crange)
             if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
                 get!(gl_attributes, :color, c)
                 m
@@ -245,22 +275,24 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        # signals not supported for shading yet
-        if haskey(gl_attributes, :image) && gl_attributes[:image][] != nothing
-            img = pop!(gl_attributes, :image)
-            norm = pop!(gl_attributes, :color_norm)
-            cmap = pop!(gl_attributes, :color_map)
+        color = pop!(gl_attributes, :color)
 
-            if isa(value(img), AbstractMatrix{<: Number})
-                img = map(img, cmap, norm) do img, cmap, norm
-                    interpolated_getindex.((cmap,), img, (norm,))
-                end
+        img = nothing
+        # signals not supported for shading yet
+        # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
+        if isa(value(color), AbstractMatrix{<: Number}) && !(value(color) === value(x[3]))
+            crange = pop!(gl_attributes, :color_norm)
+            cmap = pop!(gl_attributes, :color_map)
+            img = map(color, cmap, crange) do img, cmap, norm
+                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
-            gl_attributes[:color] = img
-        else
-            # delete nothing
-            delete!(gl_attributes, :image)
+        elseif isa(value(color), AbstractMatrix{<: Colorant})
+            img = color
+            gl_attributes[:color_map] = nothing
+            gl_attributes[:color] = nothing
+            gl_attributes[:color_norm] = nothing
         end
+        gl_attributes[:color] = img
         args = x[1:3]
         if all(v-> value(v) isa AbstractMatrix, args)
             visualize(args, Style(:surface), gl_attributes).children[]

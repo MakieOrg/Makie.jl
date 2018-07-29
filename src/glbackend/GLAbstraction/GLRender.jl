@@ -54,7 +54,7 @@ It uses dictionaries and doesn't care about OpenGL call optimizations.
 So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
-function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
+function render(renderobject::RenderObject, vertexarray = renderobject.vertexarray)
     if Bool(Reactive.value(renderobject.uniforms[:visible]))
         renderobject.prerenderfunction()
         program = vertexarray.program

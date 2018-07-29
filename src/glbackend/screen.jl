@@ -47,22 +47,28 @@ function Base.empty!(screen::Screen)
     empty!(screen.cache2plot)
 end
 
-function Base.resize!(screen::Screen, w, h)
-    if isopen(screen)
-        GLFW.SetWindowSize(screen.glscreen, round(Int, w), round(Int, h))
+function Base.resize!(window::GLFW.Window, resolution...)
+    if isopen(window)
+        retina_scale = retina_scaling_factor(window)
+        w, h = resolution ./ retina_scale
+        GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
     end
 end
+
+Base.resize!(screen::Screen, w, h) = resize!(screen.glscreen, w, h)
 
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
     resize!(screen, widths(AbstractPlotting.pixelarea(scene)[])...)
     register_callbacks(scene, to_native(screen))
     insertplots!(screen, scene)
+    force_update!()
     return
 end
 
 function colorbuffer(screen::Screen)
     if isopen(screen)
+        force_update!()
         GLFW.PollEvents()
         yield()
         render_frame(screen) # let it render
@@ -110,13 +116,7 @@ function rewrap(robj::RenderObject{Pre}) where Pre
         robj.boundingbox,
     )
 end
-function GLAbstraction.native_switch_context!(x::GLFW.Window)
-    GLFW.MakeContextCurrent(x)
-end
 
-function GLAbstraction.native_context_active(x::GLFW.Window)
-    isopen(x)
-end
 function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
@@ -124,13 +124,16 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         end
         empty!(gl_screens)
     end
+
     window = GLFW.Window(
-        name = "Makie", resolution = resolution,
+        name = "Makie", resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
         windowhints = [
             (GLFW.SAMPLES,      0),
             (GLFW.DEPTH_BITS,   0),
 
-            (GLFW.ALPHA_BITS,   0),
+            # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
+            # WITHOUT ANY ERROR -.-
+            (GLFW.ALPHA_BITS,   8),
             (GLFW.RED_BITS,     8),
             (GLFW.GREEN_BITS,   8),
             (GLFW.BLUE_BITS,    8),
@@ -138,25 +141,24 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0)
         ],
+        visible = false,
         kw_args...
     )
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     GLAbstraction.switch_context!(window)
     GLAbstraction.empty_shader_cache!()
-    # else
-    #     # share OpenGL Context
-    #     create_glcontext("Makie"; parent = first(gl_screens), kw_args...)
-    # end
     push!(gl_screens, window)
-    if visible
-        GLFW.ShowWindow(window)
-    else
-        GLFW.HideWindow(window)
-    end
+
     GLFW.SwapInterval(0)
 
+    # Retina screens on osx have a different scaling!
+    retina_scale = retina_scaling_factor(window)
+    resolution = round.(Int, retina_scale .* resolution)
+    # Set the resolution for real now!
+    GLFW.SetWindowSize(window, resolution...)
     fb = GLFramebuffer(Int.(resolution))
+
     screen = Screen(
         window, fb,
         RefValue{Task}(),
@@ -167,6 +169,11 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         Dict{UInt16, AbstractPlot}(),
     )
     screen.rendertask[] = @async(renderloop(screen))
+    if visible
+        GLFW.ShowWindow(window)
+    else
+        GLFW.HideWindow(window)
+    end
     screen
 end
 
