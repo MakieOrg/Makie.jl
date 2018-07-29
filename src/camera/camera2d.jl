@@ -13,6 +13,7 @@ function cam2d!(scene::SceneLike; kw_args...)
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
+            selectionbutton = (Keyboard.space, Mouse.left),
             padding = 0.001
         )
     end
@@ -22,7 +23,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     add_zoom!(scene, cam)
     add_pan!(scene, cam)
     correct_ratio!(scene, cam)
-    selection_rect!(scene, cam)
+    selection_rect!(scene, cam, cam_attributes[:selectionbutton])
     cameracontrols!(scene, cam)
     cam
 end
@@ -35,6 +36,9 @@ update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = FRect2D(area3d)
     area = positive_widths(area)
+    # ignore rects with width almost 0
+    any(x-> x ≈ 0.0, widths(area)) && return
+
     pa = pixelarea(scene)[]
     px_wh = normalize(widths(pa))
     wh = normalize(widths(area))
@@ -133,11 +137,16 @@ function camspace(scene::SceneLike, cam::Camera2D, point)
     Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
-function selection_rect!(
-        scene, cam,
-        key = Mouse.left,
-        button = nothing
-    )
+
+function absrect(rect)
+    xy, wh = minimum(rect), widths(rect)
+    xy = ntuple(Val{2}) do i
+        wh[i] < 0 ? xy[i] + wh[i] : xy[i]
+    end
+    FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
+end
+function selection_rect!(scene, cam, key)
+
     rect = RefValue(FRect(0, 0, 0, 0))
     lw = 2f0
     scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
@@ -151,7 +160,7 @@ function selection_rect!(
         raw = true
     ).plots[end]
     waspressed = RefValue(false)
-    dragged_rect = map(camera(scene), events(scene).mousedrag) do drag
+    dragged_rect = map(camera(scene), events(scene).mousedrag, key) do drag, key
         if ispressed(scene, key) && is_mouseinside(scene)
             mp = events(scene).mouseposition[]
             mp = camspace(scene, cam, mp)
@@ -169,9 +178,10 @@ function selection_rect!(
         else
             if drag == Mouse.up && waspressed[]
                 waspressed[] = false
-                w, h = widths(rect[])
+                r = absrect(rect[])
+                w, h = widths(r)
                 if w > 0.0 && h > 0.0
-                    update_cam!(scene, cam, rect[])
+                    update_cam!(scene, cam, r)
                 end
                 #scene.limits[] = FRect3D(rect[])
                 rect[] = FRect(0, 0, 0, 0)

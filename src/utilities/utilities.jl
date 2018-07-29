@@ -39,7 +39,7 @@ or repeats `:color`.
 function resampled_colors(attributes, levels::Integer)
     cols = if haskey(attributes, :color)
         c = get_attribute(attributes, :color)
-        repeated(c, levels)
+        c isa AbstractVector ? resample(c, levels) : repeated(c, levels)
     else
         c = get_attribute(attributes, :colormap)
         resample(c, levels)
@@ -71,10 +71,10 @@ end
 Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
 value is nothing
 """
-function replace_nothing!(f, dict, key)
+function replace_automatic!(f, dict, key)
     haskey(dict, key) || return (dict[key] = f())
     val = dict[key]
-    to_value(val) == nothing && return (dict[key] = f())
+    to_value(val) == automatic && return (dict[key] = f())
     val
 end
 

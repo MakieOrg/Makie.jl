@@ -4,7 +4,18 @@
     convert_attribute(value(dict[key]), Key{key}())
 end
 
+"""
+    to_color(color)
+
+Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
+"""
 to_color(color) = convert_attribute(color, key"color"())
+
+"""
+    to_colormap(cm[, N = 20])
+
+Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+"""
 to_colormap(color) = convert_attribute(color, key"colormap"())
 to_rotation(color) = convert_attribute(color, key"rotation"())
 to_font(color) = convert_attribute(color, key"font"())
@@ -26,7 +37,7 @@ function convert_arguments(::Type{<: PointBased}, positions::AbstractVector{<: V
     (convert(Vector{Point{N, Float32}}, positions),)
 end
 
-function convert_arguments(::Type{<: PointBased}, positions::SubArray)
+function convert_arguments(::Type{<: PointBased}, positions::SubArray{<: VecTypes, 1})
     # TODO figure out a good subarray solution
     (positions,)
 end
@@ -54,6 +65,11 @@ Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(::Type{<: PointBased}, x::GeometryPrimitive) = (decompose(Point, x),)
+
+function convert_arguments(::Type{<: PointBased}, pos::AbstractMatrix{<: Number})
+    (to_vertices(pos),)
+end
+
 
 
 """
@@ -306,7 +322,20 @@ end
 function to_vertices(verts::AbstractVector{<: VecTypes})
     to_vertices(map(x-> Point3f0(x[1], x[2], 0.0), verts))
 end
-function to_vertices(verts::AbstractMatrix{T}) where T <: Number
+
+function to_vertices(verts::AbstractMatrix{<: Number})
+    if size(verts, 1) in (2, 3)
+        to_vertices(verts, Val{1}())
+    elseif size(verts, 2) in (2, 3)
+        to_vertices(verts, Val{2}())
+    else
+        error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
+    end
+end
+function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
+    reinterpret(Point{size(verts, 1), T}, convert(Vector{T}, vec(verts)), (size(verts, 2),))
+end
+function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
     let N = Val{size(verts, 2)}, lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
             to_ndim(Point3f0, ntuple(i-> lverts[vidx, i], n), 0.0)
@@ -334,7 +363,10 @@ end
 
 convert_attribute(c::Colorant, ::key"color") = RGBA{Float32}(c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
-convert_attribute(c::String, ::key"color") = parse(RGBA{Float32}, c)
+function convert_attribute(c::String, ::key"color")
+    c in all_gradient_names && return to_colormap(c)
+    parse(RGBA{Float32}, c)
+end
 convert_attribute(c::Union{Tuple, AbstractArray}, k::key"color") = convert_attribute.(c, k)
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     col = convert_attribute(c[1], k)
@@ -345,12 +377,15 @@ convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
 convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 
 convert_attribute(c, ::key"markersize", ::key"scatter") = to_2d_scale(c)
-convert_attribute(c, ::key"markersize", ::key"meshscatter") = Vec3f0(c)
-convert_attribute(c::Vector, ::key"markersize", ::key"meshscatter") = convert(Array{Vec3f0}, c)
+convert_attribute(c, k1::key"markersize", k2::key"meshscatter") = to_3d_scale(c)
 
 to_2d_scale(x::Number) = Vec2f0(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
+
+to_3d_scale(x::Number) = Vec3f0(x)
+to_3d_scale(x::VecTypes) = to_ndim(Vec3f0, x, 1)
+to_3d_scale(x::AbstractVector) = to_3d_scale.(x)
 
 convert_attribute(c::Number, ::key"glowwidth") = Float32(c)
 convert_attribute(c, ::key"glowcolor") = to_color(c)
@@ -437,8 +472,13 @@ convert_attribute(s::Quaternion, ::key"rotation") = s
 function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     if N == 4
         Quaternion(s...)
-    else
+    elseif N == 3
         rotation_between(Vec3f0(0, 0, 1), to_ndim(Vec3f0, s, 0.0))
+    elseif N == 2
+
+        rotation_between(Vec3f0(0, 1, 0), to_ndim(Vec3f0, s, 0.0))
+    else
+        error("$N dimensional vector $s can't be converted to a rotation")
     end
 end
 
@@ -456,7 +496,6 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = Fl
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = Vec2f0.(x)
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
-
 
 const colorbrewer_names = Symbol[
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
@@ -490,7 +529,9 @@ const colorbrewer_names = Symbol[
     :RdGy,
     :PuOr,
 
-    #The number of colors a qualitative color scheme can have depends on the scheme. The available qualitative color schemes are:
+    #The number of colors a qualitative color scheme can have depends on the scheme.
+    #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
+    #The available qualitative color schemes are:
     :Set1,
     :Set2,
     :Set3,
@@ -501,6 +542,16 @@ const colorbrewer_names = Symbol[
     :Pastel2
 ]
 
+const colorbrewer_8color_names = String[
+    #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
+    :Accent,
+    :Dark2,
+    :Pastel2,
+    :Set2
+]
+
+const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
+
 """
     available_gradients()
 
@@ -508,10 +559,9 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in colorbrewer_names
+    for name in sort(collect(all_gradient_names))
         println("    ", name)
     end
-    println("    ", "Viridis")
 end
 
 """
@@ -534,11 +584,10 @@ to_colormap(x::Union{String, Symbol}, n::Integer) = convert_attribute(x, key"col
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
 """
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
-    cs_sym = Symbol(cs)
-    if cs_sym in colorbrewer_names
-        return resample(ColorBrewer.palette(string(cs_sym), 9), n)
-    elseif lowercase(string(cs_sym)) == "viridis"
-        return [
+    cs_string = string(cs)
+
+    if lowercase(cs_string) == "viridis"
+        cm = [
             to_color("#440154FF"),
             to_color("#481567FF"),
             to_color("#482677FF"),
@@ -560,6 +609,13 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             to_color("#DCE319FF"),
             to_color("#FDE725FF"),
         ]
+        return resample(cm, n)
+    elseif cs_string in all_gradient_names
+        if cs_string in colorbrewer_8color_names
+            return resample(ColorBrewer.palette(cs_string, 8), n)
+        else
+            return resample(ColorBrewer.palette(cs_string, 9), n)
+        end
     else
         #TODO integrate PlotUtils color gradients
         error("There is no color gradient named: $cs")
