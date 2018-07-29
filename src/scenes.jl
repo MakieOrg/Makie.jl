@@ -54,7 +54,7 @@ getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
 
-child(scene::Scene) = Scene(scene, pixelarea(scene))
+child(scene::Scene) = Scene(scene, value(pixelarea(scene)))
 
 """
 Creates a subscene with a pixel camera
@@ -92,7 +92,16 @@ function argument_names(::Type{<: AbstractPlot}, num_args::Integer)
 end
 
 
-Base.empty!(scene::Scene) = empty!(scene.plots)
+function Base.empty!(scene::Scene)
+    empty!(scene.plots)
+    disconnect!(scene.camera)
+    scene.limits[] = FRect3D(Vec3f0(0), Vec3f0(0))
+    scene.camera_controls[] = EmptyCamera()
+    empty!(scene.theme)
+    merge!(scene.theme, _current_default_theme)
+    empty!(scene.children)
+    empty!(scene.current_screens)
+end
 
 limits(scene::Scene) = scene.limits
 limits(scene::SceneLike) = scene.parent.limits

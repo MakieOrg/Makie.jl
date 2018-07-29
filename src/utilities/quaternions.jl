@@ -129,8 +129,8 @@ function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
     k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
     if (k_cos_theta / k) ≈ T(-1)
         # 180 degree rotation around any orthogonal vector
-        Quaternion(T(0), normalize(orthogonal(u))...)
+        Quaternion(normalize(orthogonal(u))..., T(0))
     else
-        normalize(Quaternion(k_cos_theta + k, cross(u, v)...))
+        normalize(Quaternion(cross(u, v)..., k_cos_theta + k))
     end
 end
