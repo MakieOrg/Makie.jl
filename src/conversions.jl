@@ -559,7 +559,7 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in sort(all_gradient_names)
+    for name in sort(collect(all_gradient_names))
         println("    ", name)
     end
 end
