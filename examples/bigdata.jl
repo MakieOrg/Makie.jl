@@ -1,7 +1,5 @@
 @block SimonDanisch ["dataset_examples"] begin
     @cell "WorldClim visualization" [visualization, dataset, bigdata] begin
-        cd(@__DIR__)
-        using Makie
         using FileIO, GeometryTypes, Colors, GDAL
 
         #=
