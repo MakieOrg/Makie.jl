@@ -7,3 +7,6 @@ BinaryProvider
 #for some examples
 DataFrames
 RDatasets
+
+#for WorldClim visualization example
+GDAL
