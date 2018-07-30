@@ -62,6 +62,15 @@
         scatter(pos, rotations = -angles , marker = '▲', scale_plot = false)
         scatter!(pos, markersize = 0.02, color = :red, scale_plot = false)
     end
+    # @cell begin
+    #     using Makie, GeometryTypes
+    #     s1 = GLNormalUVMesh(Sphere(Point3f0(0), 1f0))
+    #     Makie.mesh(GLNormalUVMesh(Sphere(Point3f0(0), 1f0)), color = rand(50, 50))
+    #     # ugh, bug In GeometryTypes for UVs of non unit spheres.
+    #     s2 = GLNormalUVMesh(Sphere(Point3f0(0), 1f0))
+    #     s2.vertices .= s2.vertices .+ (Point3f0(0, 2, 0),)
+    #     mesh!(s2, color = rand(RGBAf0, 50, 50))
+    # end
 
     @call arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 end
