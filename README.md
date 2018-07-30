@@ -15,6 +15,9 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 
 [![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
 
+## Complex examples
+[![earth](https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif)](https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl)
+
 ## Examples from the documenation: 
 
 [![](http://makie.juliaplots.org/stable/media/thumb-3d_contour_with_2d_contour_slices.jpg)](http://makie.juliaplots.org/stable/examples-volume.html#3D-Contour-with-2D-contour-slices-1)
