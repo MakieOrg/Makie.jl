@@ -244,7 +244,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
     end
 end
 
-convert_mesh_color(c::AbstractVector{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
+convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
 
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
@@ -257,10 +257,10 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
         mesh = map(x[1], color, cmap, crange) do m, c, cmap, crange
             c = convert_mesh_color(c, cmap, crange)
             if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
-                get!(gl_attributes, :color, c)
+                get!(gl_attributes, :color, Node(c))[] = c
                 m
             elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
-                get!(gl_attributes, :color, c)
+                get!(gl_attributes, :color, Node(c))[] = c
                 m
             elseif isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
                 m
