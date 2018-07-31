@@ -144,7 +144,7 @@
         )
     end
 
-    @cell "Theming" [theme, scatter, surface, set_theme] begin
+    @cell "Theming" [theme, scatter, surface, set_theme, stepper] begin
         new_theme = Theme(
             resolution = (500, 500),
             linewidth = 3,
@@ -193,7 +193,7 @@
         st
     end
 
-    @cell "Axis theming" [stepper, axis, lines] begin
+    @cell "Axis theming" [stepper, axis, lines, stepper] begin
         using GeometryTypes
         scene = Scene()
         points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
