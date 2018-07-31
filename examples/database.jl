@@ -472,14 +472,19 @@ end
 Walks through every example matching `tags`, and calls `f` on the example.
 Merges groups of examples into one example entry.
 """
-function enumerate_examples(f, tags...; exclude_tags...)
+function enumerate_examples(f, tags...; exclude_tags = nothing)
+    num_excluded = 0
     sort!(database, by = (x)-> x.groupid)
     group_tmp = CellEntry[]
     last_id = NO_GROUP
     for entry in database
         all(x-> string(x) in entry.tags, tags) || continue
         if exclude_tags != nothing && !isempty(exclude_tags)
-            any(x-> string(x) in entry.tags, exclude_tags...) && continue
+            if any(x-> string(x) in entry.tags, Set(exclude_tags))
+                info("exclude_tag encountered, skipping example \"$(entry.title)\"")
+                num_excluded += 1
+                continue
+            end
         end
         if last_id != NO_GROUP && (entry.groupid != last_id)
             last_id = entry.groupid # if already NO_GROUP, we set it to NO_GROUP
@@ -493,6 +498,7 @@ function enumerate_examples(f, tags...; exclude_tags...)
             f(entry)
         end
     end
+    info("Number of examples actually skipped: $num_excluded")
     return
 end
 

@@ -115,13 +115,11 @@ function approx_difference(
     return d / (length(Af) * diffscale)
 end
 
-exclude_tags = ["bigdata"]
-info("Excluding tags: $exclude_tags")
 
-function test_examples(record, tags...; exclude_tags = exclude_tags)
+function test_examples(record, tags...; kw_args...)
     srand(42)
     @testset "Visual Regression" begin
-        eval_examples(tags..., replace_nframes = true, exclude_tags = exclude_tags, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
+        eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending); kw_args...) do example, value
             sigma = [1,1]; eps = 0.02
             maxdiff = 0.03
             toimages(example, value, record) do image, refimage
@@ -145,5 +143,17 @@ isdir("media") || mkdir("media")
 isdir("testresults") || mkdir("testresults")
 AbstractPlotting.set_theme!(resolution = (500, 500))
 
-info("number of examples in database: $(length(database))")
+info("Number of examples in database: $(length(database))")
+
+info("Excluding tags: $exclude_tags")
+
+indices_excluded = []
+for tag in exclude_tags
+    indices = find_indices(tag)
+    indices_excluded = vcat(indices_excluded, indices)
+end
+num_excluded = length(unique(indices_excluded))
+info("Number of examples to be skipped: $(num_excluded)")
+
+# run the tests
 test_examples(record_reference_images; exclude_tags = exclude_tags)
