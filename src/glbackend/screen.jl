@@ -222,16 +222,9 @@ end
 # TODO does this actually needs to be a global?
 const _mouse_selection_id = Base.RefValue{SelectionID{UInt16}}()
 function mouse_selection_native(scene::SceneLike)
-    function query_mouse()
-        screen = getscreen(scene)
-        screen == nothing && return SelectionID{Int}(0, 0)
-        window_size = widths(screen)
-        fb = screen.framebuffer
-        buff = fb.objectid
-        glReadBuffer(GL_COLOR_ATTACHMENT1)
+    function query_mouse(buff, w, h)
         xy = events(scene).mouseposition[]
         x, y = Int.(floor.(xy))
-        w, h = window_size
         if x > 0 && y > 0 && x <= w && y <= h
             glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, _mouse_selection_id)
         end
@@ -258,7 +251,7 @@ end
 
 function onpick(f, scene::SceneLike, plots::AbstractPlot...)
     map_once(events(scene).mouseposition) do mp
-        p, idx = mouse_selection(scene, mp)
+        p, idx = mouse_selection(scene)
         (p in plots) && f(idx)
         return
     end
