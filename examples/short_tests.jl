@@ -71,8 +71,9 @@
     #     s2.vertices .= s2.vertices .+ (Point3f0(0, 2, 0),)
     #     mesh!(s2, color = rand(RGBAf0, 50, 50))
     # end
+    @cell heatmap(rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
-    @call arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
+    @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 end
 
 #
