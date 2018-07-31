@@ -1,6 +1,7 @@
 using Makie
 include("database.jl")
 
+include("tutorials.jl")
 include("examples2d.jl")
 include("examples3d.jl")
 include("interactive.jl")
