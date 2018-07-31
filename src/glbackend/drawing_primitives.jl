@@ -186,7 +186,6 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
         atlas = get_texture_atlas()
         keys = (:color, :stroke_color, :stroke_width, :rotation)
         signals = getindex.(gl_attributes, keys)
-
         visualize(
             (DISTANCEFIELD, positions),
             color = signals[1],
@@ -196,7 +195,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,
-            distancefield = get_texture!(atlas)
+            distancefield = get_texture!(atlas),
+            visible = gl_attributes[:visible]
         ).children[]
     end
 end
