@@ -145,6 +145,7 @@ AbstractPlotting.set_theme!(resolution = (500, 500))
 
 info("Number of examples in database: $(length(database))")
 
+exclude_tags = ["bigdata", "scatter", "RDatasets", "wireframe", "stepper", "colorbrewer", "implicit"]
 info("Excluding tags: $exclude_tags")
 
 indices_excluded = []
