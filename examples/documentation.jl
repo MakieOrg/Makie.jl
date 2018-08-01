@@ -39,7 +39,7 @@
         scene = scatter([0], [0], marker = '❤', markersize = 0.5, color = :red, raw = true)
         s = scene[end] # last plot in scene
         record(scene, @outputfile(mp4), linspace(0, 10pi, N)) do i
-            s[:markersize] = (cos(i) + 1) / (5 + 1)
+            s[:markersize] = (cos(i) + 1) / 4 + 0.2
         end
     end
 
