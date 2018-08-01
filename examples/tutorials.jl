@@ -69,9 +69,8 @@
     end
 
     @cell "Tutorial heatmap" [tutorial, heatmap] begin
-        x = rand(10)
-        y = rand(10)
-        scene = heatmap(x, y)
+        data = rand(50, 50)
+        scene = heatmap(data)
     end
 
     @cell "Tutorial linesegments" [tutorial, linesegments] begin
