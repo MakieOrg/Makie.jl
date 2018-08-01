@@ -88,7 +88,7 @@
         scene
 
         # save animation
-        record(scene, joinpath(homedir(), "Desktop", "earth.gif"), 0:(11*4)) do i
+        r = record(scene, @outputfile(mp4), 0:(11*4)) do i
             # Make simulation slower. TODO figure out how do this nicely with ffmpeg
             if i % 4 == 0
                 i2 = (i ÷ 4) + 1
@@ -96,6 +96,7 @@
                 wplot[:markersize] = to_msize(uv, water[i2])
             end
         end
+        return r
     end
     
 end
