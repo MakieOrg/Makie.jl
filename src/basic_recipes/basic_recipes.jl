@@ -2,12 +2,12 @@
 @recipe(Poly) do scene
     Theme(;
         color = theme(scene, :color),
+        visible = theme(scene, :visible),
         strokecolor = RGBAf0(0,0,0,0),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         strokewidth = 0.0,
         linestyle = nothing,
-        visible = true
     )
 end
 AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = convert_arguments(Scatter, v)
