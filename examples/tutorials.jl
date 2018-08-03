@@ -84,9 +84,7 @@
 
     @cell "Tutorial barplot" [tutorial, barplot] begin
         data = sort(randn(100))
-        barplot(1:10, rand(10))
         barplot(data)
-        barplot(rand(10), color = rand(10))
     end
 
 end
