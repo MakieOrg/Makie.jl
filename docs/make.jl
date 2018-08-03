@@ -214,8 +214,8 @@ makedocs(
             # "backends.md",
             # "extending.md",
             # "themes.md",
-            "interaction.md",
             "axis.md",
+            "interaction.md",
             # "legends.md",
             "output.md",
             # "reflection.md",
@@ -225,10 +225,11 @@ makedocs(
         "Examples" => [
             "index-examples.md",
             example_list...
-        ]
-        # "Developper Documentation" => [
+        ],
+        "Developer Documentation" => [
+            "why-makie.md",
         #     "devdocs.md",
-        # ],
+        ],
     ]
 )
 
