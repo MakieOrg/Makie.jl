@@ -32,6 +32,8 @@ mutable struct Screen <: AbstractScreen
 end
 GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
+Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
+
 function insertplots!(screen::Screen, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
