@@ -144,54 +144,55 @@
         )
     end
 
-    @cell "Theming" [theme, scatter, surface, set_theme, stepper] begin
-        new_theme = Theme(
-            resolution = (500, 500),
-            linewidth = 3,
-            colormap = :RdYlGn,
-            color = :red,
-            scatter = Theme(
-                marker = '⊝',
-                markersize = 0.03,
-                strokecolor = :black,
-                strokewidth = 0.1,
-            ),
-        )
-        AbstractPlotting.set_theme!(new_theme)
-        scene = scatter(rand(100), rand(100))
-        st = Stepper(scene, @outputfile)
-        step!(st)
-        new_theme[:color] = :blue
-        step!(st)
-        new_theme[:scatter, :marker] = '◍'
-        step!(st)
-        new_theme[:scatter, :markersize] = 0.05
-        step!(st)
-        new_theme[:scatter, :strokewidth] = 0.1
-        step!(st)
-        new_theme[:scatter, :strokecolor] = :green
-        step!(st)
-        empty!(scene)
-        scene = scatter!(rand(100), rand(100))
-        step!(st)
-        scene[end][:marker] = 'π'
-        step!(st)
-
-        r = linspace(-0.5pi, pi + pi/4, 100)
-        AbstractPlotting.set_theme!(new_theme)
-        empty!(scene)
-        scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
-        step!(st)
-        scene[end][:colormap] = :PuOr
-        step!(st)
-        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
-        step!(st)
-        AbstractPlotting.set_theme!(resolution = (500, 500))
-        empty!(scene)
-        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
-        step!(st)
-        st
-    end
+    #TODO: this doesn't work starting on step 9
+    # @cell "Theming" [theme, scatter, surface, set_theme, stepper] begin
+    #     new_theme = Theme(
+    #         resolution = (500, 500),
+    #         linewidth = 3,
+    #         colormap = :RdYlGn,
+    #         color = :red,
+    #         scatter = Theme(
+    #             marker = '⊝',
+    #             markersize = 0.03,
+    #             strokecolor = :black,
+    #             strokewidth = 0.1,
+    #         ),
+    #     )
+    #     AbstractPlotting.set_theme!(new_theme)
+    #     scene = scatter(rand(100), rand(100))
+    #     st = Stepper(scene, @outputfile)
+    #     step!(st)
+    #     new_theme[:color] = :blue
+    #     step!(st)
+    #     new_theme[:scatter, :marker] = '◍'
+    #     step!(st)
+    #     new_theme[:scatter, :markersize] = 0.05
+    #     step!(st)
+    #     new_theme[:scatter, :strokewidth] = 0.1
+    #     step!(st)
+    #     new_theme[:scatter, :strokecolor] = :green
+    #     step!(st)
+    #     empty!(scene)
+    #     scene = scatter!(rand(100), rand(100))
+    #     step!(st)
+    #     scene[end][:marker] = 'π'
+    #     step!(st)
+    #
+    #     r = linspace(-0.5pi, pi + pi/4, 100)
+    #     AbstractPlotting.set_theme!(new_theme)
+    #     empty!(scene)
+    #     scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
+    #     step!(st)
+    #     scene[end][:colormap] = :PuOr
+    #     step!(st)
+    #     surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+    #     step!(st)
+    #     AbstractPlotting.set_theme!(resolution = (500, 500))
+    #     empty!(scene)
+    #     surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+    #     step!(st)
+    #     st
+    # end
 
     @cell "Axis theming" [stepper, axis, lines, stepper] begin
         using GeometryTypes
