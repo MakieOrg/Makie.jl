@@ -99,8 +99,8 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
-convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(linspace(minimum(x), maximum(x), length(y)), y)
-to_linspace(interval, N) = linspace(minimum(interval), maximum(interval), N)
+convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(range(minimum(x), stop=maximum(x), length=length(y)), y)
+to_linspace(interval, N) = range(minimum(interval), stop=maximum(interval), length=N)
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
@@ -392,7 +392,7 @@ convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
 convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
-convert_attribute(x::Void, ::key"linestyle") = x
+convert_attribute(x::Nothing, ::key"linestyle") = x
 
 """
     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.

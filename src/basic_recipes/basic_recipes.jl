@@ -137,7 +137,7 @@ end
 
 
 xvector(x::AbstractVector, len) = x
-xvector(x::ClosedInterval, len) = linspace(minimum(x), maximum(x), len)
+xvector(x::ClosedInterval, len) = range(minimum(x), stop=maximum(x), length=len)
 xvector(x::AbstractMatrix, len) = x
 
 yvector(x, len) = xvector(x, len)'
@@ -232,7 +232,7 @@ function plot!(sub::Series)
         cmap = to_colormap(colors)
         if size(A, 2) > length(cmap)
             @info("Colormap doesn't have enough distinctive values. Please consider using another value for seriescolors")
-            cmap = interpolated_getindex.((cmap,), linspace(0, 1, M))
+            cmap = interpolated_getindex.((cmap,), range(0, stop=1, length=M))
         end
         cmap
     end
@@ -419,7 +419,7 @@ end
 function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
-        map(linspace(start_angle, stop_angle, resolution)) do angle
+        map(range(start_angle, stop=stop_angle, length=resolution)) do angle
             origin .+ (Point2f0(sin(angle), cos(angle)) .* radius)
         end
     end

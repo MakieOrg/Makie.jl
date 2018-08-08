@@ -18,7 +18,7 @@ end
 Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
 Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
-@inline (::Type{Quaternion{T}})(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
+@inline Quaternion{T}(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
 @inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
 function Base.convert(T::Type{Quaternion{T1}}, x::Quaternion{T2}) where {T1, T2}
     T(T2.(x.data))

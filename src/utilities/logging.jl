@@ -9,18 +9,18 @@ function enable_ith(i, value::Bool)
 end
 log_info(value::Bool = true) = enable_ith(1, value)
 
-const logging_io = RefValue(STDOUT)
+const logging_io = RefValue(stdout)
 macro info(args...)
     quote
         if log_level[][1]
-            print_with_color(:light_green, STDOUT, $(esc.(args)...), "\n")
+            printstyled(stdout, $(esc.(args)...), "\n", color=:light_green)
         end
     end
 end
 macro debug(args...)
     quote
         if log_level[][2]
-            print_with_color(:red, logging_io[], $(esc.(args)...))
+            printstyled(logging_io[], $(esc.(args)...), color=:red)
         end
     end
 end
@@ -43,7 +43,7 @@ end
 macro warn(args...)
     quote
         if log_level[][5]
-            print_with_color(:red, logging_io[], $(esc.(args)...))
+            printstyled(logging_io[], $(esc.(args)...), color=:red)
         end
     end
 end

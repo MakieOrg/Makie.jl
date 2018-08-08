@@ -6,21 +6,21 @@ using GeometryTypes, Interpolations
     (c[1] - a[1]) * (b[2] - a[2]) - (c[2] - a[2]) * (b[1] - a[1])
 end
 
-@inline function src_alpha{T <: Colorant}(c::T)
+@inline function src_alpha(c::T) where T <: Colorant
     a = alpha(c)
     a == 0.0 && return zero(T)
     c ./ a
 end
 
-one_minus_alpha{T <: Colorant}(c::T) = one(T) .- src_alpha(c)
+one_minus_alpha(c::T) where {T <: Colorant} = one(T) .- src_alpha(c)
 blend(source, dest, src_func, dest_func) = clamp01(src_func(source) .+ dest_func(dest))
 ColorTypes.alpha(x::StaticVector) = x[4]
-function standard_transparency{T}(source, dest::T)
+function standard_transparency(source, dest::T) where T
     (alpha(source) .* source) .+ ((one(eltype(T)) - alpha(source)) .* dest)
 end
 
 
-type FixedGeomView{GeomOut, VT}
+mutable struct FixedGeomView{GeomOut, VT}
     buffer::Vector{GeomOut}
     view::VT
     idx::Int
@@ -53,7 +53,7 @@ function Base.push!(A::FixedGeomView, element)
     return
 end
 
-immutable JLRasterizer{Vertex, Args, FragN, VS, FS, GS, GV, EF}
+struct JLRasterizer{Vertex, Args, FragN, VS, FS, GS, GV, EF}
     vertexshader::VS
     fragmentshader::FS
 
@@ -62,13 +62,13 @@ immutable JLRasterizer{Vertex, Args, FragN, VS, FS, GS, GV, EF}
     emit::EF
 end
 
-function (::Type{JLRasterizer{Vertex, Args, FragN}}){Vertex, Args, FragN, VS, FS, GS, GV, EF}(
+function JLRasterizer{Vertex, Args, FragN}(
         vertexshader::VS,
         fragmentshader::FS,
         geometryshader::GS,
         geometry_view::GV,
         emit::EF
-    )
+    ) where {Vertex, Args, FragN, VS, FS, GS, GV, EF}
     JLRasterizer{Vertex, Args, FragN, VS, FS, GS, GV, EF}(
         vertexshader,
         fragmentshader,
@@ -80,7 +80,7 @@ end
 
 function geometry_return_type(vertex_array, vertexshader, geometryshader, uniforms)
     typ = Any
-    emit_t{T}(position, ::T) = (typ = T)
+    emit_t(position, ::T) where {T} = (typ = T)
     face1 = first(vertex_array)
     vertex_stage = map(reverse(face1)) do f
         vertexshader(f, uniforms...)
@@ -89,9 +89,9 @@ function geometry_return_type(vertex_array, vertexshader, geometryshader, unifor
     typ
 end
 
-arglength{T <: Tuple}(::Type{T}) = length(T.parameters)
-arglength{T <: AbstractArray}(::Type{T}) = 1
-arglength{T}(::Type{T}) = nfields(T)
+arglength(::Type{T}) where {T <: Tuple} = length(T.parameters)
+arglength(::Type{T}) where {T <: AbstractArray} = 1
+arglength(::Type{T}) where {T} = nfields(T)
 
 
 function rasterizer(
@@ -133,15 +133,15 @@ function rasterizer(
 end
 
 
-Base.@pure Next{N}(::Val{N}) = Val{N - 1}()
-@inline function interpolate{N, T}(bary, face::NTuple{N, T}, vn::Val{0}, aggregate)
+Base.@pure Next(::Val{N}) where {N} = Val{N - 1}()
+@inline function interpolate(bary, face::NTuple{N, T}, vn::Val{0}, aggregate) where {N, T}
     if T <: Tuple
         aggregate
     else
         T(aggregate...)
     end
 end
-@inline function interpolate{N}(bary, face, vn::Val{N}, aggregate = ())
+@inline function interpolate(bary, face, vn::Val{N}, aggregate = ()) where N
     @inbounds begin
         res = (
             bary[1] * getfield(face[1], N) .+
@@ -163,9 +163,9 @@ function clip2pixel_space(position, resolution)
 end
 
 
-function (r::JLRasterizer{Vert, Args, FragN}){Vert, Args, FragN}(
+function (r::JLRasterizer{Vert, Args, FragN})(
         canvas, vertex_array::AbstractArray{Vert}, uniforms::Args
-    )
+    ) where {Vert, Args, FragN}
     framebuffers = canvas.color; depthbuffer = canvas.depth
     resolution = Vec2f0(size(framebuffers[1]))
     # hoisting out functions... Seems to help inference a bit. Or not?
@@ -178,7 +178,7 @@ function (r::JLRasterizer{Vert, Args, FragN}){Vert, Args, FragN}(
         vertex_stage = map(reverse(face)) do f
             vshader(f, uniforms...)
         end
-        geom_stage = if isa(r.geometryshader, Void)
+        geom_stage = if isa(r.geometryshader, Nothing)
             (vertex_stage,)
         else
             reset!(r.geometry_view)
@@ -233,7 +233,7 @@ function (r::JLRasterizer{Vert, Args, FragN}){Vert, Args, FragN}(
     println("fragments drawn: ", fragments_drawn)
     return
 end
-circle{T}(uv::Vec{2, T}) = T(0.5) - norm(uv)
+circle(uv::Vec{2, T}) where {T} = T(0.5) - norm(uv)
 """
 smoothstep performs smooth Hermite interpolation between 0 and 1 when edge0 < x < edge1. This is useful in cases where a threshold function with a smooth transition is desired. smoothstep is equivalent to:
 ```
@@ -242,15 +242,15 @@ smoothstep performs smooth Hermite interpolation between 0 and 1 when edge0 < x 
 ```
 Results are undefined if edge0 ≥ edge1.
 """
-function smoothstep{T}(edge0, edge1, x::T)
+function smoothstep(edge0, edge1, x::T) where T
     t = clamp.((x .- edge0) ./ (edge1 .- edge0), T(0), T(1))
     return t * t * (T(3) - T(2) * t)
 end
-function aastep{T}(threshold1::T, value)
+function aastep(threshold1::T, value) where T
     afwidth = norm(Vec2f0(dFdx(value), dFdy(value))) * T(1.05);
     smoothstep(threshold1 - afwidth, threshold1 + afwidth, value)
 end
-function aastep{T}(threshold1::T, threshold2::T, value::T)
+function aastep(threshold1::T, threshold2::T, value::T) where T
     afwidth = norm(Vec2f0(dFdx(value), dFdy(value))) * T(1.05);
     return (
         smoothstep(threshold1 - afwidth, threshold1 + afwidth, value) -
@@ -264,17 +264,17 @@ This is sadly a bit hard to implement for a pure CPU versions, since it's pretty
 How it seems to work is, that it takes the values from neighboring registers, which work in parallel on the pixels
 of the triangle, so they actually do hold the neighboring values needed to calculate the gradient.
 """
-dFdx{T}(value::T) = T(0.001) # just default to a small gradient if it's called on the CPU
-dFdy{T}(value::T) = T(0.001) # just default to a small gradient if it's called on the CPU
+dFdx(value::T) where {T} = T(0.001) # just default to a small gradient if it's called on the CPU
+dFdy(value::T) where {T} = T(0.001) # just default to a small gradient if it's called on the CPU
 
-type Uniforms{F}
+mutable struct Uniforms{F}
     projection::Mat4f0
     strokecolor::Vec4f0
     glowcolor::Vec4f0
     distance_func::F
 end
 
-type TextUniforms
+mutable struct TextUniforms
     projection::Mat4f0
     strokecolor::Vec4f0
     glowcolor::Vec4f0
@@ -287,7 +287,7 @@ struct VertexCS{N, T}
     scale::Vec2f0
 end
 
-immutable Vertex2Geom
+struct Vertex2Geom
     uvrect::Vec4f0
     color::Vec4f0
     rect::Vec4f0
@@ -440,7 +440,7 @@ end
 w = canvas(1024, 1024)
 
 
-mix{T}(x, y, a::T) = x .* (T(1) .- a) .+ y .* a
+mix(x, y, a::T) where {T} = x .* (T(1) .- a) .+ y .* a
 
 fract(x) = x - floor(x)
 fabs(x::AbstractFloat) = abs(x)

@@ -1,4 +1,3 @@
-__precompile__()
 module AbstractPlotting
 
 using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
