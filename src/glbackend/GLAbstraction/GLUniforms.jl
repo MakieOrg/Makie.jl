@@ -30,7 +30,7 @@ function uniformfunc(typ::DataType, dims::Tuple{Int})
 end
 function uniformfunc(typ::DataType, dims::Tuple{Int, Int})
     M, N = dims
-    Symbol(string("glUniformMatrix", M == N ? "$M":"$(M)x$(N)", opengl_postfix(typ)))
+    Symbol(string("glUniformMatrix", M == N ? "$M" : "$(M)x$(N)", opengl_postfix(typ)))
 end
 
 function gluniform(location::Integer, x::FSA) where FSA <: Union{StaticArray, Colorant}
@@ -88,7 +88,7 @@ gluniform(location::GLint, x::Vector{GLuint})  = glUniform1uiv(location, length(
 
 
 glsl_typename(x::T) where {T} = glsl_typename(T)
-glsl_typename(t::Type{Void})     = "Nothing"
+glsl_typename(t::Type{Nothing})     = "Nothing"
 glsl_typename(t::Type{GLfloat})  = "float"
 glsl_typename(t::Type{GLdouble}) = "double"
 glsl_typename(t::Type{GLuint})   = "uint"
@@ -106,7 +106,7 @@ function glsl_typename(t::Type{T}) where T <: SMatrix
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(M, "x", N))
 end
 toglsltype_string(t::Signal) = toglsltype_string(t.value)
-toglsltype_string(x::T) where {T<:Union{Real, StaticArray, Texture, Colorant, TextureBuffer, Void}} = "uniform $(glsl_typename(x))"
+toglsltype_string(x::T) where {T<:Union{Real, StaticArray, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"
 #Handle GLSL structs, which need to be addressed via single fields
 function toglsltype_string(x::T) where T
     if isa_gl_struct(x)
@@ -198,18 +198,18 @@ gl_convert(x::Signal{T}) where {T <: HomogenousMesh} = gl_promote(T)(x)
 
 gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
 gl_convert(s::AABB) = s
-gl_convert(s::Void) = s
+gl_convert(s::Nothing) = s
 
 isa_gl_struct(x::Array) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
 isa_gl_struct(x::Colorant) = false
 function isa_gl_struct(x::T) where T
-    !isleaftype(T) && return false
+    !isconcretetype(T) && return false
     if T <: Tuple
         return false
     end
     fnames = fieldnames(T)
-    !isempty(fnames) && all(name -> isleaftype(fieldtype(T, name)) && isbits(getfield(x, name)), fnames)
+    !isempty(fnames) && all(name -> isconcretetype(fieldtype(T, name)) && isbits(getfield(x, name)), fnames)
 end
 function gl_convert_struct(x::T, uniform_name::Symbol) where T
     if isa_gl_struct(x)

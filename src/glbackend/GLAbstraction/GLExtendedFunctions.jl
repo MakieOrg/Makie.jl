@@ -26,7 +26,7 @@ end
 get_attribute_location(program::GLuint, name) = get_attribute_location(program, ascii(name))
 get_attribute_location(program::GLuint, name::Symbol) = get_attribute_location(program, string(name))
 function get_attribute_location(program::GLuint, name::String)
-    const location::GLint = glGetAttribLocation(program, name)
+    location::GLint = glGetAttribLocation(program, name)
     if location == -1
         warn(
             "Named attribute (:$(name)) is not an active attribute in the specified program object or\n

@@ -13,18 +13,18 @@ end
 surf_func(i) = [Float32(xy_data(x, y, i, 32)) + 0.5 for x=1:32, y=1:32]
 
 z = surf_func(20)
-range = linspace(0, 3, N)
+range = range(0, stop=3, length=N)
 surf = surface(range, range, z, colormap = :Spectral)
 wf = wireframe(range, range, surf[:z] .+ 1.0,
     linewidth = 2f0, color = lift_node(x-> x[5], surf[:colormap])
 )
-axis(linspace(0, 3, 4), linspace(0, 3, 4), linspace(0, 3, 4))
+axis(range(0, stop=3, length=4), range(0, stop=3, length=4), range(0, stop=3, length=4))
 center!(scene)
 
 wf[:linewidth] = 1
 surf[:colormap] = :YlGnBu
 io = VideoStream(scene)
-for i in linspace(0, 60, 200)
+for i in range(0, stop=60, length=200)
     surf[:z] = surf_func(i)
     recordframe!(io)
 end

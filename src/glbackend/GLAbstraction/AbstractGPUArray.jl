@@ -48,7 +48,7 @@ end
 function to_range(index)
     map(index) do val
         isa(val, Integer) && return val:val
-        isa(val, Range) && return val
+        isa(val, AbstractRange) && return val
         error("Indexing only defined for integers or ranges. Found: $val")
     end
 end

@@ -13,7 +13,7 @@ using FixedPointNumbers
 using FileIO
 using FreeType
 import IterTools
-using Base.Markdown
+using Markdown
 using FreeTypeAbstraction
 using ImageCore
 import ColorVectorSpace

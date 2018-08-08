@@ -105,7 +105,7 @@ function print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
     Base.Markdown.parse(String(take!(io)))
 end
 
-print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults to STDOUT
+print_source(idx; kw_args...) = print_source(stdout, idx; kw_args...) #defaults to STDOUT
 
 
 """
@@ -119,7 +119,7 @@ and are used to filter the search results by title and author.
 `match` specifies a matching function, e.g. any/all which gets applied to the input tags.
 """
 function find_indices(input_tags::NTuple{N, String}; title = nothing, author = nothing, match::Function = all) where N # --> return an array of cell entries
-    indices = find(database) do entry
+    indices = findall(database) do entry
         tags_found = match(tags -> tags in entry.tags, input_tags)
         # find author, if nothing input is given, then don't filter
         author_found = (author == nothing) || (entry.author == string(author))
@@ -251,7 +251,7 @@ function printline(line, toplevel, source, start_indent)
         # remove all spaces of first indent
         line = line[(start_indent+1):end]
     end
-    if ismatch(r"using|import", line)
+    if occursin(r"using|import", line)
         println(toplevel, line)
     else
         println(source, line)
@@ -423,8 +423,8 @@ macro block(author, tags, block)
     # psource = extract_source(pfile, pstartend, x-> !contains(x, "@cell"))
 
     parent_tags = extract_tags(tags)
-    cells = args[find(is_cell, args)]
-    noncells = args[find(x-> !is_cell(x), args)]
+    cells = args[findall(is_cell, args)]
+    noncells = args[findall(x-> !is_cell(x), args)]
     setup = join(globaly_shared_code, "\n")
 
     for cell in cells
@@ -434,7 +434,7 @@ macro block(author, tags, block)
         push!(tags_list, collect(String, cell_entry.tags)...)
     end
 
-    groups = args[find(is_group, args)]
+    groups = args[findall(is_group, args)]
     lastidx = length(database)
     for (groupid, group) in enumerate(groups)
         cellist = group.args[2].args

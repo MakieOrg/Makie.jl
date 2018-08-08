@@ -1,4 +1,3 @@
-__precompile__(true)
 module Makie
 
 using AbstractPlotting
@@ -41,7 +40,7 @@ export NT
 
 const has_ffmpeg = Ref(false)
 
-struct MakieDisplay <: Display
+struct MakieDisplay <: AbstractDisplay
 end
 
 # Hacky workaround, for the difficulty of removing closed screens from the display stack

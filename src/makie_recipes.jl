@@ -55,7 +55,7 @@ end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
-    linspace(cnorm..., x)
+    range(cnorm..., stop=x, length=50)
 end
 
 AbstractPlotting.convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
