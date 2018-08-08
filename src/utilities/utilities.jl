@@ -27,7 +27,7 @@ Resample a vector with linear interpolation to have length `len`
 """
 function resample(A::AbstractVector, len::Integer)
     length(A) == len && return A
-    interpolated_getindex.((A,), linspace(0.0, 1.0, len))
+    interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
 end
 
 """
@@ -79,7 +79,7 @@ function replace_automatic!(f, dict, key)
 end
 
 is_unitrange(x) = (false, 0:0)
-is_unitrange(x::Range) = (true, x)
+is_unitrange(x::AbstractRange) = (true, x)
 function is_unitrange(x::AbstractVector)
     length(x) < 2 && return false, 0:0
     diff = x[2] - x[1]
@@ -240,7 +240,7 @@ dim3(x::NTuple{3, Any}) = x
 dim2(x) = ntuple(i-> x, Val{2})
 dim2(x::NTuple{2, Any}) = x
 
-lerp{T}(a::T, b::T, val::AbstractFloat) = (a .+ (val * (b .- a)))
+lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 
 
@@ -312,4 +312,4 @@ end
 
 
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
-to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)
+to_vector(x::ClosedInterval, len, T) = range(T.(extrema(x))..., stop=len, length=50)

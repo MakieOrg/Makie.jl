@@ -142,7 +142,7 @@ default_ticks(limits::Tuple{Number, Number}, ticks, scale_func = identity) = def
 function default_ticks(lmin::Number, lmax::Number, ticks::AbstractVector{<: Number}, scale_func = identity)
     scale_func.((filter(t -> lmin <= t <= lmax, ticks)))
 end
-function default_ticks(lmin::Number, lmax::Number, ::Void, scale_func = identity)
+function default_ticks(lmin::Number, lmax::Number, ::Nothing, scale_func = identity)
     # scale the limits
     scaled_ticks, mini, maxi = optimize_ticks(
         scale_func(lmin),
@@ -323,7 +323,7 @@ end
 
 
 function ticks_and_labels(x)
-    r = linspace(extrema(x)..., 5)
+    r = range(extrema(x)..., stop=5, length=50)
     zip(r, string.(round.(r, 4)))
 end
 
@@ -441,7 +441,7 @@ function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
 end
 
 
-function GeometryTypes.widths(x::Range)
+function GeometryTypes.widths(x::AbstractRange)
     mini, maxi = Float32.(extrema(x))
     maxi - mini
 end

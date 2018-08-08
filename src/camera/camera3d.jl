@@ -47,11 +47,11 @@ function cam3d!(scene; kw_args...)
     camera
 end
 
-function projection_switch{T <: Real}(
+function projection_switch(
         wh::Rect2D,
         fov::T, near::T, far::T,
         projection::ProjectionEnum, zoom::T
-    )
+    ) where T <: Real
     aspect = T((/)(widths(wh)...))
     h = T(tan(fov / 360.0 * pi) * near)
     w = T(h * aspect)
@@ -60,10 +60,10 @@ function projection_switch{T <: Real}(
     orthographicprojection(-w, w, -h, h, near, far)
 end
 
-function rotate_cam{T}(
+function rotate_cam(
         theta::Vec{3, T},
         cam_right::Vec{3, T}, cam_up::Vec{3, T}, cam_dir::Vec{3, T}
-    )
+    ) where T
     rotation = Quaternion{T}(0, 0, 0, 1)
     # first the rotation around up axis, since the other rotation should be relative to that rotation
     if theta[1] != 0

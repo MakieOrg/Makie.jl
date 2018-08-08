@@ -38,7 +38,7 @@ const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
 
 
-abstract type AbstractScreen <: Display end
+abstract type AbstractScreen <: AbstractDisplay end
 
 
 function IRect(x, y, w, h)
