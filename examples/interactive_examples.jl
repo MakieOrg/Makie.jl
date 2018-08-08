@@ -1,6 +1,6 @@
 
 using Makie, Colors, Images
-r = linspace(0, 5pi, 100)
+r = range(0, stop=5pi, length=100)
 scene = lines(r, sin.(r), linewidth = 3)
 lineplot = scene[end]
 visible = node(:visible, false)
@@ -134,8 +134,8 @@ translate!(ui, 10, 50, 0)
 a = textslider(ui, 0f0:50f0, "a")
 b = textslider(ui, -20f0:20f0, "b")
 c = textslider(ui, 0f0:20f0, "c")
-d = textslider(ui, linspace(0.0, 0.01, 100), "d")
-scales = textslider(ui, linspace(0.01, 0.5, 100), "scale")
+d = textslider(ui, range(0.0, stop=0.01, length=100), "d")
+scales = textslider(ui, range(0.01, stop=0.5, length=100), "scale")
 color, pop = colorswatch(ui)
 hbox!(ui.plots)
 
@@ -171,7 +171,7 @@ plot = meshscatter!(
     positions,
     #marker = Makie.loadasset("cat.obj"),
     markersize = scales, rotation = rotations,
-    intensity = collect(linspace(0f0, 1f0, length(positions[]))),
+    intensity = collect(range(0f0, stop=1f0, length=length(positions[]))),
     color = color
 )
 scene

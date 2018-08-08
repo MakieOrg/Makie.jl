@@ -79,7 +79,7 @@ myfunc(v, t) = sin.(v, t)
 
 scene = lines!(
     scene,
-    lift(t -> f.(linspace(0, 2pi, 50), t), time)
+    lift(t -> f.(range(0, stop=2pi, length=50), t), time)
 )
 ```
 
@@ -144,7 +144,7 @@ Similarly, for plots based on functions:
 
 ```julia
 scene = Scene()
-v = linspace(0, 4pi, 50)
+v = range(0, stop=4pi, length=50)
 f(v, t) = sin(v + t) # some function
 s = lines!(
     scene,

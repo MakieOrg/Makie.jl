@@ -155,7 +155,7 @@ function get_shader!(path, template_replacement, view, attributes)
     # this should always be in here, since we already have the template keys
     shader_dict = _shader_cache[path]
     # get!(shader_dict, template_replacement) do
-    template_source = readstring(path)
+    template_source = read(path, String)
     source = mustache_replace(template_replacement, template_source)
     compile_shader(path, source)
     # end::Shader
@@ -165,7 +165,7 @@ function get_template!(path, view, attributes)
         _, ext = splitext(path)
 
         typ = shadertype(ext)
-        template_source = readstring(path)
+        template_source = read(path, String)
         source, replacements = template2source(
             template_source, view, attributes
         )
@@ -211,7 +211,7 @@ end
 
 function get_view(kw_dict)
     _view = kw_dict[:view]
-    extension = is_apple() ? "" : "#extension GL_ARB_draw_instanced : enable\n"
+    extension = Sys.isapple() ? "" : "#extension GL_ARB_draw_instanced : enable\n"
     _view["GLSL_EXTENSION"] = extension*get(_view, "GLSL_EXTENSIONS", "")
     _view["GLSL_VERSION"] = glsl_version_string()
     _view

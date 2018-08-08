@@ -65,7 +65,7 @@ calcMidpoints(edges::AbstractVector) = Float64[0.5 * (edges[i] + edges[i+1]) for
 "Make histogram-like bins of data"
 function binData(data, nbins)
   lo, hi = AbstractPlotting.extrema_nan(data)
-  edges = collect(linspace(lo, hi, nbins+1))
+  edges = collect(range(lo, stop=hi, length=nbins+1))
   midpoints = calcMidpoints(edges)
   buckets = Int[max(2, min(searchsortedfirst(edges, x), length(edges)))-1 for x in data]
   counts = zeros(Int, length(midpoints))
@@ -129,12 +129,12 @@ function plot!(plot::BoxPlot)
             # filter y
             values = y[filter(i -> _cycle(x, i) == glabel, 1:length(y))]
             # compute quantiles
-            q1, q2, q3, q4, q5 = quantile(values, linspace(0,1,5))
+            q1, q2, q3, q4, q5 = quantile(values, range(0, stop=1, length=5))
             # notch
             n = notch_width(q2, q4, length(values))
             # warn on inverted notches?
             if notch && !warning && ( (q2>(q3-n)) || (q4<(q3+n)) )
-                warn("Boxplot's notch went outside hinges. Set notch to false.")
+                @warn("Boxplot's notch went outside hinges. Set notch to false.")
                 warning = true # Show the warning only one time
             end
 

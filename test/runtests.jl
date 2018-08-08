@@ -20,7 +20,7 @@ recordpath = Pkg.dir("ReferenceImages")
 
 if !record_reference_images
     if get(ENV, "USE_REFERENCE_IMAGES", "false") == "true"
-        info("Using Local reference image repository")
+        @info("Using Local reference image repository")
         refpath = recordpath
     elseif !isdir(refpath)
         download_images() = BinaryProvider.download_verify(
@@ -100,7 +100,7 @@ end
 include("visualregression.jl")
 
 function test_examples(record, tags...)
-    srand(42)
+    Random.seed!(42)
     @testset "Visual Regression" begin
         eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending)) do example, value
             sigma = [1,1]; eps = 0.02
@@ -115,7 +115,7 @@ function test_examples(record, tags...)
                 end
             end
             # reset global states
-            srand(42)
+            Random.seed!(42)
             AbstractPlotting.set_theme!(resolution = (500, 500))
         end
     end
