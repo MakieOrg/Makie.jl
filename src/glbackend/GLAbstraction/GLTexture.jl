@@ -176,7 +176,7 @@ function TextureBuffer(buffer::Vector{T}) where T <: GLArrayEltypes
 end
 
 function TextureBuffer(s::Signal{Vector{T}}) where T <: GLArrayEltypes
-    tb = TextureBuffer(Reactive.value(s))
+    tb = TextureBuffer(to_value(s))
     Reactive.preserve(const_lift(update!, tb, s))
     tb
 end

@@ -4,7 +4,7 @@ import ..Makie
 using ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str, broadcast_foreach
 using ..Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using ..Makie: @info, @get_attribute
-using Reactive, Colors, GeometryTypes
+using Colors, GeometryTypes
 
 using Cairo
 
