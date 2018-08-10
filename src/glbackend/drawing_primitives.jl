@@ -186,7 +186,6 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
         atlas = get_texture_atlas()
         keys = (:color, :stroke_color, :stroke_width, :rotation)
         signals = getindex.(gl_attributes, keys)
-
         visualize(
             (DISTANCEFIELD, positions),
             color = signals[1],
@@ -196,7 +195,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,
-            distancefield = get_texture!(atlas)
+            distancefield = get_texture!(atlas),
+            visible = gl_attributes[:visible]
         ).children[]
     end
 end
@@ -244,7 +244,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Image)
     end
 end
 
-convert_mesh_color(c::AbstractVector{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
+convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
 
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
@@ -257,10 +257,10 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
         mesh = map(x[1], color, cmap, crange) do m, c, cmap, crange
             c = convert_mesh_color(c, cmap, crange)
             if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
-                get!(gl_attributes, :color, c)
+                get!(gl_attributes, :color, Node(c))[] = c
                 m
             elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
-                get!(gl_attributes, :color, c)
+                get!(gl_attributes, :color, Node(c))[] = c
                 m
             elseif isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
                 m

@@ -10,10 +10,23 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://makie.juliaplots.org/stable/)
 
+# Installation
+Makie is still prerelease, so the current versions are a bit in turmoil.
 
+```julia
+Pkg.add("Makie") # will install the deprecated, first version of Makie - Look at #IJulia examples for the old style
+# Get the bleeding edge version, which is used to generate the `Examples from the documenation` + `Complex examples` section 
+Pkg.checkout("Makie")
+Pkg.checkout("AbstractPlotting")
+```
+
+Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
 ## IJulia examples:
 
 [![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
+
+## Complex examples
+[![](https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif)](https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl)
 
 ## Examples from the documenation: 
 
@@ -88,16 +101,7 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 [<img src="https://user-images.githubusercontent.com/1010467/31519521-fd67907e-afa2-11e7-8c43-5f125780ae26.png" width="489">](https://vimeo.com/237284958 "Surface Plot")
 
 
-# Installation
 
-This package is not released yet so a bit awkward to set up. Here are the steps:
-
-```julia
-Pkg.clone("https://github.com/JuliaPlots/Makie.jl.git")
-Pkg.checkout("GLVisualize")
-```
-
-Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
 
 
 # Precompilation
