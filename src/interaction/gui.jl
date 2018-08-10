@@ -1,19 +1,3 @@
-struct Button
-    value::Node{Bool}
-    text::Node{String}
-    visual::AbstractPlot
-end
-
-function Button(scene::Scene, txt::String)
-    butt = Combined{:Button}(scene, Attributes(), txt)
-    tvis = text!(butt, txt)
-    value = node(:button_value, false)
-    onclick(butt) do val
-        value[] = val
-    end
-    Button(value, txt, butt)
-end
-
 
 default_printer(v) = string(round(v, 3))
 @recipe(Slider) do scene
@@ -121,48 +105,49 @@ function move!(x::Slider, idx::Integer)
     return
 end
 export move!
+@recipe(Button) do scene
+    Theme(
+        dimensions = (40, 40),
+        backgroundcolor = (:white, 0.4),
+        strokecolor = (:black, 0.4),
+        strokewidth = 1,
+        textcolor = :black,
+        clicks = 0
+    )
+end
 
-function button(func, scene, txt; kw_args...)
-    b = button(scene, txt; kw_args...)
+function button(func::Function, scene::Scene, txt; kw_args...)
+    b = button!(scene, txt; kw_args...)[end]
     foreach(b[:clicks]) do clicks
         func(clicks)
         return
     end
     b
 end
-function button(scene, txt; kw_args...)
-    attributes, rest = merged_get!(:slider, scene, kw_args) do
-        Theme(
-            dimensions = (40, 40),
-            backgroundcolor = (:white, 0.4),
-            strokecolor = (:black, 0.4),
-            strokewidth = 1,
-            textcolor = :black,
-        )
-    end
-    attributes[:clicks] = Signal(0)
-    @extract(attributes, (
+
+function plot!(splot::Button)
+    @extract(splot, (
         backgroundcolor, strokecolor, strokewidth,
         dimensions, textcolor, clicks
     ))
-    splot = Combined{:Button}(scene, attributes, node(:range, range))
+    txt = splot[1]
     lplot = text!(
         splot, txt,
         align = (:center, :center), color = textcolor,
         textsize = 15,
         position = map((wh)-> Point2f0(wh./2), dimensions)
-    )
-    lbb = data_limits(lplot) # on purpose static so we hope text won't become too long?
-    bg_rect = map(dimensions) do wh
-        IRect(0, 0, Vec(wh))
-    end
-    p = poly!(
-        splot, bg_rect,
-        color = backgroundcolor, linecolor = strokecolor,
-        linewidth = strokewidth
-    )
-    foreach(scene.events.mousebuttons) do mb
-        if ispressed(mb, Mouse.left) && mouseover(scene, lplot, p.plots...)
+    ).plots[end]
+    lbb = boundingbox(lplot) # on purpose static so we hope text won't become too long?
+    # bg_rect = lift(dimensions) do wh
+    #     IRect(0, 0, Vec(wh))
+    # end
+    # p = poly!(
+    #     splot, bg_rect,
+    #     color = backgroundcolor, linecolor = strokecolor,
+    #     linewidth = strokewidth
+    # )
+    foreach(events(splot).mousebuttons) do mb
+        if ispressed(mb, Mouse.left) && mouseover(parent(splot), lplot)
             clicks[] = clicks[] + 1
         end
         return
@@ -200,4 +185,135 @@ function playbutton(f, scene, range, rate = (1/30))
         nothing
     end
     b
+end
+
+
+
+struct Popup
+    scene::Scene
+    open::Node
+    position::Node{Point2f0}
+    width::Node{Point2f0}
+end
+
+function hbox!(plots::Vector{T}; kw_args...) where T <: AbstractPlot
+    N = length(plots)
+    h = 0.0
+    for idx in 1:N
+        p = plots[idx]
+        translate!(p, 0.0, h, 0.0)
+        swidth = widths(boundingbox(p))
+        h += (swidth[2] * 1.2)
+    end
+end
+
+
+function textslider(ui, range, label)
+    a = slider!(ui, range, raw = true)[end][:value]
+    text!(ui, "$label:", raw = true, align = (:left, :center))
+    a
+end
+
+function sample_color(f, ui, colormesh, v)
+    mpos = ui.events.mouseposition
+    sub = Scene(ui, transformation = Transformation(), px_area = pixelarea(ui), theme = theme(ui))
+    select = scatter!(
+        sub, lift((x, r)-> [Point2f0(x) .- minimum(r)], mpos, pixelarea(sub)),
+        markersize = 10, color = (:white, 0.2), strokecolor = :white,
+        strokewidth = 5, visible = lift(identity, theme(ui, :visible)), raw = true
+    )[end]
+    translate!(select, 0, 0, 10)
+
+    foreach(mpos, ui.events.mousebuttons) do mp, mb
+        bb = FRect2D(modelmatrix(sub)[] * modelmatrix(colormesh)[] * boundingbox(colormesh))
+        mp = Point2f0(mp) .- minimum(pixelarea(sub)[])
+        if Point2f0(mp) in bb
+            select[:visible] = true
+            if ispressed(mb, Mouse.left)
+                sv = (Point2f0(mp) .- minimum(bb)) ./ widths(bb)
+                f(RGBAf0(HSV(v[], sv[1], sv[2])))
+            end
+        else
+            select[:visible] = false
+        end
+        return
+    end
+end
+
+
+
+function popup(parent, position, width)
+    pos_n = Node(Point2f0(position))
+    width_n = Node(Point2f0(width))
+
+    harea = lift(pos_n, width_n) do p, wh
+        IRect(p[1], p[2] + wh[2] - 20, wh[1], 20)
+    end
+    parea = lift(pos_n, width_n) do p, wh
+        IRect(Point2f0(p), Point2f0(wh))
+    end
+    popup = Scene(parent, parea)
+    theme(popup)[:visible] = Node(false)
+    header = Scene(popup, harea)
+    theme(popup)[:plot] = Attributes(raw = true)
+    campixel!(popup)
+    campixel!(header)
+    theme(header)[:plot] = Attributes(raw = true)
+    theme(header)[:visible] = theme(popup, :visible)
+    initialized = Ref(false)
+    but = button(header, "x") do click
+        if initialized[]
+            theme(popup, :visible)[] = !theme(popup, :visible)[]
+        else
+            initialized[] = true
+        end
+        return
+    end
+    foreach(width_n) do wh
+        translate!(but, wh[1] - 30, -10, 120)
+    end
+    poly!(header, lift(r-> FRect(0, 0, widths(r)), harea), color = (:gray, 0.1))
+    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white, strokecolor = :black, strokewidth = 2)
+    Popup(Scene(popup, theme = theme(popup)), theme(popup, :visible), pos_n, width_n)
+end
+
+
+function mouse_selection end
+export mouse_selection
+
+function colorswatch(ui)
+    pop = popup(ui, (50, 50), (250, 300))
+    sub_ui = pop.scene
+    hsv_hue = textslider(sub_ui, 1:360, "hue")
+    colors = lift(hsv_hue) do V
+        [HSV(V, 0, 0), HSV(V, 1, 0), HSV(V, 1, 1), HSV(V, 0, 1)]
+    end
+    S = 200
+    colormesh = mesh!(sub_ui,
+        # TODO implement decompose correctly to just have this be IRect(0, 0, S, S)
+        [(0, 0), (S, 0), (S, S), (0, S)],
+        [1, 2, 3, 3, 4, 1],
+        color = colors, raw = true, shading = false
+    )[end]
+    color = Node(RGBAf0(0,0,0,1))
+    sample_color(sub_ui, colormesh, hsv_hue) do c
+        color[] = c
+    end
+    hbox!(sub_ui.plots)
+    translate!(sub_ui, 10, 0, 0)
+    rect = IRect(0, 0, 50, 50)
+    swatch = poly!(ui, rect, color = color, raw = true, visible = true)[end]
+    pop.open[] = false
+    foreach(ui.events.mousebuttons) do mb
+        if ispressed(mb, Mouse.left)
+            plot, idx = mouse_selection(ui)
+            if plot in swatch.plots
+                pop.position[] = Point2f0(events(ui).mouseposition[] .+ 50)
+                pop.open[] = true
+            end
+        end
+        return
+    end
+    hbox!(sub_ui.plots)
+    color, pop
 end
