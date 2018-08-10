@@ -3,12 +3,12 @@ using Makie, GeometryTypes, Colors
 scene = Scene()
 # this is just a work around that will be gone immediatly after I figure out how to best
 # insert default cameras into the scene
-r = linspace(0, 3, 4)
+r = range(0, stop=3, length=4)
 a = axis(r, r)
 center!(scene, 0.2)
 cam = scene[:screen].cameras[:orthographic_pixel]
 pos = lift_node(getindex.(scene, (:mouseposition, :time))...) do mpos, t
-    map(linspace(0, 2pi, 60)) do i
+    map(range(0, stop=2pi, length=60)) do i
         circle = Point2f0(sin(i), cos(i))
         mouse = to_world(Point2f0(mpos), cam)
         secondary = (sin((i * 10f0) + t) * 0.09) * normalize(circle)
@@ -30,7 +30,7 @@ p2[:marker] = 'π'
 p2[:markersize] = 0.2
 p2[:marker] = 'o'
 
-for i = linspace(0.01, 0.4, 100)
+for i = range(0.01, stop=0.4, length=100)
     p2[:markersize] = i
     yield()
     sleep(0.01)

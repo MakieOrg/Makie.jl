@@ -31,7 +31,7 @@ end
 
 c = RGBA(0.95, 0.98, 0.99, 1.0)
 aviz = axis(
-    linspace(0, 600, 20), linspace(0, 100, 5),
+    range(0, stop=600, length=20), range(0, stop=100, length=5),
     gridthickness = (0.5, 0.5, 0.5),
     gridcolors = (c, c, c)
 )
