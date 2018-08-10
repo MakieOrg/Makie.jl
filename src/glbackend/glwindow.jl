@@ -65,7 +65,7 @@ function postprocess(color, color_luma, framebuffer_size)
     )
     data2 = Dict{Symbol, Any}(
         :color_texture => color_luma,
-        :RCPFrame => map(rcpframe, framebuffer_size)
+        :RCPFrame => lift(rcpframe, framebuffer_size)
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
 
@@ -199,20 +199,14 @@ sleep more than `time`.
     end
 end
 function reactive_run_till_now()
-    max_yield = Base.n_avail(Reactive._messages) * 2
-    for i=1:max_yield
-        if !isready(Reactive._messages)
-            break
-        end
-        yield()
-    end
+
 end
 
 function was_destroyed(nw)
-    if isdefined(GLFW, :_window_callbacks)
-        !haskey(GLFW._window_callbacks, nw)
-    elseif !isimmutable(nw)
+    if !isimmutable(nw)
         nw.handle == C_NULL
+    elseif isdefined(GLFW, :_window_callbacks)
+        !haskey(GLFW._window_callbacks, nw)
     else
         error("Unknown GLFW.jl version. Can't verify if window is destroyed")
     end

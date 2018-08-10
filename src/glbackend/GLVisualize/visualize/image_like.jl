@@ -1,7 +1,7 @@
 """
 A matrix of colors is interpreted as an image
 """
-_default(::Signal{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
+_default(::Node{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
 
 
 function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant

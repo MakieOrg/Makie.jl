@@ -49,6 +49,11 @@ function Base.empty!(screen::Screen)
     empty!(screen.cache2plot)
 end
 
+function destroy!(screen::Screen)
+    empty!(screen)
+    destroy!(screen.glscreen)
+end
+
 function Base.resize!(window::GLFW.Window, resolution...)
     if isopen(window)
         retina_scale = retina_scaling_factor(window)
@@ -91,7 +96,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        bg = map(to_color, scene.theme[:backgroundcolor])
+        bg = lift(to_color, scene.theme[:backgroundcolor])
         push!(screen.screens, (id, scene.px_area, Node(true), bg))
         id
     end
