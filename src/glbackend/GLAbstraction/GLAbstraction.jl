@@ -8,6 +8,7 @@ using FixedPointNumbers
 using ColorTypes
 using FileIO
 using GLFW
+using Printf
 
 import FileIO: load, save
 if isdefined(FixedPointNumbers, :N0f8)

@@ -6,6 +6,7 @@ import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore
 import FileIO
+using LinearAlgebra
 
 module ContoursHygiene
     import Contour
@@ -26,7 +27,7 @@ for name in names(AbstractPlotting)
 end
 
 # Unexported names
-using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont, Key, @key_str
+using AbstractPlotting: @info, @log_performance, @warn, NativeFont, Key, @key_str
 
 export (..), GLNormalUVMesh
 # conflicting identifiers

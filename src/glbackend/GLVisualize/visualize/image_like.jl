@@ -1,7 +1,6 @@
 """
 A matrix of colors is interpreted as an image
 """
-
 _default(::Signal{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
 
 

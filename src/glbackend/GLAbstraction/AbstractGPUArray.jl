@@ -14,7 +14,7 @@ import Base: size
 import Base: start
 import Base: next
 import Base: done
-
+using Serialization
 import GeometryTypes.SimpleRectangle
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
@@ -225,19 +225,13 @@ function (::Type{T})(x::Signal) where T <: GPUArray
     gpu_mem
 end
 
-const BaseSerializer = if isdefined(Base, :AbstractSerializer)
-    Base.AbstractSerializer
-elseif isdefined(Base, :SerializationState)
-    Base.SerializationState
-else
-    error("No Serialization type found. Probably unsupported Julia version")
-end
+const BaseSerializer = Serialization.AbstractSerializer
 
-function Base.serialize(s::BaseSerializer, t::T) where T<:GPUArray
-    Base.serialize_type(s, T)
+function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
+    Serialization.serialize_type(s, T)
     serialize(s, Array(t))
 end
-function Base.deserialize(s::BaseSerializer, ::Type{T}) where T<:GPUArray
+function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T<:GPUArray
     A = deserialize(s)
     T(A)
 end
