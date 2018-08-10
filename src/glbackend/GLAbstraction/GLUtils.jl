@@ -235,7 +235,7 @@ end
 
 function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
-    mv = Reactive.value(m)
+    mv = to_value(m)
     attribs = attributes(mv)
     @materialize! vertices, faces = attribs
     result[:vertices] = GLBuffer(vertices)

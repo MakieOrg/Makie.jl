@@ -92,7 +92,7 @@ struct StandardPostrenderInstanced{T}
     primitive::GLenum
 end
 function (sp::StandardPostrenderInstanced)()
-    renderinstanced(sp.vao, Reactive.value(sp.main), sp.primitive)
+    renderinstanced(sp.vao, to_value(sp.main), sp.primitive)
 end
 
 struct EmptyPrerender
@@ -150,9 +150,9 @@ function translate!(c::Composable, vec::TOrSignal{T}) where T <: Vec{3}
      _translate!(c, const_lift(translationmatrix, vec))
 end
 function _boundingbox(c::RenderObject)
-    bb = Reactive.value(c[:boundingbox])
+    bb = to_value(c[:boundingbox])
     bb == nothing && return AABB()
-    Reactive.value(c[:model]) * bb
+    to_value(c[:model]) * bb
 end
 function _boundingbox(c::Composable)
     robjs = extract_renderable(c)

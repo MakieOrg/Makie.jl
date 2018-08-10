@@ -8,7 +8,7 @@ using ModernGL
 using StaticArrays
 using GeometryTypes
 using Colors
-using Reactive
+using AbstractPlotting
 using FixedPointNumbers
 using FileIO
 using FreeType

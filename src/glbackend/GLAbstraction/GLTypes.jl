@@ -344,7 +344,7 @@ function RenderObject(
     uniforms = filter((key, value) -> !isa(value, GLBuffer) && key != :indices, data)
     get!(data, :visible, true) # make sure, visibility is set
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
-    p = gl_convert(Reactive.value(program), data) # "compile" lazyshader
+    p = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), p)
     robj = RenderObject{Pre}(
         main,
