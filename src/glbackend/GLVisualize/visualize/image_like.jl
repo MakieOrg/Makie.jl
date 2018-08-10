@@ -32,10 +32,10 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         )
     end
 end
-function _default(main::VecTypes{T}, ::Style, data::Dict) where T <: Colorant
+function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
         image                 = main => (Texture, "image, can be a Texture or Array of colors")
-        primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0, 0f0, length(value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
+        primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0, 0f0, length(to_value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
         preferred_camera      = :orthographic_pixel
         fxaa                  = false
         shader                = GLVisualizeShader(
@@ -49,7 +49,7 @@ end
 A matrix of Intensities will result in a contourf kind of plot
 """
 function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: Intensity
-    main_v = value(main)
+    main_v = to_value(main)
     @gen_defaults! data begin
         ranges = (0:size(main_v, 1), 0:size(main_v, 2))
     end
@@ -79,7 +79,7 @@ function _default(main::MatTypes{T}, s::style"distancefield", data::Dict) where 
         shape         = DISTANCEFIELD
         fxaa          = false
     end
-    rect = SimpleRectangle{Float32}(0f0,0f0, size(value(main))...)
+    rect = SimpleRectangle{Float32}(0f0,0f0, size(to_value(main))...)
     _default((rect, Point2f0[0]), s, data)
 end
 

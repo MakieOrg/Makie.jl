@@ -197,7 +197,7 @@ end
 # TODO per scene screen
 getscreen(scene) = global_gl_screen()
 
-function pick_native(scene::SceneLike, xy::VecTypes{2}, sid = Base.RefValue{SelectionID{UInt16}}())
+function pick_native(scene::SceneLike, xy::VectorTypes{2}, sid = Base.RefValue{SelectionID{UInt16}}())
     screen = getscreen(scene)
     screen == nothing && return SelectionID{Int}(0, 0)
     window_size = widths(screen)
@@ -216,7 +216,7 @@ end
 
 pick(scene::SceneLike, xy...) = pick(scene, Float64.(xy))
 
-function pick(scene::SceneLike, xy::VecTypes{2})
+function pick(scene::SceneLike, xy::VectorTypes{2})
     sid = pick_native(scene, xy)
     screen = getscreen(scene)
     if screen != nothing && haskey(screen.cache2plot, sid.id)

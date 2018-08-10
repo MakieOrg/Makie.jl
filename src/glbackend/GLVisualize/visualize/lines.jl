@@ -15,14 +15,14 @@ end
 
 intensity_convert(intensity, verts) = intensity
 function intensity_convert(intensity::VecOrSignal{T}, verts) where T
-    if length(value(intensity)) == length(value(verts))
+    if length(to_value(intensity)) == length(to_value(verts))
         GLBuffer(intensity)
     else
         Texture(intensity)
     end
 end
 function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
-    if length(value(intensity)) == length(value(verts))
+    if length(to_value(intensity)) == length(to_value(verts))
         TextureBuffer(intensity)
     else
         Texture(intensity)
@@ -49,14 +49,14 @@ end
 
 
 # ambigious signature
-function _default(position::VecTypes{<: Point}, s::style"lines", data::Dict)
+function _default(position::VectorTypes{<: Point}, s::style"lines", data::Dict)
     line_visualization(position, data)
 end
 function _default(position::MatTypes{<:Point}, s::style"lines", data::Dict)
     line_visualization(position, data)
 end
-function line_visualization(position::Union{VecTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
-    pv = value(position)
+function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
+    pv = to_value(position)
     p_vec = if isa(position, GPUArray)
         position
     else
@@ -116,10 +116,10 @@ end
 
 to_points(x::Vector{LineSegment{T}}) where {T} = reinterpret(T, x, (length(x)*2,))
 
-_default(positions::VecTypes{LineSegment{T}}, s::Style, data::Dict) where {T <: Point} =
+_default(positions::VectorTypes{LineSegment{T}}, s::Style, data::Dict) where {T <: Point} =
     _default(const_lift(to_points, positions), style"linesegment"(), data)
 
-function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) where T <: Point
+function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex              = positions           => GLBuffer
         color               = default(RGBA, s, 1) => GLBuffer
@@ -164,7 +164,7 @@ end
 """
 Fast, non anti aliased lines
 """
-function _default(position::VecTypes{T}, s::style"speedlines", data::Dict) where T <: Point
+function _default(position::VectorTypes{T}, s::style"speedlines", data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Vec2f0

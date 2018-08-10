@@ -7,7 +7,7 @@ const MatOrSignal{T} = ArrayOrSignal{T, 2}
 const VolumeOrSignal{T} = ArrayOrSignal{T, 3}
 
 const ArrayTypes{T, N} = Union{GPUArray{T, N}, ArrayOrSignal{T,N}}
-const VecTypes{T} = ArrayTypes{T, 1}
+const VectorTypes{T} = ArrayTypes{T, 1}
 const MatTypes{T} = ArrayTypes{T, 2}
 const VolumeTypes{T} = ArrayTypes{T, 3}
 
