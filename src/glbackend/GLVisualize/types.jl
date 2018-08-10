@@ -1,18 +1,18 @@
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 @enum CubeSides TOP BOTTOM FRONT BACK RIGHT LEFT
 
-struct Grid{N, T <: Range}
+struct Grid{N, T <: AbstractRange}
     dims::NTuple{N, T}
 end
 Base.ndims(::Grid{N,T}) where {N,T} = N
 
-Grid(ranges::Range...) = Grid(ranges)
+Grid(ranges::AbstractRange...) = Grid(ranges)
 function Grid(a::Array{T, N}) where {N, T}
     s = Vec{N, Float32}(size(a))
     smax = maximum(s)
     s = s./smax
     Grid(ntuple(Val{N}) do i
-        linspace(0, s[i], size(a, i))
+        range(0, stop=s[i], length=size(a, i))
     end)
 end
 
@@ -30,7 +30,7 @@ function Grid(a::AbstractArray{T, N}, ranges::Tuple) where {T, N}
         given Array: $(typeof(a))"
     ))
     Grid(ntuple(Val{N}) do i
-        linspace(first(ranges[i]), last(ranges[i]), size(a, i))
+        range(first(ranges[i]), stop=last(ranges[i]), length=size(a, i))
     end)
 end
 
@@ -73,8 +73,8 @@ import Base: getindex, length, next, start, done
 to_cpu_mem(x) = x
 to_cpu_mem(x::GPUArray) = gpu_data(x)
 
-const ScaleTypes = Union{Vector, Vec, AbstractFloat, Void, Grid}
-const PositionTypes = Union{Vector, Point, AbstractFloat, Void, Grid}
+const ScaleTypes = Union{Vector, Vec, AbstractFloat, Nothing, Grid}
+const PositionTypes = Union{Vector, Point, AbstractFloat, Nothing, Grid}
 
 mutable struct ScalarRepeat{T}
     scalar::T
@@ -131,22 +131,22 @@ end
 
 
 
-function ArrayOrStructOfArray(::Type{T}, array::Void, a, elements...) where T
+function ArrayOrStructOfArray(::Type{T}, array::Nothing, a, elements...) where T
     StructOfArrays(T, a, elements...)
 end
 function ArrayOrStructOfArray(::Type{T}, array::StaticVector, a, elements...) where T
     StructOfArrays(T, a, elements...)
 end
-function ArrayOrStructOfArray(::Type{T}, scalar::StaticVector, a::Void, elements::Void...) where T
+function ArrayOrStructOfArray(::Type{T}, scalar::StaticVector, a::Nothing, elements::Nothing...) where T
     ScalarRepeat(transform_convert(T, scalar))
 end
-function ArrayOrStructOfArray(::Type{T1}, array::Array{T2}, a::Void, elements::Void...) where {T1,T2}
+function ArrayOrStructOfArray(::Type{T1}, array::Array{T2}, a::Nothing, elements::Nothing...) where {T1,T2}
     array
 end
-function ArrayOrStructOfArray(::Type{T1}, grid::Grid, x::Void, y::Void, z::Array) where T1<:Point
+function ArrayOrStructOfArray(::Type{T1}, grid::Grid, x::Nothing, y::Nothing, z::Array) where T1<:Point
     GridZRepeat(grid, z)
 end
-function ArrayOrStructOfArray(::Type{T1}, array::Grid, a::Void, elements::Void...) where T1<:Point
+function ArrayOrStructOfArray(::Type{T1}, array::Grid, a::Nothing, elements::Nothing...) where T1<:Point
     array
 end
 function ArrayOrStructOfArray(::Type{T}, scalar::T) where T

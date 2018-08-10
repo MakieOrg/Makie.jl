@@ -20,7 +20,7 @@ const atomics = (
     Makie.volume
 )
 
-match_kw(x::String) = ismatch(regex_pattern, x)
+match_kw(x::String) = occursin(regex_pattern, x)
 match_kw(x::Paragraph) = any(match_kw, x.content)
 match_kw(x::Any) = false
 
@@ -28,7 +28,7 @@ Selectors.matcher(::Type{DatabaseLookup}, node, page, doc) = match_kw(node)
 
 # ============================================= Simon's implementation
 function look_up_source(database_key)
-    entries = find(x-> x.title == database_key, database)
+    entries = findall(x-> x.title == database_key, database)
     # current implementation finds titles, but we can also search for tags too
     isempty(entries) && error("No entry found for database reference $database_key")
     length(entries) > 1 && error("Multiple entries found for database reference $database_key")
@@ -67,7 +67,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
         content = []
 
         # bibliographic stuff
-        idx = find(x-> x.title == database_key, database)
+        idx = findall(x-> x.title == database_key, database)
         entry = database[idx[1]]
         uname = string(entry.unique_name)
         lines = entry.file_range
@@ -77,7 +77,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
         is_stepper = contains(==, tags, "stepper")
 
         if is_stepper && isequal(embed, "plot")
-            warn("you tried to output an @example_database(\"entry\", plot) but the entry type is a stepper!")
+            @warn("you tried to output an @example_database(\"entry\", plot) but the entry type is a stepper!")
         end
 
         # print source code for the example
@@ -180,7 +180,7 @@ Insert thumbnails matching a search tag.
 """
 function embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
     indices = find_indices(func)
-    !ispath(currpath) && warn("currepath does not exist!")
+    !ispath(currpath) && @warn("currepath does not exist!")
     for idx in indices
         uname = database[idx].unique_name
         title = database[idx].title
@@ -214,7 +214,7 @@ Insert thumbnails matching a search tag.
 """
 function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
     indices = find_indices(func)
-    !ispath(currpath) && warn("currepath does not exist!")
+    !ispath(currpath) && @warn("currepath does not exist!")
     !ispath(tarpath) && warn("$(tarpath) does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
     for idx in indices
         is_stepper = false
@@ -274,7 +274,7 @@ function embed_plot(
         uname::AbstractString,
         mediapath::AbstractString,
         buildpath::AbstractString;
-        src_lines::Range = nothing,
+        src_lines::AbstractRange = nothing,
         pure_html::Bool = false
     )
     isa(uname, AbstractString) ? nothing : error("uname must be a string!")
@@ -377,7 +377,7 @@ using ImageFiltering  # needed for Gaussian-filtering images during resize
 
 
 function rescale_image(path::AbstractString, target_path::AbstractString, sz::Int = 200)
-    !isfile(path) && warn("Input argument must be a file!")
+    !isfile(path) && @warn("Input argument must be a file!")
     img = FileIO.load(path)
 
     # calculate new image size `newsz`
@@ -433,7 +433,7 @@ function get_video_duration(path::AbstractString)
     filename = basename(path)
     !(split(filename, ".")[2] in accepted_exts) && error("accepted file types are mp4 and gif!")
     try
-        dur = readstring(`ffprobe -loglevel quiet -print_format compact=print_section=0:nokey=1:escape=csv -show_entries format=duration -i "$(path)"`)
+        dur = read(`ffprobe -loglevel quiet -print_format compact=print_section=0:nokey=1:escape=csv -show_entries format=duration -i "$(path)"`, String)
         dur = parse(Float32, dur)
     catch e
         warn("`get_video_duration` on $filename did not work, using fallback video duration of 0.5 seconds")

@@ -9,7 +9,7 @@ isa_image(x::Matrix) = isa_image(typeof(x))
 isa_image(x) = false
 
 # Splits a dictionary in two dicts, via a condition
-function Base.split(condition::Function, associative::Associative)
+function Base.split(condition::Function, associative::AbstractDict)
     A = similar(associative)
     B = similar(associative)
     for (key, value) in associative
@@ -52,7 +52,7 @@ function assemble_shader(data)
     delete!(data, :shader)
     default_bb = Signal(GeometryTypes.centered(AABB))
     bb  = get(data, :boundingbox, default_bb)
-    if bb == nothing || isa(bb, Signal{Void})
+    if bb == nothing || isa(bb, Signal{Nothing})
         bb = default_bb
     end
     glp = get(data, :gl_primitive, GL_TRIANGLES)
@@ -121,7 +121,7 @@ AABB{T}(a::GPUArray) where {T} = AABB{T}(gpu_data(a))
 
 
 
-points2f0(positions::Vector{T}, range::Range) where {T} = Point2f0[Point2f0(range[i], positions[i]) for i=1:length(range)]
+points2f0(positions::Vector{T}, range::AbstractRange) where {T} = Point2f0[Point2f0(range[i], positions[i]) for i=1:length(range)]
 
 extrema2f0(x::Array{T,N}) where {T<:Intensity,N} = Vec2f0(extrema(reinterpret(Float32,x)))
 extrema2f0(x::Array{T,N}) where {T,N} = Vec2f0(extrema(x))
@@ -205,7 +205,7 @@ function layoutlinspace(n::Integer)
     if n == 1
         1:1
     else
-        linspace(1/n, 1, n)
+        range(1/n, stop=1, length=n)
     end
 end
 xlayout(x::Int) = zip(layoutlinspace(x), Iterators.repeated(""))

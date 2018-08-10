@@ -41,7 +41,7 @@ end
 AbstractPlotting.set_theme!(resolution = (500, 500))
 eval_examples(outputfile = output_path) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
-    srand(42)
+    Random.seed!(42)
     path = save_example(example, value)
     if isa(value, Makie.Stepper)
         name = [string.("thumb-", example.unique_name, "-$i", ".jpg") for i = 1:value.step - 1]
@@ -52,16 +52,16 @@ eval_examples(outputfile = output_path) do example, value
         generate_thumbnail.(path, joinpath.(dirname.(path), name))
     catch e
         warn("generate_thumbnail failed with path $path, entry $(example.unique_name), and filename $name")
-        Base.showerror(STDERR, e)
-        println(STDERR)
-        Base.show_backtrace(STDERR, Base.catch_backtrace())
-        println(STDERR)
+        Base.showerror(stderr, e)
+        println(stderr)
+        Base.show_backtrace(stderr, Base.catch_backtrace())
+        println(stderr)
     end
 end
 
 # =============================================
 # automatically generate an overview of the atomic functions, using a source md file
-info("Generating functions overview")
+@info("Generating functions overview")
 path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
 open(path, "w") do io
@@ -84,7 +84,7 @@ open(path, "w") do io
             embed_thumbnail_link(io, func, buildpath, expdbpath)
         catch e
             println("ERROR: Didn't work with $fname\n")
-            Base.showerror(STDERR, e)
+            Base.showerror(stderr, e)
         end
         println(io, "\n")
     end
@@ -127,7 +127,7 @@ end
 
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
-info("Generating attributes page")
+@info("Generating attributes page")
 include("../src/plot_attr_desc.jl")
 path = joinpath(srcpath, "plot-attributes.md")
 srcdocpath = joinpath(srcpath, "src-plot-attributes.md")
@@ -143,7 +143,7 @@ end
 
 # =============================================
 # automatically generate an overview of the axis attributes, using a source md file
-info("Generating axis page")
+@info("Generating axis page")
 path = joinpath(srcpath, "axis.md")
 srcdocpath = joinpath(srcpath, "src-axis.md")
 include("../src/Axis2D_attr_desc.jl")
@@ -179,7 +179,7 @@ open(path, "w") do io
 end
 
 # automatically generate an overview of the function signatures, using a source md file
-info("Generating signatures page")
+@info("Generating signatures page")
 path = joinpath(srcpath, "signatures.md")
 srcdocpath = joinpath(srcpath, "src-signatures.md")
 open(path, "w") do io
@@ -200,7 +200,7 @@ end
 # ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
 # cp(tmp_path, mediapath)
 
-info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
+@info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
 makedocs(
     modules = [Makie, AbstractPlotting],
     doctest = false, clean = false,

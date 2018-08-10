@@ -19,7 +19,7 @@ end
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
-    robj = get!(screen.cache, object_id(x)) do
+    robj = get!(screen.cache, objectid(x)) do
         gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
@@ -310,7 +310,7 @@ end
 
 function makieshader(paths...)
     view = Dict{String, String}()
-    if !is_apple()
+    if !Sys.isapple()
         view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
         view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
     end

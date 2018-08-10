@@ -13,7 +13,7 @@ struct CairoScreen{S}
     scene::Scene
     surface::S
     context::CairoContext
-    pane::Void#Union{CairoGtkPane, Void}
+    pane::Nothing#Union{CairoGtkPane, Void}
 end
 # # we render the scene directly, since we have no screen dependant state like in e.g. opengl
 Base.insert!(screen::CairoScreen, scene::Scene, plot) = nothing
@@ -161,17 +161,17 @@ function rot_scale_matrix(x, y, q)
 end
 
 function set_font_matrix(cr, matrix)
-    ccall((:cairo_set_font_matrix, Cairo._jl_libcairo), Void, (Ptr{Void}, Ptr{Void}), cr.ptr, Ref(matrix))
+    ccall((:cairo_set_font_matrix, Cairo._jl_libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, Ref(matrix))
 end
 
 
 function set_ft_font(cr, font)
     font_face = ccall(
         (:cairo_ft_font_face_create_for_ft_face, Cairo._jl_libcairo),
-        Ptr{Void}, (Ptr{Void}, Cint),
+        Ptr{Cvoid}, (Ptr{Cvoid}, Cint),
         font, 0
     )
-    ccall((:cairo_set_font_face, Cairo._jl_libcairo), Void, (Ptr{Void}, Ptr{Void}), cr.ptr, font_face)
+    ccall((:cairo_set_font_face, Cairo._jl_libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, font_face)
 end
 fontname(x::String) = x
 fontname(x::Symbol) = string(x)

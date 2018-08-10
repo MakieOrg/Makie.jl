@@ -44,7 +44,7 @@ function gappy(x, ps)
     return last(ps) - x
 end
 function ticks(points, resolution)
-    Float16[gappy(x, points) for x = linspace(first(points),last(points), resolution)]
+    Float16[gappy(x, points) for x = range(first(points), stop=last(points), length=resolution)]
 end
 
 
@@ -143,7 +143,7 @@ function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) whe
     data
 end
 
-function _default(positions::Vector{T}, range::Range, s::style"lines", data::Dict) where T <: AbstractFloat
+function _default(positions::Vector{T}, range::AbstractRange, s::style"lines", data::Dict) where T <: AbstractFloat
     length(positions) != length(range) && throw(
         DimensionMismatsch("length of $(typeof(positions)) $(length(positions)) and $(typeof(range)) $(length(range)) must match")
     )
