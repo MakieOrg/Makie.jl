@@ -348,8 +348,6 @@ primitive_scale(c) = Vec2f0(0.1)
 """
 Extracts the offset from a primitive.
 """
-#primitive_offset(prim::GeometryPrimitive) = Vec2f0(minimum(prim))
-
 primitive_offset(x, scale::Nothing) = Vec2f0(0) # default offset
 primitive_offset(x, scale) = const_lift(/, scale, -2f0)  # default offset
 

@@ -115,7 +115,7 @@ mutable struct GLProgram
     context     ::GLContext
     function GLProgram(id::GLuint, shader::Vector{Shader}, nametype::Dict{Symbol, GLenum}, uniformloc::Dict{Symbol, Tuple})
         obj = new(id, shader, nametype, uniformloc, current_context())
-        finalizer(obj, free)
+        finalizer(free, obj)
         obj
     end
 end
@@ -269,7 +269,7 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
         indexes = len
     end
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
-    finalizer(obj, free)
+    finalizer(free, obj)
     obj
 end
 function Base.show(io::IO, vao::GLVertexArray)

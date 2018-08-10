@@ -36,7 +36,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             size,
             current_context()
         )
-        finalizer(tex, free)
+        finalizer(free, tex)
         tex
     end
 end

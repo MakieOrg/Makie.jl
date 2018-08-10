@@ -14,7 +14,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         glBindBuffer(buffertype, 0)
 
         obj = new(id, (buff_length,), buffertype, usage, current_context())
-        finalizer(obj, free)
+        finalizer(free, obj)
         obj
     end
 end

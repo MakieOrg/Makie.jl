@@ -23,7 +23,7 @@ import AxisArrays, ImageAxes
 
 import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
-
+using LinearAlgebra
 
 using IndirectArrays
 const HasAxesArray{T, N} = AxisArrays.AxisArray{T, N}
