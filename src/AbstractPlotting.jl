@@ -12,7 +12,7 @@ using LinearAlgebra
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-
+using Statistics
 
 include("utilities/quaternions.jl")
 include("types.jl")
