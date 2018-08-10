@@ -3,7 +3,7 @@ function default(main::ANY, s::ANY, data::ANY)
     _default_light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
-        model = 
+        model =
         light = _default_light
         preferred_camera = :perspective
         is_transparent_pass = Cint(false)
@@ -40,12 +40,12 @@ function _view(
         if haskey(screen.cameras, camsym)
             real_camera = screen.cameras[camsym]
         elseif camsym == :perspective
-            keep = map((a, b) -> !a && b, ishidden, mouseinside)
+            keep = lift((a, b) -> !a && b, ishidden, mouseinside)
             real_camera = PerspectiveCamera(screen.inputs, position, lookat, keep = keep)
         elseif camsym == :fixed_pixel
             real_camera = DummyCamera(window_size = screen.area)
         elseif camsym == :orthographic_pixel
-            keep = map((a, b) -> !a && b, ishidden, mouseinside)
+            keep = lift((a, b) -> !a && b, ishidden, mouseinside)
             real_camera = OrthographicPixelCamera(screen.inputs, keep = keep)
         elseif camsym == :nothing
             push!(screen, robj, :nothing)
@@ -60,7 +60,7 @@ function _view(
          error("$camera not a known camera type")
     end
     screen.cameras[camsym] = real_camera
-    robj.uniforms[:resolution] = map(screen.area) do area
+    robj.uniforms[:resolution] = lift(screen.area) do area
         Vec2f0(widths(area))
     end
     collect(real_camera, robj.uniforms)

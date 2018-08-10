@@ -1,5 +1,5 @@
 ############################################################################
-const TOrSignal{T} = Union{Signal{T}, T}
+const TOrSignal{T} = Union{Node{T}, T}
 
 const ArrayOrSignal{T, N} = TOrSignal{Array{T, N}}
 const VecOrSignal{T} = ArrayOrSignal{T, 1}
@@ -160,7 +160,7 @@ struct FrameBuffer{T}
     id          ::GLuint
     attachments ::Vector{Any}
     context     ::GLContext
-    function FrameBuffer{T}(dimensions::Signal) where T
+    function FrameBuffer{T}(dimensions::Node) where T
         fb = glGenFramebuffers()
         glBindFramebuffer(GL_FRAMEBUFFER, fb)
         new(id, attachments, current_context())
@@ -311,7 +311,7 @@ end
 function RenderObject(
         data::Dict{Symbol, Any}, program,
         pre::Pre, post,
-        bbs=Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
+        bbs=Node(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
         main=nothing
     ) where Pre
     targets = get(data, :gl_convert_targets, Dict())

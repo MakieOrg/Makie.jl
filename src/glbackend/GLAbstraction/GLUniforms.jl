@@ -61,7 +61,7 @@ end
 #Some additional uniform functions, not related to Imutable Arrays
 gluniform(location::Integer, target::Integer, t::Texture)   = gluniform(GLint(location), GLint(target), t)
 gluniform(location::Integer, target::Integer, t::GPUVector) = gluniform(GLint(location), GLint(target), t.buffer)
-gluniform(location::Integer, target::Integer, t::Signal)    = gluniform(GLint(location), GLint(target), to_value(t))
+gluniform(location::Integer, target::Integer, t::Node)    = gluniform(GLint(location), GLint(target), to_value(t))
 gluniform(location::Integer, target::Integer, t::TextureBuffer) = gluniform(GLint(location), GLint(target), t.texture)
 function gluniform(location::GLint, target::GLint, t::Texture)
     activeTarget = GL_TEXTURE0 + UInt32(target)
@@ -71,7 +71,7 @@ function gluniform(location::GLint, target::GLint, t::Texture)
 end
 gluniform(location::Integer, x::Enum) = gluniform(GLint(location), GLint(x))
 
-function gluniform(loc::Integer, x::Signal{T}) where T
+function gluniform(loc::Integer, x::Node{T}) where T
     gluniform(GLint(loc), to_value(x))
 end
 
@@ -105,7 +105,7 @@ function glsl_typename(t::Type{T}) where T <: SMatrix
     M, N = size(t)
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(M, "x", N))
 end
-toglsltype_string(t::Signal) = toglsltype_string(t.value)
+toglsltype_string(t::Node) = toglsltype_string(t.value)
 toglsltype_string(x::T) where {T<:Union{Real, StaticArray, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"
 #Handle GLSL structs, which need to be addressed via single fields
 function toglsltype_string(x::T) where T
@@ -127,7 +127,7 @@ end
 function glsl_variable_access(keystring, ::Union{Real, GLBuffer, GPUVector, StaticArray, Colorant})
     string(keystring, ";")
 end
-function glsl_variable_access(keystring, s::Signal)
+function glsl_variable_access(keystring, s::Node)
     glsl_variable_access(keystring, s.value)
 end
 function glsl_variable_access(keystring, t::Any)
@@ -194,7 +194,7 @@ gl_convert(x::T) where {T <: Number} = gl_promote(T)(x)
 gl_convert(x::T) where {T <: Colorant} = gl_promote(T)(x)
 gl_convert(x::T) where {T <: AbstractMesh} = gl_convert(convert(GLNormalMesh, x))
 gl_convert(x::T) where {T <: HomogenousMesh} = gl_promote(T)(x)
-gl_convert(x::Signal{T}) where {T <: HomogenousMesh} = gl_promote(T)(x)
+gl_convert(x::Node{T}) where {T <: HomogenousMesh} = gl_promote(T)(x)
 
 gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
 gl_convert(s::AABB) = s
@@ -225,8 +225,8 @@ end
 # native types don't need convert!
 gl_convert(a::T) where {T <: NATIVE_TYPES} = a
 
-gl_convert(s::Signal{T}) where {T <: NATIVE_TYPES} = s
-gl_convert(s::Signal{T}) where T = const_lift(gl_convert, s)
+gl_convert(s::Node{T}) where {T <: NATIVE_TYPES} = s
+gl_convert(s::Node{T}) where T = const_lift(gl_convert, s)
 
 gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
 gl_convert(x::SMatrix{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
@@ -243,9 +243,9 @@ function gl_convert(::Type{T}, a::Vector{Array{X, 2}}; kw_args...) where {T <: T
     T(a; kw_args...)
 end
 
-function gl_convert(::Type{T}, a::Signal{Array{X, N}}; kw_args...) where {T <: GPUArray, X, N}
+function gl_convert(::Type{T}, a::Node{Array{X, N}}; kw_args...) where {T <: GPUArray, X, N}
     TGL = gl_promote(X)
-    s = (X == TGL) ? a : const_lift(map, TGL, a)
+    s = (X == TGL) ? a : lift(map, TGL, a)
     T(s; kw_args...)
 end
 
