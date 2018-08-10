@@ -26,13 +26,13 @@ begin #basically a singleton for the textureatlas
     # random list of chars we cache
     # basically to make runtests fast, until we figure out a better way to cache
     # newly rendered chars.
-    const local _tobe_cached = [
+    const _tobe_cached = [
         'π','∮','⋅','→','∞','∑','∏','∀','∈','ℝ','⌈','⌉','−','⌊','⌋','α','∧','β','∨','ℕ','⊆','₀',
         '⊂','ℤ','ℚ','ℂ','⊥','≠','≡','≤','≪','⊤','⇒','⇔','₂','⇌','Ω','⌀',
     ]
-    const local _cache_path = joinpath(dirname(@__FILE__), "..", ".cache", "texture_atlas.jls")
-    const local _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
-    const local _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
+    const _cache_path = joinpath(dirname(@__FILE__), "..", ".cache", "texture_atlas.jls")
+    const _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
+    const _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
 
     function defaultfont()
         if isempty(_default_font)

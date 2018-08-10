@@ -39,7 +39,7 @@ end
 
 Base.abs(q::Quaternion) = sqrt(sum(q.data.^2))
 
-Base.normalize(q::Quaternion) = q / abs(q)
+LinearAlgebra.normalize(q::Quaternion) = q / abs(q)
 
 Base.:(/)(q::Quaternion, x::Real) = Quaternion(q[1] / x, q[2] / x, q[3] / x, q[4] / x)
 

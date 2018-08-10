@@ -1,5 +1,5 @@
 # TODO use 0.7 logging capabilities!
-
+using Printf
 # info, debug, gc, signals, performance
 const log_level = RefValue((false, false, false, false, false, false))
 

@@ -105,3 +105,15 @@ function ispressed(scene::SceneLike, button)
     buttons = getfield(events(scene), button_key(button))[]
     ispressed(buttons, button)
 end
+
+
+"""
+Picks a mouse position
+"""
+function pick end
+
+"""
+    onpick(func, plot)
+Calls `func` if one clicks on `plot`
+"""
+function onpick end

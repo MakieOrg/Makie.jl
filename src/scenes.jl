@@ -27,7 +27,7 @@ mutable struct Scene <: AbstractScene
             current_screens::Vector{AbstractScreen},
         )
         obj = new(events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
-        jl_finalizer(obj) do obj
+        finalizer(obj) do obj
             # save_print("Freeing scene")
             close_all_nodes(obj.events)
             close_all_nodes(obj.transformation)
@@ -229,7 +229,7 @@ function current_default_theme(; kw_args...)
     merge(copy, Attributes(;kw_args...))
 end
 
-function set_theme!(new_theme::Attributes = minimal_default)
+function set_theme!(new_theme::Attributes)
     empty!(_current_default_theme)
     merge!(_current_default_theme, minimal_default, new_theme)
     return

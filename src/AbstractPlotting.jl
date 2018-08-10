@@ -7,15 +7,15 @@ using ColorBrewer
 using Packing
 using SignedDistanceFields
 using FreeType, FreeTypeAbstraction, UnicodeFun
+using LinearAlgebra
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
-import Base: getindex, setindex!, push!, append!, parent, scale!, get, get!, delete!, haskey
+import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 
 
 include("utilities/quaternions.jl")
 include("types.jl")
-include("utilities/compat.jl")
 include("utilities/utilities.jl")
 include("utilities/logging.jl")
 include("utilities/texture_atlas.jl")
@@ -62,7 +62,7 @@ export AbstractScene, SceneLike, Scene, AbstractScreen
 export AbstractPlot, Combined, Atomic, Axis
 
 # Theming, working with Plots
-export Attributes, Theme, attributes, arguments, default_theme, theme
+export Attributes, Theme, attributes, default_theme, theme
 
 # Node/Signal related
 export Node, node, lift, map_once
