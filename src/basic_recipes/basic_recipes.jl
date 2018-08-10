@@ -2,11 +2,12 @@
 @recipe(Poly) do scene
     Theme(;
         color = theme(scene, :color),
+        visible = theme(scene, :visible),
         strokecolor = RGBAf0(0,0,0,0),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         strokewidth = 0.0,
-        linestyle = nothing
+        linestyle = nothing,
     )
 end
 AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = convert_arguments(Scatter, v)
@@ -18,12 +19,12 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = false
+        shading = false, visible = plot[:visible]
     )
     wireframe!(
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle],
-        linewidth = plot[:strokewidth],
+        linewidth = plot[:strokewidth], visible = plot[:visible]
     )
 end
 
@@ -33,12 +34,12 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P
         polys = GeometryTypes.split_intersections(p)
         merge(GLPlainMesh.(polys))
     end
-    mesh!(plot, bigmesh, color = plot[:color])
+    mesh!(plot, bigmesh, color = plot[:color], visible = plot[:visible])
     outline = lift(positions) do p
         push!(copy(p), p[1]) # close path
     end
     lines!(
-        plot, outline,
+        plot, outline, visible = plot[:visible],
         color = plot[:strokecolor], linestyle = plot[:linestyle],
         linewidth = plot[:strokewidth],
     )
@@ -60,7 +61,7 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circ
         strokecolor = plot[:strokecolor],
         colormap = plot[:colormap],
         colorrange = plot[:colorrange],
-        strokewidth = plot[:strokewidth],
+        strokewidth = plot[:strokewidth], visible = plot[:visible]
     )
 end
 function data_limits(p::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
@@ -458,7 +459,6 @@ end
 
 convert_arguments(::Type{<: BarPlot}, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}) = (x, y)
 convert_arguments(::Type{<: BarPlot}, y::AbstractVector{<: Number}) = (1:length(y), y)
-
 
 function AbstractPlotting.plot!(p::BarPlot)
     pos_scale = lift(p[1], p[2], p[:fillto], p[:width]) do x, y, fillto, hw
