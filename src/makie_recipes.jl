@@ -87,7 +87,7 @@ end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
-    if value(plot[:fillrange])
+    if to_value(plot[:fillrange])
         plot[:interpolate] = true
         # TODO normalize linewidth for heatmap
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])

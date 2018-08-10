@@ -132,7 +132,7 @@ end
 
 using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, glyph_scale!, calc_position, calc_offset
 
-function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
+function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VectorTypes
     atlas = get_texture_atlas()
     N = length(T)
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]

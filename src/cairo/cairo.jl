@@ -192,7 +192,7 @@ function cairo_draw(screen::CairoScreen, primitive::Text)
     scene = screen.scene
     ctx = screen.context
     @get_attribute(primitive, (textsize, color, font, align, rotation, model))
-    txt = value(primitive[1])
+    txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
     N = length(txt)
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r

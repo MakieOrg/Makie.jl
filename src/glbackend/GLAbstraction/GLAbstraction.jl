@@ -80,7 +80,7 @@ export cardinality              # returns the cardinality of the elements of a b
 
 export Style                    # Style Type, which is used to choose different visualization/editing styles via multiple dispatch
 export mergedefault!            # merges a style dict via a given style
-export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VecTypes, MatTypes, VolumeTypes
+export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VectorTypes, MatTypes, VolumeTypes
 export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
 
 

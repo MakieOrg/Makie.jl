@@ -23,7 +23,7 @@ function _default(main::MatTypes{T}, s::Style{:surface}, data::Dict) where T <: 
         ranges = ((-1f0, 1f0), (-1f0,1f0)) => "x, and y position given as `(start, endvalue)` or any `Range`"
     end
     delete!(data, :ranges) # no need to have them in the OpenGL data
-    _default((Grid(value(main), value(ranges)), main), s, data)
+    _default((Grid(to_value(main), to_value(ranges)), main), s, data)
 end
 
 function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) where {G <: Grid{2}, T <: AbstractFloat}
@@ -95,7 +95,7 @@ function surface(main, s::Style{:surface}, data::Dict)
         instances  = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         shader     = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
-            value(wireframe) ? "distance_shape.frag" : "standard.frag",
+            to_value(wireframe) ? "distance_shape.frag" : "standard.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal),
@@ -157,22 +157,22 @@ function _position_calc(
 end
 
 function _position_calc(
-        position_x::VecTypes{T}, position_y::T, position_z::T, target::Type{TextureBuffer}
+        position_x::VectorTypes{T}, position_y::T, position_z::T, target::Type{TextureBuffer}
     ) where T <: AbstractFloat
     "pos = vec3(texelFetch(position_x, index).x, position_y, position_z);"
 end
 function _position_calc(
-        position_x::VecTypes{T}, position_y::T, position_z::T, target::Type{GLBuffer}
+        position_x::VectorTypes{T}, position_y::T, position_z::T, target::Type{GLBuffer}
     ) where T <: AbstractFloat
     "pos = vec3(position_x, position_y, position_z);"
 end
 function _position_calc(
-        position_xyz::VecTypes{T}, target::Type{TextureBuffer}
+        position_xyz::VectorTypes{T}, target::Type{TextureBuffer}
     ) where T <: StaticVector
     "pos = texelFetch(position, index).xyz;"
 end
 function _position_calc(
-        position_xyz::VecTypes{T}, target::Type{GLBuffer}
+        position_xyz::VectorTypes{T}, target::Type{GLBuffer}
     ) where T <: StaticVector
     len = length(T)
     filler = join(ntuple(x->0, 3-len), ", ")
@@ -180,7 +180,7 @@ function _position_calc(
     "pos = vec3(position $needs_comma $filler);"
 end
 function _position_calc(
-        position_x::VecTypes{T}, position_y::VecTypes{T}, position_z::VecTypes{T},
+        position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::VectorTypes{T},
         target::Type{TextureBuffer}
     ) where T<:AbstractFloat
     "pos = vec3(
@@ -190,7 +190,7 @@ function _position_calc(
     );"
 end
 function _position_calc(
-        position_x::VecTypes{T}, position_y::VecTypes{T}, position_z::VecTypes{T},
+        position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::VectorTypes{T},
         target::Type{GLBuffer}
     ) where T<:AbstractFloat
     "pos = vec3(
@@ -215,7 +215,7 @@ function _position_calc(
     "
 end
 function _position_calc(
-        position::Grid{2}, ::VecTypes{T}, target::Type{GLBuffer}
+        position::Grid{2}, ::VectorTypes{T}, target::Type{GLBuffer}
     ) where T
     "
     ivec2 index2D = ind2sub(position.dims, index);
