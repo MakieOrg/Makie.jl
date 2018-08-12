@@ -144,7 +144,7 @@ function plot!(vs::VolumeSlices)
         hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[]))).plots[end]
         foreach(idx) do i
             transform!(hmap, (plane, r[][i]))
-            indices = ntuple(Val{3}) do j
+            indices = ntuple(Val(3)) do j
                 planes[j] == plane ? i : (:)
             end
             hmap[3][] = view(volume[], indices...)

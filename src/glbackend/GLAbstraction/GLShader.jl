@@ -146,7 +146,7 @@ end
 
 function compile_shader(path, source_str::AbstractString)
     typ = GLAbstraction.shadertype(query(path))
-    source = Vector{UInt8}(source_str)
+    source = unsafe_wrap(Vector{UInt8}, source_str)
     name = Symbol(path)
     compile_shader(source, typ, name)
 end
@@ -246,8 +246,8 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
             Found: $paths"
         )
     end
-    template_keys = Vector{Vector{String}}(length(paths))
-    replacements = Vector{Vector{String}}(length(paths))
+    template_keys = Vector{Vector{String}}(undef, length(paths))
+    replacements = Vector{Vector{String}}(undef, length(paths))
     for (i, path) in enumerate(paths)
         template = get_template!(path, v, data)
         template_keys[i] = template
@@ -256,7 +256,7 @@ function gl_convert(lazyshader::AbstractLazyShader, data)
     program = get!(_program_cache, (paths, replacements)) do
         # when we're here, this means there were uncached shaders, meaning we definitely have
         # to compile a new program
-        shaders = Vector{Shader}(length(paths))
+        shaders = Vector{Shader}(undef, length(paths))
         for (i, path) in enumerate(paths)
             tr = Dict(zip(template_keys[i], replacements[i]))
             shaders[i] = get_shader!(path, tr, v, data)
@@ -290,7 +290,7 @@ function mustache_replace(replace_view::Union{Dict, Function}, string)
     i = 0
     replace_begin = i
     last_char = SubString(string, 1, 1)
-    len = endof(string)
+    len = lastindex(string)
     while i <= len
         i = nextind(string, i)
         i > len && break
@@ -332,7 +332,7 @@ end
 function mustache2replacement(mustache_key, view, attributes)
     haskey(view, mustache_key) && return view[mustache_key]
     for postfix in ("_type", "_calculation")
-        keystring = replace(mustache_key, postfix, "")
+        keystring = replace(mustache_key, postfix => "")
         keysym = Symbol(keystring)
         if haskey(attributes, keysym)
             val = attributes[keysym]
