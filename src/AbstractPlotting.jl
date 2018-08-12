@@ -7,12 +7,12 @@ using ColorBrewer
 using Packing
 using SignedDistanceFields
 using FreeType, FreeTypeAbstraction, UnicodeFun
-using LinearAlgebra
+using LinearAlgebra, Statistics
+
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-using Statistics
 
 include("utilities/quaternions.jl")
 include("types.jl")
