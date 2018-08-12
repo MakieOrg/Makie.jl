@@ -26,7 +26,7 @@ end
 function text_bb(str, font, size)
     positions, scale = layout_text(
         str, Point2f0(0), size,
-        font, Vec2f0(0), Quaternionf0(0,0,0,1), eye(Mat4f0)
+        font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I)
     )
     union(AABB(positions),  AABB(positions .+ scale))
 end

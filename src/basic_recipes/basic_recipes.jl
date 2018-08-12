@@ -312,7 +312,7 @@ function plot!(plot::Annotations)
     t_attributes[:font] = map(x-> x[5], tp)
     t_attributes[:rotation] = map(x-> x[6], tp)
     t_attributes[:align] = Vec2f0(0)
-    t_attributes[:model] = eye(Mat4f0)
+    t_attributes[:model] = Mat4f0(I)
     t_attributes[:raw] = true
     text!(plot, t_attributes, map(x-> x[1], tp))
     plot
