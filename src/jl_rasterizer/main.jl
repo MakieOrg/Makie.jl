@@ -133,7 +133,7 @@ function rasterizer(
 end
 
 
-Base.@pure Next(::Val{N}) where {N} = Val{N - 1}()
+Base.@pure Next(::Val{N}) where {N} = Val(N - 1)
 @inline function interpolate(bary, face::NTuple{N, T}, vn::Val{0}, aggregate) where {N, T}
     if T <: Tuple
         aggregate
@@ -172,7 +172,7 @@ function (r::JLRasterizer{Vert, Args, FragN})(
     vshader = r.vertexshader
     gshader = r.geometryshader
     fshader = r.fragmentshader
-    FragNVal = Val{FragN}()
+    FragNVal = Val(FragN)
     fragments_drawn = 0
     for face in vertex_array
         vertex_stage = map(reverse(face)) do f

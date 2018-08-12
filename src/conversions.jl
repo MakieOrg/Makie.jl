@@ -236,9 +236,9 @@ function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::Abstract
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
-    _x, _y, _z = ntuple(Val{3}) do i
+    _x, _y, _z = ntuple(Val(3)) do i
         A = (x, y, z)[i]
-        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val{3}))
+        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
     end
     (x, y, z, f.(_x, _y, _z))
 end
@@ -325,9 +325,9 @@ end
 
 function to_vertices(verts::AbstractMatrix{<: Number})
     if size(verts, 1) in (2, 3)
-        to_vertices(verts, Val{1}())
+        to_vertices(verts, Val(1))
     elseif size(verts, 2) in (2, 3)
-        to_vertices(verts, Val{2}())
+        to_vertices(verts, Val(2))
     else
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
