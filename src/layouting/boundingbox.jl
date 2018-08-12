@@ -36,7 +36,7 @@ boundingbox(x::Text) = boundingbox(x, value(x[1]))
 function boundingbox(
         text::String, position, textsize;
         font = "default", align = (:left, :bottom), rotation = 0.0,
-        model::Mat4f0 = eye(Mat4f0)
+        model::Mat4f0 = Mat4f0(I)
     )
     boundingbox(
         text, position, textsize,
