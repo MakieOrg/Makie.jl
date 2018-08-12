@@ -497,7 +497,7 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
 
-const colorbrewer_names = Symbol[
+const colorbrewer_names = Symbol.([
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
     :Blues,
     :Oranges,
@@ -540,15 +540,15 @@ const colorbrewer_names = Symbol[
     :Paired,
     :Pastel1,
     :Pastel2
-]
+])
 
-const colorbrewer_8color_names = String[
+const colorbrewer_8color_names = String.([
     #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
     :Accent,
     :Dark2,
     :Pastel2,
     :Set2
-]
+])
 
 const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
 
