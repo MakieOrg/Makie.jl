@@ -312,4 +312,7 @@ end
 
 
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
-to_vector(x::ClosedInterval, len, T) = range(T.(extrema(x))..., stop=len, length=50)
+function to_vector(x::ClosedInterval, len, T)
+    a, b = T.(extrema(x))
+    range(a, stop=b, length=len)
+end
