@@ -26,7 +26,7 @@ end
 @inline Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
 @inline Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
 @inline Base.getindex(x::Quaternion, i::Integer) = x.data[i]
-Base.isapprox(x::Quaternion, y::Quaternion) = all((x .≈ y).data)
+Base.isapprox(x::Quaternion, y::Quaternion) = all((x.data .≈ y.data))
 
 function qrotation(axis::StaticVector{3}, theta::Real)
     u = normalize(axis)
@@ -37,7 +37,7 @@ function Base.broadcast(f, arg1::Quaternion, arg2::Quaternion)
     Quaternion(f.(arg1.data, arg2.data))
 end
 
-Base.abs(q::Quaternion) = sqrt(sum(q.data.^2))
+Base.abs(q::Quaternion) = sqrt(sum(q.data .^ 2))
 
 LinearAlgebra.normalize(q::Quaternion) = q / abs(q)
 
