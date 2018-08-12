@@ -255,8 +255,8 @@ setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = v
 
 function getindex(x::AbstractPlot, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(argnames, key)
-    if idx == 0
+    idx = findfirst(isequal(key), argnames)
+    if idx == nothing
         return x.attributes[key]
     else
         x.converted[idx]
@@ -276,8 +276,8 @@ end
 
 function setindex!(x::AbstractPlot, value, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(argnames, key)
-    if idx == 0 && haskey(x.attributes, key)
+    idx = findfirst(isequal(key), argnames)
+    if idx == nothing && haskey(x.attributes, key)
         return x.attributes[key][] = value
     elseif !haskey(x.attributes, key)
         x.attributes[key] = to_node(value)
@@ -288,8 +288,8 @@ end
 
 function setindex!(x::AbstractPlot, value::Node, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(argnames, key)
-    if idx == 0
+    idx = findfirst(isequal(key), argnames)
+    if idx == nothing
         if haskey(x, key)
             # error("You're trying to update an attribute node with a new node. This is not supported right now.
             # You can do this manually like this:
