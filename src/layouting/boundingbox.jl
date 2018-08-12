@@ -12,11 +12,11 @@ boundingbox(scene::Scene) = boundingbox(plots_from_camera(scene))
 
 function boundingbox(plots::Vector)
     isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
+    plot_idx = iterate(plots)
     bb = FRect3D()
-    idx = start(plots)
-    bb = FRect3D()
-    while !done(plots, idx)
-        plot, idx = next(plots, idx)
+    while plot_idx !== nothing
+        plot, idx = plot_idx
+        plot_idx = iterate(plots, idx)
         bb2 = boundingbox(plot)
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue
@@ -48,16 +48,18 @@ end
 function boundingbox(text::String, position, textsize, font, align, rotation, model)
     atlas = get_texture_atlas()
     N = length(text)
+    ctext_state = iterate(text)
+    ctext_state === nothing && return AABB(Vec3f0(0), Vec3f0(0))
     pos_per_char = !isa(position, VecTypes)
     start_pos = Vec(pos_per_char ? first(position) : position)
     start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
     last_pos = Point2f0(0, 0)
-    c = first(text); text_state = start(text)
-    c, text_state = next(text, text_state)
     aoffsetn = to_ndim(Vec3f0, align, 0f0)
     start_pos3d = to_ndim(Vec3f0, start_pos, 0.0)
     bb = AABB(start_pos3d, Vec3f0(0))
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
+        c, text_state = ctext_state
+        ctext_state = iterate(text, text_state)
         if c != '\r'
             pos = if pos_per_char
                 to_ndim(Vec3f0, position[i], 0.0)
@@ -69,9 +71,6 @@ function boundingbox(text::String, position, textsize, font, align, rotation, mo
             srot = rotation * to_ndim(Vec3f0, s, 0.0)
             bb = GeometryTypes.update(bb, pos)
             bb = GeometryTypes.update(bb, pos .+ srot)
-        end
-        if !done(text, text_state)
-            c, text_state = next(text, text_state)
         end
     end
     FRect3D(minimum(bb) .- (widths(bb) .* aoffsetn), widths(bb))

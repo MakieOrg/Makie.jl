@@ -36,16 +36,19 @@ extrema_nan(itr::Pair) = (itr[1], itr[2])
 extrema_nan(itr::ClosedInterval) = (minimum(itr), maximum(itr))
 
 function extrema_nan(itr)
-    s = start(itr)
-    done(itr, s) && return (NaN, NaN)
-    (v, s) = next(itr, s)
+    vs = iterate(itr)
+    vs === nothing && return (NaN, NaN)
+    v, s = vs
     vmin = vmax = v
-    while !_isfinite(v) && !done(itr, s)
-        (v, s) = next(itr, s)
+    # find first finite value
+    while vs !== nothing && !_isfinite(v)
+        v, s = vs
         vmin = vmax = v
+        vs = iterate(itr, s)
     end
-    while !done(itr, s)
-        (x, s) = next(itr, s)
+    while vs !== nothing
+        x, s = vs
+        vs = iterate(itr, s)
         _isfinite(x) || continue
         vmax = scalarmax(x, vmax)
         vmin = scalarmin(x, vmin)
@@ -54,7 +57,7 @@ function extrema_nan(itr)
 end
 
 
-function _boundingbox(x, y, z = (0=>0))
+function _boundingbox(x, y, z = (0 => 0))
     minmax = extrema_nan.((x, y, z))
     mini, maxi = first.(minmax), last.(minmax)
     FRect3D(mini, maxi .- mini)
@@ -93,10 +96,11 @@ Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)
 
 function data_limits(plots::Vector)
     isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
-    idx = start(plots)
     bb = FRect3D()
-    while !done(plots, idx)
-        plot, idx = next(plots, idx)
+    plot_idx = iterate(plots)
+    while plot_idx !== nothing
+        plot, idx = plot_idx
+        plot_idx = iterate(plots, idx)
         # axis shouldn't be part of the data limit
         isaxis(plot) && continue
         isa(plot, Legend) && continue

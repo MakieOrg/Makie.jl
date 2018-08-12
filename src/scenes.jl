@@ -45,9 +45,7 @@ mutable struct Scene <: AbstractScene
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
-Base.start(scene::Scene) = 1
-Base.done(scene::Scene, idx) = idx > length(scene)
-Base.next(scene::Scene, idx) = (scene[idx], idx + 1)
+Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
