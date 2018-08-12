@@ -41,17 +41,18 @@ end
 function (B::Type{AABB{T}})(
       ti::TransformationIterator, primitive::AABB{T}
     ) where T
-    state = start(ti)
-    if done(ti, state)
-        return primitive
-    end
-    tsr::Tuple{Point3f0, Vec3f0, Mat4f0}, state = next(ti, state)
+    v_state = iterate(ti)
+    v_state === nothing && return primitive
+
+    tsr, state = v_state
     points = decompose(Point3f0, primitive)::Vector{Point3f0}
     bb = transform(tsr[1], tsr[2], tsr[3], points)
-    while !done(ti, state)
-        tsr, state = next(ti, state)
+    v_state = iterate(ti, state)
+    while v_state !== nothing
+        tsr, state = v_state
         translatet_bb = transform(tsr[1], tsr[2], tsr[3], points)
         bb = union(bb, translatet_bb)
+        v_state = iterate(ti, state)
     end
     bb
 end

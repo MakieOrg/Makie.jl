@@ -131,22 +131,22 @@ function Base.unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writ
     return nothing
 end
 
-function Base.start(buffer::GLBuffer{T}) where T
+function Base.iterate(buffer::GLBuffer{T}) where T
+    length(buffer) < 1 && return nothing
     glBindBuffer(buffer.buffertype, buffer.id)
     ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
-    (ptr, 1)
+    (unsafe_load(ptr, i), (ptr, 1))
 end
-function Base.next(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
+function Base.iterate(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
     ptr, i = state
+    if i > length(buffer)
+        glUnmapBuffer(buffer.buffertype)
+        return nothing
+    end
     val = unsafe_load(ptr, i)
-    (val, (ptr, i+1))
+    (val, (ptr, i + 1))
 end
-function Base.done(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
-    ptr, i = state
-    isdone = length(buffer) < i
-    isdone && glUnmapBuffer(buffer.buffertype)
-    isdone
-end
+
 
 #copy inside one buffer
 function Base.unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, len::Int) where T

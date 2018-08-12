@@ -232,11 +232,14 @@ end
 
 function findspace(line)
     space_len = 0
-    s = start(line)
-    c = first(line)
-    while !done(line, s) && c == ' '
+    c_s = iterate(line)
+    c_s === nothing && return 0
+    c, s = c_s
+    while c == ' '
         space_len += 1
-        c, s = next(line, s)
+        c_s = iterate(line, s)
+        c_s === nothing && break
+        c, s = c_s
     end
     space_len -= 1
     space_len
@@ -272,7 +275,7 @@ function extract_source(file, file_range)
         for (i, line) in enumerate(eachline(io))
             i < minimum(file_range) && continue
             # allow to parse past maximum(file_range) until next end
-            if i > maximum(file_range) && contains(line, "end")
+            if i > maximum(file_range) && occursin("end", line)
                 if length(line) > start_indent && line[start_indent] == ' '
                     # if end is on start indention level,
                     # this isn't the macro end and needs to be part of source
@@ -420,7 +423,7 @@ macro block(author, tags, block)
 
     args = block.args
     pfile, pstartend = find_startend(args)
-    # psource = extract_source(pfile, pstartend, x-> !contains(x, "@cell"))
+    # psource = extract_source(pfile, pstartend, x-> !occursin("@cell", x))
 
     parent_tags = extract_tags(tags)
     cells = args[findall(is_cell, args)]
@@ -519,7 +522,7 @@ function eval_example(entry; kw_args...)
     tmpmod = Module(gensym(uname))
     result = nothing
     try
-        result = eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
+        result = include_string(tmpmod, source, string(uname))
     catch e
         Base.showerror(stderr, e)
         println(stderr)
