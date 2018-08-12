@@ -1,3 +1,4 @@
+using Serialization
 
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
@@ -61,7 +62,7 @@ begin #basically a singleton for the textureatlas
         if isfile(_cache_path)
             try
                 return open(_cache_path) do io
-                    dict = deserialize(io)
+                    dict = Serialization.deserialize(io)
                     fields = map(fieldnames(TextureAtlas)) do n
                         v = dict[n]
                         isa(v, Vector) ? copy(v) : v # otherwise there seems to be a problem with resizing
@@ -94,7 +95,7 @@ begin #basically a singleton for the textureatlas
             dict = Dict(map(fieldnames(typeof(atlas))) do name
                 name => getfield(atlas, name)
             end)
-            serialize(io, dict)
+            Serialize.serialize(io, dict)
         end
     end
     const global_texture_atlas = RefValue{TextureAtlas}()
