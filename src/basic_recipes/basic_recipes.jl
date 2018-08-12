@@ -275,7 +275,7 @@ function plot!(plot::Annotations)
     sargs = (
         plot[:model], plot[:font],
         plot[1], position,
-        getindex.(plot, (:color, :textsize, :align, :rotation))...,
+        getindex.(Ref(plot), (:color, :textsize, :align, :rotation))...,
     )
     N = value(position) |> eltype |> length
     tp = map(sargs...) do model, font, args...

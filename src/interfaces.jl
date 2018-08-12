@@ -196,7 +196,9 @@ const atomic_function_symbols = (
         :text, :meshscatter, :scatter, :mesh, :linesegments,
         :lines, :surface, :volume, :heatmap, :image
 )
-const atomic_functions = getfield.(AbstractPlotting, atomic_function_symbols)
+
+
+const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
 
 
 function color_and_colormap!(plot, intensity = plot[:color])

@@ -415,10 +415,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
 
-    g_args = getindex.(cplot[:grid], g_keys)
-    f_args = getindex.(cplot[:frame], f_keys)
-    t_args = getindex.(cplot[:ticks], t_keys)
-    ti_args = getindex.(cplot[:names], ti_keys)
+    g_args = getindex.(Ref(cplot[:grid]), g_keys)
+    f_args = getindex.(Ref(cplot[:frame]), f_keys)
+    t_args = getindex.(Ref(cplot[:ticks]), t_keys)
+    ti_args = getindex.(Ref(cplot[:names]), ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})
