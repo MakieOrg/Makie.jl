@@ -90,7 +90,7 @@ end
     grid_color = RGBAf0(0.5, 0.5, 0.5, 0.4)
     darktext = RGB(0.4, 0.4, 0.4)
     grid_thickness = 1
-    gridthickness = ntuple(x-> 1f0, 3)
+    gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
     Theme(
         showticks = (true, true, true),
@@ -209,7 +209,7 @@ function draw_ticks(
         textcolor, textsize, rotation, align, font
     )
     for (tick, str) in ticks
-        pos = ntuple(i-> i != dim ? origin[i] : tick, Val{2})
+        pos = ntuple(i-> i != dim ? origin[i] : tick, Val(2))
         push!(
             textbuffer,
             str, pos,
@@ -225,7 +225,7 @@ function draw_grid(
     ) where N
     dirf0 = Pointf0{N}(dir)
     for (tick, str) in ticks
-        tup = ntuple(i-> i != dim ? origin[i] : tick, Val{N})
+        tup = ntuple(i-> i != dim ? origin[i] : tick, Val(N))
         posf0 = Pointf0{N}(tup)
         append!(
             linebuffer,
@@ -273,7 +273,7 @@ function draw_frame(
         if !(from == origin && axis_position == :origin)
             for otherside in 1:2
                 for dim in 1:N
-                    p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val{N})
+                    p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val(N))
                     to = Point{N, Float32}(p)
                     append!(
                         linebuffer, [from, to],
@@ -334,7 +334,7 @@ end
 un_transform(model::Mat4, x) = transform(inv(model), x)
 
 
-to2tuple(x) = ntuple(i-> x, Val{2})
+to2tuple(x) = ntuple(i-> x, Val(2))
 to2tuple(x::Tuple{<:Any, <: Any}) = x
 
 function draw_axis(
@@ -451,7 +451,7 @@ _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
 
 to3tuple(x::Tuple{Any, Any, Any}) = x
-to3tuple(x) = ntuple(i-> x, Val{3})
+to3tuple(x) = ntuple(i-> x, Val(3))
 
 function draw_axis(textbuffer, linebuffer, limits, ranges, labels, args...)
     # make sure we extend all args to 3D

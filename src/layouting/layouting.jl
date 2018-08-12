@@ -41,7 +41,7 @@ function move_from_touch(
     pmini, cmini = minimum(parent), minimum(child) .- pad
     pmaxi, cmaxi = maximum(parent), maximum(child) .+ pad
 
-    move = ntuple(Val{N}) do i
+    move = ntuple(Val(N)) do i
         posdir = ifelse(cmini[i] < pmini[i], (pmini[i] - cmini[i]), zero(T)) #always positive
         negdir = ifelse(cmaxi[i] > pmaxi[i], (pmaxi[i] - cmaxi[i]), zero(T)) #always minus
         ifelse(posdir > abs(negdir), posdir, negdir) # move in the bigger direction
@@ -69,7 +69,7 @@ Returns a stretch `N` dimensional fit factor.
 """
 function fit_factor_stretch(rect, lims::NTuple{N, Any}) where N
     w = widths(rect)
-    stretches = ntuple(Val{N}) do i
+    stretches = ntuple(Val(N)) do i
         from, to = lims[i]
         w[i] / abs(to - from)
     end
