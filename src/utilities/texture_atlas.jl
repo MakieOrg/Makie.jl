@@ -182,7 +182,7 @@ function sdistancefield(img, downsample = 8, pad = 8*downsample)
     end
     w, h = w + 2pad, h + 2pad #pad this, to avoid cuttoffs
 
-    in_or_out = Matrix{Bool}(w, h)
+    in_or_out = Matrix{Bool}(undef, w, h)
     @inbounds for i=1:w, j=1:h
         x, y = i-pad, j-pad
         in_or_out[i,j] = checkbounds(Bool, img, x, y) && img[x,y] > 0.5 * 255
