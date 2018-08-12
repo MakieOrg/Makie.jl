@@ -3,7 +3,7 @@ using StaticArrays, GeometryTypes
 
 qx = qrotation(Vec(1, 0, 0), pi / 4)
 @test qx * qx ≈ qrotation(SVector(1.0, 0.0, 0.0), pi / 2)
-@test qx^2 ≈ qrotation(SVector(1.0, 0.0, 0.0), pi / 2)
+@test Base.power_by_squaring(qx, 2) ≈ qrotation(SVector(1.0, 0.0, 0.0), pi / 2)
 theta = pi / 8
 qx = qrotation(SVector(1.0, 0.0, 0.0), theta)
 c = cos(theta); s = sin(theta)
