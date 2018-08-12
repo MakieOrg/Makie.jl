@@ -323,7 +323,8 @@ end
 
 
 function ticks_and_labels(x)
-    r = range(extrema(x)..., stop=5, length=50)
+    st, s = extrema(x)
+    r = range(st, stop=s, length=4)
     zip(r, string.(round.(r, 4)))
 end
 
