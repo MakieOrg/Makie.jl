@@ -253,7 +253,7 @@ end
 
 struct PixelCamera <: AbstractCamera end
 function campixel!(scene)
-    camera(scene).view[] = eye(Mat4f0)
+    camera(scene).view[] = Mat4f0(I)
     map(camera(scene), pixelarea(scene)) do window_size
         nearclip = -10_000f0
         farclip = 10_000f0

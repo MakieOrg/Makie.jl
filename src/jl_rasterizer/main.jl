@@ -374,7 +374,7 @@ function orthographicprojection(
         bottom::T, top  ::T,
         znear ::T, zfar ::T
     ) where T
-    (right==left || bottom==top || znear==zfar) && return eye(Mat{4,4,T})
+    (right==left || bottom==top || znear==zfar) && return Mat{4,4,T}(I)
     T0, T1, T2 = zero(T), one(T), T(2)
     Mat{4}(
         T2/(right-left), T0, T0,  T0,
