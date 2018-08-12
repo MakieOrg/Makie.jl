@@ -333,8 +333,8 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             center = true,
             axis = Attributes(),
             legend = Attributes(),
-            camera = :automatic,
-            limits = :automatic,
+            camera = automatic,
+            limits = automatic,
             padding = Vec3f0(0.1),
             raw = false
         )
@@ -342,10 +342,11 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
     if plot_attributes[:raw][] == false
         s_limits = limits(scene)
         map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
-            if limit == :automatic
+            if limit == automatic
                 @info("calculating limits")
                 @log_performance "calculating limits" begin
                     x = data_limits(scene)
+                    # for when scene is empty
                     dlimits = if x == FRect3D(Vec3f0(0), Vec3f0(0))
                         data_limits(subscene)
                     else
@@ -391,7 +392,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
         #     legend_attributes = plot_attributes[:legend][]
         #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
         # end
-        if plot_attributes[:camera][] == :automatic
+        if plot_attributes[:camera][] == automatic
             cam = cameracontrols(scene)
             if cam == EmptyCamera()
                 if is2d(scene)
