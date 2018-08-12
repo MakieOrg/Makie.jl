@@ -54,6 +54,10 @@ function IRect(xy::VecTypes, wh::VecTypes)
     IRect(xy[1], xy[2], wh[1], wh[2])
 end
 
+function IRect(xy::NamedTuple{(:x, :y)}, wh::NamedTuple{(:width, :height)})
+    IRect(xy.x, xy.y, wh.width, wh.height)
+end
+
 function positive_widths(rect::HyperRectangle{N, T}) where {N, T}
     mini, maxi = minimum(rect), maximum(rect)
     realmin = min.(mini, maxi)
