@@ -92,7 +92,7 @@ Slice a 3D array along axis `timedim` at time `t`.
 This can be used to treat a 3D array like a video and create an image stream from it.
 """
 function play(array::Array{T, 3}, timedim::Integer, t::Integer) where T
-    index = ntuple(dim-> dim == timedim ? t : Colon(), Val{3})
+    index = ntuple(dim-> dim == timedim ? t : Colon(), Val(3))
     array[index...]
 end
 
@@ -225,8 +225,6 @@ function _default(a::VolumeTypes{T}, s::Style{:absorption}, data::Dict) where T<
     _default(a, default_style, data)
 end
 
-modeldefault(dimensions) = SMatrix{4,4,Float32}([eye(3,3) -dimensions/2; zeros(1,3) 1])
-
 struct VolumePrerender
 end
 function (::VolumePrerender)()
@@ -239,7 +237,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
     @gen_defaults! data begin
         dimensions = Vec3f0(1)
     end
-    modeldflt = modeldefault(data[:dimensions])
+    modeldflt = AbstractPlotting.translationmatrix(-data[:dimensions] / 2f0)
     modelinv = const_lift(inv, get(data, :model, modeldflt))
     @gen_defaults! data begin
         volumedata       = main => Texture

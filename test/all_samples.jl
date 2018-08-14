@@ -180,7 +180,7 @@ function solve_particles!(
 end
 
 
-startpositions(N::Integer, radius::T, n) where T = startpositions(Val{N}(), radius, n)
+startpositions(N::Integer, radius::T, n) where T = startpositions(Val(N), radius, n)
 function startpositions(::Val{N}, radius::T, n) where {N, T}
     sphere = HyperSphere(Point{N, T}(0), T(radius))
     n = N == 3 ? floor(Int, sqrt(n)) : n # n must be n^2 for 3D Sphere

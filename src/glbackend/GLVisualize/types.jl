@@ -29,7 +29,7 @@ function Grid(a::AbstractArray{T, N}, ranges::Tuple) where {T, N}
         "You need to supply a range for every dimension of the array. Given: $ranges
         given Array: $(typeof(a))"
     ))
-    Grid(ntuple(Val{N}) do i
+    Grid(ntuple(Val(N)) do i
         range(first(ranges[i]), stop=last(ranges[i]), length=size(a, i))
     end)
 end
@@ -38,14 +38,12 @@ Base.length(p::Grid) = prod(size(p))
 Base.size(p::Grid) = map(length, p.dims)
 function Base.getindex(p::Grid{N,T}, i) where {N,T}
     inds = ind2sub(size(p), i)
-    Point{N, eltype(T)}(ntuple(Val{N}) do i
+    Point{N, eltype(T)}(ntuple(Val(N)) do i
         p.dims[i][inds[i]]
     end)
 end
 
-Base.start(g::Grid) = 1
-Base.done(g::Grid, i) = i > length(g)
-Base.next(g::Grid, i) = g[i], i+1
+Base.iterate(g::Grid, i = 1) = i <= length(g) ? (g[i], i + 1) : nothing
 
 GLAbstraction.isa_gl_struct(x::Grid) = true
 GLAbstraction.toglsltype_string(t::Grid{N,T}) where {N,T} = "uniform Grid$(N)D"
@@ -66,8 +64,7 @@ function GLAbstraction.gl_convert_struct(g::Grid{1, T}, uniform_name::Symbol) wh
         Symbol("$uniform_name.dims") => Cint(length(x))
     )
 end
-import Base: getindex, length, next, start, done
-
+import Base: getindex, length, iterate, ndims, setindex!, eltype
 
 
 to_cpu_mem(x) = x
@@ -79,15 +76,13 @@ const PositionTypes = Union{Vector, Point, AbstractFloat, Nothing, Grid}
 mutable struct ScalarRepeat{T}
     scalar::T
 end
-Base.ndims(::ScalarRepeat) = 1
-Base.getindex(s::ScalarRepeat, i...) = s.scalar
+ndims(::ScalarRepeat) = 1
+getindex(s::ScalarRepeat, i...) = s.scalar
 #should setindex! really be allowed? It will set the index for the whole row...
-Base.setindex!(s::ScalarRepeat{T}, value, i...) where {T} = (s.scalar = T(value))
-Base.eltype(::ScalarRepeat{T}) where {T} = T
+setindex!(s::ScalarRepeat{T}, value, i...) where {T} = (s.scalar = T(value))
+eltype(::ScalarRepeat{T}) where {T} = T
 
-Base.start(::ScalarRepeat) = 1
-Base.next(sr::ScalarRepeat, i) = sr.scalar, i+1
-Base.done(sr::ScalarRepeat, i) = false
+iterate(sr::ScalarRepeat, i = 1) = (sr.scalar, i + 1)
 
 struct Instances{P,T,S,R}
     primitive::P
@@ -171,37 +166,22 @@ function TransformationIterator(instances::Instances)
         instances.rotation
     )
 end
-function start(t::TransformationIterator)
-    start(t.translation), start(t.scale), start(t.rotation)
+function iterate(t::TransformationIterator, state = 1)
+    states = (
+        iterate(t.translation, state),
+        iterate(t.scale, state),
+        iterate(t.rotation, state)
+    )
+    all(x-> x !== nothing, states) || return nothing
+    _translation, _scale, _rotation = first.(states)
+    translation = Point3f0(transform_convert(Vec3f0, _translation))
+    scale = Vec3f0(transform_convert(Point3f0, _scale))
+    rotation = to_rotation_mat(_rotation)
+    (translation, scale, rotation), last.(states)
 end
 
-function done(t::TransformationIterator, state)
-    (done(t.translation, state[1]) ||
-    done(t.scale, state[2]) ||
-    done(t.rotation, state[3]))::Bool
-end
 
 import GeometryTypes: transform_convert
-
-function qmul(quat, vec)
-    num = quat[1] * 2f0;
-    num2 = quat[2] * 2f0;
-    num3 = quat[3] * 2f0;
-    num4 = quat[1] * num;
-    num5 = quat[2] * num2;
-    num6 = quat[3] * num3;
-    num7 = quat[1] * num2;
-    num8 = quat[1] * num3;
-    num9 = quat[2] * num3;
-    num10 = quat[4] * num;
-    num11 = quat[4] * num2;
-    num12 = quat[4] * num3;
-    return Point3f0(
-        (1f0 - (num5 + num6)) * vec[1] + (num7 - num12) * vec[2] + (num8 + num11) * vec[3],
-        (num7 + num12) * vec[1] + (1f0 - (num4 + num6)) * vec[2] + (num9 - num10) * vec[3],
-        (num8 - num11) * vec[1] + (num9 + num10) * vec[2] + (1f0 - (num4 + num5)) * vec[3]
-    )
-end
 
 # For quaternions
 function to_rotation_mat(x::Vec{4, T}) where T
@@ -227,16 +207,7 @@ function to_rotation_mat(x::StaticVector{3, T}) where T
     end
     Mat4{T}(q)
 end
-function next(t::TransformationIterator, state)
-    _translation, st = next(t.translation, state[1])
-    _scale, ss = next(t.scale, state[2])
-    _rotation, sr = next(t.rotation, state[3])
 
-    translation = Point3f0(transform_convert(Vec3f0, _translation))
-    scale = Vec3f0(transform_convert(Point3f0, _scale))
-    rotation = to_rotation_mat(_rotation)
-    ((translation, scale, rotation), (st, ss, sr))
-end
 
 
 
@@ -251,14 +222,12 @@ const GLIntensity = Intensity{Float32}
 export Intensity, GLIntensity
 
 
-NOT(x) = !x
-
 struct GLVisualizeShader <: AbstractLazyShader
     paths::Tuple
     kw_args::Dict{Symbol, Any}
     function GLVisualizeShader(paths::String...; view = Dict{String, String}(), kw_args...)
         # TODO properly check what extensions are available
-        @static if !is_apple()
+        @static if !Sys.isapple()
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
             view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
         end

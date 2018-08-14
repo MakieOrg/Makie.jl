@@ -65,14 +65,14 @@ function glGetActiveUniform(programID::GLuint, index::Integer)
     uniformSize    = GLint[1]
     typ            = GLenum[1]
     maxcharsize    = glGetProgramiv(programID, GL_ACTIVE_UNIFORM_MAX_LENGTH)
-    name           = Vector{GLchar}(maxcharsize)
+    name           = Vector{GLchar}(undef, maxcharsize)
 
     glGetActiveUniform(programID, index, maxcharsize, actualLength, uniformSize, typ, name)
 
     actualLength[1] <= 0 &&  error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
-    uname = Symbol(replace(uname, r"\[\d*\]", "")) # replace array brackets. This is not really a good solution.
+    uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
     (uname, typ[1], uniformSize[1])
 end
 function glGetActiveAttrib(programID::GLuint, index::Integer)
@@ -80,14 +80,14 @@ function glGetActiveAttrib(programID::GLuint, index::Integer)
     attributeSize  = GLint[1]
     typ            = GLenum[1]
     maxcharsize    = glGetProgramiv(programID, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH)
-    name           = Vector{GLchar}(maxcharsize)
+    name           = Vector{GLchar}(undef, maxcharsize)
 
     glGetActiveAttrib(programID, index, maxcharsize, actualLength, attributeSize, typ, name)
 
     actualLength[1] <= 0 && error("No active uniform at given index. Index: ", index)
 
     uname = unsafe_string(pointer(name), actualLength[1])
-    uname = Symbol(replace(uname, r"\[\d*\]", "")) # replace array brackets. This is not really a good solution.
+    uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
     (uname, typ[1], attributeSize[1])
 end
 function glGetProgramiv(programID::GLuint, variable::GLenum)

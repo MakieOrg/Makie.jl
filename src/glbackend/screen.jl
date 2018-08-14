@@ -124,6 +124,8 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     )
 end
 
+const _global_gl_screen = Ref{Screen}()
+
 function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
@@ -184,7 +186,6 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     screen
 end
 
-const _global_gl_screen = Ref{Screen}()
 function global_gl_screen()
     if isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
         _global_gl_screen[]

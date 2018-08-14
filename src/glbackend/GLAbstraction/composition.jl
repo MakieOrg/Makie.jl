@@ -65,7 +65,7 @@ end
 export layout!
 
 
-Context() = Context{DeviceUnit}(Composable[], Node(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Node(eye(Mat{4,4, Float32})))
+Context() = Context{DeviceUnit}(Composable[], Node(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Node(Mat{4,4, Float32}(I)))
 Context(trans::Node{Mat{4,4, Float32}}) = Context{DeviceUnit}(Composable[], Node(AABB{Float32}(Vec3f0(0), Vec3f0(0))), trans)
 function Context(a::Composable...; parent=Context())
     append!(parent, a)
