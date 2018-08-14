@@ -40,11 +40,11 @@ save(path, img)
 entries = example_database(lines)
 entries = findall(x -> x.title == database_key, database)
 entries = findall(x -> x.tags == "scatter", database)
-entries = findall(x -> contains(collect(x.tags), "scatter"), database)
+entries = findall(x -> occursin("scatter", collect(x.tags)), database)
 
 tgs = database[2].tags
 
-contains(tgs, "scatter")
+occursin("scatter", tgs)
 
 findall(database) do entry
     # find tags

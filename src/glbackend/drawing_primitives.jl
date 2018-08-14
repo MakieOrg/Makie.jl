@@ -137,9 +137,9 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
     N = length(T)
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
     toffset = calc_offset(string, textsize, font, atlas)
-    str_idx = start(string)
+    char_str_idx = iterate(string)
     broadcast_foreach(1:length(string), startpos, textsize, (font,), align) do idx, pos, tsize, font, align
-        char, str_idx = next(string, str_idx)
+        char, str_idx = char_str_idx
         _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
         push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
@@ -149,6 +149,7 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
         else
             push!(scale, glyph_scale!(atlas, char,_font, tsize))
         end
+        char_str_idx = iterate(string, str_idx)
     end
     positions, toffset, uv_offset_width, scale
 end

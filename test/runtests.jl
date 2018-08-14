@@ -1,5 +1,5 @@
 using Test
-using BinaryProvider, FileIO
+using BinaryProvider, FileIO, Random
 include("../examples/library.jl")
 
 record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
@@ -30,7 +30,7 @@ if !record_reference_images
         try
             download_images()
         catch e
-            if isa(e, ErrorException) && contains(e.msg, "Hash Mismatch")
+            if isa(e, ErrorException) && occursin("Hash Mismatch", e.msg)
                 rm(tarfile, force = true)
                 download_images()
             else

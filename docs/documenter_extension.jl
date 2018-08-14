@@ -74,7 +74,7 @@ function Selectors.runner(::Type{DatabaseLookup}, x, page, doc)
         tags = entry.tags
 
         # check whether the example is a stepper or not
-        is_stepper = contains(==, tags, "stepper")
+        is_stepper = any(x-> occursin("stepper", x), tags)
 
         if is_stepper && isequal(embed, "plot")
             @warn("you tried to output an @example_database(\"entry\", plot) but the entry type is a stepper!")
@@ -226,7 +226,7 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
         tags = entry.tags
 
         # check whether the example is a stepper or not
-        is_stepper = contains(==, tags, "stepper")
+        is_stepper = any(x-> occursin("stepper", x), tags)
 
         if is_stepper
             steps = enumerate_stepper_examples(mediapath, uname; filter = "thumb")

@@ -14,11 +14,11 @@ end
 Base.getindex(obj::RenderObject, symbol::Symbol)         = obj.uniforms[symbol]
 Base.setindex!(obj::RenderObject, value, symbol::Symbol) = obj.uniforms[symbol] = value
 
-Base.getindex(obj::RenderObject, symbol::Symbol, x::Function)     = getindex(obj, Val{symbol}(), x)
+Base.getindex(obj::RenderObject, symbol::Symbol, x::Function)     = getindex(obj, Val(symbol), x)
 Base.getindex(obj::RenderObject, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x]
 Base.getindex(obj::RenderObject, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x]
 
-Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = setindex!(obj, value, Val{symbol}(), x)
+Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = setindex!(obj, value, Val(symbol), x)
 Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x] = value
 Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x] = value
 

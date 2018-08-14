@@ -8,12 +8,10 @@ import Base: getindex
 import Base: map
 import Base: length
 import Base: eltype
-import Base: endof
+import Base: lastindex
 import Base: ndims
 import Base: size
-import Base: start
-import Base: next
-import Base: done
+import Base: iterate
 using Serialization
 import GeometryTypes.SimpleRectangle
 
@@ -33,7 +31,7 @@ end
 
 length(A::GPUArray)                                     = prod(size(A))
 eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
-endof(A::GPUArray)                                      = length(A)
+lastindex(A::GPUArray)                                      = length(A)
 ndims(A::GPUArray{T, NDim}) where {T, NDim} = NDim
 size(A::GPUArray)                                       = A.size
 size(A::GPUArray, i::Integer)                           = i <= ndims(A) ? A.size[i] : 1
@@ -124,12 +122,10 @@ size(v::GPUVector)              = v.size
 size(v::GPUVector, i::Integer)  = v.size[i]
 ndims(::GPUVector)              = 1
 eltype(::GPUVector{T}) where {T}       = T
-endof(A::GPUVector)             = length(A)
+lastindex(A::GPUVector)             = length(A)
 
 
-start(b::GPUVector)             = start(b.buffer)
-next(b::GPUVector, state)       = next(b.buffer, state)
-done(b::GPUVector, state)       = done(b.buffer, state)
+iterate(b::GPUVector, state = 1) = iterate(b.buffer, state)
 
 gpu_data(A::GPUVector)          = A.buffer[1:length(A)]
 
@@ -229,10 +225,10 @@ const BaseSerializer = Serialization.AbstractSerializer
 
 function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
     Serialization.serialize_type(s, T)
-    serialize(s, Array(t))
+    Serialization.serialize(s, Array(t))
 end
 function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T<:GPUArray
-    A = deserialize(s)
+    A = Serialization.deserialize(s)
     T(A)
 end
 

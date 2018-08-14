@@ -8,6 +8,7 @@ Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
     Theme(;
         default...,
         color = theme(scene, :colormap),
+        colorrange = AbstractPlotting.automatic,
         levels = 5,
         linewidth = 1.0,
         fillrange = false,
@@ -55,7 +56,7 @@ end
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
-    range(cnorm..., stop=x, length=50)
+    range(cnorm[1], stop = cnorm[2], length = x)
 end
 
 AbstractPlotting.convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
@@ -63,26 +64,31 @@ AbstractPlotting.convert_arguments(::Type{<: Contour}, args...) = convert_argume
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (color, levels, linewidth, alpha)
-    colorrange = replace_automatic!(plot, :colorrange) do
-        map(x-> Vec2f0(extrema(x)), volume)
+    valuerange = lift(x-> Vec2f0(extrema(x)), volume)
+    cliprange = replace_automatic!(plot, :colorrange) do
+        valuerange
     end
-    cmap = lift(color, levels, linewidth, alpha, colorrange) do _cmap, l, lw, alpha, cnorm
-        levels = to_levels(l, cnorm)
+    @show cliprange[] valuerange[]
+    cmap = lift(color, levels, linewidth, alpha, cliprange, valuerange) do _cmap, l, lw, alpha, cliprange, vrange
+        levels = to_levels(l, vrange)
         N = length(levels) * 50
         iso_eps = 0.1 # TODO calculate this
         cmap = to_colormap(_cmap)
+        v_interval = cliprange[1] .. cliprange[2]
+        println(v_interval, " ", -0.8 in v_interval)
         # resample colormap and make the empty area between iso surfaces transparent
         map(1:N) do i
             i01 = (i-1) / (N - 1)
             c = AbstractPlotting.interpolated_getindex(cmap, i01)
-            isoval = cnorm[1] + (i01 * (cnorm[2] - cnorm[1]))
+            isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
             line = reduce(false, levels) do v0, level
+                (isoval in v_interval) || return false
                 v0 || (abs(level - isoval) <= iso_eps)
             end
             RGBAf0(Colors.color(c), line ? alpha : 0.0)
         end
     end
-    volume!(plot, x, y, z, volume, colormap = cmap, colorrange = colorrange, algorithm = :iso)
+    volume!(plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = :iso)
 end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
@@ -138,7 +144,7 @@ function plot!(vs::VolumeSlices)
         hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[]))).plots[end]
         foreach(idx) do i
             transform!(hmap, (plane, r[][i]))
-            indices = ntuple(Val{3}) do j
+            indices = ntuple(Val(3)) do j
                 planes[j] == plane ? i : (:)
             end
             hmap[3][] = view(volume[], indices...)

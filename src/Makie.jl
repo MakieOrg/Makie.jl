@@ -6,7 +6,7 @@ import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore
 import FileIO
-using LinearAlgebra
+using LinearAlgebra, Statistics
 
 module ContoursHygiene
     import Contour

@@ -355,16 +355,15 @@ texsubimage(t::Texture{T, 3}, newvalue::Array{T, 3}, xrange::UnitRange, yrange::
 )
 
 
-Base.start(t::TextureBuffer{T}) where {T} = start(t.buffer)
-Base.next(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where {T} = next(t.buffer, state)
-function Base.done(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
-    isdone = done(t.buffer, state)
-    if isdone
+Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
+function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
+    v_idx = iterate(t.buffer, state)
+    if v_idx === nothing
         glBindTexture(t.texturetype, t.id)
         glTexBuffer(t.texturetype, t.internalformat, t.buffer.id)
         glBindTexture(t.texturetype, 0)
     end
-    isdone
+    v_idx
 end
 function default_colorformat_sym(colordim::Integer, isinteger::Bool, colororder::AbstractString)
     colordim > 4 && error("no colors with dimension > 4 allowed. Dimension given: ", colordim)
