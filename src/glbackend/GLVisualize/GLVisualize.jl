@@ -17,6 +17,7 @@ using Markdown
 using FreeTypeAbstraction
 using ImageCore
 import ColorVectorSpace
+using Observables
 
 import ImageCore
 import AxisArrays, ImageAxes

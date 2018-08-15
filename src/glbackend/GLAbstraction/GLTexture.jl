@@ -209,7 +209,7 @@ depth(t::Texture)  = size(t, 3)
 function Base.show(io::IO, t::Texture{T,D}) where {T,D}
     println(io, "Texture$(D)D: ")
     println(io, "                  ID: ", t.id)
-    println(io, "                Size: ", reduce("Dimensions: ", size(t)) do v0, v1
+    println(io, "                Size: ", reduce(size(t), init = "Dimensions: ") do v0, v1
         v0*"x"*string(v1)
     end)
     println(io, "    Julia pixel type: ", T)
