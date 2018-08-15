@@ -38,7 +38,7 @@ end
 
 function remove_automatic!(attributes)
     filter!(attributes) do k, v
-        value(v) != automatic
+        to_value(v) != automatic
     end
 end
 
@@ -107,7 +107,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = value(linestyle)
+        data[:pattern] = to_value(linestyle)
         positions = handle_view(x[1], data)
         handle_intensities!(data)
         visualize(positions, Style(:lines), data).children[]
@@ -117,7 +117,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = value(linestyle)
+        data[:pattern] = to_value(linestyle)
         positions = handle_view(x.converted[1], data)
         delete!(data, :color_map)
         delete!(data, :color_norm)
@@ -209,9 +209,9 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
         heatmap = lift(x[3]) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
-        interp = value(pop!(gl_attributes, :interpolate))
+        interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(value(heatmap), minfilter = interp)
+        tex = Texture(to_value(heatmap), minfilter = interp)
         pop!(gl_attributes, :color)
         map_once(heatmap) do x
             update!(tex, x)
@@ -251,7 +251,7 @@ convert_mesh_color(c, cmap, crange) = c
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
-        gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
+        gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
         cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
@@ -281,13 +281,13 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         img = nothing
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
-        if isa(value(color), AbstractMatrix{<: Number}) && !(value(color) === value(x[3]))
+        if isa(to_value(color), AbstractMatrix{<: Number}) && !(to_value(color) === to_value(x[3]))
             crange = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
             img = lift(color, cmap, crange) do img, cmap, norm
                 AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
-        elseif isa(value(color), AbstractMatrix{<: Colorant})
+        elseif isa(to_value(color), AbstractMatrix{<: Colorant})
             img = color
             gl_attributes[:color_map] = nothing
             gl_attributes[:color] = nothing
@@ -295,7 +295,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         end
         gl_attributes[:color] = img
         args = x[1:3]
-        if all(v-> value(v) isa AbstractMatrix, args)
+        if all(v-> to_value(v) isa AbstractMatrix, args)
             visualize(args, Style(:surface), gl_attributes).children[]
         else
             gl_attributes[:ranges] = to_range.(value.(args[1:2]))

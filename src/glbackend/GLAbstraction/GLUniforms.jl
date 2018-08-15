@@ -105,7 +105,7 @@ function glsl_typename(t::Type{T}) where T <: SMatrix
     M, N = size(t)
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(M, "x", N))
 end
-toglsltype_string(t::Node) = toglsltype_string(t.value)
+toglsltype_string(t::Node) = toglsltype_string(to_value(t))
 toglsltype_string(x::T) where {T<:Union{Real, StaticArray, Texture, Colorant, TextureBuffer, Nothing}} = "uniform $(glsl_typename(x))"
 #Handle GLSL structs, which need to be addressed via single fields
 function toglsltype_string(x::T) where T
