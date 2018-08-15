@@ -62,7 +62,12 @@ function Base.resize!(window::GLFW.Window, resolution...)
     end
 end
 
-Base.resize!(screen::Screen, w, h) = resize!(screen.glscreen, w, h)
+function Base.resize!(screen::Screen, w, h)
+    nw = to_native(screen)
+    resize!(nw, w, h)
+    fb = screen.framebuffer
+    resize!(fb, (w, h))
+end
 
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
