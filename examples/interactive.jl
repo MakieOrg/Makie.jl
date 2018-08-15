@@ -45,7 +45,7 @@
         scene = Scene()
         heatmap!(scene, img, scale_plot = false)
         clicks = Node(Point2f0[(0,0)])
-        foreach(scene.events.mousebuttons) do buttons
+        on(scene.events.mousebuttons) do buttons
            if ispressed(scene, Mouse.left)
                pos = to_world(scene, Point2f0(scene.events.mouseposition[]))
                push!(clicks, push!(clicks[], pos))

@@ -194,7 +194,7 @@ export @gen_defaults!
 makesignal(s::Node) = s
 makesignal(v) = Node(v)
 
-@inline const_lift(f::Union{DataType, Type, Function}, inputs...) = map(f, map(makesignal, inputs)...)
+@inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
 
 
@@ -252,7 +252,7 @@ function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
             result[field] = Texture(val)
         end
     end
-    foreach(m) do mesh
+    on(m) do mesh
         for (field, val) in attributes(mesh)
             if field == :color
                 field = :vertex_color

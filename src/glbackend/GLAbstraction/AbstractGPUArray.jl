@@ -217,7 +217,7 @@ max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happen
 
 function (::Type{T})(x::Node) where T <: GPUArray
     gpu_mem = T(x[])
-    preserve(const_lift(update!, gpu_mem, x))
+    on(x-> update!(gpu_mem, x), x)
     gpu_mem
 end
 
