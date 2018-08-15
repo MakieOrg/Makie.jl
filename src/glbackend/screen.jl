@@ -177,12 +177,12 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
     )
-    screen.rendertask[] = @async(renderloop(screen))
     if visible
         GLFW.ShowWindow(window)
     else
         GLFW.HideWindow(window)
     end
+    screen.rendertask[] = @async(renderloop(screen))
     screen
 end
 
