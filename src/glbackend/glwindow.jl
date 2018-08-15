@@ -202,40 +202,23 @@ function reactive_run_till_now()
 
 end
 
-function was_destroyed(nw)
-    if !isimmutable(nw)
-        nw.handle == C_NULL
-    elseif isdefined(GLFW, :_window_callbacks)
-        !haskey(GLFW._window_callbacks, nw)
-    else
-        error("Unknown GLFW.jl version. Can't verify if window is destroyed")
-    end
-end
+was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
 
 function GLAbstraction.native_switch_context!(x::GLFW.Window)
     GLFW.MakeContextCurrent(x)
 end
 
 function GLAbstraction.native_context_alive(x::GLFW.Window)
-    # TODO merge `is_initialized` to GLFW + and use tagged version without this check
-    if isdefined(GLFW, :is_initialized)
-        GLFW.is_initialized() && !was_destroyed(x)
-    else
-        # This will lead to errors when using OpenGL debugging, since it can
-        # happen that the opengl finalizers run after GLFW.Terminate has run
-        !was_destroyed(x)
-    end
+    GLFW.is_initialized() && !was_destroyed(x)
 end
 
 function destroy!(nw::GLFW.Window)
-    GLAbstraction.is_current_context(nw) && GLAbstraction.switch_context!()
-    if nw.handle != C_NULL
-        was_destroyed(nw) || GLFW.DestroyWindow(nw)
-        # GLFW.jl compat - newer versions are immutable and don't need to be set to C_NULL
-        if !isimmutable(nw)
-            nw.handle = C_NULL
-        end
+    was_current = GLAbstraction.is_current_context(nw)
+    if !was_destroyed(nw)
+        GLFW.DestroyWindow(nw)
+        nw.handle = C_NULL
     end
+    was_current && GLAbstraction.switch_context!()
 end
 
 function Base.isopen(window::GLFW.Window)
