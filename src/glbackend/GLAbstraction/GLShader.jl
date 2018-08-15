@@ -146,7 +146,7 @@ end
 
 function compile_shader(path, source_str::AbstractString)
     typ = GLAbstraction.shadertype(query(path))
-    source = unsafe_wrap(Vector{UInt8}, source_str)
+    source = convert(Vector{UInt8}, source_str)
     name = Symbol(path)
     compile_shader(source, typ, name)
 end

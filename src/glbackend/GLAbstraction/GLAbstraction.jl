@@ -10,6 +10,8 @@ using FileIO
 using GLFW
 using Printf
 using LinearAlgebra
+using AbstractPlotting
+using Observables
 
 import FileIO: load, save
 if isdefined(FixedPointNumbers, :N0f8)

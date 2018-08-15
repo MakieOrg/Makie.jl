@@ -145,7 +145,7 @@ function Base.resize!(fb::GLFramebuffer, window_size)
         resize_nocopy!(fb.color_luma, ws)
         resize_nocopy!(fb.objectid, ws)
         resize_nocopy!(fb.depth, ws)
-        push!(fb.resolution, ws)
+        fb.resolution[] = ws
     end
     nothing
 end
