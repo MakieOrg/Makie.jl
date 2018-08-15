@@ -18,7 +18,7 @@ text_field = popup[end]
 scene
 
 
-foreach(scene.events.mouseposition) do even
+on(scene.events.mouseposition) do even
     plot, idx = Makie.mouse_selection(scene)
     if plot == lineplot
         visible[] = true
@@ -41,7 +41,7 @@ heatmap!(scene, img, scale_plot = false)
 clicks = Node(Point2f0[(0, 0)])
 blues = Node(Point2f0[])
 
-foreach(scene.events.mousebuttons) do buttons
+on(scene.events.mousebuttons) do buttons
     if ispressed(scene, Mouse.left)
         pos = to_world(scene, Point2f0(scene.events.mouseposition[]))
         found = -1
@@ -79,7 +79,7 @@ points[] = points[]
 
 function add_move!(scene, points, pplot)
     idx = Ref(0); dragstart = Ref(false); startpos = Base.RefValue(Point2f0(0))
-    foreach(events(scene).mousedrag) do drag
+    on(events(scene).mousedrag) do drag
         if ispressed(scene, Mouse.left)
             if drag == Mouse.down
                 plot, _idx = Makie.mouse_selection(scene)
@@ -100,7 +100,7 @@ function add_move!(scene, points, pplot)
 end
 
 function add_remove_add!(scene, points, pplot)
-    foreach(events(scene).mousebuttons) do but
+    on(events(scene).mousebuttons) do but
         if ispressed(but, Mouse.left) && ispressed(scene, Keyboard.left_control)
             pos = to_world(scene, Point2f0(events(scene).mouseposition[]))
             push!(points[], pos)
