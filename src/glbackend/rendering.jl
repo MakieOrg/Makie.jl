@@ -43,6 +43,7 @@ function render_frame(screen::Screen)
     nw = to_native(screen)
     GLAbstraction.is_context_active(nw) || return
     fb = screen.framebuffer
+    # TODO resize framebuffer when window size gets changed by user
     w, h = wh
     glDisable(GL_STENCIL_TEST)
     #prepare for geometry in need of anti aliasing
