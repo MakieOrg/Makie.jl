@@ -95,7 +95,7 @@ begin #basically a singleton for the textureatlas
             dict = Dict(map(fieldnames(typeof(atlas))) do name
                 name => getfield(atlas, name)
             end)
-            Serialize.serialize(io, dict)
+            Serialization.serialize(io, dict)
         end
     end
     const global_texture_atlas = RefValue{TextureAtlas}()
