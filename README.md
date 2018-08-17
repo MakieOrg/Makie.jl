@@ -26,7 +26,7 @@ Pkg.checkout("AbstractPlotting")
 
 ```Julia
 add Makie#sd/07 AbstractPlotting#sd/07 GeometryTypes#sd/07 ImageMagick#sd/07 Reactive#sd/07
-add ImageFiltering#teh/update0.7
+add ImageFiltering#master
 test Makie
 ```
 
