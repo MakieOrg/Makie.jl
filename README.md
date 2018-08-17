@@ -13,6 +13,8 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 # Installation
 Makie is still prerelease, so the current versions are a bit in turmoil.
 
+## Julia 0.6
+
 ```julia
 Pkg.add("Makie") # will install the deprecated, first version of Makie - Look at #IJulia examples for the old style
 # Get the bleeding edge version, which is used to generate the `Examples from the documenation` + `Complex examples` section 
@@ -20,7 +22,22 @@ Pkg.checkout("Makie")
 Pkg.checkout("AbstractPlotting")
 ```
 
-Make sure that the check out happens without error. E.e. if you have previously tinkered with GLVisualize, it might happen that you don't check out the `sd/makie` branch correctly.
+## Julia 0.7
+
+```Julia
+add Makie#sd/07 AbstractPlotting#sd/07 GeometryTypes#sd/07 ImageMagick#sd/07 Reactive#sd/07
+add ImageFiltering#teh/update0.7
+test Makie
+```
+
+## Dependencies
+You will need to have ffmpeg in the path to run the video recording examples.
+On linux you also need to add the following to get GLFW to build (if you don't have those already):
+```
+sudo apt-get install ffmpeg cmake xorg-dev
+```
+
+
 ## IJulia examples:
 
 [![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
