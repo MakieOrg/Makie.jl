@@ -7,7 +7,7 @@ imports = filter(x-> startswith(x, "using"), exprlins)
 rest = filter(x-> !startswith(x, "using"), exprlins)
 N = 6
 open("makie_precompile.jl", "w") do io
-    println(io, "using Pkg, Test, LinearAlgebra, Random, Statistics, Dates")
+    println(io, "using Pkg, Test, LinearAlgebra, Random, Statistics, Dates, BinaryProvider")
     for elem in imports
         println(io, elem)
     end

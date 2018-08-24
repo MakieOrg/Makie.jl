@@ -1,4 +1,4 @@
-using Pkg, Test, LinearAlgebra, Random, Statistics, Dates
+using Pkg, Test, LinearAlgebra, Random, Statistics, Dates, BinaryProvider
 using StaticArrays
 using GeometryTypes
 using Reactive
