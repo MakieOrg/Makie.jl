@@ -68,7 +68,7 @@ Plots a volume. Available algorithms are:
         algorithm = :iso,
         absorption = 1f0,
         isovalue = 0.5f0,
-        isorange = 0.01f0,
+        isorange = 0.05f0,
         colormap = theme(scene, :colormap),
         colorrange = (0, 1)
     )

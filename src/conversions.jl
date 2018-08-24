@@ -307,7 +307,7 @@ function to_triangles(faces::AbstractVector{Face{3, T}}) where T
     convert(Vector{GLTriangle}, faces)
 end
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
-    let N = Val{size(faces, 2)}, lfaces = faces
+    let N = Val(size(faces, 2)), lfaces = faces
         broadcast(1:size(faces, 1), N) do fidx, n
             to_ndim(GLTriangle, ntuple(i-> lfaces[fidx, i], n), 0.0)
         end
@@ -336,7 +336,7 @@ function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
     reinterpret(Point{size(verts, 1), T}, convert(Vector{T}, vec(verts)), (size(verts, 2),))
 end
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
-    let N = Val{size(verts, 2)}, lverts = verts
+    let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
             to_ndim(Point3f0, ntuple(i-> lverts[vidx, i], n), 0.0)
         end
@@ -634,6 +634,8 @@ function convert_attribute(value, ::key"algorithm")
         return Int32(value)
     elseif isa(value, Int32) && value in 0:5
         return value
+    elseif value == 7
+        return value # makie internal contour implementation
     else
         error("$value is not a valid volume algorithm. Please have a look at the documentation of `to_volume_algorithm`")
     end
@@ -765,3 +767,4 @@ function to_spritemarker(marker::AbstractVector)
 end
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
+convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)
