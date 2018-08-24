@@ -160,7 +160,9 @@ end
 struct Attributes
     attributes::Dict{Symbol, Node}
 end
-
+Base.broadcastable(x::AbstractScene) = Ref(x)
+Base.broadcastable(x::AbstractPlot) = Ref(x)
+Base.broadcastable(x::Attributes) = Ref(x)
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, pair[2], pair[1]))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 Base.convert(::Type{<: Node}, x) = Node(x)
