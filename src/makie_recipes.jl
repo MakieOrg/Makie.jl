@@ -79,7 +79,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             i01 = (i-1) / (N - 1)
             c = AbstractPlotting.interpolated_getindex(cmap, i01)
             isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
-            line = reduce(false, levels) do v0, level
+            line = reduce(levels, init = false) do v0, level
                 (isoval in v_interval) || return false
                 v0 || (abs(level - isoval) <= iso_eps)
             end
@@ -112,7 +112,6 @@ end
 function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     AbstractPlotting._boundingbox(value.((x[1], x[2]))...)
 end
-
 
 
 @recipe(VolumeSlices, x, y, z, volume) do scene
