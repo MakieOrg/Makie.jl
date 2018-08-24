@@ -223,7 +223,7 @@ function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
             if field == :color
                 field = :vertex_color
             end
-            if isa(val, Vector)
+            if isa(val, AbstractVector)
                 result[field] = GLBuffer(val)
             end
         else
@@ -245,7 +245,7 @@ function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
             if field == :color
                 field = :vertex_color
             end
-            if isa(val, Vector)
+            if isa(val, AbstractVector)
                 result[field] = GLBuffer(val)
             end
         else
