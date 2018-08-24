@@ -38,8 +38,8 @@
         N = 100
         scene = scatter([0], [0], marker = '❤', markersize = 0.5, color = :red, raw = true)
         s = scene[end] # last plot in scene
-        record(scene, @outputfile(mp4), linspace(0, 10pi, N)) do i
-            s[:markersize] = (cos(i) + 1) / (5 + 1)
+        record(scene, @outputfile(mp4), range(0, stop = 10pi, length = N)) do i
+            s[:markersize] = (cos(i) + 1) / 4 + 0.2
         end
     end
 
@@ -49,12 +49,12 @@
         f(v, t) = sin(v + t)
         scene = lines!(
             scene,
-            lift(t -> f.(linspace(0, 2pi, 50), t), time),
+            lift(t -> f.(range(0, stop = 2pi, length = 50), t), time),
             color = :blue
         )
         p1 = scene[end];
         N = 100
-        record(scene, @outputfile(mp4), linspace(0, 4pi, N)) do i
+        record(scene, @outputfile(mp4), range(0, stop = 4pi, length = N)) do i
             time[] = i
         end
     end
@@ -69,9 +69,9 @@
         R = 2
         theta = 4pi
         h = 5
-        x = [R .* (t/3) .* cos(t) for t = linspace(0, theta, N)]
-        y = [R .* (t/3) .* sin(t) for t = linspace(0, theta, N)]
-        z = linspace(0, h, N)
+        x = [R .* (t/3) .* cos(t) for t = range(0, stop = theta, length = N)]
+        y = [R .* (t/3) .* sin(t) for t = range(0, stop = theta, length = N)]
+        z = range(0, stop = h, length = N)
         meshscatter(x, y, z, markersize = 0.5, color = to_colormap(:viridis, N))
     end
 
@@ -101,8 +101,8 @@
             c = to_colormap(cmap)
             cbar = image!(
                 scene,
-                linspace(0, 10, length(c)),
-                linspace(0, 1, length(c)),
+                range(0, stop = 10, length = length(c)),
+                range(0, stop = 1, length = length(c)),
                 reshape(c, (1, length(c))),
                 show_axis = false
             )[end]
@@ -144,56 +144,57 @@
         )
     end
 
-    @cell "Theming" [theme, scatter, surface, set_theme] begin
-        new_theme = Theme(
-            resolution = (500, 500),
-            linewidth = 3,
-            colormap = :RdYlGn,
-            color = :red,
-            scatter = Theme(
-                marker = '⊝',
-                markersize = 0.03,
-                strokecolor = :black,
-                strokewidth = 0.1,
-            ),
-        )
-        AbstractPlotting.set_theme!(new_theme)
-        scene = scatter(rand(100), rand(100))
-        st = Stepper(scene, @outputfile)
-        step!(st)
-        new_theme[:color] = :blue
-        step!(st)
-        new_theme[:scatter, :marker] = '◍'
-        step!(st)
-        new_theme[:scatter, :markersize] = 0.05
-        step!(st)
-        new_theme[:scatter, :strokewidth] = 0.1
-        step!(st)
-        new_theme[:scatter, :strokecolor] = :green
-        step!(st)
-        empty!(scene)
-        scene = scatter!(rand(100), rand(100))
-        step!(st)
-        scene[end][:marker] = 'π'
-        step!(st)
+    #TODO: this doesn't work starting on step 9
+    # @cell "Theming" [theme, scatter, surface, set_theme, stepper] begin
+    #     new_theme = Theme(
+    #         resolution = (500, 500),
+    #         linewidth = 3,
+    #         colormap = :RdYlGn,
+    #         color = :red,
+    #         scatter = Theme(
+    #             marker = '⊝',
+    #             markersize = 0.03,
+    #             strokecolor = :black,
+    #             strokewidth = 0.1,
+    #         ),
+    #     )
+    #     AbstractPlotting.set_theme!(new_theme)
+    #     scene = scatter(rand(100), rand(100))
+    #     st = Stepper(scene, @outputfile)
+    #     step!(st)
+    #     new_theme[:color] = :blue
+    #     step!(st)
+    #     new_theme[:scatter, :marker] = '◍'
+    #     step!(st)
+    #     new_theme[:scatter, :markersize] = 0.05
+    #     step!(st)
+    #     new_theme[:scatter, :strokewidth] = 0.1
+    #     step!(st)
+    #     new_theme[:scatter, :strokecolor] = :green
+    #     step!(st)
+    #     empty!(scene)
+    #     scene = scatter!(rand(100), rand(100))
+    #     step!(st)
+    #     scene[end][:marker] = 'π'
+    #     step!(st)
+    #
+    #     r = range(-0.5pi, stop = pi + pi/4, length = 100)
+    #     AbstractPlotting.set_theme!(new_theme)
+    #     empty!(scene)
+    #     scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
+    #     step!(st)
+    #     scene[end][:colormap] = :PuOr
+    #     step!(st)
+    #     surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+    #     step!(st)
+    #     AbstractPlotting.set_theme!(resolution = (500, 500))
+    #     empty!(scene)
+    #     surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
+    #     step!(st)
+    #     st
+    # end
 
-        r = linspace(-0.5pi, pi + pi/4, 100)
-        AbstractPlotting.set_theme!(new_theme)
-        empty!(scene)
-        scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
-        step!(st)
-        scene[end][:colormap] = :PuOr
-        step!(st)
-        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
-        step!(st)
-        AbstractPlotting.set_theme!(resolution = (500, 500))
-        empty!(scene)
-        surface!(r + 2pi - pi/4, r, (x, y)-> sin(2x) + cos(2y))
-        step!(st)
-        st
-    end
-
-    @cell "Axis theming" [stepper, axis, lines] begin
+    @cell "Axis theming" [stepper, axis, lines, stepper] begin
         using GeometryTypes
         scene = Scene()
         points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
@@ -232,6 +233,36 @@
         axis[:ticks][:gap] = 5
         step!(st)
     end
+
+    @cell "Stepper demo" [stepper, text, annotation] begin
+        scene = Scene()
+        function inc_pos(pos::NTuple{2, Int})
+            map(x -> x + 100, pos)
+        end
+        pos = (50, 50)
+        steps = ["Step 1", "Step 2", "Step 3"]
+        colors = AbstractPlotting.to_colormap(:Set1, length(steps))
+        lines!(scene, Rect(0,0,500,500), linewidth = 0.0001)
+
+        # initialize the stepper and give it an output destination
+        st = Stepper(scene, @outputfile)
+
+        for i = 1:length(steps)
+            text!(
+                scene,
+                steps[i],
+                position = pos,
+                align = (:left, :bottom),
+                textsize = 100,
+                font = "Blackchancery",
+                color = colors[i],
+                scale_plot = false
+            )
+            pos = inc_pos(pos)
+            step!(st) # saves the step and increments the step by one
+        end
+        st
+    end
 end
 #
 # using Makie
@@ -240,7 +271,7 @@ end
 # empty!(scene)
 # scene = scatter!(rand(100), rand(100))
 #
-# r = linspace(-0.5pi, pi + pi/4, 100)
+# r = range(-0.5pi, stop = pi + pi/4, length = 100)
 # empty!(scene)
 # scene = surface!(r, r, (x, y)-> sin(2x) + cos(2y))
 # scene.camera_controls[]

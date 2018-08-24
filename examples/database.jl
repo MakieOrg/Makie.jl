@@ -63,7 +63,7 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
         # println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
         print(io, isempty(database[idx].toplevel) ? "" : "$(database[idx].toplevel)\n")
         for line in split(database[idx].source, "\n")
-            line = replace(line, "@resolution", "resolution = (500, 500)")
+            line = replace(line, "@resolution" => "resolution = (500, 500)")
             println(io, line)
         end
         println(io, "```")
@@ -76,7 +76,7 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
         # println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
         print(io, isempty(database[idx].toplevel) ? "" : "$(database[idx].toplevel)\n")
         for line in split(database[idx].source, "\n")
-            line = replace(line, "@resolution", "resolution = (500, 500)")
+            line = replace(line, "@resolution" => "resolution = (500, 500)")
             println(io, line)
         end
         println(io, "```")
@@ -170,7 +170,7 @@ globaly_shared_code = String[]
 const NO_GROUP = 0
 unique_names = Set(Symbol[])
 function unique_name!(name, unique_names = unique_names)
-    funcname = Symbol(replace(lowercase(string(name)), r"[ #$!@#$%^&*()+]", '_'))
+    funcname = Symbol(replace(lowercase(string(name)), r"[ #$!@#$%^&*()+]" => '_'))
     i = 1
     while isdefined(Makie, funcname) || (funcname in unique_names)
         funcname = Symbol("$(funcname)_$i")
@@ -182,7 +182,7 @@ end
 
 function CellEntry(author, title, tags, file, file_range, toplevel, source, groupid = NO_GROUP)
     uname = unique_name!(title)
-    CellEntry(author, title, uname, tags, file, file_range, toplevel, source, groupid)
+    CellEntry(string(author), title, uname, tags, file, file_range, toplevel, source, groupid)
 end
 
 
@@ -203,18 +203,18 @@ function print_code(
     println(io, entry.toplevel)
     print(io, scope_start)
     for line in split(entry.source, "\n")
-        line = replace(line, "@resolution", resolution(entry))
+        line = replace(line, "@resolution" => resolution(entry))
         filematch = match(r"(@outputfile)(\(.+?\))?" , line)
         if filematch != nothing
             ending = filematch.captures[2]
             replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
             line = replace(
-                line, r"(@outputfile)(\(.+?\))?",
-                string('"', escape_string(replacement), '"')
+                line,
+                r"(@outputfile)(\(.+?\))?" => string('"', escape_string(replacement), '"')
             )
         end
         if replace_nframes
-            line = replace(line, r"(record\(.*)N(.*\) do .*)", s"\1 10 \2")
+            line = replace(line, r"(record\(.*)N(.*\) do .*)" => s"\1 10 \2")
         end
         println(io, indent, line)
     end
@@ -480,12 +480,20 @@ end
 Walks through every example matching `tags`, and calls `f` on the example.
 Merges groups of examples into one example entry.
 """
-function enumerate_examples(f, tags...)
+function enumerate_examples(f, tags...; exclude_tags = nothing)
+    num_excluded = 0
     sort!(database, by = (x)-> x.groupid)
     group_tmp = CellEntry[]
     last_id = NO_GROUP
     for entry in database
         all(x-> string(x) in entry.tags, tags) || continue
+        if exclude_tags != nothing && !isempty(exclude_tags)
+            if any(x-> string(x) in entry.tags, Set(exclude_tags))
+                @info("exclude_tag encountered, skipping example \"$(entry.title)\"")
+                num_excluded += 1
+                continue
+            end
+        end
         if last_id != NO_GROUP && (entry.groupid != last_id)
             last_id = entry.groupid # if already NO_GROUP, we set it to NO_GROUP
             if !isempty(group_tmp)
@@ -498,6 +506,7 @@ function enumerate_examples(f, tags...)
             f(entry)
         end
     end
+    @info("Number of examples actually skipped: $num_excluded")
     return
 end
 
@@ -541,13 +550,13 @@ end
 Walks through examples and evaluates them. Returns the evaluated value and calls
 `f(entry, value)`.
 """
-function eval_examples(f, tags...; kw_args...)
-    enumerate_examples(tags...) do entry
+function eval_examples(f, tags...; exclude_tags = nothing, kw_args...)
+    enumerate_examples(tags...; exclude_tags = exclude_tags) do entry
         result = eval_example(entry; kw_args...)
         try
             f(entry, result)
         catch e
-            warn("Calling $f failed with example: $(entry.title)")
+            @warn("Calling $f failed with example: $(entry.title)")
             rethrow(e)
         end
     end

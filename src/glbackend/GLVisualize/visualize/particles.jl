@@ -31,7 +31,7 @@ end
 Vectors of floats are treated as barplots, so they get a HyperRectangle as
 default primitive.
 """
-function _default(main::VecTypes{T}, s::Style, data::Dict) where T <: AbstractFloat
+function _default(main::VectorTypes{T}, s::Style, data::Dict) where T <: AbstractFloat
     _default((centered(HyperRectangle{2, Float32}), main), s, data)
 end
 """
@@ -44,7 +44,7 @@ end
 Vectors of n-dimensional points get ndimensional rectangles as default
 primitives. (Particles)
 """
-function _default(main::VecTypes{P}, s::Style, data::Dict) where P <: Point
+function _default(main::VectorTypes{P}, s::Style, data::Dict) where P <: Point
     N = length(P)
     @gen_defaults! data begin
         scale = N == 2 ? Vec2f0(30) : Vec3f0(0.03) # for 2D points we assume they're in pixels
@@ -159,12 +159,12 @@ end
 Sprites primitives with a vector of floats are treated as something barplot like
 """
 function _default(
-        main::Tuple{P, VecTypes{T}}, s::Style, data::Dict
+        main::Tuple{P, VectorTypes{T}}, s::Style, data::Dict
     ) where {P <: AllPrimitives, T <: AbstractFloat}
     primitive, heightfield_s = main
     heightfield = value(heightfield_s)
     @gen_defaults! data begin
-        ranges = linspace(0f0, 1f0, length(heightfield))
+        ranges = range(0f0, stop = 1f0, length = length(heightfield))
     end
     grid = Grid(heightfield, ranges)
     delete!(data, :ranges)
@@ -183,7 +183,7 @@ end
 # There is currently no way to get the two following two signatures
 # under one function, which is why we delegate to meshparticle
 function _default(
-        p::Tuple{TOrSignal{Pr}, VecTypes{P}}, s::Style, data::Dict
+        p::Tuple{TOrSignal{Pr}, VectorTypes{P}}, s::Style, data::Dict
     ) where {Pr <: Primitives3D, P <: Point}
     meshparticle(p, s, data)
 end
@@ -253,7 +253,7 @@ function vec2quaternion(rotation::StaticVector{3})
 end
 
 vec2quaternion(rotation::Vec4f0) = rotation
-vec2quaternion(rotation::VecTypes) = const_lift(x-> vec2quaternion.(x), rotation)
+vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
 vec2quaternion(rotation::Signal) = map(vec2quaternion, rotation)
 vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
 """
@@ -315,7 +315,7 @@ end
 This is the most primitive particle system, which uses simple points as primitives.
 This is supposed to be the fastest way of displaying particles!
 """
-_default(position::VecTypes{T}, s::style"speed", data::Dict) where {T <: Point} = @gen_defaults! data begin
+_default(position::VectorTypes{T}, s::style"speed", data::Dict) where {T <: Point} = @gen_defaults! data begin
     vertex       = position => GLBuffer
     color_map    = nothing  => Vec2f0
     color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
@@ -366,7 +366,7 @@ primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
 primitive_distancefield(::Signal{Char}) = get_texture!(get_texture_atlas())
 
 function _default(
-        p::Tuple{TOrSignal{Matrix{C}}, VecTypes{P}}, s::Style, data::Dict
+        p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: Colorant, P <: Point}
     data[:image] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
@@ -377,7 +377,7 @@ function _default(
     sprites(p, s, data)
 end
 function _default(
-        p::Tuple{TOrSignal{Matrix{C}}, VecTypes{P}}, s::Style, data::Dict
+        p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: AbstractFloat, P <: Point}
     data[:distancefield] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
@@ -389,7 +389,7 @@ function _default(
 end
 
 function _default(
-        p::Tuple{Vector{Matrix{C}}, VecTypes{P}}, s::Style, data::Dict
+        p::Tuple{Vector{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: Colorant, P <: Point}
     images = p[1]
     isempty(images) && error("Can not display empty vector of images as primitive")
@@ -426,7 +426,7 @@ end
 
 # There is currently no way to get the two following two signatures
 # under one function, which is why we delegate to sprites
-_default(p::Tuple{TOrSignal{Pr}, VecTypes{P}}, s::Style, data::Dict) where {Pr <: Sprites, P<:Point} =
+_default(p::Tuple{TOrSignal{Pr}, VectorTypes{P}}, s::Style, data::Dict) where {Pr <: Sprites, P<:Point} =
     sprites(p,s,data)
 
 _default(p::Tuple{TOrSignal{Pr}, G}, s::Style, data::Dict) where {Pr <: Sprites, G<:Grid} =

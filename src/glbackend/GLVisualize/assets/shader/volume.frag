@@ -296,7 +296,7 @@ vec4 mip(vec3 front, vec3 dir, float stepsize)
     vec3 stepsize_dir = dir * stepsize;
     vec3 pos = front;
     int i = 0;
-    pos += stepsize_dir;//apply first, to padd
+    pos += stepsize_dir * rand();//apply first, to padd
     float maximum = 0.0;
     for (i; i < num_samples && !is_outside(pos); ++i, pos += stepsize_dir)
     {
@@ -316,18 +316,19 @@ void main()
     vec4 color;
     vec3 dir = normalize(frag_vert - eyeposition);
     dir = vec3(modelinv * vec4(dir, 0));
+    float steps = (model * vec4(step_size, 0, 0, 0)).x;
     if(algorithm == 0)
-        color = isosurface(frag_uv, dir, step_size);
+        color = isosurface(frag_uv, dir, steps);
     else if(algorithm == 1)
-        color = volume(frag_uv, dir, step_size);
+        color = volume(frag_uv, dir, steps);
     else if(algorithm == 2)
-        color = mip(frag_uv, dir, step_size);
+        color = mip(frag_uv, dir, steps);
     else if(algorithm == 3)
-        color = volumergba(frag_uv, dir, step_size);
+        color = volumergba(frag_uv, dir, steps);
     else if(algorithm == 4)
-        color = volumeindexedrgba(frag_uv, dir, step_size);
+        color = volumeindexedrgba(frag_uv, dir, steps);
     else
-        color = contours(frag_uv, dir, step_size);
+        color = contours(frag_uv, dir, steps);
 
     write2framebuffer(color, uvec2(objectid, 0));
 }

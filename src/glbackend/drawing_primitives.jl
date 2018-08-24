@@ -20,7 +20,7 @@ make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen)
 
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
-        gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
+        gl_attributes = map(filter(((k, v),)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = lift_convert(key, value, x)
@@ -37,12 +37,12 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 end
 
 function remove_automatic!(attributes)
-    filter!(attributes) do k, v
+    filter!(attributes) do (k, v)
         value(v) != automatic
     end
 end
 
-index1D(x::SubArray) = parentindexes(x)[1]
+index1D(x::SubArray) = parentindices(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
 handle_view(array::Signal, attributes) = array
@@ -159,7 +159,7 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point{N, Float32}, mpos, 0f0)
     rscale = Float32(textsize)
-    chars = convert(Vector{Char}, string)
+    chars = Vector{Char}(string)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
     toffset = calc_offset(chars, rscale, font, atlas)
@@ -365,15 +365,30 @@ function surface_contours(volume::Volume)
     robj
 end
 
-function Base.insert!(screen::Screen, scene::Scene, x::Volume)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
-        if gl_attributes[:algorithm][] == 0
-            surface_contours(x)
+function Base.insert!(screen::Screen, scene::Scene, vol::Volume)
+    robj = cached_robj!(screen, scene, vol) do gl_attributes
+        if gl_attributes[:algorithm][] == 7
+            surface_contours(vol)
         else
-            dimensions = Vec3f0(to_width.(value.(x[1:3])))
-            gl_attributes[:dimensions] = dimensions
+            model = vol[:model]
+            x, y, z = vol[1], vol[2], vol[3]
+            model2 = map(model, x, y, z) do m, xyz...
+                mi = minimum.(xyz)
+                maxi = maximum.(xyz)
+                w = maxi .- mi
+                m2 = Mat4f0(
+                    w[1], 0, 0, 0,
+                    0, w[2], 0, 0,
+                    0, 0, w[3], 0,
+                    mi[1], mi[2], mi[3], 1
+                )
+                convert(Mat4f0, m) * m2
+            end
+            modelinv = map(inv, model2)
+            gl_attributes[:model] = model2
+            gl_attributes[:modelinv] = modelinv
             delete!(gl_attributes, :color)
-            visualize(x[4], Style(:default), gl_attributes).children[]
+            visualize(vol[4], Style(:default), gl_attributes).children[]
         end
     end
 end

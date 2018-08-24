@@ -7,18 +7,17 @@
     end
 
     @cell "Interaction" [scatter, linesegment, record] begin
-        scene = Scene(@resolution)
-
+        scene = Scene()
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
         time = Node(0.0)
-        p1 = scatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), time))[end]
-        p2 = scatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), time))[end]
+        p1 = scatter!(scene, lift(t-> f.(t, range(0, stop = 2pi, length = 50), 1), time))[end]
+        p2 = scatter!(scene, lift(t-> f.(t * 2.0, range(0, stop = 2pi, length = 50), 1.5), time))[end]
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines)
         N = 150
-        record(scene, @outputfile(mp4), linspace(0, 10, N)) do i
+        record(scene, @outputfile(mp4), range(0, stop = 10, length = N)) do i
             push!(time, i)
         end
     end
@@ -28,9 +27,9 @@
         barplot(rand(10), color = rand(10))
         # barplot(rand(3), color = [:red, :blue, :green])
     end
-    @cell "quiver" [quiver, arrows, vectorfield, gradiend] begin
+    @cell "quiver" [quiver, arrows, vectorfield, gradient] begin
         using ImageFiltering
-        x = linspace(-2, 2, 21)
+        x = range(-2, stop = 2, length = 21)
         y = x
         z = x .* exp.(-x .^ 2 .- (y') .^ 2)
         scene = contour(x, y, z, levels = 10, linewidth = 3)
@@ -105,8 +104,9 @@
         )
     end
     @cell "heatmap interpolation" [heatmap, interpolate, subscene] begin
-        p1 = heatmap(rand(100, 50), interpolate = true)
-        p2 = heatmap(rand(100, 50), interpolate = false)
+        data = rand(100, 50)
+        p1 = heatmap(data, interpolate = true)
+        p2 = heatmap(data, interpolate = false)
         scene = AbstractPlotting.vbox(p1, p2)
         text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
         text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
@@ -142,15 +142,15 @@
     end
 
     @cell "Contour Function" [contour] begin
-        r = linspace(-10, 10, 512)
+        r = range(-10, stop = 10, length = 512)
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
         contour(r, r, z, levels = 5, color = :viridis, linewidth = 3)
     end
 
 
     @cell "contour" [contour] begin
-        y = linspace(-0.997669, 0.997669, 23)
-        contour(linspace(-0.99, 0.99, 23), y, rand(23, 23), levels = 10)
+        y = range(-0.997669, stop = 0.997669, length = 23)
+        contour(range(-0.99, stop = 0.99, length = 23), y, rand(23, 23), levels = 10)
     end
 
     @cell "Heatmap" [heatmap] begin
@@ -168,7 +168,7 @@
         end
     end
 
-    @cell "Text Annotation" [text, align] begin
+    @cell "Text Annotation" [text, align, annotation] begin
         text(
             ". This is an annotation!",
             position = (300, 200),
@@ -182,7 +182,7 @@
         scene = Scene(@resolution)
         pos = (500, 500)
         posis = Point2f0[]
-        for r in linspace(0, 2pi, 20)
+        for r in range(0, stop = 2pi, length = 20)
             p = pos .+ (sin(r)*100.0, cos(r) * 100)
             push!(posis, p)
             t = text!(
@@ -194,5 +194,27 @@
             )
         end
         scatter!(scene, posis, markersize = 10)
+    end
+
+    @cell "The famous iris example" [RDatasets, DataFrames, scatter, axis] begin
+        using DataFrames, RDatasets # do Pkg.add.(["DataFrames", "RDatasets"]) if you don't have these packages installed
+        iris = dataset("datasets", "iris")
+
+        x = iris[:SepalWidth]
+        y = iris[:SepalLength]
+
+        scene = Scene()
+        colors = [:red, :green, :blue]
+        i = 1 #color incrementer
+        for sp in unique(iris[:Species])
+            idx = iris[:Species] .== sp
+            sel = iris[idx, [:SepalWidth, :SepalLength]]
+            scatter!(scene, sel[:,1], sel[:,2], color = colors[i], limits = FRect(1.5, 4.0, 3.0, 4.0))
+            global i = i+1
+        end
+        scene
+        axis = scene[Axis] # get axis
+        axis[:names][:axisnames] = ("Sepal width", "Sepal length")
+        scene
     end
 end

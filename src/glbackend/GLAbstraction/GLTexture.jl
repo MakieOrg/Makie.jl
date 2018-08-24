@@ -285,7 +285,7 @@ end
 =#
 # Implementing the GPUArray interface
 function gpu_data(t::Texture{T, ND}) where {T, ND}
-    result = Array{T, ND}(size(t))
+    result = Array{T, ND}(undef, size(t))
     unsafe_copy!(result, t)
     return result
 end

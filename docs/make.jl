@@ -113,16 +113,16 @@ for func in plotting_functions
             uname = string(entry.unique_name)
             src_lines = entry.file_range
             println(io, """
-            ```julia
-            $source
-            ```
-            """)
+                ```julia
+                $source
+                ```
+                """
+            )
             embed_plot(io, uname, mediapath, buildpath; src_lines = src_lines)
         end
     end
     push!(example_list, "examples-$fname.md")
 end
-# example_pages = "Examples" => example_list
 
 
 # =============================================
@@ -160,7 +160,6 @@ open(path, "w") do io
     print_table(io, Axis2D_attr_desc)
     print(io)
     for (k, v) in Axis2D_attr_groups
-        # info(k)
         println(io, "#### `:$k`\n")
         print_table(io, v)
         println(io)
@@ -171,7 +170,6 @@ open(path, "w") do io
     print_table(io, Axis3D_attr_desc)
     print(io)
     for (k, v) in Axis3D_attr_groups
-        # info(k)
         println(io, "#### `:$k`\n")
         print_table(io, v)
         println(io)
@@ -195,12 +193,8 @@ open(path, "w") do io
     println(io, "See [Plot attributes](@ref) for the available plot attributes.")
 end
 
-# documenter deletes everything in build, so we need to move the media out and then back in again.
-# tmp_path = joinpath(mktempdir(), "media")
-# ispath(tmp_path) && rm(tmp_path, force = true, recursive = true)
-# cp(tmp_path, mediapath)
-
-@info("Running `makedocs` with Documenter. Don't be alarmed by the Invalid local image: unresolved path errors --- they will be copied over after.")
+# build docs with Documenter
+@info("Running `makedocs` with Documenter.")
 makedocs(
     modules = [Makie, AbstractPlotting],
     doctest = false, clean = false,
@@ -209,38 +203,30 @@ makedocs(
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
-            # "scene.md",
-            # "conversions.md",
+            "basic-tutorials.md",
             "help_functions.md",
             "functions-overview.md",
             "signatures.md",
             "plot-attributes.md",
-            # "documentation.md",
-            # "backends.md",
             # "extending.md",
-            # "themes.md",
-            "interaction.md",
             "axis.md",
-            # "legends.md",
+            "interaction.md",
             "output.md",
-            # "docs-test.md"
-            # "reflection.md",
             # "layout.md"
         ],
         # atomics_pages,
         "Examples" => [
             "index-examples.md",
             example_list...
-            # "tags_wordcloud.md",
-            #"linking-test.md"
-        ]
-        # "Developper Documentation" => [
+        ],
+        "Developer Documentation" => [
+            "why-makie.md",
         #     "devdocs.md",
-        # ],
+        ],
     ]
 )
-# move it back
 
+# deploy
 ENV["DOCUMENTER_DEBUG"] = "true"
 if !haskey(ENV, "DOCUMENTER_KEY")
     # Workaround for when deploying locally and silly Windows truncating the env variable

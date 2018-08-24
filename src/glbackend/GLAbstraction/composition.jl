@@ -56,7 +56,7 @@ end
 function layout!(b, composables::Union{Tuple, Vector})
     st_target = const_lift(scale_trans, b)
     map(composables) do composable
-        st_being = const_lift(scale_trans, boundingbox(composable))
+        st_being = const_lift(scale_trans, c_boundingbox(composable))
         transform!(composable, map(combine_s_t, st_target, st_being))
         composable
     end
@@ -71,7 +71,7 @@ function Context(a::Composable...; parent=Context())
     append!(parent, a)
     parent
 end
-boundingbox(c::Composable) = c.boundingbox
+c_boundingbox(c::Composable) = c.boundingbox
 transformation(c::Composable) = c.transformation
 
 function transform!(c::Composable, model)
@@ -100,7 +100,7 @@ end
 
 function Base.push!(context::Context{unit}, x::Composable) where unit <: Unit
     x = convert!(unit, x)
-    context.boundingbox = const_lift(transformation(x), transformation(context), boundingbox(x), boundingbox(context)) do transa, transb, a,b
+    context.boundingbox = const_lift(transformation(x), transformation(context), c_boundingbox(x), c_boundingbox(context)) do transa, transb, a,b
         a = transa*a
         b = transb*b
          # we need some zero element for an empty context
