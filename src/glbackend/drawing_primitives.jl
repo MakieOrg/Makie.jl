@@ -372,7 +372,7 @@ function Base.insert!(screen::Screen, scene::Scene, vol::Volume)
         else
             model = vol[:model]
             x, y, z = vol[1], vol[2], vol[3]
-            model2 = map(model, x, y, z) do m, xyz...
+            gl_attributes[:model] = lift(model, x, y, z) do m, xyz...
                 mi = minimum.(xyz)
                 maxi = maximum.(xyz)
                 w = maxi .- mi
@@ -384,9 +384,6 @@ function Base.insert!(screen::Screen, scene::Scene, vol::Volume)
                 )
                 convert(Mat4f0, m) * m2
             end
-            modelinv = map(inv, model2)
-            gl_attributes[:model] = model2
-            gl_attributes[:modelinv] = modelinv
             delete!(gl_attributes, :color)
             visualize(vol[4], Style(:default), gl_attributes).children[]
         end

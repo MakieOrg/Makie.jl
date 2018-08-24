@@ -3,24 +3,25 @@ using BinaryProvider, FileIO, Random, Pkg
 include("../examples/library.jl")
 
 record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
-version = v"0.0.5"
+version = v"0.0.6"
 
 download_dir = joinpath(@__DIR__, "testimages")
 tarfile = joinpath(download_dir, "images.zip")
 url = "https://github.com/SimonDanisch/ReferenceImages/archive/v$(version).tar.gz"
-refpath = joinpath(download_dir, "ReferenceImages-$(version)")
-recordpath = joinpath(homedir(), "ReferenceImages")
+refpath = joinpath(download_dir, "ReferenceImages-$(version)", "images")
+recordpath = joinpath(homedir(), "ReferenceImages", "images")
 if record_reference_images
     cd(homedir()) do
-        isdir(recordpath) || run(`git clone git@github.com:SimonDanisch/ReferenceImages.git`)
+        isdir(dirname(recordpath)) || run(`git clone git@github.com:SimonDanisch/ReferenceImages.git`)
+        isdir(recordpath) && rm(recordpath)
     end
 end
-#
-# function url2hash(url::String)
-#     path = download(url)
-#     open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
-# end
-# url2hash(url) |> println
+
+function url2hash(url::String)
+    path = download(url)
+    open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
+end
+url2hash(url) |> println
 
 
 if !record_reference_images
@@ -29,7 +30,7 @@ if !record_reference_images
         refpath = recordpath
     elseif !isdir(refpath)
         download_images() = BinaryProvider.download_verify(
-            url, "f893d1fc97985c479d797cbb40165d7d9f2896661347b317d7608ad22d3b9700",
+            url, "8726dc6015e29b2cbb1b73880a0880c5bdeec0f52f787450110d4eb49d3897d5",
             tarfile
         )
         try
@@ -108,7 +109,7 @@ function test_examples(record, tags...; kw_args...)
     @testset "Visual Regression" begin
         eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending); kw_args...) do example, value
             sigma = [1,1]; eps = 0.02
-            maxdiff = 0.03
+            maxdiff = 0.05
             toimages(example, value, record) do image, refimage
                 @testset "$(example.title):" begin
                     diff = approx_difference(image, refimage, sigma, eps)
@@ -146,3 +147,36 @@ num_excluded = length(unique(indices_excluded))
 
 # run the tests
 test_examples(record_reference_images; exclude_tags = exclude_tags)
+
+cd(@__DIR__)
+str = read("../comptest.jl", String);
+
+exprlins = split(str, '\n');
+
+imports = filter(x-> startswith(x, "using"), exprlins)
+rest = filter(x-> !startswith(x, "using"), exprlins)
+N = 6
+Nstep = length(rest) ÷ N
+for i in 1:N
+    open("precompile$i.jl", "w") do io
+        start = ((i-1) * Nstep) + 1
+        println(io, "using Pkg, Test, LinearAlgebra, Random, Statistics, Dates")
+        for elem in imports
+            println(io, elem)
+        end
+        for j in start:(start + Nstep -1)
+            line = rest[j]
+            if !startswith(line, "using")
+                x = Meta.parse(line, raise = true) # is parseable?
+                if Meta.isexpr(x, :incomplete)
+                    continue
+                end
+                line = string("try;", line, "; catch; end")
+            end
+            println(io, line)
+        end
+        if i != N
+            println(io, "include(\"precompile$(i+1).jl\")")
+        end
+    end
+end

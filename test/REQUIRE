@@ -10,3 +10,4 @@ RDatasets
 #for WorldClim visualization example
 GDAL
 RData
+DataFrames

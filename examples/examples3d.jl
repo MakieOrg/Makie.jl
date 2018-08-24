@@ -488,7 +488,7 @@
                     color = colors[length(lineplots)],
                     linewidth = 3
                 )[end]
-                unshift!(lineplots, p)
+                pushfirst!(lineplots, p)
                 translate!(p, 0, 0, 0)
                 #TODO automatically insert new plots
                 insert!(Makie.global_gl_screen(), scene, p)

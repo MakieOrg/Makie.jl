@@ -235,16 +235,11 @@ end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeElTypes
     @gen_defaults! data begin
-        dimensions = Vec3f0(1)
-    end
-    model = get!(data, :model) do
-        AbstractPlotting.translationmatrix(-dimensions / 2f0)
-    end
-    @gen_defaults! data begin
         volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), dimensions)
+        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
         light_position   = Vec3f0(0.25, 1.0, 3.0)
         light_intensity  = Vec3f0(15.0)
+        model            = Mat4f0(I)
         modelinv         = const_lift(inv, model)
 
         color_map        = default(Vector{RGBA}, s) => Texture
@@ -265,15 +260,9 @@ end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
-        dimensions = Vec3f0(1)
-    end
-    model = get!(data, :model) do
-        AbstractPlotting.translationmatrix(-dimensions / 2f0)
-    end
-    @gen_defaults! data begin
         volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), dimensions)
-        model            = model
+        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+        model            = Mat4f0(I)
         modelinv         = const_lift(inv, model)
 
         # These don't do anything but are needed for type specification in the frag shader
@@ -292,15 +281,9 @@ end
 
 function _default(main::IndirectArray{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
-        dimensions = Vec3f0(1)
-    end
-    model = get!(data, :model) do
-        AbstractPlotting.translationmatrix(-dimensions / 2f0)
-    end
-    @gen_defaults! data begin
         volumedata       = main.index => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), dimensions)
-        model            = model
+        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+        model            = Mat4f0(I)
         modelinv         = const_lift(inv, model)
 
         color_map        = main.values => TextureBuffer

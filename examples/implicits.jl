@@ -18,7 +18,7 @@
     @cell "3D cube with sphere cutout, inside" ["3d", volume, implicit] begin
         scene = Scene()
         r = range(-1, stop = 1, length = 100)
-        mat = [(x.^2 + y.^2 + z.^2) for x=r, y=r, z=r]
+        mat = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
         mat2 = mat .* (mat .> 1.4)
         #plot the space inside
         volume(mat2, algorithm = :absorptionrgba)
@@ -30,7 +30,7 @@
         mat = [(x.^2 + y.^2 + z.^2) for x=r, y=r, z=r]
         mat2 = mat .* (mat .< 1.4)
         #plot the space outside
-        volume(mat2, algorithm = :absorptionrgba)
+        volume(50..100, 50..100, 50..100, mat2, algorithm = :absorptionrgba)
     end
 
     @cell "Biohazard" ["3d", volume, implicit, algorithm, absorption] begin
