@@ -67,16 +67,19 @@ difftype(::Type{Float64}) = Float64
 difftype(::Type{CV}) where {CV<:Colorant} = difftype(CV, eltype(CV))
 difftype(::Type{CV}, ::Type{T}) where {CV<:RGBA,T<:Real} = RGBA{Float32}
 difftype(::Type{CV}, ::Type{Float64}) where {CV<:RGBA} = RGBA{Float64}
+difftype(::Type{CV}, ::Type{Float64}) where {CV<:Gray} = Gray{Float64}
 difftype(::Type{CV}, ::Type{T}) where {CV<:BGRA,T<:Real} = BGRA{Float32}
 difftype(::Type{CV}, ::Type{Float64}) where {CV<:BGRA} = BGRA{Float64}
 difftype(::Type{CV}, ::Type{T}) where {CV<:AbstractRGB,T<:Real} = RGB{Float32}
 difftype(::Type{CV}, ::Type{Float64}) where {CV<:AbstractRGB} = RGB{Float64}
 
-
+accum(::Type{T}) where {T<:Integer} = Int
+accum(::Type{Float32})    = Float32
+accum(::Type{T}) where {T<:Real} = Float64
+accum(::Type{C}) where {C<:Colorant} = base_colorant_type(C){accum(eltype(C))}
 function sumdiff(f, A::AbstractArray, B::AbstractArray)
-    indices(A) == indices(B) || throw(DimensionMismatch("A and B must have the same indices"))
+    axes(A) == axes(B) || throw(DimensionMismatch("A and B must have the same axes"))
     T = promote_type(difftype(eltype(A)), difftype(eltype(B)))
-    println(T)
     s = zero(accum(eltype(T)))
     for (a, b) in zip(A, B)
         x = convert(T, a) - convert(T, b)
@@ -96,19 +99,15 @@ function approx_difference(
         A::AbstractArray, B::AbstractArray,
         sigma::AbstractVector{T} = ones(ndims(A)),
         eps::AbstractFloat = 1e-2
-    ) where T<:Real
+    ) where T <: Real
 
     if length(sigma) != ndims(A)
         error("Invalid sigma in test_approx_eq_sigma_eps. Should be ndims(A)-length vector of the number of pixels to blur.  Got: $sigma")
     end
     kern = KernelFactors.IIRGaussian(sigma)
-    Ai = RGB{Float64}.(A)
-    Bi = RGB{Float64}.(B)
-    Af = RGB{Float64}.(A)
-    Bf = RGB{Float64}.(B)
-    imfilter!(Af, Ai, kern, NA())
-    imfilter!(Bf, Bi, kern, NA())
-    diffscale = max(maxabsfinite(Ai), maxabsfinite(Bi))
+    Af = imfilter(A, kern, NA())
+    Bf = imfilter(B, kern, NA())
+    diffscale = max(maxabsfinite(Af), maxabsfinite(Bf))
     d = sad(Af, Bf)
     return d / (length(Af) * diffscale)
 end

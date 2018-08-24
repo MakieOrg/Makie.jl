@@ -7,5 +7,3 @@ For general help about each function, consult the [Help functions](@ref).
 See [Plot function signatures](@ref) for the available plot function signatures.
 
 See [Plot attributes](@ref) for the available plot attributes.
-
-For a general overview of styling and to see the default parameters, refer to the chapter [Themes](@ref).

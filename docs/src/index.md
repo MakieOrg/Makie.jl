@@ -1,34 +1,63 @@
-# Makie.jl Documentation
+# `Makie.jl` Documentation
 
-`Makie` is a high level plotting interface for [`GLVisualize`](https://github.com/JuliaGL/GLVisualize.jl/), with a focus on interactivity and speed.
+Hi! Welcome to [`Makie`](https://github.com/JuliaPlots/Makie.jl/), a high-performance, extendable, and multi-platform plotting package for [Julia](https://julialang.org/).
 
-It can also be seen as a prototype for a new design of [`Plots.jl`](https://github.com/JuliaPlots/Plots.jl),
-since it will implement a very similar interface and incorporate a lot of the ideas.
+```@raw html
 
-A fresh start instead of the already available `GLVisualize` backend for `Plots.jl` was needed for the following reasons:
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="http://makie.juliaplots.org/stable/media/3d_contour_with_2d_contour_slices.jpg" alt="3D contour + 2D contour<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="http://makie.juliaplots.org/stable/media/quiver_1.jpg" alt="Quiver<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="http://makie.juliaplots.org/stable/media/axis___surface.jpg" alt="Surface plots and Unicode axis labels<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="https://user-images.githubusercontent.com/1010467/43538627-d5d5ebf8-95c2-11e8-9aab-400a350c6bc7.gif" alt="Mouseover tooltip<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="https://user-images.githubusercontent.com/1010467/43537999-20d5a154-95c1-11e8-815f-37d6345d5f5b.gif" alt="Lorentz attractor with GUI<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="https://user-images.githubusercontent.com/1010467/43538067-4a12b232-95c1-11e8-9783-0b55c9ddde54.gif" alt="WebGL<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="https://user-images.githubusercontent.com/1010467/43538095-579761be-95c1-11e8-8160-0651c055fd68.gif" alt="Polygons<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif" alt="World climate visualization - http://worldclim.org/<br>" style="width:200px" />
+   </p>
+</div>
+<div style="display:inline-block">
+   <p style="display:inline-block; text-align: center">
+      <img src="https://user-images.githubusercontent.com/1010467/43538477-73064f7c-95c2-11e8-9e50-6ddeaa68514d.gif" alt="Molecule simulation<br>" style="width:200px" />
+   </p>
+</div>
 
-1) `Plots.jl` was written to create static plots without any interaction. This is deeply reflected in the internal design
-   and makes it hard to integrate the high performance interaction possibilities from `GLVisualize`.
-1) `Plots.jl` has many high level plotting packages as a backend which lead to a very inconsistent design for the backends.
-   For example, there is no straight interface a backend needs to implement. The backend abstraction happens at a very high level
-   and the `Plots.jl` design relies on the high-level backends to fill in a lot of functionality - which lead to a lot of duplicated work
-   for the lower level backends and a lot of inconsistent behavior since the code isn't shared between backends.
-   It also means that it is a lot of work to maintain a backend.
-1) The attributes a plot/series contains and where the default creation happens is opaque and not well documented.
-   Sometimes it's the task of the backend to create defaults for missing attributes, sometimes `Plots.jl` creates the defaults.
-   A missing attribute is signalled in too many different ways (e.g. `false`, `nothing`, `""`) which then needs to be checked and filled in by the backend.
-   This leads to making it very challenging to e.g. find the color of a line for different plot types and creates buggy, inconsistent and messy backend code.
-1) As mentioned in point 2, there is not a single consistent low level drawing API.
-   This also influences recipes, since there is not a straight mapping to a low level drawing API and therefore it's not that easy to compose.
-   There should be a finite set of "atomic" drawing operations (which can't be decomposed further) which a backend
-   needs to implement and the rest should be implemented via recipes using those atomic operations.
-   So once a backend implements those, it will support all of the plotting operations and only minor maintenance work needs to be done from that point on.
-1) Backend loading is done in `Plots.jl` via evaling the backend code. This has at 4 negative consequences:
-   1) Backend code can't be precompiled leading to longer load times
-   1) Backend dependencies are not in the `Plots.jl` `REQUIRE` file
-   1) Backend dependencies get loaded via a function that gets evaled, so it's a bit awkward to use those dependencies in the function inside a backend
-   1) World age issues because of the `eval`
+```
 
-Please read the chapters [Scene](@ref), [Functions](@ref), [Interaction](@ref), [Extending](@ref), [Backends](@ref) and [Devdocs](@ref) to see how `Makie` solves those issues!
+For more examples, see the [Examples index](@ref).
 
-The code that will be moved back to `Plots.jl` lives in [plotsbase](https://github.com/SimonDanisch/Makie.jl/tree/master/src/plotsbase).
+## Installation & tutorial
+
+See the [Tutorial](@ref).
+
+## I'm an expert!
+
+Head straight to the [Atomic functions overview](@ref).

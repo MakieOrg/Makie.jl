@@ -224,14 +224,6 @@ function ylayout(x::AbstractVector{T}) where T <: Tuple
     values = map(last, x)
     zip(sizes, values)
 end
-function IRect(x, y , w, h)
-    SimpleRectangle(
-        round(Int, x),
-        round(Int, y),
-        round(Int, w),
-        round(Int, h),
-    )
-end
 
 function layout_rect(area, lastw, lasth, w, h)
     wp = widths(area)
@@ -243,5 +235,5 @@ function layout_rect(area, lastw, lasth, w, h)
     xmin = min(xmin, xmax)
     ymax = max(ymin, ymax)
     ymin = min(ymin, ymax)
-    IRect(xmin, ymin, xmax - xmin, ymax - ymin)
+    AbstractPlotting.IRect(xmin, ymin, xmax - xmin, ymax - ymin)
 end

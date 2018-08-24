@@ -7,7 +7,7 @@ const atlas_texture_cache = Dict{GLFW.Window, Tuple{Texture{Float16, 2}, Functio
 
 function get_texture!(atlas)
     # clean up dead context!
-    filter!(atlas_texture_cache) do ctx, tex_func
+    filter!(atlas_texture_cache) do (ctx, tex_func)
         if GLAbstraction.context_alive(ctx)
             true
         else
