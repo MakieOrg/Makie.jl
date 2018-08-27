@@ -312,13 +312,14 @@ function draw_titles(
     posy = (title_start[1], half_width[2])
     positions = (posx, posy)
     for i = 1:2
-        push!(
-            textbuffer, axis_labels[i], positions[i],
-            textsize = textsize[i], align = align[i], rotation = rotation[i],
-            color = textcolor[i], font = font[i]
-        )
+        if !isempty(axis_labels[i])
+            push!(
+                textbuffer, axis_labels[i], positions[i],
+                textsize = textsize[i], align = align[i], rotation = rotation[i],
+                color = textcolor[i], font = font[i]
+            )
+        end
     end
-
 end
 
 
