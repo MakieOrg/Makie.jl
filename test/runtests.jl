@@ -147,36 +147,3 @@ num_excluded = length(unique(indices_excluded))
 
 # run the tests
 test_examples(record_reference_images; exclude_tags = exclude_tags)
-
-cd(@__DIR__)
-str = read("../comptest.jl", String);
-
-exprlins = split(str, '\n');
-
-imports = filter(x-> startswith(x, "using"), exprlins)
-rest = filter(x-> !startswith(x, "using"), exprlins)
-N = 6
-Nstep = length(rest) ÷ N
-for i in 1:N
-    open("precompile$i.jl", "w") do io
-        start = ((i-1) * Nstep) + 1
-        println(io, "using Pkg, Test, LinearAlgebra, Random, Statistics, Dates")
-        for elem in imports
-            println(io, elem)
-        end
-        for j in start:(start + Nstep -1)
-            line = rest[j]
-            if !startswith(line, "using")
-                x = Meta.parse(line, raise = true) # is parseable?
-                if Meta.isexpr(x, :incomplete)
-                    continue
-                end
-                line = string("try;", line, "; catch; end")
-            end
-            println(io, line)
-        end
-        if i != N
-            println(io, "include(\"precompile$(i+1).jl\")")
-        end
-    end
-end
