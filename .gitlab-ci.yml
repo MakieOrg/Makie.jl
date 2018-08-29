@@ -1,31 +1,22 @@
-before_script:
-  - apt-get -qq update
-  # glfw
-  - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev mesa-utils
-  # cairo etc
-  - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16-2
-  - apt-get install -y ffmpeg
-
 variables:
-  CI_IMAGE_TAG: 'opengl'
-  MODERNGL_DEBUGGING: "true"
+    CI_IMAGE_TAG: "opengl"
+    MODERNGL_DEBUGGING: "true"
+    JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
 
-stages:
-  - test
-  - postprocess
+job:
+    image: "juliagpu/julia:v0.7-${CI_IMAGE_TAG}"
+    before_script:
+        - apt-get -qq update
+        # glfw
+        - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev mesa-utils
+        # cairo etc
+        - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16-2
+        - apt-get install -y ffmpeg
 
-include:
-  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v0/common.yml'
-
-test:v0.7:
-  stage: test
-  image: "juliagpu/julia:v0.7-${CI_IMAGE_TAG}"
-  beo
-  script:
-    - julia -e 'using InteractiveUtils;
-                versioninfo()'
-    - mkdir $JULIA_DEPOT_PATH # Pkg3.jl#325
-    - julia --project -e "using Pkg;
+    script:
+      - julia -e 'using InteractiveUtils; versioninfo()'
+      - mkdir $JULIA_DEPOT_PATH # Pkg3.jl#325
+      - julia --project -e "using Pkg;
                           Pkg.instantiate();
                           Pkg.checkout(\"AbstractPlotting\");
                           Pkg.build();
