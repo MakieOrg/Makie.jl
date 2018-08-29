@@ -20,4 +20,4 @@ job:
                           Pkg.instantiate();
                           Pkg.pkg\"add AbstractPlotting#sd/07\";
                           Pkg.build();
-                          Pkg.test(; coverage=false);"
+                          Pkg.test(\"Makie\"; coverage=false);"
