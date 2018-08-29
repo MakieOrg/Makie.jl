@@ -18,3 +18,5 @@ open("makie_precompile.jl", "w") do io
         println(io, line)
     end
 end
+
+include("makie_precompile.jl")
