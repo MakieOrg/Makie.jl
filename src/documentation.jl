@@ -4,7 +4,7 @@
 """
     help(func[; extended = false])
 
-Welcome to the main help function of `Makie.jl` / `AbstractArray.jl`.
+Welcome to the main help function of `Makie.jl` / `AbstractPlotting.jl`.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 
