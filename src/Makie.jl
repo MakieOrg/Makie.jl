@@ -67,7 +67,7 @@ end
 include("makie_recipes.jl")
 include("utils.jl")
 include("glbackend/glbackend.jl")
-# include("cairo/cairo.jl")
+include("cairo/cairo.jl")
 include("output.jl")
 include("video_io.jl")
 

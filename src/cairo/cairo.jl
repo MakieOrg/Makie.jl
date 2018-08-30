@@ -1,10 +1,14 @@
 module CairoBackend
 
 import ..Makie
-using ..Makie: Scene, Lines, Text, Heatmap, Scatter, @key_str, broadcast_foreach
+using ..Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
 using ..Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using ..Makie: @info, @get_attribute
 using Reactive, Colors, GeometryTypes
+
+using AbstractPlotting
+using AbstractPlotting: to_value, to_colormap
+
 
 using Cairo
 
@@ -113,10 +117,55 @@ function cairo_draw(screen::CairoScreen, primitive::Union{Lines, LineSegments})
     end
     nothing
 end
+using AbstractPlotting: extrema_nan
 
-# function cairo_draw(screen::CairoScreen, primitive::Image)
-#     set_source_surface(cr, image, 0, 0);
-# end
+function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
+    println("joooo")
+    AbstractPlotting.@get_attribute attributes (colormap, colorrange)
+    imui32 = to_uint32_color.(AbstractPlotting.interpolated_getindex.(Ref(colormap), img, (colorrange,)))
+    to_cairo_image(imui32, attributes)
+end
+
+function to_cairo_image(img::Matrix{UInt32}, attributes)
+    CairoARGBSurface(img)
+end
+to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
+function to_cairo_image(img, attributes)
+    to_cairo_image(to_uint32_color.(img), attributes)
+end
+
+function cairo_draw(screen::CairoScreen, primitive::Image)
+    draw_image(screen, primitive)
+end
+
+function cairo_draw(screen::CairoScreen, primitive::Union{Heatmap, Image})
+    draw_image(screen, primitive)
+end
+
+function draw_image(screen, attributes)
+    println("Oh Hi")
+    scene = screen.scene
+    ctx = screen.context
+    image = attributes[3][]
+    x, y = attributes[1][], attributes[2][]
+    model = attributes[:model][]
+    imsize = (extrema_nan(x), extrema_nan(y))
+    xy = project_position(scene, Point2f0(first.(imsize)), model)
+    xymax = project_position(scene, Point2f0(last.(imsize)), model)
+    w, h = xymax .- xy
+    interp = to_value(get(attributes, :interpolate, true))
+    interp = interp ? Cairo.FILTER_BEST : Cairo.FILTER_NEAREST
+    Cairo.save(ctx);
+    pattern = Cairo.CairoPattern(to_cairo_image(image, attributes))
+    Cairo.pattern_set_extend(pattern, Cairo.EXTEND_PAD)
+    Cairo.pattern_set_filter(pattern, interp)
+    Cairo.set_source(ctx, pattern)
+    Cairo.rectangle(ctx, xy..., w, h)
+    Cairo.fill(ctx)
+    Cairo.restore(ctx)
+end
+
+
 function cairo_draw(screen::CairoScreen, primitive::Scatter)
     scene = screen.scene
     fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker))
@@ -180,10 +229,8 @@ function fontname(x::NativeFont)
     unsafe_string(ft_rect.family_name)
 end
 
-import ..GLVisualize
-using AbstractPlotting
 function fontscale(scene, c, font, s)
-    atlas = GLVisualize.get_texture_atlas()
+    atlas = AbstractPlotting.get_texture_atlas()
     s = (s ./ atlas.scale[AbstractPlotting.glyph_index!(atlas, c, font)]) ./ 0.02
     project_scale(scene, s)
 end
@@ -281,13 +328,14 @@ function cairo_finish(screen::CairoScreen{CairoRGBSurface})
 end
 cairo_finish(screen::CairoScreen) = finish(screen.surface)
 
-function draw_all(screen, scene::Scene)
+function Base.display(screen::CairoScreen, scene::Scene)
     Makie.center!(scene)
     for elem in scene.plots
         cairo_draw(screen, elem)
     end
-    foreach(x->draw_all(screen, x), scene.children)
+    foreach(child_scene-> display(screen, child_scene), scene.children)
     cairo_finish(screen)
+    return
 end
 
 
