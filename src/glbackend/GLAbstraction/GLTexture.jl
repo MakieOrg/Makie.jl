@@ -221,18 +221,18 @@ end
 
 
 # GPUArray interface:
-function Base.unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     copy!(a, readoffset, b.buffer, writeoffset, len)
     glBindTexture(b.texture.texturetype, b.texture.id)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
 end
 
-function Base.unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     copy!(a.buffer, readoffset, b, writeoffset, len)
     glBindTexture(a.texture.texturetype, a.texture.id)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
-function Base.unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 
     glBindTexture(a.texture.texturetype, a.texture.id)
@@ -290,7 +290,7 @@ function gpu_data(t::Texture{T, ND}) where {T, ND}
     return result
 end
 
-function Base.unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
+function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
     bind(source)
     glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, dest)
     bind(source, 0)
