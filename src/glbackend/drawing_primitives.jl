@@ -178,7 +178,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = map(to_gl_text, x[1], getindex.(gl_attributes, liftkeys)...)
+        gl_text = map(to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             map(getindex, gl_text, Signal(i))
@@ -186,7 +186,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
 
         atlas = get_texture_atlas()
         keys = (:color, :stroke_color, :stroke_width, :rotation)
-        signals = getindex.(gl_attributes, keys)
+        signals = getindex.(Ref(gl_attributes), keys)
         visualize(
             (DISTANCEFIELD, positions),
             color = signals[1],
@@ -228,7 +228,7 @@ end
 
 function get_image(plot)
     if isa(plot[:color][], AbstractMatrix{<: Number})
-        lift(vec2color, pop!.(plot, (:color, :color_map, :color_norm))...)
+        lift(vec2color, pop!.(Ref(plot), (:color, :color_map, :color_norm))...)
     else
         delete!(plot, :color_norm)
         delete!(plot, :color_map)
