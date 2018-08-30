@@ -18,6 +18,5 @@ job:
       - mkdir $JULIA_DEPOT_PATH # Pkg3.jl#325
       - julia --project -e "using Pkg;
                           Pkg.instantiate();
-                          Pkg.pkg\"add AbstractPlotting#sd/07\";
                           Pkg.build();
-                          Pkg.test(\"Makie\"; coverage=false);"
+                          Pkg.test();"
