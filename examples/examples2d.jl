@@ -183,6 +183,7 @@
         pos = (500, 500)
         posis = Point2f0[]
         for r in range(0, stop = 2pi, length = 20)
+            global pos, posis
             p = pos .+ (sin(r)*100.0, cos(r) * 100)
             push!(posis, p)
             t = text!(

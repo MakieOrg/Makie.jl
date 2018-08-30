@@ -274,7 +274,7 @@ function cairo_finish(screen::CairoScreen{CairoRGBSurface})
     draw(screen.pane.canvas) do canvas
         ctx = getgc(canvas)
         w, h = Cairo.width(ctx), Cairo.height(ctx)
-        info(w, " ", h)
+        @info(w, " ", h)
         # TODO: Maybe just use set_source(ctx, screen.surface)?
         Cairo.image(ctx, screen.surface, 0, 0, w, h)
     end
