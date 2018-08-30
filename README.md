@@ -25,7 +25,7 @@ Pkg.checkout("AbstractPlotting")
 ## Julia 0.7
 
 ```Julia
-add Makie#sd/07 AbstractPlotting#sd/07
+add Makie#master AbstractPlotting#master GLFW#master
 test Makie
 ```
 
