@@ -25,8 +25,7 @@ Pkg.checkout("AbstractPlotting")
 ## Julia 0.7
 
 ```Julia
-add Makie#sd/07 AbstractPlotting#sd/07 GeometryTypes#sd/07 ImageMagick#sd/07 Reactive#sd/07
-add ImageFiltering#master
+add Makie#sd/07 AbstractPlotting#sd/07
 test Makie
 ```
 
