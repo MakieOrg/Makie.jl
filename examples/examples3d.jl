@@ -283,8 +283,8 @@
         positions = decompose(Point3f0, large_sphere, 30)
         np = length(positions)
         pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
-        pts = vcat(pts, 1.1 * pts + randn(size(pts)) / perturbfactor) # light position influence ?
-        edges = hcat(collect(1:np), collect(1:np) + np)
+        pts = vcat(pts, 1.1 .* pts + randn(size(pts)) / perturbfactor) # light position influence ?
+        edges = hcat(collect(1:np), collect(1:np) .+ np)
         ne = size(edges, 1); np = size(pts, 1)
         # define markers meshes
         meshC = GLNormalMesh(
@@ -301,7 +301,7 @@
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         sizesC = [Vec3f0(1., 1., 1.) for i = 1:ne]
         colorsp = [RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:np]
-        colorsC = [(colorsp[edges[i, 1]] + colorsp[edges[i, 2]]) / 2. for i = 1:ne]
+        colorsC = [(colorsp[edges[i, 1]] .+ colorsp[edges[i, 2]]) / 2.0 for i = 1:ne]
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         Qlist = zeros(ne, 4)
         for k = 1:ne
@@ -311,12 +311,12 @@
                 Float32(1)
             )
             Q = GeometryTypes.rotation(ct)
-            r = 0.5 * sqrt(1 + Q[1, 1] + Q[2, 2] + Q[3, 3]); Qlist[k, 4] = r
-            Qlist[k, 1] = (Q[3, 2] - Q[2, 3]) / (4 * r)
-            Qlist[k, 2] = (Q[1, 3] - Q[3, 1]) / (4 * r)
-            Qlist[k, 3] = (Q[2, 1] - Q[1, 2]) / (4 * r)
+            r = 0.5 * sqrt(1 .+ Q[1, 1] .+ Q[2, 2] .+ Q[3, 3]); Qlist[k, 4] = r
+            Qlist[k, 1] = (Q[3, 2] .- Q[2, 3]) / (4 .* r)
+            Qlist[k, 2] = (Q[1, 3] .- Q[3, 1]) / (4 .* r)
+            Qlist[k, 3] = (Q[2, 1] .- Q[1, 2]) / (4 .* r)
         end
-        rotationsC = [Makie.Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
+        rotationsC = [Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
         # plot
         hm = meshscatter!(
             scene, pG[edges[:, 1]],

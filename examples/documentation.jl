@@ -78,7 +78,7 @@
     @cell "Marker sizes + Marker colors" ["2d", scatter, markersize, color] begin
         scatter(
             rand(20), rand(20),
-            markersize = rand(20) ./20 + 0.02,
+            markersize = rand(20) ./20 .+ 0.02,
             color = rand(RGBf0, 20)
         )
     end
@@ -235,33 +235,33 @@
     end
 
     @cell "Stepper demo" [stepper, text, annotation] begin
-        scene = Scene()
-        function inc_pos(pos::NTuple{2, Int})
-            map(x -> x + 100, pos)
-        end
-        pos = (50, 50)
-        steps = ["Step 1", "Step 2", "Step 3"]
-        colors = AbstractPlotting.to_colormap(:Set1, length(steps))
-        lines!(scene, Rect(0,0,500,500), linewidth = 0.0001)
 
-        # initialize the stepper and give it an output destination
-        st = Stepper(scene, @outputfile)
+        function stepper_demo()
+            scene = Scene()
+            pos = (50, 50)
+            steps = ["Step 1", "Step 2", "Step 3"]
+            colors = AbstractPlotting.to_colormap(:Set1, length(steps))
+            lines!(scene, Rect(0,0,500,500), linewidth = 0.0001)
+            # initialize the stepper and give it an output destination
+            st = Stepper(scene, @outputfile)
 
-        for i = 1:length(steps)
-            text!(
-                scene,
-                steps[i],
-                position = pos,
-                align = (:left, :bottom),
-                textsize = 100,
-                font = "Blackchancery",
-                color = colors[i],
-                scale_plot = false
-            )
-            pos = inc_pos(pos)
-            step!(st) # saves the step and increments the step by one
+            for i = 1:length(steps)
+                text!(
+                    scene,
+                    steps[i],
+                    position = pos,
+                    align = (:left, :bottom),
+                    textsize = 100,
+                    font = "Blackchancery",
+                    color = colors[i],
+                    scale_plot = false
+                )
+                pos = pos .+ 100
+                step!(st) # saves the step and increments the step by one
+            end
+            st
         end
-        st
+        stepper_demo()
     end
 end
 #

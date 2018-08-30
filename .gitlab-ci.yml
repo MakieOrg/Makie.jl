@@ -1,6 +1,8 @@
 variables:
   CI_IMAGE_TAG: 'opengl'
-
+  MODERNGL_DEBUGGING: "true"
+  CHECKOUT_ABSTRACTPLOTTING: "true"
+  
 stages:
   - test
 

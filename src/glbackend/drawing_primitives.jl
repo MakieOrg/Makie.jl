@@ -165,8 +165,8 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     toffset = calc_offset(chars, rscale, font, atlas)
     aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
-    uv_offset_width = glyph_uv_width!.(atlas, chars, (font,))
-    scale = glyph_scale!.(atlas, chars, (font,), rscale)
+    uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
+    scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions = map(positions2d) do p
         pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ pos
