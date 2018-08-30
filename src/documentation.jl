@@ -17,13 +17,13 @@ help(func; kw_args...) = help(stdout, func; kw_args...) #defaults to STDOUT
 function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     buffer = IOBuffer()
     _help(buffer, input; extended = extended)
-    Base.Markdown.parse(String(take!(buffer)))
+    Markdown.parse(String(take!(buffer)))
 end
 
 function help(io::IO, input::Function; extended = false)
     buffer = IOBuffer()
     _help(buffer, to_type(input); extended = extended)
-    Base.Markdown.parse(String(take!(buffer)))
+    Markdown.parse(String(take!(buffer)))
 end
 
 # Internal help functions
