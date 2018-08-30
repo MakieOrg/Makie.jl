@@ -63,7 +63,7 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
         # println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
         print(io, isempty(database[idx].toplevel) ? "" : "$(database[idx].toplevel)\n")
         for line in split(database[idx].source, "\n")
-            line = replace(line, "@resolution", "resolution = (500, 500)")
+            line = replace(line, "@resolution" => "resolution = (500, 500)")
             println(io, line)
         end
         println(io, "```")
@@ -76,7 +76,7 @@ function _print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
         # println(io, isempty(database[idx].toplevel) ? "using Makie, AbstractPlotting, GeometryTypes" : "$(database[idx].toplevel)")
         print(io, isempty(database[idx].toplevel) ? "" : "$(database[idx].toplevel)\n")
         for line in split(database[idx].source, "\n")
-            line = replace(line, "@resolution", "resolution = (500, 500)")
+            line = replace(line, "@resolution" => "resolution = (500, 500)")
             println(io, line)
         end
         println(io, "```")
@@ -105,7 +105,7 @@ function print_source(io::IO, idx::Int; style = nothing, example_counter = NaN)
     Base.Markdown.parse(String(take!(io)))
 end
 
-print_source(idx; kw_args...) = print_source(STDOUT, idx; kw_args...) #defaults to STDOUT
+print_source(idx; kw_args...) = print_source(stdout, idx; kw_args...) #defaults to STDOUT
 
 
 """
@@ -119,7 +119,7 @@ and are used to filter the search results by title and author.
 `match` specifies a matching function, e.g. any/all which gets applied to the input tags.
 """
 function find_indices(input_tags::NTuple{N, String}; title = nothing, author = nothing, match::Function = all) where N # --> return an array of cell entries
-    indices = find(database) do entry
+    indices = findall(database) do entry
         tags_found = match(tags -> tags in entry.tags, input_tags)
         # find author, if nothing input is given, then don't filter
         author_found = (author == nothing) || (entry.author == string(author))
@@ -170,7 +170,7 @@ globaly_shared_code = String[]
 const NO_GROUP = 0
 unique_names = Set(Symbol[])
 function unique_name!(name, unique_names = unique_names)
-    funcname = Symbol(replace(lowercase(string(name)), r"[ #$!@#$%^&*()+]", '_'))
+    funcname = Symbol(replace(lowercase(string(name)), r"[ #$!@#$%^&*()+]" => '_'))
     i = 1
     while isdefined(Makie, funcname) || (funcname in unique_names)
         funcname = Symbol("$(funcname)_$i")
@@ -182,7 +182,7 @@ end
 
 function CellEntry(author, title, tags, file, file_range, toplevel, source, groupid = NO_GROUP)
     uname = unique_name!(title)
-    CellEntry(author, title, uname, tags, file, file_range, toplevel, source, groupid)
+    CellEntry(string(author), title, uname, tags, file, file_range, toplevel, source, groupid)
 end
 
 
@@ -203,18 +203,18 @@ function print_code(
     println(io, entry.toplevel)
     print(io, scope_start)
     for line in split(entry.source, "\n")
-        line = replace(line, "@resolution", resolution(entry))
+        line = replace(line, "@resolution" => resolution(entry))
         filematch = match(r"(@outputfile)(\(.+?\))?" , line)
         if filematch != nothing
             ending = filematch.captures[2]
             replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
             line = replace(
-                line, r"(@outputfile)(\(.+?\))?",
-                string('"', escape_string(replacement), '"')
+                line,
+                r"(@outputfile)(\(.+?\))?" => string('"', escape_string(replacement), '"')
             )
         end
         if replace_nframes
-            line = replace(line, r"(record\(.*)N(.*\) do .*)", s"\1 10 \2")
+            line = replace(line, r"(record\(.*)N(.*\) do .*)" => s"\1 10 \2")
         end
         println(io, indent, line)
     end
@@ -232,11 +232,14 @@ end
 
 function findspace(line)
     space_len = 0
-    s = start(line)
-    c = first(line)
-    while !done(line, s) && c == ' '
+    c_s = iterate(line)
+    c_s === nothing && return 0
+    c, s = c_s
+    while c == ' '
         space_len += 1
-        c, s = next(line, s)
+        c_s = iterate(line, s)
+        c_s === nothing && break
+        c, s = c_s
     end
     space_len -= 1
     space_len
@@ -251,7 +254,7 @@ function printline(line, toplevel, source, start_indent)
         # remove all spaces of first indent
         line = line[(start_indent+1):end]
     end
-    if ismatch(r"using|import", line)
+    if occursin(r"using|import", line)
         println(toplevel, line)
     else
         println(source, line)
@@ -272,7 +275,7 @@ function extract_source(file, file_range)
         for (i, line) in enumerate(eachline(io))
             i < minimum(file_range) && continue
             # allow to parse past maximum(file_range) until next end
-            if i > maximum(file_range) && contains(line, "end")
+            if i > maximum(file_range) && occursin("end", line)
                 if length(line) > start_indent && line[start_indent] == ' '
                     # if end is on start indention level,
                     # this isn't the macro end and needs to be part of source
@@ -294,6 +297,8 @@ is_cell(x) = false
 is_group(x::Expr) = x.head == :macrocall && x.args[1] == Symbol("@group")
 is_group(x) = false
 
+is_linenumber(x) = false
+is_linenumber(x::LineNumberNode) = true
 
 find_lastline(arg::Any) = 0
 function find_lastline(arg::Expr)
@@ -301,19 +306,19 @@ function find_lastline(arg::Expr)
 end
 function find_lastline(args::Vector)
     isempty(args) && return 0
-    idx = findlast(Base.is_linenumber, args)
-    line_number = if idx == 0
+    idx = findlast(is_linenumber, args)
+    line_number = if idx == nothing
         0
     else
-        args[idx].args[1]
+        args[idx].line
     end
     max(mapreduce(find_lastline, max, args), line_number)
 end
 function find_startend(args::Vector)
-    firstidx = findfirst(Base.is_linenumber, args)
-    first_linenumber, file = args[firstidx].args
+    firstline = args[findfirst(is_linenumber, args)]
+    first_linenumber = firstline.line
     last_linenumber = find_lastline(args)
-    string(file), first_linenumber:last_linenumber
+    string(firstline.file), first_linenumber:last_linenumber
 end
 
 remove_toplevel(x) = x
@@ -331,7 +336,7 @@ function flatten2block(args::Vector)
     for elem in args
         if elem.head == :block
             append!(res.args, elem.args)
-        elseif Base.is_linenumber(elem) # ignore
+        elseif is_linenumber(elem) # ignore
         else
             push!(res.args, elem)
         end
@@ -339,7 +344,9 @@ function flatten2block(args::Vector)
     res
 end
 
+
 function extract_cell(cell, author, parent_tags, setup, pfile, lastline, groupid = NO_GROUP)
+    filter!(x-> !is_linenumber(x), cell.args)
     if !(length(cell.args) in (2, 4, 5))
         error(
             "You need to supply 1 3 or 4 arguments to `@cell`. E.g.:
@@ -363,6 +370,7 @@ function extract_cell(cell, author, parent_tags, setup, pfile, lastline, groupid
     if !isa(title, String)
         error("Title need to be a string. Found: $(title) with type: $(typeof(title))")
     end
+
     toplevel = ""; file = pfile; startend = lastline:lastline;
     if Meta.isexpr(cblock, :block)
         file, startend = find_startend(cblock.args)
@@ -415,11 +423,11 @@ macro block(author, tags, block)
 
     args = block.args
     pfile, pstartend = find_startend(args)
-    # psource = extract_source(pfile, pstartend, x-> !contains(x, "@cell"))
+    # psource = extract_source(pfile, pstartend, x-> !occursin("@cell", x))
 
     parent_tags = extract_tags(tags)
-    cells = args[find(is_cell, args)]
-    noncells = args[find(x-> !is_cell(x), args)]
+    cells = args[findall(is_cell, args)]
+    noncells = args[findall(x-> !is_cell(x), args)]
     setup = join(globaly_shared_code, "\n")
 
     for cell in cells
@@ -429,7 +437,7 @@ macro block(author, tags, block)
         push!(tags_list, collect(String, cell_entry.tags)...)
     end
 
-    groups = args[find(is_group, args)]
+    groups = args[findall(is_group, args)]
     lastidx = length(database)
     for (groupid, group) in enumerate(groups)
         cellist = group.args[2].args
@@ -472,12 +480,20 @@ end
 Walks through every example matching `tags`, and calls `f` on the example.
 Merges groups of examples into one example entry.
 """
-function enumerate_examples(f, tags...)
+function enumerate_examples(f, tags...; exclude_tags = nothing)
+    num_excluded = 0
     sort!(database, by = (x)-> x.groupid)
     group_tmp = CellEntry[]
     last_id = NO_GROUP
     for entry in database
         all(x-> string(x) in entry.tags, tags) || continue
+        if exclude_tags != nothing && !isempty(exclude_tags)
+            if any(x-> string(x) in entry.tags, Set(exclude_tags))
+                @info("exclude_tag encountered, skipping example \"$(entry.title)\"")
+                num_excluded += 1
+                continue
+            end
+        end
         if last_id != NO_GROUP && (entry.groupid != last_id)
             last_id = entry.groupid # if already NO_GROUP, we set it to NO_GROUP
             if !isempty(group_tmp)
@@ -490,6 +506,7 @@ function enumerate_examples(f, tags...)
             f(entry)
         end
     end
+    @info("Number of examples actually skipped: $num_excluded")
     return
 end
 
@@ -514,16 +531,17 @@ function eval_example(entry; kw_args...)
     tmpmod = Module(gensym(uname))
     result = nothing
     try
-        result = eval(tmpmod, Expr(:call, :include_string, source, string(uname)))
+        result = include_string(tmpmod, source, string(uname))
     catch e
-        Base.showerror(STDERR, e)
-        println(STDERR)
-        Base.show_backtrace(STDERR, Base.catch_backtrace())
-        println(STDERR)
-        println(STDERR, "failed to evaluate the example:")
-        println(STDERR, "```julia")
-        println(STDERR, source)
-        println(STDERR, "```")
+        Base.showerror(stderr, e)
+        println(stderr)
+        println(stderr, "failed to evaluate the example:")
+        println(stderr, "```julia")
+        println(stderr, source)
+        println(stderr, "```")
+        println(stderr, "stacktrace:")
+        Base.show_backtrace(stderr, Base.catch_backtrace())
+        println(stderr)
     end
     result
 end
@@ -532,13 +550,13 @@ end
 Walks through examples and evaluates them. Returns the evaluated value and calls
 `f(entry, value)`.
 """
-function eval_examples(f, tags...; kw_args...)
-    enumerate_examples(tags...) do entry
+function eval_examples(f, tags...; exclude_tags = nothing, kw_args...)
+    enumerate_examples(tags...; exclude_tags = exclude_tags) do entry
         result = eval_example(entry; kw_args...)
         try
             f(entry, result)
         catch e
-            warn("Calling $f failed with example: $(entry.title)")
+            @warn("Calling $f failed with example: $(entry.title)")
             rethrow(e)
         end
     end

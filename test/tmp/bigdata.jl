@@ -23,7 +23,7 @@ Base.size(x::MMapString) = size(x.x)
 # We just call the C library directly and use the almost deprecated syntax (`&`) to directly take a pointer from the tuple.
 # in Julia 0.7 this is likely no issue and we should be able to just use `write`,
 # since the compiler got a lot better at stack allocating and eliminating mutable containers.
-uuwrite(io, ptr::T) where T = Int(ccall(:ios_write, Csize_t, (Ptr{Void}, Ptr{T}, Csize_t), io.ios, &ptr, sizeof(T)))
+uuwrite(io, ptr::T) where T = Int(ccall(:ios_write, Csize_t, (Ptr{Cvoid}, Ref{T}, Csize_t), io.ios, ptr, sizeof(T)))
 
 function save2bin(path, n = typemax(Int))
     str = MMapString(path)

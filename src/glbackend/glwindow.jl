@@ -168,7 +168,7 @@ function MonitorProperties(monitor::GLFW.Monitor)
     position = Vec{2, Int}(GLFW.GetMonitorPos(monitor)...)
     physicalsize = Vec{2, Int}(GLFW.GetMonitorPhysicalSize(monitor)...)
     videomode = GLFW.GetVideoMode(monitor)
-    sfactor = is_apple() ? 2.0 : 1.0
+    sfactor = Sys.isapple() ? 2.0 : 1.0
     dpi = Vec(videomode.width * 25.4, videomode.height * 25.4) * sfactor ./ Vec{2, Float64}(physicalsize)
     videomode_supported = GLFW.GetVideoModes(monitor)
 
@@ -209,10 +209,10 @@ function reactive_run_till_now()
 end
 
 function was_destroyed(nw)
-    if isdefined(GLFW, :_window_callbacks)
-        !haskey(GLFW._window_callbacks, nw)
-    elseif !isimmutable(nw)
+    if !isimmutable(nw)
         nw.handle == C_NULL
+    elseif isdefined(GLFW, :_window_callbacks)
+        !haskey(GLFW._window_callbacks, nw)
     else
         error("Unknown GLFW.jl version. Can't verify if window is destroyed")
     end

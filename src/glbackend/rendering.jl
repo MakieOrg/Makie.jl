@@ -48,7 +48,7 @@ function render_frame(screen::Screen)
     nw = to_native(screen)
     GLAbstraction.is_context_active(nw) || return
     fb = screen.framebuffer
-    wh = Int.(GLFW.GetFramebufferSize(nw))
+    wh = Int.(framebuffer_size(nw))
     resize!(fb, wh)
     w, h = wh
     glDisable(GL_STENCIL_TEST)

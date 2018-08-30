@@ -11,7 +11,7 @@ function draw_all(screen, scene::Scene)
     Makie.CairoBackend.cairo_finish(screen)
 end
 
-srand(1)
+Random.seed!(1)
 scene = Scene(resolution = (1000, 1000))
 s = plot!(scene, 1:10, rand(10, 3))
 s2 = lines!(scene, -1:8, rand(10) .+ 1, color = :black)

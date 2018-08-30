@@ -1,15 +1,13 @@
-__precompile__(true)
 module Makie
-
-
 
 using AbstractPlotting
 using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore
-import Media, Juno
 import FileIO
+using LinearAlgebra, Statistics
+using Base64
 
 module ContoursHygiene
     import Contour
@@ -30,7 +28,7 @@ for name in names(AbstractPlotting)
 end
 
 # Unexported names
-using AbstractPlotting: @info, @log_performance, @warn, jl_finalizer, NativeFont, Key, @key_str
+using AbstractPlotting: @info, @log_performance, @warn, NativeFont, Key, @key_str
 
 export (..), GLNormalUVMesh
 # conflicting identifiers
@@ -44,7 +42,7 @@ export NT
 
 const has_ffmpeg = Ref(false)
 
-struct MakieDisplay <: Display
+struct MakieDisplay <: AbstractDisplay
 end
 
 # Hacky workaround, for the difficulty of removing closed screens from the display stack
@@ -69,7 +67,7 @@ end
 include("makie_recipes.jl")
 include("utils.jl")
 include("glbackend/glbackend.jl")
-include("cairo/cairo.jl")
+# include("cairo/cairo.jl")
 include("output.jl")
 include("video_io.jl")
 

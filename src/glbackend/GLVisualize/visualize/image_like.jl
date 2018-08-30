@@ -1,7 +1,6 @@
 """
 A matrix of colors is interpreted as an image
 """
-
 _default(::Signal{Array{RGBA{N0f8}, 2}}, ::Style{:default}, ::Dict{Symbol,Any})
 
 
@@ -33,7 +32,7 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         )
     end
 end
-function _default(main::VecTypes{T}, ::Style, data::Dict) where T <: Colorant
+function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
         image                 = main => (Texture, "image, can be a Texture or Array of colors")
         primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0, 0f0, length(value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
@@ -93,7 +92,7 @@ Slice a 3D array along axis `timedim` at time `t`.
 This can be used to treat a 3D array like a video and create an image stream from it.
 """
 function play(array::Array{T, 3}, timedim::Integer, t::Integer) where T
-    index = ntuple(dim-> dim == timedim ? t : Colon(), Val{3})
+    index = ntuple(dim-> dim == timedim ? t : Colon(), Val(3))
     array[index...]
 end
 
@@ -112,7 +111,6 @@ function play(buffer::Array{T, 2}, video_stream, t) where T
 end
 
 
-unwrap(img::ImageMetadata.ImageMeta) = unwrap(data(img))
 unwrap(img::AxisArrays.AxisArray) = unwrap(img.data)
 unwrap(img::AbstractArray) = img
 
@@ -227,8 +225,6 @@ function _default(a::VolumeTypes{T}, s::Style{:absorption}, data::Dict) where T<
     _default(a, default_style, data)
 end
 
-modeldefault(dimensions) = SMatrix{4,4,Float32}([eye(3,3) -dimensions/2; zeros(1,3) 1])
-
 struct VolumePrerender
 end
 function (::VolumePrerender)()
@@ -239,16 +235,12 @@ end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeElTypes
     @gen_defaults! data begin
-        dimensions = Vec3f0(1)
-    end
-    modeldflt = modeldefault(data[:dimensions])
-    modelinv = const_lift(inv, get(data, :model, modeldflt))
-    @gen_defaults! data begin
         volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), dimensions)
+        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
         light_position   = Vec3f0(0.25, 1.0, 3.0)
         light_intensity  = Vec3f0(15.0)
-        modelinv         = modelinv
+        model            = Mat4f0(I)
+        modelinv         = const_lift(inv, model)
 
         color_map        = default(Vector{RGBA}, s) => Texture
         color_norm       = color_map == nothing ? nothing : const_lift(extrema2f0, main)
@@ -268,16 +260,10 @@ end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
-        dimensions = Vec3f0(1)
-    end
-    modeldflt = modeldefault(data[:dimensions])
-    model = const_lift(identity, get(data, :model, modeldflt))
-    modelinv = const_lift(inv, get(data, :model, modeldflt))
-    @gen_defaults! data begin
         volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), dimensions)
-        model            = model
-        modelinv         = modelinv
+        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+        model            = Mat4f0(I)
+        modelinv         = const_lift(inv, model)
 
         # These don't do anything but are needed for type specification in the frag shader
         color_map        = nothing
@@ -295,16 +281,10 @@ end
 
 function _default(main::IndirectArray{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
-        dimensions       = Vec3f0(1)
-    end
-    modeldflt = modeldefault(data[:dimensions])
-    model = const_lift(identity, get(data, :model, modeldflt))
-    modelinv = const_lift(inv, get(data, :model, modeldflt))
-    @gen_defaults! data begin
         volumedata       = main.index => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), dimensions)
-        model            = model
-        modelinv         = modelinv
+        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+        model            = Mat4f0(I)
+        modelinv         = const_lift(inv, model)
 
         color_map        = main.values => TextureBuffer
         color_norm       = nothing

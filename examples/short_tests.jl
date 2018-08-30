@@ -10,6 +10,7 @@
 
         offset = 0
         for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
+            global offset
             t = text!(
                 "boundingbox", raw = true,
                 align = (a_lign, b_lign),
@@ -23,6 +24,14 @@
 
     # @cell mesh(IRect(0, 0, 200, 200))
 
+    @cell begin
+        Makie.GLAbstraction.empty_shader_cache!()
+        r = range(-3pi, stop = 3pi, length = 100)
+        s = volume(r, r, r, (x, y, z)-> cos(x) + sin(y) + cos(z), algorithm = :iso, isorange = 0.1f0, show_axis = false)
+        v2 = volume!(r, r, r, (x, y, z)-> cos(x) + sin(y) + cos(z), algorithm = :mip, show_axis = false)[end]
+        translate!(v2, Vec3f0(6pi, 0, 0))
+        s
+    end
     @cell poly(IRect(0, 0, 200, 200), strokewidth = 20, strokecolor = :red, color = (:black, 0.4))
 
     @cell begin
@@ -57,7 +66,7 @@
     end
 
     @cell begin
-        angles = linspace(0, 2pi, 20)
+        angles = range(0, stop = 2pi, length = 20)
         pos = Point2f0.(sin.(angles), cos.(angles))
         scatter(pos, rotations = -angles , marker = '▲', scale_plot = false)
         scatter!(pos, markersize = 0.02, color = :red, scale_plot = false)
@@ -71,8 +80,9 @@
     #     s2.vertices .= s2.vertices .+ (Point3f0(0, 2, 0),)
     #     mesh!(s2, color = rand(RGBAf0, 50, 50))
     # end
+    @cell heatmap(rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
-    @call arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
+    @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 end
 
 #
@@ -80,7 +90,7 @@ end
 # b = Point2f0.(0, 150:50:offset)
 # c = Point2f0.(500, 150:50:offset)
 # yrange = 150:50:offset
-# #axis2d!(linspace(0, 500, length(yrange)), yrange)
+# #axis2d!(range(0, stop = 500, length = length(yrange)), yrange)
 #
 #     import RDatasets
 #     singers = RDatasets.dataset("lattice","singer")

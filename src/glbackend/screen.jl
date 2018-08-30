@@ -22,7 +22,7 @@ mutable struct Screen <: AbstractScreen
             cache2plot::Dict{UInt16, AbstractPlot},
         )
         obj = new(glscreen, framebuffer, rendertask, screen2scene, screens, renderlist, cache, cache2plot)
-        jl_finalizer(obj) do obj
+        finalizer(obj) do obj
             # save_print("Freeing screen")
             empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
             return
@@ -86,7 +86,7 @@ end
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::Screen, scene::Scene, robj)
-    filter!(screen.screen2scene) do k, v
+    filter!(screen.screen2scene) do (k, v)
         k.value != nothing
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
@@ -118,6 +118,8 @@ function rewrap(robj::RenderObject{Pre}) where Pre
         robj.boundingbox,
     )
 end
+
+const _global_gl_screen = Ref{Screen}()
 
 function Screen(;resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
@@ -179,7 +181,6 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
     screen
 end
 
-const _global_gl_screen = Ref{Screen}()
 function global_gl_screen()
     if isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
         _global_gl_screen[]

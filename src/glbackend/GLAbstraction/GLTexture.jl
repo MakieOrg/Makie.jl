@@ -36,7 +36,7 @@ mutable struct Texture{T <: GLArrayEltypes, NDIM} <: OpenglTexture{T, NDIM}
             size,
             current_context()
         )
-        finalizer(tex, free)
+        finalizer(free, tex)
         tex
     end
 end
@@ -221,18 +221,18 @@ end
 
 
 # GPUArray interface:
-function Base.unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     copy!(a, readoffset, b.buffer, writeoffset, len)
     glBindTexture(b.texture.texturetype, b.texture.id)
     glTexBuffer(b.texture.texturetype, b.texture.internalformat, b.buffer.id) # update texture
 end
 
-function Base.unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     copy!(a.buffer, readoffset, b, writeoffset, len)
     glBindTexture(a.texture.texturetype, a.texture.id)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
-function Base.unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 
     glBindTexture(a.texture.texturetype, a.texture.id)
@@ -285,12 +285,12 @@ end
 =#
 # Implementing the GPUArray interface
 function gpu_data(t::Texture{T, ND}) where {T, ND}
-    result = Array{T, ND}(size(t))
+    result = Array{T, ND}(undef, size(t))
     unsafe_copy!(result, t)
     return result
 end
 
-function Base.unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
+function unsafe_copy!(dest::Array{T, N}, source::Texture{T, N}) where {T,N}
     bind(source)
     glGetTexImage(source.texturetype, 0, source.format, source.pixeltype, dest)
     bind(source, 0)
@@ -355,16 +355,15 @@ texsubimage(t::Texture{T, 3}, newvalue::Array{T, 3}, xrange::UnitRange, yrange::
 )
 
 
-Base.start(t::TextureBuffer{T}) where {T} = start(t.buffer)
-Base.next(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where {T} = next(t.buffer, state)
-function Base.done(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
-    isdone = done(t.buffer, state)
-    if isdone
+Base.iterate(t::TextureBuffer{T}) where {T} = iterate(t.buffer)
+function Base.iterate(t::TextureBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
+    v_idx = iterate(t.buffer, state)
+    if v_idx === nothing
         glBindTexture(t.texturetype, t.id)
         glTexBuffer(t.texturetype, t.internalformat, t.buffer.id)
         glBindTexture(t.texturetype, 0)
     end
-    isdone
+    v_idx
 end
 function default_colorformat_sym(colordim::Integer, isinteger::Bool, colororder::AbstractString)
     colordim > 4 && error("no colors with dimension > 4 allowed. Dimension given: ", colordim)

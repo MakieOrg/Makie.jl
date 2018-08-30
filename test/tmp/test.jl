@@ -18,9 +18,9 @@ scene
 
 surface(rand(100, 100))
 surface(-1..1, -1..1, rand(100, 100))
-surface(linspace(-1, 1, 100), linspace(-1, 1, 100) .+ (rand(100) .* 0.1), rand(100, 100))
+surface(linspace(-1, 1, 100), range(-1, stop = 1, length = 100) .+ (rand(100) .* 0.1), rand(100, 100))
 N = 40
-r = linspace(-1, 1, N)
+r = range(-1, stop = 1, length = N)
 x = map(hcat(repeated(r, N)...)) do x
    x + (rand() * 0.01)
 end
@@ -29,16 +29,16 @@ surface(x, y, rand(N, N))
 surface(x, y, rand(N, N) * 0.1, color = rand(RGBAf0, N, N))
 
 
-wf = wireframe(linspace(-1, 1, 100), linspace(-1, 1, 100) .+ (rand(100) .* 0.1), rand(100, 100))
+wf = wireframe(linspace(-1, 1, 100), range(-1, stop = 1, length = 100) .+ (rand(100) .* 0.1), rand(100, 100))
 wf = wireframe(-1..1, -1..1, rand(100, 100))
 wf = wireframe(Sphere(Point3f0(0), 1f0))
 wf = wireframe(x, y, rand(N, N))
 
 scene = Scene()
 x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
-    linesegments!(scene, linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
+    linesegments!(scene, range(1, stop = 5, length = 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
 end
-push!(x, scatter!(scene, linspace(1, 5, 100), rand(100), rand(100)))
+push!(x, scatter!(scene, range(1, stop = 5, length = 100), rand(100), rand(100)))
 scene
 
 l = Makie.legend(x, ["attribute $i" for i in 1:4])
@@ -95,7 +95,7 @@ sub = Scene(scene, offset = Vec3f0(1, 2, 0))
 scatter(sub, rand(10), rand(10), camera = :orthographic)
 sub[:camera]
 lines(sub, rand(10), rand(10), camera = :orthographic)
-axis(linspace(0, 2, 4), linspace(0, 2, 4))
+axis(linspace(0, 2, 4), range(0, stop = 2, length = 4))
 center!(scene)
 sub[:offset] = Vec3f0(0, 0, 0)
 
@@ -111,13 +111,13 @@ sub = Scene(scene, rotation = Vec4f0(0, 0, 0, 1))
 
 meshscatter(sub, rand(30) + 1.0, rand(30), rand(30))
 meshscatter(sub, rand(30), rand(30), rand(30) .+ 1.0)
-r = linspace(-2, 2, 4)
+r = range(-2, stop = 2, length = 4)
 Makie.axis(r, r, r)
 center!(scene)
 
 axis = Vec3f0(0, 0, 1)
 io = VideoStream(scene, homedir()*"/Desktop/", "rotation")
-for angle = linspace(0, 2pi, 100)
+for angle = range(0, stop = 2pi, length = 100)
     sub[:rotation] = Makie.qrotation(axis, angle)
     recordframe!(io)
     sleep(1/15)
@@ -162,8 +162,9 @@ function plot(scene::S, A::AbstractMatrix{T}) where {T <: AbstractFloat, S <: Sc
     end
     l = legend(scene, plots, labels)
     # Only create one axis per scene
-    xlims = linspace(1, size(A, 1), min(N, 10))
-    ylims = linspace(extrema(A)..., 5)
+    xlims = range(1, stop = size(A, 1), length = min(N, 10))
+    a, b = extrema(A)
+    ylims = range(a, stop = b, length = 5)
     a = get(scene, :axis) do
         xlims = (1, size(A, 1))
         ylims = extrema(A)

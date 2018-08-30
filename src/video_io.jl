@@ -31,8 +31,8 @@ function VideoStream(scene::Scene)
     _xdim, _ydim = widths(pixelarea(scene)[])
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    io, process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r 24 -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
-    VideoStream(io, process, screen, abspath(path))
+    process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r 24 -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    VideoStream(process.in, process, screen, abspath(path))
 end
 
 """
@@ -63,7 +63,7 @@ be `mkv` is default and doesn't need convert, `gif`, `mp4` and `webm`.
 6 times bigger with same quality!
 """
 function save(path::String, io::VideoStream)
-    close(io.io)
+    close(io.process)
     wait(io.process)
     p, typ = splitext(path)
     if typ == ".mkv"
