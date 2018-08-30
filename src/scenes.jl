@@ -27,7 +27,7 @@ mutable struct Scene <: AbstractScene
             current_screens::Vector{AbstractScreen},
         )
         obj = new(events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
-        jl_finalizer(obj) do obj
+        finalizer(obj) do obj
             # save_print("Freeing scene")
             close_all_nodes(obj.events)
             close_all_nodes(obj.transformation)
@@ -45,11 +45,9 @@ mutable struct Scene <: AbstractScene
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
-Base.start(scene::Scene) = 1
-Base.done(scene::Scene, idx) = idx > length(scene)
-Base.next(scene::Scene, idx) = (scene[idx], idx + 1)
+Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
-Base.endof(scene::Scene) = length(scene.plots)
+Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
@@ -112,7 +110,7 @@ theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::Scene) = x.theme
 theme(x::Scene, key) = x.theme[key]
 theme(x::AbstractPlot, key) = x.attributes[key]
-theme(::Void, key::Symbol) = current_default_theme()[key]
+theme(::Nothing, key::Symbol) = current_default_theme()[key]
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 function Base.push!(scene::Scene, plot::AbstractPlot)
@@ -174,13 +172,13 @@ end
 
 const current_global_scene = Ref{Any}()
 
-if is_windows()
+if Sys.iswindows()
     function _primary_resolution()
         # ccall((:GetSystemMetricsForDpi, :user32), Cint, (Cint, Cuint), 0, ccall((:GetDpiForSystem, :user32), Cuint, ()))
         # ccall((:GetSystemMetrics, :user32), Cint, (Cint,), 17)
-        dc = ccall((:GetDC, :user32), Ptr{Void}, (Ptr{Void},), C_NULL)
+        dc = ccall((:GetDC, :user32), Ptr{Cvoid}, (Ptr{Cvoid},), C_NULL)
         ntuple(2) do i
-            Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Void}, Cint), dc, (2 - i) + 117))
+            Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
         end
     end
 else
@@ -211,7 +209,7 @@ function current_scene()
     end
 end
 
-Scene(::Void) = Scene()
+Scene(::Nothing) = Scene()
 
 const minimal_default = Attributes(
     font = "Dejavu Sans",
@@ -229,7 +227,7 @@ function current_default_theme(; kw_args...)
     merge(copy, Attributes(;kw_args...))
 end
 
-function set_theme!(new_theme::Attributes = minimal_default)
+function set_theme!(new_theme::Attributes)
     empty!(_current_default_theme)
     merge!(_current_default_theme, minimal_default, new_theme)
     return
@@ -324,6 +322,9 @@ function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
     list
 end
 
+"""
+Flattens all the combined plots and returns a Vector of Atomic plots
+"""
 function flatten_combined(plots::Vector, flat = AbstractPlot[])
     for elem in plots
         if (elem isa Combined)
@@ -336,10 +337,7 @@ function flatten_combined(plots::Vector, flat = AbstractPlot[])
 end
 
 
-
-
-
-function insertplots!(screen::Display, scene::Scene)
+function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end

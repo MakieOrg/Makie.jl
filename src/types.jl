@@ -38,7 +38,7 @@ const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
 
 
-abstract type AbstractScreen <: Display end
+abstract type AbstractScreen <: AbstractDisplay end
 
 
 function IRect(x, y, w, h)
@@ -52,6 +52,10 @@ function IRect(x, y, wh::VecTypes)
 end
 function IRect(xy::VecTypes, wh::VecTypes)
     IRect(xy[1], xy[2], wh[1], wh[2])
+end
+
+function IRect(xy::NamedTuple{(:x, :y)}, wh::NamedTuple{(:width, :height)})
+    IRect(xy.x, xy.y, wh.width, wh.height)
 end
 
 function positive_widths(rect::HyperRectangle{N, T}) where {N, T}
@@ -156,7 +160,9 @@ end
 struct Attributes
     attributes::Dict{Symbol, Node}
 end
-
+Base.broadcastable(x::AbstractScene) = Ref(x)
+Base.broadcastable(x::AbstractPlot) = Ref(x)
+Base.broadcastable(x::Attributes) = Ref(x)
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, pair[2], pair[1]))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 Base.convert(::Type{<: Node}, x) = Node(x)
@@ -167,9 +173,8 @@ Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
-Base.start(x::Attributes) = start(x.attributes)
-Base.next(x::Attributes, state) = next(x.attributes, state)
-Base.done(x::Attributes, state) = done(x.attributes, state)
+Base.iterate(x::Attributes) = iterate(x.attributes)
+Base.iterate(x::Attributes, state) = iterate(x.attributes, state)
 Base.copy(x::Attributes) = Attributes(copy(x.attributes))
 Base.merge(x::Attributes...) = Attributes(merge(map(a-> a.attributes, x)...))
 Base.merge!(x::Attributes...) = merge!(map(a-> a.attributes, x)...)
@@ -254,8 +259,8 @@ setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = v
 
 function getindex(x::AbstractPlot, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(argnames, key)
-    if idx == 0
+    idx = findfirst(isequal(key), argnames)
+    if idx == nothing
         return x.attributes[key]
     else
         x.converted[idx]
@@ -275,8 +280,8 @@ end
 
 function setindex!(x::AbstractPlot, value, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(argnames, key)
-    if idx == 0 && haskey(x.attributes, key)
+    idx = findfirst(isequal(key), argnames)
+    if idx == nothing && haskey(x.attributes, key)
         return x.attributes[key][] = value
     elseif !haskey(x.attributes, key)
         x.attributes[key] = to_node(value)
@@ -287,8 +292,8 @@ end
 
 function setindex!(x::AbstractPlot, value::Node, key::Symbol)
     argnames = argument_names(typeof(x), length(x.converted))
-    idx = findfirst(argnames, key)
-    if idx == 0
+    idx = findfirst(isequal(key), argnames)
+    if idx == nothing
         if haskey(x, key)
             # error("You're trying to update an attribute node with a new node. This is not supported right now.
             # You can do this manually like this:

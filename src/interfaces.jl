@@ -68,7 +68,7 @@ Plots a volume. Available algorithms are:
         algorithm = :iso,
         absorption = 1f0,
         isovalue = 0.5f0,
-        isorange = 0.01f0,
+        isorange = 0.05f0,
         colormap = theme(scene, :colormap),
         colorrange = (0, 1)
     )
@@ -196,7 +196,9 @@ const atomic_function_symbols = (
         :text, :meshscatter, :scatter, :mesh, :linesegments,
         :lines, :surface, :volume, :heatmap, :image
 )
-const atomic_functions = getfield.(AbstractPlotting, atomic_function_symbols)
+
+
+const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
 
 
 function color_and_colormap!(plot, intensity = plot[:color])

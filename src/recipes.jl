@@ -70,7 +70,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname)
     expr = quote
         $funcname() = not_implemented_for($funcname)
-        if !isdefined($(QuoteNode(Tsym)))# make this work with interactive usage
+        if !@isdefined($(Tsym))# make this work with interactive usage
             const $(T){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
         end
         Base.show(io::IO, ::Type{<: $T}) = print(io, $(string(Tsym)), "{...}")

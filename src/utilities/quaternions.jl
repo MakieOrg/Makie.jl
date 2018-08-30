@@ -3,7 +3,7 @@
 # the bool in Quaternions.Quaternion is annoying for OpenGL + and an array of
 # Quaternions.
 # TODO replace this file by just `using Quaternions`
-using StaticArrays, GeometryTypes
+using StaticArrays, GeometryTypes, Random
 struct Quaternion{T}
     data::NTuple{4, T}
     Quaternion{T}(x::NTuple{4, Any}) where T = new{T}(T.(x))
@@ -15,10 +15,10 @@ function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
     print(io, q[4], pm(q[1]), "im", pm(q[2]), "jm", pm(q[3]), "km")
 end
-Base.rand(mt::MersenneTwister, ::Type{Quaternion}) = rand(mt, Quaternion{Float64})
-Base.rand(mt::MersenneTwister, ::Type{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
+Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
+Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
-@inline (::Type{Quaternion{T}})(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
+@inline Quaternion{T}(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
 @inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
 function Base.convert(T::Type{Quaternion{T1}}, x::Quaternion{T2}) where {T1, T2}
     T(T2.(x.data))
@@ -26,7 +26,7 @@ end
 @inline Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
 @inline Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
 @inline Base.getindex(x::Quaternion, i::Integer) = x.data[i]
-Base.isapprox(x::Quaternion, y::Quaternion) = all((x .≈ y).data)
+Base.isapprox(x::Quaternion, y::Quaternion) = all((x.data .≈ y.data))
 
 function qrotation(axis::StaticVector{3}, theta::Real)
     u = normalize(axis)
@@ -37,9 +37,9 @@ function Base.broadcast(f, arg1::Quaternion, arg2::Quaternion)
     Quaternion(f.(arg1.data, arg2.data))
 end
 
-Base.abs(q::Quaternion) = sqrt(sum(q.data.^2))
+Base.abs(q::Quaternion) = sqrt(sum(q.data .^ 2))
 
-Base.normalize(q::Quaternion) = q / abs(q)
+LinearAlgebra.normalize(q::Quaternion) = q / abs(q)
 
 Base.:(/)(q::Quaternion, x::Real) = Quaternion(q[1] / x, q[2] / x, q[3] / x, q[4] / x)
 

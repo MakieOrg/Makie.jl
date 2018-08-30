@@ -1,5 +1,5 @@
 
-default_printer(v) = string(round(v, 3))
+default_printer(v) = string(round(v, digits=3))
 @recipe(Slider) do scene
     Theme(
         value = 0,
@@ -21,7 +21,7 @@ end
 
 mouseover() = error("not implemented")
 export mouseover
-convert_arguments(::Type{<: Slider}, x::Range) = (x,)
+convert_arguments(::Type{<: Slider}, x::AbstractRange) = (x,)
 
 function range_label_bb(tplot, printer_func, range)
     bb = boundingbox(tplot, printer_func(first(range)))

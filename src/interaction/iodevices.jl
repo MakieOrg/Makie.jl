@@ -137,4 +137,4 @@ module Mouse
 end
 
 # Void for no button needs to be pressed,
-const ButtonTypes = Union{Void, Mouse.Button, Keyboard.Button}
+const ButtonTypes = Union{Nothing, Mouse.Button, Keyboard.Button}

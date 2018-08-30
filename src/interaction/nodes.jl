@@ -12,7 +12,7 @@ end
 const lift = Reactive.map
 
 to_value(x) = value(x)
-to_value(x::Void) = x
+to_value(x::Nothing) = x
 
 to_node(::Type{T1}, x::Node{T2}, name = :node) where {T1, T2} = signal_convert(Node{T1}, x, name)
 to_node(x::T, name = :node) where T = to_node(T, x)
@@ -45,7 +45,7 @@ function get_children(x::Signal)
 end
 function children_with(action::AT, signal::Signal, rest::Signal...) where AT
     c = filter!(get_children(signal)) do x
-        contains(isa, x.actions, AT)
+        any(y-> isa(y, AT), x.actions)
     end
     isempty(c) && return false, Signal(nothing)
     node = first(c) # what if more?

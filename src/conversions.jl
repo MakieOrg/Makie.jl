@@ -99,8 +99,8 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
-convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(linspace(minimum(x), maximum(x), length(y)), y)
-to_linspace(interval, N) = linspace(minimum(interval), maximum(interval), N)
+convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(range(minimum(x), stop=maximum(x), length=length(y)), y)
+to_linspace(interval, N) = range(minimum(interval), stop=maximum(interval), length=N)
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
@@ -236,9 +236,9 @@ function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::Abstract
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
-    _x, _y, _z = ntuple(Val{3}) do i
+    _x, _y, _z = ntuple(Val(3)) do i
         A = (x, y, z)[i]
-        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val{3}))
+        reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
     end
     (x, y, z, f.(_x, _y, _z))
 end
@@ -307,7 +307,7 @@ function to_triangles(faces::AbstractVector{Face{3, T}}) where T
     convert(Vector{GLTriangle}, faces)
 end
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
-    let N = Val{size(faces, 2)}, lfaces = faces
+    let N = Val(size(faces, 2)), lfaces = faces
         broadcast(1:size(faces, 1), N) do fidx, n
             to_ndim(GLTriangle, ntuple(i-> lfaces[fidx, i], n), 0.0)
         end
@@ -325,9 +325,9 @@ end
 
 function to_vertices(verts::AbstractMatrix{<: Number})
     if size(verts, 1) in (2, 3)
-        to_vertices(verts, Val{1}())
+        to_vertices(verts, Val(1))
     elseif size(verts, 2) in (2, 3)
-        to_vertices(verts, Val{2}())
+        to_vertices(verts, Val(2))
     else
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
@@ -336,7 +336,7 @@ function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
     reinterpret(Point{size(verts, 1), T}, convert(Vector{T}, vec(verts)), (size(verts, 2),))
 end
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
-    let N = Val{size(verts, 2)}, lverts = verts
+    let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
             to_ndim(Point3f0, ntuple(i-> lverts[vidx, i], n), 0.0)
         end
@@ -392,7 +392,7 @@ convert_attribute(c, ::key"glowcolor") = to_color(c)
 convert_attribute(c, ::key"strokecolor") = to_color(c)
 convert_attribute(c::Number, ::key"strokewidth") = Float32(c)
 
-convert_attribute(x::Void, ::key"linestyle") = x
+convert_attribute(x::Nothing, ::key"linestyle") = x
 
 """
     `AbstractVector{<:AbstractFloat}` for denoting sequences of fill/nofill. e.g.
@@ -497,7 +497,7 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
 
-const colorbrewer_names = Symbol[
+const colorbrewer_names = Symbol.([
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
     :Blues,
     :Oranges,
@@ -540,15 +540,15 @@ const colorbrewer_names = Symbol[
     :Paired,
     :Pastel1,
     :Pastel2
-]
+])
 
-const colorbrewer_8color_names = String[
+const colorbrewer_8color_names = String.([
     #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
     :Accent,
     :Dark2,
     :Pastel2,
     :Set2
-]
+])
 
 const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
 
@@ -634,6 +634,8 @@ function convert_attribute(value, ::key"algorithm")
         return Int32(value)
     elseif isa(value, Int32) && value in 0:5
         return value
+    elseif value == 7
+        return value # makie internal contour implementation
     else
         error("$value is not a valid volume algorithm. Please have a look at the documentation of `to_volume_algorithm`")
     end
@@ -765,3 +767,4 @@ function to_spritemarker(marker::AbstractVector)
 end
 
 convert_attribute(value, ::key"marker", ::key"scatter") = to_spritemarker(value)
+convert_attribute(value, ::key"isovalue", ::key"volume") = Float32(value)

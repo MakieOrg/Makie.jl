@@ -27,7 +27,7 @@ Resample a vector with linear interpolation to have length `len`
 """
 function resample(A::AbstractVector, len::Integer)
     length(A) == len && return A
-    interpolated_getindex.((A,), linspace(0.0, 1.0, len))
+    interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
 end
 
 """
@@ -79,7 +79,7 @@ function replace_automatic!(f, dict, key)
 end
 
 is_unitrange(x) = (false, 0:0)
-is_unitrange(x::Range) = (true, x)
+is_unitrange(x::AbstractRange) = (true, x)
 function is_unitrange(x::AbstractVector)
     length(x) < 2 && return false, 0:0
     diff = x[2] - x[1]
@@ -228,19 +228,19 @@ same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(va
 
 
 function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
-    T(ntuple(Val{N}) do i
+    T(ntuple(Val(N)) do i
         i > N2 && return ET(fillval)
         @inbounds return vec[i]
     end)
 end
 
-dim3(x) = ntuple(i-> x, Val{3})
+dim3(x) = ntuple(i-> x, Val(3))
 dim3(x::NTuple{3, Any}) = x
 
-dim2(x) = ntuple(i-> x, Val{2})
+dim2(x) = ntuple(i-> x, Val(2))
 dim2(x::NTuple{2, Any}) = x
 
-lerp{T}(a::T, b::T, val::AbstractFloat) = (a .+ (val * (b .- a)))
+lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 
 
@@ -309,7 +309,10 @@ struct Key{K} end
 macro key_str(arg)
     :(Key{$(QuoteNode(Symbol(arg)))})
 end
-
+Base.broadcastable(x::Key) = (x,)
 
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
-to_vector(x::ClosedInterval, len, T) = linspace(T.(extrema(x))..., len)
+function to_vector(x::ClosedInterval, len, T)
+    a, b = T.(extrema(x))
+    range(a, stop=b, length=len)
+end
