@@ -1,12 +1,13 @@
 @block SimonDanisch [interaction] begin
 
     @cell "Interaction with Mouse" [interactive, scatter, lines, marker, record] begin
+        using LinearAlgebra
         scene = Scene()
-        r = linspace(0, 3, 4)
+        r = range(0, stop = 3, length = 4)
         cam2d!(scene)
         time = Node(0.0)
         pos = lift(scene.events.mouseposition, time) do mpos, t
-            map(linspace(0, 2pi, 60)) do i
+            map(range(0, stop = 2pi, length = 60)) do i
                 circle = Point2f0(sin(i), cos(i))
                 mouse = to_world(scene, Point2f0(mpos))
                 secondary = (sin((i * 10f0) + t) * 0.09) * normalize(circle)
@@ -26,14 +27,14 @@
         display(Makie.global_gl_screen(), scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
-        p2[:marker] = 'π'
+        # p2[:marker] = 'π' #TODO fix this
         p2[:markersize] = 0.2
 
         # push a reasonable mouse position in case this is executed as part
         # of the documentation
         push!(scene.events.mouseposition, (250.0, 250.0))
         N = 50
-        record(scene, @outputfile(mp4), linspace(0.01, 0.4, N)) do i
+        record(scene, @outputfile(mp4), range(0.01, stop = 0.4, length = N)) do i
             push!(scene.events.mouseposition, (250.0, 250.0))
             p2[:markersize] = i
             push!(time, time[] + 0.1)

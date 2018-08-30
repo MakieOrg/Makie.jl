@@ -37,10 +37,10 @@
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
         N = 30
-        lspace = linspace(-10, 10, N)
+        lspace = range(-10, stop = 10, length = N)
         z = Float32[xy_data(x, y) for x in lspace, y in lspace]
-        range = linspace(0, 3, N)
-        wireframe(range, range, z)
+        r = range(0, stop = 3, length = N)
+        wireframe(r, r, z)
     end
     @cell "Surface" [surface] begin
         N = 30
@@ -48,11 +48,11 @@
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
-        lspace = linspace(-10, 10, N)
+        lspace = range(-10, stop = 10, length = N)
         z = Float32[xy_data(x, y) for x in lspace, y in lspace]
-        range = linspace(0, 3, N)
+        r = range(0, stop = 3, length = N)
         surface(
-            range, range, z,
+            r, r, z,
             colormap = :Spectral
         )
     end
@@ -62,7 +62,7 @@
             r = sqrt(x^2 + y^2)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
-        r = linspace(-2, 2, N)
+        r = range(-2, stop = 2, length = N)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
         surface(
             r, r, surf_func(10),
@@ -71,7 +71,7 @@
     end
     @cell "Line Function" ["2d", lines] begin
         scene = Scene()
-        x = linspace(0, 3pi)
+        x = range(0, stop = 3pi)
         lines!(scene, x, sin.(x))
         lines!(scene, x, cos.(x), color = :blue)
     end
@@ -101,8 +101,8 @@
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
         t = Node(Base.time()) # create a life signal
         limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
-        p1 = meshscatter!(scene, lift(t-> f.(t, linspace(0, 2pi, 50), 1), t), markersize = 0.05)[end]
-        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, linspace(0, 2pi, 50), 1.5), t), markersize = 0.05)[end]
+        p1 = meshscatter!(scene, lift(t-> f.(t, range(0, stop = 2pi, length = 50), 1), t), markersize = 0.05)[end]
+        p2 = meshscatter!(scene, lift(t-> f.(t * 2.0, range(0, stop = 2pi, length = 50), 1.5), t), markersize = 0.05)[end]
 
         lines = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
@@ -116,11 +116,12 @@
     end
 
     @cell "3D Contour with 2D contour slices" [volume, contour, heatmap, transformation] begin
+        using LinearAlgebra
         function test(x, y, z)
             xy = [x, y, z]
-            ((xy') * eye(3, 3) * xy) / 20
+            ((xy') * Matrix(I, 3, 3) * xy) / 20
         end
-        x = linspace(-2pi, 2pi, 100)
+        x = range(-2pi, stop = 2pi, length = 100)
         scene = Scene()
         c = contour!(scene, x, x, x, test, levels = 6, alpha = 0.3)[end]
         xm, ym, zm = minimum(scene.limits[])
@@ -135,14 +136,14 @@
             r = sqrt(x*x + y*y)
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
-        r = linspace(-1, 1, 100)
+        r = range(-1, stop = 1, length = 100)
         contour3d(r, r, (x,y)-> xy_data(10x, 10y), levels = 20, linewidth = 3)
     end
 
     # @cell "3d volume animation" [volume, animation, gui, slices, layout] begin
     #     # # TODO: is this example unfinished?
     #     # scene = Scene(@resolution)
-    #     # r = linspace(-2pi, 2pi, 100)
+    #     # r = range(-2pi, stop = 2pi, length = 100)
     #     # psps = map(1:100) do i
     #     #     broadcast(r, reshape(r, (1, 100, 1)), reshape(r, (1, 1, 100))) do x, y, z
     #     #         j = (i/100)
@@ -154,6 +155,7 @@
     # end
 
     @cell "Arrows 3D" [arrows, "3d"] begin
+        using LinearAlgebra
         function SphericalToCartesian(r::T,θ::T,ϕ::T) where T<:AbstractArray
             x = @.r*sin(θ)*cos(ϕ)
             y = @.r*sin(θ)*sin(ϕ)
@@ -181,6 +183,7 @@
     end
 
     @cell "Arrows on Sphere" [surface, sphere, arrows, "3d"] begin
+        using LinearAlgebra
         n = 20
         f   = (x,y,z) -> x*exp(cos(y)*z)
         ∇f  = (x,y,z) -> Point3f0(exp(cos(y)*z), -sin(y)*z*x*exp(cos(y)*z), x*cos(y)*exp(cos(y)*z))
@@ -280,8 +283,8 @@
         positions = decompose(Point3f0, large_sphere, 30)
         np = length(positions)
         pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
-        pts = vcat(pts, 1.1 * pts + randn(size(pts)) / perturbfactor) # light position influence ?
-        edges = hcat(collect(1:np), collect(1:np) + np)
+        pts = vcat(pts, 1.1 .* pts + randn(size(pts)) / perturbfactor) # light position influence ?
+        edges = hcat(collect(1:np), collect(1:np) .+ np)
         ne = size(edges, 1); np = size(pts, 1)
         # define markers meshes
         meshC = GLNormalMesh(
@@ -294,11 +297,11 @@
         meshS = GLNormalMesh(large_sphere, 20)
         # define colors, markersizes and rotations
         pG = [Point3f0(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
-        lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]) .^ 2, 2))
+        lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]) .^ 2, dims = 2))
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         sizesC = [Vec3f0(1., 1., 1.) for i = 1:ne]
         colorsp = [RGBA{Float32}(rand(), rand(), rand(), 1.) for i = 1:np]
-        colorsC = [(colorsp[edges[i, 1]] + colorsp[edges[i, 2]]) / 2. for i = 1:ne]
+        colorsC = [(colorsp[edges[i, 1]] .+ colorsp[edges[i, 2]]) / 2.0 for i = 1:ne]
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         Qlist = zeros(ne, 4)
         for k = 1:ne
@@ -308,12 +311,12 @@
                 Float32(1)
             )
             Q = GeometryTypes.rotation(ct)
-            r = 0.5 * sqrt(1 + Q[1, 1] + Q[2, 2] + Q[3, 3]); Qlist[k, 4] = r
-            Qlist[k, 1] = (Q[3, 2] - Q[2, 3]) / (4 * r)
-            Qlist[k, 2] = (Q[1, 3] - Q[3, 1]) / (4 * r)
-            Qlist[k, 3] = (Q[2, 1] - Q[1, 2]) / (4 * r)
+            r = 0.5 * sqrt(1 .+ Q[1, 1] .+ Q[2, 2] .+ Q[3, 3]); Qlist[k, 4] = r
+            Qlist[k, 1] = (Q[3, 2] .- Q[2, 3]) / (4 .* r)
+            Qlist[k, 2] = (Q[1, 3] .- Q[3, 1]) / (4 .* r)
+            Qlist[k, 3] = (Q[2, 1] .- Q[1, 2]) / (4 .* r)
         end
-        rotationsC = [Makie.Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
+        rotationsC = [Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
         # plot
         hm = meshscatter!(
             scene, pG[edges[:, 1]],
@@ -335,6 +338,7 @@
         scene
     end
     @cell "image scatter" [image, scatter] begin
+        using LinearAlgebra
         scatter(
             1:10, 1:10, rand(10, 10) .* 10,
             rotations = normalize.(rand(Quaternionf0, 10*10)),
@@ -357,7 +361,7 @@
             r == 0.0 ? 1f0 : (sin(r)/r)
         end
 
-        r = linspace(-2, 2, 50)
+        r = range(-2, stop = 2, length = 50)
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
         z = surf_func(20)
         surf = surface!(scene, r, r, z)[end]
@@ -367,12 +371,13 @@
         )
         N = 150
         scene
-        record(scene, @outputfile(mp4), linspace(5, 40, N)) do i
+        record(scene, @outputfile(mp4), range(5, stop = 40, length = N)) do i
             surf[3] = surf_func(i)
         end
     end
 
     @cell "Normals of a Cat" [mesh, linesegment, cat] begin
+        using LinearAlgebra
         x = Makie.loadasset("cat.obj")
         mesh(x, color = :black)
         pos = map(x.vertices, x.normals) do p, n
@@ -392,7 +397,7 @@
             scene,
             (rand(Point3f0, stars) .- 0.5) .* 10,
             glowwidth = 0.005, glowcolor = :white, color = RGBAf0(0.8, 0.9, 0.95, 0.4),
-            markersize = rand(linspace(0.0001, 0.01, 100), stars),
+            markersize = rand(range(0.0001, stop = 0.01, length = 100), stars),
             show_axis = false
         )
         update_cam!(scene, FRect3D(Vec3f0(-2), Vec3f0(4)))
@@ -443,7 +448,7 @@
         end
         rings = [(0.1f0, 1.0f0, 0.00001f0, Point2f0(0.2, 0.1)), (0.1f0, 0.0f0, 0.0002f0, Point2f0(0.052, 0.05))]
         N2 = 25000
-        t_audio = sin.(linspace(0, 10pi, N2)) .+ (cos.(linspace(-3, 7pi, N2)) .* 0.6) .+ (rand(Float32, N2) .* 0.1) ./ 2f0
+        t_audio = sin.(range(0, stop = 10pi, length = N2)) .+ (cos.(range(-3, stop = 7pi, length = N2)) .* 0.6) .+ (rand(Float32, N2) .* 0.1) ./ 2f0
         start = time()
         t = (time() - start) * 100
         pos = calcpositions.((rings,), 1:N2, t, (t_audio,))
@@ -465,7 +470,7 @@
     end
 
     @cell "Line GIF" [lines, animated, gif, offset, record] begin
-        us = linspace(0, 1, 100)
+        us = range(0, stop = 1, length = 100)
         scene = Scene()
         scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
         p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth = 3)[end]
@@ -483,7 +488,7 @@
                     color = colors[length(lineplots)],
                     linewidth = 3
                 )[end]
-                unshift!(lineplots, p)
+                pushfirst!(lineplots, p)
                 translate!(p, 0, 0, 0)
                 #TODO automatically insert new plots
                 insert!(Makie.global_gl_screen(), scene, p)
@@ -500,4 +505,18 @@
         end
         path
     end
+
+    @cell "Surface + wireframe + contour" [surface, wireframe, contour, transformation] begin
+        N = 51
+        x = range(-2, stop = 2, length = N)
+        y = x
+        z = (-x .* exp.(-x .^ 2 .- (y') .^ 2)) .* 4
+
+        scene = wireframe(x, y, z)
+        xm, ym, zm = minimum(scene.limits[])
+        scene = surface!(scene, x, y, z)
+        contour!(scene, x, y, z, levels = 15, linewidth = 2, transformation = (:xy, zm))
+        scene
+    end
+
 end

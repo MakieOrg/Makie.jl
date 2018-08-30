@@ -19,8 +19,8 @@ end
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
-    robj = get!(screen.cache, object_id(x)) do
-        gl_attributes = map(filter((k, v)-> k != :transformation, x.attributes)) do key_value
+    robj = get!(screen.cache, objectid(x)) do
+        gl_attributes = map(filter(((k, v),)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = lift_convert(key, value, x)
@@ -37,12 +37,12 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
 end
 
 function remove_automatic!(attributes)
-    filter!(attributes) do k, v
+    filter!(attributes) do (k, v)
         value(v) != automatic
     end
 end
 
-index1D(x::SubArray) = parentindexes(x)[1]
+index1D(x::SubArray) = parentindices(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
 handle_view(array::Signal, attributes) = array
@@ -137,9 +137,9 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
     N = length(T)
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
     toffset = calc_offset(string, textsize, font, atlas)
-    str_idx = start(string)
+    char_str_idx = iterate(string)
     broadcast_foreach(1:length(string), startpos, textsize, (font,), align) do idx, pos, tsize, font, align
-        char, str_idx = next(string, str_idx)
+        char, str_idx = char_str_idx
         _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
         push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
@@ -149,6 +149,7 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
         else
             push!(scale, glyph_scale!(atlas, char,_font, tsize))
         end
+        char_str_idx = iterate(string, str_idx)
     end
     positions, toffset, uv_offset_width, scale
 end
@@ -158,14 +159,14 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point{N, Float32}, mpos, 0f0)
     rscale = Float32(textsize)
-    chars = convert(Vector{Char}, string)
+    chars = Vector{Char}(string)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
     toffset = calc_offset(chars, rscale, font, atlas)
     aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
-    uv_offset_width = glyph_uv_width!.(atlas, chars, (font,))
-    scale = glyph_scale!.(atlas, chars, (font,), rscale)
+    uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
+    scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions = map(positions2d) do p
         pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ pos
@@ -177,7 +178,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = map(to_gl_text, x[1], getindex.(gl_attributes, liftkeys)...)
+        gl_text = map(to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             map(getindex, gl_text, Signal(i))
@@ -185,7 +186,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
 
         atlas = get_texture_atlas()
         keys = (:color, :stroke_color, :stroke_width, :rotation)
-        signals = getindex.(gl_attributes, keys)
+        signals = getindex.(Ref(gl_attributes), keys)
         visualize(
             (DISTANCEFIELD, positions),
             color = signals[1],
@@ -227,7 +228,7 @@ end
 
 function get_image(plot)
     if isa(plot[:color][], AbstractMatrix{<: Number})
-        lift(vec2color, pop!.(plot, (:color, :color_map, :color_norm))...)
+        lift(vec2color, pop!.(Ref(plot), (:color, :color_map, :color_norm))...)
     else
         delete!(plot, :color_norm)
         delete!(plot, :color_map)
@@ -310,7 +311,7 @@ end
 
 function makieshader(paths...)
     view = Dict{String, String}()
-    if !is_apple()
+    if !Sys.isapple()
         view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
         view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
     end
@@ -364,15 +365,27 @@ function surface_contours(volume::Volume)
     robj
 end
 
-function Base.insert!(screen::Screen, scene::Scene, x::Volume)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
-        if gl_attributes[:algorithm][] == 0
-            surface_contours(x)
+function Base.insert!(screen::Screen, scene::Scene, vol::Volume)
+    robj = cached_robj!(screen, scene, vol) do gl_attributes
+        if gl_attributes[:algorithm][] == 7
+            surface_contours(vol)
         else
-            dimensions = Vec3f0(to_width.(value.(x[1:3])))
-            gl_attributes[:dimensions] = dimensions
+            model = vol[:model]
+            x, y, z = vol[1], vol[2], vol[3]
+            gl_attributes[:model] = lift(model, x, y, z) do m, xyz...
+                mi = minimum.(xyz)
+                maxi = maximum.(xyz)
+                w = maxi .- mi
+                m2 = Mat4f0(
+                    w[1], 0, 0, 0,
+                    0, w[2], 0, 0,
+                    0, 0, w[3], 0,
+                    mi[1], mi[2], mi[3], 1
+                )
+                convert(Mat4f0, m) * m2
+            end
             delete!(gl_attributes, :color)
-            visualize(x[4], Style(:default), gl_attributes).children[]
+            visualize(vol[4], Style(:default), gl_attributes).children[]
         end
     end
 end

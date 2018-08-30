@@ -44,11 +44,18 @@ function gappy(x, ps)
     return last(ps) - x
 end
 function ticks(points, resolution)
-    Float16[gappy(x, points) for x = linspace(first(points),last(points), resolution)]
+    Float16[gappy(x, points) for x = range(first(points), stop=last(points), length=resolution)]
 end
 
 
-function _default(position::Union{VecTypes{T}, MatTypes{T}}, s::style"lines", data::Dict) where T<:Point
+# ambigious signature
+function _default(position::VectorTypes{<: Point}, s::style"lines", data::Dict)
+    line_visualization(position, data)
+end
+function _default(position::MatTypes{<:Point}, s::style"lines", data::Dict)
+    line_visualization(position, data)
+end
+function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
     pv = value(position)
     p_vec = if isa(position, GPUArray)
         position
@@ -109,10 +116,10 @@ end
 
 to_points(x::Vector{LineSegment{T}}) where {T} = reinterpret(T, x, (length(x)*2,))
 
-_default(positions::VecTypes{LineSegment{T}}, s::Style, data::Dict) where {T <: Point} =
+_default(positions::VectorTypes{LineSegment{T}}, s::Style, data::Dict) where {T <: Point} =
     _default(const_lift(to_points, positions), style"linesegment"(), data)
 
-function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) where T <: Point
+function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex              = positions           => GLBuffer
         color               = default(RGBA, s, 1) => GLBuffer
@@ -136,7 +143,7 @@ function _default(positions::VecTypes{T}, s::style"linesegment", data::Dict) whe
     data
 end
 
-function _default(positions::Vector{T}, range::Range, s::style"lines", data::Dict) where T <: AbstractFloat
+function _default(positions::Vector{T}, range::AbstractRange, s::style"lines", data::Dict) where T <: AbstractFloat
     length(positions) != length(range) && throw(
         DimensionMismatsch("length of $(typeof(positions)) $(length(positions)) and $(typeof(range)) $(length(range)) must match")
     )
@@ -157,7 +164,7 @@ end
 """
 Fast, non anti aliased lines
 """
-function _default(position::VecTypes{T}, s::style"speedlines", data::Dict) where T <: Point
+function _default(position::VectorTypes{T}, s::style"speedlines", data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex       = position => GLBuffer
         color_map    = nothing  => Vec2f0

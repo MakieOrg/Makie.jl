@@ -38,15 +38,15 @@ save(path, img)
 
 # First find those damn entries!
 entries = example_database(lines)
-entries = find(x -> x.title == database_key, database)
-entries = find(x -> x.tags == "scatter", database)
-entries = find(x -> contains(collect(x.tags), "scatter"), database)
+entries = findall(x -> x.title == database_key, database)
+entries = findall(x -> x.tags == "scatter", database)
+entries = findall(x -> occursin("scatter", collect(x.tags)), database)
 
 tgs = database[2].tags
 
-contains(tgs, "scatter")
+occursin("scatter", tgs)
 
-find(database) do entry
+findall(database) do entry
     # find tags
     tags_found = any(tag -> string(tag) in entry.tags, "scatter")
 end
@@ -72,7 +72,7 @@ end
 
 
 
-sprint(print_code(STDOUT, database, entries[1],
+sprint(print_code(stdout, database, entries[1],
 scope_start = "",
 scope_end = "",
 indent = "",

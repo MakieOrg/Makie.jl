@@ -6,7 +6,7 @@ positions = decompose(Point3f0, large_sphere)
 linepos = view(positions, rand(1:length(positions), 1000))
 lines(linepos, linewidth = 0.1, color = :black)
 scatter(positions, strokewidth = 0.02, strokecolor = :white, color = RGBA(0.9, 0.2, 0.4, 0.6))
-r = linspace(-1.5, 1.5, 5)
+r = range(-1.5, stop=1.5, length=5)
 axis(r, r, r)
 scene
 
@@ -26,7 +26,7 @@ function xy_data(x, y)
     r = sqrt(x*x + y*y)
     r == 0.0 ? 1f0 : (sin(r)/r)
 end
-r = linspace(-2, 2, 40)
+r = range(-2, stop=2, length=40)
 surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
 z = surf_func(20)
 surf = surface(r, r, z)
@@ -34,12 +34,12 @@ surf = surface(r, r, z)
 wf = wireframe(r, r, surf[:z] .+ 1.0,
     linewidth = 2f0, color = lift_node(x-> x[5], surf[:colormap])
 )
-xy = linspace(-2.1, 2.1, 4)
-axis(xy, xy, linspace(0, 2, 4))
+xy = range(-2.1, stop=2.1, length=4)
+axis(xy, xy, range(0, stop=2, length=4))
 center!(scene)
 
 io = VideoStream(scene)
-for i in linspace(0, 60, 100)
+for i in range(0, stop=60, length=100)
     surf[:z] = surf_func(i)
     recordframe!(io)
 end
@@ -52,10 +52,10 @@ function xy_data(x, y)
     r = sqrt(x*x + y*y)
     r == 0.0 ? 1f0 : (sin(r)/r)
 end
-r = linspace(-2, 2, 40)
+r = range(-2, stop=2, length=40)
 surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
 N = 40
-r = linspace(-2, 2, 40)
+r = range(-2, stop=2, length=40)
 surface(
     r, r, surf_func(10),
     color = GLVisualize.loadasset("doge.png")
@@ -88,7 +88,7 @@ k = [2, 3, 1, 3]
 indices = [1, 2, 3, 1, 3, 4, 1, 4, 2, 2, 3, 4]
 m = mesh(x, y, z, indices, color = color)
 wireframe(m[:mesh], color = :black, linewidth = 2)
-r = linspace(-0.5, 2.5, 4)
+r = range(-0.5, stop=2.5, length=4)
 axis(r, r, r)
 center!(scene)
 scene
@@ -97,7 +97,7 @@ scene
 using Makie, GLVisualize
 scene = Scene(resolution = (500, 500))
 mesh(GLVisualize.loadasset("cat.obj"))
-r = linspace(-0.1, 1, 4)
+r = range(-0.1, stop=1, length=4)
 center!(scene)
 scene
 
@@ -153,7 +153,7 @@ Makie.mesh(m, color = earth)
 stars = 100_000
 scatter((rand(Point3f0, stars) .- 0.5) .* 10,
     glowwidth = 0.005, glow_color = :white, color = RGBA(0.8, 0.9, 0.95, 0.4),
-    markersize = rand(linspace(0.0001, 0.01, 100), stars)
+    markersize = rand(range(0.0001, stop=0.01, length=100), stars)
 )
 scene
 

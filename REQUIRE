@@ -1,4 +1,4 @@
-julia 0.6
+julia 0.7
 
 StaticArrays 0.6.6
 GeometryTypes 0.4.5
@@ -6,15 +6,11 @@ Reactive 0.6.0
 Contour
 FileIO
 ImageCore
-ImageMetadata
 ImageTransformations
 UnicodeFun
 ColorBrewer
-Hiccup
-Media
-Juno
 ModernGL
-GLFW 1.4.1
+GLFW 2.1.0
 FreeType
 FreeTypeAbstraction 0.3.0 #for findfont
 @windows ImageMagick
@@ -23,7 +19,14 @@ FreeTypeAbstraction 0.3.0 #for findfont
 AbstractPlotting
 Primes
 PlotUtils
-Cairo
+#Cairo
 IntervalSets
 Showoff
+ColorTypes
 Colors
+ColorVectorSpace
+FixedPointNumbers
+IterTools
+AxisArrays
+ImageAxes
+IndirectArrays

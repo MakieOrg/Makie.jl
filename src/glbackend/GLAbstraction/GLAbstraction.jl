@@ -8,19 +8,15 @@ using FixedPointNumbers
 using ColorTypes
 using FileIO
 using GLFW
+using Printf
+using LinearAlgebra
 
 import FileIO: load, save
-if isdefined(FixedPointNumbers, :N0f8)
-    import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
-else
-    const N0f8 = FixedPointNumbers.UFixed8
-    const N0f16 = FixedPointNumbers.UFixed16
-    const N0f32 = FixedPointNumbers.UFixed{UInt32, 32}
-    const Normed = FixedPointNumbers.UFixed
-end
+
+import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
 
-import Base: merge, resize!, unsafe_copy!, similar, length, getindex, setindex!
+import Base: merge, resize!, similar, length, getindex, setindex!
 import Reactive: value
 
 include("AbstractGPUArray.jl")
@@ -47,7 +43,7 @@ import ModernGL.glViewport
 import ModernGL.glScissor
 
 include("composition.jl")
-export Composable, Context, convert!, boundingbox
+export Composable, Context, convert!
 
 
 include("GLUtils.jl")
@@ -80,7 +76,7 @@ export cardinality              # returns the cardinality of the elements of a b
 
 export Style                    # Style Type, which is used to choose different visualization/editing styles via multiple dispatch
 export mergedefault!            # merges a style dict via a given style
-export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VecTypes, MatTypes, VolumeTypes
+export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VectorTypes, MatTypes, VolumeTypes
 export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
 
 

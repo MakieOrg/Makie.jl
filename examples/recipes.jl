@@ -48,7 +48,8 @@
         # To write out a video of the whole simulation
         using Makie
         n = 5
-        grid = Point3f0.(linspace(-1, 1, n), reshape(linspace(-1, 1, n), (1, n, 1)), reshape(linspace(-1, 1, n), (1, 1, n)))
+        r = range(-1, stop = 1, length = n)
+        grid = Point3f0.(r, reshape(r, (1, n, 1)), reshape(r, (1, 1, n)))
         molecules = map(1:(n^3) * 3) do i
             i3 = ((i - 1) ÷ 3) + 1
             xy = 0.1; z = 0.08

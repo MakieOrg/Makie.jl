@@ -46,7 +46,7 @@ function print_with_lines(out::IO, text::AbstractString)
     end
     write(out, take!(io))
 end
-print_with_lines(text::AbstractString) = print_with_lines(STDOUT, text)
+print_with_lines(text::AbstractString) = print_with_lines(stdout, text)
 
 
 """
@@ -105,7 +105,7 @@ Needed to match the lazy gl_convert exceptions.
 matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
 matches_target(::Type{Target}, x::Signal{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
 matches_target(::Function, x) = true
-matches_target(::Function, x::Void) = false
+matches_target(::Function, x::Nothing) = false
 export matches_target
 
 
@@ -139,14 +139,10 @@ macro gen_defaults!(dict, args)
     push!(return_expression.args, :(doc_strings = get!($dictsym, :doc_string, Dict{Symbol, Any}()))) # exceptions for glconvert.
     # @gen_defaults can be used multiple times, so we need to reuse gl_convert_targets if already in here
     for (i, elem) in enumerate(tuple_list)
-        if Base.is_linenumber(elem)
-            push!(return_expression.args, elem)
-            continue
-        end
         opengl_convert_target = :() # is optional, so first is an empty expression
         convert_target        = :() # is optional, so first is an empty expression
         doc_strings           = :()
-        if elem.head == :(=)
+        if Meta.isexpr(elem, :(=))
             key_name, value_expr = elem.args
             if isa(key_name, Expr) && key_name.head == :(::) # we need to convert to a julia type
                 key_name, convert_target = key_name.args
@@ -187,8 +183,6 @@ macro gen_defaults!(dict, args)
                 $doc_strings
             end
             push!(return_expression.args, expr)
-        else
-            error("all nodes need to be of form a = b OR a::Type = b OR a = b => Type, where a needs to be a var and b any expression. Found: $elem")
         end
     end
     #push!(return_expression.args, :($dictsym[:gl_convert_targets] = gl_convert_targets)) #just pass the targets via the dict
@@ -202,31 +196,6 @@ makesignal(v) = Signal(v)
 
 @inline const_lift(f::Union{DataType, Type, Function}, inputs...) = map(f, map(makesignal, inputs)...)
 export const_lift
-
-function close_to_square(n::Real)
-    # a cannot be greater than the square root of n
-    # b cannot be smaller than the square root of n
-    # we get the maximum allowed value of a
-    amax = floor(Int, sqrt(n));
-    if 0 == rem(n, amax)
-        # special case where n is a square number
-        return (amax, div(n, amax))
-    end
-    # Get its prime factors of n
-    primeFactors  = factor(n);
-    # Start with a factor 1 in the list of candidates for a
-    candidates = Int[1]
-    for (f, _) in primeFactors
-        # Add new candidates which are obtained by multiplying
-        # existing candidates with the new prime factor f
-        # Set union ensures that duplicate candidates are removed
-        candidates  = union(candidates, f .* candidates);
-        # throw out candidates which are larger than amax
-        filter!(x-> x <= amax, candidates)
-    end
-    # Take the largest factor in the list d
-    (candidates[end], div(n, candidates[end]))
-end
 
 
 
@@ -254,7 +223,7 @@ function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
             if field == :color
                 field = :vertex_color
             end
-            if isa(val, Vector)
+            if isa(val, AbstractVector)
                 result[field] = GLBuffer(val)
             end
         else
@@ -276,7 +245,7 @@ function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
             if field == :color
                 field = :vertex_color
             end
-            if isa(val, Vector)
+            if isa(val, AbstractVector)
                 result[field] = GLBuffer(val)
             end
         else

@@ -67,7 +67,7 @@ displacevec = reinterpret(Vec{3, Float64}, node_displacements, (size(node_displa
 displace = norm.(displacevec)
 
 new_nodes = broadcast(1:length(mesh.nodes), mesh.nodes) do i, node
-    JuAFEM.Node(ntuple(Val{3}) do j
+    JuAFEM.Node(ntuple(Val(3)) do j
         node.x[j] + node_displacements[j, i]
     end)
 end

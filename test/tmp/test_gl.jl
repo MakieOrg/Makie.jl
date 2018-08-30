@@ -25,18 +25,18 @@ s2 = scatter(linspace(0, 10, 10), rand(10))
 s2 = scatter(linspace(0, 1, 10), rand(10), rand(10))
 
 scene = Scene()
-x = linspace(0, 6, 100)
+x = range(0, stop = 6, length = 100)
 s = surface!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 scene
 
 scene = Scene()
-r = linspace(-10, 10, 512)
+r = range(-10, stop = 10, length = 512)
 z = ((x, y)-> sin(x) + cos(y)).(r, r')
 contour!(scene, r, r, z, levels = 5, color = :RdYlBu)
 Makie.save(joinpath(homedir(), "Desktop", "contour.png"), scene)
 
 scene = Scene()
-x = linspace(0, 6, 100)
+x = range(0, stop = 6, length = 100)
 s = heatmap!(scene, x, x, (x, y)-> sin(x) + cos(y), show_legend = true)
 scene
 
@@ -58,7 +58,7 @@ m = mesh!(scene, loadasset("cat.obj"))
 scene
 
 
-r = linspace(-10, 10, 512)
+r = range(-10, stop = 10, length = 512)
 z = ((x, y)-> sin(x) + cos(y)).(r, r')
 scene = Scene()
 # c = heatmap!(scene, r, r, z, levels = 5)
@@ -91,7 +91,7 @@ scene
 
 s = scatter!(scene, [0, 0, 1, 1], [0, 1.5, 0, 1.5])
 s = lines!(scene, FRect(0, 0, 1, 1.5), color = :black, show_axis = true)
-xy = linspace(0, 2pi, 100)
+xy = range(0, stop = 2pi, length = 100)
 f(x, y) = sin(x) + cos(y)
 z = f.(xy, xy')
 s1 = heatmap!(scene, 0.1 .. 0.9, 0.1 .. 0.44, z)
@@ -120,7 +120,7 @@ cam = cam2d!(scene)
 cam.area[] = FRect(0, 0, normalize(widths(scene.px_area[])) * 3)
 update_cam!(scene, cam)
 scatter!(scene, FRect(0, 0, 1, 1), scale_plot = false, linewidth = 5)
-h = heatmap!(scene, linspace(0, 1, 50), linspace(0, 1, 50), rand(50, 50))
+h = heatmap!(scene, range(0, stop = 1, length = 50), range(0, stop = 1, length = 50), rand(50, 50))
 scene
 # cam.rotationspeed[] = 0.1
 # cam.pan_button[] = Mouse.right

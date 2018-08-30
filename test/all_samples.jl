@@ -39,9 +39,9 @@ center!(scene)
 scene = Scene(resolution = (500, 500))
 
 x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
-    linesegment(linspace(1, 5, 100), rand(100), rand(100), linestyle = ls, linewidth = lw)
+    linesegment(range(1, stop=5, length=100), rand(100), rand(100), linestyle = ls, linewidth = lw)
 end
-push!(x, scatter(linspace(1, 5, 100), rand(100), rand(100)))
+push!(x, scatter(range(1, stop=5, length=100), rand(100), rand(100)))
 center!(scene)
 l = Makie.legend(x, ["attribute $i" for i in 1:4])
 l[:position] = (0, 1)
@@ -56,7 +56,7 @@ scene
 
 #cell
 scene = Scene(resolution = (500, 500))
-cmap = collect(linspace(to_color(:red), to_color(:blue), 20))
+cmap = collect(range(to_color(:red), stop=to_color(:blue), length=20))
 l = Makie.legend(cmap, 1:4)
 l[:position] = (1.0,1.0)
 l[:textcolor] = :blue
@@ -137,7 +137,7 @@ plots = Scene(scene, lift(x-> IRect(0, 100, widths(x) .- Vec(0, 100)), pixelarea
 campixel!(ui)
 s1 = slider!(ui, 1:10, raw = true)[end]
 s2 = slider!(ui, 1:10, raw = true)[end]
-s3 = slider!(ui, linspace(0, 1, 100), raw = true)[end]
+s3 = slider!(ui, range(0, stop=1, length=100), raw = true)[end]
 AbstractPlotting.vbox(s1, s2, s3)
 heatmap!(plots, rand(100, 100))
 scene
@@ -180,7 +180,7 @@ function solve_particles!(
 end
 
 
-startpositions(N::Integer, radius::T, n) where T = startpositions(Val{N}(), radius, n)
+startpositions(N::Integer, radius::T, n) where T = startpositions(Val(N), radius, n)
 function startpositions(::Val{N}, radius::T, n) where {N, T}
     sphere = HyperSphere(Point{N, T}(0), T(radius))
     n = N == 3 ? floor(Int, sqrt(n)) : n # n must be n^2 for 3D Sphere

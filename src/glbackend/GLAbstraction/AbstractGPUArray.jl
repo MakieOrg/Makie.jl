@@ -8,13 +8,11 @@ import Base: getindex
 import Base: map
 import Base: length
 import Base: eltype
-import Base: endof
+import Base: lastindex
 import Base: ndims
 import Base: size
-import Base: start
-import Base: next
-import Base: done
-
+import Base: iterate
+using Serialization
 import GeometryTypes.SimpleRectangle
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
@@ -33,7 +31,7 @@ end
 
 length(A::GPUArray)                                     = prod(size(A))
 eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
-endof(A::GPUArray)                                      = length(A)
+lastindex(A::GPUArray)                                      = length(A)
 ndims(A::GPUArray{T, NDim}) where {T, NDim} = NDim
 size(A::GPUArray)                                       = A.size
 size(A::GPUArray, i::Integer)                           = i <= ndims(A) ? A.size[i] : 1
@@ -48,7 +46,7 @@ end
 function to_range(index)
     map(index) do val
         isa(val, Integer) && return val:val
-        isa(val, Range) && return val
+        isa(val, AbstractRange) && return val
         error("Indexing only defined for integers or ranges. Found: $val")
     end
 end
@@ -71,7 +69,7 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     nothing
 end
 
-function update!(A::GPUArray{T, N}, value::Array{T, N}) where {T, N}
+function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     if length(A) != length(value)
         if isa(A, GLBuffer)
             resize!(A, length(value))
@@ -98,7 +96,7 @@ end
 function getindex(A::GPUArray{T, N}, rect::SimpleRectangle) where {T, N}
     A[rect.x+1:rect.x+rect.w, rect.y+1:rect.y+rect.h]
 end
-function setindex!(A::GPUArray{T, N}, value::Array{T, N}, rect::SimpleRectangle) where {T, N}
+function setindex!(A::GPUArray{T, N}, value::AbstractArray{T, N}, rect::SimpleRectangle) where {T, N}
     A[rect.x+1:rect.x+rect.w, rect.y+1:rect.y+rect.h] = value
 end
 
@@ -110,7 +108,7 @@ mutable struct GPUVector{T} <: GPUArray{T, 1}
 end
 GPUVector(x::GPUArray) = GPUVector{eltype(x)}(x, size(x), length(x))
 
-function update!(A::GPUVector{T}, value::Vector{T}) where T
+function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
     if isa(A, GLBuffer) && (length(A) != length(value))
         resize!(A, length(value))
     end
@@ -124,12 +122,10 @@ size(v::GPUVector)              = v.size
 size(v::GPUVector, i::Integer)  = v.size[i]
 ndims(::GPUVector)              = 1
 eltype(::GPUVector{T}) where {T}       = T
-endof(A::GPUVector)             = length(A)
+lastindex(A::GPUVector)             = length(A)
 
 
-start(b::GPUVector)             = start(b.buffer)
-next(b::GPUVector, state)       = next(b.buffer, state)
-done(b::GPUVector, state)       = done(b.buffer, state)
+iterate(b::GPUVector, state = 1) = iterate(b.buffer, state)
 
 gpu_data(A::GPUVector)          = A.buffer[1:length(A)]
 
@@ -143,7 +139,7 @@ function grow_dimensions(real_length::Int, _size::Int, additonal_size::Int, grow
     new_dim = round(Int, real_length*growfactor)
     return max(new_dim, additonal_size+_size)
 end
-function Base.push!(v::GPUVector{T}, x::Vector{T}) where T
+function Base.push!(v::GPUVector{T}, x::AbstractVector{T}) where T
     lv, lx = length(v), length(x)
     if (v.real_length < lv+lx)
         resize!(v.buffer, grow_dimensions(v.real_length, lv, lx))
@@ -225,20 +221,14 @@ function (::Type{T})(x::Signal) where T <: GPUArray
     gpu_mem
 end
 
-const BaseSerializer = if isdefined(Base, :AbstractSerializer)
-    Base.AbstractSerializer
-elseif isdefined(Base, :SerializationState)
-    Base.SerializationState
-else
-    error("No Serialization type found. Probably unsupported Julia version")
-end
+const BaseSerializer = Serialization.AbstractSerializer
 
-function Base.serialize(s::BaseSerializer, t::T) where T<:GPUArray
-    Base.serialize_type(s, T)
-    serialize(s, Array(t))
+function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
+    Serialization.serialize_type(s, T)
+    Serialization.serialize(s, Array(t))
 end
-function Base.deserialize(s::BaseSerializer, ::Type{T}) where T<:GPUArray
-    A = deserialize(s)
+function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T<:GPUArray
+    A = Serialization.deserialize(s)
     T(A)
 end
 
