@@ -70,13 +70,13 @@ begin #basically a singleton for the textureatlas
                     TextureAtlas(fields...)
                 end
             catch e
-                info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
+                @info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
                 warn(e)
                 rm(_cache_path)
             end
         end
         atlas = TextureAtlas()
-        info("Caching fonts, this may take a while. Needed only on first run!")
+        @info("Caching fonts, this may take a while. Needed only on first run!")
         for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
             insert_glyph!(atlas, c, defaultfont())
         end
