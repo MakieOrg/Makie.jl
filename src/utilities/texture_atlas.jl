@@ -1,3 +1,4 @@
+using Serialization
 
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
@@ -26,13 +27,13 @@ begin #basically a singleton for the textureatlas
     # random list of chars we cache
     # basically to make runtests fast, until we figure out a better way to cache
     # newly rendered chars.
-    const local _tobe_cached = [
+    const _tobe_cached = [
         'π','∮','⋅','→','∞','∑','∏','∀','∈','ℝ','⌈','⌉','−','⌊','⌋','α','∧','β','∨','ℕ','⊆','₀',
         '⊂','ℤ','ℚ','ℂ','⊥','≠','≡','≤','≪','⊤','⇒','⇔','₂','⇌','Ω','⌀',
     ]
-    const local _cache_path = joinpath(dirname(@__FILE__), "..", ".cache", "texture_atlas.jls")
-    const local _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
-    const local _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
+    const _cache_path = joinpath(dirname(@__FILE__), "..", ".cache", "texture_atlas.jls")
+    const _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
+    const _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
 
     function defaultfont()
         if isempty(_default_font)
@@ -61,7 +62,7 @@ begin #basically a singleton for the textureatlas
         if isfile(_cache_path)
             try
                 return open(_cache_path) do io
-                    dict = deserialize(io)
+                    dict = Serialization.deserialize(io)
                     fields = map(fieldnames(TextureAtlas)) do n
                         v = dict[n]
                         isa(v, Vector) ? copy(v) : v # otherwise there seems to be a problem with resizing
@@ -69,13 +70,13 @@ begin #basically a singleton for the textureatlas
                     TextureAtlas(fields...)
                 end
             catch e
-                info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
+                @info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
                 warn(e)
                 rm(_cache_path)
             end
         end
         atlas = TextureAtlas()
-        info("Caching fonts, this may take a while. Needed only on first run!")
+        @info("Caching fonts, this may take a while. Needed only on first run!")
         for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
             insert_glyph!(atlas, c, defaultfont())
         end
@@ -94,7 +95,7 @@ begin #basically a singleton for the textureatlas
             dict = Dict(map(fieldnames(typeof(atlas))) do name
                 name => getfield(atlas, name)
             end)
-            serialize(io, dict)
+            Serialization.serialize(io, dict)
         end
     end
     const global_texture_atlas = RefValue{TextureAtlas}()
@@ -181,7 +182,7 @@ function sdistancefield(img, downsample = 8, pad = 8*downsample)
     end
     w, h = w + 2pad, h + 2pad #pad this, to avoid cuttoffs
 
-    in_or_out = Matrix{Bool}(w, h)
+    in_or_out = Matrix{Bool}(undef, w, h)
     @inbounds for i=1:w, j=1:h
         x, y = i-pad, j-pad
         in_or_out[i,j] = checkbounds(Bool, img, x, y) && img[x,y] > 0.5 * 255

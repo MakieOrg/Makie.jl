@@ -90,7 +90,7 @@ end
     grid_color = RGBAf0(0.5, 0.5, 0.5, 0.4)
     darktext = RGB(0.4, 0.4, 0.4)
     grid_thickness = 1
-    gridthickness = ntuple(x-> 1f0, 3)
+    gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
     Theme(
         showticks = (true, true, true),
@@ -142,7 +142,7 @@ default_ticks(limits::Tuple{Number, Number}, ticks, scale_func = identity) = def
 function default_ticks(lmin::Number, lmax::Number, ticks::AbstractVector{<: Number}, scale_func = identity)
     scale_func.((filter(t -> lmin <= t <= lmax, ticks)))
 end
-function default_ticks(lmin::Number, lmax::Number, ::Void, scale_func = identity)
+function default_ticks(lmin::Number, lmax::Number, ::Nothing, scale_func = identity)
     # scale the limits
     scaled_ticks, mini, maxi = optimize_ticks(
         scale_func(lmin),
@@ -209,7 +209,7 @@ function draw_ticks(
         textcolor, textsize, rotation, align, font
     )
     for (tick, str) in ticks
-        pos = ntuple(i-> i != dim ? origin[i] : tick, Val{2})
+        pos = ntuple(i-> i != dim ? origin[i] : tick, Val(2))
         push!(
             textbuffer,
             str, pos,
@@ -225,7 +225,7 @@ function draw_grid(
     ) where N
     dirf0 = Pointf0{N}(dir)
     for (tick, str) in ticks
-        tup = ntuple(i-> i != dim ? origin[i] : tick, Val{N})
+        tup = ntuple(i-> i != dim ? origin[i] : tick, Val(N))
         posf0 = Pointf0{N}(tup)
         append!(
             linebuffer,
@@ -273,7 +273,7 @@ function draw_frame(
         if !(from == origin && axis_position == :origin)
             for otherside in 1:2
                 for dim in 1:N
-                    p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val{N})
+                    p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val(N))
                     to = Point{N, Float32}(p)
                     append!(
                         linebuffer, [from, to],
@@ -312,18 +312,20 @@ function draw_titles(
     posy = (title_start[1], half_width[2])
     positions = (posx, posy)
     for i = 1:2
-        push!(
-            textbuffer, axis_labels[i], positions[i],
-            textsize = textsize[i], align = align[i], rotation = rotation[i],
-            color = textcolor[i], font = font[i]
-        )
+        if !isempty(axis_labels[i])
+            push!(
+                textbuffer, axis_labels[i], positions[i],
+                textsize = textsize[i], align = align[i], rotation = rotation[i],
+                color = textcolor[i], font = font[i]
+            )
+        end
     end
-
 end
 
 
 function ticks_and_labels(x)
-    r = linspace(extrema(x)..., 5)
+    st, s = extrema(x)
+    r = range(st, stop=s, length=4)
     zip(r, string.(round.(r, 4)))
 end
 
@@ -334,7 +336,7 @@ end
 un_transform(model::Mat4, x) = transform(inv(model), x)
 
 
-to2tuple(x) = ntuple(i-> x, Val{2})
+to2tuple(x) = ntuple(i-> x, Val(2))
 to2tuple(x::Tuple{<:Any, <: Any}) = x
 
 function draw_axis(
@@ -415,10 +417,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
 
-    g_args = getindex.(cplot[:grid], g_keys)
-    f_args = getindex.(cplot[:frame], f_keys)
-    t_args = getindex.(cplot[:ticks], t_keys)
-    ti_args = getindex.(cplot[:names], ti_keys)
+    g_args = getindex.(Ref(cplot[:grid]), g_keys)
+    f_args = getindex.(Ref(cplot[:frame]), f_keys)
+    t_args = getindex.(Ref(cplot[:ticks]), t_keys)
+    ti_args = getindex.(Ref(cplot[:names]), ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})
@@ -441,7 +443,7 @@ function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
 end
 
 
-function GeometryTypes.widths(x::Range)
+function GeometryTypes.widths(x::AbstractRange)
     mini, maxi = Float32.(extrema(x))
     maxi - mini
 end
@@ -451,7 +453,7 @@ _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
 
 to3tuple(x::Tuple{Any, Any, Any}) = x
-to3tuple(x) = ntuple(i-> x, Val{3})
+to3tuple(x) = ntuple(i-> x, Val(3))
 
 function draw_axis(textbuffer, linebuffer, limits, ranges, labels, args...)
     # make sure we extend all args to 3D

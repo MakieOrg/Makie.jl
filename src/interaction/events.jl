@@ -76,11 +76,11 @@ function register_callbacks(scene::Scene, native_window)
 end
 
 
-button_key{T}(x::Type{T}) = error("Must be a keyboard or mouse button. Found: $T")
+button_key(x::Type{T}) where {T} = error("Must be a keyboard or mouse button. Found: $T")
 button_key(x::Type{Keyboard.Button}) = :keyboardbuttons
 button_key(x::Type{Mouse.Button}) = :mousebuttons
-button_key{T}(x::Set{T}) = button_key(T)
-button_key{T}(x::T) = button_key(T)
+button_key(x::Set{T}) where {T} = button_key(T)
+button_key(x::T) where {T} = button_key(T)
 
 """
 returns true if `button` is pressed in scene[:mousebuttons or :keyboardbuttons]
@@ -92,7 +92,7 @@ end
 
 # TODO this is a bit shady, but maybe a nice api!
 # So you can use void whenever you don't care what is pressed
-ispressed(scene::SceneLike, ::Void) = true
+ispressed(scene::SceneLike, ::Nothing) = true
 
 function ispressed(buttons::Set{T}, button) where T <: Union{Keyboard.Button, Mouse.Button}
     if isa(button, Set)
@@ -105,3 +105,15 @@ function ispressed(scene::SceneLike, button)
     buttons = getfield(events(scene), button_key(button))[]
     ispressed(buttons, button)
 end
+
+
+"""
+Picks a mouse position
+"""
+function pick end
+
+"""
+    onpick(func, plot)
+Calls `func` if one clicks on `plot`
+"""
+function onpick end

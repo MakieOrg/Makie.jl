@@ -137,7 +137,7 @@ end
 
 
 xvector(x::AbstractVector, len) = x
-xvector(x::ClosedInterval, len) = linspace(minimum(x), maximum(x), len)
+xvector(x::ClosedInterval, len) = range(minimum(x), stop=maximum(x), length=len)
 xvector(x::AbstractMatrix, len) = x
 
 yvector(x, len) = xvector(x, len)'
@@ -232,7 +232,7 @@ function plot!(sub::Series)
         cmap = to_colormap(colors)
         if size(A, 2) > length(cmap)
             @info("Colormap doesn't have enough distinctive values. Please consider using another value for seriescolors")
-            cmap = interpolated_getindex.((cmap,), linspace(0, 1, M))
+            cmap = interpolated_getindex.((cmap,), range(0, stop=1, length=M))
         end
         cmap
     end
@@ -275,7 +275,7 @@ function plot!(plot::Annotations)
     sargs = (
         plot[:model], plot[:font],
         plot[1], position,
-        getindex.(plot, (:color, :textsize, :align, :rotation))...,
+        getindex.(Ref(plot), (:color, :textsize, :align, :rotation))...,
     )
     N = value(position) |> eltype |> length
     tp = map(sargs...) do model, font, args...
@@ -312,7 +312,7 @@ function plot!(plot::Annotations)
     t_attributes[:font] = map(x-> x[5], tp)
     t_attributes[:rotation] = map(x-> x[6], tp)
     t_attributes[:align] = Vec2f0(0)
-    t_attributes[:model] = eye(Mat4f0)
+    t_attributes[:model] = Mat4f0(I)
     t_attributes[:raw] = true
     text!(plot, t_attributes, map(x-> x[1], tp))
     plot
@@ -333,8 +333,8 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             center = true,
             axis = Attributes(),
             legend = Attributes(),
-            camera = :automatic,
-            limits = :automatic,
+            camera = automatic,
+            limits = automatic,
             padding = Vec3f0(0.1),
             raw = false
         )
@@ -342,10 +342,11 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
     if plot_attributes[:raw][] == false
         s_limits = limits(scene)
         map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
-            if limit == :automatic
+            if limit == automatic
                 @info("calculating limits")
                 @log_performance "calculating limits" begin
                     x = data_limits(scene)
+                    # for when scene is empty
                     dlimits = if x == FRect3D(Vec3f0(0), Vec3f0(0))
                         data_limits(subscene)
                     else
@@ -391,7 +392,7 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
         #     legend_attributes = plot_attributes[:legend][]
         #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
         # end
-        if plot_attributes[:camera][] == :automatic
+        if plot_attributes[:camera][] == automatic
             cam = cameracontrols(scene)
             if cam == EmptyCamera()
                 if is2d(scene)
@@ -419,7 +420,7 @@ end
 function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
-        map(linspace(start_angle, stop_angle, resolution)) do angle
+        map(range(start_angle, stop=stop_angle, length=resolution)) do angle
             origin .+ (Point2f0(sin(angle), cos(angle)) .* radius)
         end
     end

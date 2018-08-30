@@ -12,7 +12,7 @@ For help on a specific function's attributes, type `help_attributes(plot_Type)`.
 
 Use the optional `extended = true` keyword argument to see more details.
 """
-help(func; kw_args...) = help(STDOUT, func; kw_args...) #defaults to STDOUT
+help(func; kw_args...) = help(stdout, func; kw_args...) #defaults to STDOUT
 
 function help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
     buffer = IOBuffer()
