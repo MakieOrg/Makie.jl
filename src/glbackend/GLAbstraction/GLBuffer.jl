@@ -116,7 +116,7 @@ end
 
 # copy between two buffers
 # could be a setindex! operation, with subarrays for buffers
-function Base.unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
     multiplicator = sizeof(T)
     glBindBuffer(GL_COPY_READ_BUFFER, a.id)
     glBindBuffer(GL_COPY_WRITE_BUFFER, b.id)
@@ -149,7 +149,7 @@ end
 
 
 #copy inside one buffer
-function Base.unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, len::Int) where T
+function unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, len::Int) where T
     len <= 0 && return nothing
     bind(buffer)
     ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
@@ -160,7 +160,7 @@ function Base.unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::In
     bind(buffer,0)
     return nothing
 end
-function Base.unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
     bind(b)
     ptr = Ptr{T}(glMapBuffer(b.buffertype, GL_WRITE_ONLY))
     for i=1:len
@@ -169,7 +169,7 @@ function Base.unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeo
     glUnmapBuffer(b.buffertype)
     bind(b,0)
 end
-function Base.unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
+function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     bind(a)
     ptr = Ptr{T}(glMapBuffer(a.buffertype, GL_READ_ONLY))
     for i=1:len
