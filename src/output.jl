@@ -30,8 +30,8 @@ function save(path::String, scene::Scene)
 end
 
 
-# Base.mimewritable(::MIME"text/html", scene::VideoStream) = true
-Base.mimewritable(::MIME"image/png", scene::Scene) = true
+# Base.showable(::MIME"text/html", scene::VideoStream) = true
+Base.showable(::MIME"image/png", scene::Scene) = true
 
 
 function show(io::IO, mime::MIME"application/javascript", scene::Scene)
