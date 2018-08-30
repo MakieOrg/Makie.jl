@@ -1,3 +1,4 @@
+using Pkg
 if get(ENV, "CHECKOUT_ABSTRACTPLOTTING", "false") == "true"
     Pkg.pkg"add AbstractPlotting#sd/07"
 end
@@ -22,11 +23,11 @@ if record_reference_images
     end
 end
 
-function url2hash(url::String)
-    path = download(url)
-    open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
-end
-url2hash(url) |> println
+# function url2hash(url::String)
+#     path = download(url)
+#     open(io-> bytes2hex(BinaryProvider.sha256(io)), path)
+# end
+# url2hash(url) |> println
 
 
 if !record_reference_images
