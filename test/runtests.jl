@@ -1,9 +1,14 @@
+if get(ENV, "CHECKOUT_ABSTRACTPLOTTING", "false") == "true"
+    Pkg.pkg"add AbstractPlotting#sd/07"
+end
+
 using Test
 using BinaryProvider, FileIO, Random, Pkg
 include("../examples/library.jl")
 
 record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
 version = v"0.0.6"
+
 
 download_dir = joinpath(@__DIR__, "testimages")
 tarfile = joinpath(download_dir, "images.zip")
