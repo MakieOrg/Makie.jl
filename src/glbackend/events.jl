@@ -38,7 +38,10 @@ function disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
 end
 
-
+function window_position(window::GLFW.Window)
+    xy = GLFW.GetWindowPos(window)
+    (xy.x, xy.y)
+end
 function window_area(scene::Scene, window)
     event = scene.events.window_area
     dpievent = scene.events.window_dpi
@@ -59,7 +62,7 @@ function window_area(scene::Scene, window)
             event[] = IRect(minimum(rect), w, h)
         end
     end
-    event[] = IRect(GLFW.GetWindowPos(window), GLFW.GetFramebufferSize(window))
+    event[] = IRect(window_position(window), framebuffer_size(window))
     disconnect!(event); disconnect!(window, window_area)
 
     monitor = GLFW.GetPrimaryMonitor()
@@ -154,13 +157,22 @@ function retina_scaling_factor(w, fb)
     (w[1] == 0 || w[2] == 0) && return (1.0, 1.0)
     fb ./ w
 end
+
+function framebuffer_size(window::GLFW.Window)
+    wh = GLFW.GetFramebufferSize(window)
+    (wh.width, wh.height)
+end
+function window_size(window::GLFW.Window)
+    wh = GLFW.GetWindowSize(window)
+    (wh.width, wh.height)
+end
 function retina_scaling_factor(window::GLFW.Window)
-    w, fb = GLFW.GetWindowSize(window), GLFW.GetFramebufferSize(window)
+    w, fb = window_size(window), framebuffer_size(window)
     retina_scaling_factor(w, fb)
 end
 
 function correct_mouse(window::GLFW.Window, w, h)
-    ws, fb = GLFW.GetWindowSize(window), GLFW.GetFramebufferSize(window)
+    ws, fb = window_size(window), framebuffer_size(window)
     s = retina_scaling_factor(ws, fb)
     (w * s[1], fb[2] - (h * s[2]))
 end
