@@ -1,8 +1,3 @@
-using Pkg
-if get(ENV, "CHECKOUT_ABSTRACTPLOTTING", "false") == "true"
-    Pkg.pkg"add AbstractPlotting#sd/07"
-end
-
 using Test
 using BinaryProvider, FileIO, Random, Pkg
 include("../examples/library.jl")
