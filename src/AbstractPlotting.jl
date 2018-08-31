@@ -2,6 +2,7 @@ module AbstractPlotting
 
 using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
 using ColorBrewer
+using Markdown # documentation
 
 # Text related packages
 using Packing
