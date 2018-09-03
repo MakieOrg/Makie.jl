@@ -3,9 +3,9 @@ to_func_name(x::Symbol) = string(x) |> lowercase |> Symbol
 """
 
 # type recipe are really simple and just overload the argument conversion pipeline.
-argument_convert(x::MyType) = (rand(10, 10),)
+convert_arguments(P::Type{<:AbstractPlot}, x::MyType) = convert_arguments(P, rand(10, 10))
 # only apply this for a certain plot type:
-argument_convert(::Type{<: Scatter}, x::MyType) = (rand(10, 10),)
+convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
 # optionally define the plotting type, when someone just says plot(x::MyType)
 # - will fall back to whatever the standard plot type for what you return from argument_convert is!
 plottype(::MyType) = Surface
