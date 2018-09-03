@@ -51,7 +51,7 @@ using .Formatters
             linewidth = 1.0,
             linecolor = :black,
             linestyle = nothing,
-            axis_position = :origin,
+            axis_position = nothing,
             axis_arrow = false,
             arrow_size = 2.5,
             frames = ((false, false), (false, false)),
@@ -249,7 +249,7 @@ function draw_frame(
         for i = 1:N
             start = unit(Point{N, Float32}, i) * Float32(mini[i])
             to = unit(Point{N, Float32}, i) * Float32(maxi[i])
-            if false#axis_arrow
+            if false #axis_arrow
                 arrows(
                     scene, [start, to],
                     linewidth = linewidth, linecolor = linecolor, linestyle = linestyle,
@@ -402,7 +402,7 @@ function draw_axis(
     return
 end
 
-# for axis, we don't want to have plot!(scene, args called on it, so we need to overload it directly)
+# for axis, we don't want to have plot!(scene, args) called on it, so we need to overload it directly
 function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     cplot, non_plot_kwargs = Axis2D(scene, attributes, args)
