@@ -1,8 +1,12 @@
 **Build status**: [![][gitlab-img]][gitlab-url]
 
+**Documentation**: [![][docs-stable-img]][docs-stable-url]
+
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://makie.juliaplots.org/stable/)
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
+[docs-stable-url]: http://makie.juliaplots.org/stable/
+
 ![](https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png)
 
 # Makie
