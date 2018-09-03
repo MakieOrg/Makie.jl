@@ -19,7 +19,6 @@ end
 using .Formatters
 
 @recipe(Axis2D) do scene
-    darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
         ticks = Theme(
 
@@ -35,7 +34,7 @@ using .Formatters
             linecolor = ((:black, 0.4), (:black, 0.4)),
             linestyle = (nothing, nothing),
 
-            textcolor = (darktext, darktext),
+            textcolor = (:black, :black),
             textsize = (5, 5),
             rotation = (0.0, 0.0),
             align = ((:center, :top), (:right, :center)),
@@ -88,7 +87,6 @@ end
     axisnames_align3d = tickalign3d
     tick_color = RGBAf0(0.5, 0.5, 0.5, 0.6)
     grid_color = RGBAf0(0.5, 0.5, 0.5, 0.4)
-    darktext = RGB(0.4, 0.4, 0.4)
     grid_thickness = 1
     gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
@@ -100,7 +98,7 @@ end
 
         names = Theme(
             axisnames = ("x", "y", "z"),
-            textcolor = (darktext, darktext, darktext),
+            textcolor = (:black, :black, :black),
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
@@ -125,7 +123,7 @@ end
         frame = Theme(
             linecolor = (grid_color, grid_color, grid_color),
             linewidth = (grid_thickness, grid_thickness, grid_thickness),
-            axiscolor = (darktext, darktext, darktext),
+            axiscolor = (:black, :black, :black),
         )
     )
 end
