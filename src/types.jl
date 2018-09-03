@@ -227,7 +227,7 @@ end
 
 #dict interface
 const AttributeOrPlot = Union{AbstractPlot, Attributes}
-Base.pop!(x::AttributeOrPlot, key) = pop!(x.attributes, key)
+Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)
 haskey(x::AttributeOrPlot, key) = haskey(x.attributes, key)
 delete!(x::AttributeOrPlot, key) = delete!(x.attributes, key)
 function get!(f::Function, x::AttributeOrPlot, key::Symbol)
