@@ -59,7 +59,7 @@ using .Formatters
         ),
 
         names = Theme(
-            axisnames = ("X Axis", "Y Axis"),
+            axisnames = ("x", "y"),
             textcolor = (:black, :black),
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
@@ -99,7 +99,7 @@ end
         scale = Vec3f0(1),
 
         names = Theme(
-            axisnames = ("X Axis", "Y Axis", "Z Axis"),
+            axisnames = ("x", "y", "z"),
             textcolor = (darktext, darktext, darktext),
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
