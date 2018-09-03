@@ -13,7 +13,7 @@ plottype(::MyType) = Surface
 # full recipes:
 
 # (x, y, z) && themes are optional
-@recipe(myplot, x, y, z) do scene
+@recipe(MyPlot, x, y, z) do scene
     Theme(
         plot_color => :red
     )
