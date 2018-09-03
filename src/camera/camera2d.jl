@@ -140,7 +140,7 @@ end
 
 function absrect(rect)
     xy, wh = minimum(rect), widths(rect)
-    xy = ntuple(Val{2}) do i
+    xy = ntuple(Val(2)) do i
         wh[i] < 0 ? xy[i] + wh[i] : xy[i]
     end
     FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
