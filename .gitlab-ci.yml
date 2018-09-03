@@ -17,6 +17,6 @@ job:
       - julia -e 'using InteractiveUtils; versioninfo()'
       - julia --project -e "using Pkg;
                           Pkg.instantiate();
-                          Pkg.pkg\"add Makie#master AbstractPlotting#master GLFW#master\";
+                          Pkg.add(PackageSpec(name = \"Makie\", path=ENV[\"CI_PROJECT_DIR\"]));
                           Pkg.build();
                           Pkg.test(\"Makie\");"
