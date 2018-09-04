@@ -490,3 +490,8 @@ function AbstractPlotting.plot!(p::BarPlot)
         transform_marker = true
     )
 end
+
+convert_arguments(P::Type{<:AbstractPlot}, f::Function) = convert_arguments(P, f, -5, 5)
+convert_arguments(P::Type{<:AbstractPlot}, f::Function, r) = convert_arguments(P, r, f.(r))
+convert_arguments(P::Type{<:AbstractPlot}, f::Function, min, max) =
+    convert_arguments(P, f, PlotUtils.adapted_grid(f, (min, max)))
