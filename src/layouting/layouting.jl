@@ -134,7 +134,7 @@ function grid(plots::Matrix{<: Transformable}; kw_args...)
     pscene = Scene()
     cam2d!(pscene)
     for idx in 1:N
-        i, j = ind2sub(grid, idx)
+        i, j = Tuple(CartesianIndices(grid)[idx])
         child = plots[idx]
         push!(pscene.children, child)
         translate!(child, w, h, 0.0)
