@@ -37,8 +37,8 @@ Pkg.checkout("AbstractPlotting", "sd/06")
 Julia 1.0 is now the offical recommended Julia version to use with Makie:
 
 ```Julia
-add Makie
-test Makie
+]add Makie
+]test Makie
 ```
 
 ## Dependencies
