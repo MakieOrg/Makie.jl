@@ -28,15 +28,16 @@ Makie is still prerelease, so the current versions are a bit in turmoil.
 
 ```julia
 Pkg.add("Makie") # will install the deprecated, first version of Makie - Look at #IJulia examples for the old style
-# Get the bleeding edge version, which is used to generate the `Examples from the documentation` + `Complex examples` section 
-Pkg.checkout("Makie")
-Pkg.checkout("AbstractPlotting")
+# Get the new version with:
+Pkg.checkout("Makie", "sd/06")
+Pkg.checkout("AbstractPlotting", "sd/06")
 ```
 
-## Julia 0.7
+## Julia 1.0
+Julia 1.0 is now the offical recommended Julia version to use with Makie:
 
 ```Julia
-add Makie#master AbstractPlotting#master GLFW#master
+add Makie
 test Makie
 ```
 
