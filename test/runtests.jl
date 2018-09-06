@@ -3,8 +3,7 @@ using BinaryProvider, FileIO, Random, Pkg
 include("../examples/library.jl")
 
 record_reference_images = get(ENV, "RECORD_EXAMPLES", false) == "true"
-version = v"0.0.6"
-
+version = v"0.0.7"
 
 download_dir = joinpath(@__DIR__, "testimages")
 tarfile = joinpath(download_dir, "images.zip")
@@ -14,9 +13,11 @@ recordpath = joinpath(homedir(), "ReferenceImages", "images")
 if record_reference_images
     cd(homedir()) do
         isdir(dirname(recordpath)) || run(`git clone git@github.com:SimonDanisch/ReferenceImages.git`)
-        isdir(recordpath) && rm(recordpath)
+        isdir(recordpath) && rm(recordpath, recursive = true, force = true)
+        mkdir(recordpath)
     end
 end
+
 
 # function url2hash(url::String)
 #     path = download(url)
@@ -31,7 +32,7 @@ if !record_reference_images
         refpath = recordpath
     elseif !isdir(refpath)
         download_images() = BinaryProvider.download_verify(
-            url, "8726dc6015e29b2cbb1b73880a0880c5bdeec0f52f787450110d4eb49d3897d5",
+            url, "dabc4c35eb82a801708596964dc35c0acf1879b487a35b73322f094f611f19c3",
             tarfile
         )
         try
