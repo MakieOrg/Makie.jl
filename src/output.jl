@@ -34,38 +34,39 @@ end
 Base.showable(::MIME"image/png", scene::Scene) = true
 
 
-function show(io::IO, mime::MIME"application/javascript", scene::Scene)
-    #TODO use WebIO
-    print(io, scene2javascript(scene))
-end
+# Let's not lie: with only the OpenGL backend, we don't really support any svg/html mime
 
-function show(io::IO, mime::MIME"text/html", scene::Scene)
-    print(io, "<img src=\"data:image/png;base64,")
-    b64pipe = Base64EncodePipe(io)
-    img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"PNG", b64pipe), img)
-    print(io, "\">")
-end
+# function show(io::IO, mime::MIME"application/javascript", scene::Scene)
+#     #TODO use WebIO
+#     print(io, scene2javascript(scene))
+# end
 
-function svg(scene::Scene, path::Union{String, IO})
-    cs = CairoBackend.CairoScreen(scene, path)
-    CairoBackend.draw_all(cs, scene)
-end
+# function show(io::IO, mime::MIME"text/html", scene::Scene)
+#     print(io, "<img src=\"data:image/png;base64,")
+#     b64pipe = Base64EncodePipe(io)
+#     img = scene2image(scene)
+#     FileIO.save(FileIO.Stream(FileIO.format"PNG", b64pipe), img)
+#     print(io, "\">")
+# end
+
+# function svg(scene::Scene, path::Union{String, IO})
+#     cs = CairoBackend.CairoScreen(scene, path)
+#     CairoBackend.draw_all(cs, scene)
+# end
 
 
-function show(io::IO, m::MIME"image/svg+xml", scene::Scene)
-    if false#AbstractPlotting.is2d(scene)
-        svg(scene, io)
-    else
-        show(io, MIME"text/html"(), scene)
-    end
-end
+# function show(io::IO, m::MIME"image/svg+xml", scene::Scene)
+#     if false#AbstractPlotting.is2d(scene)
+#         svg(scene, io)
+#     else
+#         show(io, MIME"text/html"(), scene)
+#     end
+# end
 
 function show(io::IO, m::MIME"image/png", scene::Scene)
     img = scene2image(scene)
     FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end
-
 
 
 export VideoStream, recordframe!, finish, record
