@@ -44,6 +44,26 @@ mutable struct Scene <: AbstractScene
     end
 end
 
+function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
+    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
+    println(io, "events:")
+    for field in fieldnames(Events)
+        println(io, "    ", field, ": ", to_value(getfield(scene.events, field)))
+    end
+    println(io, "plots:")
+    for plot in scene.plots
+        println(io, "   *", typeof(plot))
+    end
+    println(io, "subscenes:")
+    for subscene in scene.children
+        println(io, "   *", println(io, "scene ($(size(subscene, 1))px, $(size(subscene, 2))px)"))
+    end
+end
+
+Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
+Base.size(x::Scene, i) = size(x)[i]
+
+
 # Just indexing into a scene gets you plot 1, plot 2 etc
 Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
