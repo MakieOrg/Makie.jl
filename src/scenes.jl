@@ -56,7 +56,7 @@ function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
     end
     println(io, "subscenes:")
     for subscene in scene.children
-        println(io, "   *", println(io, "scene ($(size(subscene, 1))px, $(size(subscene, 2))px)"))
+        println(io, "   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
     end
 end
 
