@@ -18,6 +18,6 @@ job:
       - julia --project -e "using Pkg;
                           Pkg.instantiate();
                           Pkg.add(PackageSpec(name = \"Makie\", path=ENV[\"CI_PROJECT_DIR\"]));
-                          Pkg.pkg\"add AbstractPlotting#master\"
+                          Pkg.pkg\"add AbstractPlotting#master\";
                           Pkg.build();
                           Pkg.test(\"Makie\");"
