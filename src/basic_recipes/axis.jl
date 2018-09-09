@@ -21,6 +21,7 @@ using .Formatters
 @recipe(Axis2D) do scene
     darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
+        visible = true,
         ticks = Theme(
 
             labels = automatic,
@@ -93,6 +94,7 @@ end
     gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
     Theme(
+        visible = true,
         showticks = (true, true, true),
         showaxis = (true, true, true),
         showgrid = (true, true, true),

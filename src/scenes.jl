@@ -1,5 +1,6 @@
 
 mutable struct Scene <: AbstractScene
+    parent
     events::Events
 
     px_area::Node{IRect2D}
@@ -25,8 +26,9 @@ mutable struct Scene <: AbstractScene
             theme::Attributes,
             children::Vector{Scene},
             current_screens::Vector{AbstractScreen},
+            parent = nothing,
         )
-        obj = new(events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
+        obj = new(parent, events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
         finalizer(obj) do obj
             # save_print("Freeing scene")
             close_all_nodes(obj.events)
@@ -43,6 +45,8 @@ mutable struct Scene <: AbstractScene
         obj
     end
 end
+
+Base.parent(scene::Scene) = scene.parent
 
 function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
@@ -305,7 +309,8 @@ function Scene(
         AbstractPlot[],
         merge(current_default_theme(), theme),
         Scene[],
-        current_screens
+        current_screens,
+        scene
     )
     push!(scene.children, child)
     child
@@ -324,7 +329,8 @@ function Scene(scene::Scene, area)
         AbstractPlot[],
         copy(current_default_theme()),
         Scene[],
-        scene.current_screens
+        scene.current_screens,
+        scene
     )
     push!(scene.children, child)
     child
