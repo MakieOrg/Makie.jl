@@ -1,22 +1,36 @@
 
 """
-Calculates the exact boundingbox of a Scene/Plot
+Calculates the exact boundingbox of a Scene/Plot, without considering any transformation
 """
+function raw_boundingbox(x::Atomic)
+    bb = data_limits(x)
+end
+function raw_boundingbox(x::Annotations)
+    inv(modelmatrix(x)[]) * raw_boundingbox(x.plots)
+end
+function raw_boundingbox(x::Combined)
+    raw_boundingbox(x.plots)
+end
 function boundingbox(x)
-    data_limits(x)
+    raw_boundingbox(x)
+end
+function boundingbox(x::Atomic)
+    p = parent(x)
+    bb = raw_boundingbox(x)
+    mm = modelmatrix(x)[]
+    p === nothing && return mm * bb
+    inv(modelmatrix(p)[]) * mm * bb
 end
 
-boundingbox(x::Combined) = boundingbox(x.plots)
-
-boundingbox(scene::Scene) = boundingbox(plots_from_camera(scene))
-
-function boundingbox(plots::Vector)
+raw_boundingbox(scene::Scene) = raw_boundingbox(plots_from_camera(scene))
+function raw_boundingbox(plots::Vector)
     isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
     plot_idx = iterate(plots)
     bb = FRect3D()
     while plot_idx !== nothing
         plot, idx = plot_idx
         plot_idx = iterate(plots, idx)
+        isvisible(plot) || continue
         bb2 = boundingbox(plot)
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue
@@ -26,26 +40,25 @@ function boundingbox(plots::Vector)
 end
 
 
-function boundingbox(x::Text, text::String)
+function raw_boundingbox(x::Text, text::String)
     position = value(x[:position])
-    @get_attribute x (textsize, font, align, rotation, model)
-    boundingbox(text, position, textsize, font, align, rotation, model)
+    @get_attribute x (textsize, font, align, rotation)
+    raw_boundingbox(text, position, textsize, font, align, rotation)
 end
-boundingbox(x::Text) = boundingbox(x, value(x[1]))
+raw_boundingbox(x::Text) = raw_boundingbox(x, value(x[1]))
 
-function boundingbox(
+function raw_boundingbox(
         text::String, position, textsize;
-        font = "default", align = (:left, :bottom), rotation = 0.0,
-        model::Mat4f0 = Mat4f0(I)
+        font = "default", align = (:left, :bottom), rotation = 0.0
     )
-    boundingbox(
+    raw_boundingbox(
         text, position, textsize,
-        to_font(font), to_align(align), to_rotation(rotation), model
+        to_font(font), to_align(align), to_rotation(rotation)
     )
 
 end
 
-function boundingbox(text::String, position, textsize, font, align, rotation, model)
+function raw_boundingbox(text::String, position, textsize, font, align, rotation)
     atlas = get_texture_atlas()
     N = length(text)
     ctext_state = iterate(text)

@@ -18,11 +18,11 @@ function data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{2, T}}}
 end
 
 function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
-    _boundingbox(value.(x[1:3])...)
+    xyz_boundingbox(value.(x[1:3])...)
 end
 
 function data_limits(x::Atomic{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
-    _boundingbox(value.(x[1:2])...)
+    xyz_boundingbox(value.(x[1:2])...)
 end
 
 _isfinite(x) = isfinite(x)
@@ -57,7 +57,7 @@ function extrema_nan(itr)
 end
 
 
-function _boundingbox(x, y, z = (0 => 0))
+function xyz_boundingbox(x, y, z = (0 => 0))
     minmax = extrema_nan.((x, y, z))
     mini, maxi = first.(minmax), last.(minmax)
     FRect3D(mini, maxi .- mini)
@@ -65,11 +65,11 @@ end
 
 const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
 function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    _boundingbox(value.((x[1], x[2]))...)
+    xyz_boundingbox(value.((x[1], x[2]))...)
 end
 
 function data_limits(x::Volume)
-    _boundingbox(value.((x[1], x[2], x[3]))...)
+    xyz_boundingbox(value.((x[1], x[2], x[3]))...)
 end
 
 
@@ -104,6 +104,7 @@ function data_limits(plots::Vector)
         # axis shouldn't be part of the data limit
         isaxis(plot) && continue
         isa(plot, Legend) && continue
+        isvisible(plot) || continue
         bb2 = data_limits(plot)
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue
