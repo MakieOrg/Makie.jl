@@ -19,7 +19,7 @@ function AbstractPlotting.data_limits(p::Bar)
     msize = p.plots[1][:markersize][]
     xybb = FRect3D(xy)
     y = last.(msize) .+ last.(xy)
-    bb = AbstractPlotting._boundingbox(first.(xy), y)
+    bb = AbstractPlotting.xyz_boundingbox(first.(xy), y)
     union(bb, xybb)
 end
 
