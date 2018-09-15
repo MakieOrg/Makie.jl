@@ -129,7 +129,7 @@ function find_indices(input_tags::NTuple{N, String}; title = nothing, author = n
         tags_found && author_found && title_found
     end
     if isempty(indices)
-        warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
+        @warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
         indices
     else
         indices
