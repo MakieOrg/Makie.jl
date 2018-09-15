@@ -122,7 +122,7 @@ scene
 
 
 using Makie, Colors
-using AbstractPlotting: modelmatrix, textslider, colorswatch, hbox!
+using AbstractPlotting: transformationmatrix, textslider, colorswatch, hbox!
 
 scene = Scene(resolution = (1000, 1000))
 ui_width = 260
