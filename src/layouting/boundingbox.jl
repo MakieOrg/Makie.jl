@@ -56,8 +56,7 @@ function boundingbox(x::Text, text::String)
     wh = widths(bb)
     whp = project(pm, wh)
     aoffset = whp .* to_ndim(Vec3f0, align, 0f0)
-    bb = FRect3D(minimum(bb) .+ aoffset, whp)
-    # FRect3D(minimum(bb) .+ aoffset, widths(bb))
+    bb = FRect3D(minimum(bb) .- aoffset, whp)
 end
 
 
