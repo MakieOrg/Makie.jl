@@ -197,7 +197,7 @@ function embed_thumbnail(io::IO, func::Function, currpath::AbstractString)
             println(io, "![]($(embedpath))")
             # println(io, "[![$title]($(embedpath))](@ref)")
         else
-            warn("thumbnail for index $idx with uname $uname not found")
+            @warn("thumbnail for index $idx with uname $uname not found")
             embedpath = "not_found"
         end
         embedpath = []
@@ -215,7 +215,7 @@ Insert thumbnails matching a search tag.
 function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, tarpath::AbstractString)
     indices = find_indices(func)
     !ispath(currpath) && @warn("currepath does not exist!")
-    !ispath(tarpath) && warn("$(tarpath) does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
+    !ispath(tarpath) && @warn("$(tarpath) does not exist! Note that on your first run of docs generation and before you `makedocs`, you will likely get this error.")
     for idx in indices
         is_stepper = false
 
@@ -252,7 +252,7 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
                 embedpath = relpath(testpath2, currpath)
                 println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
             else
-                warn("thumbnail for index $idx with uname $uname not found")
+                @warn("thumbnail for index $idx with uname $uname not found")
                 embedpath = "not_found"
             end
         end
@@ -314,7 +314,7 @@ function embed_plot(
             println(io, embedcode)
             break
         else
-            warn("file $(uname)$i with unknown extension in mediapath, or file nonexistent")
+            @warn("file $(uname)$i with unknown extension in mediapath, or file nonexistent")
         end
     end
     print(io, "\n")
@@ -411,7 +411,7 @@ function generate_thumbnail(path, thumb_path, thumb_size = 128)
         println(thumb_path)
         run(`ffmpeg -loglevel quiet -ss $seektime -i $path -vframes 1 -vf "scale=$(thumb_size):-2" -y -f image2 $thumb_path`)
     else
-        warn("Unsupported return file format in $path")
+        @warn("Unsupported return file format in $path")
     end
 end
 
@@ -436,7 +436,7 @@ function get_video_duration(path::AbstractString)
         dur = read(`ffprobe -loglevel quiet -print_format compact=print_section=0:nokey=1:escape=csv -show_entries format=duration -i "$(path)"`, String)
         dur = parse(Float32, dur)
     catch e
-        warn("`get_video_duration` on $filename did not work, using fallback video duration of 0.5 seconds")
+        @warn("`get_video_duration` on $filename did not work, using fallback video duration of 0.5 seconds")
         dur = 0.5
     end
 end
