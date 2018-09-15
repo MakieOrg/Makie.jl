@@ -295,6 +295,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         end
         gl_attributes[:color] = img
         args = x[1:3]
+        gl_attributes[:shading] = get(gl_attributes, :shading, true) |> AbstractPlotting.to_value
         if all(v-> value(v) isa AbstractMatrix, args)
             visualize(args, Style(:surface), gl_attributes).children[]
         else
