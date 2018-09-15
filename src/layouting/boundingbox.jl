@@ -5,8 +5,11 @@ Calculates the exact boundingbox of a Scene/Plot, without considering any transf
 function raw_boundingbox(x::Atomic)
     bb = data_limits(x)
 end
+rootparent(x) = rootparent(parent(x))
+rootparent(x::Scene) = x
+
 function raw_boundingbox(x::Annotations)
-    inv(modelmatrix(x)[]) * raw_boundingbox(x.plots)
+    inv(modelmatrix(rootparent(x))) * raw_boundingbox(x.plots)
 end
 function raw_boundingbox(x::Combined)
     raw_boundingbox(x.plots)
@@ -14,14 +17,19 @@ end
 function boundingbox(x)
     raw_boundingbox(x)
 end
-function boundingbox(x::Atomic)
-    p = parent(x)
-    bb = raw_boundingbox(x)
-    mm = modelmatrix(x)[]
-    p === nothing && return mm * bb
-    inv(modelmatrix(p)[]) * mm * bb
+
+
+function modelmatrix(x)
+    t = transformation(x)
+    transformationmatrix(t.translation[], t.scale[], t.rotation[])
 end
 
+function boundingbox(x::Atomic)
+    bb = raw_boundingbox(x)
+    modelmatrix(x) * bb
+end
+
+boundingbox(scene::Scene) = raw_boundingbox(scene)
 raw_boundingbox(scene::Scene) = raw_boundingbox(plots_from_camera(scene))
 function raw_boundingbox(plots::Vector)
     isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
@@ -40,25 +48,39 @@ function raw_boundingbox(plots::Vector)
 end
 
 
-function raw_boundingbox(x::Text, text::String)
+function boundingbox(x::Text, text::String)
     position = value(x[:position])
     @get_attribute x (textsize, font, align, rotation)
-    raw_boundingbox(text, position, textsize, font, align, rotation)
+    bb = boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
+    pm = inv(transformationmatrix(parent(x))[])
+    wh = widths(bb)
+    whp = project(pm, wh)
+    aoffset = whp .* to_ndim(Vec3f0, align, 0f0)
+    bb = FRect3D(minimum(bb) .+ aoffset, whp)
+    # FRect3D(minimum(bb) .+ aoffset, widths(bb))
 end
-raw_boundingbox(x::Text) = raw_boundingbox(x, value(x[1]))
 
-function raw_boundingbox(
+
+boundingbox(x::Text) = boundingbox(x, value(x[1]))
+
+function boundingbox(
         text::String, position, textsize;
         font = "default", align = (:left, :bottom), rotation = 0.0
     )
-    raw_boundingbox(
+    boundingbox(
         text, position, textsize,
         to_font(font), to_align(align), to_rotation(rotation)
     )
 
 end
 
-function raw_boundingbox(text::String, position, textsize, font, align, rotation)
+function project(matrix::Mat4f0, p::T, dim4 = 1.0) where T
+    p = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0.0), dim4)
+    p = matrix * p
+    to_ndim(T, p, 0.0)
+end
+
+function boundingbox(text::String, position, textsize, font, align, rotation, model = Mat4f0(I))
     atlas = get_texture_atlas()
     N = length(text)
     ctext_state = iterate(text)
@@ -67,8 +89,7 @@ function raw_boundingbox(text::String, position, textsize, font, align, rotation
     start_pos = Vec(pos_per_char ? first(position) : position)
     start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
     last_pos = Point2f0(0, 0)
-    aoffsetn = to_ndim(Vec3f0, align, 0f0)
-    start_pos3d = to_ndim(Vec3f0, start_pos, 0.0)
+    start_pos3d = project(model, to_ndim(Vec3f0, start_pos, 0.0))
     bb = AABB(start_pos3d, Vec3f0(0))
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         c, text_state = ctext_state
@@ -86,5 +107,5 @@ function raw_boundingbox(text::String, position, textsize, font, align, rotation
             bb = GeometryTypes.update(bb, pos .+ srot)
         end
     end
-    FRect3D(minimum(bb) .- (widths(bb) .* aoffsetn), widths(bb))
+    FRect3D(minimum(bb), widths(bb))
 end

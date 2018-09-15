@@ -304,7 +304,7 @@ function draw_titles(
         last(first(xticks)), to_font(tickfont[1]), tick_size[1]
     ))[2]
 
-    model_inv = inv(modelmatrix(textbuffer)[])
+    model_inv = inv(transformationmatrix(textbuffer)[])
 
     tickspace = transform(model_inv, (tickspace_x, tickspace_y))
     title_start = origin .- (tick_gap .+ tickspace .+ tick_title_gap)
@@ -365,7 +365,7 @@ function draw_axis(
     % = mean(limit_widths) / 100 # percentage
 
     xyticks = zip.(xyrange, labels)
-    model_inv = inv(modelmatrix(textbuffer)[])
+    model_inv = inv(transformationmatrix(textbuffer)[])
 
     ti_textsize = ti_textsize .* %
     t_textsize = t_textsize .* %

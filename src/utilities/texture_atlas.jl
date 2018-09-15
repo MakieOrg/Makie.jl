@@ -71,7 +71,7 @@ begin #basically a singleton for the textureatlas
                 end
             catch e
                 @info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
-                warn(e)
+                @warn(e)
                 rm(_cache_path)
             end
         end

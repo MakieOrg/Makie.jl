@@ -320,6 +320,20 @@ end
 
 is2d(scene::SceneLike) = widths(limits(scene)[])[3] == 0.0
 
+function scale_scene!(scene)
+    area = pixelarea(scene)[]
+    lims = data_limits(scene)
+    # not really sure how to scale 3D scenes in a reasonable way
+    mini, maxi = minimum(lims), maximum(lims)
+    l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
+    xyzfit = fit_ratio(area, l)
+    s = to_ndim(Vec3f0, xyzfit, 1f0)
+    scale!(scene, s)
+    force_update!()
+    yield()
+    return scene
+end
+
 function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
     plot_attributes, rest = merged_get!(:plot, scene, attributes) do
         Theme(
@@ -355,20 +369,6 @@ function plot!(scene::SceneLike, subscene::AbstractPlot, attributes::Attributes)
             else
                 s_limits[] = FRect3D(limit)
             end
-        end
-        area_widths = RefValue(widths(pixelarea(scene)[]))
-        map_once(pixelarea(scene), s_limits, plot_attributes[:scale_plot]) do area, limits, scaleit
-            # not really sure how to scale 3D scenes in a reasonable way
-            if scaleit && is2d(scene) # && area_widths[] != widths(area)
-                area_widths[] = widths(area)
-                mini, maxi = minimum(limits), maximum(limits)
-                l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-                xyzfit = fit_ratio(area, l)
-                s = to_ndim(Vec3f0, xyzfit, 1f0)
-                @info("calculated scaling: ", Tuple(s))
-                scale!(scene, s)
-            end
-            return
         end
         if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
             axis_attributes = plot_attributes[:axis]
@@ -449,7 +449,7 @@ function data_limits(p::BarPlot)
     msize = p.plots[1][:markersize][]
     xybb = FRect3D(xy)
     y = last.(msize) .+ last.(xy)
-    bb = AbstractPlotting._boundingbox(first.(xy), y)
+    bb = AbstractPlotting.xyz_boundingbox(first.(xy), y)
     union(bb, xybb)
 end
 
