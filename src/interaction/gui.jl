@@ -225,7 +225,7 @@ function sample_color(f, ui, colormesh, v)
     translate!(select, 0, 0, 10)
 
     foreach(mpos, ui.events.mousebuttons) do mp, mb
-        bb = FRect2D(modelmatrix(sub)[] * modelmatrix(colormesh)[] * boundingbox(colormesh))
+        bb = FRect2D(transformationmatrix(sub)[] * transformationmatrix(colormesh)[] * boundingbox(colormesh))
         mp = Point2f0(mp) .- minimum(pixelarea(sub)[])
         if Point2f0(mp) in bb
             select[:visible] = true

@@ -84,6 +84,7 @@ Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        shading = true,
         fxaa = true,
     )
 end

@@ -218,7 +218,7 @@ function primary_resolution()
     try
         _primary_resolution()
     catch e
-        warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
+        @warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
         Error: $(sprint(io->showerror(io, e))).")
         (1920, 1080)
     end
@@ -374,6 +374,7 @@ update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function center!(scene::Scene, padding = 0.01)
     bb = boundingbox(scene)
+    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)
