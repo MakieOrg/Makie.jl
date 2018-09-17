@@ -12,6 +12,7 @@ mutable struct Scene <: AbstractScene
 
     plots::Vector{AbstractPlot}
     theme::Attributes
+    attributes::Attributes
     children::Vector{Scene}
     current_screens::Vector{AbstractScreen}
 
@@ -28,7 +29,7 @@ mutable struct Scene <: AbstractScene
             current_screens::Vector{AbstractScreen},
             parent = nothing,
         )
-        obj = new(parent, events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
+        obj = new(parent, events, px_area, camera, camera_controls, limits, transformation, plots, theme, Attributes(), children, current_screens)
         finalizer(obj) do obj
             # save_print("Freeing scene")
             close_all_nodes(obj.events)
@@ -38,6 +39,7 @@ mutable struct Scene <: AbstractScene
             end
             disconnect!(obj.camera)
             empty!(obj.theme)
+            empty!(obj.attributes)
             empty!(obj.children)
             empty!(obj.current_screens)
             return
