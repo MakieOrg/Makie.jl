@@ -225,6 +225,9 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     plots::Vector{AbstractPlot}
 end
 
+
+isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
+
 #dict interface
 const AttributeOrPlot = Union{AbstractPlot, Attributes}
 Base.pop!(x::AttributeOrPlot, args...) = pop!(x.attributes, args...)

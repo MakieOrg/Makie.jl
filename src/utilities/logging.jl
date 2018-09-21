@@ -40,13 +40,6 @@ macro log_signals(args...)
     end
 end
 
-macro warn(args...)
-    quote
-        if log_level[][5]
-            printstyled(logging_io[], $(esc.(args)...), color=:red)
-        end
-    end
-end
 
 function print_stats(io::IO, elapsedtime, bytes, gctime, allocs)
     @printf(io, "%10.6f seconds", elapsedtime/1e9)

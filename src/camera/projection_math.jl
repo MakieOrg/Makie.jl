@@ -246,7 +246,7 @@ function to_world(scene::Scene, point::T) where T <: StaticVector
     cam = scene.camera
     x = to_world(
         point,
-        inv(Reactive.value(modelmatrix(scene))) *
+        inv(Reactive.value(transformationmatrix(scene))) *
         inv(Reactive.value(cam.view)) *
         inv(Reactive.value(cam.projection)),
         T(widths(Reactive.value(pixelarea(scene))))

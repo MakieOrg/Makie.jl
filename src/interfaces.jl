@@ -84,6 +84,7 @@ Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
         colorrange = automatic,
+        shading = true,
         fxaa = true,
     )
 end
@@ -300,7 +301,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
             end
         end
     end
-    plot_attributes, rest = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
+    plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
     trans = get(plot_attributes, :transformation, automatic)
     transformation = if to_value(trans) == automatic
         Transformation(scene)
@@ -325,7 +326,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, arg_nodes, node_args_seperated)
     calculated_attributes!(plot_obj)
-    plot_obj, rest
+    plot_obj, scene_attributes
 end
 
 
@@ -370,12 +371,6 @@ plot!(P::Type, attributes::Attributes, args...) = plot!(current_scene(), P, attr
 plot!(scene::SceneLike, args...; kw_args...) = plot!(scene, Any, args...; kw_args...)
 plot!(scene::SceneLike, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
 
-# function plot!(scene::SceneLike, plot::Combined{F, Arg}) where {F, Arg}
-#     plot!(plot, arguments(plot)...; attributes(plot)...)
-# end
-# function plot!(scene::SceneLike, plot::Atomic{F, Arg}) where {F, Arg}
-#     plot!(plot, arguments(plot)...; attributes(plot)...)
-# end
 
 function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     PlotType = plottype(value.(args)...)
@@ -386,19 +381,121 @@ plot!(p::Atomic) = p
 
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object, non_plot_kwargs = PlotType(scene, attributes, args)
-    # call user defined overload to fill the plot type
+    plot_object, scene_attributes = PlotType(scene, attributes, args)
+
+    merge!(scene.attributes, scene_attributes)
+
+   # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     # call the assembly recipe, that also adds this to the scene
     # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
-    plot!(scene, plot_object, non_plot_kwargs)
+    plot!(scene, plot_object, scene_attributes)
 end
 
 function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object, non_plot_kwargs = PlotType(scene, attributes, args)
-    # call user defined overload to fill the plot type
+    plot_object, scene_attributes = PlotType(scene, attributes, args)
+    # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
+    scene
+end
+
+# Composition recipes - putting all the higher level functionality together:
+
+function add_camera!(scene::Scene)
+    if scene[:camera][] == automatic
+        cam = cameracontrols(scene)
+        if cam == EmptyCamera()
+            if is2d(scene)
+                @info("setting camera to 2D")
+                cam2d!(scene)
+            else
+                @info("setting camera to 3D")
+                cam3d!(scene)
+            end
+        end
+    elseif scene[:camera][] in (cam2d!, cam3d!)
+        scene[:camera][](scene)
+    else
+        error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")
+    end
+end
+function add_axis!(scene::Scene)
+    show_axis = scene[:show_axis][]
+    axistype = if scene[:axis_type][] == automatic
+        is2d(scene) ? axis2d! : axis3d!
+    elseif scene[:axis_type][] in (axis2d!, axis3d!)
+        scene[:axis_type][]
+    else
+        error("Unrecogniced `axis_type` attribute type: $(typeof(scene[:axis_type][])). Use automatic, axis2d! or axis3d!")
+    end
+
+    show_axis isa Bool || error("show_axis needs to be a bool")
+    if show_axis && !(any(isaxis, plots(scene)))
+        axis_attributes = scene[:axis]
+        axistype(scene, axis_attributes, s_limits)
+    end
+end
+function plot!(scene::SceneLike, subscene::AbstractPlot)
+    plot_attributes, rest = merged_get!(:plot, scene, scene.attributes) do
+        Theme(
+            show_axis = true,
+            show_legend = false,
+            scale_plot = true,
+            center = true,
+            axis = Attributes(),
+            axis_type = automatic,
+            legend = Attributes(),
+            camera = automatic,
+            limits = automatic,
+            padding = Vec3f0(0.1),
+            raw = false
+        )
+    end
+    if scene[:raw][] == false
+        s_limits = limits(scene)
+        map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
+            if limit == automatic
+                @info("calculating limits")
+                @log_performance "calculating limits" begin
+                    x = data_limits(scene)
+                    # for when scene is empty
+                    dlimits = if x == FRect3D(Vec3f0(0), Vec3f0(0))
+                        data_limits(subscene)
+                    else
+                        union(x, data_limits(subscene))
+                    end
+                    lim_w = widths(dlimits)
+                    padd_abs = lim_w .* Vec3f0(padd)
+                    s_limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
+                end
+            else
+                s_limits[] = FRect3D(limit)
+            end
+        end
+        if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
+            axis_attributes = plot_attributes[:axis]
+            if is2d(scene)
+                @info("Creating axis 2D")
+                axis2d!(scene, axis_attributes, s_limits)
+            else
+                limits3d = map(s_limits) do l
+                    mini, maxi = minimum(l), maximum(l)
+                    tuple.(Tuple.((mini, maxi))...)
+                end
+                @info("Creating axis 3D")
+                axis3d!(scene, axis_attributes, limits3d)
+            end
+        end
+        setup_camera!(scene)
+        # if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
+        #     legend_attributes = plot_attributes[:legend][]
+        #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
+        # end
+
+    end
+    push!(scene.plots, subscene)
+    value(plot_attributes[:center]) && center!(scene)
     scene
 end
