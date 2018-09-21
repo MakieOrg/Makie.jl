@@ -32,7 +32,7 @@ end
 boundingbox(scene::Scene) = raw_boundingbox(scene)
 raw_boundingbox(scene::Scene) = raw_boundingbox(plots_from_camera(scene))
 function raw_boundingbox(plots::Vector)
-    isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
+    isempty(plots) && return 
     plot_idx = iterate(plots)
     bb = FRect3D()
     while plot_idx !== nothing

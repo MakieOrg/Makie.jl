@@ -160,18 +160,7 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
     linesegments!(plot, Theme(plot), points_faces)
 end
 
-Theme(x::AbstractPlot) = x.attributes
-# function wireframe(
-#         geometry, data::Dict
-#     )
-#     points = const_lift(geometry) do g
-#         decompose(Point3f0, g) # get the point representation of the geometry
-#     end
-#     # Get line index representation
-#     indices = decompose(Face{2, GLIndex}, value(geometry))
-#     data[:indices] = reinterpret(GLuint, indices)
-#     _default(points, style"linesegment"(), data)
-# end
+
 function plot!(plot::Wireframe{Tuple{T}}) where T
     points = lift(plot[1]) do g
         # get the point representation of the geometry

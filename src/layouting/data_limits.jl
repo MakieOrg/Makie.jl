@@ -95,7 +95,7 @@ end
 Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
 
 function data_limits(plots::Vector)
-    isempty(plots) && return FRect3D(Vec3f0(0), Vec3f0(0))
+    isempty(plots) && return 
     bb = FRect3D()
     plot_idx = iterate(plots)
     while plot_idx !== nothing
