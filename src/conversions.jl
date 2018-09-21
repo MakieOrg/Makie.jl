@@ -447,7 +447,7 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
         fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
         font = FreeTypeAbstraction.findfont(str, additional_fonts = fontpath)
         if font == nothing
-            warn("Could not find font $str, using Dejavu Sans")
+            @warn("Could not find font $str, using Dejavu Sans")
             if "dejavu sans" == lowercase(str)
                 # since we fall back to dejavu sans, we need to check for recursion
                 error("recursion, font path seems to not contain dejavu sans: $fontpath")
@@ -742,7 +742,7 @@ function to_spritemarker(marker::Symbol)
     if haskey(_marker_map, marker)
         return to_spritemarker(_marker_map[marker])
     else
-        warn("Unsupported marker: $marker, using ● instead")
+        @warn("Unsupported marker: $marker, using ● instead")
         return '●'
     end
 end
