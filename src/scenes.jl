@@ -50,22 +50,6 @@ end
 
 Base.parent(scene::Scene) = scene.parent
 
-function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
-    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
-    println(io, "events:")
-    for field in fieldnames(Events)
-        println(io, "    ", field, ": ", to_value(getfield(scene.events, field)))
-    end
-    println(io, "plots:")
-    for plot in scene.plots
-        println(io, "   *", typeof(plot))
-    end
-    println(io, "subscenes:")
-    for subscene in scene.children
-        println(io, "   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
-    end
-end
-
 Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
 Base.size(x::Scene, i) = size(x)[i]
 
@@ -119,7 +103,7 @@ end
 function Base.empty!(scene::Scene)
     empty!(scene.plots)
     disconnect!(scene.camera)
-    scene.limits[] = FRect3D(Vec3f0(0), Vec3f0(0))
+    scene.limits[] =
     scene.camera_controls[] = EmptyCamera()
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
@@ -186,11 +170,19 @@ pixelarea(scene::SceneLike) = pixelarea(scene.parent)
 plots(scene::SceneLike) = scene.plots
 
 const _forced_update_scheduled = Ref(false)
+
+"""
+Returns wether a scene needs updating
+"""
 function must_update()
     val = _forced_update_scheduled[]
     _forced_update_scheduled[] = false
     val
 end
+
+"""
+Forces to rerender the scnee
+"""
 function force_update!()
     _forced_update_scheduled[] = true
 end
@@ -212,6 +204,10 @@ else
     _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
 end
 
+"""
+Returns the resolution of the primary monitor.
+If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
+"""
 function primary_resolution()
     # Since this is pretty low level and os specific + we can't test on all possible
     # computers, I assume we'll have bugs here. Let's not sweat about it too much,
@@ -225,8 +221,17 @@ function primary_resolution()
         (1920, 1080)
     end
 end
+
+"""
+Returns a reasonable resolution for the main monitor.
+(right now just half the resolution of the main monitor)
+"""
 reasonable_resolution() = primary_resolution() .÷ 2
 
+
+"""
+Returns the current active scene (the last scene that got created)
+"""
 function current_scene()
     if isassigned(current_global_scene)
         current_global_scene[]
@@ -236,31 +241,6 @@ function current_scene()
 end
 
 Scene(::Nothing) = Scene()
-
-const minimal_default = Attributes(
-    font = "Dejavu Sans",
-    backgroundcolor = RGBAf0(1,1,1,1),
-    color = :black,
-    colormap = :viridis,
-    resolution = reasonable_resolution(),
-    visible = true
-)
-
-const _current_default_theme = copy(minimal_default)
-
-function current_default_theme(; kw_args...)
-    copy = Attributes(_current_default_theme...)
-    merge(copy, Attributes(;kw_args...))
-end
-
-function set_theme!(new_theme::Attributes)
-    empty!(_current_default_theme)
-    merge!(_current_default_theme, minimal_default, new_theme)
-    return
-end
-function set_theme!(;kw_args...)
-    set_theme!(Attributes(; kw_args...))
-end
 
 
 function Scene(;

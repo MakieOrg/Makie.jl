@@ -3,6 +3,8 @@ not_implemented_for(x) = error("Not implemented for $(x). You might want to put:
 #TODO only have one?
 const Theme = Attributes
 
+Theme(x::AbstractPlot) = x.attributes
+
 default_theme(scene, T) = Attributes()
 
 function default_theme(scene)
@@ -383,13 +385,18 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)
 
-    merge!(scene.attributes, scene_attributes)
-
-   # call user defined recipe overload to fill the plot type
+    attributes, rest = merge_attributes!(scene_attributes, theme(scene, :scene))
+    # TODO warn about rest - should be unused arguments!
+    empty!(scene.attributes)
+    # transfer the merged attributes from theme and user defined to the scene
+    merge!(scene.attributes, attributes)
+    # call user defined recipe overload to fill the plot type
     plot!(plot_object)
+    push!(scene.plots, plot_object)
     # call the assembly recipe, that also adds this to the scene
     # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
-    plot!(scene, plot_object, scene_attributes)
+    #plot!(scene, plot_object, scene_attributes)
+    scene
 end
 
 function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
@@ -401,8 +408,16 @@ function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args..
     scene
 end
 
-# Composition recipes - putting all the higher level functionality together:
+function compose_plot!(scene::Scene)
+    if scene[:raw][] == false
+        update_limits!(scene)
+        add_axis!(scene)
+        setup_camera!(scene)
+        # add_labels!(scene)
+    end
+end
 
+# Composition recipes - putting all the higher level functionality together:
 function add_camera!(scene::Scene)
     if scene[:camera][] == automatic
         cam = cameracontrols(scene)
@@ -421,8 +436,12 @@ function add_camera!(scene::Scene)
         error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")
     end
 end
+
+
 function add_axis!(scene::Scene)
     show_axis = scene[:show_axis][]
+    show_axis isa Bool || error("show_axis needs to be a bool")
+
     axistype = if scene[:axis_type][] == automatic
         is2d(scene) ? axis2d! : axis3d!
     elseif scene[:axis_type][] in (axis2d!, axis3d!)
@@ -431,71 +450,48 @@ function add_axis!(scene::Scene)
         error("Unrecogniced `axis_type` attribute type: $(typeof(scene[:axis_type][])). Use automatic, axis2d! or axis3d!")
     end
 
-    show_axis isa Bool || error("show_axis needs to be a bool")
     if show_axis && !(any(isaxis, plots(scene)))
         axis_attributes = scene[:axis]
         axistype(scene, axis_attributes, s_limits)
     end
 end
-function plot!(scene::SceneLike, subscene::AbstractPlot)
-    plot_attributes, rest = merged_get!(:plot, scene, scene.attributes) do
-        Theme(
-            show_axis = true,
-            show_legend = false,
-            scale_plot = true,
-            center = true,
-            axis = Attributes(),
-            axis_type = automatic,
-            legend = Attributes(),
-            camera = automatic,
-            limits = automatic,
-            padding = Vec3f0(0.1),
-            raw = false
-        )
-    end
-    if scene[:raw][] == false
-        s_limits = limits(scene)
-        map_once(plot_attributes[:limits], plot_attributes[:padding]) do limit, padd
-            if limit == automatic
-                @info("calculating limits")
-                @log_performance "calculating limits" begin
-                    x = data_limits(scene)
-                    # for when scene is empty
-                    dlimits = if x == FRect3D(Vec3f0(0), Vec3f0(0))
-                        data_limits(subscene)
-                    else
-                        union(x, data_limits(subscene))
-                    end
-                    lim_w = widths(dlimits)
-                    padd_abs = lim_w .* Vec3f0(padd)
-                    s_limits[] = FRect3D(minimum(dlimits) .- padd_abs, lim_w .+  2padd_abs)
-                end
-            else
-                s_limits[] = FRect3D(limit)
-            end
-        end
-        if plot_attributes[:show_axis][] && !(any(isaxis, plots(scene)))
-            axis_attributes = plot_attributes[:axis]
-            if is2d(scene)
-                @info("Creating axis 2D")
-                axis2d!(scene, axis_attributes, s_limits)
-            else
-                limits3d = map(s_limits) do l
-                    mini, maxi = minimum(l), maximum(l)
-                    tuple.(Tuple.((mini, maxi))...)
-                end
-                @info("Creating axis 3D")
-                axis3d!(scene, axis_attributes, limits3d)
-            end
-        end
-        setup_camera!(scene)
-        # if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
-        #     legend_attributes = plot_attributes[:legend][]
-        #     colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
-        # end
 
+function add_labels!(scene::Scene)
+    if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
+        legend_attributes = plot_attributes[:legend][]
+        colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
     end
-    push!(scene.plots, subscene)
-    value(plot_attributes[:center]) && center!(scene)
-    scene
+end
+
+update_limits!(scene::Scene) = update_limits!(scene, scene[:limits][], scene[:padding][])
+
+function update_limits!(scene::Scene, limits::Automatic, padding)
+    # for when scene is empty
+    dlimits = data_limits(scene)
+    tlims = (minimum(dlimits), maximum(dlimits))
+    if !all(isfinite, minimaxi)
+        @warn "limits of scene contain non finite values: $(tlims[1]) .. $(tlims[2])"
+        mini = map(x-> ifelse(isfinite(x), x, 0.0), tlims[1])
+        maxi = Vec3f0(ntuple(3) do i
+            x = tlims[2][i]
+            ifelse(isfinite(x), x, tlims[1][i] + 1f0)
+        end)
+        minimaxi = (mini, maxi)
+    end
+    new_widths = Vec3f0(ntuple(3) do i
+        a = tlims[1][i]; b = tlims[2][i]
+        w = b - a
+        # check for widths == 0.0... 3rd dimension is allowed to be 0 though.
+        # TODO maybe we should allow any one dimension to be 0, and then use the other 2 as 2D
+        @warn "Founds 0 width in scene limits: $(tlims[1]) .. $(tlims[2])"
+        ifelse((i != 3) && (w ≈ 0.0), 1f0, w)
+    end)
+    update_limits!(scene, dlimits, FRect3D(tlims[1], new_widths))
+end
+
+function update_limits!(scene::Scene, new_limits::FRect3D, padding = Vec3f0(0))
+    lim_w = widths(new_limits)
+    # use the smallest widths for scaling, to have a consistently wide padding for all sides
+    padd_abs = minimum(lim_w) .* to_ndim(Vec3f0, padd, 0.0)
+    limits(scene)[] = FRect3D(minimum(new_limits) .- padd_abs, lim_w .+  2padd_abs)
 end

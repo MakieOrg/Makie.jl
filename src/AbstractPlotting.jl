@@ -24,6 +24,7 @@ include("interaction/nodes.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
+include("theming.jl")
 include("recipes.jl")
 include("interfaces.jl")
 include("conversions.jl")
@@ -54,6 +55,7 @@ include("interaction/gui.jl")
 
 # documentation and help functions
 include("documentation.jl")
+include("display.jl")
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments
@@ -63,7 +65,7 @@ export AbstractScene, SceneLike, Scene, AbstractScreen
 export AbstractPlot, Combined, Atomic, Axis
 
 # Theming, working with Plots
-export Attributes, Theme, attributes, default_theme, theme
+export Attributes, Theme, attributes, default_theme, theme, set_theme!
 
 # Node/Signal related
 export Node, node, lift, map_once

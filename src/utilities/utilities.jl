@@ -243,8 +243,6 @@ dim2(x::NTuple{2, Any}) = x
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 
-
-
 function merge_attributes!(input, theme, rest = Attributes(), merged = Attributes())
     for key in union(keys(input), keys(theme))
         if haskey(input, key) && haskey(theme, key)
