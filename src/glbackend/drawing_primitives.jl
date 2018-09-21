@@ -95,6 +95,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatte
             msize = pop!(gl_attributes, :stroke_width)
             gl_attributes[:stroke_width] = lift(pixel2world, Node(scene), msize)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
+            gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
+            gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
         end
         positions = handle_view(x[1], gl_attributes)
         handle_intensities!(gl_attributes)
@@ -136,7 +138,7 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
     atlas = get_texture_atlas()
     N = length(T)
     positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
-    toffset = calc_offset(string, textsize, font, atlas)
+    # toffset = calc_offset(string, textsize, font, atlas)
     char_str_idx = iterate(string)
     broadcast_foreach(1:length(string), startpos, textsize, (font,), align) do idx, pos, tsize, font, align
         char, str_idx = char_str_idx
@@ -151,7 +153,7 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
         end
         char_str_idx = iterate(string, str_idx)
     end
-    positions, toffset, uv_offset_width, scale
+    positions, Vec2f0(0), uv_offset_width, scale
 end
 
 function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
@@ -160,18 +162,17 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     pos = to_ndim(Point{N, Float32}, mpos, 0f0)
     rscale = Float32(textsize)
     chars = Vector{Char}(string)
+    scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
-    toffset = calc_offset(chars, rscale, font, atlas)
     aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
     uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
-    scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions = map(positions2d) do p
         pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ pos
     end
-    positions, toffset, uv_offset_width, scale
+    positions, Vec2f0(0), uv_offset_width, scale
 end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Text)
