@@ -81,7 +81,7 @@ function text_limits(x::AbstractVector)
     FRect3D(x)
 end
 function data_limits(x::Text)
-    text_limits(value(x[:position]))
+    boundingbox(x)
 end
 
 function data_limits(x::Annotations)

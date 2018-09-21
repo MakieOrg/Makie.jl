@@ -153,6 +153,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         marker_offset = automatic,
         fxaa = false,
         transform_marker = false, # Applies the plots transformation to marker
+        uv_offset_width = Vec4f0(0),
+        distancefield = nothing
     )
 end
 

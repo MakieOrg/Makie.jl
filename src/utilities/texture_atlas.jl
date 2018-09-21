@@ -144,9 +144,11 @@ function bearing(extent)
         -(extent.scale[2] - extent.horizontal_bearing[2])
     )
 end
+
 function glyph_bearing!(atlas::TextureAtlas, c::Char, font, scale)
-    bearing(atlas.extent[glyph_index!(atlas, c, font)]) .* (scale * 0.02)
+    bearing(atlas.extent[glyph_index!(atlas, c, font)]) .* Point2f0(scale * 0.02)
 end
+
 function glyph_advance!(atlas::TextureAtlas, c::Char, font, scale)
     atlas.extent[glyph_index!(atlas, c, font)].advance .* (scale * 0.02)
 end
@@ -261,10 +263,9 @@ function calc_position(glyphs, start_pos, scales, fonts, atlas)
     c1 = first(glyphs)
     for (i, (c2, scale, font)) in enumerate(zip(glyphs, s, f))
         c2 == '\r' && continue # stupid windows!
-        positions[i] = last_pos
+        b = glyph_bearing!(atlas, c2, font, scale)
+        positions[i] = last_pos .+ b
         last_pos = calc_position(last_pos, start_pos, atlas, c2, font, scale)
-        #k = FreeTypeAbstraction.kerning(c1, c2, font, scale)
-        #last_pos += k # add kerning
     end
     positions
 end
