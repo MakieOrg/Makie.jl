@@ -12,7 +12,13 @@ function scientific(ticks::AbstractVector)
 end
 
 function plain(ticks::AbstractVector)
-    Showoff.showoff(ticks, :plain)
+    try
+        Showoff.showoff(ticks, :plain)
+    catch e
+        Base.showerror(stderr, e)
+        println("with ticks: ", ticks)
+        String["-Inf", "Inf"]
+    end
 end
 
 end
