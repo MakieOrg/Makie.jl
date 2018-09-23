@@ -61,7 +61,12 @@ function map_once(
         init = f(to_value.((input, inputrest...))...),
         typ = typeof(init)
     )
-    off.((input, inputrest...), f, raise = false)
+    map((input, inputrest...), f) do arg
+        try
+            off(arg)
+        catch
+        end
+    end
     lift(f, input, inputrest..., init = init, typ = typ)
 end
 
