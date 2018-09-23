@@ -254,12 +254,8 @@ function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
     end
     on(m) do mesh
         for (field, val) in attributes(mesh)
-            if field == :color
-                field = :vertex_color
-            end
-            if haskey(result, field)
-                update!(result[field], val)
-            end
+            field == :color && (field = :vertex_color)
+            haskey(result, field) && update!(result[field], val)
         end
     end
     MT(result)

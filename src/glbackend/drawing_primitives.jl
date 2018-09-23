@@ -206,7 +206,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = (value.((x[1], x[2])))
+        gl_attributes[:ranges] = (to_value.((x[1], x[2])))
         heatmap = lift(x[3]) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
@@ -239,7 +239,7 @@ end
 
 function Base.insert!(screen::Screen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = to_range.(value.((x[1], x[2])))
+        gl_attributes[:ranges] = to_range.(to_value.((x[1], x[2])))
         img = get_image(gl_attributes)
         # remove_automatic!(gl_attributes)
         visualize(img, Style(:default), gl_attributes).children[]
@@ -300,7 +300,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         if all(v-> to_value(v) isa AbstractMatrix, args)
             visualize(args, Style(:surface), gl_attributes).children[]
         else
-            gl_attributes[:ranges] = to_range.(value.(args[1:2]))
+            gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
             visualize(args[3], Style(:surface), gl_attributes).children[]
         end
     end

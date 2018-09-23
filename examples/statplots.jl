@@ -231,7 +231,7 @@ function AbstractPlotting.plot!(scene::Scene, ::Type{CorrPlot}, attributes::Attr
     plotgrid = broadcast(1:n, (1:n)') do i, j
         vi = view(mat, :, i)
         vj = view(mat, :, j)
-        s = Scene(scene, Reactive.value(pixelarea(scene)))
+        s = Scene(scene, pixelarea(scene)[])
         if i == j # histograms are on the diagonal
             histogram!(s, vi)
         elseif i > j

@@ -159,7 +159,7 @@ to_index_buffer(x::Vector{I}) where {I<:Integer} = indexbuffer(map(i-> Cuint(i-1
 function to_index_buffer(x::Node{Vector{I}}) where I<:Integer
     x = map(x-> Cuint[i-1 for i=x], x)
     gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    on(mem->update!(gpu_mem, x), x)
+    on(update->update!(gpu_mem, update), x)
     gpu_mem
 end
 """
@@ -168,12 +168,12 @@ If already GLuint, we assume its 0 based (bad heuristic, should better be solved
 to_index_buffer(x::Vector{I}) where {I<:GLuint} = indexbuffer(x)
 function to_index_buffer(x::Node{Vector{I}}) where I<:GLuint
     gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    on(mem->update!(gpu_mem, x), x)
+    on(update->update!(gpu_mem, update), x)
     gpu_mem
 end
 function to_index_buffer(x::Node{Vector{I}}) where I <: Face{2, GLIndex}
     gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    on(mem->update!(gpu_mem, x), x)
+    on(update->update!(gpu_mem, update), x)
     gpu_mem
 end
 to_index_buffer(x) = error(

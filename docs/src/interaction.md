@@ -50,7 +50,7 @@ Note how the value of `y` has been changed as well, in addition to `x`:
 
 ```@example animation_tutorial
 for i in (x, y)
-    println(i.value)
+    println(to_value(i))
 end
 ```
 
