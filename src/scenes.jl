@@ -61,7 +61,7 @@ function Scene(
         empty!(scene.current_screens)
         return
     end
-    foreach(updated, px_area) do update, px_area
+    onany(updated, px_area) do update, px_area
         if update
             scale_scene!(scene);
             yield(); yield();
@@ -273,10 +273,12 @@ function Scene(;
     events = Events()
     theme = current_default_theme(; kw_args...)
     resolution = theme[:resolution][]
-    px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
-        wh = widths(w_area)
-        wh = (wh == Vec(0, 0)) ? widths(v0) : wh
-        IRect(0, 0, wh)
+    v0 = IRect(0, 0, resolution)
+    px_area = lift(events.window_area) do w_area
+       wh = widths(w_area)
+       wh = (wh == Vec(0, 0)) ? widths(v0) : wh
+       v0 = IRect(0, 0, wh)
+       v0
     end
     scene = Scene(
         events,

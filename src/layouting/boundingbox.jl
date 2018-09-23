@@ -60,7 +60,7 @@ function boundingbox(x::Text, text::String)
 end
 
 
-boundingbox(x::Text) = boundingbox(x, value(x[1]))
+boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
 
 function boundingbox(
         text::String, position, textsize;
