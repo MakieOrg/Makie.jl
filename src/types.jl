@@ -225,7 +225,7 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     plots::Vector{AbstractPlot}
 end
 
-
+theme(x::AbstractPlot) = x.attributes
 isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 
 #dict interface

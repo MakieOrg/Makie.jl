@@ -32,7 +32,7 @@ end
 boundingbox(scene::Scene) = raw_boundingbox(scene)
 raw_boundingbox(scene::Scene) = raw_boundingbox(plots_from_camera(scene))
 function raw_boundingbox(plots::Vector)
-    isempty(plots) && return 
+    isempty(plots) && return FRect3D()
     plot_idx = iterate(plots)
     bb = FRect3D()
     while plot_idx !== nothing
@@ -56,7 +56,7 @@ function boundingbox(x::Text, text::String)
     wh = widths(bb)
     whp = project(pm, wh)
     aoffset = whp .* to_ndim(Vec3f0, align, 0f0)
-    bb = FRect3D(minimum(bb) .- aoffset, whp)
+    FRect3D(minimum(bb) .- aoffset, whp)
 end
 
 
@@ -83,13 +83,13 @@ function boundingbox(text::String, position, textsize, font, align, rotation, mo
     atlas = get_texture_atlas()
     N = length(text)
     ctext_state = iterate(text)
-    ctext_state === nothing && return AABB(Vec3f0(0), Vec3f0(0))
+    ctext_state === nothing && return FRect3D()
     pos_per_char = !isa(position, VecTypes)
     start_pos = Vec(pos_per_char ? first(position) : position)
     start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
     last_pos = Point2f0(0, 0)
     start_pos3d = project(model, to_ndim(Vec3f0, start_pos, 0.0))
-    bb = AABB(start_pos3d, Vec3f0(0))
+    bb = FRect3D(start_pos3d, Vec3f0(0))
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         c, text_state = ctext_state
         ctext_state = iterate(text, text_state)

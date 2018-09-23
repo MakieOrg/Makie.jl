@@ -308,20 +308,6 @@ end
 
 is2d(scene::SceneLike) = widths(limits(scene)[])[3] == 0.0
 
-function scale_scene!(scene)
-    area = pixelarea(scene)[]
-    lims = data_limits(scene)
-    # not really sure how to scale 3D scenes in a reasonable way
-    mini, maxi = minimum(lims), maximum(lims)
-    l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-    xyzfit = fit_ratio(area, l)
-    s = to_ndim(Vec3f0, xyzfit, 1f0)
-    scale!(scene, s)
-    force_update!()
-    yield()
-    return scene
-end
-
 
 @recipe(Arc, origin, radius, start_angle, stop_angle) do scene
     Theme(;

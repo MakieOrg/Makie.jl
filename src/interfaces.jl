@@ -393,6 +393,15 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
+
+    scene[:raw][] || update_limits!(scene)
+    yield() # update limits
+    scene[:raw][] || setup_camera!(scene)
+    yield()
+    scene[:raw][] || add_axis!(scene)
+    # ! ∘ isaxis --> (x)-> !isaxis(x)
+    sort!(scene.plots, by = (!) ∘ isaxis)
+    #compose_plot!(scene)
     # call the assembly recipe, that also adds this to the scene
     # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
     #plot!(scene, plot_object, scene_attributes)
@@ -408,17 +417,32 @@ function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args..
     scene
 end
 
+Base.getindex(scene::Scene, key::Symbol) = scene.attributes[key]
+
 function compose_plot!(scene::Scene)
-    if scene[:raw][] == false
-        update_limits!(scene)
-        add_axis!(scene)
-        setup_camera!(scene)
-        # add_labels!(scene)
+    update_limits!(scene)
+    add_axis!(scene)
+    setup_camera!(scene)
+    scale_scene!(scene)
+    # add_labels!(scene)
+end
+
+function scale_scene!(scene)
+    if is2d(scene)
+        area = pixelarea(scene)[]
+        lims = limits(scene)[]
+        # not really sure how to scale 3D scenes in a reasonable way
+        mini, maxi = minimum(lims), maximum(lims)
+        l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
+        xyzfit = fit_ratio(area, l)
+        s = to_ndim(Vec3f0, xyzfit, 1f0)
+        scale!(scene, s)
     end
+    return scene
 end
 
 # Composition recipes - putting all the higher level functionality together:
-function add_camera!(scene::Scene)
+function setup_camera!(scene::Scene)
     if scene[:camera][] == automatic
         cam = cameracontrols(scene)
         if cam == EmptyCamera()
@@ -435,6 +459,7 @@ function add_camera!(scene::Scene)
     else
         error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")
     end
+    scene
 end
 
 
@@ -452,8 +477,9 @@ function add_axis!(scene::Scene)
 
     if show_axis && !(any(isaxis, plots(scene)))
         axis_attributes = scene[:axis]
-        axistype(scene, axis_attributes, s_limits)
+        axistype(scene, axis_attributes, limits(scene))
     end
+    scene
 end
 
 function add_labels!(scene::Scene)
@@ -461,6 +487,7 @@ function add_labels!(scene::Scene)
         legend_attributes = plot_attributes[:legend][]
         colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
     end
+    scene
 end
 
 update_limits!(scene::Scene) = update_limits!(scene, scene[:limits][], scene[:padding][])
@@ -469,29 +496,38 @@ function update_limits!(scene::Scene, limits::Automatic, padding)
     # for when scene is empty
     dlimits = data_limits(scene)
     tlims = (minimum(dlimits), maximum(dlimits))
-    if !all(isfinite, minimaxi)
+    if !all(x-> all(isfinite, x), tlims)
         @warn "limits of scene contain non finite values: $(tlims[1]) .. $(tlims[2])"
         mini = map(x-> ifelse(isfinite(x), x, 0.0), tlims[1])
         maxi = Vec3f0(ntuple(3) do i
             x = tlims[2][i]
             ifelse(isfinite(x), x, tlims[1][i] + 1f0)
         end)
-        minimaxi = (mini, maxi)
+        tlims = (mini, maxi)
     end
     new_widths = Vec3f0(ntuple(3) do i
         a = tlims[1][i]; b = tlims[2][i]
         w = b - a
         # check for widths == 0.0... 3rd dimension is allowed to be 0 though.
         # TODO maybe we should allow any one dimension to be 0, and then use the other 2 as 2D
-        @warn "Founds 0 width in scene limits: $(tlims[1]) .. $(tlims[2])"
-        ifelse((i != 3) && (w ≈ 0.0), 1f0, w)
+        with0 = (i != 3) && (w ≈ 0.0)
+        with0 && @warn "Founds 0 width in scene limits: $(tlims[1]) .. $(tlims[2])"
+        ifelse(with0, 1f0, w)
     end)
-    update_limits!(scene, dlimits, FRect3D(tlims[1], new_widths))
+    update_limits!(scene, FRect3D(tlims[1], new_widths), padding)
 end
 
-function update_limits!(scene::Scene, new_limits::FRect3D, padding = Vec3f0(0))
-    lim_w = widths(new_limits)
+function update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
+    lims = FRect3D(new_limits)
+    lim_w = widths(lims)
     # use the smallest widths for scaling, to have a consistently wide padding for all sides
-    padd_abs = minimum(lim_w) .* to_ndim(Vec3f0, padd, 0.0)
-    limits(scene)[] = FRect3D(minimum(new_limits) .- padd_abs, lim_w .+  2padd_abs)
+    minw = if lim_w[3] ≈ 0.0
+        m = min(lim_w[1], lim_w[2])
+        Vec3f0(m, m, 0.0)
+    else
+        Vec3f0(minimum(lim_w))
+    end
+    padd_abs = minw .* to_ndim(Vec3f0, padding, 0.0)
+    limits(scene)[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
+    scene
 end

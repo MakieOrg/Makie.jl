@@ -16,6 +16,9 @@ function Base.display(::PlotDisplay, scene::Scene)
     if isempty(backend_displays)
         error("No backend display available. Make sure you're using a Plotting backend")
     end
+    scene.updated[] = true
+    force_update!()
+    yield()
     # TODO integrate with mime system to select best available backend!
     display(first(backend_displays), scene)
 end
@@ -54,10 +57,12 @@ function Base.show(io::IO, m::MIME"text/plain", plot::Combined)
     end
 end
 
+
+
 function Base.show(io::IO, m::MIME"text/plain", plot::Atomic)
     println(io, typeof(plot))
     println(io, "attributes:")
     for (k, v) in theme(plot)
-        println(io, "  $k : $(typeof(v))")
+        println(io, "  $k : $(typeof(to_value(v)))")
     end
 end
