@@ -37,8 +37,8 @@ end
 function finish!(lsb::LineSegments)
     # update the signal!
     lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
+    # lsb[:color][] = lsb[:color][]
+    # lsb[:linewidth][] = lsb[:linewidth][]
     # Yield to allow Reactive to update values...
     # TODO checkout if this is the savest and best way
     return
@@ -78,12 +78,13 @@ end
 
 function finish!(tb::Annotations)
     #update the signal!
-    for i = 1:2
-        tb[i][] = tb[i][]
-    end
-    for key in (:color, :rotation, :textsize, :font, :align)
-        tb[key][] = tb[key][]
-    end
+    # now update all callbacks
+    # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
+    # in basic_recipes annotations should depend on all signals here, so updating one should be enough
+    tb[1][] = tb[1][]
+    # for key in (1, 2, :color, :rotation, :textsize, :font, :align)
+        # tb[key][] = tb[key][]
+    #end
     return
 end
 

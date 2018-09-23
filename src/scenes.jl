@@ -52,7 +52,7 @@ function Scene(
         close_all_nodes(scene.events)
         close_all_nodes(scene.transformation)
         for field in (:px_area, :limits)
-            close(getfield(scene, field), true)
+            close(getfield(scene, field))
         end
         disconnect!(scene.camera)
         empty!(scene.theme)
@@ -86,7 +86,7 @@ getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
 
-child(scene::Scene) = Scene(scene, value(pixelarea(scene)))
+child(scene::Scene) = Scene(scene, pixelarea(scene)[])
 
 """
 Creates a subscene with a pixel camera
@@ -161,7 +161,7 @@ function Base.push!(scene::Scene, plot::Combined)
     end
 end
 
-function connect!(scene::Scene, child::Scene)
+function Observables.connect!(scene::Scene, child::Scene)
 
 end
 
@@ -276,8 +276,8 @@ function Scene(;
     v0 = IRect(0, 0, resolution)
     px_area = lift(events.window_area) do w_area
        wh = widths(w_area)
-       wh = (wh == Vec(0, 0)) ? widths(v0) : wh
-       v0 = IRect(0, 0, wh)
+       wh = any(x-> x ≈ 0.0, wh) ? widths(v0) : wh
+       # v0 = IRect(0, 0, wh)
        v0
     end
     scene = Scene(
@@ -326,7 +326,7 @@ end
 
 function Scene(scene::Scene, area)
     events = scene.events
-    px_area = signal_convert(Signal{IRect2D}, area)
+    px_area = signal_convert(Node{IRect2D}, area)
     child = Scene(
         events,
         px_area,

@@ -18,11 +18,11 @@ function data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{2, T}}}
 end
 
 function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
-    xyz_boundingbox(value.(x[1:3])...)
+    xyz_boundingbox(to_value.(x[1:3])...)
 end
 
 function data_limits(x::Atomic{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
-    xyz_boundingbox(value.(x[1:2])...)
+    xyz_boundingbox(to_value.(x[1:2])...)
 end
 
 _isfinite(x) = isfinite(x)
@@ -65,11 +65,11 @@ end
 
 const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
 function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(value.((x[1], x[2]))...)
+    xyz_boundingbox(to_value.((x[1], x[2]))...)
 end
 
 function data_limits(x::Volume)
-    xyz_boundingbox(value.((x[1], x[2], x[3]))...)
+    xyz_boundingbox(to_value.((x[1], x[2], x[3]))...)
 end
 
 

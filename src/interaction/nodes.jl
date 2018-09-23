@@ -10,7 +10,9 @@ function lift(
     map!(f, result, o1, rest...)
 end
 
-to_value(x::Observable) = x[]
+# TODO remove this and play by Observables rules
+Base.push!(x::Node, value) = (x[] = value)
+to_value(x::Node) = x[]
 to_value(x) = x
 
 to_node(::Type{T1}, x::Node{T2}, name = :node) where {T1, T2} = signal_convert(Node{T1}, x, name)
@@ -61,9 +63,9 @@ function map_once(
         init = f(to_value.((input, inputrest...))...),
         typ = typeof(init)
     )
-    map((input, inputrest...), f) do arg
+    for arg in (input, inputrest...)
         try
-            off(arg)
+            off(arg, f)
         catch
         end
     end

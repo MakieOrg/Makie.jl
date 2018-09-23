@@ -375,7 +375,7 @@ plot!(scene::SceneLike, P::Type, args...; kw_args...) = plot!(scene, P, Attribut
 
 
 function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
-    PlotType = plottype(value.(args)...)
+    PlotType = plottype(to_value.(args)...)
     plot!(scene, PlotType, attributes, args...)
 end
 

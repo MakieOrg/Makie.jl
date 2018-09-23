@@ -291,7 +291,7 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
 end
 
 function assemble(theme::SceneLike, ::Type{Any}, attributes::Attributes, args)
-    unlifted = value.(args)
+    unlifted = to_value.(args)
     # that we calculate the plot type on the unlifted nodes means, that you can't
     # change the plot type by supplying different arguments for signals
     PlotType = plottype(unlifted...)

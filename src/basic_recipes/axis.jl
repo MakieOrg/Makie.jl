@@ -562,7 +562,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     textbuffer = TextBuffer(axis, Point{3})
     linebuffer = LinesegmentBuffer(axis, Point{3})
 
-    tstyle, ticks, frame = value.(getindex.(axis, (:names, :ticks, :frame)))
+    tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
     framevals = getindex.(frame, (:linecolor, :linewidth, :axiscolor))
     tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
