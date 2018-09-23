@@ -8,7 +8,10 @@ colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof
 Buffers the `scene` in an image buffer.
 """
 function scene2image(scene::Scene)
+    scene.updated[] = true
     d = global_gl_screen()
+    force_update!()
+    yield()
     display(d, scene)
     colorbuffer(d)
 end
