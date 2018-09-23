@@ -15,37 +15,60 @@ mutable struct Scene <: AbstractScene
     attributes::Attributes
     children::Vector{Scene}
     current_screens::Vector{AbstractScreen}
+    updated::Node{Bool}
+end
 
-    function Scene(
-            events::Events,
-            px_area::Node{IRect2D},
-            camera::Camera,
-            camera_controls::RefValue,
-            limits::Node,
-            transformation::Transformation,
-            plots::Vector{AbstractPlot},
-            theme::Attributes,
-            children::Vector{Scene},
-            current_screens::Vector{AbstractScreen},
-            parent = nothing,
-        )
-        obj = new(parent, events, px_area, camera, camera_controls, limits, transformation, plots, theme, Attributes(), children, current_screens)
-        finalizer(obj) do obj
-            # save_print("Freeing scene")
-            close_all_nodes(obj.events)
-            close_all_nodes(obj.transformation)
-            for field in (:px_area, :limits)
-                close(getfield(obj, field), true)
-            end
-            disconnect!(obj.camera)
-            empty!(obj.theme)
-            empty!(obj.attributes)
-            empty!(obj.children)
-            empty!(obj.current_screens)
-            return
-        end
-        obj
+update_callback2 = Ref{Function}() do update, scene
+    if update
+        # scale_scene!(scene)
+        # yield()
+        center!(scene)
     end
+    nothing
+end
+
+function Scene(
+        events::Events,
+        px_area::Node{IRect2D},
+        camera::Camera,
+        camera_controls::RefValue,
+        limits::Node,
+        transformation::Transformation,
+        plots::Vector{AbstractPlot},
+        theme::Attributes,
+        children::Vector{Scene},
+        current_screens::Vector{AbstractScreen},
+        parent = nothing,
+    )
+    updated = Node(false)
+
+    obj = Scene(
+        parent, events, px_area, camera, camera_controls, limits,
+        transformation, plots, theme, Attributes(),
+        children, current_screens, updated
+    )
+    finalizer(obj) do obj
+        # save_print("Freeing scene")
+        close_all_nodes(obj.events)
+        close_all_nodes(obj.transformation)
+        for field in (:px_area, :limits)
+            close(getfield(obj, field), true)
+        end
+        disconnect!(obj.camera)
+        empty!(obj.theme)
+        empty!(obj.attributes)
+        empty!(obj.children)
+        empty!(obj.current_screens)
+        return
+    end
+    foreach(updated, px_area) do update, px_area
+        if update
+            scale_scene!(scene);
+            yield(); yield();
+            center!(scene);
+        end
+    end
+    obj
 end
 
 Base.parent(scene::Scene) = scene.parent

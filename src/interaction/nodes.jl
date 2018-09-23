@@ -3,8 +3,9 @@ import Reactive: set_value!
 Base.getindex(x::Node) = value(x)
 function Base.setindex!(x::Node{T}, value) where T
     set_value!(x, convert(T, value))
-    force_update!()
     push!(x, value)
+    force_update!()
+    nothing
 end
 
 # I don't want to use map anymore, it's so ambigious, especially to newcomers.
