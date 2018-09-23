@@ -1,7 +1,7 @@
 module Makie
 
 using AbstractPlotting
-using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
+using GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore

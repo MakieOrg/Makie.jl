@@ -38,14 +38,14 @@ end
 
 function remove_automatic!(attributes)
     filter!(attributes) do (k, v)
-        value(v) != automatic
+        to_value(v) != automatic
     end
 end
 
 index1D(x::SubArray) = parentindices(x)[1]
 
 handle_view(array::AbstractVector, attributes) = array
-handle_view(array::Signal, attributes) = array
+handle_view(array::Node, attributes) = array
 
 function handle_view(array::SubArray, attributes)
     A = parent(array)
@@ -53,7 +53,7 @@ function handle_view(array::SubArray, attributes)
     attributes[:indices] = indices
     A
 end
-function handle_view(array::Signal{T}, attributes) where T <: SubArray
+function handle_view(array::Node{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices
@@ -109,7 +109,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Lines)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = value(linestyle)
+        data[:pattern] = to_value(linestyle)
         positions = handle_view(x[1], data)
         handle_intensities!(data)
         visualize(positions, Style(:lines), data).children[]
@@ -119,7 +119,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::LineSegments)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = value(linestyle)
+        data[:pattern] = to_value(linestyle)
         positions = handle_view(x.converted[1], data)
         delete!(data, :color_map)
         delete!(data, :color_norm)
@@ -179,10 +179,10 @@ function Base.insert!(screen::Screen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = map(to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
+        gl_text = lift(to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-            map(getindex, gl_text, Signal(i))
+            lift(getindex, gl_text, i)
         end
 
         atlas = get_texture_atlas()
@@ -207,12 +207,12 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = (value.((x[1], x[2])))
-        heatmap = map(x[3]) do z
+        heatmap = lift(x[3]) do z
             [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
-        interp = value(pop!(gl_attributes, :interpolate))
+        interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(value(heatmap), minfilter = interp)
+        tex = Texture(to_value(heatmap), minfilter = interp)
         pop!(gl_attributes, :color)
         map_once(heatmap) do x
             update!(tex, x)
@@ -252,11 +252,11 @@ convert_mesh_color(c, cmap, crange) = c
 function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
-        gl_attributes[:shading] = value(pop!(gl_attributes, :shading))
+        gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
         cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
-        mesh = map(x[1], color, cmap, crange) do m, c, cmap, crange
+        mesh = lift(x[1], color, cmap, crange) do m, c, cmap, crange
             c = convert_mesh_color(c, cmap, crange)
             if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
                 get!(gl_attributes, :color, Node(c))[] = c
@@ -282,13 +282,13 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         img = nothing
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
-        if isa(value(color), AbstractMatrix{<: Number}) && !(value(color) === value(x[3]))
+        if isa(to_value(color), AbstractMatrix{<: Number}) && !(to_value(color) === to_value(x[3]))
             crange = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
-            img = map(color, cmap, crange) do img, cmap, norm
+            img = lift(color, cmap, crange) do img, cmap, norm
                 AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
-        elseif isa(value(color), AbstractMatrix{<: Colorant})
+        elseif isa(to_value(color), AbstractMatrix{<: Colorant})
             img = color
             gl_attributes[:color_map] = nothing
             gl_attributes[:color] = nothing
@@ -296,8 +296,8 @@ function Base.insert!(screen::Screen, scene::Scene, x::Surface)
         end
         gl_attributes[:color] = img
         args = x[1:3]
-        gl_attributes[:shading] = get(gl_attributes, :shading, true) |> AbstractPlotting.to_value
-        if all(v-> value(v) isa AbstractMatrix, args)
+        gl_attributes[:shading] = AbstractPlotting.to_value(get(gl_attributes, :shading, true))
+        if all(v-> to_value(v) isa AbstractMatrix, args)
             visualize(args, Style(:surface), gl_attributes).children[]
         else
             gl_attributes[:ranges] = to_range.(value.(args[1:2]))
@@ -338,7 +338,7 @@ function surface_contours(volume::Volume)
     shader = makieshader(paths..., frag)
     model = volume[:model]
     x, y, z, vol = volume[1], volume[2], volume[3], volume[4]
-    model2 = map(model, x, y, z) do m, xyz...
+    model2 = lift(model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
         w = maxi .- mi
@@ -350,18 +350,18 @@ function surface_contours(volume::Volume)
         )
         convert(Mat4f0, m) * m2
     end
-    modelinv = map(inv, model2)
+    modelinv = lift(inv, model2)
     hull = AABB{Float32}(Vec3f0(0), Vec3f0(1))
     gl_data = Dict(
         :hull => GLUVWMesh(hull),
-        :volumedata => Texture(map(x-> convert(Array{Float32}, x), vol)),
+        :volumedata => Texture(lift(x-> convert(Array{Float32}, x), vol)),
         :model => model2,
         :modelinv => modelinv,
-        :colormap => Texture(map(to_colormap, volume[:colormap])),
-        :colorrange => map(Vec2f0, volume[:colorrange]),
+        :colormap => Texture(lift(to_colormap, volume[:colormap])),
+        :colorrange => lift(Vec2f0, volume[:colorrange]),
         :fxaa => true
     )
-    bb = map(m-> m * hull, model)
+    bb = lift(m-> m * hull, model)
     robj = RenderObject(gl_data, shader, volume_prerender, bb)
     robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
     robj

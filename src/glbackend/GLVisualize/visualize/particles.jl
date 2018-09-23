@@ -75,7 +75,7 @@ function _default(
         main::Tuple{P, ArrayTypes{T, N}}, s::Style, data::Dict
     ) where {P <: AllPrimitives, T <: Vec, N}
     primitive, rotation_s = main
-    rotation_v = value(rotation_s)
+    rotation_v = to_value(rotation_s)
     @gen_defaults! data begin
         color_norm = const_lift(extrema2f0, rotation_s)
         ranges = ntuple(i->linspace(0f0, 1f0, size(rotation_v, i)), N)
@@ -87,7 +87,7 @@ function _default(
     elseif N == 2
         scalevec = Vec2f0(step(grid.dims[1]), step(grid.dims[2]))
     else
-        scalevec = Vec3f0(ntuple(i->step(grid.dims[i]), 3)).*Vec3f0(0.4,0.4, 1/value(color_norm)[2]*4)
+        scalevec = Vec3f0(ntuple(i->step(grid.dims[i]), 3)).*Vec3f0(0.4,0.4, 1/to_value(color_norm)[2]*4)
     end
     if P <: Char # we need to preserve proportion of the glyph
         scalevec = Vec2f0(glyph_scale!(primitive, scalevec[1]))
@@ -113,7 +113,7 @@ function _default(
         main::Tuple{P, ArrayTypes{T,N}}, s::Style, data::Dict
     ) where {P<:AbstractGeometry, T<:AbstractFloat, N}
     primitive, heightfield_s = main
-    heightfield = value(heightfield_s)
+    heightfield = to_value(heightfield_s)
     @gen_defaults! data begin
         ranges = ntuple(i->linspace(0f0, 1f0, size(heightfield, i)), N)
     end
@@ -140,7 +140,7 @@ function _default(
         main::Tuple{P, ArrayTypes{T,N}}, s::Style, data::Dict
     ) where {P <: Sprites, T <: AbstractFloat, N}
     primitive, heightfield_s = main
-    heightfield = value(heightfield_s)
+    heightfield = to_value(heightfield_s)
     @gen_defaults! data begin
         ranges = ntuple(i->linspace(0f0, 1f0, size(heightfield, i)), N)
     end
@@ -162,7 +162,7 @@ function _default(
         main::Tuple{P, VectorTypes{T}}, s::Style, data::Dict
     ) where {P <: AllPrimitives, T <: AbstractFloat}
     primitive, heightfield_s = main
-    heightfield = value(heightfield_s)
+    heightfield = to_value(heightfield_s)
     @gen_defaults! data begin
         ranges = range(0f0, stop = 1f0, length = length(heightfield))
     end
@@ -209,8 +209,8 @@ function _default(
 end
 
 # make conversion of mesh signals work. TODO move to GeometryTypes?
-function Base.convert(::Type{T}, mesh::Signal) where T<:GeometryTypes.HomogenousMesh
-    map(T, mesh)
+function Base.convert(::Type{T}, mesh::Node) where T<:GeometryTypes.HomogenousMesh
+    lift(T, mesh)
 end
 
 
@@ -230,7 +230,7 @@ function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
 end
 
 function to_mesh(mesh::TOrSignal{<: HomogenousMesh})
-    gl_convert(value(mesh))
+    gl_convert(to_value(mesh))
 end
 
 function orthogonal(v::T) where T <: StaticVector{3}
@@ -254,7 +254,7 @@ end
 
 vec2quaternion(rotation::Vec4f0) = rotation
 vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
-vec2quaternion(rotation::Signal) = map(vec2quaternion, rotation)
+vec2quaternion(rotation::Node) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
@@ -363,14 +363,14 @@ Gets the texture atlas if primitive is a char.
 """
 primitive_distancefield(x) = nothing
 primitive_distancefield(::Char) = get_texture!(get_texture_atlas())
-primitive_distancefield(::Signal{Char}) = get_texture!(get_texture_atlas())
+primitive_distancefield(::Node{Char}) = get_texture!(get_texture_atlas())
 
 function _default(
         p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: Colorant, P <: Point}
     data[:image] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
-        scale = map(Vec2f0, const_lift(size, p[1]))
+        scale = lift(x-> Vec2f0(size(x)), p[1])
         shape = RECTANGLE
         offset = Vec2f0(0)
     end
@@ -381,7 +381,7 @@ function _default(
     ) where {C <: AbstractFloat, P <: Point}
     data[:distancefield] = p[1] # we don't want this to be overwritten by user
     @gen_defaults! data begin
-        scale = map(Vec2f0, const_lift(size, p[1]))
+        scale = lift(x-> Vec2f0(size(x)), p[1])
         shape = RECTANGLE
         offset = Vec2f0(0)
     end
@@ -407,7 +407,7 @@ function _default(
         for (area, img) in zip(uv_coordinates, images)
             texture_atlas[area] = img #transfer to texture atlas
         end
-        scale = map(Vec2f0, map(widths, uv_coordinates))
+        scale = Vec2f0.(widths.(uv_coordinates))
         data[:uv_offset_width] = map(uv_coordinates) do uv
             mini = minimum(uv) ./ max_xy
             maxi = maximum(uv) ./ max_xy
@@ -470,7 +470,7 @@ function sprites(p, s, data)
         image       = nothing => Texture
     end
     # TODO don't make this dependant on some shady type dispatch
-    if isa(value(p[1]), Char) && !isa(value(scale), Vec) # correct dimensions
+    if isa(to_value(p[1]), Char) && !isa(to_value(scale), Vec) # correct dimensions
         scale = const_lift(s-> Vec2f0(glyph_scale!(p[1], s)), scale)
         data[:scale] = scale
     end

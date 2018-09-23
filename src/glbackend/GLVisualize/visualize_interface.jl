@@ -40,12 +40,12 @@ function _view(
         if haskey(screen.cameras, camsym)
             real_camera = screen.cameras[camsym]
         elseif camsym == :perspective
-            keep = map((a, b) -> !a && b, ishidden, mouseinside)
+            keep = lift((a, b) -> !a && b, ishidden, mouseinside)
             real_camera = PerspectiveCamera(screen.inputs, position, lookat, keep = keep)
         elseif camsym == :fixed_pixel
             real_camera = DummyCamera(window_size = screen.area)
         elseif camsym == :orthographic_pixel
-            keep = map((a, b) -> !a && b, ishidden, mouseinside)
+            keep = lift((a, b) -> !a && b, ishidden, mouseinside)
             real_camera = OrthographicPixelCamera(screen.inputs, keep = keep)
         elseif camsym == :nothing
             push!(screen, robj, :nothing)
@@ -60,7 +60,7 @@ function _view(
          error("$camera not a known camera type")
     end
     screen.cameras[camsym] = real_camera
-    robj.uniforms[:resolution] = map(screen.area) do area
+    robj.uniforms[:resolution] = lift(screen.area) do area
         Vec2f0(widths(area))
     end
     collect(real_camera, robj.uniforms)

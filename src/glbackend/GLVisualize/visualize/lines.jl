@@ -15,14 +15,14 @@ end
 
 intensity_convert(intensity, verts) = intensity
 function intensity_convert(intensity::VecOrSignal{T}, verts) where T
-    if length(value(intensity)) == length(value(verts))
+    if length(to_value(intensity)) == length(to_value(verts))
         GLBuffer(intensity)
     else
         Texture(intensity)
     end
 end
 function intensity_convert_tex(intensity::VecOrSignal{T}, verts) where T
-    if length(value(intensity)) == length(value(verts))
+    if length(to_value(intensity)) == length(to_value(verts))
         TextureBuffer(intensity)
     else
         Texture(intensity)
@@ -56,7 +56,7 @@ function _default(position::MatTypes{<:Point}, s::style"lines", data::Dict)
     line_visualization(position, data)
 end
 function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
-    pv = value(position)
+    pv = to_value(position)
     p_vec = if isa(position, GPUArray)
         position
     else

@@ -103,14 +103,14 @@ Needed to match the lazy gl_convert exceptions.
     `x`: the variable that gets matched
 """
 matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, Target, x) || T <: Target  # it can be either converted to Target, or it's already the target
-matches_target(::Type{Target}, x::Signal{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
+matches_target(::Type{Target}, x::Node{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 export matches_target
 
 
 signal_convert(T, y) = convert(T, y)
-signal_convert(T1, y::T2) where {T2<:Signal} = map(convert, Signal(T1), y)
+signal_convert(T1, y::T2) where {T2<:Node} = lift(convert, Node(T1), y)
 """
 Takes a dict and inserts defaults, if not already available.
 The variables are made accessible in local scope, so things like this are possible:
@@ -191,10 +191,10 @@ macro gen_defaults!(dict, args)
 end
 export @gen_defaults!
 
-makesignal(s::Signal) = s
-makesignal(v) = Signal(v)
+makesignal(s::Node) = s
+makesignal(v) = Node(v)
 
-@inline const_lift(f::Union{DataType, Type, Function}, inputs...) = map(f, map(makesignal, inputs)...)
+@inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
 
 
@@ -233,9 +233,9 @@ function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
     MT(result)
 end
 
-function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
+function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
-    mv = Reactive.value(m)
+    mv = to_value(m)
     attribs = attributes(mv)
     @materialize! vertices, faces = attribs
     result[:vertices] = GLBuffer(vertices)
@@ -252,7 +252,7 @@ function (MT::Type{NativeMesh{T}})(m::Signal{T}) where T <: HomogenousMesh
             result[field] = Texture(val)
         end
     end
-    foreach(m) do mesh
+    on(m) do mesh
         for (field, val) in attributes(mesh)
             if field == :color
                 field = :vertex_color

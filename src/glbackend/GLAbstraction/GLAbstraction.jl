@@ -3,13 +3,15 @@ module GLAbstraction
 using StaticArrays
 using GeometryTypes
 using ModernGL
-using Reactive
+using AbstractPlotting
 using FixedPointNumbers
 using ColorTypes
 using FileIO
 using GLFW
 using Printf
 using LinearAlgebra
+using AbstractPlotting
+using Observables
 
 import FileIO: load, save
 
@@ -17,7 +19,6 @@ import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
 
 import Base: merge, resize!, similar, length, getindex, setindex!
-import Reactive: value
 
 include("AbstractGPUArray.jl")
 
