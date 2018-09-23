@@ -177,7 +177,7 @@ end
 
 function TextureBuffer(s::Node{Vector{T}}) where T <: GLArrayEltypes
     tb = TextureBuffer(to_value(s))
-    on(update!, tb, s)
+    on(x-> update!(tb, x), s)
     tb
 end
 
@@ -261,15 +261,21 @@ end
 
 
 function gpu_setindex!(target::Texture{T, 2}, source::Texture{T, 2}, fbo=glGenFramebuffers()) where T
-    glBindFramebuffer(GL_FRAMEBUFFER, fbo);
-    glFramebufferTexture2D(GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
-                           GL_TEXTURE_2D, source.id, 0);
-    glFramebufferTexture2D(GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
-                           GL_TEXTURE_2D, target.id, 0);
+    glBindFramebuffer(GL_FRAMEBUFFER, fbo)
+    glFramebufferTexture2D(
+        GL_READ_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+        GL_TEXTURE_2D, source.id, 0
+    )
+    glFramebufferTexture2D(
+        GL_DRAW_FRAMEBUFFER, GL_COLOR_ATTACHMENT1,
+        GL_TEXTURE_2D, target.id, 0
+    )
     glDrawBuffer(GL_COLOR_ATTACHMENT1);
     w, h = map(minimum, zip(size(target), size(source)))
-    glBlitFramebuffer(0, 0, w, h, 0, 0, w, h,
-                      GL_COLOR_BUFFER_BIT, GL_NEAREST)
+    glBlitFramebuffer(
+        0, 0, w, h, 0, 0, w, h,
+        GL_COLOR_BUFFER_BIT, GL_NEAREST
+    )
 end
 
 

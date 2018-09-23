@@ -79,7 +79,7 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
             error("Dynamic resizing not implemented for $(typeof(A))")
         end
     end
-    dims = map(x->1:x, size(A))
+    dims = map(x-> 1:x, size(A))
     A[dims...] = value
     nothing
 end

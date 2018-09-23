@@ -128,7 +128,7 @@ function glsl_variable_access(keystring, ::Union{Real, GLBuffer, GPUVector, Stat
     string(keystring, ";")
 end
 function glsl_variable_access(keystring, s::Node)
-    glsl_variable_access(keystring, s.value)
+    glsl_variable_access(keystring, to_value(s))
 end
 function glsl_variable_access(keystring, t::Any)
     error("no glsl variable calculation available for : ", keystring, " of type ", typeof(t))
@@ -245,7 +245,7 @@ end
 
 function gl_convert(::Type{T}, a::Node{Array{X, N}}; kw_args...) where {T <: GPUArray, X, N}
     TGL = gl_promote(X)
-    s = (X == TGL) ? a : lift(map, TGL, a)
+    s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
     T(s; kw_args...)
 end
 

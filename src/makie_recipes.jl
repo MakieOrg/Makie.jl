@@ -110,7 +110,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 end
 
 function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    AbstractPlotting.xyz_boundingbox(value.((x[1], x[2]))...)
+    AbstractPlotting.xyz_boundingbox(to_value.((x[1], x[2]))...)
 end
 
 

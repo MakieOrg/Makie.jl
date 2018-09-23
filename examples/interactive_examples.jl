@@ -45,8 +45,9 @@ on(scene.events.mousebuttons) do buttons
     if ispressed(scene, Mouse.left)
         pos = to_world(scene, Point2f0(scene.events.mouseposition[]))
         found = -1
-        for i in 1:length(clicks[])
-           if norm(pos - clicks.value[i]) < 1
+        c = clicks[]
+        for i in 1:length(c)
+           if norm(pos - c[i]) < 1
                found = i
            end
         end
@@ -204,7 +205,6 @@ function replay(scene, path)
         t1, (field, value) = events[i]
         field == :mousedrag && continue
         if field == :mousebuttons
-            println(value)
             getfield(scene.events, field)[] = value
         else
             getfield(scene.events, field)[] = value
