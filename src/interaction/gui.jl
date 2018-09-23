@@ -38,13 +38,13 @@ function plot!(slider::Slider)
     ))
     range = slider[1]
     val = slider[:value]
-    push!(val, first(value(range)))
+    val[] = first(to_value(range))
     label = lift((v, f)-> f(v), val, valueprinter)
     lplot = text!(
         slider, label,
         textsize = textsize,
         align = (:left, :center), color = textcolor,
-        position = map((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
+        position = lift((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
     ).plots[end]
     lbb = lift(range_label_bb, Node(lplot), valueprinter, range)
     bg_rect = lift(sliderlength, sliderheight, lbb) do w, h, bb
@@ -61,7 +61,7 @@ function plot!(slider::Slider)
 
     linesegments!(slider, line, color = slidercolor)
     button = scatter!(
-        slider, map(x-> x[1:1], line),
+        slider, lift(x-> x[1:1], line),
         markersize = buttonsize, color = buttoncolor, strokewidth = buttonstroke,
         strokecolor = buttonstrokecolor
     ).plots[end]
@@ -74,7 +74,7 @@ function dragslider(slider, button)
     startpos = Base.RefValue((0.0, 0.0))
     range = slider[1]
     @extract slider (value, sliderlength)
-    foreach(events(slider).mousedrag) do drag
+    on(events(slider).mousedrag) do drag
         if drag == Mouse.down && mouseover(slider, button)
             startpos[] = mpos[]
             drag_started[] = true
@@ -118,10 +118,7 @@ end
 
 function button(func::Function, scene::Scene, txt; kw_args...)
     b = button!(scene, txt; kw_args...)[end]
-    foreach(b[:clicks]) do clicks
-        func(clicks)
-        return
-    end
+    on(func, b[:clicks])
     b
 end
 
@@ -135,7 +132,7 @@ function plot!(splot::Button)
         splot, txt,
         align = (:center, :center), color = textcolor,
         textsize = 15,
-        position = map((wh)-> Point2f0(wh./2), dimensions)
+        position = lift((wh)-> Point2f0(wh./2), dimensions)
     ).plots[end]
     lbb = boundingbox(lplot) # on purpose static so we hope text won't become too long?
     # bg_rect = lift(dimensions) do wh
@@ -146,7 +143,7 @@ function plot!(splot::Button)
     #     color = backgroundcolor, linecolor = strokecolor,
     #     linewidth = strokewidth
     # )
-    foreach(events(splot).mousebuttons) do mb
+    on(events(splot).mousebuttons) do mb
         if ispressed(mb, Mouse.left) && mouseover(parent(splot), lplot)
             clicks[] = clicks[] + 1
         end
@@ -161,7 +158,7 @@ function playbutton(f, scene, range, rate = (1/30))
     b = button(scene, "▶ ")
     isplaying = Ref(false)
     play_idx = Ref(1)
-    foreach(b[:clicks]) do x
+    on(b[:clicks]) do x
         if !isplaying[] && x > 0 # check that this isn't before any clicks
             isplaying[] = true
             @async begin
@@ -224,7 +221,7 @@ function sample_color(f, ui, colormesh, v)
     )[end]
     translate!(select, 0, 0, 10)
 
-    foreach(mpos, ui.events.mousebuttons) do mp, mb
+    onany(mpos, ui.events.mousebuttons) do mp, mb
         bb = FRect2D(transformationmatrix(sub)[] * transformationmatrix(colormesh)[] * boundingbox(colormesh))
         mp = Point2f0(mp) .- minimum(pixelarea(sub)[])
         if Point2f0(mp) in bb
@@ -269,7 +266,7 @@ function popup(parent, position, width)
         end
         return
     end
-    foreach(width_n) do wh
+    on(width_n) do wh
         translate!(but, wh[1] - 30, -10, 120)
     end
     poly!(header, lift(r-> FRect(0, 0, widths(r)), harea), color = (:gray, 0.1))
@@ -304,7 +301,7 @@ function colorswatch(ui)
     rect = IRect(0, 0, 50, 50)
     swatch = poly!(ui, rect, color = color, raw = true, visible = true)[end]
     pop.open[] = false
-    foreach(ui.events.mousebuttons) do mb
+    on(ui.events.mousebuttons) do mb
         if ispressed(mb, Mouse.left)
             plot, idx = mouse_selection(ui)
             if plot in swatch.plots

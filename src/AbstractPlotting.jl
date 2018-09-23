@@ -1,6 +1,6 @@
 module AbstractPlotting
 
-using Reactive, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
+using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
 using ColorBrewer
 using Markdown # documentation
 
@@ -68,7 +68,7 @@ export AbstractPlot, Combined, Atomic, Axis
 export Attributes, Theme, attributes, default_theme, theme, set_theme!
 
 # Node/Signal related
-export Node, node, lift, map_once
+export Node, node, lift, map_once, to_value
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute

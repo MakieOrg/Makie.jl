@@ -2,7 +2,7 @@
 function Transformation()
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
-    scale = map(flip, scale) do f, s
+    scale = lift(flip, scale) do f, s
         map((f, s)-> f ? -s : s, Vec(f), s)
     end
     translation, rotation, align = (
@@ -27,7 +27,7 @@ end
 function Transformation(scene::SceneLike)
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
-    scale = map(flip, scale) do f, s
+    scale = lift(flip, scale) do f, s
         map((f, s)-> f ? -s : s, Vec(f), s)
     end
     translation, rotation, align = (

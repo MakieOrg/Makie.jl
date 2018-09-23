@@ -87,7 +87,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         export $T, $funcname, $funcname!
     end
     if !isempty(args)
-        # quoted_args = map(QuoteNode, args)
         push!(expr.args, :($(esc(:argument_names))(::Type{<: $T}, len::Integer) = $args))
     end
     expr

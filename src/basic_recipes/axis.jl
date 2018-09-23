@@ -46,7 +46,7 @@ using .Formatters
             textsize = (5, 5),
             rotation = (0.0, 0.0),
             align = ((:center, :top), (:right, :center)),
-            font = map(dim2, theme(scene, :font)),
+            font = lift(dim2, theme(scene, :font)),
         ),
 
         grid = Theme(
@@ -71,7 +71,7 @@ using .Formatters
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
             align = ((:center, :top), (:center, :bottom)),
-            font = map(dim2, theme(scene, :font)),
+            font = lift(dim2, theme(scene, :font)),
         )
     )
 end
@@ -112,7 +112,7 @@ end
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = map(dim3, theme(scene, :font)),
+            font = lift(dim3, theme(scene, :font)),
             gap = 1
         ),
 
@@ -127,7 +127,7 @@ end
             textsize =  (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 1,
-            font = map(dim3, theme(scene, :font)),
+            font = lift(dim3, theme(scene, :font)),
         ),
 
         frame = Theme(

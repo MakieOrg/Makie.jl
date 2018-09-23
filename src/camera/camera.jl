@@ -4,9 +4,9 @@ function Base.copy(x::Camera)
     end...)
 end
 function Base.:(==)(a::Camera, b::Camera)
-    value(a.view) == value(b.view) &&
-    value(a.projection) == value(b.projection) &&
-    value(a.resolution) == value(b.resolution)
+    to_value(a.view) == to_value(b.view) &&
+    to_value(a.projection) == to_value(b.projection) &&
+    to_value(a.resolution) == to_value(b.resolution)
 end
 function disconnect!(c::Camera)
     disconnect!(c.steering_nodes)
@@ -24,8 +24,8 @@ end
 When mapping over nodes for the camera, we store them in the steering_node vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Base.map(f, c::Camera, nodes::Node...)
-    node = map(f, nodes...)
+function lift(f, c::Camera, nodes::Node...)
+    node = lift(f, nodes...)
     push!(c.steering_nodes, node)
     node
 end
@@ -35,7 +35,7 @@ function Camera(px_area)
         Node(Mat4f0(I)),
         Node(Mat4f0(I)),
         Node(Mat4f0(I)),
-        map(a-> Vec2f0(widths(a)), px_area),
+        lift(a-> Vec2f0(widths(a)), px_area),
         Node(Vec3f0(1)),
         Node[]
     )

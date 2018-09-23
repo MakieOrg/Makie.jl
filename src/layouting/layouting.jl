@@ -171,7 +171,7 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Scene
 
     for idx in 1:N
         p = plots[idx]
-        foreach(area) do a
+        on(area) do a
             # TODO this is terrible!
             w2 = widths(a) .* Vec((1/N), 1)
             resize!(p, IRect(minimum(a) .+ Vec((idx - 1) * w2[1], 0), w2))
@@ -180,9 +180,7 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Scene
         push!(pscene.children, p)
         nodes = map(fieldnames(Events)) do field
             if field != :window_area
-                foreach(getfield(pscene.events, field)) do val
-                    push!(getfield(p.events, field), val)
-                end
+                connect!(getfield(pscene.events, field), getfield(p.events, field))
             end
         end
     end

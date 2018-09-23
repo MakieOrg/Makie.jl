@@ -59,12 +59,12 @@ function make_label(scene, plot, labeltext, i, attributes)
 
     return if isa(plot, Union{Lines, LineSegments})
         linesegments!(
-            scene, map(scale, lpattern, w, padding, gap, tsize),
+            scene, lift(scale, lpattern, w, padding, gap, tsize),
             color = plot[:color], linestyle = plot[:linestyle]
         )
     else
         scatter!(
-            scene, map(scale, mpattern, w, padding, gap, tsize),
+            scene, lift(scale, mpattern, w, padding, gap, tsize),
             markersize = msize, color = plot[:color]
         )
     end
@@ -154,13 +154,13 @@ function plot!(plot::ColorLegend)
         texturecoordinates = UV{Float32}[(0, 0), (0, 1), (0, 1), (0, 0)]
     )
 
-    cmap_node = map(colormap) do cmap
+    cmap_node = lift(colormap) do cmap
         c = to_colormap(cmap)
         # TODO cover the case of a 1D colormap explicitely in the shader
         reshape(c, (length(c), 1))
     end
     tio = TextBuffer(lscene, Point2)
-    rect = map(
+    rect = lift(
                 colorrange, textsize, textcolor, align, font,
                 textgap, width, padding, outerpadding, position, scene.px_area
             ) do r, ts, tc, a, font, tg, w, pad, opad, position, area
@@ -190,7 +190,7 @@ function plot!(plot::ColorLegend)
         lscene.transformation.translation[] = Vec3f0(p[1], p[2], 0)
         rect
     end
-    meshnode = map(width, padding, textsize) do w, pad, ts
+    meshnode = lift(width, padding, textsize) do w, pad, ts
         mesh.vertices .= broadcast(vertices) do v
             Point3f0(((Point2f0(v[1], v[2]) .* Point2f0(w)) .+ Point2f0(0, ts/2) .+ pad)..., 0.0)
         end
