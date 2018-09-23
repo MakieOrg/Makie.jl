@@ -1,99 +1,68 @@
-import Reactive: set_value!
-
-Base.getindex(x::Node) = value(x)
-function Base.setindex!(x::Node{T}, value) where T
-    set_value!(x, convert(T, value))
-    push!(x, value)
-    force_update!()
-    nothing
-end
 
 # I don't want to use map anymore, it's so ambigious, especially to newcomers.
 # TODO should this become it's own function?
-const lift = Reactive.map
+function lift(
+        f, o1::Observable, rest...;
+        init = f(to_value(o1), to_value.(rest)...), typ = typeof(init),
+        name = :node # name ignored for now
+    )
+    result = Observable{typ}(init)
+    map!(f, result, o1, rest...)
+end
 
-to_value(x) = value(x)
-to_value(x::Nothing) = x
+to_value(x::Observable) = x[]
+to_value(x) = x
 
 to_node(::Type{T1}, x::Node{T2}, name = :node) where {T1, T2} = signal_convert(Node{T1}, x, name)
 to_node(x::T, name = :node) where T = to_node(T, x)
-to_node(::Type{T}, x, name = :node) where T = to_node(T, Node(T, x, name = string(name)))
+to_node(::Type{T}, x, name = :node) where T = to_node(T, Node{T}(x))
 
-signal_convert(::Type{Signal{T1}}, x::Signal{T1}, name = :node) where T1 = x
-signal_convert(::Type{Signal{T1}}, x::Signal{T2}, name = :node) where {T1, T2} = map(x-> convert(T1, x), x, typ = T1, name = string(name))
-signal_convert(::Type{Signal{T1}}, x::T2, name = :node) where {T1, T2} = Node(T1, convert(T1, x), name = string(name))
+signal_convert(::Type{Node{T1}}, x::Node{T1}, name = :node) where T1 = x
+signal_convert(::Type{Node{T1}}, x::Node{T2}, name = :node) where {T1, T2} = lift(x-> convert(T1, x), x, typ = T1)
+signal_convert(::Type{Node{T1}}, x::T2, name = :node) where {T1, T2} = Node{T1}(convert(T1, x))
 signal_convert(t, x, name = :node) = x
 
-node(name, node) = Node(node, name = string(name))
-node(name, node::Node) = map(identity, node, name = string(name))
-
+node(name, node) = Node(node)
+node(name, node::Node) = lift(identity, node)
+Base.close(node::Node) = empty!(node.listeners)
 function close_all_nodes(any::T) where T
     for field in fieldnames(T)
         value = getfield(any, field)
-        (value isa Node) && close(value, true)
+        (value isa Node) && close(value)
     end
 end
 
 
 function disconnect!(s::Node)
-    unpreserve(s)#; empty!(s.actions)
-    s.parents = (); close(s, false)
+    # close(s)
     return
 end
 
-function get_children(x::Signal)
-    filter!(x-> x != nothing, map(x-> x.value, Reactive.nodes[Reactive.edges[x.id]]))
-end
-function children_with(action::AT, signal::Signal, rest::Signal...) where AT
-    c = filter!(get_children(signal)) do x
-        any(y-> isa(y, AT), x.actions)
-    end
-    isempty(c) && return false, Signal(nothing)
-    node = first(c) # what if more?
-    has_node = all(rest) do signal
-        node in get_children(signal)
-    end
-    has_node, node
-end
 
 """
-    map_once(closure, inputs::Signal....)::Signal
+    map_once(closure, inputs::Node....)::Node
 
 Like Reactive.foreach, in the sense that it will be preserved even if no reference is kept.
 The difference is, that you can call map once multiple times with the same closure and it will
-close the old result Signal and register a new one instead.
+close the old result Node and register a new one instead.
 
 ```
-function test(s1::Signal)
+function test(s1::Node)
     s3 = map_once(x-> (println("1 ", x); x), s1)
     s3 = map_once(x-> (println("2 ", x); x), s1)
 
 end
-test(Signal(1), Signal(2))
+test(Node(1), Node(2))
 >
 
 """
 function map_once(
-        f, input::Signal, inputsrest::Signal...;
-        init = f(map(value, (input,inputsrest...))...),
-        typ = typeof(init), name = Reactive.auto_name!("map", input, inputsrest...)
+        f, input::Node, inputrest::Node...;
+        init = f(to_value.((input, inputrest...))...),
+        typ = typeof(init)
     )
-    output = Signal(typ, init, (input, inputsrest...); name = name)
-    action_func = function ()
-        Reactive.set_value!(output, f(value.((input, inputsrest...))...))
-    end
-    # The action func should be unique regarding the types of inputs + f!
-    # so we can use it to figure out if map_once was already called with this f + input types.
-    # At least for closures, the name should be unique once per function body,
-    # so exactly the kind of uniqueness we need!
-    has, prev_output = children_with(action_func, input, inputsrest...)
-    # if all input nodes have the action_func, then `node` must be the result
-    # of a previous call to map_once, meaning we're about to replace this node!
-    # clean up previously connected signal!
-    has && disconnect!(prev_output)
-    # add the action to the new output
-    Reactive.add_action!(action_func, output)
-    preserve(output)
+    off.((input, inputrest...), f, raise = false)
+    lift(f, input, inputrest..., init = init, typ = typ)
 end
 
 #
@@ -112,7 +81,7 @@ end
 #     call_count[] = call_count[] + 1
 #     s2, s3
 # end
-# s1 = Signal(1)
+# s1 = Node(1)
 # call_count[] = 1
 # s2 = example1(s1)
 # yield() # give a chance to run event loop
@@ -145,7 +114,7 @@ end
 #     s2
 # end
 #
-# s1 = Signal(1)
+# s1 = Node(1)
 # s2 = example2(s1)
 #
 # function example3(s1, call)
@@ -155,8 +124,8 @@ end
 #     push!(s1, 22)
 #     s2
 # end
-# s1 = Signal(1)
-# c = Signal("call 1 value: ")
+# s1 = Node(1)
+# c = Node("call 1 value: ")
 # s2 = example1(c, s1)
 # call 1 value: 1 # from init 1
 # call 1 value: 1 # from init 2
@@ -172,8 +141,8 @@ end
 #     call 1 value: 22
 #     call 1 value: 22
 #
-# s1 = Signal(1)
-# c  = Signal("call 1, value ")
+# s1 = Node(1)
+# c  = Node("call 1, value ")
 # s2 = example2(s1, c)
 # >call 1, value 1
 # >call 1, value 22
@@ -182,8 +151,8 @@ end
 # >call 1, value 22 # old signal still firing
 # >call 2, value 22
 # # same as above
-# s1 = Signal(1)
-# c = Signal("call 1, value ")
+# s1 = Node(1)
+# c = Node("call 1, value ")
 # s2 = example3(s1, c)
 # s3 = example3(s1, c)
 # >call 2, value 22
@@ -196,8 +165,8 @@ end
 # s1.id
 # s2.parents[2].id
 #
-# s1 = Signal(1)
-# s2 = Signal("sada")
+# s1 = Node(1)
+# s2 = Node("sada")
 # s1.id
 # s2.id
 # s3 = map(string, s1, s2)

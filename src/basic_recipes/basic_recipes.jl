@@ -121,7 +121,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     )
     scatterfun(N)(
         arrowplot,
-        map(x-> last.(x), headstart),
+        lift(x-> last.(x), headstart),
         marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
         color = arrowcolor, rotations = directions
     )
@@ -197,7 +197,7 @@ end
 function plot!(plot::StreamLines{<: AbstractVector{T}}) where T
     @extract plot (points, directions)
     linebuffer = T[]
-    lines = map(directions, points, plot[:h], plot[:n]) do ∇ˢf, origins, h, n
+    lines = lift(directions, points, plot[:h], plot[:n]) do ∇ˢf, origins, h, n
         empty!(linebuffer)
         for point in origins
             sphere_streamline(linebuffer, ∇ˢf, point, h, n)
@@ -229,7 +229,7 @@ function plot!(sub::Series)
         empty!(sub.plots)
         N, M = size(A)
         for i = 1:M
-            c = map(getindex, colors, Node(i))
+            c = lift(getindex, colors, i)
             attributes = Theme(color = c)
             a_view = view(A, :, i)
             if stype in (:lines, :scatter_lines)
@@ -266,8 +266,8 @@ function plot!(plot::Annotations)
         plot[1], position,
         getindex.(Ref(plot), (:color, :textsize, :align, :rotation))...,
     )
-    N = value(position) |> eltype |> length
-    tp = map(sargs...) do model, font, args...
+    N = to_value(position) |> eltype |> length
+    tp = lift(sargs...) do model, font, args...
         if length(args[1]) != length(args[2])
             error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
         end
@@ -295,14 +295,14 @@ function plot!(plot::Annotations)
         (String(take!(io)), combinedpos, colors, scales, fonts, rotations)
     end
     t_attributes = Attributes()
-    t_attributes[:position] = map(x-> x[2], tp)
-    t_attributes[:color] = map(x-> x[3], tp)
-    t_attributes[:textsize] = map(x-> x[4], tp)
-    t_attributes[:font] = map(x-> x[5], tp)
-    t_attributes[:rotation] = map(x-> x[6], tp)
+    t_attributes[:position] = lift(x-> x[2], tp)
+    t_attributes[:color] = lift(x-> x[3], tp)
+    t_attributes[:textsize] = lift(x-> x[4], tp)
+    t_attributes[:font] = lift(x-> x[5], tp)
+    t_attributes[:rotation] = lift(x-> x[6], tp)
     t_attributes[:align] = Vec2f0(0)
     t_attributes[:model] = Mat4f0(I)
-    text!(plot, t_attributes, map(x-> x[1], tp))
+    text!(plot, t_attributes, lift(x-> x[1], tp))
     plot
 end
 

@@ -10,20 +10,6 @@ end
 log_info(value::Bool = true) = enable_ith(1, value)
 
 const logging_io = RefValue(stdout)
-macro info(args...)
-    quote
-        if log_level[][1]
-            printstyled(stdout, $(esc.(args)...), "\n", color=:light_green)
-        end
-    end
-end
-macro debug(args...)
-    quote
-        if log_level[][2]
-            printstyled(logging_io[], $(esc.(args)...), color=:red)
-        end
-    end
-end
 
 macro log_gc(args...)
     quote

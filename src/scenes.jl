@@ -42,23 +42,23 @@ function Scene(
     )
     updated = Node(false)
 
-    obj = Scene(
+    scene = Scene(
         parent, events, px_area, camera, camera_controls, limits,
         transformation, plots, theme, Attributes(),
         children, current_screens, updated
     )
-    finalizer(obj) do obj
+    finalizer(scene) do scene
         # save_print("Freeing scene")
-        close_all_nodes(obj.events)
-        close_all_nodes(obj.transformation)
+        close_all_nodes(scene.events)
+        close_all_nodes(scene.transformation)
         for field in (:px_area, :limits)
-            close(getfield(obj, field), true)
+            close(getfield(scene, field), true)
         end
-        disconnect!(obj.camera)
-        empty!(obj.theme)
-        empty!(obj.attributes)
-        empty!(obj.children)
-        empty!(obj.current_screens)
+        disconnect!(scene.camera)
+        empty!(scene.theme)
+        empty!(scene.attributes)
+        empty!(scene.children)
+        empty!(scene.current_screens)
         return
     end
     foreach(updated, px_area) do update, px_area
@@ -67,8 +67,9 @@ function Scene(
             yield(); yield();
             center!(scene);
         end
+        nothing
     end
-    obj
+    scene
 end
 
 Base.parent(scene::Scene) = scene.parent

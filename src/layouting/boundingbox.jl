@@ -49,7 +49,7 @@ end
 
 
 function boundingbox(x::Text, text::String)
-    position = value(x[:position])
+    position = to_value(x[:position])
     @get_attribute x (textsize, font, align, rotation)
     bb = boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
     pm = inv(transformationmatrix(parent(x))[])

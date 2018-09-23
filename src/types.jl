@@ -18,7 +18,7 @@ struct EmptyCamera <: AbstractCamera end
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 
-const Node = Signal
+const Node = Observable
 
 const Rect{N, T} = HyperRectangle{N, T}
 const Rect2D{T} = HyperRectangle{2, T}
@@ -95,7 +95,7 @@ function FRect3D(x::Rect2D)
     FRect3D(Vec3f0(minimum(x)..., 0), Vec3f0(widths(x)..., 0.0))
 end
 # For now, we use Reactive.Signal as our Node type. This might change in the future
-const Node = Signal
+const Node = Observable
 
 include("interaction/iodevices.jl")
 
