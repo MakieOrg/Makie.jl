@@ -28,6 +28,12 @@ function VideoStream(scene::Scene)
     path = joinpath(dir, "$(gensym(:video)).mkv")
     screen = global_gl_screen()
     display(screen, scene)
+    scene.updated[] = true
+    force_update!();yield();
+    if scene[:center][]
+        center!(scene)
+    end
+    force_update!(); yield();
     _xdim, _ydim = widths(pixelarea(scene)[])
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1

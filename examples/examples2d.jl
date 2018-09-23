@@ -9,16 +9,16 @@
     @cell "Interaction" [scatter, linesegment, record] begin
         scene = Scene()
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
-        time = Node(0.0)
-        p1 = scatter!(scene, lift(t-> f.(t, range(0, stop = 2pi, length = 50), 1), time))[end]
-        p2 = scatter!(scene, lift(t-> f.(t * 2.0, range(0, stop = 2pi, length = 50), 1.5), time))[end]
-        lines = lift(p1[1], p2[1]) do pos1, pos2
+        time_node = Node(0.0)
+        p1 = scatter!(scene, lift(t-> f.(t, range(0, stop = 2pi, length = 50), 1), time_node))[end]
+        p2 = scatter!(scene, lift(t-> f.(t * 2.0, range(0, stop = 2pi, length = 50), 1.5), time_node))[end]
+        points = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
-        linesegments!(scene, lines)
+        linesegments!(scene, points)
         N = 150
         record(scene, @outputfile(mp4), range(0, stop = 10, length = N)) do i
-            push!(time, i)
+            push!(time_node, i)
         end
     end
     @cell "barplot" [barplot] begin
