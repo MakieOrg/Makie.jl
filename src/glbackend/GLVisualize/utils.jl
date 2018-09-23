@@ -50,9 +50,9 @@ end
 function assemble_shader(data)
     shader = data[:shader]
     delete!(data, :shader)
-    default_bb = Signal(GeometryTypes.centered(AABB))
+    default_bb = Node(GeometryTypes.centered(AABB))
     bb  = get(data, :boundingbox, default_bb)
-    if bb == nothing || isa(bb, Signal{Nothing})
+    if bb == nothing || isa(bb, Node{Nothing})
         bb = default_bb
     end
     glp = get(data, :gl_primitive, GL_TRIANGLES)
@@ -75,7 +75,7 @@ function y_partition_abs(area, amount)
             SimpleRectangle{Int}(0, a, r.w, r.h - a)
         )
     end
-    return map(first, p), map(last, p)
+    return lift(first, p), lift(last, p)
 end
 function x_partition_abs(area, amount)
     a = round(Int, amount)
@@ -85,7 +85,7 @@ function x_partition_abs(area, amount)
             SimpleRectangle{Int}(a, 0, r.w - a, r.h)
         )
     end
-    return map(first, p), map(last, p)
+    return lift(first, p), lift(last, p)
 end
 
 function y_partition(area, percent)
@@ -96,7 +96,7 @@ function y_partition(area, percent)
             SimpleRectangle{Int}(0, round(Int, r.h*amount), r.w, round(Int, r.h*(1-amount)))
         )
     end
-    return map(first, p), map(last, p)
+    return lift(first, p), lift(last, p)
 end
 function x_partition(area, percent)
     amount = percent / 100.0
@@ -106,13 +106,13 @@ function x_partition(area, percent)
             SimpleRectangle{Int}(round(Int, r.w*amount), 0, round(Int, r.w*(1-amount)), r.h)
         )
     end
-    return map(first, p), map(last, p)
+    return lift(first, p), lift(last, p)
 end
 
 
 glboundingbox(mini, maxi) = AABB{Float32}(Vec3f0(mini), Vec3f0(maxi)-Vec3f0(mini))
 function default_boundingbox(main, model)
-    main == nothing && return Signal(AABB{Float32}(Vec3f0(0), Vec3f0(1)))
+    main == nothing && return Node(AABB{Float32}(Vec3f0(0), Vec3f0(1)))
     const_lift(*, model, AABB{Float32}(main))
 end
 AABB(a::GPUArray) = AABB{Float32}(gpu_data(a))
@@ -156,24 +156,24 @@ to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
 For integers, we transform it to 0 based indices
 """
 to_index_buffer(x::Vector{I}) where {I<:Integer} = indexbuffer(map(i-> Cuint(i-1), x))
-function to_index_buffer(x::Signal{Vector{I}}) where I<:Integer
+function to_index_buffer(x::Node{Vector{I}}) where I<:Integer
     x = map(x-> Cuint[i-1 for i=x], x)
-    gpu_mem = GLBuffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    preserve(const_lift(update!, gpu_mem, x))
+    gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
+    on(mem->update!(gpu_mem, x), x)
     gpu_mem
 end
 """
 If already GLuint, we assume its 0 based (bad heuristic, should better be solved with some Index type)
 """
 to_index_buffer(x::Vector{I}) where {I<:GLuint} = indexbuffer(x)
-function to_index_buffer(x::Signal{Vector{I}}) where I<:GLuint
-    gpu_mem = GLBuffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    preserve(const_lift(update!, gpu_mem, x))
+function to_index_buffer(x::Node{Vector{I}}) where I<:GLuint
+    gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
+    on(mem->update!(gpu_mem, x), x)
     gpu_mem
 end
-function to_index_buffer(x::Signal{Vector{I}}) where I <: Face{2, GLIndex}
-    gpu_mem = GLBuffer(value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    preserve(const_lift(update!, gpu_mem, x))
+function to_index_buffer(x::Node{Vector{I}}) where I <: Face{2, GLIndex}
+    gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
+    on(mem->update!(gpu_mem, x), x)
     gpu_mem
 end
 to_index_buffer(x) = error(

@@ -1,6 +1,6 @@
 function RenderObject(
         data::Dict{Symbol}, program, pre,
-        bbs = Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
+        bbs = Node(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
         main = nothing
     )
     RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
@@ -22,7 +22,7 @@ Base.setindex!(obj::RenderObject, value, symbol::Symbol, x::Function)     = seti
 Base.setindex!(obj::RenderObject, value, ::Val{:prerender}, x::Function)  = obj.prerenderfunctions[x] = value
 Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.postrenderfunctions[x] = value
 
-const empty_signal = Signal(false)
+const empty_signal = Node(false)
 post_empty() = push!(empty_signal, false)
 
 """
@@ -55,10 +55,10 @@ end
 function set_arg!(robj::RenderObject, sym, to_update, value)
     robj[sym] = value
 end
-function set_arg!(robj::RenderObject, sym, to_update::Signal, value::Signal)
+function set_arg!(robj::RenderObject, sym, to_update::Node, value::Node)
     robj[sym] = value
 end
-function set_arg!(robj::RenderObject, sym, to_update::Signal, value)
+function set_arg!(robj::RenderObject, sym, to_update::Node, value)
     push!(to_update, value)
 end
 
@@ -92,7 +92,7 @@ struct StandardPostrenderInstanced{T}
     primitive::GLenum
 end
 function (sp::StandardPostrenderInstanced)()
-    renderinstanced(sp.vao, Reactive.value(sp.main), sp.primitive)
+    renderinstanced(sp.vao, to_value(sp.main), sp.primitive)
 end
 
 struct EmptyPrerender
@@ -102,14 +102,14 @@ end
 export EmptyPrerender
 export prerendertype
 
-function instanced_renderobject(data, program, bb = Signal(AABB(Vec3f0(0), Vec3f0(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
+function instanced_renderobject(data, program, bb = Node(AABB(Vec3f0(0), Vec3f0(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrenderInstanced(main, robj.vertexarray, primitive)
     robj
 end
 
-function std_renderobject(data, program, bb = Signal(AABB(Vec3f0(0), Vec3f0(1))), primitive=GL_TRIANGLES, main=nothing)
+function std_renderobject(data, program, bb = Node(AABB(Vec3f0(0), Vec3f0(1))), primitive=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrender(robj.vertexarray, primitive)
@@ -150,9 +150,9 @@ function translate!(c::Composable, vec::TOrSignal{T}) where T <: Vec{3}
      _translate!(c, const_lift(translationmatrix, vec))
 end
 function _boundingbox(c::RenderObject)
-    bb = Reactive.value(c[:boundingbox])
+    bb = to_value(c[:boundingbox])
     bb == nothing && return AABB()
-    Reactive.value(c[:model]) * bb
+    to_value(c[:model]) * bb
 end
 function _boundingbox(c::Composable)
     robjs = extract_renderable(c)

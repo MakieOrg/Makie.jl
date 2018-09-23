@@ -215,9 +215,9 @@ gpu_setindex!(t) = error("gpu_setindex! not implemented for: $(typeof(t)). This 
 max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happens, when you call setindex! on an array, without implementing the GPUArray interface")
 
 
-function (::Type{T})(x::Signal) where T <: GPUArray
-    gpu_mem = T(Reactive.value(x))
-    preserve(const_lift(update!, gpu_mem, x))
+function (::Type{T})(x::Node) where T <: GPUArray
+    gpu_mem = T(x[])
+    on(x-> update!(gpu_mem, x), x)
     gpu_mem
 end
 

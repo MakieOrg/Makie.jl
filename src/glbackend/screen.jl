@@ -49,6 +49,11 @@ function Base.empty!(screen::Screen)
     empty!(screen.cache2plot)
 end
 
+function destroy!(screen::Screen)
+    empty!(screen)
+    destroy!(screen.glscreen)
+end
+
 function Base.resize!(window::GLFW.Window, resolution...)
     if isopen(window)
         retina_scale = retina_scaling_factor(window)
@@ -57,7 +62,12 @@ function Base.resize!(window::GLFW.Window, resolution...)
     end
 end
 
-Base.resize!(screen::Screen, w, h) = resize!(screen.glscreen, w, h)
+function Base.resize!(screen::Screen, w, h)
+    nw = to_native(screen)
+    resize!(nw, w, h)
+    fb = screen.framebuffer
+    resize!(fb, (w, h))
+end
 
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
@@ -91,7 +101,7 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        bg = map(to_color, scene.theme[:backgroundcolor])
+        bg = lift(to_color, scene.theme[:backgroundcolor])
         push!(screen.screens, (id, scene.px_area, Node(true), bg))
         id
     end
@@ -172,12 +182,12 @@ function Screen(;resolution = (10, 10), visible = true, kw_args...)
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
     )
-    screen.rendertask[] = @async(renderloop(screen))
     if visible
         GLFW.ShowWindow(window)
     else
         GLFW.HideWindow(window)
     end
+    screen.rendertask[] = @async(renderloop(screen))
     screen
 end
 
@@ -193,7 +203,7 @@ end
 # TODO per scene screen
 getscreen(scene) = global_gl_screen()
 
-function pick_native(scene::SceneLike, xy::VecTypes{2}, sid = Base.RefValue{SelectionID{UInt16}}())
+function pick_native(scene::SceneLike, xy::VectorTypes{2}, sid = Base.RefValue{SelectionID{UInt16}}())
     screen = getscreen(scene)
     screen == nothing && return SelectionID{Int}(0, 0)
     window_size = widths(screen)
@@ -212,7 +222,7 @@ end
 
 pick(scene::SceneLike, xy...) = pick(scene, Float64.(xy))
 
-function pick(scene::SceneLike, xy::VecTypes{2})
+function pick(scene::SceneLike, xy::VectorTypes{2})
     sid = pick_native(scene, xy)
     screen = getscreen(scene)
     if screen != nothing && haskey(screen.cache2plot, sid.id)

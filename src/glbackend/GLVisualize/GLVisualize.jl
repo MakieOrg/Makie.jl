@@ -8,7 +8,7 @@ using ModernGL
 using StaticArrays
 using GeometryTypes
 using Colors
-using Reactive
+using AbstractPlotting
 using FixedPointNumbers
 using FileIO
 using FreeType
@@ -17,6 +17,7 @@ using Markdown
 using FreeTypeAbstraction
 using ImageCore
 import ColorVectorSpace
+using Observables
 
 import ImageCore
 import AxisArrays, ImageAxes
