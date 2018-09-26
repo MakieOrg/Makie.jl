@@ -117,7 +117,7 @@ export move!
 end
 
 function button(func::Function, scene::Scene, txt; kw_args...)
-    b = button!(scene, txt; kw_args...)[end]
+    b = button!(scene, txt; raw = true, kw_args...)[end]
     foreach(b[:clicks]) do clicks
         func(clicks)
         return
@@ -138,14 +138,6 @@ function plot!(splot::Button)
         position = map((wh)-> Point2f0(wh./2), dimensions)
     ).plots[end]
     lbb = boundingbox(lplot) # on purpose static so we hope text won't become too long?
-    # bg_rect = lift(dimensions) do wh
-    #     IRect(0, 0, Vec(wh))
-    # end
-    # p = poly!(
-    #     splot, bg_rect,
-    #     color = backgroundcolor, linecolor = strokecolor,
-    #     linewidth = strokewidth
-    # )
     foreach(events(splot).mousebuttons) do mb
         if ispressed(mb, Mouse.left) && mouseover(parent(splot), lplot)
             clicks[] = clicks[] + 1
@@ -158,7 +150,7 @@ end
 window_open(scene::Scene) = getscreen(scene) != nothing && isopen(getscreen(scene))
 
 function playbutton(f, scene, range, rate = (1/30))
-    b = button(scene, "▶ ")
+    b = button!(scene, "▶ ", raw = true)[end]
     isplaying = Ref(false)
     play_idx = Ref(1)
     foreach(b[:clicks]) do x
