@@ -18,7 +18,7 @@ scene
 
 surface(rand(100, 100))
 surface(-1..1, -1..1, rand(100, 100))
-surface(linspace(-1, 1, 100), range(-1, stop = 1, length = 100) .+ (rand(100) .* 0.1), rand(100, 100))
+surface(LinRange(-1, 1, 100), range(-1, stop = 1, length = 100) .+ (rand(100) .* 0.1), rand(100, 100))
 N = 40
 r = range(-1, stop = 1, length = N)
 x = map(hcat(repeated(r, N)...)) do x
@@ -29,7 +29,7 @@ surface(x, y, rand(N, N))
 surface(x, y, rand(N, N) * 0.1, color = rand(RGBAf0, N, N))
 
 
-wf = wireframe(linspace(-1, 1, 100), range(-1, stop = 1, length = 100) .+ (rand(100) .* 0.1), rand(100, 100))
+wf = wireframe(LinRange(-1, 1, 100), range(-1, stop = 1, length = 100) .+ (rand(100) .* 0.1), rand(100, 100))
 wf = wireframe(-1..1, -1..1, rand(100, 100))
 wf = wireframe(Sphere(Point3f0(0), 1f0))
 wf = wireframe(x, y, rand(N, N))
@@ -65,7 +65,7 @@ finish(io, "mp4")
 using Makie, Colors, GeometryTypes
 GLAbstraction.DummyCamera <: GLAbstraction.Camera
 scene = Scene()
-cmap = collect(linspace(to_color(:red), to_color(:blue), 20))
+cmap = collect(LinRange(to_color(:red), to_color(:blue), 20))
 l = Makie.legend(cmap, 1:4)
 l[:position] = (1.0,1.0)
 
@@ -95,7 +95,7 @@ sub = Scene(scene, offset = Vec3f0(1, 2, 0))
 scatter(sub, rand(10), rand(10), camera = :orthographic)
 sub[:camera]
 lines(sub, rand(10), rand(10), camera = :orthographic)
-axis(linspace(0, 2, 4), range(0, stop = 2, length = 4))
+axis(linLinRangespace(0, 2, 4), range(0, stop = 2, length = 4))
 center!(scene)
 sub[:offset] = Vec3f0(0, 0, 0)
 
@@ -170,7 +170,7 @@ function plot(scene::S, A::AbstractMatrix{T}) where {T <: AbstractFloat, S <: Sc
         ylims = extrema(A)
         area = Reactive.value(Makie.getscreen(scene).area)
         stretch = Makie.to_nd(fit_ratio(area, (xlims, ylims)), Val{3}, 1)
-        axis(linspace((xlims .* stretch[1])..., 4), linspace((ylims .* stretch[2])..., 4))
+        axis(LinRange((xlims .* stretch[1])..., 4), LinRange((ylims .* stretch[2])..., 4))
     end
     center!(scene)
 end

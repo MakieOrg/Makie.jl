@@ -32,7 +32,7 @@ function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) w
     yscale = (maximum(yrange) - minimum(yrange)) / (length(yrange)-1)
     @gen_defaults! data begin
         position    = main[1] =>" Position given as a `Grid{2}`.
-        Can be constructed e.g. `Grid(linspace(0,2,N1), linspace(0,3, N2))`"
+        Can be constructed e.g. `Grid(LinRange(0,2,N1), LinRange(0,3, N2))`"
         position_z  = main[2] => (Texture, "height offset for the surface, must be `Matrix{Float}`")
         scale       = Vec3f0(xscale, yscale, 1) => "scale of the grid planes forming the surface. Can be made smaller, to let the grid show"
     end
