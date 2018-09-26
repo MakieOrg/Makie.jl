@@ -95,7 +95,7 @@ sub = Scene(scene, offset = Vec3f0(1, 2, 0))
 scatter(sub, rand(10), rand(10), camera = :orthographic)
 sub[:camera]
 lines(sub, rand(10), rand(10), camera = :orthographic)
-axis(linLinRangespace(0, 2, 4), range(0, stop = 2, length = 4))
+axis(LinRange(0, 2, 4), range(0, stop = 2, length = 4))
 center!(scene)
 sub[:offset] = Vec3f0(0, 0, 0)
 
