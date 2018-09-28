@@ -38,7 +38,7 @@ function raw_boundingbox(plots::Vector)
     while plot_idx !== nothing
         plot, idx = plot_idx
         plot_idx = iterate(plots, idx)
-        isvisible(plot) || continue
+        # isvisible(plot) || continue
         bb2 = boundingbox(plot)
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue

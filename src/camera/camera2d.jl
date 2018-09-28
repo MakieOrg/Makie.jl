@@ -137,6 +137,7 @@ function camspace(scene::SceneLike, cam::Camera2D, point)
     Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
+FRect() = FRect(NaN, NaN, NaN, NaN)
 
 function absrect(rect)
     xy, wh = minimum(rect), widths(rect)
@@ -146,8 +147,7 @@ function absrect(rect)
     FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
 end
 function selection_rect!(scene, cam, key)
-
-    rect = RefValue(FRect(0, 0, 0, 0))
+    rect = RefValue(FRect())
     lw = 2f0
     scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
     rect_vis = lines!(
@@ -184,7 +184,7 @@ function selection_rect!(scene, cam, key)
                     update_cam!(scene, cam, r)
                 end
                 #scene.limits[] = FRect3D(rect[])
-                rect[] = FRect(0, 0, 0, 0)
+                rect[] = FRect()
                 rect_vis[1] = rect[]
             end
             # always hide if not the right key is pressed
