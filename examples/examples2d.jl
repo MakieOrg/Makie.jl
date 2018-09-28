@@ -179,7 +179,7 @@
     end
 
     @cell "Text rotation" [text, rotation] begin
-        scene = Scene(@resolution)
+        scene = Scene()
         pos = (500, 500)
         posis = Point2f0[]
         for r in range(0, stop = 2pi, length = 20)

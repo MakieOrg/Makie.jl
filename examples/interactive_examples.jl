@@ -1,5 +1,4 @@
-
-using Makie, Colors, Images
+using Makie, Colors, Observables
 r = range(0, stop=5pi, length=100)
 scene = lines(r, sin.(r), linewidth = 3)
 lineplot = scene[end]
@@ -17,12 +16,12 @@ text!(popup, "( 0.000,  0.000)", textsize = 30, position = textpos, color = :dar
 text_field = popup[end]
 scene
 
-
-on(scene.events.mouseposition) do even
+x = Node(false)
+on(scene.events.mouseposition) do event
     plot, idx = Makie.mouse_selection(scene)
-    if plot == lineplot
+    if plot == lineplot && idx > 0
         visible[] = true
-        text_field[1] = sprint(io-> print(io, round.(Float64.(Tuple(lineplot[1][][idx])), 3)))
+        text_field[1] = sprint(io-> print(io, round.(Float64.(Tuple(lineplot[1][][idx])), digits = 3)))
     else
         visible[] = false
     end
@@ -31,10 +30,8 @@ end
 scene
 
 
-
-
 using Makie
-
+using LinearAlgebra
 img = rand(100, 100)
 scene = Scene()
 heatmap!(scene, img, scale_plot = false)
@@ -129,7 +126,10 @@ scene = Scene(resolution = (1000, 1000))
 ui_width = 260
 ui = Scene(scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)))
 plot_scene = Scene(scene, lift(x-> IRect(ui_width, 0, widths(x) .- Vec(ui_width, 0)), pixelarea(scene)))
-theme(ui)[:plot] = NT(raw = true)
+theme(ui)[:plot] = NT(
+    raw = true,
+    camera = campixel!
+)
 campixel!(ui)
 translate!(ui, 10, 50, 0)
 a = textslider(ui, 0f0:50f0, "a")
@@ -137,7 +137,7 @@ b = textslider(ui, -20f0:20f0, "b")
 c = textslider(ui, 0f0:20f0, "c")
 d = textslider(ui, range(0.0, stop=0.01, length=100), "d")
 scales = textslider(ui, range(0.01, stop=0.5, length=100), "scale")
-color, pop = colorswatch(ui)
+colorsw, pop = colorswatch(ui)
 hbox!(ui.plots)
 
 function lorenz(t0, a, b, c, h)
@@ -163,20 +163,20 @@ args_n = (a, b, c, d)
 args = (13f0, 10f0, 2f0, 0.01f0)
 setindex!.(args_n, args)
 v0 = lorenz(zeros(Point3f0, N), args...)
-positions = Reactive.foldp(lorenz, v0, args_n...)
+positions = lift(lorenz, Node(v0), args_n...)
 rotations = lift(diff, positions)
 rotations = lift(x-> push!(x, x[end]), rotations)
 
-plot = meshscatter!(
+meshscatter!(
     plot_scene,
     positions,
     #marker = Makie.loadasset("cat.obj"),
     markersize = scales, rotation = rotations,
-    intensity = collect(range(0f0, stop=1f0, length=length(positions[]))),
-    color = color
+    intensity = collect(range(0f0, stop = 1f0, length = length(positions[]))),
+    color = colorsw
 )
 scene
-
+pop.scene.camera_controls[]
 
 function record_events(f, scene, path)
     display(scene)
