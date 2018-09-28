@@ -454,7 +454,7 @@ function setup_camera!(scene::Scene)
                 cam3d!(scene)
             end
         end
-    elseif scene[:camera][] in (cam2d!, cam3d!)
+    elseif scene[:camera][] in (cam2d!, cam3d!, campixel!)
         scene[:camera][](scene)
     else
         error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")

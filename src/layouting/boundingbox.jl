@@ -93,12 +93,13 @@ function boundingbox(text::String, position, textsize, font, align, rotation, mo
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         c, text_state = ctext_state
         ctext_state = iterate(text, text_state)
+        # TODO fix center + align + rotation
         if c != '\r'
             pos = if pos_per_char
                 to_ndim(Vec3f0, position[i], 0.0)
             else
                 last_pos = calc_position(last_pos, Point2f0(0, 0), atlas, c, font, scale)
-                rotation * (start_pos3d .+ to_ndim(Vec3f0, last_pos, 0.0))
+                start_pos3d .+ (rotation * to_ndim(Vec3f0, last_pos, 0.0))
             end
             s = glyph_scale!(atlas, c, font, scale)
             srot = rotation * to_ndim(Vec3f0, s, 0.0)
@@ -106,5 +107,5 @@ function boundingbox(text::String, position, textsize, font, align, rotation, mo
             bb = GeometryTypes.update(bb, pos .+ srot)
         end
     end
-    FRect3D(minimum(bb), widths(bb))
+    bb
 end

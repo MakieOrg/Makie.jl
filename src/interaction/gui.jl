@@ -38,13 +38,13 @@ function plot!(slider::Slider)
     ))
     range = slider[1]
     val = slider[:value]
-    val[] = first(to_value(range))
+    push!(val, first(to_value(range)))
     label = lift((v, f)-> f(v), val, valueprinter)
     lplot = text!(
         slider, label,
         textsize = textsize,
         align = (:left, :center), color = textcolor,
-        position = lift((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
+        position = map((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
     ).plots[end]
     lbb = lift(range_label_bb, Node(lplot), valueprinter, range)
     bg_rect = lift(sliderlength, sliderheight, lbb) do w, h, bb
@@ -61,7 +61,7 @@ function plot!(slider::Slider)
 
     linesegments!(slider, line, color = slidercolor)
     button = scatter!(
-        slider, lift(x-> x[1:1], line),
+        slider, map(x-> x[1:1], line),
         markersize = buttonsize, color = buttoncolor, strokewidth = buttonstroke,
         strokecolor = buttonstrokecolor
     ).plots[end]
@@ -117,8 +117,11 @@ export move!
 end
 
 function button(func::Function, scene::Scene, txt; kw_args...)
-    b = button!(scene, txt; kw_args...)[end]
-    on(func, b[:clicks])
+    b = button!(scene, txt; raw = true, kw_args...)[end]
+    on(b[:clicks]) do clicks
+        func(clicks)
+        return
+    end
     b
 end
 
@@ -132,17 +135,9 @@ function plot!(splot::Button)
         splot, txt,
         align = (:center, :center), color = textcolor,
         textsize = 15,
-        position = lift((wh)-> Point2f0(wh./2), dimensions)
+        position = map((wh)-> Point2f0(wh./2), dimensions)
     ).plots[end]
     lbb = boundingbox(lplot) # on purpose static so we hope text won't become too long?
-    # bg_rect = lift(dimensions) do wh
-    #     IRect(0, 0, Vec(wh))
-    # end
-    # p = poly!(
-    #     splot, bg_rect,
-    #     color = backgroundcolor, linecolor = strokecolor,
-    #     linewidth = strokewidth
-    # )
     on(events(splot).mousebuttons) do mb
         if ispressed(mb, Mouse.left) && mouseover(parent(splot), lplot)
             clicks[] = clicks[] + 1
@@ -155,7 +150,7 @@ end
 window_open(scene::Scene) = getscreen(scene) != nothing && isopen(getscreen(scene))
 
 function playbutton(f, scene, range, rate = (1/30))
-    b = button(scene, "▶ ")
+    b = button!(scene, "▶", raw = true)[end]
     isplaying = Ref(false)
     play_idx = Ref(1)
     on(b[:clicks]) do x
@@ -222,7 +217,7 @@ function sample_color(f, ui, colormesh, v)
     translate!(select, 0, 0, 10)
 
     onany(mpos, ui.events.mousebuttons) do mp, mb
-        bb = FRect2D(transformationmatrix(sub)[] * transformationmatrix(colormesh)[] * boundingbox(colormesh))
+        bb = FRect2D(modelmatrix(sub) * modelmatrix(colormesh) * boundingbox(colormesh))
         mp = Point2f0(mp) .- minimum(pixelarea(sub)[])
         if Point2f0(mp) in bb
             select[:visible] = true
@@ -250,12 +245,14 @@ function popup(parent, position, width)
         IRect(Point2f0(p), Point2f0(wh))
     end
     popup = Scene(parent, parea)
+    popup.camera_controls[] = EmptyCamera()
+    campixel!(popup)
     theme(popup)[:visible] = Node(false)
     header = Scene(popup, harea)
-    theme(popup)[:plot] = Attributes(raw = true)
-    campixel!(popup)
+    header.camera_controls[] = EmptyCamera()
     campixel!(header)
-    theme(header)[:plot] = Attributes(raw = true)
+    theme(popup)[:plot] = Theme(raw = true, camera = campixel!)
+    theme(header)[:plot] = Theme(raw = true, camera = campixel!)
     theme(header)[:visible] = theme(popup, :visible)
     initialized = Ref(false)
     but = button(header, "x") do click
@@ -271,7 +268,11 @@ function popup(parent, position, width)
     end
     poly!(header, lift(r-> FRect(0, 0, widths(r)), harea), color = (:gray, 0.1))
     poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white, strokecolor = :black, strokewidth = 2)
-    Popup(Scene(popup, theme = theme(popup)), theme(popup, :visible), pos_n, width_n)
+    scene2 = Scene(popup, theme = theme(popup))
+    scene2.camera_controls[] = EmptyCamera()
+    campixel!(scene2)
+    println(scene2.camera_controls[])
+    Popup(scene2, theme(popup, :visible), pos_n, width_n)
 end
 
 
@@ -312,5 +313,6 @@ function colorswatch(ui)
         return
     end
     hbox!(sub_ui.plots)
+    @show sub_ui.camera_controls[]
     color, pop
 end

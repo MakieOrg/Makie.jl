@@ -127,7 +127,7 @@ end
 function Base.empty!(scene::Scene)
     empty!(scene.plots)
     disconnect!(scene.camera)
-    scene.limits[] =
+    scene.limits[] = FRect3D()
     scene.camera_controls[] = EmptyCamera()
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)

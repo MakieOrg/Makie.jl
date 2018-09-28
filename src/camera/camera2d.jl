@@ -253,6 +253,7 @@ end
 
 struct PixelCamera <: AbstractCamera end
 function campixel!(scene)
+    @show cameracontrols(scene)
     camera(scene).view[] = Mat4f0(I)
     lift(camera(scene), pixelarea(scene)) do window_size
         nearclip = -10_000f0
@@ -263,6 +264,6 @@ function campixel!(scene)
         camera(scene).projectionview[] = projection
     end
     cam = PixelCamera()
-    cameracontrols(scene) = cam
+    cameracontrols!(scene, cam)
     cam
 end
