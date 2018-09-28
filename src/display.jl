@@ -29,6 +29,9 @@ end
 
 Base.showable(::MIME"text/plain", scene::Scene) = true
 
+
+Base.show(io::IO, scene::Scene) = show(io, MIME"text/plain"(), scene)
+
 function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     println(io, "events:")
@@ -43,6 +46,7 @@ function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
     for subscene in scene.children
         println(io, "   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
     end
+    return
 end
 
 function Base.show(io::IO, m::MIME"text/plain", plot::Combined)

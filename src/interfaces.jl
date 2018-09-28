@@ -395,11 +395,10 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     push!(scene.plots, plot_object)
 
     scene[:raw][] || update_limits!(scene)
-    yield() # update limits
     scene[:raw][] || setup_camera!(scene)
-    yield()
     scene[:raw][] || add_axis!(scene)
     # ! ∘ isaxis --> (x)-> !isaxis(x)
+    # move axis to front, so that scene[end] gives back the last plot and not the axis!
     sort!(scene.plots, by = (!) ∘ isaxis)
     #compose_plot!(scene)
     # call the assembly recipe, that also adds this to the scene

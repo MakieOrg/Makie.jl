@@ -3,6 +3,7 @@ default_printer(v) = string(round(v, digits=3))
 @recipe(Slider) do scene
     Theme(
         value = 0,
+        position = (0, 0),
         sliderlength = 200,
         sliderheight = 50,
         backgroundcolor = (:gray, 0.01),
@@ -34,29 +35,30 @@ function plot!(slider::Slider)
     @extract(slider, (
         backgroundcolor, strokecolor, strokewidth, slidercolor, buttonstroke,
         buttonstrokecolor, buttonsize, buttoncolor, valueprinter,
-        sliderlength, sliderheight, textcolor, textsize
+        sliderlength, sliderheight, textcolor, textsize, position
     ))
     range = slider[1]
     val = slider[:value]
+    p2f0 = lift(Point2f0, position)
     push!(val, first(to_value(range)))
     label = lift((v, f)-> f(v), val, valueprinter)
     lplot = text!(
         slider, label,
         textsize = textsize,
         align = (:left, :center), color = textcolor,
-        position = map((w, h)-> Point2f0(w, h/2), sliderlength, sliderheight)
+        position = lift((w, h, p)-> p .+ Point2f0(w, h/2), sliderlength, sliderheight, p2f0)
     ).plots[end]
     lbb = lift(range_label_bb, Node(lplot), valueprinter, range)
-    bg_rect = lift(sliderlength, sliderheight, lbb) do w, h, bb
-        FRect(0, 0, w + 10 + widths(bb)[1], h)
+    bg_rect = lift(sliderlength, sliderheight, lbb, p2f0) do w, h, bb, p
+        FRect(p, w + 10 + widths(bb)[1], h)
     end
     poly!(
         slider, bg_rect,
         color = backgroundcolor, linecolor = strokecolor,
         linewidth = strokewidth
     )
-    line = lift(sliderlength, sliderheight) do w, h
-        Point2f0[(10, h / 2), (w - 10, h / 2)]
+    line = lift(sliderlength, sliderheight, p2f0) do w, h, p
+        [p .+ Point2f0(10, h / 2), p .+ Point2f0(w - 10, h / 2)]
     end
 
     linesegments!(slider, line, color = slidercolor)
@@ -201,9 +203,11 @@ end
 
 
 function textslider(ui, range, label)
-    a = slider!(ui, range, raw = true)[end][:value]
-    text!(ui, "$label:", raw = true, align = (:left, :center))
-    a
+    t = text!(ui, "$label:", raw = true, position = (0, 25), align = (:left, :bottom))[end]
+    xp = widths(boundingbox(t))[1]
+    s = slider!(ui, range, position = Point2f0(xp, 0), raw = true)[end]
+    # AbstractPlotting.vbox([t, s])
+    s[:value]
 end
 
 function sample_color(f, ui, colormesh, v)
@@ -306,13 +310,12 @@ function colorswatch(ui)
         if ispressed(mb, Mouse.left)
             plot, idx = mouse_selection(ui)
             if plot in swatch.plots
-                pop.position[] = Point2f0(events(ui).mouseposition[] .+ 50)
+                pop.position[] = Point2f0(events(ui).mouseposition[] .+ Point2f0(0, 50))
                 pop.open[] = true
             end
         end
         return
     end
     hbox!(sub_ui.plots)
-    @show sub_ui.camera_controls[]
     color, pop
 end

@@ -80,8 +80,32 @@ function rotate_cam(
     rotation
 end
 
-is_mouseinside(scene) = Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
+isroot(scene::Scene) = parent(scene) === nothing
+function root(scene::Scene)
+    while !isroot(scene)
+        scene = parent(scene)
+    end
+    scene
+end
 
+parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
+
+function is_mouseinside(scene, target)
+    scene === target && return false
+    Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
+    for child in r.children
+        is_mouseinside(child, target) && return true
+    end
+    return false
+end
+function is_mouseinside(scene)
+    Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
+    # Check that mouse is not inside any other screen
+    for child in scene.children
+        is_mouseinside(child) && return false
+    end
+    return true
+end
 
 function add_translation!(scene, cam, key, button)
     last_mousepos = RefValue(Vec2f0(0, 0))
