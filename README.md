@@ -40,7 +40,7 @@ sudo apt-get install ffmpeg cmake xorg-dev
 [![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
 
 ## Complex examples
-[![](https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif)](https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl)
+<a href="https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl"><img src="https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif" width="480"/></a>
 
 ## Examples from the documenation: 
 
