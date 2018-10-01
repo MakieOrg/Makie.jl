@@ -1,3 +1,13 @@
+<div align="center">
+<img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png" alt="Makie.jl" width="480">
+</div>
+
+
+
+From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
+
+
 **Build status**: [![][gitlab-img]][gitlab-url]
 
 **Documentation**: [![][docs-stable-img]][docs-stable-url]
@@ -6,18 +16,6 @@
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
 [docs-stable-url]: http://makie.juliaplots.org/stable/
-
-![](https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png)
-
-# Makie
-
-[![code](https://github.com/SimonDanisch/Makie.jl/blob/master/docs/header.png?raw=true)](https://github.com/SimonDanisch/Makie.jl/blob/master/test/makie_header.jl)
-
-
-From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
-Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
-
-
 
 
 
@@ -36,9 +34,10 @@ Pkg.checkout("AbstractPlotting", "sd/06")
 ## Julia 1.0
 Julia 1.0 is now the offical recommended Julia version to use with Makie:
 
-```Julia
-]add Makie
-]test Makie
+```julia
+julia>]
+pkg> add Makie
+pkg> test Makie
 ```
 
 ## Dependencies
