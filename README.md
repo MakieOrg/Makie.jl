@@ -21,18 +21,6 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 
 # Installation
 
-## Julia 0.6
-
-```julia
-Pkg.add("Makie") # will install the deprecated, first version of Makie - Look at #IJulia examples for the old style
-# Get the new version with:
-Pkg.checkout("Makie", "sd/06")
-Pkg.checkout("AbstractPlotting", "sd/06")
-```
-
-## Julia 1.0
-Julia 1.0 is now the offical recommended Julia version to use with Makie:
-
 ```julia
 julia>]
 pkg> add Makie
