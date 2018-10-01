@@ -20,7 +20,6 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 
 
 # Installation
-Makie is still prerelease, so the current versions are a bit in turmoil.
 
 ## Julia 0.6
 
