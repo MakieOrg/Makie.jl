@@ -172,6 +172,8 @@ Base.convert(::Type{T}, x::T) where T <: Node = x
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))
+Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
+
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 Base.iterate(x::Attributes) = iterate(x.attributes)
