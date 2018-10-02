@@ -7,10 +7,9 @@
 From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
 
+**Documentation**: [![][docs-stable-img]][docs-stable-url]
 
 **Build status**: [![][gitlab-img]][gitlab-url]
-
-**Documentation**: [![][docs-stable-img]][docs-stable-url]
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
@@ -34,13 +33,6 @@ On linux you also need to add the following to get GLFW to build (if you don't h
 sudo apt-get install ffmpeg cmake xorg-dev
 ```
 
-
-## IJulia examples:
-
-[![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
-
-## Complex examples
-<a href="https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl"><img src="https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif" width="480"/></a>
 
 ## Examples from the documenation: 
 
@@ -104,8 +96,6 @@ sudo apt-get install ffmpeg cmake xorg-dev
 [![](http://makie.juliaplots.org/stable/media/thumb-wireframe_of_a_surface.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Wireframe-of-a-Surface-1)
 
 
-
-
 ## Mouse interaction:
 
 [<img src="https://user-images.githubusercontent.com/1010467/31519651-5992ca62-afa3-11e7-8b10-b66e6d6bee42.png" width="489">](https://vimeo.com/237204560 "Mouse Interaction")
@@ -115,7 +105,13 @@ sudo apt-get install ffmpeg cmake xorg-dev
 [<img src="https://user-images.githubusercontent.com/1010467/31519521-fd67907e-afa2-11e7-8c43-5f125780ae26.png" width="489">](https://vimeo.com/237284958 "Surface Plot")
 
 
+## Complex examples
+<a href="https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl"><img src="https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif" width="480"/></a>
 
+
+## IJulia examples:
+
+[![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
 
 
 # Precompilation
