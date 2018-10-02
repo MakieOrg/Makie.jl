@@ -9,7 +9,7 @@ Data is basically the gold and silver of our age, so lets spread it out beautifu
 
 **Documentation**: [![][docs-stable-img]][docs-stable-url]
 
-**Build status**: [![][gitlab-img]][gitlab-url]
+Build status: [![][gitlab-img]][gitlab-url]
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
