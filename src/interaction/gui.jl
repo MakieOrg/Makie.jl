@@ -31,6 +31,15 @@ function range_label_bb(tplot, printer_func, range)
     end
     bb
 end
+
+function textslider(ui, range, label)
+    t = text!(ui, "$label:", raw = true, position = (0, 50), align = (:left, :center))[end]
+    xp = widths(boundingbox(t))[1]
+    s = slider!(ui, range, position = Point2f0(xp, 0), raw = true)[end]
+    # AbstractPlotting.vbox([t, s])
+    s[:value]
+end
+
 function plot!(slider::Slider)
     @extract(slider, (
         backgroundcolor, strokecolor, strokewidth, slidercolor, buttonstroke,
@@ -190,38 +199,16 @@ struct Popup
     width::Node{Point2f0}
 end
 
-function hbox!(plots::Vector{T}; kw_args...) where T <: AbstractPlot
-    N = length(plots)
-    h = 0.0
-    for idx in 1:N
-        p = plots[idx]
-        translate!(p, 0.0, h, 0.0)
-        swidth = widths(boundingbox(p))
-        h += (swidth[2] * 1.2)
-    end
-end
-
-
-function textslider(ui, range, label)
-    t = text!(ui, "$label:", raw = true, position = (0, 25), align = (:left, :bottom))[end]
-    xp = widths(boundingbox(t))[1]
-    s = slider!(ui, range, position = Point2f0(xp, 0), raw = true)[end]
-    # AbstractPlotting.vbox([t, s])
-    s[:value]
-end
-
 function sample_color(f, ui, colormesh, v)
     mpos = ui.events.mouseposition
     sub = Scene(ui, transformation = Transformation(), px_area = pixelarea(ui), theme = theme(ui))
     select = scatter!(
-        sub, lift((x, r)-> [Point2f0(x) .- minimum(r)], mpos, pixelarea(sub)),
-        markersize = 10, color = (:white, 0.2), strokecolor = :white,
-        strokewidth = 5, visible = lift(identity, theme(ui, :visible)), raw = true
+        sub, lift((p, a)-> [Point2f0(p) .- minimum(a)], mpos, pixelarea(sub)),
+        markersize = 15, color = (:white, 0.2), strokecolor = :white,
+        strokewidth = 6, visible = lift(identity, theme(ui, :visible)), raw = true
     )[end]
-    translate!(select, 0, 0, 10)
-
     onany(mpos, ui.events.mousebuttons) do mp, mb
-        bb = FRect2D(modelmatrix(sub) * modelmatrix(colormesh) * boundingbox(colormesh))
+        bb = FRect2D(boundingbox(colormesh))
         mp = Point2f0(mp) .- minimum(pixelarea(sub)[])
         if Point2f0(mp) in bb
             select[:visible] = true
@@ -241,9 +228,8 @@ end
 function popup(parent, position, width)
     pos_n = Node(Point2f0(position))
     width_n = Node(Point2f0(width))
-
     harea = lift(pos_n, width_n) do p, wh
-        IRect(p[1], p[2] + wh[2] - 20, wh[1], 20)
+        IRect(0, wh[2] - 20, wh[1], 20)
     end
     parea = lift(pos_n, width_n) do p, wh
         IRect(Point2f0(p), Point2f0(wh))
@@ -252,7 +238,9 @@ function popup(parent, position, width)
     popup.camera_controls[] = EmptyCamera()
     campixel!(popup)
     theme(popup)[:visible] = Node(false)
-    header = Scene(popup, harea)
+    header = Scene(popup, harea,
+        backgroundcolor = :gray,
+    )
     header.camera_controls[] = EmptyCamera()
     campixel!(header)
     theme(popup)[:plot] = Theme(raw = true, camera = campixel!)
@@ -267,15 +255,15 @@ function popup(parent, position, width)
         end
         return
     end
-    on(width_n) do wh
-        translate!(but, wh[1] - 30, -10, 120)
-    end
+    translate!(but, width_n[][1] - 30, -10, 120)
+    # on(width_n) do wh
+    #     translate!(but, wh[1] - 30, -10, 120)
+    # end
     poly!(header, lift(r-> FRect(0, 0, widths(r)), harea), color = (:gray, 0.1))
     poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white, strokecolor = :black, strokewidth = 2)
     scene2 = Scene(popup, theme = theme(popup))
     scene2.camera_controls[] = EmptyCamera()
     campixel!(scene2)
-    println(scene2.camera_controls[])
     Popup(scene2, theme(popup, :visible), pos_n, width_n)
 end
 
@@ -284,14 +272,15 @@ function mouse_selection end
 export mouse_selection
 
 function colorswatch(ui)
-    pop = popup(ui, (50, 50), (250, 300))
+    pop = popup(ui, (0, 50), (250, 300))
     sub_ui = pop.scene
     hsv_hue = textslider(sub_ui, 1:360, "hue")
     colors = lift(hsv_hue) do V
         [HSV(V, 0, 0), HSV(V, 1, 0), HSV(V, 1, 1), HSV(V, 0, 1)]
     end
     S = 200
-    colormesh = mesh!(sub_ui,
+    colormesh = mesh!(
+        sub_ui,
         # TODO implement decompose correctly to just have this be IRect(0, 0, S, S)
         [(0, 0), (S, 0), (S, S), (0, S)],
         [1, 2, 3, 3, 4, 1],
@@ -302,7 +291,6 @@ function colorswatch(ui)
         color[] = c
     end
     hbox!(sub_ui.plots)
-    translate!(sub_ui, 10, 0, 0)
     rect = IRect(0, 0, 50, 50)
     swatch = poly!(ui, rect, color = color, raw = true, visible = true)[end]
     pop.open[] = false
@@ -310,12 +298,13 @@ function colorswatch(ui)
         if ispressed(mb, Mouse.left)
             plot, idx = mouse_selection(ui)
             if plot in swatch.plots
-                pop.position[] = Point2f0(events(ui).mouseposition[] .+ Point2f0(0, 50))
+                pop.position[] = Point2f0(events(ui).mouseposition[]) .+ Point2f0(0, 50)
                 pop.open[] = true
             end
         end
         return
     end
     hbox!(sub_ui.plots)
+    translate!(sub_ui, 10, 0, 0)
     color, pop
 end
