@@ -1,7 +1,7 @@
 ############################################################################
 const TOrSignal{T} = Union{Node{T}, T}
 
-const ArrayOrSignal{T, N} = TOrSignal{Array{T, N}}
+const ArrayOrSignal{T, N} = TOrSignal{X} where X <: AbstractArray{T, N}
 const VecOrSignal{T} = ArrayOrSignal{T, 1}
 const MatOrSignal{T} = ArrayOrSignal{T, 2}
 const VolumeOrSignal{T} = ArrayOrSignal{T, 3}

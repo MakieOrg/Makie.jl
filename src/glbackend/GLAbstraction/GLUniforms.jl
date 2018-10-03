@@ -188,7 +188,7 @@ gl_promote(x::Type{T}) where {T <: StaticVector} = similar_type(T, gl_promote(el
 
 gl_promote(x::Type{T}) where {T <: HomogenousMesh} = NativeMesh{T}
 
-gl_convert(x::Vector{Vec3f0}) = x
+gl_convert(x::AbstractVector{Vec3f0}) = x
 
 gl_convert(x::T) where {T <: Number} = gl_promote(T)(x)
 gl_convert(x::T) where {T <: Colorant} = gl_promote(T)(x)
@@ -200,7 +200,7 @@ gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
 gl_convert(s::AABB) = s
 gl_convert(s::Nothing) = s
 
-isa_gl_struct(x::Array) = false
+isa_gl_struct(x::AbstractArray) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
 isa_gl_struct(x::Colorant) = false
 function isa_gl_struct(x::T) where T
@@ -232,18 +232,22 @@ gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
 gl_convert(x::SMatrix{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
 
 
-gl_convert(a::Vector{T}) where {T <: Face} = indexbuffer(s)
-# gl_convert(a::Vector{T}) where T = convert(Vector{gl_promote(T)}, a)
+gl_convert(a::AbstractVector{<: Face}) = indexbuffer(s)
 
-gl_convert(::Type{T}, a::NATIVE_TYPES; kw_args...) where {T <: NATIVE_TYPES} = a
-function gl_convert(::Type{T}, a::Array{X, N}; kw_args...) where {T <: GPUArray, X, N}
-    T(map(gl_promote(X), a); kw_args...)
+gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
+
+function gl_convert(::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) where {X, N}
+    T(convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
 end
+
+gl_convert(::Type{Texture}, x::Texture) = x
+gl_convert(::Type{<: GPUArray}, x::GPUArray) = x
+
 function gl_convert(::Type{T}, a::Vector{Array{X, 2}}; kw_args...) where {T <: Texture, X}
     T(a; kw_args...)
 end
 
-function gl_convert(::Type{T}, a::Node{Array{X, N}}; kw_args...) where {T <: GPUArray, X, N}
+function gl_convert(::Type{T}, a::Node{<: AbstractArray{X, N}}; kw_args...) where {T <: GPUArray, X, N}
     TGL = gl_promote(X)
     s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
     T(s; kw_args...)
