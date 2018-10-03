@@ -324,9 +324,12 @@ function Scene(
     child
 end
 
-function Scene(scene::Scene, area)
-    events = scene.events
-    px_area = signal_convert(Node{IRect2D}, area)
+function Scene(parent::Scene, area; theme...)
+    events = parent.events
+    px_area = lift(pixelarea(parent), to_node(area)) do p, a
+        # make coordinates relative to parent
+        IRect2D(minimum(p) .+ minimum(a), widths(a))
+    end
     child = Scene(
         events,
         px_area,
@@ -335,12 +338,12 @@ function Scene(scene::Scene, area)
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        copy(current_default_theme()),
+        merge(Attributes(theme), current_default_theme()),
         Scene[],
-        scene.current_screens,
-        scene
+        parent.current_screens,
+        parent
     )
-    push!(scene.children, child)
+    push!(parent.children, child)
     child
 end
 

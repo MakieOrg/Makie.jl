@@ -18,6 +18,7 @@ to_value(x) = x
 to_node(::Type{T1}, x::Node{T2}, name = :node) where {T1, T2} = signal_convert(Node{T1}, x, name)
 to_node(x::T, name = :node) where T = to_node(T, x)
 to_node(::Type{T}, x, name = :node) where T = to_node(T, Node{T}(x))
+to_node(x::Node) = x
 
 signal_convert(::Type{Node{T1}}, x::Node{T1}, name = :node) where T1 = x
 signal_convert(::Type{Node{T1}}, x::Node{T2}, name = :node) where {T1, T2} = lift(x-> convert(T1, x), x, typ = T1)
@@ -36,7 +37,7 @@ end
 
 
 function disconnect!(s::Node)
-    # close(s)
+    # empty!(Observables.listeners(s))
     return
 end
 

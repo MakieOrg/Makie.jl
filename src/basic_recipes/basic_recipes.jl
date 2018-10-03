@@ -264,16 +264,25 @@ function plot!(plot::Annotations)
     sargs = (
         plot[:model], plot[:font],
         plot[1], position,
-        getindex.(Ref(plot), (:color, :textsize, :align, :rotation))...,
+        getindex.(plot, (:color, :textsize, :align, :rotation))...,
     )
     N = to_value(position) |> eltype |> length
-    tp = lift(sargs...) do model, font, args...
+    atlas = get_texture_atlas()
+    combinedpos = Point{N, Float32}[]; colors = RGBAf0[]
+    scales = Vec2f0[]; fonts = NativeFont[]; rotations = Quaternionf0[]
+
+    tplot = text!(plot, "",
+        align = Vec2f0(0), model = Mat4f0(I),
+        position = combinedpos, color = colors,
+        textsize = scales, font = fonts, rotation = rotations
+    ).plots[end]
+
+    onany(sargs...) do model, font, args...
         if length(args[1]) != length(args[2])
             error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
         end
-        atlas = get_texture_atlas()
-        io = IOBuffer(); combinedpos = Point{N, Float32}[]; colors = RGBAf0[]
-        scales = Vec2f0[]; fonts = NativeFont[]; rotations = Quaternionf0[]; alignments = Vec2f0[]
+        io = IOBuffer();
+        empty!(combinedpos); empty!(colors); empty!(scales); empty!(fonts); empty!(rotations)
         broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
             # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
             # TODO have a better Font type!
@@ -281,7 +290,6 @@ function plot!(plot::Annotations)
             f = isa(f, NativeFont) ? f : f[idx]
             c = to_color(color)
             rot = to_rotation(rotation)
-            ali = to_align(alignment)
             pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
             print(io, text)
             n = length(pos)
@@ -290,19 +298,14 @@ function plot!(plot::Annotations)
             append!(colors, repeated(c, n))
             append!(fonts,  repeated(f, n))
             append!(rotations, repeated(rot, n))
-            append!(alignments, repeated(ali, n))
         end
-        (String(take!(io)), combinedpos, colors, scales, fonts, rotations)
+        str = String(take!(io))
+        # update string
+        # This should be enough, since we change all other attributes inplace
+        # and the signal in the backend should listen on text
+        tplot[1] = str
+        return
     end
-    t_attributes = Attributes()
-    t_attributes[:position] = lift(x-> x[2], tp)
-    t_attributes[:color] = lift(x-> x[3], tp)
-    t_attributes[:textsize] = lift(x-> x[4], tp)
-    t_attributes[:font] = lift(x-> x[5], tp)
-    t_attributes[:rotation] = lift(x-> x[6], tp)
-    t_attributes[:align] = Vec2f0(0)
-    t_attributes[:model] = Mat4f0(I)
-    text!(plot, t_attributes, lift(x-> x[1], tp))
     plot
 end
 

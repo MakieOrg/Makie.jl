@@ -198,3 +198,13 @@ function vbox(plots::Vector{T}; kw_args...) where T <: AbstractPlot
         w += (swidth[1] * 1.1)
     end
 end
+function hbox!(plots::Vector{T}; kw_args...) where T <: AbstractPlot
+    N = length(plots)
+    h = 0.0
+    for idx in 1:N
+        p = plots[idx]
+        translate!(p, 0.0, h, 0.0)
+        swidth = widths(boundingbox(p))
+        h += (swidth[2] * 1.2)
+    end
+end

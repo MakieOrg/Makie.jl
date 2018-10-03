@@ -104,7 +104,6 @@ function data_limits(plots::Vector)
         # axis shouldn't be part of the data limit
         isaxis(plot) && continue
         isa(plot, Legend) && continue
-        isvisible(plot) || continue
         bb2 = data_limits(plot)
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue

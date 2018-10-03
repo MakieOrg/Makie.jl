@@ -76,10 +76,10 @@ function finish!(tb::Annotations)
     # now update all callbacks
     # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
     # in basic_recipes annotations should depend on all signals here, so updating one should be enough
+    if length(tb[1][]) != length(tb[2][]) || length(tb[1][]) != length(tb[:textsize][])
+        error("Inconsistent buffer state for $(tb[1][])")
+    end
     tb[1][] = tb[1][]
-    # for key in (1, 2, :color, :rotation, :textsize, :font, :align)
-        # tb[key][] = tb[key][]
-    #end
     return
 end
 

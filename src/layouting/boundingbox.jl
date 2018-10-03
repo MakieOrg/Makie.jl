@@ -18,7 +18,6 @@ function boundingbox(x)
     raw_boundingbox(x)
 end
 
-
 function modelmatrix(x)
     t = transformation(x)
     transformationmatrix(t.translation[], t.scale[], t.rotation[])
