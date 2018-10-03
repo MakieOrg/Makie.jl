@@ -350,9 +350,14 @@ end
 function data_limits(p::BarPlot)
     xy = p.plots[1][1][]
     msize = p.plots[1][:markersize][]
+    xstart, xend = first(msize)[1], last(msize)[1]
+    xvals = first.(xy)
+    # correct widths
+    xvals[1] = xvals[1] - (xstart / 2)
+    xvals[end] = xvals[end] + (xend / 2)
     xybb = FRect3D(xy)
     y = last.(msize) .+ last.(xy)
-    bb = AbstractPlotting.xyz_boundingbox(first.(xy), y)
+    bb = xyz_boundingbox(xvals, y)
     union(bb, xybb)
 end
 
