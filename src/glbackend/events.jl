@@ -1,4 +1,23 @@
 
+"""
+Throwing an error in a c callback seems to lead to undefined behaviour
+"""
+macro csafe(func)
+    func_body = func.args[2]
+    safe_body = quote
+        try
+            $func_body
+        catch e
+            println(stderr, "Error in c callback: ")
+            Base.showerror(stderr, e)
+            # TODO is it fine to call catch_backtrace here?
+            Base.show_backtrace(stderr, Base.catch_backtrace())
+        end
+    end
+    func.args[2] = safe_body
+    return esc(func)
+end
+
 function addbuttons(scene::Scene, name, button, action, ::Type{ButtonEnum}) where ButtonEnum
     event = getfield(scene.events, name)
     set = event[]
@@ -25,7 +44,7 @@ returns `Node{Bool}`
 """
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
-    function windowclose(win)
+    @csafe function windowclose(win)
         event[] = false
     end
     disconnect!(event)
@@ -45,13 +64,13 @@ end
 function window_area(scene::Scene, window)
     event = scene.events.window_area
     dpievent = scene.events.window_dpi
-    function windowposition(window, x::Cint, y::Cint)
+    @csafe function windowposition(window, x::Cint, y::Cint)
         rect = event[]
         if minimum(rect) != Vec(x, y)
             event[] = IRect(x, y, widths(rect))
         end
     end
-    function windowsize(window, w::Cint, h::Cint)
+    @csafe function windowsize(window, w::Cint, h::Cint)
         rect = event[]
         if Vec(w, h) != widths(rect)
             monitor = GLFW.GetPrimaryMonitor()
@@ -87,7 +106,7 @@ returns `Node{NTuple{4, Int}}`
 """
 function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebuttons
-    function mousebuttons(window, button, action, mods)
+    @csafe function mousebuttons(window, button, action, mods)
         addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
     end
     disconnect!(event); disconnect!(window, mouse_buttons)
@@ -98,7 +117,7 @@ function disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
 end
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
-    function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
+    @csafe function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
     end
     disconnect!(event); disconnect!(window, keyboard_buttons)
@@ -116,7 +135,7 @@ returns `Node{Vector{String}}`, which are absolute file paths
 """
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
-    function droppedfiles(window, files)
+    @csafe function droppedfiles(window, files)
         event[] = String.(files)
     end
     disconnect!(event); disconnect!(window, dropped_files)
@@ -136,7 +155,7 @@ containing the pressed char. Is empty, if no key is pressed.
 """
 function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
-    function unicodeinput(window, c::Char)
+    @csafe function unicodeinput(window, c::Char)
         vals = event[]
         push!(vals, c)
         event[] = vals
@@ -185,7 +204,7 @@ which is not in scene coordinates, with the upper left window corner being 0
 """
 function mouse_position(scene::Scene, window::GLFW.Window)
     event = scene.events.mouseposition
-    function cursorposition(window, w::Cdouble, h::Cdouble)
+    @csafe function cursorposition(window, w::Cdouble, h::Cdouble)
         event[] = correct_mouse(window, w, h)
     end
     disconnect!(event); disconnect!(window, mouse_position)
@@ -204,7 +223,7 @@ which is an x and y offset.
 """
 function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
-    function scrollcb(window, w::Cdouble, h::Cdouble)
+    @csafe function scrollcb(window, w::Cdouble, h::Cdouble)
         event[] = (w, h)
         event[] = (0.0, 0.0)
     end
@@ -224,7 +243,7 @@ which is true whenever the window has focus.
 """
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
-    function hasfocuscb(window, focus::Bool)
+    @csafe function hasfocuscb(window, focus::Bool)
         event[] = focus
     end
     disconnect!(event); disconnect!(window, hasfocus)
@@ -243,8 +262,8 @@ which is true whenever the cursor enters the window.
 """
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
-    function enteredwindowcb(window, focus::Bool)
-        event[] = focus
+    @csafe function enteredwindowcb(window, entered::Bool)
+        event[] = entered
     end
     disconnect!(event); disconnect!(window, entered_window)
     event[] = false
