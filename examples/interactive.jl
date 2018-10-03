@@ -27,7 +27,7 @@
         display(Makie.global_gl_screen(), scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
-        # p2[:marker] = 'π' #TODO fix this
+        p2[:marker] = 'π' #TODO fix this
         p2[:markersize] = 0.2
 
         # push a reasonable mouse position in case this is executed as part
