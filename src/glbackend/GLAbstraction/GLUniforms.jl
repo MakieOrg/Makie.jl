@@ -243,6 +243,7 @@ function gl_convert(::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) whe
     T(convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
 end
 
+gl_convert(::Type{<: GLBuffer}, x::GLBuffer; kw_args...) = x
 gl_convert(::Type{Texture}, x::Texture) = x
 gl_convert(::Type{<: GPUArray}, x::GPUArray) = x
 
