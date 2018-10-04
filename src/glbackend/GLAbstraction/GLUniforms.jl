@@ -236,6 +236,9 @@ gl_convert(a::AbstractVector{<: Face}) = indexbuffer(s)
 
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
 
+
+gl_convert(::Type{<: GPUArray}, a::StaticVector) = gl_convert(a)
+
 function gl_convert(::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) where {X, N}
     T(convert(AbstractArray{gl_promote(X), N}, a); kw_args...)
 end
