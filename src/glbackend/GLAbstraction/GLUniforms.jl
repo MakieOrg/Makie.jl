@@ -249,6 +249,7 @@ gl_convert(::Type{<: GPUArray}, x::GPUArray) = x
 function gl_convert(::Type{T}, a::Vector{Array{X, 2}}; kw_args...) where {T <: Texture, X}
     T(a; kw_args...)
 end
+gl_convert(::Type{<: GPUArray}, a::Node{<: StaticVector}) = gl_convert(a)
 
 function gl_convert(::Type{T}, a::Node{<: AbstractArray{X, N}}; kw_args...) where {T <: GPUArray, X, N}
     TGL = gl_promote(X)
