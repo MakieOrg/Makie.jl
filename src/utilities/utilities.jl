@@ -190,7 +190,7 @@ function broadcast_foreach(f, args...)
     lengths = bs_length.(args)
     maxlen = maximum(lengths)
     # all non scalars should have same length
-    if any(x-> !(x in (1, maxlen)), lengths)
+    if any(x-> !(x in (0, 1, maxlen)), lengths)
         error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
     end
     for i in 1:maxlen
