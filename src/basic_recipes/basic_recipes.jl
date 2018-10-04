@@ -268,8 +268,9 @@ function plot!(plot::Annotations)
     )
     N = to_value(position) |> eltype |> length
     atlas = get_texture_atlas()
-    combinedpos = Point{N, Float32}[]; colors = RGBAf0[]
-    scales = Vec2f0[]; fonts = NativeFont[]; rotations = Quaternionf0[]
+    combinedpos = Point{N, Float32}[(0,0)]; colors = RGBAf0[RGBAf0(0,0,0,0)]
+    scales = Vec2f0[(0,0)]; fonts = NativeFont[to_font("Dejavu Sans")]
+    rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
 
     tplot = text!(plot, "",
         align = Vec2f0(0), model = Mat4f0(I),
