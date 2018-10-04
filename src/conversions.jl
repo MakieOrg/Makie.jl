@@ -108,7 +108,7 @@ Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the 
 linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z)
+function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
