@@ -40,3 +40,23 @@ function Camera(px_area)
         Node[]
     )
 end
+
+
+
+
+
+function is_mouseinside(scene, target)
+    scene === target && return false
+    Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
+    for child in r.children
+        is_mouseinside(child, target) && return true
+    end
+    return false
+end
+function is_mouseinside(scene)
+    return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
+    # Check that mouse is not inside any other screen
+    # for child in scene.children
+    #     is_mouseinside(child) && return false
+    # end
+end

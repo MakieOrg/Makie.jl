@@ -73,6 +73,15 @@ function Scene(
 end
 
 Base.parent(scene::Scene) = scene.parent
+isroot(scene::Scene) = parent(scene) === nothing
+function root(scene::Scene)
+    while !isroot(scene)
+        scene = parent(scene)
+    end
+    scene
+end
+parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
+
 
 Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
 Base.size(x::Scene, i) = size(x)[i]
