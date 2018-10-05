@@ -11,6 +11,7 @@ mutable struct Screen <: AbstractScreen
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
+    framecache::Tuple{Matrix{RGB{N0f8}}, Matrix{RGB{N0f8}}}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLFramebuffer,
@@ -21,7 +22,12 @@ mutable struct Screen <: AbstractScreen
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt16, AbstractPlot},
         )
-        obj = new(glscreen, framebuffer, rendertask, screen2scene, screens, renderlist, cache, cache2plot)
+        s = size(framebuffer)
+        obj = new(
+            glscreen, framebuffer, rendertask, screen2scene,
+            screens, renderlist, cache, cache2plot,
+            (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s)))
+        )
         finalizer(obj) do obj
             # save_print("Freeing screen")
             empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
@@ -78,6 +84,26 @@ function Base.display(screen::Screen, scene::Scene)
     return
 end
 
+
+function to_jl_layout!(A, B)
+    ind1, ind2 = axes(A)
+    n = first(ind2) + last(ind2)
+    for i in ind1
+        @simd for j in ind2
+            @inbounds B[n-j, i] = ImageCore.clamp01nan(A[i, j])
+        end
+    end
+    return B
+end
+
+function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
+    GLAbstraction.bind(source)
+    glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
+    GLAbstraction.bind(source, 0)
+    nothing
+end
+
+
 function colorbuffer(screen::Screen)
     if isopen(screen)
         force_update!()
@@ -86,8 +112,14 @@ function colorbuffer(screen::Screen)
         render_frame(screen) # let it render
         GLFW.SwapBuffers(to_native(screen))
         glFinish() # block until opengl is done rendering
-        buffer = gpu_data(screen.framebuffer.color)
-        return rotl90(ImageCore.clamp01nan.(RGB{N0f8}.(buffer)))
+        ctex = screen.framebuffer.color
+        if size(ctex) != size(screen.framecache[1])
+            s = size(ctex)
+            screen.framecache = (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s)))
+        end
+        fast_color_data!(screen.framecache[1], ctex)
+        to_jl_layout!(screen.framecache...)
+        return screen.framecache[2]
     else
         error("Screen not open!")
     end
