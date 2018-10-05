@@ -89,7 +89,7 @@ function data_limits(x::Annotations)
     # for the annotation, we use the model matrix directly, so we need to
     # to inverse that transformation for the correct limits
     bb = data_limits(x.plots[1])
-    inv(to_value(x[:model])) * bb
+    inv(modelmatrix(x)) * bb
 end
 
 Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))

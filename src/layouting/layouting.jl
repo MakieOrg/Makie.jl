@@ -17,9 +17,8 @@ function layout_text(
     positions2d = calc_position(string, Point2f0(0), rscale, ft_font, atlas)
     aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, ft_font, offset_vec)
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
-    toffset = calc_offset(string, scales, ft_font, atlas)
-    positions = map(positions2d, toffset) do p, o
-        pn = rot * (to_ndim(Point{N, Float32}, p .+ o, 0f0) .+ aoffsetn)
+    positions = map(positions2d) do p
+        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ (pos)
     end
     positions, scales
