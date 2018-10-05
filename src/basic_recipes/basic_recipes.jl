@@ -259,6 +259,13 @@ Plots an array of texts at each position in `positions`.
     default_theme(scene, Text)
 end
 
+"""
+Pushes an updates to all listeners of `node`
+"""
+function notify!(node::Node)
+    node[] = node[]
+end
+
 function plot!(plot::Annotations)
     position = plot[2]
     sargs = (
@@ -284,6 +291,7 @@ function plot!(plot::Annotations)
         end
         io = IOBuffer();
         empty!(combinedpos); empty!(colors); empty!(scales); empty!(fonts); empty!(rotations)
+
         broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
             # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
             # TODO have a better Font type!
@@ -307,6 +315,7 @@ function plot!(plot::Annotations)
         tplot[1] = str
         return
     end
+    notify!(sargs[1])
     plot
 end
 
