@@ -20,8 +20,6 @@ end
 
 update_callback2 = Ref{Function}() do update, scene
     if update
-        # scale_scene!(scene)
-        # yield()
         center!(scene)
     end
     nothing
@@ -286,7 +284,7 @@ function Scene(;
     px_area = lift(events.window_area) do w_area
        wh = widths(w_area)
        wh = any(x-> x ≈ 0.0, wh) ? widths(v0) : wh
-       # v0 = IRect(0, 0, wh)
+       v0 = IRect(0, 0, wh)
        v0
     end
     scene = Scene(

@@ -120,7 +120,7 @@ end
 
 function Events()
     Events(
-        node(:window_area, IRect(0, 0, 1, 1)),
+        node(:window_area, IRect(0, 0, 0, 0)),
         node(:window_dpi, 100.0),
         node(:window_open, false),
 
@@ -144,7 +144,7 @@ mutable struct Camera
     projectionview::Node{Mat4f0}
     resolution::Node{Vec2f0}
     eyeposition::Node{Vec3f0}
-    steering_nodes::Vector{Node}
+    steering_nodes::Vector{Any}
 end
 
 struct Transformation <: Transformable
