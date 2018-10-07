@@ -3,7 +3,6 @@ function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
         font, align, rotation, model
     ) where {N, T}
-
     offset_vec = to_align(align)
     ft_font = to_font(font)
     rscale = to_textsize(textsize)

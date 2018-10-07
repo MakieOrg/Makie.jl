@@ -347,8 +347,8 @@ un_transform(model::Mat4, x) = transform(inv(model), x)
 to2tuple(x) = ntuple(i-> x, Val(2))
 to2tuple(x::Tuple{<:Any, <: Any}) = x
 
-function draw_axis(
-        textbuffer, linebuffer, limits, xyrange, labels,
+function draw_axis2d(
+        textbuffer, linebuffer, m, limits, xyrange, labels,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
 
@@ -433,8 +433,8 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     textbuffer = TextBuffer(cplot, Point{2})
     linebuffer = LinesegmentBuffer(cplot, Point{2})
     map_once(
-        draw_axis,
-        to_node(textbuffer), to_node(linebuffer),
+        draw_axis2d,
+        to_node(textbuffer), to_node(linebuffer), transformationmatrix(scene),
         cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
         g_args..., t_args..., f_args..., ti_args...
     )
@@ -463,7 +463,7 @@ _widths(x) = Float32(maximum(x) - minimum(x))
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis(textbuffer, linebuffer, limits, ranges, labels, args...)
+function draw_axis3d(textbuffer, linebuffer, limits, ranges, labels, args...)
     # make sure we extend all args to 3D
     args3d = to3tuple.(args)
     (
@@ -571,7 +571,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         titlevals..., framevals..., tvals...
     )
     map_once(
-        draw_axis,
+        draw_axis3d,
         Node(textbuffer), Node(linebuffer),
         axis[1], axis[:ticks, :ranges], axis[:ticks, :labels], args...
     )

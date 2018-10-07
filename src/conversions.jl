@@ -370,10 +370,12 @@ function convert_attribute(c::String, ::key"color")
     c in all_gradient_names && return to_colormap(c)
     parse(RGBA{Float32}, c)
 end
+
+# Do we really need all colors to be RGBAf0?!
+convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = elconvert(RGBAf0, c)
 convert_attribute(c::Union{Tuple, AbstractArray}, k::key"color") = convert_attribute.(c, k)
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
-    col = convert_attribute(c[1], k)
-    RGBAf0(Colors.color(col), c[2])
+    RGBAf0(Colors.color(to_color(c[1])), c[2])
 end
 convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
 convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
