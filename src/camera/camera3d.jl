@@ -34,17 +34,17 @@ function cam3d!(scene; kw_args...)
             move_key = nothing
         )
     end
-    camera = from_dict(Camera3D, cam_attributes)
+    cam = from_dict(Camera3D, cam_attributes)
     # remove previously connected camera
     disconnect!(scene.camera)
-    add_translation!(scene, camera, camera.pan_button, camera.move_key)
-    add_rotation!(scene, camera, camera.rotate_button, camera.move_key)
-    cameracontrols!(scene, camera)
-    lift(scene.camera, scene.px_area) do area
+    add_translation!(scene, cam, cam.pan_button, cam.move_key)
+    add_rotation!(scene, cam, cam.rotate_button, cam.move_key)
+    cameracontrols!(scene, cam)
+    on(camera(scene), scene.px_area) do area
         # update cam when screen ratio changes
-        update_cam!(scene, camera)
+        update_cam!(scene, cam)
     end
-    camera
+    cam
 end
 
 function projection_switch(
@@ -82,7 +82,7 @@ end
 
 function add_translation!(scene, cam, key, button)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    lift(camera(scene), scene.events.mousedrag) do drag
+    on(camera(scene), scene.events.mousedrag) do drag
         mp = Vec2f0(scene.events.mouseposition[])
         if ispressed(scene, key[]) && ispressed(scene, button[]) && is_mouseinside(scene)
             if drag == Mouse.down
@@ -97,7 +97,7 @@ function add_translation!(scene, cam, key, button)
         end
         return
     end
-    lift(camera(scene), scene.events.scroll) do scroll
+    on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
             translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
         end
@@ -107,7 +107,7 @@ end
 
 function add_rotation!(scene, cam, button, key)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    lift(camera(scene), scene.events.mousedrag) do drag
+    on(camera(scene), scene.events.mousedrag) do drag
         if ispressed(scene, button[]) && ispressed(scene, key[]) && is_mouseinside(scene)
             if drag == Mouse.down
                 last_mousepos[] = Vec2f0(scene.events.mouseposition[])

@@ -9,7 +9,11 @@ function Base.:(==)(a::Camera, b::Camera)
     to_value(a.resolution) == to_value(b.resolution)
 end
 function disconnect!(c::Camera)
-    disconnect!(c.steering_nodes)
+    for node in c.steering_nodes
+        filter!(listeners(node)) do x
+            !(x isa CameraLift) # remove all camera lifts
+        end
+    end
     return
 end
 function disconnect!(nodes::Vector)
@@ -20,13 +24,28 @@ function disconnect!(nodes::Vector)
     return
 end
 
+struct CameraLift{F, Args}
+    f::F
+    args::Args
+end
+
+function (cl::CameraLift{F, Args})(val) where {F, Args}
+    cl.f(map(to_value, cl.args)...)
+end
+
 """
 When mapping over nodes for the camera, we store them in the steering_node vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function lift(f, c::Camera, nodes::Node...)
-    node = lift(f, nodes...)
-    push!(c.steering_nodes, node)
+function Observables.on(f, c::Camera, nodes::Node...)
+    # this basically reimplements onany, which is a bit annoying, but like
+    # this we don't have such a closure hell and CameraLift will be nicely
+    # identifiable when we disconnect the nodes!
+    cl = CameraLift(f, nodes)
+    for n in nodes
+        on(cl, n)
+    end
+    push!(c.steering_nodes, nodes...)
     node
 end
 
@@ -37,7 +56,7 @@ function Camera(px_area)
         Node(Mat4f0(I)),
         lift(a-> Vec2f0(widths(a)), px_area),
         Node(Vec3f0(1)),
-        Node[]
+        []
     )
 end
 
