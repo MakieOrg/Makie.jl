@@ -40,8 +40,23 @@ function disconnect!(s::Node)
     # empty!(Observables.listeners(s))
     return
 end
+using Observables: listeners
 
-
+"""
+Observables.off but without throwing an error
+"""
+function safe_off(o::Observables.AbstractObservable, f)
+    l = listeners(o)
+    for i in 1:length(l)
+        if f === l[i]
+            deleteat!(l, i)
+            for g in removehandler_callbacks
+                g(o, f)
+            end
+            return
+        end
+    end
+end
 """
     map_once(closure, inputs::Node....)::Node
 
@@ -65,10 +80,7 @@ function map_once(
         typ = typeof(init)
     )
     for arg in (input, inputrest...)
-        try
-            off(arg, f)
-        catch
-        end
+        safe_off(arg, f)
     end
     lift(f, input, inputrest..., init = init, typ = typ)
 end
