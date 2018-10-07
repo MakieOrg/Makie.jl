@@ -446,10 +446,10 @@ function setup_camera!(scene::Scene)
         cam = cameracontrols(scene)
         if cam == EmptyCamera()
             if is2d(scene)
-                @info("setting camera to 2D")
+                #@info("setting camera to 2D")
                 cam2d!(scene)
             else
-                @info("setting camera to 3D")
+                #@info("setting camera to 3D")
                 cam3d!(scene)
             end
         end
