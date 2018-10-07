@@ -17,6 +17,8 @@ function default_theme(scene)
         transformation = automatic,
         model = automatic,
         alpha = 1.0,
+        transparency = false,
+        overdraw = false,
     )
 end
 
@@ -465,7 +467,6 @@ end
 function add_axis!(scene::Scene)
     show_axis = scene[:show_axis][]
     show_axis isa Bool || error("show_axis needs to be a bool")
-
     axistype = if scene[:axis_type][] == automatic
         is2d(scene) ? axis2d! : axis3d!
     elseif scene[:axis_type][] in (axis2d!, axis3d!)
