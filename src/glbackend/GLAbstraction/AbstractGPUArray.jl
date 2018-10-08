@@ -28,7 +28,6 @@ immutable BufferedGPUArray{GPUArr <: GPUArray}
     ram::Array{T, NDim}
 end
 =#
-
 length(A::GPUArray)                                     = prod(size(A))
 eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
 lastindex(A::GPUArray)                                      = length(A)
@@ -69,11 +68,14 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     nothing
 end
 
+function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
+    update!(A, convert(Vector{T}, value))
+end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     if length(A) != length(value)
         if isa(A, GLBuffer)
             resize!(A, length(value))
-        elseif isa(A, Texture) && ndims(A) == 2
+        elseif isa(A, Texture)
             resize_nocopy!(A, size(value))
         else
             error("Dynamic resizing not implemented for $(typeof(A))")
