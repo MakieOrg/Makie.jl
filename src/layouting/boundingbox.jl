@@ -29,7 +29,10 @@ function boundingbox(x::Atomic)
 end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
-raw_boundingbox(scene::Scene) = raw_boundingbox(plots_from_camera(scene))
+function raw_boundingbox(scene::Scene)
+    plots = plots_from_camera(scene)
+    raw_boundingbox([plots; scene.children])
+end
 function raw_boundingbox(plots::Vector)
     isempty(plots) && return FRect3D()
     plot_idx = iterate(plots)
