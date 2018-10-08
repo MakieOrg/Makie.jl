@@ -18,12 +18,6 @@ mutable struct Scene <: AbstractScene
     updated::Node{Bool}
 end
 
-update_callback2 = Ref{Function}() do update, scene
-    if update
-        center!(scene)
-    end
-    nothing
-end
 
 function Scene(
         events::Events,
@@ -62,7 +56,6 @@ function Scene(
     onany(updated, px_area) do update, px_area
         if update
             scale_scene!(scene);
-            yield(); yield();
             center!(scene);
         end
         nothing
@@ -93,7 +86,10 @@ getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
 
-child(scene::Scene) = Scene(scene, pixelarea(scene)[])
+
+zero_origin(area) = IRect(0, 0, widths(area))
+
+child(scene::Scene) = Scene(scene, lift(zero_origin, pixelarea(scene)))
 
 """
 Creates a subscene with a pixel camera

@@ -156,10 +156,9 @@ estimated_space(x, N, w) = 1/N
 
 function Base.resize!(scene::Scene, rect::Rect2D)
     pixelarea(scene)[] = rect
-    force_update!()
-    yield()
 end
-
+ispixelcam(x::Union{PixelCamera, Camera2D}) = true
+ispixelcam(x) = false
 
 function vbox(plots::Vector{T}; kw_args...) where T <: Scene
     N = length(plots)
@@ -173,6 +172,38 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Scene
             # TODO this is terrible!
             w2 = widths(a) .* Vec((1/N), 1)
             resize!(p, IRect(minimum(a) .+ Vec((idx - 1) * w2[1], 0), w2))
+            p.updated[] = true
+        end
+        push!(pscene.children, p)
+        nodes = map(fieldnames(Events)) do field
+            if field != :window_area
+                connect!(getfield(pscene.events, field), getfield(p.events, field))
+            end
+        end
+    end
+    pscene
+end
+hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
+function hbox(plots::Vector{T}; kw_args...) where T <: Scene
+    N = length(plots)
+    w = 0.0
+    pscene = Scene()
+    area = pixelarea(pscene)
+    sizes = lift(a-> layout_sizes(plots, widths(a), 2), area)
+    prefix_sum = lift(sizes) do s
+        last_s = 0.0
+        map(s) do x
+            r = last_s; last_s += x; return r
+        end
+    end
+    for idx in 1:N
+        p = plots[idx]
+        on(area) do a
+            h = sizes[][idx]
+            last = prefix_sum[][idx]
+            # TODO this is terrible!
+            w2 = Vec(widths(a)[1], h)
+            resize!(p, IRect(minimum(a) .+ Vec(0, last), w2))
             center!(p)
         end
         push!(pscene.children, p)
@@ -183,6 +214,60 @@ function vbox(plots::Vector{T}; kw_args...) where T <: Scene
         end
     end
     pscene
+end
+
+otherdim(dim) = dim == 1 ? 2 : 1
+
+
+function scaled_width(bb, other_size, dim)
+    wh = widths(bb)
+    scaling = other_size / wh[otherdim(dim)]
+    wh[dim] * scaling
+end
+
+function layout_sizes(scenes, size, dim)
+    odim = otherdim(dim)
+    this_size = size[dim]
+    other_size = size[odim]
+    N = length(scenes)
+    pix_size = 0.0 # combined height of pixel bbs
+    sizes = fill(-1.0, N)
+    scenepix = findall(s-> cameracontrols(s) isa Union{EmptyCamera, PixelCamera}, scenes)
+    perfect_size = this_size / N # equal size for all!
+    for i in scenepix
+        scene = scenes[i]
+        ds = widths(boundingbox(scene))[dim]
+        sizes[i] = ds
+        pix_size += ds
+    end
+    @show perfect_size
+    perfect_size = (this_size - pix_size) / (N - length(scenepix))
+    @show perfect_size
+    for i in 1:N
+        if sizes[i] == -1
+            sizes[i] = perfect_size
+        end
+    end
+    # npixies = length(scenes2d)
+    # # We should only use 1/N per window, so if the accumulated size is bigger
+    # # than that, we need to rescale the sizes
+    # max_pix_size = (this_size * (N / npixies))
+    # final_pix_size = pix_size
+    #
+    # if max_pix_size < pix_size
+    #     for i in scenes2d
+    #         sizes[i] = (sizes[i] / pix_size) * max_pix_size
+    #     end
+    #     final_pix_size = max_pix_size
+    # end
+    # nonpixel_size = (this_size - final_pix_size) / (N - npixies)
+    # for i in 1:N
+    #     if !(i in scenes2d)
+    #         sizes[i] = nonpixel_size
+    #     end
+    # end
+    println(sizes)
+    sizes
 end
 
 
