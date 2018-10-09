@@ -55,8 +55,9 @@ function Scene(
     end
     onany(updated, px_area) do update, px_area
         if update
-            scale_scene!(scene);
-            center!(scene);
+            a = scene.attributes
+            to_value(get(a, :center, false)) && center!(scene)
+            to_value(get(a, :scale_plot, false)) && scale_scene!(scene)
         end
         nothing
     end
@@ -276,12 +277,11 @@ function Scene(;
     events = Events()
     theme = current_default_theme(; kw_args...)
     resolution = theme[:resolution][]
-    v0 = IRect(0, 0, resolution)
-    px_area = lift(events.window_area) do w_area
-       wh = widths(w_area)
-       wh = any(x-> x ≈ 0.0, wh) ? widths(v0) : wh
-       v0 = IRect(0, 0, wh)
-       v0
+    px_area = Observable(IRect(0, 0, resolution))
+    on(events.window_area) do w_area
+        if !all(x-> x ≉ 0.0, widths(w_area)) && px_area[] != w_area
+            px_area[] = w_area
+        end
     end
     scene = Scene(
         events,
@@ -341,7 +341,7 @@ function Scene(parent::Scene, area; theme...)
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        merge(Attributes(theme), current_default_theme()),
+        current_default_theme(; theme...),
         Scene[],
         parent.current_screens,
         parent

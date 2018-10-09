@@ -16,10 +16,6 @@ function Base.display(::PlotDisplay, scene::Scene)
     if isempty(backend_displays)
         error("No backend display available. Make sure you're using a Plotting backend")
     end
-    scene.updated[] = true
-    force_update!()
-    yield()
-    # TODO integrate with mime system to select best available backend!
     display(first(backend_displays), scene)
 end
 

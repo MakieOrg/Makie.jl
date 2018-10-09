@@ -79,10 +79,17 @@ function plot!(slider::Slider)
     dragslider(slider, button)
 end
 
+function mouse_in_scene(scene)
+    p = rootparent(scene)
+    lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
+        Vec(mp) .- minimum(sa)
+    end
+end
+
 function dragslider(slider, button)
-    mpos = events(slider).mouseposition
+    mpos = mouse_in_scene(slider)
     drag_started = Ref(false)
-    startpos = Base.RefValue((0.0, 0.0))
+    startpos = Base.RefValue(Vec(0.0, 0.0))
     range = slider[1]
     @extract slider (value, sliderlength)
     on(events(slider).mousedrag) do drag
@@ -101,7 +108,7 @@ function dragslider(slider, button)
             end
         else
             drag_started[] = false
-            startpos[] = (0.0, 0.0)
+            startpos[] = Vec(0.0, 0.0)
         end
         return
     end

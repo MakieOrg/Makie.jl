@@ -149,10 +149,8 @@ function grid(plots::Matrix{<: Transformable}; kw_args...)
     pscene
 end
 
-vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 
 estimated_space(x, N, w) = 1/N
-
 
 function Base.resize!(scene::Scene, rect::Rect2D)
     pixelarea(scene)[] = rect
@@ -160,36 +158,28 @@ end
 ispixelcam(x::Union{PixelCamera, Camera2D}) = true
 ispixelcam(x) = false
 
-function vbox(plots::Vector{T}; kw_args...) where T <: Scene
-    N = length(plots)
-    w = 0.0
-    pscene = Scene()
-    area = pixelarea(pscene)
-
-    for idx in 1:N
-        p = plots[idx]
-        on(area) do a
-            # TODO this is terrible!
-            w2 = widths(a) .* Vec((1/N), 1)
-            resize!(p, IRect(minimum(a) .+ Vec((idx - 1) * w2[1], 0), w2))
-            p.updated[] = true
-        end
-        push!(pscene.children, p)
-        nodes = map(fieldnames(Events)) do field
-            if field != :window_area
-                connect!(getfield(pscene.events, field), getfield(p.events, field))
-            end
-        end
+function update!(p::Scene)
+    p.updated[] = true
+    for c in p.children
+        update!(c)
     end
-    pscene
 end
+
+vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
+
 function hbox(plots::Vector{T}; kw_args...) where T <: Scene
+    layout(plots, 2; kw_args...)
+end
+function vbox(plots::Vector{T}; kw_args...) where T <: Scene
+    layout(plots, 1; kw_args...)
+end
+function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
     N = length(plots)
     w = 0.0
     pscene = Scene()
     area = pixelarea(pscene)
-    sizes = lift(a-> layout_sizes(plots, widths(a), 2), area)
+    sizes = lift(a-> layout_sizes(plots, widths(a), dim), area)
     prefix_sum = lift(sizes) do s
         last_s = 0.0
         map(s) do x
@@ -201,10 +191,12 @@ function hbox(plots::Vector{T}; kw_args...) where T <: Scene
         on(area) do a
             h = sizes[][idx]
             last = prefix_sum[][idx]
+            mask = unit(Vec2f0, dim)
             # TODO this is terrible!
-            w2 = Vec(widths(a)[1], h)
-            resize!(p, IRect(minimum(a) .+ Vec(0, last), w2))
-            center!(p)
+            new_w = Vec2f0(ntuple(2) do i
+                i == dim ? h : widths(a)[i]
+            end)
+            resize!(p, IRect(minimum(a) .+ (mask .* last), new_w))
         end
         push!(pscene.children, p)
         nodes = map(fieldnames(Events)) do field
@@ -213,8 +205,10 @@ function hbox(plots::Vector{T}; kw_args...) where T <: Scene
             end
         end
     end
+    area[] = area[]
     pscene
 end
+
 
 otherdim(dim) = dim == 1 ? 2 : 1
 
@@ -240,18 +234,33 @@ function layout_sizes(scenes, size, dim)
         sizes[i] = ds
         pix_size += ds
     end
-    @show perfect_size
     perfect_size = (this_size - pix_size) / (N - length(scenepix))
-    @show perfect_size
     for i in 1:N
         if sizes[i] == -1
             sizes[i] = perfect_size
         end
     end
-    # npixies = length(scenes2d)
+    npixies = length(scenepix)
     # # We should only use 1/N per window, so if the accumulated size is bigger
     # # than that, we need to rescale the sizes
-    # max_pix_size = (this_size * (N / npixies))
+    total_size = sum(sizes)
+    if this_size != total_size # we need to rescale
+        # no pixelsizes or all pixelsizes, we can just resize everything
+        if npixies == 0 || npixies == N
+            for i in 1:N
+                sizes[i] = (sizes[i] / total_size) * this_size
+            end
+        else # we have a mix of pix + non pix sizes - only scale non pix
+            total_px_size = sum(sizes[scenepix])
+            # TODO too big total_px_size
+            remaining = total_size - total_px_size
+            space = this_size - total_px_size
+            for i in 1:N
+                (i in scenepix) && continue
+                sizes[i] = (sizes[i] / remaining) * space
+            end
+        end
+    end
     # final_pix_size = pix_size
     #
     # if max_pix_size < pix_size
@@ -266,7 +275,6 @@ function layout_sizes(scenes, size, dim)
     #         sizes[i] = nonpixel_size
     #     end
     # end
-    println(sizes)
     sizes
 end
 
