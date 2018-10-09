@@ -24,10 +24,12 @@ end
 
 
 function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
+    transp = get(data, :transparency, Node(false))
+    overdraw = get(data, :overdraw, Node(false))
     pre = if pre_fun != nothing
-        () -> (GLAbstraction.StandardPrerender(); pre_fun())
+        () -> (GLAbstraction.StandardPrerender(transp, overdraw); pre_fun())
     else
-        GLAbstraction.StandardPrerender()
+        GLAbstraction.StandardPrerender(transp, overdraw)
     end
     robj = RenderObject(data, program, pre, nothing, bb, nothing)
     post = if haskey(data, :instances)

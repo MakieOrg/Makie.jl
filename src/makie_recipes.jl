@@ -86,7 +86,11 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             RGBAf0(Colors.color(c), line ? alpha : 0.0)
         end
     end
-    volume!(plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7)
+    volume!(
+        plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
+        transparency = plot[:transparency],
+        overdraw = plot[:overdraw]
+    )
 end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
