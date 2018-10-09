@@ -74,13 +74,14 @@ function Base.resize!(screen::Screen, w, h)
     fb = screen.framebuffer
     resize!(fb, (w, h))
 end
+using InteractiveUtils
 
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
-    resize!(screen, widths(AbstractPlotting.pixelarea(scene)[])...)
+    resize!(screen, size(scene)...)
     register_callbacks(scene, to_native(screen))
     insertplots!(screen, scene)
-    force_update!()
+    AbstractPlotting.update!(scene)
     return
 end
 
@@ -163,7 +164,7 @@ end
 
 const _global_gl_screen = Ref{Screen}()
 
-function Screen(;resolution = (10, 10), visible = true, kw_args...)
+function Screen(; resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
             isopen(elem) && destroy!(elem)
