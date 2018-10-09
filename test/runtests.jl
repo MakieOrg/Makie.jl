@@ -106,6 +106,12 @@ end
 
 include("visualregression.jl")
 
+
+test_diff_path = joinpath(dirname(pathof(Makie)), "..", "test", "testresults")
+
+rm(test_diff_path, force = true, recursive = true)
+mkpath(test_diff_path)
+
 function test_examples(record, tags...; kw_args...)
     Random.seed!(42)
     @testset "Visual Regression" begin
@@ -116,7 +122,10 @@ function test_examples(record, tags...; kw_args...)
                 @testset "$(example.title):" begin
                     diff = approx_difference(image, refimage, sigma, eps)
                     if diff >= maxdiff
-                        save(Pkg.dir("Makie", "test", "testresults", "$(example.unique_name)_differ.jpg"), hcat(image, refimage))
+                        save(
+                            joinpath(test_diff_path, "$(example.unique_name)_differ.jpg"),
+                            hcat(image, refimage)
+                        )
                     end
                     @test diff < maxdiff
                 end
