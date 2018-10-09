@@ -37,11 +37,10 @@
         arrows!(x, y, u, v, arrowsize = 0.05)
     end
     @cell "image" [image] begin
-        AbstractPlotting.vbox(
+        AbstractPlotting.hbox(
             image(Makie.logo(), scale_plot = false),
             image(rand(100, 500), scale_plot = false),
         )
-
     end
     @cell "scatter colormap" [scatter, colormap] begin
         scatter(rand(10), rand(10), color = rand(10))
@@ -104,13 +103,18 @@
         )
     end
     @cell "heatmap interpolation" [heatmap, interpolate, subscene] begin
+        using AbstractPlotting: hbox, vbox
         data = rand(100, 50)
         p1 = heatmap(data, interpolate = true)
         p2 = heatmap(data, interpolate = false)
-        scene = AbstractPlotting.vbox(p1, p2)
-        text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-        text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-        scene
+        title1 = text("Interpolate = true", align = (:left, :bottom), raw = true)
+        campixel!(title1)
+        title2 = text("Interpolate = false", align = (:left, :bottom), raw = true)
+        campixel!(title2)
+        s = vbox(
+            hbox(p1, title1),
+            hbox(p2, title2),
+        )
     end
     @cell "colored triangle" [polygon] begin
         poly(
