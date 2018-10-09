@@ -324,6 +324,7 @@ function makieshader(paths...)
         fragdatalocation = [(0, "fragment_color"), (1, "fragment_groupid")]
     )
 end
+
 function volume_prerender()
     glEnable(GL_DEPTH_TEST)
     glDepthMask(GL_TRUE)
@@ -363,7 +364,11 @@ function surface_contours(volume::Volume)
         :fxaa => true
     )
     bb = lift(m-> m * hull, model)
-    robj = RenderObject(gl_data, shader, volume_prerender, bb)
+    vp = GLVisualize.VolumePrerender(
+        lift(identity, volume[:transparency]),
+        lift(identity, volume[:overdraw])
+    )
+    robj = RenderObject(gl_data, shader, vp, bb)
     robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
     robj
 end

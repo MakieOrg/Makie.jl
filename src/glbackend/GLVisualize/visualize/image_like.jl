@@ -225,10 +225,15 @@ function _default(a::VolumeTypes{T}, s::Style{:absorption}, data::Dict) where T<
     _default(a, default_style, data)
 end
 
+using .GLAbstraction: StandardPrerender
+
 struct VolumePrerender
+    sp::StandardPrerender
 end
-function (::VolumePrerender)()
-    GLAbstraction.StandardPrerender()()
+VolumePrerender(a, b) = VolumePrerender(StandardPrerender(a, b))
+
+function (x::VolumePrerender)()
+    x.sp()
     glEnable(GL_CULL_FACE)
     glCullFace(GL_FRONT)
 end
@@ -251,7 +256,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeE
         isovalue         = 0.5f0
         isorange         = 0.01f0
         shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender()
+        prerender        = VolumePrerender(data[:transparency], data[:overdraw])
         postrender       = () -> begin
             glDisable(GL_CULL_FACE)
         end
