@@ -20,17 +20,21 @@ end
 
 
 function setup!(screen)
+    glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
         for (id, rect, clear, color) in screen.screens
             a = rect[]
-            glViewport(minimum(a)..., widths(a)...)
+            rt = (minimum(a)..., widths(a)...)
+            glViewport(rt...)
             if clear[]
                 c = color[]
+                glScissor(rt...)
                 glClearColor(red(c), green(c), blue(c), alpha(c))
                 glClear(GL_COLOR_BUFFER_BIT)
             end
         end
     end
+    glDisable(GL_SCISSOR_TEST)
     return
 end
 
@@ -55,7 +59,6 @@ function render_frame(screen::Screen)
     setup!(screen)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     GLAbstraction.render(screen, true)
-
     # transfer color to luma buffer and apply fxaa
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
     glDrawBuffer(GL_COLOR_ATTACHMENT0)

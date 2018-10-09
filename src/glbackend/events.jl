@@ -67,7 +67,7 @@ function window_area(scene::Scene, window)
     @csafe function windowposition(window, x::Cint, y::Cint)
         rect = event[]
         if minimum(rect) != Vec(x, y)
-            event[] = IRect(x, y, widths(rect))
+            event[] = IRect(x, y, framebuffer_size(window))
         end
     end
     @csafe function windowsize(window, w::Cint, h::Cint)
