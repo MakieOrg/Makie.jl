@@ -54,7 +54,7 @@ function Scene(
         return
     end
     onany(updated, px_area) do update, px_area
-        if update
+        if update && !(scene.camera_controls[] isa PixelCamera)
             a = scene.attributes
             to_value(get(a, :center, false)) && center!(scene)
             to_value(get(a, :scale_plot, false)) && scale_scene!(scene)

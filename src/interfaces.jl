@@ -397,11 +397,14 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     push!(scene.plots, plot_object)
 
     scene[:raw][] || update_limits!(scene)
-    scene[:raw][] || setup_camera!(scene)
+    (!scene[:raw][] || scene[:camera][] != automatic) && setup_camera!(scene)
     scene[:raw][] || add_axis!(scene)
     # ! ∘ isaxis --> (x)-> !isaxis(x)
     # move axis to front, so that scene[end] gives back the last plot and not the axis!
-    sort!(scene.plots, by = (!) ∘ isaxis)
+    if !isempty(scene.plots) && isaxis(last(scene.plots))
+        axis = pop!(scene.plots)
+        pushfirst!(scene.plots, axis)
+    end
     #compose_plot!(scene)
     # call the assembly recipe, that also adds this to the scene
     # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
@@ -420,13 +423,6 @@ end
 
 Base.getindex(scene::Scene, key::Symbol) = scene.attributes[key]
 
-function compose_plot!(scene::Scene)
-    update_limits!(scene)
-    add_axis!(scene)
-    setup_camera!(scene)
-    scale_scene!(scene)
-    # add_labels!(scene)
-end
 
 function scale_scene!(scene)
     if is2d(scene)
