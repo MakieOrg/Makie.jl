@@ -102,15 +102,14 @@
             shading = false
         )
     end
-    @cell "heatmap interpolation" [heatmap, interpolate, subscene] begin
+    @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme] begin
         using AbstractPlotting: hbox, vbox
         data = rand(100, 50)
         p1 = heatmap(data, interpolate = true)
         p2 = heatmap(data, interpolate = false)
-        title1 = text("Interpolate = true", align = (:left, :bottom), raw = true)
-        campixel!(title1)
-        title2 = text("Interpolate = false", align = (:left, :bottom), raw = true)
-        campixel!(title2)
+        t = Theme(align = (:left, :bottom), raw = true, camera = campixel!)
+        title1 = text(t, "Interpolate = true")
+        title2 = text(t, "Interpolate = false")
         s = vbox(
             hbox(p1, title1),
             hbox(p2, title2),
