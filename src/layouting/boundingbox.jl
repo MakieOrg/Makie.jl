@@ -30,8 +30,16 @@ end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
 function raw_boundingbox(scene::Scene)
-    plots = plots_from_camera(scene)
-    raw_boundingbox([plots; scene.children])
+    if cameracontrols(scene) == EmptyCamera()
+        # Empty camera means this is a parent scene that itself doesn't display anything
+        return raw_boundingbox(scene.children)
+    else
+        plots = plots_from_camera(scene)
+        children = filter(scene.children) do child
+            child.camera == scene.camera
+        end
+        return raw_boundingbox([plots; children])
+    end
 end
 function raw_boundingbox(plots::Vector)
     isempty(plots) && return FRect3D()

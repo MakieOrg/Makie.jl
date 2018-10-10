@@ -254,8 +254,10 @@ end
 
 struct PixelCamera <: AbstractCamera end
 function campixel!(scene)
+    scene.updated = Node(false)
     camera(scene).view[] = Mat4f0(I)
-    on(camera(scene), pixelarea(scene)) do window_size
+    update_once = Observable(false)
+    on(camera(scene), update_once, pixelarea(scene)) do u, window_size
         nearclip = -10_000f0
         farclip = 10_000f0
         w, h = Float32.(widths(window_size))
@@ -265,5 +267,6 @@ function campixel!(scene)
     end
     cam = PixelCamera()
     cameracontrols!(scene, cam)
+    update_once[] = true
     cam
 end
