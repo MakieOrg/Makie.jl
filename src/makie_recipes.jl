@@ -58,9 +58,11 @@ to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
     range(cnorm[1], stop = cnorm[2], length = x)
 end
+import AbstractPlotting: convert_arguments
+convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
+convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
+convert_arguments(::Type{<: Contour}, data::AbstractMatrix) = convert_arguments(Heatmap, data)
 
-AbstractPlotting.convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
-AbstractPlotting.convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (color, levels, linewidth, alpha)
@@ -101,7 +103,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         result = lift(x, y, z, plot[:levels]) do x, y, z, levels
             t = eltype(z)
             levels = round(Int, levels)
-            contours = Contours.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
+            contours = Contours.contours(to_vector(y, size(z, 2), t), to_vector(x, size(z, 1), t), z', levels)
             cols = AbstractPlotting.resampled_colors(plot, levels)
             contourlines(T, contours, cols)
         end
