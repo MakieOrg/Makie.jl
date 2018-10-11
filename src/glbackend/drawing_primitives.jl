@@ -209,7 +209,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = (to_value.((x[1], x[2])))
         heatmap = lift(x[3]) do z
-            [GLVisualize.Intensity{Float32}(z[j, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
+            [GLVisualize.Intensity{Float32}(z[size(z, 1) - j + 1, i]) for i = 1:size(z, 2), j = 1:size(z, 1)]
         end
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
