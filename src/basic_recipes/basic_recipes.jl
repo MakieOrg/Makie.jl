@@ -410,8 +410,12 @@ end
 
 convert_arguments(P::Type{<:AbstractPlot}, f::Function) = convert_arguments(P, f, -5, 5)
 convert_arguments(P::Type{<:AbstractPlot}, f::Function, r) = convert_arguments(P, r, f.(r))
-convert_arguments(P::Type{<:AbstractPlot}, f::Function, min, max) =
+
+function convert_arguments(P::Type{<:AbstractPlot}, f::Function, min::Number, max::Number)
     convert_arguments(P, f, PlotUtils.adapted_grid(f, (min, max)))
+end
+
+
 
 @recipe(ScatterLines) do scene
     Theme()
