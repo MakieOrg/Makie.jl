@@ -310,6 +310,13 @@ end
 Base.broadcastable(x::Key) = (x,)
 
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
+function to_vector(x::AbstractArray, len, T)
+    if length(x) in size(x) # assert that just one dim != 1
+        to_vector(vec(x), len, T)
+    else
+        error("Can't convert to a Vector. Please supply a range/vector/interval")
+    end
+end
 function to_vector(x::ClosedInterval, len, T)
     a, b = T.(extrema(x))
     range(a, stop=b, length=len)
