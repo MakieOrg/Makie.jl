@@ -24,10 +24,8 @@ const minimal_default = Attributes(
 const _current_default_theme = copy(minimal_default)
 
 function current_default_theme(; kw_args...)
-    c = Attributes(map(pairs(_current_default_theme)) do kw
-        kw[1] => kw[2][] # make a copy
-    end)
-    merge(c, Attributes(;kw_args...))
+    new_theme, rest = merge_attributes!(Attributes(kw_args), _current_default_theme)
+    new_theme
 end
 
 function set_theme!(new_theme::Attributes)
