@@ -164,7 +164,12 @@ end
 Base.broadcastable(x::AbstractScene) = Ref(x)
 Base.broadcastable(x::AbstractPlot) = Ref(x)
 Base.broadcastable(x::Attributes) = Ref(x)
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, pair[2], pair[1]))
+
+
+value_convert(@nospecialize(x)) = x
+value_convert(x::NamedTuple) = Attributes(x)
+
+node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, value_convert(pair[2]), pair[1]))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 Base.convert(::Type{<: Node}, x) = Node(x)
 Base.convert(::Type{T}, x::T) where T <: Node = x
@@ -173,6 +178,7 @@ Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
+Attributes(nt::NamedTuple) = Attributes(; nt...)
 
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
