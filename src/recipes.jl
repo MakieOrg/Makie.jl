@@ -1,5 +1,60 @@
 to_func_name(x::Symbol) = string(x) |> lowercase |> Symbol
 
+
+
+"""
+     default_plot_signatures(funcname, PlotType)
+Creates all the different overloads for `funcname` that need to be supported for the plotting frontend!
+Since we add all these signatures to different functions, we make it reusable with this function
+"""
+function default_plot_signatures(funcname, funcname!, PlotType)
+    quote
+        """
+            $($(funcname))(args...; attributes...)
+
+        Command works on plot args 1:N and accepts keyword arguments to style the plot. Creates a new scene!
+        """
+        ($funcname)(args...; attributes...) = plot!(Scene(), $PlotType, Attributes(attributes), args...)
+
+        """
+            $($(funcname!))(args...; attributes...)
+
+        Command works on plot args 1:N and accepts keyword arguments to style the plot. Adds new plot to `current_scene()`
+        """
+        ($funcname!)(args...; attributes...) = plot!(current_scene(), $PlotType, Attributes(attributes), args...)
+
+
+        """
+            $($(funcname!))(scene::SceneLike, args...; attributes...)
+
+        Command works on plot args 1:N and accepts keyword arguments to style the plot. Adds new plot to `scene`!
+        """
+        ($funcname!)(scene::SceneLike, args...; attributes...) = plot!(scene, $PlotType, Attributes(attributes), args...)
+
+        """
+            $($(funcname))(attributes::Attributes, args...; attributes...)
+
+        Like $($(funcname))(args...; attributes...) but accepts a theme as first argument. Creates a new scene!
+        """
+        ($funcname)(attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+
+        """
+            $($(funcname!))(attributes::Attributes, args...; attributes...)
+
+        Like $($(funcname!))(args...; attributes...) but accepts a theme as first argument. Adds new plot to `current_scene()`!
+        """
+        ($funcname!)(attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+
+        """
+            $($(funcname!))(attributes::Attributes, args...; attributes...)
+
+        Like $($(funcname!))(scene, args...; attributes...) but accepts a theme as second argument. Adds new plot to `scene`!
+        """
+        ($funcname!)(scene::SceneLike, attributes::Attributes, args...; kw_attributes...) = plot!(scene, $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+    end
+end
+
+
 """
 
 # type recipe are really simple and just overload the argument conversion pipeline.
@@ -64,55 +119,40 @@ function plot!(plot::MyVolume)
 end
 """
 macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
-    funcname = to_func_name(Tsym)
-    funcname! = esc(Symbol("$(funcname)!"))
-    T = esc(Tsym)
-    funcname = esc(funcname)
+    funcname_sym = to_func_name(Tsym)
+    funcname! = esc(Symbol("$(funcname_sym)!"))
+    PlotType = esc(Tsym)
+    funcname = esc(funcname_sym)
     expr = quote
-        $funcname() = not_implemented_for($funcname)
+        $(funcname)() = not_implemented_for($funcname)
         if !@isdefined($(Tsym))# make this work with interactive usage
-            const $(T){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
+            const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
         end
-        Base.show(io::IO, ::Type{<: $T}) = print(io, $(string(Tsym)), "{...}")
-        $funcname(args...; attributes...) = plot($T, args...; attributes...)
-        $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)
-        $funcname(attributes::Attributes, args...) = plot($T, attributes, args...)
-        $funcname!(scene::SceneLike, attributes::Attributes, args...) = plot!(scene, $T, attributes, args...)
-        $funcname!(attributes::Attributes, args...) = plot!(current_scene(), $T, attributes, args...)
-        $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
-
+        Base.show(io::IO, ::Type{<: $PlotType}) = print(io, $(string(Tsym)), "{...}")
+        $(default_plot_signatures(funcname, funcname!, PlotType))
         Base.@__doc__($funcname)
-        AbstractPlotting.default_theme(scene, ::Type{<: $T}) = $(esc(theme_func))(scene)
-
-        export $T, $funcname, $funcname!
+        AbstractPlotting.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
+        export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
-        push!(expr.args, :($(esc(:argument_names))(::Type{<: $T}, len::Integer) = $args))
+        push!(expr.args, :($(esc(:argument_names))(::Type{<: $PlotType}, len::Integer) = $args))
     end
     expr
 end
 
 
 macro atomic(theme_func, Tsym::Symbol)
-    funcname = to_func_name(Tsym)
-    funcname! = esc(Symbol("$(funcname)!"))
-    T = esc(Tsym)
-    funcname = esc(funcname)
+    funcname_sym = to_func_name(Tsym)
+    funcname! = esc(Symbol("$(funcname_sym)!"))
+    PlotType = esc(Tsym)
+    funcname = esc(funcname_sym)
     quote
-        $funcname() = not_implemented_for($funcname)
+        $(funcname)() = not_implemented_for($funcname)
         Base.@__doc__($funcname)
-        const $T{$(esc(:ArgType))} = Atomic{$funcname, $(esc(:ArgType))}
-        Base.show(io::IO, ::Type{<: $T}) = print(io, $(string(Tsym)), "{...}")
-        $funcname(args...; attributes...) = plot($T, args...; attributes...)
-        $funcname!(scene::SceneLike, args...; attributes...) = plot!(scene, $T, args...; attributes...)
-        $funcname(attributes::Attributes, args...) = plot($T, attributes, args...)
-        $funcname!(scene::SceneLike, attributes::Attributes, args...) = plot!(scene, $T, attributes, args...)
-
-        $funcname!(attributes::Attributes, args...) = plot!(current_scene(), $T, attributes, args...)
-        $funcname!(args...; kw_args...) = plot!(current_scene(), $T, Attributes(kw_args), args...)
-
-        AbstractPlotting.default_theme(scene, ::Type{<: $T}) = $theme_func(scene)
-
-        export $T, $funcname, $funcname!
+        const $PlotType{$(esc(:ArgType))} = Atomic{$funcname, $(esc(:ArgType))}
+        Base.show(io::IO, ::Type{<: $PlotType}) = print(io, $(string(Tsym)), "{...}")
+        $(default_plot_signatures(funcname, funcname!, PlotType))
+        AbstractPlotting.default_theme(scene, ::Type{<: $PlotType}) = $theme_func(scene)
+        export $PlotType, $funcname, $funcname!
     end
 end
