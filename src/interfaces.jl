@@ -362,7 +362,7 @@ Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1, T2}
 end
 
 # all the plotting functions that get a plot type
-const PlotFunc = Union{Any, AbstractPlot}
+const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
 plot(P::PlotFunc, args...; kw_attributes...) = plot!(Scene(), P, Attributes(kw_attributes), args...)
 plot!(P::PlotFunc, args...; kw_attributes...) = plot!(current_scene(), P, Attributes(kw_attributes), args...)
@@ -389,6 +389,14 @@ end
 
 plot!(p::Atomic) = p
 
+function plot!(p::Combined{Any, T}) where T
+    args = (T.parameters...,)
+    typed_args = join(string.("::", args), ", ")
+    error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(plot::Plot$((T.parameters...,)))")
+end
+
+
+
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)
@@ -399,6 +407,7 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     # transfer the merged attributes from theme and user defined to the scene
     merge!(scene.attributes, attributes)
     # call user defined recipe overload to fill the plot type
+    println(typeof(plot_object))
     plot!(plot_object)
     push!(scene.plots, plot_object)
 
