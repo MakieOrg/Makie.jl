@@ -348,7 +348,9 @@ e.g.:
 """
 plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}}
 
-
+"""
+Returns the Combined type that represents the signature of `args`.
+"""
 function Plot(args::Vararg{Any, N}) where N
     Combined{Any, <: Tuple{args...}}
 end
@@ -358,24 +360,28 @@ end
 Base.@pure function Plot(::Type{T1}, ::Type{T2}) where {T1, T2}
     Combined{Any, <: Tuple{T1, T2}}
 end
-# creates a new scene
-plot(args...; kw_args...) = plot!(Scene(), Any, args...; kw_args...)
-plot(P::Type, args...; kw_args...) = plot!(Scene(), P, args...; kw_args...)
 
-# creates a new childscene
-plot(scene::SceneLike, args...; kw_args...) = plot!(Scene(scene), Any, args...; kw_args...)
-plot(scene::SceneLike, P::Type, args...; kw_args...) = plot!(Scene(scene), P, args...; kw_args...)
+# all the plotting functions that get a plot type
+const PlotFunc = Union{Any, AbstractPlot}
 
-# plots to global current scene
-plot!(args...; kw_args...) = plot!(current_scene(), Any, args...; kw_args...)
-plot!(P::Type, args...; kw_args...) = plot!(current_scene(), P, Attributes(kw_args), args...)
-plot!(P::Type, attributes::Attributes, args...) = plot!(current_scene(), P, attributes, args...)
+plot(P::PlotFunc, args...; kw_attributes...) = plot!(Scene(), P, Attributes(kw_attributes), args...)
+plot!(P::PlotFunc, args...; kw_attributes...) = plot!(current_scene(), P, Attributes(kw_attributes), args...)
+plot(scene::SceneLike, P::PlotFunc, args...; kw_attributes...) = plot!(Scene(scene), P, Attributes(kw_attributes), args...)
+plot!(scene::SceneLike, P::PlotFunc, args...; kw_attributes...) = plot!(scene, P, Attributes(kw_attributes), args...)
+
+plot(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(scene), P, merge!(Attributes(kw_attributes), attributes), args...)
+plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(scene, P, merge!(Attributes(kw_attributes), attributes), args...)
+plot!(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
+plot(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
+
+# Overload remaining functions
+eval(default_plot_signatures(:plot, :plot!, :Any))
 
 # plots to scene
-plot!(scene::SceneLike, args...; kw_args...) = plot!(scene, Any, args...; kw_args...)
-plot!(scene::SceneLike, P::Type, args...; kw_args...) = plot!(scene, P, Attributes(kw_args), args...)
 
-
+"""
+Main plotting signatures that plot/plot! route to if no Plot Type is given
+"""
 function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     PlotType = plottype(to_value.(args)...)
     plot!(scene, PlotType, attributes, args...)
@@ -383,7 +389,7 @@ end
 
 plot!(p::Atomic) = p
 
-function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
+function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)
 
@@ -412,7 +418,7 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     scene
 end
 
-function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType
+function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)
     # call user defined recipe overload to fill the plot type

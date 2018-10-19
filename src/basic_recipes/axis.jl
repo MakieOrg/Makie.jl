@@ -431,7 +431,9 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     ti_args = getindex.(Ref(cplot[:names]), ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
+
     linebuffer = LinesegmentBuffer(cplot, Point{2})
+
     map_once(
         draw_axis2d,
         to_node(textbuffer), to_node(linebuffer), transformationmatrix(scene),
@@ -439,6 +441,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
+
     return cplot
 end
 
