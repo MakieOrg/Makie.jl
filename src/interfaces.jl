@@ -407,7 +407,6 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     # transfer the merged attributes from theme and user defined to the scene
     merge!(scene.attributes, attributes)
     # call user defined recipe overload to fill the plot type
-    println(typeof(plot_object))
     plot!(plot_object)
     push!(scene.plots, plot_object)
 
@@ -453,7 +452,6 @@ function scale_scene!(scene)
     return scene
 end
 
-# Composition recipes - putting all the higher level functionality together:
 function setup_camera!(scene::Scene)
     if scene[:camera][] == automatic
         cam = cameracontrols(scene)
