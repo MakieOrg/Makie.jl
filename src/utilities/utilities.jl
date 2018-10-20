@@ -18,7 +18,7 @@ function interpolated_getindex(cmap::AbstractArray{T}, value::AbstractFloat, nor
 end
 
 function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
-    interpolated_getindex.((value(colormap),), image, (value(colorrange),))
+    interpolated_getindex.((to_value(colormap),), image, (to_value(colorrange),))
 end
 
 """
@@ -150,17 +150,17 @@ macro get_attribute(scene, args)
     extract_expr(get_attribute, scene, args)
 end
 
-@inline getindex_value(x::Union{Dict, Attributes, AbstractPlot}, key::Symbol) = value(x[key])
-@inline getindex_value(x, key::Symbol) = value(getfield(x, key))
+@inline getindex_value(x::Union{Dict, Attributes, AbstractPlot}, key::Symbol) = to_value(x[key])
+@inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
 """
 usage @extractvalue scene (a, b, c, d)
 will become:
 ```example
 begin
-    a = value(scene[:a])
-    b = value(scene[:b])
-    c = value(scene[:c])
+    a = to_value(scene[:a])
+    b = to_value(scene[:b])
+    c = to_value(scene[:c])
     (a, b, c)
 end
 ```
@@ -190,7 +190,7 @@ function broadcast_foreach(f, args...)
     lengths = bs_length.(args)
     maxlen = maximum(lengths)
     # all non scalars should have same length
-    if any(x-> !(x in (1, maxlen)), lengths)
+    if any(x-> !(x in (0, 1, maxlen)), lengths)
         error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
     end
     for i in 1:maxlen
@@ -243,22 +243,20 @@ dim2(x::NTuple{2, Any}) = x
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 
-
-
 function merge_attributes!(input, theme, rest = Attributes(), merged = Attributes())
     for key in union(keys(input), keys(theme))
         if haskey(input, key) && haskey(theme, key)
             val = input[key]
-            if isa(value(val), Attributes)
+            if isa(to_value(val), Attributes)
                 # special casing having an empty dict of attributes, so that one can just do the following in a theme:
                 # t = Theme(lineplot_style = Attributes())
                 # lines!(scene, t[:lineplot_style], args...)
                 # TODO is this okay!?
                 if isempty(theme[key])
-                    merged[key] = value(val)
+                    merged[key] = to_value(val)
                 else
                     merged[key] = Attributes()
-                    merge_attributes!(value(val), value(theme[key]), rest, value(merged[key]))
+                    merge_attributes!(to_value(val), to_value(theme[key]), rest, to_value(merged[key]))
                 end
             else
                 merged[key] = val
@@ -267,7 +265,7 @@ function merge_attributes!(input, theme, rest = Attributes(), merged = Attribute
             rest[key] = input[key]
         else # haskey(theme) must be true!
             val = theme[key]
-            if isa(value(val), Attributes)
+            if isa(to_value(val), Attributes)
                 merged[key] = val
             else
                 merged[key] = lift(identity, val, typ = Any) # lift identity -> copy signal
@@ -286,14 +284,14 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
     if haskey(theme(scene), key)
         # we need to merge theme(scene) with the defaults, because it might be an incomplete theme
         # TODO have a mark that says "theme uncomplete" and only then get the defaults
-        merge!(d, value(theme(scene, key)))
+        merge!(d, to_value(theme(scene, key)))
     end
     theme(scene)[key] = d
     return merge_attributes!(input, d)
 end
 
 function assemble(theme::SceneLike, ::Type{Any}, attributes::Attributes, args)
-    unlifted = value.(args)
+    unlifted = to_value.(args)
     # that we calculate the plot type on the unlifted nodes means, that you can't
     # change the plot type by supplying different arguments for signals
     PlotType = plottype(unlifted...)
@@ -312,6 +310,13 @@ end
 Base.broadcastable(x::Key) = (x,)
 
 to_vector(x::AbstractVector, len, T) = convert(Vector{T}, x)
+function to_vector(x::AbstractArray, len, T)
+    if length(x) in size(x) # assert that just one dim != 1
+        to_vector(vec(x), len, T)
+    else
+        error("Can't convert to a Vector. Please supply a range/vector/interval")
+    end
+end
 function to_vector(x::ClosedInterval, len, T)
     a, b = T.(extrema(x))
     range(a, stop=b, length=len)

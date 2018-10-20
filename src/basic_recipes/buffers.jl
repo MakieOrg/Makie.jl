@@ -37,10 +37,8 @@ end
 function finish!(lsb::LineSegments)
     # update the signal!
     lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
-    # Yield to allow Reactive to update values...
-    # TODO checkout if this is the savest and best way
+    # lsb[:color][] = lsb[:color][]
+    # lsb[:linewidth][] = lsb[:linewidth][]
     return
 end
 
@@ -67,10 +65,7 @@ function TextBuffer(
 end
 
 function start!(tb::Annotations)
-    for i = 1:2
-        resize!(tb[i][], 0)
-    end
-    for key in (:color, :rotation, :textsize, :font, :align)
+    for key in (1, 2, :color, :rotation, :textsize, :font, :align)
         resize!(tb[key][], 0)
     end
     return
@@ -78,18 +73,18 @@ end
 
 function finish!(tb::Annotations)
     #update the signal!
-    for i = 1:2
-        tb[i][] = tb[i][]
+    # now update all callbacks
+    # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
+    # in basic_recipes annotations should depend on all signals here, so updating one should be enough
+    if length(tb[1][]) != length(tb[2][]) || length(tb[1][]) != length(tb[:textsize][])
+        error("Inconsistent buffer state for $(tb[1][])")
     end
-    for key in (:color, :rotation, :textsize, :font, :align)
-        tb[key][] = tb[key][]
-    end
+    tb[1][] = tb[1][]
     return
 end
 
 
-function push!(tb::Annotations, text::String, position; kw_args...)
-    N = length(position)
+function push!(tb::Annotations, text::String, position::NVec{N}; kw_args...) where N
     append!(tb, [text], Point{N, Float32}[position]; kw_args...)
 end
 

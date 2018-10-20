@@ -1,5 +1,6 @@
 
 mutable struct Scene <: AbstractScene
+    parent
     events::Events
 
     px_area::Node{IRect2D}
@@ -11,54 +12,68 @@ mutable struct Scene <: AbstractScene
 
     plots::Vector{AbstractPlot}
     theme::Attributes
+    attributes::Attributes
     children::Vector{Scene}
     current_screens::Vector{AbstractScreen}
+    updated::Node{Bool}
+end
 
-    function Scene(
-            events::Events,
-            px_area::Node{IRect2D},
-            camera::Camera,
-            camera_controls::RefValue,
-            limits::Node,
-            transformation::Transformation,
-            plots::Vector{AbstractPlot},
-            theme::Attributes,
-            children::Vector{Scene},
-            current_screens::Vector{AbstractScreen},
-        )
-        obj = new(events, px_area, camera, camera_controls, limits, transformation, plots, theme, children, current_screens)
-        finalizer(obj) do obj
-            # save_print("Freeing scene")
-            close_all_nodes(obj.events)
-            close_all_nodes(obj.transformation)
-            for field in (:px_area, :limits)
-                close(getfield(obj, field), true)
-            end
-            disconnect!(obj.camera)
-            empty!(obj.theme)
-            empty!(obj.children)
-            empty!(obj.current_screens)
-            return
+
+function Scene(
+        events::Events,
+        px_area::Node{IRect2D},
+        camera::Camera,
+        camera_controls::RefValue,
+        limits::Node,
+        transformation::Transformation,
+        plots::Vector{AbstractPlot},
+        theme::Attributes,
+        children::Vector{Scene},
+        current_screens::Vector{AbstractScreen},
+        parent = nothing,
+    )
+    updated = Node(false)
+
+    scene = Scene(
+        parent, events, px_area, camera, camera_controls, limits,
+        transformation, plots, theme, Attributes(),
+        children, current_screens, updated
+    )
+    finalizer(scene) do scene
+        # save_print("Freeing scene")
+        close_all_nodes(scene.events)
+        close_all_nodes(scene.transformation)
+        for field in (:px_area, :limits)
+            close(getfield(scene, field))
         end
-        obj
+        disconnect!(scene.camera)
+        empty!(scene.theme)
+        empty!(scene.attributes)
+        empty!(scene.children)
+        empty!(scene.current_screens)
+        return
     end
+    onany(updated, px_area) do update, px_area
+        if update && !(scene.camera_controls[] isa PixelCamera)
+            a = scene.attributes
+            to_value(get(a, :center, false)) && center!(scene)
+            to_value(get(a, :scale_plot, false)) && scale_scene!(scene)
+        end
+        nothing
+    end
+    scene
 end
 
-function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
-    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
-    println(io, "events:")
-    for field in fieldnames(Events)
-        println(io, "    ", field, ": ", to_value(getfield(scene.events, field)))
+Base.parent(scene::Scene) = scene.parent
+isroot(scene::Scene) = parent(scene) === nothing
+function root(scene::Scene)
+    while !isroot(scene)
+        scene = parent(scene)
     end
-    println(io, "plots:")
-    for plot in scene.plots
-        println(io, "   *", typeof(plot))
-    end
-    println(io, "subscenes:")
-    for subscene in scene.children
-        println(io, "   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
-    end
+    scene
 end
+parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
+
 
 Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
 Base.size(x::Scene, i) = size(x)[i]
@@ -72,7 +87,10 @@ getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
 
-child(scene::Scene) = Scene(scene, value(pixelarea(scene)))
+
+zero_origin(area) = IRect(0, 0, widths(area))
+
+child(scene::Scene) = Scene(scene, lift(zero_origin, pixelarea(scene)))
 
 """
 Creates a subscene with a pixel camera
@@ -113,7 +131,7 @@ end
 function Base.empty!(scene::Scene)
     empty!(scene.plots)
     disconnect!(scene.camera)
-    scene.limits[] = FRect3D(Vec3f0(0), Vec3f0(0))
+    scene.limits[] = FRect3D()
     scene.camera_controls[] = EmptyCamera()
     empty!(scene.theme)
     merge!(scene.theme, _current_default_theme)
@@ -147,7 +165,7 @@ function Base.push!(scene::Scene, plot::Combined)
     end
 end
 
-function connect!(scene::Scene, child::Scene)
+function Observables.connect!(scene::Scene, child::Scene)
 
 end
 
@@ -180,11 +198,19 @@ pixelarea(scene::SceneLike) = pixelarea(scene.parent)
 plots(scene::SceneLike) = scene.plots
 
 const _forced_update_scheduled = Ref(false)
+
+"""
+Returns wether a scene needs updating
+"""
 function must_update()
     val = _forced_update_scheduled[]
     _forced_update_scheduled[] = false
     val
 end
+
+"""
+Forces to rerender the scnee
+"""
 function force_update!()
     _forced_update_scheduled[] = true
 end
@@ -206,6 +232,10 @@ else
     _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
 end
 
+"""
+Returns the resolution of the primary monitor.
+If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
+"""
 function primary_resolution()
     # Since this is pretty low level and os specific + we can't test on all possible
     # computers, I assume we'll have bugs here. Let's not sweat about it too much,
@@ -214,13 +244,22 @@ function primary_resolution()
     try
         _primary_resolution()
     catch e
-        warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
+        @warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
         Error: $(sprint(io->showerror(io, e))).")
         (1920, 1080)
     end
 end
+
+"""
+Returns a reasonable resolution for the main monitor.
+(right now just half the resolution of the main monitor)
+"""
 reasonable_resolution() = primary_resolution() .÷ 2
 
+
+"""
+Returns the current active scene (the last scene that got created)
+"""
 function current_scene()
     if isassigned(current_global_scene)
         current_global_scene[]
@@ -231,31 +270,6 @@ end
 
 Scene(::Nothing) = Scene()
 
-const minimal_default = Attributes(
-    font = "Dejavu Sans",
-    backgroundcolor = RGBAf0(1,1,1,1),
-    color = :black,
-    colormap = :viridis,
-    resolution = reasonable_resolution(),
-    visible = true
-)
-
-const _current_default_theme = copy(minimal_default)
-
-function current_default_theme(; kw_args...)
-    copy = Attributes(_current_default_theme...)
-    merge(copy, Attributes(;kw_args...))
-end
-
-function set_theme!(new_theme::Attributes)
-    empty!(_current_default_theme)
-    merge!(_current_default_theme, minimal_default, new_theme)
-    return
-end
-function set_theme!(;kw_args...)
-    set_theme!(Attributes(; kw_args...))
-end
-
 
 function Scene(;
         kw_args...
@@ -263,10 +277,11 @@ function Scene(;
     events = Events()
     theme = current_default_theme(; kw_args...)
     resolution = theme[:resolution][]
-    px_area = foldp(IRect(0, 0, resolution), events.window_area) do v0, w_area
-        wh = widths(w_area)
-        wh = (wh == Vec(0, 0)) ? widths(v0) : wh
-        IRect(0, 0, wh)
+    px_area = Observable(IRect(0, 0, resolution))
+    on(events.window_area) do w_area
+        if !all(x-> x ≉ 0.0, widths(w_area)) && px_area[] != w_area
+            px_area[] = w_area
+        end
     end
     scene = Scene(
         events,
@@ -305,15 +320,19 @@ function Scene(
         AbstractPlot[],
         merge(current_default_theme(), theme),
         Scene[],
-        current_screens
+        current_screens,
+        scene
     )
     push!(scene.children, child)
     child
 end
 
-function Scene(scene::Scene, area)
-    events = scene.events
-    px_area = signal_convert(Signal{IRect2D}, area)
+function Scene(parent::Scene, area; theme...)
+    events = parent.events
+    px_area = lift(pixelarea(parent), to_node(area)) do p, a
+        # make coordinates relative to parent
+        IRect2D(minimum(p) .+ minimum(a), widths(a))
+    end
     child = Scene(
         events,
         px_area,
@@ -322,11 +341,12 @@ function Scene(scene::Scene, area)
         node(:scene_limits, FRect3D(Vec3f0(0), Vec3f0(1))),
         Transformation(),
         AbstractPlot[],
-        copy(current_default_theme()),
+        current_default_theme(; theme...),
         Scene[],
-        scene.current_screens
+        parent.current_screens,
+        parent
     )
-    push!(scene.children, child)
+    push!(parent.children, child)
     child
 end
 
@@ -368,6 +388,7 @@ update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
 function center!(scene::Scene, padding = 0.01)
     bb = boundingbox(scene)
+    bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
     padd = w .* padding
     bb = FRect3D(minimum(bb) .- padd, w .+ 2padd)

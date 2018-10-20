@@ -18,7 +18,7 @@ struct EmptyCamera <: AbstractCamera end
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 
-const Node = Signal
+const Node = Observable
 
 const Rect{N, T} = HyperRectangle{N, T}
 const Rect2D{T} = HyperRectangle{2, T}
@@ -34,6 +34,7 @@ const IRect2D = Rect2D{Int}
 const Point2d{T} = NTuple{2, T}
 const Vec2d{T} = NTuple{2, T}
 const VecTypes{N, T} = Union{StaticVector{N, T}, NTuple{N, T}}
+const NVec{N} = Union{StaticVector{N}, NTuple{N, Any}}
 const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
 
@@ -95,7 +96,7 @@ function FRect3D(x::Rect2D)
     FRect3D(Vec3f0(minimum(x)..., 0), Vec3f0(widths(x)..., 0.0))
 end
 # For now, we use Reactive.Signal as our Node type. This might change in the future
-const Node = Signal
+const Node = Observable
 
 include("interaction/iodevices.jl")
 
@@ -119,7 +120,7 @@ end
 
 function Events()
     Events(
-        node(:window_area, IRect(0, 0, 1, 1)),
+        node(:window_area, IRect(0, 0, 0, 0)),
         node(:window_dpi, 100.0),
         node(:window_open, false),
 
@@ -143,7 +144,7 @@ mutable struct Camera
     projectionview::Node{Mat4f0}
     resolution::Node{Vec2f0}
     eyeposition::Node{Vec3f0}
-    steering_nodes::Vector{Node}
+    steering_nodes::Vector{Any}
 end
 
 struct Transformation <: Transformable
@@ -163,7 +164,12 @@ end
 Base.broadcastable(x::AbstractScene) = Ref(x)
 Base.broadcastable(x::AbstractPlot) = Ref(x)
 Base.broadcastable(x::Attributes) = Ref(x)
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, pair[2], pair[1]))
+
+
+value_convert(@nospecialize(x)) = x
+value_convert(x::NamedTuple) = Attributes(x)
+
+node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, value_convert(pair[2]), pair[1]))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 Base.convert(::Type{<: Node}, x) = Node(x)
 Base.convert(::Type{T}, x::T) where T <: Node = x
@@ -171,13 +177,16 @@ Base.convert(::Type{T}, x::T) where T <: Node = x
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))
+Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
+Attributes(nt::NamedTuple) = Attributes(; nt...)
+
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
 Base.iterate(x::Attributes) = iterate(x.attributes)
 Base.iterate(x::Attributes, state) = iterate(x.attributes, state)
 Base.copy(x::Attributes) = Attributes(copy(x.attributes))
 Base.merge(x::Attributes...) = Attributes(merge(map(a-> a.attributes, x)...))
-Base.merge!(x::Attributes...) = merge!(map(a-> a.attributes, x)...)
+Base.merge!(x::Attributes...) = Attributes(merge!(map(a-> a.attributes, x)...))
 Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
 Base.empty!(x::Attributes) = (empty!(x.attributes); x)
 Base.length(x::Attributes) = length(x.attributes)
@@ -224,6 +233,9 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     converted::Tuple
     plots::Vector{AbstractPlot}
 end
+
+theme(x::AbstractPlot) = x.attributes
+isvisible(x) = haskey(x, :visible) && to_value(x[:visible])
 
 #dict interface
 const AttributeOrPlot = Union{AbstractPlot, Attributes}

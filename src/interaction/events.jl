@@ -23,7 +23,7 @@ function mousedrag(scene::Scene, native_window)
     tracked_mousebutton = RefValue(Mouse.left)
     drag = RefValue(Mouse.notpressed)
     events = scene.events
-    foreach(events.mouseposition, events.mousebuttons) do mp, buttons
+    onany(events.mouseposition, events.mousebuttons) do mp, buttons
         d = calc_drag(buttons, drag, indrag, tracked_mousebutton)
         if (d == Mouse.pressed) || (d != events.mousedrag[])
             events.mousedrag[] = d

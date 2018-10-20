@@ -34,17 +34,17 @@ function cam3d!(scene; kw_args...)
             move_key = nothing
         )
     end
-    camera = from_dict(Camera3D, cam_attributes)
+    cam = from_dict(Camera3D, cam_attributes)
     # remove previously connected camera
     disconnect!(scene.camera)
-    add_translation!(scene, camera, camera.pan_button, camera.move_key)
-    add_rotation!(scene, camera, camera.rotate_button, camera.move_key)
-    cameracontrols!(scene, camera)
-    map(scene.camera, scene.px_area) do area
+    add_translation!(scene, cam, cam.pan_button, cam.move_key)
+    add_rotation!(scene, cam, cam.rotate_button, cam.move_key)
+    cameracontrols!(scene, cam)
+    on(camera(scene), scene.px_area) do area
         # update cam when screen ratio changes
-        update_cam!(scene, camera)
+        update_cam!(scene, cam)
     end
-    camera
+    cam
 end
 
 function projection_switch(
@@ -80,12 +80,9 @@ function rotate_cam(
     rotation
 end
 
-is_mouseinside(scene) = Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
-
-
 function add_translation!(scene, cam, key, button)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    map(scene.camera, scene.events.mousedrag) do drag
+    on(camera(scene), scene.events.mousedrag) do drag
         mp = Vec2f0(scene.events.mouseposition[])
         if ispressed(scene, key[]) && ispressed(scene, button[]) && is_mouseinside(scene)
             if drag == Mouse.down
@@ -100,7 +97,7 @@ function add_translation!(scene, cam, key, button)
         end
         return
     end
-    map(scene.camera, scene.events.scroll) do scroll
+    on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
             translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
         end
@@ -110,7 +107,7 @@ end
 
 function add_rotation!(scene, cam, button, key)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    map(scene.camera, scene.events.mousedrag) do drag
+    on(camera(scene), scene.events.mousedrag) do drag
         if ispressed(scene, button[]) && ispressed(scene, key[]) && is_mouseinside(scene)
             if drag == Mouse.down
                 last_mousepos[] = Vec2f0(scene.events.mouseposition[])
@@ -185,10 +182,10 @@ function update_cam!(scene::Scene, cam::Camera3D)
     proj = projection_switch(scene.px_area[], fov, near, far, projectiontype, zoom)
     view = AbstractPlotting.lookat(eyeposition, lookat, upvector)
 
-    push!(scene.camera.projection, proj)
-    push!(scene.camera.view, view)
-    push!(scene.camera.projectionview, proj * view)
-    push!(scene.camera.eyeposition, cam.eyeposition[])
+    scene.camera.projection[] = proj
+    scene.camera.view[] = view
+    scene.camera.projectionview[] = proj * view
+    scene.camera.eyeposition[] = cam.eyeposition[]
 end
 
 function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)

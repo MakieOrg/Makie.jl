@@ -1,8 +1,12 @@
 
 # a few shortcut functions to make attribute conversion easier
 @inline function get_attribute(dict, key)
-    convert_attribute(value(dict[key]), Key{key}())
+    convert_attribute(to_value(dict[key]), Key{key}())
 end
+"""
+Converts the elemen array type to `T1` without making a copy if the element type matches
+"""
+elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
 
 """
     to_color(color)
@@ -34,7 +38,7 @@ const PointBased = Union{MeshScatter, Scatter, Lines, LineSegments}
 const XYBased = PointBased
 
 function convert_arguments(::Type{<: PointBased}, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
-    (convert(Vector{Point{N, Float32}}, positions),)
+    (elconvert(Point{N, Float32}, positions),)
 end
 
 function convert_arguments(::Type{<: PointBased}, positions::SubArray{<: VecTypes, 1})
@@ -77,7 +81,7 @@ Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
 """
 function convert_arguments(::Type{<: LineSegments}, positions::AbstractVector{E}) where E <: Union{Pair{A, A}, Tuple{A, A}} where A <: VecTypes{N, T} where {N, T}
-    (convert(Vector{Point{N, Float32}}, reinterpret(Point{N, T}, positions)),)
+    (elconvert(Point{N, Float32}, reinterpret(Point{N, T}, positions)),)
 end
 
 
@@ -100,7 +104,7 @@ from `x` and `y`.
 """
 convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(range(minimum(x), stop=maximum(x), length=length(y)), y)
-to_linspace(interval, N) = range(minimum(interval), stop=maximum(interval), length=N)
+to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
@@ -153,7 +157,7 @@ outputs them in a Tuple.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::Type{<: SurfaceLike}, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
-    (convert(Matrix{Float32}, x), convert(Matrix{Float32}, y), convert(Matrix{Float32}, z))
+    (elconvert(Float32, x), elconvert(Float32, y), elconvert(Float32, z))
 end
 
 """
@@ -220,9 +224,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
     (x, y, z, i)
 end
-# function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::ClosedInterval, i::AbstractArray{T, 3}) where T
-#     (x, y, z, i)
-# end
+
 
 """
     convert_arguments(P, x, y, z, f)::(Vector, Vector, Vector, Matrix)
@@ -304,7 +306,7 @@ function to_triangles(idx0::AbstractVector{UInt32})
     reinterpret(GLTriangle, idx0)
 end
 function to_triangles(faces::AbstractVector{Face{3, T}}) where T
-    convert(Vector{GLTriangle}, faces)
+    elconvert(GLTriangle, faces)
 end
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
     let N = Val(size(faces, 2)), lfaces = faces
@@ -320,7 +322,7 @@ function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
 end
 
 function to_vertices(verts::AbstractVector{<: VecTypes})
-    to_vertices(map(x-> Point3f0(x[1], x[2], 0.0), verts))
+    to_vertices(to_ndim.(Point3f0, verts, 0.0))
 end
 
 function to_vertices(verts::AbstractMatrix{<: Number})
@@ -333,8 +335,9 @@ function to_vertices(verts::AbstractMatrix{<: Number})
     end
 end
 function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
-    reinterpret(Point{size(verts, 1), T}, convert(Vector{T}, vec(verts)), (size(verts, 2),))
+    reinterpret(Point{size(verts, 1), T}, elconvert(T, vec(verts)), (size(verts, 2),))
 end
+
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
     let N = Val(size(verts, 2)), lverts = verts
         broadcast(1:size(verts, 1), N) do vidx, n
@@ -367,10 +370,12 @@ function convert_attribute(c::String, ::key"color")
     c in all_gradient_names && return to_colormap(c)
     parse(RGBA{Float32}, c)
 end
+
+# Do we really need all colors to be RGBAf0?!
+convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = elconvert(RGBAf0, c)
 convert_attribute(c::Union{Tuple, AbstractArray}, k::key"color") = convert_attribute.(c, k)
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
-    col = convert_attribute(c[1], k)
-    RGBAf0(Colors.color(col), c[2])
+    RGBAf0(Colors.color(to_color(c[1])), c[2])
 end
 convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
 convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
@@ -447,7 +452,7 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
         fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
         font = FreeTypeAbstraction.findfont(str, additional_fonts = fontpath)
         if font == nothing
-            warn("Could not find font $str, using Dejavu Sans")
+            @warn("Could not find font $str, using Dejavu Sans")
             if "dejavu sans" == lowercase(str)
                 # since we fall back to dejavu sans, we need to check for recursion
                 error("recursion, font path seems to not contain dejavu sans: $fontpath")
@@ -487,15 +492,17 @@ function convert_attribute(s::Tuple{VecTypes, AbstractFloat}, ::key"rotation")
 end
 convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0, 1), angle)
 convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
+convert_attribute(r::AbstractVector{<: Quaternionf0}, k::key"rotation") = r
+
 
 
 convert_attribute(x, k::key"colorrange") = Vec2f0(x)
 
 convert_attribute(x, k::key"textsize") = Float32(x)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = Float32.(x)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = Vec2f0.(x)
+convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = elconvert(Float32, x)
+convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f0, x)
 convert_attribute(x, k::key"linewidth") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"linewidth") = Float32.(x)
+convert_attribute(x::AbstractVector, k::key"linewidth") = elconvert(Float32, x)
 
 const colorbrewer_names = Symbol.([
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
@@ -728,7 +735,7 @@ to_spritemarker(marker::Char) = marker
 """
 Matrix of AbstractFloat will be interpreted as a distancefield (negative numbers outside shape, positive inside)
 """
-to_spritemarker(marker::Matrix{<: AbstractFloat}) = Float32.(marker)
+to_spritemarker(marker::Matrix{<: AbstractFloat}) = elconvert(Float32, marker)
 
 """
 Any AbstractMatrix{<: Colorant} or other image type
@@ -742,7 +749,7 @@ function to_spritemarker(marker::Symbol)
     if haskey(_marker_map, marker)
         return to_spritemarker(_marker_map[marker])
     else
-        warn("Unsupported marker: $marker, using ● instead")
+        @warn("Unsupported marker: $marker, using ● instead")
         return '●'
     end
 end
@@ -756,9 +763,7 @@ Vector of anything that is accepted as a single marker will give each point it's
 Note that it needs to be a uniform vector with the same element type!
 """
 function to_spritemarker(marker::AbstractVector)
-    marker = map(marker) do sym
-        to_spritemarker(sym)
-    end
+    marker = to_spritemarker.(marker)
     if isa(marker, AbstractVector{Char})
         String(marker)
     else
