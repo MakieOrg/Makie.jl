@@ -172,7 +172,7 @@ end
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     bind(a)
     ptr = Ptr{T}(glMapBuffer(a.buffertype, GL_READ_ONLY))
-    for i=1:len
+    for i in 1:len
         b[i+writeoffset-1] = unsafe_load(ptr, i+readoffset-2) #-2 => -1 to zero offset, -1 gl indexing starts at 0
     end
     glUnmapBuffer(a.buffertype)
@@ -181,8 +181,8 @@ end
 
 function gpu_getindex(b::GLBuffer{T}, range::UnitRange) where T
     multiplicator = sizeof(T)
-    offset        = first(range)-1
-    value         = Vector{T}(length(range))
+    offset = first(range)-1
+    value = Vector{T}(undef, length(range))
     bind(b)
     glGetBufferSubData(b.buffertype, multiplicator*offset, sizeof(value), value)
     bind(b, 0)

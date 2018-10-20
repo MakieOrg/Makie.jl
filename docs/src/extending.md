@@ -77,7 +77,7 @@ function my_drawing_type(main_object::MyType, kw_args::Dict)
     # The default macro adds a _defaults to the function name
     kw_args = my_drawing_type_defaults(scene, kw_args) # fill in and convert attributes
 
-    boundingbox = Signal(AABB(Vec3f0(0), Vec3f0(1))) # calculate a boundingbox from your data
+    boundingbox = Node(AABB(Vec3f0(0), Vec3f0(1))) # calculate a boundingbox from your data
 
     primitive = GL_TRIANGLES
 

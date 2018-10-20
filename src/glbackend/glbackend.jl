@@ -16,28 +16,32 @@ function get_texture!(atlas)
         end
     end
     tex, func = get!(atlas_texture_cache, GLAbstraction.current_context()) do
-         tex = Texture(
-             atlas.data,
-             minfilter = :linear,
-             magfilter = :linear,
-             anisotropic = 16f0,
-         )
-         # update the texture, whenever a new font is added to the atlas
-         function callback(distance_field, rectangle)
-             ctx = tex.context
-             if GLAbstraction.context_alive(ctx)
-                 prev_ctx = GLAbstraction.current_context()
-                 GLAbstraction.switch_context!(ctx)
-                 tex[rectangle] = distance_field
-                 GLAbstraction.switch_context!(prev_ctx)
-             end
-         end
-         AbstractPlotting.font_render_callback!(callback)
-         return (tex, callback)
-     end
-     tex
- end
+        tex = Texture(
+                atlas.data,
+                minfilter = :linear,
+                magfilter = :linear,
+                anisotropic = 16f0,
+        )
+        # update the texture, whenever a new font is added to the atlas
+        function callback(distance_field, rectangle)
+            ctx = tex.context
+            if GLAbstraction.context_alive(ctx)
+                prev_ctx = GLAbstraction.current_context()
+                GLAbstraction.switch_context!(ctx)
+                tex[rectangle] = distance_field
+                GLAbstraction.switch_context!(prev_ctx)
+            end
+        end
+        AbstractPlotting.font_render_callback!(callback)
+        return (tex, callback)
+    end
+    tex
+end
 
+
+function Base.display(x::OpenGLBackend, scene::Scene)
+    display(global_gl_screen(), scene)
+end
 
 include("GLVisualize/GLVisualize.jl")
 using .GLVisualize

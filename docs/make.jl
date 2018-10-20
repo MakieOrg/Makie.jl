@@ -51,7 +51,7 @@ eval_examples(outputfile = output_path) do example, value
     try
         generate_thumbnail.(path, joinpath.(dirname.(path), name))
     catch e
-        warn("generate_thumbnail failed with path $path, entry $(example.unique_name), and filename $name")
+        @warn("generate_thumbnail failed with path $path, entry $(example.unique_name), and filename $name")
         Base.showerror(stderr, e)
         println(stderr)
         Base.show_backtrace(stderr, Base.catch_backtrace())

@@ -9,16 +9,16 @@
     @cell "Interaction" [scatter, linesegment, record] begin
         scene = Scene()
         f(t, v, s) = (sin(v + t) * s, cos(v + t) * s)
-        time = Node(0.0)
-        p1 = scatter!(scene, lift(t-> f.(t, range(0, stop = 2pi, length = 50), 1), time))[end]
-        p2 = scatter!(scene, lift(t-> f.(t * 2.0, range(0, stop = 2pi, length = 50), 1.5), time))[end]
-        lines = lift(p1[1], p2[1]) do pos1, pos2
+        time_node = Node(0.0)
+        p1 = scatter!(scene, lift(t-> f.(t, range(0, stop = 2pi, length = 50), 1), time_node))[end]
+        p2 = scatter!(scene, lift(t-> f.(t * 2.0, range(0, stop = 2pi, length = 50), 1.5), time_node))[end]
+        points = lift(p1[1], p2[1]) do pos1, pos2
             map((a, b)-> (a, b), pos1, pos2)
         end
-        linesegments!(scene, lines)
+        linesegments!(scene, points)
         N = 150
         record(scene, @outputfile(mp4), range(0, stop = 10, length = N)) do i
-            push!(time, i)
+            push!(time_node, i)
         end
     end
     @cell "barplot" [barplot] begin
@@ -37,11 +37,10 @@
         arrows!(x, y, u, v, arrowsize = 0.05)
     end
     @cell "image" [image] begin
-        AbstractPlotting.vbox(
+        AbstractPlotting.hbox(
             image(Makie.logo(), scale_plot = false),
             image(rand(100, 500), scale_plot = false),
         )
-
     end
     @cell "scatter colormap" [scatter, colormap] begin
         scatter(rand(10), rand(10), color = rand(10))
@@ -103,14 +102,18 @@
             shading = false
         )
     end
-    @cell "heatmap interpolation" [heatmap, interpolate, subscene] begin
+    @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme] begin
+        using AbstractPlotting: hbox, vbox
         data = rand(100, 50)
         p1 = heatmap(data, interpolate = true)
         p2 = heatmap(data, interpolate = false)
-        scene = AbstractPlotting.vbox(p1, p2)
-        text!(campixel(p1), "Interpolate = true", position = widths(p1) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-        text!(campixel(p2), "Interpolate = false", position = widths(p2) .* Vec(0.5, 1), align = (:center, :top), raw = true)
-        scene
+        t = Theme(align = (:left, :bottom), raw = true, camera = campixel!)
+        title1 = text(t, "Interpolate = true")
+        title2 = text(t, "Interpolate = false")
+        s = vbox(
+            hbox(p1, title1),
+            hbox(p2, title2),
+        )
     end
     @cell "colored triangle" [polygon] begin
         poly(
@@ -179,7 +182,7 @@
     end
 
     @cell "Text rotation" [text, rotation] begin
-        scene = Scene(@resolution)
+        scene = Scene()
         pos = (500, 500)
         posis = Point2f0[]
         for r in range(0, stop = 2pi, length = 20)

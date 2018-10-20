@@ -23,7 +23,7 @@ function _default(main::MatTypes{T}, s::Style{:surface}, data::Dict) where T <: 
         ranges = ((-1f0, 1f0), (-1f0,1f0)) => "x, and y position given as `(start, endvalue)` or any `Range`"
     end
     delete!(data, :ranges) # no need to have them in the OpenGL data
-    _default((Grid(value(main), value(ranges)), main), s, data)
+    _default((Grid(to_value(main), to_value(ranges)), main), s, data)
 end
 
 function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) where {G <: Grid{2}, T <: AbstractFloat}
@@ -95,7 +95,7 @@ function surface(main, s::Style{:surface}, data::Dict)
         instances  = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         shader     = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
-            value(wireframe) ? "distance_shape.frag" : "standard.frag",
+            to_value(wireframe) ? "distance_shape.frag" : "standard.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal),

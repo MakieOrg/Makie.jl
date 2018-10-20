@@ -6,8 +6,8 @@
             position = (200, 50)
         )
         campixel!(scene)
+        scale!(scene, Vec3f0(4, 1, 1))
         linesegments!(boundingbox(scene), raw = true)
-
         offset = 0
         for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
             global offset
@@ -25,7 +25,6 @@
     # @cell mesh(IRect(0, 0, 200, 200))
 
     @cell begin
-        Makie.GLAbstraction.empty_shader_cache!()
         r = range(-3pi, stop = 3pi, length = 100)
         s = volume(r, r, r, (x, y, z)-> cos(x) + sin(y) + cos(z), algorithm = :iso, isorange = 0.1f0, show_axis = false)
         v2 = volume!(r, r, r, (x, y, z)-> cos(x) + sin(y) + cos(z), algorithm = :mip, show_axis = false)[end]
@@ -56,10 +55,10 @@
         cam2d!(scene)
         axis2d!(
             scene, IRect(Vec2f0(0), Vec2f0(1)),
-            ticks = NT(
+            ticks = (
                 ranges = ([0.1, 0.2, 0.9], [0.1, 0.2, 0.9]),
                 labels = (["😸", "♡", "𝕴"], ["β ÷ δ", "22", "≙"])
-            )
+            ), raw = true
         )
         center!(scene)
         scene
@@ -83,7 +82,17 @@
     @cell heatmap(rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
     @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
+
+    # themes
+    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
+    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
+    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
+    @cell scatter(Theme(color = :green), rand(10), rand(10))
+    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
+
 end
+
+
 
 #
 # a = Point2f0.(200, 150:50:offset)

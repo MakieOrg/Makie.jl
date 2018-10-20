@@ -1,5 +1,4 @@
-
-using Makie, Colors, Images
+using Makie, Colors, Observables
 r = range(0, stop=5pi, length=100)
 scene = lines(r, sin.(r), linewidth = 3)
 lineplot = scene[end]
@@ -17,12 +16,12 @@ text!(popup, "( 0.000,  0.000)", textsize = 30, position = textpos, color = :dar
 text_field = popup[end]
 scene
 
-
-foreach(scene.events.mouseposition) do even
+x = Node(false)
+on(scene.events.mouseposition) do event
     plot, idx = Makie.mouse_selection(scene)
-    if plot == lineplot
+    if plot == lineplot && idx > 0
         visible[] = true
-        text_field[1] = sprint(io-> print(io, round.(Float64.(Tuple(lineplot[1][][idx])), 3)))
+        text_field[1] = sprint(io-> print(io, round.(Float64.(Tuple(lineplot[1][][idx])), digits = 3)))
     else
         visible[] = false
     end
@@ -31,22 +30,21 @@ end
 scene
 
 
-
-
 using Makie
-
+using LinearAlgebra
 img = rand(100, 100)
 scene = Scene()
 heatmap!(scene, img, scale_plot = false)
 clicks = Node(Point2f0[(0, 0)])
 blues = Node(Point2f0[])
 
-foreach(scene.events.mousebuttons) do buttons
+on(scene.events.mousebuttons) do buttons
     if ispressed(scene, Mouse.left)
         pos = to_world(scene, Point2f0(scene.events.mouseposition[]))
         found = -1
-        for i in 1:length(clicks[])
-           if norm(pos - clicks.value[i]) < 1
+        c = clicks[]
+        for i in 1:length(c)
+           if norm(pos - c[i]) < 1
                found = i
            end
         end
@@ -79,7 +77,7 @@ points[] = points[]
 
 function add_move!(scene, points, pplot)
     idx = Ref(0); dragstart = Ref(false); startpos = Base.RefValue(Point2f0(0))
-    foreach(events(scene).mousedrag) do drag
+    on(events(scene).mousedrag) do drag
         if ispressed(scene, Mouse.left)
             if drag == Mouse.down
                 plot, _idx = Makie.mouse_selection(scene)
@@ -100,7 +98,7 @@ function add_move!(scene, points, pplot)
 end
 
 function add_remove_add!(scene, points, pplot)
-    foreach(events(scene).mousebuttons) do but
+    on(events(scene).mousebuttons) do but
         if ispressed(but, Mouse.left) && ispressed(scene, Keyboard.left_control)
             pos = to_world(scene, Point2f0(events(scene).mouseposition[]))
             push!(points[], pos)
@@ -122,21 +120,23 @@ scene
 
 
 using Makie, Colors
-using AbstractPlotting: modelmatrix, textslider, colorswatch, hbox!
+using AbstractPlotting: transformationmatrix, textslider, colorswatch, hbox!
 
 scene = Scene(resolution = (1000, 1000))
 ui_width = 260
-ui = Scene(scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)))
+ui = Scene(
+    scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)),
+    scene = (raw = true, camera = campixel!)
+)
 plot_scene = Scene(scene, lift(x-> IRect(ui_width, 0, widths(x) .- Vec(ui_width, 0)), pixelarea(scene)))
-theme(ui)[:plot] = NT(raw = true)
-campixel!(ui)
+
 translate!(ui, 10, 50, 0)
 a = textslider(ui, 0f0:50f0, "a")
 b = textslider(ui, -20f0:20f0, "b")
 c = textslider(ui, 0f0:20f0, "c")
 d = textslider(ui, range(0.0, stop=0.01, length=100), "d")
 scales = textslider(ui, range(0.01, stop=0.5, length=100), "scale")
-color, pop = colorswatch(ui)
+colorsw, pop = colorswatch(ui)
 hbox!(ui.plots)
 
 function lorenz(t0, a, b, c, h)
@@ -162,20 +162,20 @@ args_n = (a, b, c, d)
 args = (13f0, 10f0, 2f0, 0.01f0)
 setindex!.(args_n, args)
 v0 = lorenz(zeros(Point3f0, N), args...)
-positions = Reactive.foldp(lorenz, v0, args_n...)
+positions = lift(lorenz, Node(v0), args_n...)
 rotations = lift(diff, positions)
 rotations = lift(x-> push!(x, x[end]), rotations)
 
-plot = meshscatter!(
+meshscatter!(
     plot_scene,
     positions,
     #marker = Makie.loadasset("cat.obj"),
     markersize = scales, rotation = rotations,
-    intensity = collect(range(0f0, stop=1f0, length=length(positions[]))),
-    color = color
+    intensity = collect(range(0f0, stop = 1f0, length = length(positions[]))),
+    color = colorsw
 )
 scene
-
+pop.scene.camera_controls[]
 
 function record_events(f, scene, path)
     display(scene)
@@ -204,7 +204,6 @@ function replay(scene, path)
         t1, (field, value) = events[i]
         field == :mousedrag && continue
         if field == :mousebuttons
-            println(value)
             getfield(scene.events, field)[] = value
         else
             getfield(scene.events, field)[] = value

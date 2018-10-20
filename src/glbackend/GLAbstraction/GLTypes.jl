@@ -1,7 +1,7 @@
 ############################################################################
-const TOrSignal{T} = Union{Signal{T}, T}
+const TOrSignal{T} = Union{Node{T}, T}
 
-const ArrayOrSignal{T, N} = TOrSignal{Array{T, N}}
+const ArrayOrSignal{T, N} = TOrSignal{X} where X <: AbstractArray{T, N}
 const VecOrSignal{T} = ArrayOrSignal{T, 1}
 const MatOrSignal{T} = ArrayOrSignal{T, 2}
 const VolumeOrSignal{T} = ArrayOrSignal{T, 3}
@@ -160,7 +160,7 @@ struct FrameBuffer{T}
     id          ::GLuint
     attachments ::Vector{Any}
     context     ::GLContext
-    function FrameBuffer{T}(dimensions::Signal) where T
+    function FrameBuffer{T}(dimensions::Node) where T
         fb = glGenFramebuffers()
         glBindFramebuffer(GL_FRAMEBUFFER, fb)
         new(id, attachments, current_context())
@@ -311,7 +311,7 @@ end
 function RenderObject(
         data::Dict{Symbol, Any}, program,
         pre::Pre, post,
-        bbs=Signal(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
+        bbs=Node(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
         main=nothing
     ) where Pre
     targets = get(data, :gl_convert_targets, Dict())
@@ -344,7 +344,7 @@ function RenderObject(
     uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
     get!(data, :visible, true) # make sure, visibility is set
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
-    p = gl_convert(Reactive.value(program), data) # "compile" lazyshader
+    p = gl_convert(to_value(program), data) # "compile" lazyshader
     vertexarray = GLVertexArray(Dict(buffers), p)
     robj = RenderObject{Pre}(
         main,
