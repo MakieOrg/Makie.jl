@@ -26,6 +26,7 @@ using .Formatters
 
 @recipe(Axis2D) do scene
     Theme(
+        visible = true,
         ticks = Theme(
 
             labels = automatic,
@@ -44,7 +45,7 @@ using .Formatters
             textsize = (5, 5),
             rotation = (0.0, 0.0),
             align = ((:center, :top), (:right, :center)),
-            font = map(dim2, theme(scene, :font)),
+            font = lift(dim2, theme(scene, :font)),
         ),
 
         grid = Theme(
@@ -69,7 +70,7 @@ using .Formatters
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
             align = ((:center, :top), (:center, :bottom)),
-            font = map(dim2, theme(scene, :font)),
+            font = lift(dim2, theme(scene, :font)),
         )
     )
 end
@@ -97,6 +98,7 @@ end
     gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
     Theme(
+        visible = true,
         showticks = (true, true, true),
         showaxis = (true, true, true),
         showgrid = (true, true, true),
@@ -108,7 +110,7 @@ end
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
-            font = map(dim3, theme(scene, :font)),
+            font = lift(dim3, theme(scene, :font)),
             gap = 1
         ),
 
@@ -123,7 +125,7 @@ end
             textsize =  (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 1,
-            font = map(dim3, theme(scene, :font)),
+            font = lift(dim3, theme(scene, :font)),
         ),
 
         frame = Theme(
@@ -306,7 +308,7 @@ function draw_titles(
         last(first(xticks)), to_font(tickfont[1]), tick_size[1]
     ))[2]
 
-    model_inv = inv(modelmatrix(textbuffer)[])
+    model_inv = inv(transformationmatrix(textbuffer)[])
 
     tickspace = transform(model_inv, (tickspace_x, tickspace_y))
     title_start = origin .- (tick_gap .+ tickspace .+ tick_title_gap)
@@ -343,8 +345,8 @@ un_transform(model::Mat4, x) = transform(inv(model), x)
 to2tuple(x) = ntuple(i-> x, Val(2))
 to2tuple(x::Tuple{<:Any, <: Any}) = x
 
-function draw_axis(
-        textbuffer, linebuffer, limits, xyrange, labels,
+function draw_axis2d(
+        textbuffer, linebuffer, m, limits, xyrange, labels,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
 
@@ -367,7 +369,7 @@ function draw_axis(
     % = mean(limit_widths) / 100 # percentage
 
     xyticks = zip.(xyrange, labels)
-    model_inv = inv(modelmatrix(textbuffer)[])
+    model_inv = inv(transformationmatrix(textbuffer)[])
 
     ti_textsize = ti_textsize .* %
     t_textsize = t_textsize .* %
@@ -427,14 +429,17 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     ti_args = getindex.(Ref(cplot[:names]), ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
+
     linebuffer = LinesegmentBuffer(cplot, Point{2})
+
     map_once(
-        draw_axis,
-        to_node(textbuffer), to_node(linebuffer),
+        draw_axis2d,
+        to_node(textbuffer), to_node(linebuffer), transformationmatrix(scene),
         cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
+
     return cplot
 end
 
@@ -459,7 +464,7 @@ _widths(x) = Float32(maximum(x) - minimum(x))
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis(textbuffer, linebuffer, limits, ranges, labels, args...)
+function draw_axis3d(textbuffer, linebuffer, limits, ranges, labels, args...)
     # make sure we extend all args to 3D
     args3d = to3tuple.(args)
     (
@@ -558,7 +563,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     textbuffer = TextBuffer(axis, Point{3})
     linebuffer = LinesegmentBuffer(axis, Point{3})
 
-    tstyle, ticks, frame = value.(getindex.(axis, (:names, :ticks, :frame)))
+    tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
     framevals = getindex.(frame, (:linecolor, :linewidth, :axiscolor))
     tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
@@ -567,7 +572,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         titlevals..., framevals..., tvals...
     )
     map_once(
-        draw_axis,
+        draw_axis3d,
         Node(textbuffer), Node(linebuffer),
         axis[1], axis[:ticks, :ranges], axis[:ticks, :labels], args...
     )

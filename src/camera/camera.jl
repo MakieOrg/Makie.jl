@@ -4,12 +4,16 @@ function Base.copy(x::Camera)
     end...)
 end
 function Base.:(==)(a::Camera, b::Camera)
-    value(a.view) == value(b.view) &&
-    value(a.projection) == value(b.projection) &&
-    value(a.resolution) == value(b.resolution)
+    to_value(a.view) == to_value(b.view) &&
+    to_value(a.projection) == to_value(b.projection) &&
+    to_value(a.resolution) == to_value(b.resolution)
 end
 function disconnect!(c::Camera)
-    disconnect!(c.steering_nodes)
+    for node in c.steering_nodes
+        filter!(listeners(node)) do x
+            !(x isa CameraLift) # remove all camera lifts
+        end
+    end
     return
 end
 function disconnect!(nodes::Vector)
@@ -20,13 +24,28 @@ function disconnect!(nodes::Vector)
     return
 end
 
+struct CameraLift{F, Args}
+    f::F
+    args::Args
+end
+
+function (cl::CameraLift{F, Args})(val) where {F, Args}
+    cl.f(map(to_value, cl.args)...)
+end
+
 """
 When mapping over nodes for the camera, we store them in the steering_node vector,
 to make it easier to disconnect the camera steering signals later!
 """
-function Base.map(f, c::Camera, nodes::Node...)
-    node = map(f, nodes...)
-    push!(c.steering_nodes, node)
+function Observables.on(f, c::Camera, nodes::Node...)
+    # this basically reimplements onany, which is a bit annoying, but like
+    # this we don't have such a closure hell and CameraLift will be nicely
+    # identifiable when we disconnect the nodes!
+    cl = CameraLift(f, nodes)
+    for n in nodes
+        on(cl, n)
+    end
+    push!(c.steering_nodes, nodes...)
     node
 end
 
@@ -35,8 +54,28 @@ function Camera(px_area)
         Node(Mat4f0(I)),
         Node(Mat4f0(I)),
         Node(Mat4f0(I)),
-        map(a-> Vec2f0(widths(a)), px_area),
+        lift(a-> Vec2f0(widths(a)), px_area),
         Node(Vec3f0(1)),
-        Node[]
+        []
     )
+end
+
+
+
+
+
+function is_mouseinside(scene, target)
+    scene === target && return false
+    Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
+    for child in r.children
+        is_mouseinside(child, target) && return true
+    end
+    return false
+end
+function is_mouseinside(scene)
+    return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
+    # Check that mouse is not inside any other screen
+    # for child in scene.children
+    #     is_mouseinside(child) && return false
+    # end
 end

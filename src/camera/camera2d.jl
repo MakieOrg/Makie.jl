@@ -9,7 +9,7 @@ end
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Theme(
-            area = Signal(FRect(0, 0, 1, 1), name = "area"),
+            area = node(:area, FRect(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,
@@ -63,15 +63,15 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
     # so we don't push! and just update the value in place
     view = translationmatrix(Vec3f0(-x - w, -y - h, 0))
     projection = orthographicprojection(-w, w, -h, h, -10_000f0, 10_000f0)
-    push!(camera(scene).view, view)
-    push!(camera(scene).projection, projection)
-    push!(camera(scene).projectionview, projection * view)
+    camera(scene).view[] = view
+    camera(scene).projection[] = projection
+    camera(scene).projectionview[] = projection * view
     return
 end
 
 function correct_ratio!(scene, cam)
     lastw = RefValue(widths(pixelarea(scene)[]))
-    map(camera(scene), pixelarea(scene)) do area
+    on(camera(scene), pixelarea(scene)) do area
         neww = widths(area)
         change = neww .- lastw[]
         if !(change ≈ Vec(0.0, 0.0))
@@ -88,7 +88,7 @@ end
 function add_pan!(scene::SceneLike, cam::Camera2D)
     startpos = RefValue((0.0, 0.0))
     e = events(scene)
-    map(
+    on(
         camera(scene),
         Node.((scene, cam, startpos))...,
         e.mousedrag
@@ -114,7 +114,7 @@ end
 
 function add_zoom!(scene::SceneLike, cam::Camera2D)
     e = events(scene)
-    map(camera(scene), e.scroll) do x
+    on(camera(scene), e.scroll) do x
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
         if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
@@ -137,6 +137,7 @@ function camspace(scene::SceneLike, cam::Camera2D, point)
     Vec(point) .+ Vec(minimum(cam.area[]))
 end
 
+FRect() = FRect(NaN, NaN, NaN, NaN)
 
 function absrect(rect)
     xy, wh = minimum(rect), widths(rect)
@@ -146,10 +147,10 @@ function absrect(rect)
     FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
 end
 function selection_rect!(scene, cam, key)
-
-    rect = RefValue(FRect(0, 0, 0, 0))
+    rect = RefValue(FRect())
     lw = 2f0
     scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
+    scene_unscaled.updated = Node(false)
     rect_vis = lines!(
         scene_unscaled,
         rect[],
@@ -160,7 +161,7 @@ function selection_rect!(scene, cam, key)
         raw = true
     ).plots[end]
     waspressed = RefValue(false)
-    dragged_rect = map(camera(scene), events(scene).mousedrag, key) do drag, key
+    dragged_rect = on(camera(scene), events(scene).mousedrag, key) do drag, key
         if ispressed(scene, key) && is_mouseinside(scene)
             mp = events(scene).mouseposition[]
             mp = camspace(scene, cam, mp)
@@ -184,7 +185,7 @@ function selection_rect!(scene, cam, key)
                     update_cam!(scene, cam, r)
                 end
                 #scene.limits[] = FRect3D(rect[])
-                rect[] = FRect(0, 0, 0, 0)
+                rect[] = FRect()
                 rect_vis[1] = rect[]
             end
             # always hide if not the right key is pressed
@@ -253,16 +254,19 @@ end
 
 struct PixelCamera <: AbstractCamera end
 function campixel!(scene)
+    scene.updated = Node(false)
     camera(scene).view[] = Mat4f0(I)
-    map(camera(scene), pixelarea(scene)) do window_size
+    update_once = Observable(false)
+    on(camera(scene), update_once, pixelarea(scene)) do u, window_size
         nearclip = -10_000f0
         farclip = 10_000f0
         w, h = Float32.(widths(window_size))
         projection = orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
-        push!(camera(scene).projection, projection)
-        push!(camera(scene).projectionview, projection)
+        camera(scene).projection[] = projection
+        camera(scene).projectionview[] = projection
     end
     cam = PixelCamera()
-    cameracontrols(scene) = cam
+    cameracontrols!(scene, cam)
+    update_once[] = true
     cam
 end

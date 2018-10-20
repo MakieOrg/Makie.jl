@@ -2,7 +2,7 @@
 function Transformation()
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
-    scale = map(flip, scale) do f, s
+    scale = lift(flip, scale) do f, s
         map((f, s)-> f ? -s : s, Vec(f), s)
     end
     translation, rotation, align = (
@@ -27,7 +27,7 @@ end
 function Transformation(scene::SceneLike)
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
-    scale = map(flip, scale) do f, s
+    scale = lift(flip, scale) do f, s
         map((f, s)-> f ? -s : s, Vec(f), s)
     end
     translation, rotation, align = (
@@ -35,7 +35,7 @@ function Transformation(scene::SceneLike)
         node(:rotation, Quaternionf0(0, 0, 0, 1)),
         node(:align, Vec2f0(0))
     )
-    pmodel = modelmatrix(scene)
+    pmodel = transformationmatrix(scene)
     model = map_once(scale, translation, rotation, align, pmodel) do s, o, q, a, p
         p * transformationmatrix(o, s, q)
     end
@@ -140,4 +140,4 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
     scene
 end
 
-modelmatrix(x) = transformation(x).model
+transformationmatrix(x) = transformation(x).model
