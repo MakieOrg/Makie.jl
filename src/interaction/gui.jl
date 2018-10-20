@@ -206,6 +206,13 @@ struct Popup
     width::Node{Point2f0}
 end
 
+
+function textslider(ui, range, label; kw_args...)
+    a = slider!(ui, range, raw = true; kw_args...)[end][:value]
+    text!(ui, "$label:", raw = true, align = (:left, :center))
+    a
+end
+
 function sample_color(f, ui, colormesh, v)
     mpos = ui.events.mouseposition
     sub = Scene(ui, transformation = Transformation(), px_area = pixelarea(ui), theme = theme(ui))
