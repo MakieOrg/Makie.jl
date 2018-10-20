@@ -58,9 +58,11 @@ to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
     range(cnorm[1], stop = cnorm[2], length = x)
 end
+import AbstractPlotting: convert_arguments
+convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
+convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
+convert_arguments(::Type{<: Contour}, data::AbstractMatrix) = convert_arguments(Heatmap, data)
 
-AbstractPlotting.convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
-AbstractPlotting.convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (color, levels, linewidth, alpha)
@@ -92,7 +94,7 @@ end
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
-    if value(plot[:fillrange])
+    if to_value(plot[:fillrange])
         plot[:interpolate] = true
         # TODO normalize linewidth for heatmap
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
@@ -101,7 +103,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         result = lift(x, y, z, plot[:levels]) do x, y, z, levels
             t = eltype(z)
             levels = round(Int, levels)
-            contours = Contours.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
+            contours = Contours.contours(to_vector(y, size(z, 2), t), to_vector(x, size(z, 1), t), z', levels)
             cols = AbstractPlotting.resampled_colors(plot, levels)
             contourlines(T, contours, cols)
         end
@@ -111,7 +113,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 end
 
 function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    AbstractPlotting._boundingbox(value.((x[1], x[2]))...)
+    AbstractPlotting.xyz_boundingbox(to_value.((x[1], x[2]))...)
 end
 
 
@@ -137,10 +139,10 @@ function plot!(vs::VolumeSlices)
     hattributes = vs[:heatmap]
     sliders = map(zip(planes, (x, y, z))) do plane_r
         plane, r = plane_r
-        idx = node(plane, Signal(1))
+        idx = node(plane, Node(1))
         vs[plane] = idx
         hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[]))).plots[end]
-        foreach(idx) do i
+        on(idx) do i
             transform!(hmap, (plane, r[][i]))
             indices = ntuple(Val(3)) do j
                 planes[j] == plane ? i : (:)

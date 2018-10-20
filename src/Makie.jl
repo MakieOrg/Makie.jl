@@ -1,7 +1,7 @@
 module Makie
 
 using AbstractPlotting
-using Reactive, GeometryTypes, Colors, ColorVectorSpace, StaticArrays
+using GeometryTypes, Colors, ColorVectorSpace, StaticArrays
 import IntervalSets
 using IntervalSets: ClosedInterval, (..)
 using ImageCore
@@ -36,28 +36,20 @@ using AbstractPlotting: Text, volume, VecTypes
 using GeometryTypes: widths
 export widths, decompose
 
-# NamedTuple shortcut for 0.6, for easy creation of nested attributes
-const NT = Theme
-export NT
 
 const has_ffmpeg = Ref(false)
 
-struct MakieDisplay <: AbstractDisplay
-end
 
-# Hacky workaround, for the difficulty of removing closed screens from the display stack
-# So we just leave the makiedisplay on stack, and then just get the singleton gl display for now!
-function Base.display(::MakieDisplay, scene::Scene)
-    display(global_gl_screen(), scene)
+struct OpenGLBackend <: AbstractDisplay
 end
 
 function __init__()
+    AbstractPlotting.register_backend!(OpenGLBackend())
     has_ffmpeg[] = try
         success(`ffmpeg -h`)
     catch
         false
     end
-    pushdisplay(MakieDisplay())
 end
 
 function logo()

@@ -28,7 +28,6 @@ immutable BufferedGPUArray{GPUArr <: GPUArray}
     ram::Array{T, NDim}
 end
 =#
-
 length(A::GPUArray)                                     = prod(size(A))
 eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
 lastindex(A::GPUArray)                                      = length(A)
@@ -69,17 +68,20 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
     nothing
 end
 
+function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
+    update!(A, convert(Vector{T}, value))
+end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     if length(A) != length(value)
         if isa(A, GLBuffer)
             resize!(A, length(value))
-        elseif isa(A, Texture) && ndims(A) == 2
+        elseif isa(A, Texture)
             resize_nocopy!(A, size(value))
         else
             error("Dynamic resizing not implemented for $(typeof(A))")
         end
     end
-    dims = map(x->1:x, size(A))
+    dims = map(x-> 1:x, size(A))
     A[dims...] = value
     nothing
 end
@@ -215,9 +217,9 @@ gpu_setindex!(t) = error("gpu_setindex! not implemented for: $(typeof(t)). This 
 max_dim(t)       = error("max_dim not implemented for: $(typeof(t)). This happens, when you call setindex! on an array, without implementing the GPUArray interface")
 
 
-function (::Type{T})(x::Signal) where T <: GPUArray
-    gpu_mem = T(Reactive.value(x))
-    preserve(const_lift(update!, gpu_mem, x))
+function (::Type{T})(x::Node) where T <: GPUArray
+    gpu_mem = T(x[])
+    on(x-> update!(gpu_mem, x), x)
     gpu_mem
 end
 

@@ -4,38 +4,37 @@ function renderloop(screen::Screen; framerate = 1/60, prerender = () -> nothing)
             t = time()
             GLFW.PollEvents() # GLFW poll
             prerender()
-            if (Base.n_avail(Reactive._messages) > 0) || must_update()
-                reactive_run_till_now()
-                #make_context_current(screen)
-                render_frame(screen)
-                GLFW.SwapBuffers(to_native(screen))
-            end
+            make_context_current(screen)
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
             diff = framerate - (time() - t)
             diff > 0 && sleep(diff)
         end
     catch e
         rethrow(e)
-    finally
-        nw = to_native(screen)
-        destroy!(nw)
     end
+    destroy!(screen)
     return
 end
 
 
 
 function setup!(screen)
+    glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
         for (id, rect, clear, color) in screen.screens
             a = rect[]
-            glViewport(minimum(a)..., widths(a)...)
+            rt = (minimum(a)..., widths(a)...)
+            glViewport(rt...)
             if clear[]
                 c = color[]
+                glScissor(rt...)
                 glClearColor(red(c), green(c), blue(c), alpha(c))
                 glClear(GL_COLOR_BUFFER_BIT)
             end
         end
     end
+    glDisable(GL_SCISSOR_TEST)
     return
 end
 
@@ -60,7 +59,6 @@ function render_frame(screen::Screen)
     setup!(screen)
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     GLAbstraction.render(screen, true)
-
     # transfer color to luma buffer and apply fxaa
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
     glDrawBuffer(GL_COLOR_ATTACHMENT0)

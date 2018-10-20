@@ -129,7 +129,7 @@ function find_indices(input_tags::NTuple{N, String}; title = nothing, author = n
         tags_found && author_found && title_found
     end
     if isempty(indices)
-        warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
+        @warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
         indices
     else
         indices
@@ -524,11 +524,14 @@ function examples2source(f, tags...; kw_args...)
     end
 end
 
+const module_cache = Module[]
 
 function eval_example(entry; kw_args...)
     source = example2source(entry; kw_args..., scope_start = "", scope_end = "")
     uname = entry.unique_name
     tmpmod = Module(gensym(uname))
+    # modules created via Module get gc'ed, so we need to store a global reference
+    push!(module_cache, tmpmod)
     result = nothing
     try
         result = include_string(tmpmod, source, string(uname))

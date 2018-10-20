@@ -66,13 +66,13 @@ function render(A::AccessArray)
     for i = 1:length(x3)
         push!(connections, x3[i] .- ooff, x1[i] .+ yoff, x3[i] .- ooff, x2[i] .+ yoff)
     end
-    node_theme = NT(
+    node_theme = Theme(
         markersize = msize, strokewidth = 3,
         strokecolor = :black, color = (:white, 0.0),
-        axis = NT(
-            ticks = NT(ranges = (1:8, 1:5)),
-            names = NT(axisnames = ("Array Index", "Depth")),
-            frame = NT(axis_position = :none)
+        axis = (
+            ticks = (ranges = (1:8, 1:5),),
+            names = (axisnames = ("Array Index", "Depth"),),
+            frame = (axis_position = :none,)
         )
     )
     s = scatter(node_theme, x1)

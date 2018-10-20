@@ -65,7 +65,7 @@ function postprocess(color, color_luma, framebuffer_size)
     )
     data2 = Dict{Symbol, Any}(
         :color_texture => color_luma,
-        :RCPFrame => map(rcpframe, framebuffer_size)
+        :RCPFrame => lift(rcpframe, framebuffer_size)
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
 
@@ -145,7 +145,7 @@ function Base.resize!(fb::GLFramebuffer, window_size)
         resize_nocopy!(fb.color_luma, ws)
         resize_nocopy!(fb.objectid, ws)
         resize_nocopy!(fb.depth, ws)
-        push!(fb.resolution, ws)
+        fb.resolution[] = ws
     end
     nothing
 end
@@ -199,49 +199,26 @@ sleep more than `time`.
     end
 end
 function reactive_run_till_now()
-    max_yield = Base.n_avail(Reactive._messages) * 2
-    for i=1:max_yield
-        if !isready(Reactive._messages)
-            break
-        end
-        yield()
-    end
+
 end
 
-function was_destroyed(nw)
-    if !isimmutable(nw)
-        nw.handle == C_NULL
-    elseif isdefined(GLFW, :_window_callbacks)
-        !haskey(GLFW._window_callbacks, nw)
-    else
-        error("Unknown GLFW.jl version. Can't verify if window is destroyed")
-    end
-end
+was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
 
 function GLAbstraction.native_switch_context!(x::GLFW.Window)
     GLFW.MakeContextCurrent(x)
 end
 
 function GLAbstraction.native_context_alive(x::GLFW.Window)
-    # TODO merge `is_initialized` to GLFW + and use tagged version without this check
-    if isdefined(GLFW, :is_initialized)
-        GLFW.is_initialized() && !was_destroyed(x)
-    else
-        # This will lead to errors when using OpenGL debugging, since it can
-        # happen that the opengl finalizers run after GLFW.Terminate has run
-        !was_destroyed(x)
-    end
+    GLFW.is_initialized() && !was_destroyed(x)
 end
 
 function destroy!(nw::GLFW.Window)
-    GLAbstraction.is_current_context(nw) && GLAbstraction.switch_context!()
-    if nw.handle != C_NULL
-        was_destroyed(nw) || GLFW.DestroyWindow(nw)
-        # GLFW.jl compat - newer versions are immutable and don't need to be set to C_NULL
-        if !isimmutable(nw)
-            nw.handle = C_NULL
-        end
+    was_current = GLAbstraction.is_current_context(nw)
+    if !was_destroyed(nw)
+        GLFW.DestroyWindow(nw)
+        nw.handle = C_NULL
     end
+    was_current && GLAbstraction.switch_context!()
 end
 
 function Base.isopen(window::GLFW.Window)
