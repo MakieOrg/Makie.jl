@@ -36,9 +36,6 @@ using AbstractPlotting: Text, volume, VecTypes
 using GeometryTypes: widths
 export widths, decompose
 
-# NamedTuple shortcut for 0.6, for easy creation of nested attributes
-const NT = Theme
-export NT
 
 const has_ffmpeg = Ref(false)
 

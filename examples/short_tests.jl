@@ -55,7 +55,7 @@
         cam2d!(scene)
         axis2d!(
             scene, IRect(Vec2f0(0), Vec2f0(1)),
-            ticks = NT(
+            ticks = (
                 ranges = ([0.1, 0.2, 0.9], [0.1, 0.2, 0.9]),
                 labels = (["😸", "♡", "𝕴"], ["β ÷ δ", "22", "≙"])
             ), raw = true
@@ -82,7 +82,17 @@
     @cell heatmap(rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
     @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
+
+    # themes
+    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
+    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
+    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
+    @cell scatter(Theme(color = :green), rand(10), rand(10))
+    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
+
 end
+
+
 
 #
 # a = Point2f0.(200, 150:50:offset)

@@ -2,8 +2,7 @@ using Makie
 using LinearAlgebra
 
 res = 500
-game = Scene(resolution = (res, res))
-theme(game)[:plot] = NT(raw = true)
+game = Scene(resolution = (res, res), scene = (raw = true,))
 campixel!(game)
 cell = 10
 cells = res ÷ 10
