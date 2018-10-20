@@ -25,7 +25,6 @@ end
 using .Formatters
 
 @recipe(Axis2D) do scene
-    darktext = RGBAf0(0.0, 0.0, 0.0, 0.4)
     Theme(
         visible = true,
         ticks = Theme(
@@ -42,7 +41,7 @@ using .Formatters
             linecolor = ((:black, 0.4), (:black, 0.4)),
             linestyle = (nothing, nothing),
 
-            textcolor = (darktext, darktext),
+            textcolor = (:black, :black),
             textsize = (5, 5),
             rotation = (0.0, 0.0),
             align = ((:center, :top), (:right, :center)),
@@ -59,7 +58,7 @@ using .Formatters
             linewidth = 1.0,
             linecolor = :black,
             linestyle = nothing,
-            axis_position = :origin,
+            axis_position = nothing,
             axis_arrow = false,
             arrow_size = 2.5,
             frames = ((false, false), (false, false)),
@@ -95,7 +94,6 @@ end
     axisnames_align3d = tickalign3d
     tick_color = RGBAf0(0.5, 0.5, 0.5, 0.6)
     grid_color = RGBAf0(0.5, 0.5, 0.5, 0.4)
-    darktext = RGB(0.4, 0.4, 0.4)
     grid_thickness = 1
     gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
@@ -108,7 +106,7 @@ end
 
         names = Theme(
             axisnames = ("x", "y", "z"),
-            textcolor = (darktext, darktext, darktext),
+            textcolor = (:black, :black, :black),
             rotation = axisnames_rotation3d,
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
@@ -133,7 +131,7 @@ end
         frame = Theme(
             linecolor = (grid_color, grid_color, grid_color),
             linewidth = (grid_thickness, grid_thickness, grid_thickness),
-            axiscolor = (darktext, darktext, darktext),
+            axiscolor = (:black, :black, :black),
         )
     )
 end
@@ -259,7 +257,7 @@ function draw_frame(
         for i = 1:N
             start = unit(Point{N, Float32}, i) * Float32(mini[i])
             to = unit(Point{N, Float32}, i) * Float32(maxi[i])
-            if false#axis_arrow
+            if false #axis_arrow
                 arrows(
                     scene, [start, to],
                     linewidth = linewidth, linecolor = linecolor, linestyle = linestyle,
@@ -412,7 +410,7 @@ function draw_axis2d(
     return
 end
 
-# for axis, we don't want to have plot!(scene, args called on it, so we need to overload it directly)
+# for axis, we don't want to have plot!(scene, args) called on it, so we need to overload it directly
 function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     cplot, non_plot_kwargs = Axis2D(scene, attributes, args)
