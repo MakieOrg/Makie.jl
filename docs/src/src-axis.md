@@ -22,7 +22,7 @@ You can access the nested attributes in multiple ways. Take the nested attribute
 
 1. `axis[:names, :axisnames] = ("x", "y", "z")`
 1. `axis[:names][:axisnames] = ("x", "y", "z")`
-1. `axis = NT(names = NT(axisnames = ("x", "y", "z")))`
+1. `axis = (names = (axisnames = ("x", "y", "z"),),)`
 
 ### Examples
 

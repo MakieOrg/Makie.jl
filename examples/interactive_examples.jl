@@ -124,13 +124,12 @@ using AbstractPlotting: transformationmatrix, textslider, colorswatch, hbox!
 
 scene = Scene(resolution = (1000, 1000))
 ui_width = 260
-ui = Scene(scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)))
-plot_scene = Scene(scene, lift(x-> IRect(ui_width, 0, widths(x) .- Vec(ui_width, 0)), pixelarea(scene)))
-theme(ui)[:plot] = NT(
-    raw = true,
-    camera = campixel!
+ui = Scene(
+    scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)),
+    scene = (raw = true, camera = campixel!)
 )
-campixel!(ui)
+plot_scene = Scene(scene, lift(x-> IRect(ui_width, 0, widths(x) .- Vec(ui_width, 0)), pixelarea(scene)))
+
 translate!(ui, 10, 50, 0)
 a = textslider(ui, 0f0:50f0, "a")
 b = textslider(ui, -20f0:20f0, "b")
