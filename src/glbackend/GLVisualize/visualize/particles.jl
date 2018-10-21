@@ -389,9 +389,9 @@ function _default(
 end
 
 function _default(
-        p::Tuple{Vector{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
+        p::Tuple{VectorTypes{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: Colorant, P <: Point}
-    images = p[1]
+    images = to_value(p[1])
     isempty(images) && error("Can not display empty vector of images as primitive")
     images = sort(images, by=size)
     sizes = map(size, images)
