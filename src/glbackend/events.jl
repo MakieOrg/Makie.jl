@@ -81,7 +81,8 @@ function window_area(scene::Scene, window)
             event[] = IRect(minimum(rect), w, h)
         end
     end
-    event[] = IRect(window_position(window), framebuffer_size(window))
+    pos = (0.0, 0.0) #window_position(window)
+    event[] = IRect(pos, framebuffer_size(window))
     disconnect!(event); disconnect!(window, window_area)
 
     monitor = GLFW.GetPrimaryMonitor()
@@ -89,7 +90,8 @@ function window_area(scene::Scene, window)
     dpievent[] = minimum(props.dpi)
 
     GLFW.SetFramebufferSizeCallback(window, windowsize)
-    GLFW.SetWindowPosCallback(window, windowposition)
+    # TODO put back window position, but right now it makes more trouble than it helps#
+    # GLFW.SetWindowPosCallback(window, windowposition)
     return
 end
 
