@@ -25,7 +25,12 @@ Saves an image of the `scene` at the specified `path`.
 function save(path::String, scene::Scene)
     img = scene2image(scene)
     if img != nothing
-        FileIO.save(path, img)
+        try
+            FileIO.save(path, img)
+        catch e
+            # TODO print error?? But it's super long if its JuliaPlots/Makie.jl#138
+            error("Failed to save Image. You likely need to install ImageMagick with `]add ImageMagick`")
+        end
     else
         # TODO create a screen
         error("Scene isn't displayed on a screen")
