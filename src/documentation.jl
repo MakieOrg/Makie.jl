@@ -51,16 +51,17 @@ end
 function _help(io::IO, input::Function; extended = false)
     _help(io, to_type(input); extended = extended)
 end
-
-
-# Other help functions
 """
-    help_arguments(io, func)
+    help_arguments([io], func)
 
 Returns a list of signatures for function `func`.
 """
+help_arguments(x) = help_arguments(stdout, x)
+# Other help functions
+
 function help_arguments(io::IO, x::Function)
-#TODO: this is currently hard-coded
+	@warn("argument help isn't currently implemented correctly")
+	#TODO: will need to parse what arguments from convert_arguments apply to x
     println(io, "`$x` has the following function signatures: \n")
     println(io, "```")
     println(io, "  ", "(Vector, Vector)")
@@ -72,14 +73,39 @@ end
 
 
 """
-    help_attributes(io, Typ[; extended = false])
+    help_attributes([io], Union{PlotType, PlotFunction}; extended = false)
 
 Returns a list of attributes for the plot type `Typ`.
 The attributes returned extend those attributes found in the `default_theme`.
 
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
+usage:
+```example 
+>help_attributes(scatter)
+	alpha
+	color
+	colormap
+	colorrange
+	distancefield
+	glowcolor
+	glowwidth
+	linewidth
+	marker
+	marker_offset
+	markersize
+	overdraw
+	rotations
+	strokecolor
+	strokewidth
+	transform_marker
+	transparency
+	uv_offset_width
+	visible
+```
 """
+help_attributes(x; kw...) = help_attributes(stdout, x; kw...)
+
 function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: AbstractPlot
     # get and sort list of attributes from function (using Scatter as an example)
     # this is a symbolic dictionary, with symbols as the keys
