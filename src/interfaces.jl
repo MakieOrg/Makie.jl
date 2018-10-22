@@ -406,7 +406,7 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)
 
-    attributes, rest = merge_attributes!(scene_attributes, theme(scene, :scene))
+    attributes, rest = merge_attributes!(scene_attributes, theme(scene))
     # TODO warn about rest - should be unused arguments!
     empty!(scene.attributes)
     # transfer the merged attributes from theme and user defined to the scene
