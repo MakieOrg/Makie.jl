@@ -50,12 +50,12 @@ end
 function projection_switch(
         wh::Rect2D,
         fov::T, near::T, far::T,
-        projection::ProjectionEnum, zoom::T
+        projectiontype::ProjectionEnum, zoom::T
     ) where T <: Real
     aspect = T((/)(widths(wh)...))
     h = T(tan(fov / 360.0 * pi) * near)
     w = T(h * aspect)
-    projection == Perspective && return frustum(-w, w, -h, h, near, far)
+    projectiontype == Perspective && return frustum(-w, w, -h, h, near, far)
     h, w = h * zoom, w * zoom
     orthographicprojection(-w, w, -h, h, near, far)
 end
@@ -143,10 +143,8 @@ function translate_cam!(scene::Scene, cam::Camera3D, _translation::VecTypes)
     dir_norm = normalize(dir)
     right = normalize(cross(dir_norm, upvector))
     zoom_trans = dir_norm * zoom
-
     side_trans = right * (-x) + normalize(upvector) * y
     newpos = eyeposition + side_trans + zoom_trans
-
     cam.eyeposition[] = newpos
     cam.lookat[] = lookat + side_trans
     update_cam!(scene, cam)
@@ -189,7 +187,7 @@ function update_cam!(scene::Scene, cam::Camera3D)
 end
 
 function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
-    @extractvalue camera (fov, near, projectiontype, lookat, eyeposition, upvector)
+    @extractvalue camera (fov, near, lookat, eyeposition, upvector)
     bb = FRect3D(area3d)
     width = widths(bb)
     half_width = width/2f0
