@@ -135,11 +135,8 @@ function translate_cam!(scene::Scene, cam::Camera3D, _translation::VecTypes)
     zoom, x, y = translation
     zoom *= 0.1f0 * dir_len
 
-    if projectiontype != Perspective
-        x, y = GLAbstraction.to_worldspace(Vec2f0(x, y), scene.projectionview[], cam_res)
-    else
-        x, y = (Vec2f0(x, y) ./ cam_res) .* dir_len
-    end
+    x, y = (Vec2f0(x, y) ./ cam_res) .* dir_len
+
     dir_norm = normalize(dir)
     right = normalize(cross(dir_norm, upvector))
     zoom_trans = dir_norm * zoom
