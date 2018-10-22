@@ -79,6 +79,7 @@ using InteractiveUtils
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
     resize!(screen, size(scene)...)
+    GLFW.PollEvents() # let the size change go through (TODO is this necessary?)
     register_callbacks(scene, to_native(screen))
     insertplots!(screen, scene)
     AbstractPlotting.update!(scene)

@@ -44,15 +44,16 @@ returns `Node{Bool}`
 """
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
-    @csafe function windowclose(win)
+    @csafe(function windowclose(win)
         event[] = false
-    end
-    disconnect!(event)
+    end)
+    disconnect!(window, window_open)
     event[] = isopen(window)
     GLFW.SetWindowCloseCallback(window, windowclose)
 end
 
 import AbstractPlotting: disconnect!
+
 function disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
 end
@@ -81,14 +82,10 @@ function window_area(scene::Scene, window)
             event[] = IRect(minimum(rect), w, h)
         end
     end
-    pos = (0.0, 0.0) #window_position(window)
-    event[] = IRect(pos, framebuffer_size(window))
-    disconnect!(event); disconnect!(window, window_area)
-
+    disconnect!(window, window_area)
     monitor = GLFW.GetPrimaryMonitor()
     props = MonitorProperties(monitor)
     dpievent[] = minimum(props.dpi)
-
     GLFW.SetFramebufferSizeCallback(window, windowsize)
     # TODO put back window position, but right now it makes more trouble than it helps#
     # GLFW.SetWindowPosCallback(window, windowposition)
@@ -111,7 +108,7 @@ function mouse_buttons(scene::Scene, window::GLFW.Window)
     @csafe function mousebuttons(window, button, action, mods)
         addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
     end
-    disconnect!(event); disconnect!(window, mouse_buttons)
+    disconnect!(window, mouse_buttons)
     GLFW.SetMouseButtonCallback(window, mousebuttons)
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
@@ -122,7 +119,7 @@ function keyboard_buttons(scene::Scene, window::GLFW.Window)
     @csafe function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
     end
-    disconnect!(event); disconnect!(window, keyboard_buttons)
+    disconnect!(window, keyboard_buttons)
     GLFW.SetKeyCallback(window, keyoardbuttons)
 end
 
@@ -140,7 +137,7 @@ function dropped_files(scene::Scene, window::GLFW.Window)
     @csafe function droppedfiles(window, files)
         event[] = String.(files)
     end
-    disconnect!(event); disconnect!(window, dropped_files)
+    disconnect!(window, dropped_files)
     event[] = String[]
     GLFW.SetDropCallback(window, droppedfiles)
 end
@@ -164,7 +161,7 @@ function unicode_input(scene::Scene, window::GLFW.Window)
         empty!(vals)
         event[] = vals
     end
-    disconnect!(event); disconnect!(window, unicode_input)
+    disconnect!(window, unicode_input)
     x = Char[]; sizehint!(x, 1)
     event[] = x
     GLFW.SetCharCallback(window, unicodeinput)
@@ -209,8 +206,7 @@ function mouse_position(scene::Scene, window::GLFW.Window)
     @csafe function cursorposition(window, w::Cdouble, h::Cdouble)
         event[] = correct_mouse(window, w, h)
     end
-    disconnect!(event); disconnect!(window, mouse_position)
-    event[] = correct_mouse(window, GLFW.GetCursorPos(window)...)
+    disconnect!(window, mouse_position)
     GLFW.SetCursorPosCallback(window, cursorposition)
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_position))
@@ -229,8 +225,7 @@ function scroll(scene::Scene, window::GLFW.Window)
         event[] = (w, h)
         event[] = (0.0, 0.0)
     end
-    disconnect!(event); disconnect!(window, scroll)
-    event[] = (0.0, 0.0)
+    disconnect!(window, scroll)
     GLFW.SetScrollCallback(window, scrollcb)
 end
 function disconnect!(window::GLFW.Window, ::typeof(scroll))
@@ -248,8 +243,7 @@ function hasfocus(scene::Scene, window::GLFW.Window)
     @csafe function hasfocuscb(window, focus::Bool)
         event[] = focus
     end
-    disconnect!(event); disconnect!(window, hasfocus)
-    event[] = false
+    disconnect!(window, hasfocus)
     GLFW.SetWindowFocusCallback(window, hasfocuscb)
 end
 function disconnect!(window::GLFW.Window, ::typeof(hasfocus))
@@ -267,8 +261,7 @@ function entered_window(scene::Scene, window::GLFW.Window)
     @csafe function enteredwindowcb(window, entered::Bool)
         event[] = entered
     end
-    disconnect!(event); disconnect!(window, entered_window)
-    event[] = false
+    disconnect!(window, entered_window)
     GLFW.SetCursorEnterCallback(window, enteredwindowcb)
 end
 
