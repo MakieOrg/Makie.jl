@@ -6,19 +6,17 @@ const minimal_default = Attributes(
     colormap = :viridis,
     resolution = reasonable_resolution(),
     visible = true,
-    scene = Attributes(
-        show_axis = true,
-        show_legend = false,
-        scale_plot = true,
-        center = true,
-        axis = Attributes(),
-        legend = Attributes(),
-        axis_type = automatic,
-        camera = automatic,
-        limits = automatic,
-        padding = Vec3f0(0.1),
-        raw = false
-    )
+    show_axis = true,
+    show_legend = false,
+    scale_plot = true,
+    center = true,
+    axis = Attributes(),
+    legend = Attributes(),
+    axis_type = automatic,
+    camera = automatic,
+    limits = automatic,
+    padding = Vec3f0(0.1),
+    raw = false
 )
 
 const _current_default_theme = Attributes(; minimal_default...) # make a copy. TODO overload copy?
