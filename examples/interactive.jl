@@ -53,6 +53,6 @@
            end
            return
         end
-        scatter!(scene, clicks, color = :red, marker = '+', markersize = 10, raw = true)
+        scatter!(scene, clicks, color = :red, marker = '+', markersize = 10)
     end
 end

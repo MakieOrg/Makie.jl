@@ -1,22 +1,22 @@
 @block SimonDanisch ["short tests"] begin
     @cell begin
-        scene = text(
-            "boundingbox", raw = true,
+        scene = Scene(raw = true, camera = campixel!)
+        text!(
+            scene, "boundingbox",
             align = (:left, :center),
             position = (200, 50)
         )
-        campixel!(scene)
         scale!(scene, Vec3f0(4, 1, 1))
-        linesegments!(boundingbox(scene), raw = true)
+        linesegments!(boundingbox(scene))
         offset = 0
         for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
             global offset
             t = text!(
-                "boundingbox", raw = true,
+                "boundingbox",
                 align = (a_lign, b_lign),
                 position = (200, 100 + offset)
             )[end]
-            linesegments!(boundingbox(t), raw = true)
+            linesegments!(boundingbox(t))
             offset += 50
         end
         scene
@@ -35,7 +35,7 @@
 
     @cell begin
         scene = poly([Rect(0, 0, 20, 20)])
-        scatter!(Rect(0, 0, 20, 20), color = :red, markersize = 2, raw = true)
+        scatter!(Rect(0, 0, 20, 20), color = :red, markersize = 2)
     end
 
     @cell scatter(rand(10), color = rand(10), colormap = :Spectral)
@@ -84,11 +84,11 @@
     @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 
     # themes
-    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
-    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
-    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
-    @cell scatter(Theme(color = :green), rand(10), rand(10))
-    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
+    # @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
+    # @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
+    # @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
+    # @cell scatter(Theme(color = :green), rand(10), rand(10))
+    # @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
 
 end
 
