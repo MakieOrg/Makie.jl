@@ -396,11 +396,16 @@ plot!(p::Atomic) = p
 function plot!(p::Combined{Any, T}) where T
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
-    error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(plot::Plot$((T.parameters...,)))")
+    error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(plot::Plot$((args...,)))")
+end
+function plot!(p::Combined{X, T}) where {X, T}
+    args = (T.parameters...,)
+    typed_args = join(string.("::", args), ", ")
+    error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(plot::$X{ <: $T})")
 end
 
 
-
+using InteractiveUtils
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)
@@ -412,6 +417,7 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args.
     merge!(scene.attributes, attributes)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
+
     push!(scene.plots, plot_object)
 
     scene[:raw][] || update_limits!(scene)
