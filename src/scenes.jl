@@ -277,6 +277,7 @@ function Scene(;
     events = Events()
     theme = current_default_theme(; kw_args...)
     resolution = theme[:resolution][]
+    println(resolution)
     px_area = Observable(IRect(0, 0, resolution))
     on(events.window_area) do w_area
         if !any(x-> x ≈ 0.0, widths(w_area)) && px_area[] != w_area

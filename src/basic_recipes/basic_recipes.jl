@@ -275,7 +275,7 @@ function plot!(plot::Annotations)
     )
     N = to_value(position) |> eltype |> length
     atlas = get_texture_atlas()
-    combinedpos = [Point{N, Float32}(0)]; colors = RGBAf0[RGBAf0(0,0,0,0)]
+    combinedpos = [Point3f0(0)]; colors = RGBAf0[RGBAf0(0,0,0,0)]
     scales = Vec2f0[(0,0)]; fonts = NativeFont[to_font("Dejavu Sans")]
     rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
 

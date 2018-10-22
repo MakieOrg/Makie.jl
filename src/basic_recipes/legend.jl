@@ -11,7 +11,7 @@
         labelwidth = 20,
         padding = 10,
         outerpadding = 10,
-        align = (:left, :hcenter),
+        align = (:left, :center),
         rotation = Quaternionf0(0, 0, 0, 1),
         textcolor = :black,
         textsize = 16,
@@ -77,7 +77,7 @@ convert_argument(::Type{<:Legend}, plots::AbstractVector, labels::AbstractVector
 
 function plot!(plot::Legend)
     @extract plot (plots, labels)
-    scene = detach!(plot)
+    # scene = detach!(plot)
 #    cam2d!(scene)
     isempty(plots[]) && return
     N = length(plots[])
@@ -122,10 +122,10 @@ function plot!(plot::Legend)
             (0, 0)
         end
         rect = dont_touch(area, IRect(xy[1], xy[2], w, h), Vec2f0(opad))
-        translate!(plot, minimum(rect)..., 0)
-        FRect2D(rect)
+        translate!(plot, minimum(rect)..., 10)
+        FRect(0, 0, widths(rect))
     end
-    lines!(plot, legendarea)
+    poly!(plot, legendarea, color = :white, strokecolor = :black, strokewidth = 1)
 end
 
 
