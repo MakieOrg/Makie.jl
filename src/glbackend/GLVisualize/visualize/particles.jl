@@ -78,7 +78,7 @@ function _default(
     rotation_v = to_value(rotation_s)
     @gen_defaults! data begin
         color_norm = const_lift(extrema2f0, rotation_s)
-        ranges = ntuple(i->linspace(0f0, 1f0, size(rotation_v, i)), N)
+        ranges = ntuple(i->LinRange(0f0, 1f0, size(rotation_v, i)), N)
     end
     grid = Grid(rotation_v, ranges)
 
@@ -115,7 +115,7 @@ function _default(
     primitive, heightfield_s = main
     heightfield = to_value(heightfield_s)
     @gen_defaults! data begin
-        ranges = ntuple(i->linspace(0f0, 1f0, size(heightfield, i)), N)
+        ranges = ntuple(i->LinRange(0f0, 1f0, size(heightfield, i)), N)
     end
     grid = Grid(heightfield, ranges)
     @gen_defaults! data begin
@@ -142,7 +142,7 @@ function _default(
     primitive, heightfield_s = main
     heightfield = to_value(heightfield_s)
     @gen_defaults! data begin
-        ranges = ntuple(i->linspace(0f0, 1f0, size(heightfield, i)), N)
+        ranges = ntuple(i->LinRange(0f0, 1f0, size(heightfield, i)), N)
     end
     grid = Grid(heightfield, ranges)
     @gen_defaults! data begin
