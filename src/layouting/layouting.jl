@@ -10,14 +10,14 @@ function layout_text(
 
     atlas = get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    pos = to_ndim(Point{N, Float32}, mpos, 0)
+    pos = to_ndim(Point3f0, mpos, 0)
     scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
 
     positions2d = calc_position(string, Point2f0(0), rscale, ft_font, atlas)
     aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, ft_font, offset_vec)
-    aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
+    aoffsetn = to_ndim(Point3f0, aoffset, 0f0)
     positions = map(positions2d) do p
-        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+        pn = rot * (to_ndim(Point3f0, p, 0f0) .+ aoffsetn)
         pn .+ (pos)
     end
     positions, scales
@@ -27,7 +27,7 @@ function text_bb(str, font, size)
         str, Point2f0(0), size,
         font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I)
     )
-    union(AABB(positions),  AABB(positions .+ scale))
+    union(AABB(positions),  AABB(positions .+ to_ndim.(Point3f0, scale, 0)))
 end
 
 """
@@ -174,6 +174,10 @@ end
 function vbox(plots::Vector{T}; kw_args...) where T <: Scene
     layout(plots, 1; kw_args...)
 end
+function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
+
+end
+
 function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
     N = length(plots)
     w = 0.0

@@ -348,6 +348,11 @@ e.g.:
 """
 plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}}
 
+
+plottype(::AbstractVector, ::AbstractVector) = Lines
+plottype(::AbstractMatrix) = Heatmap
+plottype(::AbstractVector, ::AbstractVector) = Heatmap
+
 """
 Returns the Combined type that represents the signature of `args`.
 """
