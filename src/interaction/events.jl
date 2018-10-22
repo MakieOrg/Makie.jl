@@ -48,18 +48,7 @@ dropped_files(scene, native_window) = not_implemented_for(native_window)
 hasfocus(scene, native_window) = not_implemented_for(native_window)
 entered_window(scene, native_window) = not_implemented_for(native_window)
 
-
 function register_callbacks(scene::Scene, native_window)
-    disconnect!(native_window, window_area)
-    disconnect!(native_window, window_open)
-    disconnect!(native_window, mouse_buttons)
-    disconnect!(native_window, mouse_position)
-    disconnect!(native_window, scroll)
-    disconnect!(native_window, keyboard_buttons)
-    disconnect!(native_window, unicode_input)
-    disconnect!(native_window, dropped_files)
-    disconnect!(native_window, hasfocus)
-    disconnect!(native_window, entered_window)
 
     window_area(scene, native_window)
     window_open(scene, native_window)
