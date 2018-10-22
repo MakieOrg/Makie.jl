@@ -42,6 +42,9 @@ creates a legend from a colormap
         textcolor = :black,
         textsize = 16,
         font = theme(scene, :font),
+        ranges = automatic,
+        labels = automatic,
+        formatter = Formatters.plain,
     )
 end
 
@@ -77,8 +80,6 @@ convert_argument(::Type{<:Legend}, plots::AbstractVector, labels::AbstractVector
 
 function plot!(plot::Legend)
     @extract plot (plots, labels)
-    # scene = detach!(plot)
-#    cam2d!(scene)
     isempty(plots[]) && return
     N = length(plots[])
     position, color, stroke, strokecolor, padding, opad = getindex.(plot, (
@@ -111,8 +112,8 @@ function plot!(plot::Legend)
         finish!(textbuffer)
         return
     end
+    bb = boundingbox(plot)
     legendarea = map_once(position, outerbox(plot), opad, args[4:5]..., args[1:3]...) do xy, area, opad, padding, unused...
-        bb = boundingbox(plot)
         mini = minimum(bb)
         wx, wy, _ = widths(bb) .+ mini
         xy = (Vec2f0(xy) .* widths(area))
@@ -121,32 +122,38 @@ function plot!(plot::Legend)
         else
             (0, 0)
         end
-        rect = dont_touch(area, IRect(xy[1], xy[2], w, h), Vec2f0(opad))
-        translate!(plot, minimum(rect)..., 10)
-        FRect(0, 0, widths(rect))
+        bb_rect = IRect(xy[1], xy[2], w, h)
+        rect = dont_touch(zerorect(area), bb_rect, Vec2f0(opad))
+        zindex = 10 # TODO: this is a hack, to put the legend over other things
+        # Of course that stops working when others start employing the same hack^^
+        translate!(plot, minimum(rect)..., zindex)
+        zerorect(rect)
     end
     poly!(plot, legendarea, color = :white, strokecolor = :black, strokewidth = 1)
 end
 
 
-function argument_convert(::Type{<: ColorLegend}, plot::AbstractPlot)
-    (plot[:colormap], plot[:colorrange])
+function convert_arguments(::Type{<: ColorLegend}, plot::AbstractPlot)
+    (plot[:colormap][], plot[:colorrange][])
 end
 
+function calculated_attributes!(::Type{<: ColorLegend}, plot)
+    ranges = replace_automatic!(plot, :ranges) do
+        lift(default_ticks, plot[:colorrange], Node(nothing))
+    end
+    replace_automatic!(plot, :labels) do
+        lift(default_labels, ranges, plot[:formatter])
+    end
+end
 
 function plot!(plot::ColorLegend)
-    lscene = Scene(scene, scene.px_area)
-    campixel!(lscene) # map coordinates to pixel
-    @extract plot (colormap, colorrange)
-
     @extract(
         plot,
         (
-            padding, textsize, textcolor, align, font,
-            textgap, width, position, outerpadding
+            padding, textsize, textcolor, align, font, colormap,
+            textgap, width, position, outerpadding, ranges, labels
         )
     )
-
     vertices = Point3f0[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]
     mesh = GLNormalUVMesh(
         vertices = copy(vertices),
@@ -159,15 +166,14 @@ function plot!(plot::ColorLegend)
         # TODO cover the case of a 1D colormap explicitely in the shader
         reshape(c, (length(c), 1))
     end
-    tio = TextBuffer(lscene, Point2)
+    tio = TextBuffer(plot, Point2)
     rect = lift(
-                colorrange, textsize, textcolor, align, font,
-                textgap, width, padding, outerpadding, position, scene.px_area
-            ) do r, ts, tc, a, font, tg, w, pad, opad, position, area
+                ranges, labels, textsize, textcolor, align, font,
+                textgap, width, padding, outerpadding, position, outerbox(plot)
+            ) do ranges, labels, ts, tc, a, font, tg, w, pad, opad, position, area
 
         start!(tio)
-        real_range, labels = to_range(r)
-        N = length(real_range)
+        N = length(ranges)
         for (i, label) in zip(1:N, labels)
             o1 = (i - 1) / (N - 1) # 0 to 1
             pos = Point2f0(w[1] + tg, (ts/2) + o1 * w[2]) .+ pad
@@ -177,7 +183,10 @@ function plot!(plot::ColorLegend)
             )
         end
         finish!(tio)
-        limits = data_limits(tio)
+        @show widths(area)
+        @show length(tio[1][])
+        limits = raw_boundingbox(tio)
+        @show limits
         bbw, bbh = widths(limits)
         rect = FRect(
             0, 0,
@@ -186,8 +195,8 @@ function plot!(plot::ColorLegend)
         )
         p = (Vec2f0(position) .* widths(area))
         r2 = FRect(p, widths(rect))
-        p = p .+ move_from_touch(FRect(area), r2, Vec2f0(opad))
-        lscene.transformation.translation[] = Vec3f0(p[1], p[2], 0)
+        p = p .+ move_from_touch(zerorect(FRect(area)), r2, Vec2f0(opad))
+        translate!(plot, p[1], p[2], 0.0)
         rect
     end
     meshnode = lift(width, padding, textsize) do w, pad, ts
@@ -197,12 +206,8 @@ function plot!(plot::ColorLegend)
         mesh
     end
     lvis = lines!(
-        lscene,
-        rect,
-        linewidth = attributes[:strokewidth],
-        color = attributes[:strokecolor],
-        raw = true
+        plot, rect,
+        linewidth = plot[:strokewidth], color = plot[:strokecolor],
     )
-    Makie.mesh!(lscene, meshnode, color = cmap_node, shading = false, raw = true)
-    lscene
+    mesh!(plot, meshnode, color = cmap_node, shading = false)
 end
