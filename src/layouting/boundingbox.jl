@@ -9,7 +9,8 @@ rootparent(x) = rootparent(parent(x))
 rootparent(x::Scene) = x
 
 function raw_boundingbox(x::Annotations)
-    inv(modelmatrix(rootparent(x))) * raw_boundingbox(x.plots)
+    bb = raw_boundingbox(x.plots)
+    inv(modelmatrix(rootparent(x))) * bb
 end
 function raw_boundingbox(x::Combined)
     raw_boundingbox(x.plots)
@@ -57,6 +58,11 @@ function raw_boundingbox(plots::Vector)
     bb
 end
 
+function project_widths(matrix, vec)
+    pr = project(matrix, vec)
+    zero = project(matrix, zeros(typeof(vec)))
+    pr - zero
+end
 
 function boundingbox(x::Text, text::String)
     position = to_value(x[:position])
@@ -64,7 +70,7 @@ function boundingbox(x::Text, text::String)
     bb = boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
     pm = inv(transformationmatrix(parent(x))[])
     wh = widths(bb)
-    whp = project(pm, wh)
+    whp = project_widths(pm, wh)
     aoffset = whp .* to_ndim(Vec3f0, align, 0f0)
     FRect3D(minimum(bb) .- aoffset, whp)
 end

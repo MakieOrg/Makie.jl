@@ -1,4 +1,6 @@
-
+function zerorect(x::HyperRectangle{N, T}) where {N, T}
+    HyperRectangle(Vec{N, T}(0), widths(x))
+end
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
         font, align, rotation, model
