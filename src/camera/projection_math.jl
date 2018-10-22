@@ -270,3 +270,12 @@ function to_world(
     ws = prj_view_inv * pix_space
     ws ./ ws[4]
 end
+
+function to_world(
+        p::Vec{N, T},
+        prj_view_inv::Mat4,
+        cam_res::StaticVector
+    ) where {N, T}
+    to_world(Point(p), prj_view_inv, cam_res) .- 
+        to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
+end
