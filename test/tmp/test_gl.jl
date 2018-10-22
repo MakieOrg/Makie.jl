@@ -21,8 +21,8 @@ mesh = GLNormalUVMesh(GeometryTypes.SimpleRectangle(0, 0, 1, 1))
 # note, you can change the mesh.vertices to arbitrary values
 Makie.mesh(mesh, color = logo, shading = false)
 
-s2 = scatter(linspace(0, 10, 10), rand(10))
-s2 = scatter(linspace(0, 1, 10), rand(10), rand(10))
+s2 = scatter(LinRange(0, 10, 10), rand(10))
+s2 = scatter(LinRange(0, 1, 10), rand(10), rand(10))
 
 scene = Scene()
 x = range(0, stop = 6, length = 100)
