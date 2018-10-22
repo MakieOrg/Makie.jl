@@ -174,9 +174,6 @@ end
 function vbox(plots::Vector{T}; kw_args...) where T <: Scene
     layout(plots, 1; kw_args...)
 end
-function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
-
-end
 
 function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
     N = length(plots)

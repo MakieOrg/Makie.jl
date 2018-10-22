@@ -32,13 +32,6 @@ function range_label_bb(tplot, printer_func, range)
     bb
 end
 
-function textslider(ui, range, label)
-    t = text!(ui, "$label:", raw = true, position = (0, 50), align = (:left, :center))[end]
-    xp = widths(boundingbox(t))[1]
-    s = slider!(ui, range, position = Point2f0(xp, 0), raw = true)[end]
-    # AbstractPlotting.vbox([t, s])
-    s[:value]
-end
 
 function plot!(slider::Slider)
     @extract(slider, (
@@ -207,11 +200,13 @@ struct Popup
 end
 
 
-function textslider(ui, range, label; kw_args...)
-    a = slider!(ui, range, raw = true; kw_args...)[end][:value]
-    text!(ui, "$label:", raw = true, align = (:left, :center))
-    a
+function textslider(ui, range, label)
+    t = text!(ui, "$label:", raw = true, position = (0, 50), align = (:left, :center))[end]
+    xp = widths(boundingbox(t))[1]
+    s = slider!(ui, range, position = Point2f0(xp, 0), raw = true)[end]
+    s[:value]
 end
+
 
 function sample_color(f, ui, colormesh, v)
     mpos = ui.events.mouseposition
