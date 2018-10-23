@@ -155,27 +155,18 @@ to_index_buffer(x::TOrSignal{UnitRange{Int}}) = x
 """
 For integers, we transform it to 0 based indices
 """
-to_index_buffer(x::Vector{I}) where {I<:Integer} = indexbuffer(map(i-> Cuint(i-1), x))
-function to_index_buffer(x::Node{Vector{I}}) where I<:Integer
-    x = map(x-> Cuint[i-1 for i=x], x)
-    gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    on(update->update!(gpu_mem, update), x)
-    gpu_mem
+to_index_buffer(x::AbstractVector{I}) where {I <: Integer} = indexbuffer(Cuint.(x .- 1))
+function to_index_buffer(x::Node{<: AbstractVector{I}}) where I <: Integer
+    indexbuffer(lift(x-> Cuint.(x .- 1), x))
 end
+
 """
 If already GLuint, we assume its 0 based (bad heuristic, should better be solved with some Index type)
 """
-to_index_buffer(x::Vector{I}) where {I<:GLuint} = indexbuffer(x)
-function to_index_buffer(x::Node{Vector{I}}) where I<:GLuint
-    gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    on(update->update!(gpu_mem, update), x)
-    gpu_mem
+function to_index_buffer(x::VectorTypes{I}) where I <: Union{GLuint, Face{2, GLIndex}}
+    indexbuffer(x)
 end
-function to_index_buffer(x::Node{Vector{I}}) where I <: Face{2, GLIndex}
-    gpu_mem = GLBuffer(to_value(x), buffertype = GL_ELEMENT_ARRAY_BUFFER)
-    on(update->update!(gpu_mem, update), x)
-    gpu_mem
-end
+
 to_index_buffer(x) = error(
     "Not a valid index type: $(typeof(x)).
     Please choose from Int, Vector{UnitRange{Int}}, Vector{Int} or a signal of either of them"

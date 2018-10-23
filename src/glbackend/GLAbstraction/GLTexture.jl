@@ -175,12 +175,6 @@ function TextureBuffer(buffer::Vector{T}) where T <: GLArrayEltypes
     TextureBuffer(buff)
 end
 
-function TextureBuffer(s::Node{Vector{T}}) where T <: GLArrayEltypes
-    tb = TextureBuffer(to_value(s))
-    on(x-> update!(tb, x), s)
-    tb
-end
-
 #=
 Some special treatmend for types, with alpha in the First place
 
