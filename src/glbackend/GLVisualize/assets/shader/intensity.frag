@@ -10,7 +10,7 @@ uniform float stroke_width;
 uniform vec4 stroke_color;
 uniform float levels;
 
-vec4 getindex(sampler2D image, vec2 uv){return texture(image, uv);}
+vec4 getindex(sampler2D image, vec2 uv){return texture(image, vec2(uv.x, 1-uv.y));}
 vec4 getindex(sampler1D image, vec2 uv){return texture(image, uv.y);}
 float _normalize(float val, float from, float to){return (val-from) / (to - from);}
 
@@ -30,7 +30,7 @@ float aastep(float threshold1, float value) {
 void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
-    float i = float(getindex(intensity, vec2(o_uv.x, o_uv.y)).x);
+    float i = float(getindex(intensity, o_uv).x);
     vec4 color;
     if(isnan(i)){
         color = vec4(0);

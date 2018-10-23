@@ -49,18 +49,18 @@ GLAbstraction.isa_gl_struct(x::Grid) = true
 GLAbstraction.toglsltype_string(t::Grid{N,T}) where {N,T} = "uniform Grid$(N)D"
 function GLAbstraction.gl_convert_struct(g::Grid{N, T}, uniform_name::Symbol) where {N,T}
     return Dict{Symbol, Any}(
-        Symbol("$uniform_name.ref") => Vec{N, Float32}(map(x-> eltype(x)(x.ref), g.dims)),
-        Symbol("$uniform_name.offset") => Vec{N, Float32}(map(x-> eltype(x)(x.offset), g.dims)),
-        Symbol("$uniform_name._step") => Vec{N, Float32}(map(x-> step(x), g.dims)),
+        Symbol("$uniform_name.start") => Vec{N, Float32}(minimum.(g.dims)),
+        Symbol("$uniform_name.stop") => Vec{N, Float32}(maximum.(g.dims)),
+        Symbol("$uniform_name.lendiv") => Vec{N, Cint}(length.(g.dims) .- 1),
         Symbol("$uniform_name.dims") => Vec{N, Cint}(map(length, g.dims))
     )
 end
 function GLAbstraction.gl_convert_struct(g::Grid{1, T}, uniform_name::Symbol) where T
     x = g.dims[1]
     return Dict{Symbol, Any}(
-        Symbol("$uniform_name.ref") => Float32(eltype(x)(x.ref)),
-        Symbol("$uniform_name.offset") => Float32(eltype(x)(x.offset)),
-        Symbol("$uniform_name._step") => Float32(step(x)),
+        Symbol("$uniform_name.start") => Float32(minimum(x)),
+        Symbol("$uniform_name.stop") => Float32(maximum(x)),
+        Symbol("$uniform_name.lendiv") => Cint(length(x) - 1),
         Symbol("$uniform_name.dims") => Cint(length(x))
     )
 end

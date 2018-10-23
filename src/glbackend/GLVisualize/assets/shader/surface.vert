@@ -2,9 +2,9 @@
 {{GLSL_EXTENSIONS}}
 
 struct Grid2D{
-    vec2 ref;
-    vec2 offset;
-    vec2 _step;
+    ivec2 lendiv;
+    vec2 start;
+    vec2 stop;
     ivec2 dims;
 };
 
@@ -81,8 +81,8 @@ void main()
     vec3 pos;
     {{position_calc}}
     //pos           += vec3(scale.xy*vertices, 0.0);
-    o_color        = get_color(color, pos.z, color_map, color_norm, index);
-    o_id           = uvec2(objectid, index1D+1);
+    o_color = get_color(color, pos.z, color_map, color_norm, index);
+    o_id = uvec2(objectid, index1D+1);
 
     if(wireframe){
         if(offset.x == 0){
@@ -95,16 +95,16 @@ void main()
         }else{
             f_uv.y = uv_w;
         }
-        f_id           = o_id;
-        f_uv_offset    = vec2(0);
-        f_color        = o_color;
-        f_bg_color     = o_color;
+        f_id = o_id;
+        f_uv_offset = vec2(0);
+        f_color = o_color;
+        f_bg_color = o_color;
         f_stroke_color = stroke_color;
-        f_glow_color   = glow_color;
-        f_scale        = vec2(-0.1, 0);
-        gl_Position    = projection * view * model * vec4(pos, 1);
+        f_glow_color = glow_color;
+        f_scale = vec2(-0.1, 0);
+        gl_Position = projection * view * model * vec4(pos, 1);
     }else{
-        o_uv = linear_index(dims, index1D);
+        o_uv = index01;
         vec3 normalvec = {{normal_calc}};
         render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, light);
     }
