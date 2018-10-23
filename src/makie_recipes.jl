@@ -103,7 +103,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         result = lift(x, y, z, plot[:levels]) do x, y, z, levels
             t = eltype(z)
             levels = round(Int, levels)
-            contours = Contours.contours(to_vector(y, size(z, 2), t), to_vector(x, size(z, 1), t), z', levels)
+            contours = Contours.contours(to_vector(x, size(z, 2), t), to_vector(y, size(z, 1), t), z, levels)
             cols = AbstractPlotting.resampled_colors(plot, levels)
             contourlines(T, contours, cols)
         end

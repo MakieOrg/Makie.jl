@@ -104,7 +104,7 @@
     end
     @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme] begin
         using AbstractPlotting: hbox, vbox
-        data = rand(100, 50)
+        data = rand(50, 100)
         p1 = heatmap(data, interpolate = true)
         p2 = heatmap(data, interpolate = false)
         t = Theme(align = (:left, :bottom), raw = true, camera = campixel!)

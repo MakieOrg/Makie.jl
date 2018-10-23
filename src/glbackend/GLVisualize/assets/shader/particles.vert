@@ -5,22 +5,22 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 struct Grid1D{
-    float ref;
-    float offset;
-    float _step;
+    int lendiv;
+    float start;
+    float stop;
     int dims;
 };
 struct Grid2D{
-    vec2 ref;
-    vec2 offset;
-    vec2 _step;
+    ivec2 lendiv;
+    vec2 start;
+    vec2 stop;
     ivec2 dims;
 
 };
 struct Grid3D{
-    vec3 ref;
-    vec3 offset;
-    vec3 _step;
+    ivec3 lendiv;
+    vec3 start;
+    vec3 stop;
     ivec3 dims;
 };
 

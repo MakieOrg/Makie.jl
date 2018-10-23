@@ -273,11 +273,10 @@ end
 function Base.insert!(screen::Screen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         color = pop!(gl_attributes, :color)
-
         img = nothing
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
-        if isa(to_value(color), AbstractMatrix{<: Number}) && !(to_value(color) === to_value(x[3]))
+        if isa(to_value(color), AbstractMatrix{<: Number}) && to_value(color) !== to_value(x[3])
             crange = pop!(gl_attributes, :color_norm)
             cmap = pop!(gl_attributes, :color_map)
             img = lift(color, cmap, crange) do img, cmap, norm

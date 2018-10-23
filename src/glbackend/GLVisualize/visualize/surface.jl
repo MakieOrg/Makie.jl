@@ -110,10 +110,10 @@ function position_calc(x...)
     _position_calc(Iterators.filter(x->!isa(x, Nothing), x)...)
 end
 function glsllinspace(position::Grid, gi, index)
-    "position.ref[$gi] + ($index - position.offset[$gi]) * position._step[$gi]"
+    "((1-(index01[$gi]))*position.start[$gi] + (index01[$gi])*position.stop[$gi])"
 end
 function glsllinspace(grid::Grid{1}, gi, index)
-    "position.ref + ($index - position.offset) * position._step"
+    "((1-($index/position.lendiv))*position.start + ($index/position.lendiv)*position.stop)"
 end
 function grid_pos(grid::Grid{1})
     "$(glsllinspace(grid, 0, "index"))"
@@ -134,10 +134,10 @@ function _position_calc(
         grid::Grid{2}, position_z::MatTypes{T}, target::Type{Texture}
     ) where T<:AbstractFloat
     """
-
-    int index1D = index + offseti.x + offseti.y * position.dims.x + (index/(position.dims.x-1));
-    ivec2 index2D = ind2sub(position.dims, index1D);
-    float height = texelFetch(position_z, index2D, 0).x;
+    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
+    ivec2 index2D = ind2sub(dims, index1D);
+    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    float height = texture(position_z, index01).x;
     pos = vec3($(grid_pos(grid)), height);
     """
 end
@@ -145,15 +145,16 @@ end
 function _position_calc(
         position_x::MatTypes{T}, position_y::MatTypes{T}, position_z::MatTypes{T}, target::Type{Texture}
     ) where T<:AbstractFloat
-"""
+    """
     int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
     ivec2 index2D = ind2sub(dims, index1D);
+    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
     pos = vec3(
         texelFetch(position_x, index2D, 0).x,
         texelFetch(position_y, index2D, 0).x,
         texelFetch(position_z, index2D, 0).x
     );
-"""
+    """
 end
 
 function _position_calc(

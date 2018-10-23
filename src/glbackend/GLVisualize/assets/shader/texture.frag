@@ -19,7 +19,7 @@ void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
     write2framebuffer(
-        getindex(image, {{uv_swizzle}}),
+        getindex(image, vec2(o_uv.x, 1-o_uv.y)),
         o_objectid
     );
 }
