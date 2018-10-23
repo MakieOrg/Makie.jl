@@ -160,7 +160,7 @@ function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVecOrMat, y::Abstr
     (el32convert(x), el32convert(y), el32convert(z))
 end
 
-float32type(::Type{<: AbstractFloat}) = Float32
+float32type(::Type{<: Number}) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}

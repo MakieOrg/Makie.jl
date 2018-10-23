@@ -246,7 +246,14 @@ function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
     color_and_colormap!(plot)
 end
 function calculated_attributes!(::Type{<: Surface}, plot)
-    color_and_colormap!(plot, plot[3])
+    colors = plot[3]
+    if haskey(plot, :color)
+        color = plot[:color][]
+        if isa(color, AbstractMatrix{<: Number}) && !(color === to_value(colors))
+            colors = plot[:color]
+        end
+    end
+    color_and_colormap!(plot, colors)
 end
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
