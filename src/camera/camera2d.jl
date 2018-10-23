@@ -117,9 +117,10 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
         @extractvalue cam (zoomspeed, zoombutton, area)
         zoom = Float32(x[2])
         if zoom != 0 && ispressed(scene, zoombutton) && is_mouseinside(scene)
+            pa = pixelarea(scene)[]
             z = 1f0 + (zoom * zoomspeed)
-            mp = Vec2f0(e.mouseposition[])
-            mp = (mp .* wscale(pixelarea(scene)[], area)) + minimum(area)
+            mp = Vec2f0(e.mouseposition[]) - minimum(pa)
+            mp = (mp .* wscale(pa, area)) + minimum(area)
             p1, p2 = minimum(area), maximum(area)
             p1, p2 = p1 - mp, p2 - mp # translate to mouse position
             p1, p2 = z * p1, z * p2
