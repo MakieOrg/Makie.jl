@@ -48,7 +48,7 @@ end
 """
 A matrix of Intensities will result in a contourf kind of plot
 """
-function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: Intensity
+function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     main_v = to_value(main)
     @gen_defaults! data begin
         ranges = (0:size(main_v, 1), 0:size(main_v, 2))
@@ -63,7 +63,6 @@ function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: Intensity
         levels::Float32       = 5f0
         stroke_color          = RGBA{Float32}(1,1,1,1)
         shader                = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
-        preferred_camera      = :orthographic_pixel
         fxaa                  = false
     end
 end
