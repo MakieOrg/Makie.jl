@@ -74,7 +74,6 @@ function Base.resize!(screen::Screen, w, h)
     fb = screen.framebuffer
     resize!(fb, (w, h))
 end
-using InteractiveUtils
 
 function Base.display(screen::Screen, scene::Scene)
     empty!(screen)
