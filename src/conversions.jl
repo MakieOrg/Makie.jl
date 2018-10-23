@@ -149,26 +149,25 @@ end
 const SurfaceLike = Union{Surface, Heatmap, Image}
 
 """
-    convert_arguments(P, x, y, z)::Tuple{Matrix, Matrix, Matrix}
+    convert_arguments(P, x::VecOrMat, y::VecOrMat, z::Matrix)
 
 Takes 3 `AbstractMatrix` `x`, `y`, and `z`, converts them to `Float32` and
 outputs them in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: SurfaceLike}, x::AbstractMatrix, y::AbstractMatrix, z::AbstractMatrix)
-    (elconvert(Float32, x), elconvert(Float32, y), elconvert(Float32, z))
+function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVecOrMat, y::AbstractVecOrMat, z::AbstractMatrix)
+    (el32convert(x), el32convert(y), el32convert(z))
 end
 
-"""
-    convert_arguments(P, x, y, z)::Tuple{Vector, Vector, Matrix}
+float32type(::Type{<: AbstractFloat}) = Float32
+float32type(::Type{<: RGB}) = RGB{Float32}
+float32type(::Type{<: RGBA}) = RGBA{Float32}
+float32type(::Type{<: Colorant}) = RGBA{Float32}
+float32type(x::AbstractArray{T}) where T = float32type(T)
+float32type(x::T) where T = float32type(T)
+el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 
-Takes 2 `AbstractVector` `x`, `y`, and an AbstractMatrix `z`, and puts them in a Tuple.
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
-    (x, y, z)
-end
 
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -179,8 +178,8 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::Type{<: SurfaceLike}, data::AbstractMatrix)
-    n, m = Float64.(size(data))
-    (0.0 .. m, 0.0 .. n, data)
+    n, m = Float32.(size(data))
+    (0f0 .. m, 0f0 .. n, el32convert(data))
 end
 
 """
@@ -210,8 +209,8 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::Type{<: VolumeLike}, data::Array{T, 3}) where T
-    n, m, k = Float64.(size(data))
-    (0.0 .. n, 0.0 .. m, 0.0 .. k, data)
+    n, m, k = Float32.(size(data))
+    (0f0 .. n, 0f0 .. m, 0f0 .. k, data)
 end
 
 """
@@ -372,8 +371,12 @@ function convert_attribute(c::String, ::key"color")
 end
 
 # Do we really need all colors to be RGBAf0?!
-convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = elconvert(RGBAf0, c)
-convert_attribute(c::Union{Tuple, AbstractArray}, k::key"color") = convert_attribute.(c, k)
+convert_attribute(c::AbstractArray{<: Colorant}, k::key"color") = el32convert(c)
+convert_attribute(c::AbstractArray{<: Union{Tuple{Any, Number}, Symbol}}, k::key"color") = to_color.(c)
+
+convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
+
+convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     RGBAf0(Colors.color(to_color(c[1])), c[2])
 end
@@ -499,10 +502,10 @@ convert_attribute(r::AbstractVector{<: Quaternionf0}, k::key"rotation") = r
 convert_attribute(x, k::key"colorrange") = Vec2f0(x)
 
 convert_attribute(x, k::key"textsize") = Float32(x)
-convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = elconvert(Float32, x)
+convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = el32convert(x)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f0, x)
 convert_attribute(x, k::key"linewidth") = Float32(x)
-convert_attribute(x::AbstractVector, k::key"linewidth") = elconvert(Float32, x)
+convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
 
 const colorbrewer_names = Symbol.([
     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
@@ -735,7 +738,7 @@ to_spritemarker(marker::Char) = marker
 """
 Matrix of AbstractFloat will be interpreted as a distancefield (negative numbers outside shape, positive inside)
 """
-to_spritemarker(marker::Matrix{<: AbstractFloat}) = elconvert(Float32, marker)
+to_spritemarker(marker::Matrix{<: AbstractFloat}) = el32convert(marker)
 
 """
 Any AbstractMatrix{<: Colorant} or other image type
