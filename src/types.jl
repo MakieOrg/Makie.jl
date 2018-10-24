@@ -191,6 +191,22 @@ Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
 Base.empty!(x::Attributes) = (empty!(x.attributes); x)
 Base.length(x::Attributes) = length(x.attributes)
 
+function Base.getproperty(x::T, key::Symbol) where T <: Transformable
+    if key in fieldnames(T)
+        getfield(x, key)
+    else
+        getindex(x, key)
+    end
+end
+function Base.setproperty!(x::T, key::Symbol, value) where T <: Transformable
+    if key in fieldnames(T)
+        setfield!(x, key, value)
+    else
+        setindex!(x, value, key)
+    end
+end
+
+
 function getindex(x::Attributes, key::Symbol)
     x = x.attributes[key]
     to_value(x) isa Attributes ? to_value(x) : x
