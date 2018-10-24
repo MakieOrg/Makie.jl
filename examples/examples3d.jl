@@ -519,4 +519,30 @@
         scene
     end
 
+    @cell "Explicit frame rendering" [opengl, render_frame, meshscatter] begin
+        using ModernGL
+        using GLFW
+        Makie.opengl_renderloop[] = (screen) -> nothing
+        function update_loop(m, buff, screen)
+            for i = 1:20
+                GLFW.PollEvents()
+                buff .= rand.(Point3f0) .* 20f0
+                m[1] = buff
+                Makie.render_frame(screen)
+                GLFW.SwapBuffers(Makie.to_native(screen))
+                glFinish()
+            end
+        end
+        scene = meshscatter(rand(Point3f0, 10^4) .* 20f0)
+        display(scene)
+        meshplot = scene[end]
+        buff = rand(Point3f0, 10^4) .* 20f0;
+        screen = Makie.global_gl_screen();
+        @time update_loop(meshplot, buff, screen)
+        Makie.opengl_renderloop[] = Makie.renderloop # restore previous loop
+        # when done:
+        Makie.destroy!(screen)
+        scene
+    end
+
 end

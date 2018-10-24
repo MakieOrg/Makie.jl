@@ -164,6 +164,13 @@ end
 
 const _global_gl_screen = Ref{Screen}()
 
+# will get overloaded later
+function renderloop end
+
+# TODO a global is not very nice, but it's the simplest way right now to swap out
+# the rendering loop
+const opengl_renderloop = Ref{Function}(renderloop)
+
 function Screen(; resolution = (10, 10), visible = true, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
@@ -220,7 +227,7 @@ function Screen(; resolution = (10, 10), visible = true, kw_args...)
     else
         GLFW.HideWindow(window)
     end
-    screen.rendertask[] = @async(renderloop(screen))
+    screen.rendertask[] = @async((opengl_renderloop[])(screen))
     screen
 end
 
