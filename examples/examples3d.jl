@@ -24,6 +24,9 @@
         cam.eyeposition[] = (cam.lookat[][1], cam.lookat[][2] + 6.3, cam.lookat[][3])
         cam.projectiontype[] = AbstractPlotting.Orthographic
         update_cam!(scene, cam)
+        # stop scene display from centering, which would overwrite the camera paramter we just set
+        scene.center = false
+        scene
     end
 
     @cell "Volume Function" [volume] begin
