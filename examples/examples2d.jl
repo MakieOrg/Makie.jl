@@ -149,8 +149,20 @@
         z = ((x, y)-> sin(x) + cos(y)).(r, r')
         contour(r, r, z, levels = 5, color = :viridis, linewidth = 3)
     end
-
-
+    @cell "Hbox" [lines, scatter, hbox] begin
+        t = range(-122277.93103448274, stop=-14798.035304081845, length=29542)
+        x = -42 .- randn(length(t))
+        sc1 = scatter(t, x, color=:black, markersize=sqrt(length(t)/20))
+        sc2 = lines(t[1:end-1], diff(x), color = :blue)
+        hbox(sc2, sc1)
+    end
+    @cell "Customize Axes" [lines, axis] begin
+        x = LinRange(0,3pi,200); y = sin.(x)
+        lin = lines(x, y, padding = (0.0, 0.0), axis = (
+            names = (axisnames = ("", ""),),
+            grid = (linewidth = (0, 0),),
+        ))
+    end
     @cell "contour" [contour] begin
         y = range(-0.997669, stop = 0.997669, length = 23)
         contour(range(-0.99, stop = 0.99, length = 23), y, rand(23, 23), levels = 10)

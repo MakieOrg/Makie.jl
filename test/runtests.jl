@@ -61,8 +61,14 @@ function toimages(f, example, x::Scene, record)
     if record
         FileIO.save(joinpath(recordpath, "$(example.unique_name).jpg"), image)
     else
-        refimage = FileIO.load(joinpath(refpath, "$(example.unique_name).jpg"))
-        f(image, refimage)
+        path = joinpath(refpath, "$(example.unique_name).jpg")
+        if isfile(path)
+            refimage = FileIO.load(path)
+            f(image, refimage)
+        else
+            @warn("No reference image for $(example.unique_name) - skipping test")
+            FileIO.save(joinpath(test_diff_path, "no_reference_$(basename(path))"), image)
+        end
     end
 end
 
@@ -77,9 +83,17 @@ function toimages(f, example, s::Stepper, record)
     else
         for frame in readdir(s.folder)
             is_image_file(frame) || continue
-            image = FileIO.load(joinpath(s.folder, frame))
-            refimage = FileIO.load(joinpath(refpath, basename(s.folder), frame))
-            f(image, refimage)
+            path = joinpath(s.folder, frame)
+            pathref = joinpath(refpath, basename(s.folder), frame)
+            if isfile(pathref)
+                image = FileIO.load(path)
+                refimage = FileIO.load(pathref)
+                f(image, refimage)
+            else
+                warned || @warn("No reference frames for $(example.unique_name) found - skipping tests")
+                cp(path, joinpath(test_diff_path, "no_reference_$(basename(path))"))
+                break
+            end
         end
     end
 end
@@ -97,9 +111,16 @@ function toimages(f, example, path::String, record)
         isdir(filepath) || mkdir(filepath)
         run(`ffmpeg -loglevel quiet -i $path -y $filepath\\frames%04d.jpg`)
         for frame in readdir(filepath)
-            image = FileIO.load(joinpath(filepath, frame))
-            refimage = FileIO.load(joinpath(refpath, basename(filepath), frame))
-            f(image, refimage)
+            pathref = joinpath(refpath, basename(filepath), frame)
+            if isfile(pathref)
+                image = FileIO.load(joinpath(filepath, frame))
+                refimage = FileIO.load(pathref)
+                f(image, refimage)
+            else
+                warned || @warn("No reference frames for $(example.unique_name) found - skipping tests")
+                cp(joinpath(filepath, frame), joinpath(test_diff_path, "no_reference_$(frame)"))
+                break
+            end
         end
     end
 end

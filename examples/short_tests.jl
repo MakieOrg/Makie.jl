@@ -70,26 +70,44 @@
         scatter(pos, rotations = -angles , marker = '▲', scale_plot = false)
         scatter!(pos, markersize = 0.02, color = :red, scale_plot = false)
     end
-    # @cell begin
-    #     using Makie, GeometryTypes
-    #     s1 = GLNormalUVMesh(Sphere(Point3f0(0), 1f0))
-    #     Makie.mesh(GLNormalUVMesh(Sphere(Point3f0(0), 1f0)), color = rand(50, 50))
-    #     # ugh, bug In GeometryTypes for UVs of non unit spheres.
-    #     s2 = GLNormalUVMesh(Sphere(Point3f0(0), 1f0))
-    #     s2.vertices .= s2.vertices .+ (Point3f0(0, 2, 0),)
-    #     mesh!(s2, color = rand(RGBAf0, 50, 50))
-    # end
+    @cell begin
+        using Makie, GeometryTypes
+        s1 = GLNormalUVMesh(Sphere(Point3f0(0), 1f0))
+        Makie.mesh(GLNormalUVMesh(Sphere(Point3f0(0), 1f0)), color = rand(50, 50))
+        # ugh, bug In GeometryTypes for UVs of non unit spheres.
+        s2 = GLNormalUVMesh(Sphere(Point3f0(0), 1f0))
+        s2.vertices .= s2.vertices .+ (Point3f0(0, 2, 0),)
+        mesh!(s2, color = rand(RGBAf0, 50, 50))
+    end
     @cell heatmap(rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
     @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 
     # themes
-    # @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
-    # @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
-    # @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
-    # @cell scatter(Theme(color = :green), rand(10), rand(10))
-    # @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
-
+    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
+    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
+    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
+    @cell scatter(Theme(color = :green), rand(10), rand(10))
+    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
+    @cell begin
+        import AbstractPlotting: vbox, hbox
+        N = 20
+        x = LinRange(-0.3, 1, N)
+        y = LinRange(-1, 0.5, N)
+        z = x .* y'
+        hbox(
+            AbstractPlotting.vbox(
+                contour(x, y, z, levels = 20, linewidth =3),
+                contour(x, y, z, levels = 0, linewidth = 0, fillrange = true),
+                heatmap(x, y, z),
+            ),
+            AbstractPlotting.vbox(
+                image(x, y, z, colormap = :viridis),
+                surface(x, y, fill(0f0, N, N), color = z, shading = false),
+                image(-0.3..1, -1..0.5, Makie.logo())
+            )
+        )
+    end
 end
 
 
