@@ -209,9 +209,6 @@ end
 end
 
 
-Base.getindex(scene::Scene, key::Symbol) = scene.attributes[key]
-Base.setindex!(scene::Scene, value, key::Symbol) = (scene.attributes[key] = value)
-
 function getindex(x::Attributes, key::Symbol)
     x = x.attributes[key]
     to_value(x) isa Attributes ? to_value(x) : x
