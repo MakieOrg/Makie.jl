@@ -31,9 +31,10 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             robj[key] = getfield(scene.camera, key)
         end
         screen.cache2plot[robj.id] = x
-        push!(screen, scene, robj)
         robj
     end
+    push!(screen, scene, robj)
+    robj
 end
 
 function remove_automatic!(attributes)
