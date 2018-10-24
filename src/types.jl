@@ -191,15 +191,17 @@ Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
 Base.empty!(x::Attributes) = (empty!(x.attributes); x)
 Base.length(x::Attributes) = length(x.attributes)
 
-function Base.getproperty(x::T, key::Symbol) where T <: Transformable
-    if key in fieldnames(T)
+@generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
+
+@inline function Base.getproperty(x::T, key::Symbol) where T <: Transformable
+    if hasfield(x, Val(key))
         getfield(x, key)
     else
         getindex(x, key)
     end
 end
-function Base.setproperty!(x::T, key::Symbol, value) where T <: Transformable
-    if key in fieldnames(T)
+@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Transformable
+    if hasfield(x, Val(key))
         setfield!(x, key, value)
     else
         setindex!(x, value, key)
