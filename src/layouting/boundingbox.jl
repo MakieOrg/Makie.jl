@@ -19,6 +19,19 @@ function boundingbox(x)
     raw_boundingbox(x)
 end
 
+function combined_modelmatrix(x)
+    m = Mat4f0(I)
+    while true
+        m = modelmatrix(x) * m
+        if parent(x) !== nothing && parent(x) isa Combined
+            x = parent(x)
+        else
+            break
+        end
+    end
+    m
+end
+
 function modelmatrix(x)
     t = transformation(x)
     transformationmatrix(t.translation[], t.scale[], t.rotation[])
@@ -26,7 +39,7 @@ end
 
 function boundingbox(x::Atomic)
     bb = raw_boundingbox(x)
-    modelmatrix(x) * bb
+    combined_modelmatrix(x) * bb
 end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)

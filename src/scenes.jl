@@ -272,6 +272,8 @@ function current_scene()
     end
 end
 
+# dirty hack used for Scene(@resolution)
+# could possibly be removed, since the macro isn't really used anymore
 Scene(::Nothing) = Scene()
 
 
