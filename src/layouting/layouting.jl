@@ -24,6 +24,7 @@ function layout_text(
     end
     positions, scales
 end
+
 function text_bb(str, font, size)
     positions, scale = layout_text(
         str, Point2f0(0), size,
@@ -123,11 +124,13 @@ end
 
 
 grid(x::Transformable...; kw_args...) = grid([x...]; kw_args...)
+
 function grid(plots::Vector{<: Transformable}; kw_args...)
     N = length(plots)
     grid = close2square(N)
     grid(reshape(plots, grid))
 end
+
 function grid(plots::Matrix{<: Transformable}; kw_args...)
     N = length(plots)
     grid = size(plots)
