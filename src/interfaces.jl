@@ -460,7 +460,6 @@ function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args..
     scene
 end
 
-Base.getindex(scene::Scene, key::Symbol) = scene.attributes[key]
 
 
 function scale_scene!(scene)
