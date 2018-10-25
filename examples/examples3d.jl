@@ -573,6 +573,7 @@
         scene
     end
     # @cell "2D text in 3D" [text, annotations] begin
+    # TODO this has a world age problem!?!??
         # using GeometryTypes
         # import AbstractPlotting: project
         # scene = meshscatter(rand(10), rand(10), rand(10), markersize = 0.02)
