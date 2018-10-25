@@ -575,6 +575,18 @@ function available_gradients()
 end
 
 """
+Reverses the attribute T uppon conversion
+"""
+struct Reverse{T}
+    data::T
+end
+
+function convert_attribute(r::Reverse, ::key"colormap")
+    reverse(to_colormap(r.data))
+end
+
+
+"""
     to_colormap(b, x)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
