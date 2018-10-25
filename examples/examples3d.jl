@@ -572,5 +572,15 @@
         Makie.destroy!(screen)
         scene
     end
-
+    # @cell "2D text in 3D" [text, annotations] begin
+        # using GeometryTypes
+        # import AbstractPlotting: project
+        # scene = meshscatter(rand(10), rand(10), rand(10), markersize = 0.02)
+        # scat = scene[end]
+        # project_pos(pv, res, x) = AbstractPlotting.project.((pv,), (res,), x .+ 0.1)
+        # cam = camera(scene)
+        # projected = lift(project_pos, cam.projectionview, cam.resolution, scat[1])
+        # annotations!(campixel(scene), ["point $i" for i in 1:10], projected, raw = true)
+        # scene
+    # end
 end
