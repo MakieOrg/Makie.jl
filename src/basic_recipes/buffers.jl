@@ -37,8 +37,8 @@ end
 function finish!(lsb::LineSegments)
     # update the signal!
     lsb[1][] = lsb[1][]
-    # lsb[:color][] = lsb[:color][]
-    # lsb[:linewidth][] = lsb[:linewidth][]
+    lsb[:color][] = lsb[:color][]
+    lsb[:linewidth][] = lsb[:linewidth][]
     return
 end
 
@@ -72,7 +72,7 @@ function start!(tb::Annotations)
 end
 
 function finish!(tb::Annotations)
-    #update the signal!
+    # update the signal!
     # now update all callbacks
     # TODO this is a bit shaky, buuuuhut, in theory the whole lift(color, ...)
     # in basic_recipes annotations should depend on all signals here, so updating one should be enough

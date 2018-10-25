@@ -305,16 +305,20 @@ function plot!(plot::Annotations)
             append!(combinedpos, pos)
             append!(scales, s)
             append!(colors, repeated(c, n))
-            append!(fonts,  repeated(f, n))
+            append!(fonts, repeated(f, n))
             append!(rotations, repeated(rot, n))
         end
         str = String(take!(io))
-        # update string
-        # This should be enough, since we change all other attributes inplace
-        # and the signal in the backend should listen on text
+        # update string the signals
         tplot[1] = str
+        tplot[:scales] = scales
+        tplot[:color] = colors
+        tplot[:rotation] = rotations
+        # fonts shouldn't need an update, since it will get udpated when listening on string
+        #
         return
     end
+    # update one time in the beginning, since otherwise the above won't run
     notify!(sargs[1])
     plot
 end
