@@ -276,6 +276,21 @@ function to_world(
         prj_view_inv::Mat4,
         cam_res::StaticVector
     ) where {N, T}
-    to_world(Point(p), prj_view_inv, cam_res) .- 
+    to_world(Point(p), prj_view_inv, cam_res) .-
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
+end
+
+function project(matrix::Mat4f0, p::T, dim4 = 1.0) where T <: VecTypes
+    p = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0.0), dim4)
+    p = matrix * p
+    to_ndim(T, p, 0.0)
+end
+
+
+function project(proj_view::Mat4f0, resolution::Vec2, point::Point)
+    p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, point, 0f0), 1f0)
+    clip = proj_view * p4d
+    p = (clip / clip[4])[Vec(1, 2)]
+    p = Vec2f0(p[1], p[2])
+    ((((p + 1f0) / 2f0) .* (resolution - 1f0)) + 1f0)
 end
