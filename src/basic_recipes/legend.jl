@@ -183,10 +183,7 @@ function plot!(plot::ColorLegend)
             )
         end
         finish!(tio)
-        @show widths(area)
-        @show length(tio[1][])
         limits = raw_boundingbox(tio)
-        @show limits
         bbw, bbh = widths(limits)
         rect = FRect(
             0, 0,
