@@ -64,7 +64,3 @@ function run_game(game, snake, newsnake, food)
     end
 end
 run_game(game, snake, newsnake, food)
-
-scene = Scene()
-
-display(scene);
