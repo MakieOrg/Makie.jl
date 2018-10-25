@@ -130,7 +130,7 @@ using PackageCompiler
 PackageCompiler.compile_package("Makie", force = false) # can take around ~20 minutes
 
 # Replaces julias system image
-# please be very carefull with the above option, since this can make your julia stop working.
+# please be very careful with the option below, since this can make your julia stop working.
 # If Julia doesn't start for you anymore, consider doing:
 # using PackageCompiler; PackageCompiler.revert() <- not well tested
 
