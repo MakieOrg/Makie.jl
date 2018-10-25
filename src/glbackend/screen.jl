@@ -51,12 +51,14 @@ function Base.empty!(screen::Screen)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)
-    empty!(screen.cache)
-    empty!(screen.cache2plot)
+    # empty!(screen.cache)
+    # empty!(screen.cache2plot)
 end
 
 function destroy!(screen::Screen)
     empty!(screen)
+    empty!(screen.cache)
+    empty!(screen.cache2plot)
     destroy!(screen.glscreen)
 end
 
