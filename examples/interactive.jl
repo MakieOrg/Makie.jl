@@ -86,6 +86,7 @@
             fix = 0
             i = 0
             while isopen(scene) && i < 50 # dont loop longer than 50x for testing
+                i += 1
                 aframe .= sin.(2*pi*f0.*(frame_start .+ frame_time))
                 # append!(aframe, randn(nhop)); deleteat!(aframe, 1:nhop)
                 lineplot[1] = frame_start .+ frame_time
