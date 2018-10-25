@@ -102,11 +102,6 @@ function boundingbox(
 
 end
 
-function project(matrix::Mat4f0, p::T, dim4 = 1.0) where T
-    p = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0.0), dim4)
-    p = matrix * p
-    to_ndim(T, p, 0.0)
-end
 
 function boundingbox(text::String, position, textsize, font, align, rotation, model = Mat4f0(I))
     atlas = get_texture_atlas()
