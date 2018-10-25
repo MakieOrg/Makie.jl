@@ -173,20 +173,27 @@ end
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
 
-function hbox(plots::Vector{T}; kw_args...) where T <: Scene
-    layout(plots, 2; kw_args...)
+function hbox(plots::Vector{T}; parent = Scene(), kw_args...) where T <: Scene
+    layout(plots, 2; parent = parent, kw_args...)
 end
-function vbox(plots::Vector{T}; kw_args...) where T <: Scene
-    layout(plots, 1; kw_args...)
+function vbox(plots::Vector{T}; parent = Scene(), kw_args...) where T <: Scene
+    layout(plots, 1; parent = parent, kw_args...)
 end
 
-function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
+function to_sizes(x::AbstractVector{<: Number}, widths, dim)
+    x .* widths[dim]
+end
+
+function layout(plots::Vector{T}, dim; parent = Scene(), sizes = nothing, kw_args...) where T <: Scene
     N = length(plots)
     w = 0.0
-    pscene = Scene()
-    area = pixelarea(pscene)
-    sizes = lift(a-> layout_sizes(plots, widths(a), dim), area)
-    prefix_sum = lift(sizes) do s
+    area = pixelarea(parent)
+    sizes_node = if sizes == nothing
+        lift(a-> layout_sizes(plots, widths(a), dim), area)
+    else
+        lift(a-> to_sizes(sizes, widths(a), dim), area)
+    end
+    prefix_sum = lift(sizes_node) do s
         last_s = 0.0
         map(s) do x
             r = last_s; last_s += x; return r
@@ -195,7 +202,7 @@ function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
     for idx in 1:N
         p = plots[idx]
         on(area) do a
-            h = sizes[][idx]
+            h = sizes_node[][idx]
             last = prefix_sum[][idx]
             mask = unit(Vec2f0, dim)
             # TODO this is terrible!
@@ -204,15 +211,15 @@ function layout(plots::Vector{T}, dim; kw_args...) where T <: Scene
             end)
             resize!(p, IRect(minimum(a) .+ (mask .* last), new_w))
         end
-        push!(pscene.children, p)
+        push!(parent.children, p)
         nodes = map(fieldnames(Events)) do field
             if field != :window_area
-                connect!(getfield(pscene.events, field), getfield(p.events, field))
+                connect!(getfield(parent.events, field), getfield(p.events, field))
             end
         end
     end
     area[] = area[]
-    pscene
+    parent
 end
 
 
@@ -225,6 +232,18 @@ function scaled_width(bb, other_size, dim)
     wh[dim] * scaling
 end
 
+function pixel_boundingbox(scene::Scene)
+    if cameracontrols(scene) isa PixelCamera
+        return true
+    elseif cameracontrols(scene) isa EmptyCamera
+        # scene doesn't supply the camera itself, check children
+        return all(pixel_boundingbox, scene.children)
+    else
+        false
+    end
+end
+
+
 function layout_sizes(scenes, size, dim)
     odim = otherdim(dim)
     this_size = size[dim]
@@ -232,7 +251,7 @@ function layout_sizes(scenes, size, dim)
     N = length(scenes)
     pix_size = 0.0 # combined height of pixel bbs
     sizes = fill(-1.0, N)
-    scenepix = findall(s-> cameracontrols(s) isa Union{EmptyCamera, PixelCamera}, scenes)
+    scenepix = findall(pixel_boundingbox, scenes)
     perfect_size = this_size / N # equal size for all!
     for i in scenepix
         scene = scenes[i]
