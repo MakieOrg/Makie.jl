@@ -26,6 +26,9 @@ end
 function setup!(screen)
     glEnable(GL_SCISSOR_TEST)
     if isopen(screen)
+        glScissor(0, 0, widths(screen)...)
+        glClearColor(1, 1, 1, 1)
+        glClear(GL_COLOR_BUFFER_BIT)
         for (id, rect, clear, color) in screen.screens
             a = rect[]
             rt = (minimum(a)..., widths(a)...)
