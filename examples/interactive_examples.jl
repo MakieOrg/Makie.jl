@@ -121,23 +121,12 @@ scene
 
 using Makie, Colors
 using AbstractPlotting: transformationmatrix, textslider, colorswatch, hbox!
-
-scene = Scene(resolution = (1000, 1000))
-ui_width = 260
-ui = Scene(
-    scene, lift(x-> IRect(0, 0, ui_width, widths(x)[2]), pixelarea(scene)),
-    scene = (raw = true, camera = campixel!)
-)
-plot_scene = Scene(scene, lift(x-> IRect(ui_width, 0, widths(x) .- Vec(ui_width, 0)), pixelarea(scene)))
-
-translate!(ui, 10, 50, 0)
-a = textslider(ui, 0f0:50f0, "a")
-b = textslider(ui, -20f0:20f0, "b")
-c = textslider(ui, 0f0:20f0, "c")
-d = textslider(ui, range(0.0, stop=0.01, length=100), "d")
-scales = textslider(ui, range(0.01, stop=0.5, length=100), "scale")
-colorsw, pop = colorswatch(ui)
-hbox!(ui.plots)
+s1, a = textslider(0f0:50f0, "a", start = 13)
+s2, b = textslider(-20f0:20f0, "b", start = 10)
+s3, c = textslider(0f0:20f0, "c", start = 2)
+s4, d = textslider(range(0.0, stop = 0.02, length = 100), "d", start = 0.01)
+s5, scales = textslider(range(0.01, stop = 0.5, length = 100), "scale", start = 0.1)
+s6, colorsw, pop = colorswatch()
 
 function lorenz(t0, a, b, c, h)
     Point3f0(
@@ -159,23 +148,22 @@ end
 n1, n2 = 18, 30
 N = n1*n2
 args_n = (a, b, c, d)
-args = (13f0, 10f0, 2f0, 0.01f0)
-setindex!.(args_n, args)
-v0 = lorenz(zeros(Point3f0, N), args...)
+v0 = lorenz(zeros(Point3f0, N), to_value.(args_n)...)
 positions = lift(lorenz, Node(v0), args_n...)
 rotations = lift(diff, positions)
 rotations = lift(x-> push!(x, x[end]), rotations)
 
-meshscatter!(
-    plot_scene,
+mesh_scene = meshscatter(
     positions,
-    #marker = Makie.loadasset("cat.obj"),
     markersize = scales, rotation = rotations,
     intensity = collect(range(0f0, stop = 1f0, length = length(positions[]))),
     color = colorsw
 )
-scene
-pop.scene.camera_controls[]
+
+vbox(
+    hbox(s1, s2, s3, s4, s5, s6),
+    mesh_scene
+)
 
 function record_events(f, scene, path)
     display(scene)
