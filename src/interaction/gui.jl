@@ -3,6 +3,7 @@ default_printer(v) = string(round(v, digits=3))
 @recipe(Slider) do scene
     Theme(
         value = 0,
+        start = automatic,
         position = (0, 0),
         sliderlength = 200,
         sliderheight = 50,
@@ -32,17 +33,27 @@ function range_label_bb(tplot, printer_func, range)
     bb
 end
 
+function find_closest(iter, val)
+    last = first(iter)
+    for (i, elem) in enumerate(iter)
+        elem === val && return i
+        last <= val && elem >= val && return i
+        last = elem
+    end
+    error("$val isn't contained in $iter")
+end
 
 function plot!(slider::Slider)
     @extract(slider, (
         backgroundcolor, strokecolor, strokewidth, slidercolor, buttonstroke,
         buttonstrokecolor, buttonsize, buttoncolor, valueprinter,
-        sliderlength, sliderheight, textcolor, textsize, position
+        sliderlength, sliderheight, textcolor, textsize, position, start
     ))
     range = slider[1]
     val = slider[:value]
     p2f0 = lift(Point2f0, position)
-    push!(val, first(to_value(range)))
+    startval = start === automatic ? first(range[]) : start[]
+    push!(val, startval)
     label = lift((v, f)-> f(v), val, valueprinter)
     lplot = text!(
         slider, label,
@@ -70,6 +81,8 @@ function plot!(slider::Slider)
         strokecolor = buttonstrokecolor
     ).plots[end]
     dragslider(slider, button)
+    move!(slider, find_closest(range[], startval))
+    slider
 end
 
 function mouse_in_scene(scene)
@@ -200,11 +213,11 @@ struct Popup
 end
 
 
-function textslider(ui, range, label)
-    t = text!(ui, "$label:", raw = true, position = (0, 50), align = (:left, :center))[end]
+function textslider(range, label, scene = Scene(camera = campixel!); start = first(range))
+    t = text!(scene, "$label:", raw = true, position = (0, 50), align = (:left, :center))[end]
     xp = widths(boundingbox(t))[1]
-    s = slider!(ui, range, position = Point2f0(xp, 0), raw = true)[end]
-    s[:value]
+    s = slider!(scene, range, position = Point2f0(xp, 0), raw = true, start = start)[end]
+    scene, s[:value]
 end
 
 
@@ -280,10 +293,10 @@ end
 function mouse_selection end
 export mouse_selection
 
-function colorswatch(ui)
-    pop = popup(ui, (0, 50), (250, 300))
+function colorswatch(scene = Scene(camera = campixel!))
+    pop = popup(scene, (0, 50), (250, 300))
     sub_ui = pop.scene
-    hsv_hue = textslider(sub_ui, 1:360, "hue")
+    st, hsv_hue = textslider(1:360, "hue", sub_ui)
     colors = lift(hsv_hue) do V
         [HSV(V, 0, 0), HSV(V, 1, 0), HSV(V, 1, 1), HSV(V, 0, 1)]
     end
@@ -301,13 +314,13 @@ function colorswatch(ui)
     end
     hbox!(sub_ui.plots)
     rect = IRect(0, 0, 50, 50)
-    swatch = poly!(ui, rect, color = color, raw = true, visible = true)[end]
+    swatch = poly!(scene, rect, color = color, raw = true, visible = true)[end]
     pop.open[] = false
-    on(ui.events.mousebuttons) do mb
+    on(scene.events.mousebuttons) do mb
         if ispressed(mb, Mouse.left)
-            plot, idx = mouse_selection(ui)
+            plot, idx = mouse_selection(scene)
             if plot in swatch.plots
-                pop.position[] = Point2f0(events(ui).mouseposition[]) .+ Point2f0(0, 50)
+                pop.position[] = Point2f0(events(scene).mouseposition[]) .+ Point2f0(0, 50)
                 pop.open[] = true
             end
         end
@@ -315,5 +328,5 @@ function colorswatch(ui)
     end
     hbox!(sub_ui.plots)
     translate!(sub_ui, 10, 0, 0)
-    color, pop
+    scene, color, pop
 end

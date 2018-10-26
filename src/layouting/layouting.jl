@@ -269,7 +269,7 @@ function layout_sizes(scenes, size, dim)
     # # We should only use 1/N per window, so if the accumulated size is bigger
     # # than that, we need to rescale the sizes
     total_size = sum(sizes)
-    if this_size != total_size # we need to rescale
+    if this_size <= total_size # we need to rescale
         # no pixelsizes or all pixelsizes, we can just resize everything
         if npixies == 0 || npixies == N
             for i in 1:N
@@ -300,6 +300,7 @@ function layout_sizes(scenes, size, dim)
     #         sizes[i] = nonpixel_size
     #     end
     # end
+    println(sizes)
     sizes
 end
 
