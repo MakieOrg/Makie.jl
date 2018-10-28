@@ -52,7 +52,7 @@ function plot!(slider::Slider)
     range = slider[1]
     val = slider[:value]
     p2f0 = lift(Point2f0, position)
-    startval = start === automatic ? first(range[]) : start[]
+    startval = start[] === automatic ? first(range[]) : start[]
     push!(val, startval)
     label = lift((v, f)-> f(v), val, valueprinter)
     lplot = text!(
@@ -70,13 +70,13 @@ function plot!(slider::Slider)
         color = backgroundcolor, linecolor = strokecolor,
         linewidth = strokewidth
     )
-    line = lift(sliderlength, sliderheight, p2f0) do w, h, p
-        [p .+ Point2f0(10, h / 2), p .+ Point2f0(w - 10, h / 2)]
+    line = lift(sliderlength, sliderheight, p2f0, buttonsize) do w, h, p, bs
+        [p .+ Point2f0(bs/2, h / 2), p .+ Point2f0(w - (bs/2), h / 2)]
     end
 
     linesegments!(slider, line, color = slidercolor)
     button = scatter!(
-        slider, map(x-> x[1:1], line),
+        slider, lift(x-> x[1:1], line),
         markersize = buttonsize, color = buttoncolor, strokewidth = buttonstroke,
         strokecolor = buttonstrokecolor
     ).plots[end]
@@ -106,7 +106,7 @@ function dragslider(slider, button)
             diff = startpos[] .- mpos[]
             startpos[] = mpos[]
             spos = translation(button)[][1] - diff[1]
-            l = sliderlength[] - 17.5
+            l = sliderlength[] - button[:markersize][]
             if spos >= 0 && spos <= l
                 idx = round(Int, ((spos / l) .* (length(range[]) - 1)) + 1)
                 value[] = range[][idx]
@@ -122,7 +122,7 @@ end
 
 function move!(x::Slider, idx::Integer)
     r = x[1][]
-    len = x[:sliderlength][]
+    len = x[:sliderlength][] - x[:buttonsize][]
     x[:value] = r[idx]
     xpos = ((idx - 1) / (length(r) - 1)) * len
     translate!(x.plots[end], xpos, 0, 0)
