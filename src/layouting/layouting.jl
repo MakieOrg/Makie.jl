@@ -300,7 +300,6 @@ function layout_sizes(scenes, size, dim)
     #         sizes[i] = nonpixel_size
     #     end
     # end
-    println(sizes)
     sizes
 end
 
