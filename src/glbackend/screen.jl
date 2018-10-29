@@ -6,7 +6,7 @@ const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 function icon()
     icons_dir = joinpath(@__DIR__, "..", "..", "assets", "icons")
     icons = FileIO.load.(joinpath.(icons_dir, readdir(icons_dir)))
-    icons = collect.(reinterpret.(NTuple{4,UInt8}, rotl90.(icons)))
+    icons = reinterpret.(NTuple{4,UInt8}, rotl90.(icons))
 end
 
 mutable struct Screen <: AbstractScreen
