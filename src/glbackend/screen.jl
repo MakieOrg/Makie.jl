@@ -2,10 +2,12 @@ const ScreenID = UInt8
 const ZIndex = Int
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
 
-const icons_list = ["line-graph-16.png","line-graph-32.png","line-graph-64.png","line-graph-128.png","line-graph-256.png","line-graph-512.png"]
-const icons_dir = joinpath(@__DIR__, "..", "..", "assets", "icons")
-const icons = rotl90.(FileIO.load.(joinpath.(icons_dir,icons_list)))
-const icons_buf = collect.(reinterpret.(NTuple{4, UInt8}, icons))
+# default icon for Makie
+function icon()
+    icons_dir = joinpath(@__DIR__, "..", "..", "assets", "icons")
+    icons = FileIO.load.(joinpath.(icons_dir, readdir(icons_dir)))
+    icons = collect.(reinterpret.(NTuple{4,UInt8}, rotl90.(icons)))
+end
 
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
@@ -205,7 +207,7 @@ function Screen(; resolution = (10, 10), visible = true, kw_args...)
         visible = false,
         kw_args...
     )
-    GLFW.SetWindowIcon(window , icons_buf)
+    GLFW.SetWindowIcon(window , icon())
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
