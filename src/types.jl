@@ -166,6 +166,7 @@ Base.broadcastable(x::AbstractPlot) = Ref(x)
 Base.broadcastable(x::Attributes) = Ref(x)
 
 
+value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
 value_convert(@nospecialize(x)) = x
 value_convert(x::NamedTuple) = Attributes(x)
 
@@ -231,16 +232,6 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
         #TODO make this error. Attributes should be sort of immutable
         return x.attributes[key] = value
     end
-end
-
-# There are only two types of plots. Atomic Plots, which are the most basic building blocks.
-# Then you can combine them to form more complex plots in the form of a Combined plot.
-struct Atomic{Typ, T} <: AbstractPlot{Typ}
-    parent::SceneLike
-    transformation::Transformation
-    attributes::Attributes
-    input_args::Tuple # we push new values to this
-    converted::Tuple # these are the arguments we actually work with in the backend/recipe
 end
 
 struct Combined{Typ, T} <: ScenePlot{Typ}
