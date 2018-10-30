@@ -23,13 +23,13 @@ const _current_default_theme = Attributes(; minimal_default...) # make a copy. T
 
 function current_default_theme(; kw_args...)
     new_theme, rest = merge_attributes!(Attributes(kw_args), _current_default_theme)
-    new_theme
+    merge!(new_theme, rest)
 end
 
 function set_theme!(new_theme::Attributes)
     empty!(_current_default_theme)
     new_theme, rest = merge_attributes!(new_theme, minimal_default)
-    merge!(_current_default_theme, new_theme)
+    merge!(_current_default_theme, new_theme, rest)
     return
 end
 function set_theme!(;kw_args...)
