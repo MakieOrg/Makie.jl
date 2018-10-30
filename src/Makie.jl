@@ -40,7 +40,7 @@ export widths, decompose
 const has_ffmpeg = Ref(false)
 
 
-struct OpenGLBackend <: AbstractDisplay
+struct OpenGLBackend <: AbstractPlotting.AbstractBackend
 end
 
 function __init__()

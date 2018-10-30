@@ -39,7 +39,7 @@ function get_texture!(atlas)
 end
 
 
-function Base.display(x::OpenGLBackend, scene::Scene)
+function AbstractPlotting.backend_display(x::OpenGLBackend, scene::Scene)
     display(global_gl_screen(), scene)
 end
 
