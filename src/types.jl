@@ -185,11 +185,18 @@ Base.values(x::Attributes) = values(x.attributes)
 Base.iterate(x::Attributes) = iterate(x.attributes)
 Base.iterate(x::Attributes, state) = iterate(x.attributes, state)
 Base.copy(x::Attributes) = Attributes(copy(x.attributes))
-Base.merge(x::Attributes...) = Attributes(merge(map(a-> a.attributes, x)...))
-Base.merge!(x::Attributes...) = Attributes(merge!(map(a-> a.attributes, x)...))
 Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
 Base.empty!(x::Attributes) = (empty!(x.attributes); x)
 Base.length(x::Attributes) = length(x.attributes)
+
+function Base.merge!(x::Attributes...)
+    ret = x[1]
+    for i in 2:length(x)
+        merge_attributes_doublebang!(x[i], ret)
+    end
+    ret
+end
+Base.merge(x::Attributes...) = merge!(copy.(x)...)
 
 @generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
 
