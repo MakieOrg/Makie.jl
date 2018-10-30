@@ -318,7 +318,15 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
             end
         end
     end
-    plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
+    # The argument type of the final plot object is the assumened to stay constant after
+    # argument conversion. This might not always hold, but it simplifies
+    # things quite a bit
+    ArgTyp = typeof(to_value(args_converted))
+    # construct the fully qualified plot type, from the possible incomplete (abstract)
+    # PlotType
+    FinalType = Combined{Typ, ArgTyp}
+
+    plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, FinalType), plotsym(FinalType), scene, attributes)
     trans = get(plot_attributes, :transformation, automatic)
     transformation = if to_value(trans) == automatic
         Transformation(scene)
@@ -333,13 +341,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
-    # The argument type of the final plot object is the assumened to stay constant after
-    # argument conversion. This might not always hold, but it simplifies
-    # things quite a bit
-    ArgTyp = typeof(to_value(args_converted))
-    # construct the fully qualified plot type, from the possible incomplete (abstract)
-    # PlotType
-    FinalType = Combined{Typ, ArgTyp}
+
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, arg_nodes, node_args_seperated)
     calculated_attributes!(plot_obj)
@@ -404,7 +406,7 @@ function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     plot!(scene, PlotType, attributes, args...)
 end
 
-plot!(p::Atomic) = p
+plot!(p::Combined) = p
 
 function plot!(p::Combined{Any, T}) where T
     args = (T.parameters...,)
