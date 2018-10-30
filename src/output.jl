@@ -39,7 +39,7 @@ end
 
 
 # Base.showable(::MIME"text/html", scene::VideoStream) = true
-Base.showable(::MIME"image/png", scene::Scene) = true
+#Base.showable(::MIME"image/png", scene::Scene) = true
 
 
 # Let's not lie: with only the OpenGL backend, we don't really support any svg/html mime
