@@ -330,11 +330,6 @@ function setindex!(x::AbstractPlot, value::Node, key::Symbol)
 end
 parent(x::AbstractPlot) = x.parent
 
-basetype(::Type{<: Combined}) = Combined
-basetype(::Type{<: Atomic}) = Atomic
-
-
-
 
 """
 Remove `combined` from the current parent, and add it to a new subscene of the

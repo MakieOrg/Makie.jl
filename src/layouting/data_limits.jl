@@ -1,27 +1,26 @@
-const PlotTypes{Typ, Arg} = Union{Atomic{Typ, Arg}, Combined{Typ, Arg}}
-
-argtypes(x::PlotTypes{T, A}) where {T, A} = A
+argtypes(x::Combined{T, A}) where {T, A} = A
 argtypes(x) = Any
 
 function data_limits(x)
     error("No datalimits for $(typeof(x)) and $(argtypes(x))")
 end
+
 """
 Data limits calculate a minimal boundingbox from the data points in a plot.
 This doesn't include any transformations, markers etc.
 """
-data_limits(x::Atomic{Typ, <: Tuple{Arg1}}) where {Typ, Arg1} = FRect3D(to_value(x[1]))
+data_limits(x::Atomic{<: Tuple{Arg1}}) where Arg1 = FRect3D(to_value(x[1]))
 # TODO makes this generically work
-data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{N, <: Number}}}}) where {Typ, N} = FRect3D(Point{N, Float32}.(to_value(x[1])))
-function data_limits(x::Atomic{Typ, <: Tuple{<: AbstractVector{<: NTuple{2, T}}}}) where {Typ, T <: VecTypes}
+data_limits(x::Atomic{<: Tuple{<: AbstractVector{<: NTuple{N, <: Number}}}}) where N = FRect3D(Point{N, Float32}.(to_value(x[1])))
+function data_limits(x::Atomic{<: Tuple{<: AbstractVector{<: NTuple{2, T}}}}) where T <: VecTypes
     FRect3D(reinterpret(T, to_value(x[1])))
 end
 
-function data_limits(x::Atomic{Typ, <: Tuple{X, Y, Z}}) where {Typ, X, Y, Z}
+function data_limits(x::Atomic{<: Tuple{X, Y, Z}}) where {X, Y, Z}
     xyz_boundingbox(to_value.(x[1:3])...)
 end
 
-function data_limits(x::Atomic{Typ, <: Tuple{X, Y}}) where {Typ, X, Y}
+function data_limits(x::Atomic{<: Tuple{X, Y}}) where {X, Y}
     xyz_boundingbox(to_value.(x[1:2])...)
 end
 
