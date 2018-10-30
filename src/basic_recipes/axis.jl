@@ -279,7 +279,7 @@ function draw_frame(
         if !(from == origin && axis_position == :origin)
             for otherside in 1:2
                 for dim in 1:N
-                    if !frames[dim][otherside]
+                    if frames[N-dim+1][3-otherside]
                         p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val(N))
                         to = Point{N, Float32}(p)
                         append!(
