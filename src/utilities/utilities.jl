@@ -275,6 +275,25 @@ function merge_attributes!(input, theme, rest = Attributes(), merged = Attribute
     return merged, rest
 end
 
+function merge_attributes_doublebang!(input, theme)
+    for key in union(keys(input), keys(theme))
+        if haskey(input, key) && haskey(theme, key)
+            val = input[key]
+            if isa(to_value(val), Attributes)
+                isa(to_value(theme[key]), Attributes) ||
+                    error("$(key) is an Attribute type in only one input object")
+                merge_attributes_doublebang!(to_value(val), to_value(theme[key]))
+            else
+                theme[key] = val
+            end
+        elseif haskey(input, key)
+            theme[key] = input[key]
+        end
+    end
+    return theme
+end
+
+
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
 end
