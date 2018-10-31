@@ -272,6 +272,7 @@ function draw_frame(
         end
     end
     limit_widths = maxi .- mini
+    frames = convert_attribute(frames, key"frames"())
     for side in 1:2
         from = Point{N, Float32}(getindex.(limits, side))
         # if axis is drawn at origin, and we draw frame from origin,
