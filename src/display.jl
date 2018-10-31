@@ -22,7 +22,7 @@ function __init__()
     pushdisplay(PlotDisplay())
 end
 
-function Base.display(d::PlotDisplay, scene::SceneLike)
+function Base.display(d::PlotDisplay, scene::Scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
         backend_display(current_backend[], scene)
@@ -35,14 +35,18 @@ function Base.display(d::PlotDisplay, scene::SceneLike)
     end
 end
 
-Base.showable(mime::MIME, scene::SceneLike) = backend_showable(current_backend[], mime, scene)
+Base.showable(mime::MIME, scene::Scene) = backend_showable(current_backend[], mime, scene)
 
 # have to be explicit with mimetypes to avoid ambiguity
+
+function backend_show end
 for M in (MIME"text/plain", MIME)
-    @eval Base.show(io::IO, m::$M, scene::SceneLike) = backend_show(current_backend[], io, m, scene)
+    @eval function Base.show(io::IO, m::$M, scene::Scene)
+        AbstractPlotting.backend_show(current_backend[], io, m, scene)
+    end
 end
 
-function backend_showable(backend, m::MIME, scene::SceneLike)
+function backend_showable(backend, m::MIME, scene::Scene)
     hasmethod(backend_show, Tuple{typeof(backend), IO, typeof(m), typeof(scene)})
 end
 
