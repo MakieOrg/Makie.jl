@@ -346,7 +346,9 @@ to2tuple(x) = ntuple(i-> x, Val(2))
 to2tuple(x::Tuple{<:Any, <: Any}) = x
 
 function draw_axis2d(
-        textbuffer, linebuffer, m, limits, xyrange, labels,
+        textbuffer,
+        frame_linebuffer, grid_linebuffer,
+        m, limits, xyrange, labels,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
 
@@ -363,7 +365,7 @@ function draw_axis2d(
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
     )
-    start!(textbuffer); start!(linebuffer)
+    start!(textbuffer); start!(frame_linebuffer); foreach(start!, grid_linebuffer)
 
     limit_widths = map(x-> x[2] - x[1], limits)
     % = mean(limit_widths) / 100 # percentage
@@ -380,7 +382,7 @@ function draw_axis2d(
     dirs = ((0.0, Float64(limit_widths[2])), (Float64(limit_widths[1]), 0.0))
     foreach(1:2, dirs, xyticks) do dim, dir, ticks
         draw_grid(
-            linebuffer, dim, origin, ticks, dir,
+            grid_linebuffer[dim], dim, origin, ticks, dir,
             g_linewidth, g_linecolor, g_linestyle
         )
     end
@@ -395,7 +397,7 @@ function draw_axis2d(
     end
 
     draw_frame(
-        linebuffer, limits,
+        frame_linebuffer, limits,
         f_linewidth, f_linecolor, f_linestyle,
         f_axis_position, f_axis_arrow, f_arrow_size
     )
@@ -406,7 +408,7 @@ function draw_axis2d(
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
     )
-    finish!(textbuffer); finish!(linebuffer)
+    finish!(textbuffer); finish!(frame_linebuffer); foreach(finish!, grid_linebuffer)
     return
 end
 
@@ -430,11 +432,17 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
 
     textbuffer = TextBuffer(cplot, Point{2})
 
-    linebuffer = LinesegmentBuffer(cplot, Point{2})
+    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, linestyle = cplot[:frame, :linestyle]) |> to_node
+    grid_linebuffer = to_node((
+        LinesegmentBuffer(cplot, Point{2}, linestyle = lift(first, cplot[:grid, :linestyle])),
+        LinesegmentBuffer(cplot, Point{2}, linestyle = lift(last, cplot[:grid, :linestyle]))
+    ))
 
     map_once(
         draw_axis2d,
-        to_node(textbuffer), to_node(linebuffer), transformationmatrix(scene),
+        to_node(textbuffer),
+        frame_linebuffer, grid_linebuffer,
+        transformationmatrix(scene),
         cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
         g_args..., t_args..., f_args..., ti_args...
     )
