@@ -1,16 +1,17 @@
 module CairoMakie
 
-import ..Makie
-using ..Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
-using ..Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
-using ..Makie: @info, @get_attribute
-using Reactive, Colors, GeometryTypes
-
+import Makie
+using Makie: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
+using Makie: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
+using Makie: @info, @get_attribute
+using Colors, GeometryTypes
 using AbstractPlotting
-using AbstractPlotting: to_value, to_colormap
-
-
+using AbstractPlotting: to_value, to_colormap, extrema_nan
 using Cairo
+
+
+struct CairoBackend <: AbstractPlotting.AbstractBackend
+end
 
 
 struct CairoScreen{S}
@@ -25,7 +26,6 @@ Base.insert!(screen::CairoScreen, scene::Scene, plot) = nothing
 # Default to Gtk Window+Canvas as backing device
 function CairoScreen(scene::Scene)
     w, h = round.(Int, scene.camera.resolution[])
-    @info("Cairo screen: ", w, " ", h)
     surf = CairoRGBSurface(w, h)
     ctx = CairoContext(surf)
     win = GtkWindow()
@@ -117,10 +117,8 @@ function cairo_draw(screen::CairoScreen, primitive::Union{Lines, LineSegments})
     end
     nothing
 end
-using AbstractPlotting: extrema_nan
 
 function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    println("joooo")
     AbstractPlotting.@get_attribute attributes (colormap, colorrange)
     imui32 = to_uint32_color.(AbstractPlotting.interpolated_getindex.(Ref(colormap), img, (colorrange,)))
     to_cairo_image(imui32, attributes)
@@ -143,7 +141,6 @@ function cairo_draw(screen::CairoScreen, primitive::Union{Heatmap, Image})
 end
 
 function draw_image(screen, attributes)
-    println("Oh Hi")
     scene = screen.scene
     ctx = screen.context
     image = attributes[3][]
@@ -239,7 +236,7 @@ function cairo_draw(screen::CairoScreen, primitive::Text)
     scene = screen.scene
     ctx = screen.context
     @get_attribute(primitive, (textsize, color, font, align, rotation, model))
-    txt = value(primitive[1])
+    txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
     N = length(txt)
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
@@ -316,27 +313,41 @@ function cairo_clear(screen::CairoScreen)
 end
 
 function cairo_finish(screen::CairoScreen{CairoRGBSurface})
-    @info("draw")
     showall(screen.pane.window)
     draw(screen.pane.canvas) do canvas
         ctx = getgc(canvas)
         w, h = Cairo.width(ctx), Cairo.height(ctx)
-        @info(w, " ", h)
         # TODO: Maybe just use set_source(ctx, screen.surface)?
         Cairo.image(ctx, screen.surface, 0, 0, w, h)
     end
 end
 cairo_finish(screen::CairoScreen) = finish(screen.surface)
 
-function Base.display(screen::CairoScreen, scene::Scene)
-    Makie.center!(scene)
+function AbstractPlotting.backend_display(::CairoBackend, scene::Scene)
+    AbstractPlotting.update!(scene)
+    screen = CairoScreen(scene, joinpath(homedir(), "Desktop", "cairo.svg"))
+    cairo_draw(screen, scene)
+end
+
+AbstractPlotting.backend_showable(::CairoBackend, m::MIME"image/svg", scene::SceneLike) = true
+
+function AbstractPlotting.backend_show(::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
+    AbstractPlotting.update!(scene)
+    screen = CairoScreen(scene, io)
+    cairo_draw(screen, scene)
+end
+
+
+function cairo_draw(screen::CairoScreen, scene::Scene)
     for elem in scene.plots
         cairo_draw(screen, elem)
     end
-    foreach(child_scene-> display(screen, child_scene), scene.children)
+    foreach(child_scene-> cairo_draw(screen, child_scene), scene.children)
     cairo_finish(screen)
     return
 end
-
+function __init__()
+    AbstractPlotting.register_backend!(CairoBackend())
+end
 
 end
