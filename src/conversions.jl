@@ -431,6 +431,13 @@ function convert_attribute(ls::Symbol, ::key"linestyle")
     end
 end
 
+function convert_attribute(f::Symbol, ::key"frames")
+    f == :box && return ((true, true), (true, true))
+    f == :semi && return ((true, false), (true, false))
+    f == :none && return ((false, false), (false, false))
+    throw(MethodError("$(string(f)) is not a valid framestyle. Options are `:box`, `:semi` and `:none`"))
+end
+convert_attribute(f::Tuple{Tuple{Bool,Bool},Tuple{Bool,Bool}}, ::key"frames") = f
 
 convert_attribute(c::Tuple{<: Number, <: Number}, ::key"position") = Point2f0(c[1], c[2])
 convert_attribute(c::Tuple{<: Number, <: Number, <: Number}, ::key"position") = Point3f0(c)
