@@ -368,7 +368,7 @@ struct Palette{N}
 end
 
 function convert_attribute(p::Palette{N}, ::key"color") where {N}
-    p.i[] = p.i[] == N + 1 ? one(UInt8) : p.i[] + one(UInt8)
+    p.i[] = p.i[] == N ? one(UInt8) : p.i[] + one(UInt8)
     p.colors[p.i[]]
 end
 
