@@ -406,7 +406,7 @@ function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     plot!(scene, PlotType, attributes, args...)
 end
 
-plot!(p::Combined) = p
+plot!(p::Atomic{T}) where T = p
 
 function plot!(p::Combined{Any, T}) where T
     args = (T.parameters...,)
