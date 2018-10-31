@@ -406,14 +406,16 @@ function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     plot!(scene, PlotType, attributes, args...)
 end
 
-plot!(p::Atomic{T}) where T = p
+plot!(p::Combined) = _plot!(p)
 
-function plot!(p::Combined{Any, T}) where T
+_plot!(p::Atomic{T}) where T = p
+
+function _plot!(p::Combined{Any, T}) where T
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
     error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(plot::Plot$((args...,)))")
 end
-function plot!(p::Combined{X, T}) where {X, T}
+function _plot!(p::Combined{X, T}) where {X, T}
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
     error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(plot::$X{ <: $T})")
