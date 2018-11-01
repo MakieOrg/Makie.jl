@@ -417,7 +417,6 @@ function plot!(p::Combined{X, T}) where {X, T}
 end
 
 
-using InteractiveUtils
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, args)

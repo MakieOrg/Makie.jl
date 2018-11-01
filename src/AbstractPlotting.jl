@@ -9,7 +9,7 @@ using Packing
 using SignedDistanceFields
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
-
+import FileIO
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
