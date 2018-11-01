@@ -1,34 +1,57 @@
-struct PlotDisplay <: AbstractDisplay
-end
+struct PlotDisplay <: AbstractDisplay end
+
+abstract type AbstractBackend end
+function backend_display end
 
 """
 Currently available displays by backend
 """
-const backend_displays = AbstractDisplay[]
+const available_backends = AbstractBackend[]
+const current_backend = Ref{Union{Missing,AbstractBackend}}(missing)
+const use_display = Ref{Bool}(true)
 
-function register_backend!(display::AbstractDisplay)
-    push!(backend_displays, display)
-end
-
-# Hacky workaround, for the difficulty of removing closed screens from the display stack
-# So we just leave the makiedisplay on stack, and then just get the singleton gl display for now!
-function Base.display(::PlotDisplay, scene::Scene)
-    if isempty(backend_displays)
-        error("No backend display available. Make sure you're using a Plotting backend")
+function register_backend!(backend::AbstractBackend)
+    push!(available_backends, backend)
+    if(length(available_backends) == 1)
+        current_backend[] = backend
     end
-    display(first(backend_displays), scene)
+    nothing
 end
 
 function __init__()
     pushdisplay(PlotDisplay())
 end
 
-Base.showable(::MIME"text/plain", scene::Scene) = true
+function Base.display(d::PlotDisplay, scene::Scene)
+    use_display[] || throw(MethodError(display, (d, scene)))
+    try
+        backend_display(current_backend[], scene)
+    catch ex
+        if ex isa MethodError && ex.f in (backend_display, backend_show)
+            throw(MethodError(display, (d, scene)))
+        else
+            rethrow()
+        end
+    end
+end
 
+Base.showable(mime::MIME, scene::Scene) = backend_showable(current_backend[], mime, scene)
 
-Base.show(io::IO, scene::Scene) = show(io, MIME"text/plain"(), scene)
+# have to be explicit with mimetypes to avoid ambiguity
 
-function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
+function backend_show end
+for M in (MIME"text/plain", MIME)
+    @eval function Base.show(io::IO, m::$M, scene::Scene)
+        AbstractPlotting.backend_show(current_backend[], io, m, scene)
+    end
+end
+
+function backend_showable(backend, m::MIME, scene::Scene)
+    hasmethod(backend_show, Tuple{typeof(backend), IO, typeof(m), typeof(scene)})
+end
+
+# fallback show when no backend is selected
+function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     println(io, "events:")
     for field in fieldnames(Events)
@@ -38,31 +61,29 @@ function Base.show(io::IO, m::MIME"text/plain", scene::Scene)
     for plot in scene.plots
         println(io, "   *", typeof(plot))
     end
-    println(io, "subscenes:")
+    print(io, "subscenes:")
     for subscene in scene.children
-        println(io, "   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
+        print(io, "\n   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
     end
     return
 end
 
-function Base.show(io::IO, m::MIME"text/plain", plot::Combined)
+function backend_show(backend, io::IO, ::MIME"text/plain", plot::Combined)
     println(io, typeof(plot))
     println(io, "plots:")
     for p in plot.plots
         println(io, "   *", typeof(p))
     end
-    println(io, "attributes:")
+    print(io, "attributes:")
     for (k, v) in theme(plot)
-        println(io, "  $k : $(typeof(v))")
+        print(io, "\n  $k : $(typeof(v))")
     end
 end
 
-
-
-function Base.show(io::IO, m::MIME"text/plain", plot::Atomic)
+function Base.show(io::IO, ::MIME"text/plain", plot::Atomic)
     println(io, typeof(plot))
-    println(io, "attributes:")
+    print(io, "attributes:")
     for (k, v) in theme(plot)
-        println(io, "  $k : $(typeof(to_value(v)))")
+        print(io, "\n  $k : $(typeof(to_value(v)))")
     end
 end
