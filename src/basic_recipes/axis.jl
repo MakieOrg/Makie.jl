@@ -245,7 +245,7 @@ end
 function draw_frame(
         linebuffer, limits::NTuple{N, Any},
         linewidth, linecolor, linestyle,
-        axis_position, axis_arrow, arrow_size
+        axis_position, axis_arrow, arrow_size, frames
     ) where N
 
     mini = minimum.(limits)
@@ -272,6 +272,7 @@ function draw_frame(
         end
     end
     limit_widths = maxi .- mini
+    frames = convert_attribute(frames, key"frames"())
     for side in 1:2
         from = Point{N, Float32}(getindex.(limits, side))
         # if axis is drawn at origin, and we draw frame from origin,
@@ -279,12 +280,14 @@ function draw_frame(
         if !(from == origin && axis_position == :origin)
             for otherside in 1:2
                 for dim in 1:N
-                    p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val(N))
-                    to = Point{N, Float32}(p)
-                    append!(
-                        linebuffer, [from, to],
-                        linewidth = linewidth, color = linecolor#, linestyle = linestyle,
-                    )
+                    if frames[N-dim+1][3-otherside]
+                        p = ntuple(i-> i == dim ? limits[i][otherside] : limits[i][side], Val(N))
+                        to = Point{N, Float32}(p)
+                        append!(
+                            linebuffer, [from, to],
+                            linewidth = linewidth, color = linecolor#, linestyle = linestyle,
+                        )
+                    end
                 end
             end
         end
@@ -359,7 +362,7 @@ function draw_axis2d(
 
         # frame attributes
         f_linewidth, f_linecolor, f_linestyle,
-        f_axis_position, f_axis_arrow, f_arrow_size,
+        f_axis_position, f_axis_arrow, f_arrow_size, f_frames,
 
         # title / axis name attributes
         ti_labels,
@@ -399,7 +402,8 @@ function draw_axis2d(
     draw_frame(
         frame_linebuffer, limits,
         f_linewidth, f_linecolor, f_linestyle,
-        f_axis_position, f_axis_arrow, f_arrow_size
+        f_axis_position, f_axis_arrow, f_arrow_size,
+        f_frames,
     )
 
     draw_titles(
@@ -417,7 +421,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     cplot, non_plot_kwargs = Axis2D(scene, attributes, args)
     g_keys = (:linewidth, :linecolor, :linestyle)
-    f_keys = (:linewidth, :linecolor, :linestyle, :axis_position, :axis_arrow, :arrow_size)
+    f_keys = (:linewidth, :linecolor, :linestyle, :axis_position, :axis_arrow, :arrow_size, :frames)
     t_keys = (
         :linewidth, :linecolor, :linestyle,
         :textcolor, :textsize, :rotation, :align, :font,
