@@ -157,6 +157,10 @@ end
 
 estimated_space(x, N, w) = 1/N
 
+function Base.resize!(scene::Scene, xy::Tuple{Number, Number})
+    Base.resize!(scene, IRect(0, 0, xy))
+end
+Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2D)
     pixelarea(scene)[] = rect
 end
