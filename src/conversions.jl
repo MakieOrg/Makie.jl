@@ -361,7 +361,17 @@ function convert_arguments(
     (m,)
 end
 
+struct Palette{N}
+   colors::SArray{Tuple{N},RGBA{Float32},1,N}
+   i::Ref{UInt8}
+   Palette(colors) = new{length(colors)}(SVector{length(colors)}(to_color.(colors)), zero(UInt8))
+end
+Palette(name::Union{String, Symbol}, n = 8) = Palette(to_colormap(name, n))
 
+function convert_attribute(p::Palette{N}, ::key"color") where {N}
+    p.i[] = p.i[] == N ? one(UInt8) : p.i[] + one(UInt8)
+    p.colors[p.i[]]
+end
 
 convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
