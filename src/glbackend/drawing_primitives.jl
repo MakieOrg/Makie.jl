@@ -1,5 +1,16 @@
 gpuvec(x) = GPUVector(GLBuffer(x))
 
+to_range(x::ClosedInterval) = (minimum(x), maximum(x))
+to_range(x::VecTypes{2}) = x
+to_range(x::AbstractRange) = (minimum(x), maximum(x))
+to_range(x::AbstractVector) = (minimum(x), maximum(x))
+function to_range(x::AbstractArray)
+    if length(x) in size(x) # assert that just one dim != 1
+        to_range(vec(x))
+    else
+        error("Can't convert to a range. Please supply a range/vector/interval or a tuple (min, max)")
+    end
+end
 function to_glvisualize_key(k)
     k == :rotations && return :rotation
     k == :markersize && return :scale

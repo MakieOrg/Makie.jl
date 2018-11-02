@@ -229,7 +229,7 @@ function Serialization.serialize(s::BaseSerializer, t::T) where T<:GPUArray
     Serialization.serialize_type(s, T)
     Serialization.serialize(s, Array(t))
 end
-function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T<:GPUArray
+function Serialization.deserialize(s::BaseSerializer, ::Type{T}) where T <: GPUArray
     A = Serialization.deserialize(s)
     T(A)
 end

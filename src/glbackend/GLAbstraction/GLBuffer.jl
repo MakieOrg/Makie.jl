@@ -50,6 +50,13 @@ function GLBuffer(
     GLBuffer(collect(buffer); kw_args...)
 end
 
+function GLBuffer{T}(
+        buffer::AbstractVector;
+        kw_args...
+    ) where T <: GLArrayEltypes
+    GLBuffer(convert(Vector{T}, buffer); kw_args...)
+end
+
 function GLBuffer(
         ::Type{T}, len::Int;
         buffertype::GLenum = GL_ARRAY_BUFFER, usage::GLenum = GL_STATIC_DRAW

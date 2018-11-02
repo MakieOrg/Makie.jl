@@ -523,8 +523,7 @@ function _default(main::Tuple{TOrSignal{S}, P}, s::Style, data::Dict) where {S <
     _default(main[1], s, data)
 end
 
-import ..AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
-import ..Makie: get_texture!
+
 
 function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractString
     @gen_defaults! data begin

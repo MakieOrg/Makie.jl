@@ -30,6 +30,8 @@ using IndirectArrays
 const HasAxesArray{T, N} = AxisArrays.AxisArray{T, N}
 const AxisMatrix{T} = HasAxesArray{T, 2}
 
+import AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
+import ..GLMakie: get_texture!
 
 const GLBoundingBox = AABB{Float32}
 

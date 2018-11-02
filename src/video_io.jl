@@ -26,8 +26,8 @@ function VideoStream(scene::Scene)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
-    screen = global_gl_screen()
-    display(screen, scene)
+
+    display(scene)
     scene.updated[] = true
     force_update!();yield();
     if scene[:center][]
@@ -38,7 +38,7 @@ function VideoStream(scene::Scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
     process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r 24 -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
-    VideoStream(process.in, process, screen, abspath(path))
+    VideoStream(process.in, process, GLMakie.global_gl_screen(), abspath(path))
 end
 
 """
@@ -46,7 +46,7 @@ Adds a video frame to the VideoStream
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    frame = colorbuffer(io.screen)
+    frame = GLMakie.colorbuffer(io.screen)
     _xdim, _ydim = size(frame)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
