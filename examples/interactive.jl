@@ -24,7 +24,7 @@
             raw = true
         )[end]
         scene
-        display(Makie.global_gl_screen(), scene)
+        display(scene)
 
         p1[:color] = RGBAf0(1, 0, 0, 0.1)
         p2[:marker] = 'π' #TODO fix this

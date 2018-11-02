@@ -51,8 +51,6 @@ function Base.empty!(screen::Screen)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)
-    # empty!(screen.cache)
-    # empty!(screen.cache2plot)
 end
 
 function destroy!(screen::Screen)
@@ -109,9 +107,7 @@ end
 
 function colorbuffer(screen::Screen)
     if isopen(screen)
-        force_update!()
         GLFW.PollEvents()
-        yield()
         render_frame(screen) # let it render
         GLFW.SwapBuffers(to_native(screen))
         glFinish() # block until opengl is done rendering
@@ -173,7 +169,7 @@ function renderloop end
 # the rendering loop
 const opengl_renderloop = Ref{Function}(renderloop)
 
-function Screen(; resolution = (10, 10), visible = true, kw_args...)
+function Screen(; resolution = (10, 10), visible = false, kw_args...)
     if !isempty(gl_screens)
         for elem in gl_screens
             isopen(elem) && destroy!(elem)

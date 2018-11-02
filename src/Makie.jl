@@ -1,20 +1,9 @@
 module Makie
 
-using AbstractPlotting
-using GeometryTypes, Colors, ColorVectorSpace, StaticArrays
-import IntervalSets
+using AbstractPlotting, ImageCore, LinearAlgebra, Statistics, Base64
+using GeometryTypes, Colors, ColorVectorSpace, StaticArrays, FixedPointNumbers
+import IntervalSets, FileIO
 using IntervalSets: ClosedInterval, (..)
-using ImageCore
-import FileIO
-using LinearAlgebra, Statistics
-using Base64
-
-module ContoursHygiene
-    import Contour
-end
-using .ContoursHygiene
-const Contours = ContoursHygiene.Contour
-
 using Primes
 using Base.Iterators: repeated, drop
 using FreeType, FreeTypeAbstraction, UnicodeFun
@@ -26,7 +15,6 @@ for name in names(AbstractPlotting)
     @eval import AbstractPlotting: $(name)
     @eval export $(name)
 end
-
 # Unexported names
 using AbstractPlotting: @info, @log_performance, @warn, NativeFont, Key, @key_str
 
@@ -35,16 +23,17 @@ export (..), GLNormalUVMesh
 using AbstractPlotting: Text, volume, VecTypes
 using GeometryTypes: widths
 export widths, decompose
+export VideoStream, recordframe!, finish, record
 
+module ContoursHygiene
+    import Contour
+end
+using .ContoursHygiene
+const Contours = ContoursHygiene.Contour
 
 const has_ffmpeg = Ref(false)
 
-
-struct OpenGLBackend <: AbstractPlotting.AbstractBackend
-end
-
 function __init__()
-    AbstractPlotting.register_backend!(OpenGLBackend())
     has_ffmpeg[] = try
         success(`ffmpeg -h`)
     catch
@@ -59,9 +48,9 @@ end
 include("makie_recipes.jl")
 include("utils.jl")
 include("glbackend/glbackend.jl")
-# include("cairo/cairo.jl")
-include("output.jl")
-include("video_io.jl")
+using .GLMakie
+using .GLMakie: assetpath, loadasset
 
+include("video_io.jl")
 
 end

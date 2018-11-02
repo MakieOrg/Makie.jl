@@ -208,8 +208,8 @@
         axis = scene[Axis] # get axis
         scene
 
-        st = Stepper(scene, @outputfile)
-        step!(st)
+        st = Stepper(scene, "test")
+        step!(st);
         axis[:frame][:linewidth] = 5
         step!(st)
         axis[:grid][:linewidth] = (1, 5)

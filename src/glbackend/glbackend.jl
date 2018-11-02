@@ -1,4 +1,23 @@
-using ModernGL, GLFW, FixedPointNumbers
+module GLMakie
+
+using ModernGL, GLFW, FixedPointNumbers, Colors, GeometryTypes
+using AbstractPlotting, StaticArrays
+using ..Makie
+using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, Key, broadcast_foreach
+using AbstractPlotting: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
+using AbstractPlotting: @get_attribute, to_value, to_colormap, extrema_nan
+using Base: RefValue
+import Base: push!, isopen, show
+using FileIO
+using ImageCore
+import IntervalSets
+using IntervalSets: ClosedInterval, (..)
+using Base.Iterators: repeated, drop
+using FreeType, FreeTypeAbstraction, FixedPointNumbers
+
+for name in names(AbstractPlotting)
+    @eval import AbstractPlotting: $(name)
+end
 
 include("GLAbstraction/GLAbstraction.jl")
 using .GLAbstraction
@@ -38,11 +57,6 @@ function get_texture!(atlas)
     tex
 end
 
-
-function AbstractPlotting.backend_display(x::OpenGLBackend, scene::Scene)
-    display(global_gl_screen(), scene)
-end
-
 include("GLVisualize/GLVisualize.jl")
 using .GLVisualize
 
@@ -51,3 +65,36 @@ include("screen.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
+
+struct GLBackend <: AbstractPlotting.AbstractBackend
+end
+function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
+    screen = global_gl_screen()
+    GLFW.set_visibility!(to_native(screen), true)
+    display(screen, scene)
+end
+
+colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
+
+"""
+    scene2image(scene::Scene)
+
+Buffers the `scene` in an image buffer.
+"""
+function scene2image(scene::Scene)
+    screen = global_gl_screen()
+    GLFW.set_visibility!(to_native(screen), AbstractPlotting.use_display[])
+    display(screen, scene)
+    colorbuffer(screen)
+end
+
+function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
+    img = scene2image(scene)
+    # FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
+end
+
+function __init__()
+    AbstractPlotting.register_backend!(GLBackend())
+end
+
+end

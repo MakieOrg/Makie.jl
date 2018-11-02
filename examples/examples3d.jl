@@ -519,7 +519,7 @@
                 pushfirst!(lineplots, p)
                 translate!(p, 0, 0, 0)
                 #TODO automatically insert new plots
-                insert!(Makie.global_gl_screen(), scene, p)
+                insert!(Makie.GLMakie.global_gl_screen(), scene, p)
             else
                 lineplots = circshift(lineplots, 1)
                 lp = first(lineplots)
@@ -548,16 +548,16 @@
     end
 
     @cell "Explicit frame rendering" [opengl, render_frame, meshscatter] begin
-        using ModernGL
+        using ModernGL, Makie
         using GLFW
-        Makie.opengl_renderloop[] = (screen) -> nothing
+        Makie.GLMakie.opengl_renderloop[] = (screen) -> nothing
         function update_loop(m, buff, screen)
             for i = 1:20
                 GLFW.PollEvents()
                 buff .= rand.(Point3f0) .* 20f0
                 m[1] = buff
-                Makie.render_frame(screen)
-                GLFW.SwapBuffers(Makie.to_native(screen))
+                Makie.GLMakie.render_frame(screen)
+                GLFW.SwapBuffers(Makie.GLMakie.to_native(screen))
                 glFinish()
             end
         end
@@ -565,11 +565,11 @@
         display(scene)
         meshplot = scene[end]
         buff = rand(Point3f0, 10^4) .* 20f0;
-        screen = Makie.global_gl_screen();
+        screen = Makie.GLMakie.global_gl_screen();
         @time update_loop(meshplot, buff, screen)
-        Makie.opengl_renderloop[] = Makie.renderloop # restore previous loop
+        Makie.GLMakie.opengl_renderloop[] = Makie.GLMakie.renderloop # restore previous loop
         # when done:
-        Makie.destroy!(screen)
+        Makie.GLMakie.destroy!(screen)
         scene
     end
     # @cell "2D text in 3D" [text, annotations] begin

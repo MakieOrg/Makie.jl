@@ -56,7 +56,7 @@ else
 end
 
 function toimages(f, example, x::Scene, record)
-    image = Makie.scene2image(x)
+    image = Makie.GLMakie.scene2image(x)
     rpath = joinpath(refpath, "$(example.unique_name).jpg")
     if record
         FileIO.save(joinpath(recordpath, "$(example.unique_name).jpg"), image)
@@ -90,7 +90,7 @@ function toimages(f, example, s::Stepper, record)
                 refimage = FileIO.load(pathref)
                 f(image, refimage)
             else
-                warned || @warn("No reference frames for $(example.unique_name) found - skipping tests")
+                @warn("No reference frames for $(example.unique_name) found - skipping tests")
                 cp(path, joinpath(test_diff_path, "no_reference_$(basename(path))"))
                 break
             end
