@@ -99,6 +99,7 @@ end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
     GLAbstraction.bind(source)
+    glPixelStorei(GL_PACK_ALIGNMENT, 1)
     glGetTexImage(source.texturetype, 0, GL_RGB, GL_UNSIGNED_BYTE, dest)
     GLAbstraction.bind(source, 0)
     nothing
