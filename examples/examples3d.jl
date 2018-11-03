@@ -374,7 +374,7 @@
             markersize = 1,
             # can also be an array of images for each point
             # need to be the same size for best performance, though
-            marker = Makie.logo() # Replace Makie.logo() with load("MY_IMAGE.png") for anyother images. To use load you will need FileIO
+            marker = Makie.logo() # Replace Makie.logo() with load("MY_IMAGE.png") for other images. To use load you will need FileIO.
             )
     end
     
