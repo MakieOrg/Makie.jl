@@ -70,6 +70,7 @@ struct GLBackend <: AbstractPlotting.AbstractBackend
 end
 function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
     screen = global_gl_screen()
+    # This should only get called if inline display false, so we display the window
     GLFW.set_visibility!(to_native(screen), true)
     display(screen, scene)
 end
@@ -83,14 +84,14 @@ Buffers the `scene` in an image buffer.
 """
 function scene2image(scene::Scene)
     screen = global_gl_screen()
-    GLFW.set_visibility!(to_native(screen), AbstractPlotting.use_display[])
     display(screen, scene)
     colorbuffer(screen)
 end
 
 function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
     img = scene2image(scene)
-    # FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
+    GLFW.set_visibility!(to_native(global_gl_screen()), !AbstractPlotting.use_display[])
+    FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end
 
 function __init__()
