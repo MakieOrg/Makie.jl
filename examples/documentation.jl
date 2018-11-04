@@ -45,17 +45,16 @@
 
     @cell "Travelling wave" [animated, lines, updating, interaction] begin
         scene = Scene()
-        time = Node(0.0)
+        mytime = Node(0.0)
         f(v, t) = sin(v + t)
         scene = lines!(
             scene,
-            lift(t -> f.(range(0, stop = 2pi, length = 50), t), time),
-            color = :blue
-        )
+            lift(t -> f.(range(0, stop = 2pi, length = 50), t), mytime),
+            color = :blue)
         p1 = scene[end];
         N = 100
         record(scene, @outputfile(mp4), range(0, stop = 4pi, length = N)) do i
-            time[] = i
+            mytime[] = i
         end
     end
 
