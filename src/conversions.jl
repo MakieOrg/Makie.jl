@@ -281,7 +281,9 @@ end
 #     convert_arguments(MT, xyz, faces)
 # end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
-    (GLNormalMesh(geom),)
+    # we convert to UV mesh as default, because otherwise the uv informations get lost
+    # - we can still drop them, but we can't add them later on
+    (GLNormalUVMesh(geom),)
 end
 """
     convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
