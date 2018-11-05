@@ -106,8 +106,7 @@ sudo apt-get install ffmpeg cmake xorg-dev
 
 
 ## Complex examples
-<a href="https://gist.github.com/SimonDanisch/58cb1050581658859f7a5df51fa1e5a1#file-earth-jl"><img src="https://user-images.githubusercontent.com/1010467/43387927-16ed8e16-93e8-11e8-950b-c54f9f37b895.gif" width="480"/></a>
-
+<a href="https://github.com/JuliaPlots/Makie.jl/blob/master/examples/bigdata.jl#L2"><img src="https://user-images.githubusercontent.com/1010467/48002153-fc15a680-e10a-11e8-812d-a5d717c47288.gif" width="480"/></a>
 
 ## IJulia examples:
 
