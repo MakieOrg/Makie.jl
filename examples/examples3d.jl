@@ -1,5 +1,29 @@
 
 @block SimonDanisch ["3d"] begin
+    @cell "Image on Geometry (Moon)" [mesh, image] begin
+        using FileIO
+        moon = try
+            load(download("https://svs.gsfc.nasa.gov/vis/a000000/a004600/a004675/phases.0001_print.jpg"))
+        catch e
+            @warn("Download the moon failed. Using random image, so this test will fail! (error: $e)")
+            rand(RGBAf0, 100, 100) # don't error test when e.g. offline
+        end
+        scene = mesh(Sphere(Point3f0(0), 1f0), color = moon, shading = false, show_axis = false, center = false)
+        update_cam!(scene, Vec3f0(-2, 2, 2), Vec3f0(0))
+        scene
+    end
+    @cell "Image on Geometry (Earth)" [mesh, image] begin
+        using FileIO, Colors
+        earth = try
+            load(download("https://svs.gsfc.nasa.gov/vis/a000000/a002900/a002915/bluemarble-2048.png"))
+        catch e
+            @warn("Downloading the earth failed. Using random image, so this test will fail! (error: $e)")
+            rand(RGBAf0, 100, 100) # don't error test when e.g. offline
+        end
+        m = GLNormalUVMesh(Sphere(Point3f0(0), 1f0), 60)
+        mesh(m, color = earth, shading = false)
+    end
+
     @cell "Orthographic Camera" [meshscatter, cameracontrols, update_cam] begin
         using GeometryTypes
         x = Vec3f0(0); baselen = 0.2f0; dirlen = 1f0
