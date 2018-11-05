@@ -265,13 +265,17 @@ function Base.insert!(screen::Screen, scene::Scene, x::Mesh)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
         mesh = lift(x[1], color, cmap, crange) do m, c, cmap, crange
             c = convert_mesh_color(c, cmap, crange)
-            if isa(c, Colorant) && (isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
-                get!(gl_attributes, :color, Node(c))[] = c
+            if isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
                 m
-            elseif isa(c, AbstractMatrix{<: Colorant}) && isa(m, GLNormalUVMesh)
+            elseif isa(c, Colorant)
                 get!(gl_attributes, :color, Node(c))[] = c
-                m
-            elseif isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
+                if !(isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
+                    GLNormalMesh(m)
+                else
+                    m
+                end
+            elseif isa(c, AbstractMatrix{<: Colorant})
+                get!(gl_attributes, :color, Node(c))[] = c
                 m
             else
                 HomogenousMesh(GLNormalMesh(m), Dict{Symbol, Any}(:color => c))

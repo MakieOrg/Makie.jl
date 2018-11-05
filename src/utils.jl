@@ -1,8 +1,4 @@
-
 same_length_array(array, value::NativeFont) = Iterators.repeated(value, length(array))
-function AbstractPlotting.extrema_nan(x::ClosedInterval)
-    (minimum(x), maximum(x))
-end
 
 # TODO upgrade GeometryTypes to do these kind of things.
 # Problem: I don't really want to introduce a depedency on intervals
