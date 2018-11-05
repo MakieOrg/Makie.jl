@@ -162,7 +162,7 @@
         linesegments!(scene, lines, linestyle = :dot, limits = limits)
         # record a video
         N = 150
-        record(scene, @outputfile(mp4), 1:N) do i
+        record(scene, @replace_with_a_path(mp4), 1:N) do i
             push!(t, Base.time())
         end
     end
@@ -391,17 +391,15 @@
     end
     @cell "image scatter" [image, scatter] begin
         using LinearAlgebra
-        #using FileIO #Uncomment to use load()
         scatter(
             1:10, 1:10, rand(10, 10) .* 10,
             rotations = normalize.(rand(Quaternionf0, 10*10)),
             markersize = 1,
             # can also be an array of images for each point
             # need to be the same size for best performance, though
-            marker = Makie.logo() # Replace Makie.logo() with load("MY_IMAGE.png") for other images. To use load you will need FileIO.
-            )
+            marker = Makie.logo()
+        )
     end
-    
     @cell "Simple meshscatter" [meshscatter] begin
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
@@ -425,7 +423,7 @@
         )
         N = 150
         scene
-        record(scene, @outputfile(mp4), range(5, stop = 40, length = N)) do i
+        record(scene, @replace_with_a_path(mp4), range(5, stop = 40, length = N)) do i
             surf[3] = surf_func(i)
         end
     end
@@ -514,7 +512,7 @@
         update_cam!(scene, eyepos, lookat)
         l = scene[1]
         N = 150
-        record(scene, @outputfile(mp4), 1:N) do i
+        record(scene, @replace_with_a_path(mp4), 1:N) do i
             t = (time() - start) * 700
             pos .= calcpositions.((rings,), 1:N2, t, (t_audio,))
             l[1] = pos # update argument 1
@@ -533,7 +531,7 @@
         colors = to_colormap(:RdYlBu)
         #display(scene) # would be needed without the record
         N = 150
-        path = record(scene, @outputfile(gif), 1:N) do i
+        path = record(scene, @replace_with_a_path(gif), 1:N) do i
             global lineplots, scene
             if length(lineplots) < 20
                 p = lines!(

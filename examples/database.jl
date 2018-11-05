@@ -204,13 +204,13 @@ function print_code(
     print(io, scope_start)
     for line in split(entry.source, "\n")
         line = replace(line, "@resolution" => resolution(entry))
-        filematch = match(r"(@outputfile)(\(.+?\))?" , line)
+        filematch = match(r"(@replace_with_a_path)(\(.+?\))?" , line)
         if filematch != nothing
             ending = filematch.captures[2]
             replacement = outputfile(entry, ending == nothing ? "" : "."*ending[2:end-1])
             line = replace(
                 line,
-                r"(@outputfile)(\(.+?\))?" => string('"', escape_string(replacement), '"')
+                r"(@replace_with_a_path)(\(.+?\))?" => string('"', escape_string(replacement), '"')
             )
         end
         if replace_nframes
@@ -471,7 +471,7 @@ macro resolution()
 end
 
 const output_fallback = joinpath(mktempdir(), "test.")
-macro outputfile(ending = :mp4)
+macro replace_with_a_path(ending = :mp4)
     # only for marking
     string(output_fallback, ending)
 end
