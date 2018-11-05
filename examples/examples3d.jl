@@ -391,15 +391,17 @@
     end
     @cell "image scatter" [image, scatter] begin
         using LinearAlgebra
+        #using FileIO #Uncomment to use load()
         scatter(
             1:10, 1:10, rand(10, 10) .* 10,
             rotations = normalize.(rand(Quaternionf0, 10*10)),
             markersize = 1,
             # can also be an array of images for each point
             # need to be the same size for best performance, though
-            marker = Makie.logo()
-        )
+            marker = Makie.logo() # Replace Makie.logo() with load("MY_IMAGE.png") for other images. To use load you will need FileIO.
+            )
     end
+    
     @cell "Simple meshscatter" [meshscatter] begin
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
