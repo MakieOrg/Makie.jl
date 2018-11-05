@@ -34,7 +34,7 @@
         # of the documentation
         push!(scene.events.mouseposition, (250.0, 250.0))
         N = 50
-        record(scene, @outputfile(mp4), range(0.01, stop = 0.4, length = N)) do i
+        record(scene, @replace_with_a_path(mp4), range(0.01, stop = 0.4, length = N)) do i
             push!(scene.events.mouseposition, (250.0, 250.0))
             p2[:markersize] = i
             push!(time, time[] + 0.1)

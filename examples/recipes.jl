@@ -60,7 +60,7 @@
         result = Simulation(molecules)
         scene = plot(result)
         N = 100
-        record(scene, @outputfile(mp4), 1:N) do i
+        record(scene, @replace_with_a_path(mp4), 1:N) do i
             scene[end][:advance] = i
         end
     end

@@ -24,7 +24,7 @@ These are great for showing off progressive changes in plots, such as demonstrat
 You can initialize a `Stepper` by doing:
 
 ```julia
-st = Stepper(scene, @outputfile)
+st = Stepper(scene, @replace_with_a_path)
 ```
 
 and save the scene content & increment the stepper by using:

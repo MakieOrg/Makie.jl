@@ -17,7 +17,7 @@
         end
         linesegments!(scene, points)
         N = 150
-        record(scene, @outputfile(mp4), range(0, stop = 10, length = N)) do i
+        record(scene, @replace_with_a_path(mp4), range(0, stop = 10, length = N)) do i
             push!(time_node, i)
         end
     end
@@ -177,7 +177,7 @@
         r = [(rand(7, 2) .- 0.5) .* 25 for i = 1:N]
         scene = scatter(r[1][:, 1], r[1][:, 2], markersize = 1, limits = FRect(-25/2, -25/2, 25, 25))
         s = scene[end] # last plot in scene
-        record(scene, @outputfile(mp4), r) do m
+        record(scene, @replace_with_a_path(mp4), r) do m
             s[1] = m[:, 1]
             s[2] = m[:, 2]
         end
