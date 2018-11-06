@@ -1,6 +1,15 @@
 
 @block SimonDanisch ["2d"] begin
-
+    @cell "Fill between" [fill_between, band, lines] begin 
+        x = -5:0.01:5
+        y1 = -5 .* x .* x .+ x .+ 10
+        y2 = 5 .* x .* x .+ x
+        lines(x, y1)
+        lines!(x, y2)
+        fill_between!(x, y1, y2, where = y2 .> y1, color = :yellow)
+        fill_between!(x, y1, y2, where = y2 .<= y1, color = :red)
+        scene
+    end
     @cell "Test heatmap + image overlap" [image, heatmap, transparency] begin
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
