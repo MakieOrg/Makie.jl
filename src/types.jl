@@ -168,6 +168,8 @@ Base.broadcastable(x::Attributes) = Ref(x)
 
 value_convert(@nospecialize(x)) = x
 value_convert(x::NamedTuple) = Attributes(x)
+value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
+
 
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, value_convert(pair[2]), pair[1]))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
