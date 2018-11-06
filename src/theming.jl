@@ -6,6 +6,7 @@ const minimal_default = Attributes(
     colormap = :viridis,
     resolution = reasonable_resolution(),
     visible = true,
+    clear = true,
     show_axis = true,
     show_legend = false,
     scale_plot = true,

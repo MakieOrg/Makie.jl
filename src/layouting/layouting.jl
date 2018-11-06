@@ -1,6 +1,11 @@
 function zerorect(x::HyperRectangle{N, T}) where {N, T}
     HyperRectangle(Vec{N, T}(0), widths(x))
 end
+function padrect(rect, pad)
+    Rect(minimum(rect) .- pad, widths(rect) .+ 2pad)
+end
+
+
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
         font, align, rotation, model
@@ -197,7 +202,7 @@ function layout(plots::Vector{T}, dim; parent = Scene(), sizes = nothing, kw_arg
     else
         lift(a-> to_sizes(sizes, widths(a), dim), area)
     end
-    prefix_sum = lift(sizes_node) do s
+    summed_size = lift(sizes_node) do s
         last_s = 0.0
         map(s) do x
             r = last_s; last_s += x; return r
@@ -207,7 +212,7 @@ function layout(plots::Vector{T}, dim; parent = Scene(), sizes = nothing, kw_arg
         p = plots[idx]
         on(area) do a
             h = sizes_node[][idx]
-            last = prefix_sum[][idx]
+            last = summed_size[][idx]
             mask = unit(Vec2f0, dim)
             # TODO this is terrible!
             new_w = Vec2f0(ntuple(2) do i
@@ -259,7 +264,7 @@ function layout_sizes(scenes, size, dim)
     perfect_size = this_size / N # equal size for all!
     for i in scenepix
         scene = scenes[i]
-        ds = widths(boundingbox(scene))[dim]
+        ds = widths(boundingbox(scene))[dim] .+ 10 # pad a bit
         sizes[i] = ds
         pix_size += ds
     end

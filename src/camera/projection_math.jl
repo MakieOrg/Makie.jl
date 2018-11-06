@@ -253,6 +253,7 @@ function to_world(scene::Scene, point::T) where T <: StaticVector
     )
     Point2f0(x[1], x[2])
 end
+
 w_component(x::Point) = 1.0
 w_component(x::Vec) = 0.0
 function to_world(
