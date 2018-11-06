@@ -129,7 +129,7 @@ function find_indices(input_tags::NTuple{N, String}; title = nothing, author = n
         tags_found && author_found && title_found
     end
     if isempty(indices)
-        @warn("no examples found matching the search criteria $(input_tags), title = $title, author = $author")
+        @warn("no examples found matching the search criteria $(input_tags), title = $(repr(title)), author = $(repr(author))")
         indices
     else
         indices
@@ -480,12 +480,13 @@ end
 Walks through every example matching `tags`, and calls `f` on the example.
 Merges groups of examples into one example entry.
 """
-function enumerate_examples(f, tags...; exclude_tags = nothing)
+function enumerate_examples(f, tags...; start = 1, exclude_tags = nothing)
     num_excluded = 0
     sort!(database, by = (x)-> x.groupid)
     group_tmp = CellEntry[]
     last_id = NO_GROUP
-    for entry in database
+    for i in start:length(database)
+        entry = database[i]
         all(x-> string(x) in entry.tags, tags) || continue
         if exclude_tags != nothing && !isempty(exclude_tags)
             if any(x-> string(x) in entry.tags, Set(exclude_tags))
@@ -518,8 +519,8 @@ example2source(entry; kw_args...) = sprint(io-> print_code(io, entry; kw_args...
 Walks through all examples matching tags and calls `f(entry, source)`, with
 source being the source of the example as a string
 """
-function examples2source(f, tags...; kw_args...)
-    enumerate_examples(tags...) do entry
+function examples2source(f, tags...; start = 1, kw_args...)
+    enumerate_examples(tags..., start = start) do entry
         f(entry, example2source(entry; kw_args...))
     end
 end
@@ -553,13 +554,15 @@ end
 Walks through examples and evaluates them. Returns the evaluated value and calls
 `f(entry, value)`.
 """
-function eval_examples(f, tags...; exclude_tags = nothing, kw_args...)
-    enumerate_examples(tags...; exclude_tags = exclude_tags) do entry
+function eval_examples(f, tags...; start = 1, exclude_tags = nothing, kw_args...)
+    enumerate_examples(tags...; start = start, exclude_tags = exclude_tags) do entry
         result = eval_example(entry; kw_args...)
         try
             f(entry, result)
         catch e
-            @warn("Calling $f failed with example: $(entry.title)")
+            @warn("Calling failed with example: $(entry.title)")
+            Base.showerror(stderr, e)
+            Base.show_backtrace(stderr, Base.backtrace())
             rethrow(e)
         end
     end
