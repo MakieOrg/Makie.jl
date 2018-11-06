@@ -430,3 +430,28 @@ function plot!(scene::SceneLike, ::Type{<:ScatterLines}, attributes::Attributes,
     plot!(scene, Scatter, attributes, p...)
     scene
 end
+
+
+
+@recipe(Band, x, ylower, yupper) do scene
+    Theme(;
+        default_theme(scene, Mesh)...,
+        color = RGBAf0(1.0,0,0,0.2)
+    )
+end
+
+function band_connect(n)
+    ns = 1:n-1
+    ns2 = n+1:2n-1
+    [GLTriangle.(ns, ns .+ 1, ns2); GLTriangle.(ns .+ 1, ns2 .+ 1, ns2)]
+end
+
+function plot!(plot::Band)
+    coordinates = lift( (x, ylower, yupper) -> [Point2f0.(x, ylower); Point2f0.(x, yupper)], plot[1], plot[2], plot[3])
+    connectivity = lift(x -> band_connect(length(x)), plot[1])
+    mesh!(plot, coordinates, connectivity;
+        color = plot[:color], colormap = plot[:colormap],
+        colorrange = plot[:colorrange],
+        shading = false, visible = plot[:visible]
+    )
+end
