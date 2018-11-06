@@ -110,7 +110,7 @@ function Stepper(scene, path)
     Stepper(scene, path, 1)
 end
 
-function save(filename::String, scene::Scene)
+function FileIO.save(filename::String, scene::Scene)
     open(filename, "w") do s
         show(IOContext(s, :full_fidelity => true), MIME"image/png"(), scene)
     end
@@ -121,9 +121,67 @@ steps through a `Makie.Stepper` and outputs a file with filename `filename-step.
 This is useful for generating progressive plot examples.
 """
 function step!(s::Stepper)
-    save(joinpath(s.folder, basename(s.folder) * "-$(s.step).jpg"), s.scene)
+    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).jpg"), s.scene)
     s.step += 1
     return s
 end
 
-export Stepper, step!
+
+"""
+Record all window events that happen while executing function `f`
+for `scene` and serializes them to `path`.
+"""
+function record_events(f, scene::Scene, path::String)
+    display(scene)
+    result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
+    for field in fieldnames(Events)
+        on(getfield(scene.events, field)) do value
+            value = isa(value, Set) ? copy(value) : value
+            push!(result, time() => (field => value))
+        end
+    end
+    f()
+    open(path, "w") do io
+        serialize(io, result)
+    end
+end
+
+
+"""
+Replays the serialized events recorded with `record_events` in `path` in `scene`.
+"""
+replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
+function replay_events(f, scene::Scene, path::String)
+    display(scene)
+    events = open(io-> deserialize(io), path)
+    sort!(events, by = first)
+    for i in 1:length(events)
+        t1, (field, value) = events[i]
+        field == :mousedrag && continue
+        if field == :mousebuttons
+            Base.invokelatest() do
+                getfield(scene.events, field)[] = value
+            end
+        else
+            Base.invokelatest() do
+                getfield(scene.events, field)[] = value
+            end
+        end
+        f()
+        yield()
+        if i < length(events)
+            t2, (field, value) = events[i + 1]
+            # min sleep time 0.001
+            (t2 - t1 > 0.001) && sleep(t2 - t1)
+        end
+    end
+end
+
+
+struct RecordEvents
+    scene::Scene
+    path::String
+end
+
+
+export Stepper, step!, replay_events, record_events, RecordEvents

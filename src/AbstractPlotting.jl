@@ -3,6 +3,7 @@ module AbstractPlotting
 using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
 using ColorBrewer
 using Markdown # documentation
+using Serialization # serialize events
 
 # Text related packages
 using Packing

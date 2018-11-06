@@ -140,14 +140,15 @@ export move!
     )
 end
 
-function button(func::Function, scene::Scene, txt; kw_args...)
-    b = button!(scene, txt; raw = true, kw_args...)[end]
+function button!(func::Function, scene::Scene, txt; camera = campixel!, kw_args...)
+    b = button!(scene, txt; raw = true, camera = camera, kw_args...)[end]
     on(b[:clicks]) do clicks
         func(clicks)
         return
     end
     b
 end
+
 
 function plot!(splot::Button)
     @extract(splot, (
@@ -157,13 +158,14 @@ function plot!(splot::Button)
     txt = splot[1]
     lplot = text!(
         splot, txt,
-        align = (:center, :center), color = textcolor,
-        textsize = 15,
-        position = map((wh)-> Point2f0(wh./2), dimensions)
+        color = textcolor,
+        textsize = 15, position = (10.0, 10.0),
+        align = (:left, :bottom)
     ).plots[end]
-    lbb = boundingbox(lplot) # on purpose static so we hope text won't become too long?
+    poly!(splot, padrect(FRect2D(boundingbox(lplot)), 5), color = :white, strokecolor = :black, strokewidth = strokewidth)
+    reverse!(splot.plots) # make poly first
     on(events(splot).mousebuttons) do mb
-        if ispressed(mb, Mouse.left) && mouseover(parent(splot), lplot)
+        if ispressed(mb, Mouse.left) && mouseover(parent_scene(splot), splot.plots...)
             clicks[] = clicks[] + 1
         end
         return
@@ -249,44 +251,39 @@ end
 
 function popup(parent, position, width)
     pos_n = Node(Point2f0(position))
+    pos_cam = lift(pos_n, camera(parent).projectionview) do pos, pview
+        to_world(parent, Point2f0(pos))
+    end
     width_n = Node(Point2f0(width))
-    harea = lift(pos_n, width_n) do p, wh
-        IRect(0, wh[2] - 20, wh[1], 20)
+    hwidth = 30
+    harea = lift(pos_cam, width_n) do p, wh
+        IRect(1, wh[2] - hwidth + 1, wh[1] - 2, hwidth - 2)
     end
-    parea = lift(pos_n, width_n) do p, wh
-        IRect(Point2f0(p), Point2f0(wh))
+    parea = lift(pos_cam, width_n) do p, wh
+        IRect(p, Point2f0(wh) .- Point2f0(0, hwidth - 1))
     end
-    popup = Scene(parent, parea)
-    popup.camera_controls[] = EmptyCamera()
-    campixel!(popup)
-    theme(popup)[:visible] = Node(false)
-    header = Scene(popup, harea,
-        backgroundcolor = :gray,
+    vis = Node(false)
+    popup = Scene(parent, parea,
+        visible = vis, raw = true, camera = campixel!,
+        backgroundcolor = RGBAf0(0.95, 0.95, 0.95, 1.0)
     )
-    header.camera_controls[] = EmptyCamera()
-    campixel!(header)
-    theme(popup)[:plot] = Theme(raw = true, camera = campixel!)
-    theme(header)[:plot] = Theme(raw = true, camera = campixel!)
-    theme(header)[:visible] = theme(popup, :visible)
+    header = Scene(popup, harea,
+        backgroundcolor = RGBAf0(0.90, 0.90, 0.90, 1.0), visible = vis,
+        raw = true, camera = campixel!
+    )
     initialized = Ref(false)
-    but = button(header, "x") do click
+    but = button!(header, "x", strokewidth = 0.0) do click
         if initialized[]
-            theme(popup, :visible)[] = !theme(popup, :visible)[]
+            vis[] = !vis[]
         else
             initialized[] = true
         end
         return
     end
-    translate!(but, width_n[][1] - 30, -10, 120)
-    # on(width_n) do wh
-    #     translate!(but, wh[1] - 30, -10, 120)
-    # end
-    poly!(header, lift(r-> FRect(0, 0, widths(r)), harea), color = (:gray, 0.1))
-    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white, strokecolor = :black, strokewidth = 2)
+    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white)
     scene2 = Scene(popup, theme = theme(popup))
-    scene2.camera_controls[] = EmptyCamera()
     campixel!(scene2)
-    Popup(scene2, theme(popup, :visible), pos_n, width_n)
+    Popup(scene2, vis, pos_n, width_n)
 end
 
 
@@ -294,7 +291,7 @@ function mouse_selection end
 export mouse_selection
 
 function colorswatch(scene = Scene(camera = campixel!))
-    pop = popup(scene, (0, 50), (250, 300))
+    pop = popup(scene, (0, 0), (250, 300))
     sub_ui = pop.scene
     st, hsv_hue = textslider(1:360, "hue", sub_ui)
     colors = lift(hsv_hue) do V
@@ -304,7 +301,7 @@ function colorswatch(scene = Scene(camera = campixel!))
     colormesh = mesh!(
         sub_ui,
         # TODO implement decompose correctly to just have this be IRect(0, 0, S, S)
-        [(0, 0), (S, 0), (S, S), (0, S)],
+        [(0, 0), (S + 30, 0), (S + 30, S - 15), (0, S - 15)],
         [1, 2, 3, 3, 4, 1],
         color = colors, raw = true, shading = false
     )[end]
@@ -320,7 +317,9 @@ function colorswatch(scene = Scene(camera = campixel!))
         if ispressed(mb, Mouse.left)
             plot, idx = mouse_selection(scene)
             if plot in swatch.plots
-                pop.position[] = Point2f0(events(scene).mouseposition[]) .+ Point2f0(0, 50)
+                mpos = Point2f0(events(scene).mouseposition[])
+                mpos = mpos .- Point2f0(minimum(pixelarea(scene)[]))
+                pop.position[] = mpos .+ Point2f0(50, -50)
                 pop.open[] = true
             end
         end
