@@ -1,6 +1,7 @@
 const ScreenID = UInt8
 const ZIndex = Int
-const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{RGBAf0}}
+# ID, Area, clear, is visible, background color
+const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{Bool}, Node{RGBAf0}}
 
 mutable struct Screen <: AbstractScreen
     glscreen::GLFW.Window
@@ -39,6 +40,8 @@ end
 GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
+Base.wait(scene::Scene) = wait(global_gl_screen()) # TODO per scene screen
+
 
 function insertplots!(screen::Screen, scene::Scene)
     for elem in scene.plots
@@ -134,7 +137,9 @@ function Base.push!(screen::Screen, scene::Scene, robj)
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         bg = lift(to_color, scene.theme[:backgroundcolor])
-        push!(screen.screens, (id, scene.px_area, Node(true), bg))
+        clear = lift(identity, scene.theme[:clear])
+        visible = lift(identity, scene.theme[:visible])
+        push!(screen.screens, (id, scene.px_area, clear, visible, bg))
         id
     end
     push!(screen.renderlist, (0, screenid, robj))
@@ -298,13 +303,31 @@ function mouse_selection(scene::SceneLike)
 end
 function mouseover(scene::SceneLike, plots::AbstractPlot...)
     p, idx = mouse_selection(scene)
-    p in plots
+    p in flatten_plots(plots)
+end
+
+function flatten_plots(x::Atomic, plots = AbstractPlot[])
+    push!(plots, x)
+    plots
+end
+function flatten_plots(x::Combined, plots = AbstractPlot[])
+    for elem in x.plots
+        flatten_plots(elem, plots)
+    end
+    plots
+end
+function flatten_plots(array, plots = AbstractPlot[])
+    for elem in array
+        flatten_plots(elem, plots)
+    end
+    plots
 end
 
 function onpick(f, scene::SceneLike, plots::AbstractPlot...)
+    fplots = flatten_plots(plots)
     map_once(events(scene).mouseposition) do mp
         p, idx = mouse_selection(scene)
-        (p in plots) && f(idx)
+        (p in fplots) && f(idx)
         return
     end
 end

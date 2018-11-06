@@ -1,11 +1,12 @@
 using Documenter, Makie
+using Markdown, Pkg, Random, FileIO
 cd(@__DIR__)
 include("../examples/library.jl")
 include("documenter_extension.jl")
 import AbstractPlotting: _help, to_string, to_func, to_type
 
-pathroot = Pkg.dir("Makie")
-docspath = Pkg.dir("Makie", "docs")
+pathroot = normpath(joinpath(dirname(pathof(Makie)), ".."))
+docspath = joinpath(pathroot, "docs")
 srcpath = joinpath(pathroot, "docs", "src")
 srcmediapath = joinpath(pathroot, "docs", "media")
 buildpath = joinpath(pathroot, "docs", "build")
@@ -13,7 +14,7 @@ mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 # TODO can we teach this to documenter somehow?
 ispath(mediapath) || mkpath(mediapath)
-plotting_functions = (atomics..., contour, arrows, barplot, poly)
+plotting_functions = (atomics..., contour, arrows, barplot, poly, band, slider, vbox)
 
 function output_path(entry, ending; subdir = nothing)
     if subdir == nothing
@@ -26,7 +27,7 @@ end
 
 function save_example(entry, x::Scene)
     path = output_path(entry, ".jpg")
-    Makie.save(path, x)
+    save(path, x)
     path
 end
 
@@ -37,8 +38,25 @@ function save_example(entry, x::Makie.Stepper) #TODO: this breaks thumbnail gene
     path = [output_path(entry, "-$i.jpg"; subdir = string(entry.unique_name)) for i = 1:x.step - 1]
     return path
 end
+function save_example(example, events::RecordEvents) #TODO: this breaks thumbnail generation
+    # the path is fixed at record time to be stored relative to the example
+    epath = event_path(example, "")
+    isfile(epath) || error("Can't find events for example. Please run `record_example_events()`")
+    # the current path of RecordEvents is where we now actually want to store the video
+    video_path = output_path(example, ".mp4")
+    record(events.scene, video_path) do io
+        replay_events(events.scene, epath) do
+            recordframe!(io)
+        end
+    end
+    return video_path
+end
+
+
 
 AbstractPlotting.set_theme!(resolution = (500, 500))
+
+findfirst(x-> x.title == "Axis theming", database)
 eval_examples(outputfile = output_path) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
     Random.seed!(42)
@@ -98,7 +116,7 @@ example_pages = nothing
 example_list = String[]
 for func in plotting_functions
     fname = to_string(func)
-    info("Generating examples gallery for $fname")
+    @info("Generating examples gallery for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
     indices = find_indices(func)
     open(path, "w") do io
@@ -237,7 +255,9 @@ if !haskey(ENV, "DOCUMENTER_KEY")
     ENV["TRAVIS_TAG"] = "v1.0.0"
     ENV["TRAVIS_OS_NAME"] = ""
     ENV["TRAVIS_JULIA_VERSION"] = ""
-    ENV["PATH"] = string(ENV["PATH"], raw";C:\Python27\Scripts")
+    if Sys.iswindows()
+        ENV["PATH"] = string(ENV["PATH"], raw";C:\Python27\Scripts")
+    end
     ENV["DOCUMENTER_KEY"] = open(x->String(read(x)), joinpath(homedir(), "documenter.key"))
 end
 

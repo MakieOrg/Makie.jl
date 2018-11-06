@@ -1,6 +1,35 @@
 
 @block SimonDanisch ["2d"] begin
-    @cell "Fill between" [fill_between, band, lines] begin 
+
+    @cell "Time Series" [lines, ] begin
+        function run_example()
+            f0 = 1/2; fs = 100;
+            winsec = 4; hopsec = 1/60
+            nwin = round(Integer, winsec*fs)
+            nhop = round(Integer, hopsec*fs)
+            # do the loop
+            frame_start = -winsec
+            frame_time = collect((0:(nwin-1)) * (1/fs))
+            aframe = sin.(2*pi*f0.*(frame_start .+ frame_time))
+            scene = lines(frame_start .+ frame_time, aframe)
+            lineplot = scene[end]
+            N = 50
+            record(scene, @replace_with_a_path(mp4), 1:N) do i
+                aframe .= sin.(2*pi*f0.*(frame_start .+ frame_time))
+                # append!(aframe, randn(nhop)); deleteat!(aframe, 1:nhop)
+                lineplot[1] = frame_start .+ frame_time
+                lineplot[2] = aframe
+                AbstractPlotting.update_limits!(scene)
+                AbstractPlotting.update!(scene)
+                sleep(hopsec)
+                frame_start += hopsec
+            end
+        end
+        run_example()
+    end
+
+    @cell "Fill between" [fill_between, band, lines] begin
+        using AbstractPlotting: fill_between!
         x = -5:0.01:5
         y1 = -5 .* x .* x .+ x .+ 10
         y2 = 5 .* x .* x .+ x
@@ -8,7 +37,6 @@
         lines!(x, y2)
         fill_between!(x, y1, y2, where = y2 .> y1, color = :yellow)
         fill_between!(x, y1, y2, where = y2 .<= y1, color = :red)
-        scene
     end
     @cell "Test heatmap + image overlap" [image, heatmap, transparency] begin
         heatmap(rand(32, 32))
@@ -111,7 +139,7 @@
             shading = false
         )
     end
-    @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme] begin
+    @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme, vbox, hbox] begin
         using AbstractPlotting: hbox, vbox
         data = rand(50, 100)
         p1 = heatmap(data, interpolate = true)
