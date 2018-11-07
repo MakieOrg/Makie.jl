@@ -14,7 +14,7 @@ mediapath = joinpath(pathroot, "docs", "build", "media")
 expdbpath = joinpath(buildpath, "examples-database.html")
 # TODO can we teach this to documenter somehow?
 ispath(mediapath) || mkpath(mediapath)
-plotting_functions = (atomics..., contour, arrows, barplot, poly, band, slider, vbox)
+
 
 function output_path(entry, ending; subdir = nothing)
     if subdir == nothing
@@ -52,12 +52,14 @@ function save_example(example, events::RecordEvents) #TODO: this breaks thumbnai
     return video_path
 end
 
-
+#pkg"add ModernGL MeshIO ImageMagick ImageFilter ImageTransformations GDAL"
 
 AbstractPlotting.set_theme!(resolution = (500, 500))
 
-findfirst(x-> x.title == "Axis theming", database)
-eval_examples(outputfile = output_path) do example, value
+# you can restart the build, if something failed, by just searching for the index you ended with, and putting it into start
+findfirst(x-> x.title == "WorldClim visualization", database)
+
+eval_examples(outputfile = output_path, start = 119) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
     Random.seed!(42)
     path = save_example(example, value)
@@ -82,6 +84,7 @@ end
 @info("Generating functions overview")
 path = joinpath(srcpath, "functions-overview.md")
 srcdocpath = joinpath(srcpath, "src-functions.md")
+plotting_functions = (atomics..., contour, arrows, barplot, poly, band, slider, vbox)
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
     medialist = readdir(mediapath)
@@ -114,7 +117,9 @@ end
 cd(docspath)
 example_pages = nothing
 example_list = String[]
-for func in plotting_functions
+to_string(x::Symbol) = string(x)
+
+for func in (plotting_functions..., :interaction)
     fname = to_string(func)
     @info("Generating examples gallery for $fname")
     path = joinpath(srcpath, "examples-$fname.md")
@@ -141,7 +146,7 @@ for func in plotting_functions
     end
     push!(example_list, "examples-$fname.md")
 end
-
+example_list
 
 # =============================================
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
@@ -218,6 +223,7 @@ makedocs(
     doctest = false, clean = false,
     format = :html,
     sitename = "Makie.jl",
+    html_prettyurls = false,
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
@@ -266,7 +272,7 @@ deploydocs(
     repo = "github.com/JuliaPlots/Makie.jl.git",
     julia = "",
     osname = "",
-    latest = "v1.0.0",
+    devbranch = "master",
     target = "build",
     make = nothing
 )
