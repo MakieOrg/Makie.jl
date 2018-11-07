@@ -596,6 +596,13 @@
         Makie.GLMakie.destroy!(screen)
         scene
     end
+    @cell "Graphene bandstructure with QBox.jl" [surface, mesh] begin
+        using QBox, QBoxPlots
+        sys(n) = System(Lattice(:honeycomb, LinkRule(1/sqrt(3)), Supercell(n)), 
+                        Model(Onsite(r->0.4rand()), Hopping(.5)))
+        bs = Bandstructure(sys(2), partitions = 51)
+        plot(bs)
+    end
     # @cell "2D text in 3D" [text, annotations] begin
     # TODO this has a world age problem!?!??
         # using GeometryTypes
