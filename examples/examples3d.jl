@@ -598,6 +598,9 @@
     end
     @cell "Graphene bandstructure with QBox.jl" [surface, mesh] begin
         using QBox, QBoxPlots
+        # These packages will be registered soon. Until then find them at
+        # https://github.com/pablosanjose/QBox
+        # https://github.com/pablosanjose/QBoxPlots
         sys(n) = System(Lattice(:honeycomb, LinkRule(1/sqrt(3)), Supercell(n)), 
                         Model(Onsite(r->0.4rand()), Hopping(.5)))
         bs = Bandstructure(sys(2), partitions = 51)
