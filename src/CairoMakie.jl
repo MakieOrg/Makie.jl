@@ -62,7 +62,7 @@ function project_scale(scene::Scene, s)
     p .* scene.camera.resolution[]
 end
 
-function draw_segment(scene, ctx, point::Point, model, connect, do_stroke, c, linewidth, linestyle, primitive)
+function draw_segment(scene, ctx, point::Point, model, c, linewidth, linestyle, primitive, idx, N)
     pos = project_position(scene, point, model)
     function stroke()
         Cairo.set_line_width(ctx, Float64(linewidth))
@@ -73,18 +73,26 @@ function draw_segment(scene, ctx, point::Point, model, connect, do_stroke, c, li
         Cairo.stroke(ctx)
     end
     if !all(isfinite.(pos))
-        connect[] = false
+        stroke() # stroke last points, ignore this one (NaN for disconnects)
     else
-        if connect[]
-            Cairo.line_to(ctx, pos[1], pos[2])
-            isa(primitive, LineSegments) && (connect[] = false)
-        end
-        if do_stroke[]
-            stroke(); do_stroke[] = false; connect[] = true
-            Cairo.move_to(ctx, pos[1], pos[2])
+        if isa(primitive, LineSegments)
+            if isodd(idx) # on each odd move to
+                Cairo.move_to(ctx, pos[1], pos[2])
+            else
+                Cairo.line_to(ctx, pos[1], pos[2])
+                stroke() # stroke after each segment
+            end
         else
-            do_stroke[] = true
+            if idx == 1
+                Cairo.move_to(ctx, pos[1], pos[2])
+            else
+                Cairo.line_to(ctx, pos[1], pos[2])
+                Cairo.move_to(ctx, pos[1], pos[2])
+            end
         end
+    end
+    if idx == N && isa(primitive, Lines) # after adding all points, lines need a stroke
+        stroke()
     end
 end
 
@@ -110,10 +118,10 @@ function cairo_draw(screen::CairoScreen, primitive::Union{Lines, LineSegments})
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
+    isempty(positions) && return
     N = length(positions)
-    connect = Ref(true); do_stroke = Ref(true)
     broadcast_foreach(1:N, positions, fields...) do i, point, c, linewidth, linestyle
-        draw_segment(scene, ctx, point, model, connect, do_stroke, c, linewidth, linestyle, primitive)
+        draw_segment(scene, ctx, point, model, c, linewidth, linestyle, primitive, i, N)
     end
     nothing
 end
