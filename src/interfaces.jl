@@ -27,7 +27,7 @@ end
 
 Plots an image on range `x, y` (defaults to dimensions).
 """
-@atomic(Image) do scene
+@recipe(Image) do scene
     Theme(;
         default_theme(scene)...,
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
@@ -43,7 +43,7 @@ end
 
 Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
 """
-@atomic(Heatmap) do scene
+@recipe(Heatmap) do scene
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
@@ -65,7 +65,7 @@ Plots a volume. Available algorithms are:
 * `:absorptionrgba` => AbsorptionRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
-@atomic(Volume) do scene
+@recipe(Volume) do scene
     Theme(;
         default_theme(scene)...,
         fxaa = true,
@@ -83,7 +83,7 @@ end
 
 Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
 """
-@atomic(Surface) do scene
+@recipe(Surface) do scene
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
@@ -98,7 +98,7 @@ end
 
 Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
 """
-@atomic(Lines) do scene
+@recipe(Lines) do scene
     Theme(;
         default_theme(scene)...,
         linewidth = 1.0,
@@ -117,7 +117,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 **Attributes**:
 The same as for [`lines`](@ref)
 """
-@atomic(LineSegments) do scene
+@recipe(LineSegments) do scene
     default_theme(scene, Lines)
 end
 
@@ -127,7 +127,7 @@ end
 
 Plots a 3D mesh.
 """
-@atomic(Mesh) do scene
+@recipe(Mesh) do scene
     Theme(;
         default_theme(scene)...,
         fxaa = true,
@@ -143,7 +143,7 @@ end
 
 Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 """
-@atomic(Scatter) do scene
+@recipe(Scatter) do scene
     Theme(;
         default_theme(scene)...,
         marker = Circle,
@@ -169,7 +169,7 @@ end
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
 `markersize` is a scaling applied to the primitive passed as `marker`
 """
-@atomic(MeshScatter) do scene
+@recipe(MeshScatter) do scene
     Theme(;
         default_theme(scene)...,
         marker = Sphere(Point3f0(0), 1f0),
@@ -186,7 +186,7 @@ end
 
 Plots a text.
 """
-@atomic(Text) do scene
+@recipe(Text) do scene
     Theme(;
         default_theme(scene)...,
         strokecolor = (:black, 0.0),
@@ -206,6 +206,7 @@ const atomic_function_symbols = (
 
 
 const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
+const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
 
 function color_and_colormap!(plot, intensity = plot[:color])
@@ -317,7 +318,15 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
             end
         end
     end
-    plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, PlotType), plotsym(PlotType), scene, attributes)
+    # The argument type of the final plot object is the assumened to stay constant after
+    # argument conversion. This might not always hold, but it simplifies
+    # things quite a bit
+    ArgTyp = typeof(to_value(args_converted))
+    # construct the fully qualified plot type, from the possible incomplete (abstract)
+    # PlotType
+    FinalType = Combined{Typ, ArgTyp}
+
+    plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, FinalType), plotsym(FinalType), scene, attributes)
     trans = get(plot_attributes, :transformation, automatic)
     transformation = if to_value(trans) == automatic
         Transformation(scene)
@@ -332,13 +341,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
-    # The argument type of the final plot object is the assumened to stay constant after
-    # argument conversion. This might not always hold, but it simplifies
-    # things quite a bit
-    ArgTyp = typeof(to_value(args_converted))
-    # construct the fully qualified plot type, from the possible incomplete (abstract)
-    # PlotType
-    FinalType = basetype(PlotType){Typ, ArgTyp}
+
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, arg_nodes, node_args_seperated)
     calculated_attributes!(plot_obj)
@@ -403,14 +406,16 @@ function plot!(scene::SceneLike, ::Type{Any}, attributes::Attributes, args...)
     plot!(scene, PlotType, attributes, args...)
 end
 
-plot!(p::Atomic) = p
+plot!(p::Combined) = _plot!(p)
 
-function plot!(p::Combined{Any, T}) where T
+_plot!(p::Atomic{T}) where T = p
+
+function _plot!(p::Combined{Any, T}) where T
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
     error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(plot::Plot$((args...,)))")
 end
-function plot!(p::Combined{X, T}) where {X, T}
+function _plot!(p::Combined{X, T}) where {X, T}
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
     error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(plot::$X{ <: $T})")
