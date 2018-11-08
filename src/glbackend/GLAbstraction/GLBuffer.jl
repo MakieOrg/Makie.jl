@@ -110,7 +110,7 @@ end
 function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::Integer) where T
     multiplicator = sizeof(T)
     bind(b)
-    glBufferSubData(b.buffertype, multiplicator*offset-1, sizeof(value), value)
+    glBufferSubData(b.buffertype, multiplicator*(offset-1), sizeof(value), value)
     bind(b, 0)
 end
 function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::UnitRange{Int}) where T
