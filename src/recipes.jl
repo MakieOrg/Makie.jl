@@ -125,9 +125,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     funcname = esc(funcname_sym)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
-        if !@isdefined($(Tsym))# make this work with interactive usage
-            const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
-        end
+        const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
         Base.show(io::IO, ::Type{<: $PlotType}) = print(io, $(string(Tsym)), "{...}")
         $(default_plot_signatures(funcname, funcname!, PlotType))
         Base.@__doc__($funcname)
@@ -138,21 +136,4 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         push!(expr.args, :($(esc(:argument_names))(::Type{<: $PlotType}, len::Integer) = $args))
     end
     expr
-end
-
-
-macro atomic(theme_func, Tsym::Symbol)
-    funcname_sym = to_func_name(Tsym)
-    funcname! = esc(Symbol("$(funcname_sym)!"))
-    PlotType = esc(Tsym)
-    funcname = esc(funcname_sym)
-    quote
-        $(funcname)() = not_implemented_for($funcname)
-        Base.@__doc__($funcname)
-        const $PlotType{$(esc(:ArgType))} = Atomic{$funcname, $(esc(:ArgType))}
-        Base.show(io::IO, ::Type{<: $PlotType}) = print(io, $(string(Tsym)), "{...}")
-        $(default_plot_signatures(funcname, funcname!, PlotType))
-        AbstractPlotting.default_theme(scene, ::Type{<: $PlotType}) = $theme_func(scene)
-        export $PlotType, $funcname, $funcname!
-    end
 end
