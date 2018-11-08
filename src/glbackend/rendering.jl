@@ -15,6 +15,7 @@ function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
             end
         end
     catch e
+        destroy!(screen)
         rethrow(e)
     end
     destroy!(screen)
@@ -29,15 +30,17 @@ function setup!(screen)
         glScissor(0, 0, widths(screen)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
-        for (id, rect, clear, color) in screen.screens
-            a = rect[]
-            rt = (minimum(a)..., widths(a)...)
-            glViewport(rt...)
-            if clear[]
-                c = color[]
-                glScissor(rt...)
-                glClearColor(red(c), green(c), blue(c), alpha(c))
-                glClear(GL_COLOR_BUFFER_BIT)
+        for (id, rect, clear, visible, color) in screen.screens
+            if visible[]
+                a = rect[]
+                rt = (minimum(a)..., widths(a)...)
+                glViewport(rt...)
+                if clear[]
+                    c = color[]
+                    glScissor(rt...)
+                    glClearColor(red(c), green(c), blue(c), alpha(c))
+                    glClear(GL_COLOR_BUFFER_BIT)
+                end
             end
         end
     end

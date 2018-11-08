@@ -96,7 +96,7 @@
         scene
         scene.center = false
         # save animation
-        r = record(scene, @replace_with_a_path, 0:(11*4)) do i
+        r = record(scene, @replace_with_a_path(mp4), 0:(11*4)) do i
            # Make simulation slower. TODO figure out how do this nicely with ffmpeg
            if i % 4 == 0
                i2 = (i ÷ 4) + 1

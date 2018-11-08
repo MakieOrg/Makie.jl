@@ -12,3 +12,6 @@ atomics_examples/
 *.jpg
 *.mp4
 *.gif
+*.zip
+tmax
+prec
