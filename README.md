@@ -34,7 +34,7 @@ sudo apt-get install ffmpeg cmake xorg-dev
 ```
 
 
-## Examples from the documenation: 
+## Examples from the documentation: 
 
 [![](http://makie.juliaplots.org/stable/media/thumb-3d_contour_with_2d_contour_slices.jpg)](http://makie.juliaplots.org/stable/examples-volume.html#3D-Contour-with-2D-contour-slices-1)
 [![](http://makie.juliaplots.org/stable/media/thumb-animated_scatter.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Animated-Scatter-1)
