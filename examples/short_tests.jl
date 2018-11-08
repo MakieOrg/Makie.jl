@@ -89,25 +89,7 @@
     @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
     @cell scatter(Theme(color = :green), rand(10), rand(10))
     @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
-    @cell begin
-        import AbstractPlotting: vbox, hbox
-        N = 20
-        x = LinRange(-0.3, 1, N)
-        y = LinRange(-1, 0.5, N)
-        z = x .* y'
-        hbox(
-            AbstractPlotting.vbox(
-                contour(x, y, z, levels = 20, linewidth =3),
-                contour(x, y, z, levels = 0, linewidth = 0, fillrange = true),
-                heatmap(x, y, z),
-            ),
-            AbstractPlotting.vbox(
-                image(x, y, z, colormap = :viridis),
-                surface(x, y, fill(0f0, N, N), color = z, shading = false),
-                image(-0.3..1, -1..0.5, Makie.logo())
-            )
-        )
-    end
+    
 end
 
 

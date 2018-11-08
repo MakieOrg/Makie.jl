@@ -1,5 +1,5 @@
-using Documenter: Selectors, Expanders, Markdown
-using Documenter.Markdown: Link, Paragraph
+using Documenter: Selectors, Expanders
+using Markdown: Link, Paragraph
 struct DatabaseLookup <: Expanders.ExpanderPipeline end
 
 Selectors.order(::Type{DatabaseLookup}) = 0.5
@@ -252,7 +252,7 @@ function embed_thumbnail_link(io::IO, func::Function, currpath::AbstractString, 
                 embedpath = relpath(testpath2, currpath)
                 println(io, "[![library lines $(src_lines)]($(embedpath))]($(link))")
             else
-                @warn("thumbnail for index $idx with uname $uname not found")
+                @warn("thumbnail for index $(repr(idx)) with uname $uname not found")
                 embedpath = "not_found"
             end
         end

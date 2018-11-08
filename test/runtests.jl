@@ -74,6 +74,23 @@ end
 
 is_image_file(path) = lowercase(splitext(path)[2]) in (".png", ".jpg", ".jpeg")
 
+
+
+function toimages(f, example, events::RecordEvents, r)
+    # the path is fixed at record time to be stored relative to the example
+    epath = event_path(example, "")
+    isfile(epath) || error("Can't find events for example. Please run `record_example_events()`")
+    # the current path of RecordEvents is where we now actually want to store the video
+    video_path = events.path * ".mp4"
+    record(events.scene, video_path) do io
+        replay_events(events.scene, epath) do
+            recordframe!(io)
+        end
+    end
+    toimages(f, example, video_path, r)
+end
+
+
 function toimages(f, example, s::Stepper, record)
     ispath(s.folder) || error("Not a path: $(s.folder)")
     if record
@@ -97,6 +114,7 @@ function toimages(f, example, s::Stepper, record)
         end
     end
 end
+
 function toimages(f, example, path::String, record)
     isfile(path) || error("Not a file: $path")
     filepath, ext = splitext(path)
@@ -136,7 +154,7 @@ mkpath(test_diff_path)
 function test_examples(record, tags...; kw_args...)
     Random.seed!(42)
     @testset "Visual Regression" begin
-        eval_examples(tags..., replace_nframes = true, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending); kw_args...) do example, value
+        eval_examples(tags..., replace_nframes = false, outputfile = (entry, ending)-> "./media/" * string(entry.unique_name, ending); kw_args...) do example, value
             sigma = [1,1]; eps = 0.02
             maxdiff = 0.05
             toimages(example, value, record) do image, refimage
