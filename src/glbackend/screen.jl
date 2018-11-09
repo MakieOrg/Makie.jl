@@ -5,9 +5,9 @@ const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{Bool}, Node{R
 
 # default icon for Makie
 function icon()
-    icons_dir = joinpath(@__DIR__, "..", "..", "assets", "icons")
-    icons = FileIO.load.(joinpath.(icons_dir, readdir(icons_dir)))
-    icons = reinterpret.(NTuple{4,UInt8}, rotl90.(icons))
+    path = joinpath(@__DIR__, "..", "..", "assets", "icons")
+    icons = FileIO.load.(joinpath.(path, readdir(path)))
+    icons = reinterpret.(NTuple{4,UInt8}, icons)
 end
 
 mutable struct Screen <: AbstractScreen

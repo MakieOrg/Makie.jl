@@ -10,7 +10,7 @@ ImageTransformations
 UnicodeFun
 ColorBrewer
 ModernGL
-GLFW 2.2.0
+GLFW 2.3.0
 FreeType
 FreeTypeAbstraction 0.3.0 #for findfont
 @windows ImageMagick
