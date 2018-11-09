@@ -1,43 +1,6 @@
 
 @block SimonDanisch ["2d"] begin
 
-    @cell "Time Series" [lines, ] begin
-        function run_example()
-            f0 = 1/2; fs = 100;
-            winsec = 4; hopsec = 1/60
-            nwin = round(Integer, winsec*fs)
-            nhop = round(Integer, hopsec*fs)
-            # do the loop
-            frame_start = -winsec
-            frame_time = collect((0:(nwin-1)) * (1/fs))
-            aframe = sin.(2*pi*f0.*(frame_start .+ frame_time))
-            scene = lines(frame_start .+ frame_time, aframe)
-            lineplot = scene[end]
-            N = 50
-            record(scene, @replace_with_a_path(mp4), 1:N) do i
-                aframe .= sin.(2*pi*f0.*(frame_start .+ frame_time))
-                # append!(aframe, randn(nhop)); deleteat!(aframe, 1:nhop)
-                lineplot[1] = frame_start .+ frame_time
-                lineplot[2] = aframe
-                AbstractPlotting.update_limits!(scene)
-                AbstractPlotting.update!(scene)
-                sleep(hopsec)
-                frame_start += hopsec
-            end
-        end
-        run_example()
-    end
-
-    @cell "Fill between" [fill_between, band, lines] begin
-        using AbstractPlotting: fill_between!
-        x = -5:0.01:5
-        y1 = -5 .* x .* x .+ x .+ 10
-        y2 = 5 .* x .* x .+ x
-        lines(x, y1)
-        lines!(x, y2)
-        fill_between!(x, y1, y2, where = y2 .> y1, color = :yellow)
-        fill_between!(x, y1, y2, where = y2 .<= y1, color = :red)
-    end
     @cell "Test heatmap + image overlap" [image, heatmap, transparency] begin
         heatmap(rand(32, 32))
         image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
@@ -74,13 +37,38 @@
         arrows!(x, y, u, v, arrowsize = 0.05)
     end
     @cell "image" [image] begin
-        AbstractPlotting.hbox(
+        hbox(
             image(Makie.logo(), scale_plot = false),
             image(rand(100, 500), scale_plot = false),
         )
     end
     @cell "scatter colormap" [scatter, colormap] begin
         scatter(rand(10), rand(10), color = rand(10))
+    end
+    @cell "Lots of Heatmaps" [heatmap, performance, vbox] begin
+        # example by @ssfrr
+        function makeheatmaps(bufs)
+            heatmaps = map(bufs) do buf
+                heatmap(
+                    buf, padding = (0,0), colorrange = (0,1),
+                    axis = (names = (axisnames = ("", ""),),)
+                )
+            end
+            scene = hbox(map(i-> vbox(heatmaps[i, :]), 1:size(bufs, 1))...)
+            scene, last.(heatmaps)
+        end
+        datarows = 500; datacols = 500
+        plotrows = 4; plotcols = 4
+        bufs = [fill(0.0f0, datarows, datacols) for _ in 1:plotrows, _ in 1:plotcols]
+        scene, hms = makeheatmaps(bufs)
+        display(scene)
+        for _ in 1:100
+            for (hm, buf) in zip(vec(hms), vec(bufs))
+                buf .= rand.(Float32)
+                hm[1] = buf
+            end
+            yield()
+        end
     end
     @cell "FEM polygon 2D" [fem, poly] begin
         coordinates = [
@@ -139,7 +127,7 @@
             shading = false
         )
     end
-    @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme, vbox, hbox] begin
+    @cell "heatmap interpolation" [heatmap, interpolate, subscene, theme] begin
         using AbstractPlotting: hbox, vbox
         data = rand(50, 100)
         p1 = heatmap(data, interpolate = true)
