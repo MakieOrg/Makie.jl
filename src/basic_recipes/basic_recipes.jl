@@ -414,8 +414,8 @@ end
 
 convert_arguments(P::Type{<:AbstractPlot}, r::AbstractVector, f::Function) = convert_arguments(P, r, f.(r))
 
-function convert_arguments(P::Type{<:AbstractPlot}, i::Interval, f::Function)
-    convert_arguments(P, PlotUtils.adapted_grid(f, extrema(i)), f)
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+    convert_arguments(P, PlotUtils.adapted_grid(f, endpoints(i)), f)
 end
 
 
