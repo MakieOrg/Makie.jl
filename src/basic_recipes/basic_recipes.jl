@@ -412,13 +412,19 @@ function AbstractPlotting.plot!(p::BarPlot)
     )
 end
 
-convert_arguments(P::Type{<:AbstractPlot}, f::Function) = convert_arguments(P, f, -5, 5)
+convert_arguments(P::Type{<:AbstractPlot}, r::AbstractVector, f::Function) = convert_arguments(P, r, f.(r))
 
-function convert_arguments(P::Type{<:AbstractPlot}, f::Function, min::Number, max::Number)
-    convert_arguments(P, f, PlotUtils.adapted_grid(f, (min, max)))
+function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Function)
+    convert_arguments(P, PlotUtils.adapted_grid(f, endpoints(i)), f)
 end
 
+to_tuple(t::Tuple) = t
+to_tuple(t) = (t,)
 
+function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
+    tmp = f(args...; kwargs...) |> to_tuple
+    convert_arguments(P, tmp...)
+end
 
 @recipe(ScatterLines) do scene
     Theme()
