@@ -100,7 +100,7 @@ function handle_intensities!(attributes)
     end
 end
 
-function Base.insert!(screen::Screen, scene::Scene, x::Combined)
+function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     if isempty(x.plots) # if no plots inserted, this truely is an atomic
         draw_atomic(screen, scene, x)
     else
@@ -108,7 +108,7 @@ function Base.insert!(screen::Screen, scene::Scene, x::Combined)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter})
+function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
@@ -125,7 +125,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Union{Scatter, MeshScatter
 end
 
 
-function draw_atomic(screen::Screen, scene::Scene, x::Lines)
+function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -135,7 +135,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Lines)
         visualize(positions, Style(:lines), data).children[]
     end
 end
-function draw_atomic(screen::Screen, scene::Scene, x::LineSegments)
+function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -191,7 +191,7 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec
     positions, Vec2f0(0), uv_offset_width, scale
 end
 
-function draw_atomic(screen::Screen, scene::Scene, x::Text)
+function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
 
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
@@ -221,7 +221,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Text)
 end
 
 
-function draw_atomic(screen::Screen, scene::Scene, x::Heatmap)
+function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = (to_value.((x[1], x[2])))
         interp = to_value(pop!(gl_attributes, :interpolate))
@@ -248,7 +248,7 @@ function get_image(plot)
     end
 end
 
-function draw_atomic(screen::Screen, scene::Scene, x::Image)
+function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = to_range.(to_value.((x[1], x[2])))
         img = get_image(gl_attributes)
@@ -260,7 +260,7 @@ end
 convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
 
-function draw_atomic(screen::Screen, scene::Scene, x::Mesh)
+function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
@@ -290,7 +290,7 @@ function draw_atomic(screen::Screen, scene::Scene, x::Mesh)
 end
 
 
-function draw_atomic(screen::Screen, scene::Scene, x::Surface)
+function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         color = pop!(gl_attributes, :color)
         img = nothing
@@ -381,7 +381,7 @@ function surface_contours(volume::Volume)
     robj
 end
 
-function draw_atomic(screen::Screen, scene::Scene, vol::Volume)
+function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
     robj = cached_robj!(screen, scene, vol) do gl_attributes
         if gl_attributes[:algorithm][] == 7
             surface_contours(vol)
