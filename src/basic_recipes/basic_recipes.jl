@@ -418,7 +418,13 @@ function convert_arguments(P::Type{<:AbstractPlot}, i::AbstractInterval, f::Func
     convert_arguments(P, PlotUtils.adapted_grid(f, endpoints(i)), f)
 end
 
+to_tuple(t::Tuple) = t
+to_tuple(t) = (t,)
 
+function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
+    tmp = f(args...; kwargs...) |> to_tuple
+    convert_arguments(P, tmp...)
+end
 
 @recipe(ScatterLines) do scene
     Theme()
