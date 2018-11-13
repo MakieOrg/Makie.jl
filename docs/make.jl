@@ -59,7 +59,7 @@ AbstractPlotting.set_theme!(resolution = (500, 500))
 # you can restart the build, if something failed, by just searching for the index you ended with, and putting it into start
 findfirst(x-> x.title == "WorldClim visualization", database)
 
-eval_examples(outputfile = output_path, start = 119) do example, value
+eval_examples(outputfile = output_path) do example, value
     AbstractPlotting.set_theme!(resolution = (500, 500))
     Random.seed!(42)
     path = save_example(example, value)
@@ -249,7 +249,7 @@ makedocs(
         ],
     ]
 )
-
+using Conda, Documenter
 # deploy
 ENV["DOCUMENTER_DEBUG"] = "true"
 if !haskey(ENV, "DOCUMENTER_KEY")
@@ -261,17 +261,17 @@ if !haskey(ENV, "DOCUMENTER_KEY")
     ENV["TRAVIS_TAG"] = "v1.0.0"
     ENV["TRAVIS_OS_NAME"] = ""
     ENV["TRAVIS_JULIA_VERSION"] = ""
-    if Sys.iswindows()
-        ENV["PATH"] = string(ENV["PATH"], raw";C:\Python27\Scripts")
-    end
+    ENV["PATH"] = string(ENV["PATH"], Sys.iswindows() ? ";" : ":", Conda.SCRIPTDIR)
     ENV["DOCUMENTER_KEY"] = open(x->String(read(x)), joinpath(homedir(), "documenter.key"))
 end
+
+
+
+#run(`pip install --upgrade pip`)
 
 deploydocs(
     deps = Deps.pip("mkdocs", "python-markdown-math", "mkdocs-cinder"),
     repo = "github.com/JuliaPlots/Makie.jl.git",
-    julia = "",
-    osname = "",
     devbranch = "master",
     target = "build",
     make = nothing
