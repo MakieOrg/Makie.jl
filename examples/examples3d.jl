@@ -175,12 +175,12 @@
         end
         x = range(-2pi, stop = 2pi, length = 100)
         scene = Scene()
-        c = contour!(scene, x, x, x, test, levels = 6, alpha = 0.3)[end]
         xm, ym, zm = minimum(scene.limits[])
         # c[4] == fourth argument of the above plotting command
+        c = contour!(scene, x, x, x, test, levels = 6, alpha = 0.3, transparency = true)[end]
         contour!(scene, x, x, map(v-> v[1, :, :], c[4]), transformation = (:xy, zm), linewidth = 10)
         heatmap!(scene, x, x, map(v-> v[:, 1, :], c[4]), transformation = (:xz, ym))
-        contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm))
+        contour!(scene, x, x, map(v-> v[:, :, 1], c[4]), fillrange = true, transformation = (:yz, xm), transparency = true)
     end
 
     @cell "Contour3d" [contour3d] begin
@@ -505,8 +505,14 @@
         t = (time() - start) * 100
         pos = calcpositions.((rings,), 1:N2, t, (t_audio,))
 
-        scene = lines(pos, color = RGBAf0.(to_colormap(:RdBu, N2), 0.6), thickness = 0.6f0, show_axis = false)
-        linesegments!(scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true, linewidth = 3, linestyle = :dot)
+        scene = lines(
+            pos, color = RGBAf0.(to_colormap(:RdBu, N2), 0.6),
+            thickness = 0.6f0, show_axis = false, transparency = true
+        )
+        linesegments!(
+            scene, FRect3D(Vec3f0(-1.5), Vec3f0(3)), raw = true,
+            linewidth = 3, linestyle = :dot
+        )
         eyepos = Vec3f0(5, 1.5, 0.5)
         lookat = Vec3f0(0)
         update_cam!(scene, eyepos, lookat)
@@ -518,14 +524,13 @@
             l[1] = pos # update argument 1
             rotate_cam!(scene, 0.0, 0.01, 0.01)
         end
-
     end
 
     @cell "Line GIF" [lines, animated, gif, offset, record] begin
         us = range(0, stop = 1, length = 100)
         scene = Scene()
         scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
-        p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth = 3)[end]
+        p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth = 3, transparency = true)[end]
         lineplots = [p]
         translate!(p, 0, 0, 0)
         colors = to_colormap(:RdYlBu)
@@ -563,11 +568,11 @@
         x = range(-2, stop = 2, length = N)
         y = x
         z = (-x .* exp.(-x .^ 2 .- (y') .^ 2)) .* 4
-
-        scene = wireframe(x, y, z)
+        scene = surface(x, y, z)
         xm, ym, zm = minimum(scene.limits[])
         scene = surface!(scene, x, y, z .+ 0.05)
         contour!(scene, x, y, z, levels = 15, linewidth = 2, transformation = (:xy, zm))
+        wireframe!(scene, x, y, z)
         scene
     end
 
