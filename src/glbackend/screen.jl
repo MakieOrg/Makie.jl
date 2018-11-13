@@ -3,6 +3,13 @@ const ZIndex = Int
 # ID, Area, clear, is visible, background color
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{Bool}, Node{RGBAf0}}
 
+# default icon for Makie
+function icon()
+    path = joinpath(@__DIR__, "..", "..", "assets", "icons")
+    icons = FileIO.load.(joinpath.(path, readdir(path)))
+    icons = reinterpret.(NTuple{4,UInt8}, icons)
+end
+
 abstract type GLScreen <: AbstractScreen end
 
 mutable struct Screen <: GLScreen
@@ -204,6 +211,8 @@ function Screen(; resolution = (10, 10), visible = false, kw_args...)
         visible = false,
         kw_args...
     )
+    GLFW.SetWindowIcon(window , icon())
+
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
     GLAbstraction.switch_context!(window)
