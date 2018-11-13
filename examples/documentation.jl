@@ -1,4 +1,3 @@
-
 @block AnthonyWang [documentation] begin
     @cell "pong" [animated, scatter, updating] begin
         # init speed and velocity vector
@@ -293,7 +292,7 @@
         step!(st)
         st
     end
-    @cell "Color Legend" begin
+    @cell "Color Legend" [surface, colorlegend] begin
         using Makie
         s = surface(0..1, 0..1, rand(100, 100))
         ls = colorlegend(s[end], raw = true, camera = campixel!)

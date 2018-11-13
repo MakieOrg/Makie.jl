@@ -61,8 +61,8 @@
         plotrows = 4; plotcols = 4
         bufs = [fill(0.0f0, datarows, datacols) for _ in 1:plotrows, _ in 1:plotcols]
         scene, hms = makeheatmaps(bufs)
-        display(scene)
-        for _ in 1:100
+        N = 100
+        record(scene, @replace_with_a_path(mp4), 1:N) do i
             for (hm, buf) in zip(vec(hms), vec(bufs))
                 buf .= rand.(Float32)
                 hm[1] = buf

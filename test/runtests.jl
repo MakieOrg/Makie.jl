@@ -108,7 +108,7 @@ function toimages(f, example, s::Stepper, record)
                 f(image, refimage)
             else
                 @warn("No reference frames for $(example.unique_name) found - skipping tests")
-                cp(path, joinpath(test_diff_path, "no_reference_$(basename(path))"))
+                cp(path, joinpath(test_diff_path, "no_reference_$(basename(path))"), force = true)
                 break
             end
         end
@@ -135,8 +135,8 @@ function toimages(f, example, path::String, record)
                 refimage = FileIO.load(pathref)
                 f(image, refimage)
             else
-                warned || @warn("No reference frames for $(example.unique_name) found - skipping tests")
-                cp(joinpath(filepath, frame), joinpath(test_diff_path, "no_reference_$(frame)"))
+                @warn("No reference frames for $(example.unique_name) found - skipping tests")
+                cp(joinpath(filepath, frame), joinpath(test_diff_path, "no_reference_$(frame)"), force = true)
                 break
             end
         end
