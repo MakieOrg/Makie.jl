@@ -22,7 +22,7 @@ end
 include("GLAbstraction/GLAbstraction.jl")
 using .GLAbstraction
 
-const atlas_texture_cache = Dict{GLFW.Window, Tuple{Texture{Float16, 2}, Function}}()
+const atlas_texture_cache = Dict{Any, Tuple{Texture{Float16, 2}, Function}}()
 
 function get_texture!(atlas)
     # clean up dead context!

@@ -3,7 +3,9 @@ const ZIndex = Int
 # ID, Area, clear, is visible, background color
 const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{Bool}, Node{RGBAf0}}
 
-mutable struct Screen <: AbstractScreen
+abstract type GLScreen <: AbstractScreen end
+
+mutable struct Screen <: GLScreen
     glscreen::GLFW.Window
     framebuffer::GLFramebuffer
     rendertask::RefValue{Task}
@@ -43,14 +45,14 @@ Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(global_gl_screen()) # TODO per scene screen
 
 
-function insertplots!(screen::Screen, scene::Scene)
+function insertplots!(screen::GLScreen, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
     foreach(s-> insertplots!(screen, s), scene.children)
 end
 
-function Base.empty!(screen::Screen)
+function Base.empty!(screen::GLScreen)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)
@@ -130,7 +132,7 @@ end
 
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
-function Base.push!(screen::Screen, scene::Scene, robj)
+function Base.push!(screen::GLScreen, scene::Scene, robj)
     filter!(screen.screen2scene) do (k, v)
         k.value != nothing
     end
