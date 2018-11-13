@@ -183,5 +183,9 @@ struct RecordEvents
     path::String
 end
 
+function Base.display(d::PlotDisplay, re::RecordEvents)
+    display(d, re.scene)
+end
+
 
 export Stepper, step!, replay_events, record_events, RecordEvents
