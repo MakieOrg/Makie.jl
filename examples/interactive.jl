@@ -282,7 +282,7 @@
             positions
         end
         p = scatter(
-            pos, markersize = 0.002, color = (:black, 0.4),
+            pos, markersize = 0.006, color = (:black, 0.2),
             show_axis = false
         )
         onany(pos) do pos
@@ -292,19 +292,30 @@
             AbstractPlotting.update_limits!(p, FRect(r1node[], 0, r2node[] - r1node[], 1))
             AbstractPlotting.update!(p)
         end
-        hbox(
+        scene = hbox(
             p,
             vbox(r1, r2)
         )
+        RecordEvents(scene, @replace_with_a_path)
     end
 end
 
 event_path(entry, ending) = joinpath(dirname(pathof(Makie)), "..", "examples", "recorded_events", string(entry.unique_name, ".jls"))
 
 function record_example_events()
-    eval_examples(:record_events, outputfile = event_path) do example, value
+    eval_examples(:record_events, :scatter, :slider, :interactive, outputfile = event_path) do example, value
         record_events(value.scene, value.path) do
             wait(value.scene)
         end
     end
 end
+function record_example(title = "Orbit Diagram")
+    set_theme!(resolution = (500, 500))
+    idx = findfirst(x-> x.title == title, database)
+    entry = database[idx]
+    value = eval_example(entry, outputfile = event_path)
+    record_events(value.scene, value.path) do
+        wait(value.scene)
+    end
+end
+# record_example()
