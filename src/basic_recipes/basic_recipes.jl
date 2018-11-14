@@ -427,13 +427,12 @@ function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
 end
 
 @recipe(ScatterLines) do scene
-    Theme()
+    merge(default_theme(scene, Scatter), default_theme(scene, Lines))
 end
 
-function plot!(scene::SceneLike, ::Type{<:ScatterLines}, attributes::Attributes, p...)
-    plot!(scene, Lines, attributes, p...)
-    plot!(scene, Scatter, attributes, p...)
-    scene
+function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
+    plot!(p, Lines, Theme(p), p[1:N]...)
+    plot!(p, Scatter, Theme(p), p[1:N]...)
 end
 
 
