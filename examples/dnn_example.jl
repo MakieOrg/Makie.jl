@@ -49,7 +49,7 @@ opt = ADAM(Flux.params(m));
 record(scene, "flux.mp4", 1:10) do i
     Flux.train!(loss, train, opt, cb = evalcb)
 end
-save(joinpath(homedir(), "Desktop", "flux.mp4"), io)
+Makie.save(joinpath(homedir(), "Desktop", "flux.mp4"), io)
 
 
 
