@@ -31,7 +31,7 @@ plottype(::Type{<: Combined{T}}, A::Type{<:MultiplePlot}, argvalues...) where T 
 function convert_arguments(P::PlotFunc, m::PlotList)
     function convert_series(s)
         ptype, args = to_pair(P, s)
-        ptype => convert_arguments(ptype, args...)
+        to_pair(ptype, convert_arguments(ptype, args...))
     end
     MultiplePlot => (PlotList(convert_series.(m); transform_attributes = m.transform_attributes),)
 end
