@@ -6,7 +6,7 @@ to_vector(v::AbstractVector, n) = convert(Vector, v)
 to_vector(v, n) = fill(v, n)
 
 function tuple_type(v::AbstractVector)
-    vec = unique(typeof(first(el)) for el in v if el isa Pair)
+    vec = unique(first(el) for el in v if el isa Pair)
     Tuple{vec...}
 end
 
@@ -55,6 +55,7 @@ function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
     mp = to_value(p[1]) # TODO how to preserve interactivity here, as number of series may change?
     for (i, s) in enumerate(mp)
         PlotType, args = s
-        plot!(p, PlotType, mp.transform_attributes[i](Theme(p)), args...)
+        nt = mp.transform_attributes[i](Theme(p))
+        plot!(p, PlotType, nt, args...)
     end
 end
