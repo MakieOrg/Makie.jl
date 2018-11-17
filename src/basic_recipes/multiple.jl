@@ -1,15 +1,22 @@
 export PlotList
 
-abstract type AbstractPlotList{T} <: AbstractVector{T} end
+abstract type AbstractPlotList{T, S} <: AbstractVector{T} end
 
 to_vector(v::AbstractVector, n) = convert(Vector, v)
 to_vector(v, n) = fill(v, n)
 
-struct PlotList{T} <: AbstractPlotList{T}
+function tuple_type(v::AbstractVector)
+    vec = unique(typeof(first(el)) for el in v if el isa Pair)
+    Tuple{vec...}
+end
+
+tuple_type(::Type{<:AbstractPlotList{T, S}}) where {T, S} = S
+
+struct PlotList{T, S} <: AbstractPlotList{T, S}
     plots::Vector{T}
     transform_attributes::AbstractVector
     PlotList(plots::AbstractVector{T}; transform_attributes = identity) where {T} =
-        new{T}(convert(Vector{T}, plots), to_vector(transform_attributes, length(plots)))
+        new{T, tuple_type(plots)}(convert(Vector{T}, plots), to_vector(transform_attributes, length(plots)))
 end
 
 PlotList(args...; kwargs...) = PlotList(collect(args); kwargs...)
@@ -19,11 +26,13 @@ Base.parent(p::PlotList) = p.plots
 Base.getindex(m::AbstractPlotList, I...) = getindex(parent(m), I...)
 Base.size(m::AbstractPlotList) = size(parent(m))
 
-# TODO: the theme is actually a combination of themes, need to use type parameters here!
 @recipe(MultiplePlot) do scene
     default_theme(scene)
 end
 
+function default_theme(scene, ::Type{<:Combined{multipleplot, Tuple{P}}}) where {P<:AbstractPlotList}
+    merge((default_theme(scene, pt) for pt in tuple_type(P).parameters)...)
+end
 # Allow MultiplePlot to prevail on user input: the plot type of each series will be defined in convert_arguments
 plottype(::Type{<: Combined{Any}}, A::Type{<:MultiplePlot}, argvalues...) = A
 plottype(::Type{<: Combined{T}}, A::Type{<:MultiplePlot}, argvalues...) where T = A
