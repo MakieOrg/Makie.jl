@@ -25,8 +25,8 @@ Base.size(m::AbstractPlotList) = size(parent(m))
 end
 
 # Allow MultiplePlot to prevail on user input: the plot type of each series will be defined in convert_arguments
-plottype(::Type{<: Combined{Any}}, A::Type{Combined{MultiplePlot}}, argvalues...) = A
-plottype(::Type{<: Combined{T}}, A::Type{Combined{MultiplePlot}}, argvalues...) where T = A
+plottype(::Type{<: Combined{Any}}, A::Type{<:MultiplePlot}, argvalues...) = A
+plottype(::Type{<: Combined{T}}, A::Type{<:MultiplePlot}, argvalues...) where T = A
 
 function convert_arguments(P::PlotFunc, m::PlotList)
     function convert_series(s)
