@@ -8,8 +8,8 @@ to_vector(v, n) = fill(v, n)
 struct PlotList{T} <: AbstractPlotList{T}
     plots::Vector{T}
     transform_attributes::AbstractVector
-    PlotList(plots::Vector{T}; transform_attributes = identity) where {T} =
-        new{T}(plots, to_vector(transform_attributes, length(plots)))
+    PlotList(plots::AbstractVector{T}; transform_attributes = identity) where {T} =
+        new{T}(convert(Vector{T}, plots), to_vector(transform_attributes, length(plots)))
 end
 
 PlotList(args...; kwargs...) = PlotList(collect(args); kwargs...)
