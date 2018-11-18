@@ -239,6 +239,7 @@ function vec2color(colors, cmap, crange)
 end
 
 function get_image(plot)
+    println("getting_image")
     if isa(plot[:color][], AbstractMatrix{<: Number})
         lift(vec2color, pop!.(Ref(plot), (:color, :color_map, :color_norm))...)
     else
@@ -405,7 +406,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
                 )
                 convert(Mat4f0, m) * m2
             end
-            delete!(gl_attributes, :color)
             visualize(vol[4], Style(:default), gl_attributes).children[]
         end
     end
