@@ -85,7 +85,8 @@ Plots a volume. Available algorithms are:
 end
 mutual_exclusive_attributes(::Type{<:Volume}) =
     Dict(:colorrange => :color,
-         :colormap   => :color)
+         :colormap   => :color,
+         )
 
 """
     `surface(x, y, z)`
@@ -563,10 +564,13 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     empty!(scene.attributes)
     # transfer the merged attributes from theme and user defined to the scene
     merge!(scene.attributes, nattributes)
-    for (bad, good) in mutual_exclusive_attributes(PlotType)
+    for (at1, at2) in mutual_exclusive_attributes(PlotType)
         #nothing here to get around defaults in GLVisualize
-        if haskey(attributes, good) && haskey(plot_object.attributes, bad)
-            plot_object.attributes[bad] = nothing
+        haskey(attributes, at1) && haskey(attributes, at2) && error("$at1 conflicts with $at2, please specify only one.")
+        if haskey(attributes, at1) && haskey(plot_object.attributes, at2)
+            plot_object.attributes[at2] = nothing
+        elseif haskey(attributes, at2) && haskey(plot_object.attributes, at1)
+            plot_object.attributes[at1] = nothing
         end
     end
     # call user defined recipe overload to fill the plot type
