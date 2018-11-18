@@ -26,6 +26,8 @@ pkg> add Makie
 pkg> test Makie
 ```
 
+If you plan to use `Makie#master`, you likely also need to check out `AbstractPlotting#master`.
+
 ## Dependencies
 You will need to have ffmpeg in the path to run the video recording examples.
 On linux you also need to add the following to get GLFW to build (if you don't have those already):
