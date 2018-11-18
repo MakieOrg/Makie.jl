@@ -22,6 +22,11 @@ function default_theme(scene)
     )
 end
 
+
+#this defines which attributes in a theme should be removed if another attribute is defined by the user,
+#to avoid conflicts later through the pipeline
+
+mutual_exclusive_attributes(::Type{<:AbstractPlot}) = Dict()
 """
     `image(x, y, image)` / `image(image)`
 
@@ -74,9 +79,13 @@ Plots a volume. Available algorithms are:
         isovalue = 0.5f0,
         isorange = 0.05f0,
         colormap = theme(scene, :colormap),
-        colorrange = (0, 1)
+        colorrange = (0, 1),
+        color = nothing,
     )
 end
+mutual_exclusive_attributes(::Type{<:Volume}) =
+    Dict(:colorrange => :color,
+         :colormap   => :color)
 
 """
     `surface(x, y, z)`
@@ -545,15 +554,21 @@ end
 
 
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N, PlotType <: AbstractPlot}
-
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, input, args)
 
-    attributes, rest = merge_attributes!(scene_attributes, theme(scene))
+    nattributes, rest = merge_attributes!(scene_attributes, theme(scene))
+
     # TODO warn about rest - should be unused arguments!
     empty!(scene.attributes)
     # transfer the merged attributes from theme and user defined to the scene
-    merge!(scene.attributes, attributes)
+    merge!(scene.attributes, nattributes)
+    for (bad, good) in mutual_exclusive_attributes(PlotType)
+        #nothing here to get around defaults in GLVisualize
+        if haskey(attributes, good) && haskey(plot_object.attributes, bad)
+            plot_object.attributes[bad] = nothing
+        end
+    end
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
 
