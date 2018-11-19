@@ -239,7 +239,6 @@ function vec2color(colors, cmap, crange)
 end
 
 function get_image(plot)
-    println("getting_image")
     if isa(plot[:color][], AbstractMatrix{<: Number})
         lift(vec2color, pop!.(Ref(plot), (:color, :color_map, :color_norm))...)
     else
