@@ -67,12 +67,18 @@ end
 Represents standard sets of function applied before rendering
 """
 struct StandardPrerender
+    transparency::Node{Bool}
+    overdraw::Node{Bool}
 end
 
-function (::StandardPrerender)()
-    glEnable(GL_DEPTH_TEST)
-    glDepthMask(GL_TRUE)
-    glDepthFunc(GL_LEQUAL)
+function (sp::StandardPrerender)()
+    if !sp.overdraw[]
+        glEnable(GL_DEPTH_TEST)
+        glDepthFunc(GL_LEQUAL)
+    else
+        glDisable(GL_DEPTH_TEST)
+    end
+    glDepthMask(sp.transparency[] ? GL_FALSE : GL_TRUE)
     # Disable cullface for now, untill all rendering code is corrected!
     glDisable(GL_CULL_FACE)
     # glCullFace(GL_BACK)
