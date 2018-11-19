@@ -1,0 +1,7 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+precompile.jl
+build
+src/glbackend/.cache
+test/testimages/*

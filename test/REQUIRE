@@ -1,0 +1,13 @@
+MeshIO
+#generate_plots
+ImageFiltering # needed for Gaussian-filtering images during resize
+BinaryProvider
+
+#for some examples
+DataFrames
+RDatasets
+
+#for WorldClim visualization example
+GDAL
+RData
+DataFrames
