@@ -1,5 +1,6 @@
 module GLMakie
 
+using Makie
 using ModernGL, GLFW, FixedPointNumbers, Colors, GeometryTypes
 using AbstractPlotting, StaticArrays
 using ..Makie

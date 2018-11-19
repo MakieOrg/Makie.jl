@@ -19,7 +19,6 @@ FreeTypeAbstraction 0.3.0 #for findfont
 AbstractPlotting
 Primes
 PlotUtils
-#Cairo
 IntervalSets
 Showoff
 ColorTypes
@@ -30,3 +29,4 @@ IterTools
 AxisArrays
 ImageAxes
 IndirectArrays
+Makie

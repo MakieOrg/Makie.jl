@@ -5,7 +5,7 @@ const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{Bool}, Node{R
 
 # default icon for Makie
 function icon()
-    path = joinpath(@__DIR__, "..", "..", "assets", "icons")
+    path = joinpath(dirname(pathof(Makie)), "..", "assets", "icons")
     icons = FileIO.load.(joinpath.(path, readdir(path)))
     icons = reinterpret.(NTuple{4,UInt8}, icons)
 end
