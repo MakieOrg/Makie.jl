@@ -1,13 +1,11 @@
 module AbstractPlotting
 
 using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
-using ColorBrewer
+using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown # documentation
 using Serialization # serialize events
 
 # Text related packages
-using Packing
-using SignedDistanceFields
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
 import FileIO
@@ -15,6 +13,8 @@ import FileIO
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
+
+
 
 include("utilities/quaternions.jl")
 include("types.jl")
@@ -125,5 +125,10 @@ export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 #export (..) # reexport interval
 
 export plot!, plot
+
+
+export Stepper, step!, replay_events, record_events, RecordEvents, record, VideoStream
+export VideoStream, recordframe!, record
+
 
 end # module
