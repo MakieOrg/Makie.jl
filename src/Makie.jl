@@ -23,7 +23,6 @@ export (..), GLNormalUVMesh
 using AbstractPlotting: Text, volume, VecTypes
 using GeometryTypes: widths
 export widths, decompose
-export VideoStream, recordframe!, finish, record
 
 module ContoursHygiene
     import Contour
@@ -31,15 +30,7 @@ end
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 
-const has_ffmpeg = Ref(false)
 
-function __init__()
-    has_ffmpeg[] = try
-        success(`ffmpeg -h`)
-    catch
-        false
-    end
-end
 
 function logo()
     FileIO.load(joinpath(@__DIR__, "..", "assets", "logo.png"))
@@ -47,10 +38,8 @@ end
 
 include("makie_recipes.jl")
 include("utils.jl")
-include("glbackend/glbackend.jl")
-using .GLMakie
-using .GLMakie: assetpath, loadasset
-
-include("video_io.jl")
+#
+# using GLMakie
+# using GLMakie: assetpath, loadasset
 
 end
