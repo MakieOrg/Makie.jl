@@ -42,7 +42,7 @@ function __init__()
 end
 
 function logo()
-    FileIO.load(joinpath(@__DIR__, "..", "docs", "src", "assets", "logo.png"))
+    FileIO.load(joinpath(@__DIR__, "..", "assets", "logo.png"))
 end
 
 include("makie_recipes.jl")
