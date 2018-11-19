@@ -2,6 +2,7 @@ export PlotList
 
 abstract type AbstractPlotList{T, S} <: AbstractVector{T} end
 
+to_vector(T::Type, args...) = convert(Vector{T}, to_vector(args...))
 to_vector(v::AbstractVector, n) = convert(Vector, v)
 to_vector(v, n) = fill(v, n)
 
@@ -14,9 +15,12 @@ tuple_type(::Type{<:AbstractPlotList{T, S}}) where {T, S} = S
 
 struct PlotList{T, S} <: AbstractPlotList{T, S}
     plots::Vector{T}
-    transform_attributes::AbstractVector
-    PlotList(plots::AbstractVector{T}; transform_attributes = identity) where {T} =
-        new{T, tuple_type(plots)}(convert(Vector{T}, plots), to_vector(transform_attributes, length(plots)))
+    transform_attributes::Vector{Function}
+    function PlotList(plots::AbstractVector{T}; transform_attributes = identity) where {T}
+        plots_vec = convert(Vector{T}, plots)
+        funcs_vec = to_vector(Function, transform_attributes, length(plots_vec))
+        new{T, tuple_type(plots)}(plots_vec, funcs_vec)
+    end
 end
 
 PlotList(args...; kwargs...) = PlotList(collect(args); kwargs...)
