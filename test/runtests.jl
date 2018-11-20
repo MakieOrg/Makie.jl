@@ -1,6 +1,6 @@
 using Pkg
 
-pkg"dev Makie https://github.com/JuliaPlots/MakieGallery.jl"
+pkg"add Makie#gl-makie https://github.com/JuliaPlots/MakieGallery.jl#gl-makie"
 
 #pkg"test MakieGallery"
 using MakieGallery, GLMakie
