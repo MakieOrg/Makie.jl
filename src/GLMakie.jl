@@ -20,6 +20,8 @@ for name in names(AbstractPlotting)
     @eval import AbstractPlotting: $(name)
 end
 
+import AbstractPlotting: colorbuffer
+
 include("GLAbstraction/GLAbstraction.jl")
 using .GLAbstraction
 
@@ -74,6 +76,7 @@ function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
     # This should only get called if inline display false, so we display the window
     GLFW.set_visibility!(to_native(screen), true)
     display(screen, scene)
+    return screen
 end
 
 colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
