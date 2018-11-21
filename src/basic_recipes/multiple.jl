@@ -4,10 +4,9 @@ plottype(::Type{<:AbstractPlotList{T}}) where {T} = T.parameters
 
 struct PlotList{T<:Tuple} <: AbstractPlotList{T}
     plots::Tuple
-    transform_attributes::Function
-    function PlotList(plots...; transform_attributes::Function = identity)
+    function PlotList(plots...)
         T = Tuple{unique(plottype.(plots))...}
-        new{T}(plots, transform_attributes)
+        new{T}(plots)
     end
 end
 
@@ -27,9 +26,6 @@ end
 # Allow MultiplePlot to prevail on user input: the plot type of each series will be defined in convert_arguments
 plottype(::Type{<: Combined{Any}}, A::Type{<:MultiplePlot}, argvalues...) = A
 plottype(::Type{<: Combined{T}}, A::Type{<:MultiplePlot}, argvalues...) where T = A
-
-to_pair(P, t) = P => t
-to_pair(P, p::Pair) = to_pair(plottype(P, first(p)), last(p))
 
 function convert_arguments(P::PlotFunc, m::PlotList)
     function convert_series(plot::PlotSpec)
@@ -60,7 +56,7 @@ combine(theme1::Theme, theme2) = combine!(copy(theme1), theme2)
 # PlotList with convert_arguments
 function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
     mp = to_value(p[1]) # TODO how to preserve interactivity here, as number of series may change?
-    theme = mp.transform_attributes(Theme(p))
+    theme = Theme(p)
     for s in mp.plots
         attr = combine(theme, Theme(; s.kwargs...))
         plot!(p, plottype(s), attr, s.args...)
