@@ -32,7 +32,7 @@ function convert_arguments(P::PlotFunc, m::PlotList)
         ptype = plottype(P, plottype(plot))
         to_plotspec(ptype, convert_arguments(ptype, plot.args...); plot.kwargs...)
     end
-    pl = PlotList(convert_series.(m.plots)...; transform_attributes = m.transform_attributes)
+    pl = PlotList(convert_series.(m.plots)...)
     PlotSpec{MultiplePlot}(pl)
 end
 
