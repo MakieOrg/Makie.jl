@@ -1,15 +1,20 @@
-export PlotList, PlotSpecs
+export PlotList, PlotSpec
 
-struct PlotSpecs{P<:AbstractPlot}
+struct PlotSpec{P<:AbstractPlot}
     args::Tuple
-    transform_attributes::Function
+    kwargs::NamedTuple
+    PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot} = new{P}(args, values(kwargs))
 end
 
-PlotSpecs(args...) = PlotSpecs{Combined{Any}}(args...)
-PlotSpecs{P}(args::Tuple) where {P} = PlotSpecs{P}(args, identity)
-PlotSpecs{P}(x::PlotSpecs) where {P} = PlotSpecs{P}(x.args, x.transform_attributes)
+PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
 
-plottype(::PlotSpecs{P}) where {P} = P
+to_plotspec(::Type{P}, args; kwargs...) where {P} =
+    PlotSpec{P}(args...; kwargs...)
+
+to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
+    PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
+
+plottype(::PlotSpec{P}) where {P} = P
 
 abstract type AbstractPlotList{T<:Tuple} end
 
@@ -45,13 +50,12 @@ to_pair(P, t) = P => t
 to_pair(P, p::Pair) = to_pair(plottype(P, first(p)), last(p))
 
 function convert_arguments(P::PlotFunc, m::PlotList)
-    function convert_series(plot::PlotSpecs)
+    function convert_series(plot::PlotSpec)
         ptype = plottype(P, plottype(plot))
-        finaltype, converted_args = to_pair(ptype, convert_arguments(ptype, plot.args...))
-        PlotSpecs{finaltype}(converted_args, plot.transform_attributes)
+        to_plotspec(ptype, convert_arguments(ptype, plot.args...); plot.kwargs...)
     end
     pl = PlotList(convert_series.(m.plots)...; transform_attributes = m.transform_attributes)
-    MultiplePlot => (pl,)
+    PlotSpec{MultiplePlot}(pl)
 end
 
 # This allows plotting an arbitrary combination of series form one argument
@@ -61,8 +65,8 @@ function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
     mp = to_value(p[1]) # TODO how to preserve interactivity here, as number of series may change?
     theme = mp.transform_attributes(Theme(p))
     for s in mp.plots
-        args, transform_attributes = s.args, s.transform_attributes
-        attr = transform_attributes(theme)
-        plot!(p, plottype(s), attr, args...)
+        attr = copy(theme)
+        ptype, args = apply_convert!(Combined{Any}, attr, s)
+        plot!(p, ptype, attr, args...)
     end
 end
