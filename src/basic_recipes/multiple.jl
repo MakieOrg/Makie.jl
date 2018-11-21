@@ -65,8 +65,7 @@ function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
     mp = to_value(p[1]) # TODO how to preserve interactivity here, as number of series may change?
     theme = mp.transform_attributes(Theme(p))
     for s in mp.plots
-        attr = copy(theme)
-        ptype, args = apply_convert!(Combined{Any}, attr, s)
-        plot!(p, ptype, attr, args...)
+        attr = merge(theme, Theme(; s.kwargs...))
+        plot!(p, plottype(s), attr, s.args...)
     end
 end
