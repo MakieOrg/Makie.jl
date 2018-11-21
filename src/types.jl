@@ -393,3 +393,19 @@ const Vecf0{N} = Vec{N, Float32}
 const Pointf0{N} = Point{N, Float32}
 export Vecf0, Pointf0
 const NativeFont = Vector{Ptr{FreeType.FT_FaceRec}}
+
+struct PlotSpec{P<:AbstractPlot}
+    args::Tuple
+    kwargs::NamedTuple
+    PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot} = new{P}(args, values(kwargs))
+end
+
+PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
+
+to_plotspec(::Type{P}, args; kwargs...) where {P} =
+    PlotSpec{P}(args...; kwargs...)
+
+to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
+    PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
+
+plottype(::PlotSpec{P}) where {P} = P

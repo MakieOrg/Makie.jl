@@ -1,21 +1,3 @@
-export PlotList, PlotSpec
-
-struct PlotSpec{P<:AbstractPlot}
-    args::Tuple
-    kwargs::NamedTuple
-    PlotSpec{P}(args...; kwargs...) where {P<:AbstractPlot} = new{P}(args, values(kwargs))
-end
-
-PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
-
-to_plotspec(::Type{P}, args; kwargs...) where {P} =
-    PlotSpec{P}(args...; kwargs...)
-
-to_plotspec(::Type{P}, p::PlotSpec{S}; kwargs...) where {P, S} =
-    PlotSpec{plottype(P, S)}(p.args...; p.kwargs..., kwargs...)
-
-plottype(::PlotSpec{P}) where {P} = P
-
 abstract type AbstractPlotList{T<:Tuple} end
 
 plottype(::Type{<:AbstractPlotList{T}}) where {T} = T.parameters
@@ -58,6 +40,21 @@ function convert_arguments(P::PlotFunc, m::PlotList)
     PlotSpec{MultiplePlot}(pl)
 end
 
+combine(o1, o2) = o2
+combine(o) = o
+
+function combine!(theme1::Theme, theme2::Theme)
+    for (key, val) in theme2
+        if key in keys(theme1)
+            theme1[key] = lift(combine, theme1[key], val)
+        else
+            theme1[key] = lift(combine, val)
+        end
+    end
+    theme1
+end
+combine(theme1::Theme, theme2) = combine!(copy(theme1), theme2)
+
 # This allows plotting an arbitrary combination of series form one argument
 # The recipe framework can be constructed using this as a building block and computing
 # PlotList with convert_arguments
@@ -65,7 +62,7 @@ function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
     mp = to_value(p[1]) # TODO how to preserve interactivity here, as number of series may change?
     theme = mp.transform_attributes(Theme(p))
     for s in mp.plots
-        attr = merge(theme, Theme(; s.kwargs...))
+        attr = combine(theme, Theme(; s.kwargs...))
         plot!(p, plottype(s), attr, s.args...)
     end
 end
