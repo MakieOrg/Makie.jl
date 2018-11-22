@@ -402,6 +402,9 @@ end
 
 PlotSpec(args...; kwargs...) = PlotSpec{Combined{Any}}(args...; kwargs...)
 
+Base.getindex(p::PlotSpec, i::Int) = getindex(p.args, i)
+Base.getindex(p::PlotSpec, i::Symbol) = getproperty(p.kwargs, i)
+
 to_plotspec(::Type{P}, args; kwargs...) where {P} =
     PlotSpec{P}(args...; kwargs...)
 

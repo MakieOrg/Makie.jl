@@ -11,10 +11,9 @@ struct PlotList{T<:Tuple} <: AbstractPlotList{T}
 end
 
 
-Base.parent(p::PlotList) = p.plots
-
-Base.getindex(m::AbstractPlotList, I...) = getindex(parent(m), I...)
-Base.size(m::AbstractPlotList) = size(parent(m))
+Base.getindex(m::PlotList, i) = getindex(m.plots, i)
+Base.length(m::PlotList) = length(m.plots)
+Base.iterate(m::PlotList, args...) = iterate(m.plots, args...)
 
 @recipe(MultiplePlot) do scene
     default_theme(scene)
