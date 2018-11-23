@@ -394,6 +394,12 @@ const Pointf0{N} = Point{N, Float32}
 export Vecf0, Pointf0
 const NativeFont = Vector{Ptr{FreeType.FT_FaceRec}}
 
+"""
+`PlotSpec{P<:AbstractPlot}(args...; kwargs...)`
+
+Object encoding positional arguments (`args`), a `NamedTuple` of attributes (`kwargs`)
+as well as plot type `P` of a basic plot.
+"""
 struct PlotSpec{P<:AbstractPlot}
     args::Tuple
     kwargs::NamedTuple

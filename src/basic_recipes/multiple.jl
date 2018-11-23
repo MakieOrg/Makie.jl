@@ -2,6 +2,11 @@ abstract type AbstractPlotList{T<:Tuple} end
 
 plottype(::Type{<:AbstractPlotList{T}}) where {T} = T.parameters
 
+"""
+`Plotlist(plots...)`
+
+Experimental feature. Create an object that can encode multiple series.
+"""
 struct PlotList{T<:Tuple} <: AbstractPlotList{T}
     plots::Tuple
     function PlotList(plots...)
