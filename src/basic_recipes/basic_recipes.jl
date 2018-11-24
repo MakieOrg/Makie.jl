@@ -74,6 +74,24 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
     )
 end
 
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMesh
+    meshes = plot[1]
+    color_node = plot[:color]
+    attributes = Attributes(visible = plot[:visible], shading = plot[:shading])
+    bigmesh = if color_node[] isa Vector && length(color_node[]) == length(meshes[])
+        lift(meshes, color_node) do meshes, colors
+            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), to_color.(colors))
+            merge(meshes)
+        end
+    else
+        attributes[:color] = color_node
+        lift(meshes) do meshes
+            merge(GLPlainMesh.(meshes))
+        end
+    end
+    mesh!(plot, attributes, bigmesh)
+end
+
 function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
     positions = plot[1]
     position = lift(positions) do rects
