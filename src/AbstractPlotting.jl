@@ -40,6 +40,7 @@ include("camera/camera3d.jl")
 
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
+include("basic_recipes/multiple.jl")
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
@@ -123,6 +124,9 @@ export IRect, FRect, Rect, Sphere, Circle
 export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 #export (..) # reexport interval
+
+# building blocks for series recipes
+export PlotList, PlotSpec
 
 export plot!, plot
 
