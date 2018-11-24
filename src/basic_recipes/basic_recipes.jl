@@ -35,7 +35,6 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
     color_node = plot[:color]
     attributes = Attributes(visible = plot[:visible], shading = plot[:shading])
     bigmesh = if color_node[] isa Vector && length(color_node[]) == length(polygons[])
-        @show  length(color_node[])
         lift(polygons, color_node) do polygons, colors
             polys = Vector{Point2f0}[]
             cols = RGBAf0[]
