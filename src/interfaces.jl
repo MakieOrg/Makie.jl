@@ -331,47 +331,16 @@ end
 
 
 """
-apply for return type
-    PlotType => (args...)
-
+apply for return type PlotSpec
 """
-function apply_convert!(P, attributes::Attributes, x::Pair)
-    return x[1], x[2]
-end
-
-"""
-apply for return type
-    (
-        (args...),
-        (
-            attribute = :red
-        )
-    )
-"""
-function apply_convert!(P, attributes::Attributes, x::Tuple{<: Tuple, <: NamedTuple})
-    args, kw = x
-    for (k, v) in kw
+function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
+    args, kwargs = x.args, x.kwargs
+    for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
-    return plottype!(P, attributes, args)
+    return (plottype(P, S), args)
 end
 
-"""
-apply for return type
-    PlotType => (
-        (args...),
-        (
-            attribute = :red
-        )
-    )
-"""
-function apply_convert!(P, attributes::Attributes, x::Pair{Type{<: AbstractPlot}, <: Tuple{<: Tuple, <: NamedTuple}})
-    ptype, (args, kw) = x
-    for (k, v) in kw
-        attributes[k] = v
-    end
-    return apply_convert!(P, attributes, ptype => args)
-end
 
 function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
     ntuple(N) do i
