@@ -19,7 +19,7 @@ FreeTypeAbstraction 0.3.0 #for findfont
 AbstractPlotting
 Primes
 PlotUtils
-#GLMakie
+GLMakie
 IntervalSets
 Showoff
 ColorTypes

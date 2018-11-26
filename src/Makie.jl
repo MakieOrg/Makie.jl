@@ -1,5 +1,6 @@
 module Makie
 
+
 using AbstractPlotting, ImageCore, LinearAlgebra, Statistics, Base64
 using GeometryTypes, Colors, ColorVectorSpace, StaticArrays, FixedPointNumbers
 import IntervalSets, FileIO
@@ -38,8 +39,8 @@ end
 
 include("makie_recipes.jl")
 include("utils.jl")
-#
-# using GLMakie
-# using GLMakie: assetpath, loadasset
+
+using GLMakie
+using GLMakie: assetpath, loadasset
 
 end
