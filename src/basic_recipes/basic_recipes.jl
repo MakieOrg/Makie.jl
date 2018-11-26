@@ -33,31 +33,16 @@ end
 function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVector{<: VecTypes}
     polygons = plot[1]
     color_node = plot[:color]
-    attributes = Attributes(visible = plot[:visible], shading = plot[:shading])
-    bigmesh = if color_node[] isa Vector && length(color_node[]) == length(polygons[])
-        lift(polygons, color_node) do polygons, colors
-            polys = Vector{Point2f0}[]
-            cols = RGBAf0[]
-            for (color, poly) in zip(colors, polygons)
-                s = GeometryTypes.split_intersections(poly)
-                append!(polys, s)
-                append!(cols, repeated(to_color(color), length(s)))
-            end
-            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(polys), cols)
-            merge(meshes)
+    attributes = Attributes()
+    meshes = lift(polygons) do polygons
+        polys = Vector{Point2f0}[]
+        for poly in polygons
+            s = GeometryTypes.split_intersections(poly)
+            append!(polys, s)
         end
-    else
-        attributes[:color] = color_node
-        lift(polygons) do polygons
-            polys = Vector{Point2f0}[]
-            for poly in polygons
-                s = GeometryTypes.split_intersections(poly)
-                append!(polys, s)
-            end
-            merge(GLPlainMesh.(polys))
-        end
+        GLNormalMesh.(polys)
     end
-    mesh!(plot, attributes, bigmesh)
+    mesh!(plot, meshes, visible = plot[:visible], shading = plot[:shading], color = plot[:color])
     outline = lift(polygons) do polygons
         line = Point2f0[]
         for poly in polygons
@@ -72,6 +57,24 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
         color = plot[:strokecolor], linestyle = plot[:linestyle],
         linewidth = plot[:strokewidth],
     )
+end
+
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMesh
+    meshes = plot[1]
+    color_node = plot[:color]
+    attributes = Attributes(visible = plot[:visible], shading = plot[:shading])
+    bigmesh = if color_node[] isa Vector && length(color_node[]) == length(meshes[])
+        lift(meshes, color_node) do meshes, colors
+            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), to_color.(colors))
+            merge(meshes)
+        end
+    else
+        attributes[:color] = color_node
+        lift(meshes) do meshes
+            merge(GLPlainMesh.(meshes))
+        end
+    end
+    mesh!(plot, attributes, bigmesh)
 end
 
 function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
