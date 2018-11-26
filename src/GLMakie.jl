@@ -1,9 +1,7 @@
 module GLMakie
 
-using Makie
 using ModernGL, GLFW, FixedPointNumbers, Colors, GeometryTypes
 using AbstractPlotting, StaticArrays
-using ..Makie
 using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, Key, broadcast_foreach
 using AbstractPlotting: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using AbstractPlotting: @get_attribute, to_value, to_colormap, extrema_nan
@@ -78,8 +76,6 @@ function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
     display(screen, scene)
     return screen
 end
-
-colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
 
 """
     scene2image(scene::Scene)

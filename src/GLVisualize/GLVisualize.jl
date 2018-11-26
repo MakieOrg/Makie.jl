@@ -1,7 +1,7 @@
 module GLVisualize
 
 using ..GLAbstraction
-using ..Makie: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
+using AbstractPlotting: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 
 using GLFW
 using ModernGL
