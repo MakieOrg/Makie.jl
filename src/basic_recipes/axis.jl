@@ -436,10 +436,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
 
     textbuffer = TextBuffer(cplot, Point{2})
 
-    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, linestyle = cplot[:frame, :linestyle]) |> to_node
+    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot[:frame, :linestyle]) |> to_node
     grid_linebuffer = to_node((
-        LinesegmentBuffer(cplot, Point{2}, linestyle = lift(first, cplot[:grid, :linestyle])),
-        LinesegmentBuffer(cplot, Point{2}, linestyle = lift(last, cplot[:grid, :linestyle]))
+        LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = lift(first, cplot[:grid, :linestyle])),
+        LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = lift(last, cplot[:grid, :linestyle]))
     ))
 
     map_once(
@@ -572,8 +572,8 @@ end
 
 function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
     axis, non_plot_kwargs = Axis3D(scene, attributes, args)
-    textbuffer = TextBuffer(axis, Point{3})
-    linebuffer = LinesegmentBuffer(axis, Point{3})
+    textbuffer = TextBuffer(axis, Point{3}, transparency = true)
+    linebuffer = LinesegmentBuffer(axis, Point{3}, transparency = true)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
