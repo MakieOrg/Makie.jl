@@ -77,8 +77,6 @@ function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
     return screen
 end
 
-colorbuffer(screen) = error("Color buffer retrieval not implemented for $(typeof(screen))")
-
 """
     scene2image(scene::Scene)
 
