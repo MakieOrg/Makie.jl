@@ -211,7 +211,7 @@ function Screen(; resolution = (10, 10), visible = false, kw_args...)
         visible = false,
         kw_args...
     )
-    GLFW.SetWindowIcon(window , icon())
+    #GLFW.SetWindowIcon(window , icon())
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
