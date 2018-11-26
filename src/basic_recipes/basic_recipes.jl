@@ -7,13 +7,15 @@
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         strokewidth = 0.0,
+        shading = false,
         linestyle = nothing,
     )
 end
-AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = convert_arguments(Scatter, v)
-AbstractPlotting.convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle}}) = (v,)
-AbstractPlotting.convert_arguments(::Type{<: Poly}, args...) = convert_arguments(Scatter, args...)
-AbstractPlotting.convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = ([convert_arguments(Scatter, v)[1]],)
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle, HyperRectangle}}) = (v,)
+convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
+convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 
 function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
@@ -28,15 +30,42 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     )
 end
 
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P
-    positions = plot[1]
-    bigmesh = lift(positions) do p
-        polys = GeometryTypes.split_intersections(p)
-        merge(GLPlainMesh.(polys))
+function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVector{<: VecTypes}
+    polygons = plot[1]
+    color_node = plot[:color]
+    attributes = Attributes(visible = plot[:visible], shading = plot[:shading])
+    bigmesh = if color_node[] isa Vector && length(color_node[]) == length(polygons[])
+        lift(polygons, color_node) do polygons, colors
+            polys = Vector{Point2f0}[]
+            cols = RGBAf0[]
+            for (color, poly) in zip(colors, polygons)
+                s = GeometryTypes.split_intersections(poly)
+                append!(polys, s)
+                append!(cols, repeated(to_color(color), length(s)))
+            end
+            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(polys), cols)
+            merge(meshes)
+        end
+    else
+        attributes[:color] = color_node
+        lift(polygons) do polygons
+            polys = Vector{Point2f0}[]
+            for poly in polygons
+                s = GeometryTypes.split_intersections(poly)
+                append!(polys, s)
+            end
+            merge(GLPlainMesh.(polys))
+        end
     end
-    mesh!(plot, bigmesh, color = plot[:color], visible = plot[:visible])
-    outline = lift(positions) do p
-        push!(copy(p), p[1]) # close path
+    mesh!(plot, attributes, bigmesh)
+    outline = lift(polygons) do polygons
+        line = Point2f0[]
+        for poly in polygons
+            append!(line, poly)
+            push!(line, poly[1])
+            push!(line, Point2f0(NaN))
+        end
+        line
     end
     lines!(
         plot, outline, visible = plot[:visible],
@@ -427,13 +456,12 @@ function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
 end
 
 @recipe(ScatterLines) do scene
-    Theme()
+    merge(default_theme(scene, Scatter), default_theme(scene, Lines))
 end
 
-function plot!(scene::SceneLike, ::Type{<:ScatterLines}, attributes::Attributes, p...)
-    plot!(scene, Lines, attributes, p...)
-    plot!(scene, Scatter, attributes, p...)
-    scene
+function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
+    plot!(p, Lines, Theme(p), p[1:N]...)
+    plot!(p, Scatter, Theme(p), p[1:N]...)
 end
 
 
