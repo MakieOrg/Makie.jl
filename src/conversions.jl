@@ -272,6 +272,12 @@ function convert_arguments(
     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
     convert_arguments(MT, xyz, faces)
 end
+function convert_arguments(
+        MT::Type{<:Mesh},
+        meshes::AbstractVector{<: AbstractMesh}
+    )
+    (meshes,)
+end
 # # ambigious case
 # function convert_arguments(
 #         MT::Type{<:Mesh},
