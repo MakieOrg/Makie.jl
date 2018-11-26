@@ -134,5 +134,12 @@ export plot!, plot
 export Stepper, step!, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record
 
+# default icon for Makie
+function icon()
+    path = joinpath(dirname(pathof(AbstractPlotting)), "..", "assets", "icons")
+    icons = FileIO.load.(joinpath.(path, readdir(path)))
+    icons = reinterpret.(NTuple{4,UInt8}, icons)
+end
+
 
 end # module
