@@ -10,7 +10,7 @@ job:
         # glfw
         - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev mesa-utils
         # cairo etc
-        - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16-2
+        - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16
         - apt-get install -y ffmpeg
 
     script:
