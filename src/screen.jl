@@ -112,7 +112,7 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
 end
 
 
-function colorbuffer(screen::Screen)
+function AbstractPlotting.colorbuffer(screen::Screen)
     if isopen(screen)
         GLFW.PollEvents()
         render_frame(screen) # let it render

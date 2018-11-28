@@ -7,7 +7,7 @@ using AbstractPlotting
 using FixedPointNumbers
 using ColorTypes
 using FileIO
-using GLFW
+using ..GLMakie.GLFW
 using Printf
 using LinearAlgebra
 using AbstractPlotting
