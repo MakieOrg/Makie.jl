@@ -232,6 +232,13 @@ git-tree-sha1 = "a427098d5aa2808504d94b8ed9fc5740ceaf71d0"
 uuid = "159f3aea-2a34-519c-b102-8c37f9878175"
 version = "0.5.6"
 
+[[CairoMakie]]
+deps = ["AbstractPlotting", "Cairo", "Colors", "GeometryTypes", "Makie", "StaticArrays"]
+git-tree-sha1 = "5d3e8ec512713ccda544c59cb5c41d1184c0f7b5"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaPlots/CairoMakie.jl.git"
+uuid = "f1797859-2bec-5491-832b-e19d79114491"
+version = "0.0.0"
 
 [[Calculus]]
 deps = ["Compat"]
@@ -774,6 +781,11 @@ git-tree-sha1 = "035e2b5e9c335afae1e92ecfe532cf0620da869f"
 uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
 version = "2.3.0"
 
+[[GLMakie]]
+deps = ["AbstractPlotting", "AxisArrays", "ColorBrewer", "ColorTypes", "ColorVectorSpace", "Colors", "Contour", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GLFW", "GeometryTypes", "ImageAxes", "ImageCore", "ImageMagick", "ImageTransformations", "IndirectArrays", "IntervalSets", "IterTools", "LinearAlgebra", "Makie", "Markdown", "ModernGL", "Observables", "Pkg", "PlotUtils", "Primes", "Printf", "QuartzImageIO", "Serialization", "Showoff", "StaticArrays", "UnicodeFun"]
+git-tree-sha1 = "2e3cb969fd8f8cab98a4863d4a97d24bb1efdbd0"
+uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+version = "0.0.1"
 
 [[GPUArrays]]
 deps = ["FFTW", "FillArrays", "LinearAlgebra", "Pkg", "Printf", "Random", "Serialization", "StaticArrays", "Test"]
@@ -1394,6 +1406,11 @@ git-tree-sha1 = "9e3e7a5c9b8cfdba8c01a1bcae38fe0144936fda"
 uuid = "90014a1f-27ba-587c-ab20-58faa44d9150"
 version = "0.9.5"
 
+[[PackageCompiler]]
+deps = ["ArgParse", "Libdl", "Pkg", "Serialization", "SnoopCompile", "Test", "WinRPM"]
+git-tree-sha1 = "ba059afb6e9300fb4b059669cd695521e166c670"
+uuid = "9b87118b-4619-50d2-8e1e-99f35a4d4d9d"
+version = "0.5.1"
 
 [[Packing]]
 deps = ["GeometryTypes", "Test"]
@@ -2021,13 +2038,17 @@ git-tree-sha1 = "1087e8be380f2c8b96434b02bb1150fc1c511135"
 uuid = "ea10d353-3f73-51f8-a26c-33c1cb351aa5"
 version = "0.5.3"
 
+[[WebIO]]
+deps = ["AssetRegistry", "Base64", "Compat", "FunctionalCollections", "JSON", "Logging", "Observables", "Random", "Requires", "Sockets", "Test", "UUIDs", "Widgets"]
+git-tree-sha1 = "c1edaf26cc283d81edd97385fb8fde80018b0770"
+uuid = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
+version = "0.6.1"
 
 [[WebSockets]]
 deps = ["Base64", "Dates", "Distributed", "HTTP", "Logging", "MbedTLS", "Random", "Sockets", "Test"]
 git-tree-sha1 = "c898a35f93bb010d8e44932c1a736e22c6343f9c"
 uuid = "104b5d7c-a370-577a-8038-80a2059c5097"
 version = "1.1.0"
-
 
 [[Widgets]]
 deps = ["DataStructures", "Observables", "Test"]
