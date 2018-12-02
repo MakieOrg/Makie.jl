@@ -1,12 +1,24 @@
-## Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
-os:
-  - linux
-  - osx
+
 julia:
   - 1.0
   - nightly
+
+matrix:
+  allow_failures:
+  - julia: nightly
+
 notifications:
   email: false
-git:
-  depth: 99999999
+os:
+  - linux
+  - osx
+sudo: true
+
+before_install:
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo add-apt-repository ppa:mc3man/trusty-media -y; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get update -q; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install zlib1g-dev -y; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install ffmpeg gstreamer0.10-ffmpeg -y; fi
+  - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install imagemagick -y; fi
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install ffmpeg; fi
