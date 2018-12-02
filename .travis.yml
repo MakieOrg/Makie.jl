@@ -12,7 +12,6 @@ notifications:
   email: false
 os:
   - linux
-  - osx
 sudo: true
 
 before_install:
@@ -21,4 +20,3 @@ before_install:
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install zlib1g-dev -y; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install ffmpeg gstreamer0.10-ffmpeg -y; fi
   - if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then sudo apt-get install imagemagick -y; fi
-  - if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then brew install ffmpeg; fi

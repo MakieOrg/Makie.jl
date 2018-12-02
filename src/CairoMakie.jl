@@ -346,10 +346,14 @@ function fontname(x::NativeFont)
     unsafe_string(ft_rect.family_name)
 end
 
-function fontscale(scene, c, font, s)
-    atlas = AbstractPlotting.get_texture_atlas()
+function fontscale(atlas, scene, c, font, s)
     s = (s ./ atlas.scale[AbstractPlotting.glyph_index!(atlas, c, font)]) ./ 0.02
     project_scale(scene, s)
+end
+
+function to_rel_scale(atlas, c, font, scale)
+    gs = atlas.scale[AbstractPlotting.glyph_index!(atlas, c, font)]
+    (scale ./ 0.02) ./ gs
 end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
@@ -358,20 +362,23 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
     N = length(txt)
+    atlas = AbstractPlotting.get_texture_atlas()
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
+        char = N == length(position) ? txt[i] : first(txt)
+        rels = to_rel_scale(atlas, char, f, ts)
+        b = AbstractPlotting.glyph_bearing!(atlas, char, f, rels)
+        p2 = to_ndim(Point{length(p), Float32}, b, 0f0)
         pos = project_position(scene, p, model)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-
         Cairo.select_font_face(
             ctx, fontname(f),
             Cairo.FONT_SLANT_NORMAL,
-            Cairo.FONT_WEIGHT_BOLD
+            Cairo.FONT_WEIGHT_NORMAL
         )
         #set_ft_font(ctx, f)
-        char = N == length(position) ? txt[i] : first(txt)
-        ts = fontscale(scene, char, f, ts)
+        ts = fontscale(atlas, scene, char, f, ts)
         mat = scale_matrix(ts...)
         set_font_matrix(ctx, mat)
         # set_font_size(ctx, 16)
