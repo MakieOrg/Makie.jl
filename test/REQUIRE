@@ -13,3 +13,4 @@ FileIO
 ImageFiltering
 DataFrames
 RDatasets
+MakieGallery
