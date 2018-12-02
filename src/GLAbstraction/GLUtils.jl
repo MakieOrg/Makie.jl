@@ -210,7 +210,7 @@ end
 export NativeMesh
 
 NativeMesh(m::T) where {T <: HomogenousMesh} = NativeMesh{T}(m)
-
+(B::Type{AABB{T}})(a::NativeMesh) where {T} = B(gpu_data(a.data[:vertices]))
 
 function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()

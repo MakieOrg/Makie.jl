@@ -45,8 +45,6 @@ using ..GLMakie: assetpath, loadasset
 include("types.jl")
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
 
-include("boundingbox.jl")
-
 include("visualize_interface.jl")
 export visualize # Visualize an object
 export visualize_default # get the default parameter for a visualization
