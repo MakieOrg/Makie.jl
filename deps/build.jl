@@ -28,29 +28,40 @@ catch e
     error(install_tips)
 end
 
-using ModernGL
-# Create a windowed mode window and its OpenGL context
-window = GLFW.CreateWindow(10, 10, "OpenGL Example")
-# Make the window's context current
-GLFW.HideWindow(window)
-GLFW.MakeContextCurrent(window)
-glversion = unsafe_string(glGetString(GL_VERSION))
-m = match(r"(\d+)\.(\d+)\.(\d+)?(.*)", glversion)
-# I don't really trust that all vendors have a version that matches
-# the above regex, so let's make no match non fatal!
-if m === nothing
-    @warn("Unknown OpenGL version format: $glversion. You need to verify if it's above OpenGL 3.3 yourself!")
-else
-    v = VersionNumber(parse(Int, m[1]), parse(Int, m[2]))
-    if !(v >= v"3.3")
-        open("deps.jl", "w") do io
-            println(io, "const WORKING_OPENGL = false")
+try
+    using ModernGL
+    # Create a windowed mode window and its OpenGL context
+    window = GLFW.CreateWindow(10, 10, "OpenGL Example")
+    # Make the window's context current
+    GLFW.HideWindow(window)
+    GLFW.MakeContextCurrent(window)
+    glversion = unsafe_string(glGetString(GL_VERSION))
+    m = match(r"(\d+)\.(\d+)\.(\d+)?(.*)", glversion)
+    # I don't really trust that all vendors have a version that matches
+    # the above regex, so let's make no match non fatal!
+    if m === nothing
+        @warn("Unknown OpenGL version format: $glversion. You need to verify if it's above OpenGL 3.3 yourself!")
+    else
+        v = VersionNumber(parse(Int, m[1]), parse(Int, m[2]))
+        if !(v >= v"3.3")
+            open("deps.jl", "w") do io
+                println(io, "const WORKING_OPENGL = false")
+            end
+            println(stderr, "Your OpenGL version is too low! Update your driver or GPU! Version found: $v, version required: 3.3")
+            error(install_tips)
         end
-        println(stderr, "Your OpenGL version is too low! Update your driver or GPU! Version found: $v, version required: 3.3")
-        error(install_tips)
     end
-end
 
-open("deps.jl", "w") do io
-    println(io, "const WORKING_OPENGL = true")
+    open("deps.jl", "w") do io
+        println(io, "const WORKING_OPENGL = true")
+    end
+catch e
+    open("deps.jl", "w") do io
+        println(io, "const WORKING_OPENGL = false")
+    end
+    # it would be nice to check if this is a GLFW error, but if GLFW doesn't actually load
+    # we can't easily use GLFW.GLFWError. Well, GLFW error is the most likely, and
+    # we will print the error, to inform the user what happens, so I think this should be fine!
+    println(stderr, "init error of GLFW")
+    error(install_tips)
 end
