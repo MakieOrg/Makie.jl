@@ -3,7 +3,7 @@ module GLVisualize
 using ..GLAbstraction
 using AbstractPlotting: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
 
-using GLFW
+using ..GLMakie.GLFW
 using ModernGL
 using StaticArrays
 using GeometryTypes
@@ -40,28 +40,10 @@ Replacement of Pkg.dir("GLVisualize") --> GLVisualize.dir,
 returning the correct path
 """
 dir(dirs...) = joinpath(@__DIR__, dirs...)
-
-"""
-returns path relative to the assets folder
-"""
-assetpath(folders...) = dir("assets", folders...)
-
-"""
-Loads a file from the asset folder
-"""
-function loadasset(folders...; kw_args...)
-    path = assetpath(folders...)
-    isfile(path) || isdir(path) || error("Could not locate file at $path")
-    load(path; kw_args...)
-end
-
-export assetpath, loadasset
-
+using ..GLMakie: assetpath, loadasset
 
 include("types.jl")
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
-
-include("boundingbox.jl")
 
 include("visualize_interface.jl")
 export visualize # Visualize an object
