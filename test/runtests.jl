@@ -1,4 +1,6 @@
-using MakieGallery, Makie, GLMakie
+using MakieGallery, AbstractPlotting, GLMakie
+
+push!(MakieGallery.plotting_backends, "GLMakie")
 
 database = MakieGallery.load_database()
 # THese examples download additional data - don't want to deal with that!
