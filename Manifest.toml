@@ -243,9 +243,9 @@ version = "0.0.1+"
 
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "StaticArrays", "Test"]
-git-tree-sha1 = "706fc16aa2a648a2f292732f8e6ee25167484328"
+git-tree-sha1 = "28b193e14466beecf928449e0f8505ff6de3709d"
 uuid = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
-version = "0.7.1"
+version = "0.7.2"
 
 [[Graphics]]
 deps = ["Colors", "Compat", "NaNMath"]
@@ -366,7 +366,7 @@ git-tree-sha1 = "178252e975f92c3e11a4478577ec4a4faff4119d"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaPlots/MakieGallery.jl.git"
 uuid = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
-version = "0.0.1+"
+version = "0.0.1"
 
 [[MappedArrays]]
 deps = ["Test"]
