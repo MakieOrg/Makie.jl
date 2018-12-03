@@ -9,10 +9,6 @@ for name in names(AbstractPlotting)
     @eval export $(name)
 end
 
-export (..), GLNormalUVMesh
-# conflicting identifiers
-using GeometryTypes: widths
-export widths, decompose
 
 function logo()
     FileIO.load(joinpath(@__DIR__, "..", "assets", "logo.png"))
