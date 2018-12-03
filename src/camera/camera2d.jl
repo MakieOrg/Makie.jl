@@ -150,6 +150,7 @@ function selection_rect!(scene, cam, key)
     rect = RefValue(FRect())
     lw = 2f0
     scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
+    theme(scene_unscaled, :clear)[] = false
     scene_unscaled.updated = Node(false)
     rect_vis = lines!(
         scene_unscaled,

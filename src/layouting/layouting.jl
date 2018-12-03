@@ -182,10 +182,10 @@ end
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
 
-function hbox(plots::Vector{T}; parent = Scene(), kw_args...) where T <: Scene
+function hbox(plots::Vector{T}; parent = Scene(clear = false), kw_args...) where T <: Scene
     layout(plots, 2; parent = parent, kw_args...)
 end
-function vbox(plots::Vector{T}; parent = Scene(), kw_args...) where T <: Scene
+function vbox(plots::Vector{T}; parent = Scene(clear = false), kw_args...) where T <: Scene
     layout(plots, 1; parent = parent, kw_args...)
 end
 
@@ -193,7 +193,7 @@ function to_sizes(x::AbstractVector{<: Number}, widths, dim)
     x .* widths[dim]
 end
 
-function layout(plots::Vector{T}, dim; parent = Scene(), sizes = nothing, kw_args...) where T <: Scene
+function layout(plots::Vector{T}, dim; parent = Scene(clear = false), sizes = nothing, kw_args...) where T <: Scene
     N = length(plots)
     w = 0.0
     area = pixelarea(parent)

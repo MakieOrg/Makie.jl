@@ -57,7 +57,7 @@ for M in (MIME"text/plain", MIME)
         res = get(io, :juno_plotsize, size(scene))
         resize!(scene, res...)
         update!(scene)
-        AbstractPlotting.backend_show(current_backend[], io, m, scene)
+        return AbstractPlotting.backend_show(current_backend[], io, m, scene)
     end
 end
 
