@@ -5,10 +5,12 @@ uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.3.2"
 
 [[AbstractPlotting]]
-deps = ["ColorBrewer", "ColorTypes", "Colors", "FreeType", "FreeTypeAbstraction", "GeometryTypes", "IntervalSets", "LinearAlgebra", "Packing", "PlotUtils", "Printf", "Random", "Reactive", "Serialization", "Showoff", "SignedDistanceFields", "StaticArrays", "Statistics", "Test", "UnicodeFun"]
-git-tree-sha1 = "3330e2318b55d874cd66eac72a7fa887f8bc4571"
+deps = ["ColorBrewer", "ColorTypes", "Colors", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GeometryTypes", "IntervalSets", "LinearAlgebra", "Markdown", "Observables", "Packing", "PlotUtils", "Printf", "Random", "Serialization", "Showoff", "SignedDistanceFields", "StaticArrays", "Statistics", "Test", "UnicodeFun"]
+git-tree-sha1 = "0e969852e9c20f24ad6ef705faa8db32f0990238"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaPlots/AbstractPlotting.jl.git"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.9.0"
+version = "0.9.0+"
 
 [[AxisAlgorithms]]
 deps = ["Compat", "WoodburyMatrices"]
@@ -366,7 +368,7 @@ git-tree-sha1 = "178252e975f92c3e11a4478577ec4a4faff4119d"
 repo-rev = "master"
 repo-url = "https://github.com/JuliaPlots/MakieGallery.jl.git"
 uuid = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
-version = "0.0.1"
+version = "0.0.1+"
 
 [[MappedArrays]]
 deps = ["Test"]
