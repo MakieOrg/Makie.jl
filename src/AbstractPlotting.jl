@@ -14,7 +14,11 @@ using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 
-
+module ContoursHygiene
+    import Contour
+end
+using .ContoursHygiene
+const Contours = ContoursHygiene.Contour
 
 include("utilities/quaternions.jl")
 include("types.jl")
@@ -56,7 +60,7 @@ include("interaction/events.jl")
 include("interaction/gui.jl")
 
 # documentation and help functions
-include("documentation.jl")
+include("documentation/documentation.jl")
 include("display.jl")
 
 # help functions and supporting functions
