@@ -352,7 +352,9 @@ version = "0.4.4"
 
 [[MakieGallery]]
 deps = ["AbstractPlotting", "BinaryProvider", "ColorTypes", "ColorVectorSpace", "Colors", "DataFrames", "Documenter", "FileIO", "FixedPointNumbers", "GDAL", "GeometryTypes", "ImageCore", "ImageFiltering", "ImageMagick", "ImageTransformations", "LinearAlgebra", "Markdown", "MeshIO", "ModernGL", "Pkg", "QuartzImageIO", "RDatasets", "Random", "Statistics", "Test"]
-path = "/home/sd/.julia/dev/MakieGallery"
+git-tree-sha1 = "bdddff9296888ff20c12bd7f57e4ae64f491c41c"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaPlots/MakieGallery.jl.git"
 uuid = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 version = "0.0.1+"
 
