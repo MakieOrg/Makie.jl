@@ -55,9 +55,10 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/legend.jl")
 
-#
+# Interactiveness
 include("interaction/events.jl")
 include("interaction/gui.jl")
+include("interaction/interactive_api.jl")
 
 # documentation and help functions
 include("documentation/documentation.jl")
