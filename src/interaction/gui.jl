@@ -21,8 +21,6 @@ default_printer(v) = string(round(v, digits=3))
     )
 end
 
-mouseover() = error("not implemented")
-export mouseover
 convert_arguments(::Type{<: Slider}, x::AbstractRange) = (x,)
 
 function range_label_bb(tplot, printer_func, range)
@@ -83,13 +81,6 @@ function plot!(slider::Slider)
     dragslider(slider, button)
     move!(slider, find_closest(range[], startval))
     slider
-end
-
-function mouse_in_scene(scene)
-    p = rootparent(scene)
-    lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
-        Vec(mp) .- minimum(sa)
-    end
 end
 
 function dragslider(slider, button)
@@ -290,9 +281,6 @@ function popup(parent, position, width)
     Popup(scene2, vis, pos_n, width_n)
 end
 
-
-function mouse_selection end
-export mouse_selection
 
 function colorswatch(scene = Scene(camera = campixel!))
     pop = popup(scene, (0, 0), (250, 300))
