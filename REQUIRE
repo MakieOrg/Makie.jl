@@ -1,32 +1,10 @@
 julia 0.7
 
-StaticArrays 0.6.6
-GeometryTypes 0.4.5
-Observables
-Contour
+GeometryTypes 0.7.2
 FileIO
-ImageCore
-ImageTransformations
-UnicodeFun
-ColorBrewer
-ModernGL
-GLFW 2.3.0
-FreeType
-FreeTypeAbstraction 0.3.0 #for findfont
 @windows ImageMagick
 @linux ImageMagick
 @osx QuartzImageIO
 AbstractPlotting
-Primes
-PlotUtils
 GLMakie
 IntervalSets
-Showoff
-ColorTypes
-Colors
-ColorVectorSpace
-FixedPointNumbers
-IterTools
-AxisArrays
-ImageAxes
-IndirectArrays
