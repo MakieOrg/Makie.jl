@@ -57,7 +57,7 @@ for M in (MIME"text/plain", MIME)
         res = get(io, :juno_plotsize, size(scene))
         resize!(scene, res...)
         update!(scene)
-        AbstractPlotting.backend_show(current_backend[], io, m, scene)
+        return AbstractPlotting.backend_show(current_backend[], io, m, scene)
     end
 end
 
@@ -223,7 +223,7 @@ function VideoStream(scene::Scene)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
-    screen = display(scene)
+    screen = backend_display(current_backend[], scene)
     AbstractPlotting.update!(scene)
     _xdim, _ydim = widths(pixelarea(scene)[])
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1

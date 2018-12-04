@@ -2,7 +2,7 @@ julia 0.7
 
 Observables
 StaticArrays
-GeometryTypes 0.4.5
+GeometryTypes 0.7.2
 ColorTypes
 Colors
 ColorBrewer
@@ -17,3 +17,4 @@ Showoff
 Markdown
 FileIO
 FixedPointNumbers
+Contour
