@@ -596,11 +596,11 @@
         Makie.GLMakie.destroy!(screen)
         scene
     end
-    @cell "Graphene bandstructure with QBox.jl" [surface, mesh] begin
-        using QBox, QBoxPlots
+    @cell "Graphene bandstructure with Elsa.jl" [surface, mesh] begin
+        using Elsa, ElsaPlots
         # These packages will be registered soon. Until then find them at
-        # https://github.com/pablosanjose/QBox
-        # https://github.com/pablosanjose/QBoxPlots
+        # https://github.com/pablosanjose/Elsa
+        # https://github.com/pablosanjose/ElsaPlots
         sys(n) = System(Lattice(:honeycomb, LinkRule(1/sqrt(3)), Supercell(n)), 
                         Model(Onsite(r->0.4rand()), Hopping(.5)))
         bs = Bandstructure(sys(2), partitions = 51)
