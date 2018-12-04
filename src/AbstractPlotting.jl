@@ -14,7 +14,11 @@ using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 
-
+module ContoursHygiene
+    import Contour
+end
+using .ContoursHygiene
+const Contours = ContoursHygiene.Contour
 
 include("utilities/quaternions.jl")
 include("types.jl")
@@ -56,7 +60,7 @@ include("interaction/events.jl")
 include("interaction/gui.jl")
 
 # documentation and help functions
-include("documentation.jl")
+include("documentation/documentation.jl")
 include("display.jl")
 
 # help functions and supporting functions
@@ -92,7 +96,7 @@ export campixel!, campixel, cam3d!, update_cam!, rotate_cam!, translate_cam!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 # picking + interactive use cases + events
-export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse
+export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
 export register_callbacks
 export window_area
 export window_open
@@ -123,7 +127,10 @@ export FRect3D, IRect3D, Rect3D, Transformation
 export IRect, FRect, Rect, Sphere, Circle
 export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
-#export (..) # reexport interval
+export (..), GLNormalUVMesh
+# conflicting identifiers
+using GeometryTypes: widths
+export widths, decompose
 
 # building blocks for series recipes
 export PlotList, PlotSpec
@@ -141,5 +148,16 @@ function icon()
     icons = reinterpret.(NTuple{4,UInt8}, icons)
 end
 
+const cached_logo = Ref{String}()
+
+function logo()
+    if !isassigned(cached_logo)
+        cached_logo[] = download(
+            "https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png",
+            joinpath(@__DIR__, "logo.png")
+        )
+    end
+    FileIO.load(cached_logo[])
+end
 
 end # module
