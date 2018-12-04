@@ -241,12 +241,14 @@ function Screen(; resolution = (10, 10), visible = false, kw_args...)
 end
 
 function global_gl_screen()
-    if isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
+    screen = if isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
         _global_gl_screen[]
     else
         _global_gl_screen[] = Screen()
         _global_gl_screen[]
     end
+    GLFW.set_visibility!(to_native(screen), AbstractPlotting.use_display[])
+    screen
 end
 
 # TODO per scene screen
@@ -297,6 +299,7 @@ function mouse_selection_native(scene::SceneLike)
     end
     convert(SelectionID{Int}, _mouse_selection_id[])
 end
+
 function mouse_selection(scene::SceneLike)
     sid = mouse_selection_native(scene)
     screen = getscreen(scene)
@@ -306,6 +309,7 @@ function mouse_selection(scene::SceneLike)
     end
     return (nothing, 0)
 end
+
 function mouseover(scene::SceneLike, plots::AbstractPlot...)
     p, idx = mouse_selection(scene)
     p in flatten_plots(plots)
@@ -315,12 +319,14 @@ function flatten_plots(x::Atomic, plots = AbstractPlot[])
     push!(plots, x)
     plots
 end
+
 function flatten_plots(x::Combined, plots = AbstractPlot[])
     for elem in x.plots
         flatten_plots(elem, plots)
     end
     plots
 end
+
 function flatten_plots(array, plots = AbstractPlot[])
     for elem in array
         flatten_plots(elem, plots)

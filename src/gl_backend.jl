@@ -50,8 +50,6 @@ include("drawing_primitives.jl")
 
 function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
     screen = global_gl_screen()
-    # This should only get called if inline display false, so we display the window
-    GLFW.set_visibility!(to_native(screen), AbstractPlotting.use_display[])
     display(screen, scene)
     return screen
 end
@@ -69,6 +67,5 @@ end
 
 function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
     img = scene2image(scene)
-    GLFW.set_visibility!(to_native(global_gl_screen()), AbstractPlotting.use_display[])
     FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end

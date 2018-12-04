@@ -1,7 +1,7 @@
 julia 0.7
 
 StaticArrays 0.6.6
-GeometryTypes 0.4.5
+GeometryTypes 0.7.2
 Observables
 Contour
 FileIO
