@@ -405,7 +405,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
                 )
                 convert(Mat4f0, m) * m2
             end
-            delete!(gl_attributes, :color)
             visualize(vol[4], Style(:default), gl_attributes).children[]
         end
     end

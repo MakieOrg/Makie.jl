@@ -6,8 +6,8 @@ version = "0.3.2"
 
 [[AbstractPlotting]]
 deps = ["ColorBrewer", "ColorTypes", "Colors", "Contour", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GeometryTypes", "IntervalSets", "LinearAlgebra", "Markdown", "Observables", "Packing", "PlotUtils", "Printf", "Random", "Serialization", "Showoff", "SignedDistanceFields", "StaticArrays", "Statistics", "UnicodeFun"]
-git-tree-sha1 = "8c2b1f93b85ae6e119a9e64df8bf3d82daee5d73"
-repo-rev = "sd-manifest"
+git-tree-sha1 = "5946b2ffd88af5d7a84afecfb35f1f84b089e9ab"
+repo-rev = "master"
 repo-url = "https://github.com/JuliaPlots/AbstractPlotting.jl.git"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
 version = "0.9.0"
@@ -235,6 +235,12 @@ git-tree-sha1 = "035e2b5e9c335afae1e92ecfe532cf0620da869f"
 uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
 version = "2.3.0"
 
+[[GLMakie]]
+deps = ["AbstractPlotting", "AxisArrays", "ColorBrewer", "ColorTypes", "ColorVectorSpace", "Colors", "Contour", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GLFW", "GeometryTypes", "ImageAxes", "ImageCore", "ImageMagick", "ImageTransformations", "IndirectArrays", "IntervalSets", "IterTools", "LinearAlgebra", "Makie", "Markdown", "ModernGL", "Observables", "Pkg", "PlotUtils", "Primes", "Printf", "QuartzImageIO", "Serialization", "Showoff", "StaticArrays", "UnicodeFun"]
+git-tree-sha1 = "2e3cb969fd8f8cab98a4863d4a97d24bb1efdbd0"
+uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+version = "0.0.1"
+
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "StaticArrays", "Test"]
 git-tree-sha1 = "28b193e14466beecf928449e0f8505ff6de3709d"
@@ -349,6 +355,14 @@ deps = ["Compat"]
 git-tree-sha1 = "c443e1c8d58a4e9f61b708ad0a88286c7042145b"
 uuid = "1914dd2f-81c6-5fcd-8719-6d5c9610ff09"
 version = "0.4.4"
+
+[[Makie]]
+deps = ["AbstractPlotting", "AxisArrays", "Base64", "ColorBrewer", "ColorTypes", "ColorVectorSpace", "Colors", "Contour", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GLFW", "GLMakie", "GeometryTypes", "ImageAxes", "ImageCore", "ImageMagick", "ImageTransformations", "IndirectArrays", "IntervalSets", "IterTools", "LinearAlgebra", "MakieGallery", "ModernGL", "Observables", "Pkg", "PlotUtils", "Primes", "QuartzImageIO", "Showoff", "StaticArrays", "Statistics", "UnicodeFun"]
+git-tree-sha1 = "03fa9413877a6740b30cc18a0a3d4cb427ea09f1"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaPlots/Makie.jl.git"
+uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
+version = "0.9.0"
 
 [[MakieGallery]]
 deps = ["AbstractPlotting", "BinaryProvider", "ColorTypes", "ColorVectorSpace", "Colors", "DataFrames", "Documenter", "FileIO", "FixedPointNumbers", "GDAL", "GeometryTypes", "ImageCore", "ImageFiltering", "ImageMagick", "ImageTransformations", "LinearAlgebra", "Markdown", "MeshIO", "ModernGL", "Pkg", "QuartzImageIO", "RDatasets", "Random", "Statistics", "Test"]
