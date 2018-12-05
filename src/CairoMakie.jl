@@ -310,10 +310,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     nothing
 end
 
-
-
-
-
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 function rot_scale_matrix(x, y, q)
     sx, sy, sz = 2q[4]*q[1], 2q[4]*q[2], 2q[4]*q[3]
@@ -368,7 +364,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         char = N == length(position) ? txt[i] : first(txt)
         rels = to_rel_scale(atlas, char, f, ts)
         b = AbstractPlotting.glyph_bearing!(atlas, char, f, rels)
-        pos = project_position(scene, p .- to_ndim(typeof(p), b, 0f0), model)
+        p2 = to_ndim(Point{length(p), Float32}, b, 0f0)
+        pos = project_position(scene, p, model)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         Cairo.select_font_face(
@@ -458,8 +455,10 @@ function AbstractPlotting.colorbuffer(tup::Tuple{<: CairoBackend, Scene})
     AbstractPlotting.backend_display(screen, scene)
     FileIO.load(screen.path)
 end
-AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::SceneLike) = x.typ == SVG
-AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::SceneLike) = x.typ == PNG
+
+
+AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
+AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Scene) = x.typ == PNG
 
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
