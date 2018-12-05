@@ -269,18 +269,21 @@ end
 
 function draw_marker(ctx, marker, pos, scale, color, strokecolor, strokewidth)
     Cairo.set_source_rgba(ctx, color...)
+    pos += Point2f0(scale[1] / 2, -scale[2] / 2)
     Cairo.arc(ctx, pos[1], pos[2], scale[1] / 2, 0, 2*pi)
     Cairo.fill(ctx)
     sc = to_color(strokecolor)
-    Cairo.set_source_rgba(ctx, red(sc), green(sc), blue(sc), alpha(sc))
-    Cairo.set_line_width(ctx, Float64(strokewidth))
-    Cairo.arc(ctx, pos[1], pos[2], scale[1], 0, 2*pi)
-    Cairo.stroke(ctx)
+    if strokewidth > 0.0
+        Cairo.set_source_rgba(ctx, red(sc), green(sc), blue(sc), alpha(sc))
+        Cairo.set_line_width(ctx, Float64(strokewidth))
+        Cairo.stroke(ctx)
+    end
 end
 
 function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, color, strokecolor, strokewidth)
     Cairo.set_source_rgba(ctx, color...)
-    Cairo.rectangle(ctx, pos..., scale[1], -scale[2])
+    s2 = Point2f0(scale[1], -scale[2])
+    Cairo.rectangle(ctx, pos..., s2...)
     Cairo.fill(ctx);
     if strokewidth > 0.0
         sc = to_color(strokecolor)
@@ -292,19 +295,20 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset))
+    @get_attribute(primitive, (transform_marker,))
+
     cmap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     crange = get(primitive, :colorrange, nothing) |> to_value
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
     isempty(positions) && return
+    size_model = transform_marker ? model : Mat4f0(I)
     broadcast_foreach(primitive[1][], fields...) do point, c, markersize, strokecolor, strokewidth, marker, mo
-        # TODO: Implement marker
-        # TODO: Accept :radius field or similar?
-        scale = project_scale(scene, markersize, model)
+        scale = project_scale(scene, markersize, size_model)
         pos = project_position(scene, point, model)
-        mo = project_scale(scene, mo)
-        pos += mo
+        mo = project_scale(scene, mo, size_model)
+        pos += Point2f0(mo[1], -mo[2])
         draw_marker(ctx, marker, pos, scale, extract_color(cmap, crange, c), strokecolor, strokewidth)
     end
     nothing
