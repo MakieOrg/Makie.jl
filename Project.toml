@@ -42,7 +42,7 @@ RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Showoff = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-StatsMakie = "9d48ccf0-4268-5716-84ff-21228f561db3"
+
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
@@ -66,6 +66,7 @@ MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
 QuartzImageIO = "dca85d43-d64c-5e67-8c65-017450d5d020"
 RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
+StatsMakie = "9d48ccf0-4268-5716-84ff-21228f561db3"
 
 [targets]
-test = ["ImageCore", "ImageTransformations", "ImageMagick", "ImageMagick", "QuartzImageIO", "ModernGL", "ImageMagick", "ImageTransformations", "FileIO"]
+test = ["StatsMakie", "ImageCore", "ImageTransformations", "ImageMagick", "ImageMagick", "QuartzImageIO", "ModernGL", "ImageMagick", "ImageTransformations", "FileIO"]
