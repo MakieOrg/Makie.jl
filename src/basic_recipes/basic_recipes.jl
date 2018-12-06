@@ -392,6 +392,8 @@ end
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         marker = Rect,
+        strokewidth = 0,
+        strokecolor = :white,
         width = nothing
     )
 end
@@ -440,7 +442,8 @@ function AbstractPlotting.plot!(p::BarPlot)
         marker = p[:marker], marker_offset = lift(last, pos_scale),
         markersize = lift(getindex, pos_scale, Node(2)),
         color = p[:color], colormap = p[:colormap], colorrange = p[:colorrange],
-        transform_marker = true
+        transform_marker = true, strokewidth = p[:strokewidth],
+        strokecolor = p[:strokecolor]
     )
 end
 
