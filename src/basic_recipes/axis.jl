@@ -252,7 +252,6 @@ function draw_frame(
     maxi = maximum.(limits)
     rect = HyperRectangle(Vec(mini), Vec(maxi .- mini))
     origin = Vec{N}(0.0)
-    @show linecolor
     if (origin in rect) && axis_position == :origin
         for i = 1:N
             start = unit(Point{N, Float32}, i) * Float32(mini[i])
