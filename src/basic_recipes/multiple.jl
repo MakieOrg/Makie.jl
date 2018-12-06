@@ -64,3 +64,20 @@ function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
         plot!(p, plottype(s), attr, s.args...)
     end
 end
+
+function default_theme(scene, ::Type{<:Combined{S, T}}) where {S<:Tuple, T}
+    merge((default_theme(scene, Combined{pt}) for pt in S.parameters)...)
+end
+
+function plot!(p::Combined{S, <:Tuple{Vararg{Any, N}}}) where {S <: Tuple, N}
+    for pt in S.parameters
+        plot!(p, Combined{pt}, Theme(p), p[1:N]...)
+    end
+end
+
+function Base.:*(::Type{<:Combined{S}}, ::Type{<:Combined{T}}) where {S, T}
+    params1 = S isa Type{<:Tuple} ? S.parameters : [S]
+    params2 = T isa Type{<:Tuple} ? T.parameters : [T]
+    params = union(params1, params2)
+    Combined{Tuple{params...}}
+end
