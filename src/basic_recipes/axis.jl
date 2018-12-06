@@ -252,7 +252,7 @@ function draw_frame(
     maxi = maximum.(limits)
     rect = HyperRectangle(Vec(mini), Vec(maxi .- mini))
     origin = Vec{N}(0.0)
-
+    @show linecolor
     if (origin in rect) && axis_position == :origin
         for i = 1:N
             start = unit(Point{N, Float32}, i) * Float32(mini[i])
@@ -436,12 +436,11 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
 
     textbuffer = TextBuffer(cplot, Point{2})
 
-    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot[:frame, :linestyle]) |> to_node
     grid_linebuffer = to_node((
         LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = lift(first, cplot[:grid, :linestyle])),
         LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = lift(last, cplot[:grid, :linestyle]))
     ))
-
+    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot[:frame, :linestyle]) |> to_node
     map_once(
         draw_axis2d,
         to_node(textbuffer),
