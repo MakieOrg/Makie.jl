@@ -8,7 +8,7 @@ using Serialization # serialize events
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
-import FileIO
+import ImageMagick, FileIO
 
 using Base: RefValue
 using Base.Iterators: repeated, drop

@@ -118,11 +118,11 @@ function Stepper(scene, path)
     Stepper(scene, path, 1)
 end
 
-function FileIO.save(filename::String, scene::Scene)
-    open(filename, "w") do s
-        show(IOContext(s, :full_fidelity => true), MIME"image/png"(), scene)
-    end
-end
+# function FileIO.save(filename::String, scene::Scene)
+#     open(filename, "w") do s
+#         show(IOContext(s, :full_fidelity => true), MIME"image/png"(), scene)
+#     end
+# end
 """
     step!(s::Stepper)
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
