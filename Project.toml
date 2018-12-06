@@ -9,14 +9,31 @@ Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+
+
+
+[compat]
+AbstractPlotting = ">=0.9.1"
+GeometryTypes = ">=0.7.2"
+
+[extras]
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
+ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
+QuartzImageIO = "dca85d43-d64c-5e67-8c65-017450d5d020"
 RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+StatsMakie = "9d48ccf0-4268-5716-84ff-21228f561db3"
+
+[targets]
+test = ["DataFrames", "MakieGallery", "MeshIO", "RDatasets", "StatsMakie", "ImageCore", "ImageTransformations", "ImageMagick", "QuartzImageIO"]
