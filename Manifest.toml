@@ -308,10 +308,8 @@ version = "2.3.0"
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "StaticArrays", "Test"]
 git-tree-sha1 = "28b193e14466beecf928449e0f8505ff6de3709d"
-repo-rev = "sd-bb"
-repo-url = "https://github.com/JuliaGeometry/GeometryTypes.jl.git"
 uuid = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
-version = "0.7.2+"
+version = "0.7.2"
 
 [[Graphics]]
 deps = ["Colors", "Compat", "NaNMath"]
@@ -784,9 +782,9 @@ version = "0.7.0"
 
 [[StatsMakie]]
 deps = ["AbstractPlotting", "Distributions", "FreqTables", "IndexedTables", "IntervalSets", "KernelDensity", "Loess", "NamedArrays", "Observables", "Random", "Statistics", "StatsBase", "Tables", "Test"]
-git-tree-sha1 = "8694f16862d3d80cf59edf7900de2d19a51aa4b0"
+git-tree-sha1 = "12429b8d5308b27483f4d6148cefb86080e4d054"
 repo-rev = "master"
-repo-url = "https://github.com/JuliaPlots/StatsMakie.jl.git"
+repo-url = "https://github.com/JuliaPlots/StatsMakie.jl"
 uuid = "9d48ccf0-4268-5716-84ff-21228f561db3"
 version = "0.0.0"
 

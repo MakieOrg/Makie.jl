@@ -29,7 +29,6 @@ IndirectArrays = "9b13fd28-a010-5f03-acff-a1bbcff69959"
 IntervalSets = "8197267c-284f-5f27-9208-e0e47529a953"
 IterTools = "c8e1da08-722c-5040-9ed9-7db0dc04731e"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 Markdown = "d6f4376e-aef5-505a-96c1-9c027394607a"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
@@ -42,7 +41,6 @@ RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
 Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Showoff = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
@@ -54,8 +52,6 @@ StaticArrays = ">=0.6.6"
 
 [extras]
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GDAL = "add2ef01-049f-52c4-9ee2-e494f65e021a"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
@@ -69,4 +65,4 @@ RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
 StatsMakie = "9d48ccf0-4268-5716-84ff-21228f561db3"
 
 [targets]
-test = ["StatsMakie", "ImageCore", "ImageTransformations", "ImageMagick", "ImageMagick", "QuartzImageIO", "ModernGL", "ImageMagick", "ImageTransformations", "FileIO"]
+test = ["DataFrames", "GDAL", "MakieGallery", "MeshIO", "RDatasets", "StatsMakie", "ImageCore", "ImageTransformations", "ImageMagick", "QuartzImageIO", "ModernGL", "ImageMagick", "ImageTransformations"]
