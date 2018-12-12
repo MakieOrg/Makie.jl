@@ -159,9 +159,9 @@ version = "0.2.0"
 
 [[DataFrames]]
 deps = ["CategoricalArrays", "CodecZlib", "Compat", "DataStreams", "Dates", "InteractiveUtils", "IteratorInterfaceExtensions", "LinearAlgebra", "Missings", "Printf", "Random", "Reexport", "SortingAlgorithms", "Statistics", "StatsBase", "TableTraits", "Tables", "Test", "TranscodingStreams", "Unicode", "WeakRefStrings"]
-git-tree-sha1 = "41ec35bcf49a860706924b9b3e322eed03164c83"
+git-tree-sha1 = "60c2820c9ae93cc33e98cd820e0b449d551c7874"
 uuid = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-version = "0.15.2"
+version = "0.15.1"
 
 [[DataStreams]]
 deps = ["Dates", "Missings", "Test", "WeakRefStrings"]
@@ -231,9 +231,9 @@ version = "0.6.0"
 
 [[Documenter]]
 deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "LibGit2", "Logging", "Markdown", "Pkg", "REPL", "Random", "Test", "Unicode"]
-git-tree-sha1 = "a6db1c69925cdc53aafb38caec4446be26e0c617"
+git-tree-sha1 = "9f2135e0e7ecb63f9c3ef73ea15a31d8cdb79bb7"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "0.21.0"
+version = "0.20.0"
 
 [[EzXML]]
 deps = ["BinaryProvider", "Libdl", "Printf", "Test"]
@@ -304,6 +304,12 @@ deps = ["BinDeps", "CMakeWrapper", "Homebrew", "Libdl", "Test"]
 git-tree-sha1 = "035e2b5e9c335afae1e92ecfe532cf0620da869f"
 uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
 version = "2.3.0"
+
+[[GLMakie]]
+deps = ["AbstractPlotting", "AxisArrays", "BinaryProvider", "ColorBrewer", "ColorTypes", "ColorVectorSpace", "Colors", "Contour", "DataFrames", "Documenter", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GDAL", "GLFW", "GeometryTypes", "ImageAxes", "ImageCore", "ImageFiltering", "ImageMagick", "ImageTransformations", "IndirectArrays", "IntervalSets", "IterTools", "LinearAlgebra", "Markdown", "MeshIO", "ModernGL", "Observables", "PlotUtils", "Primes", "Printf", "QuartzImageIO", "RDatasets", "Serialization", "Showoff", "StaticArrays", "UnicodeFun"]
+path = ".."
+uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+version = "0.0.1"
 
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "StaticArrays", "Test"]
