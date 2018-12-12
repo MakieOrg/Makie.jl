@@ -15,4 +15,4 @@ job:
 
     script:
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project=test/ -e 'using Pkg; pkg"dev ."; Pkg.test("GLMakie")'
+      - julia --project=test/ -e 'using Pkg; Pkg.test("GLMakie")'
