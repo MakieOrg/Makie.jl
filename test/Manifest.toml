@@ -75,9 +75,9 @@ version = "0.2.0"
 
 [[CategoricalArrays]]
 deps = ["Compat", "Future", "Missings", "Printf", "Reexport", "Requires"]
-git-tree-sha1 = "11419d157ab75a54a8af63315e7a279a593971bc"
+git-tree-sha1 = "94d16e77dfacc59f6d6c1361866906dbb65b6f6b"
 uuid = "324d7699-5711-5eae-9e2f-1d82baa6b597"
-version = "0.5.1"
+version = "0.5.2"
 
 [[CodecZlib]]
 deps = ["BinaryProvider", "Libdl", "Test", "TranscodingStreams"]
@@ -305,6 +305,12 @@ git-tree-sha1 = "035e2b5e9c335afae1e92ecfe532cf0620da869f"
 uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
 version = "2.3.0"
 
+[[GLMakie]]
+deps = ["AbstractPlotting", "AxisArrays", "BinaryProvider", "ColorBrewer", "ColorTypes", "ColorVectorSpace", "Colors", "Contour", "DataFrames", "Documenter", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GDAL", "GLFW", "GeometryTypes", "ImageAxes", "ImageCore", "ImageFiltering", "ImageMagick", "ImageTransformations", "IndirectArrays", "IntervalSets", "IterTools", "LinearAlgebra", "Markdown", "MeshIO", "ModernGL", "Observables", "PlotUtils", "Primes", "Printf", "QuartzImageIO", "RDatasets", "Serialization", "Showoff", "StaticArrays", "UnicodeFun"]
+path = ".."
+uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
+version = "0.0.1"
+
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "IterTools", "LinearAlgebra", "StaticArrays", "Test"]
 git-tree-sha1 = "28b193e14466beecf928449e0f8505ff6de3709d"
@@ -531,9 +537,9 @@ version = "0.2.3"
 
 [[OffsetArrays]]
 deps = ["DelimitedFiles", "Test"]
-git-tree-sha1 = "f446248f2dfbc13039a0b90994dd25b059b01eab"
+git-tree-sha1 = "7d1442cb06fbfbc4fea936c3c56b38daffd22d3b"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
-version = "0.9.0"
+version = "0.9.1"
 
 [[OnlineStats]]
 deps = ["DataStructures", "Dates", "LearnBase", "LinearAlgebra", "LossFunctions", "OnlineStatsBase", "PenaltyFunctions", "Random", "RecipesBase", "Reexport", "Statistics", "StatsBase", "SweepOperator", "Test"]
@@ -585,9 +591,9 @@ version = "0.10.2"
 
 [[Parsers]]
 deps = ["Dates", "Mmap", "Test", "WeakRefStrings"]
-git-tree-sha1 = "949ca36d47010bee093254467166487c921d490b"
+git-tree-sha1 = "9c2b96d07344f9f716fee1c4a7258ac327d08a6c"
 uuid = "69de0a69-1ddd-5017-9359-2bf0b02dc9f0"
-version = "0.2.14"
+version = "0.2.15"
 
 [[PenaltyFunctions]]
 deps = ["InteractiveUtils", "LearnBase", "LinearAlgebra", "RecipesBase", "Reexport", "Test"]
@@ -639,9 +645,9 @@ uuid = "9abbd945-dff8-562f-b5e8-e1ebf5ef1b79"
 
 [[QuadGK]]
 deps = ["DataStructures", "LinearAlgebra", "Test"]
-git-tree-sha1 = "7e8dff9c205f36eceaf6e62a43ff851637ca45fc"
+git-tree-sha1 = "3ce467a8e76c6030d4c3786e7d3a73442017cdc0"
 uuid = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
-version = "2.0.2"
+version = "2.0.3"
 
 [[QuartzImageIO]]
 deps = ["ColorTypes", "ColorVectorSpace", "FileIO", "FixedPointNumbers", "ImageCore", "Libdl", "Random", "Test"]
@@ -783,10 +789,8 @@ version = "0.7.0"
 [[StatsMakie]]
 deps = ["AbstractPlotting", "Distributions", "FreqTables", "IndexedTables", "IntervalSets", "KernelDensity", "Loess", "NamedArrays", "Observables", "Random", "Statistics", "StatsBase", "Tables", "Test"]
 git-tree-sha1 = "12429b8d5308b27483f4d6148cefb86080e4d054"
-repo-rev = "master"
-repo-url = "https://github.com/JuliaPlots/StatsMakie.jl"
-uuid = "9d48ccf0-4268-5716-84ff-21228f561db3"
-version = "0.0.0"
+uuid = "65254759-4cff-5aa5-8326-61ce017a8c70"
+version = "0.0.1"
 
 [[SuiteSparse]]
 deps = ["Libdl", "LinearAlgebra", "SparseArrays"]
