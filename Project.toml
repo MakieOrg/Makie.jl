@@ -65,4 +65,4 @@ StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 
 [targets]
-test = ["DataFrames", "GDAL", "MeshIO", "RDatasets", "ImageCore", "ImageTransformations", "ImageMagick", "QuartzImageIO", "ModernGL", "ImageMagick", "ImageTransformations"]
+test = ["DataFrames", "MakieGallery", "GDAL", "MeshIO", "RDatasets", "ImageCore", "ImageTransformations", "ImageMagick", "QuartzImageIO", "ModernGL", "ImageMagick", "ImageTransformations"]
