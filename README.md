@@ -26,7 +26,7 @@ pkg> add Makie
 pkg> test Makie
 ```
 
-If you plan to use `Makie#master`, you likely also need to check out `AbstractPlotting#master`.
+If you plan to use `Makie#master`, you likely also need to check out `AbstractPlotting#master` and `GLMakie#master`.
 
 ## Dependencies
 You will need to have ffmpeg in the path to run the video recording examples.
