@@ -5,8 +5,10 @@ uuid = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 version = "0.3.2"
 
 [[AbstractPlotting]]
-deps = ["ColorBrewer", "ColorTypes", "Colors", "Contour", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GeometryTypes", "IntervalSets", "LinearAlgebra", "Markdown", "Observables", "Packing", "PlotUtils", "Printf", "Random", "Serialization", "Showoff", "SignedDistanceFields", "StaticArrays", "Statistics", "Test", "UnicodeFun"]
-git-tree-sha1 = "22eb6757f34439a84eff8ca5f4ebcb9a1f221102"
+deps = ["ColorBrewer", "ColorTypes", "Colors", "Contour", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GeometryTypes", "ImageMagick", "IntervalSets", "LinearAlgebra", "Markdown", "Observables", "Packing", "PlotUtils", "Printf", "Random", "Serialization", "Showoff", "SignedDistanceFields", "StaticArrays", "Statistics", "UnicodeFun"]
+git-tree-sha1 = "b47cc331607de0daa3d3e40ed77b61b36dd19c17"
+repo-rev = "master"
+repo-url = "https://github.com/JuliaPlots/AbstractPlotting.jl.git"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
 version = "0.9.1"
 
@@ -306,7 +308,7 @@ uuid = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
 version = "2.3.0"
 
 [[GLMakie]]
-deps = ["AbstractPlotting", "AxisArrays", "BinaryProvider", "ColorBrewer", "ColorTypes", "ColorVectorSpace", "Colors", "Contour", "DataFrames", "Documenter", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GDAL", "GLFW", "GeometryTypes", "ImageAxes", "ImageCore", "ImageFiltering", "ImageMagick", "ImageTransformations", "IndirectArrays", "IntervalSets", "IterTools", "LinearAlgebra", "Markdown", "MeshIO", "ModernGL", "Observables", "PlotUtils", "Primes", "Printf", "QuartzImageIO", "RDatasets", "Serialization", "Showoff", "StaticArrays", "UnicodeFun"]
+deps = ["AbstractPlotting", "AxisArrays", "ColorTypes", "ColorVectorSpace", "Colors", "FileIO", "FixedPointNumbers", "FreeType", "FreeTypeAbstraction", "GLFW", "GeometryTypes", "ImageAxes", "ImageCore", "ImageMagick", "ImageTransformations", "IntervalSets", "IterTools", "LinearAlgebra", "MeshIO", "ModernGL", "Observables", "Printf", "Serialization", "StaticArrays"]
 path = ".."
 uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 version = "0.0.1"
