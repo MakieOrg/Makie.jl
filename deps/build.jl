@@ -33,7 +33,7 @@ try
     # Create a windowed mode window and its OpenGL context
     window = GLFW.Window(resolution = (10, 10), major = 3, minor = 3, visible = false, focus = false)
     glversion = unsafe_string(glGetString(GL_VERSION))
-    m = match(r"(\d+)\.(\d+)\s", glversion)
+    m = match(r"(\d+)\.(\d+)(.\d+)?\s", glversion)
     # I don't really trust that all vendors have a version that matches
     # the above regex, so let's make no match non fatal!
     if m === nothing
