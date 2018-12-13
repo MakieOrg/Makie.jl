@@ -142,13 +142,13 @@ isaxis(x::Union{Axis2D, Axis3D}) = true
 
 const Limits{N} = NTuple{N, Tuple{Number, Number}}
 
-default_ticks(limits::Limits, ticks, scale_func = identity) = default_ticks.(limits, (ticks,), scale_func)
-default_ticks(limits::Tuple{Number, Number}, ticks, scale_func = identity) = default_ticks(limits..., ticks, scale_func)
+default_ticks(limits::Limits, ticks, scale_func::Function) = default_ticks.(limits, (ticks,), scale_func)
+default_ticks(limits::Tuple{Number, Number}, ticks, scale_func::Function) = default_ticks(limits..., ticks, scale_func)
 
-function default_ticks(lmin::Number, lmax::Number, ticks::AbstractVector{<: Number}, scale_func = identity)
+function default_ticks(lmin::Number, lmax::Number, ticks::AbstractVector{<: Number}, scale_func::Function)
     scale_func.((filter(t -> lmin <= t <= lmax, ticks)))
 end
-function default_ticks(lmin::Number, lmax::Number, ::Nothing, scale_func = identity)
+function default_ticks(lmin::Number, lmax::Number, ::Automatic, scale_func::Function)
     # scale the limits
     scaled_ticks, mini, maxi = optimize_ticks(
         scale_func(lmin),
@@ -173,7 +173,18 @@ function default_ticks(lmin::Number, lmax::Number, n::Integer, scale_func = iden
     scaled_ticks
 end
 
-function default_labels(x::NTuple{N, AbstractVector}, formatter::Function = Formatters.plain) where N
+default_ticks(x::Automatic, limits::Tuple, n) = default_ticks(limits, n, identity)
+function default_ticks(ticks::Tuple, limits::Tuple, n::Tuple)
+    default_ticks.(ticks, (limits,), n)
+end
+
+default_ticks(ticks::Tuple, limits::Limits, n) = default_ticks.(ticks, limits, (n,))
+default_ticks(ticks::Tuple, limits::Limits, n::Tuple) = default_ticks.(ticks, limits, n)
+
+default_ticks(ticks::AbstractVector{<: Number}, limits, n) = ticks
+
+
+function default_labels(x::NTuple{N, Any}, formatter::Function) where N
     default_labels.(x, formatter)
 end
 
@@ -191,6 +202,14 @@ function default_labels(ticks::AbstractVector, formatter::Function = Formatters.
     end
 end
 
+default_labels(x::Automatic, ranges, formatter) = default_labels(ranges, formatter)
+default_labels(x::Tuple, ranges::Tuple, formatter) = default_labels.(x, ranges, (formatter,))
+default_labels(x::Tuple, ranges, formatter) = default_labels.(x, (ranges,), (formatter,))
+default_labels(x::AbstractVector{<: AbstractString}, ranges, formatter::Function) = x
+default_labels(x::AbstractVector{<: AbstractString}, ranges::AbstractVector, formatter::Function) = x
+
+
+
 function convert_arguments(::Type{<: Axis2D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
     (((e[1][1], e[2][1]), (e[1][2], e[2][2])),)
@@ -199,14 +218,19 @@ function convert_arguments(::Type{<: Axis3D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
     (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
 end
+a_length(x::AbstractVector) = length(x)
+a_length(x::Automatic) = x
+
 function calculated_attributes!(::Type{<: Union{Axis2D, Axis3D}}, plot)
     ticks = plot[:ticks]
-    ranges = replace_automatic!(ticks, :ranges) do
-        lift(default_ticks, plot[1], Node(nothing))
+    num_ticks = lift(ticks[:labels]) do labels
+        labels === automatic ? nothing : a_length.(labels)
     end
-    replace_automatic!(ticks, :labels) do
-        lift(default_labels, ranges, plot[:ticks, :formatter])
-    end
+    ranges = lift(default_ticks, ticks[:ranges], plot[1], num_ticks)
+    ticks[:ranges] = ranges
+    labels = lift(default_labels, ticks[:labels], ranges, plot[:ticks, :formatter])
+    ticks[:labels] = labels
+    @show ranges[] labels[]
 end
 
 function draw_ticks(
@@ -471,6 +495,8 @@ end
 _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
 
+to3tuple(x::Tuple{Any}) = (x[1], x[1], x[1])
+to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 

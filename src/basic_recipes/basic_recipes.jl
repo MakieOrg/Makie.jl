@@ -419,6 +419,11 @@ convert_arguments(::Type{<: BarPlot}, y::AbstractVector{<: Number}) = (1:length(
 function AbstractPlotting.plot!(p::BarPlot)
     pos_scale = lift(p[1], p[2], p[:fillto], p[:width]) do x, y, fillto, hw
         nx, ny = length(x), length(y)
+        if x isa AbstractVector{<: AbstractString}
+            p[:ticklabels] = (x, automatic)
+            x = 1:nx
+            p[:tickranges] = (x, automatic)
+        end
         cv = x
         x = if nx == ny
             cv
@@ -437,6 +442,7 @@ function AbstractPlotting.plot!(p::BarPlot)
         offset = Vec2f0.(hw ./ -2f0, 0)
         positions, scales, offset
     end
+
     scatter!(
         p, lift(first, pos_scale),
         marker = p[:marker], marker_offset = lift(last, pos_scale),
