@@ -445,6 +445,13 @@ function _default(
     sprites(p, s, data)
 end
 
+
+function correct_scale(char, scale)
+    Vec2f0(glyph_scale!(char, scale))
+end
+function correct_scale(char, scale::AbstractVector)
+    Vec2f0(glyph_scale!.(char, scale))
+end
 """
 Main assemble functions for sprite particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -462,17 +469,16 @@ function sprites(p, s, data)
         position_z  = nothing => GLBuffer
 
         scale       = const_lift(primitive_scale, p[1]) => GLBuffer
-        scale_x     = nothing                => GLBuffer
-        scale_y     = nothing                => GLBuffer
-        scale_z     = nothing                => GLBuffer
+        scale_x     = nothing => GLBuffer
+        scale_y     = nothing => GLBuffer
+        scale_z     = nothing => GLBuffer
 
         rotation    = rot => GLBuffer
         image       = nothing => Texture
     end
     # TODO don't make this dependant on some shady type dispatch
-    if isa(to_value(p[1]), Char) && !isa(to_value(scale), Vec) # correct dimensions
-        scale = const_lift(s-> Vec2f0(glyph_scale!(p[1], s)), scale)
-        data[:scale] = scale
+    if isa(to_value(p[1]), Char) && !isa(to_value(scale), Union{StaticVector, AbstractVector{<: StaticVector}}) # correct dimensions
+        data[:scale] = const_lift(correct_scale, p[1], scale)
     end
 
     @gen_defaults! data begin
