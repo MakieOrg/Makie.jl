@@ -345,6 +345,8 @@ apply for return type PlotSpec
 """
 function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     args, kwargs = x.args, x.kwargs
+    # Note that kw_args in the plot spec that are not part of the target plot type
+    # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
@@ -490,6 +492,7 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; k
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
     # convert_arguments can return different things depending on the recipe type
     # apply_conversion deals with that!
+
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Node(argsconverted)
     input_nodes =  to_node.(args)
@@ -610,7 +613,7 @@ end
 function find_in_plots(scene::Scene, key::Symbol)
     # TODO findfirst is a bit flaky... maybe merge multiple ranges + tick labels?!
     idx = findfirst(scene.plots) do plot
-        !isaxis(plot) && haskey(plot, key)
+        !isaxis(plot) && haskey(plot, key) && plot[key][] !== automatic
     end
     if idx !== nothing
         scene.plots[idx][key]

@@ -224,13 +224,12 @@ a_length(x::Automatic) = x
 function calculated_attributes!(::Type{<: Union{Axis2D, Axis3D}}, plot)
     ticks = plot[:ticks]
     num_ticks = lift(ticks[:labels]) do labels
-        labels === automatic ? nothing : a_length.(labels)
+        labels === automatic ? automatic : a_length.(labels)
     end
     ranges = lift(default_ticks, ticks[:ranges], plot[1], num_ticks)
     ticks[:ranges] = ranges
     labels = lift(default_labels, ticks[:labels], ranges, plot[:ticks, :formatter])
     ticks[:labels] = labels
-    @show ranges[] labels[]
 end
 
 function draw_ticks(

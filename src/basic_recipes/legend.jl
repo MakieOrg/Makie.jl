@@ -139,7 +139,7 @@ end
 
 function calculated_attributes!(::Type{<: ColorLegend}, plot)
     ranges = replace_automatic!(plot, :ranges) do
-        lift(default_ticks, plot[:colorrange], Node(nothing))
+        lift(default_ticks, plot[:colorrange], Node(automatic))
     end
     replace_automatic!(plot, :labels) do
         lift(default_labels, ranges, plot[:formatter])
