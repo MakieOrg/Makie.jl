@@ -33,21 +33,21 @@ Return the `scene` that the mouse is currently hovering over.
 
 Properly identifies the scene for a plot with multiple sub-plots.
 """
-hovered_scene() = error("not implemented")
+hovered_scene() = error("hoevered_scene is not implemented yet.")
 
 """
     select_rectangle(scene; kwargs...) -> rect
 Interactively select a rectangle on a `scene` by clicking the left mouse button,
-dragging and then un-clicking. The function returns an observable `rect` whose
+dragging and then un-clicking. The function returns an **observable** `rect` whose
 value corresponds to the selected rectangle on the scene. In addition the function
-_plots_ the selected rectangle on the scene as the use clicks and moves the mouse
+_plots_ the selected rectangle on the scene as the user clicks and moves the mouse
 around. When the button is not clicked any more, the plotted rectangle disappears.
 
 The value of the returned observable is updated **only** when the user un-clicks
 (i.e. when the final value of the rectangle has been decided) and only if the
 rectangle has area > 0.
 
-They `kwargs...` are propagated into `lines!` which plot the selected rectangle.
+The `kwargs...` are propagated into `lines!` which plots the selected rectangle.
 """
 function select_rectangle(scene; kwargs...)
     key = Mouse.left
@@ -57,7 +57,7 @@ function select_rectangle(scene; kwargs...)
 
     # Create an initially hidden rectangle
     rect_vis = lines!(
-        scene, rect, kwargs..., raw = true, visible = false,
+        scene, rect, raw = true, visible = false, kwargs...,
     )[end] # Why do I have to do [end] ?
 
     on(events(scene).mousedrag) do drag
