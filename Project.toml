@@ -1,6 +1,6 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.9.0"
+version = "0.9.1"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -43,6 +43,8 @@ FreeTypeAbstraction = ">=0.3.0"
 GLFW = ">=2.3.0"
 GeometryTypes = ">=0.7.2"
 StaticArrays = ">=0.6.6"
+AbstractPlotting = ">=0.9.2"
+GLMakie = ">=0.0.3"
 
 [extras]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
