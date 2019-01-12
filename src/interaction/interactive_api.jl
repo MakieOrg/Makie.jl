@@ -85,6 +85,5 @@ function select_rectangle(scene; kwargs...)
         end
         return rect_ret
     end
-    display(scene)
     return rect_ret
 end
