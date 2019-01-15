@@ -1,10 +1,8 @@
 julia 0.7
 
-GeometryTypes 0.7.2
 FileIO
 @windows ImageMagick
 @linux ImageMagick
 @osx QuartzImageIO
-AbstractPlotting
-GLMakie
-IntervalSets
+AbstractPlotting 0.9.2
+GLMakie 0.0.3

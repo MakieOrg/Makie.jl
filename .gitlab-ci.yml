@@ -15,4 +15,4 @@ job:
 
     script:
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e "using Pkg; Pkg.build(); Pkg.test()"
+      - julia --project=test/ -e 'using Pkg; Pkg.build("Makie"); include("test/runtests.jl")'
