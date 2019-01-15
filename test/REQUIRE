@@ -1,0 +1,22 @@
+GeometryTypes 0.7.2
+ImageCore
+ImageTransformations
+@windows ImageMagick
+@linux ImageMagick
+@osx QuartzImageIO
+ColorTypes
+Colors
+ColorVectorSpace
+FixedPointNumbers
+Documenter
+ModernGL
+MeshIO
+ImageMagick
+ImageTransformations
+FileIO
+ImageFiltering
+DataFrames
+RDatasets
+BinaryProvider
+StatsMakie
+MakieGallery

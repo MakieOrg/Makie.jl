@@ -16,5 +16,5 @@ MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-AbstractPlotting = ">=0.9.1"
+AbstractPlotting = ">=0.9.2"
 GeometryTypes = ">=0.7.2"
