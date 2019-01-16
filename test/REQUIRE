@@ -2,6 +2,7 @@ MeshIO
 #generate_plots
 ImageFiltering # needed for Gaussian-filtering images during resize
 BinaryProvider
+MakieGallery
 
 #for some examples
 DataFrames
