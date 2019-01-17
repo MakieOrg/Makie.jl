@@ -34,14 +34,23 @@ convert_attribute(x, key::Key) = x
 # By default, don't apply any conversions
 convert_arguments(P, args...) = args
 
-const PointBased = Union{MeshScatter, Scatter, Lines, LineSegments}
-const XYBased = PointBased
+const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
 
-function convert_arguments(::Type{<: PointBased}, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
+struct PointBased end
+conversion_trait(x) = nothing
+conversion_trait(x::Type{<: XYBased}) = PointBased()
+struct SurfaceLike end
+conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike
+
+function convert_arguments(::Type{T}, args...; kw...) where T <: AbstractPlot
+    convert_arguments(conversion_trait(T), args...; kw...)
+end
+
+function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
     (elconvert(Point{N, Float32}, positions),)
 end
 
-function convert_arguments(::Type{<: PointBased}, positions::SubArray{<: VecTypes, 1})
+function convert_arguments(::PointBased, positions::SubArray{<: VecTypes, 1})
     # TODO figure out a good subarray solution
     (positions,)
 end
@@ -50,7 +59,7 @@ end
 Enables to use scatter like a surface plot with x::Vector, y::Vector, z::Matrix
 spanning z over the grid spanned by x y
 """
-function convert_arguments(::Type{<: PointBased}, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
+function convert_arguments(::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractMatrix)
     (vec(Point3f0.(x, y', z)),)
 end
 """
@@ -60,7 +69,7 @@ Takes vectors `x`, `y`, and `z` and turns it into a vector of 3D points of the v
 from `x`, `y`, and `z`.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
+convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (Point3f0.(x, y, z),)
 
 """
     convert_arguments(P, x)::(Vector)
@@ -68,13 +77,48 @@ convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector, z::RealVe
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::Type{<: PointBased}, x::GeometryPrimitive) = (decompose(Point, x),)
+convert_arguments(::PointBased, x::GeometryPrimitive) = (decompose(Point, x),)
 
-function convert_arguments(::Type{<: PointBased}, pos::AbstractMatrix{<: Number})
+function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
 end
 
+# Trait for categorical values
+struct Categorical end
+struct Continous end
 
+categorical_trait(::Type) = Categorical()
+categorical_trait(::Type{<: Number}) = Continous()
+
+categoric_labels(x::AbstractVector{T}) where T = categoric_labels(categorical_trait(T), x)
+
+categoric_labels(::Categorical, x) = unique(x)
+categoric_labels(::Continous, x) = automatic # we let them be automatic
+
+categoric_range(range::Automatic) = range
+categoric_range(range) = 1:length(range)
+
+function categoric_position(x, labels)
+    findfirst(l-> l === x, labels)
+end
+
+categoric_position(x, labels::Automatic) = x
+
+convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector) = convert_arguments(P, (x, y))
+convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractVector) = convert_arguments(P, (x, y, z))
+
+function convert_arguments(::PointBased, positions::NTuple{N, AbstractVector}) where N
+    x = first(positions)
+    if any(n-> length(x) != length(n), positions)
+        error("all vector need to be same length. Found: $(length.(positions))")
+    end
+    labels = categoric_labels.(positions)
+    xyrange = categoric_range.(labels)
+    points = map(zip(positions...)) do p
+        Point{N, Float32}(categoric_position.(p, labels))
+    end
+    PlotSpec(points, tickranges = xyrange, ticklabels = labels)
+end
 
 """
 Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
@@ -102,7 +146,7 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::Type{<: PointBased}, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
+convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(range(minimum(x), stop=maximum(x), length=length(y)), y)
 to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
 """
@@ -112,7 +156,7 @@ Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the 
 linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+function convert_arguments(::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
@@ -122,7 +166,7 @@ end
 
 Takes an input `AbstractString` `x` and converts it to a string.
 """
-convert_arguments(::Type{Text}, x::AbstractString) = (String(x),)
+convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
 
 
 """
@@ -132,11 +176,11 @@ Takes an input `HyperRectangle` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(P::Type{<: PointBased}, x::Rect2D)
+function convert_arguments(P::PointBased, x::Rect2D)
     # TODO fix the order of decompose
     convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
-function convert_arguments(P::Type{<: PointBased}, x::Rect3D)
+function convert_arguments(P::PointBased, x::Rect3D)
     inds = [
         1, 2, 3, 4, 5, 6, 7, 8,
         1, 5, 5, 7, 7, 3, 1, 3,
@@ -146,8 +190,6 @@ function convert_arguments(P::Type{<: PointBased}, x::Rect3D)
 end
 
 
-const SurfaceLike = Union{Surface, Heatmap, Image}
-
 """
     convert_arguments(P, x::VecOrMat, y::VecOrMat, z::Matrix)
 
@@ -156,7 +198,7 @@ outputs them in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVecOrMat, y::AbstractVecOrMat, z::AbstractMatrix)
+function convert_arguments(::SurfaceLike, x::AbstractVecOrMat, y::AbstractVecOrMat, z::AbstractMatrix)
     (el32convert(x), el32convert(y), el32convert(z))
 end
 
@@ -177,7 +219,7 @@ and stores the `ClosedInterval` to `n` and `m`, plus the original matrix in a Tu
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: SurfaceLike}, data::AbstractMatrix)
+function convert_arguments(::SurfaceLike, data::AbstractMatrix)
     n, m = Float32.(size(data))
     (0f0 .. m, 0f0 .. n, el32convert(data))
 end
@@ -189,7 +231,7 @@ Takes vectors `x` and `y` and the function `f`, and applies `f` on the grid that
 This is equivalent to `f.(x, y')`.
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
+function convert_arguments(::SurfaceLike, x::AbstractVector{T1}, y::AbstractVector{T2}, f::Function) where {T1, T2}
     if !applicable(f, x[1], y[1])
         error("You need to pass a function with signature f(x::$T1, y::$T2). Found: $f")
     end
@@ -199,7 +241,8 @@ function convert_arguments(::Type{<: SurfaceLike}, x::AbstractVector{T1}, y::Abs
     (x, y, z)
 end
 
-const VolumeLike = Union{Volume}
+struct VolumeLike end
+conversion_trait(::Type{<: Volume}) = VolumeLike()
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
 
@@ -208,7 +251,7 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: VolumeLike}, data::Array{T, 3}) where T
+function convert_arguments(::VolumeLike, data::Array{T, 3}) where T
     n, m, k = Float32.(size(data))
     (0f0 .. n, 0f0 .. m, 0f0 .. k, data)
 end
@@ -220,7 +263,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
+function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
     (x, y, z, i)
 end
 
@@ -233,7 +276,7 @@ spanned by `x`, `y` and `z`, and puts `x`, `y`, `z` and `f(x,y,z)` in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::Type{<: VolumeLike}, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
+function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, f::Function)
     if !applicable(f, x[1], y[1], z[1])
         error("You need to pass a function with signature f(x, y, z). Found: $f")
     end
