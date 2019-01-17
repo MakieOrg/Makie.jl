@@ -40,7 +40,7 @@ struct PointBased end
 conversion_trait(x) = nothing
 conversion_trait(x::Type{<: XYBased}) = PointBased()
 struct SurfaceLike end
-conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike
+conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
 
 function convert_arguments(::Type{T}, args...; kw...) where T <: AbstractPlot
     convert_arguments(conversion_trait(T), args...; kw...)
@@ -156,7 +156,7 @@ Takes 2 ClosedIntervals's `x`, `y`, and an AbstractMatrix `z`, and converts the 
 linspaces with size(z, 1/2)
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
+function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
 end
 
