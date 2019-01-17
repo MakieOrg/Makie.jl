@@ -394,7 +394,7 @@ end
         marker = Rect,
         strokewidth = 0,
         strokecolor = :white,
-        width = nothing
+        width = automatic
     )
 end
 
@@ -413,30 +413,22 @@ function data_limits(p::BarPlot)
 end
 
 
-convert_arguments(::Type{<: BarPlot}, x::AbstractVector{<: Number}, y::AbstractVector{<: Number}) = (x, y)
-convert_arguments(::Type{<: BarPlot}, y::AbstractVector{<: Number}) = (1:length(y), y)
+conversion_trait(::Type{<: BarPlot}) = PointBased()
+
 
 function AbstractPlotting.plot!(p::BarPlot)
-    pos_scale = lift(p[1], p[2], p[:fillto], p[:width]) do x, y, fillto, hw
-        nx, ny = length(x), length(y)
-        cv = x
-        x = if nx == ny
-            cv
-        elseif nx == ny + 1
-            0.5diff(cv) + cv[1:end-1]
-        else
-            error("bar recipe: x must be same length as y (centers), or one more than y (edges).\n\t\tlength(x)=$(length(x)), length(y)=$(length(y))")
-        end
+    pos_scale = lift(p[1], p[:fillto], p[:width]) do xy, fillto, hw
         # compute half-width of bars
-        if hw == nothing
-            hw = mean(diff(x)) # TODO ignore nan?
+        if hw === automatic
+            hw = mean(diff(first.(xy))) # TODO ignore nan?
         end
         # make fillto a vector... default fills to 0
-        positions = Point2f0.(cv, Float32.(fillto))
-        scales = Vec2f0.(abs.(hw), y)
+        positions = Point2f0.(first.(xy), Float32.(fillto))
+        scales = Vec2f0.(abs.(hw), last.(xy))
         offset = Vec2f0.(hw ./ -2f0, 0)
         positions, scales, offset
     end
+
     scatter!(
         p, lift(first, pos_scale),
         marker = p[:marker], marker_offset = lift(last, pos_scale),

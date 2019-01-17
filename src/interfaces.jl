@@ -345,6 +345,8 @@ apply for return type PlotSpec
 """
 function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     args, kwargs = x.args, x.kwargs
+    # Note that kw_args in the plot spec that are not part of the target plot type
+    # will end in the "global plot" kw_args (rest)
     for (k, v) in pairs(kwargs)
         attributes[k] = v
     end
@@ -490,6 +492,7 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; k
     converted = convert_arguments(PreType, argvalues...; kw_signal[]...)
     # convert_arguments can return different things depending on the recipe type
     # apply_conversion deals with that!
+
     FinalType, argsconverted = apply_convert!(PreType, attributes, converted)
     converted_node = Node(argsconverted)
     input_nodes =  to_node.(args)
@@ -549,7 +552,7 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
 
     scene[:raw][] || update_limits!(scene)
     (!scene[:raw][] || scene[:camera][] != automatic) && setup_camera!(scene)
-    scene[:raw][] || add_axis!(scene)
+    scene[:raw][] || add_axis!(scene, rest)
     # ! ∘ isaxis --> (x)-> !isaxis(x)
     # move axis to front, so that scene[end] gives back the last plot and not the axis!
     if !isempty(scene.plots) && isaxis(last(scene.plots))
@@ -607,8 +610,21 @@ function setup_camera!(scene::Scene)
     scene
 end
 
+function find_in_plots(scene::Scene, key::Symbol)
+    # TODO findfirst is a bit flaky... maybe merge multiple ranges + tick labels?!
+    idx = findfirst(scene.plots) do plot
+        !isaxis(plot) && haskey(plot, key) && plot[key][] !== automatic
+    end
+    if idx !== nothing
+        scene.plots[idx][key]
+    else
+        automatic
+    end
+end
 
-function add_axis!(scene::Scene)
+
+
+function add_axis!(scene::Scene, attributes = Attributes())
     show_axis = scene[:show_axis][]
     show_axis isa Bool || error("show_axis needs to be a bool")
     axistype = if scene[:axis_type][] == automatic
@@ -620,8 +636,18 @@ function add_axis!(scene::Scene)
     end
 
     if show_axis && !(any(isaxis, plots(scene)))
-        axis_attributes = scene[:axis]
-        axistype(scene, axis_attributes, limits(scene))
+        key = axistype == axis2d! ? :axis2d : :axis3d
+        axis_attributes = scene[key]
+        ranges = get(attributes, :tickranges) do
+            find_in_plots(scene, :tickranges)
+        end
+        labels = get(attributes, :ticklabels) do
+            find_in_plots(scene, :ticklabels)
+        end
+        axistype(
+            scene, axis_attributes, limits(scene),
+            ticks = (ranges = ranges, labels = labels)
+        )
     end
     scene
 end
