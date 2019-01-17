@@ -201,14 +201,14 @@ Base.merge(x::Attributes...) = merge!(copy.(x)...)
 
 @generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
 
-@inline function Base.getproperty(x::T, key::Symbol) where T <: Transformable
+@inline function Base.getproperty(x::T, key::Symbol) where T <: Union{Attributes, Transformable}
     if hasfield(x, Val(key))
         getfield(x, key)
     else
         getindex(x, key)
     end
 end
-@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Transformable
+@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Union{Attributes, Transformable}
     if hasfield(x, Val(key))
         setfield!(x, key, value)
     else
@@ -221,6 +221,7 @@ function getindex(x::Attributes, key::Symbol)
     x = x.attributes[key]
     to_value(x) isa Attributes ? to_value(x) : x
 end
+
 function setindex!(x::Attributes, value, key::Symbol)
     if haskey(x, key)
         x.attributes[key][] = value
@@ -228,6 +229,7 @@ function setindex!(x::Attributes, value, key::Symbol)
         x.attributes[key] = to_node(Any, value, key)
     end
 end
+
 function setindex!(x::Attributes, value::Node, key::Symbol)
     if haskey(x, key)
         # error("You're trying to update an attribute node with a new node. This is not supported right now.
