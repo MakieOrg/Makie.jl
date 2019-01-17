@@ -168,6 +168,15 @@ Base.broadcastable(x::Attributes) = Ref(x)
 
 value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
 value_convert(@nospecialize(x)) = x
+
+function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where N
+    # with an observable at first place,
+    # lift correctly dispatches to create a new Node that updates on any
+    lift(Node(nothing), x...) do _, args...
+        args
+    end
+end
+
 value_convert(x::NamedTuple) = Attributes(x)
 
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, value_convert(pair[2]), pair[1]))
