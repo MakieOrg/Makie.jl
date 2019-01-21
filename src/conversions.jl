@@ -32,17 +32,23 @@ convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
 # By default, don't apply any conversions
-convert_arguments(P, args...) = args
+convert_arguments(::PlotFunc, args...) = args
 
 const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
 
-struct PointBased end
+abstract type ConversionTrait end
+
+struct PointBased <: ConversionTrait end
 conversion_trait(x) = nothing
+# nothing trait - don't convert
+convert_arguments(::Nothing, args...) = args
+
 conversion_trait(x::Type{<: XYBased}) = PointBased()
-struct SurfaceLike end
+struct SurfaceLike <: ConversionTrait end
 conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
 
-function convert_arguments(::Type{T}, args...; kw...) where T <: AbstractPlot
+function convert_arguments(T::PlotFunc, args...; kw...)
+    println(T)
     convert_arguments(conversion_trait(T), args...; kw...)
 end
 
