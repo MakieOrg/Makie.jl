@@ -7,6 +7,7 @@ Theme(x::AbstractPlot) = x.attributes
 
 default_theme(scene, T) = Attributes()
 
+
 function default_theme(scene)
     light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     Theme(

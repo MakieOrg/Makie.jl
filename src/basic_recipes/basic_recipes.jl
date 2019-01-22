@@ -573,10 +573,9 @@ to_levels(x::AbstractVector{<: Number}, cnorm) = x
 function to_levels(x::Integer, cnorm)
     range(cnorm[1], stop = cnorm[2], length = x)
 end
-import AbstractPlotting: convert_arguments
-convert_arguments(::Type{<: Contour3d}, args...) = convert_arguments(Heatmap, args...)
-convert_arguments(::Type{<: Contour}, args...) = convert_arguments(Volume, args...)
-convert_arguments(::Type{<: Contour}, data::AbstractMatrix) = convert_arguments(Heatmap, data)
+conversion_trait(::Type{<: Contour3d}) = SurfaceLike()
+conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
+conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]

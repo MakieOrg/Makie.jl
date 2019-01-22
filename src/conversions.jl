@@ -35,6 +35,7 @@ convert_attribute(x, key::Key) = x
 convert_arguments(::PlotFunc, args...) = args
 
 const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
+const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
 abstract type ConversionTrait end
 
@@ -48,8 +49,16 @@ struct SurfaceLike <: ConversionTrait end
 conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
 
 function convert_arguments(T::PlotFunc, args...; kw...)
-    println(T)
-    convert_arguments(conversion_trait(T), args...; kw...)
+    ct = conversion_trait(T)
+    try
+        convert_arguments(ct, args...; kw...)
+    catch e
+        if e isa MethodError
+            error("No overload for $T and also no overload for trait $ct found! Arguments: $(typeof.(args))")
+        else
+            rethrow(e)
+        end
+    end
 end
 
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
@@ -142,7 +151,7 @@ an arbitrary `x` axis.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(P::Type{<: XYBased}, y::RealVector) = convert_arguments(P, 1:length(y), y)
+convert_arguments(P::PointBased, y::RealVector) = convert_arguments(P, 1:length(y), y)
 
 """
     convert_arguments(P, x, y)::(Vector)
@@ -153,7 +162,7 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
-convert_arguments(::Type{<: XYBased}, x::ClosedInterval, y::RealVector) = convert_arguments(range(minimum(x), stop=maximum(x), length=length(y)), y)
+convert_arguments(::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(LinRange(extrema(x)..., length(y)), y)
 to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
@@ -257,11 +266,14 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::VolumeLike, data::Array{T, 3}) where T
+function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
     n, m, k = Float32.(size(data))
     (0f0 .. n, 0f0 .. m, 0f0 .. k, data)
 end
 
+function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
+    (x, y, z, data)
+end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
 
