@@ -158,7 +158,7 @@ function plot!(plot::ColorLegend)
     mesh = GLNormalUVMesh(
         vertices = copy(vertices),
         faces = GLTriangle[(1, 2, 3), (3, 4, 1)],
-        texturecoordinates = UV{Float32}[(0, 0), (0, 1), (0, 1), (0, 0)]
+        texturecoordinates = UV{Float32}[(0, 1), (0, 0), (0, 0), (0, 1)]
     )
 
     cmap_node = lift(colormap) do cmap
