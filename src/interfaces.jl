@@ -81,6 +81,7 @@ Plots a volume. Available algorithms are:
         colormap = theme(scene, :colormap),
         colorrange = (0, 1),
         color = nothing,
+        shading = true,
     )
 end
 mutual_exclusive_attributes(::Type{<:Volume}) =
@@ -169,7 +170,8 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         fxaa = false,
         transform_marker = false, # Applies the plots transformation to marker
         uv_offset_width = Vec4f0(0),
-        distancefield = nothing
+        distancefield = nothing,
+        shading = true
     )
 end
 
@@ -187,7 +189,8 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
         rotations = Quaternionf0(0, 0, 0, 1),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        fxaa = true
+        fxaa = true,
+        shading = true
     )
 end
 
@@ -231,7 +234,7 @@ function color_and_colormap!(plot, intensity = plot[:color])
         false
     end
 end
-
+ 
 
 """
     `calculated_attributes!(plot::AbstractPlot)`
