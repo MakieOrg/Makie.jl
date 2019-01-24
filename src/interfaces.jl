@@ -81,7 +81,6 @@ Plots a volume. Available algorithms are:
         colormap = theme(scene, :colormap),
         colorrange = (0, 1),
         color = nothing,
-        shading = true,
     )
 end
 mutual_exclusive_attributes(::Type{<:Volume}) =
@@ -171,7 +170,6 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
         transform_marker = false, # Applies the plots transformation to marker
         uv_offset_width = Vec4f0(0),
         distancefield = nothing,
-        shading = true
     )
 end
 
