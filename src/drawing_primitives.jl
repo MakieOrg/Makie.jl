@@ -110,6 +110,8 @@ end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
+        # signals not supported for shading yet
+        gl_attributes[:shading] = AbstractPlotting.to_value(get(gl_attributes, :shading, true)) 
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
             msize = pop!(gl_attributes, :stroke_width)
