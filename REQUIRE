@@ -6,3 +6,4 @@ AbstractPlotting 0.9.1
 Cairo
 Colors
 Makie
+FileIO

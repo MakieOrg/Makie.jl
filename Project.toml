@@ -1,5 +1,5 @@
 name = "CairoMakie"
-uuid = "f1797859-2bec-5491-832b-e19d79114491"
+uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
 version = "0.0.2"
 
