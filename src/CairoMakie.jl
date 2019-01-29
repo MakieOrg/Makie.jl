@@ -267,8 +267,7 @@ function extract_color(cmap, range, c)
     red(c), green(c), blue(c), alpha(c)
 end
 
-function draw_marker(ctx, marker, pos, scale, color, strokecolor, strokewidth)
-    Cairo.set_source_rgba(ctx, color...)
+function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth)
     pos += Point2f0(scale[1] / 2, -scale[2] / 2)
     Cairo.arc(ctx, pos[1], pos[2], scale[1] / 2, 0, 2*pi)
     Cairo.fill(ctx)
@@ -280,8 +279,25 @@ function draw_marker(ctx, marker, pos, scale, color, strokecolor, strokewidth)
     end
 end
 
-function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, color, strokecolor, strokewidth)
-    Cairo.set_source_rgba(ctx, color...)
+function draw_marker(ctx, marker::Char, pos, scale, strokecolor, strokewidth)
+    pos += Point2f0(scale[1] / 2, -scale[2] / 2)
+
+    #TODO this shouldn't be hardcoded, but isn't available in the plot right now
+    font = AbstractPlotting.assetpath("DejaVu Sans")
+    Cairo.select_font_face(
+        ctx, font,
+        Cairo.FONT_SLANT_NORMAL,
+        Cairo.FONT_WEIGHT_NORMAL
+    )
+    Cairo.move_to(ctx, pos[1], pos[2])
+    mat = scale_matrix(scale...)
+    set_font_matrix(ctx, mat)
+    Cairo.show_text(ctx, string(marker))
+    Cairo.fill(ctx)
+end
+
+
+function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, strokecolor, strokewidth)
     s2 = Point2f0(scale[1], -scale[2])
     Cairo.rectangle(ctx, pos..., s2...)
     Cairo.fill(ctx);
@@ -309,7 +325,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
         pos = project_position(scene, point, model)
         mo = project_scale(scene, mo, size_model)
         pos += Point2f0(mo[1], -mo[2])
-        draw_marker(ctx, marker, pos, scale, extract_color(cmap, crange, c), strokecolor, strokewidth)
+        Cairo.set_source_rgba(ctx, extract_color(cmap, crange, c)...)
+        m = convert_attribute(marker, key"marker"(), key"scatter"())
+        draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
     end
     nothing
 end
