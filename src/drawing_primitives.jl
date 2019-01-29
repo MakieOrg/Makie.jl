@@ -108,6 +108,9 @@ function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     end
 end
 
+struct FastPixel end
+AbstractPlotting.to_spritemarker(x::FastPixel) = x
+
 function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
@@ -120,7 +123,14 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
         end
         positions = handle_view(x[1], gl_attributes)
         handle_intensities!(gl_attributes)
-        visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        if marker[] isa FastPixel
+            filter!(gl_attributes) do (k, v,)
+                k in (:color_map, :color, :color_norm, :intensity, :scale, :fxaa)
+            end
+            visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes)).children[]
+        else
+            visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+        end
     end
 end
 

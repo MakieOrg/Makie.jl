@@ -311,21 +311,26 @@ function meshparticle(p, s, data)
     data
 end
 
+to_pointsize(x::Number) = Float32(x)
+to_pointsize(x) = Float32(x[1])
+
 """
 This is the most primitive particle system, which uses simple points as primitives.
 This is supposed to be the fastest way of displaying particles!
 """
-_default(position::VectorTypes{T}, s::style"speed", data::Dict) where {T <: Point} = @gen_defaults! data begin
-    vertex       = position => GLBuffer
-    color_map    = nothing  => Vec2f0
-    color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
-
-    color_norm   = nothing  => Vec2f0
-    intensity = nothing  => GLBuffer
-    point_size   = 2f0
-    prerender    = ()->glPointSize(point_size)
-    shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
-    gl_primitive = GL_POINTS
+function _default(position::VectorTypes{T}, s::style"speed", data::Dict) where T <: Point
+    @gen_defaults! data begin
+        vertex       = position => GLBuffer
+        color_map    = nothing  => Vec2f0
+        color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
+        color_norm   = nothing  => Vec2f0
+        intensity    = nothing  => GLBuffer
+        scale        = 2f0
+        shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
+        gl_primitive = GL_POINTS
+    end
+    data[:prerender] = ()-> glPointSize(to_pointsize(data[:scale][]))
+    data
 end
 
 """
