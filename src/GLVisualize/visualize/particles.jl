@@ -277,6 +277,7 @@ function meshparticle(p, s, data)
 
         rotation = rot => TextureBuffer
         texturecoordinates = nothing
+        shading = true
     end
 
     @gen_defaults! data begin
