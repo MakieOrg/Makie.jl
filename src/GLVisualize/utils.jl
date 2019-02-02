@@ -27,7 +27,11 @@ function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
     transp = get(data, :transparency, Node(false))
     overdraw = get(data, :overdraw, Node(false))
     pre = if pre_fun != nothing
-        () -> (GLAbstraction.StandardPrerender(transp, overdraw); pre_fun())
+        _pre_fun = GLAbstraction.StandardPrerender(transp, overdraw)
+        function ()
+            _pre_fun()
+            pre_fun()
+        end
     else
         GLAbstraction.StandardPrerender(transp, overdraw)
     end
