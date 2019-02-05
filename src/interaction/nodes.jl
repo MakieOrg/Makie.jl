@@ -2,7 +2,7 @@
 # I don't want to use map anymore, it's so ambigious, especially to newcomers.
 # TODO should this become it's own function?
 function lift(
-        f, o1::AbstractObservable, rest...;
+        f, o1::Observables.AbstractObservable, rest...;
         init = f(to_value(o1), to_value.(rest)...), typ = typeof(init),
         name = :node # name ignored for now
     )
