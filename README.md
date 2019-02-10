@@ -129,12 +129,13 @@ using PackageCompiler
 
 # The safe option:
 PackageCompiler.compile_incremental(:Makie, :AbstractPlotting, force = false) # can take around ~20 minutes
+# After this, to use the system image, you will have to invoke Julia with the sysimg that PackageCompiler provides.
 
-# Replaces julias system image
-# please be very careful with the option below, since this can make your julia stop working.
+# Replaces Julia's system image
+# please be very careful with the option below, since this can make your Julia stop working.
 # If Julia doesn't start for you anymore, consider doing:
-# using PackageCompiler; PackageCompiler.revert() <- not well tested
+# using PackageCompiler; PackageCompiler.revert() # <- not well tested
 
 PackageCompiler.compile_incremental(:Makie, :AbstractPlotting, force = true)
 ```
-Should the display not work after compilation, you can force it by calling `display(AbstractPlotting.PlotDisplay(), scene);` on your `Scene`.
+Should the display not work after compilation, use `AbstractPlotting.__init__()`, or force display by calling `display(AbstractPlotting.PlotDisplay(), scene);` on your `Scene`. 
