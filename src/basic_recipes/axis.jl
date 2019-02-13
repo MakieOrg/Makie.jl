@@ -512,11 +512,11 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges, labels, args...)
 
     N = 3
     start!(textbuffer); start!(linebuffer)
-    ranges_ticks = zip.(ranges, labels)
+    ranges_ticks = Pair.(ranges, labels)
     mini, maxi = first.(limits), last.(limits)
 
-    ranges = map(i-> [mini[i]; ranges_ticks[i].a; maxi[i]], 1:3)
-    ticklabels = map(x-> [""; x.b; ""], ranges_ticks)
+    ranges = map(i-> [mini[i]; first(ranges_ticks[i]); maxi[i]], 1:3)
+    ticklabels = map(x-> [""; last(x); ""], ranges_ticks)
     origin = Point{N, Float32}(mini)
     limit_widths = maxi .- mini
     % = minimum(limit_widths) / 100 # percentage
