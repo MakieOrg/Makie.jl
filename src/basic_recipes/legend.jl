@@ -68,7 +68,7 @@ function make_label(scene, plot, labeltext, i, attributes)
     else
         scatter!(
             scene, lift(scale, mpattern, w, padding, gap, tsize),
-            markersize = msize, color = plot[:color]
+            markersize = msize, color = plot[:color], marker = plot[:marker]
         )
     end
 end
