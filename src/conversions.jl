@@ -162,7 +162,9 @@ from `x` and `y`.
 `P` is the plot Type (it is optional).
 """
 convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
-convert_arguments(::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(LinRange(extrema(x)..., length(y)), y)
+convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
+convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
+
 to_linspace(interval, N) = range(minimum(interval), stop = maximum(interval), length = N)
 """
     convert_arguments(P, x, y, z)::Tuple{ClosedInterval, ClosedInterval, Matrix}
