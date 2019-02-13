@@ -13,8 +13,6 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 #define DISTANCEFIELD     3
 #define TRIANGLE          4
 
-// Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS  0.8
 #define M_SQRT_2          1.4142135
 
 
@@ -38,15 +36,16 @@ in vec2                 f_uv; // f_uv.{x,y} are in -1..1
 flat in vec4            f_uv_texture_bbox;
 
 
-
-float aastep(float threshold1, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * ANTIALIAS_RADIUS;
-    return smoothstep(threshold1-afwidth, threshold1+afwidth, value);
+// Half width of antialiasing smoothstep
+#define ANTIALIAS_RADIUS  0.8
+// These versions of aastep assume that `dist` is a signed distance function
+// which has been scaled to be in units of pixels.
+float aastep(float threshold1, float dist) {
+    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist);
 }
-float aastep(float threshold1, float threshold2, float value) {
-    float afwidth = length(vec2(dFdx(value), dFdy(value))) * ANTIALIAS_RADIUS;
-    return smoothstep(threshold1-afwidth, threshold1+afwidth, value) -
-           smoothstep(threshold2-afwidth, threshold2+afwidth, value);
+float aastep(float threshold1, float threshold2, float dist) {
+    return smoothstep(threshold1-ANTIALIAS_RADIUS, threshold1+ANTIALIAS_RADIUS, dist) -
+           smoothstep(threshold2-ANTIALIAS_RADIUS, threshold2+ANTIALIAS_RADIUS, dist);
 }
 
 float step2(float edge1, float edge2, float value){
@@ -103,7 +102,12 @@ void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color)
 }
 
 float get_distancefield(sampler2D distancefield, vec2 uv){
-    return -texture(distancefield, uv).r;
+    // Glyph distance field units are in pixels. Convert to same scaling as
+    // f_uv so that it's the same as the programmatic signed_distance
+    // calculations.
+    float pixwidth = 2.0 * (f_uv_texture_bbox.z - f_uv_texture_bbox.x) *
+                     textureSize(distancefield, 0).x;
+    return -texture(distancefield, uv).r / pixwidth;
 }
 float get_distancefield(Nothing distancefield, vec2 uv){
     return 0.0;
@@ -129,6 +133,19 @@ void main(){
         signed_distance = 1.0;
     else if(shape == TRIANGLE)
         signed_distance = triangle(f_uv);
+
+    // We have our signed distance in uv coords, but want it in viewport
+    // coords for direct use in antialiasing step functions. The `dist_scale`
+    // should be correct for cases where the transform has only isotropic
+    // scaling.
+    //
+    // For anisotropic cases we need multiple sampling to do a good job as
+    // there is no simple transformation of the distance field, but this
+    // formula should degrades gracefully as the geometric mean of the two
+    // scale factors. (We could consider multiple sampling for anisotropic
+    // filtering in important cases such as the text in 3D axes.)
+    float dist_scale = sqrt(abs(determinant(mat2(dFdx(f_uv), dFdy(f_uv)))));
+    signed_distance = signed_distance / dist_scale;
 
     float half_stroke = -f_scale.x;
     float inside_start = max(half_stroke, 0.0);
