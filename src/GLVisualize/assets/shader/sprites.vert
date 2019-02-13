@@ -102,7 +102,7 @@ out uvec2 g_id;
 out int   g_primitive_index;
 out vec3  g_position;
 out vec4  g_offset_width;
-out vec4  g_uv_offset_width;
+out vec4  g_uv_texture_bbox;
 out vec4  g_rotation;
 out vec4  g_color;
 out vec4  g_stroke_color;
@@ -120,7 +120,7 @@ void main(){
     g_offset_width.zw = _scale(scale, scale_x, scale_y, scale_z, g_primitive_index).xy;
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
-    g_uv_offset_width = uv_offset_width;
+    g_uv_texture_bbox = uv_offset_width;
     g_stroke_color    = stroke_color;
     g_glow_color      = glow_color;
 
