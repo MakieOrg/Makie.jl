@@ -31,9 +31,6 @@ convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, ke
 convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
 convert_attribute(x, key::Key) = x
 
-# By default, don't apply any conversions
-convert_arguments(::PlotFunc, args...) = args
-
 const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
