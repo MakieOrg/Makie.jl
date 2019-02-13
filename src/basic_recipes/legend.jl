@@ -68,7 +68,7 @@ function make_label(scene, plot, labeltext, i, attributes)
     else
         scatter!(
             scene, lift(scale, mpattern, w, padding, gap, tsize),
-            markersize = msize, color = plot[:color]
+            markersize = msize, color = plot[:color], marker = plot[:marker]
         )
     end
 end
@@ -139,7 +139,7 @@ end
 
 function calculated_attributes!(::Type{<: ColorLegend}, plot)
     ranges = replace_automatic!(plot, :ranges) do
-        lift(default_ticks, plot[:colorrange], Node(nothing))
+        lift(default_ticks, plot[:colorrange], automatic, identity)
     end
     replace_automatic!(plot, :labels) do
         lift(default_labels, ranges, plot[:formatter])
