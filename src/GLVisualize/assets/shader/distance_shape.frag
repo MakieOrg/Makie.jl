@@ -26,6 +26,7 @@ uniform vec2            resolution;
 uniform bool            transparent_picking;
 
 flat in vec2            f_scale;
+flat in float           f_viewport_from_uv_scale;
 flat in vec4            f_color;
 flat in vec4            f_bg_color;
 flat in vec4            f_stroke_color;
@@ -105,9 +106,10 @@ float get_distancefield(sampler2D distancefield, vec2 uv){
     // Glyph distance field units are in pixels. Convert to same scaling as
     // f_uv so that it's the same as the programmatic signed_distance
     // calculations.
-    float pixwidth = 2.0 * (f_uv_texture_bbox.z - f_uv_texture_bbox.x) *
-                     textureSize(distancefield, 0).x;
-    return -texture(distancefield, uv).r / pixwidth;
+    // TODO: This works, but why are the x and y proportions not the same!?
+    vec2 pixsize = 2.0 * (f_uv_texture_bbox.zw - f_uv_texture_bbox.xy) *
+                     textureSize(distancefield, 0);
+    return -texture(distancefield, uv).r / (0.5*(pixsize.x + pixsize.y));
 }
 float get_distancefield(Nothing distancefield, vec2 uv){
     return 0.0;
@@ -134,18 +136,8 @@ void main(){
     else if(shape == TRIANGLE)
         signed_distance = triangle(f_uv);
 
-    // We have our signed distance in uv coords, but want it in viewport
-    // coords for direct use in antialiasing step functions. The `dist_scale`
-    // should be correct for cases where the transform has only isotropic
-    // scaling.
-    //
-    // For anisotropic cases we need multiple sampling to do a good job as
-    // there is no simple transformation of the distance field, but this
-    // formula should degrades gracefully as the geometric mean of the two
-    // scale factors. (We could consider multiple sampling for anisotropic
-    // filtering in important cases such as the text in 3D axes.)
-    float dist_scale = sqrt(abs(determinant(mat2(dFdx(f_uv), dFdy(f_uv)))));
-    signed_distance = signed_distance / dist_scale;
+    // See notes in geometry shader where f_viewport_from_uv_scale is computed.
+    signed_distance *= f_viewport_from_uv_scale;
 
     float half_stroke = -f_scale.x;
     float inside_start = max(half_stroke, 0.0);
@@ -155,10 +147,13 @@ void main(){
     fill(f_color, image, tex_uv, inside, final_color);
     stroke(f_stroke_color, signed_distance, half_stroke, final_color);
     glow(f_glow_color, signed_distance, aastep(-f_scale.x, signed_distance), final_color);
-    // Antialising debug tool: show the background of the sprite.
-    //final_color = mix(final_color, vec4(1,0,0,1), 0.2);
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //if (final_color == f_bg_color)
     //    discard;
     write2framebuffer(final_color, f_id);
+    // Debug tools:
+    // * Show the background of the sprite.
+    //   write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
+    // * Show the antialiasing border around glyphs
+    //   write2framebuffer(vec4(vec3(abs(signed_distance)),1), f_id);
 }

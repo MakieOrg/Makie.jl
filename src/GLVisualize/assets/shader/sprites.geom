@@ -43,6 +43,7 @@ in uvec2 g_id[];
 
 flat out int  f_primitive_index;
 flat out vec2 f_scale;
+flat out float f_viewport_from_uv_scale;
 flat out vec4 f_color;
 flat out vec4 f_bg_color;
 flat out vec4 f_stroke_color;
@@ -73,6 +74,10 @@ void emit_vertex(vec4 vertex, vec2 uv)
 // Half width of antialiasing smoothstep. NB: Should match fragment shader
 #define ANTIALIAS_RADIUS  0.8
 
+mat2 diagm(vec2 v){
+    return mat2(v.x, 0.0, 0.0, v.y);
+}
+
 void main(void)
 {
     // emit quad as triangle strip
@@ -84,13 +89,17 @@ void main(void)
     // v1*      * v2
     vec4 o_w = g_offset_width[0];
 
-    // Transform central point into scene
-    mat4 pview = projection * view;
-    vec4 datapoint = pview * model * vec4(g_position[0], 1);
+    // Centred bounding box of billboard
+    vec2 bbox_radius = 0.5*o_w.zw;
+    vec2 sprite_bbox_centre = o_w.xy + bbox_radius;
 
-    // Compute transform for the offset vectors from the central `datapoint`
+    mat4 pview = projection * view;
+    // Compute transform for the offset vectors from the central point
     mat4 trans = scale_primitive ? model : mat4(1.0);
     trans = (billboard ? projection : pview * qmat(g_rotation[0])) * trans;
+
+    // Compute centre of billboard in clipping coordinates
+    vec4 vclip = pview*model*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
 
     // Extra buffering is required around sprites which are antialiased so that
     // the antialias blur doesn't get cut off (see #15). This blur falls to
@@ -98,28 +107,44 @@ void main(void)
     // and we want to buffer the vertices in the *source* sprite coordinate
     // system so that we get this amount in the output coordinates.
     //
-    // However this is quite tricky for arbitrary sprite rotations.  For now we
-    // just do something which is a cheap-ish and works for non-rotated sprites.
-    // For rotated sprites at glancing angles it's an underestimate, but sdf
-    // based antialiasing can't work perfectly there anyway.
-    //
-    // The following transform is the model->view->proj->clip->ndc->viewport
-    // forward transformation for vectors.
-    vec2 aa_viewport_x = 0.5*resolution*(trans*vec4(1,0,0,0)).xy / datapoint.w;
-    vec2 aa_viewport_y = 0.5*resolution*(trans*vec4(0,1,0,0)).xy / datapoint.w;
-    float aa_buf = ANTIALIAS_RADIUS/max(length(aa_viewport_x), length(aa_viewport_y));
+    // Here we calculate the derivative of the mapping from sprite xy
+    // coordinates (defined by `trans`) into the viewport pixel coordinates.
+    // The derivative needs to include the proper term for the perspective
+    // divide into NDC, evaluated at the centre point `vclip`.
+    mat4 d_ndc_d_clip = mat4(1.0/vclip.w, 0.0,         0.0,         0.0,
+                             0.0,         1.0/vclip.w, 0.0,         0.0,
+                             0.0,         0.0,         1.0/vclip.w, 0.0,
+                             -vclip.xyz/(vclip.w*vclip.w),          0.0);
+    mat2 dxyv_dxys = diagm(0.5*resolution) * mat2(d_ndc_d_clip*trans);
+    // Now, the appropriate amount to buffer our sprite by is the scale factor
+    // of the transformation (for isotropic transformations). For anisotropic
+    // transformations, the geometric mean of the two principle scale factors
+    // is a reasonable compromise:
+    float viewport_from_sprite_scale = sqrt(abs(determinant(dxyv_dxys)));
+    float aa_buf = ANTIALIAS_RADIUS / viewport_from_sprite_scale;
 
-    float bbox_buf = aa_buf + max(glow_width, 0) + max(stroke_width, 0);
-    // Bounding box of billboard
-    vec4 bbox = vec4(-bbox_buf + o_w.xy,
-                     o_w.xy + o_w.zw + bbox_buf);
-    vec2 scale_rel = (bbox.zw - bbox.xy) / o_w.zw;
-    vec4 uv_min_max = vec4(-scale_rel, scale_rel); //minx, miny, maxx, maxy
+    // In the fragment shader we will have our signed distance in uv coords,
+    // but want it in viewport (pixel) coords for direct use in antialiasing
+    // step functions. We therefore need a scaling factor similar to
+    // viewport_from_sprite_scale, but including the uv->sprite coordinate
+    // system scaling factor as well.
+    float sprite_from_uv_scale = sqrt(bbox_radius.x*bbox_radius.y);
+    f_viewport_from_uv_scale = viewport_from_sprite_scale * sprite_from_uv_scale;
+
     f_scale = vec2(stroke_width, glow_width)/o_w.zw;
 
-    emit_vertex(datapoint + trans*vec4(bbox.xy,0,0), uv_min_max.xw);
-    emit_vertex(datapoint + trans*vec4(bbox.xw,0,0), uv_min_max.xy);
-    emit_vertex(datapoint + trans*vec4(bbox.zy,0,0), uv_min_max.zw);
-    emit_vertex(datapoint + trans*vec4(bbox.zw,0,0), uv_min_max.zy);
+    // Compute xy bounding box of billboard (in model space units) after
+    // buffering and associated bounding box of uv coordinates.
+    float bbox_buf = aa_buf + max(glow_width, 0) + max(stroke_width, 0);
+    vec2 bbox_radius_buf = bbox_radius + bbox_buf;
+    vec4 bbox = vec4(-bbox_radius_buf, bbox_radius_buf);
+    vec2 uv_radius = bbox_radius_buf / bbox_radius;
+    vec4 uv_bbox = vec4(-uv_radius, uv_radius); //minx, miny, maxx, maxy
+
+    emit_vertex(vclip + trans*vec4(bbox.xy,0,0), uv_bbox.xw);
+    emit_vertex(vclip + trans*vec4(bbox.xw,0,0), uv_bbox.xy);
+    emit_vertex(vclip + trans*vec4(bbox.zy,0,0), uv_bbox.zw);
+    emit_vertex(vclip + trans*vec4(bbox.zw,0,0), uv_bbox.zy);
+
     EndPrimitive();
 }
