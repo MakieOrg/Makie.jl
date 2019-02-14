@@ -16,7 +16,7 @@ FreeTypeAbstraction 0.3.0 #for findfont
 @windows ImageMagick
 @linux ImageMagick
 @osx QuartzImageIO
-AbstractPlotting 0.9.1
+AbstractPlotting 0.9.5
 Primes
 PlotUtils
 IntervalSets
