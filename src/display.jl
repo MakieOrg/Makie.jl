@@ -274,7 +274,7 @@ function save(path::String, io::VideoStream;
     if typ == ".mkv"
         cp(io.path, out)
     elseif typ == ".mp4"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf 24 -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf $fps -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $fps -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
@@ -322,7 +322,7 @@ usage:
 ```
 """
 function record(func, scene, path, iter; fps::Int = 24)
-    io = VideoStream(scene)
+    io = VideoStream(scene; fps = fps)
     for i in iter
         t1 = time()
         func(i)
