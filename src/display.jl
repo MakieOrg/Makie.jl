@@ -206,15 +206,15 @@ end
 
 
 """
-    VideoStream(scene::Scene, dir = mktempdir(), name = "video"; fps = 24)
+    VideoStream(scene::Scene, dir = mktempdir(), name = "video"; framerate = 24)
 
 returns a stream and a buffer that you can use to not allocate for new frames.
 Use `add_frame!(stream, window, buffer)` to add new video frames to the stream.
 Use `save(stream)` to save the video to 'dir/name.mkv'. You can also call
 `save(stream, "mkv")`, `save(stream, "mp4")`, `save(stream, "gif")` or `save(stream, "webm")` to convert the stream to those formats.
 """
-function VideoStream(scene::Scene; 
-                     fps::Int = 24)
+function VideoStream(scene::Scene;
+                     framerate::Int = 24)
     if !has_ffmpeg[]
         error("You can't create a video stream without ffmpeg installed.
          Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
@@ -231,7 +231,7 @@ function VideoStream(scene::Scene;
     _xdim, _ydim = widths(pixelarea(scene)[])
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $fps -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
@@ -258,7 +258,7 @@ function recordframe!(io::VideoStream)
 end
 
 """
-    save(path::String, io::VideoStream; fps = 24)
+    save(path::String, io::VideoStream; framerate = 24)
 
 Flushes the video stream and converts the file to the extension found in `path` which can
 be `mkv` is default and doesn't need convert, `gif`, `mp4` and `webm`.
@@ -267,18 +267,18 @@ be `mkv` is default and doesn't need convert, `gif`, `mp4` and `webm`.
 6 times bigger with same quality!
 """
 function save(path::String, io::VideoStream;
-              fps::Int = 24)
+              framerate::Int = 24)
     close(io.process)
     wait(io.process)
     p, typ = splitext(path)
     if typ == ".mkv"
         cp(io.path, out)
     elseif typ == ".mp4"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf $fps -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $fps -vf scale=iw:ih -y $path`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
-        filters = "fps=$fps,scale=iw:ih:flags=lanczos"
+        filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
         palette_path = dirname(io.path)
         pname = joinpath(palette_path, "palette.bmp")
         isfile(pname) && rm(pname, force = true)
@@ -295,7 +295,7 @@ end
 
 
 """
-    record(func, scene, path; fps = 24)
+    record(func, scene, path; framerate = 24)
 usage:
 ```example
     record(scene, "test.gif") do io
@@ -306,10 +306,10 @@ usage:
     end
 ```
 """
-function record(func, scene, path; fps::Int = 24)
-    io = VideoStream(scene; fps = fps)
+function record(func, scene, path; framerate::Int = 24)
+    io = VideoStream(scene; framerate = framerate)
     func(io)
-    save(path, io; fps = fps)
+    save(path, io; framerate = framerate)
 end
 
 """
@@ -321,8 +321,8 @@ usage:
     end
 ```
 """
-function record(func, scene, path, iter; fps::Int = 24)
-    io = VideoStream(scene; fps = fps)
+function record(func, scene, path, iter; framerate::Int = 24)
+    io = VideoStream(scene; framerate = framerate)
     for i in iter
         t1 = time()
         func(i)
@@ -334,7 +334,7 @@ function record(func, scene, path, iter; fps::Int = 24)
             yield()
         end
     end
-    save(path, io, fps = fps)
+    save(path, io, framerate = framerate)
 end
 
 
