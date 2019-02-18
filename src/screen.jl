@@ -320,7 +320,11 @@ function mouseover(scene::SceneLike, plots::AbstractPlot...)
 end
 
 function flatten_plots(x::Atomic, plots = AbstractPlot[])
-    push!(plots, x)
+    if isempty(x.plots)
+        push!(plots, x)
+    else
+        flatten_plots(x.plots, plots)
+    end
     plots
 end
 
