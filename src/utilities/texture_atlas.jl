@@ -211,6 +211,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     end
     bitmap, extent = renderface(font, glyph, (50*downsample, 50*downsample))
     sd = sdistancefield(bitmap, downsample, downsample*pad)
+    sd = sd ./ downsample;
     extent = extent ./ Vec2f0(downsample)
     rect = SimpleRectangle(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) #find out where to place the rectangle
