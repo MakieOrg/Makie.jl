@@ -46,7 +46,6 @@ in vec4 g_offset_width[];
 in uvec2 g_id[];
 
 flat out int  f_primitive_index;
-flat out vec2 f_scale;
 flat out float f_viewport_from_u_scale;
 flat out float f_distancefield_scale;
 flat out vec4 f_color;
@@ -131,12 +130,12 @@ void main(void)
                              0.0,         0.0,         1.0/vclip.w, 0.0,
                              -vclip.xyz/(vclip.w*vclip.w),          0.0);
     mat2 dxyv_dxys = diagm(0.5*resolution) * mat2(d_ndc_d_clip*trans);
-    // Now, the appropriate amount to buffer our sprite by is the scale factor
-    // of the transformation (for isotropic transformations). For anisotropic
+    // Now, our buffer size is expressed in viewport pixels but we get back to
+    // the sprite coordinate system using the scale factor of the
+    // transformation (for isotropic transformations). For anisotropic
     // transformations, the geometric mean of the two principle scale factors
     // is a reasonable compromise:
     float viewport_from_sprite_scale = sqrt(abs(determinant(dxyv_dxys)));
-    float aa_buf = ANTIALIAS_RADIUS / viewport_from_sprite_scale;
 
     // In the fragment shader we want our signed distance in viewport (pixel)
     // coords for direct use in antialiasing step functions. We therefore need
@@ -153,11 +152,12 @@ void main(void)
     f_viewport_from_u_scale = viewport_from_sprite_scale * sprite_from_u_scale;
     f_distancefield_scale = get_distancefield_scale(distancefield);
 
-    f_scale = vec2(stroke_width, glow_width)/o_w.zw;
-
+    // Compute required amount of buffering
+    float sprite_from_viewport_scale = 1.0 / viewport_from_sprite_scale;
+    float bbox_buf = sprite_from_viewport_scale *
+                     (ANTIALIAS_RADIUS + max(glow_width, 0) + max(stroke_width, 0));
     // Compute xy bounding box of billboard (in model space units) after
     // buffering and associated bounding box of uv coordinates.
-    float bbox_buf = aa_buf + max(glow_width, 0) + max(stroke_width, 0);
     vec2 bbox_radius_buf = bbox_radius + bbox_buf;
     vec4 bbox = vec4(-bbox_radius_buf, bbox_radius_buf);
     // uv bounding box is the buffered version of the domain [0,1]x[0,1]
