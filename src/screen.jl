@@ -296,6 +296,10 @@ function mouse_selection_native(scene::SceneLike)
     end
     if !(query_mouse in selection_queries)
         push!(selection_queries, query_mouse)
+        # TODO, this is not optimal since it does way more
+        # than calling query_mouse() on first click,
+        # but otherwise it might get into an inconsistent state.
+        render_frame(getscreen(scene))
     end
     convert(SelectionID{Int}, _mouse_selection_id[])
 end
@@ -316,7 +320,11 @@ function mouseover(scene::SceneLike, plots::AbstractPlot...)
 end
 
 function flatten_plots(x::Atomic, plots = AbstractPlot[])
-    push!(plots, x)
+    if isempty(x.plots)
+        push!(plots, x)
+    else
+        flatten_plots(x.plots, plots)
+    end
     plots
 end
 

@@ -1,6 +1,8 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
+struct Nothing{ bool _; };
+
 layout(points) in;
 layout(triangle_strip, max_vertices = 4) out;
 
@@ -25,6 +27,8 @@ mat4 qmat(vec4 quat){
     );
 }
 
+{{distancefield_type}}  distancefield;
+
 uniform bool scale_primitive;
 uniform bool billboard;
 uniform float stroke_width;
@@ -42,20 +46,30 @@ in vec4 g_offset_width[];
 in uvec2 g_id[];
 
 flat out int  f_primitive_index;
-flat out vec2 f_scale;
-flat out float f_viewport_from_uv_scale;
+flat out float f_viewport_from_u_scale;
+flat out float f_distancefield_scale;
 flat out vec4 f_color;
 flat out vec4 f_bg_color;
 flat out vec4 f_stroke_color;
 flat out vec4 f_glow_color;
 flat out uvec2 f_id;
-out vec2 f_uv; // f_uv.{x,y} are in -1..1
+out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
 
 
 uniform mat4 projection, view, model;
 
-
+float get_distancefield_scale(sampler2D distancefield){
+    // Glyph distance field units are in pixels; convert to dimensionless
+    // x-coordinate of texture instead for consistency with programmatic uv
+    // distance fields in fragment shader. See also comments below.
+    float pixsize_x = (g_uv_texture_bbox[0].z - g_uv_texture_bbox[0].x) *
+                      textureSize(distancefield, 0).x;
+    return -1.0/pixsize_x;
+}
+float get_distancefield_scale(Nothing distancefield){
+    return 1.0;
+}
 
 void emit_vertex(vec4 vertex, vec2 uv)
 {
@@ -116,30 +130,40 @@ void main(void)
                              0.0,         0.0,         1.0/vclip.w, 0.0,
                              -vclip.xyz/(vclip.w*vclip.w),          0.0);
     mat2 dxyv_dxys = diagm(0.5*resolution) * mat2(d_ndc_d_clip*trans);
-    // Now, the appropriate amount to buffer our sprite by is the scale factor
-    // of the transformation (for isotropic transformations). For anisotropic
+    // Now, our buffer size is expressed in viewport pixels but we get back to
+    // the sprite coordinate system using the scale factor of the
+    // transformation (for isotropic transformations). For anisotropic
     // transformations, the geometric mean of the two principle scale factors
     // is a reasonable compromise:
     float viewport_from_sprite_scale = sqrt(abs(determinant(dxyv_dxys)));
-    float aa_buf = ANTIALIAS_RADIUS / viewport_from_sprite_scale;
 
-    // In the fragment shader we will have our signed distance in uv coords,
-    // but want it in viewport (pixel) coords for direct use in antialiasing
-    // step functions. We therefore need a scaling factor similar to
-    // viewport_from_sprite_scale, but including the uv->sprite coordinate
-    // system scaling factor as well.
-    float sprite_from_uv_scale = sqrt(bbox_radius.x*bbox_radius.y);
-    f_viewport_from_uv_scale = viewport_from_sprite_scale * sprite_from_uv_scale;
+    // In the fragment shader we want our signed distance in viewport (pixel)
+    // coords for direct use in antialiasing step functions. We therefore need
+    // a scaling factor similar to viewport_from_sprite_scale, but including
+    // the uv->sprite coordinate system scaling factor as well.  We choose to
+    // use the bounding box *x* width for this. This comes with some
+    // consistency conditions:
+    // * For procedural distance fields, we need the sprite bounding box to be
+    //   square. (If not, the uv coordinates will be anisotropically scaled and
+    //   any calculation based on them will not be a distance function.)
+    // * For sampled distance fields, we need to consistently choose the *x*
+    //   for the scaling in get_distancefield_scale().
+    float sprite_from_u_scale = o_w.z;
+    f_viewport_from_u_scale = viewport_from_sprite_scale * sprite_from_u_scale;
+    f_distancefield_scale = get_distancefield_scale(distancefield);
 
-    f_scale = vec2(stroke_width, glow_width)/o_w.zw;
-
+    // Compute required amount of buffering
+    float sprite_from_viewport_scale = 1.0 / viewport_from_sprite_scale;
+    float bbox_buf = sprite_from_viewport_scale *
+                     (ANTIALIAS_RADIUS + max(glow_width, 0) + max(stroke_width, 0));
     // Compute xy bounding box of billboard (in model space units) after
     // buffering and associated bounding box of uv coordinates.
-    float bbox_buf = aa_buf + max(glow_width, 0) + max(stroke_width, 0);
     vec2 bbox_radius_buf = bbox_radius + bbox_buf;
     vec4 bbox = vec4(-bbox_radius_buf, bbox_radius_buf);
-    vec2 uv_radius = bbox_radius_buf / bbox_radius;
-    vec4 uv_bbox = vec4(-uv_radius, uv_radius); //minx, miny, maxx, maxy
+    // uv bounding box is the buffered version of the domain [0,1]x[0,1]
+    vec2 uv_radius = 0.5 * bbox_radius_buf / bbox_radius;
+    vec2 uv_center = vec2(0.5);
+    vec4 uv_bbox = vec4(uv_center-uv_radius, uv_center+uv_radius); //minx, miny, maxx, maxy
 
     emit_vertex(vclip + trans*vec4(bbox.xy,0,0), uv_bbox.xw);
     emit_vertex(vclip + trans*vec4(bbox.xw,0,0), uv_bbox.xy);
