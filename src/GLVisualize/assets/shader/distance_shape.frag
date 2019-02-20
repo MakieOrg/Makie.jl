@@ -25,7 +25,6 @@ uniform int             shape; // shape is a uniform for now. Making them a vary
 uniform vec2            resolution;
 uniform bool            transparent_picking;
 
-flat in vec2            f_scale;
 flat in float           f_viewport_from_u_scale;
 flat in float           f_distancefield_scale;
 flat in vec4            f_color;
@@ -88,17 +87,16 @@ void fill(vec4 c, sampler2DArray image, vec2 uv, float infill, inout vec4 color)
 }
 
 
-void stroke(vec4 strokecolor, float signed_distance, float half_stroke, inout vec4 color){
-    if (half_stroke != 0.0){
-        float t = aastep(min(half_stroke, 0.0), max(half_stroke, 0.0), signed_distance);
+void stroke(vec4 strokecolor, float signed_distance, float width, inout vec4 color){
+    if (width != 0.0){
+        float t = aastep(min(width, 0.0), max(width, 0.0), signed_distance);
         color = mix(color, strokecolor, t);
     }
 }
 
 void glow(vec4 glowcolor, float signed_distance, float inside, inout vec4 color){
     if (glow_width > 0.0){
-        float lolz = (f_scale.x+f_scale.y);
-        float outside = (abs(signed_distance)-f_scale.x)/f_scale.y;
+        float outside = (abs(signed_distance)-stroke_width)/glow_width;
         float alpha = 1-outside;
         color = mix(vec4(glowcolor.rgb, glowcolor.a*alpha), color, inside);
     }
@@ -126,8 +124,16 @@ void main(){
 
     if(shape == CIRCLE)
         signed_distance = circle(f_uv);
-    else if(shape == DISTANCEFIELD)
+    else if(shape == DISTANCEFIELD){
         signed_distance = get_distancefield(distancefield, tex_uv);
+        if (stroke_width > 0 || glow_width > 0) {
+            // Compensate for the clamping of tex_uv by an approximate
+            // extension of the signed distance outside the valid texture
+            // region.
+            vec2 bufuv = f_uv - clamp(f_uv, 0.0, 1.0);
+            signed_distance -= length(bufuv);
+        }
+    }
     else if(shape == ROUNDED_RECTANGLE)
         signed_distance = rounded_rectangle(f_uv, vec2(0.2), vec2(0.8));
     else if(shape == RECTANGLE)
@@ -138,14 +144,13 @@ void main(){
     // See notes in geometry shader where f_viewport_from_u_scale is computed.
     signed_distance *= f_viewport_from_u_scale;
 
-    float half_stroke = -f_scale.x;
-    float inside_start = max(half_stroke, 0.0);
+    float inside_start = max(-stroke_width, 0.0);
     float inside = aastep(inside_start, signed_distance);
     vec4 final_color = f_bg_color;
 
     fill(f_color, image, tex_uv, inside, final_color);
-    stroke(f_stroke_color, signed_distance, half_stroke, final_color);
-    glow(f_glow_color, signed_distance, aastep(-f_scale.x, signed_distance), final_color);
+    stroke(f_stroke_color, signed_distance, -stroke_width, final_color);
+    glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
     // TODO: In 3D, we should arguably discard fragments outside the sprite
     //if (final_color == f_bg_color)
     //    discard;
