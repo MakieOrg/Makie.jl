@@ -233,7 +233,7 @@ function color_and_colormap!(plot, intensity = plot[:color])
         false
     end
 end
- 
+
 
 """
     `calculated_attributes!(plot::AbstractPlot)`
@@ -638,8 +638,13 @@ function add_axis!(scene::Scene, attributes = Attributes())
     end
 
     if show_axis && !(any(isaxis, plots(scene)))
-        key = axistype == axis2d! ? :axis2d : :axis3d
-        axis_attributes = scene[key]
+        axis_attributes = Attributes()
+        for key in (:axis, :axis2d, :axis3d)
+            if haskey(scene, key) && !isempty(scene[key])
+                axis_attributes = scene[key]
+                break
+            end
+        end
         ranges = get(attributes, :tickranges) do
             find_in_plots(scene, :tickranges)
         end

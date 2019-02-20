@@ -18,6 +18,7 @@ mutable struct Scene <: AbstractScene
     updated::Node{Bool}
 end
 
+Base.haskey(scene::Scene, key::Symbol) = haskey(scene.attributes, key)
 Base.getindex(scene::Scene, key::Symbol) = scene.attributes[key]
 Base.setindex!(scene::Scene, value, key::Symbol) = (scene.attributes[key] = value)
 
