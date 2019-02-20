@@ -56,18 +56,10 @@ function _default(position::MatTypes{<:Point}, s::style"lines", data::Dict)
     line_visualization(position, data)
 end
 function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::Dict) where T<:Point
-    pv = to_value(position)
     p_vec = if isa(position, GPUArray)
         position
     else
-        const_lift(position) do p
-            pvv = vec(p)
-            if length(pvv) < 4 # geometryshader doesn't work with less then 4
-                return [pvv..., fill(T(NaN), 4-length(pvv))...]
-            else
-                return pvv
-            end
-        end
+        const_lift(vec, position)
     end
 
     @gen_defaults! data begin
@@ -84,16 +76,14 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
         pattern             = nothing
         fxaa                = false
         preferred_camera    = :orthographic_pixel
-        indices             = const_lift(length, p_vec) => to_index_buffer
+        # Duplicate the vertex indices on the ends of the line, as our geometry
+        # shader in `layout(lines_adjacency)` mode requires each rendered
+        # segment to have neighbouring vertices.
+        indices             = const_lift((p)->[1; 1:length(p); length(p)], p_vec) => to_index_buffer
         shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag")
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
-        startend            = const_lift(p_vec) do vec
-            l = length(vec)
-            map(1:l) do i
-                (i == 1 || isnan(vec[max(i-1, 1)])) && return Float32(0) # start
-                (i == l || isnan(vec[min(i+1, l)])) && return Float32(1) # end
-                Float32(2) # segment
-            end
+        valid_vertex        = const_lift(p_vec) do pv
+            map(p-> Float32(all(isfinite, p)), pv)
         end => GLBuffer
     end
     if pattern != nothing
