@@ -5,13 +5,13 @@
 {{GLSL_EXTENSIONS}}
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 12) out;
+layout(triangle_strip, max_vertices = 7) out;
 
 in vec4 g_color[];
 in float g_lastlen[];
 in uvec2 g_id[];
 in uint g_line_connections[];
-in int g_startend[];
+in int g_valid_vertex[];
 //in float g_thickness[];
 
 out vec4 f_color;
@@ -58,17 +58,29 @@ const float infinity = 1.0 / 0.0;
 
 void main(void)
 {
-    if(
-        g_line_connections[1] != g_line_connections[2]
-    ){
-        return; // if there is a break in the line, we don't emit anything
+    // We mark each of the four vertices as valid or not. Vertices can be
+    // marked invalid on input (eg, if they contain NaN). We also mark them
+    // invalid if they repeat in the index buffer. This allows us to render to
+    // the very ends of a polyline without clumsy buffering the position data on the
+    // CPU side by repeating the first and last points via the index buffer. It
+    // just requires a little care further down to avoid degenerate normals.
+    bool isvalid[4] = bool[](
+        g_valid_vertex[0] == 1 && g_id[0].y != g_id[1].y,
+        g_valid_vertex[1] == 1,
+        g_valid_vertex[2] == 1,
+        g_valid_vertex[3] == 1 && g_id[2].y != g_id[3].y
+    );
+
+    if(g_line_connections[1] != g_line_connections[2] || !isvalid[1] || !isvalid[2]){
+        // If one of the central vertices is invalid or there is a break in the
+        // line, we don't emit anything.
+        return;
     }
     // get the four vertices passed to the shader:
     vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
     vec2 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment
     vec2 p2 = screen_space(gl_in[2].gl_Position); // end of current segment, start of next segment
     vec2 p3 = screen_space(gl_in[3].gl_Position); // end of next segment
-
 
     float thickness_aa = thickness+4;
 
@@ -81,14 +93,35 @@ void main(void)
     //if( p2.y < -area.y || p2.y > area.y ) return;
 
     // determine the direction of each of the 3 segments (previous, current, next)
-    vec2 v0 = normalize(p1 - p0);
-    vec2 v1 = normalize(p2 - p1);
-    vec2 v2 = normalize(p3 - p2);
+    vec2 v1 =              normalize(p2 - p1);
+    vec2 v0 = isvalid[0] ? normalize(p1 - p0) : v1;
+    vec2 v2 = isvalid[3] ? normalize(p3 - p2) : v1;
 
     // determine the normal of each of the 3 segments (previous, current, next)
     vec2 n0 = vec2(-v0.y, v0.x);
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
+
+    /*
+       The goal here is to make wide line segments join cleanly. For most
+       joints, it's enough to extend/contract the buffered lines into the
+       "normal miter" shape below. However, this can get really spiky if the
+       lines are almost anti-parallel, in which case we want the truncated
+       mitre. For the truncated miter, we must emit the additional triangle
+       x-a-b.
+
+              normal miter               truncated miter
+            ------------------*        ----------a.
+                             /                   | '.
+                       x    /                    x_ '.
+            ------*        /           ------.     '--b
+                 /        /                 /        /
+                /        /                 /        /
+
+       Note that the way this is done below is fairly simple but results in
+       overdraw for semi transparent lines. Ideally would be nice to fix that
+       somehow.
+    */
 
     // determine miter lines by averaging the normals of the 2 segments
     vec2 miter_a = normalize(n0 + n1);    // miter at start of current segment
@@ -103,45 +136,22 @@ void main(void)
 
     float ratio = length(p2 - p1) / (xend - xstart);
 
-    /*
-    over 90
-         v0
-        /
-      /
-    . ------> v1
-    under 90
-    v
-     \
-      \
-       . ------> v1
-    */
-    bool over_90_deg = dot( v0, v1 ) < -MITER_LIMIT;
-    /*
-             n1
-    gap true  :  gap false
-        v0    :
-    . ------> :
-    */
-    bool gap = dot( v0, n1 ) > 0;
     float uvy = thickness_aa/thickness;
-    if(over_90_deg){
+    if(dot( v0, v1 ) < -MITER_LIMIT && isvalid[0]){
+        /*
+                 n1
+        gap true  :  gap false
+            v0    :
+        . ------> :
+        */
+        bool gap = dot( v0, n1 ) > 0;
         // close the gap
         if(gap){
-            if (g_startend[0] == 0){
-                emit_vertex(p0 - thickness_aa * n0, vec2(1, uvy), 0, ratio);
-                emit_vertex(p0 + thickness_aa * n0, vec2(1, -uvy), 0, ratio);
-                emit_vertex(p1 + thickness_aa * n1, vec2(1, uvy), 1, ratio);
-            }
             emit_vertex(p1 + thickness_aa * n0, vec2(1, -uvy), 1, ratio);
             emit_vertex(p1 + thickness_aa * n1, vec2(1, -uvy), 1, ratio);
             emit_vertex(p1,                     vec2(0, 0.0), 1, ratio);
             EndPrimitive();
         }else{
-            if (g_startend[0] == 0){
-                emit_vertex(p0 + thickness_aa * n0, vec2(1, -uvy), 0, ratio);
-                emit_vertex(p0 - thickness_aa * n0, vec2(1, uvy), 0, ratio);
-                emit_vertex(p1 + length_a * miter_a, vec2(1, -uvy), 1, ratio);
-            }
             emit_vertex(p1 - thickness_aa * n0, vec2(1, uvy), 1, ratio);
             emit_vertex(p1,                     vec2(0, 0.0), 1, ratio);
             emit_vertex(p1 - thickness_aa * n1, vec2(1, uvy), 1, ratio);
@@ -149,16 +159,11 @@ void main(void)
         }
         miter_a = n1;
         length_a = thickness_aa;
-    }else if(g_startend[0] == 0){
-        emit_vertex(p0 + thickness_aa * n0, vec2(1, -uvy), 0, ratio);
-        emit_vertex(p0 - thickness_aa * n0, vec2(1, uvy), 0, ratio);
     }
 
-    vec2 nc = n2;
     if( dot( v1, v2 ) < -MITER_LIMIT ) {
         miter_b = n1;
         length_b = thickness_aa;
-        nc = -n2;
     }
 
     // generate the triangle strip
@@ -168,10 +173,4 @@ void main(void)
 
     emit_vertex(p2 + length_b * miter_b, vec2( 0, -uvy ), 2, ratio);
     emit_vertex(p2 - length_b * miter_b, vec2( 0, uvy), 2, ratio);
-
-    if(g_startend[3] == 1) //last primitive
-    {
-        emit_vertex(p3 + (thickness_aa) * nc, vec2(0, -uvy), 3, ratio);
-        emit_vertex(p3 - (thickness_aa) * nc, vec2(0, uvy), 3, ratio);
-    }
 }
