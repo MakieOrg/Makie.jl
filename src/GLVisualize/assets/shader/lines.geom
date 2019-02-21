@@ -5,7 +5,7 @@
 {{GLSL_EXTENSIONS}}
 
 layout(lines_adjacency) in;
-layout(triangle_strip, max_vertices = 7) out;
+layout(triangle_strip, max_vertices = 5) out;
 
 in vec4 g_color[];
 in float g_lastlen[];
@@ -26,7 +26,7 @@ uniform float thickness;
 uniform float pattern_length;
 
 
-#define MITER_LIMIT 0.75
+#define MITER_LIMIT -0.75
 
 vec2 screen_space(vec4 vertex)
 {
@@ -102,75 +102,79 @@ void main(void)
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
 
-    /*
-       The goal here is to make wide line segments join cleanly. For most
-       joints, it's enough to extend/contract the buffered lines into the
-       "normal miter" shape below. However, this can get really spiky if the
-       lines are almost anti-parallel, in which case we want the truncated
-       mitre. For the truncated miter, we must emit the additional triangle
-       x-a-b.
-
-              normal miter               truncated miter
-            ------------------*        ----------a.
-                             /                   | '.
-                       x    /                    x_ '.
-            ------*        /           ------.     '--b
-                 /        /                 /        /
-                /        /                 /        /
-
-       Note that the way this is done below is fairly simple but results in
-       overdraw for semi transparent lines. Ideally would be nice to fix that
-       somehow.
-    */
+    // The goal here is to make wide line segments join cleanly. For most
+    // joints, it's enough to extend/contract the buffered lines into the
+    // "normal miter" shape below by emitting the vertices ABCD to form two
+    // triangles. However, this can get really spiky if the lines are almost
+    // anti-parallel, in which case we want to adjust C and emit an extra
+    // vertex E to form a truncated miter with the triangle CDE.
+    //
+    //      normal miter                   truncated miter
+    //  --A---------------------C      --A--------------C
+    //    |  current       _-' /         |            .' '.
+    //    |  segment  _.-*'   /          |          .'  * '.
+    //  --B---------D'       /         --B---------D--------E
+    //             /        /                     /        /
+    //            /        /                     /        /
+    //             next
+    //            segment
 
     // determine miter lines by averaging the normals of the 2 segments
     vec2 miter_a = normalize(n0 + n1);    // miter at start of current segment
     vec2 miter_b = normalize(n1 + n2);    // miter at end of current segment
 
-    // determine the length of the miter by projecting it onto normal and then inverse it
+    // Determine the length of the miter by projecting it onto normal and then
+    // inverting.
     float length_a = thickness_aa / dot(miter_a, n1);
     float length_b = thickness_aa / dot(miter_b, n1);
+    // Clamp lengths of the miters to avoid problem with short lines and wide
+    // line widths where the length of the miter can get longer than the line
+    // itself.
+    float length0 = length(p1 - p0);
+    float length1 = length(p2 - p1);
+    float length2 = length(p3 - p2);
+    float maxlen_a = min(abs(length1/dot(miter_a, v1)), abs(length0/dot(miter_a, v0)));
+    float maxlen_b = min(abs(length1/dot(miter_b, v1)), abs(length2/dot(miter_b, v2)));
+    length_a = clamp(length_a, -maxlen_a, maxlen_a);
+    length_b = clamp(length_b, -maxlen_b, maxlen_b);
 
     float xstart = g_lastlen[1];
     float xend   = g_lastlen[2];
-
-    float ratio = length(p2 - p1) / (xend - xstart);
-
+    float ratio = length1 / (xend - xstart);
     float uvy = thickness_aa/thickness;
-    if(dot( v0, v1 ) < -MITER_LIMIT && isvalid[0]){
-        /*
-                 n1
-        gap true  :  gap false
-            v0    :
-        . ------> :
-        */
-        bool gap = dot( v0, n1 ) > 0;
-        // close the gap
-        if(gap){
-            emit_vertex(p1 + thickness_aa * n0, vec2(1, -uvy), 1, ratio);
-            emit_vertex(p1 + thickness_aa * n1, vec2(1, -uvy), 1, ratio);
-            emit_vertex(p1,                     vec2(0, 0.0), 1, ratio);
-            EndPrimitive();
-        }else{
-            emit_vertex(p1 - thickness_aa * n0, vec2(1, uvy), 1, ratio);
-            emit_vertex(p1,                     vec2(0, 0.0), 1, ratio);
-            emit_vertex(p1 - thickness_aa * n1, vec2(1, uvy), 1, ratio);
-            EndPrimitive();
-        }
-        miter_a = n1;
-        length_a = thickness_aa;
+
+    vec2 vA =  length_a * miter_a;
+    vec2 vB = -length_a * miter_a;
+    if(dot( v0, v1 ) < MITER_LIMIT){
+        if (dot(n1,v0) > 0)
+            vA =  thickness_aa*n1;
+        else
+            vB = -thickness_aa*n1;
     }
 
-    if( dot( v1, v2 ) < -MITER_LIMIT ) {
-        miter_b = n1;
-        length_b = thickness_aa;
+    float Eside = 0;
+    vec2 pE;
+    vec2 vC =  length_b * miter_b;
+    vec2 vD = -length_b * miter_b;
+    if(dot( v1, v2 ) < MITER_LIMIT) {
+        if (dot(n1,v2) < 0) {
+            vC = thickness_aa*n1;
+            Eside = 1.0;
+        }
+        else {
+            vD = -thickness_aa*n1;
+            Eside = -1.0;
+        }
     }
 
     // generate the triangle strip
 
-    emit_vertex(p1 + length_a * miter_a, vec2( 0, -uvy), 1, ratio);
-    emit_vertex(p1 - length_a * miter_a, vec2( 0, uvy), 1, ratio);
+    emit_vertex(p1 + vA, vec2( 0, -uvy), 1, ratio);
+    emit_vertex(p1 + vB, vec2( 0, uvy), 1, ratio);
 
-    emit_vertex(p2 + length_b * miter_b, vec2( 0, -uvy ), 2, ratio);
-    emit_vertex(p2 - length_b * miter_b, vec2( 0, uvy), 2, ratio);
+    emit_vertex(p2 + vC, vec2( 0, -uvy ), 2, ratio);
+    emit_vertex(p2 + vD, vec2( 0, uvy), 2, ratio);
+
+    if(Eside != 0)
+        emit_vertex(p2 + (Eside*thickness_aa)*n2, vec2(1, -Eside*uvy), 2, ratio);
 }
