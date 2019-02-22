@@ -1,5 +1,5 @@
 
-default_printer(v) = string(round(v, digits=3))
+default_printer(v) = string(round(v, sigdigits=3))
 @recipe(Slider) do scene
     Theme(
         value = 0,
