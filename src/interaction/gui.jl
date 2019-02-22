@@ -1,5 +1,8 @@
 
 default_printer(v) = string(round(v, sigdigits=3))
+
+sig_printer(v::Real) = @sprintf "%0.2e" v
+
 @recipe(Slider) do scene
     Theme(
         value = 0,
