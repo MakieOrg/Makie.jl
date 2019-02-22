@@ -1,6 +1,32 @@
 
+
+"""
+    default_printer(v)
+
+Prints v rounded to three digits.  Here, `v` can be of any type accepted by `round`, which includes Real, Complex and many others.  To use your own custom datatype it is sufficient to define Base.round(x::NewType, r::RoundingMode).
+"""
 default_printer(v) = string(round(v, sigdigits=3))
 
+"""
+    sig_printer(v::Real)
+
+Prints the first three significant digits of `v` in scientific notation.
+```jldoctest
+julia> -5:5 .|> exp .|> sig_printer
+11-element Array{String,1}:
+ "6.74e-03"
+ "1.83e-02"
+ "4.98e-02"
+ "1.35e-01"
+ "3.68e-01"
+ "1.00e+00"
+ "2.72e+00"
+ "7.39e+00"
+ "2.01e+01"
+ "5.46e+01"
+ "1.48e+02"
+```
+"""
 sig_printer(v::Real) = @sprintf "%0.2e" v
 
 @recipe(Slider) do scene
