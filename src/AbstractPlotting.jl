@@ -9,6 +9,7 @@ using Serialization # serialize events
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
 import ImageMagick, FileIO
+using Printf: @sprintf # @sprintf macro is required for scientific notation
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
