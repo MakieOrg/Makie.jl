@@ -115,7 +115,6 @@ export disconnect!, must_update, force_update!
 
 # gui
 export slider, button, playbutton
-export default_printer, sig_printer
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
