@@ -1,8 +1,5 @@
 
-default_printer(v) = string(round(v, digits=3))  # normal round, too low leads to all zeros
-
-sig_printer(v) = string(round(v, sigdigits=3))   # sig-digit round, too loy or high means scientific notation
-
+default_printer(v) = string(round(v, digits=3))
 @recipe(Slider) do scene
     Theme(
         value = 0,
