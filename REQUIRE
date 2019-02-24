@@ -13,9 +13,7 @@ ModernGL
 GLFW 2.3.0
 FreeType
 FreeTypeAbstraction 0.3.0 #for findfont
-@windows ImageMagick
-@linux ImageMagick
-@osx QuartzImageIO
+ImageMagick
 AbstractPlotting 0.9.5
 Primes
 PlotUtils
