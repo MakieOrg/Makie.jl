@@ -1,8 +1,6 @@
 ImageCore
 ImageTransformations
-@windows ImageMagick
-@linux ImageMagick
-@osx QuartzImageIO
+ImageMagick
 Documenter
 ModernGL
 MeshIO
@@ -13,4 +11,7 @@ FileIO
 ImageFiltering
 DataFrames
 RDatasets
-MakieGallery
+StatsMakie
+MakieGallery 0.0.4
+GLFW
+ZipFile
