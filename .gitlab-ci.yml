@@ -14,5 +14,6 @@ job:
         - apt-get install -y ffmpeg
 
     script:
-      - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia -e 'using Pkg; Pkg.build("Makie"); include("test/runtests.jl")'
+      - julia -e 'using InteractiveUtils; versioninfo()' # print version info
+      - julia -e 'using Pkg; open("test/REQUIRE", "r") |> readlines |> x -> filter(y -> y[1] != '#', x) .|> Pkg.add' # add packages to prevent annoying bugs
+      - julia -e 'using Pkg; using Pkg; Pkg.build("Makie"); include("test/runtests.jl")' # run tests
