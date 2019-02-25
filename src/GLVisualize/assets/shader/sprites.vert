@@ -117,7 +117,7 @@ void main(){
     {{position_calc}}
     g_position        = pos;
     g_offset_width.xy = offset.xy;
-    g_offset_width.zw = _scale(scale, scale_x, scale_y, scale_z, g_primitive_index).xy;
+    g_offset_width.zw = abs(_scale(scale, scale_x, scale_y, scale_z, g_primitive_index).xy);
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
     g_uv_texture_bbox = uv_offset_width;
