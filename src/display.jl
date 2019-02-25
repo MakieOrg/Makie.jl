@@ -120,11 +120,28 @@ function Stepper(scene, path)
     Stepper(scene, path, 1)
 end
 
-function FileIO.save(filename::String, scene::Scene)
-    open(filename, "w") do s
-        show(IOContext(s, :full_fidelity => true), MIME"image/png"(), scene)
+format2mime(::Type{FileIO.format"PNG"}) = MIME"image/png"()
+format2mime(::Type{FileIO.format"SVG"}) = MIME"image/svg+xml"()
+format2mime(::Type{FileIO.format"JPEG"}) = MIME"image/jpeg"()
+
+# Allow format to be overridden with first argument
+"""
+Saves a scene to png/svg!
+Resolution can be specified, via `save("path", scene, resolution = (1000, 1000))`!
+"""
+function FileIO.save(
+        f::FileIO.File{F}, scene::Scene;
+        resolution = size(scene)
+    ) where F
+    println(FileIO.filename(f))
+    if resolution !== size(scene)
+        resize!(scene, resolution)
+    end
+    open(FileIO.filename(f), "w") do s
+        show(IOContext(s, :full_fidelity => true), format2mime(F), scene)
     end
 end
+
 """
     step!(s::Stepper)
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
