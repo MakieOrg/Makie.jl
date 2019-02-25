@@ -27,6 +27,10 @@ using .Formatters
 @recipe(Axis2D) do scene
     Theme(
         visible = true,
+
+        showgrid = true,
+        showticks = true,
+
         ticks = Theme(
 
             labels = automatic,
@@ -374,6 +378,7 @@ function draw_axis2d(
         textbuffer,
         frame_linebuffer, grid_linebuffer,
         m, limits, xyrange, labels,
+        showgrid, showticks,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
 
@@ -406,19 +411,23 @@ function draw_axis2d(
     origin = first.(limits)
     dirs = ((0.0, Float64(limit_widths[2])), (Float64(limit_widths[1]), 0.0))
     foreach(1:2, dirs, xyticks) do dim, dir, ticks
-        draw_grid(
-            grid_linebuffer[dim], dim, origin, ticks, dir,
-            g_linewidth, g_linecolor, g_linestyle
-        )
+        if showgrid[dim]
+            draw_grid(
+                grid_linebuffer[dim], dim, origin, ticks, dir,
+                g_linewidth, g_linecolor, g_linestyle
+            )
+        end
     end
     o_offsets = ((0.0, Float64(t_gap[2])), (Float64(t_gap[1]), Float64(0.0)))
 
     foreach(1:2, o_offsets, xyticks) do dim, offset, ticks
-        draw_ticks(
-            textbuffer, dim, origin .- offset, ticks,
-            t_linewidth, t_linecolor, t_linestyle,
-            t_textcolor, t_textsize, t_rotation, t_align, t_font
-        )
+        if showticks[dim]
+            draw_ticks(
+                textbuffer, dim, origin .- offset, ticks,
+                t_linewidth, t_linecolor, t_linestyle,
+                t_textcolor, t_textsize, t_rotation, t_align, t_font
+            )
+        end
     end
 
     draw_frame(
@@ -469,6 +478,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         frame_linebuffer, grid_linebuffer,
         transformationmatrix(scene),
         cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
+        lift.((dim2,), (cplot[:showgrid], cplot[:showticks]))...,
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
