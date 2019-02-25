@@ -26,7 +26,7 @@ uniform float thickness;
 uniform float pattern_length;
 
 
-#define MITER_LIMIT 0.75
+#define MITER_LIMIT -0.4
 
 vec2 screen_space(vec4 vertex)
 {
@@ -41,16 +41,6 @@ void emit_vertex(vec2 position, vec2 uv, int index, float ratio)
     f_id        = g_id[index];
     f_thickness = thickness;
     EmitVertex();
-}
-
-vec2 compute_miter(vec2 normal_a, vec2 normal_b)
-{
-    vec2 miter = normalize(normal_a + normal_b);
-    if(miter.x < 0.000001 && miter.y < 0.000001)
-    {
-        return vec2(-normal_a.y, normal_a.x);
-    }
-    return miter;
 }
 
 uniform int max_primtives;
@@ -102,26 +92,25 @@ void main(void)
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
 
-    /*
-       The goal here is to make wide line segments join cleanly. For most
-       joints, it's enough to extend/contract the buffered lines into the
-       "normal miter" shape below. However, this can get really spiky if the
-       lines are almost anti-parallel, in which case we want the truncated
-       mitre. For the truncated miter, we must emit the additional triangle
-       x-a-b.
 
-              normal miter               truncated miter
-            ------------------*        ----------a.
-                             /                   | '.
-                       x    /                    x_ '.
-            ------*        /           ------.     '--b
-                 /        /                 /        /
-                /        /                 /        /
-
-       Note that the way this is done below is fairly simple but results in
-       overdraw for semi transparent lines. Ideally would be nice to fix that
-       somehow.
-    */
+    // The goal here is to make wide line segments join cleanly. For most
+    // joints, it's enough to extend/contract the buffered lines into the
+    // "normal miter" shape below. However, this can get really spiky if the
+    // lines are almost anti-parallel, in which case we want the truncated
+    // mitre. For the truncated miter, we must emit the additional triangle
+    // x-a-b.
+    //
+    //        normal miter               truncated miter
+    //      ------------------*        ----------a.
+    //                       /                   | '.
+    //                 x    /                    x_ '.
+    //      ------*        /           ------.     '--b
+    //           /        /                 /        /
+    //          /        /                 /        /
+    //
+    // Note that the way this is done below is fairly simple but results in
+    // overdraw for semi transparent lines. Ideally would be nice to fix that
+    // somehow.
 
     // determine miter lines by averaging the normals of the 2 segments
     vec2 miter_a = normalize(n0 + n1);    // miter at start of current segment
@@ -133,11 +122,11 @@ void main(void)
 
     float xstart = g_lastlen[1];
     float xend   = g_lastlen[2];
-
     float ratio = length(p2 - p1) / (xend - xstart);
 
     float uvy = thickness_aa/thickness;
-    if(dot( v0, v1 ) < -MITER_LIMIT && isvalid[0]){
+
+    if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
                  n1
         gap true  :  gap false
@@ -161,7 +150,7 @@ void main(void)
         length_a = thickness_aa;
     }
 
-    if( dot( v1, v2 ) < -MITER_LIMIT ) {
+    if( dot( v1, v2 ) < MITER_LIMIT ) {
         miter_b = n1;
         length_b = thickness_aa;
     }
