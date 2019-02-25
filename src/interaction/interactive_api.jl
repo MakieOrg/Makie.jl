@@ -12,7 +12,15 @@ function mouse_in_scene(scene)
     end
 end
 
-function mouse_selection end
+
+"""
+    mouse_selection(scene)
+
+Returns the plot under the current mouse position in `scene`.
+"""
+function mouse_selection
+    # TODO this needs to be implemented here via select_mouse_native
+end
 
 # What does this function do?
 to_screen(scene, mpos) = Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))

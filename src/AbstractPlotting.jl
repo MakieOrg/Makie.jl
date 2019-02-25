@@ -10,6 +10,7 @@ using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
 import ImageMagick, FileIO
 import FileIO: save
+using Printf: @sprintf
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
