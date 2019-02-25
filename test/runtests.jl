@@ -1,4 +1,5 @@
 using MakieGallery, AbstractPlotting, GLMakie, Test
+using MakieGallery: @block, @cell
 
 push!(MakieGallery.plotting_backends, "GLMakie")
 database = MakieGallery.load_database()
