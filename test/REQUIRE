@@ -6,7 +6,6 @@ ModernGL
 MeshIO
 ImageMagick
 ImageTransformations
-GDAL
 FileIO
 ImageFiltering
 DataFrames

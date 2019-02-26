@@ -92,6 +92,7 @@ void main(void)
     vec2 n1 = vec2(-v1.y, v1.x);
     vec2 n2 = vec2(-v2.y, v2.x);
 
+
     // The goal here is to make wide line segments join cleanly. For most
     // joints, it's enough to extend/contract the buffered lines into the
     // "normal miter" shape below. However, this can get really spiky if the
@@ -124,6 +125,7 @@ void main(void)
     float ratio = length(p2 - p1) / (xend - xstart);
 
     float uvy = thickness_aa/thickness;
+
     if( dot( v0, v1 ) < MITER_LIMIT ){
         /*
                  n1

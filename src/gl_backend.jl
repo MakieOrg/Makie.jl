@@ -73,3 +73,8 @@ function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", 
     img = scene2image(scene)
     FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end
+
+function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
+    img = scene2image(scene)
+    FileIO.save(FileIO.Stream(FileIO.format"JPEG", io), img)
+end
