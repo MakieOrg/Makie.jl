@@ -574,6 +574,7 @@ function to_levels(x::Integer, cnorm)
     range(cnorm[1], stop = cnorm[2], length = x)
 end
 conversion_trait(::Type{<: Contour3d}) = SurfaceLike()
+conversion_trait(::Type{<: Contour}) = SurfaceLike()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 
