@@ -522,7 +522,8 @@ Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
     pop!(default, :color)
     Theme(;
         default...,
-        color = theme(scene, :colormap),
+        color = nothing,
+        colormap = theme(scene, :colormap),
         colorrange = AbstractPlotting.automatic,
         levels = 5,
         linewidth = 1.0,
@@ -570,21 +571,25 @@ end
 
 
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
-function to_levels(x::Integer, cnorm)
-    range(cnorm[1], stop = cnorm[2], length = x)
+function to_levels(n::Integer, cnorm)
+    zmin, zmax = cnorm
+    dz = (zmax - zmin) / (n + 1)
+    range(zmin + dz; step = dz, length = n)
 end
 conversion_trait(::Type{<: Contour3d}) = SurfaceLike()
+conversion_trait(::Type{<: Contour}) = SurfaceLike()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 
+
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
-    @extract plot (color, levels, linewidth, alpha)
-    valuerange = lift(x-> Vec2f0(extrema(x)), volume)
+    @extract plot (colormap, levels, linewidth, alpha)
+    valuerange = lift(nan_extrema, volume)
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
-    cmap = lift(color, levels, linewidth, alpha, cliprange, valuerange) do _cmap, l, lw, alpha, cliprange, vrange
+    cmap = lift(colormap, levels, linewidth, alpha, cliprange, valuerange) do _cmap, l, lw, alpha, cliprange, vrange
         levels = to_levels(l, vrange)
         nlevels = length(levels)
         N = nlevels * 50
@@ -602,6 +607,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             end
             RGBAf0(Colors.color(c), line ? alpha : 0.0)
         end
+
     end
     volume!(
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
@@ -609,6 +615,38 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         overdraw = plot[:overdraw]
     )
 end
+
+function color_per_level(color, colormap, colorrange, alpha, levels)
+    color_per_level(to_color(color), colormap, colorrange, alpha, levels)
+end
+
+function color_per_level(color::Colorant, colormap, colorrange, alpha, levels)
+    fill(color, length(levels))
+end
+
+function color_per_level(colors::AbstractVector, colormap, colorrange, alpha, levels)
+    color_per_level(to_colormap(colors), colormap, colorrange, alpha, levels)
+end
+
+function color_per_level(colors::AbstractVector{<: Colorant}, colormap, colorrange, alpha, levels)
+    if length(levels) == length(colors)
+        return colors
+    else
+        # TODO resample?!
+        error("For a contour plot, `color` with an array of colors needs to
+        have the same length as `levels`.
+        Found $(length(colors)) colors, but $(length(levels)) levels")
+    end
+end
+
+function color_per_level(::Nothing, colormap, colorrange, a, levels)
+    cmap = to_colormap(colormap)
+    map(levels) do level
+        c = interpolated_getindex(cmap, level, colorrange)
+        RGBAf0(color(c), alpha(c) * a)
+    end
+end
+
 
 function plot!(plot::T) where T <: Union{Contour, Contour3d}
     x, y, z = plot[1:3]
@@ -618,14 +656,32 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
         heatmap!(plot, Theme(plot), x, y, z)
     else
-        result = lift(x, y, z, plot[:levels]) do x, y, z, levels
-            t = eltype(z)
-            levels = round(Int, levels)
-            contours = Contours.contours(to_vector(x, size(z, 2), t), to_vector(y, size(z, 1), t), z, levels)
-            cols = AbstractPlotting.resampled_colors(plot, levels)
-            contourlines(T, contours, cols)
+        zrange = lift(nan_extrema, z)
+        levels = lift(plot[:levels], zrange) do levels, zrange
+            if levels isa AbstractVector{<: Number}
+                return levels
+            elseif levels isa Integer
+                to_levels(levels, zrange)
+            else
+                error("Level needs to be Vector of iso values, or a single integer to for a number of automatic levels")
+            end
         end
-        lines!(plot, lift(first, result); color = lift(last, result), linewidth = plot[:linewidth])
+        replace_automatic!(plot, :colorrange) do
+            lift(nan_extrema, levels)
+        end
+        args = @extract plot (color, colormap, colorrange, alpha)
+        level_colors = lift(color_per_level, args..., levels)
+        result = lift(x, y, z, levels, level_colors) do x, y, z, levels, level_colors
+            t = eltype(z)
+            # Compute contours
+            xv, yv = to_vector(x, size(z,1), t), to_vector(y, size(z,2), t)
+            contours = Contours.contours(xv, yv, z,  convert(Vector{eltype(z)}, levels))
+            contourlines(T, contours, level_colors)
+        end
+        lines!(
+            plot, lift(first, result);
+            color = lift(last, result), linewidth = plot[:linewidth]
+        )
     end
     plot
 end

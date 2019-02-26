@@ -9,7 +9,8 @@ using Serialization # serialize events
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
 import ImageMagick, FileIO
-using Printf: @sprintf # @sprintf macro is required for scientific notation
+import FileIO: save
+using Printf: @sprintf
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
@@ -142,6 +143,7 @@ export plot!, plot
 
 export Stepper, step!, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record
+export save
 
 # default icon for Makie
 function icon()
