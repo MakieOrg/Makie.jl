@@ -645,12 +645,26 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
         heatmap!(plot, Theme(plot), x, y, z)
     else
-        result = lift(x, y, z, plot[:levels]) do x, y, z, levels
+        valuerange = lift(x-> Vec2f0(extrema(x)), z)
+        cliprange = replace_automatic!(plot, :colorrange) do
+            valuerange
+        end
+        levels = lift(to_levels, plot[:levels], valuerange)
+        level_colors = lift(plot[:color], levels, plot[:alpha], cliprange) do _cmap, levels, alpha, vrange
+            nlevels = length(levels)
+            N = nlevels * 50
+            cmap = to_colormap(_cmap)
+            # resample colormap to the given levels.
+            map(levels) do level
+                c = AbstractPlotting.interpolated_getindex(cmap, (level-vrange[1])/(vrange[2]-vrange[1]))
+                RGBAf0(Colors.color(c), alpha)
+            end
+        end
+        result = lift(x, y, z, plot[:levels], level_colors) do x, y, z, levels, level_colors
             t = eltype(z)
-            levels = round(Int, levels)
-            contours = Contours.contours(to_vector(x, size(z, 2), t), to_vector(y, size(z, 1), t), z, levels)
-            cols = AbstractPlotting.resampled_colors(plot, levels)
-            contourlines(T, contours, cols)
+            # Compute contours
+            contours = Contours.contours(to_vector(x, size(z,1), t), to_vector(y, size(z,2), t), z, levels)
+            contourlines(T, contours, level_colors)
         end
         lines!(plot, lift(first, result); color = lift(last, result), linewidth = plot[:linewidth])
     end
