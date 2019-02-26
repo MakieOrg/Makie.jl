@@ -522,7 +522,8 @@ Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
     pop!(default, :color)
     Theme(;
         default...,
-        color = theme(scene, :colormap),
+        color = nothing,
+        colormap = theme(scene, :colormap),
         colorrange = AbstractPlotting.automatic,
         levels = 5,
         linewidth = 1.0,
@@ -578,10 +579,34 @@ conversion_trait(::Type{<: Contour}) = SurfaceLike()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 
+function color_per_level(color::Colorant, colormap, colorrange, alpha, levels)
+    fill(color, length(levels))
+end
+
+function color_per_level(color::Nothing, colormap, colorrange, alpha, levels)
+    to_colormap(colormap, )
+    nlevels = length(levels)
+    N = nlevels * 50
+    iso_eps = nlevels * ((vrange[2] - vrange[1]) / N) # TODO calculate this
+    cmap = to_colormap(_cmap)
+    v_interval = cliprange[1] .. cliprange[2]
+    # resample colormap and make the empty area between iso surfaces transparent
+    map(1:N) do i
+        i01 = (i-1) / (N - 1)
+        c = AbstractPlotting.interpolated_getindex(cmap, i01)
+        isoval = vrange[1] + (i01 * (vrange[2] - vrange[1]))
+        line = reduce(levels, init = false) do v0, level
+            (isoval in v_interval) || return false
+            v0 || (abs(level - isoval) <= iso_eps)
+        end
+        RGBAf0(Colors.color(c), line ? alpha : 0.0)
+    end
+end
+
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
     @extract plot (color, levels, linewidth, alpha)
-    valuerange = lift(x-> Vec2f0(extrema(x)), volume)
+    valuerange = lift(nan_extrema, volume)
     cliprange = replace_automatic!(plot, :colorrange) do
         valuerange
     end
@@ -603,6 +628,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             end
             RGBAf0(Colors.color(c), line ? alpha : 0.0)
         end
+
     end
     volume!(
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
