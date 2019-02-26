@@ -12,12 +12,6 @@ end
 recordings = MakieGallery.record_examples(test_record_path)
 @test length(recordings) == length(database)
 
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
-
-MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
-
-
 empty!(database) # remove other examples
 include("glmakie_tests.jl") # include GLMakie specific tests
 # THese examples download additional data - don't want to deal with that!
