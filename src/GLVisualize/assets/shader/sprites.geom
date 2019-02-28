@@ -101,11 +101,10 @@ void main(void)
     //    |  \ |
     //    |___\|
     // v1*      * v2
-    vec4 o_w = g_offset_width[0];
-
     // Centred bounding box of billboard
-    vec2 bbox_radius = 0.5*o_w.zw;
-    vec2 sprite_bbox_centre = o_w.xy + bbox_radius;
+    vec4 o_w = g_offset_width[0];
+    vec2 bbox_signed_radius = 0.5*o_w.zw; // note; components may be negative.
+    vec2 sprite_bbox_centre = o_w.xy + bbox_signed_radius;
 
     mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
@@ -148,7 +147,7 @@ void main(void)
     //   any calculation based on them will not be a distance function.)
     // * For sampled distance fields, we need to consistently choose the *x*
     //   for the scaling in get_distancefield_scale().
-    float sprite_from_u_scale = o_w.z;
+    float sprite_from_u_scale = abs(o_w.z);
     f_viewport_from_u_scale = viewport_from_sprite_scale * sprite_from_u_scale;
     f_distancefield_scale = get_distancefield_scale(distancefield);
 
@@ -158,10 +157,10 @@ void main(void)
                      (ANTIALIAS_RADIUS + max(glow_width, 0) + max(stroke_width, 0));
     // Compute xy bounding box of billboard (in model space units) after
     // buffering and associated bounding box of uv coordinates.
-    vec2 bbox_radius_buf = bbox_radius + bbox_buf;
+    vec2 bbox_radius_buf = bbox_signed_radius + sign(bbox_signed_radius)*bbox_buf;
     vec4 bbox = vec4(-bbox_radius_buf, bbox_radius_buf);
     // uv bounding box is the buffered version of the domain [0,1]x[0,1]
-    vec2 uv_radius = 0.5 * bbox_radius_buf / bbox_radius;
+    vec2 uv_radius = 0.5 * bbox_radius_buf / bbox_signed_radius;
     vec2 uv_center = vec2(0.5);
     vec4 uv_bbox = vec4(uv_center-uv_radius, uv_center+uv_radius); //minx, miny, maxx, maxy
 

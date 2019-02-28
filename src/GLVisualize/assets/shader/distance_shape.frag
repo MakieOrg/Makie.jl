@@ -152,6 +152,7 @@ void main(){
     stroke(f_stroke_color, signed_distance, -stroke_width, final_color);
     glow(f_glow_color, signed_distance, aastep(-stroke_width, signed_distance), final_color);
     // TODO: In 3D, we should arguably discard fragments outside the sprite
+    //       But note that this may interfere with object picking.
     //if (final_color == f_bg_color)
     //    discard;
     write2framebuffer(final_color, f_id);
