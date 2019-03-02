@@ -114,7 +114,7 @@ AbstractPlotting.to_spritemarker(x::FastPixel) = x
 function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
-        gl_attributes[:shading] = AbstractPlotting.to_value(get(gl_attributes, :shading, true)) 
+        gl_attributes[:shading] = AbstractPlotting.to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
@@ -279,7 +279,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
         mesh = lift(x[1], color, cmap, crange) do m, c, cmap, crange
             c = convert_mesh_color(c, cmap, crange)
-            if isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh)
+            if isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh) || isa(m, GLNormalVertexcolorMesh)
                 m
             elseif isa(c, Colorant)
                 get!(gl_attributes, :color, Node(c))[] = c
