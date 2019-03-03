@@ -313,12 +313,13 @@ function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
 
+
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
     replace_automatic!(plot, :marker_offset) do
         # default to middle
-        lift(x-> Vec2f0.((x .* (-0.5f0))), plot[:markersize])
+        lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
     end
 end
 
