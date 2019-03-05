@@ -55,7 +55,7 @@ function make_label(scene, plot, labeltext, i, attributes)
         :linepattern, :scatterpattern, :padding
     ))
 
-    num_of_labels = length(getindex(attributes, :labels)[])
+    num_of_labels = length((attributes[:labels])[])
 
     _scale(x, w, pad, g, t) = Point2f0(
         pad + (x[1]w),
