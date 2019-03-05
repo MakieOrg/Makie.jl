@@ -69,9 +69,14 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
     meshes = plot[1]
     color_node = plot[:color]
     attributes = Attributes(
-        visible = plot[:visible], shading = plot[:shading],
-        colormap = plot[:colormap], colorrange = plot[:colorrange]
+        visible = plot[:visible], shading = plot[:shading]
     )
+    if haskey(plot, :colormap)
+        attributes[:colormap] = plot[:colormap]
+    end
+    if haskey(plot, :colorrange)
+        attributes[:colorrange] = plot[:colorrange]
+    end
     bigmesh = if color_node[] isa Vector && length(color_node[]) == length(meshes[])
         lift(meshes, color_node) do meshes, colors
             meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), to_color.(colors))
