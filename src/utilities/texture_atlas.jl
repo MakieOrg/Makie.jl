@@ -89,7 +89,7 @@ begin #basically a singleton for the textureatlas
 
     function to_cache(atlas)
         if !ispath(dirname(_cache_path))
-            mkdir(dirname(_cache_path))
+            mkpath(dirname(_cache_path))
         end
         open(_cache_path, "w") do io
             dict = Dict(map(fieldnames(typeof(atlas))) do name
