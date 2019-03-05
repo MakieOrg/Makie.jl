@@ -21,7 +21,7 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = false, visible = plot[:visible]
+        shading = plot[:shading], visible = plot[:visible]
     )
     wireframe!(
         plot, plot[1],
@@ -42,7 +42,13 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
         end
         GLNormalMesh.(polys)
     end
-    mesh!(plot, meshes, visible = plot[:visible], shading = plot[:shading], color = plot[:color])
+    mesh!(plot, meshes,
+        visible = plot.visible,
+        shading = plot.shading,
+        color = plot.color,
+        colormap = plot.colormap,
+        colorrange = plot.colorrange
+    )
     outline = lift(polygons) do polygons
         line = Point2f0[]
         for poly in polygons
@@ -53,16 +59,19 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
         line
     end
     lines!(
-        plot, outline, visible = plot[:visible],
-        color = plot[:strokecolor], linestyle = plot[:linestyle],
-        linewidth = plot[:strokewidth],
+        plot, outline, visible = plot.visible,
+        color = plot.strokecolor, linestyle = plot.linestyle,
+        linewidth = plot.strokewidth,
     )
 end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMesh
     meshes = plot[1]
     color_node = plot[:color]
-    attributes = Attributes(visible = plot[:visible], shading = plot[:shading])
+    attributes = Attributes(
+        visible = plot[:visible], shading = plot[:shading],
+        colormap = plot[:colormap], colorrange = plot[:colorrange]
+    )
     bigmesh = if color_node[] isa Vector && length(color_node[]) == length(meshes[])
         lift(meshes, color_node) do meshes, colors
             meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), to_color.(colors))
