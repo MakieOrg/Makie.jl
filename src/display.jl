@@ -179,7 +179,6 @@ Replays the serialized events recorded with `record_events` in `path` in `scene`
 """
 replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
 function replay_events(f, scene::Scene, path::String)
-    display(scene)
     events = open(io-> deserialize(io), path)
     sort!(events, by = first)
     for i in 1:length(events)
@@ -195,11 +194,14 @@ function replay_events(f, scene::Scene, path::String)
             end
         end
         f()
-        yield()
         if i < length(events)
             t2, (field, value) = events[i + 1]
             # min sleep time 0.001
-            (t2 - t1 > 0.001) && sleep(t2 - t1)
+            if (t2 - t1 > 0.001)
+                sleep(t2 - t1)
+            else
+                yield()
+            end
         end
     end
 end
