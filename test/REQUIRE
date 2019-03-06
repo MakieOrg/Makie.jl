@@ -11,8 +11,7 @@ ImageFiltering
 DataFrames
 RDatasets
 StatsMakie
-MakieGallery 0.0.5
+MakieGallery 0.0.6
 GLFW
 ZipFile
-Makie # not really needed - workaround for MakieGallery bug
 ColorSchemes
