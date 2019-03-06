@@ -11,6 +11,6 @@ ImageFiltering
 DataFrames
 RDatasets
 StatsMakie
-MakieGallery 0.0.4
+MakieGallery 0.0.5
 GLFW
 ZipFile

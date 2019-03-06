@@ -1,5 +1,6 @@
 julia 0.7
 
+AbstractPlotting 0.9.6
 StaticArrays 0.6.6
 GeometryTypes 0.7.2
 Observables
@@ -14,7 +15,6 @@ GLFW 2.3.0
 FreeType
 FreeTypeAbstraction 0.3.0 #for findfont
 ImageMagick
-AbstractPlotting 0.9.5
 Primes
 PlotUtils
 IntervalSets
