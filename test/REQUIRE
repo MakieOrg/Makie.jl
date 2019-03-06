@@ -15,3 +15,4 @@ MakieGallery 0.0.5
 GLFW
 ZipFile
 Makie # not really needed - workaround for MakieGallery bug
+ColorSchemes
