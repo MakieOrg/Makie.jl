@@ -4,3 +4,4 @@ FileIO
 ImageMagick
 AbstractPlotting 0.9.5
 GLMakie 0.0.5
+ColorSchemes
