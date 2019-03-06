@@ -1,6 +1,6 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.9.2"
+version = "0.9.3"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -11,8 +11,8 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 QuartzImageIO = "dca85d43-d64c-5e67-8c65-017450d5d020"
 
 [compat]
-AbstractPlotting = ">=0.9.2"
-GLMakie = ">=0.0.3"
+AbstractPlotting = ">=0.9.6"
+GLMakie = ">=0.0.5"
 
 [extras]
 BinaryProvider = "b99e7846-7c00-51b0-8f62-c81ae34c0232"
