@@ -1,14 +1,17 @@
+ImageCore
+ImageTransformations
+Documenter
+ModernGL
 MeshIO
-#generate_plots
-ImageFiltering # needed for Gaussian-filtering images during resize
-BinaryProvider
-MakieGallery
-
-#for some examples
+ImageMagick
+ImageTransformations
+FileIO
+ImageFiltering
 DataFrames
 RDatasets
-
-#for WorldClim visualization example
+StatsMakie
+MakieGallery 0.0.6
+GLFW
+ZipFile
+ColorSchemes
 GDAL
-RData
-DataFrames
