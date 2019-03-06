@@ -1,7 +1,7 @@
-using MakieGallery, AbstractPlotting, GLMakie, Test
+using MakieGallery, AbstractPlotting, GLMakie, Test, Makie
 using MakieGallery: @block, @cell
 
-push!(MakieGallery.plotting_backends, "GLMakie")
+push!(MakieGallery.plotting_backends, "Makie")
 database = MakieGallery.load_database()
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
