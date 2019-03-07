@@ -47,9 +47,9 @@ function Base.display(d::PlotDisplay, scene::Scene)
     end
 end
 
-Base.showable(mime::MIME, scene::Scene) = backend_showable(current_backend[], mime, scene)
+Base.showable(mime::MIME{M}, scene::Scene) where M = backend_showable(current_backend[], mime, scene)
 # ambig
-Base.showable(mime::MIME"application/json", ::Scene) = backend_showable(current_backend[], mime, scene)
+Base.showable(mime::MIME"application/json", scene::Scene) = backend_showable(current_backend[], mime, scene)
 
 # have to be explicit with mimetypes to avoid ambiguity
 
