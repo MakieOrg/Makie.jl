@@ -23,17 +23,6 @@ function register_backend!(backend::AbstractBackend)
 end
 
 
-const has_ffmpeg = Ref(false)
-
-function __init__()
-    pushdisplay(PlotDisplay())
-    has_ffmpeg[] = try
-        success(`ffmpeg -h`)
-    catch
-        false
-    end
-end
-
 function Base.display(d::PlotDisplay, scene::Scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
