@@ -289,11 +289,10 @@ get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # Combined plots break this assumption in some way, but the way to look at it is,
 # that the plots contained in a Combined plot are not subplots, but _are_ actually
 # the plot itself.
-# the plot itself.
 getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
 setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = value)
-
+Base.length(plot::AbstractPlot) = length(plot.converted)
 
 
 function getindex(x::AbstractPlot, key::Symbol)
