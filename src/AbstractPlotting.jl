@@ -164,4 +164,29 @@ function logo()
     FileIO.load(cached_logo[])
 end
 
+
+
+const has_ffmpeg = Ref(false)
+
+const config_path = joinpath(homedir(), ".config", "makie", "theme.jl")
+
+function __init__()
+    pushdisplay(PlotDisplay())
+    has_ffmpeg[] = try
+        success(`ffmpeg -h`)
+    catch
+        false
+    end
+    if isfile(config_path)
+        theme = include(config_path)
+        if theme isa Attributes
+            set_theme!(theme)
+        else
+            @warn("Found config file in $(config_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
+        end
+    end
+end
+
+
+
 end # module
