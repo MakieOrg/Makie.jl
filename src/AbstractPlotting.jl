@@ -190,3 +190,9 @@ module AbstractPlotting
 
 
     end # module
+AbstractPlotting.__init__();
+using PlotUtils, FixedPointNumbers
+cs = :RdBu
+n = 20
+lines(1:10, 1:10, color = 1:10, colormap = PlotUtils.cvec(Symbol(cs), n) .|> color .|> x -> convert(RGB{FixedPointNumbers.Normed{UInt8,8}}, x), linewidth = 10)
+lines(1:10, 1:10, color = 1:10, colormap = :plasma)
