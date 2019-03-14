@@ -663,7 +663,7 @@ function available_gradients()
 end
 
 """
-Reverses the attribute T uppon conversion
+Reverses the attribute T upon conversion
 """
 struct Reverse{T}
     data::T
@@ -698,9 +698,11 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     cs_string = string(cs)
 
     if cs_string in all_gradient_names
-        if cs_string in colorbrewer_8color_names
+        if cs_string in colorbrewer_8color_names # special handling for 8 color only
             return resample(ColorBrewer.palette(cs_string, 8), n)
-        else # cs_string must be in plotutils_names
+        elseif cs_string ∈ colorbrewer_names    # get colormaps directly from ColorBrewer, prefer that to PlotUtils
+            return resample(ColorBrewer.palette(cs_string, 9), n)
+        else                                    # cs_string must be in plotutils_names
             return PlotUtils.cvec(Symbol(cs), n) .|> color .|> x -> convert(RGB{FixedPointNumbers.Normed{UInt8,8}}, x)
         end
     else
