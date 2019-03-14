@@ -592,53 +592,8 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
 
-# const colorbrewer_names = Symbol.([
-#     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
-#     :Blues,
-#     :Oranges,
-#     :Greens,
-#     :Reds,
-#     :Purples,
-#     :Greys,
-#     :OrRd,
-#     :GnBu,
-#     :PuBu,
-#     :PuRd,
-#     :BuPu,
-#     :BuGn,
-#     :YlGn,
-#     :RdPu,
-#     :YlOrBr,
-#     :YlGnBu,
-#     :YlOrRd,
-#     :PuBuGn,
-#
-#     # All diverging color schemes can have between 3 and 11 colors. The available diverging color schemes are:
-#     :Spectral,
-#     :RdYlGn,
-#     :RdBu,
-#     :PiYG,
-#     :PRGn,
-#     :RdYlBu,
-#     :BrBG,
-#     :RdGy,
-#     :PuOr,
-#
-#     #The number of colors a qualitative color scheme can have depends on the scheme.
-#     #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
-#     #The available qualitative color schemes are:
-#     :Set1,
-#     :Set2,
-#     :Set3,
-#     :Dark2,
-#     :Accent,
-#     :Paired,
-#     :Pastel1,
-#     :Pastel2
-# ])
-
+#Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
 const colorbrewer_8color_names = String.([
-    #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
     :Accent,
     :Dark2,
     :Pastel2,
@@ -691,7 +646,8 @@ end
 to_colormap(x::Union{String, Symbol}, n::Integer) = convert_attribute(x, key"colormap"(), n)
 
 """
-A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()
+A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
+For now, we support gradients from `PlotUtils` and `ColorBrewer` natively.
 """
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
     cs_string = string(cs)
@@ -699,7 +655,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names
             return resample(ColorBrewer.palette(cs_string, 8), n)
-        else # cs_string in plotutils_names
+        else # cs_string must be in plotutils_names
             return PlotUtils.cvec(Symbol(cs), n) .|> color .|> x -> convert(RGB{FixedPointNumbers.Normed{UInt8,8}}, x)
         end
     else
