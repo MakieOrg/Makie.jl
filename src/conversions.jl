@@ -699,11 +699,8 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names
             return resample(ColorBrewer.palette(cs_string, 8), n)
-        else
-            return resample(ColorBrewer.palette(cs_string, 9), n)
-        end
-    elseif cs_string in plotutils_names
-        return PlotUtils.cvec(Symbol(cs), n)
+        else # cs_string in plotutils_names
+            return PlotUtils.cvec(Symbol(cs), n) .|> color .|> x -> convert(RGB{FixedPointNumbers.Normed{UInt8,8}}, x)
         end
     else
         error("There is no color gradient named: $cs")
