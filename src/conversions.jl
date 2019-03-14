@@ -727,7 +727,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             return resample(ColorBrewer.palette(cs_string, 9), n)
         end
     elseif cs_string in plotutils_names
-        return resample(Plot)
+        return PlotUtils.cvec(Symbol(cs), n)
         end
     else
         error("There is no color gradient named: $cs")
