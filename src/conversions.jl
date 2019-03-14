@@ -645,7 +645,10 @@ const colorbrewer_8color_names = String.([
     :Set2
 ])
 
-const all_gradient_names = Set(vcat(string.(colorbrewer_names), "viridis"))
+const plotutils_names = PlotUtils.clibraries() .|> PlotUtils.cgradients |> x -> vcat(x...) .|> String  # take the active color libraries from PlotUtils,
+# and get all their gradient symbols into an Array.
+
+const all_gradient_names = Set(vcat(string.(colorbrewer_names), string.(plotutils_names), "viridis"))
 
 """
     available_gradients()
@@ -723,8 +726,10 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
         else
             return resample(ColorBrewer.palette(cs_string, 9), n)
         end
+    elseif cs_string in plotutils_names
+        return resample(Plot)
+        end
     else
-        #TODO integrate PlotUtils color gradients
         error("There is no color gradient named: $cs")
     end
 end
