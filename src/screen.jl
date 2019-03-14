@@ -16,6 +16,7 @@ mutable struct Screen <: GLScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
     framecache::Tuple{Matrix{RGB{N0f8}}, Matrix{RGB{N0f8}}}
+    displayed_scene::Union{Scene, Nothing}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLFramebuffer,
@@ -30,7 +31,8 @@ mutable struct Screen <: GLScreen
         obj = new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, cache, cache2plot,
-            (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s)))
+            (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s))),
+            nothing
         )
         finalizer(obj) do obj
             # save_print("Freeing screen")
@@ -45,6 +47,7 @@ GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(global_gl_screen()) # TODO per scene screen
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
+Base.size(x::Screen) = size(x.framebuffer)
 
 function insertplots!(screen::GLScreen, scene::Scene)
     for elem in scene.plots
@@ -79,15 +82,16 @@ function Base.resize!(screen::Screen, w, h)
     resize!(nw, w, h)
     fb = screen.framebuffer
     resize!(fb, (w, h))
+    GLFW.PollEvents()
 end
 
-function Base.display(screen::Screen, scene::Scene)
+function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     empty!(screen)
-    resize!(screen, size(scene)...)
-    GLFW.PollEvents() # let the size change go through (TODO is this necessary?)
     register_callbacks(scene, to_native(screen))
+    GLFW.PollEvents()
     insertplots!(screen, scene)
-    AbstractPlotting.update!(scene)
+    GLFW.PollEvents()
+    screen.displayed_scene = scene
     return
 end
 
@@ -178,7 +182,54 @@ function renderloop end
 # the rendering loop
 const opengl_renderloop = Ref{Function}(renderloop)
 
-function Screen(; resolution = (10, 10), visible = false, kw_args...)
+"""
+Loads the makie loading icon and embedds it in an image the size of resolution
+"""
+function get_loading_image(resolution)
+    icon = Matrix{N0f8}(undef, 192, 192)
+    open(GLMakie.assetpath("loading.bin")) do io
+        read!(io, icon)
+    end
+    img = zeros(RGBA{N0f8}, resolution...)
+    center = resolution .÷ 2
+    center_icon = size(icon) .÷ 2
+    start = CartesianIndex(max.(center .- center_icon, 1))
+    stop = min(start + CartesianIndex(size(icon)), CartesianIndex(resolution))
+    width = stop - start
+    range = CartesianIndices(width) .+ start
+    for idx in range
+        gray = icon[idx - start]
+        img[idx] = RGBA{N0f8}(gray, gray, gray, 1.0)
+    end
+    return img
+end
+
+function display_loading_image(screen::Screen)
+    fb = screen.framebuffer
+    fbsize = size(fb)
+    image = get_loading_image(fbsize)
+    if size(image) == fbsize
+        GLFW.PollEvents() # poll events to not make the window freeze
+        nw = to_native(screen)
+        fb.color[1:size(image, 1), 1:size(image, 2)] = image # transfer loading image to gpu framebuffer
+        GLAbstraction.is_context_active(nw) || return
+        w, h = fbsize
+        glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
+        glViewport(0, 0, w, h)
+        glClearColor(0, 0, 0, 0)
+        glClear(GL_COLOR_BUFFER_BIT)
+        GLAbstraction.render(fb.postprocess[3]) # copy postprocess
+        GLFW.SwapBuffers(nw)
+    else
+        error("loading_image needs to be Matrix{RGBA{N0f8}} with size(loading_image) == resolution")
+    end
+
+end
+
+function Screen(;
+        resolution = (10, 10), visible = false, title = "Makie",
+        kw_args...
+    )
     if !isempty(gl_screens)
         for elem in gl_screens
             isopen(elem) && destroy!(elem)
@@ -187,7 +238,7 @@ function Screen(; resolution = (10, 10), visible = false, kw_args...)
     end
 
     window = GLFW.Window(
-        name = "Makie", resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
+        name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
         windowhints = [
             (GLFW.SAMPLES,      0),
             (GLFW.DEPTH_BITS,   0),
@@ -200,7 +251,8 @@ function Screen(; resolution = (10, 10), visible = false, kw_args...)
             (GLFW.BLUE_BITS,    8),
 
             (GLFW.STENCIL_BITS, 0),
-            (GLFW.AUX_BUFFERS,  0)
+            (GLFW.AUX_BUFFERS,  0),
+            (GLFW.RESIZABLE, GL_TRUE)
         ],
         visible = false,
         kw_args...
@@ -231,6 +283,12 @@ function Screen(; resolution = (10, 10), visible = false, kw_args...)
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
     )
+
+    GLFW.SetWindowRefreshCallback(window, window -> begin
+        render_frame(screen)
+        GLFW.SwapBuffers(window)
+    end)
+
     if visible
         GLFW.ShowWindow(window)
     else
@@ -247,7 +305,29 @@ function global_gl_screen()
         _global_gl_screen[] = Screen()
         _global_gl_screen[]
     end
-    GLFW.set_visibility!(to_native(screen), AbstractPlotting.use_display[])
+    return screen
+end
+
+function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
+    # ugly but easy way to find out if we create new screen.
+    # could just be returned by global_gl_screen, but dont want to change the API
+    isold = isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
+    screen = global_gl_screen()
+    GLFW.set_visibility!(to_native(screen), visibility)
+    resize!(screen, resolution...)
+    new_size = GLFW.GetWindowSize(to_native(screen))
+    # I'm not 100% sure, if there are platforms where I'm never
+    # able to resize the screen (opengl might just allow that).
+    # so, we guard against that with just trying another resize one time!
+    if ((new_size.width, new_size.height) != resolution) && tries == 1
+        # resize failed. This may happen when screen was previously
+        # enlarged to fill screen. WE NEED TO DESTROY!! (I think)
+        destroy!(screen)
+        # try again
+        return global_gl_screen(resolution, visibility, 2)
+    end
+    # show loading image on fresh screen
+    isold || display_loading_image(screen)
     screen
 end
 

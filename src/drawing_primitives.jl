@@ -30,6 +30,8 @@ end
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
 
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
+    # poll inside functions to make wait on compile less prominent
+    GLFW.PollEvents()
     robj = get!(screen.cache, objectid(x)) do
         gl_attributes = map(filter(((k, v),)-> k != :transformation, x.attributes)) do key_value
             key, value = key_value
@@ -101,10 +103,16 @@ function handle_intensities!(attributes)
 end
 
 function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
+    # poll inside functions to make wait on compile less prominent
+    GLFW.PollEvents()
     if isempty(x.plots) # if no plots inserted, this truely is an atomic
         draw_atomic(screen, scene, x)
     else
-        foreach(x-> insert!(screen, scene, x), x.plots)
+        foreach(x.plots) do x
+            # poll inside functions to make wait on compile less prominent
+            GLFW.PollEvents()
+            insert!(screen, scene, x)
+        end
     end
 end
 

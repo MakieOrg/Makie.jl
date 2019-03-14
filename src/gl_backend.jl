@@ -53,8 +53,9 @@ include("events.jl")
 include("drawing_primitives.jl")
 
 function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
-    screen = global_gl_screen()
-    display(screen, scene)
+    screen = global_gl_screen(size(scene), AbstractPlotting.use_display[])
+    display_loading_image(screen)
+    AbstractPlotting.backend_display(screen, scene)
     return screen
 end
 
@@ -64,8 +65,8 @@ end
 Buffers the `scene` in an image buffer.
 """
 function scene2image(scene::Scene)
-    screen = global_gl_screen()
-    display(screen, scene)
+    screen = global_gl_screen(size(scene), false)
+    AbstractPlotting.backend_display(screen, scene)
     AbstractPlotting.colorbuffer(screen)
 end
 
