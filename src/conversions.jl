@@ -592,50 +592,50 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
 
-const colorbrewer_names = Symbol.([
-    # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
-    :Blues,
-    :Oranges,
-    :Greens,
-    :Reds,
-    :Purples,
-    :Greys,
-    :OrRd,
-    :GnBu,
-    :PuBu,
-    :PuRd,
-    :BuPu,
-    :BuGn,
-    :YlGn,
-    :RdPu,
-    :YlOrBr,
-    :YlGnBu,
-    :YlOrRd,
-    :PuBuGn,
-
-    # All diverging color schemes can have between 3 and 11 colors. The available diverging color schemes are:
-    :Spectral,
-    :RdYlGn,
-    :RdBu,
-    :PiYG,
-    :PRGn,
-    :RdYlBu,
-    :BrBG,
-    :RdGy,
-    :PuOr,
-
-    #The number of colors a qualitative color scheme can have depends on the scheme.
-    #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
-    #The available qualitative color schemes are:
-    :Set1,
-    :Set2,
-    :Set3,
-    :Dark2,
-    :Accent,
-    :Paired,
-    :Pastel1,
-    :Pastel2
-])
+# const colorbrewer_names = Symbol.([
+#     # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
+#     :Blues,
+#     :Oranges,
+#     :Greens,
+#     :Reds,
+#     :Purples,
+#     :Greys,
+#     :OrRd,
+#     :GnBu,
+#     :PuBu,
+#     :PuRd,
+#     :BuPu,
+#     :BuGn,
+#     :YlGn,
+#     :RdPu,
+#     :YlOrBr,
+#     :YlGnBu,
+#     :YlOrRd,
+#     :PuBuGn,
+#
+#     # All diverging color schemes can have between 3 and 11 colors. The available diverging color schemes are:
+#     :Spectral,
+#     :RdYlGn,
+#     :RdBu,
+#     :PiYG,
+#     :PRGn,
+#     :RdYlBu,
+#     :BrBG,
+#     :RdGy,
+#     :PuOr,
+#
+#     #The number of colors a qualitative color scheme can have depends on the scheme.
+#     #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
+#     #The available qualitative color schemes are:
+#     :Set1,
+#     :Set2,
+#     :Set3,
+#     :Dark2,
+#     :Accent,
+#     :Paired,
+#     :Pastel1,
+#     :Pastel2
+# ])
 
 const colorbrewer_8color_names = String.([
     #Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
@@ -648,7 +648,7 @@ const colorbrewer_8color_names = String.([
 const plotutils_names = PlotUtils.clibraries() .|> PlotUtils.cgradients |> x -> vcat(x...) .|> String  # take the active color libraries from PlotUtils,
 # and get all their gradient symbols into an Array.
 
-const all_gradient_names = Set(vcat(string.(colorbrewer_names), string.(plotutils_names), "viridis"))
+const all_gradient_names = Set(vcat(string.(colorbrewer_8color_names), string.(plotutils_names)))
 
 """
     available_gradients()
