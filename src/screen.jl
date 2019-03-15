@@ -182,6 +182,15 @@ function renderloop end
 # the rendering loop
 const opengl_renderloop = Ref{Function}(renderloop)
 
+
+"""
+Julia 1.0.3 doesn't have I:J, so we copy the implementation from 1.1 under a new name:
+"""
+function irange(I::CartesianIndex{N}, J::CartesianIndex{N}) where N
+    CartesianIndices(map((i,j) -> i:j, Tuple(I), Tuple(J)))
+end
+
+
 """
 Loads the makie loading icon and embedds it in an image the size of resolution
 """
@@ -194,11 +203,10 @@ function get_loading_image(resolution)
     center = resolution .÷ 2
     center_icon = size(icon) .÷ 2
     start = CartesianIndex(max.(center .- center_icon, 1))
-    stop = min(start + CartesianIndex(size(icon)), CartesianIndex(resolution))
-    width = stop - start
-    range = CartesianIndices(width) .+ start
-    for idx in range
-        gray = icon[idx - start]
+    I1 = CartesianIndex(1, 1)
+    stop = min(start + CartesianIndex(size(icon)) - I1, CartesianIndex(resolution))
+    for idx in irange(start, stop)
+        gray = icon[idx - start + I1]
         img[idx] = RGBA{N0f8}(gray, gray, gray, 1.0)
     end
     return img
@@ -252,7 +260,7 @@ function Screen(;
 
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0),
-            (GLFW.RESIZABLE, GL_TRUE)
+            # (GLFW.RESIZABLE, GL_TRUE)
         ],
         visible = false,
         kw_args...
