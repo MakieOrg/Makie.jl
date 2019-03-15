@@ -24,6 +24,9 @@ end
 
 
 function Base.display(d::PlotDisplay, scene::Scene)
+    # set update to true, without triggering an event
+    # this just indicates, that now we may update on e.g. resize
+    update!(scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
         return backend_display(current_backend[], scene)
@@ -43,12 +46,15 @@ Base.showable(mime::MIME"application/json", scene::Scene) = backend_showable(cur
 # have to be explicit with mimetypes to avoid ambiguity
 
 function backend_show end
+
 for M in (MIME"text/plain", MIME)
     @eval function Base.show(io::IO, m::$M, scene::Scene)
-        res = get(io, :juno_plotsize, size(scene))
-        resize!(scene, res...)
+        # set update to true, without triggering an event
+        # this just indicates, that now we may update on e.g. resize
         update!(scene)
-        return AbstractPlotting.backend_show(current_backend[], io, m, scene)
+        res = get(io, :juno_plotsize, nothing)
+        res !== nothing && resize!(scene, res...)
+        return backend_show(current_backend[], io, m, scene)
     end
 end
 
@@ -122,10 +128,8 @@ function FileIO.save(
         f::FileIO.File{F}, scene::Scene;
         resolution = size(scene)
     ) where F
-    println(FileIO.filename(f))
-    if resolution !== size(scene)
-        resize!(scene, resolution)
-    end
+
+    resolution !== size(scene) && resize!(scene, resolution)
     open(FileIO.filename(f), "w") do s
         show(IOContext(s, :full_fidelity => true), format2mime(F), scene)
     end
@@ -234,9 +238,9 @@ function VideoStream(scene::Scene;
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
+    update!(scene)
     screen = backend_display(current_backend[], scene)
-    AbstractPlotting.update!(scene)
-    _xdim, _ydim = widths(pixelarea(scene)[])
+    _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
     process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
