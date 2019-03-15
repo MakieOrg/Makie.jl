@@ -578,19 +578,7 @@ end
 
 
 
-function scale_scene!(scene)
-    if is2d(scene)
-        area = pixelarea(scene)[]
-        lims = limits(scene)[]
-        # not really sure how to scale 3D scenes in a reasonable way
-        mini, maxi = minimum(lims), maximum(lims)
-        l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-        xyzfit = fit_ratio(area, l)
-        s = to_ndim(Vec3f0, xyzfit, 1f0)
-        scale!(scene, s)
-    end
-    return scene
-end
+
 
 function setup_camera!(scene::Scene)
     if scene[:camera][] == automatic

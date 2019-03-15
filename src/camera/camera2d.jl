@@ -4,6 +4,7 @@ struct Camera2D <: AbstractCamera
     zoombutton::Node{ButtonTypes}
     panbutton::Node{ButtonTypes}
     padding::Node{Float32}
+    last_area::Node{Vec{2, Int}}
 end
 
 function cam2d!(scene::SceneLike; kw_args...)
@@ -14,7 +15,8 @@ function cam2d!(scene::SceneLike; kw_args...)
             zoombutton = nothing,
             panbutton = Mouse.right,
             selectionbutton = (Keyboard.space, Mouse.left),
-            padding = 0.001
+            padding = 0.001,
+            last_area = Vec(size(scene))
         )
     end
     cam = from_dict(Camera2D, cam_attributes)
@@ -65,17 +67,16 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
     camera(scene).view[] = view
     camera(scene).projection[] = projection
     camera(scene).projectionview[] = projection * view
+    cam.last_area[] = Vec(size(scene))
     return
 end
 
 function correct_ratio!(scene, cam)
-    lastw = RefValue(widths(pixelarea(scene)[]))
     on(camera(scene), pixelarea(scene)) do area
         neww = widths(area)
-        change = neww .- lastw[]
+        change = neww .- cam.last_area[]
         if !(change ≈ Vec(0.0, 0.0))
-            s = 1.0 .+ (change ./ lastw[])
-            lastw[] = neww
+            s = 1.0 .+ (change ./ cam.last_area[])
             camrect = FRect(minimum(cam.area[]), widths(cam.area[]) .* s)
             cam.area[] = camrect
             update_cam!(scene, cam)
