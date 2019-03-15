@@ -162,22 +162,9 @@ end
 
 estimated_space(x, N, w) = 1/N
 
-function Base.resize!(scene::Scene, xy::Tuple{Number, Number})
-    Base.resize!(scene, IRect(0, 0, xy))
-end
-Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
-function Base.resize!(scene::Scene, rect::Rect2D)
-    pixelarea(scene)[] = rect
-end
 ispixelcam(x::Union{PixelCamera, Camera2D}) = true
 ispixelcam(x) = false
 
-function update!(p::Scene)
-    p.updated[] = true
-    for c in p.children
-        update!(c)
-    end
-end
 
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
