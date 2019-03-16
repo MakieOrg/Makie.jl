@@ -592,52 +592,7 @@ convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = 
 convert_attribute(x, k::key"linewidth") = Float32(x)
 convert_attribute(x::AbstractVector, k::key"linewidth") = el32convert(x)
 
-const colorbrewer_names = Symbol.([
-          # All sequential color schemes can have between 3 and 9 colors. The available sequential color schemes are:
-          :Blues,
-          :Oranges,
-          :Greens,
-          :Reds,
-          :Purples,
-          :Greys,
-          :OrRd,
-          :GnBu,
-          :PuBu,
-          :PuRd,
-          :BuPu,
-          :BuGn,
-          :YlGn,
-          :RdPu,
-          :YlOrBr,
-          :YlGnBu,
-          :YlOrRd,
-          :PuBuGn,
-
-          # All diverging color schemes can have between 3 and 11 colors. The available diverging color schemes are:
-          :Spectral,
-          :RdYlGn,
-          :RdBu,
-          :PiYG,
-          :PRGn,
-          :RdYlBu,
-          :BrBG,
-          :RdGy,
-          :PuOr,
-
-          #The number of colors a qualitative color scheme can have depends on the scheme.
-          #Accent, Dark2, Pastel2, and Set2 only support 8 colors.
-          #The available qualitative color schemes are:
-          :Set1,
-          :Set2,
-          :Set3,
-          :Dark2,
-          :Accent,
-          :Paired,
-          :Pastel1,
-          :Pastel2
-      ])
-
-#Accent, Dark2, Pastel2, and Set2 only support 8 colors, so put them in a special-case list.
+# ColorBrewer colormaps that support only 8 colors require special handling on the backend, so we show them here.
 const colorbrewer_8color_names = String.([
     :Accent,
     :Dark2,
@@ -645,10 +600,10 @@ const colorbrewer_8color_names = String.([
     :Set2
 ])
 
-const plotutils_names = PlotUtils.clibraries() .|> PlotUtils.cgradients |> x -> vcat(x...) .|> String  # take the active color libraries from PlotUtils,
-# and get all their gradient symbols into an Array.
+# throw an error i
+const plotutils_names = PlotUtils.clibraries() .|> PlotUtils.cgradients |> x -> vcat(x...) .|> String
 
-const all_gradient_names = Set(vcat(string.(colorbrewer_8color_names), string.(plotutils_names), string.(colorbrewer_names)))
+const all_gradient_names = Set(vcat(plotutils_names, colorbrewer_8color_names))
 
 """
     available_gradients()
@@ -657,7 +612,7 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in sort(collect(all_gradient_names))
+    for name in sort(collect(@eval PlotUtils.cgradients()))
         println("    ", name)
     end
 end
@@ -700,8 +655,6 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
             return resample(ColorBrewer.palette(cs_string, 8), n)
-        elseif cs_string ∈ colorbrewer_names    # get colormaps directly from ColorBrewer, prefer that to PlotUtils
-            return resample(ColorBrewer.palette(cs_string, 9), n)
         else                                    # cs_string must be in plotutils_names
             return PlotUtils.cvec(Symbol(cs), n) .|> color .|> x -> convert(RGB{FixedPointNumbers.Normed{UInt8,8}}, x)
         end
