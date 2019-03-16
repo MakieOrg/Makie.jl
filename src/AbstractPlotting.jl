@@ -98,6 +98,7 @@ export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, update_cam!, rotate_cam!, translate_cam!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
+
 # picking + interactive use cases + events
 export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
 export register_callbacks
@@ -131,6 +132,7 @@ export IRect, FRect, Rect, Sphere, Circle
 export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..), GLNormalUVMesh
+
 # conflicting identifiers
 using GeometryTypes: widths
 export widths, decompose
@@ -144,6 +146,10 @@ export plot!, plot
 export Stepper, step!, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record
 export save
+
+# colormap stuff from PlotUtils
+export clibraries, cgradients
+
 
 # default icon for Makie
 function icon()
