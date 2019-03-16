@@ -148,7 +148,7 @@ export VideoStream, recordframe!, record
 export save
 
 # colormap stuff from PlotUtils
-export clibraries, cgradients
+export clibraries, cgradients, clibrary
 
 
 # default icon for Makie
