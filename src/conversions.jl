@@ -647,7 +647,7 @@ to_colormap(x::Union{String, Symbol}, n::Integer) = convert_attribute(x, key"col
 
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
-For now, we support gradients from `PlotUtils` and `ColorBrewer` natively.
+For now, we support gradients from `PlotUtils` natively.
 """
 function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
     cs_string = string(cs)
