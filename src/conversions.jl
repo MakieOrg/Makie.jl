@@ -612,7 +612,7 @@ Prints all available gradient names.
 """
 function available_gradients()
     println("Gradient Symbol/Strings:")
-    for name in sort(collect(@eval PlotUtils.cgradients()))
+    for name in sort(collect(all_gradient_names))
         println("    ", name)
     end
 end
