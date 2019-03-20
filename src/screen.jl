@@ -214,7 +214,7 @@ end
 
 function display_loading_image(screen::Screen)
     fb = screen.framebuffer
-    fbsize = size(fb)
+    fbsize = size(fb.color)
     image = get_loading_image(fbsize)
     if size(image) == fbsize
         GLFW.PollEvents() # poll events to not make the window freeze
