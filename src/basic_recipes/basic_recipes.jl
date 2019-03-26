@@ -9,6 +9,8 @@
         strokewidth = 0.0,
         shading = false,
         linestyle = nothing,
+        overdraw = false,
+        transparency = false,
     )
 end
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
@@ -21,12 +23,12 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = plot[:shading], visible = plot[:visible]
+        shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw]
     )
     wireframe!(
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle],
-        linewidth = plot[:strokewidth], visible = plot[:visible]
+        linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw]
     )
 end
 
@@ -47,7 +49,9 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
         shading = plot.shading,
         color = plot.color,
         colormap = plot.colormap,
-        colorrange = plot.colorrange
+        colorrange = plot.colorrange,
+        overdraw = plot.overdraw,
+        transparency = plot.transparency
     )
     outline = lift(polygons) do polygons
         line = Point2f0[]
@@ -62,6 +66,7 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
         plot, outline, visible = plot.visible,
         color = plot.strokecolor, linestyle = plot.linestyle,
         linewidth = plot.strokewidth,
+        overdraw = plot.overdraw, transparency = plot.transparency
     )
 end
 
