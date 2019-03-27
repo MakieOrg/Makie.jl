@@ -420,6 +420,7 @@ e.g.:
 """
 plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
 plottype(::AbstractVector, ::AbstractVector) = Lines
+plottype(::AbstractVector) = Lines
 plottype(::AbstractMatrix) = Heatmap
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
