@@ -424,6 +424,7 @@ plottype(::AbstractVector) = Lines
 plottype(::AbstractMatrix) = Heatmap
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
+plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 # If it has something more concrete than Any, use it directly
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
 
