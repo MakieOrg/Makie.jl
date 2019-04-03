@@ -9,6 +9,11 @@ When points are given, it draws one polygon that connects all the points in orde
 When a shape is given (essentially anything decomposable by `GeometryTypes`),
 it will plot `decompose(shape)`.
 
+    poly(coordinates, connectivity; kwargs...)
+
+Plots polygons, which are defined by
+`coordinates` (the coordinates of the vertices) and
+`connectivity` (the edges between the vertices).
 """
 @recipe(Poly) do scene
     Theme(;
