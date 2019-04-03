@@ -1,4 +1,11 @@
 
+"""
+    poly(coordinates, connectivity; kwargs...)
+
+Plots polygons, which are defined by 
+`coordinates` (the coordinates of the vertices) and 
+`connectivity` (the edges between the vertices).  
+"""
 @recipe(Poly) do scene
     Theme(;
         color = theme(scene, :color),
