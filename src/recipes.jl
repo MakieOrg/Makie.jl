@@ -7,7 +7,7 @@ Since we add all these signatures to different functions, we make it reusable wi
 The `Core.@__doc__` macro transfers the docstring given to the Recipe into the functions.
 """
 function default_plot_signatures(funcname, funcname!, PlotType)
-    esc( # `esc` ensures that the `@__doc__` macros are evaluated in the calling macro, not in this function
+#     esc( # `esc` ensures that the `@__doc__` macros are evaluated in the calling macro, not in this function
     quote
         Core.@__doc__ ($funcname)(args...; attributes...) = plot!(Scene(), $PlotType, Attributes(attributes), args...)
 
@@ -21,7 +21,7 @@ function default_plot_signatures(funcname, funcname!, PlotType)
 
         Core.@__doc__ ($funcname!)(scene::SceneLike, attributes::Attributes, args...; kw_attributes...) = plot!(scene, $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
     end
-    )
+#     )
 end
 
 
@@ -135,7 +135,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
         Base.show(io::IO, ::Type{<: $PlotType}) = print(io, $(string(Tsym)), "{...}")
         $(default_plot_signatures(funcname, funcname!, PlotType))
-        Base.@__doc__($funcname)
+#         Base.@__doc__($funcname)
         AbstractPlotting.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
     end
