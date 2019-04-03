@@ -1,17 +1,5 @@
 to_func_name(x::Symbol) = string(x) |> lowercase |> Symbol
 
-# TODO implement docstring conversion - how to fetch it from the documentation on macro?  Maybe through this:
-# The other thing you can do is document one function, then retrieve that functions docs with the @doc macro:
-# 
-#     @doc "foo" ->
-#     function recursive_ols() ...
-# 
-#     @doc (@doc recursive_ols) ->
-#     function recursive_ols!() ...
-# from http://julia-programming-language.2336112.n4.nabble.com/Is-there-a-natural-way-to-use-the-same-docstring-for-multiple-functions-td12166.html
-
-
-
 """
      default_plot_signatures(funcname, PlotType)
 Creates all the different overloads for `funcname` that need to be supported for the plotting frontend!
