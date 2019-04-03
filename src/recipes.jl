@@ -15,53 +15,25 @@ to_func_name(x::Symbol) = string(x) |> lowercase |> Symbol
 """
      default_plot_signatures(funcname, PlotType)
 Creates all the different overloads for `funcname` that need to be supported for the plotting frontend!
-Since we add all these signatures to different functions, we make it reusable with this function
+Since we add all these signatures to different functions, we make it reusable with this function.
+The `Core.@__doc__` macro transfers the docstring given to the Recipe into the functions.
 """
 function default_plot_signatures(funcname, funcname!, PlotType)
+    esc( # `esc` ensures that the `@__doc__` macros are evaluated in the calling macro, not in this function
     quote
-        """
-            $($(funcname))(args...; attributes...)
+        Core.@__doc__ ($funcname)(args...; attributes...) = plot!(Scene(), $PlotType, Attributes(attributes), args...)
 
-        Command works on plot args 1:N and accepts keyword arguments to style the plot. Creates a new scene!
-        """
-        ($funcname)(args...; attributes...) = plot!(Scene(), $PlotType, Attributes(attributes), args...)
+        Core.@__doc__ ($funcname!)(args...; attributes...) = plot!(current_scene(), $PlotType, Attributes(attributes), args...)
 
-        """
-            $($(funcname!))(args...; attributes...)
+        Core.@__doc__ ($funcname!)(scene::SceneLike, args...; attributes...) = plot!(scene, $PlotType, Attributes(attributes), args...)
 
-        Command works on plot args 1:N and accepts keyword arguments to style the plot. Adds new plot to `current_scene()`
-        """
-        ($funcname!)(args...; attributes...) = plot!(current_scene(), $PlotType, Attributes(attributes), args...)
+        Core.@__doc__ ($funcname)(attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
 
+        Core.@__doc__ ($funcname!)(attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
 
-        """
-            $($(funcname!))(scene::SceneLike, args...; attributes...)
-
-        Command works on plot args 1:N and accepts keyword arguments to style the plot. Adds new plot to `scene`!
-        """
-        ($funcname!)(scene::SceneLike, args...; attributes...) = plot!(scene, $PlotType, Attributes(attributes), args...)
-
-        """
-            $($(funcname))(attributes::Attributes, args...; attributes...)
-
-        Like $($(funcname))(args...; attributes...) but accepts a theme as first argument. Creates a new scene!
-        """
-        ($funcname)(attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
-
-        """
-            $($(funcname!))(attributes::Attributes, args...; attributes...)
-
-        Like $($(funcname!))(args...; attributes...) but accepts a theme as first argument. Adds new plot to `current_scene()`!
-        """
-        ($funcname!)(attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
-
-        """
-            $($(funcname!))(attributes::Attributes, args...; attributes...)
-
-        Like $($(funcname!))(scene, args...; attributes...) but accepts a theme as second argument. Adds new plot to `scene`!
-        """
-        ($funcname!)(scene::SceneLike, attributes::Attributes, args...; kw_attributes...) = plot!(scene, $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+        Core.@__doc__ ($funcname!)(scene::SceneLike, attributes::Attributes, args...; kw_attributes...) = plot!(scene, $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
     end
+    )
 end
 
 
