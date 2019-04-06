@@ -29,6 +29,12 @@ julia> -5:5 .|> exp .|> sig_printer
 """
 sig_printer(v::Real) = @sprintf "%0.2e" v
 
+"""
+    Slider
+
+TODO add function signatures
+TODO add description
+"""
 @recipe(Slider) do scene
     Theme(
         value = 0,
@@ -148,7 +154,15 @@ function move!(x::Slider, idx::Integer)
     translate!(x.plots[end], xpos, 0, 0)
     return
 end
-export move!
+
+export move! # TODO move to AbstractPlotting?
+
+"""
+    Button
+
+TODO add function signatures
+TODO add description
+"""
 @recipe(Button) do scene
     Theme(
         dimensions = (40, 40),
@@ -310,8 +324,13 @@ function popup(parent, position, width)
     Popup(scene2, vis, pos_n, width_n)
 end
 
+"""
+    Colorswatch
 
-function colorswatch(scene = Scene(camera = campixel!))
+TODO add function signatures
+TODO add description
+"""
+function colorswatch(scene = Scene(camera = campixel!)) # TODO convert to Recipe?
     pop = popup(scene, (0, 0), (250, 300))
     sub_ui = pop.scene
     st, hsv_hue = textslider(1:360, "hue", sub_ui)
