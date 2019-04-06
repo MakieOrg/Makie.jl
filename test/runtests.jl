@@ -33,7 +33,7 @@ moderngl_exs = ["Explicit frame rendering"]
 
 save_exs = ["Axis theming", "Labels"]
 
-color_exs = ["Stepper demo"]
+color_exs = ["Stepper demo", "colormaps"]
 
 exc_str = cat(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, dims=1)
 
