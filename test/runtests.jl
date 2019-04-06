@@ -31,7 +31,7 @@ gdal_exs = ["WorldClim visualization"]
 
 moderngl_exs = ["Explicit frame rendering"]
 
-save_exs = ["Axis theming", "Labels", "color_legend"]      # probably display scene at the end, should be changed?
+save_exs = ["Axis theming", "Labels", "Color Legend"]      # probably display scene at the end, should be changed?
 
 color_exs = ["Stepper demo", "colormaps"]  # hopefullly fixed by next tag of MakieGallery
 
