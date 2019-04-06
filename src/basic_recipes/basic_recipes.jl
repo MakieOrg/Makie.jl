@@ -1,4 +1,15 @@
+"""
+    `poly(vertices, indices; kwargs...)`
+    `poly(points; kwargs...)`
+    `poly(shape; kwargs...)`
 
+Plots a polygon based on the arguments given.
+When vertices and indices are given, it functions similarly to `mesh`.
+When points are given, it draws one polygon that connects all the points in order.
+When a shape is given (essentially anything decomposable by `GeometryTypes`),
+it will plot `decompose(shape)`.
+
+"""
 @recipe(Poly) do scene
     Theme(;
         color = theme(scene, :color),
@@ -123,6 +134,26 @@ function data_limits(p::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{C
     union(mwidth, xybb)
 end
 
+"""
+    `arrows(points, directions; kwargs...)`
+    `arrows(x, y, u, v)`
+    `arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)`
+    `arrows(x, y, z, u, v, w)`
+
+Plots arrows at the specified points with the specified components.
+`u` and `v` are interpreted as vector components (`u` being the x
+and `v` being the y), and the vectors are plotted with the tails at
+`x`, `y`.
+
+If `x, y, u, v` are `<: AbstractVector`, then each 'row' is plotted
+as a single vector.
+
+If `u, v` are `<: AbstractMatrix`, then `x` and `y` are interpreted as
+specifications for a grid, and `u, v` are plotted as arrows along the
+grid.
+
+`arrows` can also work in three dimensions.
+"""
 @recipe(Arrows, points, directions) do scene
     theme = Theme(
         arrowhead = automatic,
@@ -178,6 +209,11 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     )
 end
 
+"""
+    `wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`
+
+Draws a wireframe, either interpreted as a surface or as a mesh.
+"""
 @recipe(Wireframe) do scene
     default_theme(scene, LineSegments)
 end
@@ -236,6 +272,12 @@ function sphere_streamline(linebuffer, ∇ˢf, pt, h, n)
     return
 end
 
+"""
+    StreamLines
+
+TODO add function signatures
+TODO add descripton
+"""
 @recipe(StreamLines, points, directions) do scene
     Theme(
         h = 0.01f0,
@@ -245,20 +287,31 @@ end
     )
 end
 
-function plot!(plot::StreamLines{<: AbstractVector{T}}) where T
-    @extract plot (points, directions)
-    linebuffer = T[]
-    lines = lift(directions, points, plot[:h], plot[:n]) do ∇ˢf, origins, h, n
-        empty!(linebuffer)
-        for point in origins
-            sphere_streamline(linebuffer, ∇ˢf, point, h, n)
-        end
-        linebuffer
-    end
-    linesegments!(plot, Theme(plot), lines)
-end
+# typeof(([1, 2, 3] |> vec, [1, 2, 3] |> vec)) <: Tuple{<: AbstractVector{T}, <: AbstractVector{T}} where T
+# true
+# streamlines([1, 2, 3] |> vec, [1, 2, 3] |> vec)
+# ERROR: Plotting for the arguments (::Array{Int64,1}, ::Array{Int64,1}) not defined for AbstractPlotting.streamlines. If you want to support those arguments, overload plot!(plot::AbstractPlotting.streamlines{ <: Tuple{Array{Int64,1},Array{Int64,1}}})
+
+# function plot!(plot::StreamLines) where T
+#     @extract plot (points, directions)
+#     linebuffer = T[]
+#     lines = lift(directions, points, plot[:h], plot[:n]) do ∇ˢf, origins, h, n
+#         empty!(linebuffer)
+#         for point in origins
+#             sphere_streamline(linebuffer, ∇ˢf, point, h, n)
+#         end
+#         linebuffer
+#     end
+#     linesegments!(plot, Theme(plot), lines)
+# end
 
 
+"""
+    Series - ?
+
+TODO add function signatures
+TODO add descripton
+"""
 @recipe(Series, series) do scene
     Theme(
         seriescolors = :Set1,
@@ -376,7 +429,14 @@ end
 
 is2d(scene::SceneLike) = widths(limits(scene)[])[3] == 0.0
 
+"""
+    arc(origin, radius, start_angle, stop_angle; kwargs...)
 
+This function plots a circular arc, centered at `origin` with radius `radius`,
+from `start_angle` to `stop_angle`.
+`origin` must be a coordinate in 2 dimensions; the rest of the arguments must be
+`<: Number`.
+"""
 @recipe(Arc, origin, radius, start_angle, stop_angle) do scene
     Theme(;
         default_theme(scene, Lines)...,
@@ -388,7 +448,7 @@ function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
         map(range(start_angle, stop=stop_angle, length=resolution)) do angle
-            origin .+ (Point2f0(sin(angle), cos(angle)) .* radius)
+            Point2f0(origin .+ ((sin(angle), cos(angle) .* radius)))
         end
     end
     lines!(p, Theme(p), positions)
@@ -401,9 +461,11 @@ function AbstractPlotting.plot!(plot::Plot(AbstractVector{<: Complex}))
     lines!(plot, lift(im-> Point2f0.(real.(im), imag.(im)), x[1]))
 end
 
+"""
+    barplot(x, y; kwargs...)
 
-
-
+Plots a barplot; `y` defines the height.  `x` and `y` should be 1 dimensional.
+"""
 @recipe(BarPlot, x, y) do scene
     Theme(;
         fillto = 0.0,
@@ -475,6 +537,12 @@ function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
     convert_arguments(P, tmp...)
 end
 
+"""
+    scatterlines(xs, ys, [zs]; kwargs...)
+
+Plots `lines` between sets of x and y coordinates provided,
+as well as plotting those points using `scatter`.
+"""
 @recipe(ScatterLines) do scene
     merge(default_theme(scene, Scatter), default_theme(scene, Lines))
 end
@@ -485,7 +553,11 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
 end
 
 
+"""
+    band(x, ylower, yupper; kwargs...)
 
+Plots a band from `ylower` to `yupper` along `x`.
+"""
 @recipe(Band, x, ylower, yupper) do scene
     Theme(;
         default_theme(scene, Mesh)...,
@@ -709,7 +781,12 @@ function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y
     AbstractPlotting.xyz_boundingbox(to_value.((x[1], x[2]))...)
 end
 
+"""
+    VolumeSlices
 
+TODO add function signatures
+TODO add descripton
+"""
 @recipe(VolumeSlices, x, y, z, volume) do scene
     Theme(
         colormap = theme(scene, :colormap),
