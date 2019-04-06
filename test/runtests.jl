@@ -35,7 +35,9 @@ save_exs = ["Axis theming", "Labels", "color_legend"]      # probably display sc
 
 color_exs = ["Stepper demo", "colormaps"]  # hopefullly fixed by next tag of MakieGallery
 
-exc_str = cat(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, dims=1)
+curl_exs = ["Earth & Ships"]
+
+exc_str = cat(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, curl_exs, dims=1)
 
 for i in 1:length(database)
 
