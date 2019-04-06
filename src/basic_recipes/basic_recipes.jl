@@ -434,8 +434,14 @@ is2d(scene::SceneLike) = widths(limits(scene)[])[3] == 0.0
 
 This function plots a circular arc, centered at `origin` with radius `radius`,
 from `start_angle` to `stop_angle`.
-`origin` must be a coordinate in 2 dimensions; the rest of the arguments must be
+`origin` must be a coordinate in 2 dimensions (i.e., a `Point2`); the rest of the arguments must be
 `<: Number`.
+
+Examples:
+
+`arc(Point2f0(0), 1, 0.0, π)`
+`arc(Point2f0(1, 2), 0.3. π, -π)`
+
 """
 @recipe(Arc, origin, radius, start_angle, stop_angle) do scene
     Theme(;
@@ -448,7 +454,7 @@ function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
         map(range(start_angle, stop=stop_angle, length=resolution)) do angle
-            Point2f0(origin .+ ((sin(angle), cos(angle) .* radius)))
+            origin .+ Point2f0((sin(angle), cos(angle)) .* radius)
         end
     end
     lines!(p, Theme(p), positions)
