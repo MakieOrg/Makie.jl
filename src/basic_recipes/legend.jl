@@ -1,8 +1,8 @@
 """
-    Legend
+    `legend(plots, labels; kwargs...)`
 
-TODO add function signatures
-TODO add description
+Plots a legend for the given plots with the given labels.
+`plots` may be a single Plot or a list of Plots.
 """
 @recipe(Legend, plots, labels) do scene
     Theme(
