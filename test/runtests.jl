@@ -31,9 +31,11 @@ gdal_exs = ["WorldClim visualization"]
 
 moderngl_exs = ["Explicit frame rendering"]
 
-save_exs = ["Axis theming"]
+save_exs = ["Axis theming", "Labels"]
 
-exc_str = cat(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, dims=1)
+color_exs = ["Stepper demo"]
+
+exc_str = cat(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, dims=1)
 
 for i in 1:length(database)
 
@@ -53,11 +55,11 @@ for i in 1:length(database)
 
   catch err
 
-    if isa(err, LoadError)
+    if isa(err, ArgumentError)
 
       print(err)
 
-      @warn("Test " * database[i].title * "used an unloaded package." * "\nPerhaps it needs to be added to `Project.toml`?")
+      @warn("Test " * database[i].title * " used an unloaded package." * "\nPerhaps it needs to be added to `Project.toml`?")
 
     else
 
