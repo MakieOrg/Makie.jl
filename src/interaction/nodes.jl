@@ -50,7 +50,7 @@ function safe_off(o::Observables.AbstractObservable, f)
     for i in 1:length(l)
         if f === l[i]
             deleteat!(l, i)
-            for g in removehandler_callbacks
+            for g in Observables.removehandler_callbacks
                 g(o, f)
             end
             return
