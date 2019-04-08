@@ -82,7 +82,6 @@ function Base.resize!(screen::Screen, w, h)
     resize!(nw, w, h)
     fb = screen.framebuffer
     resize!(fb, (w, h))
-    GLFW.PollEvents()
 end
 
 function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
@@ -217,7 +216,6 @@ function display_loading_image(screen::Screen)
     fbsize = size(fb.color)
     image = get_loading_image(fbsize)
     if size(image) == fbsize
-        GLFW.PollEvents() # poll events to not make the window freeze
         nw = to_native(screen)
         fb.color[1:size(image, 1), 1:size(image, 2)] = image # transfer loading image to gpu framebuffer
         GLAbstraction.is_context_active(nw) || return
