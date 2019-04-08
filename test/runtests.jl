@@ -49,25 +49,9 @@ for i in 1:length(database)
 
   end
 
-  try
+  print("Running " * database[i].title * "\n(index $i)\n")
 
-    print("Running " * database[i].title * "\n(index $i)\n")
-
-    MakieGallery.eval_example(database[i]);
-
-  catch err
-
-    if isa(err, ArgumentError)
-
-      print(err)
-
-      @warn("Test " * database[i].title * " used an unloaded package." * "\nPerhaps it needs to be added to `Project.toml`?")
-
-    else
-
-        throw(err) # throw that error - it's not a Pkg error
-
-    end
+  MakieGallery.eval_example(database[i]);
 
   end
 end
