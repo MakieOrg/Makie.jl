@@ -1,5 +1,6 @@
 gpuvec(x) = GPUVector(GLBuffer(x))
 
+to_range(x, y) = to_range.((x, y))
 to_range(x::ClosedInterval) = (minimum(x), maximum(x))
 to_range(x::VecTypes{2}) = x
 to_range(x::AbstractRange) = (minimum(x), maximum(x))
@@ -239,9 +240,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
 end
 
 
+
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = (to_value.((x[1], x[2])))
+        gl_attributes[:ranges] = lift(to_range, x[1], x[2])
+        @show gl_attributes[:ranges][]
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         tex = Texture(x[3], minfilter = interp)
@@ -268,7 +271,7 @@ end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:ranges] = to_range.(to_value.((x[1], x[2])))
+        gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         img = get_image(gl_attributes)
         # remove_automatic!(gl_attributes)
         visualize(img, Style(:default), gl_attributes).children[]

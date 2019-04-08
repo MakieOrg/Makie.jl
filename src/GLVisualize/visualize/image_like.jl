@@ -53,11 +53,15 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         ranges = (0:size(main_v, 1), 0:size(main_v, 2))
     end
-    x, y, xw, yh = minimum(ranges[1]), minimum(ranges[2]), maximum(ranges[1]), maximum(ranges[2])
+    prim = const_lift(data[:ranges]) do ranges
+        x, y, xw, yh = minimum(ranges[1]), minimum(ranges[2]), maximum(ranges[1]), maximum(ranges[2])
+        SimpleRectangle{Float32}(x, y, xw-x, yh-y)
+    end
+    delete!(data, :ranges)
     @gen_defaults! data begin
         intensity             = main => Texture
         color_map             = default(Vector{RGBA{N0f8}},s) => Texture
-        primitive::GLUVMesh2D = SimpleRectangle{Float32}(x, y, xw-x, yh-y)
+        primitive::GLUVMesh2D = prim
         color_norm            = const_lift(extrema2f0, main)
         stroke_width::Float32 = 0.05f0
         levels::Float32       = 5f0
