@@ -52,8 +52,6 @@ for i in 1:length(database)
   print("Running " * database[i].title * "\n(index $i)\n")
 
   MakieGallery.eval_example(database[i]);
-
-  end
 end
 
 # TODO write some AbstractPlotting specific tests... So far functionality is tested in Makie.jl
