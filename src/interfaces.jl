@@ -325,7 +325,7 @@ Usage:
     # without keyword_verload, this wouldn't happen
     plot(MyType, attribute = 2)
     #You can also use the convenience macro, to overload convert_arguments in one step:
-    @keywords convert_argumetns(x::MyType; attribute = 1)
+    @keywords convert_arguments(x::MyType; attribute = 1)
         ...
     end
 ```
@@ -419,9 +419,9 @@ e.g.:
 ```
 """
 plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
-plottype(::AbstractVector, ::AbstractVector) = Lines
-plottype(::AbstractVector) = Lines
-plottype(::AbstractMatrix) = Heatmap
+plottype(::RealVector, ::RealVector) = Lines
+plottype(::RealVector) = Lines
+plottype(::AbstractMatrix{<: Real}) = Heatmap
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
 plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
