@@ -40,7 +40,7 @@ Updates the camera for the given `scene` to cover the given `area` in 2d.
 """
 update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), area)
 """
-    `update_cam!(scene::SceneLike, area)`
+    `update_cam!(scene::SceneLike)`
 
 Updates the camera for the given `scene` to cover the limits of the `Scene`.
 Useful when using the `Node` pipeline.
