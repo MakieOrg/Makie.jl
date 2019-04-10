@@ -23,18 +23,10 @@ function register_backend!(backend::AbstractBackend)
 end
 
 
-const has_ffmpeg = Ref(false)
-
-function __init__()
-    pushdisplay(PlotDisplay())
-    has_ffmpeg[] = try
-        success(`ffmpeg -h`)
-    catch
-        false
-    end
-end
-
 function Base.display(d::PlotDisplay, scene::Scene)
+    # set update to true, without triggering an event
+    # this just indicates, that now we may update on e.g. resize
+    update!(scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
         return backend_display(current_backend[], scene)
@@ -47,19 +39,22 @@ function Base.display(d::PlotDisplay, scene::Scene)
     end
 end
 
-Base.showable(mime::MIME, scene::Scene) = backend_showable(current_backend[], mime, scene)
+Base.showable(mime::MIME{M}, scene::Scene) where M = backend_showable(current_backend[], mime, scene)
 # ambig
-Base.showable(mime::MIME"application/json", ::Scene) = backend_showable(current_backend[], mime, scene)
+Base.showable(mime::MIME"application/json", scene::Scene) = backend_showable(current_backend[], mime, scene)
 
 # have to be explicit with mimetypes to avoid ambiguity
 
 function backend_show end
+
 for M in (MIME"text/plain", MIME)
     @eval function Base.show(io::IO, m::$M, scene::Scene)
-        res = get(io, :juno_plotsize, size(scene))
-        resize!(scene, res...)
+        # set update to true, without triggering an event
+        # this just indicates, that now we may update on e.g. resize
         update!(scene)
-        return AbstractPlotting.backend_show(current_backend[], io, m, scene)
+        res = get(io, :juno_plotsize, nothing)
+        res !== nothing && resize!(scene, res...)
+        return backend_show(current_backend[], io, m, scene)
     end
 end
 
@@ -120,11 +115,26 @@ function Stepper(scene, path)
     Stepper(scene, path, 1)
 end
 
-function FileIO.save(filename::String, scene::Scene)
-    open(filename, "w") do s
-        show(IOContext(s, :full_fidelity => true), MIME"image/png"(), scene)
+format2mime(::Type{FileIO.format"PNG"}) = MIME"image/png"()
+format2mime(::Type{FileIO.format"SVG"}) = MIME"image/svg+xml"()
+format2mime(::Type{FileIO.format"JPEG"}) = MIME"image/jpeg"()
+
+# Allow format to be overridden with first argument
+"""
+Saves a scene to png/svg!
+Resolution can be specified, via `save("path", scene, resolution = (1000, 1000))`!
+"""
+function FileIO.save(
+        f::FileIO.File{F}, scene::Scene;
+        resolution = size(scene)
+    ) where F
+
+    resolution !== size(scene) && resize!(scene, resolution)
+    open(FileIO.filename(f), "w") do s
+        show(IOContext(s, :full_fidelity => true), format2mime(F), scene)
     end
 end
+
 """
     step!(s::Stepper)
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
@@ -162,7 +172,6 @@ Replays the serialized events recorded with `record_events` in `path` in `scene`
 """
 replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
 function replay_events(f, scene::Scene, path::String)
-    display(scene)
     events = open(io-> deserialize(io), path)
     sort!(events, by = first)
     for i in 1:length(events)
@@ -178,11 +187,14 @@ function replay_events(f, scene::Scene, path::String)
             end
         end
         f()
-        yield()
         if i < length(events)
             t2, (field, value) = events[i + 1]
             # min sleep time 0.001
-            (t2 - t1 > 0.001) && sleep(t2 - t1)
+            if (t2 - t1 > 0.001)
+                sleep(t2 - t1)
+            else
+                yield()
+            end
         end
     end
 end
@@ -226,9 +238,9 @@ function VideoStream(scene::Scene;
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
+    update!(scene)
     screen = backend_display(current_backend[], scene)
-    AbstractPlotting.update!(scene)
-    _xdim, _ydim = widths(pixelarea(scene)[])
+    _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
     process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")

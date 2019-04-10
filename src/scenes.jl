@@ -35,6 +35,8 @@ function Scene(
         current_screens::Vector{AbstractScreen},
         parent = nothing,
     )
+    # indicates whether we can start updating the plot
+    # needs to be set in display
     updated = Node(false)
 
     scene = Scene(
@@ -84,7 +86,25 @@ parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
 Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
 Base.size(x::Scene, i) = size(x)[i]
+function Base.resize!(scene::Scene, xy::Tuple{Number, Number})
+    Base.resize!(scene, IRect(0, 0, xy))
+end
+Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
+function Base.resize!(scene::Scene, rect::Rect2D)
+    pixelarea(scene)[] = rect
+end
 
+"""
+    `update!(p::Scene)`
+
+Updates a `Scene` and all its children.
+"""
+function update!(p::Scene)
+    p.updated[] = true
+    for c in p.children
+        update!(c)
+    end
+end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
 Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
@@ -207,7 +227,7 @@ plots(scene::SceneLike) = scene.plots
 const _forced_update_scheduled = Ref(false)
 
 """
-Returns wether a scene needs updating
+Returns whether a scene needs to be updated
 """
 function must_update()
     val = _forced_update_scheduled[]
@@ -216,7 +236,7 @@ function must_update()
 end
 
 """
-Forces to rerender the scnee
+Forces the scene to be re-rendered
 """
 function force_update!()
     _forced_update_scheduled[] = true
@@ -394,6 +414,19 @@ function insertplots!(screen::AbstractDisplay, scene::Scene)
 end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
+function scale_scene!(scene::Scene)
+    if is2d(scene)
+        area = pixelarea(scene)[]
+        lims = limits(scene)[]
+        # not really sure how to scale 3D scenes in a reasonable way
+        mini, maxi = minimum(lims), maximum(lims)
+        l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
+        xyzfit = fit_ratio(area, l)
+        s = to_ndim(Vec3f0, xyzfit, 1f0)
+        scale!(scene, s)
+    end
+    return scene
+end
 
 function center!(scene::Scene, padding = 0.01)
     bb = boundingbox(scene)

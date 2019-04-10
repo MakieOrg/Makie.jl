@@ -24,11 +24,16 @@ const Rect{N, T} = HyperRectangle{N, T}
 const Rect2D{T} = HyperRectangle{2, T}
 const FRect2D = Rect2D{Float32}
 
+"A generic, three dimensional rectangle."
 const Rect3D{T} = Rect{3, T}
+
+"An float valued, three dimensional rectangle."
 const FRect3D = Rect3D{Float32}
+
+"An integer valued, three dimensional rectangle."
 const IRect3D = Rect3D{Int}
 
-
+"An integer valued, two dimensional rectangle."
 const IRect2D = Rect2D{Int}
 
 const Point2d{T} = NTuple{2, T}
@@ -41,20 +46,51 @@ const RGBf0 = RGB{Float32}
 
 abstract type AbstractScreen <: AbstractDisplay end
 
+"""
+    IRect(x, y, w, h)
 
+Creates a two dimensional rectangle of integer dimensions, at origin (x, y)
+and with width w and height h
+"""
 function IRect(x, y, w, h)
     HyperRectangle{2, Int}(Vec(round(Int, x), round(Int, y)), Vec(round(Int, w), round(Int, h)))
 end
+
+"""
+    IRect(xy::VecTypes, w, h)
+
+Creates a two dimensional rectangle of integer dimensions, with origin
+at vector xy, and with width w and height h
+"""
 function IRect(xy::VecTypes, w, h)
     IRect(xy[1], xy[2], w, h)
 end
+
+"""
+    IRect(x, y, wh::VecTypes)
+
+Creates a two dimensional rectangle of integer dimensions, with origin
+at (x, y), and with width and height as the respective components of vector wh
+"""
 function IRect(x, y, wh::VecTypes)
     IRect(x, y, wh[1], wh[2])
 end
+
+"""
+    IRect(xy::VecTypes, wh::VecTypes)
+
+Creates a two dimensional rectangle of integer dimensions, with origin
+at vector xy, and with width and height as the respective components of vector wh
+"""
 function IRect(xy::VecTypes, wh::VecTypes)
     IRect(xy[1], xy[2], wh[1], wh[2])
 end
 
+"""
+    IRect(xy::NamedTuple{(:x, :y)}, wh::NamedTuple{(:width, :height)})
+
+This takes two named tuples and constructs an integer valued rectangle with them.
+"""
 function IRect(xy::NamedTuple{(:x, :y)}, wh::NamedTuple{(:width, :height)})
     IRect(xy.x, xy.y, wh.width, wh.height)
 end
@@ -66,6 +102,13 @@ function positive_widths(rect::HyperRectangle{N, T}) where {N, T}
     HyperRectangle{N, T}(realmin, realmax .- realmin)
 end
 
+"""
+    FRect(x, y, w, h)
+
+Creates a two dimensional rectangle, at origin (x, y)
+and with width w and height h.  Formally defined as the
+Cartesian product of the intervals (x, y) and (w, h).
+"""
 function FRect(x, y, w, h)
     HyperRectangle{2, Float32}(Vec2f0(x, y), Vec2f0(w, h))
 end
@@ -289,11 +332,10 @@ get(x::AttributeOrPlot, key::Symbol, default) = get(()-> default, x, key)
 # Combined plots break this assumption in some way, but the way to look at it is,
 # that the plots contained in a Combined plot are not subplots, but _are_ actually
 # the plot itself.
-# the plot itself.
 getindex(plot::AbstractPlot, idx::Integer) = plot.converted[idx]
 getindex(plot::AbstractPlot, idx::UnitRange{<:Integer}) = plot.converted[idx]
 setindex!(plot::AbstractPlot, value, idx::Integer) = (plot.input_args[idx][] = value)
-
+Base.length(plot::AbstractPlot) = length(plot.converted)
 
 
 function getindex(x::AbstractPlot, key::Symbol)

@@ -81,7 +81,7 @@ The attributes returned extend those attributes found in the `default_theme`.
 Use the optional keyword argument `extended` (default = `false`) to show
 in addition the default values of each attribute.
 usage:
-```example 
+```example
 >help_attributes(scatter)
 	alpha
 	color
@@ -188,13 +188,7 @@ to_func(func::Function) = func
 
 Maps the input of a function name to its cooresponding Type.
 """
-function to_type(func::Function)
-    if func in AbstractPlotting.atomic_functions
-        Atomic{func}
-    else
-        Combined{func}
-    end
-end
+to_type(func::Function) = Combined{func}
 
 to_type(Typ::Type{T}) where T <: AbstractPlot = Typ
 

@@ -325,7 +325,7 @@ Usage:
     # without keyword_verload, this wouldn't happen
     plot(MyType, attribute = 2)
     #You can also use the convenience macro, to overload convert_arguments in one step:
-    @keywords convert_argumetns(x::MyType; attribute = 1)
+    @keywords convert_arguments(x::MyType; attribute = 1)
         ...
     end
 ```
@@ -419,10 +419,12 @@ e.g.:
 ```
 """
 plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
-plottype(::AbstractVector, ::AbstractVector) = Lines
-plottype(::AbstractMatrix) = Heatmap
+plottype(::RealVector, ::RealVector) = Lines
+plottype(::RealVector) = Lines
+plottype(::AbstractMatrix{<: Real}) = Heatmap
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
+plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 # If it has something more concrete than Any, use it directly
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
 
@@ -578,19 +580,7 @@ end
 
 
 
-function scale_scene!(scene)
-    if is2d(scene)
-        area = pixelarea(scene)[]
-        lims = limits(scene)[]
-        # not really sure how to scale 3D scenes in a reasonable way
-        mini, maxi = minimum(lims), maximum(lims)
-        l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-        xyzfit = fit_ratio(area, l)
-        s = to_ndim(Vec3f0, xyzfit, 1f0)
-        scale!(scene, s)
-    end
-    return scene
-end
+
 
 function setup_camera!(scene::Scene)
     if scene[:camera][] == automatic
@@ -667,6 +657,11 @@ function add_labels!(scene::Scene)
     scene
 end
 
+"""
+    update_limits!(scene::Scene)
+
+This function updates the limits of the `Scene` passed to it based on its data.
+"""
 update_limits!(scene::Scene) = update_limits!(scene, scene[:limits][], scene[:padding][])
 
 function update_limits!(scene::Scene, limits::Automatic, padding)
@@ -694,6 +689,19 @@ function update_limits!(scene::Scene, limits::Automatic, padding)
     update_limits!(scene, FRect3D(tlims[1], new_widths), padding)
 end
 
+"""
+    update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
+
+This function updates the limits of the given `Scene` according to the given HyperRectangle.
+
+A `HyperRectangle` is a generalization of a rectangle to n dimensions.  It contains two vectors.
+The first vector defines the origin; the second defines the displacement of the vertices from the origin.
+This second vector can be thought of in two dimensions as a vector of width (x-axis) and height (y-axis),
+and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and height (z-axis).
+
+Such a `HyperRectangle` can be constructed using the `FRect` or `FRect3D` functions that are exported by
+`AbstractPlotting.jl`.  See their documentation for more information.
+"""
 function update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
     lims = FRect3D(new_limits)
     lim_w = widths(lims)
