@@ -32,8 +32,21 @@ end
 
 wscale(screenrect, viewrect) = widths(viewrect) ./ widths(screenrect)
 
+
+"""
+    `update_cam!(scene::SceneLike, area)`
+
+Updates the camera for the given `scene` to cover the given `area` in 2d.
+"""
 update_cam!(scene::SceneLike, area) = update_cam!(scene, cameracontrols(scene), area)
+"""
+    `update_cam!(scene::SceneLike)`
+
+Updates the camera for the given `scene` to cover the limits of the `Scene`.
+Useful when using the `Node` pipeline.
+"""
 update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
+
 
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = FRect2D(area3d)

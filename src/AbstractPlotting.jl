@@ -113,7 +113,7 @@ export unicode_input
 export dropped_files
 export hasfocus
 export entered_window
-export disconnect!, must_update, force_update!
+export disconnect!, must_update, force_update!, update!
 
 
 # gui

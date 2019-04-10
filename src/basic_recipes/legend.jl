@@ -1,4 +1,3 @@
-
 @recipe(Legend, plots, labels) do scene
     Theme(
         outer_area = IRect(0, 0, 1, 1),
