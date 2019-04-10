@@ -56,6 +56,7 @@ include("layouting/boundingbox.jl")
 include("basic_recipes/buffers.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/legend.jl")
+include("basic_recipes/title.jl")
 
 # Interactiveness
 include("interaction/events.jl")
