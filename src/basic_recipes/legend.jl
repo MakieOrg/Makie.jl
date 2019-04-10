@@ -1,4 +1,3 @@
-
 @recipe(Legend, plots, labels) do scene
     Theme(
         outer_area = IRect(0, 0, 1, 1),
@@ -54,9 +53,12 @@ function make_label(scene, plot, labeltext, i, attributes)
         :labelwidth, :gap, :markersize, :textsize,
         :linepattern, :scatterpattern, :padding
     ))
+
+    num_of_labels = length((attributes[:labels])[])
+
     _scale(x, w, pad, g, t) = Point2f0(
         pad + (x[1]w),
-        pad + floor(t/2) + x[2]w + ((i - 1) * g)
+        pad + floor(t/2) + x[2]w + ((num_of_labels - i) * g)
     )
     scale(args...) = _scale.(args...)
 
@@ -98,8 +100,9 @@ function plot!(plot::Legend)
 
     map_once(labels, args...) do labels, w, gap, tgap, padding, font...
         start!(textbuffer)
-        for i = 1:length(labels)
-            yposition = (i - 1) * gap
+        num_of_labels = length(labels)
+        for i = 1:num_of_labels
+            yposition = (num_of_labels - i) * gap
             tsize = floor(font[1] / 2) # textsize at position one, half of it since we used centered align
             xy = Point2f0(w + padding + tgap, yposition + tsize + padding)
             push!(

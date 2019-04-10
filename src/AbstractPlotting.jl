@@ -1,6 +1,6 @@
 module AbstractPlotting
 
-using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
+using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets, PlotUtils
 using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown # documentation
 using Serialization # serialize events
@@ -9,7 +9,8 @@ using Serialization # serialize events
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
 import ImageMagick, FileIO
-using Printf: @sprintf # @sprintf macro is required for scientific notation
+import FileIO: save
+using Printf: @sprintf
 
 using Base: RefValue
 using Base.Iterators: repeated, drop
@@ -97,6 +98,7 @@ export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, update_cam!, rotate_cam!, translate_cam!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
+
 # picking + interactive use cases + events
 export mouseover, ispressed, onpick, pick, Events, Keyboard, Mouse, mouse_selection
 export register_callbacks
@@ -111,7 +113,7 @@ export unicode_input
 export dropped_files
 export hasfocus
 export entered_window
-export disconnect!, must_update, force_update!
+export disconnect!, must_update, force_update!, update!
 
 
 # gui
@@ -130,9 +132,10 @@ export IRect, FRect, Rect, Sphere, Circle
 export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..), GLNormalUVMesh
+
 # conflicting identifiers
-using GeometryTypes: widths, HyperRectangle
-export widths, decompose, HyperRectangle
+using GeometryTypes: widths
+export widths, decompose
 
 # building blocks for series recipes
 export PlotList, PlotSpec
@@ -142,6 +145,11 @@ export plot!, plot
 
 export Stepper, step!, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record
+export save
+
+# colormap stuff from PlotUtils
+export clibraries, cgradients, clibrary
+
 
 # default icon for Makie
 function icon()
@@ -161,5 +169,30 @@ function logo()
     end
     FileIO.load(cached_logo[])
 end
+
+
+
+const has_ffmpeg = Ref(false)
+
+const config_path = joinpath(homedir(), ".config", "makie", "theme.jl")
+
+function __init__()
+    pushdisplay(PlotDisplay())
+    has_ffmpeg[] = try
+        success(`ffmpeg -h`)
+    catch
+        false
+    end
+    if isfile(config_path)
+        theme = include(config_path)
+        if theme isa Attributes
+            set_theme!(theme)
+        else
+            @warn("Found config file in $(config_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
+        end
+    end
+end
+
+
 
 end # module

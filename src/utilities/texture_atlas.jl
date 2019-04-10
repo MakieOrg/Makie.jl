@@ -31,7 +31,7 @@ begin #basically a singleton for the textureatlas
         'π','∮','⋅','→','∞','∑','∏','∀','∈','ℝ','⌈','⌉','−','⌊','⌋','α','∧','β','∨','ℕ','⊆','₀',
         '⊂','ℤ','ℚ','ℂ','⊥','≠','≡','≤','≪','⊤','⇒','⇔','₂','⇌','Ω','⌀',
     ]
-    const _cache_path = joinpath(dirname(@__FILE__), "..", ".cache", "texture_atlas.jls")
+    const _cache_path = abspath(first(Base.DEPOT_PATH), "makiegallery", ".cache", "texture_atlas.jls")
     const _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
     const _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
 
@@ -89,7 +89,7 @@ begin #basically a singleton for the textureatlas
 
     function to_cache(atlas)
         if !ispath(dirname(_cache_path))
-            mkdir(dirname(_cache_path))
+            mkpath(dirname(_cache_path))
         end
         open(_cache_path, "w") do io
             dict = Dict(map(fieldnames(typeof(atlas))) do name
