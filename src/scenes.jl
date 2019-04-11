@@ -93,6 +93,12 @@ Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2D)
     pixelarea(scene)[] = rect
 end
+
+"""
+    `update!(p::Scene)`
+
+Updates a `Scene` and all its children.
+"""
 function update!(p::Scene)
     p.updated[] = true
     for c in p.children
@@ -221,7 +227,7 @@ plots(scene::SceneLike) = scene.plots
 const _forced_update_scheduled = Ref(false)
 
 """
-Returns wether a scene needs updating
+Returns whether a scene needs to be updated
 """
 function must_update()
     val = _forced_update_scheduled[]
@@ -230,7 +236,7 @@ function must_update()
 end
 
 """
-Forces to rerender the scnee
+Forces the scene to be re-rendered
 """
 function force_update!()
     _forced_update_scheduled[] = true

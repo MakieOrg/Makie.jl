@@ -657,6 +657,11 @@ function add_labels!(scene::Scene)
     scene
 end
 
+"""
+    update_limits!(scene::Scene)
+
+This function updates the limits of the `Scene` passed to it based on its data.
+"""
 update_limits!(scene::Scene) = update_limits!(scene, scene[:limits][], scene[:padding][])
 
 function update_limits!(scene::Scene, limits::Automatic, padding)
@@ -684,6 +689,19 @@ function update_limits!(scene::Scene, limits::Automatic, padding)
     update_limits!(scene, FRect3D(tlims[1], new_widths), padding)
 end
 
+"""
+    update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
+
+This function updates the limits of the given `Scene` according to the given HyperRectangle.
+
+A `HyperRectangle` is a generalization of a rectangle to n dimensions.  It contains two vectors.
+The first vector defines the origin; the second defines the displacement of the vertices from the origin.
+This second vector can be thought of in two dimensions as a vector of width (x-axis) and height (y-axis),
+and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and height (z-axis).
+
+Such a `HyperRectangle` can be constructed using the `FRect` or `FRect3D` functions that are exported by
+`AbstractPlotting.jl`.  See their documentation for more information.
+"""
 function update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
     lims = FRect3D(new_limits)
     lim_w = widths(lims)
