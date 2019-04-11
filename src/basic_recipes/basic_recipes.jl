@@ -746,3 +746,14 @@ function plot!(vs::VolumeSlices)
     end
     plot!(scene, vs, rest)
 end
+
+"""
+    showlibrary(library::Symbol)
+
+Shows all color gradients for the given color library.
+Gradients are shown as a bar of colour.
+"""
+@recipe(ShowLibrary, library) do scene
+    default_theme(Scene)
+    
+end
