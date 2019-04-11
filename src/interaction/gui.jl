@@ -158,7 +158,8 @@ export move!
         textcolor = :black,
         textsize = 20,
         clicks = 0,
-        position = (10, 10)
+        position = (10, 10),
+        padvalue = 0.15
     )
 end
 
@@ -175,7 +176,8 @@ end
 function plot!(splot::Button)
     @extract(splot, (
         backgroundcolor, strokecolor, strokewidth,
-        dimensions, textcolor, clicks, textsize, position
+        dimensions, textcolor, clicks, textsize, position,
+        padvalue
     ))
     txt = splot[1]
     lplot = text!(
@@ -185,8 +187,8 @@ function plot!(splot::Button)
         align = (:center, :center)
     ).plots[end]
     bb = boundingbox(lplot)
-    pad = mean(widths(bb)) .* 0.15
-    poly!(splot, padrect(FRect2D(boundingbox(lplot)), pad), color = :white, strokecolor = :black, strokewidth = strokewidth)
+    pad = mean(widths(bb)) .* padvalue[]
+    poly!(splot, padrect(FRect2D(boundingbox(lplot)), pad), color = backgroundcolor, strokecolor = strokecolor, strokewidth = strokewidth)
     reverse!(splot.plots) # make poly first
     on(events(splot).mousebuttons) do mb
         if ispressed(mb, Mouse.left) && mouseover(parent_scene(splot), splot.plots...)
