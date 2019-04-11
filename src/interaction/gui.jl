@@ -182,7 +182,7 @@ function plot!(splot::Button)
         splot, txt,
         color = textcolor,
         textsize = textsize, position = position,
-        align = (:left, :bottom)
+        align = (:center, :center)
     ).plots[end]
     bb = boundingbox(lplot)
     pad = mean(widths(bb)) .* 0.15
