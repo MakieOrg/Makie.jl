@@ -748,12 +748,47 @@ function plot!(vs::VolumeSlices)
 end
 
 """
-    showlibrary(library::Symbol)
+    showlibrary(lib::Symbol)::Scene
 
-Shows all color gradients for the given color library.
-Gradients are shown as a bar of colour.
+Shows all colour gradients in the given library.
+Returns a Scene with these colour gradients arranged
+as horizontal colourbars.
 """
-@recipe(ShowLibrary, library) do scene
-    default_theme(Scene)
-    
+function showlibrary(lib::Symbol; h = 0, offset = 0.1)::Scene
+
+    sc = Scene()
+
+    cgrads = PlotUtils.cgradients(lib)
+
+    PlotUtils.clibrary(lib)
+
+    map(collect(cgrads)) do cmap
+
+         c = to_colormap(cmap)
+
+         cbar = image!(
+             sc,
+             range(0, stop = 10, length = length(c)),
+             range(0, stop = 1, length = length(c)),
+             reshape(c, (length(c),1)),
+             show_axis = false
+         )[end]
+
+         text!(
+             sc,
+             string(cmap, ":"),
+             position = Point2f0(-0.1, 0.5 + h),
+             align = (:right, :center),
+             show_axis = false,
+             textsize = 1
+         )
+
+         translate!(cbar, 0, h, 0)
+
+         h -= (1 + offset)
+
+    end
+
+    sc
+
 end
