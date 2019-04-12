@@ -123,6 +123,10 @@ To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
 ```julia
+# add Makie dependencies
+Pkg.add("AbstractPlotting")
+Pkg.add("MakieGallery")
+Pkg.add("GeometryTypes")
 # add PackageCompiler
 Pkg.add("PackageCompiler")
 using PackageCompiler
