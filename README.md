@@ -7,14 +7,16 @@
 From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
 
-**Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+**Documentation**: [![][docs-old-img]][docs-old-url] [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
 
 Build status: [![][gitlab-img]][gitlab-url]
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
+[docs-old-img]:    https://img.shields.io/badge/docs-old-lightgrey.svg
+[docs-old-url]:    http://makie.juliaplots.org/stable/
 [docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-stable-url]: http://makie.juliaplots.org/stable/
+[docs-stable-url]: http://juliaplots.org/MakieGallery.jl/stable/
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
 [docs-master-url]: http://juliaplots.org/MakieGallery.jl/stable/
 
