@@ -774,7 +774,7 @@ function showgradients(
     cgrads::Array{Symbol, 1};
     h = 0.0,
     offset = 0.4,
-    textsize = 0.5
+    textsize = 0.7
     )::Scene
 
     sc = Scene()
