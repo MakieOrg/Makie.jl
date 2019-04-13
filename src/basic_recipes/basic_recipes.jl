@@ -754,13 +754,30 @@ Shows all colour gradients in the given library.
 Returns a Scene with these colour gradients arranged
 as horizontal colourbars.
 """
-function showlibrary(lib::Symbol; h = 0, offset = 0.1)::Scene
+function showlibrary(lib::Symbol)::Scene
 
-    sc = Scene()
-
-    cgrads = PlotUtils.cgradients(lib)
+    cgrads = sort(PlotUtils.cgradients(lib))
 
     PlotUtils.clibrary(lib)
+
+    showgradients(cgrads)
+
+end
+
+"""
+    showgradients(cgrads::Array{Symbol, 1};
+                  h = 0.0, offset = 0.2, textsize = 0.7)::Scene
+
+Plots the given colour gradients arranged as horizontal colourbars.
+"""
+function showgradients(
+    cgrads::Array{Symbol, 1};
+    h = 0.0,
+    offset = 0.4,
+    textsize = 0.5
+    )::Scene
+
+    sc = Scene()
 
     map(collect(cgrads)) do cmap
 
@@ -780,7 +797,7 @@ function showlibrary(lib::Symbol; h = 0, offset = 0.1)::Scene
              position = Point2f0(-0.1, 0.5 + h),
              align = (:right, :center),
              show_axis = false,
-             textsize = 1
+             textsize = textsize
          )
 
          translate!(cbar, 0, h, 0)
