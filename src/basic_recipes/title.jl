@@ -1,3 +1,10 @@
+export addtitle
+
+"""
+    title(titletext, plot)
+
+Create a `title` for `plot`. Note that the title is not automatically added to `plot`. Instead [`hbox`](@ref) can be used for this. Alternatively the [`addtitle`](@ref) convenience does create a title and add it to the plot.
+"""
 @recipe(Title, titletext, plot) do scene
     t = default_theme(scene, Text)
     t[:align] = (:center, :bottom)
@@ -25,4 +32,19 @@ function AbstractPlotting.plot!(t::Title)
         alpha=alpha, color=color, font=font, linewidth=linewidth, overdraw=overdraw, rotation=rotation,
         strokecolor= strokecolor, strokewidth=strokewidth, textsize=textsize, transparency=transparency, visible=visible
         )
+end
+
+"""
+    addtitle([scene=current_scene(), ], string; kw...)
+
+Add a title with content `string` to `scene`.
+"""
+function addtitle(scene, string; kw...)
+    t = title(string, scene; kw...)
+    hbox(scene, t)
+end # works
+
+function addtitle(string; kw...)
+    scene = current_scene()
+    addtitle(scene, string; kw...)
 end
