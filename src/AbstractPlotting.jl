@@ -147,8 +147,8 @@ export Stepper, step!, replay_events, record_events, RecordEvents, record, Video
 export VideoStream, recordframe!, record
 export save
 
-# colormap stuff from PlotUtils
-export clibraries, cgradients, clibrary
+# colormap stuff from PlotUtils, and showlibrary, showgradients
+export clibraries, cgradients, clibrary, showlibrary, showgradients
 
 
 # default icon for Makie
