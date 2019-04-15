@@ -765,26 +765,28 @@ function showlibrary(lib::Symbol)::Scene
 end
 
 """
-    showgradients(cgrads::Array{Symbol, 1};
-                  h = 0.0, offset = 0.2, textsize = 0.7)::Scene
+    showgradients(
+        cgrads::AbstractVector{Symbol};
+        h = 0.0, offset = 0.2, textsize = 0.7
+    )::Scene
 
 Plots the given colour gradients arranged as horizontal colourbars.
 """
 function showgradients(
-    cgrads::Array{Symbol, 1};
-    h = 0.0,
-    offset = 0.4,
-    textsize = 0.7
+        cgrads::AbstractVector{Symbol};
+        h = 0.0,
+        offset = 0.4,
+        textsize = 0.7
     )::Scene
 
-    sc = Scene()
+    scene = Scene()
 
     map(collect(cgrads)) do cmap
 
          c = to_colormap(cmap)
 
          cbar = image!(
-             sc,
+             scene,
              range(0, stop = 10, length = length(c)),
              range(0, stop = 1, length = length(c)),
              reshape(c, (length(c),1)),
@@ -792,7 +794,7 @@ function showgradients(
          )[end]
 
          text!(
-             sc,
+             scene,
              string(cmap, ":"),
              position = Point2f0(-0.1, 0.5 + h),
              align = (:right, :center),
@@ -806,6 +808,6 @@ function showgradients(
 
     end
 
-    sc
+    scene
 
 end
