@@ -746,3 +746,68 @@ function plot!(vs::VolumeSlices)
     end
     plot!(scene, vs, rest)
 end
+
+"""
+    showlibrary(lib::Symbol)::Scene
+
+Shows all colour gradients in the given library.
+Returns a Scene with these colour gradients arranged
+as horizontal colourbars.
+"""
+function showlibrary(lib::Symbol)::Scene
+
+    cgrads = sort(PlotUtils.cgradients(lib))
+
+    PlotUtils.clibrary(lib)
+
+    showgradients(cgrads)
+
+end
+
+"""
+    showgradients(
+        cgrads::AbstractVector{Symbol};
+        h = 0.0, offset = 0.2, textsize = 0.7
+    )::Scene
+
+Plots the given colour gradients arranged as horizontal colourbars.
+"""
+function showgradients(
+        cgrads::AbstractVector{Symbol};
+        h = 0.0,
+        offset = 0.4,
+        textsize = 0.7
+    )::Scene
+
+    scene = Scene()
+
+    map(collect(cgrads)) do cmap
+
+         c = to_colormap(cmap)
+
+         cbar = image!(
+             scene,
+             range(0, stop = 10, length = length(c)),
+             range(0, stop = 1, length = length(c)),
+             reshape(c, (length(c),1)),
+             show_axis = false
+         )[end]
+
+         text!(
+             scene,
+             string(cmap, ":"),
+             position = Point2f0(-0.1, 0.5 + h),
+             align = (:right, :center),
+             show_axis = false,
+             textsize = textsize
+         )
+
+         translate!(cbar, 0, h, 0)
+
+         h -= (1 + offset)
+
+    end
+
+    scene
+
+end
