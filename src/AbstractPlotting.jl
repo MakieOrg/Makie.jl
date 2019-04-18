@@ -76,7 +76,7 @@ export AbstractPlot, Combined, Atomic, Axis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!
-export addtitle
+export title
 
 # Node/Signal related
 export Node, node, lift, map_once, to_value, on
