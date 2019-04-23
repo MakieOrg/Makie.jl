@@ -84,10 +84,12 @@ Plots a volume. Available algorithms are:
         color = nothing,
     )
 end
-mutual_exclusive_attributes(::Type{<:Volume}) =
-    Dict(:colorrange => :color,
-         :colormap   => :color,
-         )
+function mutual_exclusive_attributes(::Type{<:Volume})
+    Dict(
+        :colorrange => :color,
+        :colormap   => :color,
+    )
+end
 
 """
     `surface(x, y, z)`
