@@ -10,6 +10,12 @@ struct Quaternion{T}
     Quaternion{T}(x::NTuple{4, T}) where T = new{T}(x)
 end
 
+Base.eltype(::Quaternion{T}) where T = T
+Base.eltype(::Type{Quaternion{T}}) where T = T
+Base.length(::Type{<: Quaternion}) = 4
+Base.length(::Quaternion) = 4
+
+
 const Quaternionf0 = Quaternion{Float32}
 function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
