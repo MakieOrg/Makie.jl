@@ -2,27 +2,28 @@
 language: julia
 os:
   - linux
-  - osx
 julia:
-  - 0.6
+  - 1.1
   - nightly
 notifications:
   email: false
 git:
   depth: 99999999
+env:
+  - IS_TRAVIS_CI = "true"
 
-## uncomment the following lines to allow failures on nightly julia
-## (tests will run but not make your overall status red)
-#matrix:
-#  allow_failures:
-#  - julia: nightly
+# uncomment the following lines to allow failures on nightly julia
+# (tests will run but not make your overall status red)
+matrix:
+ allow_failures:
+ - julia: nightly
 
 ## uncomment and modify the following lines to manually install system packages
 #addons:
-#  apt: # apt-get for linux
-#    packages:
-#    - gfortran
-#before_script: # homebrew for mac
+ apt: # apt-get for linux
+   packages:
+   - ffmpeg
+# before_script: # homebrew for mac
 #  - if [ $TRAVIS_OS_NAME = osx ]; then brew install gcc; fi
 
 ## uncomment the following lines to override the default test script

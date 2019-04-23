@@ -1,3 +1,9 @@
+"""
+    `legend(plots, labels; kwargs...)`
+
+Plots a legend for the given plots with the given labels.
+`plots` may be a single Plot or a list of Plots.
+"""
 @recipe(Legend, plots, labels) do scene
     Theme(
         outer_area = IRect(0, 0, 1, 1),
