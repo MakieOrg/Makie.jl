@@ -18,11 +18,11 @@ vec3 scale3d(vec3 scale){
 }
 
 // constant color!
-vec4 colorize(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
-vec4 colorize(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
+vec4 colorize(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm);
+vec4 colorize(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm);
 
 // no color, but intensities a color map and color norm. Color will be based on intensity!
-vec4 colorize(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_norm, int index, int len);
+vec4 colorize(Nothing color, sampler1D intensity, sampler1D color_map, vec2 color_norm);
 
 vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm);
 
@@ -53,8 +53,8 @@ void main(){
     vec3 N = normals;
     vec3 pos = position;
 
-    o_color = colorize(color, intensity, color_map, color_norm, index, len);
+    o_color = colorize(color, intensity, color_map, color_norm);
     o_uv = get_uv(uv);
     rotate(rotation, index, V, N);
-    render(modelMatrix * vec4(pos + V, 1), N, viewMatrix, projectionMatrix, light);
+    render(modelMatrix * vec4(pos + V, 1), N, view, projection, light);
 }
