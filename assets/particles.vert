@@ -1,51 +1,5 @@
 precision highp float;
 
-struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
-    bool _; //empty structs are not allowed
-};
-
-struct Grid1D{
-    int lendiv;
-    float start;
-    float stop;
-    int dims;
-};
-
-struct Grid2D{
-    ivec2 lendiv;
-    vec2 start;
-    vec2 stop;
-    ivec2 dims;
-};
-
-struct Grid3D{
-    ivec3 lendiv;
-    vec3 start;
-    vec3 stop;
-    ivec3 dims;
-};
-
-attribute vec3 vertices;
-attribute vec3 normals;
-attribute vec2 uv;
-
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
-uniform mat4 projectionMatrix;
-
-
-varying vec4 o_color;
-varying vec2 o_uv;
-
-{{position_type}} position;
-{{rotation_type}} rotations;
-{{scale_type}} scale;
-{{color_type}} color;
-{{color_map_type}} color_map;
-{{intensity_type}} intensity;
-{{color_norm_type}} color_norm;
-
-
 vec3 qmul(vec4 q, vec3 v){
 	return v + 2.0 * cross( q.xyz, cross( q.xyz, v ) + q.w * v );
 }
@@ -62,7 +16,6 @@ vec3 scale3d(vec2 scale){
 vec3 scale3d(vec3 scale){
     return scale;
 }
-
 
 // constant color!
 vec4 colorize(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
@@ -96,7 +49,7 @@ vec2 get_uv(vec2 x){return vec2(1.0 - x.y, x.x);}
 void main(){
 
     vec3 s = scale3d(scale);
-    vec3 V = vertices * s;
+    vec3 V = points * s;
     vec3 N = normals;
     vec3 pos = position;
 
