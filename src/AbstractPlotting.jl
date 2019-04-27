@@ -115,7 +115,7 @@ export unicode_input
 export dropped_files
 export hasfocus
 export entered_window
-export disconnect!, must_update, force_update!, update!
+export disconnect!, must_update, force_update!, update!, update_limits!
 
 
 # gui
