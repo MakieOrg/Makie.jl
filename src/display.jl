@@ -286,7 +286,7 @@ function save(path::String, io::VideoStream;
     if typ == ".mkv"
         cp(io.path, out)
     elseif typ == ".mp4"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -crf $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
