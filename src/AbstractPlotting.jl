@@ -176,7 +176,8 @@ end
 
 const has_ffmpeg = Ref(false)
 
-const config_path = joinpath(homedir(), ".config", "makie", "theme.jl")
+const config_file = "theme.jl"
+const config_path = joinpath(homedir(), ".config", "makie", config_file)
 
 function __init__()
     pushdisplay(PlotDisplay())
@@ -185,12 +186,13 @@ function __init__()
     catch
         false
     end
-    if isfile(config_path)
-        theme = include(config_path)
+    cfg_path = isfile(config_file) ? config_file : config_path
+    if isfile(cfg_path)
+        theme = include(cfg_path)
         if theme isa Attributes
             set_theme!(theme)
         else
-            @warn("Found config file in $(config_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
+            @warn("Found config file in $(cfg_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
         end
     end
 end
