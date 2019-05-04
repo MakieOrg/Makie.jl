@@ -186,7 +186,7 @@ function __init__()
     catch
         false
     end
-    cfg_path = isfile(config_file) ? config_file : config_path
+    cfg_path = config_path
     if isfile(cfg_path)
         theme = include(cfg_path)
         if theme isa Attributes
