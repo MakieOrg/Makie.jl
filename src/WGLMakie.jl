@@ -3,6 +3,14 @@ module WGLMakie
 using WebSockets, JSCall, WebIO, JSExpr, Colors, GeometryTypes
 using JSExpr: jsexpr
 using AbstractPlotting, Observables
+using ShaderAbstractions, LinearAlgebra
+using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
+import GeometryTypes: GLNormalMesh
+
+struct WebGL <: ShaderAbstractions.AbstractContext end
+using Colors
+
+import GeometryTypes, AbstractPlotting, GeometryBasics
 
 function register_js_events!(comm)
     @js begin
@@ -294,6 +302,8 @@ function js_display(scene)
     renderer.render(js_scene, cam);
     document, window
 end
+
+include("particles.jl")
 
 export js_display
 
