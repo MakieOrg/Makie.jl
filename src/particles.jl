@@ -87,7 +87,9 @@ function WGLMakie.draw_js(jsscene, scene::Scene, plot::MeshScatter)
         k in per_instance_keys && !(isscalar(v[]))
     end
     per_instance[:position] = plot[1]
-
+    for (k, v) in per_instance
+        per_instance[k] = Buffer(v)
+    end
     uniforms = filter(plot.attributes) do (k, v)
         (!haskey(per_instance_attributes, k)) && isscalar(v[])
     end
