@@ -1,9 +1,0 @@
-julia 0.7
-
-StaticArrays 0.6.6
-GeometryTypes 0.4.5
-AbstractPlotting 0.9.1
-Cairo
-Colors
-Makie
-FileIO

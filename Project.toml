@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
