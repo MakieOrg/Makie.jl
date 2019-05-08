@@ -8,7 +8,6 @@ FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-QuartzImageIO = "dca85d43-d64c-5e67-8c65-017450d5d020"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 
 [compat]
