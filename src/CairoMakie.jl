@@ -497,6 +497,16 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/pn
     (x, scene)
 end
 
+function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
+    mktempdir() do dir
+        open(joinpath(dir, "tmp.png"), "w") do fio
+            screen = AbstractPlotting.backend_show(x, fio, MIME"image/png"(), scene)
+        end
+        FileIO.save(FileIO.Stream(format"JPEG", io),  FileIO.load(joinpath(dir, "tmp.png")))
+    end
+    (x, scene)
+end
+
 function __init__()
     dir = mktempdir()
     temp_file = joinpath(dir, "cairo.svg")
