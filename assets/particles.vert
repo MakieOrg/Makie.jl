@@ -1,4 +1,4 @@
-precision highp float;
+precision mediump float;
 
 vec3 qmul(vec4 q, vec3 v){
     return v + 2.0 * cross(q.xyz, cross(q.xyz, v) + q.w * v);
@@ -31,17 +31,21 @@ void render(vec4 position_world, vec3 normal, vec3 light[4])
 void main(){
     // get_* gets the global inputs (uniform, sampler, vertex array)
     // those functions will get inserted by the shader creation pipeline
-    vec3 vertex_position = get_point();
-    vec3 scale = get_markersize();
-    vec3 offset = get_position();
     vec3 N = get_normals();
     o_color = get_color();
     vec2 uv = get_texturecoordinate();
     o_uv = vec2(1.0 - x.y, x.x);
 
     // scale the objects vertices by markersize
-    vec3 V = scale * vertex_position;
+    vec3 V = get_offset() + (get_markersize() * get_position());
     // apply the per instance rotation
     rotate(get_rotations(), V, N);
-    render(get_model() * vec4(offset + V, 1), N, get_light());
+
+    vec3 light[4];
+    light[0] = vec3(1.0,1.0,1.0);
+    light[1] = vec3(0.1,0.1,0.1);
+    light[2] = vec3(0.9,0.9,0.9);
+    light[3] = vec3(20,20,20);
+
+    render(get_model() * vec4(offset + V, 1), N, light);
 }

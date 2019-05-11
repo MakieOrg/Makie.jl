@@ -1,62 +1,61 @@
 using Colors, WebIO
 using JSCall, JSExpr
+using ShaderAbstractions: InstancedProgram
 
-
-function instanced_attribute(js_scene, attribute::AbstractVector{T}) where T
-    window = WGLMakie.window; THREE = WGLMakie.THREE
+function JSInstanceBuffer(context, attribute::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), attribute)
     js_f32 = window.new.Float32Array(flat)
     return THREE.new.InstancedBufferAttribute(js_f32, length(T))
 end
 
+function JSBuffer(context, buff::AbstractVector{T}) where T
+    flat = reinterpret(eltype(T), buff)
+    # js_f32 = window.new.Float32Array(flat)
+    return THREE.new.Float32BufferAttribute(flat, length(T))
+end
+using GeometryTypes: Mat4f0
 
-JSCall.@jsfun function create_material(vert, frag, tex)
-    @var material = @new $(WGLMakie.THREE).RawShaderMaterial(
+jl2js(val::Number) = val
+function jl2js(val::Mat4f0)
+    x = THREE.new.Matrix4()
+    x.fromArray(vec(val))
+    return x
+end
+function jl2js(val::Vec3f0)
+    return THREE.new.Vector3(val...)
+end
+function to_js_uniforms(context, dict::Dict)
+    result = window.new.Object()
+    for (k, v) in dict
+        setproperty!(result, k, Dict(:value => jl2js(v[])))
+    end
+    # for (k, v) in dict
+    #     # Sampler + Buffers won't come through as Observables,
+    #     # Since they update themselves
+    #     v isa Observable || continue
+    #     onjs(v, @js function (val)
+    #         $(result).$(k).value = val
+    #         $(result).$(k).needsUpdate = true
+    #     end)
+    # end
+    return result
+end
+
+JSCall.@jsfun function create_material(vert, frag, uniforms)
+    @var material = @new $(THREE).RawShaderMaterial(
         Dict(
-            :uniforms => Dict(
-                :map => Dict(:value => tex)
-            ),
+            :uniforms => uniforms,
             :vertexShader => vert,
             :fragmentShader => frag,
-        )
+            :side => $(THREE).DoubleSide
+        ),
     )
     return material
 end
 
 
-function wgl_convert(sampler::Sampler)
-    window = WGLMakie.window; THREE = WGLMakie.THREE
-    cmap = vec(reinterpret(UInt8, RGB{Colors.N0f8}.(sampler.data)))
-    data = window.Uint8Array.from(cmap)
-    tex = THREE.new.DataTexture(
-        data, size(color, 1), size(color, 2),
-        THREE.RGBFormat, THREE.UnsignedByteType
-    );
-    tex.needsUpdate = true
-    return tex
-end
-
-
-function wgl_convert(vao::VertexArray)
-
-end
-
-function AbstractPlotting.convert_attribute(x::AbstractMatrix, ::key"color")
-    typ_or_scalar(Sampler, x)
-end
-
-function AbstractPlotting.convert_attribute(x::AbstractSampler, ::key"color")
-    typ_or_scalar(Sampler, x)
-end
-
-convert_uniform(sampler::Sampler) = sampler
-
-
-
-
-function create_tex(color)
-    window = WGLMakie.window; THREE = WGLMakie.THREE
-    cmap = vec(reinterpret(UInt8, RGB{Colors.N0f8}.(color)))
+function wgl_convert(context, color::Sampler)
+    cmap = vec(reinterpret(UInt8, RGB{Colors.N0f8}.(color.data)))
     data = window.Uint8Array.from(cmap)
     tex = THREE.new.DataTexture(
         data, size(color, 1), size(color, 2),
@@ -80,10 +79,11 @@ end
 function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
     ShaderAbstractions.Sampler(value)
 end
+using AbstractPlotting: Key, plotkey
 
 function lift_convert(key, value, plot)
     val = lift(value) do value
-         wgl_convert(value, AbstractPlotting.Key{key}(), AbstractPlotting.Key{AbstractPlotting.plotkey(plot)}())
+         wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
      end
      if key == :colormap && val[] isa AbstractArray
          return ShaderAbstractions.Sampler(val)
@@ -91,7 +91,6 @@ function lift_convert(key, value, plot)
          val
      end
 end
-
 
 function create_shader(scene::Scene, plot::MeshScatter)
     vshader = lasset("particles.vert")
@@ -127,63 +126,37 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[key] = getfield(scene.camera, key)
     end
     uniform_dict[:model] = plot.model
-    
-    p = ShaderAbstractions.InstancedProgram(
+
+    p = InstancedProgram(
         WebGL(), vshader,
         instance,
         VertexArray(; per_instance...)
         ; uniform_dict...
     )
 end
+
+
+function wgl_convert(context, ip::InstancedProgram)
+    js_instances = THREE.new.InstancedBufferGeometry()
+    for (name, buff) in columns(ip.program.vertexarray)
+        js_buff = JSBuffer(context, buff).setDynamic(true)
+        js_vbo.addAttribute(name, js_buff)
+    end
+    # per instance data
+    for (name, buff) in columns(ip.per_instance)
+        js_buff = JSInstanceBuffer(context, buff).setDynamic(true)
+        js_vbo.addAttribute(name, js_buff)
+    end
+    material = create_material(
+        ip.program.source,
+        loadasset("particles.frag"),
+        to_js_uniforms(context, ip.program.uniforms)
+    )
+    return THREE.new.Mesh(js_vbo, material)
+end
 #
-# function WGLMakie.draw_js(jsscene, scene::Scene, plot::MeshScatter)
-#     vshader = loadasset("particles.vert")
-#     # Potentially per instance attributes
-#     per_instance_keys = (:position, :rotations, :markersize, :color, :intensity)
-#     per_instance = filter(plot.attributes) do (k, v)
-#         k in per_instance_keys && !(isscalar(v[]))
-#     end
-#     per_instance[:position] = plot[1]
-#     for (k, v) in per_instance
-#         per_instance[k] = Buffer(v)
-#     end
-#     uniforms = filter(plot.attributes) do (k, v)
-#         (!haskey(per_instance_attributes, k)) && isscalar(v[])
-#     end
-#     InstancedProgram(
-#         vshader,
-#         VertexArray(plot.marker),
-#         VertexArray(; per_instance...)
-#         ; uniforms...
-#     )
-#     return
-# end
-#
-# function WGLMakie.draw_js(jsscene, scene::Scene, plot::MeshScatter)
-#     THREE = WGLMakie.THREE
-#     @get_attribute plot (rotations, marker, model)
-#
-#     bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1)
-#
-#     geometry = THREE.new.InstancedBufferGeometry();
-#     geometry.index = bufferGeometry.index;
-#     geometry.attributes.position = bufferGeometry.attributes.position;
-#     geometry.attributes.uv = bufferGeometry.attributes.uv;
-#
-#     positions = plot[1][]
-#     # per instance data
-#     offsets = instanced_attribute(jsscene, positions)
-#     orientation = instanced_attribute(jsscene, rotations).setDynamic(true)
-#     geometry.addAttribute("offset", offsets)
-#     geometry.addAttribute("orientation", orientation)
-#
-#     tex = create_tex(rand(RGB{Colors.N0f8}, 128, 128))
-#     material = create_material(
-#         loadasset("particles.vert"),
-#         loadasset("particles.frag"),
-#         tex
-#     )
-#     mesh = THREE.new.Mesh(geometry, material)
-#     jsscene.add(mesh)
-#
-# end
+function draw_js(jsscene, scene::Scene, plot::MeshScatter)
+    program = create_shader(scene, plot)
+    mesh = wgl_convert(jsscene, program)
+    jsscene.add(mesh)
+end

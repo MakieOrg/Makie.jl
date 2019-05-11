@@ -261,6 +261,7 @@ end
 # TODO make a scene struct that encapsulates these
 global THREE = nothing
 global window = nothing
+global document = nothing
 
 function get_comm(jso)
     # LOL TODO git gud
@@ -301,6 +302,28 @@ function js_display(scene)
     cam = get_camera(renderer, js_scene, scene)
     renderer.render(js_scene, cam);
     document, window
+end
+
+function three_scene(scene)
+    global THREE, window, document
+    update!(scene)
+    mousedrag(scene, nothing)
+    width, height = size(scene)
+    THREE, document, window = JSModule(
+        :THREE,
+        "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
+    )
+
+    display(scope(THREE)(dom"div#container"()))
+
+    connect_scene_events!(scene, document)
+
+    renderer = THREE.new.WebGLRenderer(antialias = true)
+    renderer.setSize(width, height)
+    renderer.setClearColor("#ffffff")
+    document.body.appendChild(renderer.domElement)
+    js_scene = THREE.new.Scene()
+    THREE, document, window, js_scene, renderer
 end
 
 include("particles.jl")
