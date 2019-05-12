@@ -1,5 +1,6 @@
 precision mediump float;
 
+varying vec4 frag_color;
 varying vec3 frag_normal;
 varying vec3 frag_position;
 varying vec3 frag_lightdir;
@@ -23,6 +24,6 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 }
 
 void main() {
-    vec3 color = blinnphong(frag_normal, frag_position, frag_lightdir, vec3(1, 0, 0));
-    gl_FragColor = vec4(color, 1);
+    vec3 color = blinnphong(frag_normal, frag_position, frag_lightdir, frag_color.xyz);
+    gl_FragColor = vec4(color, frag_color.a);
 }

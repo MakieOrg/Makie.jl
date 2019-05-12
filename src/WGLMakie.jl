@@ -6,6 +6,9 @@ using AbstractPlotting, Observables
 using ShaderAbstractions, LinearAlgebra
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 import GeometryTypes: GLNormalMesh
+using ShaderAbstractions: InstancedProgram, VertexArray
+import GeometryTypes: GLNormalMesh, GLPlainMesh
+using Tables: columns
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 using Colors
@@ -287,7 +290,7 @@ function js_display(scene)
 
     connect_scene_events!(scene, document)
 
-    renderer = THREE.new.WebGLRenderer(antialias = true)
+    renderer = THREE.new.WebGLRenderer(antialias = false)
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
     document.body.appendChild(renderer.domElement)
@@ -301,7 +304,7 @@ function js_display(scene)
     js_scene.add(ambient)
     cam = get_camera(renderer, js_scene, scene)
     renderer.render(js_scene, cam);
-    document, window
+    document, window, js_scene
 end
 
 function three_scene(scene)

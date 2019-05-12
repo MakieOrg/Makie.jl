@@ -1,6 +1,9 @@
 using Colors, WebIO
 using JSCall, JSExpr
 using ShaderAbstractions: InstancedProgram
+using AbstractPlotting: Key, plotkey
+using GeometryTypes: Mat4f0
+using Colors: N0f8
 
 function JSInstanceBuffer(context, attribute::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), attribute)
@@ -10,10 +13,8 @@ end
 
 function JSBuffer(context, buff::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), buff)
-    # js_f32 = window.new.Float32Array(flat)
     return THREE.new.Float32BufferAttribute(flat, length(T))
 end
-using GeometryTypes: Mat4f0
 
 jl2js(val::Number) = val
 function jl2js(val::Mat4f0)
@@ -21,13 +22,22 @@ function jl2js(val::Mat4f0)
     x.fromArray(vec(val))
     return x
 end
-function jl2js(val::Vec3f0)
-    return THREE.new.Vector3(val...)
+
+jl2js(val::Vec4f0) = THREE.new.Vector4(val...)
+jl2js(val::Vec3f0) = THREE.new.Vector3(val...)
+jl2js(val::Vec2f0) = THREE.new.Vector2(val...)
+
+function jl2js(val::RGBA)
+    return THREE.new.Vector4(red(val), green(val), blue(val), alpha(val))
 end
+function jl2js(val::RGB)
+    return THREE.new.Vector3(red(val), green(val), blue(val))
+end
+
 function to_js_uniforms(context, dict::Dict)
     result = window.new.Object()
     for (k, v) in dict
-        setproperty!(result, k, Dict(:value => jl2js(v[])))
+        setproperty!(result, k, Dict(:value => jl2js(to_value(v))))
     end
     # for (k, v) in dict
     #     # Sampler + Buffers won't come through as Observables,
@@ -47,21 +57,58 @@ JSCall.@jsfun function create_material(vert, frag, uniforms)
             :uniforms => uniforms,
             :vertexShader => vert,
             :fragmentShader => frag,
-            :side => $(THREE).DoubleSide
+            :side => $(THREE).DoubleSide,
+            :transparent => true
+            # :depthTest => true,
+            # :depthWrite => true
         ),
     )
     return material
 end
 
+three_format(::Type{<: Real}) = THREE.RedFormat
+three_format(::Type{<: RGB}) = THREE.RGBFormat
+three_format(::Type{<: RGBA}) = THREE.RGBAFormat
 
-function wgl_convert(context, color::Sampler)
-    cmap = vec(reinterpret(UInt8, RGB{Colors.N0f8}.(color.data)))
-    data = window.Uint8Array.from(cmap)
+three_type(::Type{Float16}) = THREE.FloatType
+three_type(::Type{Float32}) = THREE.FloatType
+three_type(::Type{N0f8}) = THREE.UnsignedByteType
+
+function to_js_buffer(array::AbstractArray{T}) where T
+    return to_js_buffer(reinterpret(eltype(T), array))
+end
+function to_js_buffer(array::AbstractArray{Float32})
+    return window.Float32Array.from(vec(array))
+end
+function to_js_buffer(array::AbstractArray{Float16})
+    return window.Float32Array.from(vec(Float32.(array)))
+end
+function to_js_buffer(array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
+    return window.Uint8Array.from(vec(array))
+end
+
+function three_filter(sym)
+    sym == :linear && return THREE.LinearFilter
+    sym == :nearest && return THREE.NearestFilter
+end
+function three_repeat(s::Symbol)
+    s == :clamp_to_edge && return THREE.ClampToEdgeWrapping
+    s == :mirrored_repeat && return THREE.MirroredRepeatWrapping
+    s == :repeat && return THREE.RepeatWrapping
+end
+
+function jl2js(color::Sampler{T}) where T
+    data = to_js_buffer(color.data)
     tex = THREE.new.DataTexture(
         data, size(color, 1), size(color, 2),
-        THREE.RGBFormat, THREE.UnsignedByteType
-    );
+        three_format(T), three_type(eltype(T))
+    )
     tex.needsUpdate = true
+    # tex.minFilter = three_filter(color.minfilter)
+    # tex.magFilter = three_filter(color.magfilter)
+    # tex.wrapS = three_repeat(color.repeat[1])
+    # tex.wrapT = three_repeat(color.repeat[2])
+    # tex.anisotropy = color.anisotropic
     return tex
 end
 
@@ -70,7 +117,7 @@ lasset(paths...) = read(joinpath(dirname(pathof(WGLMakie)), "..", "assets", path
 isscalar(x::AbstractArray) = false
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
-ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext, t::Type{<: AbstractPlotting.Quaternionf0}) = "vec4"
+ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext, t::Type{<: AbstractPlotting.Quaternion}) = "vec4"
 
 function wgl_convert(value, key1, key2)
     AbstractPlotting.convert_attribute(value, key1, key2)
@@ -79,7 +126,6 @@ end
 function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
     ShaderAbstractions.Sampler(value)
 end
-using AbstractPlotting: Key, plotkey
 
 function lift_convert(key, value, plot)
     val = lift(value) do value
@@ -93,16 +139,15 @@ function lift_convert(key, value, plot)
 end
 
 function create_shader(scene::Scene, plot::MeshScatter)
-    vshader = lasset("particles.vert")
     # Potentially per instance attributes
-    per_instance_keys = (:position, :rotations, :markersize, :color, :intensity)
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:position] = plot[1]
+    per_instance[:offset] = plot[1]
 
     for (k, v) in per_instance
-        per_instance[k] = Buffer(v)
+        per_instance[k] = Buffer(lift_convert(k, v, plot))
     end
 
     uniforms = filter(plot.attributes.attributes) do (k, v)
@@ -114,10 +159,11 @@ function create_shader(scene::Scene, plot::MeshScatter)
         k in (:shading, :overdraw, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
-    color = uniform_dict[:color][]
-    if color isa Colorant || color isa AbstractVector{<: Colorant}
+    color = to_value(get(uniform_dict, :color, nothing))
+    if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
         delete!(uniform_dict, :colormap)
     end
+
     instance = VertexArray(map(GLNormalMesh, plot.marker))
     if !GeometryBasics.hascolumn(instance, :texturecoordinate)
         uniform_dict[:texturecoordinate] = Vec2f0(0)
@@ -128,7 +174,108 @@ function create_shader(scene::Scene, plot::MeshScatter)
     uniform_dict[:model] = plot.model
 
     p = InstancedProgram(
-        WebGL(), vshader,
+        WebGL(),
+        lasset("particles.vert"),
+        lasset("particles.frag"),
+        instance,
+        VertexArray(; per_instance...)
+        ; uniform_dict...
+    )
+end
+
+global counter = 1
+
+function wgl_convert(context, ip::InstancedProgram)
+    global counter
+    counter += 1
+    # bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1);
+    js_vbo = THREE.new.InstancedBufferGeometry()
+    for (name, buff) in pairs(ip.program.vertexarray)
+        js_buff = JSBuffer(context, buff).setDynamic(true)
+        js_vbo.addAttribute(name, js_buff)
+    end
+    indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
+    indices = reinterpret(UInt32, indices) .- UInt32(1)
+    js_vbo.setIndex(indices)
+    js_vbo.maxInstancedCount = length(ip.per_instance)
+
+    # per instance data
+    for (name, buff) in pairs(ip.per_instance)
+        js_buff = JSInstanceBuffer(context, buff).setDynamic(true)
+        js_vbo.addAttribute(name, js_buff)
+    end
+    uniforms = to_js_uniforms(context, ip.program.uniforms)
+    write("test.vert", ip.program.vertex_source)
+    write("test.frag", ip.program.fragment_source)
+    material = WGLMakie.create_material(
+        ip.program.vertex_source,
+        ip.program.fragment_source,
+        to_js_uniforms(context, ip.program.uniforms)
+    )
+    return THREE.new.Mesh(js_vbo, material)
+end
+
+@enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
+primitive_shape(::Char) = Cint(DISTANCEFIELD)
+primitive_shape(x::X) where X = Cint(primitive_shape(X))
+primitive_shape(::Type{<: Circle}) = Cint(CIRCLE)
+primitive_shape(::Type{<: SimpleRectangle}) = Cint(RECTANGLE)
+primitive_shape(::Type{<: HyperRectangle{2}}) = Cint(RECTANGLE)
+primitive_shape(x::Shape) = Cint(x)
+
+
+function create_shader(scene::Scene, plot::Scatter)
+    # Potentially per instance attributes
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
+    per_instance = filter(plot.attributes.attributes) do (k, v)
+        k in per_instance_keys && !(isscalar(v[]))
+    end
+    per_instance[:offset] = plot[1]
+
+    for (k, v) in per_instance
+        per_instance[k] = Buffer(lift_convert(k, v, plot))
+    end
+
+    uniforms = filter(plot.attributes.attributes) do (k, v)
+        (!haskey(per_instance, k)) && isscalar(v[])
+    end
+
+    uniform_dict = Dict{Symbol, Any}()
+    for (k,v) in uniforms
+        k in (:shading, :overdraw, :rotation, :rotations, :distancefield, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
+        uniform_dict[k] = lift_convert(k, v, plot)
+    end
+
+    uniform_dict[:shape_type] = lift(primitive_shape, plot.marker)
+    @show  uniform_dict[:shape_type][]
+    if uniform_dict[:shape_type][] == 3
+        atlas = AbstractPlotting.get_texture_atlas()
+        uniform_dict[:distancefield] = Sampler(
+                atlas.data,
+                minfilter = :linear,
+                magfilter = :linear,
+                # TODO: Consider alternatives to using the builtin anisotropic
+                # samplers for signed distance fields; the anisotropic
+                # filtering should happen *after* the SDF thresholding, but
+                # with the builtin sampler it happens before.
+                anisotropic = 16f0,
+        )
+        uniform_dict[:uv_offset_width] = lift(AbstractPlotting.glyph_uv_width!, plot.marker)
+    end
+
+    color = to_value(get(uniform_dict, :color, nothing))
+    if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
+        delete!(uniform_dict, :colormap)
+    end
+    instance = VertexArray(GLUVMesh2D(GeometryTypes.SimpleRectangle(0f0, 0f0, 1f0, 1f0)))
+    for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
+        uniform_dict[key] = getfield(scene.camera, key)
+    end
+    uniform_dict[:model] = plot.model
+    p = InstancedProgram(
+        WebGL(),
+        lasset("simple.vert"),
+        lasset("sprites.frag"),
         instance,
         VertexArray(; per_instance...)
         ; uniform_dict...
@@ -136,27 +283,15 @@ function create_shader(scene::Scene, plot::MeshScatter)
 end
 
 
-function wgl_convert(context, ip::InstancedProgram)
-    js_instances = THREE.new.InstancedBufferGeometry()
-    for (name, buff) in columns(ip.program.vertexarray)
-        js_buff = JSBuffer(context, buff).setDynamic(true)
-        js_vbo.addAttribute(name, js_buff)
-    end
-    # per instance data
-    for (name, buff) in columns(ip.per_instance)
-        js_buff = JSInstanceBuffer(context, buff).setDynamic(true)
-        js_vbo.addAttribute(name, js_buff)
-    end
-    material = create_material(
-        ip.program.source,
-        loadasset("particles.frag"),
-        to_js_uniforms(context, ip.program.uniforms)
-    )
-    return THREE.new.Mesh(js_vbo, material)
-end
-#
 function draw_js(jsscene, scene::Scene, plot::MeshScatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(jsscene, program)
+    jsscene.add(mesh)
+end
+
+function draw_js(jsscene, scene::Scene, plot::Scatter)
+    program = create_shader(scene, plot)
+    mesh = wgl_convert(jsscene, program)
+    mesh.name = "Scatter"
     jsscene.add(mesh)
 end
