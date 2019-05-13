@@ -1,3 +1,41 @@
+    precision mediump int;
+    precision mediump float;
+
+// Instance inputs: 
+attribute vec2 position;
+vec2 get_position(){return position;}
+attribute vec2 texturecoordinates;
+vec2 get_texturecoordinates(){return texturecoordinates;}
+
+// Per instance attributes: 
+attribute vec4 color;
+vec4 get_color(){return color;}
+attribute vec4 rotations;
+vec4 get_rotations(){return rotations;}
+attribute vec2 markersize;
+vec2 get_markersize(){return markersize;}
+attribute vec3 offset;
+vec3 get_offset(){return offset;}
+attribute vec4 uv_offset_width;
+vec4 get_uv_offset_width(){return uv_offset_width;}
+
+// Uniforms: 
+uniform vec2 marker_offset;
+vec2 get_marker_offset(){return marker_offset;}
+uniform bool transform_marker;
+bool get_transform_marker(){return transform_marker;}
+uniform sampler2D distancefield;
+uniform vec2 resolution;
+vec2 get_resolution(){return resolution;}
+uniform int shape_type;
+int get_shape_type(){return shape_type;}
+uniform mat4 model;
+mat4 get_model(){return model;}
+uniform bool billboard;
+bool get_billboard(){return billboard;}
+
+
+
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
@@ -107,3 +145,4 @@ void main(){
     vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
     gl_Position = quad_vertex + vclip;
 }
+

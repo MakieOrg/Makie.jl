@@ -3,17 +3,36 @@
 
 
 // Uniforms: 
-uniform bool transform_marker;
-bool get_transform_marker(){return transform_marker;}
-uniform sampler2D distancefield;
-uniform vec2 resolution;
-vec2 get_resolution(){return resolution;}
-uniform int shape_type;
-int get_shape_type(){return shape_type;}
-uniform mat4 model;
-mat4 get_model(){return model;}
+uniform vec4 strokecolor;
+vec4 get_strokecolor(){return strokecolor;}
+uniform float glowwidth;
+float get_glowwidth(){return glowwidth;}
 uniform vec2 marker_offset;
 vec2 get_marker_offset(){return marker_offset;}
+uniform vec2 markersize;
+vec2 get_markersize(){return markersize;}
+uniform vec4 rotations;
+vec4 get_rotations(){return rotations;}
+uniform int shape_type;
+int get_shape_type(){return shape_type;}
+uniform bool distancefield;
+bool get_distancefield(){return distancefield;}
+uniform float strokewidth;
+float get_strokewidth(){return strokewidth;}
+uniform vec2 resolution;
+vec2 get_resolution(){return resolution;}
+uniform mat4 model;
+mat4 get_model(){return model;}
+uniform bool billboard;
+bool get_billboard(){return billboard;}
+uniform vec4 color;
+vec4 get_color(){return color;}
+uniform vec4 uv_offset_width;
+vec4 get_uv_offset_width(){return uv_offset_width;}
+uniform vec4 glowcolor;
+vec4 get_glowcolor(){return glowcolor;}
+uniform bool transform_marker;
+bool get_transform_marker(){return transform_marker;}
 
 varying vec4 frag_color;
 varying vec2 frag_uv;

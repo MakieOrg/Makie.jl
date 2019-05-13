@@ -169,11 +169,7 @@ function draw_js(jsscene, mscene::Scene, plot::Lines)
     positions = plot[1][]
     jslines!(jsscene, positions, color, linewidth, model)
 end
-function draw_js(jsscene, mscene::Scene, plot::LineSegments)
-    @get_attribute plot (color, linewidth, model)
-    positions = plot[1][]
-    jslines!(jsscene, positions, color, linewidth, model, :linesegments)
-end
+
 function draw_js(jsscene, mscene::Scene, plot::Mesh)
     normalmesh = plot[1][]
     @get_attribute plot (color, model)
@@ -290,7 +286,7 @@ function js_display(scene)
     connect_scene_events!(scene, document)
     canvas = document.querySelector("canvas")
     renderer = THREE.new.WebGLRenderer(
-        antialias = false, canvas = canvas
+        antialias = true, canvas = canvas
     )
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
@@ -330,7 +326,9 @@ function three_scene(scene)
     THREE, document, window, js_scene, renderer
 end
 
+include("webgl.jl")
 include("particles.jl")
+include("lines.jl")
 
 export js_display
 
