@@ -13,8 +13,7 @@ uniform vec2 markersize;
 vec2 get_markersize(){return markersize;}
 uniform int shape_type;
 int get_shape_type(){return shape_type;}
-uniform bool distancefield;
-bool get_distancefield(){return distancefield;}
+uniform sampler2D distancefield;
 uniform float strokewidth;
 float get_strokewidth(){return strokewidth;}
 uniform vec2 resolution;
@@ -41,7 +40,7 @@ varying vec2 frag_uv;
 
 
 // Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS  0.8
+#define ANTIALIAS_RADIUS 0.8
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {

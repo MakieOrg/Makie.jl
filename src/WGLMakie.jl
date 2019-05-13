@@ -116,9 +116,9 @@ function set_positions!(geometry, positions::AbstractVector{<: Point{N, T}}) whe
 end
 
 function set_colors!(geometry, colors::AbstractVector{T}) where T <: Colorant
-    flat = reinterpret(eltype(T), RGB{Float32}.(colors))
+    flat = reinterpret(eltype(T), colors)
     geometry.addAttribute(
-        "color", THREE.new.Float32BufferAttribute(flat, 3)
+        "color", THREE.new.Float32BufferAttribute(flat, length(T))
     )
 end
 function set_normals!(geometry, colors::AbstractVector{T}) where T <: Normal
@@ -138,13 +138,14 @@ function set_uvs!(geometry, uvs::AbstractVector{T}) where T <: UV
 end
 
 function material!(geometry, colors::AbstractVector)
-    material = THREE.new.LineBasicMaterial(vertexColors = THREE.VertexColors)
+    material = THREE.new.LineBasicMaterial(
+        vertexColors = THREE.VertexColors, transparent = true, opacity = 0.1)
     set_colors!(geometry, colors)
     return material
 end
 
 function material!(geometry, color::Colorant)
-    material = THREE.new.LineBasicMaterial(color = "#"*hex(RGB(color)))
+    material = THREE.new.LineBasicMaterial(color = "#"*hex(RGB(color)), transparent = true)
     return material
 end
 
@@ -277,7 +278,7 @@ function js_display(scene)
 
     update!(scene)
     mousedrag(scene, nothing)
-    width, height = size(scene)
+    width, height = size(scene) ./ 2
     THREE, document, window = JSModule(
         :THREE,
         "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
@@ -289,7 +290,7 @@ function js_display(scene)
     connect_scene_events!(scene, document)
     canvas = document.querySelector("canvas")
     renderer = THREE.new.WebGLRenderer(
-        antialias = true, canvas = canvas
+        antialias = false, canvas = canvas
     )
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")

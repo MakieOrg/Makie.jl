@@ -48,7 +48,7 @@ float distancefield_scale(){
     // x-coordinate of texture instead for consistency with programmatic uv
     // distance fields in fragment shader. See also comments below.
     vec4 uv_rect = get_uv_offset_width();
-    float tsize = 4096.0;
+    float tsize = 1024.0;
     float pixsize_x = (uv_rect.z - uv_rect.x) * tsize;
     return -1.0/pixsize_x;
 }
@@ -72,7 +72,7 @@ void main(){
     frag_color = get_color();
     vec2 mpixel = (projectionMatrix * vec4(get_markersize(), 0, 0)).xy;
     mpixel = ((mpixel + 1.0) / 2.0) * get_resolution();
-    frag_uvscale = length(mpixel);
+    frag_uvscale = length(mpixel) / 2.0;
     vec2 uv = get_texturecoordinates();
     frag_uv = uv;
     frag_distancefield_scale = distancefield_scale();

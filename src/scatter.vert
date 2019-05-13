@@ -10,8 +10,8 @@ vec2 get_texturecoordinates(){return texturecoordinates;}
 // Per instance attributes: 
 attribute vec4 color;
 vec4 get_color(){return color;}
-attribute vec3 offset;
-vec3 get_offset(){return offset;}
+attribute vec2 offset;
+vec2 get_offset(){return offset;}
 
 // Uniforms: 
 uniform vec4 strokecolor;
@@ -24,8 +24,7 @@ uniform vec2 markersize;
 vec2 get_markersize(){return markersize;}
 uniform int shape_type;
 int get_shape_type(){return shape_type;}
-uniform bool distancefield;
-bool get_distancefield(){return distancefield;}
+uniform sampler2D distancefield;
 uniform float strokewidth;
 float get_strokewidth(){return strokewidth;}
 uniform vec2 resolution;
@@ -57,7 +56,7 @@ float distancefield_scale(){
     // x-coordinate of texture instead for consistency with programmatic uv
     // distance fields in fragment shader. See also comments below.
     vec4 uv_rect = get_uv_offset_width();
-    float tsize = 4096.0;
+    float tsize = 1024.0;
     float pixsize_x = (uv_rect.z - uv_rect.x) * tsize;
     return -1.0/pixsize_x;
 }
@@ -81,7 +80,7 @@ void main(){
     frag_color = get_color();
     vec2 mpixel = (projectionMatrix * vec4(get_markersize(), 0, 0)).xy;
     mpixel = ((mpixel + 1.0) / 2.0) * get_resolution();
-    frag_uvscale = length(mpixel);
+    frag_uvscale = length(mpixel) / 2.0;
     vec2 uv = get_texturecoordinates();
     frag_uv = uv;
     frag_distancefield_scale = distancefield_scale();
