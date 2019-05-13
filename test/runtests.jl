@@ -8,18 +8,25 @@ using JSCall
 
 Scene(resolution = (300, 300))
 scene = scatter!(
-    rand(Point3f0, 10),
+    rand(Point2f0, 10),
     color = rand(RGBAf0, 10),
 )
-a,b, jsscene = WGLMakie.js_display(scene)
+document, window, jsscene = WGLMakie.js_display(scene)
+# 
+# container = document.getElementById("container");
+# jlvalue(container)
+# container.width() |> jlvalue
+# $(container).height());
 #
-#
-# x = rand(Float32, 4096, 4096)
-#
-# data = WGLMakie.to_js_buffer(x)
-#
-# tex = WGLMakie.THREE.new.DataTexture(
-#     data, size(x, 1), size(x, 2),
-#     WGLMakie.THREE.AlphaFormat, WGLMakie.THREE.FloatType
+# width, height = size(scene)
+# THREE, document, window = JSModule(
+#     :THREE,
+#     "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
 # )
-# tex.needsUpdate = true
+# style = Dict(
+#     :width => width, :height => height
+# )
+# display(scope(THREE)(dom"div#container"(style = style)))
+# renderer = THREE.new.WebGLRenderer(antialias = true)
+# renderer.setSize(width, height)
+# document.body.appendChild(renderer.domElement)

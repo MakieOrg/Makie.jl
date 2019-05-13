@@ -283,17 +283,17 @@ function js_display(scene)
         "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
     )
     style = Dict(
-    :width => width, :height => height
+        :width => string(width, "px"), :height => string(height, "px")
     )
-
-    display(scope(THREE)(dom"div#container"()))
-
+    display(scope(THREE)(dom"canvas"(attributes = style)))
     connect_scene_events!(scene, document)
-
-    renderer = THREE.new.WebGLRenderer(antialias = true)
+    canvas = document.querySelector("canvas")
+    renderer = THREE.new.WebGLRenderer(
+        antialias = true, canvas = canvas
+    )
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
-    document.body.appendChild(renderer.domElement)
+    renderer.setPixelRatio(window.devicePixelRatio);
     js_scene = THREE.new.Scene()
     add_scene!(js_scene, scene)
     ambient = THREE.new.AmbientLight(0x666666)

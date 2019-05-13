@@ -10,8 +10,8 @@ vec2 get_texturecoordinates(){return texturecoordinates;}
 // Per instance attributes: 
 attribute vec4 color;
 vec4 get_color(){return color;}
-attribute vec2 offset;
-vec2 get_offset(){return offset;}
+attribute vec3 offset;
+vec3 get_offset(){return offset;}
 
 // Uniforms: 
 uniform vec4 strokecolor;
