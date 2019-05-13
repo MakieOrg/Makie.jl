@@ -34,6 +34,21 @@ function jl2js(val::RGB)
     return THREE.new.Vector3(red(val), green(val), blue(val))
 end
 
+function jl2js(color::Sampler{T}) where T
+    data = to_js_buffer(color.data)
+    tex = THREE.new.DataTexture(
+        data, size(color, 1), size(color, 2),
+        three_format(T), three_type(eltype(T))
+    )
+    tex.minFilter = three_filter(color.minfilter)
+    tex.magFilter = three_filter(color.magfilter)
+    tex.wrapS = three_repeat(color.repeat[1])
+    tex.wrapT = three_repeat(color.repeat[2])
+    tex.anisotropy = color.anisotropic
+    tex.needsUpdate = true
+    return tex
+end
+
 function to_js_uniforms(context, dict::Dict)
     result = window.new.Object()
     for (k, v) in dict
@@ -66,7 +81,7 @@ JSCall.@jsfun function create_material(vert, frag, uniforms)
     return material
 end
 
-three_format(::Type{<: Real}) = THREE.RedFormat
+three_format(::Type{<: Real}) = THREE.AlphaFormat
 three_format(::Type{<: RGB}) = THREE.RGBFormat
 three_format(::Type{<: RGBA}) = THREE.RGBAFormat
 
@@ -97,20 +112,6 @@ function three_repeat(s::Symbol)
     s == :repeat && return THREE.RepeatWrapping
 end
 
-function jl2js(color::Sampler{T}) where T
-    data = to_js_buffer(color.data)
-    tex = THREE.new.DataTexture(
-        data, size(color, 1), size(color, 2),
-        three_format(T), three_type(eltype(T))
-    )
-    tex.needsUpdate = true
-    # tex.minFilter = three_filter(color.minfilter)
-    # tex.magFilter = three_filter(color.magfilter)
-    # tex.wrapS = three_repeat(color.repeat[1])
-    # tex.wrapT = three_repeat(color.repeat[2])
-    # tex.anisotropy = color.anisotropic
-    return tex
-end
 
 lasset(paths...) = read(joinpath(dirname(pathof(WGLMakie)), "..", "assets", paths...), String)
 
@@ -127,6 +128,7 @@ function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
     ShaderAbstractions.Sampler(value)
 end
 
+AbstractPlotting.plotkey(::Nothing) = :scatter
 function lift_convert(key, value, plot)
     val = lift(value) do value
          wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
@@ -140,7 +142,7 @@ end
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
+    per_instance_keys = (:rotations, :markersize, :color, :intensity)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
@@ -183,11 +185,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     )
 end
 
-global counter = 1
-
 function wgl_convert(context, ip::InstancedProgram)
-    global counter
-    counter += 1
     # bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1);
     js_vbo = THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
@@ -223,44 +221,47 @@ primitive_shape(::Type{<: SimpleRectangle}) = Cint(RECTANGLE)
 primitive_shape(::Type{<: HyperRectangle{2}}) = Cint(RECTANGLE)
 primitive_shape(x::Shape) = Cint(x)
 
-
-function create_shader(scene::Scene, plot::Scatter)
+function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
-    per_instance = filter(plot.attributes.attributes) do (k, v)
+    per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:offset] = plot[1]
-
     for (k, v) in per_instance
-        per_instance[k] = Buffer(lift_convert(k, v, plot))
+        @show k typeof(v)
+        per_instance[k] = Buffer(lift_convert(k, v, nothing))
     end
-
-    uniforms = filter(plot.attributes.attributes) do (k, v)
+    uniforms = filter(attributes) do (k, v)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
-
     uniform_dict = Dict{Symbol, Any}()
+    ignore_keys = (
+        :shading, :overdraw, :rotation, :rotations, :distancefield, :fxaa,
+        :visible, :transformation, :alpha, :linewidth, :transparency, :marker
+    )
     for (k,v) in uniforms
-        k in (:shading, :overdraw, :rotation, :rotations, :distancefield, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
-        uniform_dict[k] = lift_convert(k, v, plot)
+        k in ignore_keys && continue
+        @show k typeof(v)
+        uniform_dict[k] = lift_convert(k, v, nothing)
     end
-
-    uniform_dict[:shape_type] = lift(primitive_shape, plot.marker)
-    @show  uniform_dict[:shape_type][]
+    get!(uniform_dict, :shape_type) do
+        lift(primitive_shape, attributes[:marker])
+    end
     if uniform_dict[:shape_type][] == 3
         atlas = AbstractPlotting.get_texture_atlas()
         uniform_dict[:distancefield] = Sampler(
-                atlas.data,
-                minfilter = :linear,
-                magfilter = :linear,
-                # TODO: Consider alternatives to using the builtin anisotropic
-                # samplers for signed distance fields; the anisotropic
-                # filtering should happen *after* the SDF thresholding, but
-                # with the builtin sampler it happens before.
-                anisotropic = 16f0,
+            atlas.data,
+            minfilter = :linear,
+            magfilter = :linear,
+            anisotropic = 16f0,
         )
-        uniform_dict[:uv_offset_width] = lift(AbstractPlotting.glyph_uv_width!, plot.marker)
+        get!(uniform_dict, :uv_offset_width) do
+            if haskey(attributes, :marker) && attributes[:marker][] isa Char
+                lift(AbstractPlotting.glyph_uv_width!, attributes[:marker])
+            else
+                Vec4f0(0)
+            end
+        end
     end
 
     color = to_value(get(uniform_dict, :color, nothing))
@@ -271,7 +272,6 @@ function create_shader(scene::Scene, plot::Scatter)
     for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end
-    uniform_dict[:model] = plot.model
     p = InstancedProgram(
         WebGL(),
         lasset("simple.vert"),
@@ -280,6 +280,37 @@ function create_shader(scene::Scene, plot::Scatter)
         VertexArray(; per_instance...)
         ; uniform_dict...
     )
+end
+
+function create_shader(scene::Scene, plot::Scatter)
+    # Potentially per instance attributes
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
+    per_instance = filter(plot.attributes.attributes) do (k, v)
+        k in per_instance_keys && !(isscalar(v[]))
+    end
+    attributes = copy(plot.attributes.attributes)
+    attributes[:offset] = plot[1]
+    return scatter_shader(scene, attributes)
+end
+
+function create_shader(scene::Scene, plot::AbstractPlotting.Text)
+    liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
+    gl_text = lift(AbstractPlotting.to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
+    # unpack values from the one signal:
+    positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
+        lift(getindex, gl_text, i)
+    end
+    keys = (:color, :stroke_color, :stroke_width, :rotation)
+    signals = getindex.(Ref(gl_attributes), keys)
+    return scatter_shader(scene, Dict(
+        :shape_type => 3,
+        :color => signals[1],
+        :rotation => signals[4],
+        :scale => scale,
+        :offset => offset,
+        :uv_offset_width => uv_offset_width,
+        :model => plot.model
+    ))
 end
 
 

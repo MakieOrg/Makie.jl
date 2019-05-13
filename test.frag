@@ -1,8 +1,6 @@
-    precision mediump int;
-    precision mediump float;
-
-
-// Uniforms: 
+precision mediump int;
+precision mediump float;
+// Uniforms:
 uniform vec4 strokecolor;
 vec4 get_strokecolor(){return strokecolor;}
 uniform float glowwidth;

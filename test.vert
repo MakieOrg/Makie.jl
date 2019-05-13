@@ -1,19 +1,19 @@
     precision mediump int;
     precision mediump float;
 
-// Instance inputs: 
+// Instance inputs:
 attribute vec2 position;
 vec2 get_position(){return position;}
 attribute vec2 texturecoordinates;
 vec2 get_texturecoordinates(){return texturecoordinates;}
 
-// Per instance attributes: 
+// Per instance attributes:
 attribute vec4 color;
 vec4 get_color(){return color;}
 attribute vec2 offset;
 vec2 get_offset(){return offset;}
 
-// Uniforms: 
+// Uniforms:
 uniform vec4 strokecolor;
 vec4 get_strokecolor(){return strokecolor;}
 uniform float glowwidth;
@@ -37,7 +37,6 @@ uniform bool transform_marker;
 bool get_transform_marker(){return transform_marker;}
 
 
-
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
@@ -56,7 +55,6 @@ float distancefield_scale(){
     float pixsize_x = (uv_rect.z - uv_rect.x) * tsize;
     return -1.0/pixsize_x;
 }
-
 
 void main(){
     // get_* gets the global inputs (uniform, sampler, vertex array)
@@ -80,4 +78,3 @@ void main(){
     // screen space coordinates of the vertex
     gl_Position = projectionMatrix * viewMatrix * position_world;
 }
-
