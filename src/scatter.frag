@@ -1,15 +1,20 @@
-precision mediump int;
-precision mediump float;
-// Uniforms:
+    precision mediump int;
+    precision mediump float;
+
+
+// Uniforms: 
 uniform vec4 strokecolor;
 vec4 get_strokecolor(){return strokecolor;}
 uniform float glowwidth;
 float get_glowwidth(){return glowwidth;}
+uniform vec2 marker_offset;
+vec2 get_marker_offset(){return marker_offset;}
 uniform vec2 markersize;
 vec2 get_markersize(){return markersize;}
 uniform int shape_type;
 int get_shape_type(){return shape_type;}
-uniform sampler2D distancefield;
+uniform bool distancefield;
+bool get_distancefield(){return distancefield;}
 uniform float strokewidth;
 float get_strokewidth(){return strokewidth;}
 uniform vec2 resolution;
@@ -78,22 +83,24 @@ void fill(vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
 
 varying float frag_uvscale;
 varying float frag_distancefield_scale;
+varying vec4 frag_uv_offset_width;
 
 float scaled_distancefield(sampler2D distancefield, vec2 uv){
     // Glyph distance field units are in pixels. Convert to same distance
     // scaling as f_uv.x for consistency with the procedural signed_distance
     // calculations.
-    return frag_distancefield_scale * texture2D(distancefield, uv).r;
+    return frag_distancefield_scale * texture2D(distancefield, uv).a;
 }
 
 float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
 
+
 void main() {
     int shape = get_shape_type();
     float signed_distance = 0.0;
-    vec4 uv_off = get_uv_offset_width();
+    vec4 uv_off = frag_uv_offset_width;
     vec2 tex_uv = mix(uv_off.xy, uv_off.zw, clamp(frag_uv, 0.0, 1.0));
     if(shape == CIRCLE)
         signed_distance = circle(frag_uv);

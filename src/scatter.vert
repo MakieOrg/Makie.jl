@@ -1,3 +1,46 @@
+    precision mediump int;
+    precision mediump float;
+
+// Instance inputs: 
+attribute vec2 position;
+vec2 get_position(){return position;}
+attribute vec2 texturecoordinates;
+vec2 get_texturecoordinates(){return texturecoordinates;}
+
+// Per instance attributes: 
+attribute vec4 color;
+vec4 get_color(){return color;}
+attribute vec2 offset;
+vec2 get_offset(){return offset;}
+
+// Uniforms: 
+uniform vec4 strokecolor;
+vec4 get_strokecolor(){return strokecolor;}
+uniform float glowwidth;
+float get_glowwidth(){return glowwidth;}
+uniform vec2 marker_offset;
+vec2 get_marker_offset(){return marker_offset;}
+uniform vec2 markersize;
+vec2 get_markersize(){return markersize;}
+uniform int shape_type;
+int get_shape_type(){return shape_type;}
+uniform bool distancefield;
+bool get_distancefield(){return distancefield;}
+uniform float strokewidth;
+float get_strokewidth(){return strokewidth;}
+uniform vec2 resolution;
+vec2 get_resolution(){return resolution;}
+uniform mat4 model;
+mat4 get_model(){return model;}
+uniform vec4 uv_offset_width;
+vec4 get_uv_offset_width(){return uv_offset_width;}
+uniform vec4 glowcolor;
+vec4 get_glowcolor(){return glowcolor;}
+uniform bool transform_marker;
+bool get_transform_marker(){return transform_marker;}
+
+
+
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 
@@ -46,3 +89,4 @@ void main(){
     // screen space coordinates of the vertex
     gl_Position = projectionMatrix * viewMatrix * position_world;
 }
+

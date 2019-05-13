@@ -1,3 +1,20 @@
+    precision mediump int;
+    precision mediump float;
+
+
+// Uniforms: 
+uniform bool transform_marker;
+bool get_transform_marker(){return transform_marker;}
+uniform sampler2D distancefield;
+uniform vec2 resolution;
+vec2 get_resolution(){return resolution;}
+uniform int shape_type;
+int get_shape_type(){return shape_type;}
+uniform mat4 model;
+mat4 get_model(){return model;}
+uniform vec2 marker_offset;
+vec2 get_marker_offset(){return marker_offset;}
+
 varying vec4 frag_color;
 varying vec2 frag_uv;
 

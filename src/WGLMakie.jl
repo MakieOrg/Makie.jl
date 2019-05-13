@@ -290,7 +290,7 @@ function js_display(scene)
 
     connect_scene_events!(scene, document)
 
-    renderer = THREE.new.WebGLRenderer(antialias = false)
+    renderer = THREE.new.WebGLRenderer(antialias = true)
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
     document.body.appendChild(renderer.domElement)

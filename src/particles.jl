@@ -23,6 +23,7 @@ function jl2js(val::Mat4f0)
     return x
 end
 
+jl2js(val::Quaternion) = THREE.new.Vector4(val.data...)
 jl2js(val::Vec4f0) = THREE.new.Vector4(val...)
 jl2js(val::Vec3f0) = THREE.new.Vector3(val...)
 jl2js(val::Vec2f0) = THREE.new.Vector2(val...)
@@ -111,14 +112,16 @@ function three_repeat(s::Symbol)
     s == :mirrored_repeat && return THREE.MirroredRepeatWrapping
     s == :repeat && return THREE.RepeatWrapping
 end
-
+using StaticArrays
 
 lasset(paths...) = read(joinpath(dirname(pathof(WGLMakie)), "..", "assets", paths...), String)
 
+isscalar(x::StaticArrays.StaticArray) = true
 isscalar(x::AbstractArray) = false
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext, t::Type{<: AbstractPlotting.Quaternion}) = "vec4"
+ShaderAbstractions.convert_uniform(context::ShaderAbstractions.AbstractContext, t::Quaternion) = convert(Quaternion, t)
 
 function wgl_convert(value, key1, key2)
     AbstractPlotting.convert_attribute(value, key1, key2)
@@ -203,8 +206,7 @@ function wgl_convert(context, ip::InstancedProgram)
         js_vbo.addAttribute(name, js_buff)
     end
     uniforms = to_js_uniforms(context, ip.program.uniforms)
-    write("test.vert", ip.program.vertex_source)
-    write("test.frag", ip.program.fragment_source)
+
     material = WGLMakie.create_material(
         ip.program.vertex_source,
         ip.program.fragment_source,
@@ -223,12 +225,11 @@ primitive_shape(x::Shape) = Cint(x)
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width)
     per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
     for (k, v) in per_instance
-        @show k typeof(v)
         per_instance[k] = Buffer(lift_convert(k, v, nothing))
     end
     uniforms = filter(attributes) do (k, v)
@@ -241,7 +242,6 @@ function scatter_shader(scene::Scene, attributes)
     )
     for (k,v) in uniforms
         k in ignore_keys && continue
-        @show k typeof(v)
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
     get!(uniform_dict, :shape_type) do
@@ -255,6 +255,10 @@ function scatter_shader(scene::Scene, attributes)
             magfilter = :linear,
             anisotropic = 16f0,
         )
+    else
+        uniform_dict[:distancefield] = Observable(false)
+    end
+    if !haskey(per_instance, :uv_offset_width)
         get!(uniform_dict, :uv_offset_width) do
             if haskey(attributes, :marker) && attributes[:marker][] isa Char
                 lift(AbstractPlotting.glyph_uv_width!, attributes[:marker])
@@ -263,7 +267,6 @@ function scatter_shader(scene::Scene, attributes)
             end
         end
     end
-
     color = to_value(get(uniform_dict, :color, nothing))
     if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
         delete!(uniform_dict, :colormap)
@@ -284,32 +287,79 @@ end
 
 function create_shader(scene::Scene, plot::Scatter)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity)
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :marker_offset)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
     attributes = copy(plot.attributes.attributes)
     attributes[:offset] = plot[1]
+    attributes[:model] = plot.model
+    delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
+end
+
+using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, NativeFont, glyph_scale!, calc_position, calc_offset
+
+function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
+    atlas = get_texture_atlas()
+    N = length(T)
+    positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
+    # toffset = calc_offset(string, textsize, font, atlas)
+    char_str_idx = iterate(string)
+    broadcast_foreach(1:length(string), startpos, textsize, (font,), align) do idx, pos, tsize, font, align
+        char, str_idx = char_str_idx
+        _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
+        mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
+        push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
+        push!(uv_offset_width, glyph_uv_width!(atlas, char, _font))
+        if isa(tsize, Vec2f0) # this needs better unit support
+            push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
+        else
+            push!(scale, glyph_scale!(atlas, char,_font, tsize))
+        end
+        char_str_idx = iterate(string, str_idx)
+    end
+    positions, Vec2f0(0), uv_offset_width, scale
+end
+
+function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+    atlas = get_texture_atlas()
+    mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
+    pos = to_ndim(Point{N, Float32}, mpos, 0f0)
+    rscale = Float32(textsize)
+    chars = Vector{Char}(string)
+    scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
+    positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
+    # font is Vector{FreeType.NativeFont} so we need to protec
+    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
+    aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
+    uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
+    positions = map(positions2d) do p
+        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+        pn .+ pos
+    end
+    positions, Vec2f0(0), uv_offset_width, scale
 end
 
 function create_shader(scene::Scene, plot::AbstractPlotting.Text)
     liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-    gl_text = lift(AbstractPlotting.to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
+    gl_text = lift(to_gl_text, plot[1], getindex.(plot.attributes, liftkeys)...)
     # unpack values from the one signal:
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
         lift(getindex, gl_text, i)
     end
-    keys = (:color, :stroke_color, :stroke_width, :rotation)
-    signals = getindex.(Ref(gl_attributes), keys)
+    keys = (:color, :rotation)
+    signals = getindex.(plot.attributes, keys)
     return scatter_shader(scene, Dict(
-        :shape_type => 3,
+        :shape_type => AbstractPlotting.Node(Cint(3)),
         :color => signals[1],
-        :rotation => signals[4],
-        :scale => scale,
-        :offset => offset,
+        :rotation => signals[2],
+        :markersize => scale,
+        :marker_offset => offset,
+        :offset => positions,
         :uv_offset_width => uv_offset_width,
-        :model => plot.model
+        :model => plot.model,
+        :transform_marker => AbstractPlotting.Node(true)
     ))
 end
 
@@ -319,10 +369,21 @@ function draw_js(jsscene, scene::Scene, plot::MeshScatter)
     mesh = wgl_convert(jsscene, program)
     jsscene.add(mesh)
 end
-
+function draw_js(jsscene, scene::Scene, plot::AbstractPlotting.Text)
+    program = create_shader(scene, plot)
+    write(joinpath(@__DIR__, "test.vert"), program.program.vertex_source)
+    write(joinpath(@__DIR__, "test.frag"), program.program.fragment_source)
+    mesh = wgl_convert(jsscene, program)
+    mesh.name = "Text"
+    jsscene.add(mesh)
+end
 function draw_js(jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(jsscene, program)
+
+    write(joinpath(@__DIR__, "scatter.vert"), program.program.vertex_source)
+    write(joinpath(@__DIR__, "scatter.frag"), program.program.fragment_source)
+
     mesh.name = "Scatter"
     jsscene.add(mesh)
 end
