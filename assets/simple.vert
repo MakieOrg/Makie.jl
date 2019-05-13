@@ -105,5 +105,5 @@ void main(){
     frag_uv_offset_width = get_uv_offset_width();
     // screen space coordinates of the vertex
     vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
-    gl_Position = quad_vertex + vclip;
+    gl_Position = vclip + quad_vertex;
 }

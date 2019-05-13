@@ -101,7 +101,7 @@ function scatter_shader(scene::Scene, attributes)
     if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
         delete!(uniform_dict, :colormap)
     end
-    instance = VertexArray(GLUVMesh2D(GeometryTypes.SimpleRectangle(0f0, 0f0, 1f0, 1f0)))
+    instance = VertexArray(GLUVMesh2D(GeometryTypes.SimpleRectangle(-0.5f0, -0.5f0, 1f0, 1f0)))
     for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end
