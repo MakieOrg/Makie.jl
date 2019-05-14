@@ -282,7 +282,10 @@ function js_display(scene)
     style = Dict(
         :width => string(width, "px"), :height => string(height, "px")
     )
-    display(scope(THREE)(dom"canvas"(attributes = style)))
+    display(node(:div, 
+        scope(THREE)(dom"canvas"(attributes = style)),
+        style = style
+    ))
     connect_scene_events!(scene, document)
     canvas = document.querySelector("canvas")
     renderer = THREE.new.WebGLRenderer(
