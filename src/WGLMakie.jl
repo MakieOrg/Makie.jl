@@ -269,24 +269,31 @@ function get_comm(jso)
     return obs
 end
 
-function js_display(scene)
-    global THREE, window
+function js_display(scene::Scene)
+    three_scene(scene)
+end
 
-    update!(scene)
+function three_scene(scene::Scene)
+    global THREE, window, document
     mousedrag(scene, nothing)
     width, height = size(scene) ./ 2
-    THREE, document, window = JSModule(
-        :THREE,
-        "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
-    )
-    style = Dict(
-        :width => string(width, "px"), :height => string(height, "px")
-    )
-    display(WebIO.node(:div,
-        scope(THREE)(dom"canvas"(attributes = style)),
-        style = style
-    ))
-    connect_scene_events!(scene, document)
+    jsm = JSModule(
+            :THREE,
+            "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
+        ) do scope
+        # Render callback
+        style = Dict(
+            :width => string(width, "px"), :height => string(height, "px")
+        )
+        WebIO.node(
+            :div,
+            scope(dom"canvas"(attributes = style)),
+            style = style
+        )
+    end
+    THREE = jsm.mod; window = jsm.window; document = jsm.document;
+
+    connect_scene_events!(scene, jsm.document)
     canvas = document.querySelector("canvas")
     renderer = THREE.new.WebGLRenderer(
         antialias = true, canvas = canvas
@@ -304,48 +311,28 @@ function js_display(scene)
     js_scene.add(ambient)
     cam = get_camera(renderer, js_scene, scene)
     renderer.render(js_scene, cam);
-    document, window, js_scene
-end
-
-function three_scene(scene)
-    global THREE, window, document
-    update!(scene)
-    mousedrag(scene, nothing)
-    width, height = size(scene)
-    THREE, document, window = JSModule(
-        :THREE,
-        "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
-    )
-
-    display(scope(THREE)(dom"div#container"()))
-
-    connect_scene_events!(scene, document)
-
-    renderer = THREE.new.WebGLRenderer(antialias = true)
-    renderer.setSize(width, height)
-    renderer.setClearColor("#ffffff")
-    document.body.appendChild(renderer.domElement)
-    js_scene = THREE.new.Scene()
-    THREE, document, window, js_scene, renderer
+    jsm
 end
 
 include("webgl.jl")
 include("particles.jl")
 include("lines.jl")
 
-export js_display
+struct WGLBackend <: AbstractPlotting.AbstractBackend
+end
 
-# document.addEventListener("mousedown", onDocumentMouseDown, false)
-# document.addEventListener("mouseup", onDocumentMouseDown, false)
-# document.addEventListener("wheel", onDocumentMouseDown, false)
-#
-# document.addEventListener("resize", onWindowResize, false)
-#
-# document.addEventListener("focus", onWindowResize, false)
-#
-# document.addEventListener("resize", onWindowResize, false)
-# document.addEventListener("keydown", onWindowResize, false)
-#
-# document.addEventListener("keyup", onWindowResize, false)
+function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"text/html", scene::Scene)
+    Base.show(io, m, three_scene(scene))
+end
+function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::WebIO.WEBIO_APPLICATION_MIME, scene::Scene)
+    Base.show(io, m, three_scene(scene))
+end
+function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"application/prs.juno.plotpane+html", scene::Scene)
+    Base.show(io, m, three_scene(scene))
+end
+
+function __init__()
+    AbstractPlotting.register_backend!(WGLBackend())
+end
 
 end # module
