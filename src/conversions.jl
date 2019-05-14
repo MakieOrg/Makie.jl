@@ -566,7 +566,7 @@ convert_attribute(x::NativeFont, k::key"font") = x
 convert_attribute(s::Quaternion, ::key"rotation") = s
 function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
     if N == 4
-        Quaternion(s...)
+        Quaternionf0(s...)
     elseif N == 3
         rotation_between(Vec3f0(0, 0, 1), to_ndim(Vec3f0, s, 0.0))
     elseif N == 2
@@ -580,7 +580,7 @@ end
 function convert_attribute(s::Tuple{VecTypes, AbstractFloat}, ::key"rotation")
     qrotation(to_ndim(Vec3f0, s[1], 0.0), s[2])
 end
-convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0, 1), angle)
+convert_attribute(angle::AbstractFloat, ::key"rotation") = qrotation(Vec3f0(0, 0, 1), Float32(angle))
 convert_attribute(r::AbstractVector, k::key"rotation") = to_rotation.(r)
 convert_attribute(r::AbstractVector{<: Quaternionf0}, k::key"rotation") = r
 
