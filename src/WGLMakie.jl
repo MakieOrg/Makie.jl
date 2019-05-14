@@ -106,7 +106,6 @@ function connect_scene_events!(scene, js_doc)
     end
 end
 
-ENV["WEBIO_BUNDLE_URL"] = "https://simondanisch.github.io/ReferenceImages/generic_http.js"
 
 function set_positions!(geometry, positions::AbstractVector{<: Point{N, T}}) where {N, T}
     flat = reinterpret(T, positions)
@@ -332,6 +331,8 @@ function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"application
 end
 
 function __init__()
+    # Make webio stay even after server is down
+    ENV["WEBIO_BUNDLE_URL"] = "https://simondanisch.github.io/ReferenceImages/generic_http.js"
     AbstractPlotting.register_backend!(WGLBackend())
 end
 
