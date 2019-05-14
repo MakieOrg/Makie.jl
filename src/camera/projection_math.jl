@@ -22,11 +22,11 @@ function translationmatrix(t::Vec{3, T}) where T
     )
 end
 
-rotate(angle::T, axis::Vec{3, T}) where {T} = rotationmatrix4(qrotation(convert(Array, axis), angle))
+rotate(angle, axis::Vec{3}) = rotationmatrix4(qrotation(convert(Array, axis), angle))
 rotate(::Type{T}, angle::Number, axis::Vec{3}) where {T} = rotate(T(angle), convert(Vec{3, T}, axis))
 
-function rotationmatrix_x(angle::T) where T
-    T0, T1 = zero(T), one(T)
+function rotationmatrix_x(angle)
+    T0, T1 = (0, 1)
     Mat{4}(
         T1, T0, T0, T0,
         T0, cos(angle), sin(angle), T0,
@@ -34,8 +34,8 @@ function rotationmatrix_x(angle::T) where T
         T0, T0, T0, T1
     )
 end
-function rotationmatrix_y(angle::T) where T
-    T0, T1 = zero(T), one(T)
+function rotationmatrix_y(angle)
+    T0, T1 = (0, 1)
     Mat{4}(
         cos(angle), T0, -sin(angle),  T0,
         T0, T1, T0, T0,
@@ -43,8 +43,8 @@ function rotationmatrix_y(angle::T) where T
         T0, T0, T0, T1
     )
 end
-function rotationmatrix_z(angle::T) where T
-    T0, T1 = zero(T), one(T)
+function rotationmatrix_z(angle)
+    T0, T1 = (0, 1)
     Mat{4}(
         cos(angle), sin(angle), T0, T0,
         -sin(angle), cos(angle),  T0, T0,
