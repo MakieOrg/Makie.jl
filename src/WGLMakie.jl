@@ -282,7 +282,7 @@ function js_display(scene)
     style = Dict(
         :width => string(width, "px"), :height => string(height, "px")
     )
-    display(node(:div, 
+    display(WebIO.node(:div,
         scope(THREE)(dom"canvas"(attributes = style)),
         style = style
     ))
