@@ -10,7 +10,7 @@ mutable struct TextureAtlas
     extent          ::Vector{FontExtent{Float64}}
 end
 
-function TextureAtlas(initial_size = (2048, 2048))
+function TextureAtlas(initial_size = (1024, 1024))
     TextureAtlas(
         RectanglePacker(SimpleRectangle(0, 0, initial_size...)),
         Dict{Any, Int}(),
@@ -80,9 +80,9 @@ begin #basically a singleton for the textureatlas
         for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
             insert_glyph!(atlas, c, defaultfont())
         end
-        for c in _tobe_cached
-            insert_glyph!(atlas, c, defaultfont())
-        end
+        # for c in _tobe_cached
+        #     insert_glyph!(atlas, c, defaultfont())
+        # end
         to_cache(atlas) # cache it
         return atlas
     end
@@ -209,7 +209,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     if glyph == '\n' # don't render  newline
         glyph = ' '
     end
-    bitmap, extent = renderface(font, glyph, (50*downsample, 50*downsample))
+    bitmap, extent = renderface(font, glyph, (30*downsample, 30*downsample))
     sd = sdistancefield(bitmap, downsample, downsample*pad)
     sd = sd ./ downsample;
     extent = extent ./ Vec2f0(downsample)
