@@ -1,4 +1,8 @@
 using AbstractPlotting
+using Makie
+scene = scatter(rand(4))
+
+
 
 using Test
 
@@ -6,6 +10,17 @@ include("quaternions.jl")
 include("projection_math.jl")
 
 const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "true")
+=======
+@testset "basic functionality" begin
+    scene = scatter(rand(4))
+    @test scene[Axis].ticks.title_gap[] == 3
+    scene[Axis].ticks.title_gap = 4
+    @test scene[Axis].ticks.title_gap[] == 4
+end
+
+# if get(ENV, "IS_TRAVIS_CI", "false") == "false"
+#   exit(0);
+# end
 
 using MakieGallery
 

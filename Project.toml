@@ -26,20 +26,21 @@ Showoff = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
 SignedDistanceFields = "73760f76-fbc4-59ce-8f25-708e95d2df96"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
 GeometryTypes = ">=0.7.2"
 
 [extras]
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
 Logging = "56ddb016-857b-54e1-b83d-db4d58db5568"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
-ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
-DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
-StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
+StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
 test = ["Test", "Logging", "MakieGallery", "ImageFiltering", "DataFrames", "ColorSchemes", "StatsMakie", "RDatasets"]
