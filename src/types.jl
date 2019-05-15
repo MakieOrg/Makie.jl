@@ -191,16 +191,22 @@ mutable struct Camera
 end
 
 struct Transformation <: Transformable
+    parent::RefValue{Transformable}
     translation::Node{Vec3f0}
     scale::Node{Vec3f0}
     rotation::Node{Quaternionf0}
     model::Node{Mat4f0}
     flip::Node{NTuple{3, Bool}}
     align::Node{Vec2f0}
-    func::Node{Any}
+    data_func::Node{Any}
+    function Transformation(translation, scale, rotation, model, flip, align, data_func)
+        return new(
+            RefValue{Transformable}(),
+            translation, scale, rotation, model, flip, align, data_func
+        )
+    end
 end
 
-#
 struct Attributes
     attributes::Dict{Symbol, Node}
 end
