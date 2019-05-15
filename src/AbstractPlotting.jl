@@ -117,6 +117,9 @@ export hasfocus
 export entered_window
 export disconnect!, must_update, force_update!, update!, update_limits!
 
+# currently special-cased functions (`textslider`) for example
+export textslider
+
 
 # gui
 export slider, button, playbutton
