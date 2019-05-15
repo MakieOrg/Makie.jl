@@ -4,7 +4,7 @@ using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets
 using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown # documentation
 using Serialization # serialize events
-
+using StructArrays
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics

@@ -7,7 +7,6 @@ Theme(x::AbstractPlot) = x.attributes
 
 default_theme(scene, T) = Attributes()
 
-
 function default_theme(scene)
     light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     Theme(
@@ -33,7 +32,7 @@ mutual_exclusive_attributes(::Type{<:AbstractPlot}) = Dict()
 
 Plots an image on range `x, y` (defaults to dimensions).
 """
-@recipe(Image) do scene
+@recipe(Image, x, y, image) do scene
     Theme(;
         default_theme(scene)...,
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
@@ -49,7 +48,7 @@ end
 
 Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
 """
-@recipe(Heatmap) do scene
+@recipe(Heatmap, x, y, values) do scene
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
@@ -71,7 +70,7 @@ Plots a volume. Available algorithms are:
 * `:absorptionrgba` => AbsorptionRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 """
-@recipe(Volume) do scene
+@recipe(Volume, x, y, z, volume) do scene
     Theme(;
         default_theme(scene)...,
         fxaa = true,
@@ -96,7 +95,7 @@ end
 
 Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
 """
-@recipe(Surface) do scene
+@recipe(Surface, x, y, z) do scene
     Theme(;
         default_theme(scene)...,
         colormap = theme(scene, :colormap),
@@ -111,7 +110,7 @@ end
 
 Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
 """
-@recipe(Lines) do scene
+@recipe(Lines, positions) do scene
     Theme(;
         default_theme(scene)...,
         linewidth = 1.0,
@@ -130,7 +129,7 @@ Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 **Attributes**:
 The same as for [`lines`](@ref)
 """
-@recipe(LineSegments) do scene
+@recipe(LineSegments, positions) do scene
     default_theme(scene, Lines)
 end
 
@@ -140,7 +139,7 @@ end
 
 Plots a 3D mesh.
 """
-@recipe(Mesh) do scene
+@recipe(Mesh, mesh) do scene
     Theme(;
         default_theme(scene)...,
         fxaa = true,
@@ -156,7 +155,7 @@ end
 
 Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 """
-@recipe(Scatter) do scene
+@recipe(Scatter, positions) do scene
     Theme(;
         default_theme(scene)...,
         marker = theme(scene, :marker),
@@ -182,7 +181,7 @@ end
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
 `markersize` is a scaling applied to the primitive passed as `marker`
 """
-@recipe(MeshScatter) do scene
+@recipe(MeshScatter, positions) do scene
     Theme(;
         default_theme(scene)...,
         marker = Sphere(Point3f0(0), 1f0),
@@ -200,7 +199,7 @@ end
 
 Plots a text.
 """
-@recipe(Text) do scene
+@recipe(Text, text) do scene
     Theme(;
         default_theme(scene)...,
         strokecolor = (:black, 0.0),
@@ -221,7 +220,6 @@ const atomic_function_symbols = (
 
 const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
-
 
 function color_and_colormap!(plot, intensity = plot[:color])
     if isa(intensity[], AbstractArray{<: Number})
@@ -403,6 +401,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
+    transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
     plot_obj, scene_attributes
 end

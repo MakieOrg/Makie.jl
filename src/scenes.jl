@@ -324,6 +324,8 @@ function Scene(;
         Scene[],
         AbstractScreen[]
     )
+    # Set the transformation parent
+    scene.transformation.parent[] = scene
     current_global_scene[] = scene
     scene
 end

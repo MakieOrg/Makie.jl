@@ -10,10 +10,16 @@ function Transformation()
         node(:rotation, Quaternionf0(0, 0, 0, 1)),
         node(:align, Vec2f0(0))
     )
-    model = map_once(scale, translation, rotation, align) do s, o, q, a
-        transformationmatrix(o, s, q)
+    trans = nothing
+    model = map_once(scale, translation, rotation, align, flip) do s, o, q, a, flip
+        parent = if trans !== nothing && isassigned(trans.parent)
+            boundingbox(trans.parent[])
+        else
+            nothing
+        end
+        transformationmatrix(o, s, q, a, flip, parent)
     end
-    Transformation(
+    trans = Transformation(
         translation,
         scale,
         rotation,
@@ -27,19 +33,22 @@ end
 function Transformation(scene::SceneLike)
     flip = node(:flip, (false, false, false))
     scale = node(:scale, Vec3f0(1))
-    scale = lift(flip, scale) do f, s
-        map((f, s)-> f ? -s : s, Vec(f), s)
-    end
     translation, rotation, align = (
         node(:translation, Vec3f0(0)),
         node(:rotation, Quaternionf0(0, 0, 0, 1)),
         node(:align, Vec2f0(0))
     )
     pmodel = transformationmatrix(scene)
-    model = map_once(scale, translation, rotation, align, pmodel) do s, o, q, a, p
-        p * transformationmatrix(o, s, q)
+    trans = nothing
+    model = map_once(scale, translation, rotation, align, pmodel, flip) do s, o, q, a, p, f
+        bb = if trans !== nothing && isassigned(trans.parent)
+            boundingbox(trans.parent[])
+        else
+            nothing
+        end
+        p * transformationmatrix(o, s, q, align, f, bb)
     end
-    Transformation(
+    trans = Transformation(
         translation,
         scale,
         rotation,
@@ -48,6 +57,7 @@ function Transformation(scene::SceneLike)
         align,
         signal_convert(Node{Any}, identity)
     )
+    return trans
 end
 
 

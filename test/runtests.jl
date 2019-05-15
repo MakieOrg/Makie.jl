@@ -1,8 +1,19 @@
 using AbstractPlotting
+using Makie
+scene = scatter(rand(4))
+
+
 
 using Test
 
 include("quaternions.jl")
+
+@testset "basic functionality" begin
+    scene = scatter(rand(4))
+    @test scene[Axis].ticks.title_gap[] == 3
+    scene[Axis].ticks.title_gap = 4
+    @test scene[Axis].ticks.title_gap[] == 4
+end
 
 # if get(ENV, "IS_TRAVIS_CI", "false") == "false"
 #   exit(0);
