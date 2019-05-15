@@ -212,11 +212,36 @@ function transformationmatrix(translation, scale)
 end
 
 function transformationmatrix(translation, scale, rotation::Quaternion)
-    T = eltype(translation)
     trans_scale = transformationmatrix(translation, scale)
     rotation = Mat4f0(rotation)
     trans_scale*rotation
 end
+
+function transformationmatrix(
+        translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
+        align, flip::NTuple{3, Bool}, boundingbox::Nothing
+    )
+    return transformationmatrix(translation, scale, rotation)
+end
+
+function transformationmatrix(
+        translation::Vec{3}, scale::Vec{3}, rotation::Quaternion,
+        align, flip::NTuple{3, Bool}, boundingbox::Rect3D
+    )
+    full_width = widths(boundingbox)
+    mini = minimum(boundingbox)
+    half_width = full_width ./ 2
+    to_origin = (half_width + mini)
+    align_middle = translationmatrix(-to_origin)
+    align_back = translationmatrix(to_origin)
+    flipsign = map(x-> ifelse(x, -1f0, 1f0), Vec{3}(flip))
+    flipped = align_back * scalematrix(flipsign) * align_middle
+    aligned = flipped #translationmatrix(align .* full_width) * flipped
+    trans_scale = transformationmatrix(translation, scale)
+    rotation = Mat4f0(rotation)
+    aligned * trans_scale * rotation
+end
+
 function transformationmatrix(
         translation, scale, rotation::Vec{3,T}, up = Vec{3,T}(0,0,1)
     ) where T
