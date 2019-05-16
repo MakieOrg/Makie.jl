@@ -3,6 +3,7 @@ using AbstractPlotting
 using Test
 
 include("quaternions.jl")
+include("projection_math.jl")
 
 # if get(ENV, "IS_TRAVIS_CI", "false") == "false"
 #   exit(0);
