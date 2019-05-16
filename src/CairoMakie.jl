@@ -474,8 +474,10 @@ function AbstractPlotting.colorbuffer(tup::Tuple{<: CairoBackend, Scene})
     screen, scene = tup
     # TODO this is super slow, we need to design the colorbuffer
     # api to be able to reuse a RGB surface
-    AbstractPlotting.backend_display(screen, scene)
-    FileIO.load(screen.path)
+    mktempdir() do dir
+        save(joinpath(dir, "tmp.png"), scene)
+        return FileIO.load(joinpath(dir, "tmp.png"))
+    end
 end
 
 
