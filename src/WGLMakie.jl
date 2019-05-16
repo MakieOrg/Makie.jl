@@ -5,10 +5,8 @@ using JSExpr: jsexpr
 using AbstractPlotting, Observables
 using ShaderAbstractions, LinearAlgebra
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
-import GeometryTypes: GLNormalMesh
-using ShaderAbstractions: InstancedProgram, VertexArray
+using ShaderAbstractions: InstancedProgram
 import GeometryTypes: GLNormalMesh, GLPlainMesh
-using Tables: columns
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 using Colors
@@ -217,7 +215,7 @@ function add_scene!(jsscene, scene::Scene, x::Combined)
 end
 
 function get_camera(renderer, js_scene, scene)
-  get_camera(renderer, js_scene, AbstractPlotting.camera(scene), cameracontrols(scene))
+    get_camera(renderer, js_scene, AbstractPlotting.camera(scene), cameracontrols(scene))
 end
 
 function get_camera(renderer, js_scene, cam, cam_controls::Camera2D)
