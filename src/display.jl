@@ -325,7 +325,7 @@ function record(func, scene, path; framerate::Int = 24)
 end
 
 """
-    record(func, scene, path, iter)
+    record(func, scene, path, iter; framerate = 24)
 usage:
 ```example
     record(scene, "test.gif", 1:100) do i
