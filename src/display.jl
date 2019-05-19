@@ -325,7 +325,7 @@ function record(func, scene, path; framerate::Int = 24)
 end
 
 """
-    record(func, scene, path, iter)
+    record(func, scene, path, iter; framerate = 24)
 usage:
 ```example
     record(scene, "test.gif", 1:100) do i
@@ -339,7 +339,7 @@ function record(func, scene, path, iter; framerate::Int = 24)
         t1 = time()
         func(i)
         recordframe!(io)
-        diff = (1/24) - (time() - t1)
+        diff = (1/framerate) - (time() - t1)
         if diff > 0.0
             sleep(diff)
         else
