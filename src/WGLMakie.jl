@@ -159,6 +159,7 @@ function jslines!(scene, positions, colors, linewidth, model, typ = :lines)
 end
 
 function draw_js(jsscene, mscene::Scene, plot)
+    @warn "Plot of type $(typeof(plot)) not supported yet"
 end
 
 function draw_js(jsscene, mscene::Scene, plot::Lines)
@@ -167,33 +168,6 @@ function draw_js(jsscene, mscene::Scene, plot::Lines)
     jslines!(jsscene, positions, color, linewidth, model)
 end
 
-function draw_js(jsscene, mscene::Scene, plot::Mesh)
-    normalmesh = plot[1][]
-    @get_attribute plot (color, model)
-    geometry = THREE.new.BufferGeometry()
-    cmap = vec(reinterpret(UInt8, RGB{Colors.N0f8}.(color)))
-    data = window.Uint8Array.from(cmap)
-    tex = THREE.new.DataTexture(
-        data, size(color, 1), size(color, 2),
-        THREE.RGBFormat, THREE.UnsignedByteType
-    );
-    tex.needsUpdate = true
-    material = THREE.new.MeshLambertMaterial(
-        color = 0xdddddd, map = tex,
-        transparent = true
-    )
-    set_positions!(geometry, vertices(normalmesh))
-    set_normals!(geometry, normals(normalmesh))
-    set_uvs!(geometry, texturecoordinates(normalmesh))
-    indices = faces(normalmesh)
-    indices = reinterpret(UInt32, indices)
-    geometry.setIndex(indices);
-    mesh = THREE.new.Mesh(geometry, material)
-    mesh.matrixAutoUpdate = false;
-    mesh.matrix.set(model...)
-    jsscene.add(mesh)
-    return mesh
-end
 
 function add_scene!(jsscene, scene::Scene)
     for plot in scene.plots

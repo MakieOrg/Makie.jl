@@ -7,29 +7,28 @@ vec2 get_position(){return position;}
 attribute vec2 texturecoordinates;
 vec2 get_texturecoordinates(){return texturecoordinates;}
 
+// Uniforms: 
+uniform vec2 resolution;
+vec2 get_resolution(){return resolution;}
+uniform mat4 model;
+mat4 get_model(){return model;}
+
+
+
+
 // Per instance attributes: 
+attribute float linewidth_start;
+float get_linewidth_start(){return linewidth_start;}
 attribute vec4 color_end;
 vec4 get_color_end(){return color_end;}
+attribute float linewidth_end;
+float get_linewidth_end(){return linewidth_end;}
 attribute vec2 segment_start;
 vec2 get_segment_start(){return segment_start;}
 attribute vec4 color_start;
 vec4 get_color_start(){return color_start;}
 attribute vec2 segment_end;
 vec2 get_segment_end(){return segment_end;}
-
-// Uniforms: 
-uniform float linewidth_start;
-float get_linewidth_start(){return linewidth_start;}
-uniform float linewidth_end;
-float get_linewidth_end(){return linewidth_end;}
-uniform vec2 resolution;
-vec2 get_resolution(){return resolution;}
-uniform float linewidth;
-float get_linewidth(){return linewidth;}
-uniform mat4 model;
-mat4 get_model(){return model;}
-
-
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

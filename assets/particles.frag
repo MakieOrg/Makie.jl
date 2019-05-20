@@ -1,5 +1,3 @@
-precision mediump float;
-
 varying vec4 frag_color;
 varying vec3 frag_normal;
 varying vec3 frag_position;

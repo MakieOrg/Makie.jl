@@ -7,10 +7,6 @@ vec2 get_position(){return position;}
 attribute vec2 texturecoordinates;
 vec2 get_texturecoordinates(){return texturecoordinates;}
 
-// Per instance attributes: 
-attribute vec2 offset;
-vec2 get_offset(){return offset;}
-
 // Uniforms: 
 uniform vec4 strokecolor;
 vec4 get_strokecolor(){return strokecolor;}
@@ -44,6 +40,11 @@ uniform bool transform_marker;
 bool get_transform_marker(){return transform_marker;}
 
 
+
+
+// Per instance attributes: 
+attribute vec2 offset;
+vec2 get_offset(){return offset;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
@@ -106,7 +107,8 @@ void main(){
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
-    vec4 vclip = (pview * model * vec4(tovec3(get_offset()), 1)) + sprite_center;
+    vec4 data_point = pview * model * vec4(tovec3(get_offset()), 1);
+    vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that
     // the antialias blur doesn't get cut off (see #15). This blur falls to
@@ -150,6 +152,7 @@ void main(){
     frag_uv = get_texturecoordinates();
     frag_uv_offset_width = get_uv_offset_width();
     // screen space coordinates of the vertex
-    gl_Position = (trans * vec4(tovec3(get_markersize() * get_position()), 0.0)) + vclip;
+    vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
+    gl_Position = vclip + quad_vertex;
 }
 

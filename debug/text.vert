@@ -7,18 +7,6 @@ vec2 get_position(){return position;}
 attribute vec2 texturecoordinates;
 vec2 get_texturecoordinates(){return texturecoordinates;}
 
-// Per instance attributes: 
-attribute vec4 color;
-vec4 get_color(){return color;}
-attribute vec4 rotations;
-vec4 get_rotations(){return rotations;}
-attribute vec2 markersize;
-vec2 get_markersize(){return markersize;}
-attribute vec3 offset;
-vec3 get_offset(){return offset;}
-attribute vec4 uv_offset_width;
-vec4 get_uv_offset_width(){return uv_offset_width;}
-
 // Uniforms: 
 uniform vec2 marker_offset;
 vec2 get_marker_offset(){return marker_offset;}
@@ -35,6 +23,19 @@ uniform bool billboard;
 bool get_billboard(){return billboard;}
 
 
+
+
+// Per instance attributes: 
+attribute vec4 color;
+vec4 get_color(){return color;}
+attribute vec4 rotations;
+vec4 get_rotations(){return rotations;}
+attribute vec2 markersize;
+vec2 get_markersize(){return markersize;}
+attribute vec3 offset;
+vec3 get_offset(){return offset;}
+attribute vec4 uv_offset_width;
+vec4 get_uv_offset_width(){return uv_offset_width;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
