@@ -1,3 +1,25 @@
+    precision mediump int;
+    precision mediump float;
+
+// Instance inputs: 
+attribute vec3 position;
+vec3 get_position(){return position;}
+attribute vec2 texturecoordinates;
+vec2 get_texturecoordinates(){return texturecoordinates;}
+attribute vec3 normals;
+vec3 get_normals(){return normals;}
+
+// Uniforms: 
+uniform vec4 color;
+vec4 get_color(){return color;}
+uniform sampler2D uniform_color;
+uniform bool shading;
+bool get_shading(){return shading;}
+uniform mat4 model;
+mat4 get_model(){return model;}
+
+
+
 varying vec2 frag_uv;
 varying vec3 frag_normal;
 varying vec3 frag_position;
@@ -30,3 +52,4 @@ void main(){
     // screen space coordinates of the vertex
     gl_Position = projectionMatrix * viewMatrix * position_world;
 }
+

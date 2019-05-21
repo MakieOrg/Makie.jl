@@ -23,12 +23,12 @@ attribute vec4 color_end;
 vec4 get_color_end(){return color_end;}
 attribute float linewidth_end;
 float get_linewidth_end(){return linewidth_end;}
-attribute vec2 segment_start;
-vec2 get_segment_start(){return segment_start;}
+attribute vec3 segment_start;
+vec3 get_segment_start(){return segment_start;}
 attribute vec4 color_start;
 vec4 get_color_start(){return color_start;}
-attribute vec2 segment_end;
-vec2 get_segment_end(){return segment_end;}
+attribute vec3 segment_end;
+vec3 get_segment_end(){return segment_end;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

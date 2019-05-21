@@ -1,6 +1,6 @@
 using Colors, WebIO
 using JSCall, JSExpr
-using ShaderAbstractions: InstancedProgram
+using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
 using GeometryTypes: Mat4f0
 using Colors: N0f8
@@ -171,6 +171,29 @@ function wgl_convert(context, ip::InstancedProgram)
         ip.program.vertex_source,
         ip.program.fragment_source,
         to_js_uniforms(context, ip.program.uniforms)
+    )
+    return THREE.new.Mesh(js_vbo, material)
+end
+
+
+function wgl_convert(context, program::Program)
+    # bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1);
+    js_vbo = THREE.new.BufferGeometry()
+
+    for (name, buff) in pairs(program.vertexarray)
+        js_buff = JSBuffer(context, buff).setDynamic(true)
+        js_vbo.addAttribute(name, js_buff)
+    end
+    indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
+    indices = reinterpret(UInt32, indices) .- UInt32(1)
+    js_vbo.setIndex(indices)
+    # per instance data
+    uniforms = to_js_uniforms(context, program.uniforms)
+
+    material = WGLMakie.create_material(
+        program.vertex_source,
+        program.fragment_source,
+        to_js_uniforms(context, program.uniforms)
     )
     return THREE.new.Mesh(js_vbo, material)
 end

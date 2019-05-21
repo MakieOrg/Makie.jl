@@ -288,6 +288,7 @@ end
 include("webgl.jl")
 include("particles.jl")
 include("lines.jl")
+include("meshes.jl")
 
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end

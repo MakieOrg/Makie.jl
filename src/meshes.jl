@@ -1,67 +1,104 @@
+vertexbuffer(x) = vertexbuffer(GeometryTypes.vertices(x))
 
+vertexbuffer(x::Observable) = Buffer(lift(vertexbuffer, x))
+function vertexbuffer(x::AbstractArray{Point{N, T}}) where {N, T}
+    reinterpret(GeometryBasics.Point{N, T}, x)
+end
+facebuffer(x) = facebuffer(GeometryTypes.faces(x))
+facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
+function facebuffer(x::AbstractArray{GLTriangle})
+    convert(Vector{GeometryBasics.TriangleFace{Cuint}}, x)
+end
+
+function array2color(colors, cmap, crange)
+    AbstractPlotting.interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
+end
+
+function converted_attribute(plot::AbstractPlot, key::Symbol)
+    lift(plot[key]) do value
+        convert_attribute(value, Key{key}(), Key{plotkey(plot)}())
+    end
+end
 
 function create_shader(scene::Scene, plot::Mesh)
     # Potentially per instance attributes
-    mesh = plot[1]
+    mesh_signal = plot[1]
+    mattributes = GeometryTypes.attributes
+    get_attribute(mesh, key) = lift(x-> mattributes(x)[key], mesh)
+    data = mattributes(mesh_signal[])
 
-    for (k, v) in per_instance
-        per_instance[k] = Buffer(lift_convert(k, v, plot))
+    uniforms = Dict{Symbol, Any}(); attributes = Dict{Symbol, Any}()
+    for (key, default) in (
+            :texturecoordinates => Vec2f0(0),
+            :normals => Vec3f0(0)
+        )
+        if haskey(data, key)
+            attributes[key] = Buffer(get_attribute(mesh_signal, key))
+        else
+            uniforms[key] = Observable(default)
+        end
+    end
+    if haskey(data, :attributes) && data[:attributes] isa AbstractVector
+        attributes[:color] = Buffer(lift(get_attribute(mesh_signal, :attributes), get_attribute(mesh_signal, :attribute_id)) do color, attr
+            color[Int.(attr) .+ 1]
+        end)
+        uniforms[:uniform_color] = false
+    else
+        color_signal = converted_attribute(plot, :color)
+        color = color_signal[]
+        uniforms[:uniform_color] = Observable(false) # this is the default
+
+        if color isa AbstractArray
+            c_converted = if color isa AbstractArray{<: Colorant}
+                color_signal
+            elseif color isa AbstractArray{<: Number}
+                lift(array2color, color_signal, plot.colormap, plot.colorrange)
+            else
+                error("Unsupported color type: $(typeof(color))")
+            end
+            if c_converted[] isa AbstractVector
+                attributes[:color] = Buffer(c_converted) # per vertex colors
+            else
+                uniforms[:uniform_color] = Sampler(c_converted) # Texture
+                !haskey(attributes, :texturecoordinates) && @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
+            end
+        elseif color isa Colorant && !haskey(attributes, :color)
+            uniforms[:uniform_color] = color
+        else
+            error("Unsupported color type: $(typeof(color))")
+        end
     end
 
-    uniforms = filter(plot.attributes.attributes) do (k, v)
-        (!haskey(per_instance, k)) && isscalar(v[])
+    if !haskey(attributes, :color)
+        uniforms[:color] = Vec4f0(0) # make sure we have a color attribute
     end
+    uniforms[:shading] = plot.shading
+    uniforms[:model] = plot.model
 
-    uniform_dict = Dict{Symbol, Any}()
-    for (k, v) in uniforms
-        k in (:shading, :overdraw, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
-        uniform_dict[k] = lift_convert(k, v, plot)
-    end
-    color = to_value(get(uniform_dict, :color, nothing))
-    if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
-        delete!(uniform_dict, :colormap)
-    end
+    faces = facebuffer(mesh_signal)
+    positions = vertexbuffer(mesh_signal)
 
-    instance = VertexArray(map(GLNormalMesh, plot.marker))
-    if !GeometryBasics.hascolumn(instance, :texturecoordinate)
-        uniform_dict[:texturecoordinate] = Vec2f0(0)
-    end
-    uniform_dict[:model] = plot.model
+    instance = GeometryBasics.Mesh(
+        GeometryBasics.meta(positions; attributes...), faces
+    )
 
-    p = Program(
+    return Program(
         WebGL(),
         lasset("mesh.vert"),
         lasset("mesh.frag"),
-        instance,
-        VertexArray(; per_instance...)
-        ; uniform_dict...
+        VertexArray(instance);
+        uniforms...
     )
 end
 
-function draw_js(jsscene, mscene::Scene, plot::Mesh)
-    normalmesh = plot[1][]
-    @get_attribute plot (color, model)
-    geometry = THREE.new.BufferGeometry()
-    cmap = vec(reinterpret(UInt8, RGB{Colors.N0f8}.(color)))
-    data = window.Uint8Array.from(cmap)
-    tex = THREE.new.DataTexture(
-        data, size(color, 1), size(color, 2),
-        THREE.RGBFormat, THREE.UnsignedByteType
-    );
-    tex.needsUpdate = true
-    material = THREE.new.MeshLambertMaterial(
-        color = 0xdddddd, map = tex,
-        transparent = true
-    )
-    set_positions!(geometry, vertices(normalmesh))
-    set_normals!(geometry, normals(normalmesh))
-    set_uvs!(geometry, texturecoordinates(normalmesh))
-    indices = faces(normalmesh)
-    indices = reinterpret(UInt32, indices)
-    geometry.setIndex(indices);
-    mesh = THREE.new.Mesh(geometry, material)
-    mesh.matrixAutoUpdate = false;
-    mesh.matrix.set(model...)
+function draw_js(jsscene, scene::Scene, plot::Mesh)
+    program = create_shader(scene, plot)
+    mesh = wgl_convert(jsscene, program)
+
+    write(joinpath(@__DIR__, "..", "debug", "mesh.vert"), program.vertex_source)
+    write(joinpath(@__DIR__, "..", "debug", "mesh.frag"), program.fragment_source)
+
+    mesh.name = "Mesh"
     jsscene.add(mesh)
     return mesh
 end
