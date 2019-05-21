@@ -23,8 +23,8 @@ matrix:
  apt: # apt-get for linux
    packages:
    - ffmpeg
-# before_script: # homebrew for mac
-#  - if [ $TRAVIS_OS_NAME = osx ]; then brew install gcc; fi
+before_script: # homebrew for mac
+ - julia -e 'using Pkg; pkg"add MakieGallery#master"'
 
 ## uncomment the following lines to override the default test script
 #script:
