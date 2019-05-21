@@ -289,6 +289,8 @@ include("webgl.jl")
 include("particles.jl")
 include("lines.jl")
 include("meshes.jl")
+include("imagelike.jl")
+
 
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end

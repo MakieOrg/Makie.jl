@@ -43,8 +43,8 @@ bool get_transform_marker(){return transform_marker;}
 
 
 // Per instance attributes: 
-attribute vec2 offset;
-vec2 get_offset(){return offset;}
+attribute vec3 offset;
+vec3 get_offset(){return offset;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
