@@ -154,7 +154,8 @@ function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, 
     positions, Vec2f0(0), uv_offset_width, scale
 end
 
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+function to_gl_text(string, startpos::VecTypes{N, T}, textsize, _font, aoffsetvec, rot, model) where {N, T}
+    font = to_font(_font)
     atlas = get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point{N, Float32}, mpos, 0f0)
