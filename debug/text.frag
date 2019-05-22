@@ -7,13 +7,11 @@ uniform vec2 marker_offset;
 vec2 get_marker_offset(){return marker_offset;}
 uniform bool transform_marker;
 bool get_transform_marker(){return transform_marker;}
-uniform sampler2D distancefield;
 uniform vec2 resolution;
 vec2 get_resolution(){return resolution;}
 uniform int shape_type;
 int get_shape_type(){return shape_type;}
-uniform mat4 model;
-mat4 get_model(){return model;}
+uniform sampler2D distancefield;
 uniform bool billboard;
 bool get_billboard(){return billboard;}
 

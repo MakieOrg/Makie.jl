@@ -8,8 +8,6 @@ uniform vec4 color;
 vec4 get_color(){return color;}
 uniform bool shading;
 bool get_shading(){return shading;}
-uniform mat4 model;
-mat4 get_model(){return model;}
 
 varying vec2 frag_uv;
 varying vec4 frag_color;

@@ -2,6 +2,7 @@ precision mediump float;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
 
 varying vec3 frag_normal;
 varying vec3 frag_position;
@@ -27,7 +28,7 @@ void main(){
     vec3 N = get_normals();
     rotate(get_rotations(), vertex_position, N);
     vertex_position = get_offset() + vertex_position;
-    vec4 position_world = get_model() * vec4(vertex_position, 1);
+    vec4 position_world = modelMatrix * vec4(vertex_position, 1);
     frag_normal = N;
     frag_lightdir = normalize(lightpos - position_world.xyz);
     frag_color = get_color();

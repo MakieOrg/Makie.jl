@@ -197,3 +197,12 @@ function wgl_convert(context, program::Program)
     )
     return THREE.new.Mesh(js_vbo, material)
 end
+
+
+function update_model!(geom, plot)
+    geom.matrixAutoUpdate = false
+    geom.matrix.set(plot.model[]'...)
+    on(plot.model) do model
+        geom.matrix.set((model')...)
+    end
+end

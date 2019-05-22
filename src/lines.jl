@@ -30,7 +30,6 @@ function create_shader(scene::Scene, plot::LineSegments)
             per_instance[Symbol("$(k)_end")] = lift(x-> x[endr], attribute)
         end
     end
-    uniforms[:model] = plot.model
     uniforms[:resolution] = scene.camera.resolution
     prim = GLUVMesh2D(
         vertices = Vec2f0[(0, -1), (0, 1), (1, -1), (1, 1)],
@@ -50,10 +49,59 @@ end
 function draw_js(jsscene, mscene::Scene, plot::LineSegments)
     program = create_shader(mscene, plot)
     mesh = wgl_convert(jsscene, program)
-
+    update_model!(mesh, plot)
     write(joinpath(@__DIR__, "..", "debug", "linesegments.vert"), program.program.vertex_source)
     write(joinpath(@__DIR__, "..", "debug", "linesegments.frag"), program.program.fragment_source)
 
     mesh.name = "LineSegments"
     jsscene.add(mesh)
+end
+
+function draw_js(jsscene, mscene::Scene, plot::Lines)
+    @get_attribute plot (color, linewidth, model, transformation)
+    positions = plot[1][]
+    mesh = jslines!(jsscene, positions, color, linewidth, model)
+    update_model!(mesh, plot)
+    return mesh
+end
+
+
+function set_positions!(geometry, positions::AbstractVector{<: Point{N, T}}) where {N, T}
+    flat = reinterpret(T, positions)
+    geometry.addAttribute(
+        "position", THREE.new.Float32BufferAttribute(flat, N)
+    )
+end
+
+function set_colors!(geometry, colors::AbstractVector{T}) where T <: Colorant
+    flat = reinterpret(eltype(T), colors)
+    geometry.addAttribute(
+        "color", THREE.new.Float32BufferAttribute(flat, length(T))
+    )
+end
+
+
+
+function material!(geometry, colors::AbstractVector)
+    material = THREE.new.LineBasicMaterial(
+        vertexColors = THREE.VertexColors, transparent = true, opacity = 0.1)
+    set_colors!(geometry, colors)
+    return material
+end
+
+function material!(geometry, color::Colorant)
+    material = THREE.new.LineBasicMaterial(color = "#"*hex(RGB(color)), transparent = true)
+    return material
+end
+
+function jslines!(scene, positions, colors, linewidth, model, typ = :lines)
+    geometry = THREE.new.BufferGeometry()
+    material = material!(geometry, colors)
+    set_positions!(geometry, positions)
+    Typ = typ === :lines ? THREE.new.Line : THREE.new.LineSegments
+    mesh = Typ(geometry, material)
+    mesh.matrixAutoUpdate = false;
+    mesh.matrix.set(model...)
+    scene.add(mesh)
+    return mesh
 end

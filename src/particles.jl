@@ -32,7 +32,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
     for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end
-    uniform_dict[:model] = plot.model
 
     p = InstancedProgram(
         WebGL(),
@@ -124,7 +123,6 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     attributes[:offset] = plot[1]
     attributes[:billboard] = Observable(true)
-    attributes[:model] = plot.model
 
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
@@ -191,7 +189,6 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
         :marker_offset => offset,
         :offset => positions,
         :uv_offset_width => uv_offset_width,
-        :model => plot.model,
         :transform_marker => Observable(true),
         :billboard => Observable(false)
     ))
@@ -209,6 +206,7 @@ function draw_js(jsscene, scene::Scene, plot::AbstractPlotting.Text)
     write(joinpath(@__DIR__, "..", "debug", "text.frag"), program.program.fragment_source)
     mesh = wgl_convert(jsscene, program)
     mesh.name = "Text"
+    update_model!(mesh, plot)
     jsscene.add(mesh)
 end
 function draw_js(jsscene, scene::Scene, plot::Scatter)
@@ -219,5 +217,6 @@ function draw_js(jsscene, scene::Scene, plot::Scatter)
     write(joinpath(@__DIR__, "..", "debug", "scatter.frag"), program.program.fragment_source)
 
     mesh.name = "Scatter"
+    update_model!(mesh, plot)
     jsscene.add(mesh)
 end

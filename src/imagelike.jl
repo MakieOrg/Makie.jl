@@ -56,12 +56,11 @@ function draw_js(jsscene, mscene::Scene, plot::Surface)
         uniform_color = color,
         color = Vec4f0(0),
         shading = plot.shading,
-        model = plot.model
     )
-
     write(joinpath(@__DIR__, "..", "debug", "surface.vert"), program.vertex_source)
     write(joinpath(@__DIR__, "..", "debug", "surface.frag"), program.fragment_source)
     three_geom = wgl_convert(jsscene, program)
+    update_model!(three_geom, plot)
     three_geom.name = "Surface"
     jsscene.add(three_geom)
 end

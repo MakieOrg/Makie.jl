@@ -1,9 +1,6 @@
-using Test, Tables, Observables
-using AbstractPlotting
-using WGLMakie
-import GeometryTypes
-using WGLMakie: WebGL, lasset, JSInstanceBuffer, JSBuffer, to_js_uniforms
-using Tables: columns
-using JSCall, Random, WebIO
-set_theme!(resolution = (1000, 1000))
-linesegments(rand(Point2f0, 10), linewidth = 10, color = rand(RGBAf0, 10))
+using WGLMakie, AbstractPlotting
+
+scatter(rand(4))
+s = surface(0..1, 0..1, rand(100, 100))
+ls = colorlegend(s[end], show_axis = false, camera = cam2d!, scale_plot = false)
+scene = vbox(s, ls)

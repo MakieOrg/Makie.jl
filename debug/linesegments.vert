@@ -10,8 +10,6 @@ vec2 get_texturecoordinates(){return texturecoordinates;}
 // Uniforms: 
 uniform vec2 resolution;
 vec2 get_resolution(){return resolution;}
-uniform mat4 model;
-mat4 get_model(){return model;}
 
 
 
@@ -31,7 +29,7 @@ attribute vec3 segment_end;
 vec3 get_segment_end(){return segment_end;}
 
 uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
+uniform mat4 modelViewMatrix;
 
 #define AA_THICKNESS 2.0
 
@@ -46,7 +44,7 @@ varying vec4 frag_color;
 
 void main()
 {
-    mat4 pvm = projectionMatrix * viewMatrix * get_model();
+    mat4 pvm = projectionMatrix * modelViewMatrix;
     vec4 point1_clip = pvm * vec4(tovec3(get_segment_start()), 1);
     vec4 point2_clip = pvm * vec4(tovec3(get_segment_end()), 1);
     vec2 point1_screen = screen_space(point1_clip);

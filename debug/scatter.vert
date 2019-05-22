@@ -43,11 +43,12 @@ bool get_transform_marker(){return transform_marker;}
 
 
 // Per instance attributes: 
-attribute vec3 offset;
-vec3 get_offset(){return offset;}
+attribute vec2 offset;
+vec2 get_offset(){return offset;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
 
 varying vec4 frag_color;
 varying vec2 frag_uv;
@@ -102,12 +103,12 @@ void main(){
 
     mat4 pview = projectionMatrix * viewMatrix;
     // Compute transform for the offset vectors from the central point
-    mat4 trans = get_transform_marker() ? model : mat4(1.0);
+    mat4 trans = get_transform_marker() ? modelMatrix : mat4(1.0);
     trans = (get_billboard() ? projectionMatrix : pview * qmat(get_rotations())) * trans;
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
-    vec4 data_point = pview * model * vec4(tovec3(get_offset()), 1);
+    vec4 data_point = pview * modelMatrix * vec4(tovec3(get_offset()), 1);
     vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that

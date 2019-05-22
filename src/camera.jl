@@ -1,66 +1,75 @@
+import AbstractPlotting: PixelCamera
+
 """
 Creates a ThreeJS camera from the AbstractPlotting Scene camera
 """
-function get_camera(renderer, js_scene, scene::Scene)
-    get_camera(renderer, js_scene, AbstractPlotting.camera(scene), cameracontrols(scene))
+function add_camera!(renderer, js_scene, scene::Scene)
+    add_camera!(renderer, js_scene, scene, AbstractPlotting.camera(scene), cameracontrols(scene))
 end
 
-function get_camera(renderer, js_scene, cam, cam_controls::Camera2D)
+function add_camera!(renderer, js_scene, scene, cam, cam_controls::AbstractPlotting.EmptyCamera)
+    return (nothing, ()-> nothing)
+end
+
+function setup_renderer(scene, renderer)
+    renderer.autoClear = scene.clear[]
+    bg = to_color(scene.backgroundcolor[])
+    area = pixelarea(scene)[]
+    x, y, w, h = minimum(area)..., widths(area)...
+    renderer.setViewport(x, y, w, h)
+    renderer.setScissor(x, y, w, h)
+    renderer.setScissorTest(true)
+    renderer.setClearColor(THREE.new.Color(red(bg), green(bg), blue(bg)))
+end
+
+function update_ortho(jscam, area, renderer, js_scene, scene)
+    mini, maxi = minimum(area), maximum(area)
+    left, right, top, bottom = mini[1], maxi[1], maxi[2], mini[2]
+    jscam.left = left
+    jscam.right = right
+    jscam.top = top
+    jscam.bottom = bottom
+    jscam.updateProjectionMatrix()
+    setup_renderer(scene, renderer)
+    renderer.render(js_scene, jscam)
+end
+
+function add_camera!(renderer, js_scene, scene, cam, cam_controls::PixelCamera)
+    area = pixelarea(scene)
+    mini, maxi = minimum(area[]), maximum(area[])
+    jscam = THREE.new.OrthographicCamera(
+        mini[1], maxi[1], maxi[2], mini[2], -10_000, 10_000
+    )
+    return jscam, ()-> update_ortho(jscam, AbstractPlotting.zerorect(area[]), renderer, js_scene, scene)
+end
+
+function add_camera!(renderer, js_scene, scene, cam, cam_controls::Camera2D)
     area = cam_controls.area
     mini, maxi = minimum(area[]), maximum(area[])
-    jscam = THREE.new.OrthographicCamera(mini[1], maxi[1], maxi[2], mini[2], -1, 1000)
-    onany(area) do area
-        mini, maxi = minimum(area), maximum(area)
-        jscam.left = mini[1]
-        jscam.right = maxi[1]
-        jscam.top = maxi[2]
-        jscam.bottom = mini[2]
-        jscam.updateProjectionMatrix()
-        renderer.render(js_scene, jscam)
-    end
-    return jscam
+    jscam = THREE.new.OrthographicCamera(
+        mini[1], maxi[1], maxi[2], mini[2], -10_000, 10_000
+    )
+    return jscam, ()-> update_ortho(jscam, area[], renderer, js_scene, scene)
 end
 
-function get_camera(renderer, js_scene, cam, cam_controls::Camera3D)
+function add_camera!(renderer, js_scene, scene, cam, cam_controls::Camera3D)
     jscam = THREE.new.PerspectiveCamera(cam_controls.fov[], (/)(cam.resolution[]...), 1, 1000)
-    jscam.up.set()
-    update = Observable(false)
-    args = (
-        cam.projection, cam_controls.eyeposition, cam_controls.lookat, cam_controls.upvector,
-        cam_controls.fov, cam_controls.near, cam_controls.far
+    eyeposition, lookat, upvector, fov, near, far = getfield.(
+        (cam_controls,),
+        (:eyeposition, :lookat, :upvector, :fov, :near, :far)
     )
-    onany(update, args...) do _, proj, pos, lookat, up, fov, near, far
-        jscam.up.set(up...)
-        jscam.position.set(pos...)
-        jscam.lookAt(lookat...)
-        jscam.fov = fov
-        jscam.near = near
-        jscam.far = far
+    area = pixelarea(scene)
+    function update_camera()
+        jscam.up.set(upvector[]...)
+        jscam.position.set(eyeposition[]...)
+        jscam.lookAt(lookat[]...)
+        jscam.fov = fov[]
+        jscam.near = near[]
+        jscam.far = far[]
+        jscam.aspect = (/)(widths(area[])...)
         jscam.updateProjectionMatrix()
+        setup_renderer(scene, renderer)
         renderer.render(js_scene, jscam);
     end
-    update[] = true # run onany first time
-    jscam
-end
-
-
-function get_camera(renderer, js_scene, cam, cam_controls::Camera3D)
-    jscam = THREE.new.PerspectiveCamera(cam_controls.fov[], (/)(cam.resolution[]...), 1, 1000)
-    update = Observable(false)
-    args = (
-        cam.projection, cam_controls.eyeposition, cam_controls.lookat, cam_controls.upvector,
-        cam_controls.fov, cam_controls.near, cam_controls.far
-    )
-    onany(update, args...) do _, proj, pos, lookat, up, fov, near, far
-        jscam.position.set(pos...)
-        jscam.lookAt(lookat...)
-        jscam.up.set(up...)
-        jscam.fov = fov
-        jscam.near = near
-        jscam.far = far
-        jscam.updateProjectionMatrix()
-        renderer.render(js_scene, jscam);
-    end
-    update[] = true # run onany first time
-    jscam
+    return jscam, update_camera
 end

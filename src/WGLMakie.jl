@@ -105,85 +105,50 @@ function connect_scene_events!(scene, js_doc)
 end
 
 
-function set_positions!(geometry, positions::AbstractVector{<: Point{N, T}}) where {N, T}
-    flat = reinterpret(T, positions)
-    geometry.addAttribute(
-        "position", THREE.new.Float32BufferAttribute(flat, N)
-    )
-end
-
-function set_colors!(geometry, colors::AbstractVector{T}) where T <: Colorant
-    flat = reinterpret(eltype(T), colors)
-    geometry.addAttribute(
-        "color", THREE.new.Float32BufferAttribute(flat, length(T))
-    )
-end
-function set_normals!(geometry, colors::AbstractVector{T}) where T <: Normal
-    flat = reinterpret(eltype(T), colors)
-    geometry.addAttribute(
-        "normal", THREE.new.Float32BufferAttribute(flat, 3)
-    )
-end
-function set_uvs!(geometry, uvs::AbstractVector{T}) where T <: UV
-    uvs = map(uvs) do uv
-        (1f0 - uv[2], 1f0 - uv[1])
-    end
-    flat = reinterpret(Float32, uvs)
-    geometry.addAttribute(
-        "uv", THREE.new.Float32BufferAttribute(flat, 2)
-    )
-end
-
-function material!(geometry, colors::AbstractVector)
-    material = THREE.new.LineBasicMaterial(
-        vertexColors = THREE.VertexColors, transparent = true, opacity = 0.1)
-    set_colors!(geometry, colors)
-    return material
-end
-
-function material!(geometry, color::Colorant)
-    material = THREE.new.LineBasicMaterial(color = "#"*hex(RGB(color)), transparent = true)
-    return material
-end
-
-function jslines!(scene, positions, colors, linewidth, model, typ = :lines)
-    geometry = THREE.new.BufferGeometry()
-    material = material!(geometry, colors)
-    set_positions!(geometry, positions)
-    Typ = typ === :lines ? THREE.new.Line : THREE.new.LineSegments
-    mesh = Typ(geometry, material)
-    mesh.matrixAutoUpdate = false;
-    mesh.matrix.set(model...)
-    scene.add(mesh)
-    return mesh
-end
 
 function draw_js(jsscene, mscene::Scene, plot)
     @warn "Plot of type $(typeof(plot)) not supported yet"
 end
 
-function draw_js(jsscene, mscene::Scene, plot::Lines)
-    @get_attribute plot (color, linewidth, model, transformation)
-    positions = plot[1][]
-    jslines!(jsscene, positions, color, linewidth, model)
+
+
+function on_any_event(f, scene::Scene)
+    key_events = (
+        :window_area, :mousebuttons, :mouseposition, :scroll,
+        :keyboardbuttons, :hasfocus, :entered_window
+    )
+    scene_events = getfield.((events(scene),), key_events)
+    f(getindex.(scene_events)) # call on first event
+    onany(f, scene_events...)
 end
 
-
-function add_scene!(jsscene, scene::Scene)
-    for plot in scene.plots
-        add_scene!(jsscene, scene, plot)
-    end
-    for sub in scene.children
-        add_scene!(jsscene, sub)
-    end
-end
-
-function add_scene!(jsscene, scene::Scene, x::Combined)
+function add_plots!(jsscene, scene::Scene, x::Combined)
     if isempty(x.plots) # if no plots inserted, this truely is an atomic
         draw_js(jsscene, scene, x)
     else
         foreach(x.plots) do x
-            add_scene!(jsscene, scene, x)
+            add_plots!(jsscene, scene, x)
+        end
+    end
+end
+
+function _add_scene!(renderer, scene::Scene, scene_graph = [])
+    js_scene = THREE.new.Scene()
+    cam_func = add_camera!(renderer, js_scene, scene)
+    push!(scene_graph, (js_scene, cam_func))
+    for plot in scene.plots
+        add_plots!(js_scene, scene, plot)
+    end
+    for sub in scene.children
+        _add_scene!(renderer, sub, scene_graph)
+    end
+    scene_graph
+end
+function add_scene!(renderer, scene::Scene)
+    scene_graph = _add_scene!(renderer, scene)
+    on_any_event(scene) do events...
+        for (js_scene, (cam, update_func)) in scene_graph
+            update_func()
         end
     end
 end
@@ -199,14 +164,9 @@ function get_comm(jso)
     return obs
 end
 
-function js_display(scene::Scene)
-    three_scene(scene)
-end
-
 function three_scene(scene::Scene)
     global THREE, window, document
-    mousedrag(scene, nothing)
-    width, height = size(scene) ./ 2
+    width, height = size(scene)
     jsm = JSModule(
             :THREE,
             "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
@@ -222,8 +182,8 @@ function three_scene(scene::Scene)
         )
     end
     THREE = jsm.mod; window = jsm.window; document = jsm.document;
-
     connect_scene_events!(scene, jsm.document)
+    mousedrag(scene, nothing)
     canvas = document.querySelector("canvas")
     renderer = THREE.new.WebGLRenderer(
         antialias = true, canvas = canvas
@@ -231,16 +191,7 @@ function three_scene(scene::Scene)
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
     renderer.setPixelRatio(window.devicePixelRatio);
-    js_scene = THREE.new.Scene()
-    add_scene!(js_scene, scene)
-    ambient = THREE.new.AmbientLight(0x666666)
-    directionalLight = THREE.new.DirectionalLight(0xffffff, 1.5)
-    directionalLight.position.set((rand(Vec3f0) .- 0.5)...)
-    directionalLight.position.normalize()
-    js_scene.add(directionalLight)
-    js_scene.add(ambient)
-    cam = get_camera(renderer, js_scene, scene)
-    renderer.render(js_scene, cam);
+    add_scene!(renderer, scene)
     jsm
 end
 

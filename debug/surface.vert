@@ -15,8 +15,6 @@ uniform vec4 color;
 vec4 get_color(){return color;}
 uniform bool shading;
 bool get_shading(){return shading;}
-uniform mat4 model;
-mat4 get_model(){return model;}
 
 
 
@@ -28,6 +26,7 @@ varying vec3 frag_lightdir;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
+uniform mat4 modelMatrix;
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
@@ -41,7 +40,7 @@ void main(){
     vec3 vertex_position = tovec3(get_position());
     vec3 lightpos = vec3(20,20,20);
     frag_normal = get_normals();
-    vec4 position_world = get_model() * vec4(vertex_position, 1);
+    vec4 position_world = modelMatrix * vec4(vertex_position, 1);
     frag_lightdir = normalize(lightpos - position_world.xyz);
     // direction to camera
     frag_position = -position_world.xyz;

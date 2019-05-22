@@ -77,8 +77,6 @@ function create_shader(scene::Scene, plot::Mesh)
         uniforms[:color] = Vec4f0(0) # make sure we have a color attribute
     end
     uniforms[:shading] = plot.shading
-    uniforms[:model] = plot.model
-
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
 
@@ -101,8 +99,8 @@ function draw_js(jsscene, scene::Scene, plot::Mesh)
 
     write(joinpath(@__DIR__, "..", "debug", "mesh.vert"), program.vertex_source)
     write(joinpath(@__DIR__, "..", "debug", "mesh.frag"), program.fragment_source)
-
     mesh.name = "Mesh"
+    update_model!(mesh, plot)
     jsscene.add(mesh)
     return mesh
 end
