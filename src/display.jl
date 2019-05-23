@@ -284,7 +284,7 @@ function save(path::String, io::VideoStream;
     wait(io.process)
     p, typ = splitext(path)
     if typ == ".mkv"
-        cp(io.path, path)
+        cp(io.path, path, force=true)
     elseif typ == ".mp4"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
