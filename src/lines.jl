@@ -60,8 +60,7 @@ end
 function draw_js(jsscene, mscene::Scene, plot::Lines)
     @get_attribute plot (color, linewidth, model, transformation)
     positions = plot[1][]
-    mesh = jslines!(jsscene, positions, color, linewidth, model)
-    update_model!(mesh, plot)
+    mesh = jslines!(jsscene, plot, positions, color, linewidth, model)
     return mesh
 end
 
@@ -84,24 +83,49 @@ end
 
 function material!(geometry, colors::AbstractVector)
     material = THREE.new.LineBasicMaterial(
-        vertexColors = THREE.VertexColors, transparent = true, opacity = 0.1)
+        vertexColors = THREE.VertexColors, transparent = true
+    )
     set_colors!(geometry, colors)
     return material
 end
 
 function material!(geometry, color::Colorant)
-    material = THREE.new.LineBasicMaterial(color = "#"*hex(RGB(color)), transparent = true)
+    material = THREE.new.LineBasicMaterial(
+        color = "#"*hex(RGB(color)),
+        opacity = alpha(color),
+        transparent = true
+    )
     return material
 end
 
-function jslines!(scene, positions, colors, linewidth, model, typ = :lines)
-    geometry = THREE.new.BufferGeometry()
-    material = material!(geometry, colors)
-    set_positions!(geometry, positions)
-    Typ = typ === :lines ? THREE.new.Line : THREE.new.LineSegments
-    mesh = Typ(geometry, material)
-    mesh.matrixAutoUpdate = false;
-    mesh.matrix.set(model...)
-    scene.add(mesh)
+br_view(scalar, idx) = scalar
+br_view(array::AbstractVector, idx) = view(array, idx)
+
+function split_at_nan(f, vector::AbstractVector{T}, colors) where T
+    nan_idx = 1
+    while true
+        last_idx = findnext(x-> !isnan(x), vector, nan_idx)
+        last_idx === nothing && break
+        nan_idx = findnext(x-> isnan(x), vector, last_idx)
+        nan_idx === nothing && (nan_idx = length(vector) + 1)
+        range = last_idx:(nan_idx - 1)
+        f(view(vector, range), br_view(colors, range))
+    end
+end
+
+function jslines!(scene, plot, positions_nan, colors, linewidth, model, typ = :lines)
+    mesh = nothing
+    split_at_nan(positions_nan, colors) do positions, colors
+        geometry = THREE.new.BufferGeometry()
+        material = material!(geometry, colors)
+        material.linewidth = linewidth
+        set_positions!(geometry, positions)
+        Typ = typ === :lines ? THREE.new.Line : THREE.new.LineSegments
+        mesh = Typ(geometry, material)
+        mesh.matrixAutoUpdate = false;
+        mesh.matrix.set(model...)
+        scene.add(mesh)
+        update_model!(mesh, plot)
+    end
     return mesh
 end
