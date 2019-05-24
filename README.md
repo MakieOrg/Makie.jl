@@ -38,6 +38,9 @@ On linux you also need to add the following to get GLFW to build (if you don't h
 sudo apt-get install ffmpeg cmake xorg-dev
 ```
 
+# Ecosystem
+
+`Makie.jl` is the metapackage for a rich ecosystem, which consists of [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) and [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [`StatsMakie.jl`](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in `StatPlots.jl`).
 
 ## Examples from the documentation: 
 
@@ -120,7 +123,7 @@ sudo apt-get install ffmpeg cmake xorg-dev
 
 # Precompilation
 
-You can compile binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
+You can compile a binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
 To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
