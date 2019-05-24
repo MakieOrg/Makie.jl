@@ -144,11 +144,15 @@ function _add_scene!(renderer, scene::Scene, scene_graph = [])
     end
     scene_graph
 end
+
 function add_scene!(renderer, scene::Scene)
     scene_graph = _add_scene!(renderer, scene)
     on_any_event(scene) do events...
-        for (js_scene, (cam, update_func)) in scene_graph
-            update_func()
+        # Fuse all calls in the event loop together!
+        JSCall.fused(THREE) do
+            for (js_scene, (cam, update_func)) in scene_graph
+                update_func()
+            end
         end
     end
 end
