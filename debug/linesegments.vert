@@ -1,10 +1,13 @@
-    precision mediump int;
-    precision mediump float;
+#version 300 es
+precision mediump int;
+precision mediump float;
+precision mediump sampler2D;
+precision mediump sampler3D;
 
 // Instance inputs: 
-attribute vec2 position;
+in vec2 position;
 vec2 get_position(){return position;}
-attribute vec2 texturecoordinates;
+in vec2 texturecoordinates;
 vec2 get_texturecoordinates(){return texturecoordinates;}
 
 // Uniforms: 
@@ -15,17 +18,17 @@ vec2 get_resolution(){return resolution;}
 
 
 // Per instance attributes: 
-attribute float linewidth_start;
+in float linewidth_start;
 float get_linewidth_start(){return linewidth_start;}
-attribute vec4 color_end;
+in vec4 color_end;
 vec4 get_color_end(){return color_end;}
-attribute float linewidth_end;
+in float linewidth_end;
 float get_linewidth_end(){return linewidth_end;}
-attribute vec2 segment_start;
+in vec2 segment_start;
 vec2 get_segment_start(){return segment_start;}
-attribute vec4 color_start;
+in vec4 color_start;
 vec4 get_color_start(){return color_start;}
-attribute vec2 segment_end;
+in vec2 segment_end;
 vec2 get_segment_end(){return segment_end;}
 
 uniform mat4 projectionMatrix;
@@ -40,7 +43,7 @@ vec2 screen_space(vec4 vertex)
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
 
-varying vec4 frag_color;
+out vec4 frag_color;
 
 void main()
 {

@@ -1,10 +1,13 @@
-    precision mediump int;
-    precision mediump float;
+#version 300 es
+precision mediump int;
+precision mediump float;
+precision mediump sampler2D;
+precision mediump sampler3D;
 
 // Instance inputs: 
-attribute vec2 position;
+in vec2 position;
 vec2 get_position(){return position;}
-attribute vec2 texturecoordinates;
+in vec2 texturecoordinates;
 vec2 get_texturecoordinates(){return texturecoordinates;}
 
 // Uniforms: 
@@ -24,26 +27,26 @@ bool get_billboard(){return billboard;}
 
 
 // Per instance attributes: 
-attribute vec4 color;
+in vec4 color;
 vec4 get_color(){return color;}
-attribute vec4 rotations;
+in vec4 rotations;
 vec4 get_rotations(){return rotations;}
-attribute vec2 markersize;
+in vec2 markersize;
 vec2 get_markersize(){return markersize;}
-attribute vec3 offset;
+in vec3 offset;
 vec3 get_offset(){return offset;}
-attribute vec4 uv_offset_width;
+in vec4 uv_offset_width;
 vec4 get_uv_offset_width(){return uv_offset_width;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
 
-varying vec4 frag_color;
-varying vec2 frag_uv;
-varying float frag_uvscale;
-varying float frag_distancefield_scale;
-varying vec4 frag_uv_offset_width;
+out vec4 frag_color;
+out vec2 frag_uv;
+out float frag_uvscale;
+out float frag_distancefield_scale;
+out vec4 frag_uv_offset_width;
 
 
 mat4 qmat(vec4 quat){

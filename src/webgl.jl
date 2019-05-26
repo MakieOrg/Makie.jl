@@ -40,6 +40,22 @@ function jl2js(val::RGB)
     return THREE.new.Vector3(red(val), green(val), blue(val))
 end
 
+function jl2js(color::Sampler{T, 1}) where T
+    println("and please dint go here")
+
+    data = to_js_buffer(color.data)
+    tex = THREE.new.DataTexture(
+        data, size(color, 1), 1,
+        three_format(T), three_type(eltype(T))
+    )
+    tex.minFilter = three_filter(color.minfilter)
+    tex.magFilter = three_filter(color.magfilter)
+    tex.wrapS = three_repeat(color.repeat[1])
+    tex.anisotropy = color.anisotropic
+    tex.needsUpdate = true
+    return tex
+end
+
 function jl2js(color::Sampler{T}) where T
     data = to_js_buffer(color.data)
     tex = THREE.new.DataTexture(
@@ -55,20 +71,46 @@ function jl2js(color::Sampler{T}) where T
     return tex
 end
 
-function to_js_uniforms(context, dict::Dict)
+the_texture = []
+function jl2js(color::Sampler{T, 3}) where T
+    data = to_js_buffer(color.data)
+    tex = THREE.new.DataTexture3D(
+        data, size(color, 1), size(color, 2), size(color, 3)
+    )
+    push!(the_texture, tex)
+    tex.minFilter = three_filter(color.minfilter)
+    tex.magFilter = three_filter(color.magfilter)
+    tex.format = three_format(T)
+    tex.type = three_type(eltype(T))
+
+    tex.wrapS = three_repeat(color.repeat[1])
+    tex.wrapT = three_repeat(color.repeat[2])
+    tex.wrapR = three_repeat(color.repeat[3])
+
+    tex.anisotropy = color.anisotropic
+    tex.needsUpdate = true
+    return tex
+end
+
+function to_js_uniforms(scene, context, dict::Dict)
     result = window.new.Object()
     for (k, v) in dict
         setproperty!(result, k, Dict(:value => jl2js(to_value(v))))
     end
-    # for (k, v) in dict
-    #     # Sampler + Buffers won't come through as Observables,
-    #     # Since they update themselves
-    #     v isa Observable || continue
-    #     onjs(v, @js function (val)
-    #         $(result).$(k).value = val
-    #         $(result).$(k).needsUpdate = true
-    #     end)
-    # end
+    for (k, v) in dict
+        # Sampler + Buffers won't come through as Observables,
+        # Since they update themselves
+        # atm we also allow other values to be non Observables
+        v isa Observable || continue
+        on(v) do val
+            # TODO don't just use a random event like scroll to trigger
+            # a new event to update the render loop!!!!
+            prop = getproperty(result, k)
+            prop.value = jl2js(val)
+            prop.needsUpdate = true
+            scene.events.scroll[] = scene.events.scroll[]
+        end
+    end
     return result
 end
 
@@ -87,7 +129,7 @@ JSCall.@jsfun function create_material(vert, frag, uniforms)
     return material
 end
 
-three_format(::Type{<: Real}) = THREE.AlphaFormat
+three_format(::Type{<: Real}) = THREE.RedFormat
 three_format(::Type{<: RGB}) = THREE.RGBFormat
 three_format(::Type{<: RGBA}) = THREE.RGBAFormat
 
@@ -101,7 +143,7 @@ end
 function to_js_buffer(array::AbstractArray{Float32})
     return window.Float32Array.from(vec(array))
 end
-function to_js_buffer(array::AbstractArray{Float16})
+function to_js_buffer(array::AbstractArray{<: AbstractFloat})
     return window.Float32Array.from(vec(Float32.(array)))
 end
 function to_js_buffer(array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
@@ -148,7 +190,7 @@ function lift_convert(key, value, plot)
      end
 end
 
-function wgl_convert(context, ip::InstancedProgram)
+function wgl_convert(scene, context, ip::InstancedProgram)
     # bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1);
     js_vbo = THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
@@ -165,19 +207,17 @@ function wgl_convert(context, ip::InstancedProgram)
         js_buff = JSInstanceBuffer(context, buff).setDynamic(true)
         js_vbo.addAttribute(name, js_buff)
     end
-    uniforms = to_js_uniforms(context, ip.program.uniforms)
-
+    uniforms = to_js_uniforms(scene, context, ip.program.uniforms)
     material = WGLMakie.create_material(
         ip.program.vertex_source,
         ip.program.fragment_source,
-        to_js_uniforms(context, ip.program.uniforms)
+        uniforms
     )
     return THREE.new.Mesh(js_vbo, material)
 end
 
 
-function wgl_convert(context, program::Program)
-    # bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1);
+function wgl_convert(scene, context, program::Program)
     js_vbo = THREE.new.BufferGeometry()
 
     for (name, buff) in pairs(program.vertexarray)
@@ -188,12 +228,12 @@ function wgl_convert(context, program::Program)
     indices = reinterpret(UInt32, indices) .- UInt32(1)
     js_vbo.setIndex(indices)
     # per instance data
-    uniforms = to_js_uniforms(context, program.uniforms)
+    uniforms = to_js_uniforms(scene, context, program.uniforms)
 
     material = WGLMakie.create_material(
         program.vertex_source,
         program.fragment_source,
-        to_js_uniforms(context, program.uniforms)
+        uniforms
     )
     return THREE.new.Mesh(js_vbo, material)
 end

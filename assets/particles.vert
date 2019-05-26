@@ -4,11 +4,11 @@ uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
 
-varying vec3 frag_normal;
-varying vec3 frag_position;
+out vec3 frag_normal;
+out vec3 frag_position;
 
-varying vec4 frag_color;
-varying vec3 frag_lightdir;
+out vec4 frag_color;
+out vec3 frag_lightdir;
 
 
 vec3 qmul(vec4 q, vec3 v){

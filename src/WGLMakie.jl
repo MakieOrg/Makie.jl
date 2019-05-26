@@ -173,7 +173,7 @@ function three_scene(scene::Scene)
     width, height = size(scene)
     jsm = JSModule(
             :THREE,
-            "https://cdnjs.cloudflare.com/ajax/libs/three.js/103/three.js",
+            "https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.js",
         ) do scope
         # Render callback
         style = Dict(
@@ -189,8 +189,10 @@ function three_scene(scene::Scene)
     connect_scene_events!(scene, jsm.document)
     mousedrag(scene, nothing)
     canvas = document.querySelector("canvas")
+    context = canvas.getContext("webgl2");
     renderer = THREE.new.WebGLRenderer(
-        antialias = true, canvas = canvas
+        antialias = true, canvas = canvas, context = context,
+        powerPreference = "high-performance"
     )
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")

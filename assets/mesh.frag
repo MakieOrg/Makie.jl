@@ -1,8 +1,8 @@
-varying vec2 frag_uv;
-varying vec4 frag_color;
-varying vec3 frag_normal;
-varying vec3 frag_position;
-varying vec3 frag_lightdir;
+in vec2 frag_uv;
+in vec4 frag_color;
+in vec3 frag_normal;
+in vec3 frag_position;
+in vec3 frag_lightdir;
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float diff_coeff = max(dot(L, N), 0.0);
@@ -36,7 +36,7 @@ vec4 get_color(bool color, vec2 uv){
 }
 
 vec4 get_color(sampler2D color, vec2 uv){
-    return texture2D(color, uv);
+    return texture(color, uv);
 }
 
 
@@ -47,5 +47,5 @@ void main() {
         shaded_color = blinnphong(frag_normal, frag_position, frag_lightdir, real_color.xyz);
     }
 
-    gl_FragColor = vec4(shaded_color, real_color.a);
+    fragment_color = vec4(shaded_color, real_color.a);
 }

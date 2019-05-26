@@ -10,7 +10,7 @@ vec2 screen_space(vec4 vertex)
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
 
-varying vec4 frag_color;
+out vec4 frag_color;
 
 void main()
 {

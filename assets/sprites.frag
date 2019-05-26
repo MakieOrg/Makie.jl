@@ -1,5 +1,5 @@
-varying vec4 frag_color;
-varying vec2 frag_uv;
+in vec4 frag_color;
+in vec2 frag_uv;
 
 #define CIRCLE            0
 #define RECTANGLE         1
@@ -51,15 +51,15 @@ void fill(vec4 fillcolor, vec2 uv, float infill, inout vec4 color){
     color = mix(color, fillcolor, infill);
 }
 
-varying float frag_uvscale;
-varying float frag_distancefield_scale;
-varying vec4 frag_uv_offset_width;
+in float frag_uvscale;
+in float frag_distancefield_scale;
+in vec4 frag_uv_offset_width;
 
 float scaled_distancefield(sampler2D distancefield, vec2 uv){
     // Glyph distance field units are in pixels. Convert to same distance
     // scaling as f_uv.x for consistency with the procedural signed_distance
     // calculations.
-    return frag_distancefield_scale * texture2D(distancefield, uv).a;
+    return frag_distancefield_scale * texture(distancefield, uv).r;
 }
 
 float scaled_distancefield(bool distancefield, vec2 uv){
@@ -87,5 +87,5 @@ void main() {
     float inside = aastep(0.0, signed_distance);
     vec4 final_color = vec4(frag_color.xyz, 0);
     fill(frag_color, frag_uv, inside, final_color);
-    gl_FragColor = final_color;
+    fragment_color = final_color;
 }

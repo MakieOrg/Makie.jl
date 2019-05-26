@@ -24,7 +24,7 @@ function draw_mesh(jsscene, mscene::Scene, mesh, name, plot; uniforms...)
     )
     write(joinpath(@__DIR__, "..", "debug", "$(name).vert"), program.vertex_source)
     write(joinpath(@__DIR__, "..", "debug", "$(name).frag"), program.fragment_source)
-    three_geom = wgl_convert(jsscene, program)
+    three_geom = wgl_convert(mscene, jsscene, program)
     update_model!(three_geom, plot)
     three_geom.name = name
     jsscene.add(three_geom)
@@ -132,14 +132,48 @@ end
 
 
 function draw_js(jsscene, mscene::Scene, plot::Volume)
-    volume = plot[3]
+    x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
     box = ShaderAbstractions.VertexArray(GLUVWMesh(FRect3D(Vec3f0(0), Vec3f0(1))))
-    color = Sampler(colored, minfilter = plot.interpolate[] ? :linear : :nearest)
-    draw_mesh(
-        jsscene, mscene, mesh, "heatmap", plot;
-        uniform_color = color,
-        color = Vec4f0(0),
-        normals = Vec3f0(0),
-        shading = false,
+    cam = cameracontrols(mscene)
+    model2 = lift(plot.model, x, y, z) do m, xyz...
+        mi = minimum.(xyz)
+        maxi = maximum.(xyz)
+        w = maxi .- mi
+        m2 = Mat4f0(
+            w[1], 0, 0, 0,
+            0, w[2], 0, 0,
+            0, 0, w[3], 0,
+            mi[1], mi[2], mi[3], 1
+        )
+        convert(Mat4f0, m) * m2
+    end
+    modelinv = lift(inv, model2)
+    program = Program(
+        WebGL(),
+        lasset("volume.vert"),
+        lasset("volume.frag"),
+        box,
+
+        volumedata = Sampler(vol),
+        eyeposition = cam.eyeposition,
+        modelinv = modelinv,
+        colormap = Sampler(lift(to_colormap, plot.colormap)),
+        colorrange = lift(Vec2f0, plot.colorrange),
+        isovalue = lift(Float32, plot.isovalue),
+        isorange = lift(Float32, plot.isorange),
+        light_position = Vec3f0(20)
     )
+
+    write(joinpath(@__DIR__, "..", "debug", "volume.vert"), program.vertex_source)
+    write(joinpath(@__DIR__, "..", "debug", "volume.frag"), program.fragment_source)
+
+    three_geom = wgl_convert(mscene, jsscene, program)
+    three_geom.matrixAutoUpdate = false
+    three_geom.matrix.set(model2[]'...)
+    on(model2) do model
+        three_geom.matrix.set((model')...)
+    end
+    three_geom.material.side = THREE.BackSide
+
+    jsscene.add(three_geom)
 end

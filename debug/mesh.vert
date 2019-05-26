@@ -1,28 +1,32 @@
-    precision mediump int;
-    precision mediump float;
+#version 300 es
+precision mediump int;
+precision mediump float;
+precision mediump sampler2D;
+precision mediump sampler3D;
 
 // Instance inputs: 
-attribute vec3 position;
+in vec3 position;
 vec3 get_position(){return position;}
-attribute vec2 texturecoordinates;
-vec2 get_texturecoordinates(){return texturecoordinates;}
-attribute vec3 normals;
+in vec4 color;
+vec4 get_color(){return color;}
+in vec3 normals;
 vec3 get_normals(){return normals;}
 
 // Uniforms: 
-uniform vec4 color;
-vec4 get_color(){return color;}
-uniform sampler2D uniform_color;
+uniform bool uniform_color;
+bool get_uniform_color(){return uniform_color;}
+uniform vec2 texturecoordinates;
+vec2 get_texturecoordinates(){return texturecoordinates;}
 uniform bool shading;
 bool get_shading(){return shading;}
 
 
 
-varying vec2 frag_uv;
-varying vec3 frag_normal;
-varying vec3 frag_position;
-varying vec4 frag_color;
-varying vec3 frag_lightdir;
+out vec2 frag_uv;
+out vec3 frag_normal;
+out vec3 frag_position;
+out vec4 frag_color;
+out vec3 frag_lightdir;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

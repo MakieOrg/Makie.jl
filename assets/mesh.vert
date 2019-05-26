@@ -1,8 +1,8 @@
-varying vec2 frag_uv;
-varying vec3 frag_normal;
-varying vec3 frag_position;
-varying vec4 frag_color;
-varying vec3 frag_lightdir;
+out vec2 frag_uv;
+out vec3 frag_normal;
+out vec3 frag_position;
+out vec4 frag_color;
+out vec3 frag_lightdir;
 
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;

@@ -2,11 +2,11 @@ uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
 
-varying vec4 frag_color;
-varying vec2 frag_uv;
-varying float frag_uvscale;
-varying float frag_distancefield_scale;
-varying vec4 frag_uv_offset_width;
+out vec4 frag_color;
+out vec2 frag_uv;
+out float frag_uvscale;
+out float frag_distancefield_scale;
+out vec4 frag_uv_offset_width;
 
 
 mat4 qmat(vec4 quat){
