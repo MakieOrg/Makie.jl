@@ -6,8 +6,10 @@ using AbstractPlotting: convert_attribute, @extractvalue, LineSegments, to_ndim,
 using AbstractPlotting: @info, @get_attribute, Combined
 using Colors, GeometryTypes
 using AbstractPlotting: to_value, to_colormap, extrema_nan
-using Cairo, FileIO
+using FileIO
 using LinearAlgebra
+import Cairo
+using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface
 
 @enum RenderType SVG PNG
 
@@ -401,7 +403,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         set_font_matrix(ctx, mat)
         # set_font_size(ctx, 16)
         # TODO this only works in 2d
-        rotate(ctx, 2acos(r[4]))
+        Cairo.rotate(ctx, 2acos(r[4]))
         if N == length(position) # if one position per glyph
             Cairo.show_text(ctx, string(txt[i]))
         else
@@ -475,7 +477,7 @@ function AbstractPlotting.colorbuffer(tup::Tuple{<: CairoBackend, Scene})
     # TODO this is super slow, we need to design the colorbuffer
     # api to be able to reuse a RGB surface
     mktempdir() do dir
-        save(joinpath(dir, "tmp.png"), scene)
+        AbstractPlotting.save(joinpath(dir, "tmp.png"), scene)
         return FileIO.load(joinpath(dir, "tmp.png"))
     end
 end
@@ -495,7 +497,7 @@ end
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
     screen = CairoScreen(scene, io)
     cairo_draw(screen, scene)
-    write_to_png(screen.surface, io)
+    Cairo.write_to_png(screen.surface, io)
     (x, scene)
 end
 
