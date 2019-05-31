@@ -11,6 +11,7 @@ GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 JSCall = "7408c33d-3899-58ec-b6f6-b7e67cfb9908"
 JSExpr = "97c1335a-c9c5-57fe-bc5d-ec35cebe8660"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 WebIO = "0f1e0344-ec1d-5b48-a673-e5cf874b6c29"
 WebSockets = "104b5d7c-a370-577a-8038-80a2059c5097"
 
