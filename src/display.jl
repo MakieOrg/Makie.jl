@@ -218,12 +218,11 @@ end
 
 
 """
-    VideoStream(scene::Scene, dir = mktempdir(), name = "video"; framerate = 24)
+    VideoStream(scene::Scene, framerate = 24)
 
-returns a stream and a buffer that you can use to not allocate for new frames.
-Use `add_frame!(stream, window, buffer)` to add new video frames to the stream.
-Use `save(stream)` to save the video to 'dir/name.mkv'. You can also call
-`save(stream, "mkv")`, `save(stream, "mp4")`, `save(stream, "gif")` or `save(stream, "webm")` to convert the stream to those formats.
+Returns a stream and a buffer that you can use, to not allocate for new frames.
+Use `recordframe!(stream)` to add new video frames to the stream.
+Use `save(path, stream; framerate=24)` to save the video.
 """
 function VideoStream(scene::Scene;
                      framerate::Int = 24)
@@ -272,11 +271,11 @@ end
 """
     save(path::String, io::VideoStream; framerate = 24)
 
-Flushes the video stream and converts the file to the extension found in `path` which can
-be `mkv` is default and doesn't need convert, `gif`, `mp4` and `webm`.
-`mp4` is recommended for the internet, since it's the most supported format.
-`webm` yields the smallest file size, `mp4` and `mk4` are marginally bigger and `gif`s are up to
-6 times bigger with same quality!
+Flushes the video stream and converts the file to the extension found in `path`, which can
+be `.mkv`, `.gif`, `.mp4` or `.webm`.
+`.mkv` is the default, and doesn't need to convert; `.mp4` is recommended for the internet, since it's the most supported format;
+`.webm` yields the smallest file size. `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+6 times bigger with the same quality!
 """
 function save(path::String, io::VideoStream;
               framerate::Int = 24)
@@ -284,7 +283,7 @@ function save(path::String, io::VideoStream;
     wait(io.process)
     p, typ = splitext(path)
     if typ == ".mkv"
-        cp(io.path, out)
+        cp(io.path, path, force=true)
     elseif typ == ".mp4"
         run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
@@ -325,7 +324,7 @@ function record(func, scene, path; framerate::Int = 24)
 end
 
 """
-    record(func, scene, path, iter)
+    record(func, scene, path, iter; framerate = 24)
 usage:
 ```example
     record(scene, "test.gif", 1:100) do i
@@ -339,7 +338,7 @@ function record(func, scene, path, iter; framerate::Int = 24)
         t1 = time()
         func(i)
         recordframe!(io)
-        diff = (1/24) - (time() - t1)
+        diff = (1/framerate) - (time() - t1)
         if diff > 0.0
             sleep(diff)
         else

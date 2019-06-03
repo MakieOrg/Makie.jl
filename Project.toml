@@ -31,6 +31,25 @@ UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
 GeometryTypes = ">=0.7.2"
+FreeTypeAbstraction = ">= 0.4.2"
+Observables = ">= 0.2.0"
+StructArrays = ">= 0.3.0"
+
+ColorBrewer = ">= 0"
+ColorTypes = ">= 0"
+Colors = ">= 0"
+Contour = ">= 0"
+FileIO = ">= 0"
+FixedPointNumbers = ">= 0"
+FreeType = ">= 0"
+ImageMagick = ">= 0"
+IntervalSets = ">= 0"
+Packing = ">= 0"
+PlotUtils = ">= 0"
+Showoff = ">= 0"
+SignedDistanceFields = ">= 0"
+StaticArrays = ">= 0"
+UnicodeFun = ">= 0"
 
 [extras]
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
