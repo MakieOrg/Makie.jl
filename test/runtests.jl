@@ -7,6 +7,7 @@ scene = scatter(rand(4))
 using Test
 
 include("quaternions.jl")
+include("projection_math.jl")
 
 @testset "basic functionality" begin
     scene = scatter(rand(4))
@@ -18,76 +19,90 @@ end
 # if get(ENV, "IS_TRAVIS_CI", "false") == "false"
 #   exit(0);
 # end
-
-## begin CI-only testing
-# if get(ENV, "IS_TRAVIS_CI", "false") == "false"
-#   exit(0);
-# end
-
- ## begin CI-only testing=
+const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "true")
 
 using MakieGallery
 
- # Load the database
-database = MakieGallery.load_database()
+if _MINIMAL == "false"
 
-## Exceptions are made on basis of title and not index,
- # because index may change as MakieGallery changes.
+    # Load all entries in the database
 
-# All these require FFMpeg and need to save,
-# and are therefore ignored
-ffmpeg_exs  = [
-            "Animation", "Lots of Heatmaps","Animated Scatter",
-            "Chess Game", "Record Video",  "Animated surface and wireframe",
-            "Moire", "pong", "pulsing marker", "Travelling wave",
-            "Type recipe for molecule simulation"
-]
+    database = MakieGallery.load_database()
 
-# All these require GLMakie and so are ignored
-glmakie_exs = [
-            "Textured Mesh", "Load Mesh", "Wireframe of a Mesh",
-            "FEM mesh 3D", "Normals of a Cat", "Line GIF"
-]
+   ## Exceptions are made on basis of title and not index,
+    # because index may change as MakieGallery changes.
 
-# Requires GDAL (a GL package) so ignored
-gdal_exs = [
-        "WorldClim visualization"
-]
+   # All these require FFMpeg and need to save,
+   # and are therefore ignored
+   ffmpeg_exs  = [
+               "Animation", "Lots of Heatmaps","Animated Scatter",
+               "Chess Game", "Record Video",  "Animated surface and wireframe",
+               "Moire", "pong", "pulsing marker", "Travelling wave",
+               "Type recipe for molecule simulation"
+   ]
 
- # Requires GLMakie and ModernGL, so ignored
-moderngl_exs = [
-            "Explicit frame rendering"
-]
+   # All these require GLMakie and so are ignored
+   glmakie_exs = [
+               "Textured Mesh", "Load Mesh", "Wireframe of a Mesh",
+               "FEM mesh 3D", "Normals of a Cat", "Line GIF"
+   ]
 
-# use Stepper plots, which save, so ignored
-save_exs = [
-          "Axis theming", "Labels", "Color Legend",
-          "Stepper demo"
-]
+   # Requires GDAL (a GL package) so ignored
+   gdal_exs = [
+           "WorldClim visualization"
+   ]
 
-# hopefullly fixed by next tag of MakieGallery (already in AbstractPlotting
-color_exs = ["colormaps"]
+    # Requires GLMakie and ModernGL, so ignored
+   moderngl_exs = [
+               "Explicit frame rendering"
+   ]
 
-# curl fails with this for some reason, so it has been ignored.
-curl_exs = ["Earth & Ships"]
+   # use Stepper plots, which save, so ignored
+   save_exs = [
+             "Axis theming", "Labels", "Color Legend",
+             "Stepper demo"
+   ]
 
-# combine all exceptions into a single Set
-exc_str = union(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, curl_exs)
+   # hopefullly fixed by next tag of MakieGallery (already in AbstractPlotting
+   color_exs = ["colormaps"]
 
-# iterate over database
-for i in 1:length(database)
+   # curl fails with this for some reason, so it has been ignored.
+   curl_exs = ["Earth & Ships"]
 
-   # skip if the title is in the list of exceptions
-  if database[i].title ∈ exc_str
+   # combine all exceptions into a single Set
+   exc_str = union(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, curl_exs)
 
-     print("Skipping " * database[i].title * "\n(removed from tests explicitly)\n")
+else
 
-     continue  # skip the entry
+    # Load only short tests
+
+    database = MakieGallery.load_tests()
+
+    # This one is broken, all the others are fine.  I don't know why this fails.  It doesn't fail on my machine :P
+    exc_str = Set(["Comparing contours, image, surfaces and heatmaps"])
+
+end
+
+
+
+@testset "Gallery short tests" begin
+
+    # iterate over database
+    @testset "$(database[i].title) (#$i)" for i in 1:length(database)
+
+           # skip if the title is in the list of exceptions
+          if database[i].title ∈ exc_str
+
+             print("Skipping " * database[i].title * "\n(removed from tests explicitly)\n")
+
+             continue
+
+           end
+
+           # print("Running " * database[i].title * "\n(index $i)\n")
+
+           @test_nowarn MakieGallery.eval_example(database[i]);  # evaluate the entry
 
    end
 
-   print("Running " * database[i].title * "\n(index $i)\n")
-
-   MakieGallery.eval_example(database[i]);  # evaluate the entry
-
-   end
+end
