@@ -99,7 +99,12 @@ function add_translation!(scene, cam, key, button)
     end
     on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
-            translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
+            cam_res = Vec2f0(widths(scene.px_area[]))
+            mouse_pos_normalized = Vec2f0(scene.events.mouseposition[]) ./ cam_res
+            mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
+            zoom_step = scroll[2]
+
+            zoomtopoint_cam!(scene, mouse_pos_normalized, zoom_step)
         end
         return
     end
@@ -132,21 +137,45 @@ function translate_cam!(scene::Scene, cam::Camera3D, _translation::VecTypes)
     dir = eyeposition - lookat
     dir_len = norm(dir)
     cam_res = Vec2f0(widths(scene.px_area[]))
-    zoom, x, y = translation
-    zoom *= 0.1f0 * dir_len
+    z, x, y = translation
+    z *= 0.1f0 * dir_len
 
     x, y = (Vec2f0(x, y) ./ cam_res) .* dir_len
 
     dir_norm = normalize(dir)
     right = normalize(cross(dir_norm, upvector))
-    zoom_trans = dir_norm * zoom
+    z_trans = dir_norm * z
     side_trans = right * (-x) + normalize(upvector) * y
-    newpos = eyeposition + side_trans + zoom_trans
+    newpos = eyeposition + side_trans + z_trans
     cam.eyeposition[] = newpos
     cam.lookat[] = lookat + side_trans
     update_cam!(scene, cam)
     return
 end
+
+"""
+    zoom!(scene, point, zoom_step)
+    
+Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`.
+"""
+function zoom!(scene, point, zoom_step)
+    cam = cameracontrols(scene)
+    @extractvalue cam (projectiontype, lookat, eyeposition, upvector)
+
+    dir = eyeposition - lookat
+    dir_len = norm(dir)
+    zoom_step *= 0.1f0 * dir_len
+
+    ray_eye = inv(scene.camera.projection[]) * Vec4f0(point[1],point[2],-1,1)
+    ray_eye = Vec4f0(ray_eye[1:2]...,-1,0)
+    ray_dir = Vec3f0((inv(scene.camera.view[]) * ray_eye))
+    ray_dir = normalize(ray_dir)
+    zoom_translation = ray_dir * zoom_step
+    cam.eyeposition[] = eyeposition + zoom_translation
+    cam.lookat[] = lookat + zoom_translation
+    update_cam!(scene, cam)
+end
+
 
 rotate_cam!(scene::Scene, theta_v::Number...) = rotate_cam!(scene, cameracontrols(scene), theta_v)
 rotate_cam!(scene::Scene, theta_v::VecTypes) = rotate_cam!(scene, cameracontrols(scene), theta_v)
