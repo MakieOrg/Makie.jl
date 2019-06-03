@@ -1,10 +1,7 @@
 using AbstractPlotting
-using Makie
-scene = scatter(rand(4))
-
-
-
 using Test
+
+scene = scatter(rand(4))
 
 include("quaternions.jl")
 include("projection_math.jl")
@@ -20,7 +17,7 @@ end
 #   exit(0);
 # end
 const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "true")
-=======
+
 @testset "basic functionality" begin
     scene = scatter(rand(4))
     @test scene[Axis].ticks.title_gap[] == 3
