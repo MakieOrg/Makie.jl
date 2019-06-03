@@ -99,8 +99,6 @@ function add_translation!(scene, cam, key, button)
     end
     on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
-            # translate_cam!(scene, cam, Vec3f0(scroll[2], 0f0, 0f0))
-
             cam_res = Vec2f0(widths(scene.px_area[]))
             mouse_pos_normalized = Vec2f0(scene.events.mouseposition[]) ./ cam_res
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
