@@ -155,6 +155,11 @@ function translate_cam!(scene::Scene, cam::Camera3D, _translation::VecTypes)
     return
 end
 
+"""
+    zoom!(scene, point, zoom_step)
+    
+Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`.
+"""
 function zoomtopoint_cam!(scene, point, zoom_step)
     cam = cameracontrols(scene)
     @extractvalue cam (projectiontype, lookat, eyeposition, upvector)
