@@ -160,7 +160,7 @@ end
     
 Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`.
 """
-function zoomtopoint_cam!(scene, point, zoom_step)
+function zoom!(scene, point, zoom_step)
     cam = cameracontrols(scene)
     @extractvalue cam (projectiontype, lookat, eyeposition, upvector)
 
