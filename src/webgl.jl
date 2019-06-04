@@ -41,8 +41,6 @@ function jl2js(val::RGB)
 end
 
 function jl2js(color::Sampler{T, 1}) where T
-    println("and please dint go here")
-
     data = to_js_buffer(color.data)
     tex = THREE.new.DataTexture(
         data, size(color, 1), 1,
@@ -71,13 +69,11 @@ function jl2js(color::Sampler{T}) where T
     return tex
 end
 
-the_texture = []
 function jl2js(color::Sampler{T, 3}) where T
     data = to_js_buffer(color.data)
     tex = THREE.new.DataTexture3D(
         data, size(color, 1), size(color, 2), size(color, 3)
     )
-    push!(the_texture, tex)
     tex.minFilter = three_filter(color.minfilter)
     tex.magFilter = three_filter(color.magfilter)
     tex.format = three_format(T)
@@ -105,10 +101,13 @@ function to_js_uniforms(scene, context, dict::Dict)
         on(v) do val
             # TODO don't just use a random event like scroll to trigger
             # a new event to update the render loop!!!!
-            prop = getproperty(result, k)
-            prop.value = jl2js(val)
-            prop.needsUpdate = true
-            scene.events.scroll[] = scene.events.scroll[]
+            try
+                prop = getproperty(result, k)
+                prop.value = jl2js(val)
+                prop.needsUpdate = true
+            catch e
+                @warn "Error in updating $k: " exception=e
+            end
         end
     end
     return result

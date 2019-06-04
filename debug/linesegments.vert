@@ -24,12 +24,12 @@ in vec4 color_end;
 vec4 get_color_end(){return color_end;}
 in float linewidth_end;
 float get_linewidth_end(){return linewidth_end;}
-in vec2 segment_start;
-vec2 get_segment_start(){return segment_start;}
+in vec3 segment_start;
+vec3 get_segment_start(){return segment_start;}
 in vec4 color_start;
 vec4 get_color_start(){return color_start;}
-in vec2 segment_end;
-vec2 get_segment_end(){return segment_end;}
+in vec3 segment_end;
+vec3 get_segment_end(){return segment_end;}
 
 uniform mat4 projectionMatrix;
 uniform mat4 modelViewMatrix;
