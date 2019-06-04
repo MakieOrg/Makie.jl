@@ -103,8 +103,7 @@ function add_translation!(scene, cam, key, button)
             mouse_pos_normalized = Vec2f0(scene.events.mouseposition[]) ./ cam_res
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
             zoom_step = scroll[2]
-
-            zoomtopoint_cam!(scene, mouse_pos_normalized, zoom_step)
+            zoom!(scene, mouse_pos_normalized, zoom_step)
         end
         return
     end
@@ -155,7 +154,7 @@ end
 
 """
     zoom!(scene, point, zoom_step)
-    
+
 Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`.
 """
 function zoom!(scene, point, zoom_step)
