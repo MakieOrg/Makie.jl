@@ -1,6 +1,6 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.9.3"
+version = "0.9.4"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -11,6 +11,6 @@ Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 
 [compat]
-AbstractPlotting = ">=0.9.6"
-GLMakie = ">=0.0.5"
-StatsMakie = ">=0.0.3"
+AbstractPlotting = ">=0.9.8"
+GLMakie = ">=0.0.6"
+StatsMakie = ">=0.0.6"
