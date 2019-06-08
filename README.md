@@ -12,7 +12,7 @@ WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots
 
 ```julia
 ]add https://github.com/SimonDanisch/ShaderAbstractions.jl
-]add https://github.com/JuliaPlots/WGLMakie.jl
+ add https://github.com/JuliaPlots/WGLMakie.jl
 ```
 
 Warning - this package is **in development** and **may break often**. 
