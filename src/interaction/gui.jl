@@ -52,7 +52,9 @@ TODO add description
         buttonstroke = 1.5,
         textsize = 15,
         buttonstrokecolor = :black,
-        valueprinter = default_printer
+        valueprinter = default_printer,
+        raw = true,
+        camera = campixel!
     )
 end
 
