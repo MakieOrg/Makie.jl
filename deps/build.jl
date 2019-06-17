@@ -5,7 +5,7 @@ you don't have the newest video driver installed,
 or the GLFW build failed. If you're on linux and `]build` GLFW failed,
 try manually adding `sudo apt-get install libglfw3` and then `]build GLMakie`.
 If you're on a headless server, you still need to install x-server and
-propper GPU drivers. You can take inspiration from this article
+proper GPU drivers. You can take inspiration from this article
 on how to get Makie running on a headless system:
 https://nextjournal.com/sdanisch/makie-1.0
 If you don't have a GPU, there is also a Cairo software backend
