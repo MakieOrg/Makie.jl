@@ -125,12 +125,13 @@ function dragslider(slider, button)
     range = slider[1]
     @extract slider (value, sliderlength)
     on(events(slider).mousedrag) do drag
+        mpos = mouseposition(rootparent(slider))
         if drag == Mouse.down && mouseover(slider, button)
-            startpos[] = mpos[]
+            startpos[] = mpos
             drag_started[] = true
         elseif drag == Mouse.pressed && drag_started[]
-            diff = startpos[] .- mpos[]
-            startpos[] = mpos[]
+            diff = startpos[] .- mpos
+            startpos[] = mpos
             spos = translation(button)[][1] - diff[1]
             l = sliderlength[] - button[:markersize][]
             if spos >= 0 && spos <= l
@@ -198,7 +199,7 @@ function plot!(splot::Button)
         splot, txt,
         color = textcolor,
         textsize = textsize, position = position,
-        align = (:center, :center)
+        align = (:bottom, :center)
     ).plots[end]
     bb = boundingbox(lplot)
     pad = mean(widths(bb)) .* padvalue[]
@@ -244,7 +245,6 @@ function playbutton(f, scene, range, rate = (1/30))
     end
     b
 end
-
 
 
 struct Popup

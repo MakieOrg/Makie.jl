@@ -709,7 +709,6 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
             end
             RGBAf0(Colors.color(c), line ? alpha : 0.0)
         end
-
     end
     volume!(
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
