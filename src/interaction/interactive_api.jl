@@ -22,6 +22,11 @@ function mouse_selection
     # TODO this needs to be implemented here via select_mouse_native
 end
 
+"""
+Return the plot under pixel position x y
+"""
+pick(scene::SceneLike, x, y) = pick(scene, Float64.((x, y)))
+
 # What does this function do?
 to_screen(scene, mpos) = Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
 
@@ -32,8 +37,9 @@ given `scene`.
 
 By default uses the `scene` that the mouse is currently hovering over.
 """
-mouseposition(scene = hovered_scene()) =
-to_world(scene, to_screen(scene, events(scene).mouseposition[]))
+function mouseposition(scene = hovered_scene())
+    to_world(scene, to_screen(scene, events(scene).mouseposition[]))
+end
 
 """
     hovered_scene()
