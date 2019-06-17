@@ -1,53 +1,51 @@
 module WGLMakie
 
-using WebSockets, JSCall, WebIO, JSExpr, Colors, GeometryTypes
+using WebSockets, JSCall, WebIO, JSExpr, GeometryTypes, Colors
 using JSExpr: jsexpr
 using AbstractPlotting, Observables
 using ShaderAbstractions, LinearAlgebra
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
+import GeometryBasics
 import GeometryTypes: GLNormalMesh, GLPlainMesh
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
-using Colors
 
-import GeometryTypes, AbstractPlotting, GeometryBasics
-
-function register_js_events!(comm)
-    @js begin
+function register_js_events!(jsctx, comm)
+    @jsctx begin
         # TODO, the below doesn't actually work to disable right-click menu
         function no_context(event)
             event.preventDefault()
             return false
         end
-        document.addEventListener("contextmenu", no_context, false)
+        # document.addEventListener("contextmenu", no_context, false)
 
         function mousemove(event)
             $(comm)[] = Dict(
                 :mouseposition => [event.pageX, event.pageY]
             )
-            event.preventDefault()
+            # event.preventDefault()
             return false
         end
-        document.addEventListener("mousemove", mousemove, false)
+        jsctx.document.addEventListener("mousemove", mousemove, false)
 
         function mousedown(event)
             $(comm)[] = Dict(
                 :mousedown => event.buttons
             )
-            event.preventDefault()
+            # event.preventDefault()
             return false
         end
-        document.addEventListener("mousedown", mousedown, false)
+        jsctx.document.addEventListener("mousedown", mousedown, false)
 
         function mouseup(event)
             $(comm)[] = Dict(
                 :mouseup => event.buttons
             )
-            event.preventDefault()
+            # event.preventDefault()
             return false
         end
-        document.addEventListener("mouseup", mouseup, false)
+        jsctx.document.addEventListener("mouseup", mouseup, false)
 
         function wheel(event)
             $(comm)[] = Dict(
@@ -56,7 +54,7 @@ function register_js_events!(comm)
             event.preventDefault()
             return false
         end
-        document.addEventListener("wheel", wheel, false)
+        jsctx.document.addEventListener("wheel", wheel, false)
     end
 end
 
@@ -105,11 +103,9 @@ function connect_scene_events!(scene, js_doc)
 end
 
 
-
-function draw_js(jsscene, mscene::Scene, plot)
+function draw_js(jsctx, jsscene, mscene::Scene, plot)
     @warn "Plot of type $(typeof(plot)) not supported yet"
 end
-
 
 
 function on_any_event(f, scene::Scene)
@@ -122,34 +118,34 @@ function on_any_event(f, scene::Scene)
     onany(f, scene_events...)
 end
 
-function add_plots!(jsscene, scene::Scene, x::Combined)
+function add_plots!(jsctx, jsscene, scene::Scene, x::Combined)
     if isempty(x.plots) # if no plots inserted, this truely is an atomic
-        draw_js(jsscene, scene, x)
+        draw_js(jsctx, jsscene, scene, x)
     else
         foreach(x.plots) do x
-            add_plots!(jsscene, scene, x)
+            add_plots!(jsctx, jsscene, scene, x)
         end
     end
 end
 
-function _add_scene!(renderer, scene::Scene, scene_graph = [])
-    js_scene = THREE.new.Scene()
-    cam_func = add_camera!(renderer, js_scene, scene)
+function _add_scene!(jsctx, scene::Scene, scene_graph = [])
+    js_scene = jsctx.THREE.new.Scene()
+    cam_func = add_camera!(jsctx, js_scene, scene)
     push!(scene_graph, (js_scene, cam_func))
     for plot in scene.plots
-        add_plots!(js_scene, scene, plot)
+        add_plots!(jsctx, js_scene, scene, plot)
     end
     for sub in scene.children
-        _add_scene!(renderer, sub, scene_graph)
+        _add_scene!(jsctx, sub, scene_graph)
     end
     scene_graph
 end
 
-function add_scene!(renderer, scene::Scene)
-    scene_graph = _add_scene!(renderer, scene)
+function add_scene!(jsctx, scene::Scene)
+    scene_graph = _add_scene!(jsctx, scene)
     on_any_event(scene) do events...
         # Fuse all calls in the event loop together!
-        JSCall.fused(THREE) do
+        JSCall.fused(jsctx.THREE) do
             for (js_scene, (cam, update_func)) in scene_graph
                 update_func()
             end
@@ -157,23 +153,16 @@ function add_scene!(renderer, scene::Scene)
     end
 end
 
-# TODO make a scene struct that encapsulates these
-global THREE = nothing
-global window = nothing
-global document = nothing
-
-function get_comm(jso)
-    # LOL TODO git gud
-    obs, sync = scope(jso).observs["_jscall_value_comm"]
-    return obs
+struct ThreeDisplay
+    THREE::JSObject
+    renderer::JSObject
+    session_cache::Dict{Symbol, JSObject}
 end
 
-function three_scene(scene::Scene)
-    global THREE, window, document
-    width, height = size(scene)
+function ThreeDisplay(width::Integer, height::Integer)
     jsm = JSModule(
             :THREE,
-            "https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.js",
+            "https://cdnjs.cloudflare.com/ajax/libs/three.jsctx/104/three.jsctx",
         ) do scope
         # Render callback
         style = Dict(
@@ -185,10 +174,9 @@ function three_scene(scene::Scene)
             style = style
         )
     end
-    THREE = jsm.mod; window = jsm.window; document = jsm.document;
+    THREE = jsm.mod
     connect_scene_events!(scene, jsm.document)
-    mousedrag(scene, nothing)
-    canvas = document.querySelector("canvas")
+    canvas = jsm.document.querySelector("canvas")
     context = canvas.getContext("webgl2");
     renderer = THREE.new.WebGLRenderer(
         antialias = true, canvas = canvas, context = context,
@@ -196,8 +184,20 @@ function three_scene(scene::Scene)
     )
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
-    renderer.setPixelRatio(window.devicePixelRatio);
-    add_scene!(renderer, scene)
+    renderer.setPixelRatio(jsm.window.devicePixelRatio);
+    return ThreeDisplay(THREE, renderer, Dict{Symbol, JSObject}())
+end
+
+function get_comm(jso)
+    # LOL TODO git gud
+    obs, sync = scope(jso).observs["_jscall_value_comm"]
+    return obs
+end
+
+function three_scene(scene::Scene)
+    jsctx = ThreeDisplay(size(scene)...)
+    mousedrag(scene, nothing)
+    add_scene!(jsctx, scene)
     jsm
 end
 

@@ -12,8 +12,6 @@ vec3 get_texturecoordinates(){return texturecoordinates;}
 
 // Uniforms: 
 uniform sampler3D volumedata;
-uniform vec3 eyeposition;
-vec3 get_eyeposition(){return eyeposition;}
 uniform mat4 modelinv;
 mat4 get_modelinv(){return modelinv;}
 uniform sampler2D colormap;

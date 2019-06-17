@@ -195,23 +195,23 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
 end
 
 
-function draw_js(jsscene, scene::Scene, plot::MeshScatter)
+function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
     program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsscene, program)
+    mesh = wgl_convert(scene, jsctx, program)
     jsscene.add(mesh)
 end
-function draw_js(jsscene, scene::Scene, plot::AbstractPlotting.Text)
+function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
     program = create_shader(scene, plot)
     write(joinpath(@__DIR__, "..", "debug", "text.vert"), program.program.vertex_source)
     write(joinpath(@__DIR__, "..", "debug", "text.frag"), program.program.fragment_source)
-    mesh = wgl_convert(scene, jsscene, program)
+    mesh = wgl_convert(scene, jsctx, program)
     mesh.name = "Text"
     update_model!(mesh, plot)
     jsscene.add(mesh)
 end
-function draw_js(jsscene, scene::Scene, plot::Scatter)
+function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsscene, program)
+    mesh = wgl_convert(scene, jsctx, program)
 
     write(joinpath(@__DIR__, "..", "debug", "scatter.vert"), program.program.vertex_source)
     write(joinpath(@__DIR__, "..", "debug", "scatter.frag"), program.program.fragment_source)

@@ -4,13 +4,14 @@ in vec3 frag_uv;
 uniform sampler3D volumedata;
 uniform sampler2D colormap;
 uniform vec2 colorrange;
-uniform vec3 eyeposition;
 uniform mat4 modelMatrix, modelinv;
 */
 
 const float max_distance = 1.3;
 const int num_samples = 150;
 const float step_size = max_distance / float(num_samples);
+
+uniform vec3 cameraPosition;
 
 float range01(float val, float from, float to)
 {
@@ -102,7 +103,7 @@ vec4 contours(vec3 front, vec3 dir, float stepsize)
 
 void main()
 {
-    vec3 dir = normalize(frag_vert - eyeposition);
+    vec3 dir = normalize(frag_vert - cameraPosition);
     dir = vec3(modelinv * vec4(dir, 0.0));
     vec4 color = contours(frag_uv, dir, step_size);
     if(color.a <= 0.0)
