@@ -4,6 +4,29 @@ export select_rectangle
 mouseover() = error("not implemented")
 
 
+function flatten_plots(x::Atomic, plots = AbstractPlot[])
+    if isempty(x.plots)
+        push!(plots, x)
+    else
+        flatten_plots(x.plots, plots)
+    end
+    plots
+end
+
+function flatten_plots(x::Combined, plots = AbstractPlot[])
+    for elem in x.plots
+        flatten_plots(elem, plots)
+    end
+    plots
+end
+
+function flatten_plots(array, plots = AbstractPlot[])
+    for elem in array
+        flatten_plots(elem, plots)
+    end
+    plots
+end
+
 # What does this function do?
 function mouse_in_scene(scene)
     p = rootparent(scene)

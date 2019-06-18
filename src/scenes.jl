@@ -443,27 +443,3 @@ parent_scene(x::Combined) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
-
-
-function flatten_plots(x::Atomic, plots = AbstractPlot[])
-    if isempty(x.plots)
-        push!(plots, x)
-    else
-        flatten_plots(x.plots, plots)
-    end
-    plots
-end
-
-function flatten_plots(x::Combined, plots = AbstractPlot[])
-    for elem in x.plots
-        flatten_plots(elem, plots)
-    end
-    plots
-end
-
-function flatten_plots(array, plots = AbstractPlot[])
-    for elem in array
-        flatten_plots(elem, plots)
-    end
-    plots
-end
