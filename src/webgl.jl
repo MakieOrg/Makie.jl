@@ -41,6 +41,7 @@ function jl2js(jsctx, val::RGB)
 end
 
 function jl2js(jsctx, color::Sampler{T, 1}) where T
+
     data = to_js_buffer(jsctx, color.data)
     tex = jsctx.THREE.new.DataTexture(
         data, size(color, 1), 1,
@@ -55,18 +56,22 @@ function jl2js(jsctx, color::Sampler{T, 1}) where T
 end
 
 function jl2js(jsctx, color::Sampler{T, 2}) where T
-    data = to_js_buffer(jsctx, color.data)
-    tex = jsctx.THREE.new.DataTexture(
-        data, size(color, 1), size(color, 2),
-        three_format(jsctx, T), three_type(jsctx, eltype(T))
-    )
-    tex.minFilter = three_filter(jsctx, color.minfilter)
-    tex.magFilter = three_filter(jsctx, color.magfilter)
-    tex.wrapS = three_repeat(jsctx, color.repeat[1])
-    tex.wrapT = three_repeat(jsctx, color.repeat[2])
-    tex.anisotropy = color.anisotropic
-    tex.needsUpdate = true
-    return tex
+    # cache texture by their pointer
+    key = reinterpret(UInt64, pointer(color.data))
+    return get!(jsctx.session_cache, key) do
+        data = to_js_buffer(jsctx, color.data)
+        tex = jsctx.THREE.new.DataTexture(
+            data, size(color, 1), size(color, 2),
+            three_format(jsctx, T), three_type(jsctx, eltype(T))
+        )
+        tex.minFilter = three_filter(jsctx, color.minfilter)
+        tex.magFilter = three_filter(jsctx, color.magfilter)
+        tex.wrapS = three_repeat(jsctx, color.repeat[1])
+        tex.wrapT = three_repeat(jsctx, color.repeat[2])
+        tex.anisotropy = color.anisotropic
+        tex.needsUpdate = true
+        return tex
+    end
 end
 
 function jl2js(jsctx, color::Sampler{T, 3}) where T

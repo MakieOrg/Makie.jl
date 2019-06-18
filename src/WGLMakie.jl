@@ -156,12 +156,13 @@ end
 struct ThreeDisplay
     jsm::JSModule
     renderer::JSObject
-    session_cache::Dict{Symbol, JSObject}
+    session_cache::Dict{UInt64, JSObject}
 end
 
 function Base.getproperty(x::ThreeDisplay, field::Symbol)
     field === :renderer && return getfield(x, :renderer)
     field === :THREE && return getfield(x, :jsm).mod
+    field === :session_cache && return getfield(x, :session_cache)
     if Base.sym_in(field, (:window, :document))
         return getfield(getfield(x, :jsm), field)
     else
