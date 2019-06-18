@@ -11,8 +11,8 @@ import GeometryTypes: GLNormalMesh, GLPlainMesh
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 
-function register_js_events!(jsctx, comm)
-    @jsctx begin
+function register_js_events!(comm)
+    @js begin
         # TODO, the below doesn't actually work to disable right-click menu
         function no_context(event)
             event.preventDefault()
@@ -27,7 +27,7 @@ function register_js_events!(jsctx, comm)
             # event.preventDefault()
             return false
         end
-        jsctx.document.addEventListener("mousemove", mousemove, false)
+        document.addEventListener("mousemove", mousemove, false)
 
         function mousedown(event)
             $(comm)[] = Dict(
@@ -36,7 +36,7 @@ function register_js_events!(jsctx, comm)
             # event.preventDefault()
             return false
         end
-        jsctx.document.addEventListener("mousedown", mousedown, false)
+        document.addEventListener("mousedown", mousedown, false)
 
         function mouseup(event)
             $(comm)[] = Dict(
@@ -45,7 +45,7 @@ function register_js_events!(jsctx, comm)
             # event.preventDefault()
             return false
         end
-        jsctx.document.addEventListener("mouseup", mouseup, false)
+        document.addEventListener("mouseup", mouseup, false)
 
         function wheel(event)
             $(comm)[] = Dict(
@@ -54,7 +54,7 @@ function register_js_events!(jsctx, comm)
             event.preventDefault()
             return false
         end
-        jsctx.document.addEventListener("wheel", wheel, false)
+        document.addEventListener("wheel", wheel, false)
     end
 end
 
@@ -154,15 +154,26 @@ function add_scene!(jsctx, scene::Scene)
 end
 
 struct ThreeDisplay
-    THREE::JSObject
+    jsm::JSModule
     renderer::JSObject
     session_cache::Dict{Symbol, JSObject}
+end
+
+function Base.getproperty(x::ThreeDisplay, field::Symbol)
+    field === :renderer && return getfield(x, :renderer)
+    field === :THREE && return getfield(x, :jsm).mod
+    if Base.sym_in(field, (:window, :document))
+        return getfield(getfield(x, :jsm), field)
+    else
+        # forward getproperty to THREE, to make js work
+        return getproperty(x.THREE, field)
+    end
 end
 
 function ThreeDisplay(width::Integer, height::Integer)
     jsm = JSModule(
             :THREE,
-            "https://cdnjs.cloudflare.com/ajax/libs/three.jsctx/104/three.jsctx",
+            "https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.js",
         ) do scope
         # Render callback
         style = Dict(
@@ -175,7 +186,6 @@ function ThreeDisplay(width::Integer, height::Integer)
         )
     end
     THREE = jsm.mod
-    connect_scene_events!(scene, jsm.document)
     canvas = jsm.document.querySelector("canvas")
     context = canvas.getContext("webgl2");
     renderer = THREE.new.WebGLRenderer(
@@ -185,7 +195,7 @@ function ThreeDisplay(width::Integer, height::Integer)
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
     renderer.setPixelRatio(jsm.window.devicePixelRatio);
-    return ThreeDisplay(THREE, renderer, Dict{Symbol, JSObject}())
+    return ThreeDisplay(jsm, renderer, Dict{Symbol, JSObject}())
 end
 
 function get_comm(jso)
@@ -196,10 +206,22 @@ end
 
 function three_scene(scene::Scene)
     jsctx = ThreeDisplay(size(scene)...)
+    connect_scene_events!(scene, jsctx.document)
     mousedrag(scene, nothing)
     add_scene!(jsctx, scene)
-    jsm
+    return jsctx
 end
+
+function Base.show(io::IO, m::MIME"text/html", jsm::ThreeDisplay)
+    Base.show(io, m, getfield(jsm, :jsm))
+end
+function Base.show(io::IO, m::WebIO.WEBIO_APPLICATION_MIME, jsm::ThreeDisplay)
+    Base.show(io, m, getfield(jsm, :jsm))
+end
+function Base.show(io::IO, m::MIME"application/prs.juno.plotpane+html", jsm::ThreeDisplay)
+    Base.show(io, m, getfield(jsm, :jsm))
+end
+
 
 include("camera.jl")
 include("webgl.jl")

@@ -162,7 +162,9 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, _font, aoffsetve
     scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
-    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
+    aoffset = AbstractPlotting.align_offset(
+        Point2f0(0), positions2d[end], atlas, rscale, font, to_align(aoffsetvec)
+    )
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
     uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
     positions = map(positions2d) do p

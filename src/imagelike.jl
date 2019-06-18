@@ -172,6 +172,6 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     on(model2) do model
         three_geom.matrix.set((model')...)
     end
-    three_geom.material.side = THREE.BackSide
+    three_geom.material.side = jsctx.BackSide
     jsscene.add(three_geom)
 end

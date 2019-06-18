@@ -44,26 +44,26 @@ function jl2js(jsctx, color::Sampler{T, 1}) where T
     data = to_js_buffer(jsctx, color.data)
     tex = jsctx.THREE.new.DataTexture(
         data, size(color, 1), 1,
-        three_format(T), three_type(eltype(T))
+        three_format(jsctx, T), three_type(jsctx, eltype(T))
     )
-    tex.minFilter = three_filter(color.minfilter)
-    tex.magFilter = three_filter(color.magfilter)
-    tex.wrapS = three_repeat(color.repeat[1])
+    tex.minFilter = three_filter(jsctx, color.minfilter)
+    tex.magFilter = three_filter(jsctx, color.magfilter)
+    tex.wrapS = three_repeat(jsctx, color.repeat[1])
     tex.anisotropy = color.anisotropic
     tex.needsUpdate = true
     return tex
 end
 
-function jl2js(jsctx, color::Sampler{T}) where T
+function jl2js(jsctx, color::Sampler{T, 2}) where T
     data = to_js_buffer(jsctx, color.data)
     tex = jsctx.THREE.new.DataTexture(
         data, size(color, 1), size(color, 2),
-        three_format(T), three_type(eltype(T))
+        three_format(jsctx, T), three_type(jsctx, eltype(T))
     )
-    tex.minFilter = three_filter(color.minfilter)
-    tex.magFilter = three_filter(color.magfilter)
-    tex.wrapS = three_repeat(color.repeat[1])
-    tex.wrapT = three_repeat(color.repeat[2])
+    tex.minFilter = three_filter(jsctx, color.minfilter)
+    tex.magFilter = three_filter(jsctx, color.magfilter)
+    tex.wrapS = three_repeat(jsctx, color.repeat[1])
+    tex.wrapT = three_repeat(jsctx, color.repeat[2])
     tex.anisotropy = color.anisotropic
     tex.needsUpdate = true
     return tex
@@ -74,14 +74,14 @@ function jl2js(jsctx, color::Sampler{T, 3}) where T
     tex = jsctx.THREE.new.DataTexture3D(
         data, size(color, 1), size(color, 2), size(color, 3)
     )
-    tex.minFilter = three_filter(color.minfilter)
-    tex.magFilter = three_filter(color.magfilter)
-    tex.format = three_format(T)
-    tex.type = three_type(eltype(T))
+    tex.minFilter = three_filter(jsctx, color.minfilter)
+    tex.magFilter = three_filter(jsctx, color.magfilter)
+    tex.format = three_format(jsctx, T)
+    tex.type = three_type(jsctx, eltype(T))
 
-    tex.wrapS = three_repeat(color.repeat[1])
-    tex.wrapT = three_repeat(color.repeat[2])
-    tex.wrapR = three_repeat(color.repeat[3])
+    tex.wrapS = three_repeat(jsctx, color.repeat[1])
+    tex.wrapT = three_repeat(jsctx, color.repeat[2])
+    tex.wrapR = three_repeat(jsctx, color.repeat[3])
 
     tex.anisotropy = color.anisotropic
     tex.needsUpdate = true
@@ -128,35 +128,35 @@ JSCall.@jsfun function create_material(THREE, vert, frag, uniforms)
     return material
 end
 
-three_format(::Type{<: Real}) = THREE.RedFormat
-three_format(::Type{<: RGB}) = THREE.RGBFormat
-three_format(::Type{<: RGBA}) = THREE.RGBAFormat
+three_format(jsctx, ::Type{<: Real}) = jsctx.RedFormat
+three_format(jsctx, ::Type{<: RGB}) = jsctx.RGBFormat
+three_format(jsctx, ::Type{<: RGBA}) = jsctx.RGBAFormat
 
-three_type(::Type{Float16}) = THREE.FloatType
-three_type(::Type{Float32}) = THREE.FloatType
-three_type(::Type{N0f8}) = THREE.UnsignedByteType
+three_type(jsctx, ::Type{Float16}) = jsctx.FloatType
+three_type(jsctx, ::Type{Float32}) = jsctx.FloatType
+three_type(jsctx, ::Type{N0f8}) = jsctx.UnsignedByteType
 
 function to_js_buffer(jsctx, array::AbstractArray{T}) where T
-    return to_js_buffer(reinterpret(eltype(T), array))
+    return to_js_buffer(jsctx, reinterpret(eltype(T), array))
 end
 function to_js_buffer(jsctx, array::AbstractArray{Float32})
-    return jsctx.Float32Array.from(vec(array))
+    return jsctx.window.Float32Array.from(vec(array))
 end
 function to_js_buffer(jsctx, array::AbstractArray{<: AbstractFloat})
-    return jsctx.Float32Array.from(vec(Float32.(array)))
+    return jsctx.window.Float32Array.from(vec(Float32.(array)))
 end
 function to_js_buffer(jsctx, array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
-    return jsctx.Uint8Array.from(vec(array))
+    return jsctx.window.Uint8Array.from(vec(array))
 end
 
-function three_filter(sym)
-    sym == :linear && return THREE.LinearFilter
-    sym == :nearest && return THREE.NearestFilter
+function three_filter(jsctx, sym)
+    sym == :linear && return jsctx.LinearFilter
+    sym == :nearest && return jsctx.NearestFilter
 end
-function three_repeat(s::Symbol)
-    s == :clamp_to_edge && return THREE.ClampToEdgeWrapping
-    s == :mirrored_repeat && return THREE.MirroredRepeatWrapping
-    s == :repeat && return THREE.RepeatWrapping
+function three_repeat(jsctx, s::Symbol)
+    s == :clamp_to_edge && return jsctx.ClampToEdgeWrapping
+    s == :mirrored_repeat && return jsctx.MirroredRepeatWrapping
+    s == :repeat && return jsctx.RepeatWrapping
 end
 using StaticArrays
 
