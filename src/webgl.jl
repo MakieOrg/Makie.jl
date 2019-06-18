@@ -41,7 +41,6 @@ function jl2js(jsctx, val::RGB)
 end
 
 function jl2js(jsctx, color::Sampler{T, 1}) where T
-
     data = to_js_buffer(jsctx, color.data)
     tex = jsctx.THREE.new.DataTexture(
         data, size(color, 1), 1,
@@ -148,7 +147,7 @@ function to_js_buffer(jsctx, array::AbstractArray{Float32})
     return jsctx.window.Float32Array.from(vec(array))
 end
 function to_js_buffer(jsctx, array::AbstractArray{<: AbstractFloat})
-    return jsctx.window.Float32Array.from(vec(Float32.(array)))
+    return jsctx.window.Float32Array.from(vec(array))
 end
 function to_js_buffer(jsctx, array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
     return jsctx.window.Uint8Array.from(vec(array))
