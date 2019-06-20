@@ -20,6 +20,7 @@ pkg"up; add https://github.com/SimonDanisch/ShaderAbstractions.jl https://github
 ```julia
 using Pkg
 pkg"rm ShaderAbstractions WGLMakie; free GeometryBasics AbstractPlotting WebIO JSCall MakieGallery"
+```
 
 Warning - this package is **in development** and **may break often**. 
 
