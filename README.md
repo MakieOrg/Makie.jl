@@ -7,7 +7,7 @@
 From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
 
-**Documentation**: [![][docs-old-img]][docs-old-url] [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+**Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
 
 Build status: [![][gitlab-img]][gitlab-url]
 
