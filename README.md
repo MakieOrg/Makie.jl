@@ -11,9 +11,15 @@ WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots
 # Installation
 
 ```julia
-]add https://github.com/SimonDanisch/ShaderAbstractions.jl
- add https://github.com/JuliaPlots/WGLMakie.jl
+using Pkg
+pkg"up; add https://github.com/SimonDanisch/ShaderAbstractions.jl https://github.com/JuliaPlots/WGLMakie.jl GeometryBasics#master Tables Observables AbstractPlotting#sd-webgl GeometryTypes JSCall#master StaticArrays WebIO#sd-httpheader RDatasets DataFrames StatsMakie MakieGallery#master"
 ```
+
+## Teardown (if you want to uninstall)
+
+```julia
+using Pkg
+pkg"rm ShaderAbstractions WGLMakie; free GeometryBasics AbstractPlotting WebIO JSCall MakieGallery"
 
 Warning - this package is **in development** and **may break often**. 
 
