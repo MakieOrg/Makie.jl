@@ -13,12 +13,10 @@ Build status: [![][gitlab-img]][gitlab-url]
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
-[docs-old-img]:    https://img.shields.io/badge/docs-old-lightgrey.svg
-[docs-old-url]:    http://makie.juliaplots.org/stable/
-[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-stable-url]: http://juliaplots.org/MakieGallery.jl/stable/
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg
+[docs-stable-url]: http://makie.juliaplots.org/stable/
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
-[docs-master-url]: http://juliaplots.org/MakieGallery.jl/stable/
+[docs-master-url]: http://makie.juliaplots.org/dev/
 
 
 # Installation
