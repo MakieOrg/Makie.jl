@@ -95,6 +95,17 @@ function Base.resize!(scene::Scene, rect::Rect2D)
 end
 
 """
+    getscreen(scene::Scene)
+Gets the current screen a scene is associated with.
+Returns nothing if not yet displayed on a screen.
+"""
+function getscreen(scene::Scene)
+    isempty(scene.current_screens) && return nothing
+    # TODO, when would we actually get a specific screen?
+    return first(scene.current_screens)
+end
+
+"""
     `update!(p::Scene)`
 
 Updates a `Scene` and all its children.

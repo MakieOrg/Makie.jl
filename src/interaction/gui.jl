@@ -218,8 +218,6 @@ function plot!(splot::Button)
     splot
 end
 
-window_open(scene::Scene) = getscreen(scene) != nothing && isopen(getscreen(scene))
-
 function playbutton(f, scene, range, rate = (1/30))
     b = button!(scene, "▶", raw = true)[end]
     isplaying = Ref(false)
@@ -230,7 +228,7 @@ function playbutton(f, scene, range, rate = (1/30))
             @async begin
                 b.plots[1][1][] = "𝅛𝅛"
                 tstart = time()
-                while (isplaying[] && window_open(scene))
+                while (isplaying[] && isopen(scene))
                     if time() - tstart >= rate
                         f(range[play_idx[]])
                         play_idx[] = mod1(play_idx[] + 1, length(range))
