@@ -86,11 +86,7 @@ function render_frame(screen::Screen)
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
     GLAbstraction.render(screen, false)
-    #Read all the selection queries
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    for query_func in selection_queries
-        query_func(fb.objectid, w, h)
-    end
+
     glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
     glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
