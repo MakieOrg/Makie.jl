@@ -22,6 +22,16 @@ function register_backend!(backend::AbstractBackend)
     nothing
 end
 
+function push_screen!(scene::Scene, display::AbstractDisplay)
+    push!(scene.current_screens, display)
+    on(events(scene).window_open) do is_open
+        # when screen closes, it should set the scene isopen event to false
+        # so that's when we can remove the display
+        if !is_open
+            filter!(x-> x !== display, scene.current_screens)
+        end
+    end
+end
 
 function Base.display(d::PlotDisplay, scene::Scene)
     # set update to true, without triggering an event
@@ -29,7 +39,9 @@ function Base.display(d::PlotDisplay, scene::Scene)
     update!(scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
-        return backend_display(current_backend[], scene)
+        screen = backend_display(current_backend[], scene)
+        push_screen!(scene, screen)
+        return screen
     catch ex
         if ex isa MethodError && ex.f in (backend_display, backend_show)
             throw(MethodError(display, (d, scene)))
@@ -54,7 +66,11 @@ for M in (MIME"text/plain", MIME)
         update!(scene)
         res = get(io, :juno_plotsize, nothing)
         res !== nothing && resize!(scene, res...)
-        return backend_show(current_backend[], io, m, scene)
+        screen = backend_show(current_backend[], io, m, scene)
+
+        # E.g. text/plain doesn't have a display
+        screen !== nothing && push_screen!(scene, screen)
+        return screen
     end
 end
 
@@ -239,6 +255,7 @@ function VideoStream(scene::Scene;
     path = joinpath(dir, "$(gensym(:video)).mkv")
     update!(scene)
     screen = backend_display(current_backend[], scene)
+    push_screen!(scene, screen)
     _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1

@@ -1,8 +1,40 @@
 export mouseover, mouse_selection, mouseposition, hovered_scene
 export select_rectangle
 
-mouseover() = error("not implemented")
 
+"""
+    mouseover(scene::SceneLike, plots::AbstractPlot...)
+
+Returns true if the mouse currently hovers any of `plots`.
+"""
+function mouseover(scene::SceneLike, plots::AbstractPlot...)
+    p, idx = mouse_selection(scene)
+    return p in flatten_plots(plots)
+end
+
+"""
+    onpick(f, scene::SceneLike, plots::AbstractPlot...)
+
+Calls `f(idx)`` whenever the mouse is over any of `plots`.
+`idx` is an index, e.g. when over a scatter plot, it will be the index of the
+hovered element
+"""
+function onpick(f, scene::SceneLike, plots::AbstractPlot...)
+    fplots = flatten_plots(plots)
+    map_once(events(scene).mouseposition) do mp
+        p, idx = mouse_selection(scene)
+        (p in fplots) && f(idx)
+        return
+    end
+end
+
+"""
+    mouse_selection(scene::Scene)
+Returns the plot that is under the current mouse position
+"""
+function mouse_selection(scene::Scene)
+    pick(scene, events(scene).mouseposition[])
+end
 
 function flatten_plots(x::Atomic, plots = AbstractPlot[])
     if isempty(x.plots)
@@ -27,8 +59,11 @@ function flatten_plots(array, plots = AbstractPlot[])
     plots
 end
 
-# What does this function do?
-function mouse_in_scene(scene)
+"""
+    mouse_in_scene(scene::Scene)
+returns the mouseposition relative to `scene`
+"""
+function mouse_in_scene(scene::Scene)
     p = rootparent(scene)
     lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
         Vec(mp) .- minimum(sa)
@@ -37,21 +72,29 @@ end
 
 
 """
-    mouse_selection(scene)
-
-Returns the plot under the current mouse position in `scene`.
+Return the plot under pixel position x y
 """
-function mouse_selection
-    # TODO this needs to be implemented here via select_mouse_native
+function pick(scene::SceneLike, x, y)
+    return pick(scene, Vec{2, Float64}(x, y))
+end
+
+
+"""
+    pick(scene::Scene, xy::VecLike)
+Return the plot under pixel position xy
+"""
+function pick(scene::Scene, xy)
+    screen = getscreen(scene)
+    screen === nothing && return nothing
+    pick(screen, Vec{2, Float64}(xy))
 end
 
 """
-Return the plot under pixel position x y
+Normalizes mouse position relative to the screen rectangle
 """
-pick(scene::SceneLike, x, y) = pick(scene, Float64.((x, y)))
-
-# What does this function do?
-to_screen(scene, mpos) = Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
+function screen_relative(scene::Scene, mpos)
+    return Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
+end
 
 """
     mouseposition(scene = hovered_scene()) -> pos
@@ -61,7 +104,13 @@ given `scene`.
 By default uses the `scene` that the mouse is currently hovering over.
 """
 function mouseposition(scene = hovered_scene())
-    to_world(scene, to_screen(scene, events(scene).mouseposition[]))
+    to_world(
+        scene,
+        screen_relative(
+            scene,
+            events(scene).mouseposition[]
+        )
+    )
 end
 
 """
