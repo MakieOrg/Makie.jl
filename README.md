@@ -136,6 +136,7 @@ To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
 ```julia
+import Pkg
 # add PackageCompiler and other dependencies
 Pkg.add.(["PackageCompiler", "AbstractPlotting", "GDAL", "GeometryTypes", "MakieGallery", "RDatasets"])
 using PackageCompiler
