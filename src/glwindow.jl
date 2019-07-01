@@ -19,8 +19,6 @@ function (sp::PostprocessPrerender)()
     glDepthMask(GL_TRUE)
     glDisable(GL_DEPTH_TEST)
     glDisable(GL_BLEND)
-    glDisable(GL_STENCIL_TEST)
-    glStencilMask(0xff)
     glDisable(GL_CULL_FACE)
     nothing
 end
@@ -31,7 +29,7 @@ mutable struct GLFramebuffer
     id         ::NTuple{2, GLuint}
     color      ::Texture{RGBA{N0f8}, 2}
     objectid   ::Texture{Vec{2, GLushort}, 2}
-    depth      ::Texture{Float32, 2}
+    depth      ::Texture{GLAbstraction.DepthStencil_24_8, 2}
     color_luma ::Texture{RGBA{N0f8}, 2}
     postprocess::NTuple{3, PostProcessROBJ}
 end
@@ -104,16 +102,17 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 
     depth_buffer = Texture(
-        Float32, fb_size,
+        Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
         minfilter = :nearest, x_repeat = :clamp_to_edge,
-        internalformat = GL_DEPTH_COMPONENT32F,
-        format = GL_DEPTH_COMPONENT
+        internalformat = GL_DEPTH24_STENCIL8,
+        format = GL_DEPTH_STENCIL
     )
 
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
+    attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     @assert status == GL_FRAMEBUFFER_COMPLETE

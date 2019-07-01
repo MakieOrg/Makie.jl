@@ -35,11 +35,14 @@ function setup!(screen)
                 a = rect[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
+                bits = GL_STENCIL_BUFFER_BIT
+                glClearStencil(id)
                 if clear[]
                     c = color[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
-                    glClear(GL_COLOR_BUFFER_BIT)
+                    bits |= GL_COLOR_BUFFER_BIT
+                    glClear(bits)
                 end
             end
         end
@@ -60,15 +63,24 @@ function render_frame(screen::Screen)
     wh = Int.(framebuffer_size(nw))
     resize!(fb, wh)
     w, h = wh
-    glDisable(GL_STENCIL_TEST)
+    glEnable(GL_STENCIL_TEST)
     #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0xff)
+    glClearStencil(0)
     glClearColor(0,0,0,0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     setup!(screen)
+
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
     GLAbstraction.render(screen, true)
+    glDisable(GL_STENCIL_TEST)
+
     # transfer color to luma buffer and apply fxaa
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
     glDrawBuffer(GL_COLOR_ATTACHMENT0)
@@ -85,7 +97,11 @@ function render_frame(screen::Screen)
     #prepare for non anti aliased pass
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
     GLAbstraction.render(screen, false)
+    glDisable(GL_STENCIL_TEST)
     #Read all the selection queries
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     for query_func in selection_queries
@@ -113,6 +129,7 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
         found || continue
         a = rect[]
         glViewport(minimum(a)..., widths(a)...)
+        glStencilFunc(GL_EQUAL, screenid, 0xff)
         if fxaa && elem[:fxaa][]
             render(elem)
         end
