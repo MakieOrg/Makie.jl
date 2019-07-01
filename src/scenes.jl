@@ -146,6 +146,7 @@ end
 function campixel(scene::Scene)
     sub = child(scene)
     campixel!(sub)
+    sub.theme.attributes[:clear] = Observable(false)
     sub
 end
 
