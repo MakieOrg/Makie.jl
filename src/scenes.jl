@@ -100,10 +100,15 @@ Gets the current screen a scene is associated with.
 Returns nothing if not yet displayed on a screen.
 """
 function getscreen(scene::Scene)
-    isempty(scene.current_screens) && return nothing
+    if isempty(scene.current_screens)
+        isroot(scene) && return nothing # stop search
+        return getscreen(parent(scene)) # screen could be in parent
+    end
     # TODO, when would we actually get a specific screen?
     return first(scene.current_screens)
 end
+
+getscreen(scene::SceneLike) = getscreen(rootparent(scene))
 
 """
     `update!(p::Scene)`

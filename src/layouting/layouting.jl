@@ -207,6 +207,7 @@ function layout(plots::Vector{T}, dim; parent = Scene(clear = false), sizes = no
             resize!(p, IRect(minimum(a) .+ (mask .* last), new_w))
         end
         push!(parent.children, p)
+        p.parent = parent
         nodes = map(fieldnames(Events)) do field
             if field != :window_area
                 connect!(getfield(parent.events, field), getfield(p.events, field))

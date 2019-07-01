@@ -32,7 +32,7 @@ end
     mouse_selection(scene::Scene)
 Returns the plot that is under the current mouse position
 """
-function mouse_selection(scene::Scene)
+function mouse_selection(scene::SceneLike)
     pick(scene, events(scene).mouseposition[])
 end
 
@@ -63,7 +63,7 @@ end
     mouse_in_scene(scene::Scene)
 returns the mouseposition relative to `scene`
 """
-function mouse_in_scene(scene::Scene)
+function mouse_in_scene(scene::SceneLike)
     p = rootparent(scene)
     lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
         Vec(mp) .- minimum(sa)
@@ -83,9 +83,9 @@ end
     pick(scene::Scene, xy::VecLike)
 Return the plot under pixel position xy
 """
-function pick(scene::Scene, xy)
+function pick(scene::SceneLike, xy)
     screen = getscreen(scene)
-    screen === nothing && return nothing
+    screen === nothing && return (nothing, 0)
     pick(screen, Vec{2, Float64}(xy))
 end
 
