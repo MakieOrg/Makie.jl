@@ -389,7 +389,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # This is a bit shady, since it's a global setting affecting subsequent plots
     # But lets stick with this for now, to make buttons/slider etc more usable
     # TODO do this better
-    for key in (:center, :raw, :camera, :resolution)
+    for key in (:center, :raw, :camera)
         if haskey(plot_attributes, key)
             scene_attributes[key] = pop!(plot_attributes, key)
         end
