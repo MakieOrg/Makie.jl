@@ -176,7 +176,9 @@ TODO add description
         textsize = 20,
         clicks = 0,
         position = (10, 10),
-        padvalue = 0.15
+        padvalue = 0.15,
+        raw = true,
+        camera = campixel!
     )
 end
 
@@ -305,11 +307,14 @@ function popup(parent, position, width)
         IRect(p, Point2f0(wh) .- Point2f0(0, hwidth - 1))
     end
     vis = Node(false)
-    popup = Scene(parent, parea,
+    popup = Scene(
+        parent, parea,
         visible = vis, raw = true, camera = campixel!,
-        backgroundcolor = RGBAf0(0.95, 0.95, 0.95, 1.0)
+        backgroundcolor = RGBAf0(0.95, 0.8, 0.95, 1.0),
+        clear = true
     )
-    header = Scene(popup, harea,
+    header = Scene(
+        popup, harea,
         backgroundcolor = RGBAf0(0.90, 0.90, 0.90, 1.0), visible = vis,
         raw = true, camera = campixel!
     )
@@ -322,10 +327,8 @@ function popup(parent, position, width)
         end
         return
     end
-    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white)
-    scene2 = Scene(popup, theme = theme(popup))
-    campixel!(scene2)
-    Popup(scene2, vis, pos_n, width_n)
+    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :yellow)
+    Popup(popup, vis, pos_n, width_n)
 end
 
 """
