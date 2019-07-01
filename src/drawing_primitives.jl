@@ -291,18 +291,23 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
             c = convert_mesh_color(c, cmap, crange)
             if isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh) || isa(m, GLNormalVertexcolorMesh)
                 m
-            elseif isa(c, Colorant)
+            elseif c isa Colorant
                 get!(gl_attributes, :color, Node(c))[] = c
                 if !(isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
                     GLNormalMesh(m)
                 else
                     m
                 end
-            elseif isa(c, AbstractMatrix{<: Colorant})
+            elseif c isa AbstractMatrix{<: Colorant}
                 get!(gl_attributes, :color, Node(c))[] = c
                 m
-            else
+            elseif c isa AbstractVector{<: Colorant}
+                if length(c) != length(vertices(m))
+                    error("Please use the same amount of colors as vertices. Found: $(length(vertices(m))) vertices, and $(length(c)) colors")
+                end
                 HomogenousMesh(GLNormalMesh(m), Dict{Symbol, Any}(:color => c))
+            else
+                error("Unsupported color type: $(typeof(c))")
             end
         end
         visualize(mesh, Style(:default), gl_attributes).children[]

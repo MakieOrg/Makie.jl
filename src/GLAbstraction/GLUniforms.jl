@@ -88,11 +88,11 @@ gluniform(location::GLint, x::Vector{GLuint})  = glUniform1uiv(location, length(
 
 
 glsl_typename(x::T) where {T} = glsl_typename(T)
-glsl_typename(t::Type{Nothing})     = "Nothing"
-glsl_typename(t::Type{GLfloat})  = "float"
+glsl_typename(t::Type{Nothing}) = "Nothing"
+glsl_typename(t::Type{GLfloat}) = "float"
 glsl_typename(t::Type{GLdouble}) = "double"
-glsl_typename(t::Type{GLuint})   = "uint"
-glsl_typename(t::Type{GLint})    = "int"
+glsl_typename(t::Type{GLuint}) = "uint"
+glsl_typename(t::Type{GLint}) = "int"
 glsl_typename(t::Type{T}) where {T <: Union{StaticVector, Colorant}} = string(opengl_prefix(eltype(T)), "vec", length(T))
 glsl_typename(t::Type{TextureBuffer{T}}) where {T} = string(opengl_prefix(eltype(T)), "samplerBuffer")
 

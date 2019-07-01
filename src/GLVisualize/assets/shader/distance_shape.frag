@@ -21,7 +21,7 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
 
 uniform float           stroke_width;
 uniform float           glow_width;
-uniform int             shape; // shape is a uniform for now. Making them a varying && using them for control flow is expected to kill performance
+uniform int             shape; // shape is a uniform for now. Making them a in && using them for control flow is expected to kill performance
 uniform vec2            resolution;
 uniform bool            transparent_picking;
 
