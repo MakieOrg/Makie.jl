@@ -267,11 +267,17 @@ end
 
 function sample_color(f, ui, colormesh, v)
     mpos = ui.events.mouseposition
-    sub = Scene(ui, transformation = Transformation(), px_area = pixelarea(ui), theme = theme(ui))
+    sub = Scene(
+        ui, transformation = Transformation(), px_area = pixelarea(ui),
+        theme = theme(ui)
+    )
+    # FIXME, we need an api for this!
+    sub.theme.attributes[:clear] = Observable(false)
     select = scatter!(
         sub, lift((p, a)-> [Point2f0(p) .- minimum(a)], mpos, pixelarea(sub)),
         markersize = 15, color = (:white, 0.2), strokecolor = :white,
-        strokewidth = 6, visible = lift(identity, theme(ui, :visible)), raw = true
+        strokewidth = 6, visible = lift(identity, theme(ui, :visible)), raw = true,
+        overdraw = true
     )[end]
     onany(mpos, ui.events.mousebuttons) do mp, mb
         bb = FRect2D(boundingbox(colormesh))
@@ -308,8 +314,7 @@ function popup(parent, position, width)
     popup = Scene(
         parent, parea,
         visible = vis, raw = true, camera = campixel!,
-        backgroundcolor = RGBAf0(0.95, 0.8, 0.95, 1.0),
-        clear = true
+        backgroundcolor = RGBAf0(0.95, 0.95, 0.95, 1.0)
     )
     header = Scene(
         popup, harea,
@@ -318,14 +323,9 @@ function popup(parent, position, width)
     )
     initialized = Ref(false)
     but = button!(header, "x", strokewidth = 0.0) do click
-        if initialized[]
-            vis[] = !vis[]
-        else
-            initialized[] = true
-        end
+        vis[] = !vis[]
         return
     end
-    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :yellow)
     Popup(popup, vis, pos_n, width_n)
 end
 
@@ -360,8 +360,7 @@ function colorswatch(scene = Scene(camera = campixel!)) # TODO convert to Recipe
     pop.open[] = false
     on(scene.events.mousebuttons) do mb
         if ispressed(mb, Mouse.left)
-            plot, idx = mouse_selection(scene)
-            if plot in swatch.plots
+            if mouseover(scene, swatch)
                 mpos = Point2f0(events(scene).mouseposition[])
                 mpos = mpos .- Point2f0(minimum(pixelarea(scene)[]))
                 pop.position[] = mpos .+ Point2f0(50, -50)
