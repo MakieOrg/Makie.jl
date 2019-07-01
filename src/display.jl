@@ -69,7 +69,7 @@ for M in (MIME"text/plain", MIME)
         screen = backend_show(current_backend[], io, m, scene)
 
         # E.g. text/plain doesn't have a display
-        screen !== nothing && push_screen!(scene, screen)
+        screen isa AbstractScreen && push_screen!(scene, screen)
         return screen
     end
 end
