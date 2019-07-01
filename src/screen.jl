@@ -45,7 +45,7 @@ end
 GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
-Base.wait(scene::Scene) = wait(global_gl_screen()) # TODO per scene screen
+Base.wait(scene::Scene) = wait(getscreen(scene))
 Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.size(x::Screen) = size(x.framebuffer)
 
