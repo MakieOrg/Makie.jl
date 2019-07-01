@@ -129,7 +129,7 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
-        sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
+        # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
         for (zindex, screenid, elem) in screen.renderlist
             found, rect, clear = id2rect(screen, screenid)
             found || continue
