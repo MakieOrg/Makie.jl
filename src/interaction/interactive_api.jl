@@ -86,7 +86,7 @@ Return the plot under pixel position xy
 function pick(scene::SceneLike, xy)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
-    pick(screen, Vec{2, Float64}(xy))
+    pick(scene, screen, Vec{2, Float64}(xy))
 end
 
 """
