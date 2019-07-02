@@ -371,6 +371,7 @@ function Scene(
         current_screens,
         scene
     )
+    scene.theme.attributes[:clear] = Observable(false)
     push!(scene.children, child)
     child
 end
