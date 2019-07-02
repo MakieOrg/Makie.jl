@@ -130,8 +130,11 @@ end
 
 function _add_scene!(jsctx, scene::Scene, scene_graph = [])
     js_scene = jsctx.THREE.new.Scene()
-    cam_func = add_camera!(jsctx, js_scene, scene)
-    push!(scene_graph, (js_scene, cam_func))
+    cam, func = add_camera!(jsctx, js_scene, scene)
+
+    getfield(jsctx, :scene2jsscene)[scene] = (js_scene, cam)
+
+    push!(scene_graph, (js_scene, (cam, func)))
     for plot in scene.plots
         add_plots!(jsctx, js_scene, scene, plot)
     end
@@ -153,10 +156,15 @@ function add_scene!(jsctx, scene::Scene)
     end
 end
 
-struct ThreeDisplay
+struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     jsm::JSModule
     renderer::JSObject
     session_cache::Dict{UInt64, JSObject}
+    scene2jsscene::Dict{Scene, Tuple{JSObject, JSObject}}
+end
+
+function to_jsscene(three::ThreeDisplay, scene::Scene)
+    return getfield(three, :scene2jsscene)[scene]
 end
 
 function Base.getproperty(x::ThreeDisplay, field::Symbol)
@@ -196,7 +204,11 @@ function ThreeDisplay(width::Integer, height::Integer)
     renderer.setSize(width, height)
     renderer.setClearColor("#ffffff")
     renderer.setPixelRatio(jsm.window.devicePixelRatio);
-    return ThreeDisplay(jsm, renderer, Dict{Symbol, JSObject}())
+    return ThreeDisplay(
+        jsm, renderer,
+        Dict{Symbol, JSObject}(),
+        Dict{Scene, JSObject}()
+    )
 end
 
 function get_comm(jso)
@@ -230,19 +242,19 @@ include("particles.jl")
 include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
+include("picking.jl")
 
 
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end
 
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"text/html", scene::Scene)
-    Base.show(io, m, three_scene(scene))
-end
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::WebIO.WEBIO_APPLICATION_MIME, scene::Scene)
-    Base.show(io, m, three_scene(scene))
-end
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"application/prs.juno.plotpane+html", scene::Scene)
-    Base.show(io, m, three_scene(scene))
+
+for M in (MIME"text/html", WebIO.WEBIO_APPLICATION_MIME, MIME"application/prs.juno.plotpane+html")
+    @eval function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
+        screen = three_scene(scene)
+        Base.show(io, m, screen)
+        return screen
+    end
 end
 
 function __init__()
