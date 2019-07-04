@@ -8,6 +8,21 @@ using Colors: N0f8
 tlength(T) = length(T)
 tlength(::Type{<: Real}) = 1
 
+struct JSBuffer{T} <: AbstractVector{T}
+    buffer::JSObject
+    length::Int
+end
+
+Base.size(x::JSBuffer) = (x.length)
+
+function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
+    setindex!(x, [value], index:(index+1))
+end
+function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
+    checkbounds(x, value, index)
+    flat = reinterpret(eltype(T), attribute)
+    x.buffer.set(value, first(index))
+end
 function JSInstanceBuffer(jsctx, attribute::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), attribute)
     js_f32 = jsctx.window.new.Float32Array(flat)
@@ -15,10 +30,12 @@ function JSInstanceBuffer(jsctx, attribute::AbstractVector{T}) where T
 end
 
 
-
-function JSBuffer(jsctx, buff::AbstractVector{T}) where T
+function JSBuffer(THREE, buff::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), buff)
-    return jsctx.THREE.new.Float32BufferAttribute(flat, tlength(T))
+    return JSBuffer{T}(
+        THREE.new.Float32BufferAttribute(flat, tlength(T)),
+        length(buff)
+    )
 end
 
 jl2js(jsctx, val::Number) = val
