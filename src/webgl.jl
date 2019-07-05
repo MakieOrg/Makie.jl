@@ -1,5 +1,5 @@
 using Colors, WebIO
-using JSCall, JSExpr
+using JSCall, JSExpr, JSON
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
 using GeometryTypes: Mat4f0
@@ -12,6 +12,21 @@ struct JSBuffer{T} <: AbstractVector{T}
     buffer::JSObject
     length::Int
 end
+jsbuffer(x::JSBuffer) = getfield(x, :buffer)
+
+function WebIO.tojs(jso::JSBuffer)
+    return WebIO.tojs(jsbuffer(jso))
+end
+function JSON.lower(jso::JSBuffer)
+    return JSON.lower(jsbuffer(jso))
+end
+
+function Base.setproperty!(x::JSBuffer, field::Symbol, value)
+    setproperty!(x.buffer, field, value)
+end
+function Base.getproperty(x::JSBuffer, field::Symbol)
+    getproperty(getfield(x, :buffer), field)
+end
 
 Base.size(x::JSBuffer) = (x.length)
 
@@ -19,23 +34,33 @@ function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
     setindex!(x, [value], index:(index+1))
 end
 function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
-    checkbounds(x, value, index)
-    flat = reinterpret(eltype(T), attribute)
-    x.buffer.set(value, first(index))
+    flat = collect(reinterpret(eltype(T), value))
+    jsb = jsbuffer(x)
+    off = (first(index) - 1) * tlength(T)
+    @show off
+    jsb.set(flat, off)
+    jsb.needsUpdate = true
+    return value
 end
-function JSInstanceBuffer(jsctx, attribute::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), attribute)
+
+function JSInstanceBuffer(jsctx, buff::AbstractVector{T}) where T
+    flat = reinterpret(eltype(T), buff)
     js_f32 = jsctx.window.new.Float32Array(flat)
-    return jsctx.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
+    jsbuff = jsctx.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
+    jsbuff.setDynamic(true)
+    buffer = JSBuffer{T}(jsbuff, length(buff))
+    if buff isa Buffer
+        ShaderAbstractions.connect!(buff.updates, buffer)
+    end
+    return buffer
 end
 
 
 function JSBuffer(THREE, buff::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), buff)
-    return JSBuffer{T}(
-        THREE.new.Float32BufferAttribute(flat, tlength(T)),
-        length(buff)
-    )
+    jsbuff = THREE.new.Float32BufferAttribute(flat, tlength(T))
+    jsbuff.setDynamic(true)
+    return JSBuffer{T}(jsbuff, length(buff))
 end
 
 jl2js(jsctx, val::Number) = val
@@ -213,7 +238,7 @@ end
 function wgl_convert(scene, jsctx, ip::InstancedProgram)
     js_vbo = jsctx.THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
-        js_buff = JSBuffer(jsctx, buff).setDynamic(true)
+        js_buff = JSBuffer(jsctx, buff)
         js_vbo.addAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
