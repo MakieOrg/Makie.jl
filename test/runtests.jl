@@ -13,6 +13,12 @@ include("projection_math.jl")
     @test scene[Axis].ticks.title_gap[] == 4
 end
 
+# does this machine have a OPENGL?
+const OPENGL = haskey(ENV, "OPENGL") || haskey(ENV, "GITLAB_CI") # if it's Gitlab, it must be JuliaGPU
+
+# does this machine have FFMPEG?  We'll take it on faith if you tell us...
+const FFMPEG = haskey(ENV, "FFMPEG") || try; run(`ffmpeg -version`); true; catch; false; end;
+
 const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "true")
 
 # if get(ENV, "IS_TRAVIS_CI", "false") == "false"
@@ -67,8 +73,17 @@ if _MINIMAL == "false"
    # curl fails with this for some reason, so it has been ignored.
    curl_exs = ["Earth & Ships"]
 
-   # combine all exceptions into a single Set
-   exc_str = union(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, curl_exs)
+   if OPENGL
+       if FFMPEG
+           # all test infrastructure in place - no exceptions!
+           exc_str = Set()
+       else
+           exc_str = Set(ffmpeg_exs)
+       end
+   else
+       # combine all exceptions into a single Set
+       exc_str = exc_str = union(ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs, save_exs, color_exs, curl_exs)
+   end
 
 else
 
@@ -81,26 +96,58 @@ else
 
 end
 
+if !OPENGL # run software only tests...
 
+    @testset "Gallery short tests" begin
 
-@testset "Gallery short tests" begin
+        # iterate over database
+        @testset "$(database[i].title) (#$i)" for i in 1:length(database)
 
-    # iterate over database
-    @testset "$(database[i].title) (#$i)" for i in 1:length(database)
+               # skip if the title is in the list of exceptions
+              if database[i].title ∈ exc_str
 
-           # skip if the title is in the list of exceptions
-          if database[i].title ∈ exc_str
+                 print(
+                 "Skipping "
+                 * database[i].title *
+                 "\n(removed from tests explicitly)\n"
+                 )
 
-             print("Skipping " * database[i].title * "\n(removed from tests explicitly)\n")
+                 continue
 
-             continue
+               end
 
-           end
+               @debug("Running " * database[i].title * "\n(index $i)\n")
+               # evaluate the entry
+               @test_nowarn MakieGallery.eval_example(database[i]);
 
-           # print("Running " * database[i].title * "\n(index $i)\n")
+       end
 
-           @test_nowarn MakieGallery.eval_example(database[i]);  # evaluate the entry
+    end
 
-   end
+else # full MakieGallery comparisons here
+
+    using GLMakie
+
+    @info("Running full tests - artifacts will be stored!")
+
+    for exc in exc_str
+
+        printstyled("Excluded ", color = :yellow, bold = true)
+        println(exc)
+
+    end
+
+    filter!(entry -> !(entry.title in exc_str), database)
+
+    tested_diff_path = joinpath(@__DIR__, "tested_different")
+    test_record_path = joinpath(@__DIR__, "test_recordings")
+    rm(tested_diff_path, force = true, recursive = true)
+    mkpath(tested_diff_path)
+    rm(test_record_path, force = true, recursive = true)
+    mkpath(test_record_path)
+
+    examples = MakieGallery.record_examples(test_record_path)
+
+    MakieGallery.run_comparison(test_record_path, tested_diff_path)
 
 end
