@@ -854,19 +854,22 @@ end
 """
     showgradients(
         cgrads::AbstractVector{Symbol};
-        h = 0.0, offset = 0.2, textsize = 0.7
+        h = 0.0, offset = 0.2, textsize = 0.7, 
+        resolution = (800, length(cgrads) * 84)
     )::Scene
 
 Plots the given colour gradients arranged as horizontal colourbars.
+If you change the offsets or the font size, you may need to change the resolution.
 """
 function showgradients(
         cgrads::AbstractVector{Symbol};
         h = 0.0,
         offset = 0.4,
-        textsize = 0.7
+        textsize = 0.7,
+        resolution = (800, length(cgrads) * 84)
     )::Scene
 
-    scene = Scene()
+    scene = Scene(resolution = resolution)
 
     map(collect(cgrads)) do cmap
 
