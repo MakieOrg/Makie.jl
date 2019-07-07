@@ -33,11 +33,11 @@ Base.size(x::JSBuffer) = (x.length)
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
     setindex!(x, [value], index:(index+1))
 end
+
 function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
     flat = collect(reinterpret(eltype(T), value))
     jsb = jsbuffer(x)
     off = (first(index) - 1) * tlength(T)
-    @show off
     jsb.set(flat, off)
     jsb.needsUpdate = true
     return value

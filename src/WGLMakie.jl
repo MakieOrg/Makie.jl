@@ -51,7 +51,7 @@ function register_js_events!(comm)
             $(comm)[] = Dict(
                 :scroll => [event.deltaX, event.deltaY]
             )
-            event.preventDefault()
+            # event.preventDefault()
             return false
         end
         document.addEventListener("wheel", wheel, false)
@@ -225,16 +225,6 @@ function three_scene(scene::Scene)
     return jsctx
 end
 
-function Base.show(io::IO, m::MIME"text/html", jsm::ThreeDisplay)
-    Base.show(io, m, getfield(jsm, :jsm))
-end
-function Base.show(io::IO, m::WebIO.WEBIO_APPLICATION_MIME, jsm::ThreeDisplay)
-    Base.show(io, m, getfield(jsm, :jsm))
-end
-function Base.show(io::IO, m::MIME"application/prs.juno.plotpane+html", jsm::ThreeDisplay)
-    Base.show(io, m, getfield(jsm, :jsm))
-end
-
 
 include("camera.jl")
 include("webgl.jl")
@@ -248,19 +238,42 @@ include("picking.jl")
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end
 
-
-for M in (MIME"text/html", WebIO.WEBIO_APPLICATION_MIME, MIME"application/prs.juno.plotpane+html")
-    @eval function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
-        screen = three_scene(scene)
-        Base.show(io, m, screen)
-        return screen
+const WEB_MIMES = (MIME"text/html", WebIO.WEBIO_NODE_MIME, WebIO.WEBIO_APPLICATION_MIME, MIME"application/prs.juno.plotpane+html")
+for M in WEB_MIMES
+    @eval begin
+        function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
+            screen = three_scene(scene)
+            Base.show(io, m, screen)
+            return screen
+        end
+        function Base.show(
+                io::IO, m::$M, x::ThreeDisplay
+            )
+            show(io, m, WebIO.render(x))
+            return x
+        end
     end
 end
+
+
+function WebIO.render(three::ThreeDisplay)
+    WebIO.render(getfield(three, :jsm))
+end
+
+function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
+    return T in WEB_MIMES
+end
+
+
+
 
 function __init__()
     # Make webio stay even after server is down
     ENV["WEBIO_BUNDLE_URL"] = "https://simondanisch.github.io/ReferenceImages/generic_http.js"
     AbstractPlotting.register_backend!(WGLBackend())
+    # TODO hopefully this gets deprecated soon
+    # But some WebIO backends have things easier with this:
+    WebIO.push!(WebIO.renderable_types, ThreeDisplay)
 end
 
 end # module

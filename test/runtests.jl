@@ -1,7 +1,6 @@
 using WGLMakie, AbstractPlotting, WebIO, JSCall
 x = AbstractPlotting.Node(rand(4))
-scene = scatter(x) |> display
-
+scatter(x)
 x[] = rand(4)
 
 three = WGLMakie.three_scene(scene)
