@@ -146,7 +146,7 @@ end
 
 function add_scene!(jsctx, scene::Scene)
     scene_graph = _add_scene!(jsctx, scene)
-    on_any_event(scene) do events...
+    on_redraw(jsctx) do _
         # Fuse all calls in the event loop together!
         JSCall.fused(jsctx.THREE) do
             for (js_scene, (cam, update_func)) in scene_graph
@@ -156,11 +156,32 @@ function add_scene!(jsctx, scene::Scene)
     end
 end
 
-struct ThreeDisplay <: AbstractPlotting.AbstractScreen
+mutable struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     jsm::JSModule
     renderer::JSObject
     session_cache::Dict{UInt64, JSObject}
     scene2jsscene::Dict{Scene, Tuple{JSObject, JSObject}}
+    redraw::Observable{Bool}
+    function ThreeDisplay(
+            jsm::JSModule,
+            renderer::JSObject,
+            session_cache::Dict{UInt64, JSObject},
+            scene2jsscene::Dict{Scene, Tuple{JSObject, JSObject}}
+        )
+        obj = new(jsm, renderer, session_cache, scene2jsscene, Observable(false))
+        finalizer(obj) do obj
+            # TODO we need to clean up the Javascript state
+        end
+        return obj
+    end
+end
+
+function redraw!(three::ThreeDisplay)
+    getfield(three, :redraw)[] = true
+end
+
+function on_redraw(f, three::ThreeDisplay)
+    on(f, getfield(three, :redraw))
 end
 
 function to_jsscene(three::ThreeDisplay, scene::Scene)
@@ -206,8 +227,8 @@ function ThreeDisplay(width::Integer, height::Integer)
     renderer.setPixelRatio(jsm.window.devicePixelRatio);
     return ThreeDisplay(
         jsm, renderer,
-        Dict{Symbol, JSObject}(),
-        Dict{Scene, JSObject}()
+        Dict{UInt64, JSObject}(),
+        Dict{Scene, Tuple{JSObject, JSObject}}()
     )
 end
 
@@ -222,6 +243,9 @@ function three_scene(scene::Scene)
     connect_scene_events!(scene, jsctx.document)
     mousedrag(scene, nothing)
     add_scene!(jsctx, scene)
+    on_any_event(scene) do args...
+        redraw!(jsctx)
+    end
     return jsctx
 end
 

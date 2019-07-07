@@ -9,10 +9,12 @@ tlength(T) = length(T)
 tlength(::Type{<: Real}) = 1
 
 struct JSBuffer{T} <: AbstractVector{T}
+    three::ThreeDisplay
     buffer::JSObject
     length::Int
 end
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
+Base.size(x::JSBuffer) = (getfield(x, :length),)
 
 function WebIO.tojs(jso::JSBuffer)
     return WebIO.tojs(jsbuffer(jso))
@@ -21,17 +23,15 @@ function JSON.lower(jso::JSBuffer)
     return JSON.lower(jsbuffer(jso))
 end
 
-function Base.setproperty!(x::JSBuffer, field::Symbol, value)
-    setproperty!(x.buffer, field, value)
-end
-function Base.getproperty(x::JSBuffer, field::Symbol)
-    getproperty(getfield(x, :buffer), field)
-end
-
-Base.size(x::JSBuffer) = (x.length)
-
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
     setindex!(x, [value], index:(index+1))
+end
+function Base.getindex(x::JSBuffer, idx::Int)
+    jlvalue(jsbuffer(x))[idx]
+end
+
+function Base.setindex!(x::JSBuffer, value::AbstractArray, index::Colon)
+    x[1:length(x)] = value
 end
 
 function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
@@ -40,27 +40,32 @@ function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) 
     off = (first(index) - 1) * tlength(T)
     jsb.set(flat, off)
     jsb.needsUpdate = true
+    redraw!(x.three)
     return value
 end
 
-function JSInstanceBuffer(jsctx, buff::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), buff)
-    js_f32 = jsctx.window.new.Float32Array(flat)
-    jsbuff = jsctx.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
+function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
+    flat = reinterpret(eltype(T), vector)
+    js_f32 = three.window.new.Float32Array(flat)
+    jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
     jsbuff.setDynamic(true)
-    buffer = JSBuffer{T}(jsbuff, length(buff))
-    if buff isa Buffer
-        ShaderAbstractions.connect!(buff.updates, buffer)
+    buffer = JSBuffer{T}(three, jsbuff, length(vector))
+    if vector isa Buffer
+        ShaderAbstractions.connect!(vector, buffer)
     end
     return buffer
 end
 
 
-function JSBuffer(THREE, buff::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), buff)
-    jsbuff = THREE.new.Float32BufferAttribute(flat, tlength(T))
+function JSBuffer(three, vector::AbstractVector{T}) where T
+    flat = reinterpret(eltype(T), vector)
+    jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
     jsbuff.setDynamic(true)
-    return JSBuffer{T}(jsbuff, length(buff))
+    buffer = JSBuffer{T}(three, jsbuff, length(vector))
+    if vector isa Buffer
+        ShaderAbstractions.connect!(vector, buffer)
+    end
+    return buffer
 end
 
 jl2js(jsctx, val::Number) = val
@@ -151,6 +156,7 @@ function to_js_uniforms(scene, jsctx, dict::Dict)
                 prop = getproperty(result, k)
                 prop.value = jl2js(jsctx, val)
                 prop.needsUpdate = true
+                redraw!(jsctx)
             catch e
                 @warn "Error in updating $k: " exception=e
             end
@@ -248,7 +254,7 @@ function wgl_convert(scene, jsctx, ip::InstancedProgram)
 
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
-        js_buff = JSInstanceBuffer(jsctx, buff).setDynamic(true)
+        js_buff = JSInstanceBuffer(jsctx, buff)
         js_vbo.addAttribute(name, js_buff)
     end
     uniforms = to_js_uniforms(scene, jsctx, ip.program.uniforms)
