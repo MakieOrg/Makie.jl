@@ -17,7 +17,7 @@ end
 const OPENGL = haskey(ENV, "OPENGL") || haskey(ENV, "GITLAB_CI") # if it's Gitlab, it must be JuliaGPU
 
 # does this machine have FFMPEG?  We'll take it on faith if you tell us...
-const FFMPEG = haskey(ENV, "FFMPEG") || try; run(`ffmpeg -version`); true; catch; false; end;
+const FFMPEG = haskey(ENV, "FFMPEG") || try; success(`ffmpeg -version`); catch; false end;
 
 const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "true")
 
