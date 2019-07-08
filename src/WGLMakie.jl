@@ -160,7 +160,7 @@ mutable struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     jsm::JSModule
     renderer::JSObject
     session_cache::Dict{UInt64, JSObject}
-    scene2jsscene::Dict{Scene, Tuple{JSObject, JSObject}}
+    scene2jsscene::Dict{Scene, Tuple{JSObject, Any}}
     redraw::Observable{Bool}
     function ThreeDisplay(
             jsm::JSModule,

@@ -11,7 +11,7 @@ function facebuffer(x::AbstractArray{GLTriangle})
 end
 
 function array2color(colors, cmap, crange)
-    cmap = RGBAf0.(to_colormap(cmap), 1.0)
+    cmap = RGBAf0.(Colors.color.(to_colormap(cmap)), 1.0)
     AbstractPlotting.interpolated_getindex.((cmap,), colors, (crange,))
 end
 function array2color(colors::AbstractArray{<: Colorant}, cmap, crange)
