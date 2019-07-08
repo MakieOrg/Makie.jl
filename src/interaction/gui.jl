@@ -255,10 +255,10 @@ struct Popup
 end
 
 
-function textslider(range, label, scene = Scene(camera = campixel!); start = first(range))
-    t = text!(scene, "$label:", raw = true, position = (0, 50), align = (:left, :center))[end]
+function textslider(range, label, scene = Scene(camera = campixel!); start = first(range), textalign = (:left, :center), textpos = (0, 50), kwargs...)
+    t = text!(scene, "$label:", raw = true, position = textpos, align = textalign, kwargs...)[end]
     xp = widths(boundingbox(t))[1]
-    s = slider!(scene, range, position = Point2f0(xp, 0), raw = true, start = start)[end]
+    s = slider!(scene, range, position = Point2f0(xp, 0), raw = true, start = start, kwargs...)[end]
     scene, s[:value]
 end
 
