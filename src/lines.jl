@@ -10,13 +10,16 @@ end
 
 function create_shader(scene::Scene, plot::LineSegments)
     # Potentially per instance attributes
-    positions = plot[1][]
-    startr, endr = 1:2:(length(positions)-1), 2:2:length(positions)
-    segment_start = positions[startr]
-    segment_end = positions[endr]
+    positions = plot[1]
+    startr = lift(p-> 1:2:(length(p)-1), positions)
+    endr = lift(p-> 2:2:length(p), positions)
+    p_start_end = lift(plot[1]) do positions
+        return (positions[startr[]], positions[endr[]])
+    end
+
     per_instance = Dict{Symbol, Any}(
-        :segment_start => segment_start,
-        :segment_end => segment_end,
+        :segment_start => Buffer(lift(first, p_start_end)),
+        :segment_end => Buffer(lift(last, p_start_end)),
     )
     uniforms = Dict{Symbol, Any}()
     for k in (:linewidth, :color)
@@ -26,8 +29,8 @@ function create_shader(scene::Scene, plot::LineSegments)
             uniforms[Symbol("$(k)_start")] = attribute
             uniforms[Symbol("$(k)_end")] = attribute
         else
-            per_instance[Symbol("$(k)_start")] = lift(x-> x[startr], attribute)
-            per_instance[Symbol("$(k)_end")] = lift(x-> x[endr], attribute)
+            per_instance[Symbol("$(k)_start")] = Buffer(lift(x-> x[startr[]], attribute))
+            per_instance[Symbol("$(k)_end")] = Buffer(lift(x-> x[endr[]], attribute))
         end
     end
     uniforms[:resolution] = scene.camera.resolution
