@@ -103,7 +103,7 @@ end
 
 function jl2js(jsctx, color::Sampler{T, 2}) where T
     # cache texture by their pointer
-    key = reinterpret(UInt64, pointer(color.data))
+    key = reinterpret(UInt64, objectid(color.data))
     return get!(jsctx.session_cache, key) do
         data = to_js_buffer(jsctx, color.data)
         tex = jsctx.THREE.new.DataTexture(
@@ -272,7 +272,7 @@ function wgl_convert(scene, jsctx, program::Program)
     js_vbo = jsctx.THREE.new.BufferGeometry()
 
     for (name, buff) in pairs(program.vertexarray)
-        js_buff = JSBuffer(jsctx, buff).setDynamic(true)
+        js_buff = JSBuffer(jsctx, buff)
         js_vbo.addAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(program.vertexarray, :data))

@@ -1,15 +1,18 @@
 
 
+get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
+get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
+get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
 
-get_dim(x::AbstractVector, ind, dim) = x[Tuple(ind)[dim]]
-get_dim(x::AbstractMatrix, ind, dim) = x[ind]
+
 function surface_normals(x, y, z)
     vec(map(CartesianIndices(z)) do i
         i1, imax = CartesianIndex(1, 1), CartesianIndex(size(z))
         ci(x, y) = min(max(i + CartesianIndex(x, y), i1), imax)
         offsets = (ci(-1, -1), ci(1, -1), ci(-1, 1), ci(1, 1))
         normalize(mapreduce(+, init = Vec3f0(0), offsets) do off
-            Vec3f0(get_dim(x, off, 1), get_dim(y, off, 2), z[off])
+            s = size(z)
+            Vec3f0(get_dim(x, off, 1, s), get_dim(y, off, 2, s), z[off])
         end)
     end)
 end
@@ -61,8 +64,8 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
     positions = Buffer(lift(px, py, pz) do x, y, z
         vec(map(CartesianIndices(z)) do i
             GeometryBasics.Point{3, Float32}(
-                get_dim(x, i, 1),
-                get_dim(y, i, 2),
+                get_dim(x, i, 1, size(z)),
+                get_dim(y, i, 2, size(z)),
                 z[i]
             )
         end)
