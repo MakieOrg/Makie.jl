@@ -54,7 +54,7 @@ primitive_shape(x::Shape) = Cint(x)
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width)
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width, :marker_offset)
     per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
