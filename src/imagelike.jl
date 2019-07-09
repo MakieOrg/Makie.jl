@@ -25,8 +25,7 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         VertexArray(mesh);
         uniforms...
     )
-    write(joinpath(@__DIR__, "..", "debug", "$(name).vert"), program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "$(name).frag"), program.fragment_source)
+    debug_shader(name, program)
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = name
@@ -166,8 +165,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
         light_position = Vec3f0(20)
     )
 
-    write(joinpath(@__DIR__, "..", "debug", "volume.vert"), program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "volume.frag"), program.fragment_source)
+    debug_shader("volume", program)
 
     three_geom = wgl_convert(mscene, jsctx, program)
     three_geom.matrixAutoUpdate = false

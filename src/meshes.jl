@@ -96,9 +96,7 @@ end
 function draw_js(jsctx, jsscene, scene::Scene, plot::Mesh)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
-
-    write(joinpath(@__DIR__, "..", "debug", "mesh.vert"), program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "mesh.frag"), program.fragment_source)
+    debug_shader("mesh", program)
     mesh.name = "Mesh"
     update_model!(mesh, plot)
     jsscene.add(mesh)

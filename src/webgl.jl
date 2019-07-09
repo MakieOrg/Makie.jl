@@ -291,6 +291,12 @@ function wgl_convert(scene, jsctx, program::Program)
 end
 
 
+function debug_shader(name, program)
+    dir = joinpath(@__DIR__, "..", "debug")
+    isdir(dir) || mkdir(dir)
+    write(joinpath(dir "$(name).frag"), program.fragment_source)
+end
+
 function update_model!(geom, plot)
     geom.matrixAutoUpdate = false
     geom.matrix.set(plot.model[]'...)

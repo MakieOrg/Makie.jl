@@ -204,8 +204,7 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
 end
 function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
     program = create_shader(scene, plot)
-    write(joinpath(@__DIR__, "..", "debug", "text.vert"), program.program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "text.frag"), program.program.fragment_source)
+    debug_shader("text", program.program)
     mesh = wgl_convert(scene, jsctx, program)
     mesh.name = "Text"
     update_model!(mesh, plot)
@@ -215,9 +214,7 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
 
-    write(joinpath(@__DIR__, "..", "debug", "scatter.vert"), program.program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "scatter.frag"), program.program.fragment_source)
-
+    debug_shader("scatter", program.program)
     mesh.name = "Scatter"
     update_model!(mesh, plot)
     jsscene.add(mesh)

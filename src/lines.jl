@@ -54,8 +54,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::LineSegments)
     program = create_shader(mscene, plot)
     mesh = wgl_convert(mscene, jsctx, program)
     update_model!(mesh, plot)
-    write(joinpath(@__DIR__, "..", "debug", "linesegments.vert"), program.program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "linesegments.frag"), program.program.fragment_source)
+    debug_shader("linesegments", program.program)
     mesh.name = "LineSegments"
     jsscene.add(mesh)
 end
