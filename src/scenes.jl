@@ -271,8 +271,14 @@ if Sys.iswindows()
             Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
         end
     end
+elseif Sys.isapple()
+    function _primary_resolution()
+        s = read(pipeline(`system_profiler SPDisplaysDataType`, `grep Resolution`)) |> String
+        sarr = split(s)
+        return parse.(Int, (sarr[2], sarr[4]))
+    end
 else
-    # TODO implement osx + linux
+    # TODO implement linux
     _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
 end
 
