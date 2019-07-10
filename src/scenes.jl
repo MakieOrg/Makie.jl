@@ -277,6 +277,12 @@ elseif Sys.isapple()
         sarr = split(s)
         return parse.(Int, (sarr[2], sarr[4]))
     end
+# elseif Sys.islinux()
+#     function _primary_resolution()
+#         s = read(pipeline(`xrandr`)) |> String
+#         sp = split(s, '\n')
+#         s1 = sp[4]
+#     end
 else
     # TODO implement linux
     _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
