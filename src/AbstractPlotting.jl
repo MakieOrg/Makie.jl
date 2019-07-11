@@ -1,5 +1,6 @@
 module AbstractPlotting
 
+using FFMPEG # get FFMPEG on any system!
 using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets, PlotUtils
 using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown # documentation
@@ -185,7 +186,7 @@ const config_path = joinpath(homedir(), ".config", "makie", config_file)
 function __init__()
     pushdisplay(PlotDisplay())
     has_ffmpeg[] = try
-        success(`ffmpeg -h`)
+        @ffmpeg_env success(`$ffmpeg -h`)
     catch
         false
     end

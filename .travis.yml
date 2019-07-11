@@ -19,10 +19,10 @@ matrix:
 
 ## uncomment and modify the following lines to manually install system packages
 #addons:
- apt: # apt-get for linux
-   packages:
-   - ffmpeg
-before_script: # homebrew for mac
+#  apt: # apt-get for linux
+#    packages:
+#    - ffmpeg
+before_script:
  - julia -e 'using Pkg; pkg"add MakieGallery#master"'
 
 ## uncomment the following lines to override the default test script
