@@ -232,7 +232,6 @@ struct VideoStream
     path::String
 end
 
-
 """
     VideoStream(scene::Scene, framerate = 24)
 
@@ -242,14 +241,14 @@ Use `save(path, stream; framerate=24)` to save the video.
 """
 function VideoStream(scene::Scene;
                      framerate::Int = 24)
-    if !has_ffmpeg[]
-        error("You can't create a video stream without ffmpeg installed.
-         Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
-         When you download the binaries, please make sure that you add the path to your PATH
-         environment variable.
-         On unix you can install ffmpeg with `sudo apt-get install ffmpeg`.
-        ")
-    end
+    # if !has_ffmpeg[]
+    #     error("You can't create a video stream without ffmpeg installed.
+    #      Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
+    #      When you download the binaries, please make sure that you add the path to your PATH
+    #      environment variable.
+    #      On unix you can install ffmpeg with `sudo apt-get install ffmpeg`.
+    #     ")
+    # end
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
@@ -259,7 +258,7 @@ function VideoStream(scene::Scene;
     _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = @ffmpeg_env open(`$ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
@@ -302,16 +301,16 @@ function save(path::String, io::VideoStream;
     if typ == ".mkv"
         cp(io.path, path, force=true)
     elseif typ == ".mp4"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
         filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
         palette_path = dirname(io.path)
         pname = joinpath(palette_path, "palette.bmp")
         isfile(pname) && rm(pname, force = true)
-        run(`ffmpeg -loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-        run(`ffmpeg -loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
         rm(pname, force = true)
     else
         rm(io.path)
