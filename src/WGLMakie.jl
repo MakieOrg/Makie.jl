@@ -13,7 +13,7 @@ struct WebGL <: ShaderAbstractions.AbstractContext end
 
 function register_js_events!(comm)
     @js begin
-        # TODO, the below doesn't actually work to disable right-click menu
+        @var canvas = this.dom.querySelector("canvas")
         function no_context(event)
             event.preventDefault()
             return false
@@ -24,37 +24,34 @@ function register_js_events!(comm)
             $(comm)[] = Dict(
                 :mouseposition => [event.pageX, event.pageY]
             )
-            # event.preventDefault()
             return false
         end
-        document.addEventListener("mousemove", mousemove, false)
+        canvas.addEventListener("mousemove", mousemove, false)
 
         function mousedown(event)
             $(comm)[] = Dict(
                 :mousedown => event.buttons
             )
-            # event.preventDefault()
             return false
         end
-        document.addEventListener("mousedown", mousedown, false)
+        canvas.addEventListener("mousedown", mousedown, false)
 
         function mouseup(event)
             $(comm)[] = Dict(
                 :mouseup => event.buttons
             )
-            # event.preventDefault()
             return false
         end
-        document.addEventListener("mouseup", mouseup, false)
+        canvas.addEventListener("mouseup", mouseup, false)
 
         function wheel(event)
             $(comm)[] = Dict(
                 :scroll => [event.deltaX, event.deltaY]
             )
-            # event.preventDefault()
+            event.preventDefault()
             return false
         end
-        document.addEventListener("wheel", wheel, false)
+        canvas.addEventListener("wheel", wheel, false)
     end
 end
 
@@ -216,7 +213,7 @@ function ThreeDisplay(width::Integer, height::Integer)
         )
     end
     THREE = jsm.mod
-    canvas = jsm.document.querySelector("canvas")
+    canvas = jsm.this.querySelector("canvas")
     context = canvas.getContext("webgl2");
     renderer = THREE.new.WebGLRenderer(
         antialias = true, canvas = canvas, context = context,
