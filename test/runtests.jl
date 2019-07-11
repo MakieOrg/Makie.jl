@@ -7,7 +7,7 @@ const OPENGL = haskey(ENV, "OPENGL") || haskey(ENV, "GITLAB_CI") || try; success
 OPENGL && @info "OpenGL detected"
 
 # does this machine have FFMPEG?  We'll take it on faith if you tell us...
-const fmp = haskey(ENV, "FFMPEG") || try; AbstractPlotting.@ffmpeg_env success(`ffmpeg -version`); catch; false end;
+const fmp = haskey(ENV, "FFMPEG") || try; AbstractPlotting.@ffmpeg_env success(`$ffmpeg -version`); catch; false end;
 
 const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "true")
 
