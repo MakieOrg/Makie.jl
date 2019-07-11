@@ -31,7 +31,7 @@ begin #basically a singleton for the textureatlas
         'π','∮','⋅','→','∞','∑','∏','∀','∈','ℝ','⌈','⌉','−','⌊','⌋','α','∧','β','∨','ℕ','⊆','₀',
         '⊂','ℤ','ℚ','ℂ','⊥','≠','≡','≤','≪','⊤','⇒','⇔','₂','⇌','Ω','⌀',
     ]
-    const _cache_path = abspath(first(Base.DEPOT_PATH), "makiegallery", ".cache", "texture_atlas.jls")
+    const _cache_path = abspath(first(Base.DEPOT_PATH), "makiegallery", ".cache", "texture_atlas_web.jls")
     const _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
     const _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
 
