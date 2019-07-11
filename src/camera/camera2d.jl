@@ -18,7 +18,7 @@ function cam2d!(scene::SceneLike; kw_args...)
             area = node(:area, FRect(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
-            panbutton = Mouse.right,
+            panbutton = Mouse.left,
             selectionbutton = (Keyboard.space, Mouse.left),
             padding = 0.001,
             last_area = Vec(size(scene))
