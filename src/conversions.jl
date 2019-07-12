@@ -36,12 +36,14 @@ const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
 
 abstract type ConversionTrait end
 
-struct PointBased <: ConversionTrait end
-conversion_trait(x) = nothing
-# nothing trait - don't convert
-convert_arguments(::Nothing, args...) = args
+struct NoConversion <: ConversionTrait end
+# No conversion by default
+conversion_trait(::Type) = NoConversion()
+convert_arguments(::NoConversion, args...) = args
 
+struct PointBased <: ConversionTrait end
 conversion_trait(x::Type{<: XYBased}) = PointBased()
+
 struct SurfaceLike <: ConversionTrait end
 conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
 
