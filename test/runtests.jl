@@ -3,6 +3,7 @@ using Test
 
 scene = scatter(rand(4))
 
+include("conversions.jl")
 include("quaternions.jl")
 include("projection_math.jl")
 
