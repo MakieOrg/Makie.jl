@@ -12,6 +12,8 @@ matrix:
   fast_finish: true
 notifications:
   email: false
+before_script:
+  - julia -e 'using Pkg; Pkg.add(PackageSpec(url="https://github.com/SimonDanisch/ShaderAbstractions.jl"))'
 after_success:
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
 jobs:
