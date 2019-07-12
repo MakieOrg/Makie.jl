@@ -382,7 +382,6 @@ function surface_contours(volume::Volume)
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
         w = maxi .- mi
-        @show mi
         return Mat4f0(
             w[1], 0, 0, 0,
             0, w[2], 0, 0,

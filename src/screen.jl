@@ -353,7 +353,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     return SelectionID{Int}(0, 0)
 end
 
-function AbstractPlotting.pick(scene::Scene, screen::Screen, xy::Vec{2, Float64})
+function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
     sid = pick_native(screen, xy)
     if haskey(screen.cache2plot, sid.id)
         plot = screen.cache2plot[sid.id]
