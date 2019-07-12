@@ -74,7 +74,7 @@ end
 """
 Return the plot under pixel position x y
 """
-function pick(scene::SceneLike, x, y)
+function pick(scene::SceneLike, x::Number, y::Number)
     return pick(scene, Vec{2, Float64}(x, y))
 end
 
