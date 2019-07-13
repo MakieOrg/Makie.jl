@@ -157,7 +157,7 @@ end
 
 """
     step!(s::Stepper)
-    
+
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
 This is useful for generating progressive plot examples.
 """
@@ -343,28 +343,60 @@ end
 
 """
     record(func, scene, path; framerate = 24)
+    record(func, scene, path, iter; framerate = 24)
 
 Records the Scene `scene` after the application of `func` on it for each element
 in `itr` (any iterator).  `func` must accept an element of `itr`.
 
 The animation is then saved to `path`, with the format determined by `path`'s
-extension.
+extension.  Allowable extensions are:
+- `.mkv`  (the default, doesn't need to convert)
+- `.mp4`  (good for Web, most supported format)
+- `.webm` (smallest file size)
+- `.gif`  (largest file size for the same quality)
+
+`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+6 times bigger with the same quality!
 
 Typical usage patterns would look like:
+
 ```julia
 record(scene, "video.mp4", itr) do i
     func(i) # or some other manipulation of the Scene
 end
 ```
 
-## Example
+or, for more tweakability,
+
 ```julia
-    record(scene, "test.gif") do io
-        for i = 1:100
-            scene.plots[:color] = ...# animate scene
-            recordframe!(io) # record a new frame
-        end
+record(scene, "test.gif") do io
+    for i = 1:100
+        func!(scene)     # animate scene
+        recordframe!(io) # record a new frame
     end
+end
+```
+
+If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
+[`save`](@ref).
+
+## Examples
+
+```julia
+scene = lines(rand(10))
+record(scene, "test.gif") do io
+    for i in 1:255
+        scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+        recordframe!(io)
+    end
+end
+```
+or
+```julia
+scene = lines(rand(10))
+record(scene, "test.gif", 1:255) do i
+    scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+end
 ```
 """
 function record(func, scene, path; framerate::Int = 24)
@@ -375,10 +407,14 @@ end
 
 """
     record(func, scene, path, iter; framerate = 24)
+
+This is simply a shorthand for
+
 usage:
 ```example
+    scene = lines(rand(10))
     record(scene, "test.gif", 1:100) do i
-        scene.plots[:color] = ...# animate scene
+        scene.plots[:color] = Colors.RGB(i/255, 0, 0) # animate scene
     end
 ```
 """
