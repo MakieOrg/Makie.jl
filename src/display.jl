@@ -255,16 +255,9 @@ Returns a stream and a buffer that you can use, which don't allocate for new fra
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 [`save(path, stream)`](@ref) to save the video.
 """
-function VideoStream(scene::Scene;
-                     framerate::Int = 24)
-    # if !has_ffmpeg[]
-    #     error("You can't create a video stream without ffmpeg installed.
-    #      Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
-    #      When you download the binaries, please make sure that you add the path to your PATH
-    #      environment variable.
-    #      On unix you can install ffmpeg with `sudo apt-get install ffmpeg`.
-    #     ")
-    # end
+function VideoStream(
+        scene::Scene; framerate::Integer = 24
+    )
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
