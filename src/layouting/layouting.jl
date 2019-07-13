@@ -12,7 +12,7 @@ function layout_text(
     ) where {N, T}
     offset_vec = to_align(align)
     ft_font = to_font(font)
-    rscale = to_textsize(textsize)
+    rscale = to_textsize(textsixze)
     rot = to_rotation(rotation)
 
     atlas = get_texture_atlas()
@@ -165,6 +165,12 @@ estimated_space(x, N, w) = 1/N
 ispixelcam(x::Union{PixelCamera, Camera2D}) = true
 ispixelcam(x) = false
 
+"""
+    vbox(scenes...; parent = Scene(clear = false), kwargs...)
+
+Lay the given Scenes out on the vertical axis.  For example, two Scenes `vbox`ed
+will be placed side-by-side.
+"""
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
 
