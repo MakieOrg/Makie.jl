@@ -12,7 +12,7 @@ function layout_text(
     ) where {N, T}
     offset_vec = to_align(align)
     ft_font = to_font(font)
-    rscale = to_textsize(textsixze)
+    rscale = to_textsize(textsize)
     rot = to_rotation(rotation)
 
     atlas = get_texture_atlas()
