@@ -143,7 +143,11 @@ format2mime(::Type{FileIO.format"JPEG"}) = MIME"image/jpeg"()
 
 # Allow format to be overridden with first argument
 """
-Saves a scene to png/svg!
+Saves a `Scene` to file!
+Allowable formats depend on the backend;
+- `GLMakie` allows `.png`, `.jpeg`, and `.bmp`.
+- `CairoMakie` allows `.svg`, `pdf`, and `.jpeg`.
+- `WGLMakie` allows `.png`.
 Resolution can be specified, via `save("path", scene, resolution = (1000, 1000))`!
 """
 function FileIO.save(
@@ -159,6 +163,7 @@ end
 
 """
     step!(s::Stepper)
+
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
 This is useful for generating progressive plot examples.
 """
@@ -170,7 +175,9 @@ end
 
 
 """
-Record all window events that happen while executing function `f`
+    record_events(f, scene::Scene, path::String)
+
+Records all window events that happen while executing function `f`
 for `scene` and serializes them to `path`.
 """
 function record_events(f, scene::Scene, path::String)
@@ -190,6 +197,9 @@ end
 
 
 """
+    replay_events(f, scene::Scene, path::String)
+    replay_events(scene::Scene, path::String)
+
 Replays the serialized events recorded with `record_events` in `path` in `scene`.
 """
 replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
@@ -241,9 +251,9 @@ end
 """
     VideoStream(scene::Scene, framerate = 24)
 
-Returns a stream and a buffer that you can use, to not allocate for new frames.
-Use `recordframe!(stream)` to add new video frames to the stream.
-Use `save(path, stream; framerate=24)` to save the video.
+Returns a stream and a buffer that you can use, which don't allocate for new frames.
+Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
+[`save(path, stream)`](@ref) to save the video.
 """
 function VideoStream(scene::Scene;
                      framerate::Int = 24)
@@ -273,7 +283,9 @@ function colorbuffer(x)
 end
 
 """
-Adds a video frame to the VideoStream
+    recordframe!(io::VideoStream)
+
+Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
@@ -293,11 +305,19 @@ end
 """
     save(path::String, io::VideoStream; framerate = 24)
 
-Flushes the video stream and converts the file to the extension found in `path`, which can
-be `.mkv`, `.gif`, `.mp4` or `.webm`.
-`.mkv` is the default, and doesn't need to convert; `.mp4` is recommended for the internet, since it's the most supported format;
-`.webm` yields the smallest file size. `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+Flushes the video stream and converts the file to the extension found in `path`,
+which can be one of the following:
+- `.mkv`  (the default, doesn't need to convert)
+- `.mp4`  (good for Web, most supported format)
+- `.webm` (smallest file size)
+- `.gif`  (largest file size for the same quality)
+
+`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
+
+See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
+If you want a simpler interface, consider using [`record`](@ref).
+
 """
 function save(path::String, io::VideoStream;
               framerate::Int = 24)
@@ -329,14 +349,60 @@ end
 
 """
     record(func, scene, path; framerate = 24)
-usage:
-```example
-    record(scene, "test.gif") do io
-        for i = 1:100
-            scene.plots[:color] = ...# animate scene
-            recordframe!(io) # record a new frame
-        end
+    record(func, scene, path, iter; framerate = 24)
+
+Records the Scene `scene` after the application of `func` on it for each element
+in `itr` (any iterator).  `func` must accept an element of `itr`.
+
+The animation is then saved to `path`, with the format determined by `path`'s
+extension.  Allowable extensions are:
+- `.mkv`  (the default, doesn't need to convert)
+- `.mp4`  (good for Web, most supported format)
+- `.webm` (smallest file size)
+- `.gif`  (largest file size for the same quality)
+
+`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+6 times bigger with the same quality!
+
+Typical usage patterns would look like:
+
+```julia
+record(scene, "video.mp4", itr) do i
+    func(i) # or some other manipulation of the Scene
+end
+```
+
+or, for more tweakability,
+
+```julia
+record(scene, "test.gif") do io
+    for i = 1:100
+        func!(scene)     # animate scene
+        recordframe!(io) # record a new frame
     end
+end
+```
+
+If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
+[`save`](@ref).
+
+## Examples
+
+```julia
+scene = lines(rand(10))
+record(scene, "test.gif") do io
+    for i in 1:255
+        scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+        recordframe!(io)
+    end
+end
+```
+or
+```julia
+scene = lines(rand(10))
+record(scene, "test.gif", 1:255) do i
+    scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+end
 ```
 """
 function record(func, scene, path; framerate::Int = 24)
@@ -347,10 +413,14 @@ end
 
 """
     record(func, scene, path, iter; framerate = 24)
+
+This is simply a shorthand for
+
 usage:
 ```example
+    scene = lines(rand(10))
     record(scene, "test.gif", 1:100) do i
-        scene.plots[:color] = ...# animate scene
+        scene.plots[:color] = Colors.RGB(i/255, 0, 0) # animate scene
     end
 ```
 """
