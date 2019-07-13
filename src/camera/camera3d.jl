@@ -211,7 +211,7 @@ end
 
 rotate_cam!(scene::Scene, theta_v::Number...) = rotate_cam!(scene, cameracontrols(scene), theta_v)
 rotate_cam!(scene::Scene, theta_v::VecTypes) = rotate_cam!(scene, cameracontrols(scene), theta_v)
-function rotate_cam!(scene::Scene, cam::Camera3D, _theta_v::VecTypes, fixed_axis::Bool)
+function rotate_cam!(scene::Scene, cam::Camera3D, _theta_v::VecTypes, fixed_axis::Bool = true)
     theta_v = Vec3f0(_theta_v)
     theta_v == Vec3f0(0) && return #nothing to do!
     @extractvalue cam (eyeposition, lookat, upvector)

@@ -389,7 +389,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # This is a bit shady, since it's a global setting affecting subsequent plots
     # But lets stick with this for now, to make buttons/slider etc more usable
     # TODO do this better
-    for key in (:center, :raw, :camera)
+    for key in (:raw, :camera)
         if haskey(plot_attributes, key)
             scene_attributes[key] = pop!(plot_attributes, key)
         end
@@ -608,7 +608,7 @@ function setup_camera!(scene::Scene)
                 cam3d!(scene)
             end
         end
-    elseif scene[:camera][] in (cam2d!, cam3d!, campixel!)
+    elseif scene[:camera][] in (cam2d!, cam3d!, campixel!, cam3d_cad!)
         scene[:camera][](scene)
     else
         error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")
