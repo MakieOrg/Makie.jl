@@ -4,21 +4,19 @@
 
 
 
-From the japanese word [Maki-e](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
-Data is basically the gold and silver of our age, so lets spread it out beautifully on the screen!
+From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+Data is basically the gold and silver of our age, so let's spread it out beautifully on the screen!
 
-**Documentation**: [![][docs-old-img]][docs-old-url] [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+**Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
 
 Build status: [![][gitlab-img]][gitlab-url]
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
-[docs-old-img]:    https://img.shields.io/badge/docs-old-lightgrey.svg
-[docs-old-url]:    http://makie.juliaplots.org/stable/
-[docs-stable-img]: https://img.shields.io/badge/docs-stable-blue.svg
-[docs-stable-url]: http://juliaplots.org/MakieGallery.jl/stable/
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg
+[docs-stable-url]: http://makie.juliaplots.org/stable/
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
-[docs-master-url]: http://juliaplots.org/MakieGallery.jl/stable/
+[docs-master-url]: http://makie.juliaplots.org/dev/
 
 
 # Installation
@@ -34,10 +32,23 @@ If you plan to use `Makie#master`, you likely also need to check out `AbstractPl
 ## Dependencies
 You will need to have ffmpeg in the path to run the video recording examples.
 On linux you also need to add the following to get GLFW to build (if you don't have those already):
+
+### Debian/Ubuntu
 ```
 sudo apt-get install ffmpeg cmake xorg-dev
 ```
 
+### RedHat/Fedora
+```
+sudo dnf install ffmpeg cmake libXrandr-devel libXinerama-devel libXcursor-devel
+```
+Note that the [RPM Fusion repo](https://rpmfusion.org/) is needed for `ffmpeg`.
+
+# Ecosystem
+
+`Makie.jl` is the metapackage for a rich ecosystem, which consists of [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) and [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [`StatsMakie.jl`](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in `StatsPlots.jl`).
+
+Examples, and test infrastructure, are hosted at [`MakieGallery.jl`](https://github.com/JuliaPlots/MakieGallery.jl)
 
 ## Examples from the documentation: 
 
@@ -120,13 +131,14 @@ sudo apt-get install ffmpeg cmake xorg-dev
 
 # Precompilation
 
-You can compile binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
+You can compile a binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
 To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
 ```julia
-# add PackageCompiler
-Pkg.add("PackageCompiler")
+import Pkg
+# add PackageCompiler and other dependencies
+Pkg.add.(["PackageCompiler", "AbstractPlotting", "GDAL", "GeometryTypes", "MakieGallery", "RDatasets"])
 using PackageCompiler
 # This is not well tested, so please be careful - I don't take any responsibilities for a messed up Julia install.
 
