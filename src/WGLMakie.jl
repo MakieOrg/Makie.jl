@@ -213,7 +213,7 @@ function ThreeDisplay(width::Integer, height::Integer)
         )
     end
     THREE = jsm.mod
-    canvas = jsm.this.querySelector("canvas")
+    canvas = jsm.this.dom.querySelector("canvas")
     context = canvas.getContext("webgl2");
     renderer = THREE.new.WebGLRenderer(
         antialias = true, canvas = canvas, context = context,
