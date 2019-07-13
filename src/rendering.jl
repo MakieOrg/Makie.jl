@@ -1,24 +1,31 @@
 function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
     try
         while isopen(screen)
-            t = time()
-            GLFW.PollEvents() # GLFW poll
-            prerender()
-            make_context_current(screen)
-            render_frame(screen)
-            GLFW.SwapBuffers(to_native(screen))
-            diff = framerate - (time() - t)
-            if diff > 0
-                sleep(diff)
-            else # if we don't sleep, we need to yield explicitely
-                yield()
+            # Somehow errors get sometimes ignored, so we at least print them here
+            try
+                t = time()
+                GLFW.PollEvents() # GLFW poll
+                prerender()
+                make_context_current(screen)
+                render_frame(screen)
+                GLFW.SwapBuffers(to_native(screen))
+                diff = framerate - (time() - t)
+                if diff > 0
+                    sleep(diff)
+                else # if we don't sleep, we need to yield explicitely
+                    yield()
+                end
+            catch e
+                @error "Error in renderloop!" exception=e
+                rethrow(e)
             end
         end
     catch e
-        destroy!(screen)
+        @error "Error in renderloop!" exception=e
         rethrow(e)
+    finally
+        destroy!(screen)
     end
-    destroy!(screen)
     return
 end
 
@@ -35,11 +42,14 @@ function setup!(screen)
                 a = rect[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
+                bits = GL_STENCIL_BUFFER_BIT
+                glClearStencil(id)
                 if clear[]
                     c = color[]
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
-                    glClear(GL_COLOR_BUFFER_BIT)
+                    bits |= GL_COLOR_BUFFER_BIT
+                    glClear(bits)
                 end
             end
         end
@@ -60,15 +70,24 @@ function render_frame(screen::Screen)
     wh = Int.(framebuffer_size(nw))
     resize!(fb, wh)
     w, h = wh
-    glDisable(GL_STENCIL_TEST)
+    glEnable(GL_STENCIL_TEST)
     #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0xff)
+    glClearStencil(0)
     glClearColor(0,0,0,0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     setup!(screen)
+
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
     GLAbstraction.render(screen, true)
+    glDisable(GL_STENCIL_TEST)
+
     # transfer color to luma buffer and apply fxaa
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
     glDrawBuffer(GL_COLOR_ATTACHMENT0)
@@ -85,12 +104,11 @@ function render_frame(screen::Screen)
     #prepare for non anti aliased pass
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
 
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
     GLAbstraction.render(screen, false)
-    #Read all the selection queries
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    for query_func in selection_queries
-        query_func(fb.objectid, w, h)
-    end
+    glDisable(GL_STENCIL_TEST)
     glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
     glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
@@ -102,23 +120,39 @@ end
 function id2rect(screen, id1)
     # TODO maybe we should use a different data structure
     for (id2, rect, clear, color) in screen.screens
-        id1 == id2 && return true, rect
+        id1 == id2 && return true, rect, clear[]
     end
-    false, IRect(0,0,0,0)
+    false, IRect(0,0,0,0), false
 end
 
 function GLAbstraction.render(screen::Screen, fxaa::Bool)
-    for (zindex, screenid, elem) in screen.renderlist
-        found, rect = id2rect(screen, screenid)
-        found || continue
-        a = rect[]
-        glViewport(minimum(a)..., widths(a)...)
-        if fxaa && elem[:fxaa][]
-            render(elem)
+    # Somehow errors in here get ignored silently!?
+    try
+        # sort by overdraw, so that overdrawing objects get drawn last!
+        # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
+        for (zindex, screenid, elem) in screen.renderlist
+            found, rect, clear = id2rect(screen, screenid)
+            found || continue
+            a = rect[]
+            glViewport(minimum(a)..., widths(a)...)
+            if clear
+                glStencilFunc(GL_EQUAL, screenid, 0xff)
+            else
+                # if we don't clear, that means we have a screen that is overlaid
+                # on top of another, which means it doesn't have a stencil value
+                # so we can't do the stencil test
+                glStencilFunc(GL_ALWAYS, screenid, 0xff)
+            end
+            if fxaa && elem[:fxaa][]
+                render(elem)
+            end
+            if !fxaa && !elem[:fxaa][]
+                render(elem)
+            end
         end
-        if !fxaa && !elem[:fxaa][]
-            render(elem)
-        end
+    catch e
+        @error "Error while rendering!" exception=e
+        rethrow(e)
     end
     return
 end

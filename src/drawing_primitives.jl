@@ -378,19 +378,20 @@ function surface_contours(volume::Volume)
     shader = makieshader(paths..., frag)
     model = volume[:model]
     x, y, z, vol = volume[1], volume[2], volume[3], volume[4]
-    model2 = lift(model, x, y, z) do m, xyz...
+    model2 = lift(x, y, z) do xyz...
         mi = minimum.(xyz)
         maxi = maximum.(xyz)
         w = maxi .- mi
-        m2 = Mat4f0(
+        return Mat4f0(
             w[1], 0, 0, 0,
             0, w[2], 0, 0,
             0, 0, w[3], 0,
             mi[1], mi[2], mi[3], 1
         )
-        convert(Mat4f0, m) * m2
     end
-    modelinv = lift(inv, model2)
+
+    modelinv = lift((a,b)-> inv(b) * inv(a), model, model2)
+    model2 = lift(*, model, model2)
     hull = AABB{Float32}(Vec3f0(0), Vec3f0(1))
     gl_data = Dict(
         :hull => GLUVWMesh(hull),

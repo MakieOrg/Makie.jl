@@ -195,6 +195,11 @@ julia2glenum(x::Type{GLint})    = GL_INT
 julia2glenum(x::Type{GLfloat})  = GL_FLOAT
 julia2glenum(x::Type{GLdouble}) = GL_DOUBLE
 julia2glenum(x::Type{Float16})  = GL_HALF_FLOAT
+
+struct DepthStencil_24_8 <: Real end
+Base.eltype(::Type{<: DepthStencil_24_8}) = DepthStencil_24_8
+julia2glenum(x::Type{DepthStencil_24_8}) = GL_UNSIGNED_INT_24_8
+
 function julia2glenum(::Type{T}) where T
     error("Type: $T not supported as opengl number datatype")
 end
