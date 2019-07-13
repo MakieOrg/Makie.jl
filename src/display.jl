@@ -80,6 +80,12 @@ end
 
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
+    @warn """Printing Scene as text.
+    This either means, you don't have a backend loaded (GLMakie, CairoMakie, WGLMakie),
+    or GLMakie didn't build correctly. In the latter case,
+    try `]build GLMakie` and watch out for any warnings.
+    """
+
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     println(io, "events:")
     for field in fieldnames(Events)
@@ -96,7 +102,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     return
 end
 
-function backend_show(backend, io::IO, ::MIME"text/plain", plot::Combined)
+function Base.show(io::IO, plot::Combined)
     println(io, typeof(plot))
     println(io, "plots:")
     for p in plot.plots
@@ -108,7 +114,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", plot::Combined)
     end
 end
 
-function Base.show(io::IO, ::MIME"text/plain", plot::Atomic)
+function Base.show(io::IO, plot::Atomic)
     println(io, typeof(plot))
     print(io, "attributes:")
     for (k, v) in theme(plot)
