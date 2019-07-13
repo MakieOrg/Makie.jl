@@ -61,10 +61,10 @@ function Scene(
     onany(updated, px_area) do update, px_area
         if update && !(scene.camera_controls[] isa PixelCamera)
             a = scene.attributes
-            if to_value(get(a, :scale_plot, false)) && !a[:raw][]
+            if to_value(get(a, :scale_plot, false)) || !to_value(get(a, :raw, false))
                 scale_scene!(scene)
             end
-            if to_value(get(a, :center, false)) && !a[:raw][]
+            if to_value(get(a, :center, false)) && !to_value(get(a, :raw, false))
                 center!(scene)
             end
         end
@@ -93,6 +93,22 @@ Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
 function Base.resize!(scene::Scene, rect::Rect2D)
     pixelarea(scene)[] = rect
 end
+
+"""
+    getscreen(scene::Scene)
+Gets the current screen a scene is associated with.
+Returns nothing if not yet displayed on a screen.
+"""
+function getscreen(scene::Scene)
+    if isempty(scene.current_screens)
+        isroot(scene) && return nothing # stop search
+        return getscreen(parent(scene)) # screen could be in parent
+    end
+    # TODO, when would we actually get a specific screen?
+    return first(scene.current_screens)
+end
+
+getscreen(scene::SceneLike) = getscreen(rootparent(scene))
 
 """
     `update!(p::Scene)`
@@ -130,6 +146,7 @@ end
 function campixel(scene::Scene)
     sub = child(scene)
     campixel!(sub)
+    sub.theme.attributes[:clear] = Observable(false)
     sub
 end
 
@@ -254,8 +271,20 @@ if Sys.iswindows()
             Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
         end
     end
+elseif Sys.isapple()
+    function _primary_resolution()
+        s = read(pipeline(`system_profiler SPDisplaysDataType`, `grep Resolution`)) |> String
+        sarr = split(s)
+        return parse.(Int, (sarr[2], sarr[4]))
+    end
+# elseif Sys.islinux()
+#     function _primary_resolution()
+#         s = read(pipeline(`xrandr`)) |> String
+#         sp = split(s, '\n')
+#         s1 = sp[4]
+#     end
 else
-    # TODO implement osx + linux
+    # TODO implement linux
     _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
 end
 
@@ -354,6 +383,7 @@ function Scene(
         current_screens,
         scene
     )
+    scene.theme.attributes[:clear] = Observable(false)
     push!(scene.children, child)
     child
 end

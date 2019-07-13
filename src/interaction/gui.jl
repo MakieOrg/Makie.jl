@@ -52,7 +52,9 @@ TODO add description
         buttonstroke = 1.5,
         textsize = 15,
         buttonstrokecolor = :black,
-        valueprinter = default_printer
+        valueprinter = default_printer,
+        raw = true,
+        camera = campixel!
     )
 end
 
@@ -174,7 +176,9 @@ TODO add description
         textsize = 20,
         clicks = 0,
         position = (10, 10),
-        padvalue = 0.15
+        padvalue = 0.15,
+        raw = true,
+        camera = campixel!
     )
 end
 
@@ -214,8 +218,6 @@ function plot!(splot::Button)
     splot
 end
 
-window_open(scene::Scene) = getscreen(scene) != nothing && isopen(getscreen(scene))
-
 function playbutton(f, scene, range, rate = (1/30))
     b = button!(scene, "▶", raw = true)[end]
     isplaying = Ref(false)
@@ -226,7 +228,7 @@ function playbutton(f, scene, range, rate = (1/30))
             @async begin
                 b.plots[1][1][] = "𝅛𝅛"
                 tstart = time()
-                while (isplaying[] && window_open(scene))
+                while (isplaying[] && isopen(scene))
                     if time() - tstart >= rate
                         f(range[play_idx[]])
                         play_idx[] = mod1(play_idx[] + 1, length(range))
@@ -265,11 +267,17 @@ end
 
 function sample_color(f, ui, colormesh, v)
     mpos = ui.events.mouseposition
-    sub = Scene(ui, transformation = Transformation(), px_area = pixelarea(ui), theme = theme(ui))
+    sub = Scene(
+        ui, transformation = Transformation(), px_area = pixelarea(ui),
+        theme = theme(ui)
+    )
+    # FIXME, we need an api for this!
+    sub.theme.attributes[:clear] = Observable(false)
     select = scatter!(
         sub, lift((p, a)-> [Point2f0(p) .- minimum(a)], mpos, pixelarea(sub)),
         markersize = 15, color = (:white, 0.2), strokecolor = :white,
-        strokewidth = 6, visible = lift(identity, theme(ui, :visible)), raw = true
+        strokewidth = 6, visible = lift(identity, theme(ui, :visible)), raw = true,
+        overdraw = true
     )[end]
     onany(mpos, ui.events.mousebuttons) do mp, mb
         bb = FRect2D(boundingbox(colormesh))
@@ -303,27 +311,22 @@ function popup(parent, position, width)
         IRect(p, Point2f0(wh) .- Point2f0(0, hwidth - 1))
     end
     vis = Node(false)
-    popup = Scene(parent, parea,
+    popup = Scene(
+        parent, parea,
         visible = vis, raw = true, camera = campixel!,
         backgroundcolor = RGBAf0(0.95, 0.95, 0.95, 1.0)
     )
-    header = Scene(popup, harea,
+    header = Scene(
+        popup, harea,
         backgroundcolor = RGBAf0(0.90, 0.90, 0.90, 1.0), visible = vis,
         raw = true, camera = campixel!
     )
     initialized = Ref(false)
     but = button!(header, "x", strokewidth = 0.0) do click
-        if initialized[]
-            vis[] = !vis[]
-        else
-            initialized[] = true
-        end
+        vis[] = !vis[]
         return
     end
-    poly!(popup, lift(wh-> FRect(2, 2, (wh - 4)...), width_n), color = :white)
-    scene2 = Scene(popup, theme = theme(popup))
-    campixel!(scene2)
-    Popup(scene2, vis, pos_n, width_n)
+    Popup(popup, vis, pos_n, width_n)
 end
 
 """
@@ -357,8 +360,7 @@ function colorswatch(scene = Scene(camera = campixel!)) # TODO convert to Recipe
     pop.open[] = false
     on(scene.events.mousebuttons) do mb
         if ispressed(mb, Mouse.left)
-            plot, idx = mouse_selection(scene)
-            if plot in swatch.plots
+            if mouseover(scene, swatch)
                 mpos = Point2f0(events(scene).mouseposition[])
                 mpos = mpos .- Point2f0(minimum(pixelarea(scene)[]))
                 pop.position[] = mpos .+ Point2f0(50, -50)

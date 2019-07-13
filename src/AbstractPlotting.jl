@@ -1,5 +1,6 @@
 module AbstractPlotting
 
+using FFMPEG # get FFMPEG on any system!
 using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets, PlotUtils
 using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown # documentation
@@ -97,7 +98,7 @@ export hbox, vbox
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, update_cam!, rotate_cam!, translate_cam!
+export campixel!, campixel, cam3d!, cam3d_cad!, update_cam!, rotate_cam!, translate_cam!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 
@@ -184,11 +185,6 @@ const config_path = joinpath(homedir(), ".config", "makie", config_file)
 
 function __init__()
     pushdisplay(PlotDisplay())
-    has_ffmpeg[] = try
-        success(`ffmpeg -h`)
-    catch
-        false
-    end
     cfg_path = config_path
     if isfile(cfg_path)
         theme = include(cfg_path)

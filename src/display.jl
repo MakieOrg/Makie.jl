@@ -22,6 +22,16 @@ function register_backend!(backend::AbstractBackend)
     nothing
 end
 
+function push_screen!(scene::Scene, display::AbstractDisplay)
+    push!(scene.current_screens, display)
+    on(events(scene).window_open) do is_open
+        # when screen closes, it should set the scene isopen event to false
+        # so that's when we can remove the display
+        if !is_open
+            filter!(x-> x !== display, scene.current_screens)
+        end
+    end
+end
 
 function Base.display(d::PlotDisplay, scene::Scene)
     # set update to true, without triggering an event
@@ -29,7 +39,9 @@ function Base.display(d::PlotDisplay, scene::Scene)
     update!(scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
-        return backend_display(current_backend[], scene)
+        screen = backend_display(current_backend[], scene)
+        push_screen!(scene, screen)
+        return screen
     catch ex
         if ex isa MethodError && ex.f in (backend_display, backend_show)
             throw(MethodError(display, (d, scene)))
@@ -54,7 +66,11 @@ for M in (MIME"text/plain", MIME)
         update!(scene)
         res = get(io, :juno_plotsize, nothing)
         res !== nothing && resize!(scene, res...)
-        return backend_show(current_backend[], io, m, scene)
+        screen = backend_show(current_backend[], io, m, scene)
+
+        # E.g. text/plain doesn't have a display
+        screen isa AbstractScreen && push_screen!(scene, screen)
+        return screen
     end
 end
 
@@ -64,6 +80,12 @@ end
 
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
+    @warn """Printing Scene as text.
+    This either means, you don't have a backend loaded (GLMakie, CairoMakie, WGLMakie),
+    or GLMakie didn't build correctly. In the latter case,
+    try `]build GLMakie` and watch out for any warnings.
+    """
+
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     println(io, "events:")
     for field in fieldnames(Events)
@@ -80,7 +102,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     return
 end
 
-function backend_show(backend, io::IO, ::MIME"text/plain", plot::Combined)
+function Base.show(io::IO, plot::Combined)
     println(io, typeof(plot))
     println(io, "plots:")
     for p in plot.plots
@@ -92,7 +114,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", plot::Combined)
     end
 end
 
-function Base.show(io::IO, ::MIME"text/plain", plot::Atomic)
+function Base.show(io::IO, plot::Atomic)
     println(io, typeof(plot))
     print(io, "attributes:")
     for (k, v) in theme(plot)
@@ -121,7 +143,11 @@ format2mime(::Type{FileIO.format"JPEG"}) = MIME"image/jpeg"()
 
 # Allow format to be overridden with first argument
 """
-Saves a scene to png/svg!
+Saves a `Scene` to file!
+Allowable formats depend on the backend;
+- `GLMakie` allows `.png`, `.jpeg`, and `.bmp`.
+- `CairoMakie` allows `.svg`, `pdf`, and `.jpeg`.
+- `WGLMakie` allows `.png`.
 Resolution can be specified, via `save("path", scene, resolution = (1000, 1000))`!
 """
 function FileIO.save(
@@ -137,6 +163,7 @@ end
 
 """
     step!(s::Stepper)
+
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
 This is useful for generating progressive plot examples.
 """
@@ -148,7 +175,9 @@ end
 
 
 """
-Record all window events that happen while executing function `f`
+    record_events(f, scene::Scene, path::String)
+
+Records all window events that happen while executing function `f`
 for `scene` and serializes them to `path`.
 """
 function record_events(f, scene::Scene, path::String)
@@ -168,6 +197,9 @@ end
 
 
 """
+    replay_events(f, scene::Scene, path::String)
+    replay_events(scene::Scene, path::String)
+
 Replays the serialized events recorded with `record_events` in `path` in `scene`.
 """
 replay_events(scene::Scene, path::String) = replay_events(()-> nothing, scene, path)
@@ -216,33 +248,26 @@ struct VideoStream
     path::String
 end
 
-
 """
     VideoStream(scene::Scene, framerate = 24)
 
-Returns a stream and a buffer that you can use, to not allocate for new frames.
-Use `recordframe!(stream)` to add new video frames to the stream.
-Use `save(path, stream; framerate=24)` to save the video.
+Returns a stream and a buffer that you can use, which don't allocate for new frames.
+Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
+[`save(path, stream)`](@ref) to save the video.
 """
-function VideoStream(scene::Scene;
-                     framerate::Int = 24)
-    if !has_ffmpeg[]
-        error("You can't create a video stream without ffmpeg installed.
-         Please install ffmpeg, e.g. via https://ffmpeg.org/download.html.
-         When you download the binaries, please make sure that you add the path to your PATH
-         environment variable.
-         On unix you can install ffmpeg with `sudo apt-get install ffmpeg`.
-        ")
-    end
+function VideoStream(
+        scene::Scene; framerate::Integer = 24
+    )
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
     update!(scene)
     screen = backend_display(current_backend[], scene)
+    push_screen!(scene, screen)
     _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    process = open(`ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = @ffmpeg_env open(`$ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
@@ -251,7 +276,9 @@ function colorbuffer(x)
 end
 
 """
-Adds a video frame to the VideoStream
+    recordframe!(io::VideoStream)
+
+Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
@@ -271,11 +298,19 @@ end
 """
     save(path::String, io::VideoStream; framerate = 24)
 
-Flushes the video stream and converts the file to the extension found in `path`, which can
-be `.mkv`, `.gif`, `.mp4` or `.webm`.
-`.mkv` is the default, and doesn't need to convert; `.mp4` is recommended for the internet, since it's the most supported format;
-`.webm` yields the smallest file size. `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+Flushes the video stream and converts the file to the extension found in `path`,
+which can be one of the following:
+- `.mkv`  (the default, doesn't need to convert)
+- `.mp4`  (good for Web, most supported format)
+- `.webm` (smallest file size)
+- `.gif`  (largest file size for the same quality)
+
+`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
+
+See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
+If you want a simpler interface, consider using [`record`](@ref).
+
 """
 function save(path::String, io::VideoStream;
               framerate::Int = 24)
@@ -285,16 +320,16 @@ function save(path::String, io::VideoStream;
     if typ == ".mkv"
         cp(io.path, path, force=true)
     elseif typ == ".mp4"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
-        run(`ffmpeg -loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
         filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
         palette_path = dirname(io.path)
         pname = joinpath(palette_path, "palette.bmp")
         isfile(pname) && rm(pname, force = true)
-        run(`ffmpeg -loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-        run(`ffmpeg -loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
         rm(pname, force = true)
     else
         rm(io.path)
@@ -307,14 +342,60 @@ end
 
 """
     record(func, scene, path; framerate = 24)
-usage:
-```example
-    record(scene, "test.gif") do io
-        for i = 1:100
-            scene.plots[:color] = ...# animate scene
-            recordframe!(io) # record a new frame
-        end
+    record(func, scene, path, iter; framerate = 24)
+
+Records the Scene `scene` after the application of `func` on it for each element
+in `itr` (any iterator).  `func` must accept an element of `itr`.
+
+The animation is then saved to `path`, with the format determined by `path`'s
+extension.  Allowable extensions are:
+- `.mkv`  (the default, doesn't need to convert)
+- `.mp4`  (good for Web, most supported format)
+- `.webm` (smallest file size)
+- `.gif`  (largest file size for the same quality)
+
+`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+6 times bigger with the same quality!
+
+Typical usage patterns would look like:
+
+```julia
+record(scene, "video.mp4", itr) do i
+    func(i) # or some other manipulation of the Scene
+end
+```
+
+or, for more tweakability,
+
+```julia
+record(scene, "test.gif") do io
+    for i = 1:100
+        func!(scene)     # animate scene
+        recordframe!(io) # record a new frame
     end
+end
+```
+
+If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
+[`save`](@ref).
+
+## Examples
+
+```julia
+scene = lines(rand(10))
+record(scene, "test.gif") do io
+    for i in 1:255
+        scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+        recordframe!(io)
+    end
+end
+```
+or
+```julia
+scene = lines(rand(10))
+record(scene, "test.gif", 1:255) do i
+    scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+end
 ```
 """
 function record(func, scene, path; framerate::Int = 24)
@@ -325,10 +406,14 @@ end
 
 """
     record(func, scene, path, iter; framerate = 24)
+
+This is simply a shorthand for
+
 usage:
 ```example
+    scene = lines(rand(10))
     record(scene, "test.gif", 1:100) do i
-        scene.plots[:color] = ...# animate scene
+        scene.plots[:color] = Colors.RGB(i/255, 0, 0) # animate scene
     end
 ```
 """
