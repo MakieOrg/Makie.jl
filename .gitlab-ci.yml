@@ -18,7 +18,7 @@ job:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - glxinfo | grep 'version'
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"add StatsMakie#master MakieGallery#master GLMakie#master GDAL https://github.com/JuliaIO/FFMPEG.jl; test"'
+      - julia --project -e 'using Pkg; Pkg.pkg"add StatsMakie#master MakieGallery#as/new-version GLMakie#sd-new_version; test"'
 
     artifacts:
         when: on_failure
