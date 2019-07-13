@@ -15,6 +15,7 @@ const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "false")
 
 scene = scatter(rand(4))
 
+include("conversions.jl")
 include("quaternions.jl")
 include("projection_math.jl")
 
