@@ -12,13 +12,13 @@ job:
         - apt-get install -y cmake libxrandr-dev libxinerama-dev libxcursor-dev mesa-utils
         # cairo etc
         - apt-get install -y gettext libpango1.0-0 libcairo2 libmagickwand-6.q16
-        - apt-get install -y ffmpeg p7zip-full
+        - apt-get install -y p7zip-full
 
     script:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - glxinfo | grep 'version'
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"add StatsMakie#master MakieGallery#master GLMakie#master GDAL; test"'
+      - julia --project -e 'using Pkg; Pkg.pkg"add StatsMakie#master MakieGallery#as/new-version GLMakie#sd-new_version; test"'
 
     artifacts:
         when: on_failure

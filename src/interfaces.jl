@@ -385,6 +385,15 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # PlotType
     FinalType = Combined{Typ, ArgTyp}
     plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, FinalType), plotsym(FinalType), scene, attributes)
+    # We allow to set scene attributes in the theme of a plot
+    # This is a bit shady, since it's a global setting affecting subsequent plots
+    # But lets stick with this for now, to make buttons/slider etc more usable
+    # TODO do this better
+    for key in (:raw, :camera)
+        if haskey(plot_attributes, key)
+            scene_attributes[key] = pop!(plot_attributes, key)
+        end
+    end
     trans = get(plot_attributes, :transformation, automatic)
     transformation = if to_value(trans) == automatic
         Transformation(scene)
@@ -530,13 +539,17 @@ function _plot!(p::Combined{X, T}) where {X, T}
     error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(plot::$X{ <: $T})")
 end
 
+function show_attributes(attributes)
+    for (k, v) in attributes
+        println("    ", k, ": ", v[] == nothing ? "nothing" : v[])
+    end
+end
 
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N, PlotType <: AbstractPlot}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object, scene_attributes = PlotType(scene, attributes, input, args)
 
     nattributes, rest = merge_attributes!(scene_attributes, theme(scene))
-
     # TODO warn about rest - should be unused arguments!
     empty!(scene.attributes)
     # transfer the merged attributes from theme and user defined to the scene
@@ -595,7 +608,7 @@ function setup_camera!(scene::Scene)
                 cam3d!(scene)
             end
         end
-    elseif scene[:camera][] in (cam2d!, cam3d!, campixel!)
+    elseif scene[:camera][] in (cam2d!, cam3d!, campixel!, cam3d_cad!)
         scene[:camera][](scene)
     else
         error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")
