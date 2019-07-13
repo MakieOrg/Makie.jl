@@ -1,6 +1,9 @@
 
 """
-    title([scene=current_scene(), ], string; kw...)
+    title(
+        [scene=current_scene(), ], string;
+        align = (:center, :bottom), textsize = 30, kw...
+    )
 
 Add a title with content `string` to `scene`.
 """
@@ -13,7 +16,7 @@ function title(scene, string; align = (:center, :bottom), textsize = 30, kw...)
         string,
         position = pos,
         camera = campixel!,
-        raw = true, align = align, 
+        raw = true, align = align,
         textsize = textsize;
         kw...
     )

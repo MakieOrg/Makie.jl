@@ -23,7 +23,7 @@ matrix:
 #    packages:
 #    - ffmpeg
 before_script:
- - julia -e 'using Pkg; pkg"add MakieGallery#master https://github.com/JuliaIO/FFMPEG.jl"'
+ - julia -e 'using Pkg; pkg"add MakieGallery#as/new-version"'
 
 ## uncomment the following lines to override the default test script
 #script:
