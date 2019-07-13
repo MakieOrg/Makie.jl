@@ -7,10 +7,41 @@ AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
-Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 
 [compat]
-AbstractPlotting = ">=0.9.8"
-GLMakie = ">=0.0.6"
-StatsMakie = ">=0.0.6"
+AbstractPlotting = "≥ 0.9.8"
+GLMakie = "≥ 0.0.6"
+MakieGallery = "≥ 0.0.8"
+StatsMakie = "≥ 0.0.6"
+julia = "≥ 0.7.0"
+
+[extras]
+ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
+DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
+FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
+GDAL = "add2ef01-049f-52c4-9ee2-e494f65e021a"
+GLFW = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
+ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
+ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
+ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
+ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
+MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
+MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
+ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
+RDatasets = "ce6b1742-4840-55fa-b093-852dadbb1d8b"
+StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
+
+[targets]
+test = [
+        "Documenter", "Test", "MakieGallery", 
+        "MeshIO", "ZipFile", "ColorSchemes", 
+        "ImageFiltering", "StatsMakie", "ModernGL", 
+        "ImageMagick", "RDatasets", "FileIO", 
+        "ImageCore", "GLFW", "DataFrames", 
+        "GDAL", "ImageTransformations"
+]
+
