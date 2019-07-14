@@ -18,10 +18,11 @@ job:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - glxinfo | grep 'version'
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"add StatsMakie#master MakieGallery#as/new-version GLMakie#sd-new_version; test"'
+      - julia --project -e 'using Pkg; Pkg.pkg"add StatsMakie#master MakieGallery#master GLMakie#master; test"'
 
     artifacts:
         when: on_failure
         paths:
         - test/tested_different
+        - test/test_recordings
         expire_in: 2 day
