@@ -50,6 +50,10 @@ Note that the [RPM Fusion repo](https://rpmfusion.org/) is needed for `ffmpeg`.
 
 Examples, and test infrastructure, are hosted at [`MakieGallery.jl`](https://github.com/JuliaPlots/MakieGallery.jl)
 
+## Using Juno with Makie
+
+The default OpenGL backend for Makie is not interactive in the Juno plotpane - it just shows a PNG instead.  To get full interactivity, you can disable the plotpane in Atom's settings, or execute `Atom.PlotPaneEnabled[] = false`.
+
 ## Examples from the documentation: 
 
 [![](http://makie.juliaplots.org/stable/media/thumb-3d_contour_with_2d_contour_slices.jpg)](http://makie.juliaplots.org/stable/examples-volume.html#3D-Contour-with-2D-contour-slices-1)
