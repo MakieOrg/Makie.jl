@@ -36,9 +36,9 @@ end
 function Base.display(d::PlotDisplay, scene::Scene)
     # set update to true, without triggering an event
     # this just indicates, that now we may update on e.g. resize
-    update!(scene)
     use_display[] || throw(MethodError(display, (d, scene)))
     try
+        update!(scene)
         screen = backend_display(current_backend[], scene)
         push_screen!(scene, screen)
         return screen
@@ -51,9 +51,16 @@ function Base.display(d::PlotDisplay, scene::Scene)
     end
 end
 
-Base.showable(mime::MIME{M}, scene::Scene) where M = backend_showable(current_backend[], mime, scene)
+function Base.showable(mime::MIME{M}, scene::Scene) where M
+    # If we use a display, we are not able to show via mimes!
+    use_display[] && return false
+    backend_showable(current_backend[], mime, scene)
+end
 # ambig
-Base.showable(mime::MIME"application/json", scene::Scene) = backend_showable(current_backend[], mime, scene)
+function Base.showable(mime::MIME"application/json", scene::Scene)
+    use_display[] && return false
+    backend_showable(current_backend[], mime, scene)
+end
 
 # have to be explicit with mimetypes to avoid ambiguity
 
@@ -78,14 +85,32 @@ function backend_showable(backend, m::MIME, scene::Scene)
     hasmethod(backend_show, Tuple{typeof(backend), IO, typeof(m), typeof(scene)})
 end
 
+function has_juno_plotpane()
+    if isdefined(Main, :Atom)
+        return Main.Atom.PlotPaneEnabled[]
+    else
+        return nothing
+    end
+end
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
-    @warn """Printing Scene as text.
-    This either means, you don't have a backend loaded (GLMakie, CairoMakie, WGLMakie),
-    or GLMakie didn't build correctly. In the latter case,
-    try `]build GLMakie` and watch out for any warnings.
-    """
-
+    if isempty(available_backends)
+        @warn """Printing Scene as text. You see this because you haven't loaded any backend (GLMakie, CairoMakie, WGLMakie),
+        or you loaded GLMakie, but it didn't build correctly. In the latter case,
+        try `]build GLMakie` and watch out for any warnings.
+        """
+    end
+    if !use_display[] && !isempty(available_backends)
+        plotpane = has_juno_plotpane()
+        if plotpane !== nothing && !use_display[] && !plotpane
+            # we want to display as inline!, we are in Juno, but the plotpane is disabled
+            @warn """Showing scene as inline with Plotpane disabled. This happens because `AbstractPlotting.inline!(true)` is set,
+            while Atom.PlotPaneEnabled[] is false. Either enable plotpane or set inline to false!"""
+        else
+            @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
+            This needs to be false to show plot in a window in the REPL."""
+        end
+    end
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     println(io, "events:")
     for field in fieldnames(Events)
