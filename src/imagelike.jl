@@ -1,20 +1,23 @@
 
 
+get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
+get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
+get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
 
-get_dim(x::AbstractVector, ind, dim) = x[Tuple(ind)[dim]]
-get_dim(x::AbstractMatrix, ind, dim) = x[ind]
+
 function surface_normals(x, y, z)
     vec(map(CartesianIndices(z)) do i
         i1, imax = CartesianIndex(1, 1), CartesianIndex(size(z))
         ci(x, y) = min(max(i + CartesianIndex(x, y), i1), imax)
         offsets = (ci(-1, -1), ci(1, -1), ci(-1, 1), ci(1, 1))
         normalize(mapreduce(+, init = Vec3f0(0), offsets) do off
-            Vec3f0(get_dim(x, off, 1), get_dim(y, off, 2), z[off])
+            s = size(z)
+            Vec3f0(get_dim(x, off, 1, s), get_dim(y, off, 2, s), z[off])
         end)
     end)
 end
 
-function draw_mesh(jsscene, mscene::Scene, mesh, name, plot; uniforms...)
+function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
     program = Program(
         WebGL(),
         lasset("mesh.vert"),
@@ -22,9 +25,8 @@ function draw_mesh(jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         VertexArray(mesh);
         uniforms...
     )
-    write(joinpath(@__DIR__, "..", "debug", "$(name).vert"), program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "$(name).frag"), program.fragment_source)
-    three_geom = wgl_convert(mscene, jsscene, program)
+    debug_shader(name, program)
+    three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = name
     jsscene.add(three_geom)
@@ -55,14 +57,14 @@ function limits_to_uvmesh(plot)
     mesh = GeometryBasics.Mesh(vertices, faces)
 end
 
-function draw_js(jsscene, mscene::Scene, plot::Surface)
+function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
     positions = Buffer(lift(px, py, pz) do x, y, z
         vec(map(CartesianIndices(z)) do i
             GeometryBasics.Point{3, Float32}(
-                get_dim(x, i, 1),
-                get_dim(y, i, 2),
+                get_dim(x, i, 1, size(z)),
+                get_dim(y, i, 2, size(z)),
                 z[i]
             )
         end)
@@ -89,7 +91,7 @@ function draw_js(jsscene, mscene::Scene, plot::Surface)
     )
     mesh = GeometryBasics.Mesh(vertices, faces)
 
-    draw_mesh(jsscene, mscene, mesh, "surface", plot;
+    draw_mesh(jsctx, jsscene, mscene, mesh, "surface", plot;
         uniform_color = color,
         color = Vec4f0(0),
         shading = plot.shading,
@@ -97,7 +99,7 @@ function draw_js(jsscene, mscene::Scene, plot::Surface)
 end
 
 
-# function draw_js(jsscene, mscene::Scene, plot::Image)
+# function draw_js(jsctx, jsscene, mscene::Scene, plot::Image)
 #     image = plot[3]
 #     color = Sampler(lift(x-> x', image))
 #     mesh = limits_to_uvmesh(plot)
@@ -111,7 +113,7 @@ end
 #
 
 
-function draw_js(jsscene, mscene::Scene, plot::Union{Heatmap, Image})
+function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     colored = lift(
         (args...)-> array2color(args...)',
@@ -122,7 +124,7 @@ function draw_js(jsscene, mscene::Scene, plot::Union{Heatmap, Image})
         minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
     )
     mesh = limits_to_uvmesh(plot)
-    draw_mesh(jsscene, mscene, mesh, "heatmap", plot;
+    draw_mesh(jsctx, jsscene, mscene, mesh, "heatmap", plot;
         uniform_color = color,
         color = Vec4f0(0),
         normals = Vec3f0(0),
@@ -131,7 +133,7 @@ function draw_js(jsscene, mscene::Scene, plot::Union{Heatmap, Image})
 end
 
 
-function draw_js(jsscene, mscene::Scene, plot::Volume)
+function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
     box = ShaderAbstractions.VertexArray(GLUVWMesh(FRect3D(Vec3f0(0), Vec3f0(1))))
     cam = cameracontrols(mscene)
@@ -155,7 +157,6 @@ function draw_js(jsscene, mscene::Scene, plot::Volume)
         box,
 
         volumedata = Sampler(vol),
-        eyeposition = cam.eyeposition,
         modelinv = modelinv,
         colormap = Sampler(lift(to_colormap, plot.colormap)),
         colorrange = lift(Vec2f0, plot.colorrange),
@@ -164,16 +165,14 @@ function draw_js(jsscene, mscene::Scene, plot::Volume)
         light_position = Vec3f0(20)
     )
 
-    write(joinpath(@__DIR__, "..", "debug", "volume.vert"), program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "volume.frag"), program.fragment_source)
+    debug_shader("volume", program)
 
-    three_geom = wgl_convert(mscene, jsscene, program)
+    three_geom = wgl_convert(mscene, jsctx, program)
     three_geom.matrixAutoUpdate = false
     three_geom.matrix.set(model2[]'...)
     on(model2) do model
         three_geom.matrix.set((model')...)
     end
-    three_geom.material.side = THREE.BackSide
-
+    three_geom.material.side = jsctx.BackSide
     jsscene.add(three_geom)
 end

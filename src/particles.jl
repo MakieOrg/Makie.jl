@@ -54,7 +54,7 @@ primitive_shape(x::Shape) = Cint(x)
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
-    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width)
+    per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width, :marker_offset)
     per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
@@ -162,7 +162,9 @@ function to_gl_text(string, startpos::VecTypes{N, T}, textsize, _font, aoffsetve
     scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
-    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
+    aoffset = AbstractPlotting.align_offset(
+        Point2f0(0), positions2d[end], atlas, rscale, font, to_align(aoffsetvec)
+    )
     aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
     uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
     positions = map(positions2d) do p
@@ -195,27 +197,24 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
 end
 
 
-function draw_js(jsscene, scene::Scene, plot::MeshScatter)
+function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
     program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsscene, program)
+    mesh = wgl_convert(scene, jsctx, program)
     jsscene.add(mesh)
 end
-function draw_js(jsscene, scene::Scene, plot::AbstractPlotting.Text)
+function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
     program = create_shader(scene, plot)
-    write(joinpath(@__DIR__, "..", "debug", "text.vert"), program.program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "text.frag"), program.program.fragment_source)
-    mesh = wgl_convert(scene, jsscene, program)
+    debug_shader("text", program.program)
+    mesh = wgl_convert(scene, jsctx, program)
     mesh.name = "Text"
     update_model!(mesh, plot)
     jsscene.add(mesh)
 end
-function draw_js(jsscene, scene::Scene, plot::Scatter)
+function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsscene, program)
+    mesh = wgl_convert(scene, jsctx, program)
 
-    write(joinpath(@__DIR__, "..", "debug", "scatter.vert"), program.program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "scatter.frag"), program.program.fragment_source)
-
+    debug_shader("scatter", program.program)
     mesh.name = "Scatter"
     update_model!(mesh, plot)
     jsscene.add(mesh)

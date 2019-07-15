@@ -11,7 +11,7 @@ function facebuffer(x::AbstractArray{GLTriangle})
 end
 
 function array2color(colors, cmap, crange)
-    cmap = RGBAf0.(to_colormap(cmap), 1.0)
+    cmap = RGBAf0.(Colors.color.(to_colormap(cmap)), 1.0)
     AbstractPlotting.interpolated_getindex.((cmap,), colors, (crange,))
 end
 function array2color(colors::AbstractArray{<: Colorant}, cmap, crange)
@@ -93,12 +93,10 @@ function create_shader(scene::Scene, plot::Mesh)
     )
 end
 
-function draw_js(jsscene, scene::Scene, plot::Mesh)
+function draw_js(jsctx, jsscene, scene::Scene, plot::Mesh)
     program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsscene, program)
-
-    write(joinpath(@__DIR__, "..", "debug", "mesh.vert"), program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "mesh.frag"), program.fragment_source)
+    mesh = wgl_convert(scene, jsctx, program)
+    debug_shader("mesh", program)
     mesh.name = "Mesh"
     update_model!(mesh, plot)
     jsscene.add(mesh)

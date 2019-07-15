@@ -10,13 +10,16 @@ end
 
 function create_shader(scene::Scene, plot::LineSegments)
     # Potentially per instance attributes
-    positions = plot[1][]
-    startr, endr = 1:2:(length(positions)-1), 2:2:length(positions)
-    segment_start = positions[startr]
-    segment_end = positions[endr]
+    positions = plot[1]
+    startr = lift(p-> 1:2:(length(p)-1), positions)
+    endr = lift(p-> 2:2:length(p), positions)
+    p_start_end = lift(plot[1]) do positions
+        return (positions[startr[]], positions[endr[]])
+    end
+
     per_instance = Dict{Symbol, Any}(
-        :segment_start => segment_start,
-        :segment_end => segment_end,
+        :segment_start => Buffer(lift(first, p_start_end)),
+        :segment_end => Buffer(lift(last, p_start_end)),
     )
     uniforms = Dict{Symbol, Any}()
     for k in (:linewidth, :color)
@@ -26,8 +29,8 @@ function create_shader(scene::Scene, plot::LineSegments)
             uniforms[Symbol("$(k)_start")] = attribute
             uniforms[Symbol("$(k)_end")] = attribute
         else
-            per_instance[Symbol("$(k)_start")] = lift(x-> x[startr], attribute)
-            per_instance[Symbol("$(k)_end")] = lift(x-> x[endr], attribute)
+            per_instance[Symbol("$(k)_start")] = Buffer(lift(x-> x[startr[]], attribute))
+            per_instance[Symbol("$(k)_end")] = Buffer(lift(x-> x[endr[]], attribute))
         end
     end
     uniforms[:resolution] = scene.camera.resolution
@@ -46,51 +49,50 @@ function create_shader(scene::Scene, plot::LineSegments)
         ; uniforms...
     )
 end
-function draw_js(jsscene, mscene::Scene, plot::LineSegments)
-    program = create_shader(mscene, plot)
-    mesh = wgl_convert(mscene, jsscene, program)
-    update_model!(mesh, plot)
-    write(joinpath(@__DIR__, "..", "debug", "linesegments.vert"), program.program.vertex_source)
-    write(joinpath(@__DIR__, "..", "debug", "linesegments.frag"), program.program.fragment_source)
 
+function draw_js(jsctx, jsscene, mscene::Scene, plot::LineSegments)
+    program = create_shader(mscene, plot)
+    mesh = wgl_convert(mscene, jsctx, program)
+    update_model!(mesh, plot)
+    debug_shader("linesegments", program.program)
     mesh.name = "LineSegments"
     jsscene.add(mesh)
 end
 
-function draw_js(jsscene, mscene::Scene, plot::Lines)
+function draw_js(jsctx, jsscene, mscene::Scene, plot::Lines)
     @get_attribute plot (color, linewidth, model, transformation)
     positions = plot[1][]
-    mesh = jslines!(jsscene, plot, positions, color, linewidth, model)
+    mesh = jslines!(jsctx, jsscene, plot, positions, color, linewidth, model)
     return mesh
 end
 
 
-function set_positions!(geometry, positions::AbstractVector{<: Point{N, T}}) where {N, T}
+function set_positions!(jsctx, geometry, positions::AbstractVector{<: Point{N, T}}) where {N, T}
     flat = reinterpret(T, positions)
     geometry.addAttribute(
-        "position", THREE.new.Float32BufferAttribute(flat, N)
+        "position", jsctx.THREE.new.Float32BufferAttribute(flat, N)
     )
 end
 
-function set_colors!(geometry, colors::AbstractVector{T}) where T <: Colorant
+function set_colors!(jsctx, geometry, colors::AbstractVector{T}) where T <: Colorant
     flat = reinterpret(eltype(T), colors)
     geometry.addAttribute(
-        "color", THREE.new.Float32BufferAttribute(flat, length(T))
+        "color", jsctx.THREE.new.Float32BufferAttribute(flat, length(T))
     )
 end
 
 
 
-function material!(geometry, colors::AbstractVector)
-    material = THREE.new.LineBasicMaterial(
-        vertexColors = THREE.VertexColors, transparent = true
+function material!(jsctx, geometry, colors::AbstractVector)
+    material = jsctx.THREE.new.LineBasicMaterial(
+        vertexColors = jsctx.THREE.VertexColors, transparent = true
     )
-    set_colors!(geometry, colors)
+    set_colors!(jsctx, geometry, colors)
     return material
 end
 
-function material!(geometry, color::Colorant)
-    material = THREE.new.LineBasicMaterial(
+function material!(jsctx, geometry, color::Colorant)
+    material = jsctx.THREE.new.LineBasicMaterial(
         color = "#"*hex(RGB(color)),
         opacity = alpha(color),
         transparent = true
@@ -113,14 +115,14 @@ function split_at_nan(f, vector::AbstractVector{T}, colors) where T
     end
 end
 
-function jslines!(scene, plot, positions_nan, colors, linewidth, model, typ = :lines)
+function jslines!(jsctx, scene, plot, positions_nan, colors, linewidth, model, typ = :lines)
     mesh = nothing
     split_at_nan(positions_nan, colors) do positions, colors
-        geometry = THREE.new.BufferGeometry()
-        material = material!(geometry, colors)
+        geometry = jsctx.THREE.new.BufferGeometry()
+        material = material!(jsctx, geometry, colors)
         material.linewidth = linewidth
-        set_positions!(geometry, positions)
-        Typ = typ === :lines ? THREE.new.Line : THREE.new.LineSegments
+        set_positions!(jsctx, geometry, positions)
+        Typ = typ === :lines ? jsctx.THREE.new.Line : jsctx.THREE.new.LineSegments
         mesh = Typ(geometry, material)
         mesh.matrixAutoUpdate = false;
         mesh.matrix.set(model...)

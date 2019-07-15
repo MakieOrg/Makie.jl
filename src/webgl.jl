@@ -1,5 +1,5 @@
 using Colors, WebIO
-using JSCall, JSExpr
+using JSCall, JSExpr, JSON
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
 using GeometryTypes: Mat4f0
@@ -8,90 +8,141 @@ using Colors: N0f8
 tlength(T) = length(T)
 tlength(::Type{<: Real}) = 1
 
-function JSInstanceBuffer(context, attribute::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), attribute)
-    js_f32 = window.new.Float32Array(flat)
-    return THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
+struct JSBuffer{T} <: AbstractVector{T}
+    three::ThreeDisplay
+    buffer::JSObject
+    length::Int
+end
+jsbuffer(x::JSBuffer) = getfield(x, :buffer)
+Base.size(x::JSBuffer) = (getfield(x, :length),)
+
+function WebIO.tojs(jso::JSBuffer)
+    return WebIO.tojs(jsbuffer(jso))
+end
+function JSON.lower(jso::JSBuffer)
+    return JSON.lower(jsbuffer(jso))
+end
+
+function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
+    setindex!(x, [value], index:(index+1))
+end
+function Base.getindex(x::JSBuffer, idx::Int)
+    jlvalue(jsbuffer(x))[idx]
+end
+
+function Base.setindex!(x::JSBuffer, value::AbstractArray, index::Colon)
+    x[1:length(x)] = value
+end
+
+function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
+    flat = collect(reinterpret(eltype(T), value))
+    jsb = jsbuffer(x)
+    off = (first(index) - 1) * tlength(T)
+    jsb.set(flat, off)
+    jsb.needsUpdate = true
+    redraw!(x.three)
+    return value
+end
+
+function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
+    flat = reinterpret(eltype(T), vector)
+    js_f32 = three.window.new.Float32Array(flat)
+    jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
+    jsbuff.setDynamic(true)
+    buffer = JSBuffer{T}(three, jsbuff, length(vector))
+    if vector isa Buffer
+        ShaderAbstractions.connect!(vector, buffer)
+    end
+    return buffer
 end
 
 
-
-function JSBuffer(context, buff::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), buff)
-    return THREE.new.Float32BufferAttribute(flat, tlength(T))
+function JSBuffer(three, vector::AbstractVector{T}) where T
+    flat = reinterpret(eltype(T), vector)
+    jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
+    jsbuff.setDynamic(true)
+    buffer = JSBuffer{T}(three, jsbuff, length(vector))
+    if vector isa Buffer
+        ShaderAbstractions.connect!(vector, buffer)
+    end
+    return buffer
 end
 
-jl2js(val::Number) = val
-function jl2js(val::Mat4f0)
-    x = THREE.new.Matrix4()
+jl2js(jsctx, val::Number) = val
+function jl2js(jsctx, val::Mat4f0)
+    x = jsctx.THREE.new.Matrix4()
     x.fromArray(vec(val))
     return x
 end
 
-jl2js(val::Quaternion) = THREE.new.Vector4(val.data...)
-jl2js(val::Vec4f0) = THREE.new.Vector4(val...)
-jl2js(val::Vec3f0) = THREE.new.Vector3(val...)
-jl2js(val::Vec2f0) = THREE.new.Vector2(val...)
+jl2js(jsctx, val::Quaternion) = jsctx.THREE.new.Vector4(val.data...)
+jl2js(jsctx, val::Vec4f0) = jsctx.THREE.new.Vector4(val...)
+jl2js(jsctx, val::Vec3f0) = jsctx.THREE.new.Vector3(val...)
+jl2js(jsctx, val::Vec2f0) = jsctx.THREE.new.Vector2(val...)
 
-function jl2js(val::RGBA)
-    return THREE.new.Vector4(red(val), green(val), blue(val), alpha(val))
+function jl2js(jsctx, val::RGBA)
+    return jsctx.THREE.new.Vector4(red(val), green(val), blue(val), alpha(val))
 end
-function jl2js(val::RGB)
-    return THREE.new.Vector3(red(val), green(val), blue(val))
+function jl2js(jsctx, val::RGB)
+    return jsctx.THREE.new.Vector3(red(val), green(val), blue(val))
 end
 
-function jl2js(color::Sampler{T, 1}) where T
-    data = to_js_buffer(color.data)
-    tex = THREE.new.DataTexture(
+function jl2js(jsctx, color::Sampler{T, 1}) where T
+    data = to_js_buffer(jsctx, color.data)
+    tex = jsctx.THREE.new.DataTexture(
         data, size(color, 1), 1,
-        three_format(T), three_type(eltype(T))
+        three_format(jsctx, T), three_type(jsctx, eltype(T))
     )
-    tex.minFilter = three_filter(color.minfilter)
-    tex.magFilter = three_filter(color.magfilter)
-    tex.wrapS = three_repeat(color.repeat[1])
+    tex.minFilter = three_filter(jsctx, color.minfilter)
+    tex.magFilter = three_filter(jsctx, color.magfilter)
+    tex.wrapS = three_repeat(jsctx, color.repeat[1])
     tex.anisotropy = color.anisotropic
     tex.needsUpdate = true
     return tex
 end
 
-function jl2js(color::Sampler{T}) where T
-    data = to_js_buffer(color.data)
-    tex = THREE.new.DataTexture(
-        data, size(color, 1), size(color, 2),
-        three_format(T), three_type(eltype(T))
-    )
-    tex.minFilter = three_filter(color.minfilter)
-    tex.magFilter = three_filter(color.magfilter)
-    tex.wrapS = three_repeat(color.repeat[1])
-    tex.wrapT = three_repeat(color.repeat[2])
-    tex.anisotropy = color.anisotropic
-    tex.needsUpdate = true
-    return tex
+function jl2js(jsctx, color::Sampler{T, 2}) where T
+    # cache texture by their pointer
+    key = reinterpret(UInt64, objectid(color.data))
+    return get!(jsctx.session_cache, key) do
+        data = to_js_buffer(jsctx, color.data)
+        tex = jsctx.THREE.new.DataTexture(
+            data, size(color, 1), size(color, 2),
+            three_format(jsctx, T), three_type(jsctx, eltype(T))
+        )
+        tex.minFilter = three_filter(jsctx, color.minfilter)
+        tex.magFilter = three_filter(jsctx, color.magfilter)
+        tex.wrapS = three_repeat(jsctx, color.repeat[1])
+        tex.wrapT = three_repeat(jsctx, color.repeat[2])
+        tex.anisotropy = color.anisotropic
+        tex.needsUpdate = true
+        return tex
+    end
 end
 
-function jl2js(color::Sampler{T, 3}) where T
-    data = to_js_buffer(color.data)
-    tex = THREE.new.DataTexture3D(
+function jl2js(jsctx, color::Sampler{T, 3}) where T
+    data = to_js_buffer(jsctx, color.data)
+    tex = jsctx.THREE.new.DataTexture3D(
         data, size(color, 1), size(color, 2), size(color, 3)
     )
-    tex.minFilter = three_filter(color.minfilter)
-    tex.magFilter = three_filter(color.magfilter)
-    tex.format = three_format(T)
-    tex.type = three_type(eltype(T))
+    tex.minFilter = three_filter(jsctx, color.minfilter)
+    tex.magFilter = three_filter(jsctx, color.magfilter)
+    tex.format = three_format(jsctx, T)
+    tex.type = three_type(jsctx, eltype(T))
 
-    tex.wrapS = three_repeat(color.repeat[1])
-    tex.wrapT = three_repeat(color.repeat[2])
-    tex.wrapR = three_repeat(color.repeat[3])
+    tex.wrapS = three_repeat(jsctx, color.repeat[1])
+    tex.wrapT = three_repeat(jsctx, color.repeat[2])
+    tex.wrapR = three_repeat(jsctx, color.repeat[3])
 
     tex.anisotropy = color.anisotropic
     tex.needsUpdate = true
     return tex
 end
 
-function to_js_uniforms(scene, context, dict::Dict)
-    result = window.new.Object()
+function to_js_uniforms(scene, jsctx, dict::Dict)
+    result = jsctx.window.new.Object()
     for (k, v) in dict
-        setproperty!(result, k, Dict(:value => jl2js(to_value(v))))
+        setproperty!(result, k, Dict(:value => jl2js(jsctx, to_value(v))))
     end
     for (k, v) in dict
         # Sampler + Buffers won't come through as Observables,
@@ -103,8 +154,9 @@ function to_js_uniforms(scene, context, dict::Dict)
             # a new event to update the render loop!!!!
             try
                 prop = getproperty(result, k)
-                prop.value = jl2js(val)
+                prop.value = jl2js(jsctx, val)
                 prop.needsUpdate = true
+                redraw!(jsctx)
             catch e
                 @warn "Error in updating $k: " exception=e
             end
@@ -113,13 +165,13 @@ function to_js_uniforms(scene, context, dict::Dict)
     return result
 end
 
-JSCall.@jsfun function create_material(vert, frag, uniforms)
-    @var material = @new $(THREE).RawShaderMaterial(
+JSCall.@jsfun function create_material(THREE, vert, frag, uniforms)
+    @var material = @new THREE.RawShaderMaterial(
         Dict(
             :uniforms => uniforms,
             :vertexShader => vert,
             :fragmentShader => frag,
-            :side => $(THREE).DoubleSide,
+            :side => THREE.DoubleSide,
             :transparent => true
             # :depthTest => true,
             # :depthWrite => true
@@ -128,35 +180,35 @@ JSCall.@jsfun function create_material(vert, frag, uniforms)
     return material
 end
 
-three_format(::Type{<: Real}) = THREE.RedFormat
-three_format(::Type{<: RGB}) = THREE.RGBFormat
-three_format(::Type{<: RGBA}) = THREE.RGBAFormat
+three_format(jsctx, ::Type{<: Real}) = jsctx.RedFormat
+three_format(jsctx, ::Type{<: RGB}) = jsctx.RGBFormat
+three_format(jsctx, ::Type{<: RGBA}) = jsctx.RGBAFormat
 
-three_type(::Type{Float16}) = THREE.FloatType
-three_type(::Type{Float32}) = THREE.FloatType
-three_type(::Type{N0f8}) = THREE.UnsignedByteType
+three_type(jsctx, ::Type{Float16}) = jsctx.FloatType
+three_type(jsctx, ::Type{Float32}) = jsctx.FloatType
+three_type(jsctx, ::Type{N0f8}) = jsctx.UnsignedByteType
 
-function to_js_buffer(array::AbstractArray{T}) where T
-    return to_js_buffer(reinterpret(eltype(T), array))
+function to_js_buffer(jsctx, array::AbstractArray{T}) where T
+    return to_js_buffer(jsctx, reinterpret(eltype(T), array))
 end
-function to_js_buffer(array::AbstractArray{Float32})
-    return window.Float32Array.from(vec(array))
+function to_js_buffer(jsctx, array::AbstractArray{Float32})
+    return jsctx.window.Float32Array.from(vec(array))
 end
-function to_js_buffer(array::AbstractArray{<: AbstractFloat})
-    return window.Float32Array.from(vec(Float32.(array)))
+function to_js_buffer(jsctx, array::AbstractArray{<: AbstractFloat})
+    return jsctx.window.Float32Array.from(vec(array))
 end
-function to_js_buffer(array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
-    return window.Uint8Array.from(vec(array))
+function to_js_buffer(jsctx, array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
+    return jsctx.window.Uint8Array.from(vec(array))
 end
 
-function three_filter(sym)
-    sym == :linear && return THREE.LinearFilter
-    sym == :nearest && return THREE.NearestFilter
+function three_filter(jsctx, sym)
+    sym == :linear && return jsctx.LinearFilter
+    sym == :nearest && return jsctx.NearestFilter
 end
-function three_repeat(s::Symbol)
-    s == :clamp_to_edge && return THREE.ClampToEdgeWrapping
-    s == :mirrored_repeat && return THREE.MirroredRepeatWrapping
-    s == :repeat && return THREE.RepeatWrapping
+function three_repeat(jsctx, s::Symbol)
+    s == :clamp_to_edge && return jsctx.ClampToEdgeWrapping
+    s == :mirrored_repeat && return jsctx.MirroredRepeatWrapping
+    s == :repeat && return jsctx.RepeatWrapping
 end
 using StaticArrays
 
@@ -189,11 +241,10 @@ function lift_convert(key, value, plot)
      end
 end
 
-function wgl_convert(scene, context, ip::InstancedProgram)
-    # bufferGeometry = THREE.new.BoxBufferGeometry(0.1, 0.1, 0.1);
-    js_vbo = THREE.new.InstancedBufferGeometry()
+function wgl_convert(scene, jsctx, ip::InstancedProgram)
+    js_vbo = jsctx.THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
-        js_buff = JSBuffer(context, buff).setDynamic(true)
+        js_buff = JSBuffer(jsctx, buff)
         js_vbo.addAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
@@ -203,40 +254,48 @@ function wgl_convert(scene, context, ip::InstancedProgram)
 
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
-        js_buff = JSInstanceBuffer(context, buff).setDynamic(true)
+        js_buff = JSInstanceBuffer(jsctx, buff)
         js_vbo.addAttribute(name, js_buff)
     end
-    uniforms = to_js_uniforms(scene, context, ip.program.uniforms)
-    material = WGLMakie.create_material(
+    uniforms = to_js_uniforms(scene, jsctx, ip.program.uniforms)
+    material = create_material(
+        jsctx.THREE,
         ip.program.vertex_source,
         ip.program.fragment_source,
         uniforms
     )
-    return THREE.new.Mesh(js_vbo, material)
+    return jsctx.THREE.new.Mesh(js_vbo, material)
 end
 
 
-function wgl_convert(scene, context, program::Program)
-    js_vbo = THREE.new.BufferGeometry()
+function wgl_convert(scene, jsctx, program::Program)
+    js_vbo = jsctx.THREE.new.BufferGeometry()
 
     for (name, buff) in pairs(program.vertexarray)
-        js_buff = JSBuffer(context, buff).setDynamic(true)
+        js_buff = JSBuffer(jsctx, buff)
         js_vbo.addAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
     indices = reinterpret(UInt32, indices) .- UInt32(1)
     js_vbo.setIndex(indices)
     # per instance data
-    uniforms = to_js_uniforms(scene, context, program.uniforms)
+    uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
 
-    material = WGLMakie.create_material(
+    material = create_material(
+        jsctx.THREE,
         program.vertex_source,
         program.fragment_source,
         uniforms
     )
-    return THREE.new.Mesh(js_vbo, material)
+    return jsctx.THREE.new.Mesh(js_vbo, material)
 end
 
+
+function debug_shader(name, program)
+    dir = joinpath(@__DIR__, "..", "debug")
+    isdir(dir) || mkdir(dir)
+    write(joinpath(dir, "$(name).frag"), program.fragment_source)
+end
 
 function update_model!(geom, plot)
     geom.matrixAutoUpdate = false
