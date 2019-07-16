@@ -247,12 +247,15 @@ function draw_image(scene, screen, attributes)
     w, h = xymax .- xy
     interp = to_value(get(attributes, :interpolate, true))
     interp = interp ? Cairo.FILTER_BEST : Cairo.FILTER_NEAREST
-    Cairo.save(ctx);
-    pattern = Cairo.CairoPattern(to_cairo_image(image, attributes))
-    Cairo.pattern_set_extend(pattern, Cairo.EXTEND_PAD)
-    Cairo.pattern_set_filter(pattern, interp)
-    Cairo.set_source(ctx, pattern)
+    s = to_cairo_image(image, attributes)
     Cairo.rectangle(ctx, xy..., w, h)
+    Cairo.save(ctx)
+    Cairo.translate(ctx, xy...)
+    Cairo.scale(ctx, w/s.width, h/s.height)
+    Cairo.set_source_surface(ctx, s, 0, 0)
+    p = Cairo.get_source(ctx)
+    # Set filter doesn't work!?
+    Cairo.pattern_set_filter(p, interp)
     Cairo.fill(ctx)
     Cairo.restore(ctx)
 end
@@ -513,6 +516,7 @@ function __init__()
     dir = mktempdir()
     temp_file = joinpath(dir, "cairo.svg")
     AbstractPlotting.register_backend!(CairoBackend(temp_file))
+    AbstractPlotting.inline!(true)
     atexit() do
         rm(dir, force = true, recursive = true)
     end
