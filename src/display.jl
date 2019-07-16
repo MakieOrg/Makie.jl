@@ -105,7 +105,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
         if plotpane !== nothing && !use_display[] && !plotpane
             # we want to display as inline!, we are in Juno, but the plotpane is disabled
             @warn """Showing scene as inline with Plotpane disabled. This happens because `AbstractPlotting.inline!(true)` is set,
-            while Atom.PlotPaneEnabled[] is false. Either enable plotpane or set inline to false!"""
+            while `Atom.PlotPaneEnabled[]` is false. Either enable the plotpane, or set inline to false!"""
         else
             @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
             This needs to be false to show plot in a window in the REPL."""
