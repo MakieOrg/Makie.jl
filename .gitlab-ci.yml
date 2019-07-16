@@ -5,7 +5,7 @@ variables:
     ABSTRACTPLOTTING_MINIMAL: "false"
 
 test:
-    image: "juliagpu/julia:v1.2${CI_IMAGE_TAG}"
+    image: "juliagpu/julia:v1.1-${CI_IMAGE_TAG}"
     before_script:
         - apt-get -qq update
         # glfw
