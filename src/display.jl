@@ -108,7 +108,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
             while `Atom.PlotPaneEnabled[]` is false. Either enable the plotpane, or set inline to false!"""
         else
             @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
-            This needs to be false to show plot in a window in the REPL."""
+            This needs to be false to show a plot in a window when in the REPL."""
         end
     end
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
