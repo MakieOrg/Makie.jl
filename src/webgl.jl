@@ -1,5 +1,4 @@
-using Colors, WebIO
-using JSCall, JSExpr, JSON
+using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
 using GeometryTypes: Mat4f0
@@ -16,18 +15,15 @@ end
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
 Base.size(x::JSBuffer) = (getfield(x, :length),)
 
-function WebIO.tojs(jso::JSBuffer)
-    return WebIO.tojs(jsbuffer(jso))
-end
-function JSON.lower(jso::JSBuffer)
-    return JSON.lower(jsbuffer(jso))
+function JSServe.serialize_string(io::IO, jso::JSBuffer)
+    return JSServe.serialize_string(io, jsbuffer(jso))
 end
 
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
     setindex!(x, [value], index:(index+1))
 end
 function Base.getindex(x::JSBuffer, idx::Int)
-    jlvalue(jsbuffer(x))[idx]
+    # jlvalue(jsbuffer(x))[idx]
 end
 
 function Base.setindex!(x::JSBuffer, value::AbstractArray, index::Colon)
@@ -165,19 +161,16 @@ function to_js_uniforms(scene, jsctx, dict::Dict)
     return result
 end
 
-JSCall.@jsfun function create_material(THREE, vert, frag, uniforms)
-    @var material = @new THREE.RawShaderMaterial(
-        Dict(
-            :uniforms => uniforms,
-            :vertexShader => vert,
-            :fragmentShader => frag,
-            :side => THREE.DoubleSide,
-            :transparent => true
-            # :depthTest => true,
-            # :depthWrite => true
-        ),
+function create_material(THREE, vert, frag, uniforms)
+    return THREE.new.RawShaderMaterial(
+        uniforms = uniforms,
+        vertexShader = vert,
+        fragmentShader = frag,
+        side = THREE.DoubleSide,
+        transparent = true,
+        # depthTest = true,
+        # depthWrite = true
     )
-    return material
 end
 
 three_format(jsctx, ::Type{<: Real}) = jsctx.RedFormat
