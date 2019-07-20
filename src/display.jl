@@ -432,9 +432,10 @@ end
 """
     record(func, scene, path, iter; framerate = 24)
 
-This is simply a shorthand for
+This is simply a shorthand to wrap a for loop in `record`.
 
-usage:
+Example:
+
 ```example
     scene = lines(rand(10))
     record(scene, "test.gif", 1:100) do i
