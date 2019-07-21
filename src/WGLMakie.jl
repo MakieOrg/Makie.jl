@@ -295,6 +295,7 @@ function __init__()
     # TODO hopefully this gets deprecated soon
     # But some WebIO backends have things easier with this:
     WebIO.push!(WebIO.renderable_types, ThreeDisplay)
+    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
 end
 
 end # module
