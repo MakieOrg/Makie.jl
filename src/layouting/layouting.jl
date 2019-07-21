@@ -245,7 +245,6 @@ end
 
 otherdim(dim) = dim == 1 ? 2 : 1
 
-
 function scaled_width(bb, other_size, dim)
     wh = widths(bb)
     scaling = other_size / wh[otherdim(dim)]
