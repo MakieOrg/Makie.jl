@@ -74,7 +74,7 @@ function scatter_shader(scene::Scene, attributes)
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
     get!(uniform_dict, :shape_type) do
-        lift(primitive_shape, attributes[:marker])
+        lift(x-> primitive_shape(AbstractPlotting.to_spritemarker(x)), attributes[:marker])
     end
     if uniform_dict[:shape_type][] == 3
         atlas = AbstractPlotting.get_texture_atlas()
