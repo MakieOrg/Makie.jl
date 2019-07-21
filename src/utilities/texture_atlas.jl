@@ -10,7 +10,23 @@ mutable struct TextureAtlas
     extent          ::Vector{FontExtent{Float64}}
 end
 
-function TextureAtlas(initial_size = (1024, 1024))
+@enum GlyphResolution High Low
+
+const TEXTURE_RESOLUTION = Ref((2048, 2048))
+const CACHE_RESOLUTION_PREFIX = Ref("High")
+
+function set_glyph_resolution!(res::GlyphResolution)
+    if res == High
+        TEXTURE_RESOLUTION[] = (2048, 2048)
+        CACHE_RESOLUTION_PREFIX[] = "high"
+    else
+        TEXTURE_RESOLUTION[] = (1024, 1024)
+        CACHE_RESOLUTION_PREFIX[] = "low"
+    end
+end
+
+
+function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     TextureAtlas(
         RectanglePacker(SimpleRectangle(0, 0, initial_size...)),
         Dict{Any, Int}(),
@@ -31,7 +47,12 @@ begin #basically a singleton for the textureatlas
         'π','∮','⋅','→','∞','∑','∏','∀','∈','ℝ','⌈','⌉','−','⌊','⌋','α','∧','β','∨','ℕ','⊆','₀',
         '⊂','ℤ','ℚ','ℂ','⊥','≠','≡','≤','≪','⊤','⇒','⇔','₂','⇌','Ω','⌀',
     ]
-    const _cache_path = abspath(first(Base.DEPOT_PATH), "makiegallery", ".cache", "texture_atlas_web.jls")
+    function get_cache_path()
+        return abspath(
+            first(Base.DEPOT_PATH), "makiegallery", ".cache",
+            "texture_atlas_$(CACHE_RESOLUTION_PREFIX[]).jls"
+        )
+    end
     const _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
     const _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
 
@@ -59,9 +80,9 @@ begin #basically a singleton for the textureatlas
     end
 
     function cached_load()
-        if isfile(_cache_path)
+        if isfile(get_cache_path())
             try
-                return open(_cache_path) do io
+                return open(get_cache_path()) do io
                     dict = Serialization.deserialize(io)
                     fields = map(fieldnames(TextureAtlas)) do n
                         v = dict[n]
@@ -72,7 +93,7 @@ begin #basically a singleton for the textureatlas
             catch e
                 @info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
                 @warn(e)
-                rm(_cache_path)
+                rm(get_cache_path())
             end
         end
         atlas = TextureAtlas()
@@ -88,10 +109,10 @@ begin #basically a singleton for the textureatlas
     end
 
     function to_cache(atlas)
-        if !ispath(dirname(_cache_path))
-            mkpath(dirname(_cache_path))
+        if !ispath(dirname(get_cache_path()))
+            mkpath(dirname(get_cache_path()))
         end
-        open(_cache_path, "w") do io
+        open(get_cache_path(), "w") do io
             dict = Dict(map(fieldnames(typeof(atlas))) do name
                 name => getfield(atlas, name)
             end)
