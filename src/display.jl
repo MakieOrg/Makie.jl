@@ -15,7 +15,10 @@ function inline!(inline = true)
 end
 
 function register_backend!(backend::AbstractBackend)
-    push!(available_backends, backend)
+    if !(backend in available_backends)
+        push!(available_backends, backend)
+    end
+    # only set as the current backend if it's the only one
     if(length(available_backends) == 1)
         current_backend[] = backend
     end
