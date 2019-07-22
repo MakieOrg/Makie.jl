@@ -530,17 +530,12 @@ function AbstractPlotting.backend_display(x::CairoBackend, scene::Scene)
     end
 end
 
-function AbstractPlotting.colorbuffer(screen::CairoScreen{<: CairoRGBSurface})
-
-end
-
 function AbstractPlotting.colorbuffer(screen::CairoScreen)
     # TODO this is super slow, we need to design the colorbuffer
     # api to be able to reuse a RGB surface
     FileIO.save(display_path("png"), screen.scene)
     return FileIO.load(display_path("png"))
 end
-
 
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Scene) = x.typ == PNG
