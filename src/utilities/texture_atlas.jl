@@ -14,14 +14,17 @@ end
 
 const TEXTURE_RESOLUTION = Ref((2048, 2048))
 const CACHE_RESOLUTION_PREFIX = Ref("High")
+const DOWN_SAMPLE_FACTOR = Ref(50)
 
 function set_glyph_resolution!(res::GlyphResolution)
     if res == High
         TEXTURE_RESOLUTION[] = (2048, 2048)
         CACHE_RESOLUTION_PREFIX[] = "high"
+        DOWN_SAMPLE_FACTOR[] = 50
     else
         TEXTURE_RESOLUTION[] = (1024, 1024)
         CACHE_RESOLUTION_PREFIX[] = "low"
+        DOWN_SAMPLE_FACTOR[] = 30
     end
 end
 
@@ -230,7 +233,8 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     if glyph == '\n' # don't render  newline
         glyph = ' '
     end
-    bitmap, extent = renderface(font, glyph, (40*downsample, 40*downsample))
+    DF = DOWN_SAMPLE_FACTOR[]
+    bitmap, extent = renderface(font, glyph, (DF*downsample, DF*downsample))
     sd = sdistancefield(bitmap, downsample, downsample*pad)
     sd = sd ./ downsample;
     extent = extent ./ Vec2f0(downsample)
