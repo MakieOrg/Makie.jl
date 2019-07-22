@@ -153,6 +153,7 @@ function add_scene!(jsctx, scene::Scene)
     end
 end
 
+
 mutable struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     jsm::JSModule
     renderer::JSObject
@@ -172,7 +173,10 @@ mutable struct ThreeDisplay <: AbstractPlotting.AbstractScreen
         return obj
     end
 end
-
+function Base.insert!(x::ThreeDisplay, scene::Scene, plot::AbstractPlot)
+    #TODO implement
+    # js = to_jsscene(x, scene)
+end
 function redraw!(three::ThreeDisplay)
     getfield(three, :redraw)[] = true
 end
@@ -182,7 +186,9 @@ function on_redraw(f, three::ThreeDisplay)
 end
 
 function to_jsscene(three::ThreeDisplay, scene::Scene)
-    return getfield(three, :scene2jsscene)[scene]
+    get!(getfield(three, :scene2jsscene)) do
+        three.Scene(), nothing
+    end
 end
 
 function Base.getproperty(x::ThreeDisplay, field::Symbol)
@@ -291,6 +297,7 @@ function activate!()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
     AbstractPlotting.current_backend[] = b
+    AbstractPlotting.inline!(true) # can't display any different atm
 end
 
 function __init__()
