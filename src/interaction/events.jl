@@ -97,12 +97,12 @@ end
 
 
 """
-Picks a mouse position
+Picks a mouse position.  Implemented by the backend.
 """
 function pick end
 
 """
     onpick(func, plot)
-Calls `func` if one clicks on `plot`
+Calls `func` if one clicks on `plot`.  Implemented by the backend.
 """
 function onpick end
