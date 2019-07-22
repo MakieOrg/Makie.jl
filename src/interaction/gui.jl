@@ -277,8 +277,7 @@ function sample_color(f, ui, colormesh, v)
         ui, transformation = Transformation(), px_area = pixelarea(ui),
         theme = theme(ui)
     )
-    # FIXME, we need an api for this!
-    sub.theme.attributes[:clear] = Observable(false)
+    sub.clear = false
     select = scatter!(
         sub, lift((p, a)-> [Point2f0(p) .- minimum(a)], mpos, pixelarea(sub)),
         markersize = 15, color = (:white, 0.2), strokecolor = :white,
@@ -300,8 +299,6 @@ function sample_color(f, ui, colormesh, v)
         return
     end
 end
-
-
 
 function popup(parent, position, width)
     pos_n = Node(Point2f0(position))
@@ -336,7 +333,7 @@ function popup(parent, position, width)
 end
 
 """
-    Colorswatch
+    colorswatch(scene = Scene(camera = campixel!))
 
 TODO add function signatures
 TODO add description

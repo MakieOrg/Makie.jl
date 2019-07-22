@@ -165,11 +165,13 @@ function absrect(rect)
     end
     FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
 end
+
+
 function selection_rect!(scene, cam, key)
     rect = RefValue(FRect())
     lw = 2f0
     scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
-    theme(scene_unscaled, :clear)[] = false
+    scene_unscaled.clear = false
     scene_unscaled.updated = Node(false)
     rect_vis = lines!(
         scene_unscaled,
@@ -215,9 +217,6 @@ function selection_rect!(scene, cam, key)
     end
     rect_vis, dragged_rect
 end
-
-
-
 
 function reset!(cam, boundingbox, preserveratio = true)
     w1 = widths(boundingbox)

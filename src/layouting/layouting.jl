@@ -76,8 +76,6 @@ function dont_touch(
     child + move_from_touch(parent, child, pad)
 end
 
-
-
 """
     fit_factor_stretch(rect, lims::NTuple{N}) where N
 
@@ -201,7 +199,11 @@ function to_sizes(x::AbstractVector{<: Number}, widths, dim)
     x .* widths[dim]
 end
 
-function layout(plots::Vector{T}, dim; parent = Scene(clear = false), sizes = nothing, kw_args...) where T <: Scene
+function layout(
+        plots::Vector{T}, dim;
+        parent = Scene(clear = false), sizes = nothing, kw_args...
+    ) where T <: Scene
+
     N = length(plots)
     w = 0.0
     area = pixelarea(parent)
