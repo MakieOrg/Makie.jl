@@ -609,11 +609,12 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     plot!(plot_object)
 
     push!(scene, plot_object)
-    if !scene.raw[]
+        
+    if !scene.raw[] || scene[:camera][] !== automatic
         # if no camera controls yet, setup camera
         setup_camera!(scene)
-        add_axis!(scene, rest)
     end
+    scene.raw[] || add_axis!(scene, rest)
     # ! ∘ isaxis --> (x)-> !isaxis(x)
     # move axis to front, so that scene[end] gives back the last plot and not the axis!
     if !isempty(scene.plots) && isaxis(last(scene.plots))
