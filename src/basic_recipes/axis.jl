@@ -120,7 +120,7 @@ $(ATTRIBUTES)
         showaxis = (true, true, true),
         showgrid = (true, true, true),
         scale = Vec3f0(1),
-
+        padding = 0.1,
         names = Theme(
             axisnames = ("x", "y", "z"),
             textcolor = (:black, :black, :black),
@@ -245,7 +245,7 @@ function calculated_attributes!(::Type{<: Union{Axis2D, Axis3D}}, plot)
     end
     lim_pad = lift(plot[:padding], plot[1]) do pad, lims
         limit_widths = map(x-> x[2] - x[1], lims)
-        pad = (limit_widths .* to2tuple(pad))
+        pad = (limit_widths .* pad)
         # pad the drawn limits and use them as the ranges
         return map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
     end
@@ -344,7 +344,8 @@ function draw_titles(
         xticks, yticks, origin, limit_widths,
         tickfont, tick_size, tick_gap, tick_title_gap,
         axis_labels,
-        textcolor, textsize, rotation, align, font
+        textcolor, textsize, rotation, align, font,
+        title
     )
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
@@ -373,6 +374,14 @@ function draw_titles(
                 color = textcolor[i], font = font[i]
             )
         end
+    end
+    if title !== nothing
+        # TODO give title own text attributes
+        push!(
+            textbuffer, title, (half_width[1], (origin .+ (limit_widths))[2]),
+            textsize = textsize[1], align = (:center, :top), rotation = rotation[1],
+            color = textcolor[1], font = font[1]
+        )
     end
 end
 
@@ -411,7 +420,7 @@ function draw_axis2d(
 
         # title / axis name attributes
         ti_labels,
-        ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
+        ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font, ti_title
     )
     start!(textbuffer); start!(frame_linebuffer); foreach(start!, grid_linebuffer)
     # limits = limits Vec2f0(padding)
@@ -467,6 +476,7 @@ function draw_axis2d(
         t_font, t_textsize, t_gap, t_title_gap,
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
+        ti_title
     )
     finish!(textbuffer); finish!(frame_linebuffer); foreach(finish!, grid_linebuffer)
     return
@@ -483,7 +493,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         :textcolor, :textsize, :rotation, :align, :font,
         :gap, :title_gap
     )
-    ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font)
+    ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :title)
 
     g_args = getindex.(Ref(cplot[:grid]), g_keys)
     f_args = getindex.(Ref(cplot[:frame]), f_keys)
