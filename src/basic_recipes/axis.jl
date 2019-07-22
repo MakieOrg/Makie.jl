@@ -1,24 +1,22 @@
 function ticks_and_labels end
 
-
-
 module Formatters
 
-using Showoff
+    using Showoff
 
-function scientific(ticks::AbstractVector)
-    Showoff.showoff(ticks, :scientific)
-end
-
-function plain(ticks::AbstractVector)
-    try
-        Showoff.showoff(ticks, :plain)
-    catch e
-        Base.showerror(stderr, e)
-        println("with ticks: ", ticks)
-        String["-Inf", "Inf"]
+    function scientific(ticks::AbstractVector)
+        Showoff.showoff(ticks, :scientific)
     end
-end
+
+    function plain(ticks::AbstractVector)
+        try
+            Showoff.showoff(ticks, :plain)
+        catch e
+            Base.showerror(stderr, e)
+            println("with ticks: ", ticks)
+            String["-Inf", "Inf"]
+        end
+    end
 
 end
 using .Formatters
@@ -46,7 +44,6 @@ $(ATTRIBUTES)
 
             gap = 3,
             title_gap = 3,
-
 
             linewidth = (1, 1),
             linecolor = ((:black, 0.4), (:black, 0.4)),
@@ -77,6 +74,7 @@ $(ATTRIBUTES)
 
         names = Theme(
             axisnames = ("x", "y"),
+            title = nothing,
             textcolor = (:black, :black),
             textsize = (6, 6),
             rotation = (0.0, -1.5pi),
@@ -374,7 +372,7 @@ end
 
 function ticks_and_labels(x)
     st, s = extrema(x)
-    r = range(st, stop=s, length=4)
+    r = LinRange(st, s, 4)
     zip(r, string.(round.(r, 4)))
 end
 
@@ -383,7 +381,6 @@ function transform(model::Mat4, x::T) where T
     to_ndim(T, model * x4d, 0.0)
 end
 un_transform(model::Mat4, x) = transform(inv(model), x)
-
 
 to2tuple(x) = ntuple(i-> x, Val(2))
 to2tuple(x::Tuple{<:Any, <: Any}) = x

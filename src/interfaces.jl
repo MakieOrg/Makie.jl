@@ -253,8 +253,8 @@ $(ATTRIBUTES)
 end
 
 const atomic_function_symbols = (
-        :text, :meshscatter, :scatter, :mesh, :linesegments,
-        :lines, :surface, :volume, :heatmap, :image
+    :text, :meshscatter, :scatter, :mesh, :linesegments,
+    :lines, :surface, :volume, :heatmap, :image
 )
 
 
@@ -424,7 +424,10 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
     FinalType = Combined{Typ, ArgTyp}
-    plot_attributes, scene_attributes = merged_get!(()-> default_theme(scene, FinalType), plotsym(FinalType), scene, attributes)
+    plot_attributes, scene_attributes = merged_get!(
+        ()-> default_theme(scene, FinalType),
+        plotsym(FinalType), scene, attributes
+    )
     # We allow to set scene attributes in the theme of a plot
     # This is a bit shady, since it's a global setting affecting subsequent plots
     # But lets stick with this for now, to make buttons/slider etc more usable
@@ -591,9 +594,8 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
 
     nattributes, rest = merge_attributes!(scene_attributes, theme(scene))
     # TODO warn about rest - should be unused arguments!
-    empty!(scene.attributes)
     # transfer the merged attributes from theme and user defined to the scene
-    merge!(scene.attributes, nattributes)
+    scene.attributes = merge!(nattributes, scene.attributes)
     for (at1, at2) in mutual_exclusive_attributes(PlotType)
         #nothing here to get around defaults in GLVisualize
         haskey(attributes, at1) && haskey(attributes, at2) && error("$at1 conflicts with $at2, please specify only one.")
@@ -606,20 +608,18 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
 
-    push!(scene.plots, plot_object)
-
-    scene[:raw][] || update_limits!(scene)
-    (!scene[:raw][] || scene[:camera][] != automatic) && setup_camera!(scene)
-    scene[:raw][] || add_axis!(scene, rest)
+    push!(scene, plot_object)
+    if !scene.raw[]
+        # if no camera controls yet, setup camera
+        setup_camera!(scene)
+        add_axis!(scene, rest)
+    end
     # ! ∘ isaxis --> (x)-> !isaxis(x)
     # move axis to front, so that scene[end] gives back the last plot and not the axis!
     if !isempty(scene.plots) && isaxis(last(scene.plots))
         axis = pop!(scene.plots)
         pushfirst!(scene.plots, axis)
     end
-    # call the assembly recipe, that also adds this to the scene
-    # kw_args not consumed by PlotType will be passed forward to plot! as non_plot_kwargs
-    #plot!(scene, plot_object, scene_attributes)
     scene
 end
 
@@ -631,27 +631,27 @@ function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args..
     push!(scene.plots, plot_object)
     scene
 end
-
-
-
-
-
+function apply_camera!(scene::Scene, cam_func)
+    if cam_func in (cam2d!, cam3d!, campixel!, cam3d_cad!)
+        cam_func(scene)
+    else
+        error("Unrecogniced `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d! or cam3d!, campixel!, cam3d_cad!")
+    end
+end
 function setup_camera!(scene::Scene)
-    if scene[:camera][] == automatic
+    theme_cam = scene[:camera][]
+    if theme_cam == automatic
         cam = cameracontrols(scene)
+        # only automatically add camera when cameracontrols are empty (not set)
         if cam == EmptyCamera()
             if is2d(scene)
-                #@info("setting camera to 2D")
                 cam2d!(scene)
             else
-                #@info("setting camera to 3D")
                 cam3d!(scene)
             end
         end
-    elseif scene[:camera][] in (cam2d!, cam3d!, campixel!, cam3d_cad!)
-        scene[:camera][](scene)
     else
-        error("Unrecogniced `camera` attribute type: $(typeof(scene[:camera][])). Use automatic, cam2d! or cam3d!")
+        apply_camera!(scene, theme_cam)
     end
     scene
 end
@@ -668,15 +668,13 @@ function find_in_plots(scene::Scene, key::Symbol)
     end
 end
 
-
-
 function add_axis!(scene::Scene, attributes = Attributes())
-    show_axis = scene[:show_axis][]
+    show_axis = scene.show_axis[]
     show_axis isa Bool || error("show_axis needs to be a bool")
-    axistype = if scene[:axis_type][] == automatic
+    axistype = if scene.axis_type[] == automatic
         is2d(scene) ? axis2d! : axis3d!
-    elseif scene[:axis_type][] in (axis2d!, axis3d!)
-        scene[:axis_type][]
+    elseif scene.axis_type[] in (axis2d!, axis3d!)
+        scene.axis_type[]
     else
         error("Unrecogniced `axis_type` attribute type: $(typeof(scene[:axis_type][])). Use automatic, axis2d! or axis3d!")
     end
@@ -695,8 +693,12 @@ function add_axis!(scene::Scene, attributes = Attributes())
         labels = get(attributes, :ticklabels) do
             find_in_plots(scene, :ticklabels)
         end
+        lims = lift(scene.limits, scene.data_limits) do sl, dl
+            sl === automatic && return dl
+            return sl
+        end
         axistype(
-            scene, axis_attributes, limits(scene),
+            scene, axis_attributes, lims,
             ticks = (ranges = ranges, labels = labels)
         )
     end
@@ -704,7 +706,7 @@ function add_axis!(scene::Scene, attributes = Attributes())
 end
 
 function add_labels!(scene::Scene)
-    if plot_attributes[:show_legend][] && haskey(p.attributes, :colormap)
+    if plot_attributes.show_legend[] && haskey(p.attributes, :colormap)
         legend_attributes = plot_attributes[:legend][]
         colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
     end
@@ -715,10 +717,12 @@ end
     update_limits!(scene::Scene)
 
 This function updates the limits of the `Scene` passed to it based on its data.
+If an actual limit is set by the theme or its attributes (scene.limits !== automatic),
+it will not update the limits. Call update_limits!(scene, automatic) for that.
 """
-update_limits!(scene::Scene) = update_limits!(scene, scene[:limits][], scene[:padding][])
+update_limits!(scene::Scene) = update_limits!(scene, scene.limits[], scene.padding[])
 
-function update_limits!(scene::Scene, limits::Automatic, padding)
+function update_limits!(scene::Scene, limits::Automatic, padding = scene.padding[])
     # for when scene is empty
     dlimits = data_limits(scene)
     tlims = (minimum(dlimits), maximum(dlimits))
@@ -767,6 +771,6 @@ function update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3
         Vec3f0(minimum(lim_w))
     end
     padd_abs = minw .* to_ndim(Vec3f0, padding, 0.0)
-    limits(scene)[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
+    scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
     scene
 end
