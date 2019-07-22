@@ -135,7 +135,7 @@ function Base.show(io::IO, plot::Combined)
     end
     print(io, "attributes:")
     for (k, v) in theme(plot)
-        print(io, "\n  $k : $(typeof(v))")
+        print(io, "\n  $k : $(typeof(to_value(v)))")
     end
 end
 
