@@ -446,7 +446,6 @@ end
 
 function is2d(scene::SceneLike)
     lims = scene_limits(scene)
-    # TODO return nothing. returning true for now for backwards compatibility
     lims === nothing && return nothing
     return widths(lims)[3] == 0.0
 end
