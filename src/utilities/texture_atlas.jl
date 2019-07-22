@@ -230,7 +230,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     if glyph == '\n' # don't render  newline
         glyph = ' '
     end
-    bitmap, extent = renderface(font, glyph, (30*downsample, 30*downsample))
+    bitmap, extent = renderface(font, glyph, (40*downsample, 40*downsample))
     sd = sdistancefield(bitmap, downsample, downsample*pad)
     sd = sd ./ downsample;
     extent = extent ./ Vec2f0(downsample)
