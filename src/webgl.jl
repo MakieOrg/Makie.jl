@@ -106,6 +106,7 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
     key = reinterpret(UInt64, objectid(color.data))
     return get!(jsctx.session_cache, key) do
         data = to_js_buffer(jsctx, color.data)
+
         tex = jsctx.THREE.new.DataTexture(
             data, size(color, 1), size(color, 2),
             three_format(jsctx, T), three_type(jsctx, eltype(T))
@@ -116,6 +117,14 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
         tex.wrapT = three_repeat(jsctx, color.repeat[2])
         tex.anisotropy = color.anisotropic
         tex.needsUpdate = true
+        # TODO propperly connect
+        on(ShaderAbstractions.updater(color).update) do (f, args)
+            if args[2] isa Colon && f == setindex!
+                newdata = args[1]
+                data.set(to_js_buffer(jsctx, newdata))
+                tex.needsUpdate = true
+            end
+        end
         return tex
     end
 end
@@ -295,6 +304,7 @@ function debug_shader(name, program)
     dir = joinpath(@__DIR__, "..", "debug")
     isdir(dir) || mkdir(dir)
     write(joinpath(dir, "$(name).frag"), program.fragment_source)
+    write(joinpath(dir, "$(name).vert"), program.vertex_source)
 end
 
 function update_model!(geom, plot)

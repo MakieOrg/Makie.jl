@@ -286,16 +286,21 @@ function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) wher
 end
 
 
-
+function activate!()
+    b = WGLBackend()
+    AbstractPlotting.register_backend!(b)
+    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
+    AbstractPlotting.current_backend[] = b
+end
 
 function __init__()
     # Make webio stay even after server is down
     ENV["WEBIO_BUNDLE_URL"] = "https://simondanisch.github.io/ReferenceImages/generic_http.js"
-    AbstractPlotting.register_backend!(WGLBackend())
     # TODO hopefully this gets deprecated soon
     # But some WebIO backends have things easier with this:
     WebIO.push!(WebIO.renderable_types, ThreeDisplay)
-    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
+    # Activate WGLMakie as backend!
+    activate!()
 end
 
 end # module

@@ -8,12 +8,24 @@ function AbstractPlotting.convert_attribute(x::AbstractVector, ::Nothing, ::key"
     return x[1:2:(length(x) - 1)]
 end
 
+topoint(x::AbstractVector{Point{N, Float32}}) where N = x
+
+# GRRR STUPID SubArray, with eltype different from getindex(x, 1)
+topoint(x::SubArray) = topoint([el for el in x])
+
+function topoint(x::AbstractArray{<: Point{N, T}}) where {T, N}
+    topoint(Point{N, Float32}.(x))
+end
+function topoint(x::AbstractArray{<: Tuple{P, P}}) where P <: Point
+    topoint(reinterpret(P, x))
+end
+
 function create_shader(scene::Scene, plot::LineSegments)
     # Potentially per instance attributes
-    positions = plot[1]
+    positions = lift(topoint, plot[1])
     startr = lift(p-> 1:2:(length(p)-1), positions)
     endr = lift(p-> 2:2:length(p), positions)
-    p_start_end = lift(plot[1]) do positions
+    p_start_end = lift(positions) do positions
         return (positions[startr[]], positions[endr[]])
     end
 

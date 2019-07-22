@@ -45,7 +45,7 @@ end
 
 
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
-primitive_shape(::Char) = Cint(DISTANCEFIELD)
+primitive_shape(::Union{String, Char}) = Cint(DISTANCEFIELD)
 primitive_shape(x::X) where X = Cint(primitive_shape(X))
 primitive_shape(::Type{<: Circle}) = Cint(CIRCLE)
 primitive_shape(::Type{<: SimpleRectangle}) = Cint(RECTANGLE)
@@ -55,6 +55,12 @@ primitive_shape(x::Shape) = Cint(x)
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width, :marker_offset)
+    uniform_dict = Dict{Symbol, Any}()
+    if haskey(attributes, :marker) && attributes[:marker][] isa String
+        x = pop!(attributes, :marker)
+        attributes[:uv_offset_width] = lift(x-> AbstractPlotting.glyph_uv_width!.(collect(x)), x)
+        uniform_dict[:shape_type] = Cint(3)
+    end
     per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
@@ -64,7 +70,6 @@ function scatter_shader(scene::Scene, attributes)
     uniforms = filter(attributes) do (k, v)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
-    uniform_dict = Dict{Symbol, Any}()
     ignore_keys = (
         :shading, :overdraw, :rotation, :distancefield, :fxaa,
         :visible, :transformation, :alpha, :linewidth, :transparency, :marker
@@ -74,7 +79,7 @@ function scatter_shader(scene::Scene, attributes)
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
     get!(uniform_dict, :shape_type) do
-        lift(primitive_shape, attributes[:marker])
+        lift(x-> primitive_shape(AbstractPlotting.to_spritemarker(x)), attributes[:marker])
     end
     if uniform_dict[:shape_type][] == 3
         atlas = AbstractPlotting.get_texture_atlas()
@@ -200,8 +205,11 @@ end
 function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
+    mesh.name = "MeshScatter"
+    debug_shader("meshscatter", program.program)
     jsscene.add(mesh)
 end
+
 function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
     program = create_shader(scene, plot)
     debug_shader("text", program.program)
