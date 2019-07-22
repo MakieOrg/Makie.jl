@@ -35,6 +35,7 @@ $(ATTRIBUTES)
 
         showgrid = true,
         showticks = true,
+        padding = 0.1,
 
         ticks = Theme(
 
@@ -210,9 +211,9 @@ end
 
 function default_labels(ticks::AbstractVector, formatter::Function = Formatters.plain)
     if applicable(formatter, ticks)
-        formatter(ticks) # takes the whole array
+        return formatter(ticks) # takes the whole array
     elseif applicable(formatter, first(ticks))
-        formatter.(ticks)
+        return formatter.(ticks)
     else
         error("Formatting function $(formatter) is neither applicable to $(typeof(ticks)) nor $(eltype(ticks)).")
     end
@@ -242,7 +243,13 @@ function calculated_attributes!(::Type{<: Union{Axis2D, Axis3D}}, plot)
     num_ticks = lift(ticks[:labels]) do labels
         labels === automatic ? automatic : a_length.(labels)
     end
-    ranges = lift(default_ticks, ticks[:ranges], plot[1], num_ticks)
+    lim_pad = lift(plot[:padding], plot[1]) do pad, lims
+        limit_widths = map(x-> x[2] - x[1], lims)
+        pad = (limit_widths .* to2tuple(pad))
+        # pad the drawn limits and use them as the ranges
+        return map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
+    end
+    ranges = lift(default_ticks, ticks[:ranges], lim_pad, num_ticks)
     ticks[:ranges] = ranges
     labels = lift(default_labels, ticks[:labels], ranges, plot[:ticks, :formatter])
     ticks[:labels] = labels
@@ -388,7 +395,7 @@ to2tuple(x::Tuple{<:Any, <: Any}) = x
 function draw_axis2d(
         textbuffer,
         frame_linebuffer, grid_linebuffer,
-        m, limits, xyrange, labels,
+        m, padding, limits, xyrange, labels,
         showgrid, showticks,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
@@ -407,8 +414,15 @@ function draw_axis2d(
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font,
     )
     start!(textbuffer); start!(frame_linebuffer); foreach(start!, grid_linebuffer)
-
+    # limits = limits Vec2f0(padding)
+    # limits ((xmin, xmax), (ymin, ymax))
     limit_widths = map(x-> x[2] - x[1], limits)
+    pad = (limit_widths .* to2tuple(padding))
+    # pad the drawn limits
+    limits = map((lim, p)-> (lim[1] - p, lim[2] + p), limits, pad)
+    # recalculate widths
+    limit_widths = map(x-> x[2] - x[1], limits)
+
     % = mean(limit_widths) / 100 # percentage
 
     xyticks = zip.(xyrange, labels)
@@ -488,7 +502,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         to_node(textbuffer),
         frame_linebuffer, grid_linebuffer,
         transformationmatrix(scene),
-        cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
+        cplot.padding, cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
         lift.((dim2,), (cplot[:showgrid], cplot[:showticks]))...,
         g_args..., t_args..., f_args..., ti_args...
     )
