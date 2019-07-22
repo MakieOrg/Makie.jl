@@ -37,15 +37,15 @@ function setup!(screen)
         glScissor(0, 0, widths(screen)...)
         glClearColor(1, 1, 1, 1)
         glClear(GL_COLOR_BUFFER_BIT)
-        for (id, rect, clear, visible, color) in screen.screens
-            if visible[]
-                a = rect[]
+        for (id, scene) in screen.screens
+            if scene.visible[]
+                a = pixelarea(scene)[]
                 rt = (minimum(a)..., widths(a)...)
                 glViewport(rt...)
                 bits = GL_STENCIL_BUFFER_BIT
                 glClearStencil(id)
-                if clear[]
-                    c = color[]
+                if scene.clear[]
+                    c = to_color(scene.backgroundcolor[])
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
                     bits |= GL_COLOR_BUFFER_BIT
@@ -117,12 +117,12 @@ function render_frame(screen::Screen)
     return
 end
 
-function id2rect(screen, id1)
+function id2scene(screen, id1)
     # TODO maybe we should use a different data structure
-    for (id2, rect, clear, color) in screen.screens
-        id1 == id2 && return true, rect, clear[]
+    for (id2, scene) in screen.screens
+        id1 == id2 && return true, scene
     end
-    false, IRect(0,0,0,0), false
+    false, nothing
 end
 
 function GLAbstraction.render(screen::Screen, fxaa::Bool)
@@ -131,11 +131,11 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
         # sort by overdraw, so that overdrawing objects get drawn last!
         # sort!(screen.renderlist, by = ((zi, id, robj),)-> robj.prerenderfunction.overdraw[])
         for (zindex, screenid, elem) in screen.renderlist
-            found, rect, clear = id2rect(screen, screenid)
+            found, scene = id2scene(screen, screenid)
             found || continue
-            a = rect[]
+            a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
-            if clear
+            if scene.clear[]
                 glStencilFunc(GL_EQUAL, screenid, 0xff)
             else
                 # if we don't clear, that means we have a screen that is overlaid
