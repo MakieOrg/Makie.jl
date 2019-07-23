@@ -301,6 +301,18 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
     end
 end
 
+function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
+
+    d = Dict()
+    for p in pairs(attr.attributes)
+        d[p.first] = to_value(p.second)
+    end
+    show(IOContext(io, :limit => false), MIME"text/plain"(), d)
+
+end
+
+Base.show(io::IO, attr::Attributes) = show(io, MIME"text/plain"(), attr)
+
 struct Combined{Typ, T} <: ScenePlot{Typ}
     parent::SceneLike
     transformation::Transformation

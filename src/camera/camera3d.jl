@@ -16,6 +16,13 @@ struct Camera3D <: AbstractCamera
     move_key::Node{ButtonTypes}
 end
 
+"""
+    cam3d_cad!(scene; kw_args...)
+
+Creates a 3D camera for `scene` which rotates around
+the _viewer_'s "up" axis - similarly to how it's done
+in CAD software cameras.
+"""
 function cam3d_cad!(scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Theme(
@@ -46,6 +53,12 @@ function cam3d_cad!(scene; kw_args...)
     cam
 end
 
+"""
+    cam3d_turntable!(scene; kw_args...)
+
+Creates a 3D camera for `scene`, which rotates around
+the plot's axis.
+"""
 function cam3d_turntable!(scene; kw_args...)
     cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Theme(
@@ -76,6 +89,13 @@ function cam3d_turntable!(scene; kw_args...)
     cam
 end
 
+"""
+    cam3d!(scene; kwargs...)
+
+An alias to [`cam3d_turntable!`](@ref).
+Creates a 3D camera for `scene`, which rotates around
+the plot's axis.
+"""
 const cam3d! = cam3d_turntable!
 
 function projection_switch(
