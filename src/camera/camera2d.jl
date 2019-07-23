@@ -7,6 +7,11 @@ struct Camera2D <: AbstractCamera
     last_area::Node{Vec{2, Int}}
 end
 
+"""
+    cam2d!(scene::SceneLike, kwargs...)
+
+Creates a 2D camera for the given Scene.
+"""
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes, rest = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Theme(
@@ -268,6 +273,11 @@ function add_restriction!(cam, window, rarea::SimpleRectangle, minwidths::Vec)
 end
 
 struct PixelCamera <: AbstractCamera end
+"""
+    campixel!(scene)
+
+Creates a pixel-level camera for the `Scene`.  No controls!
+"""
 function campixel!(scene)
     scene.updated = Node(false)
     camera(scene).view[] = Mat4f0(I)
