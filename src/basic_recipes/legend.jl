@@ -30,9 +30,11 @@ Plots a legend for the given plots with the given labels.
 end
 
 """
-    colorlegend(scene, colormap, range)
+    colorlegend(colormap, range)
+    colorlegend(p::AbstractPlot)
 
-creates a legend from a colormap
+Creates a colorbar from the given colormap or range, or from the Attrbutes of the
+given Plot.
 """
 @recipe(ColorLegend, colormap, colorrange) do scene
     Theme(
