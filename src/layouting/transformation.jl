@@ -91,10 +91,22 @@ transformation(t::AbstractPlot) = t.transformation
 transformation(t::Transformation) = t
 
 scale(t::Transformable) = transformation(t).scale
+
 scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f0, Float32.(s), 1))
+
+"""
+    scale!(t::Transformable, x, y)
+    scale!(t::Transformable, x, y, z)
+    scale!(t::Transformable, xyz)
+    scale!(t::Transformable, xyz...)
+
+Scale the given [`Transformable`](@ref) (a Scene or Plot) to the given arguments.
+Can take `x, y` or `x, y, z`.
+"""
 scale!(t::Transformable, xyz...) = scale!(t, xyz)
 
 rotation(scene::Transformable) = transformation(scene).rotation
+
 function rotate!(::Type{T}, scene::Transformable, q) where T
     rot = convert_attribute(q, key"rotation"())
     if T === Accum
@@ -107,14 +119,39 @@ function rotate!(::Type{T}, scene::Transformable, q) where T
     end
 end
 
+"""
+    rotate!(Accum, scene::Transformable, axis_rot...)
+
+Apply a relative rotation to the Scene, by multiplying by the current rotation.
+"""
 rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene, axis_rot)
+
+"""
+    rotate!(scene::Transformable, axis_rot::Quaternion)
+    rotate!(scene::Transformable, axis_rot::AbstractFloat)
+    rotate!(scene::Transformable, axis_rot...)
+
+Apply an absolute rotation to the Scene.  Rotations are all internally converted to
+[`Quaternion`](@ref)s.
+"""
 rotate!(scene::Transformable, axis_rot...) = rotate!(Absolute, scene, axis_rot)
 rotate!(scene::Transformable, axis_rot::Quaternion) = rotate!(Absolute, scene, axis_rot)
 rotate!(scene::Transformable, axis_rot::AbstractFloat) = rotate!(Absolute, scene, axis_rot)
 
 translation(scene::Transformable) = transformation(scene).translation
 
-struct Accum end; struct Absolute end
+"""
+    Accum
+Force translation to be relative to the current position, not absolute.
+"""
+struct Accum end
+
+"""
+    Absolute
+Force translation to be absolute, not relative to the current position.
+This is the default setting.
+"""
+struct Absolute end
 
 function translate!(::Type{T}, scene::Transformable, t) where T
     offset = to_ndim(Vec3f0, Float32.(t), 0)
@@ -126,8 +163,19 @@ function translate!(::Type{T}, scene::Transformable, t) where T
         error("Unknown translation type: $T")
     end
 end
+"""
+    translate!(scene::Transformable, xyz::VecTypes)
+    translate!(scene::Transformable, xyz...)
+
+Apply an absolute translation to the Scene, translating it to `x, y, z`.
+"""
 translate!(scene::Transformable, xyz::VecTypes) = translate!(Absolute, scene, xyz)
 translate!(scene::Transformable, xyz...) = translate!(Absolute, scene, xyz)
+"""
+    translate!(Accum, scene::Transformable, xyz...)
+
+Translate the scene relative to its current position.
+"""
 translate!(::Type{T}, scene::Transformable, xyz...) where T = translate!(T, scene, xyz)
 
 
