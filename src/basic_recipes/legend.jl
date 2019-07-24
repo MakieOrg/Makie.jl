@@ -24,6 +24,8 @@ Plots a legend for the given plots with the given labels.
         markersize = 5,
         linepattern = Point2f0[(0, 0), (1, 0.0)],
         scatterpattern = Point2f0[(0.5, 0.0)],
+        raw = true,
+        camera = campixel!
     )
 end
 
@@ -34,10 +36,10 @@ creates a legend from a colormap
 """
 @recipe(ColorLegend, colormap, colorrange) do scene
     Theme(
-        width = (20, 200),
+        width = (20, lift(x -> x.widths[2], pixelarea(scene))),
         backgroundcolor = :white,
-        strokecolor = RGBA(0.3, 0.3, 0.3, 0.9,),
-        strokewidth = 1,
+        strokecolor = RGBA(0.3, 0.3, 0.3, 0.9 ),
+        strokewidth = 0.3,
         position = (1, 1),
         textgap = 15,
         padding = 10,
@@ -50,6 +52,8 @@ creates a legend from a colormap
         ranges = automatic,
         labels = automatic,
         formatter = Formatters.plain,
+        raw = true,
+        camera = campixel!
     )
 end
 
