@@ -2,6 +2,7 @@
 - Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)` 
   to make the WebGL backend more lightweight (#165).
 - Fixed `scale_plot` not actually working (#166).
+- Changed the default theme for `colorlegend` so that it scales with the resolution of the scene.
 
 # `master`
 - Added a new 3d camera type, `cam3d_cad!`(#161).
