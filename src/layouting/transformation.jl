@@ -102,6 +102,7 @@ scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f0, Float32.(s), 1))
 
 Scale the given [`Transformable`](@ref) (a Scene or Plot) to the given arguments.
 Can take `x, y` or `x, y, z`.
+This is an absolute scaling, and there is no option to perform relative scaling.
 """
 scale!(t::Transformable, xyz...) = scale!(t, xyz)
 
@@ -142,13 +143,13 @@ translation(scene::Transformable) = transformation(scene).translation
 
 """
     Accum
-Force translation to be relative to the current position, not absolute.
+Force transformation to be relative to the current state, not absolute.
 """
 struct Accum end
 
 """
     Absolute
-Force translation to be absolute, not relative to the current position.
+Force transformation to be absolute, not relative to the current state.
 This is the default setting.
 """
 struct Absolute end
