@@ -39,6 +39,11 @@ function text_bb(str, font, size)
 end
 
 """
+    move_from_touch(
+        parent::GeometryPrimitive{N, T}, child::GeometryPrimitive{N},
+        pad::Vec{N}
+    ) where {N, T}
+
 calculates how much `child` rectangle needs to move to not touch the `parent`
 """
 function move_from_touch(
@@ -57,6 +62,11 @@ function move_from_touch(
 end
 
 """
+    dont_touch(
+        parent::GeometryPrimitive{N}, child::GeometryPrimitive{N},
+        pad::Vec{N}
+    ) where N
+
 Moves `child` so that it doesn't touch parent. Leaves a gap to parent defined by `pad`.
 """
 function dont_touch(
@@ -172,6 +182,12 @@ Lay the given Scenes out on the vertical axis.  For example, two Scenes `vbox`ed
 will be placed side-by-side.
 """
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
+"""
+    hbox(scenes...; parent = Scene(clear = false), kwargs...)
+
+Lay the given Scenes out on the horizonral axis.  For example, two Scenes `vbox`ed
+will be placed side-by-side.
+"""
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
 
 function hbox(plots::Vector{T}; parent = Scene(clear = false), kw_args...) where T <: Scene
