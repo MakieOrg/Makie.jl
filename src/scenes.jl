@@ -1,4 +1,13 @@
 
+"""
+TODO document this
+
+## Fields
+$(FIELDS)
+
+## Constructors
+$(SIGNATURES)
+"""
 mutable struct Scene <: AbstractScene
     parent
     events::Events

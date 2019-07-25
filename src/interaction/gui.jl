@@ -34,6 +34,9 @@ sig_printer(v::Real) = @sprintf "%0.2e" v
 
 TODO add function signatures
 TODO add description
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Slider) do scene
     Theme(
@@ -165,6 +168,9 @@ export move! # TODO move to AbstractPlotting?
 
 TODO add function signatures
 TODO add description
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Button) do scene
     Theme(
@@ -334,6 +340,9 @@ end
 
 TODO add function signatures
 TODO add description
+
+## Theme
+$(ATTRIBUTES)
 """
 function colorswatch(scene = Scene(camera = campixel!)) # TODO convert to Recipe?
     pop = popup(scene, (0, 0), (250, 300))

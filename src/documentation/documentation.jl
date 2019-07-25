@@ -217,12 +217,12 @@ function print_rec(io::IO, dict, indent::Int = 1; extended = false)
     for (k, v) in dict
         print(io, " "^(indent*4), k)
         if isa(to_value(v), AbstractPlotting.Attributes)
-            print(": ")
+            print(io, ": ")
             println(io)
             print_rec(io, v[], indent + 1; extended = extended)
         elseif isa(v, Node)
             if extended
-                print(": ")
+                print(io, ": ")
                 println(io, to_value(v))
             else
                 println(io)

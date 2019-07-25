@@ -6,14 +6,16 @@
 Plots a polygon based on the arguments given.
 When vertices and indices are given, it functions similarly to `mesh`.
 When points are given, it draws one polygon that connects all the points in order.
-When a shape is given (essentially anything decomposable by `GeometryTypes`),
-it will plot `decompose(shape)`.
+When a shape is given (essentially anything decomposable by `GeometryTypes`), it will plot `decompose(shape)`.
 
     poly(coordinates, connectivity; kwargs...)
 
 Plots polygons, which are defined by
 `coordinates` (the coordinates of the vertices) and
 `connectivity` (the edges between the vertices).
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Poly) do scene
     Theme(;
@@ -158,6 +160,9 @@ specifications for a grid, and `u, v` are plotted as arrows along the
 grid.
 
 `arrows` can also work in three dimensions.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Arrows, points, directions) do scene
     theme = Theme(
@@ -218,6 +223,9 @@ end
     `wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`
 
 Draws a wireframe, either interpreted as a surface or as a mesh.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Wireframe) do scene
     default_theme(scene, LineSegments)
@@ -235,11 +243,6 @@ xvector(x::AbstractMatrix, len) = x
 yvector(x, len) = xvector(x, len)'
 yvector(x::AbstractMatrix, len) = x
 
-"""
-    `wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`
-
-Draws a wireframe, either interpreted as a surface or as a mesh.
-"""
 function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
     points_faces = lift(plot[1:3]...) do x, y, z
         T = eltype(z); M, N = size(z)
@@ -282,6 +285,9 @@ end
 
 TODO add function signatures
 TODO add descripton
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(StreamLines, points, directions) do scene
     Theme(
@@ -315,7 +321,10 @@ end
     Series - ?
 
 TODO add function signatures
-TODO add descripton
+TODO add description
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Series, series) do scene
     Theme(
@@ -363,6 +372,9 @@ end
     `annotations(strings::Vector{String}, positions::Vector{Point})`
 
 Plots an array of texts at each position in `positions`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Annotations, text, position) do scene
     default_theme(scene, Text)
@@ -447,6 +459,8 @@ Examples:
 `arc(Point2f0(0), 1, 0.0, π)`
 `arc(Point2f0(1, 2), 0.3. π, -π)`
 
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Arc, origin, radius, start_angle, stop_angle) do scene
     Theme(;
@@ -476,6 +490,9 @@ end
     barplot(x, y; kwargs...)
 
 Plots a barplot; `y` defines the height.  `x` and `y` should be 1 dimensional.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(BarPlot, x, y) do scene
     Theme(;
@@ -553,6 +570,9 @@ end
 
 Plots `lines` between sets of x and y coordinates provided,
 as well as plotting those points using `scatter`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(ScatterLines) do scene
     merge(default_theme(scene, Scatter), default_theme(scene, Lines))
@@ -568,6 +588,9 @@ end
     band(x, ylower, yupper; kwargs...)
 
 Plots a band from `ylower` to `yupper` along `x`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Band, x, ylower, yupper) do scene
     Theme(;
@@ -618,6 +641,9 @@ export fill_between!
 """
     contour(x, y, z)
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Contour) do scene
     default = default_theme(scene)
@@ -636,7 +662,10 @@ end
 """
     contour3d(x, y, z)
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
-with z-elevation for each level
+with z-elevation for each level.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Contour3d) do scene
     default_theme(scene, Contour)
@@ -796,6 +825,9 @@ end
 
 TODO add function signatures
 TODO add descripton
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(VolumeSlices, x, y, z, volume) do scene
     Theme(
@@ -854,7 +886,7 @@ end
 """
     showgradients(
         cgrads::AbstractVector{Symbol};
-        h = 0.0, offset = 0.2, textsize = 0.7, 
+        h = 0.0, offset = 0.2, textsize = 0.7,
         resolution = (800, length(cgrads) * 84)
     )::Scene
 
