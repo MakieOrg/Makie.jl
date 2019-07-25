@@ -233,7 +233,12 @@ function zoom!(scene, point, zoom_step, shift_lookat::Bool)
     update_cam!(scene, cam)
 end
 
+"""
+    rotate_cam!(scene::Scene, theta_v::Number...)
+    rotate_cam!(scene::Scene, theta_v::VecTypes)
 
+Rotate the camera of the Scene by the given rotation.
+"""
 rotate_cam!(scene::Scene, theta_v::Number...) = rotate_cam!(scene, cameracontrols(scene), theta_v)
 rotate_cam!(scene::Scene, theta_v::VecTypes) = rotate_cam!(scene, cameracontrols(scene), theta_v)
 function rotate_cam!(scene::Scene, cam::Camera3D, _theta_v::VecTypes, fixed_axis::Bool = true)
@@ -287,6 +292,11 @@ function update_cam!(scene::Scene, camera::Camera3D, area3d::Rect)
     return
 end
 
+"""
+    update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f0(0, 0, 1))
+
+Updates the camera's controls to point to the specified location.
+"""
 update_cam!(scene::Scene, eyeposition, lookat, up = Vec3f0(0, 0, 1)) = update_cam!(scene, cameracontrols(scene), eyeposition, lookat, up)
 
 function update_cam!(scene::Scene, camera::Camera3D, eyeposition, lookat, up = Vec3f0(0, 0, 1))
