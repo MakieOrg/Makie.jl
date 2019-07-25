@@ -14,7 +14,13 @@ abstract type AbstractCamera end
 # placeholder if no camera is present
 struct EmptyCamera <: AbstractCamera end
 
-@enum RaymarchAlgorithm IsoValue Absorption MaximumIntensityProjection AbsorptionRGBA IndexedAbsorptionRGBA
+@enum RaymarchAlgorithm begin
+    IsoValue
+    Absorption
+    MaximumIntensityProjection
+    AbsorptionRGBA
+    IndexedAbsorptionRGBA
+end
 
 const RealVector{T} = AbstractVector{T} where T <: Number
 
@@ -143,20 +149,58 @@ const Node = Observable
 
 include("interaction/iodevices.jl")
 
+"""
+This struct provides accessible `Observable`s to monitor the events
+associated with a Scene.
+
+## Fields
+$(TYPEDFIELDS)
+"""
 struct Events
+    """
+    The area of the window in pixels, as an [`IRect2D`](@ref).
+    """
     window_area::Node{IRect2D}
+    """
+    The DPI resolution of the window, as a `Float64`.
+    """
     window_dpi::Node{Float64}
+    """
+    The state of the window (open => true, closed => false).
+    """
     window_open::Node{Bool}
 
+    """
+    The pressed mouse buttons.
+    Updates when a mouse button is pressed.
+
+    See also [`ispressed`](@ref).
+    """
     mousebuttons::Node{Set{Mouse.Button}}
+    """
+    The position of the mouse as a [`Point2`](@ref).
+    Updates whenever the mouse moves.
+    """
     mouseposition::Node{Point2d{Float64}}
+    """
+    The
+    """
     mousedrag::Node{Mouse.DragEnum}
+    """
+    The direction of scroll
+    """
     scroll::Node{Vec2d{Float64}}
 
+    """
+    See also [`ispressed`](@ref).
+    """
     keyboardbuttons::Node{Set{Keyboard.Button}}
 
     unicode_input::Node{Vector{Char}}
     dropped_files::Node{Vector{String}}
+    """
+    Whether the Scene window is in focus or not.
+    """
     hasfocus::Node{Bool}
     entered_window::Node{Bool}
 end
@@ -181,6 +225,8 @@ function Events()
     )
 end
 
+"""
+"""
 mutable struct Camera
     view::Node{Mat4f0}
     projection::Node{Mat4f0}
@@ -190,6 +236,12 @@ mutable struct Camera
     steering_nodes::Vector{Any}
 end
 
+"""
+Holds the transformations for Scenes.
+
+## Fields
+$(TYPEDFIELDS)
+"""
 struct Transformation <: Transformable
     parent::RefValue{Transformable}
     translation::Node{Vec3f0}
