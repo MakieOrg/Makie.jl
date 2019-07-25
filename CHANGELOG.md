@@ -1,10 +1,12 @@
 # Other branches (not yet merged)
 - Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)` 
-  to make the WebGL backend more lightweight (#165).
+  to make the WebGL backend more lightweight (#166).
 - Fixed `scale_plot` not actually working (#166).
-- Changed the default theme for `colorlegend` so that it scales with the resolution of the scene.
 
 # `master`
+- Added a custom docstring extension which allows the Attributes of a Recipe to be shown in 
+  the help mode (#174).
+- Documented a lot of internal features (#174).
 - Added a new 3d camera type, `cam3d_cad!`(#161).
 - Improved warning text when displaying to text or plotpane (#163).
 - Ensured that unless `inline!(true)` was called, plots will always display in 
@@ -13,6 +15,7 @@
 - Switched from using system `ffmpeg` to using `FFMPEG.jl` (#160).
 - Better docstrings for recording functions (#160).
 - Let certain attributes passed to mutating plot functions affect the Scene (#160).
+- Changed the default theme for `colorlegend` so that it scales with the resolution of the scene.
 
 ## Internal changes
 - Replaced the `nothing` conversion trait with a new `NoConversion` trait, for clarity (#150).
