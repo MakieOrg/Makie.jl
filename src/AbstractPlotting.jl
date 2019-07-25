@@ -3,7 +3,7 @@ module AbstractPlotting
 using FFMPEG # get FFMPEG on any system!
 using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets, PlotUtils
 using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
-using Markdown # documentation
+using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
 # Text related packages
@@ -22,6 +22,8 @@ module ContoursHygiene
 end
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
+
+include("documentation/docstringextension.jl")
 
 include("utilities/quaternions.jl")
 include("types.jl")
@@ -98,7 +100,7 @@ export hbox, vbox
 
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
-export campixel!, campixel, cam3d!, cam3d_cad!, update_cam!, rotate_cam!, translate_cam!
+export campixel!, campixel, cam3d!, cam3d_cad!, update_cam!, rotate_cam!, translate_cam!, zoom!
 export pixelarea, plots, cameracontrols, cameracontrols!, camera, events
 export to_world
 

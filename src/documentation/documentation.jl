@@ -134,11 +134,11 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     println(io, "```")
     if extended
         for attribute in allkeys
-            value = attributes[attribute]
+			value = attributes[attribute]
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
                 print(io, "  ", attribute, " "^padding)
-                show(io, AbstractPlotting.to_value(value))
+                show(io, isnothing(AbstractPlotting.to_value(value)) ? "nothing" : to_value(value))
                 print(io, "\n")
             end
         end
@@ -217,13 +217,13 @@ function print_rec(io::IO, dict, indent::Int = 1; extended = false)
     for (k, v) in dict
         print(io, " "^(indent*4), k)
         if isa(to_value(v), AbstractPlotting.Attributes)
-            print(": ")
+            print(io, ": ")
             println(io)
             print_rec(io, v[], indent + 1; extended = extended)
         elseif isa(v, Node)
             if extended
-                print(": ")
-                println(io, to_value(v))
+                print(io, ": ")
+                println(io, isnothing(to_value(v)) ? "nothing" : to_value(v))
             else
                 println(io)
             end

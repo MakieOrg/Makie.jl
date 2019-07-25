@@ -1,3 +1,7 @@
+"""
+Backend independent enums which
+represent keyboard buttons.
+"""
 module Keyboard
     @enum(Button,
             unknown            = -1,
@@ -125,15 +129,30 @@ module Keyboard
             menu               = 348,
     )
 
+    """
+    """
+
 end
 
 """
-Backend independant Mouse enums and fields
+Backend independent enums and fields which
+represent mouse actions.
 """
 module Mouse
-    using Base: @enum
-    @enum Button left = 0 middle = 2 right = 1 # Be GLFW conform
-    @enum DragEnum down up pressed notpressed
+
+    @enum Button begin
+        left = 0
+        middle = 2
+        right = 1 # Conform to GLFW
+    end
+
+    @enum DragEnum begin
+        down
+        up
+        pressed
+        notpressed
+    end
+
 end
 
 # Void for no button needs to be pressed,

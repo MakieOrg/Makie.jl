@@ -149,8 +149,9 @@ end
 
 
 
-
-# Stepper for generating progressive plot examples
+"""
+Stepper for generating progressive plot examples.
+"""
 mutable struct Stepper
     scene::Scene
     folder::String
@@ -168,6 +169,8 @@ format2mime(::Type{FileIO.format"JPEG"}) = MIME"image/jpeg"()
 
 # Allow format to be overridden with first argument
 """
+    FileIO.save(filename, scene; resolution = size(scene))
+
 Saves a `Scene` to file!
 Allowable formats depend on the backend;
 - `GLMakie` allows `.png`, `.jpeg`, and `.bmp`.

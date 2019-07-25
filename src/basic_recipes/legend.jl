@@ -3,6 +3,9 @@
 
 Plots a legend for the given plots with the given labels.
 `plots` may be a single Plot or a list of Plots.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Legend, plots, labels) do scene
     Theme(
@@ -29,16 +32,39 @@ Plots a legend for the given plots with the given labels.
     )
 end
 
+# We need to override this particular docstring.
 """
     colorlegend(colormap, range)
-    colorlegend(p::AbstractPlot)
+    colorlegend(plot::Plot)
 
-Creates a colorbar from the given colormap or range, or from the Attrbutes of the
+Creates a colorbar from the given colormap or range, or from the Attributes of the
 given Plot.
+
+## Theme
+Available attributes and their defaults for ColorLegend{...} are:
+
+  align            (:left, :hcenter)
+  backgroundcolor  :white
+  camera           AbstractPlotting.campixel!
+  font             "Dejavu Sans"
+  formatter        AbstractPlotting.Formatters.plain
+  labels           AbstractPlotting.Automatic()
+  outerpadding     10
+  padding          10
+  position         (1, 1)
+  ranges           AbstractPlotting.Automatic()
+  raw              true
+  rotation         0.0
+  strokecolor      RGBA{Float64}(0.3,0.3,0.3,0.9)
+  strokewidth      0.3
+  textcolor        :black
+  textgap          15
+  textsize         16
+  width            (20, <the height of the scene> - 10)
 """
 @recipe(ColorLegend, colormap, colorrange) do scene
     Theme(
-        width = (20, lift(x -> x.widths[2], pixelarea(scene))),
+        width = (20, lift(x -> x.widths[2] - 10, pixelarea(scene))),
         backgroundcolor = :white,
         strokecolor = RGBA(0.3, 0.3, 0.3, 0.9 ),
         strokewidth = 0.3,
