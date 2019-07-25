@@ -28,9 +28,13 @@ end
 
 mutual_exclusive_attributes(::Type{<:AbstractPlot}) = Dict()
 """
-    `image(x, y, image)` / `image(image)`
+    image(x, y, image)
+    image(image)
 
 Plots an image on range `x, y` (defaults to dimensions).
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Image, x, y, image) do scene
     Theme(;
@@ -44,9 +48,13 @@ end
 
 # could be implemented via image, but might be optimized specifically by the backend
 """
-    `heatmap(x, y, values)` or `heatmap(values)`
+    heatmap(x, y, values)
+    heatmap(values)
 
 Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Heatmap, x, y, values) do scene
     Theme(;
@@ -61,7 +69,7 @@ Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions)
 end
 
 """
-    `volume(volume_data)`
+    volume(volume_data)
 
 Plots a volume. Available algorithms are:
 * `:iso` => IsoValue
@@ -69,6 +77,9 @@ Plots a volume. Available algorithms are:
 * `:mip` => MaximumIntensityProjection
 * `:absorptionrgba` => AbsorptionRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Volume, x, y, z, volume) do scene
     Theme(;
@@ -91,9 +102,12 @@ function mutual_exclusive_attributes(::Type{<:Volume})
 end
 
 """
-    `surface(x, y, z)`
+    surface(x, y, z)
 
-Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
+Plots a surface, where `(x, y)`  define a grid whose heights are the entries in `z`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Surface, x, y, z) do scene
     Theme(;
@@ -106,9 +120,14 @@ Plots a surface, where `(x, y, z)` are supposed to lie on a grid.
 end
 
 """
-    `lines(x, y, z)` / `lines(x, y)` / or `lines(positions)`
+    lines(positions)
+    lines(x, y)
+    lines(x, y, z)
 
 Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Lines, positions) do scene
     Theme(;
@@ -122,12 +141,14 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 end
 
 """
-    `linesegments(x, y, z)` / `linesegments(x, y)` / `linesegments(positions)`
+    linesegments(positions)
+    linesegments(x, y)
+    linesegments(x, y, z)
 
 Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 
-**Attributes**:
-The same as for [`lines`](@ref)
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(LineSegments, positions) do scene
     default_theme(scene, Lines)
@@ -135,9 +156,15 @@ end
 
 # alternatively, mesh3d? Or having only mesh instead of poly + mesh and figure out 2d/3d via dispatch
 """
-    `mesh(x, y, z)`, `mesh(mesh_object)`, `mesh(x, y, z, faces)`, or `mesh(xyz, faces)`
+    mesh(x, y, z)
+    mesh(mesh_object)
+    mesh(x, y, z, faces)
+    mesh(xyz, faces)
 
 Plots a 3D mesh.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Mesh, mesh) do scene
     Theme(;
@@ -151,9 +178,14 @@ Plots a 3D mesh.
 end
 
 """
-    `scatter(x, y, z)` / `scatter(x, y)` / `scatter(positions)`
+    scatter(positions)
+    scatter(x, y)
+    scatter(x, y, z)
 
 Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Scatter, positions) do scene
     Theme(;
@@ -176,10 +208,15 @@ Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 end
 
 """
-    `meshscatter(x, y, z)` / `meshscatter(x, y)` / `meshscatter(positions)`
+    meshscatter(positions)
+    meshscatter(x, y)
+    meshscatter(x, y, z)
 
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
-`markersize` is a scaling applied to the primitive passed as `marker`
+`markersize` is a scaling applied to the primitive passed as `marker`.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(MeshScatter, positions) do scene
     Theme(;
@@ -195,9 +232,12 @@ Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar 
 end
 
 """
-    `text(string)`
+    text(string)
 
 Plots a text.
+
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Text, text) do scene
     Theme(;

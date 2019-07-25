@@ -23,6 +23,14 @@ end
 end
 using .Formatters
 
+"""
+    $(SIGNATURES)
+
+Plots a 2-dimensional axis.
+
+## Theme
+$(ATTRIBUTES)
+"""
 @recipe(Axis2D) do scene
     Theme(
         visible = true,
@@ -78,7 +86,14 @@ using .Formatters
     )
 end
 
+"""
+    $(SIGNATURES)
 
+Plots a 3-dimensional Axis.
+
+## Theme
+$(ATTRIBUTES)
+"""
 @recipe(Axis3D) do scene
 
     q1 = qrotation(Vec3f0(1, 0, 0), -0.5f0*pi)
