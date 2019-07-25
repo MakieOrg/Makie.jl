@@ -37,7 +37,8 @@ end
     colorlegend(colormap, range)
     colorlegend(plot::Plot)
 
-Creates a legend from a colormap.
+Creates a colorbar from the given colormap or range, or from the Attributes of the
+given Plot.
 
 ## Theme
 Available attributes and their defaults for ColorLegend{...} are:
@@ -60,7 +61,7 @@ Available attributes and their defaults for ColorLegend{...} are:
   textgap          15
   textsize         16
   width            (20, <the height of the scene> - 10)
-  """
+"""
 @recipe(ColorLegend, colormap, colorrange) do scene
     Theme(
         width = (20, lift(x -> x.widths[2] - 10, pixelarea(scene))),
