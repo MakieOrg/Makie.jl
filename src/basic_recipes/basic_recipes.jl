@@ -447,8 +447,10 @@ end
 function is2d(scene::SceneLike)
     lims = scene_limits(scene)
     lims === nothing && return nothing
-    return widths(lims)[3] == 0.0
+    return is2d(lims)
 end
+is2d(lims::HyperRectangle{2}) = return true
+is2d(lims::HyperRectangle{3}) = widths(lims)[3] == 0.0
 
 """
     arc(origin, radius, start_angle, stop_angle; kwargs...)

@@ -47,11 +47,10 @@ const minimal_default = Attributes(
     raw = false
 )
 
-const _current_default_theme = Attributes(; minimal_default...) # make a copy. TODO overload copy?
+const _current_default_theme = copy(minimal_default) # make a copy. TODO overload copy?
 
 function current_default_theme(; kw_args...)
-    new_theme, rest = merge_attributes!(Attributes(kw_args), _current_default_theme)
-    merge!(new_theme, rest)
+    return merge!(Attributes(kw_args), _current_default_theme)
 end
 
 function set_theme!(new_theme::Attributes)

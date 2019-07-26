@@ -196,6 +196,7 @@ function default_ticks(ticks::Tuple, limits::Tuple, n::Tuple)
 end
 
 default_ticks(ticks::Tuple, limits::Limits, n) = default_ticks.(ticks, limits, (n,))
+
 default_ticks(ticks::Tuple, limits::Limits, n::Tuple) = default_ticks.(ticks, limits, n)
 
 default_ticks(ticks::AbstractVector{<: Number}, limits, n) = ticks
@@ -249,9 +250,11 @@ function calculated_attributes!(::Type{<: Union{Axis2D, Axis3D}}, plot)
         # pad the drawn limits and use them as the ranges
         return map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
     end
-    ranges = lift(default_ticks, ticks[:ranges], lim_pad, num_ticks)
+    ranges = lift(default_ticks, ticks.ranges, lim_pad, num_ticks)
+    @show ranges[]
     ticks[:ranges] = ranges
-    labels = lift(default_labels, ticks[:labels], ranges, plot[:ticks, :formatter])
+    labels = lift(default_labels, ticks.labels, ranges, plot.ticks.formatter)
+    @show labels[]
     ticks[:labels] = labels
 end
 
@@ -347,6 +350,7 @@ function draw_titles(
         textcolor, textsize, rotation, align, font,
         title
     )
+    @show yticks
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
         tick_bb = text_bb(str, to_font(tickfont[2]), tick_size[2])
@@ -422,6 +426,7 @@ function draw_axis2d(
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font, ti_title
     )
+    println("DRAWING THE AXIS")
     start!(textbuffer); start!(frame_linebuffer); foreach(start!, grid_linebuffer)
     # limits = limits Vec2f0(padding)
     # limits ((xmin, xmax), (ymin, ymax))
@@ -433,7 +438,7 @@ function draw_axis2d(
     limit_widths = map(x-> x[2] - x[1], limits)
 
     % = mean(limit_widths) / 100 # percentage
-
+    @show xyrange labels
     xyticks = zip.(xyrange, labels)
     model_inv = inv(transformationmatrix(textbuffer)[])
 
@@ -485,7 +490,7 @@ end
 # for axis, we don't want to have plot!(scene, args) called on it, so we need to overload it directly
 function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    cplot, non_plot_kwargs = Axis2D(scene, attributes, args)
+    cplot = Axis2D(scene, attributes, args)
     g_keys = (:linewidth, :linecolor, :linestyle)
     f_keys = (:linewidth, :linecolor, :linestyle, :axis_position, :axis_arrow, :arrow_size, :frames)
     t_keys = (
@@ -503,8 +508,14 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     textbuffer = TextBuffer(cplot, Point{2})
 
     grid_linebuffer = to_node((
-        LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = lift(first, cplot[:grid, :linestyle])),
-        LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = lift(last, cplot[:grid, :linestyle]))
+        LinesegmentBuffer(
+            cplot, Point{2}, transparency = true,
+            linestyle = lift(first, cplot[:grid, :linestyle])
+        ),
+        LinesegmentBuffer(
+            cplot, Point{2}, transparency = true,
+            linestyle = lift(last, cplot[:grid, :linestyle])
+        )
     ))
     frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot[:frame, :linestyle]) |> to_node
     map_once(
@@ -517,7 +528,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
-
     return cplot
 end
 
@@ -639,7 +649,7 @@ end
 
 
 function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
-    axis, non_plot_kwargs = Axis3D(scene, attributes, args)
+    axis = Axis3D(scene, attributes, args)
     textbuffer = TextBuffer(axis, Point{3}, transparency = true)
     linebuffer = LinesegmentBuffer(axis, Point{3}, transparency = true)
 

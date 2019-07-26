@@ -12,6 +12,7 @@ end
 
 # TODO remove this and play by Observables rules
 Base.push!(x::Node, value) = (x[] = value)
+Base.copy(x::Node) = lift(identity, x)
 to_value(x::Node) = x[]
 to_value(x) = x
 

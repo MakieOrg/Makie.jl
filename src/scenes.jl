@@ -13,6 +13,8 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     px_area::Node{IRect2D}
+    plot_area::Node{IRect2D}
+
     camera::Camera
     camera_controls::RefValue
 
@@ -105,15 +107,15 @@ function Scene(
     )
     events = Events()
     theme = current_default_theme(; scene_attributes...)
-    resolution = theme[:resolution][]
-    px_area = Observable(IRect(0, 0, resolution))
-
+    attributes = copy(theme)
+    px_area = lift(attributes.resolution) do res
+        IRect(0, 0, res)
+    end
     on(events.window_area) do w_area
         if !any(x-> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
             px_area[] = w_area
         end
     end
-
     scene = Scene(
         events,
         px_area,
@@ -123,7 +125,7 @@ function Scene(
         Transformation(),
         AbstractPlot[],
         theme,
-        Attributes(scene_attributes),
+        attributes,
         Scene[],
         AbstractScreen[]
     )
@@ -143,7 +145,7 @@ function Scene(
         cam = scene.camera,
         camera_controls = scene.camera_controls,
         transformation = Transformation(scene),
-        theme = Attributes(theme(scene)...),
+        theme = copy(theme(scene)),
         current_screens = scene.current_screens,
         kw_args...
     )
@@ -278,12 +280,10 @@ function argument_names(plot::P) where P <: AbstractPlot
     argument_names(P, length(plot.converted))
 end
 
-
 function argument_names(::Type{<: AbstractPlot}, num_args::Integer)
     # this is called in the indexing function, so let's be a bit efficient
     ntuple(i-> Symbol("arg$i"), num_args)
 end
-
 
 function Base.empty!(scene::Scene)
     empty!(scene.plots)
