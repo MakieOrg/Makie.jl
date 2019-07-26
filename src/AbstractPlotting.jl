@@ -81,6 +81,8 @@ export AbstractPlot, Combined, Atomic, Axis
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!
 export title
+export xlims!, ylims!, zlims!
+export xlabel!, ylabel!, zlabel!
 
 # Node/Signal related
 export Node, node, lift, map_once, to_value, on
