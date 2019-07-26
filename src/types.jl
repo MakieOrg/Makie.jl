@@ -1,5 +1,8 @@
-# this is a bit of a weird name, but all scenes and plots are transformable
-# so that's what they all have in common. This might be better expressed as traits
+"""
+    abstract type Transformable
+This is a bit of a weird name, but all scenes and plots are transformable,
+so that's what they all have in common. This might be better expressed as traits.
+"""
 abstract type Transformable end
 
 abstract type AbstractPlot{Typ} <: Transformable end
