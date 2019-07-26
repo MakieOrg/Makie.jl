@@ -293,24 +293,34 @@ Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))
 Attributes(pairs::Iterators.Pairs) = Attributes(collect(pairs))
 Attributes(nt::NamedTuple) = Attributes(; nt...)
-
+attributes(x::Attributes) = getfield(x, :attributes)
 Base.keys(x::Attributes) = keys(x.attributes)
 Base.values(x::Attributes) = values(x.attributes)
-Base.iterate(x::Attributes) = iterate(x.attributes)
-Base.iterate(x::Attributes, state) = iterate(x.attributes, state)
-Base.copy(x::Attributes) = Attributes(copy(x.attributes))
-Base.filter(f, x::Attributes) = Attributes(filter(f, x.attributes))
-Base.empty!(x::Attributes) = (empty!(x.attributes); x)
-Base.length(x::Attributes) = length(x.attributes)
-
-function Base.merge!(x::Attributes...)
-    ret = x[1]
-    for i in 2:length(x)
-        merge_attributes_doublebang!(x[i], ret)
-    end
-    ret
+function Base.iterate(x::Attributes, state...)
+    s = iterate(keys(x), state...)
+    s === nothing && return nothing
+    return (s[1] => x[s[1]], s[2])
 end
-Base.merge(x::Attributes...) = merge!(copy.(x)...)
+
+function Base.copy(attributes::Attributes)
+    result = Attributes()
+    for (k, v) in attributes
+        # We need to create a new Signal to have a real copy
+        result[k] = copy(v)
+    end
+    return result
+end
+Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
+Base.empty!(x::Attributes) = (empty!(attributes(x)); x)
+Base.length(x::Attributes) = length(attributes(x))
+
+function Base.merge!(target::Attributes, args::Attributes...)
+    for elem in args
+        merge_attributes!(target, elem)
+    end
+    return target
+end
+Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
 
 @generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
 
@@ -331,8 +341,8 @@ end
 
 
 function getindex(x::Attributes, key::Symbol)
-    x = x.attributes[key]
-    to_value(x) isa Attributes ? to_value(x) : x
+    x = attributes(x)[key]
+    x[] isa Attributes ? x[] : x
 end
 
 function setindex!(x::Attributes, value, key::Symbol)
@@ -349,11 +359,12 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
         # You can do this manually like this:
         # lift(val-> attributes[$key] = val, node::$(typeof(value)))
         # ")
-        return x.attributes[key] = value
+        return x.attributes[key] = to_node(Any, value)
     else
         #TODO make this error. Attributes should be sort of immutable
-        return x.attributes[key] = value
+        return x.attributes[key] = to_node(Any, value)
     end
+    return x
 end
 
 function Base.show(io::IO,::MIME"text/plain", attr::Attributes)

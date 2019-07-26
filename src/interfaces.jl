@@ -94,6 +94,7 @@ $(ATTRIBUTES)
         color = nothing,
     )
 end
+
 function mutual_exclusive_attributes(::Type{<:Volume})
     Dict(
         :colorrange => :color,
@@ -242,9 +243,9 @@ $(ATTRIBUTES)
 @recipe(Text, text) do scene
     Theme(;
         default_theme(scene)...,
+        font = theme(scene, :font),
         strokecolor = (:black, 0.0),
         strokewidth = 0,
-        font = theme(scene, :font),
         align = (:left, :bottom),
         rotation = 0.0,
         textsize = 20,
@@ -424,19 +425,12 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     # construct the fully qualified plot type, from the possible incomplete (abstract)
     # PlotType
     FinalType = Combined{Typ, ArgTyp}
-    plot_attributes, scene_attributes = merged_get!(
+    plot_attributes = merged_get!(
         ()-> default_theme(scene, FinalType),
         plotsym(FinalType), scene, attributes
     )
-    # We allow to set scene attributes in the theme of a plot
-    # This is a bit shady, since it's a global setting affecting subsequent plots
-    # But lets stick with this for now, to make buttons/slider etc more usable
-    # TODO do this better
-    for key in (:raw, :camera)
-        if haskey(plot_attributes, key)
-            scene_attributes[key] = pop!(plot_attributes, key)
-        end
-    end
+
+    # Transformation is a field of the plot type, but can be given as an attribute
     trans = get(plot_attributes, :transformation, automatic)
     transformation = if to_value(trans) == automatic
         Transformation(scene)
@@ -447,7 +441,6 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
         transform!(t, to_value(trans))
         t
     end
-
     replace_automatic!(plot_attributes, :model) do
         transformation.model
     end
@@ -455,7 +448,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
     transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
-    plot_obj, scene_attributes
+    plot_obj
 end
 
 
@@ -588,14 +581,49 @@ function show_attributes(attributes)
     end
 end
 
+"""
+    extract_scene_attributes!(attributes)
+
+removes all scene attributes from `attributes` and returns them in a new
+Attribute dict.
+"""
+function extract_scene_attributes!(attributes)
+    scene_attributes = (
+        :backgroundcolor,
+        :resolution,
+        :show_axis,
+        :show_legend,
+        :scale_plot,
+        :center,
+        :axis,
+        :axis2d,
+        :axis3d,
+        :legend,
+        :camera,
+        :limits,
+        :padding,
+        :raw
+    )
+    result = Attributes()
+    for k in scene_attributes
+        haskey(attributes, k) && (result[k] = pop!(attributes, k))
+    end
+    return result
+end
+
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N, PlotType <: AbstractPlot}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object, scene_attributes = PlotType(scene, attributes, input, args)
-
-    nattributes, rest = merge_attributes!(scene_attributes, theme(scene))
+    scene_attributes = extract_scene_attributes!(attributes)
+    plot_object = PlotType(scene, attributes, input, args)
     # TODO warn about rest - should be unused arguments!
     # transfer the merged attributes from theme and user defined to the scene
-    scene.attributes = merge!(nattributes, scene.attributes)
+    for (k, v) in scene_attributes
+        if haskey(scene.attributes, k)
+            scene.attributes[k] = v[]
+        else
+            scene.attributes[k] = v
+        end
+    end
     for (at1, at2) in mutual_exclusive_attributes(PlotType)
         #nothing here to get around defaults in GLVisualize
         haskey(attributes, at1) && haskey(attributes, at2) && error("$at1 conflicts with $at2, please specify only one.")
@@ -609,12 +637,14 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     plot!(plot_object)
 
     push!(scene, plot_object)
-        
+
     if !scene.raw[] || scene[:camera][] !== automatic
         # if no camera controls yet, setup camera
         setup_camera!(scene)
     end
-    scene.raw[] || add_axis!(scene, rest)
+    if !scene.raw[]
+        add_axis!(scene, scene.attributes)
+    end
     # ! ∘ isaxis --> (x)-> !isaxis(x)
     # move axis to front, so that scene[end] gives back the last plot and not the axis!
     if !isempty(scene.plots) && isaxis(last(scene.plots))
@@ -626,7 +656,7 @@ end
 
 function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object, scene_attributes = PlotType(scene, attributes, args)
+    plot_object = PlotType(scene, attributes, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
@@ -680,7 +710,7 @@ function add_axis!(scene::Scene, attributes = Attributes())
         error("Unrecogniced `axis_type` attribute type: $(typeof(scene[:axis_type][])). Use automatic, axis2d! or axis3d!")
     end
 
-    if show_axis && !(any(isaxis, plots(scene)))
+    if show_axis && scene[Axis] === nothing
         axis_attributes = Attributes()
         for key in (:axis, :axis2d, :axis3d)
             if haskey(scene, key) && !isempty(scene[key])

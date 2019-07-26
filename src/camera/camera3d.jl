@@ -24,7 +24,7 @@ the _viewer_'s "up" axis - similarly to how it's done
 in CAD software cameras.
 """
 function cam3d_cad!(scene; kw_args...)
-    cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
+    cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Theme(
             rotationspeed = 0.3,
             translationspeed = 1.0,
@@ -60,7 +60,7 @@ Creates a 3D camera for `scene`, which rotates around
 the plot's axis.
 """
 function cam3d_turntable!(scene; kw_args...)
-    cam_attributes, rest = merged_get!(:cam3d, scene, Attributes(kw_args)) do
+    cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Theme(
             rotationspeed = 0.3,
             translationspeed = 1.0,
