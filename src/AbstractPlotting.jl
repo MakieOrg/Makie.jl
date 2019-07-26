@@ -38,6 +38,7 @@ include("theming.jl")
 include("recipes.jl")
 include("interfaces.jl")
 include("conversions.jl")
+include("shorthands.jl")
 
 # camera types + functions
 include("camera/projection_math.jl")
