@@ -39,8 +39,7 @@ $(ATTRIBUTES)
 
         ticks = Theme(
 
-            labels = automatic,
-            ranges = automatic,
+            ranges_labels = (automatic, automatic),
             formatter = Formatters.plain,
 
             gap = 3,
@@ -132,8 +131,7 @@ $(ATTRIBUTES)
         ),
 
         ticks = Theme(
-            labels = automatic,
-            ranges = automatic,
+            ranges_labels = (automatic, automatic),
             formatter = Formatters.plain,
 
             textcolor = (tick_color, tick_color, tick_color),
@@ -240,22 +238,19 @@ a_length(x::AbstractVector) = length(x)
 a_length(x::Automatic) = x
 
 function calculated_attributes!(::Type{<: Union{Axis2D, Axis3D}}, plot)
-    ticks = plot[:ticks]
-    num_ticks = lift(ticks[:labels]) do labels
-        labels === automatic ? automatic : a_length.(labels)
-    end
-    lim_pad = lift(plot[:padding], plot[1]) do pad, lims
+    ticks = plot.ticks
+    args = (plot.padding, plot[1], ticks.ranges, ticks.labels, ticks.formatter)
+    ticks[:ranges_labels] = lift(args...) do pad, lims, ranges, labels, formatter
         limit_widths = map(x-> x[2] - x[1], lims)
         pad = (limit_widths .* pad)
         # pad the drawn limits and use them as the ranges
-        return map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
+        lim_pad = map((lim, p)-> (lim[1] - p, lim[2] + p), lims, pad)
+        num_ticks = labels === automatic ? automatic : a_length.(labels)
+        ranges = default_ticks(ranges, lim_pad, num_ticks)
+        labels = default_labels(labels, ranges, formatter)
+        (ranges, labels)
     end
-    ranges = lift(default_ticks, ticks.ranges, lim_pad, num_ticks)
-    @show ranges[]
-    ticks[:ranges] = ranges
-    labels = lift(default_labels, ticks.labels, ranges, plot.ticks.formatter)
-    @show labels[]
-    ticks[:labels] = labels
+    return
 end
 
 function draw_ticks(
@@ -350,7 +345,6 @@ function draw_titles(
         textcolor, textsize, rotation, align, font,
         title
     )
-    @show yticks
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
         tick_bb = text_bb(str, to_font(tickfont[2]), tick_size[2])
@@ -379,6 +373,7 @@ function draw_titles(
             )
         end
     end
+
     if title !== nothing
         # TODO give title own text attributes
         push!(
@@ -408,7 +403,7 @@ to2tuple(x::Tuple{<:Any, <: Any}) = x
 function draw_axis2d(
         textbuffer,
         frame_linebuffer, grid_linebuffer,
-        m, padding, limits, xyrange, labels,
+        m, padding, limits, xyrange_labels,
         showgrid, showticks,
         # grid attributes
         g_linewidth, g_linecolor, g_linestyle,
@@ -426,7 +421,7 @@ function draw_axis2d(
         ti_labels,
         ti_textcolor, ti_textsize, ti_rotation, ti_align, ti_font, ti_title
     )
-    println("DRAWING THE AXIS")
+    xyrange, labels = xyrange_labels
     start!(textbuffer); start!(frame_linebuffer); foreach(start!, grid_linebuffer)
     # limits = limits Vec2f0(padding)
     # limits ((xmin, xmax), (ymin, ymax))
@@ -438,7 +433,6 @@ function draw_axis2d(
     limit_widths = map(x-> x[2] - x[1], limits)
 
     % = mean(limit_widths) / 100 # percentage
-    @show xyrange labels
     xyticks = zip.(xyrange, labels)
     model_inv = inv(transformationmatrix(textbuffer)[])
 
@@ -523,8 +517,8 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         to_node(textbuffer),
         frame_linebuffer, grid_linebuffer,
         transformationmatrix(scene),
-        cplot.padding, cplot[1], cplot[:ticks, :ranges], cplot[:ticks, :labels],
-        lift.((dim2,), (cplot[:showgrid], cplot[:showticks]))...,
+        cplot.padding, cplot[1], cplot.ticks.ranges_labels,
+        lift.((dim2,), (cplot.showgrid, cplot.showticks))...,
         g_args..., t_args..., f_args..., ti_args...
     )
     push!(scene.plots, cplot)
@@ -554,8 +548,9 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis3d(textbuffer, linebuffer, limits, ranges, labels, args...)
+function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
     # make sure we extend all args to 3D
+    ranges, labels = ranges_labels
     args3d = to3tuple.(args)
     (
         showaxis, showticks, showgrid,
@@ -664,7 +659,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     map_once(
         draw_axis3d,
         Node(textbuffer), Node(linebuffer),
-        axis[1], axis[:ticks, :ranges], axis[:ticks, :labels], args...
+        axis[1], axis.ticks.ranges_labels, args...
     )
     push!(scene.plots, axis)
     return axis

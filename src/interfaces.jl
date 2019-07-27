@@ -89,9 +89,9 @@ $(ATTRIBUTES)
         absorption = 1f0,
         isovalue = 0.5f0,
         isorange = 0.05f0,
+        color = nothing,
         colormap = theme(scene, :colormap),
         colorrange = (0, 1),
-        color = nothing,
     )
 end
 
@@ -615,15 +615,11 @@ end
 function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N, PlotType <: AbstractPlot}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
-    plot_object = PlotType(scene, attributes, input, args)
+    plot_object = PlotType(scene, copy(attributes), input, args)
     # TODO warn about rest - should be unused arguments!
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
-        if haskey(scene.attributes, k)
-            scene.attributes[k] = v[]
-        else
-            scene.attributes[k] = v
-        end
+        scene.attributes[k] = v
     end
     for (at1, at2) in mutual_exclusive_attributes(PlotType)
         #nothing here to get around defaults in GLVisualize

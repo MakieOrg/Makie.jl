@@ -98,7 +98,7 @@ export to_ndim, Reverse
 
 # Transformations
 export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
-export boundingbox, insertplots!, center!, translation
+export boundingbox, insertplots!, center!, translation, scene_limits
 export hbox, vbox
 
 # camera related

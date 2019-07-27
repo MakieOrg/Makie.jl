@@ -1,6 +1,9 @@
-using AbstractNumbers, Makie, LinearAlgebra
+using AbstractNumbers, Makie, LinearAlgebra, GeometryTypes
 import AbstractNumbers: number
-import AbstractPlotting: limits, to_screen, to_world
+import AbstractPlotting: limits, to_screen, to_world, scene_limits
+function to_screen(scene::Scene, mpos)
+    return Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
+end
 
 abstract type Unit{T} <: AbstractNumber{T} end
 
@@ -56,6 +59,7 @@ struct Pixel{T} <: Unit{T}
     value::T
 end
 AbstractNumbers.basetype(::Type{<: Pixel}) = Pixel
+(::Type{Pixel{T}})(x::Pixel{T}) where T = x
 const px = Pixel(1)
 
 """
@@ -87,8 +91,14 @@ function Base.convert(::Type{<: Millimeter}, scene::Scene, x::SceneSpace)
 end
 
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Relative{T}) where T
-    rel = maximum(widths(limits(scene)[])) .* number(x)
+    rel = maximum(widths(scene_limits(scene)[])) .* number(x)
     SceneSpace(rel)
+end
+function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Point{2, Relative{T}}) where T
+    idx = Vec(1, 2)
+    lims = scene_limits(scene)
+    rel = widths(lims)[idx] .* number.(x)
+    SceneSpace(origin(lims)[idx] .+ rel)
 end
 
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::DIP)
@@ -131,40 +141,28 @@ function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Pixel)
     s = to_world(scene, to_screen(scene, Point2f0(number(x), 0.0)))
     SceneSpace(norm(s .- zero))
 end
+
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Millimeter)
     pix = convert(Pixel, scene, x)
     (SceneSpace, mm)
 end
 
-using AbstractPlotting: @key_str
 
-scene = lines(
-    Rect(20, 20, 500, 500)
-)
-update_cam!(scene, pixelarea(scene)[])
-scatter!(scene, 1:100:500, 1:100:500, marker = Rect, markersize = Vec2f0(20), raw = true)
-display(scene)
-
-scene[end].markersize = number.(convert(SceneSpace, scene, Vec(10f0*px, 20f0*px)))
-
-scatter!(
-    campixel(scene), 1:100:500, 1:100:500,
-    marker = Rect, markersize = Vec2f0(10, 20), raw = true,
-    color = (:red, 0.4), transparency = true
-);
-scene
+# function unpack_plot(plot::AbstractPlot; unlift = false, convert = true)
+#     result = Dict()
+#
+#
+#
+# function get_boundingbox(x)
 
 
-scene = lines(
-    Rect(0, 0, 500, 500), scale_plot = false
-)
-display(scene)
-x = map(x-> x * rel, [0.0, 0.0, 0.5, 0.5])
-y = map(x-> x * rel, [0.0, 0.5, 0.0, 0.5])
-x
-number.(convert.(SceneSpace, scene, x))[3]
+x  = [Point2(0px), Point2(3px), Point2(4px)]
+Pixel <: AbstractNumber
+typemax(Pixel{Int})
+bb = Rect(x)
+scene = scatter(rand(4))
+to_world(scene, Point2f0(500))
+a = number.(convert(SceneSpace, scene, Point2(1rel)))
+b = number.(convert(SceneSpace, scene, Point2(0rel)))
 
-scatter!(number.(convert.(SceneSpace, scene, x)), number.(convert.(SceneSpace, scene, y)), raw = true, markersize = 10)
-lines!(limits(scene), raw = true)
-
-number.(convert.(SceneSpace, scene, x))
+lines!(Rect(a, b.-a), raw = true)
