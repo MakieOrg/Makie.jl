@@ -13,7 +13,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     px_area::Node{IRect2D}
-    plot_area::Node{IRect2D}
+    # plot_area::Node{IRect2D}
 
     camera::Camera
     camera_controls::RefValue
@@ -147,6 +147,7 @@ function Scene(
         transformation = Transformation(scene),
         theme = copy(theme(scene)),
         current_screens = scene.current_screens,
+        clear = false,
         kw_args...
     )
     child = Scene(
@@ -158,7 +159,7 @@ function Scene(
         transformation,
         AbstractPlot[],
         merge(current_default_theme(), theme),
-        Attributes(kw_args),
+        merge!(Attributes(clear = clear; kw_args...), scene.attributes),
         Scene[],
         current_screens,
         scene
@@ -167,7 +168,7 @@ function Scene(
     child
 end
 
-function Scene(parent::Scene, area; attributes...)
+function Scene(parent::Scene, area; clear = false, attributes...)
     events = parent.events
     px_area = lift(pixelarea(parent), to_node(area)) do p, a
         # make coordinates relative to parent
@@ -181,8 +182,8 @@ function Scene(parent::Scene, area; attributes...)
         nothing,
         Transformation(),
         AbstractPlot[],
-        current_default_theme(; attributes...),
-        Attributes(attributes),
+        current_default_theme(clear = clear; attributes...),
+        merge!(Attributes(clear = clear; attributes...), parent.attributes),
         Scene[],
         parent.current_screens,
         parent

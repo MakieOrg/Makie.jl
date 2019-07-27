@@ -8,15 +8,15 @@ The `Core.@__doc__` macro transfers the docstring given to the Recipe into the f
 """
 function default_plot_signatures(funcname, funcname!, PlotType)
     quote
-        Core.@__doc__
-        function ($funcname)(args...; attributes...)
+
+        Core.@__doc__ function ($funcname)(args...; attributes...)
             attr = Attributes(attributes)
             kw = extract_scene_attributes!(attr)
             plot!(Scene(;kw...), $PlotType, attr, args...)
         end
 
-        Core.@__doc__
-        function ($funcname!)(args...; attributes...)
+
+        Core.@__doc__ function ($funcname!)(args...; attributes...)
             plot!(current_scene(), $PlotType, Attributes(attributes), args...)
         end
 

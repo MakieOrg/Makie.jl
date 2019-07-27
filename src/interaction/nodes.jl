@@ -12,7 +12,7 @@ end
 
 # TODO remove this and play by Observables rules
 Base.push!(x::Node, value) = (x[] = value)
-Base.copy(x::Node) = lift(identity, x)
+Base.copy(x::Node{T}) where T = lift(identity, x, typ = T)
 to_value(x::Node) = x[]
 to_value(x) = x
 

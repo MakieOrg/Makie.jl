@@ -757,9 +757,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         plot[:linewidth] = map(x-> x ./ 10f0, plot[:linewidth])
         heatmap!(plot, Theme(plot), x, y, z)
     else
-        result = lift(x, y, z, plot[:levels]) do x, y, z, levels
+        result = lift(x, y, z, plot.levels) do x, y, z, levels
             t = eltype(z)
-            levels = round(Int, levels)
+            # levels = round(Int, levels)
             contours = Contours.contours(to_vector(x, size(z, 1), t), to_vector(y, size(z, 2), t), z, levels)
             cols = AbstractPlotting.resampled_colors(plot, levels)
             contourlines(T, contours, cols)
