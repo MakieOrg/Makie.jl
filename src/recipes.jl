@@ -1,7 +1,7 @@
 to_func_name(x::Symbol) = string(x) |> lowercase |> Symbol
 
 """
-     default_plot_signatures(funcname, PlotType)
+     default_plot_signatures(funcname, funcname!, PlotType)
 Creates all the different overloads for `funcname` that need to be supported for the plotting frontend!
 Since we add all these signatures to different functions, we make it reusable with this function.
 The `Core.@__doc__` macro transfers the docstring given to the Recipe into the functions.
@@ -91,9 +91,9 @@ will provide `plot_object[:arg1]` etc.
 
 The theme given in the body of the `@recipe` invocation is inserted into a
 specialization of `default_theme` which inserts the theme into any scene that
-plots `Myplot`:
+plots `MyPlot`:
 
-    function default_theme(scene, ::Myplot)
+    function default_theme(scene, ::MyPlot)
         Theme(
             plot_color => :red
         )
