@@ -232,6 +232,9 @@ function transformationmatrix(
     mini = minimum(boundingbox)
     half_width = full_width ./ 2
     to_origin = (half_width + mini)
+    if isnan(to_origin)
+        to_origin = Vec3f0(0)
+    end
     align_middle = translationmatrix(-to_origin)
     align_back = translationmatrix(to_origin)
     flipsign = map(x-> ifelse(x, -1f0, 1f0), Vec{3}(flip))
