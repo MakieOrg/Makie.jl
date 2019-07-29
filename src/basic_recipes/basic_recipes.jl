@@ -986,3 +986,128 @@ function AbstractPlotting.plot!(plot::TimeSeries)
     end
     plot
 end
+
+"""
+    streamplot(
+        f::function, -1.5..1.5, -1.5..1.5;
+        stepsize = 0.01,
+        resolution = (32, 32),
+        colormap = theme(scene, :colormap),
+        arrow_size = 0.03
+    )
+    f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
+    f must return a Point2.
+    Example:
+    ```julia
+    using MakieGallery, Makie
+    run_example("streamplot")
+    ```
+
+"""``
+@recipe(StreamPlot, f, xrange, yrange) do scene
+    Theme(
+        stepsize = 0.01,
+        resolution = (32, 32),
+        colormap = theme(scene, :colormap),
+        arrow_size = 0.03
+    )
+end
+
+function AbstractPlotting.convert_arguments(::Type{<: StreamPlot}, f::Function, x, y)
+    (f, x, y)
+end
+
+function streamplot_impl(CallType, f, xrange, yrange, resolution, stepsize)
+    mask = trues(resolution)
+    arrow_pos = Point2f0[]
+    arrow_dir = Vec2f0[]
+    line_points = Point2f0[]
+    colors = Float64[]
+    line_colors = Float64[]
+    xmin, xmax = extrema(xrange)
+    ymin, ymax = extrema(yrange)
+    limits = Rect(xmin, ymin, xmax - xmin, ymax - ymin)
+    dt = Point2f0(to2tuple(stepsize))
+    r = (
+        LinRange(xmin, xmax, resolution[1] + 1),
+        LinRange(ymin, ymax, resolution[2] + 1)
+    )
+    apply_f(x0, P) = if P <: Point
+        f(x0)
+    else
+        f(x0[1], x0[2])
+    end
+    for c in CartesianIndices(mask)
+        i0, j0 = Tuple(c)
+        x0 = Point2(
+            first(r[1]) + (i0 - 0.5) * step(r[1]),
+            first(r[2]) + (j0 - 0.5) * step(r[1])
+        )
+        if mask[c]
+            point = apply_f(x0, CallType)
+            if !(point isa Point2)
+                error("Function passed to streamplot must return Point2")
+            end
+            pnorm = norm(point)
+            push!(arrow_pos, x0)
+            push!(arrow_dir, point / pnorm)
+            push!(colors, pnorm)
+            mask[c] == false
+            for d in (-1, 1)
+                n_linepoints = 1
+                x = x0
+                push!(line_points, Point2f0(NaN), x)
+                push!(line_colors, 0.0, pnorm)
+                i0, j0 = Tuple(c)
+                while x in limits && n_linepoints < 500
+                    point = apply_f(x, CallType)
+                    pnorm = norm(point)
+                    x = x .+ d .* dt .* point ./ pnorm
+                    if !(x in limits)
+                        break
+                    end
+                    i = searchsortedlast(r[1], x[1])
+                    j = searchsortedlast(r[2], x[2])
+                    if (i, j) != (i0, j0)
+                        if !mask[i,j]
+                            break
+                        end
+                        mask[i, j] = false
+                        i0, j0 = i, j
+                    end
+                    push!(line_points, x)
+                    push!(line_colors, pnorm)
+                    n_linepoints += 1
+                end
+            end
+        end
+    end
+    return (
+        arrow_pos,
+        arrow_dir,
+        line_points,
+        colors,
+        line_colors,
+    )
+end
+
+function AbstractPlotting.plot!(p::StreamPlot)
+    data = lift(p.f, p.xrange, p.yrange, p.resolution, p.stepsize) do f, xrange, yrange, resolution, stepsize
+        P = if applicable(f, Point2f0(0))
+            Point
+        else
+            Number
+        end
+        streamplot_impl(P, f, xrange, yrange, resolution, stepsize)
+    end
+    lines!(
+        p,
+        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap
+    )
+    scatter!(
+        p,
+        lift(first, data), markersize = p.arrow_size, marker = '▲',
+        color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
+        colormap = p.colormap,
+    )
+end

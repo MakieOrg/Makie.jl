@@ -45,3 +45,19 @@ scatter(rand(4), limits = ((0, 0), (200, 200)))
 - Updated `VideoStream`, `save` docstrings.
 - Reworked tests to use `MakieGallery` (pretty big feature on the backend)
 - Enabled Travis CI!
+
+# Additions
+
+## streamplot
+
+```julia
+using MakieGallery, Makie
+run_example("streamplot")
+```
+
+## timeseries
+
+```julia
+using MakieGallery, Makie
+run_example("timeseries")
+```
