@@ -214,7 +214,7 @@ NativeMesh(m::T) where {T <: HomogenousMesh} = NativeMesh{T}(m)
 
 function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
-    attribs = attributes(m)
+    attribs = GeometryTypes.attributes(m)
     @materialize! vertices, faces = attribs
     result[:vertices] = GLBuffer(vertices)
     result[:faces]    = indexbuffer(faces)
@@ -236,7 +236,7 @@ end
 function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
     mv = to_value(m)
-    attribs = attributes(mv)
+    attribs = GeometryTypes.attributes(mv)
     @materialize! vertices, faces = attribs
     result[:vertices] = GLBuffer(vertices)
     result[:faces]    = indexbuffer(faces)
@@ -253,7 +253,7 @@ function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
         end
     end
     on(m) do mesh
-        for (field, val) in attributes(mesh)
+        for (field, val) in GeometryTypes.attributes(mesh)
             field == :color && (field = :vertex_color)
             haskey(result, field) && update!(result[field], val)
         end
