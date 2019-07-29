@@ -522,7 +522,6 @@ eval(default_plot_signatures(:plot, :plot!, :Any))
 plotfunc(::Combined{F}) where F = F
 
 
-
 """
 Main plotting signatures that plot/plot! route to if no Plot Type is given
 """
@@ -659,6 +658,15 @@ function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args..
     push!(scene.plots, plot_object)
     scene
 end
+function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N, PlotType <: AbstractPlot}
+    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
+    plot_object = PlotType(scene, attributes, input, args)
+    # call user defined recipe overload to fill the plot type
+    plot!(plot_object)
+    push!(scene.plots, plot_object)
+    scene
+end
+
 function apply_camera!(scene::Scene, cam_func)
     if cam_func in (cam2d!, cam3d!, campixel!, cam3d_cad!)
         cam_func(scene)
@@ -666,6 +674,10 @@ function apply_camera!(scene::Scene, cam_func)
         error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d! or cam3d!, campixel!, cam3d_cad!")
     end
 end
+
+
+
+
 function setup_camera!(scene::Scene)
     theme_cam = scene[:camera][]
     if theme_cam == automatic

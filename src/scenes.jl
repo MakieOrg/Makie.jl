@@ -314,9 +314,9 @@ limits(scene::SceneLike) = limits(parent(scene))
 
 function scene_limits(scene::Scene)
     if scene.limits[] === automatic
-        return FRect3D(scene.data_limits[])
+        return scene.data_limits[]
     else
-        return FRect3D(scene.limits[])
+        return scene.limits[]
     end
 end
 
@@ -342,7 +342,7 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
-    update!(scene)
+    # update!(scene)
 end
 
 function Base.push!(scene::Scene, child::Scene)
