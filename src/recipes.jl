@@ -8,17 +8,35 @@ The `Core.@__doc__` macro transfers the docstring given to the Recipe into the f
 """
 function default_plot_signatures(funcname, funcname!, PlotType)
     quote
-        Core.@__doc__ ($funcname)(args...; attributes...) = plot!(Scene(), $PlotType, Attributes(attributes), args...)
 
-        Core.@__doc__ ($funcname!)(args...; attributes...) = plot!(current_scene(), $PlotType, Attributes(attributes), args...)
+        Core.@__doc__ function ($funcname)(args...; attributes...)
+            attr = Attributes(attributes)
+            kw = extract_scene_attributes!(attr)
+            plot!(Scene(;kw...), $PlotType, attr, args...)
+        end
 
-                      ($funcname!)(scene::SceneLike, args...; attributes...) = plot!(scene, $PlotType, Attributes(attributes), args...)
 
-                      ($funcname)(attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+        Core.@__doc__ function ($funcname!)(args...; attributes...)
+            plot!(current_scene(), $PlotType, Attributes(attributes), args...)
+        end
 
-                      ($funcname!)(attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+        function ($funcname!)(scene::SceneLike, args...; attributes...)
+            plot!(scene, $PlotType, Attributes(attributes), args...)
+        end
 
-                      ($funcname!)(scene::SceneLike, attributes::Attributes, args...; kw_attributes...) = plot!(scene, $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+        function ($funcname)(attributes::Attributes, args...; kw_attributes...)
+            merged = merge!(Attributes(kw_attributes), attributes)
+            kw = extract_scene_attributes!(merged)
+            plot!(Scene(;kw...), $PlotType, merged, args...)
+        end
+
+        function ($funcname!)(attributes::Attributes, args...; kw_attributes...)
+            plot!(current_scene(), $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+        end
+
+        function ($funcname!)(scene::SceneLike, attributes::Attributes, args...; kw_attributes...)
+            plot!(scene, $PlotType, merge!(Attributes(kw_attributes), attributes), args...)
+        end
     end
 end
 

@@ -1,15 +1,20 @@
 # Other branches (not yet merged)
-- Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)` 
-  to make the WebGL backend more lightweight (#166).
-- Fixed `scale_plot` not actually working (#166).
+- Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)`
+  to make the WebGL backend more lightweight (#180).
+- Fixed `scale_plot` not actually working (#180).
+- Cleaned up theme merging & scene attribute composition, so this works (#180):
+```julia
+scatter(rand(4), resolution = (200, 200))
+scatter(rand(4), limits = ((0, 0), (200, 200)))
+```
 
 # `master`
-- Added a custom docstring extension which allows the Attributes of a Recipe to be shown in 
+- Added a custom docstring extension which allows the Attributes of a Recipe to be shown in
   the help mode (#174).
 - Documented a lot of internal features (#174).
 - Added a new 3d camera type, `cam3d_cad!`(#161).
 - Improved warning text when displaying to text or plotpane (#163).
-- Ensured that unless `inline!(true)` was called, plots will always display in 
+- Ensured that unless `inline!(true)` was called, plots will always display in
   interactive displays, even in Juno (#163).
 - Added licenses for fonts shipped with AbstractPlotting (#160).
 - Switched from using system `ffmpeg` to using `FFMPEG.jl` (#160).
@@ -40,3 +45,19 @@
 - Updated `VideoStream`, `save` docstrings.
 - Reworked tests to use `MakieGallery` (pretty big feature on the backend)
 - Enabled Travis CI!
+
+# Additions
+
+## streamplot
+
+```julia
+using MakieGallery, Makie
+run_example("streamplot")
+```
+
+## timeseries
+
+```julia
+using MakieGallery, Makie
+run_example("timeseries")
+```

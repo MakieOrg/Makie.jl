@@ -219,7 +219,7 @@ function print_rec(io::IO, dict, indent::Int = 1; extended = false)
         if isa(to_value(v), AbstractPlotting.Attributes)
             print(io, ": ")
             println(io)
-            print_rec(io, v[], indent + 1; extended = extended)
+            print_rec(io, v.attributes, indent + 1; extended = extended)
         elseif isa(v, Node)
             if extended
                 print(io, ": ")
