@@ -1,7 +1,12 @@
 # Other branches (not yet merged)
 - Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)`
-  to make the WebGL backend more lightweight (#166).
-- Fixed `scale_plot` not actually working (#166).
+  to make the WebGL backend more lightweight (#180).
+- Fixed `scale_plot` not actually working (#180).
+- Cleaned up theme merging & scene attribute composition, so this works (#180):
+```julia
+scatter(rand(4), resolution = (200, 200))
+scatter(rand(4), limits = ((0, 0), (200, 200)))
+```
 
 # `master`
 - Added a custom docstring extension which allows the Attributes of a Recipe to be shown in
@@ -40,9 +45,3 @@
 - Updated `VideoStream`, `save` docstrings.
 - Reworked tests to use `MakieGallery` (pretty big feature on the backend)
 - Enabled Travis CI!
-
-## Cleaned up theme merging & scene attribute composition, so this works:
-```julia
-scatter(rand(4), resolution = (200, 200))
-scatter(rand(4), limits = (200, 200))
-```
