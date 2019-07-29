@@ -430,6 +430,7 @@ function draw_axis2d(
     pad = (limit_widths .* to2tuple(padding))
     # pad the drawn limits
     limits = map((lim, p)-> (lim[1] - p, lim[2] + p), limits, pad)
+
     # recalculate widths
     limit_widths = map(x-> x[2] - x[1], limits)
 
@@ -453,7 +454,6 @@ function draw_axis2d(
         end
     end
     o_offsets = ((0.0, Float64(t_gap[2])), (Float64(t_gap[1]), Float64(0.0)))
-
     foreach(1:2, o_offsets, xyticks) do dim, offset, ticks
         if showticks[dim]
             draw_ticks(
@@ -512,7 +512,9 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
             linestyle = lift(last, cplot[:grid, :linestyle])
         )
     ))
-    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot.frame.linestyle) |> to_node
+    frame_linebuffer = to_node(LinesegmentBuffer(
+        cplot, Point{2}, transparency = true, linestyle = cplot.frame.linestyle
+    ))
     map_once(
         draw_axis2d,
         to_node(textbuffer),
