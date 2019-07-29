@@ -170,7 +170,10 @@ end
 function selection_rect!(scene, cam, key)
     rect = RefValue(FRect())
     lw = 2f0
-    scene_unscaled = Scene(scene, transformation = Transformation(), cam = copy(camera(scene)))
+    scene_unscaled = Scene(
+        scene, transformation = Transformation(),
+        cam = copy(camera(scene)), clear = false
+    )
     scene_unscaled.clear = false
     scene_unscaled.updated = Node(false)
     rect_vis = lines!(
