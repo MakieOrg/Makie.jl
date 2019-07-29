@@ -95,8 +95,9 @@ function Scene(
         end
         nothing
     end
-    if scene[:camera][] !== automatic
-        apply_camera!(scene, scene[:camera][])
+    if scene[:camera][] !== automatic && camera_controls[] == EmptyCamera()
+        cam = pop!(scene.attributes, :camera)[]
+        apply_camera!(scene, cam)
     end
     scene
 end
@@ -509,3 +510,12 @@ parent_scene(x::Combined) = parent_scene(parent(x))
 parent_scene(x::Scene) = x
 
 Base.isopen(x::SceneLike) = events(x).window_open[]
+
+
+function is2d(scene::SceneLike)
+    lims = scene_limits(scene)
+    lims === nothing && return nothing
+    return is2d(lims)
+end
+is2d(lims::HyperRectangle{2}) = return true
+is2d(lims::HyperRectangle{3}) = widths(lims)[3] == 0.0
