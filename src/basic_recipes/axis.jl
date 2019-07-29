@@ -171,6 +171,7 @@ function default_ticks(lmin::Number, lmax::Number, ::Automatic, scale_func::Func
         k_min = 4, # minimum number of ticks
         k_max = 8, # maximum number of ticks
     )
+    length(scaled_ticks) == 1 && isnan(scaled_ticks[1]) && return [-Inf, Inf]
     scaled_ticks
 end
 
@@ -494,10 +495,10 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
     )
     ti_keys = (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :title)
 
-    g_args = getindex.(Ref(cplot[:grid]), g_keys)
-    f_args = getindex.(Ref(cplot[:frame]), f_keys)
-    t_args = getindex.(Ref(cplot[:ticks]), t_keys)
-    ti_args = getindex.(Ref(cplot[:names]), ti_keys)
+    g_args = getindex.(cplot.grid, g_keys)
+    f_args = getindex.(cplot.frame, f_keys)
+    t_args = getindex.(cplot.ticks, t_keys)
+    ti_args = getindex.(cplot.names, ti_keys)
 
     textbuffer = TextBuffer(cplot, Point{2})
 
@@ -511,7 +512,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
             linestyle = lift(last, cplot[:grid, :linestyle])
         )
     ))
-    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot[:frame, :linestyle]) |> to_node
+    frame_linebuffer = LinesegmentBuffer(cplot, Point{2}, transparency = true, linestyle = cplot.frame.linestyle) |> to_node
     map_once(
         draw_axis2d,
         to_node(textbuffer),

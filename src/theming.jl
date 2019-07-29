@@ -36,6 +36,7 @@ const minimal_default = Attributes(
     show_legend = false,
     scale_plot = true,
     center = true,
+    update_limits = true,
     axis = Attributes(),
     axis2d = Attributes(),
     axis3d = Attributes(),

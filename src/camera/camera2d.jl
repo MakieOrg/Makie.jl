@@ -5,6 +5,7 @@ struct Camera2D <: AbstractCamera
     panbutton::Node{ButtonTypes}
     padding::Node{Float32}
     last_area::Node{Vec{2, Int}}
+    update_limits::Node{Bool}
 end
 
 """
@@ -21,7 +22,8 @@ function cam2d!(scene::SceneLike; kw_args...)
             panbutton = Mouse.left,
             selectionbutton = (Keyboard.space, Mouse.left),
             padding = 0.001,
-            last_area = Vec(size(scene))
+            last_area = Vec(size(scene)),
+            update_limits = false,
         )
     end
     cam = from_dict(Camera2D, cam_attributes)
@@ -86,6 +88,11 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
     camera(scene).projection[] = projection
     camera(scene).projectionview[] = projection * view
     cam.last_area[] = Vec(size(scene))
+    if cam.update_limits[]
+        #
+        w2 = Vec2f0(w, h) .* 0.2
+        update_limits!(scene, Rect(origin(cam.area[]) .+ w2, widths(cam.area[]) .- 2w2))
+    end
     return
 end
 
