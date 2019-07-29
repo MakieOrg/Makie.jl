@@ -44,7 +44,11 @@ end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
 function raw_boundingbox(scene::Scene)
-    if cameracontrols(scene) == EmptyCamera()
+    if scene[Axis] !== nothing
+        return raw_boundingbox(scene[Axis])
+    elseif scene.limits[] !== automatic
+        return scene_limits(scene)
+    elseif cameracontrols(scene) == EmptyCamera()
         # Empty camera means this is a parent scene that itself doesn't display anything
         return raw_boundingbox(scene.children)
     else
@@ -55,6 +59,7 @@ function raw_boundingbox(scene::Scene)
         return raw_boundingbox([plots; children])
     end
 end
+
 function raw_boundingbox(plots::Vector)
     isempty(plots) && return FRect3D()
     plot_idx = iterate(plots)

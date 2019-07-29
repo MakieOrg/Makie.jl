@@ -46,26 +46,6 @@ function resampled_colors(attributes, levels::Integer)
     end
 end
 
-"""
-    mergekeys(keys::NTuple{N, Symbol}, target::Attributes, source::Attributes)
-
-Merges only `keys` from `source` into `target`. Creates a copy.
-"""
-function mergekeys(keys::NTuple{N, Symbol}, target::Attributes, source::Attributes) where N
-    mergekeys!(keys, copy(target), source)
-end
-
-"""
-    mergekeys!(keys::NTuple{N, Symbol}, target::Attributes, source::Attributes)
-
-Merges only `keys` from `source` into `target`.
-"""
-function mergekeys!(keys::NTuple{N, Symbol}, target::Attributes, source::Attributes) where N
-    for key in keys
-        get!(target, key, source[key])
-    end
-    result
-end
 
 """
 Like `get!(f, dict, key)` but also calls `f` and replaces `key` when the corresponding
@@ -243,56 +223,27 @@ dim2(x::NTuple{2, Any}) = x
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
 
-function merge_attributes!(input, theme, rest = Attributes(), merged = Attributes())
-    for key in union(keys(input), keys(theme))
-        if haskey(input, key) && haskey(theme, key)
-            val = input[key]
-            if isa(to_value(val), Attributes)
-                # special casing having an empty dict of attributes, so that one can just do the following in a theme:
-                # t = Theme(lineplot_style = Attributes())
-                # lines!(scene, t[:lineplot_style], args...)
-                # TODO is this okay!?
-                if isempty(theme[key])
-                    merged[key] = to_value(val)
-                else
-                    merged[key] = Attributes()
-                    merge_attributes!(to_value(val), to_value(theme[key]), rest, to_value(merged[key]))
-                end
+function merge_attributes!(input::Attributes, theme::Attributes)
+    for (key, value) in theme
+        if !haskey(input, key)
+            input[key] = copy(value)
+        else
+            current_value = input[key]
+            if value isa Attributes && current_value isa Attributes
+                # if nested attribute, we merge recursively
+                merge_attributes!(current_value, value)
+            elseif value isa Attributes || current_value isa Attributes
+                error("""
+                Type missmatch while merging plot attributes with theme for key: $(key).
+                Found $(value) in theme, while attributes contains: $(current_value)
+                """)
             else
-                merged[key] = val
-            end
-        elseif haskey(input, key)
-            rest[key] = input[key]
-        else # haskey(theme) must be true!
-            val = theme[key]
-            if isa(to_value(val), Attributes)
-                merged[key] = val
-            else
-                merged[key] = lift(identity, val, typ = Any) # lift identity -> copy signal
+                # we're good! input already has a value, can ignore theme
             end
         end
     end
-    return merged, rest
+    return input
 end
-
-function merge_attributes_doublebang!(input, theme)
-    for key in union(keys(input), keys(theme))
-        if haskey(input, key) && haskey(theme, key)
-            val = input[key]
-            if isa(to_value(val), Attributes)
-                isa(to_value(theme[key]), Attributes) ||
-                    error("$(key) is an Attribute type in only one input object")
-                merge_attributes_doublebang!(to_value(val), to_value(theme[key]))
-            else
-                theme[key] = val
-            end
-        elseif haskey(input, key)
-            theme[key] = input[key]
-        end
-    end
-    return theme
-end
-
 
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
@@ -305,21 +256,7 @@ function merged_get!(defaults::Function, key, scene::SceneLike, input::Attribute
         # TODO have a mark that says "theme uncomplete" and only then get the defaults
         merge!(d, to_value(theme(scene, key)))
     end
-    theme(scene)[key] = d
-    return merge_attributes!(input, d)
-end
-
-function assemble(theme::SceneLike, ::Type{Any}, attributes::Attributes, args)
-    unlifted = to_value.(args)
-    # that we calculate the plot type on the unlifted nodes means, that you can't
-    # change the plot type by supplying different arguments for signals
-    PlotType = plottype(unlifted...)
-    assemble(theme, PlotType, attributes, args)
-end
-
-
-function assemble(theme::Function, scene::SceneLike, ::Type{PlotType}, attributes::Attributes, args) where PlotType
-    PlotType(scene, attributes, args)
+    return merge!(input, d)
 end
 
 struct Key{K} end

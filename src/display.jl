@@ -15,7 +15,10 @@ function inline!(inline = true)
 end
 
 function register_backend!(backend::AbstractBackend)
-    push!(available_backends, backend)
+    if !(backend in available_backends)
+        push!(available_backends, backend)
+    end
+    # only set as the current backend if it's the only one
     if(length(available_backends) == 1)
         current_backend[] = backend
     end
@@ -102,13 +105,15 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     end
     if !use_display[] && !isempty(available_backends)
         plotpane = has_juno_plotpane()
-        if plotpane !== nothing && !use_display[] && !plotpane
+        if plotpane !== nothing && !plotpane
             # we want to display as inline!, we are in Juno, but the plotpane is disabled
             @warn """Showing scene as inline with Plotpane disabled. This happens because `AbstractPlotting.inline!(true)` is set,
             while `Atom.PlotPaneEnabled[]` is false. Either enable the plotpane, or set inline to false!"""
         else
-            @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
-            This needs to be false to show a plot in a window when in the REPL."""
+            if plotpane === nothing || !plotpane
+                @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
+                This needs to be false to show a plot in a window when in the REPL."""
+            end
         end
     end
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")

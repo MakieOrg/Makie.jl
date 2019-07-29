@@ -10,7 +10,26 @@ mutable struct TextureAtlas
     extent          ::Vector{FontExtent{Float64}}
 end
 
-function TextureAtlas(initial_size = (2048, 2048))
+@enum GlyphResolution High Low
+
+const TEXTURE_RESOLUTION = Ref((2048, 2048))
+const CACHE_RESOLUTION_PREFIX = Ref("High")
+const DOWN_SAMPLE_FACTOR = Ref(50)
+
+function set_glyph_resolution!(res::GlyphResolution)
+    if res == High
+        TEXTURE_RESOLUTION[] = (2048, 2048)
+        CACHE_RESOLUTION_PREFIX[] = "high"
+        DOWN_SAMPLE_FACTOR[] = 50
+    else
+        TEXTURE_RESOLUTION[] = (1024, 1024)
+        CACHE_RESOLUTION_PREFIX[] = "low"
+        DOWN_SAMPLE_FACTOR[] = 30
+    end
+end
+
+
+function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     TextureAtlas(
         RectanglePacker(SimpleRectangle(0, 0, initial_size...)),
         Dict{Any, Int}(),
@@ -31,7 +50,12 @@ begin #basically a singleton for the textureatlas
         'π','∮','⋅','→','∞','∑','∏','∀','∈','ℝ','⌈','⌉','−','⌊','⌋','α','∧','β','∨','ℕ','⊆','₀',
         '⊂','ℤ','ℚ','ℂ','⊥','≠','≡','≤','≪','⊤','⇒','⇔','₂','⇌','Ω','⌀',
     ]
-    const _cache_path = abspath(first(Base.DEPOT_PATH), "makiegallery", ".cache", "texture_atlas.jls")
+    function get_cache_path()
+        return abspath(
+            first(Base.DEPOT_PATH), "makiegallery", ".cache",
+            "texture_atlas_$(CACHE_RESOLUTION_PREFIX[]).jls"
+        )
+    end
     const _default_font = Vector{Ptr{FreeType.FT_FaceRec}}[]
     const _alternative_fonts = Vector{Ptr{FreeType.FT_FaceRec}}[]
 
@@ -59,9 +83,9 @@ begin #basically a singleton for the textureatlas
     end
 
     function cached_load()
-        if isfile(_cache_path)
+        if isfile(get_cache_path())
             try
-                return open(_cache_path) do io
+                return open(get_cache_path()) do io
                     dict = Serialization.deserialize(io)
                     fields = map(fieldnames(TextureAtlas)) do n
                         v = dict[n]
@@ -72,7 +96,7 @@ begin #basically a singleton for the textureatlas
             catch e
                 @info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
                 @warn(e)
-                rm(_cache_path)
+                rm(get_cache_path())
             end
         end
         atlas = TextureAtlas()
@@ -80,18 +104,18 @@ begin #basically a singleton for the textureatlas
         for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
             insert_glyph!(atlas, c, defaultfont())
         end
-        for c in _tobe_cached
-            insert_glyph!(atlas, c, defaultfont())
-        end
+        # for c in _tobe_cached
+        #     insert_glyph!(atlas, c, defaultfont())
+        # end
         to_cache(atlas) # cache it
         return atlas
     end
 
     function to_cache(atlas)
-        if !ispath(dirname(_cache_path))
-            mkpath(dirname(_cache_path))
+        if !ispath(dirname(get_cache_path()))
+            mkpath(dirname(get_cache_path()))
         end
-        open(_cache_path, "w") do io
+        open(get_cache_path(), "w") do io
             dict = Dict(map(fieldnames(typeof(atlas))) do name
                 name => getfield(atlas, name)
             end)
@@ -209,7 +233,8 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     if glyph == '\n' # don't render  newline
         glyph = ' '
     end
-    bitmap, extent = renderface(font, glyph, (50*downsample, 50*downsample))
+    DF = DOWN_SAMPLE_FACTOR[]
+    bitmap, extent = renderface(font, glyph, (DF*downsample, DF*downsample))
     sd = sdistancefield(bitmap, downsample, downsample*pad)
     sd = sd ./ downsample;
     extent = extent ./ Vec2f0(downsample)
