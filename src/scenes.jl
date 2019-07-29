@@ -89,6 +89,7 @@ function Scene(
     onany(updated, px_area) do update, px_area
         if update && !(scene.camera_controls[] isa PixelCamera)
             if !scene.raw[]
+                scene.update_limits[] && update_limits!(scene)
                 scene.scale_plot[] && scale_scene!(scene)
                 scene.center[] && center!(scene)
             end
@@ -96,6 +97,8 @@ function Scene(
         nothing
     end
     if scene[:camera][] !== automatic && camera_controls[] == EmptyCamera()
+        # camera shouldn't really be part of the attributes, especially since
+        # it just adds the camera one time and after that isn't usable
         cam = pop!(scene.attributes, :camera)[]
         apply_camera!(scene, cam)
     end
@@ -234,7 +237,14 @@ getscreen(scene::SceneLike) = getscreen(rootparent(scene))
     `update!(p::Scene)`
 
 Updates a `Scene` and all its children.
-This will layout all scenes.
+Update will perform the following operations for every scene:
+```julia
+if !scene.raw[]
+    scene.update_limits[] && update_limits!(scene)
+    scene.scale_plot[] && scale_scene!(scene)
+    scene.center[] && center!(scene)
+end
+```
 """
 function update!(p::Scene)
     p.updated[] = true
@@ -304,9 +314,9 @@ limits(scene::SceneLike) = limits(parent(scene))
 
 function scene_limits(scene::Scene)
     if scene.limits[] === automatic
-        return scene.data_limits[]
+        return FRect3D(scene.data_limits[])
     else
-        return scene.limits[]
+        return FRect3D(scene.limits[])
     end
 end
 
@@ -332,6 +342,7 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
+    update!(scene)
 end
 
 function Base.push!(scene::Scene, child::Scene)
@@ -519,3 +530,66 @@ function is2d(scene::SceneLike)
 end
 is2d(lims::HyperRectangle{2}) = return true
 is2d(lims::HyperRectangle{3}) = widths(lims)[3] == 0.0
+
+"""
+    update_limits!(scene::Scene, limits::Union{Automatic, Rect} = scene.limits[], padding = scene.padding[])
+
+This function updates the limits of the `Scene` passed to it based on its data.
+If an actual limit is set by the theme or its attributes (scene.limits !== automatic),
+it will not update the limits. Call update_limits!(scene, automatic) for that.
+"""
+update_limits!(scene::Scene) = update_limits!(scene, scene.limits[])
+
+function update_limits!(scene::Scene, limits::Automatic, padding = scene.padding[])
+    # for when scene is empty
+    dlimits = data_limits(scene)
+    dlimits === nothing && return #nothing to limit if there isn't anything
+    tlims = (minimum(dlimits), maximum(dlimits))
+    if !all(x-> all(isfinite, x), tlims)
+        @warn "limits of scene contain non finite values: $(tlims[1]) .. $(tlims[2])"
+        mini = map(x-> ifelse(isfinite(x), x, 0.0), tlims[1])
+        maxi = Vec3f0(ntuple(3) do i
+            x = tlims[2][i]
+            ifelse(isfinite(x), x, tlims[1][i] + 1f0)
+        end)
+        tlims = (mini, maxi)
+    end
+    new_widths = Vec3f0(ntuple(3) do i
+        a = tlims[1][i]; b = tlims[2][i]
+        w = b - a
+        # check for widths == 0.0... 3rd dimension is allowed to be 0 though.
+        # TODO maybe we should allow any one dimension to be 0, and then use the other 2 as 2D
+        with0 = (i != 3) && (w ≈ 0.0)
+        with0 && @warn "Founds 0 width in scene limits: $(tlims[1]) .. $(tlims[2])"
+        ifelse(with0, 1f0, w)
+    end)
+    update_limits!(scene, FRect3D(tlims[1], new_widths), padding)
+end
+
+"""
+    update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
+
+This function updates the limits of the given `Scene` according to the given HyperRectangle.
+
+A `HyperRectangle` is a generalization of a rectangle to n dimensions.  It contains two vectors.
+The first vector defines the origin; the second defines the displacement of the vertices from the origin.
+This second vector can be thought of in two dimensions as a vector of width (x-axis) and height (y-axis),
+and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and height (z-axis).
+
+Such a `HyperRectangle` can be constructed using the `FRect` or `FRect3D` functions that are exported by
+`AbstractPlotting.jl`.  See their documentation for more information.
+"""
+function update_limits!(scene::Scene, new_limits::HyperRectangle, padding = scene.padding[])
+    lims = FRect3D(new_limits)
+    lim_w = widths(lims)
+    # use the smallest widths for scaling, to have a consistently wide padding for all sides
+    minw = if lim_w[3] ≈ 0.0
+        m = min(lim_w[1], lim_w[2])
+        Vec3f0(m, m, 0.0)
+    else
+        Vec3f0(minimum(lim_w))
+    end
+    padd_abs = minw .* to_ndim(Vec3f0, padding, 0.0)
+    scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
+    scene
+end
