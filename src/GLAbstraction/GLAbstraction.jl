@@ -10,13 +10,15 @@ using FileIO
 using ..GLMakie.GLFW
 using Printf
 using LinearAlgebra
-using AbstractPlotting
 using Observables
 
 import FileIO: load, save
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
+using GeometryTypes: attributes
+
+import AbstractPlotting: update!
 
 import Base: merge, resize!, similar, length, getindex, setindex!
 

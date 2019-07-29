@@ -1,7 +1,7 @@
 const ScreenID = UInt8
 const ZIndex = Int
 # ID, Area, clear, is visible, background color
-const ScreenArea = Tuple{ScreenID, Node{IRect2D}, Node{Bool}, Node{Bool}, Node{RGBAf0}}
+const ScreenArea = Tuple{ScreenID, Scene}
 
 
 abstract type GLScreen <: AbstractScreen end
@@ -50,6 +50,11 @@ Base.show(io::IO, screen::Screen) = print(io, "GLMakie.Screen(...)")
 Base.size(x::Screen) = size(x.framebuffer)
 
 function insertplots!(screen::GLScreen, scene::Scene)
+    get!(screen.screen2scene, WeakRef(scene)) do
+        id = length(screen.screens) + 1
+        push!(screen.screens, (id, scene))
+        id
+    end
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
@@ -142,10 +147,7 @@ function Base.push!(screen::GLScreen, scene::Scene, robj)
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
-        bg = lift(to_color, scene.theme[:backgroundcolor])
-        clear = lift(identity, scene.theme[:clear])
-        visible = lift(identity, scene.theme[:visible])
-        push!(screen.screens, (id, scene.px_area, clear, visible, bg))
+        push!(screen.screens, (id, scene))
         id
     end
     push!(screen.renderlist, (0, screenid, robj))
@@ -338,6 +340,7 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
 end
 
 function pick_native(screen::Screen, xy::Vec{2, Float64})
+    isopen(screen) || return SelectionID{Int}(0, 0)
     sid = Base.RefValue{SelectionID{UInt16}}()
     window_size = widths(screen)
     fb = screen.framebuffer
