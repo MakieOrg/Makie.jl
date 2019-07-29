@@ -1017,6 +1017,10 @@ function AbstractPlotting.convert_arguments(::Type{<: StreamPlot}, f::Function, 
     (f, x, y)
 end
 
+"""
+Code adapted from an example implementation by Moritz Schauer (@mschauer)
+from https://github.com/JuliaPlots/Makie.jl/issues/355#issuecomment-504449775
+"""
 function streamplot_impl(CallType, f, xrange, yrange, resolution, stepsize)
     mask = trues(resolution)
     arrow_pos = Point2f0[]
