@@ -139,7 +139,7 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
         export $PlotType, $funcname, $funcname!
     end
     if !isempty(args)
-        push!(expr.args, :($(esc(:argument_names))(::Type{<: $PlotType}, len::Integer) = $args))
+        push!(expr.args, :($(esc(:(AbstractPlotting.argument_names)))(::Type{<: $PlotType}, len::Integer) = $args))
     end
     expr
 end
