@@ -632,6 +632,14 @@ function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args..
     scene
 end
 
+function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N, PlotType <: AbstractPlot}
+    # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
+    plot_object, scene_attributes = PlotType(scene, attributes, input, args)
+    # call user defined recipe overload to fill the plot type
+    plot!(plot_object)
+    push!(scene.plots, plot_object)
+    scene
+end
 
 
 
