@@ -139,9 +139,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-
             visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes)).children[]
         else
+            handle_intensities!(gl_attributes)
             visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
         end
     end
