@@ -1131,6 +1131,7 @@ $(ATTRIBUTES)
         marker = automatic,
         markersize = automatic,
         colormap = theme(scene, :colormap),
+        colorrange = automatic,
         framecolor = :black,
         framesize = 1,
     )
@@ -1142,6 +1143,8 @@ function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
 end
 function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
     (x, y, z)
+end
+function calculated_attributes!(::Type{<: Spy}, plot)
 end
 
 function plot!(p::Spy)
@@ -1165,7 +1168,9 @@ function plot!(p::Spy)
         end
         points, color
     end
-
+    replace_automatic!(p, :colorrange) do
+        lift(extrema_nan ∘ SparseArrays.nonzeros, p.z)
+    end
     marker = lift(p.marker) do x
         if x === automatic
             # If we currently use GLMakie, we can go super fast!
@@ -1183,7 +1188,7 @@ function plot!(p::Spy)
     scatter!(
         p,
         lift(first, xycol), color = lift(last, xycol),
-        marker = marker, markersize = markersize
+        marker = marker, markersize = markersize, colorrange = p.colorrange
     )
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize)
