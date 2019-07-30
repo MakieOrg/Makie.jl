@@ -1136,7 +1136,6 @@ $(ATTRIBUTES)
         framesize = 1,
     )
 end
-import SparseArrays
 
 function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
     (0..size(x, 1), 0..size(x, 2), x)
