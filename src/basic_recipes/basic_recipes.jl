@@ -1003,7 +1003,7 @@ end
     run_example("streamplot")
     ```
 
-"""``
+"""
 @recipe(StreamPlot, f, xrange, yrange) do scene
     Theme(
         stepsize = 0.01,
@@ -1013,7 +1013,7 @@ end
     )
 end
 
-function AbstractPlotting.convert_arguments(::Type{<: StreamPlot}, f::Function, x, y)
+function convert_arguments(::Type{<: StreamPlot}, f::Function, x, y)
     (f, x, y)
 end
 
@@ -1095,7 +1095,7 @@ function streamplot_impl(CallType, f, xrange, yrange, resolution, stepsize)
     )
 end
 
-function AbstractPlotting.plot!(p::StreamPlot)
+function plot!(p::StreamPlot)
     data = lift(p.f, p.xrange, p.yrange, p.resolution, p.stepsize) do f, xrange, yrange, resolution, stepsize
         P = if applicable(f, Point2f0(0))
             Point
@@ -1114,4 +1114,79 @@ function AbstractPlotting.plot!(p::StreamPlot)
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
         colormap = p.colormap,
     )
+end
+
+"""
+    spy(x::Range, y::Range, z::AbstractSparseArray)
+Visualizes big sparse matrices.
+Usage:
+```julia
+N = 200_000
+x = sprand(Float64, N, N, (3(10^6)) / (N*N));
+spy(x)
+# or if you want to specify the range of x and y:
+spy(0..1, 0..1, x)
+```
+"""
+@recipe(Spy, x, y, z) do scene
+    Theme(
+        marker = automatic,
+        markersize = automatic,
+        colormap = theme(scene, :colormap),
+        framecolor = :black,
+        framesize = 1,
+    )
+end
+import SparseArrays
+
+function convert_arguments(::Type{<: Spy}, x::SparseArrays.AbstractSparseArray)
+    (0..size(x, 1), 0..size(x, 2), x)
+end
+function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
+    (x, y, z)
+end
+
+function plot!(p::Spy)
+    rect = lift(p.x, p.y) do x, y
+        xe = extrema(x)
+        ye = extrema(y)
+        FRect2D((xe[1], ye[1]), (xe[2] - xe[1], ye[2] - ye[1]))
+    end
+    markersize = lift(p.markersize, rect, p.z) do msize, rect, z
+        if msize === automatic
+            widths(rect) ./ Vec2f0(size(z))
+        else
+            msize
+        end
+    end
+    xycol = lift(rect, p.z) do rect, z
+        x, y, color = SparseArrays.findnz(z)
+        points = map(x, y) do x, y
+            ((Point2f0(x, y) .- 1) ./ Point2f0(size(z) .- 1)) .*
+            widths(rect) .+ minimum(rect)
+        end
+        points, color
+    end
+
+    marker = lift(p.marker) do x
+        if x === automatic
+            # If we currently use GLMakie, we can go super fast!
+            BackendModule = parentmodule(typeof(AbstractPlotting.current_backend[]))
+            if nameof(BackendModule) == :GLMakie
+                BackendModule.FastPixel()
+            else
+                :rect
+            end
+        else
+            x
+        end
+    end
+
+    scatter!(
+        p,
+        lift(first, xycol), color = lift(last, xycol),
+        marker = marker, markersize = markersize
+    )
+
+    lines!(p, rect, color = p.framecolor, linewidth = p.framesize)
 end
