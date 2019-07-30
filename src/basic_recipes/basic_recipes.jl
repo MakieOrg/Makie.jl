@@ -988,21 +988,17 @@ function AbstractPlotting.plot!(plot::TimeSeries)
 end
 
 """
-    streamplot(
-        f::function, -1.5..1.5, -1.5..1.5;
-        stepsize = 0.01,
-        resolution = (32, 32),
-        colormap = theme(scene, :colormap),
-        arrow_size = 0.03
-    )
-    f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
-    f must return a Point2.
-    Example:
-    ```julia
-    using MakieGallery, Makie
-    run_example("streamplot")
-    ```
-
+    streamplot(f::function, xinterval, yinterval;
+        kwargs...)
+f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
+f must return a Point2.
+Example:
+```julia
+using MakieGallery, Makie
+run_example("streamplot")
+```
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(StreamPlot, f, xrange, yrange) do scene
     Theme(
@@ -1127,6 +1123,8 @@ spy(x)
 # or if you want to specify the range of x and y:
 spy(0..1, 0..1, x)
 ```
+## Theme
+$(ATTRIBUTES)
 """
 @recipe(Spy, x, y, z) do scene
     Theme(
