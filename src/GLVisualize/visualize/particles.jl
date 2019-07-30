@@ -315,6 +315,10 @@ end
 to_pointsize(x::Number) = Float32(x)
 to_pointsize(x) = Float32(x[1])
 
+struct PointSizeRender
+    size::Observable
+end
+(x::PointSizeRender)() = glPointSize(to_pointsize(x.size[]))
 """
 This is the most primitive particle system, which uses simple points as primitives.
 This is supposed to be the fastest way of displaying particles!
@@ -322,15 +326,14 @@ This is supposed to be the fastest way of displaying particles!
 function _default(position::VectorTypes{T}, s::style"speed", data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex       = position => GLBuffer
-        color_map    = nothing  => Vec2f0
+        color_map    = nothing  => Texture
         color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
-        color_norm   = nothing  => Vec2f0
-        intensity    = nothing  => GLBuffer
+        color_norm   = nothing
         scale        = 2f0
         shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
         gl_primitive = GL_POINTS
     end
-    data[:prerender] = ()-> glPointSize(to_pointsize(data[:scale][]))
+    data[:prerender] = PointSizeRender(data[:scale])
     data
 end
 

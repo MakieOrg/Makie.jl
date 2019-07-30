@@ -131,11 +131,15 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
             gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
         end
         positions = handle_view(x[1], gl_attributes)
-        handle_intensities!(gl_attributes)
         if marker[] isa FastPixel
             filter!(gl_attributes) do (k, v,)
-                k in (:color_map, :color, :color_norm, :intensity, :scale, :fxaa)
+                k in (:color_map, :color, :color_norm, :scale, :fxaa, :model)
             end
+            if !(gl_attributes[:color][] isa AbstractVector{<: Number})
+                delete!(gl_attributes, :color_norm)
+                delete!(gl_attributes, :color_map)
+            end
+
             visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes)).children[]
         else
             visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
