@@ -1000,65 +1000,74 @@ run_example("streamplot")
 ## Theme
 $(ATTRIBUTES)
 """
-@recipe(StreamPlot, f, xrange, yrange) do scene
+@recipe(StreamPlot, f, limits) do scene
     Theme(
         stepsize = 0.01,
-        resolution = (32, 32),
+        gridsize = (32, 32, 32),
         colormap = theme(scene, :colormap),
         arrow_size = 0.03
     )
 end
 
-function convert_arguments(::Type{<: StreamPlot}, f::Function, x, y)
-    (f, x, y)
+function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange)
+    xmin, xmax = extrema(xrange)
+    ymin, ymax = extrema(yrange)
+    return (f, Rect(xmin, ymin, xmax - xmin, ymax - ymin))
+end
+function convert_arguments(::Type{<: StreamPlot}, f::Function, xrange, yrange, zrange)
+    xmin, xmax = extrema(xrange)
+    ymin, ymax = extrema(yrange)
+    zmin, zmax = extrema(yrange)
+    mini = Vec3f0(xmin, ymin, zmin)
+    maxi = Vec3f0(xmax, ymax, zmax)
+    return (f, Rect(mini, maxi .- mini))
+end
+
+function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
+    return (f, limits)
 end
 
 """
 Code adapted from an example implementation by Moritz Schauer (@mschauer)
 from https://github.com/JuliaPlots/Makie.jl/issues/355#issuecomment-504449775
 """
-function streamplot_impl(CallType, f, xrange, yrange, resolution, stepsize)
-    mask = trues(resolution)
-    arrow_pos = Point2f0[]
-    arrow_dir = Vec2f0[]
-    line_points = Point2f0[]
+function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize) where {N, T}
+    resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
+    mask = trues(resolution...)
+    arrow_pos = Point{N, Float32}[]
+    arrow_dir = Vec{N, Float32}[]
+    line_points = Point{N, Float32}[]
     colors = Float64[]
     line_colors = Float64[]
-    xmin, xmax = extrema(xrange)
-    ymin, ymax = extrema(yrange)
-    limits = Rect(xmin, ymin, xmax - xmin, ymax - ymin)
-    dt = Point2f0(to2tuple(stepsize))
-    r = (
-        LinRange(xmin, xmax, resolution[1] + 1),
-        LinRange(ymin, ymax, resolution[2] + 1)
-    )
+    dt = Point{N, Float32}(stepsize)
+    mini, maxi = minimum(limits), maximum(limits)
+    r = ntuple(N) do i
+        LinRange(mini[i], maxi[i], resolution[i] + 1)
+    end
     apply_f(x0, P) = if P <: Point
         f(x0)
     else
-        f(x0[1], x0[2])
+        f(x0...)
     end
     for c in CartesianIndices(mask)
-        i0, j0 = Tuple(c)
-        x0 = Point2(
-            first(r[1]) + (i0 - 0.5) * step(r[1]),
-            first(r[2]) + (j0 - 0.5) * step(r[1])
-        )
+        x0 = Point(ntuple(N) do i
+            first(r[i]) + (c[i] - 0.5) * step(r[i])
+        end)
         if mask[c]
             point = apply_f(x0, CallType)
-            if !(point isa Point2)
-                error("Function passed to streamplot must return Point2")
+            if !(point isa Point2 || point isa Point3)
+                error("Function passed to streamplot must return Point2 or Point3")
             end
             pnorm = norm(point)
             push!(arrow_pos, x0)
-            push!(arrow_dir, point / pnorm)
+            push!(arrow_dir, point ./ pnorm)
             push!(colors, pnorm)
             mask[c] == false
             for d in (-1, 1)
                 n_linepoints = 1
                 x = x0
-                push!(line_points, Point2f0(NaN), x)
+                push!(line_points, Point{N, Float32}(NaN), x)
                 push!(line_colors, 0.0, pnorm)
-                i0, j0 = Tuple(c)
                 while x in limits && n_linepoints < 500
                     point = apply_f(x, CallType)
                     pnorm = norm(point)
@@ -1066,14 +1075,15 @@ function streamplot_impl(CallType, f, xrange, yrange, resolution, stepsize)
                     if !(x in limits)
                         break
                     end
-                    i = searchsortedlast(r[1], x[1])
-                    j = searchsortedlast(r[2], x[2])
-                    if (i, j) != (i0, j0)
-                        if !mask[i,j]
+                    # WHAT? Why does point behave different from tuple in this
+                    # broadcast
+                    idx = CartesianIndex(searchsortedlast.(r, Tuple(x)))
+                    if idx != c
+                        if !mask[idx]
                             break
                         end
-                        mask[i, j] = false
-                        i0, j0 = i, j
+                        mask[idx] = false
+                        c = idx
                     end
                     push!(line_points, x)
                     push!(line_colors, pnorm)
@@ -1092,21 +1102,22 @@ function streamplot_impl(CallType, f, xrange, yrange, resolution, stepsize)
 end
 
 function plot!(p::StreamPlot)
-    data = lift(p.f, p.xrange, p.yrange, p.resolution, p.stepsize) do f, xrange, yrange, resolution, stepsize
-        P = if applicable(f, Point2f0(0))
+    data = lift(p.f, p.limits, p.gridsize, p.stepsize) do f, limits, resolution, stepsize
+        P = if applicable(f, Point2f0(0)) || applicable(f, Point3f0(0))
             Point
         else
             Number
         end
-        streamplot_impl(P, f, xrange, yrange, resolution, stepsize)
+        streamplot_impl(P, f, limits, resolution, stepsize)
     end
     lines!(
         p,
         lift(x->x[3], data), color = lift(last, data), colormap = p.colormap
     )
-    scatter!(
+    N = ndims(p.limits[])
+    scatterfun(N)(
         p,
-        lift(first, data), markersize = p.arrow_size, marker = '▲',
+        lift(first, data), markersize = p.arrow_size, marker = arrow_head(N, automatic),
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
         colormap = p.colormap,
     )
