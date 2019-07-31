@@ -129,6 +129,7 @@ export textslider
 
 # gui
 export slider, button, playbutton
+export move!
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
