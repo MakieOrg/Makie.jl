@@ -38,7 +38,7 @@ TODO add description
 ## Theme
 $(ATTRIBUTES)
 """
-@recipe(Slider) do scene
+@recipe(Slider, range) do scene
     Theme(
         value = 0,
         start = automatic,
@@ -152,6 +152,11 @@ function dragslider(slider, button)
     end
 end
 
+"""
+    move!(slider::Slider, idx::Integer)
+
+Moves the slider to the position of slider.range[idx].
+"""
 function move!(x::Slider, idx::Integer)
     r = x[1][]
     len = x[:sliderlength][] - x[:buttonsize][]
@@ -161,7 +166,7 @@ function move!(x::Slider, idx::Integer)
     return
 end
 
-export move! # TODO move to AbstractPlotting?
+export move!
 
 """
     Button
