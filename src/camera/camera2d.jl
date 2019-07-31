@@ -2,7 +2,7 @@ struct Camera2D <: AbstractCamera
     area::Node{FRect2D}
     zoomspeed::Node{Float32}
     zoombutton::Node{ButtonTypes}
-    panbutton::Node{ButtonTypes}
+    panbutton::Node{Union{ButtonTypes, Vector{ButtonTypes}}}
     padding::Node{Float32}
     last_area::Node{Vec{2, Int}}
     update_limits::Node{Bool}
@@ -19,7 +19,7 @@ function cam2d!(scene::SceneLike; kw_args...)
             area = node(:area, FRect(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
-            panbutton = Mouse.left,
+            panbutton = Mouse.right,
             selectionbutton = (Keyboard.space, Mouse.left),
             padding = 0.001,
             last_area = Vec(size(scene)),
