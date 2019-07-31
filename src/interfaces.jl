@@ -615,10 +615,15 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
     plot_object = PlotType(scene, copy(attributes), input, args)
-    # TODO warn about rest - should be unused arguments!
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
         scene.attributes[k] = v
+    end
+    # We allow certain scene attributes to be part of the plot theme
+    for k in (:camera, :raw)
+        if haskey(plot_object, k)
+            scene.attributes[k] = plot_object[k]
+        end
     end
     for (at1, at2) in mutual_exclusive_attributes(PlotType)
         #nothing here to get around defaults in GLVisualize
