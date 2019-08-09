@@ -16,7 +16,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 
     // final lighting model
     return vec3(
-        vec3(0.1) * vec3(0.3)  +
+        vec3(0.2) * vec3(0.3)  +
         vec3(0.9) * color * diff_coeff +
         vec3(0.3) * spec_coeff
     );
@@ -45,6 +45,7 @@ void main() {
     vec3 shaded_color = real_color.xyz;
     if(get_shading()){
         shaded_color = blinnphong(frag_normal, frag_position, frag_lightdir, real_color.xyz);
+        shaded_color = shaded_color + blinnphong(frag_normal, frag_position, -frag_lightdir, real_color.xyz);
     }
 
     fragment_color = vec4(shaded_color, real_color.a);

@@ -42,21 +42,44 @@ d = JSServe.with_session() do session
     canvas
 end
 
-
-s1 = JSServe.Slider(LinRange(0.01, 1, 100))
-JSServe.jsrender(JSServe.Session(), JSServe.jsrender(s1))
+using Observables
 d = JSServe.with_session() do session
-    s1 = JSServe.Slider(LinRange(0.01, 1, 100))
-    s2 = JSServe.Slider(LinRange(-2pi, 2pi, 100))
-    data = map(s2) do v
-        map(LinRange(0, 2pi, 100)) do x
-            4f0 .* Point2f0(sin(x) + (sin(x * v) .* 0.1), cos(x) + (cos(x * v) .* 0.1))
+    scene3d = Scene(show_axis = false)
+    linesegments!(scene3d, FRect3D(Vec3f0(0), Vec3f0(1)))
+    brain_data = rand(Float32, 10, 10, 10)
+    volume = Node(brain_data)
+    planes = (:yz, :xz, :xy)
+    three = nothing
+    r = LinRange(0, 1, 10)
+    sliders = ntuple(3) do i
+        idx = JSServe.Slider(1:size(volume[], i), value = size(volume[], i) ÷ 2)
+        plane = planes[i]
+        indices = ntuple(3) do j
+            planes[j] == plane ? 1 : (:)
         end
+        heatm = heatmap!(
+            scene3d, r, r, volume[][indices...],
+            colorrange = (0.0, 1.0),
+            interpolate = true
+        )[end]
+        function transform_planes(idx, vol)
+            transform!(heatm, (plane, r[idx]))
+            indices = ntuple(3) do j
+                planes[j] == plane ? idx : (:)
+            end
+            if checkbounds(Bool, vol, indices...)
+                heatm[3][] = view(vol, indices...)
+                three !== nothing && WGLMakie.redraw!(three)
+            end
+        end
+        onany(transform_planes, idx, volume)
+        transform_planes(idx[], volume[])
+        idx
     end
-    p = scatter(data, markersize = s1)
-    three, canvas = WGLMakie.three_display(session, p)
-    JSServe.div(s1, s2, canvas)
+    three, canvas = WGLMakie.three_display(session, scene3d)
+    JSServe.div(sliders, canvas)
 end
+
 
 
 using AbstractPlotting
@@ -127,7 +150,7 @@ d = JSServe.with_session() do session
     canvas
 end
 for i in 1:100
-    scene[end][:advance] = i
+    scene[end].advance = i
     sleep(0.1)
     WGLMakie.redraw!(three)
     yield()

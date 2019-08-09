@@ -7,10 +7,12 @@ using ShaderAbstractions, LinearAlgebra
 import GeometryBasics
 
 using JSServe: Application, Session, evaljs, linkjs, update_dom!, div, active_sessions
-using JSServe: @js_str, font, onjs, Button, TextField, Slider, JSString, Dependency, with_session
+using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
 using JSServe: JSObject, onload, uuidstr
+using JSServe.DOM
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
+
 import GeometryTypes: GLNormalMesh, GLPlainMesh
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
@@ -129,7 +131,10 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
         )
     end
 end
-
+function Base.insert!(x::ThreeDisplay, scene::Scene, plot::AbstractPlot)
+    #TODO implement
+    # js = to_jsscene(x, scene)
+end
 function redraw!(three::ThreeDisplay)
     getfield(three, :redraw)[] = true
 end
@@ -139,7 +144,9 @@ function on_redraw(f, three::ThreeDisplay)
 end
 
 function to_jsscene(three::ThreeDisplay, scene::Scene)
-    return getfield(three, :scene2jsscene)[scene]
+    get!(getfield(three, :scene2jsscene)) do
+        three.Scene(), nothing
+    end
 end
 
 function Base.getproperty(x::ThreeDisplay, field::Symbol)
@@ -161,7 +168,7 @@ const THREE = JSServe.Dependency(
 function three_display(session::Session, scene::Scene)
     update!(scene)
     width, height = size(scene)
-    canvas = m("canvas", width = width, height = height)
+    canvas = DOM.um("canvas", width = width, height = height)
     comm = Observable(Dict{Symbol, Any}())
     threemod, renderer = JSObject(session, :THREE), JSObject(session, :renderer)
     window = JSObject(session, :window)
@@ -223,7 +230,7 @@ function three_display(session::Session, scene::Scene)
     on_any_event(scene) do args...
         redraw!(three)
     end
-    return three, div(canvas)
+    return three, canvas
 end
 
 
@@ -266,8 +273,22 @@ end
 # end
 
 
+
+function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
+    return T in WEB_MIMES
+end
+
+function activate!()
+    b = WGLBackend()
+    AbstractPlotting.register_backend!(b)
+    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
+    AbstractPlotting.current_backend[] = b
+    AbstractPlotting.inline!(true) # can't display any different atm
+end
+
 function __init__()
-    AbstractPlotting.register_backend!(WGLBackend())
+    # Activate WGLMakie as backend!
+    activate!()
 end
 
 end # module
