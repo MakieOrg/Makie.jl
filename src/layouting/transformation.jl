@@ -191,9 +191,9 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
         rotate!(scene, Vec3f0(1, 0, 0), 0.5pi)
         translate!(scene, 0, dimval, 0)
     else #yz plane
-        q1 = qrotation(Vec3f0(1, 0, 0), -0.5pi)
-        q2 = qrotation(Vec3f0(0, 0, 1), 0.5pi)
-        rotate!(scene, q2 * q1)
+        r1 = qrotation(Vec3f0(0, 1, 0), 0.5pi)
+        r2 = qrotation(Vec3f0(1, 0, 0), 0.5pi)
+        rotate!(scene,  r2 * r1)
         translate!(scene, dimval, 0, 0)
     end
     scene
