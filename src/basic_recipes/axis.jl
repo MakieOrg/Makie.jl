@@ -522,6 +522,7 @@ function draw_axis2d(
         ti_title
     )
     finish!(textbuffer); finish!(frame_linebuffer); foreach(finish!, grid_linebuffer)
+	foreach(finish!, tickmarks_linebuffer)
     return
 end
 
