@@ -712,7 +712,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     framevals = getindex.(frame, (:linecolor, :linewidth, :axiscolor))
     tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     args = (
-        getindex.(axis, (:showaxis, :showticks, :showtickmarks,:showgrid))...,
+        getindex.(axis, (:showaxis, :showticks, :showgrid))...,
         titlevals..., framevals..., tvals...
     )
     map_once(
