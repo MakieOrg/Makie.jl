@@ -13,7 +13,7 @@ end
 @enum GlyphResolution High Low
 
 const TEXTURE_RESOLUTION = Ref((2048, 2048))
-const CACHE_RESOLUTION_PREFIX = Ref("High")
+const CACHE_RESOLUTION_PREFIX = Ref("high")
 const DOWN_SAMPLE_FACTOR = Ref(50)
 
 function set_glyph_resolution!(res::GlyphResolution)
