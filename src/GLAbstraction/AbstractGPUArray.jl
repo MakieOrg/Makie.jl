@@ -69,7 +69,7 @@ function setindex!(A::GPUArray{T, N}, value::Array{T, N}, ranges::UnitRange...) 
 end
 
 function update!(A::GPUArray{T, N}, value::AbstractArray{T2, N}) where {T, N, T2}
-    update!(A, convert(Vector{T}, value))
+    update!(A, convert(Array{T, N}, value))
 end
 function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     if length(A) != length(value)
