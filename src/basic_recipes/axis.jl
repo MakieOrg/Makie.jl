@@ -524,7 +524,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         lift.((dim2,), (cplot.showgrid, cplot.showticks))...,
         g_args..., t_args..., f_args..., ti_args...
     )
-    push!(scene.plots, cplot)
+    push!(scene, cplot)
     return cplot
 end
 

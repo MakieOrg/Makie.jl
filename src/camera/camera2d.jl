@@ -179,7 +179,7 @@ function selection_rect!(scene, cam, key)
     lw = 2f0
     scene_unscaled = Scene(
         scene, transformation = Transformation(),
-        cam = copy(camera(scene)), clear = false
+        cam = copy(camera(scene)), clear = false, raw = true
     )
     scene_unscaled.clear = false
     scene_unscaled.updated = Node(false)

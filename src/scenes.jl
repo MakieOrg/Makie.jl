@@ -466,7 +466,7 @@ plots_from_camera(scene::Scene) = plots_from_camera(scene, scene.camera)
 function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
     append!(list, scene.plots)
     for child in scene.children
-        child.camera == camera && plots_from_camera(child, camera, list)
+        child.camera == camera && !child.raw[] && plots_from_camera(child, camera, list)
     end
     list
 end
