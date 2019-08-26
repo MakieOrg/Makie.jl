@@ -176,15 +176,31 @@ ispixelcam(x) = false
 """
     vbox(scenes...; parent = Scene(clear = false), kwargs...)
 
-Lay the given Scenes out on the vertical axis.  For example, two Scenes `vbox`ed
+Box the scenes together on the vertical axis.  For example, two Scenes `vbox`ed
 will be placed side-by-side.
+--------------------  --------------------
+--                --  --                --
+--    Scene 1     --  --    Scene 2     --
+--                --  --                --
+--------------------  --------------------
 """
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 """
     hbox(scenes...; parent = Scene(clear = false), kwargs...)
 
-Lay the given Scenes out on the horizonral axis.  For example, two Scenes `vbox`ed
-will be placed side-by-side.
+Attach the given Scenes together on the horizontal axis.  For example, two Scenes `hbox`ed
+will be placed one on top of the other.
+
+--------------------
+--                --
+--    Scene 1     --
+--                --
+--------------------
+--------------------
+--                --
+--    Scene 2     --
+--                --
+--------------------
 """
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
 
