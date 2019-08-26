@@ -185,6 +185,17 @@ vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 
 Attach the given Scenes together on the horizontal axis.  For example, two Scenes `hbox`ed
 will be placed one on top of the other.
+
+--------------------
+--                --
+--    Scene 1     --
+--                --
+--------------------
+--------------------
+--                --
+--    Scene 2     --
+--                --
+--------------------
 """
 hbox(plots::Transformable...; kw_args...) = hbox([plots...]; kw_args...)
 
