@@ -176,7 +176,7 @@ ispixelcam(x) = false
 """
     vbox(scenes...; parent = Scene(clear = false), kwargs...)
 
-Attach the given Scenes together on the vertical axis.  For example, two Scenes `vbox`ed
+Box the scenes together on the vertical axis.  For example, two Scenes `vbox`ed
 will be placed side-by-side.
 """
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
