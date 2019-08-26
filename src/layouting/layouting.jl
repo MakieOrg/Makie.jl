@@ -178,6 +178,11 @@ ispixelcam(x) = false
 
 Box the scenes together on the vertical axis.  For example, two Scenes `vbox`ed
 will be placed side-by-side.
+--------------------  --------------------
+--                --  --                --
+--    Scene 1     --  --    Scene 2     --
+--                --  --                --
+--------------------  --------------------
 """
 vbox(plots::Transformable...; kw_args...) = vbox([plots...]; kw_args...)
 """
