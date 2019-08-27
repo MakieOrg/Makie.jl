@@ -49,7 +49,6 @@ Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 GDAL = "add2ef01-049f-52c4-9ee2-e494f65e021a"
 GLFW = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageFiltering = "6a3955dd-da59-5b1f-98d4-e7296123deb5"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
@@ -58,7 +57,6 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 ModernGL = "66fc600b-dfda-50eb-8b99-91cfa97b1301"
-Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 ParameterizedFunctions = "65888b18-ceab-5e60-b2b9-181511a3b968"
 Pkg = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
@@ -71,4 +69,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [targets]
-test = ["Pkg", "Observables", "Statistics", "Test", "Distributions", "Random", "ModernGL", "Observables", "OrdinaryDiffEq", "ParameterizedFunctions", "RDatasets", "MeshIO", "ZipFile", "ColorSchemes", "StatsMakie", "Base64", "ColorVectorSpace", "ImageMagick", "Makie", "GeometryTypes", "ImageCore", "StaticArrays", "DifferentialEquations", "GLFW", "DataFrames", "GDAL", "GLMakie", "ImageFiltering", "ImageTransformations", "MakieGallery"]
+test = ["Pkg", "Statistics", "Test", "Distributions", "Random", "ModernGL", "OrdinaryDiffEq", "ParameterizedFunctions", "RDatasets", "MeshIO", "ZipFile", "ColorSchemes", "StatsMakie", "Base64", "ColorVectorSpace", "ImageMagick", "Makie", "ImageCore", "StaticArrays", "DifferentialEquations", "GLFW", "DataFrames", "GDAL", "GLMakie", "ImageFiltering", "ImageTransformations", "MakieGallery"]
