@@ -3,7 +3,6 @@ language: julia
 os:
   - linux
 julia:
-  - 1.1
   - 1.2
   - nightly
 notifications:
@@ -14,16 +13,8 @@ git:
 # uncomment the following lines to allow failures on nightly julia
 # (tests will run but not make your overall status red)
 matrix:
- allow_failures:
- - julia: nightly
-
-## uncomment and modify the following lines to manually install system packages
-#addons:
-#  apt: # apt-get for linux
-#    packages:
-#    - ffmpeg
-before_script:
- - julia -e 'using Pkg; pkg"add MakieGallery"'
+  allow_failures:
+    - julia: nightly
 
 ## uncomment the following lines to override the default test script
 #script:
