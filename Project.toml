@@ -32,6 +32,7 @@ Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+julia = "≥ 1.0"
 AbstractPlotting = ">=0.9.9"
 FreeTypeAbstraction = ">=0.3.0"
 GLFW = ">=2.3.0"
