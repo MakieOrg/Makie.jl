@@ -316,7 +316,7 @@ function scene_limits(scene::Scene)
     if scene.limits[] === automatic
         return scene.data_limits[]
     else
-        return scene.limits[]
+        return FRect3D(scene.limits[])
     end
 end
 
