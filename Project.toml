@@ -43,4 +43,4 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 ZipFile = "a5390f91-8eb1-5f08-bee0-b1d1ffed6cea"
 
 [targets]
-test = ["Pkg", "Statistics", "Test", "Distributions", "Random", "ModernGL", "OrdinaryDiffEq", "ParameterizedFunctions", "RDatasets", "MeshIO", "ZipFile", "ColorSchemes", "StatsMakie", "Base64", "ColorVectorSpace", "ImageMagick", "Makie", "ImageCore", "StaticArrays", "DifferentialEquations", "GLFW", "DataFrames", "GDAL", "GLMakie", "ImageFiltering", "ImageTransformations", "MakieGallery"]
+test = ["Pkg", "Statistics", "Test", "Distributions", "Random", "ModernGL", "OrdinaryDiffEq", "ParameterizedFunctions", "RDatasets", "MeshIO", "ZipFile", "ColorSchemes", "Base64", "ColorVectorSpace", "Makie", "ImageCore", "StaticArrays", "DifferentialEquations", "GLFW", "DataFrames", "GDAL", "ImageFiltering", "ImageTransformations", "MakieGallery"]
