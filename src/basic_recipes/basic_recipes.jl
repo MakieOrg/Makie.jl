@@ -896,7 +896,8 @@ function showgradients(
         h = 0.0,
         offset = 0.4,
         textsize = 0.7,
-        resolution = (800, length(cgrads) * 84)
+        resolution = (800, length(cgrads) * 84),
+        monospace = true
     )::Scene
 
     scene = Scene(resolution = resolution)
@@ -913,9 +914,11 @@ function showgradients(
              show_axis = false
          )[end]
 
+         cmapstr = monospace ? UnicodeFun.to_latex("\\mono{$cmap}") : string(cmap, ":")
+
          text!(
              scene,
-             string(cmap, ":"),
+             cmapstr,
              position = Point2f0(-0.1, 0.5 + h),
              align = (:right, :center),
              show_axis = false,
