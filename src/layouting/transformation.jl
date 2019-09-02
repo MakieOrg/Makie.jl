@@ -112,7 +112,7 @@ function rotate!(::Type{T}, scene::Transformable, q) where T
     rot = convert_attribute(q, key"rotation"())
     if T === Accum
         rot1 = rotation(scene)[]
-        rotation(scene)[] = qmul(rot1, rot)
+        rotation(scene)[] = rot1 * rot
     elseif T == Absolute
         rotation(scene)[] = rot
     else
