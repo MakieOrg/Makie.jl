@@ -1,14 +1,14 @@
 # Other branches (not yet merged)
-- Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)`
-  to make the WebGL backend more lightweight (#180).
-- Fixed `scale_plot` not actually working (#180).
-- Cleaned up theme merging & scene attribute composition, so this works (#180):
-```julia
-scatter(rand(4), resolution = (200, 200))
-scatter(rand(4), limits = ((0, 0), (200, 200)))
-```
 
 # `master`
+- Changed default font to monospace in showlibrary (#190)
+- Got `rotate!(Accum, ...)` working (#196)
+- Updated Stepper documentation and allowed for custom file formats (#197)
+
+# v0.9.10
+- Fixed two-dimensional limits when passed to `Scene` (#195)
+
+# v0.9.9
 - Added a custom docstring extension which allows the Attributes of a Recipe to be shown in
   the help mode (#174).
 - Documented a lot of internal features (#174).
@@ -21,6 +21,14 @@ scatter(rand(4), limits = ((0, 0), (200, 200)))
 - Better docstrings for recording functions (#160).
 - Let certain attributes passed to mutating plot functions affect the Scene (#160).
 - Changed the default theme for `colorlegend` so that it scales with the resolution of the scene.
+- Provided a way to generate a lower quality texture atlas via `set_glyph_resolution!(Low)`
+  to make the WebGL backend more lightweight (#180).
+- Fixed `scale_plot` not actually working (#180).
+- Cleaned up theme merging & scene attribute composition, so this works (#180):
+    ```julia
+    scatter(rand(4), resolution = (200, 200))
+    scatter(rand(4), limits = ((0, 0), (200, 200)))
+    ```
 
 ## Internal changes
 - Replaced the `nothing` conversion trait with a new `NoConversion` trait, for clarity (#150).
