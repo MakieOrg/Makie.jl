@@ -155,17 +155,26 @@ end
 
 
 """
-Stepper for generating progressive plot examples.
+    Stepper(scene, path; format = :jpg)
+
+Creates a Stepper for generating progressive plot examples.
+
+Each "step" is saved as a separate file in the folder 
+pointed to by `path`, and the format is customizable by
+`format`, which can be any output type your backend supports.
 """
 mutable struct Stepper
     scene::Scene
     folder::String
+    format::Symbol
     step::Int
 end
 
-function Stepper(scene, path)
+Stepper(scene::Scene, path::String, step::Int; format=:jpg) = Stepper(scene, path, format, step)
+
+function Stepper(scene::Scene, path::String; format = :jpg)
     ispath(path) || mkpath(path)
-    Stepper(scene, path, 1)
+    Stepper(scene, path, format, 1)
 end
 
 format2mime(::Type{FileIO.format"PNG"}) = MIME"image/png"()
@@ -201,7 +210,7 @@ steps through a `Makie.Stepper` and outputs a file with filename `filename-step.
 This is useful for generating progressive plot examples.
 """
 function step!(s::Stepper)
-    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).jpg"), s.scene)
+    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.scene)
     s.step += 1
     return s
 end

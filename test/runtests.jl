@@ -2,14 +2,16 @@ using AbstractPlotting
 using MakieGallery
 using Test
 
+const MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "false")
+
 # does this machine have a OPENGL?
-const OPENGL = false#haskey(ENV, "OPENGL") || haskey(ENV, "GITLAB_CI") || try success(pipeline(`glxinfo`, `grep version`)) catch; false end # if it's Gitlab, it must be JuliaGPU
+const OPENGL = haskey(ENV, "OPENGL") || haskey(ENV, "GITLAB_CI") || try success(pipeline(`glxinfo`, `grep version`)) catch; false end # if it's Gitlab, it must be JuliaGPU
+OPENGL || (MINIMAL = "true")
+
+@show OPENGL MINIMAL
 
 OPENGL && begin @info "OpenGL detected"; using GLMakie end
 OPENGL || @warn "No OpenGL detected!  Software tests only."
-
-# does this machine have FFMPEG?  We'll take it on faith if you tell us...
-const _MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "false")
 
 include("conversions.jl")
 include("quaternions.jl")
@@ -23,7 +25,7 @@ include("projection_math.jl")
 end
 
 
-if _MINIMAL == "false"
+if MINIMAL == "false"
 
     # Load all entries in the database
 
