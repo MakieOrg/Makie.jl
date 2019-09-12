@@ -12,7 +12,6 @@ GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 ImageCore = "a09fc81d-aa75-5fe9-8630-4744c3626534"
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
-MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
