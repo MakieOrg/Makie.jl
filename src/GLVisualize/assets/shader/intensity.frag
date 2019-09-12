@@ -12,7 +12,7 @@ uniform float levels;
 
 vec4 getindex(sampler2D image, vec2 uv){return texture(image, vec2(uv.x, 1-uv.y));}
 vec4 getindex(sampler1D image, vec2 uv){return texture(image, uv.y);}
-float _normalize(float val, float from, float to){return (val-from) / (to - from);}
+float _normalize(float val, float from, float to){return (val - from) / (to - from);}
 
 vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm){
     return texture(color_ramp, _normalize(intensity, norm.x, norm.y));
@@ -31,16 +31,7 @@ void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
     float i = float(getindex(intensity, o_uv).x);
-    vec4 color;
-    if(isnan(i)){
-        color = vec4(0);
-    }else{
-        i = _normalize(i, color_norm.x, color_norm.y);
-        float lines = i*levels;
-        lines = abs(fract(lines-0.5));
-        float half_stroke = stroke_width*0.5;
-        lines = aastep(0.5 - half_stroke, 0.5 + half_stroke, lines);
-        color = mix(texture(color_map, i), stroke_color, lines);
-    }
+    i = clamp(_normalize(i, color_norm.x, color_norm.y), 0.0, 1.0);
+    vec4 color = texture(color_map, i);
     write2framebuffer(color, uvec2(o_objectid.x, 0));
 }
