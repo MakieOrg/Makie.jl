@@ -1,14 +1,13 @@
 module CairoMakie
 
-using AbstractPlotting
+using AbstractPlotting, LinearAlgebra
+using Colors, GeometryTypes, FileIO, StaticArrays
+import Cairo
+
 using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
 using AbstractPlotting: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using AbstractPlotting: @info, @get_attribute, Combined
-using Colors, GeometryTypes
 using AbstractPlotting: to_value, to_colormap, extrema_nan
-using FileIO, StaticArrays
-using LinearAlgebra
-import Cairo
 using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface
 
 @enum RenderType SVG PNG
