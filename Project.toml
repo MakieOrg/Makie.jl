@@ -7,6 +7,7 @@ version = "0.1.1"
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 Cairo = "159f3aea-2a34-519c-b102-8c37f9878175"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
+FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -15,6 +16,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 AbstractPlotting = ">=0.9.2"
 GeometryTypes = ">=0.7.2"
+FFTW = "0.3.0"
 
 [extras]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
