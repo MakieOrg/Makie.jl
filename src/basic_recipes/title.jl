@@ -2,12 +2,12 @@
 """
     title(
         [scene=current_scene(), ], string;
-        align = (:center, :bottom), textsize = 30, kw...
+        align = (:center, :bottom), textsize = 30, parent = Scene(), kw...
     )
 
 Add a title with content `string` to `scene`.
 """
-function title(scene, string; align = (:center, :bottom), textsize = 30, kw...)
+function title(scene, string; align = (:center, :bottom), textsize = 30, parent = Scene(), kw...)
     pos = lift(pixelarea(scene)) do area
         x = widths(area)[1] ./ 2
         Vec2f0(x, 10) # offset 10px, to give it some space
@@ -20,7 +20,7 @@ function title(scene, string; align = (:center, :bottom), textsize = 30, kw...)
         textsize = textsize;
         kw...
     )
-    hbox(scene, t)
+    hbox(scene, t; parent = parent)
 end
 
 function title(string; kw...)
