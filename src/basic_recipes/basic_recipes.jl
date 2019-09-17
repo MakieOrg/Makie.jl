@@ -995,22 +995,30 @@ end
         kwargs...)
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.
+
 Example:
 ```julia
-using MakieGallery, Makie
-run_example("streamplot")
+using Makie
+v(x::Point2{T}) = Point2f0(x[2], 4*x[1])
+streamplot(v, -2..2, -2..2)
 ```
 ## Theme
 $(ATTRIBUTES)
+
+## Implementation
+See the function [`streamplot_impl`](@ref) for implementation details.
 """
 @recipe(StreamPlot, f, limits) do scene
-    Theme(
-        stepsize = 0.01,
-        maxsteps = 500,
-        gridsize = (32, 32, 32),
-        colormap = theme(scene, :colormap),
-        arrow_size = 0.03,
-        density = 1.0
+    merge(
+        Theme(
+            stepsize = 0.01,
+            gridsize = (32, 32, 32),
+            maxsteps = 500,
+            colormap = theme(scene, :colormap),
+            arrow_size = 0.03,
+            density = 1.0
+        ),
+        default_theme(scene, Lines) # so that we can theme the lines as needed.
     )
 end
 
@@ -1033,8 +1041,23 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
 end
 
 """
+    streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
+
 Code adapted from an example implementation by Moritz Schauer (@mschauer)
 from https://github.com/JuliaPlots/Makie.jl/issues/355#issuecomment-504449775
+
+Background: The algorithm puts an arrow somewhere and extends the
+streamline in both directions from there. Then, it chooses a new
+position (from the remaining ones), repeating the the exercise until the
+streamline gets blocked, from which on a new starting point, the process
+repeats.
+
+So, ideally, the new starting points for streamlines are not too close to
+current streamlines.
+
+Links:
+
+[Quasirandom sequences](http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
 """
 function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0) where {N, T}
     resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
@@ -1131,7 +1154,9 @@ function plot!(p::StreamPlot)
     end
     lines!(
         p,
-        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap
+        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap,
+        linestyle = p.linestyle,
+        linewidth = p.linewidth
     )
     N = ndims(p.limits[])
     scatterfun(N)(
