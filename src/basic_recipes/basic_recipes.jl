@@ -995,20 +995,30 @@ end
         kwargs...)
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.
+
 Example:
 ```julia
-using MakieGallery, Makie
-run_example("streamplot")
+using Makie
+v(x::Point2{T}) = Point2f0(x[2], 4*x[1])
+streamplot(v, -2..2, -2..2)
 ```
 ## Theme
 $(ATTRIBUTES)
+
+## Implementation
+See the function [`streamplot_impl`](@ref) for implementation details.
 """
 @recipe(StreamPlot, f, limits) do scene
-    Theme(
-        stepsize = 0.01,
-        gridsize = (32, 32, 32),
-        colormap = theme(scene, :colormap),
-        arrow_size = 0.03
+    merge(
+        Theme(
+            stepsize = 0.01,
+            gridsize = (32, 32, 32),
+            maxsteps = 500,
+            colormap = theme(scene, :colormap),
+            arrow_size = 0.03,
+            density = 1.0
+        ),
+        default_theme(scene, Lines) # so that we can theme the lines as needed.
     )
 end
 
@@ -1031,12 +1041,27 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
 end
 
 """
+    streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
+
 Code adapted from an example implementation by Moritz Schauer (@mschauer)
 from https://github.com/JuliaPlots/Makie.jl/issues/355#issuecomment-504449775
+
+Background: The algorithm puts an arrow somewhere and extends the
+streamline in both directions from there. Then, it chooses a new
+position (from the remaining ones), repeating the the exercise until the
+streamline gets blocked, from which on a new starting point, the process
+repeats.
+
+So, ideally, the new starting points for streamlines are not too close to
+current streamlines.
+
+Links:
+
+[Quasirandom sequences](http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/)
 """
-function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize) where {N, T}
+function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize, maxsteps=500, dens=1.0) where {N, T}
     resolution = to_ndim(Vec{N, Int}, resolutionND, last(resolutionND))
-    mask = trues(resolution...)
+    mask = trues(resolution...) # unvisited squares
     arrow_pos = Point{N, Float32}[]
     arrow_dir = Vec{N, Float32}[]
     line_points = Point{N, Float32}[]
@@ -1052,11 +1077,22 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
     else
         f(x0...)
     end
-    for c in CartesianIndices(mask)
-        x0 = Point(ntuple(N) do i
-            first(r[i]) + (c[i] - 0.5) * step(r[i])
+    # see http://extremelearning.com.au/unreasonable-effectiveness-of-quasirandom-sequences/
+    ϕ = (MathConstants.φ, 1.324717957244746, 1.2207440846057596)[N]
+    acoeff = ϕ.^(-(1:N))
+    n_points = 0 # count visited squares
+    ind = 0 # index of low discrepancy sequence
+    while n_points < prod(resolution)*min(one(dens), dens) # fill up to 100*dens% of mask
+        # next index from low discrepancy sequence
+        c = CartesianIndex(ntuple(N) do i
+            j = ceil(Int, ((0.5 + acoeff[i]*ind) % 1)*resolution[i])
+            clamp(j, 1, size(mask, i))
         end)
+        ind += 1
         if mask[c]
+            x0 = Point(ntuple(N) do i
+                first(r[i]) + (c[i] - 0.5) * step(r[i])
+            end)
             point = apply_f(x0, CallType)
             if !(point isa Point2 || point isa Point3)
                 error("Function passed to streamplot must return Point2 or Point3")
@@ -1065,13 +1101,15 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
             push!(arrow_pos, x0)
             push!(arrow_dir, point ./ pnorm)
             push!(colors, pnorm)
-            mask[c] == false
+            mask[c] = false
+            n_points += 1
             for d in (-1, 1)
                 n_linepoints = 1
                 x = x0
+                ccur = c
                 push!(line_points, Point{N, Float32}(NaN), x)
                 push!(line_colors, 0.0, pnorm)
-                while x in limits && n_linepoints < 500
+                while x in limits && n_linepoints < maxsteps
                     point = apply_f(x, CallType)
                     pnorm = norm(point)
                     x = x .+ d .* dt .* point ./ pnorm
@@ -1081,12 +1119,13 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
                     # WHAT? Why does point behave different from tuple in this
                     # broadcast
                     idx = CartesianIndex(searchsortedlast.(r, Tuple(x)))
-                    if idx != c
+                    if idx != ccur
                         if !mask[idx]
                             break
                         end
                         mask[idx] = false
-                        c = idx
+                        n_points += 1
+                        ccur = idx
                     end
                     push!(line_points, x)
                     push!(line_colors, pnorm)
@@ -1105,17 +1144,19 @@ function streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize
 end
 
 function plot!(p::StreamPlot)
-    data = lift(p.f, p.limits, p.gridsize, p.stepsize) do f, limits, resolution, stepsize
+    data = lift(p.f, p.limits, p.gridsize, p.stepsize, p.maxsteps, p.density) do f, limits, resolution, stepsize, maxsteps, density
         P = if applicable(f, Point2f0(0)) || applicable(f, Point3f0(0))
             Point
         else
             Number
         end
-        streamplot_impl(P, f, limits, resolution, stepsize)
+        streamplot_impl(P, f, limits, resolution, stepsize, maxsteps, density)
     end
     lines!(
         p,
-        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap
+        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap,
+        linestyle = p.linestyle,
+        linewidth = p.linewidth
     )
     N = ndims(p.limits[])
     scatterfun(N)(
