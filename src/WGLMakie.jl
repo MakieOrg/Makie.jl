@@ -245,32 +245,38 @@ include("picking.jl")
 
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end
-#
-# const WEB_MIMES = (MIME"text/html", WebIO.WEBIO_NODE_MIME, WebIO.WEBIO_APPLICATION_MIME, MIME"application/prs.juno.plotpane+html")
-# for M in WEB_MIMES
-#     @eval begin
-#         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
-#             screen = three_scene(scene)
-#             Base.show(io, m, screen)
-#             return screen
-#         end
-#         function Base.show(
-#                 io::IO, m::$M, x::ThreeDisplay
-#             )
-#             show(io, m, WebIO.render(x))
-#             return x
-#         end
-#     end
-# end
+
+
+const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html", MIME"application/prs.juno.plotpane+html")
+for M in WEB_MIMES
+    @eval begin
+        function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
+            three = nothing
+            inline_display = JSServe.with_session() do session
+                three, canvas = WGLMakie.three_display(session, scene)
+                canvas
+            end
+            Base.show(io, m, inline_display)
+
+            return three
+        end
+        # function Base.show(
+        #         io::IO, m::$M, x::ThreeDisplay
+        #     )
+        #     show(io, m, WebIO.render(x))
+        #     return x
+        # end
+    end
+end
 #
 #
 # function WebIO.render(three::ThreeDisplay)
 #     WebIO.render(getfield(three, :jsm))
 # end
 #
-# function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
-#     return T in WEB_MIMES
-# end
+function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
+    return T in WEB_MIMES
+end
 
 
 

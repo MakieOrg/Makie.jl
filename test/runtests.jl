@@ -1,23 +1,8 @@
 using WGLMakie, AbstractPlotting, JSServe
-function dom_handler(session, request)
-    sc = surface(0..1, 0..1, rand(4, 4));
-    three, canvas = WGLMakie.three_display(session, sc)
-    canvas
-end
-using GeometryTypes
-c = Cylinder(Point3f0(0), Vec3f0(1, 0, 0), 1f0)
-JSServe.with_session() do session
-
-    dom_handler(session, nothing)
-end
-# app = JSServe.Application(
-#     dom_handler,
-#     get(ENV, "WEBIO_SERVER_HOST_URL", "127.0.0.1"),
-#     parse(Int, get(ENV, "WEBIO_HTTP_PORT", "8081")),
-#     verbose = false
-# )
-
 using Colors
+
+s = scatter(rand(4))
+
 
 
 d = JSServe.with_session() do session
