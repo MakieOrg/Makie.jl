@@ -279,11 +279,6 @@ function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) wher
 end
 
 
-
-function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
-    return T in WEB_MIMES
-end
-
 function activate!()
     b = WGLBackend()
     AbstractPlotting.register_backend!(b)
