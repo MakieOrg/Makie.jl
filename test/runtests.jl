@@ -1,9 +1,15 @@
 using WGLMakie, AbstractPlotting, JSServe
 using Colors
+using JSServe.DOM
 
 s = scatter(rand(4))
 
-
+JSServe.with_session() do session
+    DOM.div(
+        DOM.font("hiiii"),
+        s,
+    )
+end
 
 d = JSServe.with_session() do session
     img = rand(100, 100)

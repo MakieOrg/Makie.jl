@@ -246,6 +246,10 @@ include("picking.jl")
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end
 
+function JSServe.jsrender(session::Session, scene::Scene)
+    three, canvas = WGLMakie.three_display(session, scene)
+    return canvas
+end
 
 const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html", MIME"application/prs.juno.plotpane+html")
 for M in WEB_MIMES
