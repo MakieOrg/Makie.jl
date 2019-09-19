@@ -12,14 +12,14 @@ WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots
 
 ```julia
 using Pkg
-pkg"up; add https://github.com/JuliaPlots/WGLMakie.jl GeometryBasics#master Tables Observables AbstractPlotting#sd-webgl GeometryTypes JSCall#master StaticArrays WebIO#sd-httpheader RDatasets DataFrames StatsMakie MakieGallery#master"
+pkg"add https://github.com/JuliaPlots/WGLMakie.jl AbstractPlotting
 ```
 
 ## Teardown (if you want to uninstall)
 
 ```julia
 using Pkg
-pkg"rm WGLMakie; free GeometryBasics AbstractPlotting WebIO JSCall MakieGallery"
+pkg"rm WGLMakie"
 ```
 
 Warning - this package is **in development** and **may break often**. 
