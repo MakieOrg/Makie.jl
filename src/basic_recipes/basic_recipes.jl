@@ -1198,6 +1198,7 @@ end
 function convert_arguments(::Type{<: Spy}, x, y, z::SparseArrays.AbstractSparseArray)
     (x, y, z)
 end
+
 function calculated_attributes!(::Type{<: Spy}, plot)
 end
 
@@ -1224,10 +1225,12 @@ function plot!(p::Spy)
             (((Point2f0(x, y) .- 1) ./ Point2f0(size(z) .- 1)) .*
             widths(rect) .+ minimum(rect))
         end
-        points, color
+        points, convert(Vector{Float32}, color)
     end
     replace_automatic!(p, :colorrange) do
-        lift(extrema_nan ∘ SparseArrays.nonzeros, p.z)
+        lift(xycol) do (xy, col)
+            extrema_nan(col)
+        end
     end
     marker = lift(p.marker) do x
         if x === automatic
@@ -1242,7 +1245,6 @@ function plot!(p::Spy)
             x
         end
     end
-
     scatter!(
         p,
         lift(first, xycol), color = lift(last, xycol),
