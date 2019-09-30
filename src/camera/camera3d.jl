@@ -116,6 +116,11 @@ function rotate_cam(
         cam_right::Vec{3, T}, cam_up::Vec{3, T}, cam_dir::Vec{3, T}
     ) where T
     rotation = Quaternion{T}(0, 0, 0, 1)
+    if !all(isfinite.(theta))
+        # We can only rotate for finite values
+        # Makie#338
+        return rotation
+    end
     # first the rotation around up axis, since the other rotation should be relative to that rotation
     if theta[1] != 0
         rotation *= qrotation(cam_up, theta[1])
