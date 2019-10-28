@@ -186,7 +186,7 @@ struct Events
     """
     mouseposition::Node{Point2d{Float64}}
     """
-    The
+The state of the mouse drag, represented by an enumerator of [`DragEnum`](@ref).
     """
     mousedrag::Node{Mouse.DragEnum}
     """
