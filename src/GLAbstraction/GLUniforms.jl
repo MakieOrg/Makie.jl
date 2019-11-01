@@ -88,6 +88,7 @@ gluniform(location::GLint, x::Vector{GLuint})  = glUniform1uiv(location, length(
 
 
 glsl_typename(x::T) where {T} = glsl_typename(T)
+glsl_typename(t::DataType) = error("Datatype $(t) not supported")
 glsl_typename(t::Type{Nothing}) = "Nothing"
 glsl_typename(t::Type{GLfloat}) = "float"
 glsl_typename(t::Type{GLdouble}) = "double"
