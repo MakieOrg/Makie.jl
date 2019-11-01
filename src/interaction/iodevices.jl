@@ -3,6 +3,8 @@ Backend independent enums which
 represent keyboard buttons.
 """
 module Keyboard
+
+    using ..AbstractPlotting: INSTANCES # import the docstring extensions
     """
         Keyboard.Button
 
@@ -145,6 +147,7 @@ Backend independent enums and fields which
 represent mouse actions.
 """
 module Mouse
+    using ..AbstractPlotting: INSTANCES # import the docstring extensions
 
     """
         Mouse.Button
