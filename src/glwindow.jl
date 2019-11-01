@@ -215,6 +215,7 @@ function destroy!(nw::GLFW.Window)
     was_current = GLAbstraction.is_current_context(nw)
     if !was_destroyed(nw)
         GLFW.DestroyWindow(nw)
+        GLFW.PollEvents()
         nw.handle = C_NULL
     end
     was_current && GLAbstraction.switch_context!()
