@@ -1,3 +1,6 @@
+using AbstractPlotting.Keyboard
+using AbstractPlotting.Mouse
+using AbstractPlotting: ispressed, is_mouseinside
 
 function axislines!(scene, rect)
     points = lift(rect) do r
@@ -51,6 +54,9 @@ end
 
 function add_pan!(scene::SceneLike, limits)
     startpos = Base.RefValue((0.0, 0.0))
+    pan = Mouse.right
+    xzoom = Keyboard.x
+    yzoom = Keyboard.y
     e = events(scene)
     on(
         camera(scene),
@@ -59,13 +65,12 @@ function add_pan!(scene::SceneLike, limits)
         e.mousedrag
     ) do scene, startpos, dragging
         # pan = cam.panbutton[]
-        pan = AbstractPlotting.Mouse.right
         mp = e.mouseposition[]
-        if AbstractPlotting.ispressed(scene, pan) && AbstractPlotting.is_mouseinside(scene)
+        if ispressed(scene, pan) && is_mouseinside(scene)
             window_area = pixelarea(scene)[]
             if dragging == Mouse.down
                 startpos[] = mp
-            elseif dragging == Mouse.pressed && AbstractPlotting.ispressed(scene, pan)
+            elseif dragging == Mouse.pressed && ispressed(scene, pan)
                 diff = startpos[] .- mp
                 startpos[] = mp
                 pxa = scene.px_area[]
@@ -73,10 +78,14 @@ function add_pan!(scene::SceneLike, limits)
 
                 diff_limits = diff_fraction .* widths(limits[])
 
-                if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.x)
-                    limits[] = FRect(Vec2f0(limits[].origin) .+ Vec2f0(diff_limits[1], 0), widths(limits[]))
-                elseif AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.y)
-                    limits[] = FRect(Vec2f0(limits[].origin) .+ Vec2f0(0, diff_limits[2]), widths(limits[]))
+                if ispressed(scene, xzoom)
+                    limits[] = FRect(
+                        Vec2f0(limits[].origin) .+ Vec2f0(diff_limits[1], 0), widths(limits[])
+                    )
+                elseif ispressed(scene, yzoom)
+                    limits[] = FRect(
+                        Vec2f0(limits[].origin) .+ Vec2f0(0, diff_limits[2]), widths(limits[])
+                    )
                 else
                     limits[] = FRect(Vec2f0(limits[].origin) .+ Vec2f0(diff_limits), widths(limits[]))
                 end
@@ -130,21 +139,15 @@ function add_zoom!(scene::SceneLike, limits)
 end
 
 function LayoutedAxis(parent::Scene)
-    scene = Scene(parent, Node(IRect(0, 0, 100, 100)), center=false)
+    scene = Scene(parent, Node(IRect(0, 0, 100, 100)), raw = true)
     limits = Node(FRect(0, 0, 100, 100))
     xlabel = Node("x label")
     ylabel = Node("y label")
 
-    disconnect!(camera(scene))
-
-
-
     add_pan!(scene, limits)
     add_zoom!(scene, limits)
 
-    cam = AbstractPlotting.PixelCamera()
-    cameracontrols!(scene, cam)
-
+    campixel!(scene)
 
     ticksnode = Node(Point2f0[])
     ticks = linesegments!(
