@@ -27,7 +27,7 @@ mutable struct LayoutedAxis
     scene::Scene
     xlabel::Node{String}
     ylabel::Node{String}
-    limits::Node{FRect2D} # these should steer the camera, not used yet
+    limits::Node{FRect2D}
 end
 
 width(rect::Rect2D) = right(rect) - left(rect)
