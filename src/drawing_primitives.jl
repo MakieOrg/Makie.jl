@@ -34,7 +34,10 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     GLFW.PollEvents()
     robj = get!(screen.cache, objectid(x)) do
-        gl_attributes = map(filter(((k, v),)-> k != :transformation, x.attributes)) do key_value
+        filtered = filter(x.attributes) do (k, v)
+            !(k in (:transformation, :tickranges, :ticklabels))
+        end
+        gl_attributes = map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = lift_convert(key, value, x)
