@@ -82,6 +82,7 @@ struct Ratio
     x::Float64
 end
 const ContentSize = Union{Auto, Fixed, Relative, Ratio}
+const GapSize = Union{Fixed, Relative}
 
 struct GridLayout <: Alignable
     content::Vector{SpannedAlignable}
@@ -89,10 +90,34 @@ struct GridLayout <: Alignable
     ncols::Int
     rowsizes::Vector{ContentSize}
     colsizes::Vector{ContentSize}
-    rowgapfraction::Float64
-    colgapfraction::Float64
+    addedrowgaps::Vector{GapSize}
+    addedcolgaps::Vector{GapSize}
     alignmode::AlignMode
+    equalprotrusiongaps::Tuple{Bool, Bool}
 end
+
+struct SolvedFixedSizeBox{T} <: Alignable
+    inner::BBox
+    outer::BBox
+    content::T
+end
+
+"""
+An alignable that contains something of a fixed size, like some text.
+There will usually be more space available in at least one direction than
+just the fixed size of the box, so the alignment says where
+in the available BBox the fixed size content should be placed.
+For example, the figure title is placed above all else, but can then
+be aligned on the left, in the center, or on the right.
+"""
+struct FixedSizeBox{T} <: Alignable
+    bbox::BBox
+    alignment::Tuple{Float64, Float64}
+    content::T
+end
+
+height(fb::FixedSizeBox) = height(fb.bbox)
+width(fb::FixedSizeBox) = width(fb.bbox)
 
 
 """
@@ -105,6 +130,7 @@ rightprotrusion(x) = protrusion(x, Right())
 bottomprotrusion(x) = protrusion(x, Bottom())
 topprotrusion(x) = protrusion(x, Top())
 
+protrusion(fb::FixedSizeBox, side::Side) = 0.0
 protrusion(u::AxisLayout, side::Side) = u.decorations[side]
 protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
 
@@ -157,14 +183,18 @@ function solve(gl::GridLayout, bbox::BBox)
     # determine the biggest gap
     # using the biggest gap size for all gaps will make the layout more even, but one
     # could make this aspect customizable, because it might waste space
-    maxcolgap = gl.ncols <= 1 ? 0 : maximum(colgaps)
-    maxrowgap = gl.nrows <= 1 ? 0 : maximum(rowgaps)
+    if gl.equalprotrusiongaps[2]
+        colgaps = ones(gl.ncols - 1) .* (gl.ncols <= 1 ? 0.0 : maximum(colgaps))
+    end
+    if gl.equalprotrusiongaps[1]
+        rowgaps = ones(gl.nrows - 1) .* (gl.nrows <= 1 ? 0.0 : maximum(rowgaps))
+    end
 
     # determine the vertical and horizontal space needed just for the gaps
     # again, the gaps are what the protrusions stick into, so they are not actually "empty"
     # depending on what sticks out of the plots
-    sumcolgaps = maxcolgap * (gl.ncols - 1)
-    sumrowgaps = maxrowgap * (gl.nrows - 1)
+    sumcolgaps = sum(colgaps)
+    sumrowgaps = sum(rowgaps)
 
     # compute what space remains for the inner parts of the plots
     remaininghorizontalspace = if gl.alignmode isa Inside
@@ -182,12 +212,24 @@ function solve(gl::GridLayout, bbox::BBox)
     # this is given as a fraction of the space used for the inner parts of the plots
     # so far, but maybe this should just be an absolute pixel value so it doesn't change
     # when resizing the window
-    addedcolgap = gl.colgapfraction * remaininghorizontalspace
-    addedrowgap = gl.rowgapfraction * remainingverticalspace
+    addedcolgaps = map(gl.addedcolgaps) do cg
+        if cg isa Fixed
+            return cg.x
+        elseif cg isa Relative
+            return cg.x * remaininghorizontalspace
+        end
+    end
+    addedrowgaps = map(gl.addedrowgaps) do rg
+        if rg isa Fixed
+            return rg.x
+        elseif rg isa Relative
+            return rg.x * remainingverticalspace
+        end
+    end
 
     # compute the actual space available for the rows and columns (plots without protrusions)
-    spaceforcolumns = remaininghorizontalspace - addedcolgap * (gl.ncols - 1)
-    spaceforrows = remainingverticalspace - addedrowgap * (gl.nrows - 1)
+    spaceforcolumns = remaininghorizontalspace - sum(addedcolgaps)
+    spaceforrows = remainingverticalspace - sum(addedrowgaps)
 
     colwidths, rowheights = compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
 
@@ -196,22 +238,22 @@ function solve(gl::GridLayout, bbox::BBox)
     # rowheights = gl.rowratios ./ sum(gl.rowratios) .* spaceforrows
 
     # this is the vertical / horizontal space between the inner lines of all plots
-    colgap = maxcolgap + addedcolgap
-    rowgap = maxrowgap + addedrowgap
+    finalcolgaps = colgaps .+ addedcolgaps
+    finalrowgaps = rowgaps .+ addedrowgaps
 
     # compute the x values for all left and right column boundaries
     xleftcols = if gl.alignmode isa Inside
-        [left(bbox) + sum(colwidths[1:i-1]) + (i - 1) * colgap for i in 1:gl.ncols]
+        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+ cumsum([0; finalcolgaps])
     elseif gl.alignmode isa Outside
-        [leftprot + left(bbox) + sum(colwidths[1:i-1]) + (i - 1) * colgap for i in 1:gl.ncols]
+        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+ cumsum([0; finalcolgaps]) .+ leftprot
     end
     xrightcols = xleftcols .+ colwidths
 
     # compute the y values for all top and bottom row boundaries
     ytoprows = if gl.alignmode isa Inside
-        [top(bbox) - sum(rowheights[1:i-1]) - (i - 1) * rowgap for i in 1:gl.nrows]
+        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .- cumsum([0; finalrowgaps])
     elseif gl.alignmode isa Outside
-        [top(bbox) - topprot - sum(rowheights[1:i-1]) - (i - 1) * rowgap for i in 1:gl.nrows]
+        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .- cumsum([0; finalrowgaps]) .- topprot
     end
     ybottomrows = ytoprows .- rowheights
 
@@ -424,4 +466,26 @@ function Base.setindex!(g, a::Alignable, rows::Indexables, cols::Indexables)
     end
 
     push!(g.content, SpannedAlignable(a, Span(rows, cols)))
+end
+
+function solve(fb::FixedSizeBox, bbox::BBox)
+    fbh = height(fb.bbox)
+    fbw = width(fb.bbox)
+
+    bh = height(bbox)
+    bw = width(bbox)
+
+    oxb = bbox.origin[1]
+    oyb = bbox.origin[2]
+
+    restx = bw - fbw
+    resty = bh - fbh
+
+    xal = fb.alignment[1]
+    yal = fb.alignment[2]
+
+    oxinner = oxb + xal * restx
+    oyinner = oyb + yal * resty
+
+    SolvedFixedSizeBox(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), bbox, fb.content)
 end

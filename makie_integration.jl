@@ -315,6 +315,11 @@ function applylayout(sa::SolvedAxisLayout)
     sa.axis.scene.px_area[] = IRect2D(sa.inner)
 end
 
+function applylayout(sfb::SolvedFixedSizeBox)
+    # hack because I put the text position node as the content
+    sfb.content[] = sfb.inner.origin
+end
+
 function shrinkbymargin(rect, margin)
     IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
 end

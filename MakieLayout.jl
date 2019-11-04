@@ -21,5 +21,6 @@ export shrinkbymargin
 export applylayout
 export Inside, Outside
 export Fixed, Auto, Relative, Ratio
+export FixedSizeBox
 
 end # module
