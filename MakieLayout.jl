@@ -20,7 +20,7 @@ export solve
 export shrinkbymargin
 export applylayout
 export Inside, Outside
-export Fixed, Auto, Relative, Ratio
+export Fixed, Auto, Relative, Ratio, Aspect
 export FixedSizeBox
 
 end # module

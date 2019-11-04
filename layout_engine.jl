@@ -81,7 +81,11 @@ end
 struct Ratio
     x::Float64
 end
-const ContentSize = Union{Auto, Fixed, Relative, Ratio}
+struct Aspect
+    index::Int
+    ratio::Float64
+end
+const ContentSize = Union{Auto, Fixed, Relative, Ratio, Aspect}
 const GapSize = Union{Fixed, Relative}
 
 struct GridLayout <: Alignable
@@ -356,6 +360,9 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     acsizes = filter(filtersize(Auto), icsizes)
     arsizes = filter(filtersize(Auto), irsizes)
 
+    aspcsizes = filter(filtersize(Aspect), icsizes)
+    asprsizes = filter(filtersize(Aspect), irsizes)
+
     determined_acsizes = map(acsizes) do (i, c)
         (i, determinecolsize(i, gl))
     end
@@ -394,6 +401,41 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     end
     map(det_arsizes) do (i, x)
         rowheights[i] = x
+    end
+
+    # next aspect sizes
+    map(aspcsizes) do (i, asp)
+        index = asp.index
+        ratio = asp.ratio
+        rowsize = gl.rowsizes[index]
+        rowheight = if rowsize isa Union{Fixed, Relative, Auto}
+            if rowsize isa Auto
+                if !isempty(nondet_arsizes) && nondet_arsizes[1][1] == index
+                    error("Can't use aspect ratio with an undeterminable Auto size")
+                end
+            end
+            rowheights[index]
+        else
+            error("Aspect size can only work in conjunction with Fixed, Relative, or Auto, not $(typeof(gl.rowsizes[index]))")
+        end
+        colwidths[i] = rowheight * ratio
+    end
+
+    map(asprsizes) do (i, asp)
+        index = asp.index
+        ratio = asp.ratio
+        colsize = gl.colsizes[index]
+        colwidth = if colsize isa Union{Fixed, Relative, Auto}
+            if colsize isa Auto
+                if !isempty(nondet_acsizes) && nondet_acsizes[1][1] == index
+                    error("Can't use aspect ratio with an undeterminable Auto size")
+                end
+            end
+            colwidths[index]
+        else
+            error("Aspect size can only work in conjunction with Fixed, Relative, or Auto, not $(typeof(gl.rowsizes[index]))")
+        end
+        rowheights[i] = colwidth * ratio
     end
 
     # next ratios
