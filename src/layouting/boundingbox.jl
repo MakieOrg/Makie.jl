@@ -108,7 +108,10 @@ function boundingbox(
 end
 
 
-function boundingbox(text::String, position, textsize, font, align, rotation, model = Mat4f0(I))
+function boundingbox(
+        text::String, position, textsize, font,
+        align, rotation, model = Mat4f0(I)
+    )
     atlas = get_texture_atlas()
     N = length(text)
     ctext_state = iterate(text)

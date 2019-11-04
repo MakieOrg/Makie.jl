@@ -134,6 +134,25 @@ function convert_arguments(::PointBased, positions::NTuple{N, AbstractVector}) w
     PlotSpec(points, tickranges = xyrange, ticklabels = labels)
 end
 
+function convert_arguments(
+        SL::SurfaceLike,
+        x::AbstractVector, y::AbstractVector, z::AbstractMatrix{<: Number}
+    )
+    n, m = size(z)
+    positions = (x, y)
+    labels = categoric_labels.(positions)
+    xyrange = categoric_range.(labels)
+    args = convert_arguments(SL, 0..n, 0..m, z)
+    xyranges = (
+        to_linspace(0.5..(n-0.5), n),
+        to_linspace(0.5..(m-0.5), m)
+    )
+    return PlotSpec(
+        args...,
+        tickranges = xyranges, ticklabels = labels
+    )
+end
+
 """
 Accepts a Vector of Pair of Points (e.g. `[Point(0, 0) => Point(1, 1), ...]`)
 to encode e.g. linesegments or directions.
@@ -214,7 +233,7 @@ outputs them in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, x::AbstractVecOrMat, y::AbstractVecOrMat, z::AbstractMatrix)
+function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Number})
     (el32convert(x), el32convert(y), el32convert(z))
 end
 

@@ -183,15 +183,15 @@ insert_glyph!(atlas::TextureAtlas, glyph::Char, font) = get!(atlas.mapping, (gly
     tex_size       = Vec2f0(size(atlas.data))
     uv_start       = Vec2f0(uv.x, uv.y)
     uv_width       = Vec2f0(uv.w, uv.h)
-    real_start     = uv_start + pad - 1 # include padding
+    real_start     = uv_start .+ pad .- 1 # include padding
     # padd one additional pixel
     relative_start = real_start ./ tex_size # use normalized texture coordinates
-    relative_width = (real_start + width_nopadd + 2) ./ tex_size
+    relative_width = (real_start .+ width_nopadd .+ 2) ./ tex_size
 
     uv_offset_width = Vec4f0(relative_start..., relative_width...)
     i = atlas.index
     push!(atlas.attributes, uv_offset_width)
-    push!(atlas.scale, Vec2f0(width_nopadd + 2))
+    push!(atlas.scale, Vec2f0(width_nopadd .+ 2))
     push!(atlas.extent, extent)
     atlas.index = i + 1
     return i
