@@ -71,12 +71,24 @@ abstract type AlignMode end
 struct Inside <: AlignMode end
 struct Outside <: AlignMode end
 
+struct Auto end
+struct Fixed
+    x::Float64
+end
+struct Relative
+    x::Float64
+end
+struct Ratio
+    x::Float64
+end
+const ContentSize = Union{Auto, Fixed, Relative, Ratio}
+
 struct GridLayout <: Alignable
     content::Vector{SpannedAlignable}
     nrows::Int
     ncols::Int
-    rowratios::Vector{Float64}
-    colratios::Vector{Float64}
+    rowsizes::Vector{ContentSize}
+    colsizes::Vector{ContentSize}
     rowgapfraction::Float64
     colgapfraction::Float64
     alignmode::AlignMode
@@ -177,9 +189,11 @@ function solve(gl::GridLayout, bbox::BBox)
     spaceforcolumns = remaininghorizontalspace - addedcolgap * (gl.ncols - 1)
     spaceforrows = remainingverticalspace - addedrowgap * (gl.nrows - 1)
 
-    # compute the column widths and row heights using the specified row and column ratios
-    colwidths = gl.colratios ./ sum(gl.colratios) .* spaceforcolumns
-    rowheights = gl.rowratios ./ sum(gl.rowratios) .* spaceforrows
+    colwidths, rowheights = compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
+
+    # # compute the column widths and row heights using the specified row and column ratios
+    # colwidths = gl.colratios ./ sum(gl.colratios) .* spaceforcolumns
+    # rowheights = gl.rowratios ./ sum(gl.rowratios) .* spaceforrows
 
     # this is the vertical / horizontal space between the inner lines of all plots
     colgap = maxcolgap + addedcolgap
@@ -225,6 +239,148 @@ function solve(gl::GridLayout, bbox::BBox)
         gl.nrows, gl.ncols,
         gridboxes
     )
+end
+
+function height(a::Alignable)
+    nothing
+end
+function width(a::Alignable)
+    nothing
+end
+
+function determinecolsize(icol, gl)
+    colsize = nothing
+    for c in gl.content
+        # content has to be single span to be determinable
+        if c.sp.cols.start == icol && c.sp.cols.stop == icol
+            w = width(c.al)
+            if !isnothing(w)
+                colsize = isnothing(colsize) ? w : max(colsize, w)
+            end
+        end
+    end
+    colsize
+end
+
+function determinerowsize(row, gl)
+    rowsize = nothing
+    for c in gl.content
+        # content has to be single span to be determinable
+        if c.sp.rows.start == row && c.sp.rows.stop == row
+            h = height(c.al)
+            if !isnothing(h)
+                rowsize = isnothing(rowsize) ? h : max(rowsize, h)
+            end
+        end
+    end
+    rowsize
+end
+
+function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
+    # the space for columns and for rows is divided depending on the sizes
+    # stored in the grid layout
+
+    # rows / cols with Auto size must have single span content that
+    # can report its own size, otherwise they can't determine their own size
+    # alternatively, if there is only one Auto row / col it can get the rest
+    # that remains after the other specified sizes are subtracted
+
+    # rows / cols with Fixed size get that size
+
+    # rows / cols with Relative size get that fraction of the available space
+
+    # rows / cols with Ratio size get the ratio fraction of the space available
+    # after the fixed and relative sizes are subtracted
+    # there can be no ratio sizes together with auto sizes that are not determinable
+
+    colwidths = zeros(gl.ncols)
+    rowheights = zeros(gl.nrows)
+
+    # store sizes in arrays with indices so we can keep track of them
+    icsizes = collect(enumerate(gl.colsizes))
+    irsizes = collect(enumerate(gl.rowsizes))
+
+    filtersize(T::Type) = isize -> isize[2] isa T
+
+    fcsizes = filter(filtersize(Fixed), icsizes)
+    frsizes = filter(filtersize(Fixed), irsizes)
+
+    relcsizes = filter(filtersize(Relative), icsizes)
+    relrsizes = filter(filtersize(Relative), irsizes)
+
+    ratcsizes = filter(filtersize(Ratio), icsizes)
+    ratrsizes = filter(filtersize(Ratio), irsizes)
+
+    acsizes = filter(filtersize(Auto), icsizes)
+    arsizes = filter(filtersize(Auto), irsizes)
+
+    determined_acsizes = map(acsizes) do (i, c)
+        (i, determinecolsize(i, gl))
+    end
+    det_acsizes = filter(tup -> !isnothing(tup[2]), determined_acsizes)
+    nondet_acsizes = filter(tup -> isnothing(tup[2]), determined_acsizes)
+    length(nondet_acsizes) > 1 && error("More than one column with auto size is undeterminable $(map(x->x[1], nondet_acsizes)).")
+    length(nondet_acsizes) == 1 && length(ratcsizes) >= 1 && error("There is one auto sized column but also ratio sized columns, those don't work together.")
+
+    determined_arsizes = map(arsizes) do (i, c)
+        (i, determinerowsize(i, gl))
+    end
+    det_arsizes = filter(tup -> !isnothing(tup[2]), determined_arsizes)
+    nondet_arsizes = filter(tup -> isnothing(tup[2]), determined_arsizes)
+    length(nondet_arsizes) > 1 && error("More than one row with auto size is undeterminable $(map(x->x[1], nondet_arsizes)).")
+    length(nondet_arsizes) == 1 && length(ratrsizes) >= 1 && error("There is one auto sized row but also ratio sized rows, those don't work together.")
+
+    # assign fixed sizes first
+    map(fcsizes) do (i, f)
+        colwidths[i] = f.x
+    end
+    map(frsizes) do (i, f)
+        rowheights[i] = f.x
+    end
+
+    # next relative sizes
+    map(relcsizes) do (i, r)
+        colwidths[i] = r.x * spaceforcolumns
+    end
+    map(relrsizes) do (i, r)
+        rowheights[i] = r.x * spaceforrows
+    end
+
+    # next determinable auto sizes
+    map(det_acsizes) do (i, x)
+        colwidths[i] = x
+    end
+    map(det_arsizes) do (i, x)
+        rowheights[i] = x
+    end
+
+    # next ratios
+    if length(ratcsizes) > 0
+        remaining = spaceforcolumns - sum(colwidths)
+        sumratios = sum(map(x -> x[2].x, ratcsizes))
+        map(ratcsizes) do (i, s)
+            colwidths[i] = s.x / sumratios * remaining
+        end
+    end
+    if length(ratrsizes) > 0
+        remaining = spaceforrows - sum(rowheights)
+        sumratios = sum(map(x -> x[2].x, ratrsizes))
+        map(ratrsizes) do (i, s)
+            rowheights[i] = s.x / sumratios * remaining
+        end
+    end
+
+    # next undeterminable auto sizes
+    if !isempty(nondet_acsizes)
+        remaining = spaceforcolumns - sum(colwidths)
+        colwidths[nondet_acsizes[1][1]] = remaining
+    end
+    if !isempty(nondet_arsizes)
+        remaining = spaceforrows - sum(rowheights)
+        rowheights[nondet_arsizes[1][1]] = remaining
+    end
+
+    colwidths, rowheights
 end
 
 

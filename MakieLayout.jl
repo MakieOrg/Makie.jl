@@ -20,5 +20,6 @@ export solve
 export shrinkbymargin
 export applylayout
 export Inside, Outside
+export Fixed, Auto, Relative, Ratio
 
 end # module
