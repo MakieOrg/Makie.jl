@@ -16,8 +16,9 @@ export linkyaxes!
 export GridLayout
 export AxisLayout
 export BBox
-export outersolve
+export solve
 export shrinkbymargin
 export applylayout
+export Inside, Outside
 
 end # module

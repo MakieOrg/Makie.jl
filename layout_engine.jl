@@ -66,14 +66,20 @@ struct SolvedGridLayout <: Alignable
     grid::RowCols{Vector{Float64}}
 end
 
+abstract type AlignMode end
+
+struct Inside <: AlignMode end
+struct Outside <: AlignMode end
+
 struct GridLayout <: Alignable
     content::Vector{SpannedAlignable}
     nrows::Int
     ncols::Int
-    colratios::Vector{Float64}
     rowratios::Vector{Float64}
-    colgapfraction::Float64
+    colratios::Vector{Float64}
     rowgapfraction::Float64
+    colgapfraction::Float64
+    alignmode::AlignMode
 end
 
 
@@ -91,10 +97,15 @@ protrusion(u::AxisLayout, side::Side) = u.decorations[side]
 protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
 
 function protrusion(gl::GridLayout, side::Side)
-    return mapreduce(max, gl.content, init = 0.0) do elem
-        # we use only objects that stick out on this side
-        # And from those we use the maximum protrusion
-        ismostin(elem, gl, side) ? protrusion(elem, side) : 0.0
+    # when we align with the outside there is by definition no protrusion
+    if gl.alignmode isa Outside
+        return 0.0
+    elseif gl.alignmode isa Inside
+        return mapreduce(max, gl.content, init = 0.0) do elem
+            # we use only objects that stick out on this side
+            # And from those we use the maximum protrusion
+            ismostin(elem, gl, side) ? protrusion(elem, side) : 0.0
+        end
     end
 end
 
@@ -120,6 +131,13 @@ function solve(gl::GridLayout, bbox::BBox)
             grid[idx] = max(grid[idx], protrusion(c.al, side))
         end
     end
+
+    # for the outside alignmode
+    topprot = maxgrid.tops[1]
+    bottomprot = maxgrid.bottoms[end]
+    leftprot = maxgrid.lefts[1]
+    rightprot = maxgrid.rights[end]
+
     # compute what size the gaps between rows and columns need to be
     colgaps = maxgrid.lefts[2:end] .+ maxgrid.rights[1:end-1]
     rowgaps = maxgrid.tops[2:end] .+ maxgrid.bottoms[1:end-1]
@@ -127,8 +145,8 @@ function solve(gl::GridLayout, bbox::BBox)
     # determine the biggest gap
     # using the biggest gap size for all gaps will make the layout more even, but one
     # could make this aspect customizable, because it might waste space
-    maxcolgap = maximum(colgaps)
-    maxrowgap = maximum(rowgaps)
+    maxcolgap = gl.ncols <= 1 ? 0 : maximum(colgaps)
+    maxrowgap = gl.nrows <= 1 ? 0 : maximum(rowgaps)
 
     # determine the vertical and horizontal space needed just for the gaps
     # again, the gaps are what the protrusions stick into, so they are not actually "empty"
@@ -137,8 +155,16 @@ function solve(gl::GridLayout, bbox::BBox)
     sumrowgaps = maxrowgap * (gl.nrows - 1)
 
     # compute what space remains for the inner parts of the plots
-    remaininghorizontalspace = width(bbox) - sumcolgaps
-    remainingverticalspace = height(bbox) - sumrowgaps
+    remaininghorizontalspace = if gl.alignmode isa Inside
+        width(bbox) - sumcolgaps
+    elseif gl.alignmode isa Outside
+        width(bbox) - sumcolgaps - leftprot - rightprot
+    end
+    remainingverticalspace = if gl.alignmode isa Inside
+        height(bbox) - sumrowgaps
+    elseif gl.alignmode isa Outside
+        height(bbox) - sumrowgaps - topprot - bottomprot
+    end
 
     # compute how much gap to add, in case e.g. labels are too close together
     # this is given as a fraction of the space used for the inner parts of the plots
@@ -160,11 +186,19 @@ function solve(gl::GridLayout, bbox::BBox)
     rowgap = maxrowgap + addedrowgap
 
     # compute the x values for all left and right column boundaries
-    xleftcols = [left(bbox) + sum(colwidths[1:i-1]) + (i - 1) * colgap for i in 1:gl.ncols]
+    xleftcols = if gl.alignmode isa Inside
+        [left(bbox) + sum(colwidths[1:i-1]) + (i - 1) * colgap for i in 1:gl.ncols]
+    elseif gl.alignmode isa Outside
+        [leftprot + left(bbox) + sum(colwidths[1:i-1]) + (i - 1) * colgap for i in 1:gl.ncols]
+    end
     xrightcols = xleftcols .+ colwidths
 
     # compute the y values for all top and bottom row boundaries
-    ytoprows = [top(bbox) - sum(rowheights[1:i-1]) - (i - 1) * rowgap for i in 1:gl.nrows]
+    ytoprows = if gl.alignmode isa Inside
+        [top(bbox) - sum(rowheights[1:i-1]) - (i - 1) * rowgap for i in 1:gl.nrows]
+    elseif gl.alignmode isa Outside
+        [top(bbox) - topprot - sum(rowheights[1:i-1]) - (i - 1) * rowgap for i in 1:gl.nrows]
+    end
     ybottomrows = ytoprows .- rowheights
 
     # now we can solve the content thats inside the grid because we know where each
@@ -192,82 +226,6 @@ function solve(gl::GridLayout, bbox::BBox)
         gridboxes
     )
 end
-
-
-
-"""
-This function solves a grid layout so that it fits exactly inside a bounding box.
-Exactly means that the protrusions of all other objects inside this grid layout
-also have to fit into the bounding box. This is needed if the grid is the outermost
-object in the layout, the bounding box would then be the scene boundary.
-"""
-function outersolve(gl::GridLayout, bbox::BBox)
-    maxgrid = RowCols(gl.ncols, gl.nrows)
-    for c in gl.content
-        idx_rect = side_indices(c)
-        mapsides(idx_rect, maxgrid) do side, idx, grid
-            grid[idx] = max(grid[idx], protrusion(c.al, side))
-        end
-    end
-
-    topprot = maxgrid.tops[1]
-    bottomprot = maxgrid.bottoms[end]
-    leftprot = maxgrid.lefts[1]
-    rightprot = maxgrid.rights[end]
-
-    colgaps = maxgrid.lefts[2:end] .+ maxgrid.rights[1:end-1]
-    rowgaps = maxgrid.tops[2:end] .+ maxgrid.bottoms[1:end-1]
-
-    maxcolgap = gl.ncols <= 1 ? 0 : maximum(colgaps)
-    maxrowgap = gl.nrows <= 1 ? 0 : maximum(rowgaps)
-
-    sumcolgaps = maxcolgap * (gl.ncols - 1)
-    sumrowgaps = maxrowgap * (gl.nrows - 1)
-
-    remaininghorizontalspace = width(bbox) - sumcolgaps - leftprot - rightprot
-    remainingverticalspace = height(bbox) - sumrowgaps - topprot - bottomprot
-
-    addedcolgap = gl.colgapfraction * remaininghorizontalspace
-    addedrowgap = gl.rowgapfraction * remainingverticalspace
-
-    spaceforcolumns = remaininghorizontalspace - addedcolgap * (gl.ncols - 1)
-    spaceforrows = remainingverticalspace - addedrowgap * (gl.nrows - 1)
-
-    colwidths = gl.colratios ./ sum(gl.colratios) .* spaceforcolumns
-    rowheights = gl.rowratios ./ sum(gl.rowratios) .* spaceforrows
-
-    colgap = maxcolgap + addedcolgap
-    rowgap = maxrowgap + addedrowgap
-
-    xleftcols = map(1:gl.ncols) do i
-        left(bbox) + leftprot + sum(colwidths[1:i-1]) + (i - 1) * colgap
-    end
-    xrightcols = xleftcols .+ colwidths
-
-    ytoprows = map(1:gl.nrows) do i
-        top(bbox) - topprot - sum(rowheights[1:i-1]) - (i - 1) * rowgap
-    end
-
-    ybottomrows = ytoprows .- rowheights
-    gridboxes = RowCols(
-        xleftcols, xrightcols,
-        ytoprows, ybottomrows
-    )
-    solvedcontent = map(gl.content) do c
-        idx_rect = side_indices(c)
-        bbox_cell = mapsides(idx_rect, gridboxes) do side, idx, gridside
-            gridside[idx]
-        end
-        solved = solve(c.al, bbox_cell)
-        return SpannedAlignable(solved, c.sp)
-    end
-    # solvedcontent = solve.(gl.content)
-    SolvedGridLayout(
-        bbox, solvedcontent, gl.nrows, gl.ncols,
-        gridboxes
-    )
-end
-
 
 
 function solve(ua::AxisLayout, innerbbox)
