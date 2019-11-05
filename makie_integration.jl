@@ -64,7 +64,7 @@ end
 
 function ge(e::EdgeInteger, x)
     # 'Return the smallest n: n*step >= x.'
-    d, m = divmod(x, e.step)
+    d, m = divrem(x, e.step)
     if closeto(e, m / e.step, 0)
         d
     else
