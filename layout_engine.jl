@@ -237,6 +237,9 @@ function solve(gl::GridLayout, bbox::BBox)
 
     colwidths, rowheights = compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
 
+    # don't allow smaller widths than 1 px even if it breaks the layout (better than weird glitches)
+    colwidths = max.(colwidths, ones(length(colwidths)))
+    rowheights = max.(rowheights, ones(length(rowheights)))
     # # compute the column widths and row heights using the specified row and column ratios
     # colwidths = gl.colratios ./ sum(gl.colratios) .* spaceforcolumns
     # rowheights = gl.rowratios ./ sum(gl.rowratios) .* spaceforrows
