@@ -22,5 +22,7 @@ export applylayout
 export Inside, Outside
 export Fixed, Auto, Relative, Ratio, Aspect
 export FixedSizeBox
+export FixedHeightBox
+export width, height, top, bottom, left, right
 
 end # module

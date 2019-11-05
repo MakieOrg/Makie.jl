@@ -401,6 +401,12 @@ function applylayout(sfb::SolvedFixedSizeBox)
     sfb.content[] = sfb.inner.origin
 end
 
+function applylayout(sfh::SolvedFixedHeightBox)
+    # call the supplied updatefunc with both bboxes
+    # maybe this should be an observable thing?
+    sfh.updatefunc(sfh.inner, sfh.outer)
+end
+
 function shrinkbymargin(rect, margin)
     IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
 end

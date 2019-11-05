@@ -106,6 +106,12 @@ struct SolvedFixedSizeBox{T} <: Alignable
     content::T
 end
 
+struct SolvedFixedHeightBox <: Alignable
+    inner::BBox
+    outer::BBox
+    updatefunc::Function
+end
+
 """
 An alignable that contains something of a fixed size, like some text.
 There will usually be more space available in at least one direction than
@@ -123,6 +129,14 @@ end
 height(fb::FixedSizeBox) = height(fb.bbox)
 width(fb::FixedSizeBox) = width(fb.bbox)
 
+struct FixedHeightBox <: Alignable
+    height::Float64
+    alignment::Float64
+    updatefunc::Function
+end
+
+height(fh::FixedHeightBox) = fh.height
+
 
 """
 All the protrusion functions calculate how much stuff "sticks out" of a layoutable object.
@@ -135,6 +149,7 @@ bottomprotrusion(x) = protrusion(x, Bottom())
 topprotrusion(x) = protrusion(x, Top())
 
 protrusion(fb::FixedSizeBox, side::Side) = 0.0
+protrusion(fh::FixedHeightBox, side::Side) = 0.0
 protrusion(u::AxisLayout, side::Side) = u.decorations[side]
 protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
 
@@ -533,4 +548,23 @@ function solve(fb::FixedSizeBox, bbox::BBox)
     oyinner = oyb + yal * resty
 
     SolvedFixedSizeBox(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), bbox, fb.content)
+end
+
+function solve(fb::FixedHeightBox, bbox::BBox)
+    fhh = fb.height
+
+    bh = height(bbox)
+    bw = width(bbox)
+
+    oxb = bbox.origin[1]
+    oyb = bbox.origin[2]
+
+    resty = bh - fhh
+
+    yal = fb.alignment
+
+    oxinner = oxb
+    oyinner = oyb + yal * resty
+
+    SolvedFixedHeightBox(BBox(oxinner, oxinner + bw, oyinner + fhh, oyinner), bbox, fb.updatefunc)
 end
