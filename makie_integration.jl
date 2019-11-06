@@ -226,11 +226,34 @@ function add_zoom!(scene::SceneLike, limits)
     end
 end
 
-function LayoutedAxis(parent::Scene)
+function LayoutedAxis(
+        parent::Scene;
+        # scene::Scene,
+        xlabel::Node{String} = Node("x label"),
+        ylabel::Node{String} = Node("y label"),
+        title::Node{String} = Node("Title"),
+        titlesize::Node{Float32} = Node(30f0),
+        titlegap::Node{Float32} = Node(10f0),
+        titlevisible::Node{Bool} = Node(true),
+        limits::Node{FRect2D} = Node(FRect2D(0, 0, 1, 1)),
+        # protrusions::Node{FRect2D},
+        xlabelsize::Node{Float32} = Node(20f0),
+        ylabelsize::Node{Float32} = Node(20f0),
+        xlabelvisible::Node{Bool} = Node(true),
+        ylabelvisible::Node{Bool} = Node(true),
+        xlabelpadding::Node{Float32} = Node(20f0),
+        ylabelpadding::Node{Float32} = Node(20f0),
+        xticklabelsize::Node{Float32} = Node(20f0),
+        yticklabelsize::Node{Float32} = Node(20f0),
+        xticklabelsvisible::Node{Bool} = Node(true),
+        yticklabelsvisible::Node{Bool} = Node(true),
+        xticksize::Node{Float32} = Node(10f0),
+        yticksize::Node{Float32} = Node(10f0),
+        xticksvisible::Node{Bool} = Node(true),
+        yticksvisible::Node{Bool} = Node(true)
+    )
     scene = Scene(parent, Node(IRect(0, 0, 100, 100)), raw = true)
     limits = Node(FRect(0, 0, 100, 100))
-    xlabel = Node("x label")
-    ylabel = Node("y label")
 
     add_pan!(scene, limits)
     add_zoom!(scene, limits)
@@ -242,7 +265,6 @@ function LayoutedAxis(parent::Scene)
         parent, ticksnode, linewidth = 2, show_axis = false
     )[end]
 
-    # the algorithm from above seems to not give more than 7 ticks with the step sizes I chose
     nmaxticks = 20
 
     xticklabelnodes = [Node("0") for i in 1:nmaxticks]
@@ -253,8 +275,9 @@ function LayoutedAxis(parent::Scene)
             xticklabelnodes[i],
             position = xticklabelposnodes[i],
             align = (:center, :top),
-            textsize = 20,
-            show_axis = false
+            textsize = xticklabelsize,
+            show_axis = false,
+            visible = xticklabelsvisible
         )[end]
     end
 
@@ -267,8 +290,9 @@ function LayoutedAxis(parent::Scene)
             position = yticklabelposnodes[i],
             align = (:center, :bottom),
             rotation = pi/2,
-            textsize = 20,
-            show_axis = false
+            textsize = yticklabelsize,
+            show_axis = false,
+            visible = yticklabelsvisible
         )[end]
     end
 
@@ -281,21 +305,15 @@ function LayoutedAxis(parent::Scene)
         limw, limh = Float32.(widths(lims))
         l, b = Float32.(pxa.origin)
         w, h = Float32.(widths(pxa))
-        # projection = AbstractPlotting.orthographicprojection(0f0, w * 2f0, 0f0, h, nearclip, farclip)
-        projection = AbstractPlotting.orthographicprojection(limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
+        projection = AbstractPlotting.orthographicprojection(
+            limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
 
-        # pxa = scene.px_area[]
         px_aspect = pxa.widths[1] / pxa.widths[2]
 
-        # @printf("cam %.1f, %.1f, %.1f, %.1f\n", a.origin..., a.widths...)
-        # @printf("pix %.1f, %.1f, %.1f, %.1f\n", pxa.origin..., pxa.widths...)
-
         width = lims.widths[1]
-        # width = px_aspect > 1 ? a.widths[1] / px_aspect : a.widths[1]
         xrange = (lims.origin[1], lims.origin[1] + width)
-
 
         if width == 0 || !isfinite(xrange[1]) || !isfinite(xrange[2])
             return
@@ -368,31 +386,72 @@ function LayoutedAxis(parent::Scene)
         )))
     end
 
-    labelgap = 50
-
-    xlabelpos = lift(scene.px_area) do a
+    xlabelpos = lift(scene.px_area, xlabelpadding) do a, labelgap
         Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
     end
 
-    ylabelpos = lift(scene.px_area) do a
+    ylabelpos = lift(scene.px_area, ylabelpadding) do a, labelgap
         Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
     end
 
     tx = text!(
-        parent, xlabel, textsize = 20, position = xlabelpos, show_axis = false
+        parent, xlabel, textsize = xlabelsize,
+        position = xlabelpos, show_axis = false
     )[end]
+
     tx.align = [0.5, 1]
+
     ty = text!(
-        parent, ylabel, textsize = 20,
+        parent, ylabel, textsize = ylabelsize,
         position = ylabelpos, rotation = pi/2, show_axis = false
     )[end]
+
     ty.align = [0.5, 0]
 
     axislines!(parent, scene.px_area)
 
-    LayoutedAxis(parent, scene, xlabel, ylabel, limits)
-end
+    function getprotrusions(titlesize, titlegap, titlevisible, xlabelsize,
+                ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
+                ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
+                yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible)
 
+        top = titlevisible ? titlesize + titlegap : 0f0
+        bottom = (xlabelvisible ? xlabelsize + xlabelpadding : 0f0) +
+            (xticklabelsvisible ? xticklabelsize : 0f0) +
+            (xticksvisible ? xticksize : 0f0)
+        left = (ylabelvisible ? ylabelsize + ylabelpadding : 0f0) +
+            (yticklabelsvisible ? yticklabelsize : 0f0) +
+            (yticksvisible ? yticksize : 0f0)
+        right = 0f0
+
+        (left, right, top, bottom)
+    end
+
+    protrusions = lift(getprotrusions,
+        titlesize,
+        titlegap,
+        titlevisible,
+        xlabelsize,
+        ylabelsize,
+        xlabelvisible,
+        ylabelvisible,
+        xlabelpadding,
+        ylabelpadding,
+        xticklabelsize,
+        yticklabelsize,
+        xticklabelsvisible,
+        yticklabelsvisible,
+        xticksize,
+        yticksize,
+        xticksvisible,
+        yticksvisible)
+
+    LayoutedAxis(
+        parent, scene, xlabel, ylabel, title, titlesize, titlegap, titlevisible,
+        limits, protrusions, xlabelsize, ylabelsize, xlabelvisible, ylabelvisible,
+        xlabelpadding, ylabelpadding, xticklabelsize, yticklabelsize,
+        xticklabelsvisible, yticklabelsvisible, xticksize,
+        yticksize, xticksvisible, yticksvisible)
 
 function applylayout(sg::SolvedGridLayout)
     for c in sg.content

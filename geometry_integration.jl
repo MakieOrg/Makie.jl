@@ -27,7 +27,26 @@ mutable struct LayoutedAxis
     scene::Scene
     xlabel::Node{String}
     ylabel::Node{String}
+    title::Node{String}
+    titlesize::Node{Float32}
+    titlegap::Node{Float32}
+    titlevisible::Node{Bool}
     limits::Node{FRect2D}
+    protrusions::Node{FRect2D}
+    xlabelsize::Node{Float32}
+    ylabelsize::Node{Float32}
+    xlabelvisible::Node{Bool}
+    ylabelvisible::Node{Bool}
+    xlabelpadding::Node{Float32}
+    ylabelpadding::Node{Float32}
+    xticklabelsize::Node{Float32}
+    yticklabelsize::Node{Float32}
+    xticklabelsvisible::Node{Bool}
+    yticklabelsvisible::Node{Bool}
+    xticksize::Node{Float32}
+    yticksize::Node{Float32}
+    xticksvisible::Node{Float32}
+    yticksvisible::Node{Float32}
 end
 
 width(rect::Rect2D) = right(rect) - left(rect)
