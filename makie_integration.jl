@@ -120,7 +120,16 @@ function locateticks(vmin, vmax, width_px, ideal_spacing_px; _integer=false, _mi
         low:high
         ticks = (low:high) .* step .+ best_vmin
         # Count only the ticks that will be displayed.
-        nticks = sum((ticks .<= _vmax) .& (ticks .>= _vmin))
+        # nticks = sum((ticks .<= _vmax) .& (ticks .>= _vmin))
+
+        # manual sum because broadcasting was slow
+        nticks = 0
+        for t in ticks
+            if _vmin <= t <= _vmax
+                nticks += 1
+            end
+        end
+
         if nticks >= _min_n_ticks
             break
         end
@@ -129,7 +138,6 @@ function locateticks(vmin, vmax, width_px, ideal_spacing_px; _integer=false, _mi
     filter(x -> vmin <= x <= vmax, ticks)
 end
 
-locateticks(10, 30, 200, 50)
 # struct LimitCamera <: AbstractCamera end
 
 function add_pan!(scene::SceneLike, limits)
@@ -235,7 +243,7 @@ function LayoutedAxis(parent::Scene)
     )[end]
 
     # the algorithm from above seems to not give more than 7 ticks with the step sizes I chose
-    nmaxticks = 7
+    nmaxticks = 20
 
     xticklabelnodes = [Node("0") for i in 1:nmaxticks]
     xticklabelposnodes = [Node(Point(0.0, 0.0)) for i in 1:nmaxticks]
