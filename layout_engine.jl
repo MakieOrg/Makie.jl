@@ -54,7 +54,7 @@ struct SolvedAxisLayout <: Alignable
 end
 
 struct AxisLayout <: Alignable
-    decorations::BBox
+    protrusions::BBox
     axis::LayoutedAxis
 end
 
@@ -150,7 +150,7 @@ topprotrusion(x) = protrusion(x, Top())
 
 protrusion(fb::FixedSizeBox, side::Side) = 0.0
 protrusion(fh::FixedHeightBox, side::Side) = 0.0
-protrusion(u::AxisLayout, side::Side) = u.decorations[side]
+protrusion(u::AxisLayout, side::Side) = u.protrusions[side]
 protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
 
 function protrusion(gl::GridLayout, side::Side)
@@ -477,7 +477,7 @@ end
 
 
 function solve(ua::AxisLayout, innerbbox)
-    bbox = mapsides(innerbbox, ua.decorations) do side, iside, decside
+    bbox = mapsides(innerbbox, ua.protrusions) do side, iside, decside
         op = side isa Union{Left, Top} ? (-) : (+)
         return op(iside, decside)
     end
