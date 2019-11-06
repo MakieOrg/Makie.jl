@@ -71,21 +71,21 @@ abstract type AlignMode end
 struct Inside <: AlignMode end
 struct Outside <: AlignMode end
 
-struct Auto end
+struct Auto
+    x::Float64 # ratio in case it's not determinable
+end
+Auto() = Auto(1)
 struct Fixed
     x::Float64
 end
 struct Relative
     x::Float64
 end
-struct Ratio
-    x::Float64
-end
 struct Aspect
     index::Int
     ratio::Float64
 end
-const ContentSize = Union{Auto, Fixed, Relative, Ratio, Aspect}
+const ContentSize = Union{Auto, Fixed, Relative, Aspect}
 const GapSize = Union{Fixed, Relative}
 
 struct GridLayout <: Alignable
@@ -353,10 +353,6 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
 
     # rows / cols with Relative size get that fraction of the available space
 
-    # rows / cols with Ratio size get the ratio fraction of the space available
-    # after the fixed and relative sizes are subtracted
-    # there can be no ratio sizes together with auto sizes that are not determinable
-
     colwidths = zeros(gl.ncols)
     rowheights = zeros(gl.nrows)
 
@@ -372,9 +368,6 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     relcsizes = filter(filtersize(Relative), icsizes)
     relrsizes = filter(filtersize(Relative), irsizes)
 
-    ratcsizes = filter(filtersize(Ratio), icsizes)
-    ratrsizes = filter(filtersize(Ratio), irsizes)
-
     acsizes = filter(filtersize(Auto), icsizes)
     arsizes = filter(filtersize(Auto), irsizes)
 
@@ -385,17 +378,19 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
         (i, determinecolsize(i, gl))
     end
     det_acsizes = filter(tup -> !isnothing(tup[2]), determined_acsizes)
-    nondet_acsizes = filter(tup -> isnothing(tup[2]), determined_acsizes)
-    length(nondet_acsizes) > 1 && error("More than one column with auto size is undeterminable $(map(x->x[1], nondet_acsizes)).")
-    length(nondet_acsizes) == 1 && length(ratcsizes) >= 1 && error("There is one auto sized column but also ratio sized columns, those don't work together.")
+    nondets_c = filter(tup -> isnothing(tup[2]), determined_acsizes)
+    nondet_acsizes = map(nondets_c) do (i, noth)
+        i, gl.colsizes[i]
+    end
 
     determined_arsizes = map(arsizes) do (i, c)
         (i, determinerowsize(i, gl))
     end
     det_arsizes = filter(tup -> !isnothing(tup[2]), determined_arsizes)
-    nondet_arsizes = filter(tup -> isnothing(tup[2]), determined_arsizes)
-    length(nondet_arsizes) > 1 && error("More than one row with auto size is undeterminable $(map(x->x[1], nondet_arsizes)).")
-    length(nondet_arsizes) == 1 && length(ratrsizes) >= 1 && error("There is one auto sized row but also ratio sized rows, those don't work together.")
+    nondets_r = filter(tup -> isnothing(tup[2]), determined_arsizes)
+    nondet_arsizes = map(nondets_r) do (i, noth)
+        i, gl.rowsizes[i]
+    end
 
     # assign fixed sizes first
     map(fcsizes) do (i, f)
@@ -428,13 +423,13 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
         rowsize = gl.rowsizes[index]
         rowheight = if rowsize isa Union{Fixed, Relative, Auto}
             if rowsize isa Auto
-                if !isempty(nondet_arsizes) && nondet_arsizes[1][1] == index
+                if !isempty(nondet_arsizes) && any(x -> x[1] == index, nondet_arsizes)
                     error("Can't use aspect ratio with an undeterminable Auto size")
                 end
             end
             rowheights[index]
         else
-            error("Aspect size can only work in conjunction with Fixed, Relative, or Auto, not $(typeof(gl.rowsizes[index]))")
+            error("Aspect size can only work in conjunction with Fixed, Relative, or determinable Auto, not $(typeof(gl.rowsizes[index]))")
         end
         colwidths[i] = rowheight * ratio
     end
@@ -445,41 +440,36 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
         colsize = gl.colsizes[index]
         colwidth = if colsize isa Union{Fixed, Relative, Auto}
             if colsize isa Auto
-                if !isempty(nondet_acsizes) && nondet_acsizes[1][1] == index
+                if !isempty(nondet_acsizes) && any(x -> x[1] == index, nondet_acsizes)
                     error("Can't use aspect ratio with an undeterminable Auto size")
                 end
             end
             colwidths[index]
         else
-            error("Aspect size can only work in conjunction with Fixed, Relative, or Auto, not $(typeof(gl.rowsizes[index]))")
+            error("Aspect size can only work in conjunction with Fixed, Relative, or determinable Auto, not $(typeof(gl.rowsizes[index]))")
         end
         rowheights[i] = colwidth * ratio
-    end
-
-    # next ratios
-    if length(ratcsizes) > 0
-        remaining = spaceforcolumns - sum(colwidths)
-        sumratios = sum(map(x -> x[2].x, ratcsizes))
-        map(ratcsizes) do (i, s)
-            colwidths[i] = s.x / sumratios * remaining
-        end
-    end
-    if length(ratrsizes) > 0
-        remaining = spaceforrows - sum(rowheights)
-        sumratios = sum(map(x -> x[2].x, ratrsizes))
-        map(ratrsizes) do (i, s)
-            rowheights[i] = s.x / sumratios * remaining
-        end
     end
 
     # next undeterminable auto sizes
     if !isempty(nondet_acsizes)
         remaining = spaceforcolumns - sum(colwidths)
-        colwidths[nondet_acsizes[1][1]] = remaining
+        nondet_acsizes
+        sumratios = sum(nondet_acsizes) do (i, c)
+            c.x
+        end
+        map(nondet_acsizes) do (i, c)
+            colwidths[i] = remaining * c.x / sumratios
+        end
     end
     if !isempty(nondet_arsizes)
         remaining = spaceforrows - sum(rowheights)
-        rowheights[nondet_arsizes[1][1]] = remaining
+        sumratios = sum(nondet_arsizes) do (i, r)
+            r.x
+        end
+        map(nondet_arsizes) do (i, r)
+            rowheights[i] = remaining * r.x / sumratios
+        end
     end
 
     colwidths, rowheights
