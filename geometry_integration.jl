@@ -25,14 +25,16 @@ Base.getindex(bbox::Rect2D, ::Top) = top(bbox)
 mutable struct LayoutedAxis
     parent::Scene
     scene::Scene
+    bboxnode::Node{BBox}
     xlabel::Node{String}
     ylabel::Node{String}
     title::Node{String}
     titlesize::Node{Float32}
     titlegap::Node{Float32}
     titlevisible::Node{Bool}
-    limits::Node{FRect2D}
-    protrusions::Node{FRect2D}
+    limits::Node{BBox}
+    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
+    needs_update::Node{Bool}
     xlabelsize::Node{Float32}
     ylabelsize::Node{Float32}
     xlabelvisible::Node{Bool}

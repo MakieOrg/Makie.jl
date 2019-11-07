@@ -229,6 +229,7 @@ end
 function LayoutedAxis(
         parent::Scene;
         # scene::Scene,
+        # bboxnode::Node{BBox}
         xlabel::Node{String} = Node("x label"),
         ylabel::Node{String} = Node("y label"),
         title::Node{String} = Node("Title"),
@@ -237,6 +238,7 @@ function LayoutedAxis(
         titlevisible::Node{Bool} = Node(true),
         limits::Node{FRect2D} = Node(FRect2D(0, 0, 1, 1)),
         # protrusions::Node{FRect2D},
+        # needs_update
         xlabelsize::Node{Float32} = Node(20f0),
         ylabelsize::Node{Float32} = Node(20f0),
         xlabelvisible::Node{Bool} = Node(true),
@@ -252,7 +254,11 @@ function LayoutedAxis(
         xticksvisible::Node{Bool} = Node(true),
         yticksvisible::Node{Bool} = Node(true)
     )
-    scene = Scene(parent, Node(IRect(0, 0, 100, 100)), raw = true)
+
+    bboxnode = Node(BBox(0, 100, 100, 0))
+    scenearea = lift(bb -> IRect2D(bb), bboxnode)
+
+    scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
 
     add_pan!(scene, limits)
@@ -361,7 +367,7 @@ function LayoutedAxis(
             if i <= nxticks
                 xticklabelnodes[i][] = xtickstrings[i]
                 xticklabelposnodes[i][] = xtickends[i] + Point(0.0, -10.0)
-                xticklabels[i].visible = true
+                xticklabels[i].visible = true && xticklabelsvisible[]
             else
                 xticklabels[i].visible = false
             end
@@ -373,7 +379,7 @@ function LayoutedAxis(
             if i <= nyticks
                 yticklabelnodes[i][] = ytickstrings[i]
                 yticklabelposnodes[i][] = ytickends[i] + Point(-10.0, 0.0)
-                yticklabels[i].visible = true
+                yticklabels[i].visible = true && yticklabelsvisible[]
             else
                 yticklabels[i].visible = false
             end
@@ -386,40 +392,69 @@ function LayoutedAxis(
         )))
     end
 
-    xlabelpos = lift(scene.px_area, xlabelpadding) do a, labelgap
+    xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
+        xticksvisible, xticksize,
+        xticklabelsize, xlabelpadding) do a, xlabelvisible, xticklabelsvisible, xticksvisible, xticksize, xticklabelsize, xlabelpadding
+
+        labelgap = xlabelpadding +
+            (xticklabelsvisible ? xticklabelsize : 0f0) +
+            (xticksvisible ? xticksize : 0f0)
+
         Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
     end
 
-    ylabelpos = lift(scene.px_area, ylabelpadding) do a, labelgap
+    ylabelpos = lift(scene.px_area, ylabelvisible, yticklabelsvisible,
+        yticksvisible, yticksize,
+        yticklabelsize, ylabelpadding) do a, ylabelvisible, yticklabelsvisible, yticksvisible, yticksize, yticklabelsize, ylabelpadding
+
+        labelgap = ylabelpadding +
+            (yticklabelsvisible ? yticklabelsize : 0f0) +
+            (yticksvisible ? yticksize : 0f0)
+
         Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
     end
 
     tx = text!(
         parent, xlabel, textsize = xlabelsize,
-        position = xlabelpos, show_axis = false
+        position = xlabelpos, show_axis = false, visible = xlabelvisible
     )[end]
 
-    tx.align = [0.5, 1]
+    tx.align = (:center, :top)
 
     ty = text!(
         parent, ylabel, textsize = ylabelsize,
-        position = ylabelpos, rotation = pi/2, show_axis = false
+        position = ylabelpos, rotation = pi/2, show_axis = false,
+        visible = ylabelvisible
+
     )[end]
 
-    ty.align = [0.5, 0]
+    ty.align = (:center, :bottom)
+
+    titlepos = lift(scene.px_area, titlegap) do a, titlegap
+        Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] + a.widths[2] + titlegap)
+    end
+
+
+    titlet = text!(
+        parent, title,
+        position = titlepos,
+        visible = titlevisible,
+        textsize = titlesize,
+        align = (:center, :bottom),
+        show_axis=false)[end]
 
     axislines!(parent, scene.px_area)
 
-    function getprotrusions(titlesize, titlegap, titlevisible, xlabelsize,
+    function getprotrusions(xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
                 ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
                 ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
                 yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible)
 
-        top = titlevisible ? titlesize + titlegap : 0f0
-        bottom = (xlabelvisible ? xlabelsize + xlabelpadding : 0f0) +
+        top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
+        bottom = (xlabelvisible ? boundingbox(tx).widths[2] + xlabelpadding : 0f0) +
             (xticklabelsvisible ? xticklabelsize : 0f0) +
             (xticksvisible ? xticksize : 0f0)
-        left = (ylabelvisible ? ylabelsize + ylabelpadding : 0f0) +
+        left = (ylabelvisible ? boundingbox(ty).widths[1] + ylabelpadding : 0f0) +
             (yticklabelsvisible ? yticklabelsize : 0f0) +
             (yticksvisible ? yticksize : 0f0)
         right = 0f0
@@ -428,6 +463,9 @@ function LayoutedAxis(
     end
 
     protrusions = lift(getprotrusions,
+        xlabel,
+        ylabel,
+        title,
         titlesize,
         titlegap,
         titlevisible,
@@ -446,12 +484,19 @@ function LayoutedAxis(
         xticksvisible,
         yticksvisible)
 
+    needs_update = Node(true)
+    on(protrusions) do prot
+        needs_update[] = true
+    end
+
     LayoutedAxis(
-        parent, scene, xlabel, ylabel, title, titlesize, titlegap, titlevisible,
-        limits, protrusions, xlabelsize, ylabelsize, xlabelvisible, ylabelvisible,
+        parent, scene, bboxnode, xlabel, ylabel, title, titlesize, titlegap, titlevisible,
+        limits, protrusions, needs_update, xlabelsize, ylabelsize, xlabelvisible, ylabelvisible,
         xlabelpadding, ylabelpadding, xticklabelsize, yticklabelsize,
         xticklabelsvisible, yticklabelsvisible, xticksize,
         yticksize, xticksvisible, yticksvisible)
+
+end
 
 function applylayout(sg::SolvedGridLayout)
     for c in sg.content
@@ -460,7 +505,8 @@ function applylayout(sg::SolvedGridLayout)
 end
 
 function applylayout(sa::SolvedAxisLayout)
-    sa.axis.scene.px_area[] = IRect2D(sa.inner)
+    # sa.axis.scene.px_area[] = IRect2D(sa.inner)
+    sa.innerbboxnode[] = sa.innerbbox
 end
 
 function applylayout(sfb::SolvedFixedSizeBox)

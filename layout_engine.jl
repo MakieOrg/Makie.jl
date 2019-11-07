@@ -47,29 +47,15 @@ isrightmostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Right())
 isbottommostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Bottom())
 istopmostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Top())
 
-struct SolvedAxisLayout <: Alignable
-    inner::BBox
-    outer::BBox
-    axis::LayoutedAxis
-end
-
-struct AxisLayout <: Alignable
-    protrusions::BBox
-    axis::LayoutedAxis
-end
-
-struct SolvedGridLayout <: Alignable
-    bbox::BBox
-    content::Vector{SpannedAlignable}
-    nrows::Int
-    ncols::Int
-    grid::RowCols{Vector{Float64}}
-end
-
 abstract type AlignMode end
 
 struct Inside <: AlignMode end
-struct Outside <: AlignMode end
+struct Outside <: AlignMode
+    padding::Tuple{Float32, Float32, Float32, Float32}
+end
+
+Outside() = Outside((0f0, 0f0, 0f0, 0f0))
+Outside(left::Real, right::Real, top::Real, bottom::Real) = Outside(Float32.((left, right, top, bottom)))
 
 struct Auto
     x::Float64 # ratio in case it's not determinable
@@ -89,6 +75,7 @@ const ContentSize = Union{Auto, Fixed, Relative, Aspect}
 const GapSize = Union{Fixed, Relative}
 
 struct GridLayout <: Alignable
+    parent::Union{Scene, GridLayout}
     content::Vector{SpannedAlignable}
     nrows::Int
     ncols::Int
@@ -98,18 +85,79 @@ struct GridLayout <: Alignable
     addedcolgaps::Vector{GapSize}
     alignmode::AlignMode
     equalprotrusiongaps::Tuple{Bool, Bool}
+    needs_update::Node{Bool}
+end
+
+function GridLayout(parent, nrows, ncols, rowsizes, colsizes,
+                    addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps)
+
+    needs_update = Node(true)
+
+    content = []
+
+    gl = GridLayout(
+        parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update
+    )
+
+    if parent isa Scene
+        on(needs_update) do update
+            sg = solve(gl, BBox(shrinkbymargin(pixelarea(parent)[], 0)))
+            applylayout(sg)
+        end
+
+        # update when parent scene changes size
+        on(pixelarea(parent)) do px
+            needs_update[] = true
+        end
+    elseif parent isa GridLayout
+        on(needs_update) do update
+            parent.needs_update[] = true
+        end
+    end
+
+    gl
+end
+
+struct SolvedGridLayout <: Alignable
+    bbox::BBox
+    content::Vector{SpannedAlignable}
+    nrows::Int
+    ncols::Int
+    grid::RowCols{Vector{Float64}}
+end
+
+struct SolvedAxisLayout <: Alignable
+    innerbbox::BBox
+    innerbboxnode::Node{BBox}
+    # axis::LayoutedAxis
+end
+
+struct AxisLayout <: Alignable
+    parent::GridLayout
+    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
+    bboxnode::Node{BBox}
+    needs_update::Node{Bool}
+    # axis::LayoutedAxis
+end
+
+function AxisLayout(parent, protrusions, bboxnode)
+    # bboxnode now is supplied by the axis itself
+
+    # bboxnode = Node(BBox(0, 1, 1, 0))
+    needs_update = Node(false)
+    on(protrusions) do p
+        needs_update[] = true
+    end
+    AxisLayout(parent, protrusions, bboxnode, needs_update)
 end
 
 struct SolvedFixedSizeBox{T} <: Alignable
-    inner::BBox
-    outer::BBox
-    content::T
+    bboxnode::Node{BBox}
 end
 
 struct SolvedFixedHeightBox <: Alignable
-    inner::BBox
-    outer::BBox
-    updatefunc::Function
+    bboxnode::Node{BBox}
 end
 
 """
@@ -121,18 +169,21 @@ For example, the figure title is placed above all else, but can then
 be aligned on the left, in the center, or on the right.
 """
 struct FixedSizeBox{T} <: Alignable
-    bbox::BBox
-    alignment::Tuple{Float64, Float64}
-    content::T
+    parent::GridLayout
+    alignment::Node{Tuple{Float32, Float32}}
+    width::Node{Float32}
+    height::Node{Float32}
+    bboxnode::Node{BBox}
 end
 
 height(fb::FixedSizeBox) = height(fb.bbox)
 width(fb::FixedSizeBox) = width(fb.bbox)
 
 struct FixedHeightBox <: Alignable
-    height::Float64
-    alignment::Float64
-    updatefunc::Function
+    parent::GridLayout
+    height::Node{Float32}
+    alignment::Node{Float32}
+    bboxnode::Node{BBox}
 end
 
 height(fh::FixedHeightBox) = fh.height
@@ -150,7 +201,11 @@ topprotrusion(x) = protrusion(x, Top())
 
 protrusion(fb::FixedSizeBox, side::Side) = 0.0
 protrusion(fh::FixedHeightBox, side::Side) = 0.0
-protrusion(u::AxisLayout, side::Side) = u.protrusions[side]
+# protrusion(u::AxisLayout, side::Side) = u.protrusions[side]
+protrusion(a::AxisLayout, ::Left) = a.protrusions[][1]
+protrusion(a::AxisLayout, ::Right) = a.protrusions[][2]
+protrusion(a::AxisLayout, ::Top) = a.protrusions[][3]
+protrusion(a::AxisLayout, ::Bottom) = a.protrusions[][4]
 protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
 
 function protrusion(gl::GridLayout, side::Side)
@@ -178,6 +233,11 @@ the grid are not taken into account. This is needed if the grid is itself placed
 inside another grid.
 """
 function solve(gl::GridLayout, bbox::BBox)
+
+    if gl.alignmode isa Outside
+        l, r, t, b = gl.alignmode.padding
+        bbox = BBox(left(bbox) + l, right(bbox) - r, top(bbox) - t, bottom(bbox) + b)
+    end
 
     # first determine how big the protrusions on each side of all columns and rows are
     maxgrid = RowCols(gl.ncols, gl.nrows)
@@ -477,11 +537,18 @@ end
 
 
 function solve(ua::AxisLayout, innerbbox)
-    bbox = mapsides(innerbbox, ua.protrusions) do side, iside, decside
-        op = side isa Union{Left, Top} ? (-) : (+)
-        return op(iside, decside)
-    end
-    SolvedAxisLayout(innerbbox, bbox, ua.axis)
+    # bbox = mapsides(innerbbox, ua.protrusions) do side, iside, decside
+    #     op = side isa Union{Left, Top} ? (-) : (+)
+    #     return op(iside, decside)
+    # end
+    ib = innerbbox
+    bbox = BBox(
+        left(ib) - ua.protrusions[][1],
+        right(ib) + ua.protrusions[][2],
+        top(ib) + ua.protrusions[][3],
+        bottom(ib) - ua.protrusions[][4]
+    )
+    SolvedAxisLayout(innerbbox, ua.bboxnode)
 end
 
 const Indexables = Union{UnitRange, Int, Colon}
@@ -496,7 +563,7 @@ grid[1:3, 2:5] = obj
 
 and all combinations of the above
 """
-function Base.setindex!(g, a::Alignable, rows::Indexables, cols::Indexables)
+function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Indexables)
     if rows isa Int
         rows = rows:rows
     elseif rows isa Colon
@@ -515,7 +582,24 @@ function Base.setindex!(g, a::Alignable, rows::Indexables, cols::Indexables)
         error("invalid col span $cols for grid with $(g.ncols) columns")
     end
 
-    push!(g.content, SpannedAlignable(a, Span(rows, cols)))
+    sp = SpannedAlignable(a, Span(rows, cols))
+    connectchildlayout!(g, sp)
+end
+
+
+function Base.setindex!(g::GridLayout, la::LayoutedAxis, rows::Indexables, cols::Indexables)
+    al = AxisLayout(g, la.protrusions, la.bboxnode)
+    g[rows, cols] = al
+    la
+end
+
+function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
+    push!(g.content, spa)
+    on(spa.al.needs_update) do update
+        g.needs_update[] = true
+    end
+    # trigger relayout
+    g.needs_update[] = true
 end
 
 function solve(fb::FixedSizeBox, bbox::BBox)
