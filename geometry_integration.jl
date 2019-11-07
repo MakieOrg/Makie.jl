@@ -2,7 +2,7 @@ using AbstractPlotting
 using AbstractPlotting: Rect2D
 import AbstractPlotting: IRect2D
 
-const BBox = Rect2D{Float64}
+const BBox = Rect2D{Float32}
 
 left(rect::Rect2D) = minimum(rect)[1]
 right(rect::Rect2D) = maximum(rect)[1]
