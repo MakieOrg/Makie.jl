@@ -157,6 +157,7 @@ struct SolvedFixedSizeBox{T} <: Alignable
 end
 
 struct SolvedFixedHeightBox <: Alignable
+    bbox::BBox
     bboxnode::Node{BBox}
 end
 
@@ -168,7 +169,7 @@ in the available BBox the fixed size content should be placed.
 For example, the figure title is placed above all else, but can then
 be aligned on the left, in the center, or on the right.
 """
-struct FixedSizeBox{T} <: Alignable
+struct FixedSizeBox <: Alignable
     parent::GridLayout
     alignment::Node{Tuple{Float32, Float32}}
     width::Node{Float32}
@@ -184,9 +185,21 @@ struct FixedHeightBox <: Alignable
     height::Node{Float32}
     alignment::Node{Float32}
     bboxnode::Node{BBox}
+    needs_update::Node{Bool}
 end
 
-height(fh::FixedHeightBox) = fh.height
+function FixedHeightBox(parent, height, alignment, bboxnode)
+    needs_update = Node(false)
+    on(height) do h
+        needs_update[] = true
+    end
+    on(alignment) do a
+        needs_update[] = true
+    end
+    FixedHeightBox(parent, height, alignment, bboxnode, needs_update)
+end
+
+height(fh::FixedHeightBox) = fh.height[]
 
 
 """
@@ -593,6 +606,12 @@ function Base.setindex!(g::GridLayout, la::LayoutedAxis, rows::Indexables, cols:
     la
 end
 
+function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, cols::Indexables)
+    fh = FixedHeightBox(g, ls.height, Node(0f0), ls.bboxnode)
+    g[rows, cols] = fh
+    ls
+end
+
 function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
     push!(g.content, spa)
     on(spa.al.needs_update) do update
@@ -625,7 +644,7 @@ function solve(fb::FixedSizeBox, bbox::BBox)
 end
 
 function solve(fb::FixedHeightBox, bbox::BBox)
-    fhh = fb.height
+    fhh = fb.height[]
 
     bh = height(bbox)
     bw = width(bbox)
@@ -635,10 +654,10 @@ function solve(fb::FixedHeightBox, bbox::BBox)
 
     resty = bh - fhh
 
-    yal = fb.alignment
+    yal = fb.alignment[]
 
     oxinner = oxb
     oyinner = oyb + yal * resty
 
-    SolvedFixedHeightBox(BBox(oxinner, oxinner + bw, oyinner + fhh, oyinner), bbox, fb.updatefunc)
+    SolvedFixedHeightBox(BBox(oxinner, oxinner + bw, oyinner + fhh, oyinner), fb.bboxnode)
 end

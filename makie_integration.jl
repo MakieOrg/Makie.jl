@@ -517,7 +517,7 @@ end
 function applylayout(sfh::SolvedFixedHeightBox)
     # call the supplied updatefunc with both bboxes
     # maybe this should be an observable thing?
-    sfh.updatefunc(sfh.inner, sfh.outer)
+    sfh.bboxnode[] = sfh.bbox
 end
 
 function shrinkbymargin(rect, margin)

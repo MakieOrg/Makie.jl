@@ -51,6 +51,31 @@ mutable struct LayoutedAxis
     yticksvisible::Node{Float32}
 end
 
+struct LayoutedSlider
+    scene::Scene
+    bboxnode::Node{BBox}
+    height::Node{Float32}
+    slider::Slider
+end
+
+function LayoutedSlider(scene::Scene, height::Real, sliderrange)
+
+    bboxnode = Node(BBox(0, 1, 1, 0))
+    heightnode = Node(Float32(height))
+    position = Node(Point2f0(0, 0))
+    widthnode = Node(Float32(100))
+    slider = slider!(scene, sliderrange, position=position,
+        sliderheight=heightnode, sliderlength=widthnode, raw=true)[end]
+
+    on(bboxnode) do bbox
+        position[] = Point(left(bbox), bottom(bbox))
+        widthnode[] = width(bbox)
+    end
+
+    LayoutedSlider(scene, bboxnode, heightnode, slider)
+end
+
+
 width(rect::Rect2D) = right(rect) - left(rect)
 height(rect::Rect2D) = top(rect) - bottom(rect)
 
