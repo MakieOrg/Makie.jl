@@ -13,8 +13,10 @@ StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 AbstractPlotting = "≥ 0.9.9"
 GLMakie = "≥ 0.0.7"
 MakieGallery = "≥ 0.1.0"
+StaticArrays = "0"
 StatsMakie = "≥ 0.0.6"
 julia = "≥ 1"
+
 
 [extras]
 AxisArrays = "39de3d68-74b9-583c-8d2d-e117c070f3a9"
