@@ -193,8 +193,8 @@ function FixedSizeBox(parent, alignment, width, height, bboxnode)
     FixedSizeBox(parent, alignment, width, height, bboxnode, needs_update)
 end
 
-height(fb::FixedSizeBox) = fb.height[]
-width(fb::FixedSizeBox) = fb.width[]
+determineheight(fb::FixedSizeBox) = fb.height[]
+determinewidth(fb::FixedSizeBox) = fb.width[]
 
 struct FixedHeightBox <: Alignable
     parent::GridLayout
@@ -215,7 +215,7 @@ function FixedHeightBox(parent, height, alignment, bboxnode)
     FixedHeightBox(parent, height, alignment, bboxnode, needs_update)
 end
 
-height(fh::FixedHeightBox) = fh.height[]
+determineheight(fh::FixedHeightBox) = fh.height[]
 
 
 """
@@ -394,10 +394,10 @@ function solve(gl::GridLayout, bbox::BBox)
     )
 end
 
-function height(a::Alignable)
+function determineheight(a::Alignable)
     nothing
 end
-function width(a::Alignable)
+function determinewidth(a::Alignable)
     nothing
 end
 
@@ -406,7 +406,7 @@ function determinecolsize(icol, gl)
     for c in gl.content
         # content has to be single span to be determinable
         if c.sp.cols.start == icol && c.sp.cols.stop == icol
-            w = width(c.al)
+            w = determinewidth(c.al)
             if !isnothing(w)
                 colsize = isnothing(colsize) ? w : max(colsize, w)
             end
@@ -420,7 +420,7 @@ function determinerowsize(row, gl)
     for c in gl.content
         # content has to be single span to be determinable
         if c.sp.rows.start == row && c.sp.rows.stop == row
-            h = height(c.al)
+            h = determineheight(c.al)
             if !isnothing(h)
                 rowsize = isnothing(rowsize) ? h : max(rowsize, h)
             end
