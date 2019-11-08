@@ -91,6 +91,13 @@ struct GridLayout <: Alignable
         parent, content, nrows, ncols, rowsizes, colsizes,
         addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
 
+        if nrows < 1
+            error("Number of rows can't be smaller than 1")
+        end
+        if ncols < 1
+            error("Number of columns can't be smaller than 1")
+        end
+
         if length(rowsizes) != nrows
             error("There are $nrows rows but $(length(rowsizes)) row sizes.")
         end
@@ -138,6 +145,52 @@ function GridLayout(parent, nrows, ncols, rowsizes, colsizes,
     end
 
     gl
+end
+
+function GridLayout(parent, nrows, ncols;
+        rowsizes = nothing,
+        colsizes = nothing,
+        addedrowgaps = nothing,
+        addedcolgaps = nothing,
+        alignmode = Inside(),
+        equalprotrusiongaps = (false, false))
+
+    if isnothing(rowsizes)
+        rowsizes = [Auto() for _ in 1:nrows]
+    # duplicate a single row size into a vector for every row
+    elseif rowsizes isa ContentSize
+        rowsizes = [rowsizes for _ in 1:nrows]
+    elseif !(typeof(rowsizes) <: Vector{<: ContentSize})
+        error("Row sizes must be one size or a vector of sizes, not $(typeof(rowsizes))")
+    end
+
+    if isnothing(colsizes)
+        colsizes = [Auto() for _ in 1:ncols]
+    # duplicate a single col size into a vector for every col
+    elseif colsizes isa ContentSize
+        colsizes = [colsizes for _ in 1:ncols]
+    elseif !(typeof(colsizes) <: Vector{<: ContentSize})
+        error("Column sizes must be one size or a vector of sizes, not $(typeof(colsizes))")
+    end
+
+    if isnothing(addedrowgaps)
+        addedrowgaps = [Relative(0.01) for _ in 1:nrows-1]
+    elseif addedrowgaps isa GapSize
+        addedrowgaps = [addedrowgaps for _ in 1:nrows-1]
+    elseif !(typeof(addedrowgaps) <: Vector{<: GapSize})
+        error("Row gaps must be one size or a vector of sizes, not $(typeof(addedrowgaps))")
+    end
+
+    if isnothing(addedcolgaps)
+        addedcolgaps = [Relative(0.01) for _ in 1:ncols-1]
+    elseif addedcolgaps isa GapSize
+        addedcolgaps = [addedcolgaps for _ in 1:ncols-1]
+    elseif !(typeof(addedcolgaps) <: Vector{<: GapSize})
+        error("Column gaps must be one size or a vector of sizes, not $(typeof(addedcolgaps))")
+    end
+
+    GridLayout(parent, nrows, ncols, rowsizes, colsizes,
+        addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps)
 end
 
 struct SolvedGridLayout <: Alignable
