@@ -86,6 +86,27 @@ struct GridLayout <: Alignable
     alignmode::AlignMode
     equalprotrusiongaps::Tuple{Bool, Bool}
     needs_update::Node{Bool}
+
+    function GridLayout(
+        parent, content, nrows, ncols, rowsizes, colsizes,
+        addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
+
+        if length(rowsizes) != nrows
+            error("There are $nrows rows but $(length(rowsizes)) row sizes.")
+        end
+        if length(colsizes) != ncols
+            error("There are $ncols columns but $(length(colsizes)) column sizes.")
+        end
+        if length(addedrowgaps) != nrows - 1
+            error("There are $nrows rows but $(length(addedrowgaps)) row gaps.")
+        end
+        if length(addedcolgaps) != ncols - 1
+            error("There are $ncols columns but $(length(addedcolgaps)) column gaps.")
+        end
+
+        new(parent, content, nrows, ncols, rowsizes, colsizes,
+            addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
+    end
 end
 
 function GridLayout(parent, nrows, ncols, rowsizes, colsizes,
