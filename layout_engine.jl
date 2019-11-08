@@ -152,7 +152,8 @@ function AxisLayout(parent, protrusions, bboxnode)
     AxisLayout(parent, protrusions, bboxnode, needs_update)
 end
 
-struct SolvedFixedSizeBox{T} <: Alignable
+struct SolvedFixedSizeBox <: Alignable
+    bbox::BBox
     bboxnode::Node{BBox}
 end
 
@@ -175,10 +176,25 @@ struct FixedSizeBox <: Alignable
     width::Node{Float32}
     height::Node{Float32}
     bboxnode::Node{BBox}
+    needs_update::Node{Bool}
 end
 
-height(fb::FixedSizeBox) = height(fb.bbox)
-width(fb::FixedSizeBox) = width(fb.bbox)
+function FixedSizeBox(parent, alignment, width, height, bboxnode)
+    needs_update = Node(false)
+    on(height) do h
+        needs_update[] = true
+    end
+    on(width) do w
+        needs_update[] = true
+    end
+    on(alignment) do a
+        needs_update[] = true
+    end
+    FixedSizeBox(parent, alignment, width, height, bboxnode, needs_update)
+end
+
+height(fb::FixedSizeBox) = fb.height[]
+width(fb::FixedSizeBox) = fb.width[]
 
 struct FixedHeightBox <: Alignable
     parent::GridLayout
@@ -612,6 +628,12 @@ function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, col
     ls
 end
 
+function Base.setindex!(g::GridLayout, lb::LayoutedButton, rows::Indexables, cols::Indexables)
+    fs = FixedSizeBox(g, Node((0.5f0, 0.5f0)), lb.width, lb.height, lb.bboxnode)
+    g[rows, cols] = fs
+    lb
+end
+
 function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
     push!(g.content, spa)
     on(spa.al.needs_update) do update
@@ -622,8 +644,8 @@ function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
 end
 
 function solve(fb::FixedSizeBox, bbox::BBox)
-    fbh = height(fb.bbox)
-    fbw = width(fb.bbox)
+    fbh = fb.height[]
+    fbw = fb.width[]
 
     bh = height(bbox)
     bw = width(bbox)
@@ -634,13 +656,13 @@ function solve(fb::FixedSizeBox, bbox::BBox)
     restx = bw - fbw
     resty = bh - fbh
 
-    xal = fb.alignment[1]
-    yal = fb.alignment[2]
+    xal = fb.alignment[][1]
+    yal = fb.alignment[][2]
 
     oxinner = oxb + xal * restx
     oyinner = oyb + yal * resty
 
-    SolvedFixedSizeBox(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), bbox, fb.content)
+    SolvedFixedSizeBox(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), fb.bboxnode)
 end
 
 function solve(fb::FixedHeightBox, bbox::BBox)

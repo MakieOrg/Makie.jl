@@ -12,6 +12,7 @@ include("makie_integration.jl")
 
 export LayoutedAxis
 export LayoutedSlider
+export LayoutedButton
 export linkxaxes!
 export linkyaxes!
 export GridLayout

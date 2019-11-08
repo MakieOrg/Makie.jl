@@ -510,13 +510,10 @@ function applylayout(sa::SolvedAxisLayout)
 end
 
 function applylayout(sfb::SolvedFixedSizeBox)
-    # hack because I put the text position node as the content
-    sfb.content[] = sfb.inner.origin
+    sfb.bboxnode[] = sfb.bbox
 end
 
 function applylayout(sfh::SolvedFixedHeightBox)
-    # call the supplied updatefunc with both bboxes
-    # maybe this should be an observable thing?
     sfh.bboxnode[] = sfh.bbox
 end
 
