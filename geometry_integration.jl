@@ -47,8 +47,8 @@ mutable struct LayoutedAxis
     yticklabelsvisible::Node{Bool}
     xticksize::Node{Float32}
     yticksize::Node{Float32}
-    xticksvisible::Node{Float32}
-    yticksvisible::Node{Float32}
+    xticksvisible::Node{Bool}
+    yticksvisible::Node{Bool}
 end
 
 struct LayoutedSlider
