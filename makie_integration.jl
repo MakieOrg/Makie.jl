@@ -266,9 +266,14 @@ function LayoutedAxis(
 
     campixel!(scene)
 
-    ticksnode = Node(Point2f0[])
-    ticks = linesegments!(
-        parent, ticksnode, linewidth = 2, show_axis = false
+    xticksnode = Node(Point2f0[])
+    xticks = linesegments!(
+        parent, xticksnode, linewidth = 2, show_axis = false, visible = xticksvisible
+    )[end]
+
+    yticksnode = Node(Point2f0[])
+    yticks = linesegments!(
+        parent, yticksnode, linewidth = 2, show_axis = false, visible = yticksvisible
     )[end]
 
     nmaxticks = 20
@@ -386,10 +391,8 @@ function LayoutedAxis(
         end
 
         # set tick mark positions
-        ticksnode[] = collect(Iterators.flatten(zip(
-            [xtickstarts; ytickstarts],
-            [xtickends; ytickends]
-        )))
+        xticksnode[] = collect(Iterators.flatten(zip(xtickstarts, xtickends)))
+        yticksnode[] = collect(Iterators.flatten(zip(ytickstarts, ytickends)))
     end
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
