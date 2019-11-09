@@ -512,12 +512,8 @@ function applylayout(sa::SolvedAxisLayout)
     sa.innerbboxnode[] = sa.innerbbox
 end
 
-function applylayout(sfb::SolvedFixedSizeBox)
+function applylayout(sfb::SolvedBoxLayout)
     sfb.bboxnode[] = sfb.bbox
-end
-
-function applylayout(sfh::SolvedFixedHeightBox)
-    sfh.bboxnode[] = sfh.bbox
 end
 
 function shrinkbymargin(rect, margin)

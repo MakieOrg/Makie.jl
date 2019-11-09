@@ -228,12 +228,7 @@ function AxisLayout(parent, protrusions, bboxnode)
     AxisLayout(parent, protrusions, bboxnode, needs_update)
 end
 
-struct SolvedFixedSizeBox <: Alignable
-    bbox::BBox
-    bboxnode::Node{BBox}
-end
-
-struct SolvedFixedHeightBox <: Alignable
+struct SolvedBoxLayout <: Alignable
     bbox::BBox
     bboxnode::Node{BBox}
 end
@@ -246,52 +241,62 @@ in the available BBox the fixed size content should be placed.
 For example, the figure title is placed above all else, but can then
 be aligned on the left, in the center, or on the right.
 """
-struct FixedSizeBox <: Alignable
+struct BoxLayout <: Alignable
     parent::GridLayout
-    alignment::Node{Tuple{Float32, Float32}}
-    width::Node{Float32}
-    height::Node{Float32}
+    width::Union{Nothing, Node{Float32}}
+    height::Union{Nothing, Node{Float32}}
+    halign::Union{Nothing, Node{Float32}}
+    valign::Union{Nothing, Node{Float32}}
     bboxnode::Node{BBox}
     needs_update::Node{Bool}
 end
 
-function FixedSizeBox(parent, alignment, width, height, bboxnode)
+function BoxLayout(parent, width::Node{Float32}, height::Node{Float32},
+        halign::Node{Float32}, valign::Node{Float32}, bboxnode::Node{BBox})
+
     needs_update = Node(false)
-    on(height) do h
+
+    onany(width, height, halign, valign) do w, h, ha, va
         needs_update[] = true
     end
-    on(width) do w
-        needs_update[] = true
-    end
-    on(alignment) do a
-        needs_update[] = true
-    end
-    FixedSizeBox(parent, alignment, width, height, bboxnode, needs_update)
+
+    BoxLayout(parent, width, height, halign, valign, bboxnode, needs_update)
 end
 
-determineheight(fb::FixedSizeBox) = fb.height[]
-determinewidth(fb::FixedSizeBox) = fb.width[]
-
-struct FixedHeightBox <: Alignable
-    parent::GridLayout
-    height::Node{Float32}
-    alignment::Node{Float32}
-    bboxnode::Node{BBox}
-    needs_update::Node{Bool}
-end
-
-function FixedHeightBox(parent, height, alignment, bboxnode)
+function BoxLayout(parent, width::Nothing, height::Node{Float32}, valign::Node{Float32}, bboxnode::Node{BBox})
     needs_update = Node(false)
-    on(height) do h
+
+    onany(height, valign) do h, va
         needs_update[] = true
     end
-    on(alignment) do a
-        needs_update[] = true
-    end
-    FixedHeightBox(parent, height, alignment, bboxnode, needs_update)
+
+    BoxLayout(parent, width, height, nothing, valign, bboxnode, needs_update)
 end
 
-determineheight(fh::FixedHeightBox) = fh.height[]
+function BoxLayout(parent, width::Node{Float32}, height::Nothing, halign::Node{Float32}, bboxnode::Node{BBox})
+    needs_update = Node(false)
+
+    onany(width, halign) do w, ha
+        needs_update[] = true
+    end
+
+    BoxLayout(parent, width, height, halign, nothing, bboxnode, needs_update)
+end
+
+function determineheight(b::BoxLayout)
+    if isnothing(b.height)
+        nothing
+    else
+        b.height[]
+    end
+end
+function determinewidth(b::BoxLayout)
+    if isnothing(b.width)
+        nothing
+    else
+        b.width[]
+    end
+end
 
 
 """
@@ -304,8 +309,7 @@ rightprotrusion(x) = protrusion(x, Right())
 bottomprotrusion(x) = protrusion(x, Bottom())
 topprotrusion(x) = protrusion(x, Top())
 
-protrusion(fb::FixedSizeBox, side::Side) = 0.0
-protrusion(fh::FixedHeightBox, side::Side) = 0.0
+protrusion(b::BoxLayout, side::Side) = 0.0
 # protrusion(u::AxisLayout, side::Side) = u.protrusions[side]
 protrusion(a::AxisLayout, ::Left) = a.protrusions[][1]
 protrusion(a::AxisLayout, ::Right) = a.protrusions[][2]
@@ -709,8 +713,8 @@ function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, col
 end
 
 function Base.setindex!(g::GridLayout, lb::LayoutedButton, rows::Indexables, cols::Indexables)
-    fs = FixedSizeBox(g, Node((0.5f0, 0.5f0)), lb.width, lb.height, lb.bboxnode)
-    g[rows, cols] = fs
+    b = BoxLayout(g, lb.width, lb.height, Node(0.5f0), Node(0.5f0), lb.bboxnode)
+    g[rows, cols] = b
     lb
 end
 
@@ -723,43 +727,37 @@ function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
     g.needs_update[] = true
 end
 
-function solve(fb::FixedSizeBox, bbox::BBox)
-    fbh = fb.height[]
-    fbw = fb.width[]
+function solve(b::BoxLayout, bbox::BBox)
 
-    bh = height(bbox)
-    bw = width(bbox)
+    fbh = if isnothing(b.height)
+        # the height is not fixed and therefore takes the bbox value
+        height(bbox)
+    else
+        b.height[]
+    end
+
+    fbw = if isnothing(b.width)
+        # the width is not fixed and therefore takes the bbox value
+        width(bbox)
+    else
+        b.width[]
+    end
 
     oxb = bbox.origin[1]
     oyb = bbox.origin[2]
+
+
+    bh = height(bbox)
+    bw = width(bbox)
 
     restx = bw - fbw
     resty = bh - fbh
 
-    xal = fb.alignment[][1]
-    yal = fb.alignment[][2]
+    xal = isnothing(b.halign) ? 0f0 : b.halign[]
+    yal = isnothing(b.valign) ? 0f0 : b.valign[]
 
     oxinner = oxb + xal * restx
     oyinner = oyb + yal * resty
 
-    SolvedFixedSizeBox(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), fb.bboxnode)
-end
-
-function solve(fb::FixedHeightBox, bbox::BBox)
-    fhh = fb.height[]
-
-    bh = height(bbox)
-    bw = width(bbox)
-
-    oxb = bbox.origin[1]
-    oyb = bbox.origin[2]
-
-    resty = bh - fhh
-
-    yal = fb.alignment[]
-
-    oxinner = oxb
-    oyinner = oyb + yal * resty
-
-    SolvedFixedHeightBox(BBox(oxinner, oxinner + bw, oyinner + fhh, oyinner), fb.bboxnode)
+    SolvedBoxLayout(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), b.bboxnode)
 end
