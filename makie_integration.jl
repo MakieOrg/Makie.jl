@@ -371,7 +371,8 @@ function LayoutedAxis(
         for i in 1:nmaxticks
             if i <= nxticks
                 xticklabelnodes[i][] = xtickstrings[i]
-                xticklabelposnodes[i][] = xtickends[i] + Point(0.0, -10.0)
+                xticklabelposnodes[i][] = xtickends[i] +
+                    Point(0f0, xticksvisible[] ? -xticksize[] : 0f0)
                 xticklabels[i].visible = true && xticklabelsvisible[]
             else
                 xticklabels[i].visible = false
@@ -383,7 +384,8 @@ function LayoutedAxis(
         for i in 1:nmaxticks
             if i <= nyticks
                 yticklabelnodes[i][] = ytickstrings[i]
-                yticklabelposnodes[i][] = ytickends[i] + Point(-10.0, 0.0)
+                yticklabelposnodes[i][] = ytickends[i] +
+                    Point(yticksvisible[] ? -yticksize[] : 0f0, 0f0)
                 yticklabels[i].visible = true && yticklabelsvisible[]
             else
                 yticklabels[i].visible = false
