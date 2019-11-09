@@ -58,22 +58,23 @@ end
 Outside() = Outside((0f0, 0f0, 0f0, 0f0))
 Outside(left::Real, right::Real, top::Real, bottom::Real) = Outside(Float32.((left, right, top, bottom)))
 
-struct Auto
+abstract type ContentSize end
+abstract type GapSize <: ContentSize end
+
+struct Auto <: ContentSize
     x::Float64 # ratio in case it's not determinable
 end
 Auto() = Auto(1)
-struct Fixed
+struct Fixed <: GapSize
     x::Float64
 end
-struct Relative
+struct Relative <: GapSize
     x::Float64
 end
-struct Aspect
+struct Aspect <: ContentSize
     index::Int
     ratio::Float64
 end
-const ContentSize = Union{Auto, Fixed, Relative, Aspect}
-const GapSize = Union{Fixed, Relative}
 
 struct GridLayout <: Alignable
     parent::Union{Scene, GridLayout}
