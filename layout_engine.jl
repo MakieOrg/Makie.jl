@@ -707,7 +707,7 @@ function Base.setindex!(g::GridLayout, la::LayoutedAxis, rows::Indexables, cols:
 end
 
 function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, cols::Indexables)
-    fh = FixedHeightBox(g, ls.height, Node(0f0), ls.bboxnode)
+    fh = BoxLayout(g, nothing, ls.height, Node(0.5f0), ls.bboxnode)
     g[rows, cols] = fh
     ls
 end
