@@ -76,8 +76,8 @@ struct Aspect <: ContentSize
     ratio::Float64
 end
 
-struct GridLayout <: Alignable
-    parent::Union{Scene, GridLayout}
+mutable struct GridLayout <: Alignable
+    parent::Union{Nothing, Scene, GridLayout}
     content::Vector{SpannedAlignable}
     nrows::Int
     ncols::Int
@@ -113,43 +113,39 @@ struct GridLayout <: Alignable
             error("There are $ncols columns but $(length(addedcolgaps)) column gaps.")
         end
 
-        new(parent, content, nrows, ncols, rowsizes, colsizes,
+        g = new(parent, content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
+
+        setup_updates!(g)
+
+        g
     end
 end
 
-function GridLayout(parent, nrows, ncols, rowsizes, colsizes,
-                    addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps)
+function setup_updates!(gl::GridLayout)
+    parent = gl.parent
 
-    needs_update = Node(true)
-
-    content = []
-
-    gl = GridLayout(
-        parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update
-    )
-
-    if parent isa Scene
-        on(needs_update) do update
+    if isnothing(parent)
+        # Can't setup updates for GridLayout if no parent is defined."
+    elseif parent isa Scene
+        on(gl.needs_update) do update
             sg = solve(gl, BBox(shrinkbymargin(pixelarea(parent)[], 0)))
             applylayout(sg)
         end
 
         # update when parent scene changes size
         on(pixelarea(parent)) do px
-            needs_update[] = true
+            gl.needs_update[] = true
         end
     elseif parent isa GridLayout
-        on(needs_update) do update
+        on(gl.needs_update) do update
             parent.needs_update[] = true
         end
     end
-
-    gl
 end
 
-function GridLayout(parent, nrows, ncols;
+function GridLayout(nrows, ncols;
+        parent = nothing,
         rowsizes = nothing,
         colsizes = nothing,
         addedrowgaps = nothing,
@@ -191,8 +187,13 @@ function GridLayout(parent, nrows, ncols;
         error("Column gaps must be one size or a vector of sizes, not $(typeof(addedcolgaps))")
     end
 
-    GridLayout(parent, nrows, ncols, rowsizes, colsizes,
-        addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps)
+    needs_update = Node(true)
+
+    content = []
+
+    GridLayout(
+        parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
 end
 
 struct SolvedGridLayout <: Alignable
@@ -677,6 +678,13 @@ grid[1:3, 2:5] = obj
 and all combinations of the above
 """
 function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Indexables)
+    rows, cols = check_rows_cols(g, rows, cols)
+
+    sp = SpannedAlignable(a, Span(rows, cols))
+    connectchildlayout!(g, sp)
+end
+
+function check_rows_cols(g::GridLayout, rows, cols)
     if rows isa Int
         rows = rows:rows
     elseif rows isa Colon
@@ -694,16 +702,27 @@ function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Ind
     if !((1 <= cols.start <= g.ncols) || (1 <= cols.stop <= g.ncols))
         error("invalid col span $cols for grid with $(g.ncols) columns")
     end
-
-    sp = SpannedAlignable(a, Span(rows, cols))
-    connectchildlayout!(g, sp)
+    rows, cols
 end
-
 
 function Base.setindex!(g::GridLayout, la::LayoutedAxis, rows::Indexables, cols::Indexables)
     al = AxisLayout(g, la.protrusions, la.bboxnode)
     g[rows, cols] = al
     la
+end
+
+function Base.setindex!(g::GridLayout, gsub::GridLayout, rows::Indexables, cols::Indexables)
+    # avoid stackoverflow error
+    # g[rows, cols] = gsub
+
+    rows, cols = check_rows_cols(g, rows, cols)
+
+    gsub.parent = g
+    setup_updates!(gsub)
+    sp = SpannedAlignable(gsub, Span(rows, cols))
+    connectchildlayout!(g, sp)
+
+    gsub
 end
 
 function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, cols::Indexables)
