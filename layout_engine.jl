@@ -400,6 +400,8 @@ function solve(gl::GridLayout, bbox::BBox)
             return cg.x
         elseif cg isa Relative
             return cg.x * remaininghorizontalspace
+        else
+            return 0.0 # for float type inference
         end
     end
     addedrowgaps = map(gl.addedrowgaps) do rg
@@ -407,6 +409,8 @@ function solve(gl::GridLayout, bbox::BBox)
             return rg.x
         elseif rg isa Relative
             return rg.x * remainingverticalspace
+        else
+            return 0.0 # for float type inference
         end
     end
 
