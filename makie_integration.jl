@@ -535,8 +535,8 @@ function applylayout(sa::SolvedAxisLayout)
     sa.innerbboxnode[] = sa.innerbbox
 end
 
-function applylayout(sfb::SolvedBoxLayout)
-    sfb.bboxnode[] = sfb.bbox
+function applylayout(sb::SolvedBoxLayout)
+    sb.bboxnode[] = sb.bbox
 end
 
 function shrinkbymargin(rect, margin)
