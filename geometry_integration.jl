@@ -59,6 +59,10 @@ function default_attributes(::Type{LayoutedAxis})
         yticklabelpad = 20f0,
         xtickalign = 0f0,
         ytickalign = 0f0,
+        xpanlock = false,
+        ypanlock = false,
+        xzoomlock = false,
+        yzoomlock = false,
     )
 end
 

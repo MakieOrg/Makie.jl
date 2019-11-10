@@ -140,7 +140,7 @@ end
 
 # struct LimitCamera <: AbstractCamera end
 
-function add_pan!(scene::SceneLike, limits)
+function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock)
     startpos = Base.RefValue((0.0, 0.0))
     pan = Mouse.right
     xzoom = Keyboard.x
@@ -166,24 +166,24 @@ function add_pan!(scene::SceneLike, limits)
 
                 diff_limits = diff_fraction .* widths(limits[])
 
-                if ispressed(scene, xzoom)
-                    limits[] = FRect(
-                        Vec2f0(limits[].origin) .+ Vec2f0(diff_limits[1], 0), widths(limits[])
-                    )
-                elseif ispressed(scene, yzoom)
-                    limits[] = FRect(
-                        Vec2f0(limits[].origin) .+ Vec2f0(0, diff_limits[2]), widths(limits[])
-                    )
-                else
-                    limits[] = FRect(Vec2f0(limits[].origin) .+ Vec2f0(diff_limits), widths(limits[]))
+                xori, yori = Vec2f0(limits[].origin) .+ Vec2f0(diff_limits)
+
+                if xpanlock[] || ispressed(scene, yzoom)
+                    xori = limits[].origin[1]
                 end
+
+                if ypanlock[] || ispressed(scene, xzoom)
+                    yori = limits[].origin[2]
+                end
+
+                limits[] = FRect(Vec2f0(xori, yori), widths(limits[]))
             end
         end
         return
     end
 end
 
-function add_zoom!(scene::SceneLike, limits)
+function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock)
 
     e = events(scene)
     cam = camera(scene)
@@ -192,7 +192,7 @@ function add_zoom!(scene::SceneLike, limits)
         zoomspeed = 0.10f0
         zoombutton = nothing
         zoom = Float32(x[2])
-        if zoom != 0 && ispressed(scene, zoombutton) &&        AbstractPlotting.is_mouseinside(scene)
+        if zoom != 0 && ispressed(scene, zoombutton) && AbstractPlotting.is_mouseinside(scene)
             pa = pixelarea(scene)[]
 
             # don't let z go negative
@@ -208,11 +208,12 @@ function add_zoom!(scene::SceneLike, limits)
 
             xwidth = limits[].widths[1]
             ywidth = limits[].widths[2]
-            newxwidth = xwidth * z
-            newywidth = ywidth * z
 
-            newxorigin = xorigin + mp_fraction[1] * (xwidth - newxwidth)
-            newyorigin = yorigin + mp_fraction[2] * (ywidth - newywidth)
+            newxwidth = xzoomlock[] ? xwidth : xwidth * z
+            newywidth = yzoomlock[] ? ywidth : ywidth * z
+
+            newxorigin = xzoomlock[] ? xorigin : xorigin + mp_fraction[1] * (xwidth - newxwidth)
+            newyorigin = yzoomlock[] ? yorigin : yorigin + mp_fraction[2] * (ywidth - newywidth)
 
             if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.x)
                 limits[] = FRect(newxorigin, yorigin, newxwidth, ywidth)
@@ -235,7 +236,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
-        yticklabelpad, xtickalign, ytickalign,
+        yticklabelpad, xtickalign, ytickalign, xpanlock,
+        ypanlock, xzoomlock, yzoomlock,
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -244,8 +246,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
     scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
 
-    add_pan!(scene, limits)
-    add_zoom!(scene, limits)
+    add_pan!(scene, limits, xpanlock, ypanlock)
+    add_zoom!(scene, limits, xzoomlock, yzoomlock)
 
     campixel!(scene)
 
