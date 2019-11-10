@@ -63,6 +63,7 @@ function default_attributes(::Type{LayoutedAxis})
         ypanlock = false,
         xzoomlock = false,
         yzoomlock = false,
+        spinewidth = 2f0,
     )
 end
 

@@ -2,14 +2,21 @@ using AbstractPlotting.Keyboard
 using AbstractPlotting.Mouse
 using AbstractPlotting: ispressed, is_mouseinside
 
-function axislines!(scene, rect)
-    points = lift(rect) do r
-        p1 = Point2(r.origin[1], r.origin[2] + r.widths[2])
-        p2 = Point2(r.origin[1], r.origin[2])
-        p3 = Point2(r.origin[1] + r.widths[1], r.origin[2])
-        [p1, p2, p3]
+function axislines!(scene, rect, spinewidth)
+    bottomline = lift(rect, spinewidth) do r, sw
+        p1 = Point2(r.origin[1] - sw, r.origin[2] - 0.5f0 * sw)
+        p2 = Point2(r.origin[1] + r.widths[1] + sw, r.origin[2] - 0.5f0 * sw)
+        [p1, p2]
     end
-    lines!(scene, points, linewidth = 2, show_axis = false)
+
+    leftline = lift(rect, spinewidth) do r, sw
+        p1 = Point2(r.origin[1] - 0.5f0 * sw, r.origin[2] - sw)
+        p2 = Point2(r.origin[1] - 0.5f0 * sw, r.origin[2] + r.widths[2] + sw)
+        [p1, p2]
+    end
+
+    lines!(scene, bottomline, linewidth = spinewidth, show_axis = false)
+    lines!(scene, leftline, linewidth = spinewidth, show_axis = false)
 end
 
 function scale_range(vmin, vmax, n=1, threshold=100)
@@ -237,7 +244,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
         yticklabelpad, xtickalign, ytickalign, xpanlock,
-        ypanlock, xzoomlock, yzoomlock,
+        ypanlock, xzoomlock, yzoomlock, spinewidth
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -251,6 +258,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     campixel!(scene)
 
+    # set up empty nodes for ticks and their labels
     xticksnode = Node(Point2f0[])
     xticks = linesegments!(
         parent, xticksnode, linewidth = 2, show_axis = false, visible = xticksvisible
@@ -292,6 +300,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         )[end]
     end
 
+    # connect camera, plot size or limit changes to the axis decorations
     on(camera(scene), pixelarea(scene), limits) do pxa, lims
 
         nearclip = -10_000f0
@@ -331,7 +340,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
         y = pxa.origin[2]
         xtickpositions = [Point(x, y) for x in xticks_scene]
-        xtickstarts = [xtp + Point(0f0, xtickalign[] * xticksize[]) for xtp in xtickpositions]
+        xtickstarts = [xtp + Point(0f0, xtickalign[] * xticksize[] - 0.5f0 * spinewidth[]) for xtp in xtickpositions]
         xtickends = [t + Point(0.0, -xticksize[]) for t in xtickstarts]
 
         # height = px_aspect < 1 ? a.widths[2] * px_aspect : a.widths[2]
@@ -348,7 +357,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
         x = pxa.origin[1]
         ytickpositions = [Point(x, y) for y in yticks_scene]
-        ytickstarts = [ytp + Point(ytickalign[] * yticksize[], 0f0) for ytp in ytickpositions]
+        ytickstarts = [ytp + Point(ytickalign[] * yticksize[] - 0.5f0 * spinewidth[], 0f0) for ytp in ytickpositions]
         ytickends = [t + Point(-yticksize[], 0.0) for t in ytickstarts]
 
 
@@ -359,7 +368,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             if i <= nxticks
                 xticklabelnodes[i][] = xtickstrings[i]
                 xticklabelposnodes[i][] = xtickpositions[i] +
-                    Point(0f0, -xticklabelpad[])
+                    Point(0f0, -xticklabelpad[] -  0.5f0 * spinewidth[])
                 xticklabels[i].visible = true && xticklabelsvisible[]
             else
                 xticklabels[i].visible = false
@@ -372,7 +381,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             if i <= nyticks
                 yticklabelnodes[i][] = ytickstrings[i]
                 yticklabelposnodes[i][] = ytickpositions[i] +
-                    Point(-yticklabelpad[], 0f0)
+                    Point(-yticklabelpad[] - 0.5f0 * spinewidth[], 0f0)
                 yticklabels[i].visible = true && yticklabelsvisible[]
             else
                 yticklabels[i].visible = false
@@ -385,20 +394,22 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
-        xticklabelpad, xticklabelsize, xlabelpadding) do a, xlabelvisible, xticklabelsvisible,
-                xticklabelpad, xticklabelsize, xlabelpadding
+        xticklabelpad, xticklabelsize, xlabelpadding, spinewidth) do a, xlabelvisible, xticklabelsvisible,
+                xticklabelpad, xticklabelsize, xlabelpadding, spinewidth
 
         labelgap = xlabelpadding +
+            0.5f0 * spinewidth +
             (xticklabelsvisible ? xticklabelpad + xticklabelsize : 0f0)
 
         Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
     end
 
     ylabelpos = lift(scene.px_area, ylabelvisible, yticklabelsvisible,
-        yticklabelpad, yticklabelsize, ylabelpadding) do a, ylabelvisible, yticklabelsvisible,
-                yticklabelpad, yticklabelsize, ylabelpadding
+        yticklabelpad, yticklabelsize, ylabelpadding, spinewidth) do a, ylabelvisible, yticklabelsvisible,
+                yticklabelpad, yticklabelsize, ylabelpadding, spinewidth
 
         labelgap = ylabelpadding +
+            0.5f0 * spinewidth +
             (yticklabelsvisible ? yticklabelpad + yticklabelsize : 0f0)
 
         Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
@@ -447,16 +458,17 @@ function LayoutedAxis(parent::Scene; kwargs...)
         align = titlealignnode,
         show_axis=false)[end]
 
-    axislines!(parent, scene.px_area)
+    axislines!(parent, scene.px_area, spinewidth)
 
     function getprotrusions(xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
                 ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
                 ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
                 yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible,
-                xticklabelpad, yticklabelpad, xtickalign, ytickalign)
+                xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
         bottom = (xlabelvisible ? boundingbox(tx).widths[2] + xlabelpadding : 0f0) +
+            0.5f0 * spinewidth +
             max(
                 # when the xticklabel is visible take its size and pad
                 (xticklabelsvisible ? xticklabelsize + xticklabelpad : 0f0),
@@ -464,6 +476,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 (xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0)
             )
         left = (ylabelvisible ? boundingbox(ty).widths[1] + ylabelpadding : 0f0) +
+            0.5f0 * spinewidth +
             max(
                 (yticklabelsvisible ? yticklabelsize + yticklabelpad : 0f0),
                 (yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0)
@@ -497,7 +510,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xticklabelpad,
         yticklabelpad,
         xtickalign,
-        ytickalign
+        ytickalign,
+        spinewidth
         )
 
     needs_update = Node(true)
