@@ -226,33 +226,16 @@ function add_zoom!(scene::SceneLike, limits)
     end
 end
 
-function LayoutedAxis(
-        parent::Scene;
-        # scene::Scene,
-        # bboxnode::Node{BBox}
-        xlabel::Node{String} = Node("x label"),
-        ylabel::Node{String} = Node("y label"),
-        title::Node{String} = Node("Title"),
-        titlesize::Node{Float32} = Node(30f0),
-        titlegap::Node{Float32} = Node(10f0),
-        titlevisible::Node{Bool} = Node(true),
-        limits::Node{FRect2D} = Node(FRect2D(0, 0, 1, 1)),
-        # protrusions::Node{FRect2D},
-        # needs_update
-        xlabelsize::Node{Float32} = Node(20f0),
-        ylabelsize::Node{Float32} = Node(20f0),
-        xlabelvisible::Node{Bool} = Node(true),
-        ylabelvisible::Node{Bool} = Node(true),
-        xlabelpadding::Node{Float32} = Node(20f0),
-        ylabelpadding::Node{Float32} = Node(20f0),
-        xticklabelsize::Node{Float32} = Node(20f0),
-        yticklabelsize::Node{Float32} = Node(20f0),
-        xticklabelsvisible::Node{Bool} = Node(true),
-        yticklabelsvisible::Node{Bool} = Node(true),
-        xticksize::Node{Float32} = Node(10f0),
-        yticksize::Node{Float32} = Node(10f0),
-        xticksvisible::Node{Bool} = Node(true),
-        yticksvisible::Node{Bool} = Node(true)
+function LayoutedAxis(parent::Scene; kwargs...)
+
+    attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
+
+    @extract attrs (
+        xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
+        ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
+        xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
+        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
+        yticklabelpad, xtickalign, ytickalign,
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -343,10 +326,11 @@ function LayoutedAxis(
         xrange_scene = (pxa.origin[1], pxa.origin[1] + pxa.widths[1])
         width_scene = xrange_scene[2] - xrange_scene[1]
         xticks_scene = xrange_scene[1] .+ width_scene .* xfractions
-        ticksize = 10 # px
+
         y = pxa.origin[2]
-        xtickstarts = [Point(x, y) for x in xticks_scene]
-        xtickends = [t + Point(0.0, -ticksize) for t in xtickstarts]
+        xtickpositions = [Point(x, y) for x in xticks_scene]
+        xtickstarts = [xtp + Point(0f0, xtickalign[] * xticksize[]) for xtp in xtickpositions]
+        xtickends = [t + Point(0.0, -xticksize[]) for t in xtickstarts]
 
         # height = px_aspect < 1 ? a.widths[2] * px_aspect : a.widths[2]
         height = lims.widths[2]
@@ -359,10 +343,11 @@ function LayoutedAxis(
         yrange_scene = (pxa.origin[2], pxa.origin[2] + pxa.widths[2])
         height_scene = yrange_scene[2] - yrange_scene[1]
         yticks_scene = yrange_scene[1] .+ height_scene .* yfractions
-        ticksize = 10 # px
+
         x = pxa.origin[1]
-        ytickstarts = [Point(x, y) for y in yticks_scene]
-        ytickends = [t + Point(-ticksize, 0.0) for t in ytickstarts]
+        ytickpositions = [Point(x, y) for y in yticks_scene]
+        ytickstarts = [ytp + Point(ytickalign[] * yticksize[], 0f0) for ytp in ytickpositions]
+        ytickends = [t + Point(-yticksize[], 0.0) for t in ytickstarts]
 
 
         # set and position tick labels
@@ -371,8 +356,8 @@ function LayoutedAxis(
         for i in 1:nmaxticks
             if i <= nxticks
                 xticklabelnodes[i][] = xtickstrings[i]
-                xticklabelposnodes[i][] = xtickends[i] +
-                    Point(0f0, xticksvisible[] ? -xticksize[] : 0f0)
+                xticklabelposnodes[i][] = xtickpositions[i] +
+                    Point(0f0, -xticklabelpad[])
                 xticklabels[i].visible = true && xticklabelsvisible[]
             else
                 xticklabels[i].visible = false
@@ -384,8 +369,8 @@ function LayoutedAxis(
         for i in 1:nmaxticks
             if i <= nyticks
                 yticklabelnodes[i][] = ytickstrings[i]
-                yticklabelposnodes[i][] = ytickends[i] +
-                    Point(yticksvisible[] ? -yticksize[] : 0f0, 0f0)
+                yticklabelposnodes[i][] = ytickpositions[i] +
+                    Point(-yticklabelpad[], 0f0)
                 yticklabels[i].visible = true && yticklabelsvisible[]
             else
                 yticklabels[i].visible = false
@@ -398,23 +383,21 @@ function LayoutedAxis(
     end
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
-        xticksvisible, xticksize,
-        xticklabelsize, xlabelpadding) do a, xlabelvisible, xticklabelsvisible, xticksvisible, xticksize, xticklabelsize, xlabelpadding
+        xticklabelpad, xticklabelsize, xlabelpadding) do a, xlabelvisible, xticklabelsvisible,
+                xticklabelpad, xticklabelsize, xlabelpadding
 
         labelgap = xlabelpadding +
-            (xticklabelsvisible ? xticklabelsize : 0f0) +
-            (xticksvisible ? xticksize : 0f0)
+            (xticklabelsvisible ? xticklabelpad + xticklabelsize : 0f0)
 
         Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
     end
 
     ylabelpos = lift(scene.px_area, ylabelvisible, yticklabelsvisible,
-        yticksvisible, yticksize,
-        yticklabelsize, ylabelpadding) do a, ylabelvisible, yticklabelsvisible, yticksvisible, yticksize, yticklabelsize, ylabelpadding
+        yticklabelpad, yticklabelsize, ylabelpadding) do a, ylabelvisible, yticklabelsvisible,
+                yticklabelpad, yticklabelsize, ylabelpadding
 
         labelgap = ylabelpadding +
-            (yticklabelsvisible ? yticklabelsize : 0f0) +
-            (yticksvisible ? yticksize : 0f0)
+            (yticklabelsvisible ? yticklabelpad + yticklabelsize : 0f0)
 
         Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
     end
@@ -453,15 +436,22 @@ function LayoutedAxis(
     function getprotrusions(xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
                 ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
                 ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
-                yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible)
+                yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible,
+                xticklabelpad, yticklabelpad, xtickalign, ytickalign)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
         bottom = (xlabelvisible ? boundingbox(tx).widths[2] + xlabelpadding : 0f0) +
-            (xticklabelsvisible ? xticklabelsize : 0f0) +
-            (xticksvisible ? xticksize : 0f0)
+            max(
+                # when the xticklabel is visible take its size and pad
+                (xticklabelsvisible ? xticklabelsize + xticklabelpad : 0f0),
+                # or the xtick protrusion, depending on which value is larger
+                (xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0)
+            )
         left = (ylabelvisible ? boundingbox(ty).widths[1] + ylabelpadding : 0f0) +
-            (yticklabelsvisible ? yticklabelsize : 0f0) +
-            (yticksvisible ? yticksize : 0f0)
+            max(
+                (yticklabelsvisible ? yticklabelsize + yticklabelpad : 0f0),
+                (yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0)
+            )
         right = 0f0
 
         (left, right, top, bottom)
@@ -487,20 +477,21 @@ function LayoutedAxis(
         xticksize,
         yticksize,
         xticksvisible,
-        yticksvisible)
+        yticksvisible,
+        xticklabelpad,
+        yticklabelpad,
+        xtickalign,
+        ytickalign
+        )
 
     needs_update = Node(true)
+
+    # trigger a layout update whenever the protrusions change
     on(protrusions) do prot
         needs_update[] = true
     end
 
-    LayoutedAxis(
-        parent, scene, bboxnode, xlabel, ylabel, title, titlesize, titlegap, titlevisible,
-        limits, protrusions, needs_update, xlabelsize, ylabelsize, xlabelvisible, ylabelvisible,
-        xlabelpadding, ylabelpadding, xticklabelsize, yticklabelsize,
-        xticklabelsvisible, yticklabelsvisible, xticksize,
-        yticksize, xticksvisible, yticksvisible)
-
+    LayoutedAxis(parent, scene, bboxnode, limits, protrusions, needs_update, attrs)
 end
 
 function applylayout(sg::SolvedGridLayout)

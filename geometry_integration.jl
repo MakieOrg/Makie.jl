@@ -26,30 +26,41 @@ mutable struct LayoutedAxis
     parent::Scene
     scene::Scene
     bboxnode::Node{BBox}
-    xlabel::Node{String}
-    ylabel::Node{String}
-    title::Node{String}
-    titlesize::Node{Float32}
-    titlegap::Node{Float32}
-    titlevisible::Node{Bool}
     limits::Node{BBox}
     protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
     needs_update::Node{Bool}
-    xlabelsize::Node{Float32}
-    ylabelsize::Node{Float32}
-    xlabelvisible::Node{Bool}
-    ylabelvisible::Node{Bool}
-    xlabelpadding::Node{Float32}
-    ylabelpadding::Node{Float32}
-    xticklabelsize::Node{Float32}
-    yticklabelsize::Node{Float32}
-    xticklabelsvisible::Node{Bool}
-    yticklabelsvisible::Node{Bool}
-    xticksize::Node{Float32}
-    yticksize::Node{Float32}
-    xticksvisible::Node{Bool}
-    yticksvisible::Node{Bool}
+    attributes::Attributes
 end
+
+function default_attributes(::Type{LayoutedAxis})
+    Attributes(
+        xlabel = "x label",
+        ylabel = "y label",
+        title = "Title",
+        titlesize = 30f0,
+        titlegap = 10f0,
+        titlevisible = true,
+        xlabelsize = 20f0,
+        ylabelsize = 20f0,
+        xlabelvisible = true,
+        ylabelvisible = true,
+        xlabelpadding = 5f0,
+        ylabelpadding = 5f0,
+        xticklabelsize = 20f0,
+        yticklabelsize = 20f0,
+        xticklabelsvisible = true,
+        yticklabelsvisible = true,
+        xticksize = 10f0,
+        yticksize = 10f0,
+        xticksvisible = true,
+        yticksvisible = true,
+        xticklabelpad = 20f0,
+        yticklabelpad = 20f0,
+        xtickalign = 0f0,
+        ytickalign = 0f0,
+    )
+end
+
 
 struct LayoutedSlider
     scene::Scene
