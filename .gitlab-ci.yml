@@ -13,7 +13,6 @@ test:
 
     script:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
-      - glxinfo | grep 'version'
       - julia -e 'using InteractiveUtils; versioninfo()'
       - julia --project -e 'using Pkg; Pkg.pkg"add Makie#master StatsMakie#master MakieGallery#master GLMakie#master; test"'
 
