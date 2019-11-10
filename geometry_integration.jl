@@ -40,6 +40,7 @@ function default_attributes(::Type{LayoutedAxis})
         titlesize = 30f0,
         titlegap = 10f0,
         titlevisible = true,
+        titlealign = :center,
         xlabelsize = 20f0,
         ylabelsize = 20f0,
         xlabelvisible = true,

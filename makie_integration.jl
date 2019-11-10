@@ -231,7 +231,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
     attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
 
     @extract attrs (
-        xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
+        xlabel, ylabel, title, titlesize, titlegap, titlevisible, titlealign, xlabelsize,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
@@ -418,8 +418,22 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     ty.align = (:center, :bottom)
 
-    titlepos = lift(scene.px_area, titlegap) do a, titlegap
-        Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] + a.widths[2] + titlegap)
+    titlepos = lift(scene.px_area, titlegap, titlealign) do a, titlegap, align
+        x = if align == :center
+            a.origin[1] + a.widths[1] / 2
+        elseif align == :left
+            a.origin[1]
+        elseif align == :right
+            a.origin[1] + a.widths[1]
+        else
+            error("Title align $align not supported.")
+        end
+
+        Point2(x, a.origin[2] + a.widths[2] + titlegap)
+    end
+
+    titlealignnode = lift(titlealign) do align
+        (align, :bottom)
     end
 
 
@@ -428,7 +442,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         position = titlepos,
         visible = titlevisible,
         textsize = titlesize,
-        align = (:center, :bottom),
+        align = titlealignnode,
         show_axis=false)[end]
 
     axislines!(parent, scene.px_area)
