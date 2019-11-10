@@ -239,11 +239,11 @@ function LayoutedAxis(parent::Scene; kwargs...)
     attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
 
     @extract attrs (
-        xlabel, ylabel, title, titlesize, titlegap, titlevisible, titlealign, xlabelsize,
+        xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign, xlabelsize,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
-        yticklabelpad, xtickalign, ytickalign, xpanlock,
+        yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xpanlock,
         ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor,
     )
@@ -262,12 +262,12 @@ function LayoutedAxis(parent::Scene; kwargs...)
     # set up empty nodes for ticks and their labels
     xticksnode = Node(Point2f0[])
     xticks = linesegments!(
-        parent, xticksnode, linewidth = 2, show_axis = false, visible = xticksvisible
+        parent, xticksnode, linewidth = xtickwidth, show_axis = false, visible = xticksvisible
     )[end]
 
     yticksnode = Node(Point2f0[])
     yticks = linesegments!(
-        parent, yticksnode, linewidth = 2, show_axis = false, visible = yticksvisible
+        parent, yticksnode, linewidth = ytickwidth, show_axis = false, visible = yticksvisible
     )[end]
 
     xgridnode = Node(Point2f0[])
@@ -476,6 +476,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         visible = titlevisible,
         textsize = titlesize,
         align = titlealignnode,
+        font = titlefont,
         show_axis=false)[end]
 
     axislines!(parent, scene.px_area, spinewidth)
