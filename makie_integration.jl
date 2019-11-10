@@ -327,7 +327,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
     # connect camera, plot size or limit changes to the axis decorations
     on(camera(scene), pixelarea(scene), limits) do pxa, lims
 
-
         px_ox, px_oy = pxa.origin
         px_w, px_h = pxa.widths
 
@@ -427,19 +426,16 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     tx = text!(
         parent, xlabel, textsize = xlabelsize,
-        position = xlabelpos, show_axis = false, visible = xlabelvisible
+        position = xlabelpos, show_axis = false, visible = xlabelvisible,
+        align = (:center, :top)
     )[end]
-
-    tx.align = (:center, :top)
 
     ty = text!(
         parent, ylabel, textsize = ylabelsize,
         position = ylabelpos, rotation = pi/2, show_axis = false,
-        visible = ylabelvisible
+        visible = ylabelvisible, align = (:center, :bottom)
 
     )[end]
-
-    ty.align = (:center, :bottom)
 
     titlepos = lift(scene.px_area, titlegap, titlealign) do a, titlegap, align
         x = if align == :center
