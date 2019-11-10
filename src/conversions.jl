@@ -665,6 +665,11 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
     end
 end
 
+function AbstractPlotting.convert_attribute(cg::PlotUtils.ColorGradient, ::key"colormap", n::Integer = 30)
+    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
+    return getindex.(Ref(cg), LinRange(first(c.values), last(c.values), n)) # workaround until PlotUtils tags a release
+    # TODO change this once PlotUtils supports collections of indices
+end
 
 
 """
