@@ -55,7 +55,8 @@ struct Outside <: AlignMode
     padding::Tuple{Float32, Float32, Float32, Float32}
 end
 
-Outside() = Outside((0f0, 0f0, 0f0, 0f0))
+Outside() = Outside(0f0)
+Outside(padding::Real) = Outside(Float32.(Tuple(padding for _ in 1:4)))
 Outside(left::Real, right::Real, top::Real, bottom::Real) = Outside(Float32.((left, right, top, bottom)))
 
 abstract type ContentSize end
