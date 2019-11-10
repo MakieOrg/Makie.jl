@@ -244,7 +244,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
         yticklabelpad, xtickalign, ytickalign, xpanlock,
-        ypanlock, xzoomlock, yzoomlock, spinewidth
+        ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
+        xgridwidth, ygridwidth, xgridcolor, ygridcolor,
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -267,6 +268,18 @@ function LayoutedAxis(parent::Scene; kwargs...)
     yticksnode = Node(Point2f0[])
     yticks = linesegments!(
         parent, yticksnode, linewidth = 2, show_axis = false, visible = yticksvisible
+    )[end]
+
+    xgridnode = Node(Point2f0[])
+    xgridlines = linesegments!(
+        parent, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
+        color = xgridcolor
+    )[end]
+
+    ygridnode = Node(Point2f0[])
+    ygridlines = linesegments!(
+        parent, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
+        color = ygridcolor
     )[end]
 
     nmaxticks = 20
@@ -339,9 +352,11 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xticks_scene = xrange_scene[1] .+ width_scene .* xfractions
 
         y = pxa.origin[2]
+
         xtickpositions = [Point(x, y) for x in xticks_scene]
         xtickstarts = [xtp + Point(0f0, xtickalign[] * xticksize[] - 0.5f0 * spinewidth[]) for xtp in xtickpositions]
         xtickends = [t + Point(0.0, -xticksize[]) for t in xtickstarts]
+        topxtickpositions = [xtp + Point2f0(0, pxa.widths[2]) for xtp in xtickpositions]
 
         # height = px_aspect < 1 ? a.widths[2] * px_aspect : a.widths[2]
         height = lims.widths[2]
@@ -356,9 +371,11 @@ function LayoutedAxis(parent::Scene; kwargs...)
         yticks_scene = yrange_scene[1] .+ height_scene .* yfractions
 
         x = pxa.origin[1]
+
         ytickpositions = [Point(x, y) for y in yticks_scene]
         ytickstarts = [ytp + Point(ytickalign[] * yticksize[] - 0.5f0 * spinewidth[], 0f0) for ytp in ytickpositions]
         ytickends = [t + Point(-yticksize[], 0.0) for t in ytickstarts]
+        rightytickpositions = [ytp + Point2f0(pxa.widths[1], 0) for ytp in ytickpositions]
 
 
         # set and position tick labels
@@ -391,6 +408,9 @@ function LayoutedAxis(parent::Scene; kwargs...)
         # set tick mark positions
         xticksnode[] = collect(Iterators.flatten(zip(xtickstarts, xtickends)))
         yticksnode[] = collect(Iterators.flatten(zip(ytickstarts, ytickends)))
+
+        xgridnode[] = collect(Iterators.flatten(zip(xtickpositions, topxtickpositions)))
+        ygridnode[] = collect(Iterators.flatten(zip(ytickpositions, rightytickpositions)))
     end
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,

@@ -64,6 +64,12 @@ function default_attributes(::Type{LayoutedAxis})
         xzoomlock = false,
         yzoomlock = false,
         spinewidth = 2f0,
+        xgridvisible = true,
+        ygridvisible = true,
+        xgridwidth = 2f0,
+        ygridwidth = 2f0,
+        xgridcolor = RGBAf0(0, 0, 0, 0.07),
+        ygridcolor = RGBAf0(0, 0, 0, 0.07),
     )
 end
 
