@@ -191,7 +191,7 @@ insert_glyph!(atlas::TextureAtlas, glyph::Char, font) = get!(atlas.mapping, (gly
     uv_offset_width = Vec4f0(relative_start..., relative_width...)
     i = atlas.index
     push!(atlas.attributes, uv_offset_width)
-    push!(atlas.scale, Vec2f0(width_nopadd + 2))
+    push!(atlas.scale, Vec2f0(width_nopadd .+ 2))
     push!(atlas.extent, extent)
     atlas.index = i + 1
     return i
