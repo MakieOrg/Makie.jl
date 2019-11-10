@@ -234,6 +234,17 @@ function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock)
     end
 end
 
+function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
+    n = length(vec1)
+    @assert n == length(vec2)
+
+    vec = Vector{T}(undef, 2 * n)
+    for i in 1:n, j in 1:2
+        vec[2(i - 1) + j] = j == 1 ? vec1[i] : vec2[i]
+    end
+    vec
+end
+
 function LayoutedAxis(parent::Scene; kwargs...)
 
     attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
@@ -316,66 +327,45 @@ function LayoutedAxis(parent::Scene; kwargs...)
     # connect camera, plot size or limit changes to the axis decorations
     on(camera(scene), pixelarea(scene), limits) do pxa, lims
 
+
+        px_ox, px_oy = pxa.origin
+        px_w, px_h = pxa.widths
+
         nearclip = -10_000f0
         farclip = 10_000f0
 
         limox, limoy = Float32.(lims.origin)
         limw, limh = Float32.(widths(lims))
-        l, b = Float32.(pxa.origin)
-        w, h = Float32.(widths(pxa))
+
         projection = AbstractPlotting.orthographicprojection(
             limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
 
-        px_aspect = pxa.widths[1] / pxa.widths[2]
-
-        width = lims.widths[1]
-        xrange = (lims.origin[1], lims.origin[1] + width)
-
-        if width == 0 || !isfinite(xrange[1]) || !isfinite(xrange[2])
+        if limw == 0 || limh == 0 || !isfinite(limox) || !isfinite(limw)
             return
         end
 
         ideal_tick_distance = 80 # px
-        xtickvals = locateticks(xrange..., pxa.widths[1], ideal_tick_distance)
-        # xtickvals, vminbest, vmaxbest = optimize_ticks(xrange...)
+        xtickvals = locateticks(limox, limox + limw, px_w, ideal_tick_distance)
 
+        xfractions = (xtickvals .- limox) ./ limw
+        xticks_scene = px_ox .+ px_w .* xfractions
 
-        # this code here tries to transform between values given in pixels of the
-        # scene and the camera area, but this is incorrect right now and everything
-        # should just be determined by the now unused limits that are saved in the
-        # LayoutedAxis object
-        xfractions = (xtickvals .- xrange[1]) ./ width
-        xrange_scene = (pxa.origin[1], pxa.origin[1] + pxa.widths[1])
-        width_scene = xrange_scene[2] - xrange_scene[1]
-        xticks_scene = xrange_scene[1] .+ width_scene .* xfractions
-
-        y = pxa.origin[2]
-
-        xtickpositions = [Point(x, y) for x in xticks_scene]
+        xtickpositions = [Point(x, px_oy) for x in xticks_scene]
         xtickstarts = [xtp + Point(0f0, xtickalign[] * xticksize[] - 0.5f0 * spinewidth[]) for xtp in xtickpositions]
         xtickends = [t + Point(0.0, -xticksize[]) for t in xtickstarts]
-        topxtickpositions = [xtp + Point2f0(0, pxa.widths[2]) for xtp in xtickpositions]
+        topxtickpositions = [xtp + Point2f0(0, px_h) for xtp in xtickpositions]
 
-        # height = px_aspect < 1 ? a.widths[2] * px_aspect : a.widths[2]
-        height = lims.widths[2]
-        yrange = (lims.origin[2], lims.origin[2] + height)
+        ytickvals = locateticks(limoy, limoy + limh, px_h, ideal_tick_distance)
 
+        yfractions = (ytickvals .- limoy) ./ limh
+        yticks_scene = px_oy .+ px_h .* yfractions
 
-        ytickvals = locateticks(yrange..., pxa.widths[2], ideal_tick_distance)
-        # ytickvals, vminbest, vmaxbest = optimize_ticks(yrange...)
-        yfractions = (ytickvals .- yrange[1]) ./ height
-        yrange_scene = (pxa.origin[2], pxa.origin[2] + pxa.widths[2])
-        height_scene = yrange_scene[2] - yrange_scene[1]
-        yticks_scene = yrange_scene[1] .+ height_scene .* yfractions
-
-        x = pxa.origin[1]
-
-        ytickpositions = [Point(x, y) for y in yticks_scene]
+        ytickpositions = [Point(px_ox, y) for y in yticks_scene]
         ytickstarts = [ytp + Point(ytickalign[] * yticksize[] - 0.5f0 * spinewidth[], 0f0) for ytp in ytickpositions]
         ytickends = [t + Point(-yticksize[], 0.0) for t in ytickstarts]
-        rightytickpositions = [ytp + Point2f0(pxa.widths[1], 0) for ytp in ytickpositions]
+        rightytickpositions = [ytp + Point2f0(px_w, 0) for ytp in ytickpositions]
 
 
         # set and position tick labels
@@ -385,7 +375,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             if i <= nxticks
                 xticklabelnodes[i][] = xtickstrings[i]
                 xticklabelposnodes[i][] = xtickpositions[i] +
-                    Point(0f0, -xticklabelpad[] -  0.5f0 * spinewidth[])
+                    Point(0f0, -xticklabelpad[] - 0.5f0 * spinewidth[])
                 xticklabels[i].visible = true && xticklabelsvisible[]
             else
                 xticklabels[i].visible = false
@@ -406,11 +396,11 @@ function LayoutedAxis(parent::Scene; kwargs...)
         end
 
         # set tick mark positions
-        xticksnode[] = collect(Iterators.flatten(zip(xtickstarts, xtickends)))
-        yticksnode[] = collect(Iterators.flatten(zip(ytickstarts, ytickends)))
+        xticksnode[] = interleave_vectors(xtickstarts, xtickends)
+        yticksnode[] = interleave_vectors(ytickstarts, ytickends)
 
-        xgridnode[] = collect(Iterators.flatten(zip(xtickpositions, topxtickpositions)))
-        ygridnode[] = collect(Iterators.flatten(zip(ytickpositions, rightytickpositions)))
+        xgridnode[] = interleave_vectors(xtickpositions, topxtickpositions)
+        ygridnode[] = interleave_vectors(ytickpositions, rightytickpositions)
     end
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
