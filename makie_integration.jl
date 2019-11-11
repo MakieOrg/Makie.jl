@@ -289,7 +289,16 @@ function LayoutedAxis(parent::Scene; kwargs...)
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
-    scenearea = lift(bb -> IRect2D(bb), bboxnode)
+
+    scenearea = Node(IRect(0, 0, 100, 100))
+
+    on(bboxnode) do bbox
+        # only update scene if pixel positions change
+        new_scenearea = IRect2D(bbox)
+        if new_scenearea != scenearea[]
+            scenearea[] = new_scenearea
+        end
+    end
 
     scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
@@ -565,7 +574,7 @@ end
 
 function applylayout(sa::SolvedAxisLayout)
     # sa.axis.scene.px_area[] = IRect2D(sa.inner)
-    sa.innerbboxnode[] = sa.innerbbox
+    sa.bboxnode[] = sa.bbox
 end
 
 function applylayout(sb::SolvedBoxLayout)

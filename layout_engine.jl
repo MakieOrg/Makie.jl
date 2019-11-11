@@ -206,9 +206,8 @@ struct SolvedGridLayout <: Alignable
 end
 
 struct SolvedAxisLayout <: Alignable
-    innerbbox::BBox
-    innerbboxnode::Node{BBox}
-    # axis::LayoutedAxis
+    bbox::BBox
+    bboxnode::Node{BBox}
 end
 
 struct AxisLayout <: Alignable
@@ -216,7 +215,6 @@ struct AxisLayout <: Alignable
     protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
     bboxnode::Node{BBox}
     needs_update::Node{Bool}
-    # axis::LayoutedAxis
 end
 
 function AxisLayout(parent, protrusions, bboxnode)
