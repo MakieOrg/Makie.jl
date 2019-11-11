@@ -26,5 +26,6 @@ export Fixed, Auto, Relative, Aspect
 export FixedSizeBox
 export FixedHeightBox
 export width, height, top, bottom, left, right
+export with_updates_suspended
 
 end # module

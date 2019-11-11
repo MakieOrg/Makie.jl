@@ -89,6 +89,7 @@ mutable struct GridLayout <: Alignable
     alignmode::AlignMode
     equalprotrusiongaps::Tuple{Bool, Bool}
     needs_update::Node{Bool}
+    block_updates::Bool
 
     function GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes,
@@ -115,7 +116,7 @@ mutable struct GridLayout <: Alignable
         end
 
         g = new(parent, content, nrows, ncols, rowsizes, colsizes,
-            addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
+            addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update, false)
 
         setup_updates!(g)
 
@@ -130,19 +131,32 @@ function setup_updates!(gl::GridLayout)
         # Can't setup updates for GridLayout if no parent is defined."
     elseif parent isa Scene
         on(gl.needs_update) do update
-            sg = solve(gl, BBox(shrinkbymargin(pixelarea(parent)[], 0)))
-            applylayout(sg)
+            if !gl.block_updates
+                sg = solve(gl, BBox(shrinkbymargin(pixelarea(parent)[], 0)))
+                applylayout(sg)
+            end
         end
 
         # update when parent scene changes size
         on(pixelarea(parent)) do px
-            gl.needs_update[] = true
+            if !gl.block_updates
+                gl.needs_update[] = true
+            end
         end
     elseif parent isa GridLayout
         on(gl.needs_update) do update
-            parent.needs_update[] = true
+            if !gl.block_updates
+                parent.needs_update[] = true
+            end
         end
     end
+end
+
+function with_updates_suspended(f::Function, gl::GridLayout)
+    gl.block_updates = true
+    f()
+    gl.block_updates = false
+    gl.needs_update[] = true
 end
 
 function GridLayout(nrows, ncols;
