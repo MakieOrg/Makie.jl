@@ -335,8 +335,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         nearclip = -10_000f0
         farclip = 10_000f0
 
-        limox, limoy = Float32.(lims.origin)
-        limw, limh = Float32.(widths(lims))
+        limox, limoy = lims.origin
+        limw, limh = lims.widths
 
         projection = AbstractPlotting.orthographicprojection(
             limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
