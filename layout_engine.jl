@@ -691,13 +691,13 @@ grid[1:3, 2:5] = obj
 and all combinations of the above
 """
 function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Indexables)
-    rows, cols = check_rows_cols(g, rows, cols)
+    rows, cols = adjust_rows_cols!(g, rows, cols)
 
     sp = SpannedAlignable(a, Span(rows, cols))
     connectchildlayout!(g, sp)
 end
 
-function check_rows_cols(g::GridLayout, rows, cols)
+function adjust_rows_cols!(g::GridLayout, rows, cols)
     if rows isa Int
         rows = rows:rows
     elseif rows isa Colon
@@ -709,12 +709,27 @@ function check_rows_cols(g::GridLayout, rows, cols)
         cols = 1:g.ncols
     end
 
-    if !((1 <= rows.start <= g.nrows) || (1 <= rows.stop <= g.nrows))
-        error("invalid row span $rows for grid with $(g.nrows) rows")
+    if rows.start < 1
+        n = 1 - rows.start
+        prependrows!(g, n)
+        # adjust rows for the newly prepended ones
+        rows = rows .+ n
     end
-    if !((1 <= cols.start <= g.ncols) || (1 <= cols.stop <= g.ncols))
-        error("invalid col span $cols for grid with $(g.ncols) columns")
+    if rows.stop > g.nrows
+        n = rows.stop - g.nrows
+        appendrows!(g, n)
     end
+    if cols.start < 1
+        n = 1 - cols.start
+        prependcols!(g, n)
+        # adjust cols for the newly prepended ones
+        cols = cols .+ n
+    end
+    if cols.stop > g.ncols
+        n = cols.stop - g.ncols
+        appendcols!(g, n)
+    end
+
     rows, cols
 end
 
@@ -734,7 +749,7 @@ function Base.setindex!(g::GridLayout, gsub::GridLayout, rows::Indexables, cols:
     # avoid stackoverflow error
     # g[rows, cols] = gsub
 
-    rows, cols = check_rows_cols(g, rows, cols)
+    rows, cols = adjust_rows_cols!(g, rows, cols)
 
     gsub.parent = g
     setup_updates!(gsub)
@@ -799,3 +814,96 @@ function solve(b::BoxLayout, bbox::BBox)
 
     SolvedBoxLayout(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), b.bboxnode)
 end
+
+# function Base.convert(::Vector{ContentSize}, vec::Vector{T}) where T <: ContentSize
+#     ContentSize[v for v in vec]
+# end
+#
+# function Base.convert(::Vector{GapSize}, vec::Vector{T}) where T <: GapSize
+#     GapSize[v for v in vec]
+# end
+
+function convert_contentsizes(n, sizes)::Vector{ContentSize}
+    if isnothing(sizes)
+        [Auto() for _ in 1:n]
+    elseif sizes isa ContentSize
+        [sizes for _ in 1:n]
+    elseif sizes isa Vector{<:ContentSize}
+        length(sizes) == n ? sizes : error("$(length(sizes)) sizes instead of $n")
+    else
+        error("Illegal sizes value $sizes")
+    end
+end
+
+function convert_gapsizes(n, gaps)::Vector{GapSize}
+    if isnothing(gaps)
+        [Relative(0.01) for _ in 1:n]
+    elseif gaps isa GapSize
+        [gaps for _ in 1:n]
+    elseif gaps isa Vector{<:GapSize}
+        length(gaps) == n ? gaps : error("$(length(gaps)) gaps instead of $n")
+    else
+        error("Illegal gaps value $gaps")
+    end
+end
+
+function appendrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=nothing)
+
+    rowsizes = convert_contentsizes(n, rowsizes)
+    addedrowgaps = convert_gapsizes(n, addedrowgaps)
+
+    with_updates_suspended(gl) do
+        gl.nrows += n
+        append!(gl.rowsizes, rowsizes)
+        append!(gl.addedrowgaps, addedrowgaps)
+    end
+end
+
+function appendcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=nothing)
+
+    colsizes = convert_contentsizes(n, colsizes)
+    addedcolgaps = convert_gapsizes(n, addedcolgaps)
+
+    with_updates_suspended(gl) do
+        gl.ncols += n
+        append!(gl.colsizes, colsizes)
+        append!(gl.addedcolgaps, addedcolgaps)
+    end
+end
+
+function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=nothing)
+
+    rowsizes = convert_contentsizes(n, rowsizes)
+    addedrowgaps = convert_gapsizes(n, addedrowgaps)
+
+    gl.content = map(gl.content) do spal
+        span = spal.sp
+        newspan = Span(span.rows .+ n, span.cols)
+        SpannedAlignable(spal.al, newspan)
+    end
+
+    with_updates_suspended(gl) do
+        gl.nrows += n
+        append!(gl.rowsizes, rowsizes)
+        append!(gl.addedrowgaps, addedrowgaps)
+    end
+end
+
+function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=nothing)
+
+    colsizes = convert_contentsizes(n, colsizes)
+    addedcolgaps = convert_gapsizes(n, addedcolgaps)
+
+    gl.content = map(gl.content) do spal
+        span = spal.sp
+        newspan = Span(span.rows, span.cols .+ n)
+        SpannedAlignable(spal.al, newspan)
+    end
+
+    with_updates_suspended(gl) do
+        gl.ncols += n
+        prepend!(gl.colsizes, colsizes)
+        prepend!(gl.addedcolgaps, addedcolgaps)
+    end
+end
+
