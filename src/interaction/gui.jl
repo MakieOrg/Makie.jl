@@ -122,8 +122,8 @@ function plot!(slider::Slider)
     linesegments!(slider, line, color = slidercolor)
     button = scatter!(
         slider, lift(x-> x[1:1], line),
-        markersize = buttonsize, color = buttoncolor, strokewidth = buttonstroke,
-        strokecolor = buttonstrokecolor
+        markersize = buttonsize, color = buttoncolor,
+        strokewidth = buttonstroke, strokecolor = buttonstrokecolor
     ).plots[end]
     dragslider(slider, button)
     move!(slider, find_closest(range[], startval))
@@ -136,6 +136,13 @@ function dragslider(slider, button)
     startpos = Base.RefValue(Vec(0.0, 0.0))
     range = slider[1]
     @extract slider (value, sliderlength)
+    on(sliderlength) do slen
+        len = slen - slider.buttonsize[]
+        r = slider[1][]
+        idx = find_closest(r, slider.value[])
+        xpos = ((idx - 1) / (length(r) - 1)) * len
+        translate!(slider.plots[end], xpos, 0, 0)
+    end
     on(events(slider).mousedrag) do drag
         mpos = mouseposition(rootparent(slider))
         if drag == Mouse.down && mouseover(slider, button)
@@ -145,7 +152,7 @@ function dragslider(slider, button)
             diff = startpos[] .- mpos
             startpos[] = mpos
             spos = translation(button)[][1] - diff[1]
-            l = sliderlength[] - button[:markersize][]
+            l = sliderlength[] - button.markersize[]
             if spos >= 0 && spos <= l
                 idx = round(Int, ((spos / l) .* (length(range[]) - 1)) + 1)
                 value[] = range[][idx]
@@ -166,8 +173,8 @@ Moves the slider to the position of slider.range[idx].
 """
 function move!(x::Slider, idx::Integer)
     r = x[1][]
-    len = x[:sliderlength][] - x[:buttonsize][]
-    x[:value] = r[idx]
+    len = x.sliderlength[] - x.buttonsize[]
+    x.value = r[idx]
     xpos = ((idx - 1) / (length(r) - 1)) * len
     translate!(x.plots[end], xpos, 0, 0)
     return
