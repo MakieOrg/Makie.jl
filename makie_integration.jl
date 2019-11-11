@@ -4,19 +4,37 @@ using AbstractPlotting: ispressed, is_mouseinside
 
 function axislines!(scene, rect, spinewidth)
     bottomline = lift(rect, spinewidth) do r, sw
-        p1 = Point2(r.origin[1] - sw, r.origin[2] - 0.5f0 * sw)
-        p2 = Point2(r.origin[1] + r.widths[1] + sw, r.origin[2] - 0.5f0 * sw)
+        y = r.origin[2] - 0.5f0 * sw
+        p1 = Point2(r.origin[1] - sw, y)
+        p2 = Point2(r.origin[1] + r.widths[1] + sw, y)
         [p1, p2]
     end
 
     leftline = lift(rect, spinewidth) do r, sw
-        p1 = Point2(r.origin[1] - 0.5f0 * sw, r.origin[2] - sw)
-        p2 = Point2(r.origin[1] - 0.5f0 * sw, r.origin[2] + r.widths[2] + sw)
+        x = r.origin[1] - 0.5f0 * sw
+        p1 = Point2(x, r.origin[2] - sw)
+        p2 = Point2(x, r.origin[2] + r.widths[2] + sw)
+        [p1, p2]
+    end
+
+    topline = lift(rect, spinewidth) do r, sw
+        y = r.origin[2] + r.widths[2] + 0.5f0 * sw
+        p1 = Point2(r.origin[1] - sw, y)
+        p2 = Point2(r.origin[1] + r.widths[1] + sw, y)
+        [p1, p2]
+    end
+
+    rightline = lift(rect, spinewidth) do r, sw
+        x = r.origin[1] + r.widths[1] + 0.5f0 * sw
+        p1 = Point2(x, r.origin[2] - sw)
+        p2 = Point2(x, r.origin[2] + r.widths[2] + sw)
         [p1, p2]
     end
 
     lines!(scene, bottomline, linewidth = spinewidth, show_axis = false)
     lines!(scene, leftline, linewidth = spinewidth, show_axis = false)
+    lines!(scene, rightline, linewidth = spinewidth, show_axis = false)
+    lines!(scene, topline, linewidth = spinewidth, show_axis = false)
 end
 
 function scale_range(vmin, vmax, n=1, threshold=100)
