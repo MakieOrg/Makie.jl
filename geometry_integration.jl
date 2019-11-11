@@ -73,6 +73,8 @@ function default_attributes(::Type{LayoutedAxis})
         ygridwidth = 1f0,
         xgridcolor = RGBAf0(0, 0, 0, 0.1),
         ygridcolor = RGBAf0(0, 0, 0, 0.1),
+        xidealtickdistance = 100f0,
+        yidealtickdistance = 100f0,
     )
 end
 

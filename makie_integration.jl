@@ -256,7 +256,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
         yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xpanlock,
         ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
-        xgridwidth, ygridwidth, xgridcolor, ygridcolor,
+        xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
+        yidealtickdistance,
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -325,7 +326,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     # connect camera, plot size or limit changes to the axis decorations
-    on(camera(scene), pixelarea(scene), limits) do pxa, lims
+    on(camera(scene), pixelarea(scene), limits, xidealtickdistance, yidealtickdistance) do pxa,
+            lims, xidealtickdistance, yidealtickdistance
 
         px_ox, px_oy = pxa.origin
         px_w, px_h = pxa.widths
@@ -345,8 +347,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             return
         end
 
-        ideal_tick_distance = 80 # px
-        xtickvals = locateticks(limox, limox + limw, px_w, ideal_tick_distance)
+        xtickvals = locateticks(limox, limox + limw, px_w, xidealtickdistance)
 
         xfractions = (xtickvals .- limox) ./ limw
         xticks_scene = px_ox .+ px_w .* xfractions
@@ -356,7 +357,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xtickends = [t + Point(0.0, -xticksize[]) for t in xtickstarts]
         topxtickpositions = [xtp + Point2f0(0, px_h) for xtp in xtickpositions]
 
-        ytickvals = locateticks(limoy, limoy + limh, px_h, ideal_tick_distance)
+        ytickvals = locateticks(limoy, limoy + limh, px_h, yidealtickdistance)
 
         yfractions = (ytickvals .- limoy) ./ limh
         yticks_scene = px_oy .+ px_h .* yfractions
@@ -434,7 +435,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
         parent, ylabel, textsize = ylabelsize,
         position = ylabelpos, rotation = pi/2, show_axis = false,
         visible = ylabelvisible, align = (:center, :bottom)
-
     )[end]
 
     titlepos = lift(scene.px_area, titlegap, titlealign) do a, titlegap, align
