@@ -264,8 +264,10 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     @assert n == length(vec2)
 
     vec = Vector{T}(undef, 2 * n)
-    for i in 1:n, j in 1:2
-        vec[2(i - 1) + j] = j == 1 ? vec1[i] : vec2[i]
+    for i in 1:n
+        k = 2(i - 1)
+        vec[k + 1] = vec1[i]
+        vec[k + 2] = vec2[i]
     end
     vec
 end
