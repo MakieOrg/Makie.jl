@@ -275,11 +275,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
     attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
 
     @extract attrs (
-        xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign, xlabelsize,
+        xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
+        xlabelcolor, ylabelcolor, xlabelsize,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
-        yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xpanlock,
+        yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
+        ytickcolor, xpanlock,
         ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
         yidealtickdistance, topspinevisible, rightspinevisible, leftspinevisible,
@@ -300,12 +302,14 @@ function LayoutedAxis(parent::Scene; kwargs...)
     # set up empty nodes for ticks and their labels
     xticksnode = Node(Point2f0[])
     xticks = linesegments!(
-        parent, xticksnode, linewidth = xtickwidth, show_axis = false, visible = xticksvisible
+        parent, xticksnode, linewidth = xtickwidth, color = xtickcolor,
+        show_axis = false, visible = xticksvisible
     )[end]
 
     yticksnode = Node(Point2f0[])
     yticks = linesegments!(
-        parent, yticksnode, linewidth = ytickwidth, show_axis = false, visible = yticksvisible
+        parent, yticksnode, linewidth = ytickwidth, color = ytickcolor,
+        show_axis = false, visible = yticksvisible
     )[end]
 
     xgridnode = Node(Point2f0[])
@@ -374,13 +378,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     tx = text!(
-        parent, xlabel, textsize = xlabelsize,
+        parent, xlabel, textsize = xlabelsize, color = xlabelcolor,
         position = xlabelpos, show_axis = false, visible = xlabelvisible,
         align = (:center, :top)
     )[end]
 
     ty = text!(
-        parent, ylabel, textsize = ylabelsize,
+        parent, ylabel, textsize = ylabelsize, color = ylabelcolor,
         position = ylabelpos, rotation = pi/2, show_axis = false,
         visible = ylabelvisible, align = (:center, :bottom)
     )[end]
