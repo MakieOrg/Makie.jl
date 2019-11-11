@@ -724,6 +724,12 @@ function Base.setindex!(g::GridLayout, la::LayoutedAxis, rows::Indexables, cols:
     la
 end
 
+function Base.setindex!(g::GridLayout, lc::LayoutedColorbar, rows::Indexables, cols::Indexables)
+    al = AxisLayout(g, lc.protrusions, lc.bboxnode)
+    g[rows, cols] = al
+    lc
+end
+
 function Base.setindex!(g::GridLayout, gsub::GridLayout, rows::Indexables, cols::Indexables)
     # avoid stackoverflow error
     # g[rows, cols] = gsub

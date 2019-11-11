@@ -568,6 +568,53 @@ function connect_scene_and_limit_change_updates!(
     end
 end
 
+function LayoutedColorbar(parent::Scene; kwargs...)
+    attrs = merge!(default_attributes(LayoutedColorbar), Attributes(kwargs))
+
+    @extract attrs (
+        label, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
+        labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
+        ticklabelsvisible, ticksize, ticksvisible, ticklabelpad, tickalign,
+        tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
+        rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
+        leftspinecolor, rightspinecolor, bottomspinecolor)
+
+    bboxnode = Node(BBox(0, 100, 100, 0))
+
+    scenearea = Node(IRect(0, 0, 100, 100))
+
+    on(bboxnode) do bbox
+        # only update scene if pixel positions change
+        new_scenearea = IRect2D(bbox)
+        if new_scenearea != scenearea[]
+            scenearea[] = new_scenearea
+        end
+    end
+
+    limits = Node((0.0f0, 1.0f0))
+
+    scene = Scene(parent, scenearea, raw = true)
+
+    axislines!(
+        parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
+        leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
+        rightspinecolor, bottomspinecolor)
+
+    campixel!(scene)
+
+    protrusions = Node((0f0, 0f0, 0f0, 0f0))
+
+    needs_update = Node(false)
+
+    on(protrusions) do p
+        needs_update[] = true
+    end
+
+    LayoutedColorbar(
+        parent, scene, bboxnode, limits, protrusions,
+        needs_update, attrs)
+end
+
 function applylayout(sg::SolvedGridLayout)
     for c in sg.content
         applylayout(c.al)

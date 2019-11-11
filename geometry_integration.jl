@@ -90,6 +90,50 @@ function default_attributes(::Type{LayoutedAxis})
     )
 end
 
+mutable struct LayoutedColorbar
+    parent::Scene
+    scene::Scene
+    bboxnode::Node{BBox}
+    limits::Node{Tuple{Float32, Float32}}
+    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
+    needs_update::Node{Bool}
+    attributes::Attributes
+end
+
+function default_attributes(::Type{LayoutedColorbar})
+    Attributes(
+        label = "label",
+        title = "Title",
+        titlefont = "DejaVu Sans",
+        titlesize = 30f0,
+        titlegap = 10f0,
+        titlevisible = true,
+        titlealign = :center,
+        labelcolor = RGBf0(0, 0, 0),
+        labelsize = 20f0,
+        labelvisible = true,
+        labelpadding = 5f0,
+        ticklabelsize = 20f0,
+        ticklabelsvisible = true,
+        ticksize = 10f0,
+        ticksvisible = true,
+        ticklabelpad = 20f0,
+        tickalign = 0f0,
+        tickwidth = 1f0,
+        tickcolor = RGBf0(0, 0, 0),
+        spinewidth = 1f0,
+        idealtickdistance = 100f0,
+        topspinevisible = true,
+        rightspinevisible = true,
+        leftspinevisible = true,
+        bottomspinevisible = true,
+        topspinecolor = RGBf0(0, 0, 0),
+        leftspinecolor = RGBf0(0, 0, 0),
+        rightspinecolor = RGBf0(0, 0, 0),
+        bottomspinecolor = RGBf0(0, 0, 0),
+    )
+end
+
 
 struct LayoutedSlider
     scene::Scene
