@@ -79,6 +79,10 @@ function default_attributes(::Type{LayoutedAxis})
         rightspinevisible = true,
         leftspinevisible = true,
         bottomspinevisible = true,
+        topspinecolor = RGBf0(0, 0, 0),
+        leftspinecolor = RGBf0(0, 0, 0),
+        rightspinecolor = RGBf0(0, 0, 0),
+        bottomspinecolor = RGBf0(0, 0, 0),
     )
 end
 
