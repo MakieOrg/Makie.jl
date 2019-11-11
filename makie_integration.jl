@@ -2,7 +2,9 @@ using AbstractPlotting.Keyboard
 using AbstractPlotting.Mouse
 using AbstractPlotting: ispressed, is_mouseinside
 
-function axislines!(scene, rect, spinewidth)
+function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
+    leftspinevisible, bottomspinevisible)
+
     bottomline = lift(rect, spinewidth) do r, sw
         y = r.origin[2] - 0.5f0 * sw
         p1 = Point2(r.origin[1] - sw, y)
@@ -31,10 +33,14 @@ function axislines!(scene, rect, spinewidth)
         [p1, p2]
     end
 
-    lines!(scene, bottomline, linewidth = spinewidth, show_axis = false)
-    lines!(scene, leftline, linewidth = spinewidth, show_axis = false)
-    lines!(scene, rightline, linewidth = spinewidth, show_axis = false)
-    lines!(scene, topline, linewidth = spinewidth, show_axis = false)
+    lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
+        visible = bottomspinevisible)
+    lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
+        visible = leftspinevisible)
+    lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
+        visible = rightspinevisible)
+    lines!(scene, topline, linewidth = spinewidth, show_axis = false,
+        visible = topspinevisible)
 end
 
 function scale_range(vmin, vmax, n=1, threshold=100)
@@ -275,7 +281,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xpanlock,
         ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
-        yidealtickdistance,
+        yidealtickdistance, topspinevisible, rightspinevisible, leftspinevisible,
+        bottomspinevisible,
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -404,7 +411,9 @@ function LayoutedAxis(parent::Scene; kwargs...)
         font = titlefont,
         show_axis=false)[end]
 
-    axislines!(parent, scene.px_area, spinewidth)
+    axislines!(
+        parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
+        leftspinevisible, bottomspinevisible)
 
     function compute_protrusions(xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
                 ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
