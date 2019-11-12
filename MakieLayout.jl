@@ -14,6 +14,7 @@ export LayoutedAxis
 export LayoutedSlider
 export LayoutedButton
 export LayoutedColorbar
+export LayoutedText
 export linkxaxes!
 export linkyaxes!
 export GridLayout

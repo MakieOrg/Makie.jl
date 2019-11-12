@@ -140,6 +140,27 @@ function default_attributes(::Type{LayoutedColorbar})
     )
 end
 
+mutable struct LayoutedText
+    parent::Scene
+    bboxnode::Node{BBox}
+    height::Node{Float32}
+    width::Node{Float32}
+    text::AbstractPlotting.Text
+    attributes::Attributes
+end
+
+function default_attributes(::Type{LayoutedText})
+    Attributes(
+        text = "Text",
+        visible = true,
+        color = RGBf0(0, 0, 0),
+        textsize = 20f0,
+        font = "Dejavu Sans",
+        valign = :center,
+        halign = :center,
+        rotation = 0f0,
+    )
+end
 
 struct LayoutedSlider
     scene::Scene

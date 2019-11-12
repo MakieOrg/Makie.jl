@@ -266,42 +266,39 @@ struct BoxLayout <: Alignable
     parent::GridLayout
     width::Union{Nothing, Node{Float32}}
     height::Union{Nothing, Node{Float32}}
-    halign::Union{Nothing, Node{Float32}}
-    valign::Union{Nothing, Node{Float32}}
     bboxnode::Node{BBox}
     needs_update::Node{Bool}
 end
 
-function BoxLayout(parent, width::Node{Float32}, height::Node{Float32},
-        halign::Node{Float32}, valign::Node{Float32}, bboxnode::Node{BBox})
+function BoxLayout(parent, width::Node{Float32}, height::Node{Float32}, bboxnode::Node{BBox})
 
     needs_update = Node(false)
 
-    onany(width, height, halign, valign) do w, h, ha, va
+    onany(width, height) do w, h
         needs_update[] = true
     end
 
-    BoxLayout(parent, width, height, halign, valign, bboxnode, needs_update)
+    BoxLayout(parent, width, height, bboxnode, needs_update)
 end
 
-function BoxLayout(parent, width::Nothing, height::Node{Float32}, valign::Node{Float32}, bboxnode::Node{BBox})
+function BoxLayout(parent, width::Nothing, height::Node{Float32}, bboxnode::Node{BBox})
     needs_update = Node(false)
 
-    onany(height, valign) do h, va
+    on(height) do h
         needs_update[] = true
     end
 
-    BoxLayout(parent, width, height, nothing, valign, bboxnode, needs_update)
+    BoxLayout(parent, width, height, bboxnode, needs_update)
 end
 
-function BoxLayout(parent, width::Node{Float32}, height::Nothing, halign::Node{Float32}, bboxnode::Node{BBox})
+function BoxLayout(parent, width::Node{Float32}, height::Nothing, bboxnode::Node{BBox})
     needs_update = Node(false)
 
-    onany(width, halign) do w, ha
+    on(width) do w
         needs_update[] = true
     end
 
-    BoxLayout(parent, width, height, halign, nothing, bboxnode, needs_update)
+    BoxLayout(parent, width, height, bboxnode, needs_update)
 end
 
 function determineheight(b::BoxLayout)
@@ -767,15 +764,21 @@ function Base.setindex!(g::GridLayout, gsub::GridLayout, rows::Indexables, cols:
 end
 
 function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, cols::Indexables)
-    fh = BoxLayout(g, nothing, ls.height, Node(0.5f0), ls.bboxnode)
+    fh = BoxLayout(g, nothing, ls.height, ls.bboxnode)
     g[rows, cols] = fh
     ls
 end
 
 function Base.setindex!(g::GridLayout, lb::LayoutedButton, rows::Indexables, cols::Indexables)
-    b = BoxLayout(g, lb.width, lb.height, Node(0.5f0), Node(0.5f0), lb.bboxnode)
+    b = BoxLayout(g, lb.width, lb.height, lb.bboxnode)
     g[rows, cols] = b
     lb
+end
+
+function Base.setindex!(g::GridLayout, lt::LayoutedText, rows::Indexables, cols::Indexables)
+    b = BoxLayout(g, lt.width, lt.height, lt.bboxnode)
+    g[rows, cols] = b
+    lt
 end
 
 function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
@@ -794,37 +797,38 @@ end
 
 function solve(b::BoxLayout, bbox::BBox)
 
-    fbh = if isnothing(b.height)
-        # the height is not fixed and therefore takes the bbox value
-        height(bbox)
-    else
-        b.height[]
-    end
+    # fbh = if isnothing(b.height)
+    #     # the height is not fixed and therefore takes the bbox value
+    #     height(bbox)
+    # else
+    #     b.height[]
+    # end
+    #
+    # fbw = if isnothing(b.width)
+    #     # the width is not fixed and therefore takes the bbox value
+    #     width(bbox)
+    # else
+    #     b.width[]
+    # end
+    #
+    # oxb = bbox.origin[1]
+    # oyb = bbox.origin[2]
+    #
+    #
+    # bh = height(bbox)
+    # bw = width(bbox)
+    #
+    # restx = bw - fbw
+    # resty = bh - fbh
+    #
+    # xal = isnothing(b.halign) ? 0f0 : b.halign[]
+    # yal = isnothing(b.valign) ? 0f0 : b.valign[]
+    #
+    # oxinner = oxb + xal * restx
+    # oyinner = oyb + yal * resty
 
-    fbw = if isnothing(b.width)
-        # the width is not fixed and therefore takes the bbox value
-        width(bbox)
-    else
-        b.width[]
-    end
-
-    oxb = bbox.origin[1]
-    oyb = bbox.origin[2]
-
-
-    bh = height(bbox)
-    bw = width(bbox)
-
-    restx = bw - fbw
-    resty = bh - fbh
-
-    xal = isnothing(b.halign) ? 0f0 : b.halign[]
-    yal = isnothing(b.valign) ? 0f0 : b.valign[]
-
-    oxinner = oxb + xal * restx
-    oyinner = oyb + yal * resty
-
-    SolvedBoxLayout(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), b.bboxnode)
+    # SolvedBoxLayout(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), b.bboxnode)
+    SolvedBoxLayout(bbox, b.bboxnode)
 end
 
 # function Base.convert(::Vector{ContentSize}, vec::Vector{T}) where T <: ContentSize

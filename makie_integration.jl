@@ -642,6 +642,102 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         needs_update, attrs)
 end
 
+function LayoutedText(parent::Scene; kwargs...)
+    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedText))
+
+    @extract attrs (text, textsize, font, color, visible, valign, halign,
+        rotation)
+
+    bboxnode = Node(BBox(0, 100, 100, 0))
+
+    # align = lift(valign, halign) do v, h
+    #     (h, v)
+    # end
+
+    position = Node(Point2f0(0, 0))
+
+    t = text!(parent, text, position = position, textsize = textsize, font = font, color = color,
+        visible = visible, align = (:center, :center), rotation = rotation)[end]
+
+    heightnode = Node(1f0)
+    widthnode = Node(1f0)
+
+    onany(text, textsize, font, visible, rotation) do text, textsize, font, visible,
+            rotation
+
+        if visible
+            bb = FRect2D(boundingbox(t))
+            heightnode[] = height(bb)
+            widthnode[] = width(bb)
+        else
+            heightnode[] = 0f0
+            widthnode[] = 0f0
+        end
+    end
+
+    onany(bboxnode, valign, halign) do bbox, valign, halign
+
+        w = widthnode[]
+        h = heightnode[]
+
+        bw = width(bbox)
+        bh = height(bbox)
+
+        rw = bw - w
+        rh = bh - h
+
+        hal = if halign == :left
+            0f0
+        elseif halign == :center
+            0.5f0
+        elseif halign == :right
+            1f0
+        else
+            error("Invalid halign $halign")
+        end
+
+        hshift = if halign == :left
+            0.5f0 * bw
+        elseif halign == :center
+            0f0
+        elseif halign == :right
+            -0.5f0 * bw
+        else
+            error("Invalid halign $halign")
+        end
+
+        val = if valign == :bottom
+            0f0
+        elseif valign == :center
+            0.5f0
+        elseif valign == :top
+            1f0
+        else
+            error("Invalid valign $valign")
+        end
+
+        vshift = if valign == :bottom
+            0.5f0 * bh
+        elseif valign == :center
+            0f0
+        elseif valign == :top
+            -0.5f0 * bh
+        else
+            error("Invalid halign $halign")
+        end
+
+        pos = bbox.origin .+ (hal * bw + hshift, val * bh + vshift)
+        position[] = pos
+    end
+
+    lt = LayoutedText(parent, bboxnode, heightnode, widthnode, t, attrs)
+
+    # trigger first update, otherwise bounds are wrong somehow
+    text[] = text[]
+
+    lt
+end
+
 function applylayout(sg::SolvedGridLayout)
     for c in sg.content
         applylayout(c.al)
