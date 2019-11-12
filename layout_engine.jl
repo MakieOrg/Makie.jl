@@ -780,6 +780,11 @@ end
 
 function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
     push!(g.content, spa)
+
+    # remove all listeners from needs_update because they could be pointing
+    # to previous parents if we're re-nesting layout objects
+    empty!(spa.al.needs_update.listeners)
+
     on(spa.al.needs_update) do update
         g.needs_update[] = true
     end
