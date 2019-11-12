@@ -906,4 +906,39 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
         prepend!(gl.addedcolgaps, addedcolgaps)
     end
 end
-
+
+function nest_content_into_gridlayout!(gl::GridLayout, rows::Indexables, cols::Indexables)
+
+    newrows, newcols = adjust_rows_cols!(gl, rows, cols)
+
+    subgl = GridLayout(
+        length(newrows), length(newcols);
+        parent = nothing,
+        colsizes = gl.colsizes[newcols],
+        rowsizes = gl.rowsizes[newrows],
+        addedrowgaps = gl.addedrowgaps[newrows.start:(newrows.stop-1)],
+        addedcolgaps = gl.addedcolgaps[newcols.start:(newcols.stop-1)],
+    )
+
+    # remove the content from the parent that is completely inside the replacement grid
+    i = 1
+    while i <= length(gl.content)
+        spal = gl.content[i]
+
+        if (spal.sp.rows.start >= newrows.start && spal.sp.rows.stop <= newrows.stop &&
+            spal.sp.cols.start >= newcols.start && spal.sp.cols.stop <= newcols.stop)
+
+            # adjust span for new grid position and place content inside it
+            subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1)] = spal.al
+            deleteat!(gl.content, i)
+            continue
+            # don't advance i because there's one piece of content less in the queue
+            # and the next item is in the same position as the old removed one
+        end
+        i += 1
+    end
+
+    gl[newrows, newcols] = subgl
+
+    subgl
+end
