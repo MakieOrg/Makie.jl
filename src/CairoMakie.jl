@@ -13,6 +13,12 @@ using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface
 
 @enum RenderType SVG PNG
 
+const LIB_CAIRO = if isdefined(Cairo, :libcairo)
+    Cairo.libcairo
+else
+    Cairo._jl_libcairo
+end
+
 struct CairoBackend <: AbstractPlotting.AbstractBackend
     typ::RenderType
     path::String
@@ -22,6 +28,7 @@ function to_mime(x::RenderType)
     x == SVG && return MIME"image/svg+xml"()
     return MIME"image/png"()
 end
+
 to_mime(x::CairoBackend) = to_mime(x.typ)
 
 function CairoBackend(path::String)
@@ -65,16 +72,17 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg)
     CairoScreen(scene, surf, ctx, nothing)
 end
 
-
 function project_position(scene, point, model)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, point, 0f0), 1f0)
     clip = scene.camera.projectionview[] * model * p4d
-    p = (clip / clip[4])[Vec(1, 2)]
+    p = (clip ./ clip[4])[Vec(1, 2)]
     p = Vec2f0(p[1], -p[2])
-    ((((p + 1f0) / 2f0) .* (res - 1f0)) + 1f0)
+    ((((p .+ 1f0) / 2f0) .* (res .- 1f0)) .+ 1f0)
 end
+
 project_scale(scene::Scene, s::Number, model = Mat4f0(I)) = project_scale(scene, Vec2f0(s), model)
+
 function project_scale(scene::Scene, s, model = Mat4f0(I))
     p4d = to_ndim(Vec4f0, s, 0f0)
     p = (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)] ./ 2f0
@@ -152,14 +160,24 @@ Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-function per_face_colors(color, colormap, colorrange, vertices, faces)
+function per_face_colors(color, colormap, colorrange, vertices, faces, uv)
     if color isa Colorant
         return FaceIterator{:Const}(color, faces)
-    elseif color isa AbstractVector
+    elseif color isa AbstractArray
         if color isa AbstractVector{<: Colorant}
             return FaceIterator(color, faces)
         elseif color isa AbstractVector{<: Number}
             cvec = AbstractPlotting.interpolated_getindex.((colormap,), color, (colorrange,))
+            return FaceIterator(cvec, faces)
+        elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
+            cvec = map(uv) do uv
+                wsize = reverse(size(color))
+                wh = wsize .- 1
+                x, y = round.(Int, Tuple(uv) .* wh) .+ 1
+                return color[size(color, 1) - (y - 1), x]
+            end
+            # TODO This is wrong and doesn't actually interpolate
+            # Inside the triangle sampling the color image
             return FaceIterator(cvec, faces)
         end
     end
@@ -187,9 +205,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Mesh)
     ctx = screen.context
     model = primitive.model[]
     mesh = primitive[1][]
-    vs = vertices(mesh); fs = faces(mesh);
+    vs = vertices(mesh); fs = faces(mesh)
+    uv = hastexturecoordinates(mesh) ? texturecoordinates(mesh) : nothing
     pattern = Cairo.CairoPatternMesh()
-    cols = per_face_colors(color, colormap, colorrange, vs, fs)
+    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
     for (f, (c1, c2, c3)) in zip(fs, cols)
         t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
@@ -360,17 +379,17 @@ function rot_scale_matrix(x, y, q)
 end
 
 function set_font_matrix(cr, matrix)
-    ccall((:cairo_set_font_matrix, Cairo._jl_libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, Ref(matrix))
+    ccall((:cairo_set_font_matrix, LIB_CAIRO), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, Ref(matrix))
 end
 
 
 function set_ft_font(cr, font)
     font_face = ccall(
-        (:cairo_ft_font_face_create_for_ft_face, Cairo._jl_libcairo),
+        (:cairo_ft_font_face_create_for_ft_face, LIB_CAIRO),
         Ptr{Cvoid}, (Ptr{Cvoid}, Cint),
         font, 0
     )
-    ccall((:cairo_set_font_face, Cairo._jl_libcairo), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, font_face)
+    ccall((:cairo_set_font_face, LIB_CAIRO), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, font_face)
 end
 fontname(x::String) = x
 fontname(x::Symbol) = string(x)
