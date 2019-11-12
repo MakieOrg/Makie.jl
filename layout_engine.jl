@@ -187,7 +187,7 @@ function GridLayout(nrows, ncols;
     end
 
     if isnothing(addedrowgaps)
-        addedrowgaps = [Relative(0.01) for _ in 1:nrows-1]
+        addedrowgaps = [Fixed(20) for _ in 1:nrows-1]
     elseif addedrowgaps isa GapSize
         addedrowgaps = [addedrowgaps for _ in 1:nrows-1]
     elseif !(typeof(addedrowgaps) <: Vector{<: GapSize})
@@ -195,7 +195,7 @@ function GridLayout(nrows, ncols;
     end
 
     if isnothing(addedcolgaps)
-        addedcolgaps = [Relative(0.01) for _ in 1:ncols-1]
+        addedcolgaps = [Fixed(20) for _ in 1:ncols-1]
     elseif addedcolgaps isa GapSize
         addedcolgaps = [addedcolgaps for _ in 1:ncols-1]
     elseif !(typeof(addedcolgaps) <: Vector{<: GapSize})
@@ -837,7 +837,7 @@ end
 
 function convert_gapsizes(n, gaps)::Vector{GapSize}
     if isnothing(gaps)
-        [Relative(0.01) for _ in 1:n]
+        [Fixed(20) for _ in 1:n]
     elseif gaps isa GapSize
         [gaps for _ in 1:n]
     elseif gaps isa Vector{<:GapSize}
