@@ -272,29 +272,7 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     vec
 end
 
-function LayoutedAxis(parent::Scene; kwargs...)
-
-    attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
-
-    @extract attrs (
-        xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
-        xlabelcolor, ylabelcolor, xlabelsize,
-        ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
-        xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
-        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
-        yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
-        ytickcolor, xpanlock,
-        ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
-        xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
-        yidealtickdistance, topspinevisible, rightspinevisible, leftspinevisible,
-        bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, alignment, maxsize
-    )
-
-    bboxnode = Node(BBox(0, 100, 100, 0))
-
-    scenearea = Node(IRect(0, 0, 100, 100))
-
+function connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, maxsize)
     onany(bboxnode, aspect, alignment, maxsize) do bbox, aspect, alignment, maxsize
 
         w = width(bbox)
@@ -329,6 +307,32 @@ function LayoutedAxis(parent::Scene; kwargs...)
             scenearea[] = new_scenearea
         end
     end
+end
+
+function LayoutedAxis(parent::Scene; kwargs...)
+
+    attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
+
+    @extract attrs (
+        xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
+        xlabelcolor, ylabelcolor, xlabelsize,
+        ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
+        xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
+        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
+        yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
+        ytickcolor, xpanlock,
+        ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
+        xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
+        yidealtickdistance, topspinevisible, rightspinevisible, leftspinevisible,
+        bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
+        aspect, alignment, maxsize
+    )
+
+    bboxnode = Node(BBox(0, 100, 100, 0))
+
+    scenearea = Node(IRect(0, 0, 100, 100))
+
+    connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, maxsize)
 
     scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
@@ -605,19 +609,14 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         ticklabelsvisible, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
-        leftspinecolor, rightspinecolor, bottomspinecolor)
+        leftspinecolor, rightspinecolor, bottomspinecolor,
+        aspect, alignment, maxsize)
 
     bboxnode = Node(BBox(0, 100, 100, 0))
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
-    on(bboxnode) do bbox
-        # only update scene if pixel positions change
-        new_scenearea = IRect2D(bbox)
-        if new_scenearea != scenearea[]
-            scenearea[] = new_scenearea
-        end
-    end
+    connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, maxsize)
 
     limits = Node((0.0f0, 1.0f0))
 

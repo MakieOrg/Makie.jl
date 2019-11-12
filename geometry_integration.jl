@@ -134,6 +134,9 @@ function default_attributes(::Type{LayoutedColorbar})
         leftspinecolor = RGBf0(0, 0, 0),
         rightspinecolor = RGBf0(0, 0, 0),
         bottomspinecolor = RGBf0(0, 0, 0),
+        aspect = AxisAspect(nothing),
+        alignment = (0.5f0, 0.5f0),
+        maxsize = (Inf32, Inf32),
     )
 end
 
