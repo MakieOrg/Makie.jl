@@ -252,16 +252,18 @@ function draw_image(scene, screen, attributes)
     x, y = attributes[1][], attributes[2][]
     model = attributes[:model][]
     imsize = (extrema_nan(x), extrema_nan(y))
-    xy = project_position(scene, Point2f0(first.(imsize)), model)
-    xymax = project_position(scene, Point2f0(last.(imsize)), model)
+    xy_ = project_position(scene, Point2f0(first.(imsize)), model)
+    xymax_ = project_position(scene, Point2f0(last.(imsize)), model)
+    xy = min.(xy_, xymax_)
+    xymax = max.(xy_, xymax_)
     w, h = xymax .- xy
     interp = to_value(get(attributes, :interpolate, true))
     interp = interp ? Cairo.FILTER_BEST : Cairo.FILTER_NEAREST
     s = to_cairo_image(image, attributes)
     Cairo.rectangle(ctx, xy..., w, h)
     Cairo.save(ctx)
-    Cairo.translate(ctx, xy...)
-    Cairo.scale(ctx, w/s.width, h/s.height)
+    Cairo.translate(ctx, xy[1], xy[2])
+    Cairo.scale(ctx, w / s.width, h / s.height)
     Cairo.set_source_surface(ctx, s, 0, 0)
     p = Cairo.get_source(ctx)
     # Set filter doesn't work!?
@@ -577,7 +579,6 @@ function display_path(type::String)
 end
 
 function activate!(; inline = true, type = "svg")
-
     AbstractPlotting.current_backend[] = CairoBackend(display_path(type))
     AbstractPlotting.use_display[] = !inline
     return
