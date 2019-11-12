@@ -287,16 +287,44 @@ function LayoutedAxis(parent::Scene; kwargs...)
         ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
         yidealtickdistance, topspinevisible, rightspinevisible, leftspinevisible,
-        bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor
+        bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
+        aspect, alignment, maxsize
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
-    on(bboxnode) do bbox
+    onany(bboxnode, aspect, alignment, maxsize) do bbox, aspect, alignment, maxsize
+
+        w = width(bbox)
+        h = height(bbox)
+        mw = min(w, maxsize[1])
+        mh = min(h, maxsize[2])
+        as = mw / mh
+
+        aspect = aspect.aspect
+        if !isnothing(aspect)
+
+            if as >= aspect
+                # too wide
+                mw *= aspect / as
+            else
+                # too high
+                mh *= as / aspect
+            end
+        end
+
+        restw = w - mw
+        resth = h - mh
+
+        l = left(bbox) + alignment[1] * restw
+        b = bottom(bbox) + alignment[2] * resth
+
+        newbbox = BBox(l, l + mw, b + mh, b)
+
         # only update scene if pixel positions change
-        new_scenearea = IRect2D(bbox)
+        new_scenearea = IRect2D(newbbox)
         if new_scenearea != scenearea[]
             scenearea[] = new_scenearea
         end

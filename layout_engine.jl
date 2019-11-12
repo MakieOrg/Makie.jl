@@ -224,9 +224,16 @@ struct SolvedAxisLayout <: Alignable
     bboxnode::Node{BBox}
 end
 
+struct AxisAspect
+    aspect::Union{Float32, Nothing}
+end
+
 struct AxisLayout <: Alignable
     parent::GridLayout
     protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
+    # aspect::Node{AxisAspect}
+    # alignment::Node{Tuple{Float32, Float32}}
+    # maxsize::Node{Tuple{Float32, Float32}}
     bboxnode::Node{BBox}
     needs_update::Node{Bool}
 end
