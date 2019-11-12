@@ -311,7 +311,7 @@ end
 
 function LayoutedAxis(parent::Scene; kwargs...)
 
-    attrs = merge!(default_attributes(LayoutedAxis), Attributes(kwargs))
+    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedAxis))
 
     @extract attrs (
         xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
