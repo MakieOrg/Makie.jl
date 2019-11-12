@@ -739,51 +739,30 @@ function LayoutedText(parent::Scene; kwargs...)
         bw = width(bbox)
         bh = height(bbox)
 
-        rw = bw - w
-        rh = bh - h
+        box = bbox.origin[1]
+        boy = bbox.origin[2]
 
-        hal = if halign == :left
-            0f0
-        elseif halign == :center
-            0.5f0
+        x = if halign == :left
+            box + 0.5f0 * w
         elseif halign == :right
-            1f0
+            box + bw - 0.5f0 * w
+        elseif halign == :center
+            box + 0.5f0 * bw
         else
             error("Invalid halign $halign")
         end
 
-        hshift = if halign == :left
-            0.5f0 * bw
-        elseif halign == :center
-            0f0
-        elseif halign == :right
-            -0.5f0 * bw
-        else
-            error("Invalid halign $halign")
-        end
-
-        val = if valign == :bottom
-            0f0
-        elseif valign == :center
-            0.5f0
+        y = if valign == :bottom
+            boy + 0.5f0 * h
         elseif valign == :top
-            1f0
+            boy + bh - 0.5f0 * h
+        elseif valign == :center
+            boy + 0.5f0 * bh
         else
             error("Invalid valign $valign")
         end
 
-        vshift = if valign == :bottom
-            0.5f0 * bh
-        elseif valign == :center
-            0f0
-        elseif valign == :top
-            -0.5f0 * bh
-        else
-            error("Invalid halign $halign")
-        end
-
-        pos = bbox.origin .+ (hal * bw + hshift, val * bh + vshift)
-        position[] = pos
+        position[] = Point2f0(x, y)
     end
 
     lt = LayoutedText(parent, bboxnode, heightnode, widthnode, t, attrs)
