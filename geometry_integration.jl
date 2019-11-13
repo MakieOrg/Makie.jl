@@ -26,6 +26,8 @@ mutable struct LayoutedAxis
     parent::Scene
     scene::Scene
     plots::Vector{AbstractPlot}
+    xaxislinks::Vector{LayoutedAxis}
+    yaxislinks::Vector{LayoutedAxis}
     bboxnode::Node{BBox}
     limits::Node{BBox}
     protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}

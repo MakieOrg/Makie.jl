@@ -339,6 +339,9 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     plots = AbstractPlot[]
 
+    xaxislinks = LayoutedAxis[]
+    yaxislinks = LayoutedAxis[]
+
     add_pan!(scene, limits, xpanlock, ypanlock)
     add_zoom!(scene, limits, xzoomlock, yzoomlock)
 
@@ -486,6 +489,38 @@ function LayoutedAxis(parent::Scene; kwargs...)
             limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
+
+        thisxlims = (limox, limox + limw)
+        thisylims = (limoy, limoy + limh)
+
+        bothlinks = intersect(xaxislinks, yaxislinks)
+        xlinks = setdiff(xaxislinks, yaxislinks)
+        ylinks = setdiff(yaxislinks, xaxislinks)
+
+        for link in bothlinks
+            otherlims = link.limits[]
+            if lims != otherlims
+                link.limits[] = lims
+            end
+        end
+
+        for xlink in xlinks
+            otherlims = xlink.limits[]
+            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
+            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+            if thisxlims != otherxlims
+                xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[2], otherylims[1])
+            end
+        end
+
+        for ylink in ylinks
+            otherlims = ylink.limits[]
+            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
+            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+            if thisylims != otherylims
+                ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[2], thisylims[1])
+            end
+        end
     end
 
     # change tick values with scene, limits and tick distance preference
@@ -654,7 +689,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         needs_update[] = true
     end
 
-    LayoutedAxis(parent, scene, plots, bboxnode, limits, protrusions, needs_update, attrs)
+    LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
+        protrusions, needs_update, attrs)
 end
 
 
@@ -794,58 +830,38 @@ function shrinkbymargin(rect, margin)
     IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
 end
 
-function linkxaxes!(a::LayoutedAxis, b::LayoutedAxis)
-    on(a.limits) do alim
-        blim = b.limits[]
+function linkxaxes!(a::LayoutedAxis, others...)
+    axes = LayoutedAxis[a; others...]
 
-        ao = alim.origin[1]
-        bo = blim.origin[1]
-        aw = alim.widths[1]
-        bw = blim.widths[1]
+    for i in 1:length(axes)-1
+        for j in i+1:length(axes)
+            axa = axes[i]
+            axb = axes[j]
 
-        if ao != bo || aw != bw
-            b.limits[] = FRect(ao, blim.origin[2], aw, blim.widths[2])
-        end
-    end
-
-    on(b.limits) do blim
-        alim = a.limits[]
-
-        ao = alim.origin[1]
-        bo = blim.origin[1]
-        aw = alim.widths[1]
-        bw = blim.widths[1]
-
-        if ao != bo || aw != bw
-            a.limits[] = FRect(bo, alim.origin[2], bw, alim.widths[2])
+            if axa ∉ axb.xaxislinks
+                push!(axb.xaxislinks, axa)
+            end
+            if axb ∉ axa.xaxislinks
+                push!(axa.xaxislinks, axb)
+            end
         end
     end
 end
 
-function linkyaxes!(a::LayoutedAxis, b::LayoutedAxis)
-    on(a.limits) do alim
-        blim = b.limits[]
+function linkyaxes!(a::LayoutedAxis, others...)
+    axes = LayoutedAxis[a; others...]
 
-        ao = alim.origin[2]
-        bo = blim.origin[2]
-        aw = alim.widths[2]
-        bw = blim.widths[2]
+    for i in 1:length(axes)-1
+        for j in i+1:length(axes)
+            axa = axes[i]
+            axb = axes[j]
 
-        if ao != bo || aw != bw
-            b.limits[] = FRect(blim.origin[1], ao, blim.widths[1], aw)
-        end
-    end
-
-    on(b.limits) do blim
-        alim = a.limits[]
-
-        ao = alim.origin[2]
-        bo = blim.origin[2]
-        aw = alim.widths[2]
-        bw = blim.widths[2]
-
-        if ao != bo || aw != bw
-            a.limits[] = FRect(alim.origin[1], bo, alim.widths[1], bw)
+            if axa ∉ axb.yaxislinks
+                push!(axb.yaxislinks, axa)
+            end
+            if axb ∉ axa.yaxislinks
+                push!(axa.yaxislinks, axb)
+            end
         end
     end
 end
