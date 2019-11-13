@@ -1,29 +1,29 @@
 function AbstractPlotting.scatter!(la::LayoutedAxis, args...; kwargs...)
-    sc = scatter!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, sc)
+    plot = scatter!(la.scene, args...; show_axis=false, kwargs...)[end]
+    push!(la.plots, plot)
     autolimits!(la)
-    sc
+    plot
 end
 
 function AbstractPlotting.lines!(la::LayoutedAxis, args...; kwargs...)
-    sc = lines!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, sc)
+    plot = lines!(la.scene, args...; show_axis=false, kwargs...)[end]
+    push!(la.plots, plot)
     autolimits!(la)
-    sc
+    plot
 end
 
 function AbstractPlotting.image!(la::LayoutedAxis, args...; kwargs...)
-    sc = image!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, sc)
+    plot = image!(la.scene, args...; show_axis=false, kwargs...)[end]
+    push!(la.plots, plot)
     autolimits!(la)
-    sc
+    plot
 end
 
 function AbstractPlotting.poly!(la::LayoutedAxis, args...; kwargs...)
-    sc = poly!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, sc)
+    plot = poly!(la.scene, args...; show_axis=false, kwargs...)[end]
+    push!(la.plots, plot)
     autolimits!(la)
-    sc
+    plot
 end
 
 function bboxunion(bb1, bb2)
