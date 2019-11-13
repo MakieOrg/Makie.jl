@@ -259,6 +259,20 @@ function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock)
     end
 end
 
+function add_reset_limits!(la::LayoutedAxis)
+    scene = la.scene
+    e = events(scene)
+    cam = camera(scene)
+    on(cam, e.mousebuttons) do buttons
+        if ispressed(scene, AbstractPlotting.Mouse.left) && AbstractPlotting.is_mouseinside(scene)
+            if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.left_control)
+                autolimits!(la)
+            end
+        end
+        return
+    end
+end
+
 function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     n = length(vec1)
     @assert n == length(vec2)
@@ -689,8 +703,12 @@ function LayoutedAxis(parent::Scene; kwargs...)
         needs_update[] = true
     end
 
-    LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
+    la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
         protrusions, needs_update, attrs)
+
+    add_reset_limits!(la)
+
+    la
 end
 
 
