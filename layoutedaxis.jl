@@ -61,6 +61,7 @@ function getlimits(la::LayoutedAxis, dim)
         bbox = BBox(boundingbox(la.plots[1]))
         templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
         for p in la.plots[2:end]
+            bbox = BBox(boundingbox(p))
             templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
         end
         templim
