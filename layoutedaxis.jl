@@ -19,6 +19,13 @@ function AbstractPlotting.image!(la::LayoutedAxis, args...; kwargs...)
     sc
 end
 
+function AbstractPlotting.poly!(la::LayoutedAxis, args...; kwargs...)
+    sc = poly!(la.scene, args...; show_axis=false, kwargs...)[end]
+    push!(la.plots, sc)
+    autolimits!(la)
+    sc
+end
+
 function bboxunion(bb1, bb2)
 
     o1 = bb1.origin
