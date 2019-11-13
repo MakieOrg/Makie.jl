@@ -337,6 +337,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
     scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
 
+    plots = AbstractPlot[]
+
     add_pan!(scene, limits, xpanlock, ypanlock)
     add_zoom!(scene, limits, xzoomlock, yzoomlock)
 
@@ -652,7 +654,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         needs_update[] = true
     end
 
-    LayoutedAxis(parent, scene, bboxnode, limits, protrusions, needs_update, attrs)
+    LayoutedAxis(parent, scene, plots, bboxnode, limits, protrusions, needs_update, attrs)
 end
 
 

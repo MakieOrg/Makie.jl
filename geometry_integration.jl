@@ -25,6 +25,7 @@ Base.getindex(bbox::Rect2D, ::Top) = top(bbox)
 mutable struct LayoutedAxis
     parent::Scene
     scene::Scene
+    plots::Vector{AbstractPlot}
     bboxnode::Node{BBox}
     limits::Node{BBox}
     protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
@@ -89,7 +90,8 @@ function default_attributes(::Type{LayoutedAxis})
         bottomspinecolor = RGBf0(0, 0, 0),
         aspect = AxisAspect(nothing),
         alignment = (0.5f0, 0.5f0),
-        maxsize = (Inf32, Inf32)
+        maxsize = (Inf32, Inf32),
+        autolimitmargin = (0.1f0, 0.1f0),
     )
 end
 
