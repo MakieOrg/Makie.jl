@@ -334,12 +334,10 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
         yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
-        ytickcolor, xpanlock,
-        ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
-        xgridwidth, ygridwidth, xgridcolor, ygridcolor, xidealtickdistance,
-        yidealtickdistance, topspinevisible, rightspinevisible, leftspinevisible,
+        ytickcolor, xpanlock, ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
+        xgridwidth, ygridwidth, xgridcolor, ygridcolor, topspinevisible, rightspinevisible, leftspinevisible,
         bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, alignment, maxsize
+        aspect, alignment, maxsize, xticks, yticks
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -363,13 +361,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     # set up empty nodes for ticks and their labels
     xticksnode = Node(Point2f0[])
-    xticks = linesegments!(
+    xticklines = linesegments!(
         parent, xticksnode, linewidth = xtickwidth, color = xtickcolor,
         show_axis = false, visible = xticksvisible
     )[end]
 
     yticksnode = Node(Point2f0[])
-    yticks = linesegments!(
+    yticklines = linesegments!(
         parent, yticksnode, linewidth = ytickwidth, color = ytickcolor,
         show_axis = false, visible = yticksvisible
     )[end]
@@ -439,13 +437,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
         Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
     end
 
-    tx = text!(
+    xlabeltext = text!(
         parent, xlabel, textsize = xlabelsize, color = xlabelcolor,
         position = xlabelpos, show_axis = false, visible = xlabelvisible,
         align = (:center, :top)
     )[end]
 
-    ty = text!(
+    ylabeltext = text!(
         parent, ylabel, textsize = ylabelsize, color = ylabelcolor,
         position = ylabelpos, rotation = pi/2, show_axis = false,
         visible = ylabelvisible, align = (:center, :bottom)
@@ -539,18 +537,31 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     # change tick values with scene, limits and tick distance preference
 
-    onany(pixelarea(scene), limits, xidealtickdistance) do pxa, limits, xidealtickdistance
+    onany(pixelarea(scene), limits, xticks) do pxa, limits, xticks
         limox = limits.origin[1]
         limw = limits.widths[1]
         px_w = pxa.widths[1]
-        xtickvalues[] = locateticks(limox, limox + limw, px_w, xidealtickdistance)
+
+        if xticks isa AutoLinearTicks
+            xtickvalues[] = locateticks(limox, limox + limw, px_w, xticks.idealtickdistance)
+        elseif xticks isa ManualTicks
+            xtickvalues[] = xticks.values
+        else
+            error("No behavior implemented for ticks of type $(typeof(xticks))")
+        end
     end
 
-    onany(pixelarea(scene), limits, yidealtickdistance) do pxa, limits, yidealtickdistance
+    onany(pixelarea(scene), limits, yticks) do pxa, limits, yticks
         limoy = limits.origin[2]
         limh = limits.widths[2]
         px_h = pxa.widths[2]
-        ytickvalues[] = locateticks(limoy, limoy + limh, px_h, yidealtickdistance)
+        if yticks isa AutoLinearTicks
+            ytickvalues[] = locateticks(limoy, limoy + limh, px_h, yticks.idealtickdistance)
+        elseif yticks isa ManualTicks
+            ytickvalues[] = yticks.values
+        else
+            error("No behavior implemented for ticks of type $(typeof(yticks))")
+        end
     end
 
     xtickpositions = Node(Point2f0[])
@@ -577,7 +588,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
         # now trigger updates
         xtickpositions[] = xtickpos
 
-        xtickstrings[] = Showoff.showoff(xtickvalues, :plain)
+        if xticks[] isa AutoLinearTicks
+            xtickstrings[] = Showoff.showoff(xtickvalues, :plain)
+        elseif xticks[] isa ManualTicks
+            xtickstrings[] = xticks[].labels
+        else
+            error("No behavior implemented for ticks of type $(typeof(xticks[]))")
+        end
     end
 
     ytickpositions = Node(Point2f0[])
@@ -602,7 +619,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
         # now trigger updates
         ytickpositions[] = ytickpos
 
-        ytickstrings[] = Showoff.showoff(ytickvalues, :plain)
+        if yticks[] isa AutoLinearTicks
+            ytickstrings[] = Showoff.showoff(ytickvalues, :plain)
+        elseif yticks[] isa ManualTicks
+            ytickstrings[] = yticks[].labels
+        else
+            error("No behavior implemented for ticks of type $(typeof(yticks[]))")
+        end
     end
 
     # update tick labels when strings or properties change
@@ -670,7 +693,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
-        bottom = (xlabelvisible ? boundingbox(tx).widths[2] + xlabelpadding : 0f0) +
+        bottom = (xlabelvisible ? boundingbox(xlabeltext).widths[2] + xlabelpadding : 0f0) +
             0.5f0 * spinewidth +
             max(
                 # when the xticklabel is visible take its size and pad
@@ -678,7 +701,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 # or the xtick protrusion, depending on which value is larger
                 (xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0)
             )
-        left = (ylabelvisible ? boundingbox(ty).widths[1] + ylabelpadding : 0f0) +
+        left = (ylabelvisible ? boundingbox(ylabeltext).widths[1] + ylabelpadding : 0f0) +
             0.5f0 * spinewidth +
             max(
                 (yticklabelsvisible ? yticklabelsize + yticklabelpad : 0f0),

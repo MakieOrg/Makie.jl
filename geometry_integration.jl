@@ -22,6 +22,17 @@ Base.getindex(bbox::Rect2D, ::Right) = right(bbox)
 Base.getindex(bbox::Rect2D, ::Bottom) = bottom(bbox)
 Base.getindex(bbox::Rect2D, ::Top) = top(bbox)
 
+abstract type Ticks end
+
+struct AutoLinearTicks <: Ticks
+    idealtickdistance::Float32
+end
+
+struct ManualTicks <: Ticks
+    values::Vector{Float32}
+    labels::Vector{String}
+end
+
 mutable struct LayoutedAxis
     parent::Scene
     scene::Scene
@@ -80,8 +91,6 @@ function default_attributes(::Type{LayoutedAxis})
         ygridwidth = 1f0,
         xgridcolor = RGBAf0(0, 0, 0, 0.1),
         ygridcolor = RGBAf0(0, 0, 0, 0.1),
-        xidealtickdistance = 100f0,
-        yidealtickdistance = 100f0,
         topspinevisible = true,
         rightspinevisible = true,
         leftspinevisible = true,
@@ -94,6 +103,8 @@ function default_attributes(::Type{LayoutedAxis})
         alignment = (0.5f0, 0.5f0),
         maxsize = (Inf32, Inf32),
         autolimitmargin = (0.1f0, 0.1f0),
+        xticks = AutoLinearTicks(100f0),
+        yticks = AutoLinearTicks(100f0),
     )
 end
 
