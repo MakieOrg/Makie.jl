@@ -57,10 +57,12 @@ function limitunion(lims1, lims2)
     (min(lims1..., lims2...), max(lims1..., lims2...))
 end
 
-function expandlimits(lims, fractionalmargin)
-    w = lims[2] - lims[1]
-    d = w * fractionalmargin
-    (lims[1] - 0.5f0 * d, lims[2] + 0.5f0 * d)
+function expandlimits(lims, marginleft, marginright)
+    limsordered = (min(lims[1], lims[2]), max(lims[1], lims[2]))
+    w = limsordered[2] - limsordered[1]
+    dleft = w * marginleft
+    dright = w * marginright
+    (limsordered[1] - dleft, limsordered[2] + dright)
 end
 
 function getlimits(la::LayoutedAxis, dim)
@@ -97,7 +99,9 @@ function autolimits!(la::LayoutedAxis)
     if isnothing(xlims)
         xlims = (0f0, 1f0)
     else
-        xlims = expandlimits(xlims, la.attributes.autolimitmargin[][1])
+        xlims = expandlimits(xlims,
+            la.attributes.xautolimitmargin[][1],
+            la.attributes.xautolimitmargin[][2])
     end
 
     ylims = getylimits(la)
@@ -114,7 +118,9 @@ function autolimits!(la::LayoutedAxis)
     if isnothing(ylims)
         ylims = (0f0, 1f0)
     else
-        ylims = expandlimits(ylims, la.attributes.autolimitmargin[][2])
+        ylims = expandlimits(ylims,
+            la.attributes.yautolimitmargin[][1],
+            la.attributes.yautolimitmargin[][2])
     end
 
     bbox = BBox(xlims[1], xlims[2], ylims[2], ylims[1])

@@ -102,7 +102,8 @@ function default_attributes(::Type{LayoutedAxis})
         aspect = AxisAspect(nothing),
         alignment = (0.5f0, 0.5f0),
         maxsize = (Inf32, Inf32),
-        autolimitmargin = (0.1f0, 0.1f0),
+        xautolimitmargin = (0.05f0, 0.05f0),
+        yautolimitmargin = (0.05f0, 0.05f0),
         xticks = AutoLinearTicks(100f0),
         yticks = AutoLinearTicks(100f0),
     )
