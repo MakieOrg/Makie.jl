@@ -17,6 +17,8 @@ include("geometry_integration.jl")
 include("layout_engine.jl")
 include("makie_integration.jl")
 include("layoutedaxis.jl")
+include("layoutedcolorbar.jl")
+include("layoutedtext.jl")
 
 export LayoutedAxis
 export LayoutedSlider

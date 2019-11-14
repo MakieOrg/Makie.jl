@@ -561,3 +561,39 @@ function autolimits!(la::LayoutedAxis)
     bbox = BBox(xlims[1], xlims[2], ylims[2], ylims[1])
     la.limits[] = bbox
 end
+
+function linkxaxes!(a::LayoutedAxis, others...)
+    axes = LayoutedAxis[a; others...]
+
+    for i in 1:length(axes)-1
+        for j in i+1:length(axes)
+            axa = axes[i]
+            axb = axes[j]
+
+            if axa ∉ axb.xaxislinks
+                push!(axb.xaxislinks, axa)
+            end
+            if axb ∉ axa.xaxislinks
+                push!(axa.xaxislinks, axb)
+            end
+        end
+    end
+end
+
+function linkyaxes!(a::LayoutedAxis, others...)
+    axes = LayoutedAxis[a; others...]
+
+    for i in 1:length(axes)-1
+        for j in i+1:length(axes)
+            axa = axes[i]
+            axb = axes[j]
+
+            if axa ∉ axb.yaxislinks
+                push!(axb.yaxislinks, axa)
+            end
+            if axb ∉ axa.yaxislinks
+                push!(axa.yaxislinks, axb)
+            end
+        end
+    end
+end
