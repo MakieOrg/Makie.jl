@@ -3,9 +3,16 @@ module MakieLayout
 using Random
 using PlotUtils
 using AbstractPlotting
+using AbstractPlotting: Rect2D
+import AbstractPlotting: IRect2D
+using AbstractPlotting.Keyboard
+using AbstractPlotting.Mouse
+using AbstractPlotting: ispressed, is_mouseinside
 using Printf
 import Showoff
+using Observables: onany
 
+include("types.jl")
 include("geometry_integration.jl")
 include("layout_engine.jl")
 include("makie_integration.jl")

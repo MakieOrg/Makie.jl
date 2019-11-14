@@ -1,50 +1,17 @@
-using AbstractPlotting
-using AbstractPlotting: Rect2D
-import AbstractPlotting: IRect2D
-
-const BBox = Rect2D{Float32}
-
 left(rect::Rect2D) = minimum(rect)[1]
 right(rect::Rect2D) = maximum(rect)[1]
 
 bottom(rect::Rect2D) = minimum(rect)[2]
 top(rect::Rect2D) = maximum(rect)[2]
 
-abstract type Side end
 
-struct Left <: Side end
-struct Right <: Side end
-struct Top <: Side end
-struct Bottom <: Side end
 
 Base.getindex(bbox::Rect2D, ::Left) = left(bbox)
 Base.getindex(bbox::Rect2D, ::Right) = right(bbox)
 Base.getindex(bbox::Rect2D, ::Bottom) = bottom(bbox)
 Base.getindex(bbox::Rect2D, ::Top) = top(bbox)
 
-abstract type Ticks end
 
-struct AutoLinearTicks <: Ticks
-    idealtickdistance::Float32
-end
-
-struct ManualTicks <: Ticks
-    values::Vector{Float32}
-    labels::Vector{String}
-end
-
-mutable struct LayoutedAxis
-    parent::Scene
-    scene::Scene
-    plots::Vector{AbstractPlot}
-    xaxislinks::Vector{LayoutedAxis}
-    yaxislinks::Vector{LayoutedAxis}
-    bboxnode::Node{BBox}
-    limits::Node{BBox}
-    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
-    needs_update::Node{Bool}
-    attributes::Attributes
-end
 
 function default_attributes(::Type{LayoutedAxis})
     Attributes(
@@ -115,15 +82,7 @@ function default_attributes(::Type{LayoutedAxis})
     )
 end
 
-mutable struct LayoutedColorbar
-    parent::Scene
-    scene::Scene
-    bboxnode::Node{BBox}
-    limits::Node{Tuple{Float32, Float32}}
-    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
-    needs_update::Node{Bool}
-    attributes::Attributes
-end
+
 
 function default_attributes(::Type{LayoutedColorbar})
     Attributes(
@@ -162,14 +121,7 @@ function default_attributes(::Type{LayoutedColorbar})
     )
 end
 
-mutable struct LayoutedText
-    parent::Scene
-    bboxnode::Node{BBox}
-    height::Node{Float32}
-    width::Node{Float32}
-    text::AbstractPlotting.Text
-    attributes::Attributes
-end
+
 
 function default_attributes(::Type{LayoutedText})
     Attributes(
@@ -184,12 +136,7 @@ function default_attributes(::Type{LayoutedText})
     )
 end
 
-struct LayoutedSlider
-    scene::Scene
-    bboxnode::Node{BBox}
-    height::Node{Float32}
-    slider::Slider
-end
+
 
 function LayoutedSlider(scene::Scene, height::Real, sliderrange)
 
@@ -208,13 +155,7 @@ function LayoutedSlider(scene::Scene, height::Real, sliderrange)
     LayoutedSlider(scene, bboxnode, heightnode, slider)
 end
 
-struct LayoutedButton
-    scene::Scene
-    bboxnode::Node{BBox}
-    width::Node{Float32}
-    height::Node{Float32}
-    button::Button
-end
+
 
 function LayoutedButton(scene::Scene, width::Real, height::Real, label::String, textsize=20)
 
@@ -254,12 +195,7 @@ function IRect2D(bbox::Rect2D)
     )
 end
 
-struct RowCols{T <: Union{Number, Vector{Float64}}}
-    lefts::T
-    rights::T
-    tops::T
-    bottoms::T
-end
+
 
 function RowCols(ncols::Int, nrows::Int)
     return RowCols(
