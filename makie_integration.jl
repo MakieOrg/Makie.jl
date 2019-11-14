@@ -332,8 +332,9 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xlabelcolor, ylabelcolor, xlabelsize,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
-        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
-        yticklabelpad, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
+        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
+        yticklabelspace, xticklabelpad, yticklabelpad, xticklabelrotation, yticklabelrotation, xticklabelalign,
+        yticklabelalign, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
         ytickcolor, xpanlock, ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, topspinevisible, rightspinevisible, leftspinevisible,
         bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
@@ -416,23 +417,33 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
-        xticklabelpad, xticklabelsize, xlabelpadding, spinewidth) do a, xlabelvisible, xticklabelsvisible,
-                xticklabelpad, xticklabelsize, xlabelpadding, spinewidth
+        xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
+        xticksize, xtickalign) do a, xlabelvisible, xticklabelsvisible,
+                xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
+                xticksize, xtickalign
 
-        labelgap = xlabelpadding +
-            0.5f0 * spinewidth +
-            (xticklabelsvisible ? xticklabelpad + xticklabelsize : 0f0)
+        xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
+
+        labelgap = spinewidth +
+            xtickspace +
+            (xticklabelsvisible ? xticklabelspace + xticklabelpad : 0f0) +
+            xlabelpadding
 
         Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
     end
 
     ylabelpos = lift(scene.px_area, ylabelvisible, yticklabelsvisible,
-        yticklabelpad, yticklabelsize, ylabelpadding, spinewidth) do a, ylabelvisible, yticklabelsvisible,
-                yticklabelpad, yticklabelsize, ylabelpadding, spinewidth
+        yticklabelspace, yticklabelpad, yticklabelsize, ylabelpadding, spinewidth, yticksvisible,
+        yticksize, ytickalign) do a, ylabelvisible, yticklabelsvisible,
+                yticklabelspace, yticklabelpad, yticklabelsize, ylabelpadding, spinewidth, yticksvisible,
+                yticksize, ytickalign
 
-        labelgap = ylabelpadding +
-            0.5f0 * spinewidth +
-            (yticklabelsvisible ? yticklabelpad + yticklabelsize : 0f0)
+        ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
+
+        labelgap = spinewidth +
+            ytickspace +
+            (yticklabelsvisible ? yticklabelspace + yticklabelpad : 0f0) +
+            ylabelpadding
 
         Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
     end
@@ -630,16 +641,22 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     # update tick labels when strings or properties change
 
-    onany(xtickstrings, xticklabelpad, spinewidth, xticklabelsvisible) do xtickstrings,
-            xticklabelpad, spinewidth, xticklabelsvisible
+
+    onany(xtickstrings, xticklabelpad, spinewidth, xticklabelsvisible, xticksize, xtickalign, xticksvisible) do xtickstrings,
+            xticklabelpad, spinewidth, xticklabelsvisible, xticksize, xtickalign, xticksvisible
 
         nxticks = length(xtickvalues[])
+
+        xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
 
         for i in 1:length(xticklabels)
             if i <= nxticks
                 xticklabelnodes[i][] = xtickstrings[i]
+
+                xticklabelgap = spinewidth + xtickspace + xticklabelpad
+
                 xticklabelposnodes[i][] = xtickpositions[][i] +
-                    Point(0f0, -xticklabelpad - 0.5f0 * spinewidth)
+                    Point(0f0, -xticklabelgap)
                 xticklabels[i].visible = true && xticklabelsvisible
             else
                 xticklabels[i].visible = false
@@ -647,16 +664,21 @@ function LayoutedAxis(parent::Scene; kwargs...)
         end
     end
 
-    onany(ytickstrings, yticklabelpad, spinewidth, yticklabelsvisible) do ytickstrings,
-            yticklabelpad, spinewidth, yticklabelsvisible
+    onany(ytickstrings, yticklabelpad, spinewidth, yticklabelsvisible, yticksize, ytickalign, yticksvisible) do ytickstrings,
+            yticklabelpad, spinewidth, yticklabelsvisible, yticksize, ytickalign, yticksvisible
 
         nyticks = length(ytickvalues[])
+
+        ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
 
         for i in 1:length(yticklabels)
             if i <= nyticks
                 yticklabelnodes[i][] = ytickstrings[i]
+
+                yticklabelgap = spinewidth + ytickspace + yticklabelpad
+
                 yticklabelposnodes[i][] = ytickpositions[][i] +
-                    Point(-yticklabelpad - 0.5f0 * spinewidth, 0f0)
+                    Point(-yticklabelgap, 0f0)
                 yticklabels[i].visible = true && yticklabelsvisible
             else
                 yticklabels[i].visible = false
@@ -690,23 +712,24 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
                 ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
                 yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible,
-                xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
+                xticklabelspace, yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
-        bottom = (xlabelvisible ? boundingbox(xlabeltext).widths[2] + xlabelpadding : 0f0) +
-            0.5f0 * spinewidth +
-            max(
-                # when the xticklabel is visible take its size and pad
-                (xticklabelsvisible ? xticklabelsize + xticklabelpad : 0f0),
-                # or the xtick protrusion, depending on which value is larger
-                (xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0)
-            )
-        left = (ylabelvisible ? boundingbox(ylabeltext).widths[1] + ylabelpadding : 0f0) +
-            0.5f0 * spinewidth +
-            max(
-                (yticklabelsvisible ? yticklabelsize + yticklabelpad : 0f0),
-                (yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0)
-            )
+
+        xlabelspace = xlabelvisible ? boundingbox(xlabeltext).widths[2] + xlabelpadding : 0f0
+        xspinespace = spinewidth
+        xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
+        xticklabelgap = xticklabelsvisible ? xticklabelspace + xticklabelpad : 0f0
+
+        bottom = xspinespace + xtickspace + xticklabelgap + xlabelspace
+
+        ylabelspace = ylabelvisible ? boundingbox(ylabeltext).widths[1] + ylabelpadding : 0f0
+        yspinespace = spinewidth
+        ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
+        yticklabelgap = yticklabelsvisible ? yticklabelspace + yticklabelpad : 0f0
+
+        left = yspinespace + ytickspace + yticklabelgap + ylabelspace
+
         right = 0f0
 
         (left, right, top, bottom)
@@ -716,8 +739,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
-        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelpad,
-        yticklabelpad, xtickalign, ytickalign, spinewidth)
+        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
+        yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
 
     needs_update = Node(true)
 
