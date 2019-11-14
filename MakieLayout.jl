@@ -17,9 +17,9 @@ include("geometry_integration.jl")
 include("layout_engine.jl")
 include("makie_integration.jl")
 include("ticklocators/linear.jl")
-include("layoutedaxis.jl")
-include("layoutedcolorbar.jl")
-include("layoutedtext.jl")
+include("layoutedobjects/layoutedaxis.jl")
+include("layoutedobjects/layoutedcolorbar.jl")
+include("layoutedobjects/layoutedtext.jl")
 
 export LayoutedAxis
 export LayoutedSlider
