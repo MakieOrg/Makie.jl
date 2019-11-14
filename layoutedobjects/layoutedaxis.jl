@@ -229,26 +229,15 @@ function LayoutedAxis(parent::Scene; kwargs...)
         limw = limits.widths[1]
         px_w = pxa.widths[1]
 
-        if xticks isa AutoLinearTicks
-            xtickvalues[] = locateticks(limox, limox + limw, px_w, xticks.idealtickdistance)
-        elseif xticks isa ManualTicks
-            xtickvalues[] = xticks.values
-        else
-            error("No behavior implemented for ticks of type $(typeof(xticks))")
-        end
+        xtickvalues[] = compute_tick_values(xticks, limox, limox + limw, px_w)
     end
 
     onany(pixelarea(scene), limits, yticks) do pxa, limits, yticks
         limoy = limits.origin[2]
         limh = limits.widths[2]
         px_h = pxa.widths[2]
-        if yticks isa AutoLinearTicks
-            ytickvalues[] = locateticks(limoy, limoy + limh, px_h, yticks.idealtickdistance)
-        elseif yticks isa ManualTicks
-            ytickvalues[] = yticks.values
-        else
-            error("No behavior implemented for ticks of type $(typeof(yticks))")
-        end
+
+        ytickvalues[] = compute_tick_values(yticks, limoy, limoy + limh, px_h)
     end
 
     xtickpositions = Node(Point2f0[])
@@ -275,13 +264,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         # now trigger updates
         xtickpositions[] = xtickpos
 
-        if xticks[] isa AutoLinearTicks
-            xtickstrings[] = Showoff.showoff(xtickvalues, :plain)
-        elseif xticks[] isa ManualTicks
-            xtickstrings[] = xticks[].labels
-        else
-            error("No behavior implemented for ticks of type $(typeof(xticks[]))")
-        end
+        xtickstrings[] = get_tick_labels(xticks[], xtickvalues)
     end
 
     ytickpositions = Node(Point2f0[])
@@ -306,13 +289,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         # now trigger updates
         ytickpositions[] = ytickpos
 
-        if yticks[] isa AutoLinearTicks
-            ytickstrings[] = Showoff.showoff(ytickvalues, :plain)
-        elseif yticks[] isa ManualTicks
-            ytickstrings[] = yticks[].labels
-        else
-            error("No behavior implemented for ticks of type $(typeof(yticks[]))")
-        end
+        ytickstrings[] = get_tick_labels(yticks[], ytickvalues)
     end
 
     # update tick labels when strings or properties change
@@ -431,6 +408,34 @@ function LayoutedAxis(parent::Scene; kwargs...)
     add_reset_limits!(la)
 
     la
+end
+
+function compute_tick_values(ticks::T, vmin, vmax, pxwidth) where T
+    error("No behavior implemented for ticks of type $T")
+end
+
+function compute_tick_values(ticks::AutoLinearTicks, vmin, vmax, pxwidth)
+    locateticks(vmin, vmax, pxwidth, ticks.idealtickdistance)
+end
+
+function compute_tick_values(ticks::ManualTicks, vmin, vmax, pxwidth)
+    # only show manual ticks that fit in the value range
+    filter(ticks.values) do v
+        vmin <= v <= vmax
+    end
+end
+
+function get_tick_labels(ticks::T, tickvalues) where T
+    error("No behavior implemented for ticks of type $T")
+end
+
+function get_tick_labels(ticks::AutoLinearTicks, tickvalues)
+    Showoff.showoff(tickvalues, :plain)
+end
+
+function get_tick_labels(ticks::ManualTicks, tickvalues)
+    # remove labels of ticks that are not shown because the limits cut them off
+    String[ticks.labels[findfirst(x -> x == tv, ticks.values)] for tv in tickvalues]
 end
 
 function AbstractPlotting.scatter!(la::LayoutedAxis, args...; kwargs...)
