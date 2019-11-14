@@ -14,9 +14,11 @@ function LayoutedColorbar(parent::Scene; kwargs...)
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
-    connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, maxsize)
-
     limits = Node((0.0f0, 1.0f0))
+
+    # here limits isn't really useful, maybe split up the functions for colorbar and axis
+    connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
+
 
     scene = Scene(parent, scenearea, raw = true)
 

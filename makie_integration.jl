@@ -54,8 +54,8 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     vec
 end
 
-function connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, maxsize)
-    onany(bboxnode, aspect, alignment, maxsize) do bbox, aspect, alignment, maxsize
+function connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
+    onany(bboxnode, limits, aspect, alignment, maxsize) do bbox, limits, aspect, alignment, maxsize
 
         w = width(bbox)
         h = height(bbox)
@@ -63,9 +63,14 @@ function connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, max
         mh = min(h, maxsize[2])
         as = mw / mh
 
-        aspect = aspect.aspect
-        if !isnothing(aspect)
 
+        if aspect isa AxisAspect
+            aspect = aspect.aspect
+        elseif aspect isa DataAspect
+            aspect = limits.widths[1] / limits.widths[2]
+        end
+
+        if !isnothing(aspect)
             if as >= aspect
                 # too wide
                 mw *= aspect / as

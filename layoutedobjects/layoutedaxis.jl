@@ -20,10 +20,10 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
-    connect_scenearea_and_bbox!(scenearea, bboxnode, aspect, alignment, maxsize)
-
     scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
+
+    connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
 
     plots = AbstractPlot[]
 

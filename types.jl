@@ -123,8 +123,10 @@ struct SolvedAxisLayout <: Alignable
 end
 
 struct AxisAspect
-    aspect::Union{Float32, Nothing}
+    aspect::Float32
 end
+
+struct DataAspect end
 
 struct AxisLayout <: Alignable
     parent::GridLayout
