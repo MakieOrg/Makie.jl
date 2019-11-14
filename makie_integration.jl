@@ -394,7 +394,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
             parent,
             xticklabelnodes[i],
             position = xticklabelposnodes[i],
-            align = (:center, :top),
+            align = xticklabelalign,
+            rotation = xticklabelrotation,
             textsize = xticklabelsize,
             show_axis = false,
             visible = xticklabelsvisible
@@ -408,8 +409,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
             parent,
             yticklabelnodes[i],
             position = yticklabelposnodes[i],
-            align = (:center, :bottom),
-            rotation = pi/2,
+            align = yticklabelalign,
+            rotation = yticklabelrotation,
             textsize = yticklabelsize,
             show_axis = false,
             visible = yticklabelsvisible
