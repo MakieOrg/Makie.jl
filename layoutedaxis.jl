@@ -26,6 +26,13 @@ function AbstractPlotting.poly!(la::LayoutedAxis, args...; kwargs...)
     plot
 end
 
+function AbstractPlotting.meshscatter!(la::LayoutedAxis, args...; kwargs...)
+    plot = meshscatter!(la.scene, args...; show_axis=false, kwargs...)[end]
+    push!(la.plots, plot)
+    autolimits!(la)
+    plot
+end
+
 function bboxunion(bb1, bb2)
 
     o1 = bb1.origin
