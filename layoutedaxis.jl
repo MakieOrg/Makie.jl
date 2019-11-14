@@ -597,3 +597,104 @@ function linkyaxes!(a::LayoutedAxis, others...)
         end
     end
 end
+
+function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock)
+    startpos = Base.RefValue((0.0, 0.0))
+    pan = Mouse.right
+    xzoom = Keyboard.x
+    yzoom = Keyboard.y
+    e = events(scene)
+    on(
+        camera(scene),
+        # Node.((scene, cam, startpos))...,
+        Node.((scene, startpos))...,
+        e.mousedrag
+    ) do scene, startpos, dragging
+        # pan = cam.panbutton[]
+        mp = e.mouseposition[]
+        if ispressed(scene, pan) && is_mouseinside(scene)
+            window_area = pixelarea(scene)[]
+            if dragging == Mouse.down
+                startpos[] = mp
+            elseif dragging == Mouse.pressed && ispressed(scene, pan)
+                diff = startpos[] .- mp
+                startpos[] = mp
+                pxa = scene.px_area[]
+                diff_fraction = Vec2f0(diff) ./ Vec2f0(widths(pxa))
+
+                diff_limits = diff_fraction .* widths(limits[])
+
+                xori, yori = Vec2f0(limits[].origin) .+ Vec2f0(diff_limits)
+
+                if xpanlock[] || ispressed(scene, yzoom)
+                    xori = limits[].origin[1]
+                end
+
+                if ypanlock[] || ispressed(scene, xzoom)
+                    yori = limits[].origin[2]
+                end
+
+                limits[] = FRect(Vec2f0(xori, yori), widths(limits[]))
+            end
+        end
+        return
+    end
+end
+
+function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock)
+
+    e = events(scene)
+    cam = camera(scene)
+    on(cam, e.scroll) do x
+        # @extractvalue cam (zoomspeed, zoombutton, area)
+        zoomspeed = 0.10f0
+        zoombutton = nothing
+        zoom = Float32(x[2])
+        if zoom != 0 && ispressed(scene, zoombutton) && AbstractPlotting.is_mouseinside(scene)
+            pa = pixelarea(scene)[]
+
+            # don't let z go negative
+            z = max(0.1f0, 1f0 + (zoom * zoomspeed))
+
+            # limits[] = FRect(limits[].origin..., (limits[].widths .* 0.99)...)
+            mp_fraction = (Vec2f0(e.mouseposition[]) - minimum(pa)) ./ widths(pa)
+
+            mp_data = limits[].origin .+ mp_fraction .* limits[].widths
+
+            xorigin = limits[].origin[1]
+            yorigin = limits[].origin[2]
+
+            xwidth = limits[].widths[1]
+            ywidth = limits[].widths[2]
+
+            newxwidth = xzoomlock[] ? xwidth : xwidth * z
+            newywidth = yzoomlock[] ? ywidth : ywidth * z
+
+            newxorigin = xzoomlock[] ? xorigin : xorigin + mp_fraction[1] * (xwidth - newxwidth)
+            newyorigin = yzoomlock[] ? yorigin : yorigin + mp_fraction[2] * (ywidth - newywidth)
+
+            if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.x)
+                limits[] = FRect(newxorigin, yorigin, newxwidth, ywidth)
+            elseif AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.y)
+                limits[] = FRect(xorigin, newyorigin, xwidth, newywidth)
+            else
+                limits[] = FRect(newxorigin, newyorigin, newxwidth, newywidth)
+            end
+        end
+        return
+    end
+end
+
+function add_reset_limits!(la::LayoutedAxis)
+    scene = la.scene
+    e = events(scene)
+    cam = camera(scene)
+    on(cam, e.mousebuttons) do buttons
+        if ispressed(scene, AbstractPlotting.Mouse.left) && AbstractPlotting.is_mouseinside(scene)
+            if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.left_control)
+                autolimits!(la)
+            end
+        end
+        return
+    end
+end
