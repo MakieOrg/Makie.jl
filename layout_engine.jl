@@ -641,6 +641,16 @@ function Base.setindex!(g::GridLayout, lt::LayoutedText, rows::Indexables, cols:
     lt
 end
 
+function Base.lastindex(g::GridLayout, d)
+    if d == 1
+        g.nrows
+    elseif d == 2
+        g.ncols
+    else
+        error("A grid only has two dimensions, you're indexing dimension $d.")
+    end
+end
+
 function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
     push!(g.content, spa)
 
