@@ -392,7 +392,15 @@ end
 function determinewidth(gl::GridLayout)
     sum_colsizes = 0
     for icol in 1:gl.ncols
-        colsize = determinecolsize(icol, gl)
+        # width can only be determined for fixed and auto
+        colsize = if gl.colsizes[icol] isa Fixed
+            gl.colsizes[icol].x
+        elseif gl.colsizes[icol] isa Relative
+            nothing
+        elseif gl.colsizes[icol] isa Auto
+            determinecolsize(icol, gl)
+        end
+
         if isnothing(colsize)
             # early exit if a colsize can not be determined
             return nothing
@@ -411,18 +419,33 @@ function determinewidth(gl::GridLayout)
 
     inner_gapsizes = gl.ncols > 1 ? sum(colgaps) : 0
 
+    addedcolgaps = sum(gl.addedcolgaps) do c
+        if c isa Fixed
+            c.x
+        elseif c isa Relative
+            error("Auto grid size not implemented with relative gaps")
+        end
+    end
+
     return if gl.alignmode isa Inside
-        sum_colsizes + inner_gapsizes
+        sum_colsizes + inner_gapsizes + addedcolgaps
     elseif gl.alignmode isa Outside
-        sum_colsizes + inner_gapsizes + colgapsleft[1] + colgapsright[end] +
-            gl.alignmode.padding[1] + gl.alignmode.padding[2]
+        sum_colsizes + inner_gapsizes + addedcolgaps + colgapsleft[1] +
+            colgapsright[end] + gl.alignmode.padding[1] + gl.alignmode.padding[2]
     end
 end
 
 function determineheight(gl::GridLayout)
     sum_rowsizes = 0
     for irow in 1:gl.nrows
-        rowsize = determinerowsize(irow, gl)
+        # width can only be determined for fixed and auto
+        rowsize = if gl.rowsizes[irow] isa Fixed
+            gl.rowsizes[irow].x
+        elseif gl.rowsizes[irow] isa Relative
+            nothing
+        elseif gl.rowsizes[irow] isa Auto
+            determinerowsize(irow, gl)
+        end
         if isnothing(rowsize)
             # early exit if a rowsize can not be determined
             return nothing
@@ -441,11 +464,19 @@ function determineheight(gl::GridLayout)
 
     inner_gapsizes = gl.nrows > 1 ? sum(rgaps) : 0
 
+    addedrowgaps = sum(gl.addedrowgaps) do c
+        if c isa Fixed
+            c.x
+        elseif c isa Relative
+            error("Auto grid size not implemented with relative gaps")
+        end
+    end
+
     return if gl.alignmode isa Inside
-        sum_rowsizes + inner_gapsizes
+        sum_rowsizes + inner_gapsizes + addedrowgaps
     elseif gl.alignmode isa Outside
-        sum_rowsizes + inner_gapsizes + rowgapstop[1] + rowgapsbottom[end] +
-            gl.alignmode.padding[3] + gl.alignmode.padding[4]
+        sum_rowsizes + inner_gapsizes + addedrowgaps + rowgapstop[1] +
+            rowgapsbottom[end] + gl.alignmode.padding[3] + gl.alignmode.padding[4]
     end
 end
 
