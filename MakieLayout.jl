@@ -1,6 +1,5 @@
 module MakieLayout
 
-using Random
 using AbstractPlotting
 using AbstractPlotting: Rect2D
 import AbstractPlotting: IRect2D
