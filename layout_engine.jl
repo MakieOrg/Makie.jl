@@ -419,7 +419,7 @@ function determinewidth(gl::GridLayout)
 
     inner_gapsizes = gl.ncols > 1 ? sum(colgaps) : 0
 
-    addedcolgaps = sum(gl.addedcolgaps) do c
+    addedcolgaps = gl.ncols == 1 ? 0 : sum(gl.addedcolgaps) do c
         if c isa Fixed
             c.x
         elseif c isa Relative
@@ -464,7 +464,7 @@ function determineheight(gl::GridLayout)
 
     inner_gapsizes = gl.nrows > 1 ? sum(rgaps) : 0
 
-    addedrowgaps = sum(gl.addedrowgaps) do c
+    addedrowgaps = gl.nrows == 1 ? 0 : sum(gl.addedrowgaps) do c
         if c isa Fixed
             c.x
         elseif c isa Relative
