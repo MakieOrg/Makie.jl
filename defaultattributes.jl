@@ -114,5 +114,6 @@ function default_attributes(::Type{LayoutedText})
         valign = :center,
         halign = :center,
         rotation = 0f0,
+        padding = (0f0, 0f0, 0f0, 0f0),
     )
 end

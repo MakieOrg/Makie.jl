@@ -2,7 +2,7 @@ function LayoutedText(parent::Scene; kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LayoutedText))
 
     @extract attrs (text, textsize, font, color, visible, valign, halign,
-        rotation)
+        rotation, padding)
 
     bboxnode = Node(BBox(0, 100, 100, 0))
 
@@ -15,16 +15,17 @@ function LayoutedText(parent::Scene; kwargs...)
     t = text!(parent, text, position = position, textsize = textsize, font = font, color = color,
         visible = visible, align = (:center, :center), rotation = rotation)[end]
 
+    textbb = BBox(0, 1, 1, 0)
     heightnode = Node(1f0)
     widthnode = Node(1f0)
 
-    onany(text, textsize, font, visible, rotation) do text, textsize, font, visible,
-            rotation
+    onany(text, textsize, font, visible, rotation, padding) do text, textsize, font, visible,
+            rotation, padding
 
         if visible
-            bb = FRect2D(boundingbox(t))
-            heightnode[] = height(bb)
-            widthnode[] = width(bb)
+            textbb = FRect2D(boundingbox(t))
+            heightnode[] = height(textbb) + padding[3] + padding[4]
+            widthnode[] = width(textbb) + padding[1] + padding[2]
         else
             heightnode[] = 0f0
             widthnode[] = 0f0
@@ -33,6 +34,8 @@ function LayoutedText(parent::Scene; kwargs...)
 
     onany(bboxnode, valign, halign) do bbox, valign, halign
 
+        tw = width(textbb)
+        th = height(textbb)
         w = widthnode[]
         h = heightnode[]
 
@@ -43,24 +46,24 @@ function LayoutedText(parent::Scene; kwargs...)
         boy = bbox.origin[2]
 
         x = if halign == :left
-            box + 0.5f0 * w
-        elseif halign == :right
-            box + bw - 0.5f0 * w
-        elseif halign == :center
-            box + 0.5f0 * bw
-        else
-            error("Invalid halign $halign")
-        end
+                box + 0.5f0 * tw + padding[][1]
+            elseif halign == :right
+                box + bw - 0.5f0 * tw - padding[][2]
+            elseif halign == :center
+                box + 0.5f0 * bw
+            else
+                error("Invalid halign $halign")
+            end
 
         y = if valign == :bottom
-            boy + 0.5f0 * h
-        elseif valign == :top
-            boy + bh - 0.5f0 * h
-        elseif valign == :center
-            boy + 0.5f0 * bh
-        else
-            error("Invalid valign $valign")
-        end
+                boy + 0.5f0 * th + padding[][4]
+            elseif valign == :top
+                boy + bh - 0.5f0 * th - padding[][3]
+            elseif valign == :center
+                boy + 0.5f0 * bh
+            else
+                error("Invalid valign $valign")
+            end
 
         position[] = Point2f0(x, y)
     end
