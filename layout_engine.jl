@@ -363,6 +363,92 @@ function determinewidth(a::Alignable)
     nothing
 end
 
+function columngaps(gl::GridLayout)
+    lefts = zeros(Float32, gl.ncols)
+    rights = zeros(Float32, gl.ncols)
+    for c in gl.content
+        sp = c.sp
+        colstart = sp.cols.start
+        colstop = sp.cols.stop
+        lefts[colstart] = max(lefts[colstart], protrusion(c, Left()))
+        rights[colstop] = max(rights[colstop], protrusion(c, Right()))
+    end
+    lefts, rights
+end
+
+function rowgaps(gl::GridLayout)
+    tops = zeros(Float32, gl.nrows)
+    bottoms = zeros(Float32, gl.nrows)
+    for c in gl.content
+        sp = c.sp
+        rowstart = sp.rows.start
+        rowstop = sp.rows.stop
+        tops[rowstart] = max(tops[rowstart], protrusion(c, Top()))
+        bottoms[rowstop] = max(bottoms[rowstop], protrusion(c, Bottom()))
+    end
+    tops, bottoms
+end
+
+function determinewidth(gl::GridLayout)
+    sum_colsizes = 0
+    for icol in 1:gl.ncols
+        colsize = determinecolsize(icol, gl)
+        if isnothing(colsize)
+            # early exit if a colsize can not be determined
+            return nothing
+        end
+        sum_colsizes += colsize
+    end
+
+    colgapsleft, colgapsright = columngaps(gl)
+
+    colgaps = if gl.equalprotrusiongaps[2]
+        innergaps = colgapsleft[2:end] .+ colgapsright[1:end-1]
+        fill(maximum(innergaps), gl.ncols - 1)
+    else
+        innergaps = colgapsleft[2:end] .+ colgapsright[1:end-1]
+    end
+
+    inner_gapsizes = gl.ncols > 1 ? sum(colgaps) : 0
+
+    return if gl.alignmode isa Inside
+        sum_colsizes + inner_gapsizes
+    elseif gl.alignmode isa Outside
+        sum_colsizes + inner_gapsizes + colgapsleft[1] + colgapsright[end] +
+            gl.alignmode.padding[1] + gl.alignmode.padding[2]
+    end
+end
+
+function determineheight(gl::GridLayout)
+    sum_rowsizes = 0
+    for irow in 1:gl.nrows
+        rowsize = determinerowsize(irow, gl)
+        if isnothing(rowsize)
+            # early exit if a rowsize can not be determined
+            return nothing
+        end
+        sum_rowsizes += rowsize
+    end
+
+    rowgapstop, rowgapsbottom = rowgaps(gl)
+
+    rgaps = if gl.equalprotrusiongaps[2]
+        innergaps = rowgapstop[2:end] .+ rowgapsbottom[1:end-1]
+        fill(maximum(innergaps), gl.nrows - 1)
+    else
+        innergaps = rowgapstop[2:end] .+ rowgapsbottom[1:end-1]
+    end
+
+    inner_gapsizes = gl.nrows > 1 ? sum(rgaps) : 0
+
+    return if gl.alignmode isa Inside
+        sum_rowsizes + inner_gapsizes
+    elseif gl.alignmode isa Outside
+        sum_rowsizes + inner_gapsizes + rowgapstop[1] + rowgapsbottom[end] +
+            gl.alignmode.padding[3] + gl.alignmode.padding[4]
+    end
+end
+
 function determinecolsize(icol, gl)
     colsize = nothing
     for c in gl.content
