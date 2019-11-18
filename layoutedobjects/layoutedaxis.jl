@@ -703,3 +703,23 @@ function add_reset_limits!(la::LayoutedAxis)
         return
     end
 end
+
+function Base.getproperty(la::LayoutedAxis, s::Symbol)
+    if s in fieldnames(LayoutedAxis)
+        getfield(la, s)
+    else
+        la.attributes[s]
+    end
+end
+
+function Base.setproperty!(la::LayoutedAxis, s::Symbol, value)
+    if s in fieldnames(LayoutedAxis)
+        setfield!(la, s, value)
+    else
+        la.attributes[s][] = value
+    end
+end
+
+function Base.propertynames(la::LayoutedAxis)
+    [fieldnames(LayoutedAxis)..., keys(la.attributes)...]
+end
