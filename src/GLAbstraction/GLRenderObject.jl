@@ -72,12 +72,14 @@ struct StandardPrerender
 end
 
 function (sp::StandardPrerender)()
-    if !sp.overdraw[]
+    if sp.overdraw[]
+        # Disable depth testing if overdrawing
+        glDisable(GL_DEPTH_TEST)
+    else
         glEnable(GL_DEPTH_TEST)
         glDepthFunc(GL_LEQUAL)
-    else
-        glDisable(GL_DEPTH_TEST)
     end
+    # Disable depth write for transparent objects
     glDepthMask(sp.transparency[] ? GL_FALSE : GL_TRUE)
     # Disable cullface for now, untill all rendering code is corrected!
     glDisable(GL_CULL_FACE)

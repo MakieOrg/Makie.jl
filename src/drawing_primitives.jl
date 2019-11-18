@@ -126,9 +126,16 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
+            pix_proj = lift(pixelarea(scene)) do window_size
+                nearclip = -10_000f0
+                farclip = 10_000f0
+                w, h = Float32.(widths(window_size))
+                return AbstractPlotting.orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
+            end
             gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
+            gl_attributes[:pixel_projection] = pix_proj
         end
         positions = handle_view(x[1], gl_attributes)
         if marker[] isa FastPixel
