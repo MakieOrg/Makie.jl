@@ -22,6 +22,7 @@ include("projection_math.jl")
     @test scene[Axis].ticks.title_gap[] == 3
     scene[Axis].ticks.title_gap = 4
     @test scene[Axis].ticks.title_gap[] == 4
+    @test scene[Axis].tickmarks.length[] == (3, 3)
 end
 
 
