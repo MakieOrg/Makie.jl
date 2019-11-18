@@ -64,6 +64,11 @@ function default_attributes(::Type{LayoutedAxis})
         yautolimitmargin = (0.05f0, 0.05f0),
         xticks = AutoLinearTicks(100f0),
         yticks = AutoLinearTicks(100f0),
+        panbutton = AbstractPlotting.Mouse.right,
+        xpankey = AbstractPlotting.Keyboard.x,
+        ypankey = AbstractPlotting.Keyboard.y,
+        xzoomkey = AbstractPlotting.Keyboard.x,
+        yzoomkey = AbstractPlotting.Keyboard.y,
     )
 end
 

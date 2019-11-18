@@ -13,7 +13,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         ytickcolor, xpanlock, ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, topspinevisible, rightspinevisible, leftspinevisible,
         bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, alignment, maxsize, xticks, yticks
+        aspect, alignment, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey
     )
 
     bboxnode = Node(BBox(0, 100, 100, 0))
@@ -30,8 +30,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
     xaxislinks = LayoutedAxis[]
     yaxislinks = LayoutedAxis[]
 
-    add_pan!(scene, limits, xpanlock, ypanlock)
-    add_zoom!(scene, limits, xzoomlock, yzoomlock)
+    add_pan!(scene, limits, xpanlock, ypanlock, panbutton, xpankey, ypankey)
+    add_zoom!(scene, limits, xzoomlock, yzoomlock, xzoomkey, yzoomkey)
 
     campixel!(scene)
 
@@ -603,11 +603,8 @@ function linkyaxes!(a::LayoutedAxis, others...)
     end
 end
 
-function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock)
+function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock, panbutton, xpankey, ypankey)
     startpos = Base.RefValue((0.0, 0.0))
-    pan = Mouse.right
-    xzoom = Keyboard.x
-    yzoom = Keyboard.y
     e = events(scene)
     on(
         camera(scene),
@@ -615,13 +612,12 @@ function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock)
         Node.((scene, startpos))...,
         e.mousedrag
     ) do scene, startpos, dragging
-        # pan = cam.panbutton[]
         mp = e.mouseposition[]
-        if ispressed(scene, pan) && is_mouseinside(scene)
+        if ispressed(scene, panbutton[]) && is_mouseinside(scene)
             window_area = pixelarea(scene)[]
             if dragging == Mouse.down
                 startpos[] = mp
-            elseif dragging == Mouse.pressed && ispressed(scene, pan)
+            elseif dragging == Mouse.pressed && ispressed(scene, panbutton[])
                 diff = startpos[] .- mp
                 startpos[] = mp
                 pxa = scene.px_area[]
@@ -631,11 +627,11 @@ function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock)
 
                 xori, yori = Vec2f0(limits[].origin) .+ Vec2f0(diff_limits)
 
-                if xpanlock[] || ispressed(scene, yzoom)
+                if xpanlock[] || ispressed(scene, ypankey[])
                     xori = limits[].origin[1]
                 end
 
-                if ypanlock[] || ispressed(scene, xzoom)
+                if ypanlock[] || ispressed(scene, xpankey[])
                     yori = limits[].origin[2]
                 end
 
@@ -646,7 +642,7 @@ function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock)
     end
 end
 
-function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock)
+function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock, xzoomkey, yzoomkey)
 
     e = events(scene)
     cam = camera(scene)
@@ -678,9 +674,9 @@ function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock)
             newxorigin = xzoomlock[] ? xorigin : xorigin + mp_fraction[1] * (xwidth - newxwidth)
             newyorigin = yzoomlock[] ? yorigin : yorigin + mp_fraction[2] * (ywidth - newywidth)
 
-            if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.x)
+            if AbstractPlotting.ispressed(scene, xzoomkey[])
                 limits[] = FRect(newxorigin, yorigin, newxwidth, ywidth)
-            elseif AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.y)
+            elseif AbstractPlotting.ispressed(scene, yzoomkey[])
                 limits[] = FRect(xorigin, newyorigin, xwidth, newywidth)
             else
                 limits[] = FRect(newxorigin, newyorigin, newxwidth, newywidth)
