@@ -104,11 +104,11 @@ function add_scene!(jsctx, scene::Scene)
     scene_graph = _add_scene!(jsctx, scene)
     on_redraw(jsctx) do _
         # Fuse all calls in the event loop together!
-        # JSCall.fused(jsctx.THREE) do
+        JSServe.fuse(jsctx.THREE) do
             for (js_scene, (cam, update_func)) in scene_graph
                 update_func()
             end
-        # end
+        end
     end
 end
 
