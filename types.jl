@@ -186,6 +186,7 @@ mutable struct LayoutedAxis
     protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
     needs_update::Node{Bool}
     attributes::Attributes
+    block_limit_linking::Node{Bool}
 end
 
 mutable struct LayoutedColorbar

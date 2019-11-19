@@ -23,6 +23,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
     scene = Scene(parent, scenearea, raw = true)
     limits = Node(FRect(0, 0, 100, 100))
 
+    block_limit_linking = Node(false)
+
     connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
 
     plots = AbstractPlot[]
@@ -192,32 +194,44 @@ function LayoutedAxis(parent::Scene; kwargs...)
         thisxlims = (limox, limox + limw)
         thisylims = (limoy, limoy + limh)
 
-        bothlinks = intersect(xaxislinks, yaxislinks)
-        xlinks = setdiff(xaxislinks, yaxislinks)
-        ylinks = setdiff(yaxislinks, xaxislinks)
 
-        for link in bothlinks
-            otherlims = link.limits[]
-            if lims != otherlims
-                link.limits[] = lims
+        # only change linked axis if not prohibited from doing so because
+        # we're currently being updated by another axis' link
+        if !block_limit_linking[]
+
+            bothlinks = intersect(xaxislinks, yaxislinks)
+            xlinks = setdiff(xaxislinks, yaxislinks)
+            ylinks = setdiff(yaxislinks, xaxislinks)
+
+            for link in bothlinks
+                otherlims = link.limits[]
+                if lims != otherlims
+                    link.block_limit_linking[] = true
+                    link.limits[] = lims
+                    link.block_limit_linking[] = false
+                end
             end
-        end
 
-        for xlink in xlinks
-            otherlims = xlink.limits[]
-            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
-            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
-            if thisxlims != otherxlims
-                xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[2], otherylims[1])
+            for xlink in xlinks
+                otherlims = xlink.limits[]
+                otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
+                otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+                if thisxlims != otherxlims
+                    xlink.block_limit_linking[] = true
+                    xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[2], otherylims[1])
+                    xlink.block_limit_linking[] = false
+                end
             end
-        end
 
-        for ylink in ylinks
-            otherlims = ylink.limits[]
-            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
-            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
-            if thisylims != otherylims
-                ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[2], thisylims[1])
+            for ylink in ylinks
+                otherlims = ylink.limits[]
+                otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
+                otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+                if thisylims != otherylims
+                    ylink.block_limit_linking[] = true
+                    ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[2], thisylims[1])
+                    ylink.block_limit_linking[] = false
+                end
             end
         end
     end
@@ -403,7 +417,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
-        protrusions, needs_update, attrs)
+        protrusions, needs_update, attrs, block_limit_linking)
 
     add_reset_limits!(la)
 
