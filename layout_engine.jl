@@ -27,41 +27,14 @@ isbottommostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Bottom())
 istopmostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Top())
 
 
-
-function setup_updates!(gl::GridLayout)
-    parent = gl.parent
-
-    if isnothing(parent)
-        # Can't setup updates for GridLayout if no parent is defined."
-    elseif parent isa Scene
-        on(gl.needs_update) do update
-            if !gl.block_updates
-                sg = solve(gl, BBox(shrinkbymargin(pixelarea(parent)[], 0)))
-                applylayout(sg)
-            end
-        end
-
-        # update when parent scene changes size
-        on(pixelarea(parent)) do px
-            if !gl.block_updates
-                gl.needs_update[] = true
-            end
-        end
-    elseif parent isa GridLayout
-        on(gl.needs_update) do update
-            if !gl.block_updates
-                parent.needs_update[] = true
-            end
-        end
-    end
-end
-
 function with_updates_suspended(f::Function, gl::GridLayout)
     gl.block_updates = true
     f()
     gl.block_updates = false
     gl.needs_update[] = true
 end
+
+parentlayout(gl::GridLayout) = gl.parent
 
 function GridLayout(nrows, ncols;
         parent = nothing,
@@ -121,21 +94,32 @@ protrusionnode(anything) = nothing
 widthnode(anything) = nothing
 heightnode(anything) = nothing
 
+parentlayout(pl::ProtrusionLayout) = pl.parent
 
-function ProtrusionLayout(parent, content)
+function ProtrusionLayout(content)
     needs_update = Node(false)
 
     protrusions = protrusionnode(content)
     width = widthnode(content)
     height = heightnode(content)
 
-    update_func = x -> (needs_update[] = true)
+    # the nothing parent here has to be replaced by a grid parent later
+    # when placing this layout in the grid layout
+    pl = ProtrusionLayout(nothing, protrusions, width, height, needs_update, content)
+
+    update_func = x -> begin
+        p = parentlayout(pl)
+        if isnothing(p)
+            error("This layout has no parent and can't continue the update signal chain.")
+        end
+        p.needs_update[] = true
+    end
 
     !isnothing(protrusions) && on(update_func, protrusions)
     !isnothing(width) && on(update_func, width)
     !isnothing(height) && on(update_func, height)
 
-    ProtrusionLayout(parent, protrusions, width, height, needs_update, content)
+    pl
 end
 
 protrusionnode(pl::ProtrusionLayout) = pl.protrusions
@@ -638,22 +622,7 @@ end
 
 const Indexables = Union{UnitRange, Int, Colon}
 
-"""
-This function allows indexing syntax to add a layout object to a grid.
-You can do:
 
-grid[1, 1] = obj
-grid[1, :] = obj
-grid[1:3, 2:5] = obj
-
-and all combinations of the above
-"""
-function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Indexables)
-    rows, cols = adjust_rows_cols!(g, rows, cols)
-
-    sp = SpannedAlignable(a, Span(rows, cols))
-    connectchildlayout!(g, sp)
-end
 
 function adjust_rows_cols!(g::GridLayout, rows, cols)
     if rows isa Int
@@ -691,23 +660,37 @@ function adjust_rows_cols!(g::GridLayout, rows, cols)
     rows, cols
 end
 
+
+"""
+This function allows indexing syntax to add a layout object to a grid.
+You can do:
+
+grid[1, 1] = obj
+grid[1, :] = obj
+grid[1:3, 2:5] = obj
+
+and all combinations of the above
+"""
+function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Indexables)
+    add_layout!(g, a, rows, cols)
+    a
+end
+
+"""
+This function is similar to the other setindex! but is for all objects that are
+not themselves layouts. They need to be wrapped in a layout first before being
+added. This is determined by the defaultlayout function.
+"""
 function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables)
-    layout = ProtrusionLayout(g, content)
+    layout = defaultlayout(content)
     add_layout!(g, layout, rows, cols)
     content
 end
 
-function add_layout!(g::GridLayout, layout, rows, cols)
+function add_layout!(g::GridLayout, layout::Alignable, rows, cols)
     rows, cols = adjust_rows_cols!(g, rows, cols)
+    layout.parent = g
     sp = SpannedAlignable(layout, Span(rows, cols))
-    connectchildlayout!(g, sp)
-end
-
-function add_layout!(g::GridLayout, gsub::GridLayout, rows, cols)
-    rows, cols = adjust_rows_cols!(g, rows, cols)
-    gsub.parent = g
-    setup_updates!(gsub)
-    sp = SpannedAlignable(gsub, Span(rows, cols))
     connectchildlayout!(g, sp)
 end
 

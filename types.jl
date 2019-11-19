@@ -100,12 +100,39 @@ mutable struct GridLayout <: Alignable
             error("There are $ncols columns but $(length(addedcolgaps)) column gaps.")
         end
 
-        g = new(parent, content, nrows, ncols, rowsizes, colsizes,
+        gl = new(parent, content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update, false)
 
-        setup_updates!(g)
+        # set up updating mechanism
+        # so far this only works if the scene is assigned as a parent at creation
+        if parent isa Scene
+            on(pixelarea(parent)) do px
+                if !gl.block_updates
+                    gl.needs_update[] = true
+                end
+            end
+        end
 
-        g
+        # the other updates work also after reassigning the parent
+        on(needs_update) do update
+
+            parent = parentlayout(gl)
+
+            if isnothing(parent)
+                error("This grid layout has no parent defined.")
+            end
+
+            if !gl.block_updates
+                if parent isa Scene
+                    sg = solve(gl, BBox(pixelarea(parent)[]))
+                    applylayout(sg)
+                elseif parent isa GridLayout
+                    parent.needs_update[] = true
+                end
+            end
+        end
+
+        gl
     end
 end
 
@@ -129,7 +156,7 @@ end
 struct DataAspect end
 
 mutable struct ProtrusionLayout{T} <: Alignable
-    parent::GridLayout
+    parent::Union{Nothing, GridLayout}
     protrusions::Union{Nothing, Node{Tuple{Float32, Float32, Float32, Float32}}}
     widthnode::Union{Nothing, Node{Float32}}
     heightnode::Union{Nothing, Node{Float32}}

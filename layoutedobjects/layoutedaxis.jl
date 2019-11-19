@@ -725,3 +725,5 @@ end
 function Base.propertynames(la::LayoutedAxis)
     [fieldnames(LayoutedAxis)..., keys(la.attributes)...]
 end
+
+defaultlayout(la::LayoutedAxis) = ProtrusionLayout(la)

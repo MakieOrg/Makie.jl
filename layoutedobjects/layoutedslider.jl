@@ -20,3 +20,5 @@ function align_to_bbox!(ls::LayoutedSlider, bbox)
 end
 
 heightnode(ls::LayoutedSlider) = ls.height
+
+defaultlayout(ls::LayoutedSlider) = ProtrusionLayout(ls)

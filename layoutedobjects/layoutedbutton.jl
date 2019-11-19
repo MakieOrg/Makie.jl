@@ -24,3 +24,5 @@ end
 
 widthnode(lb::LayoutedButton) = lb.width
 heightnode(lb::LayoutedButton) = lb.height
+
+defaultlayout(lb::LayoutedButton) = ProtrusionLayout(lb)

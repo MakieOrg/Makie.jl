@@ -76,6 +76,8 @@ function LayoutedText(parent::Scene; kwargs...)
     lt
 end
 
+defaultlayout(lt::LayoutedText) = ProtrusionLayout(lt)
+
 widthnode(lt::LayoutedText) = lt.width
 heightnode(lt::LayoutedText) = lt.height
 
