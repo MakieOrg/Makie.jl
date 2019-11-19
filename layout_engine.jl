@@ -617,15 +617,11 @@ function determineheight(pl::ProtrusionLayout)
 end
 
 function determinewidth(pl::ProtrusionLayout)
-    result = if isnothing(widthnode(pl))
+    if isnothing(widthnode(pl))
         nothing
     else
         widthnode(pl)[] + protrusion(pl, Left()) + protrusion(pl, Right())
     end
-    if pl.content isa LayoutedText
-        @show result
-    end
-    result
 end
 
 
