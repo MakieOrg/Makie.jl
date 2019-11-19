@@ -117,9 +117,9 @@ struct SolvedGridLayout <: Alignable
     grid::RowCols{Vector{Float64}}
 end
 
-struct SolvedAxisLayout <: Alignable
+struct SolvedProtrusionLayout{T} <: Alignable
     bbox::BBox
-    bboxnode::Node{BBox}
+    content::T
 end
 
 struct AxisAspect
@@ -128,35 +128,13 @@ end
 
 struct DataAspect end
 
-struct AxisLayout <: Alignable
+mutable struct ProtrusionLayout{T} <: Alignable
     parent::GridLayout
-    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
-    # aspect::Node{AxisAspect}
-    # alignment::Node{Tuple{Float32, Float32}}
-    # maxsize::Node{Tuple{Float32, Float32}}
-    bboxnode::Node{BBox}
+    protrusions::Union{Nothing, Node{Tuple{Float32, Float32, Float32, Float32}}}
+    widthnode::Union{Nothing, Node{Float32}}
+    heightnode::Union{Nothing, Node{Float32}}
     needs_update::Node{Bool}
-end
-
-struct SolvedBoxLayout <: Alignable
-    bbox::BBox
-    bboxnode::Node{BBox}
-end
-
-"""
-An alignable that contains something of a fixed size, like some text.
-There will usually be more space available in at least one direction than
-just the fixed size of the box, so the alignment says where
-in the available BBox the fixed size content should be placed.
-For example, the figure title is placed above all else, but can then
-be aligned on the left, in the center, or on the right.
-"""
-struct BoxLayout <: Alignable
-    parent::GridLayout
-    width::Union{Nothing, Node{Float32}}
-    height::Union{Nothing, Node{Float32}}
-    bboxnode::Node{BBox}
-    needs_update::Node{Bool}
+    content::T
 end
 
 abstract type Ticks end

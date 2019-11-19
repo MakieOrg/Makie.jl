@@ -115,66 +115,33 @@ function GridLayout(nrows, ncols;
         addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
 end
 
+# these must be defined for special types that want protrusions or specified
+# widths and heights
+protrusionnode(anything) = nothing
+widthnode(anything) = nothing
+heightnode(anything) = nothing
 
 
-function AxisLayout(parent, protrusions, bboxnode)
-    # bboxnode now is supplied by the axis itself
-
-    # bboxnode = Node(BBox(0, 1, 1, 0))
-    needs_update = Node(false)
-    on(protrusions) do p
-        needs_update[] = true
-    end
-    AxisLayout(parent, protrusions, bboxnode, needs_update)
-end
-
-
-
-function BoxLayout(parent, width::Node{Float32}, height::Node{Float32}, bboxnode::Node{BBox})
-
+function ProtrusionLayout(parent, content)
     needs_update = Node(false)
 
-    onany(width, height) do w, h
-        needs_update[] = true
-    end
+    protrusions = protrusionnode(content)
+    width = widthnode(content)
+    height = heightnode(content)
 
-    BoxLayout(parent, width, height, bboxnode, needs_update)
+    update_func = x -> (needs_update[] = true)
+
+    !isnothing(protrusions) && on(update_func, protrusions)
+    !isnothing(width) && on(update_func, width)
+    !isnothing(height) && on(update_func, height)
+
+    ProtrusionLayout(parent, protrusions, width, height, needs_update, content)
 end
 
-function BoxLayout(parent, width::Nothing, height::Node{Float32}, bboxnode::Node{BBox})
-    needs_update = Node(false)
+protrusionnode(pl::ProtrusionLayout) = pl.protrusions
+widthnode(pl::ProtrusionLayout) = pl.widthnode
+heightnode(pl::ProtrusionLayout) = pl.heightnode
 
-    on(height) do h
-        needs_update[] = true
-    end
-
-    BoxLayout(parent, width, height, bboxnode, needs_update)
-end
-
-function BoxLayout(parent, width::Node{Float32}, height::Nothing, bboxnode::Node{BBox})
-    needs_update = Node(false)
-
-    on(width) do w
-        needs_update[] = true
-    end
-
-    BoxLayout(parent, width, height, bboxnode, needs_update)
-end
-
-function determineheight(b::BoxLayout)
-    if isnothing(b.height)
-        nothing
-    else
-        b.height[]
-    end
-end
-function determinewidth(b::BoxLayout)
-    if isnothing(b.width)
-        nothing
-    else
-        b.width[]
-    end
-end
 
 
 """
@@ -187,12 +154,10 @@ rightprotrusion(x) = protrusion(x, Right())
 bottomprotrusion(x) = protrusion(x, Bottom())
 topprotrusion(x) = protrusion(x, Top())
 
-protrusion(b::BoxLayout, side::Side) = 0.0
-# protrusion(u::AxisLayout, side::Side) = u.protrusions[side]
-protrusion(a::AxisLayout, ::Left) = a.protrusions[][1]
-protrusion(a::AxisLayout, ::Right) = a.protrusions[][2]
-protrusion(a::AxisLayout, ::Top) = a.protrusions[][3]
-protrusion(a::AxisLayout, ::Bottom) = a.protrusions[][4]
+protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][1]
+protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][2]
+protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][3]
+protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][4]
 protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
 
 function protrusion(gl::GridLayout, side::Side)
@@ -208,8 +173,8 @@ function protrusion(gl::GridLayout, side::Side)
     end
 end
 
-protrusion(s::SolvedAxisLayout, ::Left) = left(s.inner) - left(s.outer)
-function protrusion(s::SolvedAxisLayout, side::Side)
+protrusion(s::SolvedProtrusionLayout, ::Left) = left(s.inner) - left(s.outer)
+function protrusion(s::SolvedProtrusionLayout, side::Side)
     return s.outer[side] - s.inner[side]
 end
 
@@ -356,12 +321,12 @@ function solve(gl::GridLayout, bbox::BBox)
     )
 end
 
-function determineheight(a::Alignable)
-    nothing
-end
-function determinewidth(a::Alignable)
-    nothing
-end
+# function determineheight(a::Alignable)
+#     nothing
+# end
+# function determinewidth(a::Alignable)
+#     nothing
+# end
 
 function columngaps(gl::GridLayout)
     lefts = zeros(Float32, gl.ncols)
@@ -643,20 +608,36 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     colwidths, rowheights
 end
 
+function determineheight(pl::ProtrusionLayout)
+    if isnothing(heightnode(pl))
+        nothing
+    else
+        heightnode(pl)[] + protrusion(pl, Top()) + protrusion(pl, Bottom())
+    end
+end
 
-function solve(ua::AxisLayout, innerbbox)
-    # bbox = mapsides(innerbbox, ua.protrusions) do side, iside, decside
-    #     op = side isa Union{Left, Top} ? (-) : (+)
-    #     return op(iside, decside)
-    # end
+function determinewidth(pl::ProtrusionLayout)
+    result = if isnothing(widthnode(pl))
+        nothing
+    else
+        widthnode(pl)[] + protrusion(pl, Left()) + protrusion(pl, Right())
+    end
+    if pl.content isa LayoutedText
+        @show result
+    end
+    result
+end
+
+
+function solve(ua::ProtrusionLayout, innerbbox)
     ib = innerbbox
     bbox = BBox(
-        left(ib) - ua.protrusions[][1],
-        right(ib) + ua.protrusions[][2],
-        top(ib) + ua.protrusions[][3],
-        bottom(ib) - ua.protrusions[][4]
+        left(ib) - protrusion(ua, Left()),
+        right(ib) + protrusion(ua, Right()),
+        top(ib) + protrusion(ua, Top()),
+        bottom(ib) - protrusion(ua, Bottom())
     )
-    SolvedAxisLayout(innerbbox, ua.bboxnode)
+    SolvedProtrusionLayout(innerbbox, ua.content)
 end
 
 const Indexables = Union{UnitRange, Int, Colon}
@@ -714,48 +695,24 @@ function adjust_rows_cols!(g::GridLayout, rows, cols)
     rows, cols
 end
 
-function Base.setindex!(g::GridLayout, la::LayoutedAxis, rows::Indexables, cols::Indexables)
-    al = AxisLayout(g, la.protrusions, la.bboxnode)
-    g[rows, cols] = al
-    la
+function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables)
+    layout = ProtrusionLayout(g, content)
+    add_layout!(g, layout, rows, cols)
+    content
 end
 
-function Base.setindex!(g::GridLayout, lc::LayoutedColorbar, rows::Indexables, cols::Indexables)
-    al = AxisLayout(g, lc.protrusions, lc.bboxnode)
-    g[rows, cols] = al
-    lc
-end
-
-function Base.setindex!(g::GridLayout, gsub::GridLayout, rows::Indexables, cols::Indexables)
-    # avoid stackoverflow error
-    # g[rows, cols] = gsub
-
+function add_layout!(g::GridLayout, layout, rows, cols)
     rows, cols = adjust_rows_cols!(g, rows, cols)
+    sp = SpannedAlignable(layout, Span(rows, cols))
+    connectchildlayout!(g, sp)
+end
 
+function add_layout!(g::GridLayout, gsub::GridLayout, rows, cols)
+    rows, cols = adjust_rows_cols!(g, rows, cols)
     gsub.parent = g
     setup_updates!(gsub)
     sp = SpannedAlignable(gsub, Span(rows, cols))
     connectchildlayout!(g, sp)
-
-    gsub
-end
-
-function Base.setindex!(g::GridLayout, ls::LayoutedSlider, rows::Indexables, cols::Indexables)
-    fh = BoxLayout(g, nothing, ls.height, ls.bboxnode)
-    g[rows, cols] = fh
-    ls
-end
-
-function Base.setindex!(g::GridLayout, lb::LayoutedButton, rows::Indexables, cols::Indexables)
-    b = BoxLayout(g, lb.width, lb.height, lb.bboxnode)
-    g[rows, cols] = b
-    lb
-end
-
-function Base.setindex!(g::GridLayout, lt::LayoutedText, rows::Indexables, cols::Indexables)
-    b = BoxLayout(g, lt.width, lt.height, lt.bboxnode)
-    g[rows, cols] = b
-    lt
 end
 
 function Base.lastindex(g::GridLayout, d)
@@ -782,49 +739,6 @@ function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
     g.needs_update[] = true
 end
 
-function solve(b::BoxLayout, bbox::BBox)
-
-    # fbh = if isnothing(b.height)
-    #     # the height is not fixed and therefore takes the bbox value
-    #     height(bbox)
-    # else
-    #     b.height[]
-    # end
-    #
-    # fbw = if isnothing(b.width)
-    #     # the width is not fixed and therefore takes the bbox value
-    #     width(bbox)
-    # else
-    #     b.width[]
-    # end
-    #
-    # oxb = bbox.origin[1]
-    # oyb = bbox.origin[2]
-    #
-    #
-    # bh = height(bbox)
-    # bw = width(bbox)
-    #
-    # restx = bw - fbw
-    # resty = bh - fbh
-    #
-    # xal = isnothing(b.halign) ? 0f0 : b.halign[]
-    # yal = isnothing(b.valign) ? 0f0 : b.valign[]
-    #
-    # oxinner = oxb + xal * restx
-    # oyinner = oyb + yal * resty
-
-    # SolvedBoxLayout(BBox(oxinner, oxinner + fbw, oyinner + fbh, oyinner), b.bboxnode)
-    SolvedBoxLayout(bbox, b.bboxnode)
-end
-
-# function Base.convert(::Vector{ContentSize}, vec::Vector{T}) where T <: ContentSize
-#     ContentSize[v for v in vec]
-# end
-#
-# function Base.convert(::Vector{GapSize}, vec::Vector{T}) where T <: GapSize
-#     GapSize[v for v in vec]
-# end
 
 function convert_contentsizes(n, sizes)::Vector{ContentSize}
     if isnothing(sizes)

@@ -75,3 +75,10 @@ function LayoutedText(parent::Scene; kwargs...)
 
     lt
 end
+
+widthnode(lt::LayoutedText) = lt.width
+heightnode(lt::LayoutedText) = lt.height
+
+function align_to_bbox!(lt::LayoutedText, bbox)
+    lt.bboxnode[] = bbox
+end

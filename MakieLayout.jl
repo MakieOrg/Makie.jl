@@ -18,6 +18,8 @@ include("defaultattributes.jl")
 include("layoutedobjects/layoutedaxis.jl")
 include("layoutedobjects/layoutedcolorbar.jl")
 include("layoutedobjects/layoutedtext.jl")
+include("layoutedobjects/layoutedslider.jl")
+include("layoutedobjects/layoutedbutton.jl")
 
 export LayoutedAxis
 export LayoutedSlider
@@ -27,7 +29,7 @@ export LayoutedText
 export linkxaxes!
 export linkyaxes!
 export GridLayout
-export AxisLayout
+export ProtrusionLayout
 export BBox
 export solve
 export shrinkbymargin

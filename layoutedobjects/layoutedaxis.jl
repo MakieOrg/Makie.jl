@@ -473,6 +473,12 @@ function AbstractPlotting.meshscatter!(la::LayoutedAxis, args...; kwargs...)
     plot
 end
 
+function align_to_bbox!(la::LayoutedAxis, bb::BBox)
+    la.bboxnode[] = bb
+end
+
+protrusionnode(la::LayoutedAxis) = la.protrusions
+
 function bboxunion(bb1, bb2)
 
     o1 = bb1.origin

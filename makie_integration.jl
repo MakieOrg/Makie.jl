@@ -103,13 +103,8 @@ function applylayout(sg::SolvedGridLayout)
     end
 end
 
-function applylayout(sa::SolvedAxisLayout)
-    # sa.axis.scene.px_area[] = IRect2D(sa.inner)
-    sa.bboxnode[] = sa.bbox
-end
-
-function applylayout(sb::SolvedBoxLayout)
-    sb.bboxnode[] = sb.bbox
+function applylayout(sa::SolvedProtrusionLayout)
+    align_to_bbox!(sa.content, sa.bbox)
 end
 
 function shrinkbymargin(rect, margin)
