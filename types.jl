@@ -14,7 +14,7 @@ struct RowCols{T <: Union{Number, Vector{Float64}}}
     bottoms::T
 end
 
-abstract type Alignable end
+abstract type AbstractLayout end
 
 """
 Used to specify space that is occupied in a grid. Like 1:1|1:1 for the first square,
@@ -29,7 +29,7 @@ end
 An object that can be aligned that also specifies how much space it occupies in
 a grid via its span.
 """
-struct SpannedAlignable{T <: Alignable}
+struct SpannedLayout{T <: AbstractLayout}
     al::T
     sp::Span
 end
@@ -62,9 +62,9 @@ struct Aspect <: ContentSize
     ratio::Float64
 end
 
-mutable struct GridLayout <: Alignable
+mutable struct GridLayout <: AbstractLayout
     parent::Union{Nothing, Scene, GridLayout}
-    content::Vector{SpannedAlignable}
+    content::Vector{SpannedLayout}
     nrows::Int
     ncols::Int
     rowsizes::Vector{ContentSize}
@@ -136,15 +136,15 @@ mutable struct GridLayout <: Alignable
     end
 end
 
-struct SolvedGridLayout <: Alignable
+struct SolvedGridLayout <: AbstractLayout
     bbox::BBox
-    content::Vector{SpannedAlignable}
+    content::Vector{SpannedLayout}
     nrows::Int
     ncols::Int
     grid::RowCols{Vector{Float64}}
 end
 
-struct SolvedProtrusionLayout{T} <: Alignable
+struct SolvedProtrusionLayout{T} <: AbstractLayout
     bbox::BBox
     content::T
 end
@@ -155,7 +155,7 @@ end
 
 struct DataAspect end
 
-mutable struct ProtrusionLayout{T} <: Alignable
+mutable struct ProtrusionLayout{T} <: AbstractLayout
     parent::Union{Nothing, GridLayout}
     protrusions::Union{Nothing, Node{Tuple{Float32, Float32, Float32, Float32}}}
     widthnode::Union{Nothing, Node{Float32}}

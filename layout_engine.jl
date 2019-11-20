@@ -1,9 +1,9 @@
 """
-    side_indices(c::SpannedAlignable)::RowCols{Int}
+    side_indices(c::SpannedLayout)::RowCols{Int}
 
 Indices of the rows / cols for each side
 """
-function side_indices(c::SpannedAlignable)
+function side_indices(c::SpannedLayout)
     return RowCols(
         c.sp.cols.start,
         c.sp.cols.stop,
@@ -12,19 +12,21 @@ function side_indices(c::SpannedAlignable)
     )
 end
 
+
+
 """
 These functions tell whether an object in a grid touches the left, top, etc. border
 of the grid. This means that it is relevant for the grid's own protrusion on that side.
 """
-ismostin(sp::SpannedAlignable, grid, ::Left) = sp.sp.cols.start == 1
-ismostin(sp::SpannedAlignable, grid, ::Right) = sp.sp.cols.stop == grid.ncols
-ismostin(sp::SpannedAlignable, grid, ::Bottom) = sp.sp.rows.stop == grid.nrows
-ismostin(sp::SpannedAlignable, grid, ::Top) = sp.sp.cols.start == 1
+ismostin(sp::SpannedLayout, grid, ::Left) = sp.sp.cols.start == 1
+ismostin(sp::SpannedLayout, grid, ::Right) = sp.sp.cols.stop == grid.ncols
+ismostin(sp::SpannedLayout, grid, ::Bottom) = sp.sp.rows.stop == grid.nrows
+ismostin(sp::SpannedLayout, grid, ::Top) = sp.sp.cols.start == 1
 
-isleftmostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Left())
-isrightmostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Right())
-isbottommostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Bottom())
-istopmostin(sp::SpannedAlignable, grid) = ismostin(sp, grid, Top())
+isleftmostin(sp::SpannedLayout, grid) = ismostin(sp, grid, Left())
+isrightmostin(sp::SpannedLayout, grid) = ismostin(sp, grid, Right())
+isbottommostin(sp::SpannedLayout, grid) = ismostin(sp, grid, Bottom())
+istopmostin(sp::SpannedLayout, grid) = ismostin(sp, grid, Top())
 
 
 function with_updates_suspended(f::Function, gl::GridLayout)
@@ -142,7 +144,7 @@ protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions) ? 0f0 : a.pro
 protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][2]
 protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][3]
 protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][4]
-protrusion(sp::SpannedAlignable, side::Side) = protrusion(sp.al, side)
+protrusion(sp::SpannedLayout, side::Side) = protrusion(sp.al, side)
 
 function protrusion(gl::GridLayout, side::Side)
     # when we align with the outside there is by definition no protrusion
@@ -295,7 +297,7 @@ function solve(gl::GridLayout, bbox::BBox)
             gridside[idx]
         end
         solved = solve(c.al, bbox_cell)
-        return SpannedAlignable(solved, c.sp)
+        return SpannedLayout(solved, c.sp)
     end
     # return a solved grid layout in which all objects are also solved layout objects
     return SolvedGridLayout(
@@ -305,10 +307,10 @@ function solve(gl::GridLayout, bbox::BBox)
     )
 end
 
-# function determineheight(a::Alignable)
+# function determineheight(a::AbstractLayout)
 #     nothing
 # end
-# function determinewidth(a::Alignable)
+# function determinewidth(a::AbstractLayout)
 #     nothing
 # end
 
@@ -671,7 +673,7 @@ grid[1:3, 2:5] = obj
 
 and all combinations of the above
 """
-function Base.setindex!(g::GridLayout, a::Alignable, rows::Indexables, cols::Indexables)
+function Base.setindex!(g::GridLayout, a::AbstractLayout, rows::Indexables, cols::Indexables)
     add_layout!(g, a, rows, cols)
     a
 end
@@ -687,10 +689,10 @@ function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexabl
     content
 end
 
-function add_layout!(g::GridLayout, layout::Alignable, rows, cols)
+function add_layout!(g::GridLayout, layout::AbstractLayout, rows, cols)
     rows, cols = adjust_rows_cols!(g, rows, cols)
     layout.parent = g
-    sp = SpannedAlignable(layout, Span(rows, cols))
+    sp = SpannedLayout(layout, Span(rows, cols))
     connectchildlayout!(g, sp)
 end
 
@@ -704,7 +706,7 @@ function Base.lastindex(g::GridLayout, d)
     end
 end
 
-function connectchildlayout!(g::GridLayout, spa::SpannedAlignable)
+function connectchildlayout!(g::GridLayout, spa::SpannedLayout)
     push!(g.content, spa)
 
     # remove all listeners from needs_update because they could be pointing
@@ -775,7 +777,7 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
     gl.content = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows .+ n, span.cols)
-        SpannedAlignable(spal.al, newspan)
+        SpannedLayout(spal.al, newspan)
     end
 
     with_updates_suspended(gl) do
@@ -793,7 +795,7 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     gl.content = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows, span.cols .+ n)
-        SpannedAlignable(spal.al, newspan)
+        SpannedLayout(spal.al, newspan)
     end
 
     with_updates_suspended(gl) do
