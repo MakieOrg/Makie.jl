@@ -622,6 +622,7 @@ grid[1:3, 2:5] = obj
 and all combinations of the above
 """
 function Base.setindex!(g::GridLayout, a::AbstractLayout, rows::Indexables, cols::Indexables)
+    detachfromparent!(a)
     add_layout!(g, a, rows, cols)
     a
 end
@@ -632,6 +633,14 @@ not themselves layouts. They need to be wrapped in a layout first before being
 added. This is determined by the defaultlayout function.
 """
 function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables)
+
+    # check if this content already sits somewhere in the grid layout tree
+    # if yes, remove it from there before attaching it here
+    parentlayout, index = find_in_grid_tree(content, g)
+    if !isnothing(parentlayout) && !isnothing(index)
+        deleteat!(parentlayout.content, index)
+    end
+
     layout = defaultlayout(content)
     add_layout!(g, layout, rows, cols)
     content
@@ -787,4 +796,88 @@ function nest_content_into_gridlayout!(gl::GridLayout, rows::Indexables, cols::I
     gl[newrows, newcols] = subgl
 
     subgl
+end
+
+function find_in_grid(obj, container::GridLayout)
+    for i in 1:length(container.content)
+        layout = container.content[i].al
+        if layout isa ProtrusionLayout
+            if layout.content === obj
+                return i
+            end
+        end
+    end
+    nothing
+end
+
+function find_in_grid(layout::AbstractLayout, container::GridLayout)
+    for i in 1:length(container.content)
+        if container.content[i].al === layout
+            return i
+        end
+    end
+    nothing
+end
+
+function topmost_grid(gl::GridLayout)
+    candidate = gl
+    while true
+        if candidate.parent isa GridLayout
+            candidate = candidate.parent
+        else
+            return candidate
+        end
+    end
+end
+
+function find_in_grid_and_subgrids(obj, container::GridLayout)
+    for i in 1:length(container.content)
+        candidate = container.content[i].al
+        # for non layout objects like LayoutedAxis we check if they are inside
+        # any protrusion layout we find
+        if candidate isa ProtrusionLayout
+            if candidate.content === obj
+                return container, i
+            end
+        elseif candidate isa GridLayout
+            return find_in_grid_and_subgrids(obj, candidate)
+        end
+    end
+    nothing, nothing
+end
+
+function find_in_grid_and_subgrids(layout::AbstractLayout, container::GridLayout)
+    for i in 1:length(container.content)
+        candidate = container.content[i].al
+        if candidate === layout
+            return container, i
+        elseif candidate isa GridLayout
+            return find_in_grid_and_subgrids(layout, candidate)
+        end
+    end
+    nothing, nothing
+end
+
+function find_in_grid_tree(obj, container::GridLayout)
+    topmost = topmost_grid(container)
+    find_in_grid_and_subgrids(obj, topmost)
+end
+
+function detachfromgridlayout!(obj, gl::GridLayout)
+    i = find_in_grid(obj, gl)
+    if !isnothing(i)
+        deleteat!(gl.content, i)
+    end
+end
+
+function detachfromparent!(l::AbstractLayout)
+    if l.parent isa Scene
+        error("Can't detach a grid layout from its parent if it's a Scene.")
+    elseif l.parent isa GridLayout
+        i = find_in_grid(l, l.parent)
+        isnothing(i) && error("Layout could not be found in its parent's content.")
+
+        deleteat!(l.parent.content, i)
+        l.parent = nothing
+    end
 end
