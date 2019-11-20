@@ -7,6 +7,10 @@ struct Right <: Side end
 struct Top <: Side end
 struct Bottom <: Side end
 
+abstract type GridDir end
+struct Col <: GridDir end
+struct Row <: GridDir end
+
 struct RowCols{T <: Union{Number, Vector{Float64}}}
     lefts::T
     rights::T

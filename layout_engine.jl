@@ -349,7 +349,7 @@ function determinewidth(gl::GridLayout)
         elseif gl.colsizes[icol] isa Relative
             nothing
         elseif gl.colsizes[icol] isa Auto
-            determinecolsize(icol, gl)
+            determinedirsize(icol, gl, Col())
         end
 
         if isnothing(colsize)
@@ -395,7 +395,7 @@ function determineheight(gl::GridLayout)
         elseif gl.rowsizes[irow] isa Relative
             nothing
         elseif gl.rowsizes[irow] isa Auto
-            determinerowsize(irow, gl)
+            determinedirsize(irow, gl, Row())
         end
         if isnothing(rowsize)
             # early exit if a rowsize can not be determined
@@ -431,33 +431,30 @@ function determineheight(gl::GridLayout)
     end
 end
 
-function determinecolsize(icol, gl)
-    colsize = nothing
+
+span(sp::SpannedLayout, dir::Col) = sp.sp.cols
+span(sp::SpannedLayout, dir::Row) = sp.sp.rows
+
+function determinedirsize(idir, gl, dir::GridDir)
+    dirsize = nothing
     for c in gl.content
-        # content has to be single span to be determinable
-        if c.sp.cols.start == icol && c.sp.cols.stop == icol
-            w = determinewidth(c.al)
-            if !isnothing(w)
-                colsize = isnothing(colsize) ? w : max(colsize, w)
+        # content has to be single span to be determinable in size
+        singlespanned = span(c, dir).start == span(c, dir).stop == idir
+
+        if singlespanned
+            s = if dir isa Col
+                determinewidth(c.al)
+            elseif dir isa Row
+                determineheight(c.al)
+            end
+            if !isnothing(s)
+                dirsize = isnothing(dirsize) ? s : max(dirsize, s)
             end
         end
     end
-    colsize
+    dirsize
 end
 
-function determinerowsize(row, gl)
-    rowsize = nothing
-    for c in gl.content
-        # content has to be single span to be determinable
-        if c.sp.rows.start == row && c.sp.rows.stop == row
-            h = determineheight(c.al)
-            if !isnothing(h)
-                rowsize = isnothing(rowsize) ? h : max(rowsize, h)
-            end
-        end
-    end
-    rowsize
-end
 
 function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     # the space for columns and for rows is divided depending on the sizes
@@ -494,7 +491,7 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     asprsizes = filter(filtersize(Aspect), irsizes)
 
     determined_acsizes = map(acsizes) do (i, c)
-        (i, determinecolsize(i, gl))
+        (i, determinedirsize(i, gl, Col()))
     end
     det_acsizes = filter(tup -> !isnothing(tup[2]), determined_acsizes)
     nondets_c = filter(tup -> isnothing(tup[2]), determined_acsizes)
@@ -503,7 +500,7 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     end
 
     determined_arsizes = map(arsizes) do (i, c)
-        (i, determinerowsize(i, gl))
+        (i, determinedirsize(i, gl, Row()))
     end
     det_arsizes = filter(tup -> !isnothing(tup[2]), determined_arsizes)
     nondets_r = filter(tup -> isnothing(tup[2]), determined_arsizes)
