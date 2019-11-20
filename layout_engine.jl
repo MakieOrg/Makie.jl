@@ -314,30 +314,25 @@ end
 #     nothing
 # end
 
-function columngaps(gl::GridLayout)
-    lefts = zeros(Float32, gl.ncols)
-    rights = zeros(Float32, gl.ncols)
-    for c in gl.content
-        sp = c.sp
-        colstart = sp.cols.start
-        colstop = sp.cols.stop
-        lefts[colstart] = max(lefts[colstart], protrusion(c, Left()))
-        rights[colstop] = max(rights[colstop], protrusion(c, Right()))
-    end
-    lefts, rights
-end
+startside(c::Col) = Left()
+stopside(c::Col) = Right()
+startside(r::Row) = Top()
+stopside(r::Row) = Bottom()
 
-function rowgaps(gl::GridLayout)
-    tops = zeros(Float32, gl.nrows)
-    bottoms = zeros(Float32, gl.nrows)
+dirsize(gl::GridLayout, c::Col) = gl.ncols
+dirsize(gl::GridLayout, r::Row) = gl.nrows
+
+function dirgaps(gl::GridLayout, dir::GridDir)
+    starts = zeros(Float32, dirsize(gl, dir))
+    stops = zeros(Float32, dirsize(gl, dir))
     for c in gl.content
-        sp = c.sp
-        rowstart = sp.rows.start
-        rowstop = sp.rows.stop
-        tops[rowstart] = max(tops[rowstart], protrusion(c, Top()))
-        bottoms[rowstop] = max(bottoms[rowstop], protrusion(c, Bottom()))
+        sp = span(c, dir)
+        start = sp.start
+        stop = sp.stop
+        starts[start] = max(starts[start], protrusion(c, startside(dir)))
+        stops[stop] = max(stops[stop], protrusion(c, stopside(dir)))
     end
-    tops, bottoms
+    starts, stops
 end
 
 function determinewidth(gl::GridLayout)
