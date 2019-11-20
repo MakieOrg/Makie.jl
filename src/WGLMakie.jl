@@ -256,7 +256,7 @@ for M in WEB_MIMES
     @eval begin
         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
             three = nothing
-            inline_display = JSServe.with_session() do session
+            inline_display = JSServe.with_session() do session, request
                 three, canvas = WGLMakie.three_display(session, scene)
                 canvas
             end

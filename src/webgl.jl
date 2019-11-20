@@ -36,7 +36,7 @@ function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) 
     off = (first(index) - 1) * tlength(T)
     jsb.set(flat, off)
     jsb.needsUpdate = true
-    redraw!(x.three)
+    # redraw!(x.three)
     return value
 end
 
@@ -168,7 +168,7 @@ function to_js_uniforms(scene, jsctx, dict::Dict)
                 prop = getproperty(result, k)
                 prop.value = jl2js(jsctx, val)
                 prop.needsUpdate = true
-                redraw!(jsctx)
+                # redraw!(jsctx)
             catch e
                 @warn "Error in updating $k: " exception=e
             end
