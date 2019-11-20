@@ -307,13 +307,6 @@ function solve(gl::GridLayout, bbox::BBox)
     )
 end
 
-# function determineheight(a::AbstractLayout)
-#     nothing
-# end
-# function determinewidth(a::AbstractLayout)
-#     nothing
-# end
-
 startside(c::Col) = Left()
 stopside(c::Col) = Right()
 startside(r::Row) = Top()
@@ -354,7 +347,7 @@ function determinewidth(gl::GridLayout)
         sum_colsizes += colsize
     end
 
-    colgapsleft, colgapsright = columngaps(gl)
+    colgapsleft, colgapsright = dirgaps(gl, Col())
 
     colgaps = if gl.equalprotrusiongaps[2]
         innergaps = colgapsleft[2:end] .+ colgapsright[1:end-1]
@@ -399,7 +392,7 @@ function determineheight(gl::GridLayout)
         sum_rowsizes += rowsize
     end
 
-    rowgapstop, rowgapsbottom = rowgaps(gl)
+    rowgapstop, rowgapsbottom = dirgaps(gl, Row())
 
     rgaps = if gl.equalprotrusiongaps[2]
         innergaps = rowgapstop[2:end] .+ rowgapsbottom[1:end-1]
