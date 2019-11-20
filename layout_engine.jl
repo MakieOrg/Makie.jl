@@ -312,12 +312,12 @@ stopside(c::Col) = Right()
 startside(r::Row) = Top()
 stopside(r::Row) = Bottom()
 
-dirsize(gl::GridLayout, c::Col) = gl.ncols
-dirsize(gl::GridLayout, r::Row) = gl.nrows
+dirlength(gl::GridLayout, c::Col) = gl.ncols
+dirlength(gl::GridLayout, r::Row) = gl.nrows
 
 function dirgaps(gl::GridLayout, dir::GridDir)
-    starts = zeros(Float32, dirsize(gl, dir))
-    stops = zeros(Float32, dirsize(gl, dir))
+    starts = zeros(Float32, dirlength(gl, dir))
+    stops = zeros(Float32, dirlength(gl, dir))
     for c in gl.content
         sp = span(c, dir)
         start = sp.start
@@ -328,37 +328,49 @@ function dirgaps(gl::GridLayout, dir::GridDir)
     starts, stops
 end
 
-function determinewidth(gl::GridLayout)
-    sum_colsizes = 0
-    for icol in 1:gl.ncols
+dirsizes(gl::GridLayout, c::Col) = gl.colsizes
+dirsizes(gl::GridLayout, r::Row) = gl.rowsizes
+
+function determinedirsize(gl::GridLayout, gdir::GridDir)
+    sum_dirsizes = 0
+
+    sizes = dirsizes(gl, gdir)
+
+    for idir in 1:dirlength(gl, gdir)
         # width can only be determined for fixed and auto
-        colsize = if gl.colsizes[icol] isa Fixed
-            gl.colsizes[icol].x
-        elseif gl.colsizes[icol] isa Relative
+        sz = sizes[idir]
+        dsize = if sz isa Fixed
+            sz.x
+        elseif sz isa Relative
             nothing
-        elseif gl.colsizes[icol] isa Auto
-            determinedirsize(icol, gl, Col())
+        elseif sz isa Auto
+            determinedirsize(idir, gl, gdir)
         end
 
-        if isnothing(colsize)
+        if isnothing(dsize)
             # early exit if a colsize can not be determined
             return nothing
         end
-        sum_colsizes += colsize
+        sum_dirsizes += dsize
     end
 
-    colgapsleft, colgapsright = dirgaps(gl, Col())
+    dirgapsstart, dirgapsstop = dirgaps(gl, Col())
 
-    colgaps = if gl.equalprotrusiongaps[2]
-        innergaps = colgapsleft[2:end] .+ colgapsright[1:end-1]
-        fill(maximum(innergaps), gl.ncols - 1)
+    forceequalprotrusiongaps = gl.equalprotrusiongaps[gdir isa Row ? 1 : 2]
+
+    dirgapsizes = if forceequalprotrusiongaps
+        innergaps = dirgapsstart[2:end] .+ dirgapsstop[1:end-1]
+        m = maximum(innergaps)
+        innergaps .= m
     else
-        innergaps = colgapsleft[2:end] .+ colgapsright[1:end-1]
+        innergaps = dirgapsstart[2:end] .+ dirgapsstop[1:end-1]
     end
 
-    inner_gapsizes = gl.ncols > 1 ? sum(colgaps) : 0
+    inner_gapsizes = dirlength(gl, gdir) > 1 ? sum(dirgapsizes) : 0
 
-    addedcolgaps = gl.ncols == 1 ? 0 : sum(gl.addedcolgaps) do c
+    addeddirgapsizes = gdir isa Row ? gl.addedrowgaps : gl.addedcolgaps
+
+    addeddirgaps = dirlength(gl, gdir) == 1 ? 0 : sum(addeddirgapsizes) do c
         if c isa Fixed
             c.x
         elseif c isa Relative
@@ -366,59 +378,15 @@ function determinewidth(gl::GridLayout)
         end
     end
 
+    inner_size_combined = sum_dirsizes + inner_gapsizes + addeddirgaps
     return if gl.alignmode isa Inside
-        sum_colsizes + inner_gapsizes + addedcolgaps
+        inner_size_combined
     elseif gl.alignmode isa Outside
-        sum_colsizes + inner_gapsizes + addedcolgaps + colgapsleft[1] +
-            colgapsright[end] + gl.alignmode.padding[1] + gl.alignmode.padding[2]
+        r = gdir isa Row
+        paddings = sum(gl.alignmode.padding[gdir isa Row ? (1:2) : (3:4)])
+        inner_size_combined + dirgapsstart[1] + dirgapsstop[end] + paddings
     end
 end
-
-function determineheight(gl::GridLayout)
-    sum_rowsizes = 0
-    for irow in 1:gl.nrows
-        # width can only be determined for fixed and auto
-        rowsize = if gl.rowsizes[irow] isa Fixed
-            gl.rowsizes[irow].x
-        elseif gl.rowsizes[irow] isa Relative
-            nothing
-        elseif gl.rowsizes[irow] isa Auto
-            determinedirsize(irow, gl, Row())
-        end
-        if isnothing(rowsize)
-            # early exit if a rowsize can not be determined
-            return nothing
-        end
-        sum_rowsizes += rowsize
-    end
-
-    rowgapstop, rowgapsbottom = dirgaps(gl, Row())
-
-    rgaps = if gl.equalprotrusiongaps[2]
-        innergaps = rowgapstop[2:end] .+ rowgapsbottom[1:end-1]
-        fill(maximum(innergaps), gl.nrows - 1)
-    else
-        innergaps = rowgapstop[2:end] .+ rowgapsbottom[1:end-1]
-    end
-
-    inner_gapsizes = gl.nrows > 1 ? sum(rgaps) : 0
-
-    addedrowgaps = gl.nrows == 1 ? 0 : sum(gl.addedrowgaps) do c
-        if c isa Fixed
-            c.x
-        elseif c isa Relative
-            error("Auto grid size not implemented with relative gaps")
-        end
-    end
-
-    return if gl.alignmode isa Inside
-        sum_rowsizes + inner_gapsizes + addedrowgaps
-    elseif gl.alignmode isa Outside
-        sum_rowsizes + inner_gapsizes + addedrowgaps + rowgapstop[1] +
-            rowgapsbottom[end] + gl.alignmode.padding[3] + gl.alignmode.padding[4]
-    end
-end
-
 
 span(sp::SpannedLayout, dir::Col) = sp.sp.cols
 span(sp::SpannedLayout, dir::Row) = sp.sp.rows
@@ -430,11 +398,7 @@ function determinedirsize(idir, gl, dir::GridDir)
         singlespanned = span(c, dir).start == span(c, dir).stop == idir
 
         if singlespanned
-            s = if dir isa Col
-                determinewidth(c.al)
-            elseif dir isa Row
-                determineheight(c.al)
-            end
+            s = determinedirsize(c.al, dir)
             if !isnothing(s)
                 dirsize = isnothing(dirsize) ? s : max(dirsize, s)
             end
@@ -579,22 +543,21 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     colwidths, rowheights
 end
 
-function determineheight(pl::ProtrusionLayout)
-    if isnothing(heightnode(pl))
-        nothing
+function determinedirsize(pl::ProtrusionLayout, gdir::GridDir)
+    if gdir isa Row
+        if isnothing(heightnode(pl))
+            nothing
+        else
+            heightnode(pl)[] + protrusion(pl, Top()) + protrusion(pl, Bottom())
+        end
     else
-        heightnode(pl)[] + protrusion(pl, Top()) + protrusion(pl, Bottom())
+        if isnothing(widthnode(pl))
+            nothing
+        else
+            widthnode(pl)[] + protrusion(pl, Left()) + protrusion(pl, Right())
+        end
     end
 end
-
-function determinewidth(pl::ProtrusionLayout)
-    if isnothing(widthnode(pl))
-        nothing
-    else
-        widthnode(pl)[] + protrusion(pl, Left()) + protrusion(pl, Right())
-    end
-end
-
 
 function solve(ua::ProtrusionLayout, innerbbox)
     ib = innerbbox
