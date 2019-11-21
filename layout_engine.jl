@@ -339,13 +339,7 @@ function determinedirsize(gl::GridLayout, gdir::GridDir)
     for idir in 1:dirlength(gl, gdir)
         # width can only be determined for fixed and auto
         sz = sizes[idir]
-        dsize = if sz isa Fixed
-            sz.x
-        elseif sz isa Relative
-            nothing
-        elseif sz isa Auto
-            determinedirsize(idir, gl, gdir)
-        end
+        dsize = determinedirsize(idir, gl, gdir)
 
         if isnothing(dsize)
             # early exit if a colsize can not be determined
@@ -392,19 +386,35 @@ span(sp::SpannedLayout, dir::Col) = sp.sp.cols
 span(sp::SpannedLayout, dir::Row) = sp.sp.rows
 
 function determinedirsize(idir, gl, dir::GridDir)
-    dirsize = nothing
-    for c in gl.content
-        # content has to be single span to be determinable in size
-        singlespanned = span(c, dir).start == span(c, dir).stop == idir
 
-        if singlespanned
-            s = determinedirsize(c.al, dir)
-            if !isnothing(s)
-                dirsize = isnothing(dirsize) ? s : max(dirsize, s)
+    sz = dirsizes(gl, dir)[idir]
+
+    if sz isa Fixed
+        # fixed dir size can simply be returned
+        return sz.x
+    elseif sz isa Relative
+        # relative dir size can't be inferred
+        return nothing
+    elseif sz isa Auto
+        # auto dir size can either be determined or not, depending on the
+        # trydetermine flag
+        !sz.trydetermine && return nothing
+
+        dirsize = nothing
+        for c in gl.content
+            # content has to be single span to be determinable in size
+            singlespanned = span(c, dir).start == span(c, dir).stop == idir
+
+            if singlespanned
+                s = determinedirsize(c.al, dir)
+                if !isnothing(s)
+                    dirsize = isnothing(dirsize) ? s : max(dirsize, s)
+                end
             end
         end
+        return dirsize
     end
-    dirsize
+    nothing
 end
 
 
@@ -524,19 +534,19 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
         remaining = spaceforcolumns - sum(colwidths)
         nondet_acsizes
         sumratios = sum(nondet_acsizes) do (i, c)
-            c.x
+            c.ratio
         end
         map(nondet_acsizes) do (i, c)
-            colwidths[i] = remaining * c.x / sumratios
+            colwidths[i] = remaining * c.ratio / sumratios
         end
     end
     if !isempty(nondet_arsizes)
         remaining = spaceforrows - sum(rowheights)
         sumratios = sum(nondet_arsizes) do (i, r)
-            r.x
+            r.ratio
         end
         map(nondet_arsizes) do (i, r)
-            rowheights[i] = remaining * r.x / sumratios
+            rowheights[i] = remaining * r.ratio / sumratios
         end
     end
 
