@@ -495,7 +495,20 @@ function get_tick_labels(ticks::T, tickvalues) where T
 end
 
 function get_tick_labels(ticks::AutoLinearTicks, tickvalues)
-    Showoff.showoff(tickvalues, :plain)
+
+    # take difference of first two values (they are equally spaced anyway)
+    dif = diff(view(tickvalues, 1:2))[1]
+    # whats the exponent of the difference?
+    expo = log10(dif)
+    # the closest exponent minus 1 for safety
+    safety_expo_int = Int(round(expo)) - 1
+    # for e.g. 1.32 we want 2 significant digits, so we invert the exponent
+    # and set precision to 0 for everything that is an integer
+    sigdigits = max(0, -safety_expo_int)
+
+    strings = map(tickvalues) do v
+        Formatting.format(v, precision=sigdigits)
+    end
 end
 
 function get_tick_labels(ticks::ManualTicks, tickvalues)

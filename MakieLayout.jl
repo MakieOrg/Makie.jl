@@ -8,6 +8,7 @@ using AbstractPlotting.Mouse
 using AbstractPlotting: ispressed, is_mouseinside
 import Showoff
 using Observables: onany
+import Formatting
 
 include("types.jl")
 include("geometry_integration.jl")
