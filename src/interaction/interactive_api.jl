@@ -113,6 +113,13 @@ function mouseposition(scene = hovered_scene())
     )
 end
 
+function mouseposition_px(scene = hovered_scene())
+    screen_relative(
+        scene,
+        events(scene).mouseposition[]
+    )
+end
+
 """
     hovered_scene()
 Return the `scene` that the mouse is currently hovering over.
