@@ -192,6 +192,7 @@ mutable struct LayoutedAxis
     needs_update::Node{Bool}
     attributes::Attributes
     block_limit_linking::Node{Bool}
+    decorations::Dict{Symbol, Any}
 end
 
 mutable struct LayoutedColorbar

@@ -46,4 +46,5 @@ export AxisAspect, DataAspect
 export autolimits!
 export AutoLinearTicks, ManualTicks
 export hidexdecorations!, hideydecorations!
+export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!
 end # module

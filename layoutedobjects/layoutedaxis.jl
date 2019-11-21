@@ -17,6 +17,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         aspect, alignment, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey
     )
 
+    decorations = Dict{Symbol, Any}()
+
     bboxnode = Node(BBox(0, 100, 100, 0))
 
     scenearea = Node(IRect(0, 0, 100, 100))
@@ -44,24 +46,28 @@ function LayoutedAxis(parent::Scene; kwargs...)
         parent, xticksnode, linewidth = xtickwidth, color = xtickcolor,
         show_axis = false, visible = xticksvisible
     )[end]
+    decorations[:xticklines] = xticklines
 
     yticksnode = Node(Point2f0[])
     yticklines = linesegments!(
         parent, yticksnode, linewidth = ytickwidth, color = ytickcolor,
         show_axis = false, visible = yticksvisible
     )[end]
+    decorations[:yticklines] = xticklines
 
     xgridnode = Node(Point2f0[])
     xgridlines = linesegments!(
         parent, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
         color = xgridcolor
     )[end]
+    decorations[:xgridlines] = xgridlines
 
     ygridnode = Node(Point2f0[])
     ygridlines = linesegments!(
         parent, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
         color = ygridcolor
     )[end]
+    decorations[:ygridlines] = yticklines
 
     nmaxticks = 20
 
@@ -79,6 +85,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             visible = xticklabelsvisible
         )[end]
     end
+    decorations[:xticklabels] = xticklabels
 
     yticklabelnodes = [Node("0") for i in 1:nmaxticks]
     yticklabelposnodes = [Node(Point(0.0, 0.0)) for i in 1:nmaxticks]
@@ -94,6 +101,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             visible = yticklabelsvisible
         )[end]
     end
+    decorations[:yticklabels] = yticklabels
 
     xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
         xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
@@ -132,12 +140,14 @@ function LayoutedAxis(parent::Scene; kwargs...)
         position = xlabelpos, show_axis = false, visible = xlabelvisible,
         align = (:center, :top)
     )[end]
+    decorations[:xlabeltext] = xlabeltext
 
     ylabeltext = text!(
         parent, ylabel, textsize = ylabelsize, color = ylabelcolor,
         position = ylabelpos, rotation = pi/2, show_axis = false,
         visible = ylabelvisible, align = (:center, :bottom)
     )[end]
+    decorations[:ylabeltext] = ylabeltext
 
     titlepos = lift(scene.px_area, titlegap, titlealign) do a, titlegap, align
         x = if align == :center
@@ -165,6 +175,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         align = titlealignnode,
         font = titlefont,
         show_axis=false)[end]
+    decorations[:title] = titlet
+
 
     sidelabelbb = Node(BBox(0, 100, 100, 0))
 
@@ -191,6 +203,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         font = sidelabelfont,
         rotation = sidelabelrotation,
         show_axis=false)[end]
+    decorations[:sidelabel] = sidelabelt
 
     onany(sidelabelfont, sidelabelsize) do sidelabelfont, sidelabelsize
         # @show boundingbox(sidelabelt)
@@ -455,7 +468,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
-        protrusions, needs_update, attrs, block_limit_linking)
+        protrusions, needs_update, attrs, block_limit_linking, decorations)
 
     add_reset_limits!(la)
 
@@ -790,4 +803,24 @@ function hideydecorations!(la::LayoutedAxis)
     la.ylabelvisible = false
     la.yticklabelsvisible = false
     la.yticksvisible = false
+end
+
+
+function tight_yticklabel_spacing!(la::LayoutedAxis)
+    maxwidth = maximum(la.decorations[:yticklabels]) do yt
+        boundingbox(yt).widths[1]
+    end
+    la.yticklabelspace = maxwidth
+end
+
+function tight_xticklabel_spacing!(la::LayoutedAxis)
+    maxheight = maximum(la.decorations[:xticklabels]) do xt
+        boundingbox(xt).widths[2]
+    end
+    la.xticklabelspace = maxheight
+end
+
+function tight_ticklabel_spacing!(la::LayoutedAxis)
+    tight_xticklabel_spacing!(la)
+    tight_yticklabel_spacing!(la)
 end
