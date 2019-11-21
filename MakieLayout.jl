@@ -45,4 +45,5 @@ export nest_content_into_gridlayout!
 export AxisAspect, DataAspect
 export autolimits!
 export AutoLinearTicks, ManualTicks
+export hidexdecorations!, hideydecorations!
 end # module

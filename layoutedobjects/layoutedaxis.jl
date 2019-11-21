@@ -741,3 +741,15 @@ function Base.propertynames(la::LayoutedAxis)
 end
 
 defaultlayout(la::LayoutedAxis) = ProtrusionLayout(la)
+
+function hidexdecorations!(la::LayoutedAxis)
+    la.xlabelvisible = false
+    la.xticklabelsvisible = false
+    la.xticksvisible = false
+end
+
+function hideydecorations!(la::LayoutedAxis)
+    la.ylabelvisible = false
+    la.yticklabelsvisible = false
+    la.yticksvisible = false
+end
