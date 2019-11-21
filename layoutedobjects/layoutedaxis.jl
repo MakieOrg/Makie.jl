@@ -197,6 +197,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         sidelabelbb[] = BBox(boundingbox(sidelabelt))
     end
 
+    # trigger the sidelabelsize observable already because otherwise the bounding
+    # box further up will not be updated and the text will be in the wrong position
     sidelabelsize[] = sidelabelsize[]
 
     axislines!(
