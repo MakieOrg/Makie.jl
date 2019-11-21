@@ -69,6 +69,13 @@ function default_attributes(::Type{LayoutedAxis})
         ypankey = AbstractPlotting.Keyboard.y,
         xzoomkey = AbstractPlotting.Keyboard.x,
         yzoomkey = AbstractPlotting.Keyboard.y,
+        sidelabel = "Side Label",
+        sidelabelsize = 30f0,
+        sidelabelgap = 10f0,
+        sidelabelvisible = false,
+        sidelabelalign = :center,
+        sidelabelfont = "Dejavu Sans",
+        sidelabelrotation = -pi/2,
     )
 end
 

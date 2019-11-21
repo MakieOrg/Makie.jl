@@ -4,7 +4,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     @extract attrs (
         xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
-        xlabelcolor, ylabelcolor, xlabelsize,
+        xlabelcolor, ylabelcolor, xlabelsize, sidelabel, sidelabelsize, sidelabelgap,
+        sidelabelvisible, sidelabelalign, sidelabelfont, sidelabelrotation,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
@@ -164,6 +165,39 @@ function LayoutedAxis(parent::Scene; kwargs...)
         align = titlealignnode,
         font = titlefont,
         show_axis=false)[end]
+
+    sidelabelbb = Node(BBox(0, 100, 100, 0))
+
+    sidelabelpos = lift(scene.px_area, sidelabelgap, sidelabelalign, sidelabelbb) do a, sidelabelgap, align, sidelabelbb
+        y = if align == :center
+            a.origin[2] + a.widths[2] / 2
+        elseif align == :bottom
+            a.origin[2] + sidelabelbb.widths[2] / 2
+        elseif align == :top
+            a.origin[2] + a.widths[2] - sidelabelbb.widths[2] / 2
+        else
+            error("Title align $align not supported.")
+        end
+
+        Point2f0(a.origin[1] + a.widths[1] + sidelabelgap + sidelabelbb.widths[1] / 2, y)
+    end
+
+    sidelabelt = text!(
+        parent, sidelabel,
+        position = sidelabelpos,
+        visible = sidelabelvisible,
+        textsize = sidelabelsize,
+        align = (:center, :center),
+        font = sidelabelfont,
+        rotation = sidelabelrotation,
+        show_axis=false)[end]
+
+    onany(sidelabelfont, sidelabelsize) do sidelabelfont, sidelabelsize
+        # @show boundingbox(sidelabelt)
+        sidelabelbb[] = BBox(boundingbox(sidelabelt))
+    end
+
+    sidelabelsize[] = sidelabelsize[]
 
     axislines!(
         parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
@@ -379,7 +413,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
                 ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
                 yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible,
-                xticklabelspace, yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
+                xticklabelspace, yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth,
+                sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
 
@@ -397,7 +432,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
         left = yspinespace + ytickspace + yticklabelgap + ylabelspace
 
-        right = 0f0
+        right = sidelabelvisible ? boundingbox(sidelabelt).widths[1] + sidelabelgap : 0f0
 
         (left, right, top, bottom)
     end
@@ -407,7 +442,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
-        yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth)
+        yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth,
+        sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation)
 
     needs_update = Node(true)
 
