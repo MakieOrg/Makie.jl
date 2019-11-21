@@ -6,7 +6,6 @@ import AbstractPlotting: IRect2D
 using AbstractPlotting.Keyboard
 using AbstractPlotting.Mouse
 using AbstractPlotting: ispressed, is_mouseinside
-import Showoff
 using Observables: onany
 import Formatting
 
