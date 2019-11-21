@@ -749,8 +749,8 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
 
     with_updates_suspended(gl) do
         gl.nrows += n
-        append!(gl.rowsizes, rowsizes)
-        append!(gl.addedrowgaps, addedrowgaps)
+        prepend!(gl.rowsizes, rowsizes)
+        prepend!(gl.addedrowgaps, addedrowgaps)
     end
 end
 
