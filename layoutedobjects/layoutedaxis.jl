@@ -555,7 +555,14 @@ function align_to_bbox!(la::LayoutedAxis, bb::BBox)
     la.bboxnode[] = bb
 end
 
-protrusionnode(la::LayoutedAxis) = la.protrusions
+function protrusionnode(la::LayoutedAxis)
+    # work around the new optional protrusions
+    node = Node{Union{Nothing, NTuple{4, Float32}}}(la.protrusions[])
+    on(la.protrusions) do p
+        node[] = p
+    end
+    node
+end
 
 function bboxunion(bb1, bb2)
 

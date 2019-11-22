@@ -167,17 +167,17 @@ struct DataAspect end
 
 mutable struct ProtrusionLayout{T} <: AbstractLayout
     parent::Union{Nothing, GridLayout}
-    protrusions::Union{Nothing, Node{Tuple{Float32, Float32, Float32, Float32}}}
-    widthnode::Union{Nothing, Node{Float32}}
-    heightnode::Union{Nothing, Node{Float32}}
+    protrusions::Node{Union{Nothing, NTuple{4, Float32}}}
+    widthnode::Node{Union{Nothing, Float32}}
+    heightnode::Node{Union{Nothing, Float32}}
     needs_update::Node{Bool}
     content::T
 end
 
 mutable struct ProtrusionContentLayout{T} <: AbstractLayout
     parent::Union{Nothing, GridLayout}
-    widthnode::Union{Nothing, Node{Float32}}
-    heightnode::Union{Nothing, Node{Float32}}
+    widthnode::Node{Union{Nothing, Float32}}
+    heightnode::Node{Union{Nothing, Float32}}
     side::Side
     needs_update::Node{Bool}
     content::T
@@ -233,17 +233,27 @@ mutable struct LayoutedText
     attributes::Attributes
 end
 
+mutable struct LayoutedRect
+    parent::Scene
+    bboxnode::Node{BBox}
+    height::Node{Union{Nothing, Float32}}
+    width::Node{Union{Nothing, Float32}}
+    rect::AbstractPlotting.Poly
+    attributes::Attributes
+end
+
 struct LayoutedSlider
     scene::Scene
     bboxnode::Node{BBox}
-    height::Node{Float32}
+    height::Node{Union{Nothing, Float32}}
     slider::Slider
 end
 
 struct LayoutedButton
     scene::Scene
     bboxnode::Node{BBox}
-    width::Node{Float32}
-    height::Node{Float32}
+    width::Node{Union{Nothing, Float32}}
+    height::Node{Union{Nothing, Float32}}
     button::Button
+    attributes::Attributes
 end

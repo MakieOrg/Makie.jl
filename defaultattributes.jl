@@ -129,3 +129,26 @@ function default_attributes(::Type{LayoutedText})
         padding = (0f0, 0f0, 0f0, 0f0),
     )
 end
+
+function default_attributes(::Type{LayoutedRect})
+    Attributes(
+        visible = true,
+        color = RGBf0(0.9, 0.9, 0.9),
+        valign = :center,
+        halign = :center,
+        padding = (0f0, 0f0, 0f0, 0f0),
+        strokewidth = 2f0,
+        strokevisible = true,
+        strokecolor = RGBf0(0, 0, 0),
+    )
+end
+
+function default_attributes(::Type{LayoutedButton})
+    Attributes(
+        valign = :center,
+        halign = :center,
+        padding = (0f0, 0f0, 0f0, 0f0),
+        textsize = 20f0,
+        label = "Button",
+    )
+end

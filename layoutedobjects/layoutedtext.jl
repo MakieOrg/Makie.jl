@@ -78,8 +78,22 @@ end
 
 defaultlayout(lt::LayoutedText) = ProtrusionLayout(lt)
 
-widthnode(lt::LayoutedText) = lt.width
-heightnode(lt::LayoutedText) = lt.height
+# workarounds for the new optional float in protrusionlayout
+# should actually be combined with a "shrink to text" setting
+function widthnode(lt::LayoutedText)
+    node = Node{Union{Nothing, Float32}}(lt.width[])
+    on(lt.width) do w
+        node[] = w
+    end
+    node
+end
+function heightnode(lt::LayoutedText)
+    node = Node{Union{Nothing, Float32}}(lt.height[])
+    on(lt.height) do h
+        node[] = h
+    end
+    node
+end
 
 function align_to_bbox!(lt::LayoutedText, bbox)
     lt.bboxnode[] = bbox

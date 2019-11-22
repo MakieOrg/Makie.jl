@@ -92,9 +92,9 @@ end
 
 # these must be defined for special types that want protrusions or specified
 # widths and heights
-protrusionnode(anything) = nothing
-widthnode(anything) = nothing
-heightnode(anything) = nothing
+protrusionnode(anything) = Node{Union{Nothing, NTuple{4, Float32}}}(nothing)
+widthnode(anything) = Node{Union{Nothing, Float32}}(nothing)
+heightnode(anything) = Node{Union{Nothing, Float32}}(nothing)
 
 parentlayout(pl::ProtrusionLayout) = pl.parent
 
@@ -117,9 +117,9 @@ function ProtrusionLayout(content)
         p.needs_update[] = true
     end
 
-    !isnothing(protrusions) && on(update_func, protrusions)
-    !isnothing(width) && on(update_func, width)
-    !isnothing(height) && on(update_func, height)
+    on(update_func, protrusions)
+    on(update_func, width)
+    on(update_func, height)
 
     pl
 end
@@ -149,8 +149,8 @@ function ProtrusionContentLayout(content, side::Side)
         p.needs_update[] = true
     end
 
-    !isnothing(width) && on(update_func, width)
-    !isnothing(height) && on(update_func, height)
+    on(update_func, width)
+    on(update_func, height)
 
     pl
 end
@@ -167,36 +167,36 @@ rightprotrusion(x) = protrusion(x, Right())
 bottomprotrusion(x) = protrusion(x, Bottom())
 topprotrusion(x) = protrusion(x, Top())
 
-protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][1]
-protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][2]
-protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][3]
-protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions) ? 0f0 : a.protrusions[][4]
+protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][1]
+protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][2]
+protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][3]
+protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][4]
 protrusion(sp::SpannedLayout, side::Side) = protrusion(sp.al, side)
 
 function protrusion(a::ProtrusionContentLayout, ::Left)
     if a.side isa Left || a.side isa TopLeft || a.side isa BottomLeft
-        isnothing(a.widthnode) ? 0f0 : a.widthnode[]
+        isnothing(a.widthnode[]) ? 0f0 : a.widthnode[]
     else
         0f0
     end
 end
 function protrusion(a::ProtrusionContentLayout, ::Right)
     if a.side isa Right || a.side isa TopRight || a.side isa BottomRight
-        isnothing(a.widthnode) ? 0f0 : a.widthnode[]
+        isnothing(a.widthnode[]) ? 0f0 : a.widthnode[]
     else
         0f0
     end
 end
 function protrusion(a::ProtrusionContentLayout, ::Top)
     if a.side isa Top || a.side isa TopLeft || a.side isa TopRight
-        isnothing(a.heightnode) ? 0f0 : a.heightnode[]
+        isnothing(a.heightnode[]) ? 0f0 : a.heightnode[]
     else
         0f0
     end
 end
 function protrusion(a::ProtrusionContentLayout, ::Bottom)
     if a.side isa Bottom || a.side isa BottomRight || a.side isa BottomLeft
-        isnothing(a.heightnode) ? 0f0 : a.heightnode[]
+        isnothing(a.heightnode[]) ? 0f0 : a.heightnode[]
     else
         0f0
     end
@@ -620,13 +620,13 @@ end
 
 function determinedirsize(pl::ProtrusionLayout, gdir::GridDir)
     if gdir isa Row
-        if isnothing(heightnode(pl))
+        if isnothing(heightnode(pl)[])
             nothing
         else
             heightnode(pl)[] + protrusion(pl, Top()) + protrusion(pl, Bottom())
         end
     else
-        if isnothing(widthnode(pl))
+        if isnothing(widthnode(pl)[])
             nothing
         else
             widthnode(pl)[] + protrusion(pl, Left()) + protrusion(pl, Right())
