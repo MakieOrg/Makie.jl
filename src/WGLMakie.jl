@@ -30,6 +30,25 @@ macro handle(accessor, body)
     end
 end
 
+function code_to_keyboard(code::String)
+    if length(code) == 1 && isnumeric(code[1])
+        return getfield(Keyboard, Symbol("_" * code))
+    end
+    button = lowercase(code)
+    if startswith(button, "arrow")
+        return getfield(Keyboard, Symbol(button[6:end]))
+    end
+    if startswith(button, "digit")
+        return getfield(Keyboard, Symbol(button[6:end]))
+    end
+    if startswith(button, "key")
+        return getfield(Keyboard, Symbol(button[4:end]))
+    end
+    button = replace(button, r"(.*)left" => s"left_\1")
+    button = replace(button, r"(.*)right" => s"right_\1")
+    return getfield(Keyboard, Symbol(button))
+end
+
 function connect_scene_events!(scene, comm)
     e = events(scene)
     on(comm) do msg
@@ -53,6 +72,16 @@ function connect_scene_events!(scene, comm)
         end
         @handle msg.scroll begin
             e.scroll[] = Float64.((sign.(scroll)...,))
+        end
+        @handle msg.keydown begin
+            set = e.keyboardbuttons[]
+            push!(set, code_to_keyboard(keydown))
+            e.keyboardbuttons[] = set
+        end
+        @handle msg.keyup begin
+            set = e.keyboardbuttons[]
+            delete!(set, code_to_keyboard(keyup))
+            e.keyboardbuttons[] = set
         end
         return
     end
@@ -221,6 +250,22 @@ function three_display(session::Session, scene::Scene)
                 return false;
             }
             canvas.addEventListener("wheel", wheel, false);
+
+            function keydown(event){
+                update_obs($comm, {
+                    keydown: event.code
+                })
+                return false;
+            }
+            document.addEventListener("keydown", keydown, false);
+
+            function keyup(event){
+                update_obs($comm, {
+                    keyup: event.code
+                })
+                return false;
+            }
+            document.addEventListener("keyup", keyup, false);
         }"""
     )
     connect_scene_events!(scene, comm)
