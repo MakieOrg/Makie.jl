@@ -266,8 +266,8 @@ function solve(gl::GridLayout, bbox::BBox)
     # determine the vertical and horizontal space needed just for the gaps
     # again, the gaps are what the protrusions stick into, so they are not actually "empty"
     # depending on what sticks out of the plots
-    sumcolgaps = sum(colgaps)
-    sumrowgaps = sum(rowgaps)
+    sumcolgaps = (gl.ncols <= 1) ? 0.0 : sum(colgaps)
+    sumrowgaps = (gl.nrows <= 1) ? 0.0 : sum(rowgaps)
 
     # compute what space remains for the inner parts of the plots
     remaininghorizontalspace = if gl.alignmode isa Inside
@@ -305,8 +305,8 @@ function solve(gl::GridLayout, bbox::BBox)
     end
 
     # compute the actual space available for the rows and columns (plots without protrusions)
-    spaceforcolumns = remaininghorizontalspace - sum(addedcolgaps)
-    spaceforrows = remainingverticalspace - sum(addedrowgaps)
+    spaceforcolumns = remaininghorizontalspace - ((gl.ncols <= 1) ? 0.0 : sum(addedcolgaps))
+    spaceforrows = remainingverticalspace - ((gl.nrows <= 1) ? 0.0 : sum(addedrowgaps))
 
     colwidths, rowheights = compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
 
