@@ -6,6 +6,11 @@ struct Left <: Side end
 struct Right <: Side end
 struct Top <: Side end
 struct Bottom <: Side end
+# for protrusion content:
+struct TopLeft <: Side end
+struct TopRight <: Side end
+struct BottomLeft <: Side end
+struct BottomRight <: Side end
 
 abstract type GridDir end
 struct Col <: GridDir end
@@ -166,6 +171,20 @@ mutable struct ProtrusionLayout{T} <: AbstractLayout
     widthnode::Union{Nothing, Node{Float32}}
     heightnode::Union{Nothing, Node{Float32}}
     needs_update::Node{Bool}
+    content::T
+end
+
+mutable struct ProtrusionContentLayout{T} <: AbstractLayout
+    parent::Union{Nothing, GridLayout}
+    widthnode::Union{Nothing, Node{Float32}}
+    heightnode::Union{Nothing, Node{Float32}}
+    side::Side
+    needs_update::Node{Bool}
+    content::T
+end
+
+struct SolvedProtrusionContentLayout{T} <: AbstractLayout
+    bbox::BBox
     content::T
 end
 

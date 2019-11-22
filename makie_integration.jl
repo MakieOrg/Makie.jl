@@ -107,6 +107,10 @@ function applylayout(sa::SolvedProtrusionLayout)
     align_to_bbox!(sa.content, sa.bbox)
 end
 
+function applylayout(spcl::SolvedProtrusionContentLayout)
+    align_to_bbox!(spcl.content, spcl.bbox)
+end
+
 function shrinkbymargin(rect, margin)
     IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
 end
