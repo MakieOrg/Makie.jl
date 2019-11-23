@@ -500,8 +500,18 @@ function get_tick_labels(ticks::AutoLinearTicks, tickvalues)
     dif = diff(view(tickvalues, 1:2))[1]
     # whats the exponent of the difference?
     expo = log10(dif)
-    # the closest exponent minus 1 for safety
-    safety_expo_int = Int(round(expo)) - 1
+
+    # all difs bigger than one should be integers with the normal step sizes
+    dif_is_integer = dif > 0.99999
+    # this condition means that the exponent is close to an integer, so the numbers
+    # would have a trailing zero with the safety applied
+    exp_is_integer = isapprox(abs(expo) % 1 - 1, 0, atol=1e-6)
+
+    safety_expo_int = if dif_is_integer || exp_is_integer
+        Int(round(expo))
+    else
+        safety_expo_int = Int(round(expo)) - 1
+    end
     # for e.g. 1.32 we want 2 significant digits, so we invert the exponent
     # and set precision to 0 for everything that is an integer
     sigdigits = max(0, -safety_expo_int)
