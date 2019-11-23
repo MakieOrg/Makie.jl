@@ -206,7 +206,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
     decorations[:sidelabel] = sidelabelt
 
     onany(sidelabelfont, sidelabelsize) do sidelabelfont, sidelabelsize
-        # @show boundingbox(sidelabelt)
         sidelabelbb[] = BBox(boundingbox(sidelabelt))
     end
 
