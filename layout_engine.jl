@@ -914,6 +914,7 @@ function nest_content_into_gridlayout!(gl::GridLayout, rows::Indexables, cols::I
     )
 
     # remove the content from the parent that is completely inside the replacement grid
+    subgl.block_updates = true
     i = 1
     while i <= length(gl.content)
         spal = gl.content[i]
@@ -921,15 +922,16 @@ function nest_content_into_gridlayout!(gl::GridLayout, rows::Indexables, cols::I
         if (spal.sp.rows.start >= newrows.start && spal.sp.rows.stop <= newrows.stop &&
             spal.sp.cols.start >= newcols.start && spal.sp.cols.stop <= newcols.stop)
 
-            # adjust span for new grid position and place content inside it
+            detachfromparent!(spal.al) # this deletes the alignable from its old parent already
+            # which would happen anyway hidden in the next assignment, but makes the intent clearer
             subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1)] = spal.al
-            deleteat!(gl.content, i)
             continue
             # don't advance i because there's one piece of content less in the queue
             # and the next item is in the same position as the old removed one
         end
         i += 1
     end
+    subgl.block_updates = false
 
     gl[newrows, newcols] = subgl
 

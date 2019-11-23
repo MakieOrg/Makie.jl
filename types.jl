@@ -128,12 +128,10 @@ mutable struct GridLayout <: AbstractLayout
 
             parent = parentlayout(gl)
 
-            if isnothing(parent)
-                error("This grid layout has no parent defined.")
-            end
-
             if !gl.block_updates
-                if parent isa Scene
+                if isnothing(parent)
+                    error("This grid layout has no parent defined and therefore can't update it.")
+                elseif parent isa Scene
                     sg = solve(gl, BBox(pixelarea(parent)[]))
                     applylayout(sg)
                 elseif parent isa GridLayout
