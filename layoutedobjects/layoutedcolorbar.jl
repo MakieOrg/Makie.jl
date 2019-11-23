@@ -41,3 +41,9 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         parent, scene, bboxnode, limits, protrusions,
         needs_update, attrs)
 end
+
+defaultlayout(lc::LayoutedColorbar) = ProtrusionLayout(lc)
+
+function align_to_bbox!(lc::LayoutedColorbar, bbox)
+    lc.bboxnode[] = bbox
+end
