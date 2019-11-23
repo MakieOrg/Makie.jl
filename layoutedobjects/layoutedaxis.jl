@@ -620,7 +620,7 @@ function expandlimits(lims, marginleft, marginright)
 
     # guard against singular limits from something like a vline or hline
     if lims[2] - lims[1] == 0
-        lims = lims .+ (-0.5, 0.5)
+        lims = lims .+ (-10, 10)
     end
     lims
 end
@@ -652,7 +652,7 @@ getylimits(la::LayoutedAxis) = getlimits(la, 2)
 
 function autolimits!(la::LayoutedAxis)
 
-    @show xlims = getxlimits(la)
+    xlims = getxlimits(la)
     for link in la.xaxislinks
         if isnothing(xlims)
             xlims = getxlimits(link)
@@ -671,7 +671,7 @@ function autolimits!(la::LayoutedAxis)
             la.attributes.xautolimitmargin[][2])
     end
 
-    @show ylims = getylimits(la)
+    ylims = getylimits(la)
     for link in la.yaxislinks
         if isnothing(ylims)
             ylims = getylimits(link)
