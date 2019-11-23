@@ -199,10 +199,15 @@ struct ManualTicks <: Ticks
     labels::Vector{String}
 end
 
+struct AxisContent{T}
+    content::T
+    attributes::Attributes
+end
+
 mutable struct LayoutedAxis
     parent::Scene
     scene::Scene
-    plots::Vector{AbstractPlot}
+    plots::Vector{AxisContent}
     xaxislinks::Vector{LayoutedAxis}
     yaxislinks::Vector{LayoutedAxis}
     bboxnode::Node{BBox}

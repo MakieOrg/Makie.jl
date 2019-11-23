@@ -152,3 +152,10 @@ function default_attributes(::Type{LayoutedButton})
         label = "Button",
     )
 end
+
+function default_attributes(::Type{AxisContent})
+    Attributes(
+        xautolimit = true,
+        yautolimit = true,
+    )
+end

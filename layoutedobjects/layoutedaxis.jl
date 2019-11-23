@@ -526,37 +526,50 @@ function get_tick_labels(ticks::ManualTicks, tickvalues)
     String[ticks.labels[findfirst(x -> x == tv, ticks.values)] for tv in tickvalues]
 end
 
-function AbstractPlotting.scatter!(la::LayoutedAxis, args...; kwargs...)
+function AbstractPlotting.scatter!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
     plot = scatter!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, plot)
+    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    push!(la.plots, axiscontent)
     autolimits!(la)
     plot
 end
 
-function AbstractPlotting.lines!(la::LayoutedAxis, args...; kwargs...)
+function AbstractPlotting.lines!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
     plot = lines!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, plot)
+    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    push!(la.plots, axiscontent)
     autolimits!(la)
     plot
 end
 
-function AbstractPlotting.image!(la::LayoutedAxis, args...; kwargs...)
+function AbstractPlotting.image!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
     plot = image!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, plot)
+    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    push!(la.plots, axiscontent)
     autolimits!(la)
     plot
 end
 
-function AbstractPlotting.poly!(la::LayoutedAxis, args...; kwargs...)
+function AbstractPlotting.poly!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
     plot = poly!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, plot)
+    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    push!(la.plots, axiscontent)
     autolimits!(la)
     plot
 end
 
-function AbstractPlotting.meshscatter!(la::LayoutedAxis, args...; kwargs...)
+function AbstractPlotting.meshscatter!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
     plot = meshscatter!(la.scene, args...; show_axis=false, kwargs...)[end]
-    push!(la.plots, plot)
+    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    push!(la.plots, axiscontent)
+    autolimits!(la)
+    plot
+end
+
+function AbstractPlotting.heatmap!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
+    plot = heatmap!(la.scene, args...; show_axis=false, kwargs...)[end]
+    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    push!(la.plots, axiscontent)
     autolimits!(la)
     plot
 end
@@ -603,15 +616,28 @@ function expandlimits(lims, marginleft, marginright)
     w = limsordered[2] - limsordered[1]
     dleft = w * marginleft
     dright = w * marginright
-    (limsordered[1] - dleft, limsordered[2] + dright)
+    lims = (limsordered[1] - dleft, limsordered[2] + dright)
+
+    # guard against singular limits from something like a vline or hline
+    if lims[2] - lims[1] == 0
+        lims = lims .+ (-0.5, 0.5)
+    end
+    lims
 end
 
 function getlimits(la::LayoutedAxis, dim)
-    lim = if length(la.plots) > 0
-        bbox = BBox(boundingbox(la.plots[1]))
+
+    limitables = if dim == 1
+        filter(p -> p.attributes.xautolimit[], la.plots)
+    elseif dim == 2
+        filter(p -> p.attributes.yautolimit[], la.plots)
+    end
+
+    lim = if length(limitables) > 0
+        bbox = BBox(boundingbox(limitables[1].content))
         templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
-        for p in la.plots[2:end]
-            bbox = BBox(boundingbox(p))
+        for p in limitables[2:end]
+            bbox = BBox(boundingbox(p.content))
             templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
         end
         templim
@@ -626,7 +652,7 @@ getylimits(la::LayoutedAxis) = getlimits(la, 2)
 
 function autolimits!(la::LayoutedAxis)
 
-    xlims = getxlimits(la)
+    @show xlims = getxlimits(la)
     for link in la.xaxislinks
         if isnothing(xlims)
             xlims = getxlimits(link)
@@ -638,14 +664,14 @@ function autolimits!(la::LayoutedAxis)
         end
     end
     if isnothing(xlims)
-        xlims = (0f0, 1f0)
+        xlims = (la.limits[].origin[1], la.limits[].origin[1] + la.limits[].widths[1])
     else
         xlims = expandlimits(xlims,
             la.attributes.xautolimitmargin[][1],
             la.attributes.xautolimitmargin[][2])
     end
 
-    ylims = getylimits(la)
+    @show ylims = getylimits(la)
     for link in la.yaxislinks
         if isnothing(ylims)
             ylims = getylimits(link)
@@ -657,7 +683,7 @@ function autolimits!(la::LayoutedAxis)
         end
     end
     if isnothing(ylims)
-        ylims = (0f0, 1f0)
+        ylims = (la.limits[].origin[2], la.limits[].origin[2] + la.limits[].widths[2])
     else
         ylims = expandlimits(ylims,
             la.attributes.yautolimitmargin[][1],
@@ -853,4 +879,10 @@ end
 function tight_ticklabel_spacing!(la::LayoutedAxis)
     tight_xticklabel_spacing!(la)
     tight_yticklabel_spacing!(la)
+end
+
+function AxisContent(plot; kwargs...)
+    attrs = merge!(Attributes(kwargs), default_attributes(AxisContent))
+
+    AxisContent(plot, attrs)
 end
