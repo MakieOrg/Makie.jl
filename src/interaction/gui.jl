@@ -136,8 +136,8 @@ function dragslider(slider, button)
     startpos = Base.RefValue(Vec(0.0, 0.0))
     range = slider[1]
     @extract slider (value, sliderlength)
-    on(sliderlength) do slen
-        len = slen - slider.buttonsize[]
+    on(sliderlength) do sliderlength
+        len = sliderlength - slider.buttonsize[]
         r = slider[1][]
         idx = find_closest(r, slider.value[])
         xpos = ((idx - 1) / (length(r) - 1)) * len

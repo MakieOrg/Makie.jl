@@ -32,7 +32,7 @@ function cam2d!(scene::SceneLike; kw_args...)
     add_zoom!(scene, cam)
     add_pan!(scene, cam)
     correct_ratio!(scene, cam)
-    selection_rect!(scene, cam, cam_attributes[:selectionbutton])
+    selection_rect!(scene, cam, cam_attributes.selectionbutton)
     cameracontrols!(scene, cam)
     cam
 end
@@ -90,8 +90,9 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
     cam.last_area[] = Vec(size(scene))
     if cam.update_limits[]
         #
-        w2 = Vec2f0(w, h) .* 0.2
-        update_limits!(scene, Rect(origin(cam.area[]) .+ w2, widths(cam.area[]) .- 2w2))
+        # update!(scene)
+        # w2 = Vec2f0(w, h) .* 0.2
+        # update_limits!(scene, Rect(origin(cam.area[]) .+ w2, widths(cam.area[]) .- 2w2))
     end
     return
 end

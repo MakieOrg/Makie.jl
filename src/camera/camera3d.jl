@@ -139,7 +139,7 @@ end
 function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
     last_mousepos = RefValue(Vec2f0(0, 0))
     on(camera(scene), scene.events.mousedrag) do drag
-        mp = Vec2f0(scene.events.mouseposition[])
+        mp = mouseposition_px(scene)
         if ispressed(scene, key[]) && ispressed(scene, button[]) && is_mouseinside(scene)
             if drag == Mouse.down
                 #just started pressing, nothing to do yet
@@ -156,7 +156,7 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
     on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
             cam_res = Vec2f0(widths(scene.px_area[]))
-            mouse_pos_normalized = Vec2f0(scene.events.mouseposition[]) ./ cam_res
+            mouse_pos_normalized = mouseposition_px(scene) ./ cam_res
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
             zoom_step = scroll[2]
             zoom!(scene, mouse_pos_normalized, zoom_step, zoom_shift_lookat)
@@ -167,13 +167,14 @@ end
 
 function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    on(camera(scene), scene.events.mousedrag) do drag
+    e = events(scene)
+    on(camera(scene), e.mousedrag) do drag
         if ispressed(scene, button[]) && ispressed(scene, key[]) && is_mouseinside(scene)
             if drag == Mouse.down
-                last_mousepos[] = Vec2f0(scene.events.mouseposition[])
+                last_mousepos[] = mouseposition_px(scene)
             elseif drag == Mouse.pressed
-                mousepos = Vec2f0(scene.events.mouseposition[])
-                rot_scaling = cam.rotationspeed[] * (scene.events.window_dpi[] * 0.001)
+                mousepos = mouseposition_px(scene)
+                rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
                 mp = (last_mousepos[] - mousepos) * rot_scaling
                 last_mousepos[] = mousepos
                 rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0), fixed_axis)

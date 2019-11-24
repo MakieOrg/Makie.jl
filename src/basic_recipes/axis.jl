@@ -720,6 +720,6 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
         Node(textbuffer), Node(linebuffer),
         axis[1], axis.ticks.ranges_labels, args...
     )
-    push!(scene.plots, axis)
+    push!(scene, axis)
     return axis
 end
