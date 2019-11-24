@@ -231,6 +231,7 @@ end
 """
 """
 mutable struct Camera
+    pixel_space::Node{Mat4f0}
     view::Node{Mat4f0}
     projection::Node{Mat4f0}
     projectionview::Node{Mat4f0}

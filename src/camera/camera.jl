@@ -3,11 +3,13 @@ function Base.copy(x::Camera)
         getfield(x, i)
     end...)
 end
+
 function Base.:(==)(a::Camera, b::Camera)
     to_value(a.view) == to_value(b.view) &&
     to_value(a.projection) == to_value(b.projection) &&
     to_value(a.resolution) == to_value(b.resolution)
 end
+
 function disconnect!(c::Camera)
     for node in c.steering_nodes
         filter!(listeners(node)) do x
@@ -16,6 +18,7 @@ function disconnect!(c::Camera)
     end
     return
 end
+
 function disconnect!(nodes::Vector)
     for node in nodes
         disconnect!(node)
@@ -51,7 +54,14 @@ function Observables.on(f, c::Camera, nodes::Node...)
 end
 
 function Camera(px_area)
+    pixel_space =  on(px_area) do window_size
+        nearclip = -10_000f0
+        farclip = 10_000f0
+        w, h = Float32.(widths(window_size))
+        return orthographicprojection(0f0, w, 0f0, h, nearclip, farclip)
+    end
     Camera(
+        pixel_space,
         Node(Mat4f0(I)),
         Node(Mat4f0(I)),
         Node(Mat4f0(I)),
@@ -61,10 +71,6 @@ function Camera(px_area)
     )
 end
 
-
-
-
-
 function is_mouseinside(scene, target)
     scene === target && return false
     Vec(scene.events.mouseposition[]) in pixelarea(scene)[] || return false
@@ -73,6 +79,7 @@ function is_mouseinside(scene, target)
     end
     return false
 end
+
 function is_mouseinside(scene)
     return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
     # Check that mouse is not inside any other screen
