@@ -525,52 +525,19 @@ function get_tick_labels(ticks::ManualTicks, tickvalues)
     String[ticks.labels[findfirst(x -> x == tv, ticks.values)] for tv in tickvalues]
 end
 
-function AbstractPlotting.scatter!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
-    plot = scatter!(la.scene, args...; show_axis=false, kwargs...)[end]
-    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
-    push!(la.plots, axiscontent)
-    autolimits!(la)
-    plot
-end
+function AbstractPlotting.plot!(
+        la::LayoutedAxis, P::AbstractPlotting.PlotFunc,
+        attributes::AbstractPlotting.Attributes, args...;
+        kw_attributes...)
 
-function AbstractPlotting.lines!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
-    plot = lines!(la.scene, args...; show_axis=false, kwargs...)[end]
-    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
-    push!(la.plots, axiscontent)
-    autolimits!(la)
-    plot
-end
+    plot = AbstractPlotting.plot!(la.scene, P, attributes, args...; kw_attributes...)[end]
 
-function AbstractPlotting.image!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
-    plot = image!(la.scene, args...; show_axis=false, kwargs...)[end]
-    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    # axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
+    axiscontent = AxisContent(plot)
     push!(la.plots, axiscontent)
     autolimits!(la)
     plot
-end
 
-function AbstractPlotting.poly!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
-    plot = poly!(la.scene, args...; show_axis=false, kwargs...)[end]
-    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
-    push!(la.plots, axiscontent)
-    autolimits!(la)
-    plot
-end
-
-function AbstractPlotting.meshscatter!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
-    plot = meshscatter!(la.scene, args...; show_axis=false, kwargs...)[end]
-    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
-    push!(la.plots, axiscontent)
-    autolimits!(la)
-    plot
-end
-
-function AbstractPlotting.heatmap!(la::LayoutedAxis, args...; xautolimit=true, yautolimit=true, kwargs...)
-    plot = heatmap!(la.scene, args...; show_axis=false, kwargs...)[end]
-    axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
-    push!(la.plots, axiscontent)
-    autolimits!(la)
-    plot
 end
 
 function align_to_bbox!(la::LayoutedAxis, bb::BBox)

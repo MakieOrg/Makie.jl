@@ -202,7 +202,7 @@ struct AxisContent{T}
     attributes::Attributes
 end
 
-mutable struct LayoutedAxis
+mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
     parent::Scene
     scene::Scene
     plots::Vector{AxisContent}
