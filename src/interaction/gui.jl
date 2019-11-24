@@ -223,17 +223,31 @@ function plot!(splot::Button)
         dimensions, textcolor, clicks, textsize, position,
         padvalue
     ))
+
+    textpos = lift(position, dimensions) do pos, dims
+        # always center the text in the button
+        # the dims could be smaller than the text though
+        Point2f0(pos .+ dims ./ 2)
+    end
+
     txt = splot[1]
     lplot = text!(
         splot, txt,
         color = textcolor,
-        textsize = textsize, position = position,
-        align = (:bottom, :center)
+        textsize = textsize, position = textpos,
+        align = (:center, :center)
     ).plots[end]
-    bb = boundingbox(lplot)
-    pad = mean(widths(bb)) .* padvalue[]
-    poly!(splot, padrect(FRect2D(boundingbox(lplot)), pad), color = backgroundcolor, strokecolor = strokecolor, strokewidth = strokewidth)
+
+    # position and dimensions
+    box = lift(position, dimensions) do pos, dims
+        FRect(pos, dims)
+    end
+
+    poly!(
+        splot, box,
+        color = backgroundcolor, strokecolor = strokecolor, strokewidth = strokewidth)
     reverse!(splot.plots) # make poly first
+
     on(events(splot).mousebuttons) do mb
         if ispressed(mb, Mouse.left) && mouseover(parent_scene(splot), splot.plots...)
             clicks[] = clicks[] + 1
