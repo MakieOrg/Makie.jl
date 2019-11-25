@@ -69,14 +69,10 @@ function ge(e::EdgeInteger, x)
 end
 
 
-function locateticks(vmin, vmax, width_px, ideal_spacing_px; _integer=false, _min_n_ticks=2)
-    locateticks(vmin, vmax, width_px, ideal_spacing_px, _integer, _min_n_ticks)
-end
-
 """
 A cheaper function that tries to come up with usable tick locations for a given value range
 """
-function locateticks(vmin, vmax, width_px, ideal_spacing_px, _integer=false, _min_n_ticks=2)
+function locateticks(vmin, vmax, width_px, ideal_spacing_px, _integer, _min_n_ticks)
 
     _steps = (1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0)
     _extended_steps = _staircase(_steps)
@@ -138,4 +134,8 @@ function locateticks(vmin, vmax, width_px, ideal_spacing_px, _integer=false, _mi
     end
     ticks = ticks .+ offset #(first(ticks) + offset):step(ticks):(last(ticks) + offset)
     filter(x -> vmin <= x <= vmax, ticks)
+end
+
+function locateticks(vmin, vmax, width_px, ideal_spacing_px; _integer=false, _min_n_ticks=2)
+    locateticks(vmin, vmax, width_px, ideal_spacing_px, _integer, _min_n_ticks)
 end
