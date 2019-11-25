@@ -1,11 +1,11 @@
-function LayoutedSlider(scene::Scene, height::Real, sliderrange)
+function LayoutedSlider(scene::Scene, height::Real, sliderrange; sliderkw...)
 
     bboxnode = Node(BBox(0, 1, 1, 0))
     heightnode = Node{Union{Nothing, Float32}}(Float32(height))
     position = Node(Point2f0(0, 0))
     widthnode = Node{Union{Nothing, Float32}}(Float32(100))
     slider = slider!(scene, sliderrange, position=position,
-        sliderheight=heightnode, sliderlength=widthnode, raw=true)[end]
+        sliderheight=heightnode, sliderlength=widthnode, raw=true; sliderkw...)[end]
 
     on(bboxnode) do bbox
         position[] = Point(left(bbox), bottom(bbox))
