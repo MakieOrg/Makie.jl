@@ -676,9 +676,7 @@ end
 
 const Indexables = Union{UnitRange, Int, Colon}
 
-
-
-function adjust_rows_cols!(g::GridLayout, rows, cols)
+function to_ranges(g::GridLayout, rows::Indexables, cols::Indexables)
     if rows isa Int
         rows = rows:rows
     elseif rows isa Colon
@@ -689,6 +687,11 @@ function adjust_rows_cols!(g::GridLayout, rows, cols)
     elseif cols isa Colon
         cols = 1:g.ncols
     end
+    rows, cols
+end
+
+function adjust_rows_cols!(g::GridLayout, rows, cols)
+    rows, cols = to_ranges(g, rows, cols)
 
     if rows.start < 1
         n = 1 - rows.start
@@ -798,6 +801,32 @@ function Base.lastindex(g::GridLayout, d)
         g.ncols
     else
         error("A grid only has two dimensions, you're indexing dimension $d.")
+    end
+end
+
+function is_range_within(inner::UnitRange, outer::UnitRange)
+    inner.start >= outer.start && inner.stop <= outer.stop
+end
+
+function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
+
+    rows, cols = to_ranges(g, rows, cols)
+
+    included = filter(g.content) do c
+        is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols) &&
+            !(c isa ProtrusionContentLayout) # protrusions get different syntax
+    end
+
+    extracted_layouts = map(included) do c
+        c.al
+    end
+
+    return if length(extracted_layouts) == 0
+        nothing
+    elseif length(extracted_layouts) == 1
+        extracted_layouts[1]
+    else
+        extracted_layouts
     end
 end
 
