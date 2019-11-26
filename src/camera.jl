@@ -8,21 +8,11 @@ function add_camera!(jsctx, js_scene, scene::Scene)
 end
 
 function add_camera!(jsctx, js_scene, scene, cam, cam_controls::AbstractPlotting.EmptyCamera)
-    return (nothing, ()-> nothing)
+    return
 end
 
-function setup_renderer(scene, jsctx)
-    jsctx.renderer.autoClear = scene.clear[]
-    bg = to_color(scene.backgroundcolor[])
-    area = pixelarea(scene)[]
-    x, y, w, h = minimum(area)..., widths(area)...
-    jsctx.renderer.setViewport(x, y, w, h)
-    jsctx.renderer.setScissor(x, y, w, h)
-    jsctx.renderer.setScissorTest(true)
-    jsctx.renderer.setClearColor(jsctx.THREE.new.Color(red(bg), green(bg), blue(bg)))
-end
 
-function update_ortho(jscam, area, jsctx, js_scene, scene)
+function update_ortho(jscam, area)
     mini, maxi = minimum(area), maximum(area)
     left, right, top, bottom = mini[1], maxi[1], maxi[2], mini[2]
     jscam.left = left
@@ -30,8 +20,6 @@ function update_ortho(jscam, area, jsctx, js_scene, scene)
     jscam.top = top
     jscam.bottom = bottom
     jscam.updateProjectionMatrix()
-    setup_renderer(scene, jsctx)
-    jsctx.renderer.render(js_scene, jscam)
 end
 
 function add_camera!(jsctx, js_scene, scene, cam, cam_controls::PixelCamera)
@@ -40,7 +28,12 @@ function add_camera!(jsctx, js_scene, scene, cam, cam_controls::PixelCamera)
     jscam = jsctx.THREE.new.OrthographicCamera(
         mini[1], maxi[1], maxi[2], mini[2], -10_000, 10_000
     )
-    return jscam, ()-> update_ortho(jscam, AbstractPlotting.zerorect(area[]), jsctx, js_scene, scene)
+    jscam.name = "camera"
+    js_scene.add(jscam)
+    on(area) do area
+        update_ortho(jscam, AbstractPlotting.zerorect(area))
+    end
+    return
 end
 
 function add_camera!(jsctx, js_scene, scene, cam, cam_controls::Camera2D)
@@ -49,27 +42,50 @@ function add_camera!(jsctx, js_scene, scene, cam, cam_controls::Camera2D)
     jscam = jsctx.THREE.new.OrthographicCamera(
         mini[1], maxi[1], maxi[2], mini[2], -10_000, 10_000
     )
-    return jscam, ()-> update_ortho(jscam, area[], jsctx, js_scene, scene)
+    jscam.name = "camera"
+    js_scene.add(jscam)
+    on(area) do area
+        update_ortho(jscam, area)
+    end
+    return
 end
 
 function add_camera!(jsctx, js_scene, scene, cam, cam_controls::Camera3D)
     jscam = jsctx.THREE.new.PerspectiveCamera(cam_controls.fov[], (/)(cam.resolution[]...), 1, 1000)
+    jscam.name = "camera"
+    js_scene.add(jscam)
     eyeposition, lookat, upvector, fov, near, far = getfield.(
         (cam_controls,),
         (:eyeposition, :lookat, :upvector, :fov, :near, :far)
     )
     area = pixelarea(scene)
-    function update_camera()
-        jscam.up.set(upvector[]...)
-        jscam.position.set(eyeposition[]...)
-        jscam.lookAt(lookat[]...)
-        jscam.fov = fov[]
-        jscam.near = near[]
-        jscam.far = far[]
-        jscam.aspect = (/)(widths(area[])...)
+    on(eyeposition) do eyeposition
+        jscam.position.set(eyeposition...)
         jscam.updateProjectionMatrix()
-        setup_renderer(scene, jsctx)
-        jsctx.renderer.render(js_scene, jscam);
     end
-    return jscam, update_camera
+    on(lookat) do lookat
+        jscam.lookAt(lookat...)
+        jscam.updateProjectionMatrix()
+    end
+    on(upvector) do upvector
+        jscam.up.set(upvector...)
+        jscam.updateProjectionMatrix()
+    end
+    on(fov) do fov
+        jscam.fov = fov
+        jscam.updateProjectionMatrix()
+    end
+    on(far) do far
+        jscam.far = far
+        jscam.updateProjectionMatrix()
+    end
+    on(far) do far
+        jscam.far = far
+        jscam.updateProjectionMatrix()
+    end
+    on(area) do area
+        jscam.aspect = (/)(widths(area)...)
+        jscam.updateProjectionMatrix()
+    end
+    return
 end

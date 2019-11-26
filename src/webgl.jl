@@ -15,8 +15,8 @@ end
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
 Base.size(x::JSBuffer) = (getfield(x, :length),)
 
-function JSServe.serialize_string(io::IO, jso::JSBuffer)
-    return JSServe.serialize_string(io, jsbuffer(jso))
+function JSServe.serialize_readable(io::IO, jso::JSBuffer)
+    return JSServe.serialize_readable(io, jsbuffer(jso))
 end
 
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
@@ -44,7 +44,7 @@ function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), vector)
     js_f32 = three.window.new.Float32Array(flat)
     jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
-    jsbuff.setDynamic(true)
+    # jsbuff.setDynamic(true)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
     if vector isa Buffer
         ShaderAbstractions.connect!(vector, buffer)
@@ -56,7 +56,7 @@ end
 function JSBuffer(three, vector::AbstractVector{T}) where T
     flat = reinterpret(eltype(T), vector)
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
-    jsbuff.setDynamic(true)
+    # jsbuff.setDynamic(true)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
     if vector isa Buffer
         ShaderAbstractions.connect!(vector, buffer)
@@ -221,7 +221,7 @@ function three_repeat(jsctx, s::Symbol)
 end
 using StaticArrays
 
-lasset(paths...) = read(joinpath(dirname(pathof(WGLMakie)), "..", "assets", paths...), String)
+lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 
 isscalar(x::StaticArrays.StaticArray) = true
 isscalar(x::AbstractArray) = false
@@ -254,7 +254,7 @@ function wgl_convert(scene, jsctx, ip::InstancedProgram)
     js_vbo = jsctx.THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
         js_buff = JSBuffer(jsctx, buff)
-        js_vbo.addAttribute(name, js_buff)
+        js_vbo.setAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
     indices = reinterpret(UInt32, indices) .- UInt32(1)
@@ -264,7 +264,7 @@ function wgl_convert(scene, jsctx, ip::InstancedProgram)
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
         js_buff = JSInstanceBuffer(jsctx, buff)
-        js_vbo.addAttribute(name, js_buff)
+        js_vbo.setAttribute(name, js_buff)
     end
     uniforms = to_js_uniforms(scene, jsctx, ip.program.uniforms)
     material = create_material(
@@ -282,7 +282,7 @@ function wgl_convert(scene, jsctx, program::Program)
 
     for (name, buff) in pairs(program.vertexarray)
         js_buff = JSBuffer(jsctx, buff)
-        js_vbo.addAttribute(name, js_buff)
+        js_vbo.setAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
     indices = reinterpret(UInt32, indices) .- UInt32(1)
