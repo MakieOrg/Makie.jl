@@ -455,25 +455,31 @@ end
 
 
 """
-    `plot_type(plot_args...)`
+    `plottype(plot_args...)`
 
 The default plot type for any argument is `lines`.
 Any custom argument combination that has only one meaningful way to be plotted should overload this.
 e.g.:
 ```example
     # make plot(rand(5, 5, 5)) plot as a volume
-    plottype(x::Array{<: AbstractFlot, 3}) = Volume
+    plottype(x::Array{<: AbstractFloat, 3}) = Volume
 ```
 """
 plottype(plot_args...) = Combined{Any, Tuple{typeof.(to_value.(plot_args))...}} # default to dispatch to type recipes!
-plottype(::RealVector, ::RealVector) = Lines
-plottype(::RealVector) = Lines
-plottype(::AbstractMatrix{<: Real}) = Heatmap
+
+## generic definitions
 # If the Combined has no plot func, calculate them
 plottype(::Type{<: Combined{Any}}, argvalues...) = plottype(argvalues...)
 plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 # If it has something more concrete than Any, use it directly
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
+
+## specialized definitions for types
+plottype(::RealVector, ::RealVector) = Lines
+plottype(::RealVector) = Lines
+plottype(::AbstractMatrix{<: Real}) = Heatmap
+plottype(::Array{<: AbstractFloat, 3}) = Volume
+plottype(::AbstractString) = Text
 
 """
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
