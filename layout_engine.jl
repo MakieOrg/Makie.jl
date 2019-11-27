@@ -800,6 +800,44 @@ function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexabl
     content
 end
 
+function Base.setindex!(g::GridLayout, content_array::AbstractArray, rows::Indexables, cols::Indexables)
+
+    rows, cols = to_ranges(g, rows, cols)
+
+    if rows.start < 1
+        error("Can't prepend rows using array syntax so far, start row $(rows.start) is smaller than 1.")
+    end
+    if cols.start < 1
+        error("Can't prepend columns using array syntax so far, start column $(cols.start) is smaller than 1.")
+    end
+
+    nrows = length(rows)
+    ncols = length(cols)
+    ncells = nrows * ncols
+
+    if ndims(content_array) == 2
+        if size(content_array) != (nrows, ncols)
+            error("Content array size is size $(size(content_array)) for $nrows rows and $ncols cols")
+        end
+        # put the array content into the grid layout in order
+        for (i, r) in enumerate(rows), (j, c) in enumerate(cols)
+            g[r, c] = content_array[i, j]
+        end
+    elseif ndims(content_array) == 1
+        if length(content_array) != nrows * ncols
+            error("Content array size is length $(length(content_array)) for $nrows * $ncols cells")
+        end
+        # put the content in the layout along columns first, because that is more
+        # intuitive
+        for (i, (c, r)) in enumerate(Iterators.product(cols, rows))
+            g[r, c] = content_array[i]
+        end
+    else
+        error("Can't assign a content array with $(ndims(content_array)) dimensions, only 1 or 2.")
+    end
+    content_array
+end
+
 function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables, side::Symbol)
 
     side_struct = if side in (:t, :top)
