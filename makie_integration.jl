@@ -114,3 +114,15 @@ end
 function shrinkbymargin(rect, margin)
     IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
 end
+
+function limits(r::Rect{N, T}) where {N, T}
+    ows = r.origin .+ r.widths
+    ntuple(i -> (r.origin[i], ows[i]), N)
+    # tuple(zip(r.origin, ows)...)
+end
+
+function limits(r::Rect{N, T}, dim::Int) where {N, T}
+    o = r.origin[dim]
+    w = r.widths[dim]
+    (o, o + w)
+end
