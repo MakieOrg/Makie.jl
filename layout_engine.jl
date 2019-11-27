@@ -38,14 +38,20 @@ end
 
 parentlayout(gl::GridLayout) = gl.parent
 
-function GridLayout(nrows, ncols;
+GridLayout(parent, nrows::Int, ncols::Int; kwargs...) = GridLayout(nrows, ncols; parent=parent, kwargs...)
+GridLayout(parent; kwargs...) = GridLayout(1, 1; parent=parent, kwargs...)
+GridLayout(; kwargs...) = GridLayout(1, 1; kwargs...)
+
+function GridLayout(nrows::Int, ncols::Int;
         parent = nothing,
         rowsizes = nothing,
         colsizes = nothing,
         addedrowgaps = nothing,
         addedcolgaps = nothing,
         alignmode = Inside(),
-        equalprotrusiongaps = (false, false))
+        equalprotrusiongaps = (false, false),
+        halign::Union{Symbol, Node{Symbol}} = :center,
+        valign::Union{Symbol, Node{Symbol}} = :center)
 
     if isnothing(rowsizes)
         rowsizes = [Auto() for _ in 1:nrows]
@@ -85,9 +91,16 @@ function GridLayout(nrows, ncols;
 
     content = []
 
+    valign = valign isa Symbol ? Node(valign) : valign
+    halign = halign isa Symbol ? Node(halign) : halign
+
+    onany(valign, halign) do v, h
+        needs_update[] = true
+    end
+
     GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign)
 end
 
 # these must be defined for special types that want protrusions or specified
@@ -321,19 +334,53 @@ function solve(gl::GridLayout, bbox::BBox)
     finalcolgaps = colgaps .+ addedcolgaps
     finalrowgaps = rowgaps .+ addedrowgaps
 
+    # compute the resulting width and height of the gridlayout and compute
+    # adjustments for the grid's alignment (this will only matter if the grid is
+    # bigger or smaller than the bounding box it occupies)
+
+    gridwidth = sum(colwidths) + sum(finalcolgaps) +
+        (gl.alignmode isa Outside ? (leftprot + rightprot) : 0.0)
+    gridheight = sum(rowheights) + sum(finalrowgaps) +
+        (gl.alignmode isa Outside ? (topprot + bottomprot) : 0.0)
+
+    halign = gl.halign[]
+    halign_offset = if halign == :left
+        0.0
+    elseif halign == :right
+        width(bbox) - gridwidth
+    elseif halign == :center
+        (width(bbox) - gridwidth) / 2
+    else
+        error("Invalid grid layout halign $halign")
+    end
+    valign = gl.valign[]
+    valign_offset = if valign == :top
+        0.0
+    elseif valign == :bottom
+        gridheight - height(bbox)
+    elseif halign == :center
+        (gridheight - height(bbox)) / 2
+    else
+        error("Invalid grid layout valign $valign")
+    end
+
     # compute the x values for all left and right column boundaries
     xleftcols = if gl.alignmode isa Inside
-        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+ cumsum([0; finalcolgaps])
+        halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
+            cumsum([0; finalcolgaps])
     elseif gl.alignmode isa Outside
-        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+ cumsum([0; finalcolgaps]) .+ leftprot
+        halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
+            cumsum([0; finalcolgaps]) .+ leftprot
     end
     xrightcols = xleftcols .+ colwidths
 
     # compute the y values for all top and bottom row boundaries
     ytoprows = if gl.alignmode isa Inside
-        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .- cumsum([0; finalrowgaps])
+        valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
+            cumsum([0; finalrowgaps])
     elseif gl.alignmode isa Outside
-        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .- cumsum([0; finalrowgaps]) .- topprot
+        valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
+            cumsum([0; finalrowgaps]) .- topprot
     end
     ybottomrows = ytoprows .- rowheights
 

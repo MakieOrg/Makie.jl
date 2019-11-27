@@ -85,10 +85,13 @@ mutable struct GridLayout <: AbstractLayout
     equalprotrusiongaps::Tuple{Bool, Bool}
     needs_update::Node{Bool}
     block_updates::Bool
+    valign::Node{Symbol}
+    halign::Node{Symbol}
 
     function GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes,
-        addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update)
+        addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update,
+        valign, halign)
 
         if nrows < 1
             error("Number of rows can't be smaller than 1")
@@ -111,7 +114,8 @@ mutable struct GridLayout <: AbstractLayout
         end
 
         gl = new(parent, content, nrows, ncols, rowsizes, colsizes,
-            addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update, false)
+            addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
+            needs_update, false, valign, halign)
 
         # set up updating mechanism
         # so far this only works if the scene is assigned as a parent at creation
