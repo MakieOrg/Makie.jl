@@ -225,5 +225,5 @@ function LineAxis(parent::Scene; kwargs...)
 
     # extents[] = extents[] # trigger
 
-    LineAxis(parent, protrusion, attrs, decorations)
+    LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings)
 end

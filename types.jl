@@ -219,6 +219,9 @@ mutable struct LineAxis
     protrusion::Node{Float32}
     attributes::Attributes
     decorations::Dict{Symbol, Any}
+    tickpositions::Node{Vector{Point2f0}}
+    tickvalues::Node{Vector{Float32}}
+    ticklabels::Node{Vector{String}}
 end
 
 mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
