@@ -150,34 +150,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
     # )[end]
     # decorations[:ylabeltext] = ylabeltext
 
-    titlepos = lift(scene.px_area, titlegap, titlealign) do a, titlegap, align
-        x = if align == :center
-            a.origin[1] + a.widths[1] / 2
-        elseif align == :left
-            a.origin[1]
-        elseif align == :right
-            a.origin[1] + a.widths[1]
-        else
-            error("Title align $align not supported.")
-        end
-
-        Point2(x, a.origin[2] + a.widths[2] + titlegap)
-    end
-
-    titlealignnode = lift(titlealign) do align
-        (align, :bottom)
-    end
-
-    titlet = text!(
-        parent, title,
-        position = titlepos,
-        visible = titlevisible,
-        textsize = titlesize,
-        align = titlealignnode,
-        font = titlefont,
-        show_axis=false)[end]
-    decorations[:title] = titlet
-
 
     sidelabelbb = Node(BBox(0, 100, 0, 100))
 
@@ -518,15 +490,45 @@ function LayoutedAxis(parent::Scene; kwargs...)
         ygridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
+    titlepos = lift(scene.px_area, titlegap, titlealign, xaxisposition, xaxis.protrusion) do a,
+            titlegap, align, xaxisposition, xaxisprotrusion
+
+        x = if align == :center
+            a.origin[1] + a.widths[1] / 2
+        elseif align == :left
+            a.origin[1]
+        elseif align == :right
+            a.origin[1] + a.widths[1]
+        else
+            error("Title align $align not supported.")
+        end
+
+        yoffset = top(a) + titlegap + (xaxisposition == :top ? xaxisprotrusion : 0f0)
+
+        Point2(x, yoffset)
+    end
+
+    titlealignnode = lift(titlealign) do align
+        (align, :bottom)
+    end
+
+    titlet = text!(
+        parent, title,
+        position = titlepos,
+        visible = titlevisible,
+        textsize = titlesize,
+        align = titlealignnode,
+        font = titlefont,
+        show_axis=false)[end]
+    decorations[:title] = titlet
+
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
                 sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation,
                 xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
 
-        spinespace = spinewidth
-
-        bottom = spinespace
+        bottom = spinewidth
 
         if xaxisposition == :bottom
             bottom += xaxisprotrusion
@@ -534,7 +536,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
             top += xaxisprotrusion
         end
 
-        left = spinespace
+        left = spinewidth
 
         right = sidelabelvisible ? boundingbox(sidelabelt).widths[1] + sidelabelgap : 0f0
 
