@@ -105,7 +105,7 @@ end
 
 # these must be defined for special types that want protrusions or specified
 # widths and heights
-protrusionnode(anything) = Node{Union{Nothing, NTuple{4, Float32}}}(nothing)
+protrusionnode(anything) = Node{Union{Nothing, RectSides{Float32}}}(nothing)
 widthnode(anything) = Node{Union{Nothing, Float32}}(nothing)
 heightnode(anything) = Node{Union{Nothing, Float32}}(nothing)
 
@@ -180,10 +180,10 @@ rightprotrusion(x) = protrusion(x, Right())
 bottomprotrusion(x) = protrusion(x, Bottom())
 topprotrusion(x) = protrusion(x, Top())
 
-protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][1]
-protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][2]
-protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][3]
-protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[][4]
+protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].left
+protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].right
+protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].top
+protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].bottom
 protrusion(sp::SpannedLayout, side::Side) = protrusion(sp.al, side)
 
 function protrusion(a::ProtrusionContentLayout, ::Left)
@@ -242,8 +242,12 @@ inside another grid.
 function solve(gl::GridLayout, bbox::BBox)
 
     if gl.alignmode isa Outside
-        l, r, t, b = gl.alignmode.padding
-        bbox = BBox(left(bbox) + l, right(bbox) - r, top(bbox) - t, bottom(bbox) + b)
+        pad = gl.alignmode.padding
+        bbox = BBox(
+            left(bbox) + pad.left,
+            right(bbox) - pad.right,
+            bottom(bbox) + pad.bottom,
+            top(bbox) - pad.top)
     end
 
     # first determine how big the protrusions on each side of all columns and rows are
@@ -404,7 +408,7 @@ function solve(gl::GridLayout, bbox::BBox)
             prot_r = maxgrid.rights[idx_rect.rights]
             prot_t = maxgrid.tops[idx_rect.tops]
             prot_b = maxgrid.bottoms[idx_rect.bottoms]
-            protrusion_bbox = BBox(prot_l, prot_r, prot_t, prot_b)
+            protrusion_bbox = BBox(prot_l, prot_r, prot_b, prot_t)
             solve(c.al, bbox_cell, protrusion_bbox)
         else
             solve(c.al, bbox_cell)
@@ -690,9 +694,8 @@ function solve(ua::ProtrusionLayout, innerbbox)
     bbox = BBox(
         left(ib) - protrusion(ua, Left()),
         right(ib) + protrusion(ua, Right()),
-        top(ib) + protrusion(ua, Top()),
-        bottom(ib) - protrusion(ua, Bottom())
-    )
+        bottom(ib) - protrusion(ua, Bottom()),
+        top(ib) + protrusion(ua, Top()))
     SolvedProtrusionLayout(innerbbox, ua.content)
 end
 
@@ -701,21 +704,21 @@ function solve(pcl::ProtrusionContentLayout, innerbbox, protrusion_bbox)
     pb = protrusion_bbox
 
     bbox = if pcl.side isa Left
-        BBox(left(ib) - left(pb), left(ib), top(ib), bottom(ib))
+        BBox(left(ib) - left(pb), left(ib), bottom(ib), top(ib))
     elseif pcl.side isa Top
-        BBox(left(ib), right(ib), top(ib) + top(pb), top(ib))
+        BBox(left(ib), right(ib), top(ib), top(ib) + top(pb))
     elseif pcl.side isa Right
-        BBox(right(ib), right(ib) + right(pb), top(ib), bottom(ib))
+        BBox(right(ib), right(ib) + right(pb), bottom(ib), top(ib))
     elseif pcl.side isa Bottom
-        BBox(left(ib), right(ib), bottom(ib), bottom(ib) - bottom(pb))
+        BBox(left(ib), right(ib), bottom(ib) - bottom(pb), bottom(ib))
     elseif pcl.side isa TopLeft
-        BBox(left(ib) - left(pb), left(ib), top(ib) + top(pb), top(ib))
+        BBox(left(ib) - left(pb), left(ib), top(ib), top(ib) + top(pb))
     elseif pcl.side isa TopRight
-        BBox(right(ib), right(ib) + right(pb), top(ib) + top(pb), top(ib))
+        BBox(right(ib), right(ib) + right(pb), top(ib), top(ib) + top(pb))
     elseif pcl.side isa BottomRight
-        BBox(right(ib), right(ib) + right(pb), bottom(ib), bottom(ib) - bottom(pb))
+        BBox(right(ib), right(ib) + right(pb), bottom(ib) - bottom(pb), bottom(ib))
     elseif pcl.side isa BottomLeft
-        BBox(left(ib) - left(pb), left(ib), bottom(ib), bottom(ib) - bottom(pb))
+        BBox(left(ib) - left(pb), left(ib), bottom(ib) - bottom(pb), bottom(ib))
     end
 
     SolvedProtrusionContentLayout(bbox, pcl.content)

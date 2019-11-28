@@ -1,6 +1,6 @@
 function LayoutedSlider(scene::Scene, height::Real, sliderrange; sliderkw...)
 
-    bboxnode = Node(BBox(0, 1, 1, 0))
+    bboxnode = Node(BBox(0, 1, 0, 1))
     heightnode = Node{Union{Nothing, Float32}}(Float32(height))
     position = Node(Point2f0(0, 0))
     widthnode = Node{Union{Nothing, Float32}}(Float32(100))

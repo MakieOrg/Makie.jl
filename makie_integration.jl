@@ -86,7 +86,7 @@ function connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignm
         l = left(bbox) + alignment[1] * restw
         b = bottom(bbox) + alignment[2] * resth
 
-        newbbox = BBox(l, l + mw, b + mh, b)
+        newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
         new_scenearea = IRect2D(newbbox)

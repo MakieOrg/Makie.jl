@@ -4,7 +4,7 @@ function LayoutedButton(scene::Scene; width=nothing, height=nothing, kwargs...)
 
     @extract attrs (valign, halign, padding, textsize, label)
 
-    bboxnode = Node(BBox(0, 1, 1, 0))
+    bboxnode = Node(BBox(0, 1, 0, 1))
     heightnode = Node{Union{Nothing, Float32}}(height)
     widthnode = Node{Union{Nothing, Float32}}(width)
 

@@ -4,7 +4,7 @@ function LayoutedRect(parent::Scene; width=nothing, height=nothing, kwargs...)
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)
 
-    bboxnode = Node(BBox(0, 100, 100, 0))
+    bboxnode = Node(BBox(0, 100, 0, 100))
 
     heightnode = Node(height)
     widthnode = Node(width)
@@ -62,7 +62,7 @@ function LayoutedRect(parent::Scene; width=nothing, height=nothing, kwargs...)
         l = left(bbox) + offset_w
         b = bottom(bbox) + offset_h
 
-        BBox(l, l + w, b + h, b)
+        BBox(l, l + w, b, b + h)
     end
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis

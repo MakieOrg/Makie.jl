@@ -5,19 +5,17 @@ bottom(rect::Rect2D) = minimum(rect)[2]
 top(rect::Rect2D) = maximum(rect)[2]
 
 
-
 Base.getindex(bbox::Rect2D, ::Left) = left(bbox)
 Base.getindex(bbox::Rect2D, ::Right) = right(bbox)
 Base.getindex(bbox::Rect2D, ::Bottom) = bottom(bbox)
 Base.getindex(bbox::Rect2D, ::Top) = top(bbox)
 
 
-
 width(rect::Rect2D) = right(rect) - left(rect)
 height(rect::Rect2D) = top(rect) - bottom(rect)
 
 
-function BBox(left::Number, right::Number, top::Number, bottom::Number)
+function BBox(left::Number, right::Number, bottom::Number, top::Number)
     mini = (left, bottom)
     maxi = (right, top)
     return BBox(mini, maxi .- mini)
@@ -51,7 +49,7 @@ Base.getindex(rowcols::RowCols, ::Bottom) = rowcols.bottoms
 Calls f over all sides (Left, Right, Top, Bottom), and creates a BBox from the result of f(side)
 """
 function eachside(f)
-    return BBox(map(f, (Left(), Right(), Top(), Bottom()))...)
+    return BBox(map(f, (Left(), Right(), Bottom(), Top()))...)
 end
 
 """
@@ -61,7 +59,7 @@ mapsides(
 Maps f over all sides of the rectangle like arguments.
 e.g.
 ```
-mapsides(BBox(left, right, top, bottom)) do side::Side, side_val::Number
+mapsides(BBox(left, right, bottom, top)) do side::Side, side_val::Number
     return ...
 end::BBox
 ```

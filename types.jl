@@ -1,5 +1,12 @@
 const BBox = Rect2D{Float32}
 
+struct RectSides{T<:Real}
+    left::T
+    right::T
+    bottom::T
+    top::T
+end
+
 abstract type Side end
 
 struct Left <: Side end
@@ -47,11 +54,12 @@ abstract type AlignMode end
 
 struct Inside <: AlignMode end
 struct Outside <: AlignMode
-    padding::Tuple{Float32, Float32, Float32, Float32}
+    padding::RectSides{Float32}
 end
 Outside() = Outside(0f0)
-Outside(padding::Real) = Outside(Float32.(Tuple(padding for _ in 1:4)))
-Outside(left::Real, right::Real, top::Real, bottom::Real) = Outside(Float32.((left, right, top, bottom)))
+Outside(padding::Real) = Outside(RectSides{Float32}(padding, padding, padding, padding))
+Outside(left::Real, right::Real, bottom::Real, top::Real) =
+    Outside(RectSides{Float32}(left, right, bottom, top))
 
 abstract type ContentSize end
 abstract type GapSize <: ContentSize end
@@ -169,7 +177,7 @@ struct DataAspect end
 
 mutable struct ProtrusionLayout{T} <: AbstractLayout
     parent::Union{Nothing, GridLayout}
-    protrusions::Node{Union{Nothing, NTuple{4, Float32}}}
+    protrusions::Node{Union{Nothing, RectSides{Float32}}}
     widthnode::Node{Union{Nothing, Float32}}
     heightnode::Node{Union{Nothing, Float32}}
     needs_update::Node{Bool}
@@ -214,7 +222,7 @@ mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
     yaxislinks::Vector{LayoutedAxis}
     bboxnode::Node{BBox}
     limits::Node{BBox}
-    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
+    protrusions::Node{RectSides{Float32}}
     needs_update::Node{Bool}
     attributes::Attributes
     block_limit_linking::Node{Bool}
@@ -226,7 +234,7 @@ mutable struct LayoutedColorbar
     scene::Scene
     bboxnode::Node{BBox}
     limits::Node{Tuple{Float32, Float32}}
-    protrusions::Node{Tuple{Float32, Float32, Float32, Float32}}
+    protrusions::Node{RectSides{Float32}}
     needs_update::Node{Bool}
     attributes::Attributes
 end

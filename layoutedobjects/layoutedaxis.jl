@@ -19,7 +19,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    bboxnode = Node(BBox(0, 100, 100, 0))
+    bboxnode = Node(BBox(0, 100, 0, 100))
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
@@ -178,7 +178,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
     decorations[:title] = titlet
 
 
-    sidelabelbb = Node(BBox(0, 100, 100, 0))
+    sidelabelbb = Node(BBox(0, 100, 0, 100))
 
     sidelabelpos = lift(scene.px_area, sidelabelgap, sidelabelalign, sidelabelbb) do a, sidelabelgap, align, sidelabelbb
         y = if align == :center
@@ -266,7 +266,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
                 if thisxlims != otherxlims
                     xlink.block_limit_linking[] = true
-                    xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[2], otherylims[1])
+                    xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
                     xlink.block_limit_linking[] = false
                 end
             end
@@ -277,7 +277,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
                 otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
                 if thisylims != otherylims
                     ylink.block_limit_linking[] = true
-                    ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[2], thisylims[1])
+                    ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
                     ylink.block_limit_linking[] = false
                 end
             end
@@ -448,7 +448,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
         right = sidelabelvisible ? boundingbox(sidelabelt).widths[1] + sidelabelgap : 0f0
 
-        (left, right, top, bottom)
+        RectSides{Float32}(left, right, bottom, top)
     end
 
     protrusions = lift(compute_protrusions,
@@ -546,7 +546,7 @@ end
 
 function protrusionnode(la::LayoutedAxis)
     # work around the new optional protrusions
-    node = Node{Union{Nothing, NTuple{4, Float32}}}(la.protrusions[])
+    node = Node{Union{Nothing, RectSides{Float32}}}(la.protrusions[])
     on(la.protrusions) do p
         node[] = p
     end
@@ -563,7 +563,7 @@ function bboxunion(bb1, bb2)
     o = min.(o1, o2)
     e = max.(e1, e2)
 
-    BBox(o[1], e[1], e[2], o[2])
+    BBox(o[1], e[1], o[2], e[2])
 end
 
 function expandbboxwithfractionalmargins(bb, margins)
@@ -656,7 +656,7 @@ function autolimits!(la::LayoutedAxis)
             la.attributes.yautolimitmargin[][2])
     end
 
-    bbox = BBox(xlims[1], xlims[2], ylims[2], ylims[1])
+    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
     la.limits[] = bbox
 end
 

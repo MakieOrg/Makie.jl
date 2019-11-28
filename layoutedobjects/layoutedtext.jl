@@ -4,7 +4,7 @@ function LayoutedText(parent::Scene; kwargs...)
     @extract attrs (text, textsize, font, color, visible, valign, halign,
         rotation, padding)
 
-    bboxnode = Node(BBox(0, 100, 100, 0))
+    bboxnode = Node(BBox(0, 100, 0, 100))
 
     # align = lift(valign, halign) do v, h
     #     (h, v)
@@ -15,7 +15,7 @@ function LayoutedText(parent::Scene; kwargs...)
     t = text!(parent, text, position = position, textsize = textsize, font = font, color = color,
         visible = visible, align = (:center, :center), rotation = rotation)[end]
 
-    textbb = BBox(0, 1, 1, 0)
+    textbb = BBox(0, 1, 0, 1)
     heightnode = Node(1f0)
     widthnode = Node(1f0)
 

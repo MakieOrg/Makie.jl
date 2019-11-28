@@ -10,7 +10,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         leftspinecolor, rightspinecolor, bottomspinecolor,
         aspect, alignment, maxsize)
 
-    bboxnode = Node(BBox(0, 100, 100, 0))
+    bboxnode = Node(BBox(0, 100, 0, 100))
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
@@ -29,7 +29,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
 
     campixel!(scene)
 
-    protrusions = Node((0f0, 0f0, 0f0, 0f0))
+    protrusions = Node(RectSides{Float32}(0, 0, 0, 0))
 
     needs_update = Node(false)
 
