@@ -14,7 +14,8 @@ function LayoutedAxis(parent::Scene; kwargs...)
         ytickcolor, xpanlock, ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, topspinevisible, rightspinevisible, leftspinevisible,
         bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, alignment, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey
+        aspect, alignment, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey,
+        xaxisposition, yaxisposition, xoppositespinevisible, yoppositespinevisible
     )
 
     decorations = Dict{Symbol, Any}()
@@ -40,20 +41,20 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     campixel!(scene)
 
-    # set up empty nodes for ticks and their labels
-    xticksnode = Node(Point2f0[])
-    xticklines = linesegments!(
-        parent, xticksnode, linewidth = xtickwidth, color = xtickcolor,
-        show_axis = false, visible = xticksvisible
-    )[end]
-    decorations[:xticklines] = xticklines
-
-    yticksnode = Node(Point2f0[])
-    yticklines = linesegments!(
-        parent, yticksnode, linewidth = ytickwidth, color = ytickcolor,
-        show_axis = false, visible = yticksvisible
-    )[end]
-    decorations[:yticklines] = xticklines
+    # # set up empty nodes for ticks and their labels
+    # xticksnode = Node(Point2f0[])
+    # xticklines = linesegments!(
+    #     parent, xticksnode, linewidth = xtickwidth, color = xtickcolor,
+    #     show_axis = false, visible = xticksvisible
+    # )[end]
+    # decorations[:xticklines] = xticklines
+    #
+    # yticksnode = Node(Point2f0[])
+    # yticklines = linesegments!(
+    #     parent, yticksnode, linewidth = ytickwidth, color = ytickcolor,
+    #     show_axis = false, visible = yticksvisible
+    # )[end]
+    # decorations[:yticklines] = xticklines
 
     xgridnode = Node(Point2f0[])
     xgridlines = linesegments!(
@@ -67,87 +68,87 @@ function LayoutedAxis(parent::Scene; kwargs...)
         parent, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
         color = ygridcolor
     )[end]
-    decorations[:ygridlines] = yticklines
+    decorations[:ygridlines] = ygridlines
 
-    nmaxticks = 20
-
-    xticklabelnodes = [Node("0") for i in 1:nmaxticks]
-    xticklabelposnodes = [Node(Point(0.0, 0.0)) for i in 1:nmaxticks]
-    xticklabels = map(1:nmaxticks) do i
-        text!(
-            parent,
-            xticklabelnodes[i],
-            position = xticklabelposnodes[i],
-            align = xticklabelalign,
-            rotation = xticklabelrotation,
-            textsize = xticklabelsize,
-            show_axis = false,
-            visible = xticklabelsvisible
-        )[end]
-    end
-    decorations[:xticklabels] = xticklabels
-
-    yticklabelnodes = [Node("0") for i in 1:nmaxticks]
-    yticklabelposnodes = [Node(Point(0.0, 0.0)) for i in 1:nmaxticks]
-    yticklabels = map(1:nmaxticks) do i
-        text!(
-            parent,
-            yticklabelnodes[i],
-            position = yticklabelposnodes[i],
-            align = yticklabelalign,
-            rotation = yticklabelrotation,
-            textsize = yticklabelsize,
-            show_axis = false,
-            visible = yticklabelsvisible
-        )[end]
-    end
-    decorations[:yticklabels] = yticklabels
-
-    xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
-        xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
-        xticksize, xtickalign) do a, xlabelvisible, xticklabelsvisible,
-                xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
-                xticksize, xtickalign
-
-        xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
-
-        labelgap = spinewidth +
-            xtickspace +
-            (xticklabelsvisible ? xticklabelspace + xticklabelpad : 0f0) +
-            xlabelpadding
-
-        Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
-    end
-
-    ylabelpos = lift(scene.px_area, ylabelvisible, yticklabelsvisible,
-        yticklabelspace, yticklabelpad, yticklabelsize, ylabelpadding, spinewidth, yticksvisible,
-        yticksize, ytickalign) do a, ylabelvisible, yticklabelsvisible,
-                yticklabelspace, yticklabelpad, yticklabelsize, ylabelpadding, spinewidth, yticksvisible,
-                yticksize, ytickalign
-
-        ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
-
-        labelgap = spinewidth +
-            ytickspace +
-            (yticklabelsvisible ? yticklabelspace + yticklabelpad : 0f0) +
-            ylabelpadding
-
-        Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
-    end
-
-    xlabeltext = text!(
-        parent, xlabel, textsize = xlabelsize, color = xlabelcolor,
-        position = xlabelpos, show_axis = false, visible = xlabelvisible,
-        align = (:center, :top)
-    )[end]
-    decorations[:xlabeltext] = xlabeltext
-
-    ylabeltext = text!(
-        parent, ylabel, textsize = ylabelsize, color = ylabelcolor,
-        position = ylabelpos, rotation = pi/2, show_axis = false,
-        visible = ylabelvisible, align = (:center, :bottom)
-    )[end]
-    decorations[:ylabeltext] = ylabeltext
+    # nmaxticks = 20
+    #
+    # xticklabelnodes = [Node("0") for i in 1:nmaxticks]
+    # xticklabelposnodes = [Node(Point(0.0, 0.0)) for i in 1:nmaxticks]
+    # xticklabels = map(1:nmaxticks) do i
+    #     text!(
+    #         parent,
+    #         xticklabelnodes[i],
+    #         position = xticklabelposnodes[i],
+    #         align = xticklabelalign,
+    #         rotation = xticklabelrotation,
+    #         textsize = xticklabelsize,
+    #         show_axis = false,
+    #         visible = xticklabelsvisible
+    #     )[end]
+    # end
+    # decorations[:xticklabels] = xticklabels
+    #
+    # yticklabelnodes = [Node("0") for i in 1:nmaxticks]
+    # yticklabelposnodes = [Node(Point(0.0, 0.0)) for i in 1:nmaxticks]
+    # yticklabels = map(1:nmaxticks) do i
+    #     text!(
+    #         parent,
+    #         yticklabelnodes[i],
+    #         position = yticklabelposnodes[i],
+    #         align = yticklabelalign,
+    #         rotation = yticklabelrotation,
+    #         textsize = yticklabelsize,
+    #         show_axis = false,
+    #         visible = yticklabelsvisible
+    #     )[end]
+    # end
+    # decorations[:yticklabels] = yticklabels
+    #
+    # xlabelpos = lift(scene.px_area, xlabelvisible, xticklabelsvisible,
+    #     xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
+    #     xticksize, xtickalign) do a, xlabelvisible, xticklabelsvisible,
+    #             xticklabelspace, xticklabelpad, xticklabelsize, xlabelpadding, spinewidth, xticksvisible,
+    #             xticksize, xtickalign
+    #
+    #     xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
+    #
+    #     labelgap = spinewidth +
+    #         xtickspace +
+    #         (xticklabelsvisible ? xticklabelspace + xticklabelpad : 0f0) +
+    #         xlabelpadding
+    #
+    #     Point2(a.origin[1] + a.widths[1] / 2, a.origin[2] - labelgap)
+    # end
+    #
+    # ylabelpos = lift(scene.px_area, ylabelvisible, yticklabelsvisible,
+    #     yticklabelspace, yticklabelpad, yticklabelsize, ylabelpadding, spinewidth, yticksvisible,
+    #     yticksize, ytickalign) do a, ylabelvisible, yticklabelsvisible,
+    #             yticklabelspace, yticklabelpad, yticklabelsize, ylabelpadding, spinewidth, yticksvisible,
+    #             yticksize, ytickalign
+    #
+    #     ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
+    #
+    #     labelgap = spinewidth +
+    #         ytickspace +
+    #         (yticklabelsvisible ? yticklabelspace + yticklabelpad : 0f0) +
+    #         ylabelpadding
+    #
+    #     Point2(a.origin[1] - labelgap, a.origin[2] + a.widths[2] / 2)
+    # end
+    #
+    # xlabeltext = text!(
+    #     parent, xlabel, textsize = xlabelsize, color = xlabelcolor,
+    #     position = xlabelpos, show_axis = false, visible = xlabelvisible,
+    #     align = (:center, :top)
+    # )[end]
+    # decorations[:xlabeltext] = xlabeltext
+    #
+    # ylabeltext = text!(
+    #     parent, ylabel, textsize = ylabelsize, color = ylabelcolor,
+    #     position = ylabelpos, rotation = pi/2, show_axis = false,
+    #     visible = ylabelvisible, align = (:center, :bottom)
+    # )[end]
+    # decorations[:ylabeltext] = ylabeltext
 
     titlepos = lift(scene.px_area, titlegap, titlealign) do a, titlegap, align
         x = if align == :center
@@ -213,13 +214,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
     # box further up will not be updated and the text will be in the wrong position
     sidelabelsize[] = sidelabelsize[]
 
-    axislines!(
-        parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
-        leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
-        rightspinecolor, bottomspinecolor)
+    # axislines!(
+    #     parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
+    #     leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
+    #     rightspinecolor, bottomspinecolor)
 
-    xtickvalues = Node(Float32[])
-    ytickvalues = Node(Float32[])
+    # xtickvalues = Node(Float32[])
+    # ytickvalues = Node(Float32[])
 
     # connect camera, plot size or limit changes to the axis decorations
 
@@ -286,178 +287,270 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     # change tick values with scene, limits and tick distance preference
 
-    onany(pixelarea(scene), limits, xticks) do pxa, limits, xticks
-        limox = limits.origin[1]
-        limw = limits.widths[1]
-        px_w = pxa.widths[1]
+    # onany(pixelarea(scene), limits, xticks) do pxa, limits, xticks
+    #     limox = limits.origin[1]
+    #     limw = limits.widths[1]
+    #     px_w = pxa.widths[1]
+    #
+    #     xtickvalues[] = compute_tick_values(xticks, limox, limox + limw, px_w)
+    # end
+    #
+    # onany(pixelarea(scene), limits, yticks) do pxa, limits, yticks
+    #     limoy = limits.origin[2]
+    #     limh = limits.widths[2]
+    #     px_h = pxa.widths[2]
+    #
+    #     ytickvalues[] = compute_tick_values(yticks, limoy, limoy + limh, px_h)
+    # end
 
-        xtickvalues[] = compute_tick_values(xticks, limox, limox + limw, px_w)
-    end
-
-    onany(pixelarea(scene), limits, yticks) do pxa, limits, yticks
-        limoy = limits.origin[2]
-        limh = limits.widths[2]
-        px_h = pxa.widths[2]
-
-        ytickvalues[] = compute_tick_values(yticks, limoy, limoy + limh, px_h)
-    end
-
-    xtickpositions = Node(Point2f0[])
-    xtickstrings = Node(String[])
+    # xtickpositions = Node(Point2f0[])
+    # xtickstrings = Node(String[])
 
     # change tick positions when tick values change, also update grid and tick strings
 
-    on(xtickvalues) do xtickvalues
-        limox = limits[].origin[1]
-        limw = limits[].widths[1]
-        px_ox = pixelarea(scene)[].origin[1]
-        px_oy = pixelarea(scene)[].origin[2]
-        px_w = pixelarea(scene)[].widths[1]
-        px_h = pixelarea(scene)[].widths[2]
+    # on(xtickvalues) do xtickvalues
+    #     limox = limits[].origin[1]
+    #     limw = limits[].widths[1]
+    #     px_ox = pixelarea(scene)[].origin[1]
+    #     px_oy = pixelarea(scene)[].origin[2]
+    #     px_w = pixelarea(scene)[].widths[1]
+    #     px_h = pixelarea(scene)[].widths[2]
+    #
+    #     xfractions = (xtickvalues .- limox) ./ limw
+    #     xticks_scene = px_ox .+ px_w .* xfractions
+    #
+    #     xtickpos = [Point(x, px_oy) for x in xticks_scene]
+    #     topxtickpositions = [xtp + Point2f0(0, px_h) for xtp in xtickpos]
+    #
+    #     xgridnode[] = interleave_vectors(xtickpos, topxtickpositions)
+    #
+    #     # now trigger updates
+    #     xtickpositions[] = xtickpos
+    #
+    #     xtickstrings[] = get_tick_labels(xticks[], xtickvalues)
+    # end
 
-        xfractions = (xtickvalues .- limox) ./ limw
-        xticks_scene = px_ox .+ px_w .* xfractions
-
-        xtickpos = [Point(x, px_oy) for x in xticks_scene]
-        topxtickpositions = [xtp + Point2f0(0, px_h) for xtp in xtickpos]
-
-        xgridnode[] = interleave_vectors(xtickpos, topxtickpositions)
-
-        # now trigger updates
-        xtickpositions[] = xtickpos
-
-        xtickstrings[] = get_tick_labels(xticks[], xtickvalues)
-    end
-
-    ytickpositions = Node(Point2f0[])
-    ytickstrings = Node(String[])
-
-    on(ytickvalues) do ytickvalues
-        limoy = limits[].origin[2]
-        limh = limits[].widths[2]
-        px_ox = pixelarea(scene)[].origin[1]
-        px_oy = pixelarea(scene)[].origin[2]
-        px_w = pixelarea(scene)[].widths[1]
-        px_h = pixelarea(scene)[].widths[2]
-
-        yfractions = (ytickvalues .- limoy) ./ limh
-        yticks_scene = px_oy .+ px_h .* yfractions
-
-        ytickpos = [Point(px_ox, y) for y in yticks_scene]
-        rightytickpositions = [ytp + Point2f0(px_w, 0) for ytp in ytickpos]
-
-        ygridnode[] = interleave_vectors(ytickpos, rightytickpositions)
-
-        # now trigger updates
-        ytickpositions[] = ytickpos
-
-        ytickstrings[] = get_tick_labels(yticks[], ytickvalues)
-    end
+    # ytickpositions = Node(Point2f0[])
+    # ytickstrings = Node(String[])
+    #
+    # on(ytickvalues) do ytickvalues
+    #     limoy = limits[].origin[2]
+    #     limh = limits[].widths[2]
+    #     px_ox = pixelarea(scene)[].origin[1]
+    #     px_oy = pixelarea(scene)[].origin[2]
+    #     px_w = pixelarea(scene)[].widths[1]
+    #     px_h = pixelarea(scene)[].widths[2]
+    #
+    #     yfractions = (ytickvalues .- limoy) ./ limh
+    #     yticks_scene = px_oy .+ px_h .* yfractions
+    #
+    #     ytickpos = [Point(px_ox, y) for y in yticks_scene]
+    #     rightytickpositions = [ytp + Point2f0(px_w, 0) for ytp in ytickpos]
+    #
+    #     ygridnode[] = interleave_vectors(ytickpos, rightytickpositions)
+    #
+    #     # now trigger updates
+    #     ytickpositions[] = ytickpos
+    #
+    #     ytickstrings[] = get_tick_labels(yticks[], ytickvalues)
+    # end
 
     # update tick labels when strings or properties change
 
 
-    onany(xtickstrings, xticklabelpad, spinewidth, xticklabelsvisible, xticksize, xtickalign, xticksvisible) do xtickstrings,
-            xticklabelpad, spinewidth, xticklabelsvisible, xticksize, xtickalign, xticksvisible
-
-        nxticks = length(xtickvalues[])
-
-        xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
-
-        for i in 1:length(xticklabels)
-            if i <= nxticks
-                xticklabelnodes[i][] = xtickstrings[i]
-
-                xticklabelgap = spinewidth + xtickspace + xticklabelpad
-
-                xticklabelposnodes[i][] = xtickpositions[][i] +
-                    Point(0f0, -xticklabelgap)
-                xticklabels[i].visible = true && xticklabelsvisible
-            else
-                xticklabels[i].visible = false
-            end
-        end
-    end
-
-    onany(ytickstrings, yticklabelpad, spinewidth, yticklabelsvisible, yticksize, ytickalign, yticksvisible) do ytickstrings,
-            yticklabelpad, spinewidth, yticklabelsvisible, yticksize, ytickalign, yticksvisible
-
-        nyticks = length(ytickvalues[])
-
-        ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
-
-        for i in 1:length(yticklabels)
-            if i <= nyticks
-                yticklabelnodes[i][] = ytickstrings[i]
-
-                yticklabelgap = spinewidth + ytickspace + yticklabelpad
-
-                yticklabelposnodes[i][] = ytickpositions[][i] +
-                    Point(-yticklabelgap, 0f0)
-                yticklabels[i].visible = true && yticklabelsvisible
-            else
-                yticklabels[i].visible = false
-            end
-        end
-    end
+    # onany(xtickstrings, xticklabelpad, spinewidth, xticklabelsvisible, xticksize, xtickalign, xticksvisible) do xtickstrings,
+    #         xticklabelpad, spinewidth, xticklabelsvisible, xticksize, xtickalign, xticksvisible
+    #
+    #     nxticks = length(xtickvalues[])
+    #
+    #     xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
+    #
+    #     for i in 1:length(xticklabels)
+    #         if i <= nxticks
+    #             xticklabelnodes[i][] = xtickstrings[i]
+    #
+    #             xticklabelgap = spinewidth + xtickspace + xticklabelpad
+    #
+    #             xticklabelposnodes[i][] = xtickpositions[][i] +
+    #                 Point(0f0, -xticklabelgap)
+    #             xticklabels[i].visible = true && xticklabelsvisible
+    #         else
+    #             xticklabels[i].visible = false
+    #         end
+    #     end
+    # end
+    #
+    # onany(ytickstrings, yticklabelpad, spinewidth, yticklabelsvisible, yticksize, ytickalign, yticksvisible) do ytickstrings,
+    #         yticklabelpad, spinewidth, yticklabelsvisible, yticksize, ytickalign, yticksvisible
+    #
+    #     nyticks = length(ytickvalues[])
+    #
+    #     ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
+    #
+    #     for i in 1:length(yticklabels)
+    #         if i <= nyticks
+    #             yticklabelnodes[i][] = ytickstrings[i]
+    #
+    #             yticklabelgap = spinewidth + ytickspace + yticklabelpad
+    #
+    #             yticklabelposnodes[i][] = ytickpositions[][i] +
+    #                 Point(-yticklabelgap, 0f0)
+    #             yticklabels[i].visible = true && yticklabelsvisible
+    #         else
+    #             yticklabels[i].visible = false
+    #         end
+    #     end
+    # end
 
     # update tick geometry when positions or parameters change
 
-    onany(xtickpositions, xtickalign, xticksize, spinewidth) do xtickpositions,
-            xtickalign, xticksize, spinewidth
+    # onany(xtickpositions, xtickalign, xticksize, spinewidth) do xtickpositions,
+    #         xtickalign, xticksize, spinewidth
+    #
+    #     xtickstarts = [xtp + Point(0f0, xtickalign * xticksize - 0.5f0 * spinewidth) for xtp in xtickpositions]
+    #     xtickends = [t + Point(0f0, -xticksize) for t in xtickstarts]
+    #
+    #     xticksnode[] = interleave_vectors(xtickstarts, xtickends)
+    # end
+    #
+    # onany(ytickpositions, ytickalign, yticksize, spinewidth) do ytickpositions,
+    #         ytickalign, yticksize, spinewidth
+    #
+    #     ytickstarts = [ytp + Point(ytickalign * yticksize - 0.5f0 * spinewidth, 0f0) for ytp in ytickpositions]
+    #     ytickends = [t + Point(-yticksize, 0f0) for t in ytickstarts]
+    #
+    #     yticksnode[] = interleave_vectors(ytickstarts, ytickends)
+    # end
 
-        xtickstarts = [xtp + Point(0f0, xtickalign * xticksize - 0.5f0 * spinewidth) for xtp in xtickpositions]
-        xtickends = [t + Point(0f0, -xticksize) for t in xtickstarts]
-
-        xticksnode[] = interleave_vectors(xtickstarts, xtickends)
+    xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
+        if xaxisposition == :bottom
+            bottomline(BBox(area))
+        elseif xaxisposition == :top
+            topline(BBox(area))
+        else
+            error("Invalid xaxisposition $xaxisposition")
+        end
     end
 
-    onany(ytickpositions, ytickalign, yticksize, spinewidth) do ytickpositions,
-            ytickalign, yticksize, spinewidth
-
-        ytickstarts = [ytp + Point(ytickalign * yticksize - 0.5f0 * spinewidth, 0f0) for ytp in ytickpositions]
-        ytickends = [t + Point(-yticksize, 0f0) for t in ytickstarts]
-
-        yticksnode[] = interleave_vectors(ytickstarts, ytickends)
+    yaxis_endpoints = lift(yaxisposition, scene.px_area) do yaxisposition, area
+        if yaxisposition == :left
+            leftline(BBox(area))
+        elseif yaxisposition == :right
+            rightline(BBox(area))
+        else
+            error("Invalid xaxisposition $xaxisposition")
+        end
     end
 
+    xaxis_flipped = lift(x->x == :top, xaxisposition)
+    yaxis_flipped = lift(x->x == :right, yaxisposition)
+
+    xaxis = LineAxis(parent, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
+        flipped = xaxis_flipped, ticklabelalign = xticklabelalign)
+    yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
+        flipped = yaxis_flipped, ticklabelalign = yticklabelalign)
+
+    xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
+        if xaxpos == :top
+            y = bottom(r) - 0.5f0 * sw
+            p1 = Point2(left(r) - sw, y)
+            p2 = Point2(right(r) + sw, y)
+            [p1, p2]
+        else
+            y = top(r) + 0.5f0 * sw
+            p1 = Point2(left(r) - sw, y)
+            p2 = Point2(right(r) + sw, y)
+            [p1, p2]
+        end
+    end
+
+    yoppositelinepoints = lift(scene.px_area, spinewidth, yaxisposition) do r, sw, yaxpos
+        if yaxpos == :right
+            x = left(r) - 0.5f0 * sw
+            p1 = Point2(x, bottom(r) - sw)
+            p2 = Point2(x, top(r) + sw)
+            [p1, p2]
+        else
+            x = right(r) + 0.5f0 * sw
+            p1 = Point2(x, bottom(r) - sw)
+            p2 = Point2(x, top(r) + sw)
+            [p1, p2]
+        end
+    end
+
+    xoppositeline = lines!(parent, xoppositelinepoints, linewidth = spinewidth, visible = xoppositespinevisible)
+    yoppositeline = lines!(parent, yoppositelinepoints, linewidth = spinewidth, visible = yoppositespinevisible)
 
 
-    function compute_protrusions(xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
-                ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding,
-                ylabelpadding, xticklabelsize, yticklabelsize, xticklabelsvisible,
-                yticklabelsvisible, xticksize, yticksize, xticksvisible, yticksvisible,
-                xticklabelspace, yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth,
-                sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation)
+    # on(xtickvalues) do xtickvalues
+    #     limox = limits[].origin[1]
+    #     limw = limits[].widths[1]
+    #     px_ox = pixelarea(scene)[].origin[1]
+    #     px_oy = pixelarea(scene)[].origin[2]
+    #     px_w = pixelarea(scene)[].widths[1]
+    #     px_h = pixelarea(scene)[].widths[2]
+    #
+    #     xfractions = (xtickvalues .- limox) ./ limw
+    #     xticks_scene = px_ox .+ px_w .* xfractions
+    #
+    #     xtickpos = [Point(x, px_oy) for x in xticks_scene]
+    #     topxtickpositions = [xtp + Point2f0(0, px_h) for xtp in xtickpos]
+    #
+    #     xgridnode[] = interleave_vectors(xtickpos, topxtickpositions)
+    #
+    #     # now trigger updates
+    #     xtickpositions[] = xtickpos
+    #
+    #     xtickstrings[] = get_tick_labels(xticks[], xtickvalues)
+    # end
+
+    on(xaxis.tickpositions) do tickpos
+        pxheight = height(scene.px_area[])
+        offset = xaxisposition[] == :bottom ? pxheight : -pxheight
+        opposite_tickpos = tickpos .+ Ref(Point2f0(0, offset))
+        xgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+    end
+
+    on(yaxis.tickpositions) do tickpos
+        pxwidth = width(scene.px_area[])
+        offset = yaxisposition[] == :left ? pxwidth : -pxwidth
+        opposite_tickpos = tickpos .+ Ref(Point2f0(offset, 0))
+        ygridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+    end
+
+    function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
+                sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation,
+                xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
 
-        xlabelspace = xlabelvisible ? boundingbox(xlabeltext).widths[2] + xlabelpadding : 0f0
-        xspinespace = spinewidth
-        xtickspace = xticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
-        xticklabelgap = xticklabelsvisible ? xticklabelspace + xticklabelpad : 0f0
+        spinespace = spinewidth
 
-        bottom = xspinespace + xtickspace + xticklabelgap + xlabelspace
+        bottom = spinespace
 
-        ylabelspace = ylabelvisible ? boundingbox(ylabeltext).widths[1] + ylabelpadding : 0f0
-        yspinespace = spinewidth
-        ytickspace = yticksvisible ? max(0f0, yticksize * (1f0 - ytickalign)) : 0f0
-        yticklabelgap = yticklabelsvisible ? yticklabelspace + yticklabelpad : 0f0
+        if xaxisposition == :bottom
+            bottom += xaxisprotrusion
+        else
+            top += xaxisprotrusion
+        end
 
-        left = yspinespace + ytickspace + yticklabelgap + ylabelspace
+        left = spinespace
 
         right = sidelabelvisible ? boundingbox(sidelabelt).widths[1] + sidelabelgap : 0f0
+
+        if yaxisposition == :left
+            left += yaxisprotrusion
+        else
+            right += yaxisprotrusion
+        end
 
         RectSides{Float32}(left, right, bottom, top)
     end
 
     protrusions = lift(compute_protrusions,
-        xlabel, ylabel, title, titlesize, titlegap, titlevisible, xlabelsize,
-        ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
-        xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
-        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
-        yticklabelspace, xticklabelpad, yticklabelpad, xtickalign, ytickalign, spinewidth,
-        sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation)
+        title, titlesize, titlegap, titlevisible, spinewidth,
+        sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation,
+        xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition)
 
     needs_update = Node(true)
 
