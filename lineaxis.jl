@@ -206,7 +206,22 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    protrusion = Node(Float32(0))
+    protrusion = lift(ticksvisible, labelvisible, labelpadding, tickalign, spinewidth,
+            tickspace, ticklabelsvisible, ticklabelspace, ticklabelpad) do ticksvisible,
+            labelvisible, labelpadding, tickalign, spinewidth, tickspace, ticklabelsvisible,
+            ticklabelspace, ticklabelpad
+
+        position, extents, horizontal = pos_extents_horizontal[]
+
+        labelsize = horizontal ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
+
+        labelspace = labelvisible ? labelsize + labelpadding : 0f0
+        spinespace = spinewidth
+        # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
+        ticklabelgap = ticklabelsvisible ? ticklabelspace + ticklabelpad : 0f0
+
+        together = spinespace + tickspace + ticklabelgap + labelspace
+    end
 
     # extents[] = extents[] # trigger
 
