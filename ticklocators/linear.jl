@@ -98,7 +98,7 @@ function locateticks(vmin, vmax, width_px, ideal_spacing_px, _integer, _min_n_ti
 
     #istep = np.nonzero(steps >= raw_step)[0][0]
     istep = findfirst(1:length(steps)) do i
-        @inbounds return steps[i] >= raw_step[i]
+        @inbounds return steps[i] >= raw_step
     end
     ticks = 1.0:0.1:0.0
     for istep in istep:-1:1
