@@ -159,3 +159,29 @@ function default_attributes(::Type{AxisContent})
         yautolimit = true,
     )
 end
+
+function default_attributes(::Type{LineAxis})
+    Attributes(
+        endpoints = (Point2f0(0, 0), Point2f0(100, 0)),
+        limits = (0f0, 100f0),
+        flipped = false,
+        ticksize = 10f0,
+        tickwidth = 2f0,
+        tickcolor = RGBf0(0, 0, 0),
+        tickalign = 0f0,
+        ticks = AutoLinearTicks(100f0),
+        ticklabelalign = (:center, :top),
+        ticksvisible = true,
+        ticklabelrotation = 0f0,
+        ticklabelsize = 20f0,
+        ticklabelsvisible = true,
+        spinewidth = 2f0,
+        label = "label",
+        labelsize = 20f0,
+        labelcolor = RGBf0(0, 0, 0),
+        labelvisible = true,
+        ticklabelspace = 30f0,
+        ticklabelpad = 0f0,
+        labelpadding = 10f0,
+    )
+end

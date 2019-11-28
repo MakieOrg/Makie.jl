@@ -214,6 +214,13 @@ struct AxisContent{T}
     attributes::Attributes
 end
 
+mutable struct LineAxis
+    parent::Scene
+    protrusion::Node{Float32}
+    attributes::Attributes
+    decorations::Dict{Symbol, Any}
+end
+
 mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
     parent::Scene
     scene::Scene
