@@ -1,5 +1,5 @@
 function Base.copy(x::Camera)
-    Camera(ntuple(6) do i
+    Camera(ntuple(7) do i
         getfield(x, i)
     end...)
 end
@@ -54,7 +54,7 @@ function Observables.on(f, c::Camera, nodes::Node...)
 end
 
 function Camera(px_area)
-    pixel_space =  on(px_area) do window_size
+    pixel_space = lift(px_area) do window_size
         nearclip = -10_000f0
         farclip = 10_000f0
         w, h = Float32.(widths(window_size))
