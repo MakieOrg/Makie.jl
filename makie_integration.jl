@@ -126,3 +126,6 @@ function limits(r::Rect{N, T}, dim::Int) where {N, T}
     w = r.widths[dim]
     (o, o + w)
 end
+
+xlimits(r::Rect{2}) = limits(r, 1)
+ylimits(r::Rect{2}) = limits(r, 2)
