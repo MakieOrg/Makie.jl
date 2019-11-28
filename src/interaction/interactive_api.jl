@@ -104,13 +104,7 @@ given `scene`.
 By default uses the `scene` that the mouse is currently hovering over.
 """
 function mouseposition(scene = hovered_scene())
-    to_world(
-        scene,
-        screen_relative(
-            scene,
-            events(scene).mouseposition[]
-        )
-    )
+    to_world(scene, mouseposition_px(scene))
 end
 
 function mouseposition_px(scene = hovered_scene())
