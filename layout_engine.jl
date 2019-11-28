@@ -21,7 +21,7 @@ of the grid. This means that it is relevant for the grid's own protrusion on tha
 ismostin(sp::SpannedLayout, grid, ::Left) = sp.sp.cols.start == 1
 ismostin(sp::SpannedLayout, grid, ::Right) = sp.sp.cols.stop == grid.ncols
 ismostin(sp::SpannedLayout, grid, ::Bottom) = sp.sp.rows.stop == grid.nrows
-ismostin(sp::SpannedLayout, grid, ::Top) = sp.sp.cols.start == 1
+ismostin(sp::SpannedLayout, grid, ::Top) = sp.sp.rows.start == 1
 
 isleftmostin(sp::SpannedLayout, grid) = ismostin(sp, grid, Left())
 isrightmostin(sp::SpannedLayout, grid) = ismostin(sp, grid, Right())
