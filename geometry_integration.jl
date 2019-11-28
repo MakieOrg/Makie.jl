@@ -14,6 +14,16 @@ Base.getindex(bbox::Rect2D, ::Top) = top(bbox)
 width(rect::Rect2D) = right(rect) - left(rect)
 height(rect::Rect2D) = top(rect) - bottom(rect)
 
+bottomleft(bbox::BBox) = Point2f0(left(bbox), bottom(bbox))
+topleft(bbox::BBox) = Point2f0(left(bbox), top(bbox))
+bottomright(bbox::BBox) = Point2f0(right(bbox), bottom(bbox))
+topright(bbox::BBox) = Point2f0(right(bbox), top(bbox))
+
+topline(bbox::BBox) = (topleft(bbox), topright(bbox))
+bottomline(bbox::BBox) = (bottomleft(bbox), bottomright(bbox))
+leftline(bbox::BBox) = (bottomleft(bbox), topleft(bbox))
+rightline(bbox::BBox) = (bottomright(bbox), topright(bbox))
+
 
 function BBox(left::Number, right::Number, bottom::Number, top::Number)
     mini = (left, bottom)
@@ -27,8 +37,6 @@ function IRect2D(bbox::Rect2D)
         round.(Int, widths(bbox))
     )
 end
-
-
 
 function RowCols(ncols::Int, nrows::Int)
     return RowCols(
