@@ -113,6 +113,8 @@ function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) 
     @gen_defaults! data begin
         vertex              = positions           => GLBuffer
         color               = default(RGBA, s, 1) => GLBuffer
+        color_map           = nothing => Texture
+        color_norm          = nothing
         thickness           = 2f0                 => GLBuffer
         shape               = RECTANGLE
         pattern             = nothing
