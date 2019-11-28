@@ -12,6 +12,7 @@ struct JSBuffer{T} <: AbstractVector{T}
     buffer::JSObject
     length::Int
 end
+JSServe.session(jsb::JSBuffer) = JSServe.session(getfield(jsb, :three))
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
 Base.size(x::JSBuffer) = (getfield(x, :length),)
 
@@ -31,13 +32,14 @@ function Base.setindex!(x::JSBuffer, value::AbstractArray, index::Colon)
 end
 
 function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
-    flat = collect(reinterpret(eltype(T), value))
-    jsb = jsbuffer(x)
-    off = (first(index) - 1) * tlength(T)
-    jsb.set(flat, off)
-    jsb.needsUpdate = true
-    # redraw!(x.three)
-    return value
+    # JSServe.fuse(x) do
+        flat = collect(reinterpret(eltype(T), value))
+        jsb = jsbuffer(x)
+        off = (first(index) - 1) * tlength(T)
+        jsb.set(flat, off)
+        jsb.needsUpdate = true
+        return value
+    # end
 end
 
 function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
@@ -301,10 +303,10 @@ end
 
 
 function debug_shader(name, program)
-    dir = joinpath(@__DIR__, "..", "debug")
-    isdir(dir) || mkdir(dir)
-    write(joinpath(dir, "$(name).frag"), program.fragment_source)
-    write(joinpath(dir, "$(name).vert"), program.vertex_source)
+    # dir = joinpath(@__DIR__, "..", "debug")
+    # isdir(dir) || mkdir(dir)
+    # write(joinpath(dir, "$(name).frag"), program.fragment_source)
+    # write(joinpath(dir, "$(name).vert"), program.vertex_source)
 end
 
 function update_model!(geom, plot)

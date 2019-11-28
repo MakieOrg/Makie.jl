@@ -46,7 +46,12 @@ function code_to_keyboard(code::String)
     end
     button = replace(button, r"(.*)left" => s"left_\1")
     button = replace(button, r"(.*)right" => s"right_\1")
-    return getfield(Keyboard, Symbol(button))
+    sym = Symbol(button)
+    if isdefined(Keyboard, sym)
+        return getfield(Keyboard, sym)
+    else
+        return Keyboard.unknown
+    end
 end
 
 function connect_scene_events!(scene, comm)
@@ -115,7 +120,7 @@ end
 
 
 function add_scene!(three, scene::Scene)
-    js_scene =to_jsscene(three, scene)
+    js_scene = to_jsscene(three, scene)
     renderer = three.renderer
     evaljs(three, js"""
         function render_camera(scene, camera){
@@ -127,6 +132,8 @@ function add_scene!(three, scene::Scene)
                 var y = area[1];
                 var w = area[2];
                 var h = area[3];
+                camera.aspect = w/h;
+                camera.updateProjectionMatrix();
                 $(renderer).setViewport(x, y, w, h);
                 $(renderer).setScissor(x, y, w, h);
                 $(renderer).setScissorTest(true);
@@ -194,7 +201,7 @@ function to_jsscene(three::ThreeDisplay, scene::Scene)
             js_scene = three.new.Scene()
             add_camera!(three, js_scene, scene)
             lift(pixelarea(scene)) do area
-                js_scene.pixelarea = [minimum(area)..., maximum(area)...]
+                js_scene.pixelarea = [minimum(area)..., widths(area)...]
                 return
             end
             lift(scene.backgroundcolor) do color
@@ -281,7 +288,7 @@ function three_display(session::Session, scene::Scene)
 
             function wheel(event){
                 update_obs($comm, {
-                    scroll: [event.deltaX, event.deltaY]
+                    scroll: [event.deltaX, -event.deltaY]
                 })
                 event.preventDefault()
                 return false;
