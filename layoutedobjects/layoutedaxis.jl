@@ -110,49 +110,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
 
-        thisxlims = (limox, limox + limw)
-        thisylims = (limoy, limoy + limh)
-
-
-        # only change linked axis if not prohibited from doing so because
-        # we're currently being updated by another axis' link
-        if !block_limit_linking[]
-
-            bothlinks = intersect(xaxislinks, yaxislinks)
-            xlinks = setdiff(xaxislinks, yaxislinks)
-            ylinks = setdiff(yaxislinks, xaxislinks)
-
-            for link in bothlinks
-                otherlims = link.limits[]
-                if lims != otherlims
-                    link.block_limit_linking[] = true
-                    link.limits[] = lims
-                    link.block_limit_linking[] = false
-                end
-            end
-
-            for xlink in xlinks
-                otherlims = xlink.limits[]
-                otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
-                otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
-                if thisxlims != otherxlims
-                    xlink.block_limit_linking[] = true
-                    xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
-                    xlink.block_limit_linking[] = false
-                end
-            end
-
-            for ylink in ylinks
-                otherlims = ylink.limits[]
-                otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
-                otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
-                if thisylims != otherylims
-                    ylink.block_limit_linking[] = true
-                    ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
-                    ylink.block_limit_linking[] = false
-                end
-            end
-        end
+        update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims)
     end
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
@@ -453,6 +411,52 @@ end
 
 getxlimits(la::LayoutedAxis) = getlimits(la, 1)
 getylimits(la::LayoutedAxis) = getlimits(la, 2)
+
+function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims)
+
+    thisxlims = xlimits(lims)
+    thisylims = ylimits(lims)
+
+    # only change linked axis if not prohibited from doing so because
+    # we're currently being updated by another axis' link
+    if !block_limit_linking[]
+
+        bothlinks = intersect(xaxislinks, yaxislinks)
+        xlinks = setdiff(xaxislinks, yaxislinks)
+        ylinks = setdiff(yaxislinks, xaxislinks)
+
+        for link in bothlinks
+            otherlims = link.limits[]
+            if lims != otherlims
+                link.block_limit_linking[] = true
+                link.limits[] = lims
+                link.block_limit_linking[] = false
+            end
+        end
+
+        for xlink in xlinks
+            otherlims = xlink.limits[]
+            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
+            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+            if thisxlims != otherxlims
+                xlink.block_limit_linking[] = true
+                xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
+                xlink.block_limit_linking[] = false
+            end
+        end
+
+        for ylink in ylinks
+            otherlims = ylink.limits[]
+            otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
+            otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
+            if thisylims != otherylims
+                ylink.block_limit_linking[] = true
+                ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
+                ylink.block_limit_linking[] = false
+            end
+        end
+    end
+end
 
 
 function autolimits!(la::LayoutedAxis)
