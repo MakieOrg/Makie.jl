@@ -179,9 +179,14 @@ function LayoutedAxis(parent::Scene; kwargs...)
     yaxis_flipped = lift(x->x == :right, yaxisposition)
 
     xaxis = LineAxis(parent, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
-        flipped = xaxis_flipped, ticklabelalign = xticklabelalign)
+        flipped = xaxis_flipped, ticklabelalign = xticklabelalign, labelsize = xlabelsize,
+        labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
+        label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign)
+
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
-        flipped = yaxis_flipped, ticklabelalign = yticklabelalign)
+        flipped = yaxis_flipped, ticklabelalign = yticklabelalign, labelsize = ylabelsize,
+        labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
+        label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign)
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
         if xaxpos == :top
