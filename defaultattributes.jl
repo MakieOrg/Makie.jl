@@ -76,6 +76,10 @@ function default_attributes(::Type{LayoutedAxis})
         sidelabelalign = :center,
         sidelabelfont = "Dejavu Sans",
         sidelabelrotation = -pi/2,
+        xaxisposition = :bottom,
+        yaxisposition = :left,
+        xoppositespinevisible = true,
+        yoppositespinevisible = true,
     )
 end
 
@@ -166,7 +170,7 @@ function default_attributes(::Type{LineAxis})
         limits = (0f0, 100f0),
         flipped = false,
         ticksize = 10f0,
-        tickwidth = 2f0,
+        tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
         tickalign = 0f0,
         ticks = AutoLinearTicks(100f0),
@@ -175,13 +179,13 @@ function default_attributes(::Type{LineAxis})
         ticklabelrotation = 0f0,
         ticklabelsize = 20f0,
         ticklabelsvisible = true,
-        spinewidth = 2f0,
+        spinewidth = 1f0,
         label = "label",
         labelsize = 20f0,
         labelcolor = RGBf0(0, 0, 0),
         labelvisible = true,
         ticklabelspace = 30f0,
-        ticklabelpad = 0f0,
+        ticklabelpad = 5f0,
         labelpadding = 10f0,
     )
 end
