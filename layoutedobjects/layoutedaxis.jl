@@ -140,11 +140,13 @@ function LayoutedAxis(parent::Scene; kwargs...)
         flipped = xaxis_flipped, ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
         label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign)
+    decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
         flipped = yaxis_flipped, ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
         label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign)
+    decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
         if xaxpos == :top
@@ -175,8 +177,9 @@ function LayoutedAxis(parent::Scene; kwargs...)
     end
 
     xoppositeline = lines!(parent, xoppositelinepoints, linewidth = spinewidth, visible = xoppositespinevisible)
+    decorations[:xoppositeline] = xoppositeline
     yoppositeline = lines!(parent, yoppositelinepoints, linewidth = spinewidth, visible = yoppositespinevisible)
-
+    decorations[:yoppositeline] = yoppositeline
 
     on(xaxis.tickpositions) do tickpos
         pxheight = height(scene.px_area[])
