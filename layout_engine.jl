@@ -220,11 +220,15 @@ function protrusion(gl::GridLayout, side::Side)
     if gl.alignmode isa Outside
         return 0.0
     elseif gl.alignmode isa Inside
-        return mapreduce(max, gl.content, init = 0.0) do elem
-            # we use only objects that stick out on this side
-            # And from those we use the maximum protrusion
-            ismostin(elem, gl, side) ? protrusion(elem, side) : 0.0
+        prot = 0.0
+        for elem in gl.content
+            if ismostin(elem, gl, side)
+                # take the max protrusion of all elements that are sticking
+                # out at this side
+                prot = max(protrusion(elem, side), prot)
+            end
         end
+        return prot
     end
 end
 
