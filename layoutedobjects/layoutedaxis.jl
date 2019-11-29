@@ -102,13 +102,15 @@ function LayoutedAxis(parent::Scene; kwargs...)
     xaxis = LineAxis(parent, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
         flipped = xaxis_flipped, ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
-        label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign)
+        label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
+        ticklabelspace = xticklabelspace)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
         flipped = yaxis_flipped, ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
-        label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign)
+        label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign,
+        ticklabelspace = yticklabelspace)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
@@ -636,15 +638,15 @@ end
 
 
 function tight_yticklabel_spacing!(la::LayoutedAxis)
-    maxwidth = maximum(la.decorations[:yticklabels]) do yt
-        boundingbox(yt).widths[1]
+    maxwidth = maximum(la.decorations[:yaxis].decorations[:ticklabels]) do yt
+        yt.visible[] ? boundingbox(yt).widths[1] : 0f0
     end
     la.yticklabelspace = maxwidth
 end
 
 function tight_xticklabel_spacing!(la::LayoutedAxis)
-    maxheight = maximum(la.decorations[:xticklabels]) do xt
-        boundingbox(xt).widths[2]
+    maxheight = maximum(la.decorations[:xaxis].decorations[:ticklabels]) do xt
+        xt.visible[] ? boundingbox(xt).widths[2] : 0f0
     end
     la.xticklabelspace = maxheight
 end
