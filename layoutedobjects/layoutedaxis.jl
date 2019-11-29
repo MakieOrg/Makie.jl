@@ -4,8 +4,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     @extract attrs (
         xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
-        xlabelcolor, ylabelcolor, xlabelsize, sidelabel, sidelabelsize, sidelabelgap,
-        sidelabelvisible, sidelabelalign, sidelabelfont, sidelabelrotation,
+        xlabelcolor, ylabelcolor, xlabelsize,
         ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
         xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
@@ -55,42 +54,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
         color = ygridcolor
     )[end]
     decorations[:ygridlines] = ygridlines
-
-
-    sidelabelbb = Node(BBox(0, 100, 0, 100))
-
-    sidelabelpos = lift(scene.px_area, sidelabelgap, sidelabelalign, sidelabelbb) do a, sidelabelgap, align, sidelabelbb
-        y = if align == :center
-            a.origin[2] + a.widths[2] / 2
-        elseif align == :bottom
-            a.origin[2] + sidelabelbb.widths[2] / 2
-        elseif align == :top
-            a.origin[2] + a.widths[2] - sidelabelbb.widths[2] / 2
-        else
-            error("Title align $align not supported.")
-        end
-
-        Point2f0(a.origin[1] + a.widths[1] + sidelabelgap + sidelabelbb.widths[1] / 2, y)
-    end
-
-    sidelabelt = text!(
-        parent, sidelabel,
-        position = sidelabelpos,
-        visible = sidelabelvisible,
-        textsize = sidelabelsize,
-        align = (:center, :center),
-        font = sidelabelfont,
-        rotation = sidelabelrotation,
-        show_axis=false)[end]
-    decorations[:sidelabel] = sidelabelt
-
-    onany(sidelabelfont, sidelabelsize) do sidelabelfont, sidelabelsize
-        sidelabelbb[] = BBox(boundingbox(sidelabelt))
-    end
-
-    # trigger the sidelabelsize observable already because otherwise the bounding
-    # box further up will not be updated and the text will be in the wrong position
-    sidelabelsize[] = sidelabelsize[]
 
     # connect camera, plot size or limit changes to the axis decorations
 
@@ -228,7 +191,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
     decorations[:title] = titlet
 
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
-                sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation,
                 xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
 
         top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
@@ -243,7 +205,7 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
         left = spinewidth
 
-        right = sidelabelvisible ? boundingbox(sidelabelt).widths[1] + sidelabelgap : 0f0
+        right = spinewidth
 
         if yaxisposition == :left
             left += yaxisprotrusion
@@ -256,7 +218,6 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     protrusions = lift(compute_protrusions,
         title, titlesize, titlegap, titlevisible, spinewidth,
-        sidelabel, sidelabelsize, sidelabelgap, sidelabelvisible, sidelabelrotation,
         xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition)
 
     needs_update = Node(true)
