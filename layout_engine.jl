@@ -1142,3 +1142,21 @@ function detachfromparent!(l::AbstractLayout)
         l.parent = nothing
     end
 end
+
+function Base.show(io::IO, gl::GridLayout)
+
+    println(io, "GridLayout[$(gl.nrows), $(gl.ncols)] with $(length(gl.content)) children")
+    for (i, c) in enumerate(gl.content)
+        rows = c.sp.rows
+        cols = c.sp.cols
+        al = c.al
+        if i == 1
+            println(io, " ┗━┳━ [$rows | $cols] $(typeof(al))")
+        elseif i == length(gl.content)
+            println(io, "   ┗━ [$rows | $cols] $(typeof(al))")
+        else
+            println(io, "   ┣━ [$rows | $cols] $(typeof(al))")
+        end
+    end
+
+end
