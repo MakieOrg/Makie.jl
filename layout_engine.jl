@@ -1160,3 +1160,19 @@ function Base.show(io::IO, gl::GridLayout)
     end
 
 end
+
+function colsize!(gl::GridLayout, i::Int, s::ContentSize)
+    if !(1 <= i <= gl.ncols)
+        error("Can't set size of invalid column $i.")
+    end
+    gl.colsizes[i] = s
+    gl.needs_update[] = true
+end
+
+function rowsize!(gl::GridLayout, i::Int, s::ContentSize)
+    if !(1 <= i <= gl.nrows)
+        error("Can't set size of invalid row $i.")
+    end
+    gl.rowsizes[i] = s
+    gl.needs_update[] = true
+end
