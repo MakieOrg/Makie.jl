@@ -247,6 +247,7 @@ mutable struct LayoutedColorbar
     protrusions::Node{RectSides{Float32}}
     needs_update::Node{Bool}
     attributes::Attributes
+    decorations::Dict{Symbol, Any}
 end
 
 mutable struct LayoutedText

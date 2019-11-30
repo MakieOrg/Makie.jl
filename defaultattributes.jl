@@ -97,6 +97,7 @@ function default_attributes(::Type{LayoutedColorbar})
         tickalign = 0f0,
         tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
+        ticklabelalign = (:left, :center),
         spinewidth = 1f0,
         idealtickdistance = 100f0,
         topspinevisible = true,
@@ -110,6 +111,8 @@ function default_attributes(::Type{LayoutedColorbar})
         aspect = nothing,
         alignment = (0.5f0, 0.5f0),
         maxsize = (Inf32, Inf32),
+        vertical = true,
+        flipaxisposition = true,
     )
 end
 
