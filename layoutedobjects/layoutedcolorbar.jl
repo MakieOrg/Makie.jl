@@ -1,13 +1,23 @@
+function LayoutedColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
+
+    LayoutedColorbar(parent;
+        colormap = plot.colormap,
+        limits = plot.colorrange,
+        kwargs...
+    )
+
+end
+
 function LayoutedColorbar(parent::Scene; kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LayoutedColorbar))
 
     @extract attrs (
-        label, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
-        labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
+        label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
+        ticklabelspace,
         ticklabelsvisible, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
-        leftspinecolor, rightspinecolor, bottomspinecolor,
+        leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
         alignment, vertical, flipaxisposition, ticklabelalign, width, height)
 
     decorations = Dict{Symbol, Any}()
@@ -16,12 +26,60 @@ function LayoutedColorbar(parent::Scene; kwargs...)
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
-    limits = Node((0.0f0, 1.0f0))
-
     # here limits isn't really useful, maybe split up the functions for colorbar and axis
     connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, limits, width, height, alignment)
 
-    scene = Scene(parent, scenearea, raw = true)
+    scene = Scene(parent, scenearea, camera = campixel!, raw = true)
+
+    # # have one standard projection that always fits the mesh
+    # on(scene.px_area) do pxarea
+    #     pxarea = BBox(pxarea)
+    #     projection = AbstractPlotting.orthographicprojection(
+    #         0f0, pxarea.widths[1], 0f0, pxarea.widths[2], -10000f0, 10000f0)
+    #     camera(scene).projection[] = projection
+    #     camera(scene).projectionview[] = projection
+    # end
+
+    framebox = lift(scene.px_area) do pxa
+        BBox(0, pxa.widths[1], 0, pxa.widths[2])
+    end
+
+    vertices = Point3f0[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]
+    mesh = AbstractPlotting.GLNormalUVMesh(
+        vertices = copy(vertices),
+        faces = AbstractPlotting.GLTriangle[(1, 2, 3), (3, 4, 1)],
+        texturecoordinates = AbstractPlotting.UV{Float32}[(0, 1), (0, 0), (0, 0), (0, 1)]
+    )
+
+    nsteps = 100
+
+    colorlinepoints = lift(framebox) do fb
+        fbw = fb.widths[1]
+        fbh = fb.widths[2]
+
+        if vertical[]
+            [Point2f0(0.5f0 * fbw, y * fbh) for y in LinRange(0f0, 1f0, nsteps)]
+        else
+            [Point2f0(x * fbw, 0.5f0 * fbh) for x in LinRange(0f0, 1f0, nsteps)]
+        end
+    end
+
+    cmap_node = lift(colormap) do cmap
+        c = AbstractPlotting.to_colormap(cmap, nsteps)
+    end
+
+    linewidth = lift(framebox) do fb
+        fbw = fb.widths[1]
+        fbh = fb.widths[2]
+
+        if vertical[]
+            fbw
+        else
+            fbh
+        end
+    end
+
+    lines!(scene, colorlinepoints, linewidth = linewidth, color = cmap_node, raw = true)
 
     axislines!(
         parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
@@ -58,7 +116,12 @@ function LayoutedColorbar(parent::Scene; kwargs...)
     end
 
     axis = LineAxis(parent, endpoints = axispoints, flipped = flipaxisposition,
-        ticklabelalign = ticklabelalign)
+        limits = limits, ticklabelalign = ticklabelalign, label = label,
+        labelpadding = labelpadding, labelvisible = labelvisible,
+        ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
+        ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
+        tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
+        idealtickdistance = idealtickdistance, ticklabelspace = ticklabelspace)
 
     protrusions = lift(axis.protrusion, vertical, flipaxisposition) do axprotrusion,
             vertical, flipaxisposition
@@ -84,7 +147,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
     end
 
     LayoutedColorbar(
-        parent, scene, bboxnode, limits, protrusions,
+        parent, scene, bboxnode, protrusions,
         needs_update, attrs, decorations)
 end
 

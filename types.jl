@@ -243,7 +243,6 @@ mutable struct LayoutedColorbar
     parent::Scene
     scene::Scene
     bboxnode::Node{BBox}
-    limits::Node{Tuple{Float32, Float32}}
     protrusions::Node{RectSides{Float32}}
     needs_update::Node{Bool}
     attributes::Attributes

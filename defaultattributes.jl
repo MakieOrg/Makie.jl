@@ -79,12 +79,6 @@ end
 function default_attributes(::Type{LayoutedColorbar})
     Attributes(
         label = "label",
-        title = "Title",
-        titlefont = "DejaVu Sans",
-        titlesize = 30f0,
-        titlegap = 10f0,
-        titlevisible = true,
-        titlealign = :center,
         labelcolor = RGBf0(0, 0, 0),
         labelsize = 20f0,
         labelvisible = true,
@@ -93,7 +87,8 @@ function default_attributes(::Type{LayoutedColorbar})
         ticklabelsvisible = true,
         ticksize = 10f0,
         ticksvisible = true,
-        ticklabelpad = 20f0,
+        ticklabelspace = 30f0,
+        ticklabelpad = 5f0,
         tickalign = 0f0,
         tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
@@ -113,6 +108,7 @@ function default_attributes(::Type{LayoutedColorbar})
         flipaxisposition = true,
         width = nothing,
         height = nothing,
+        colormap = :viridis,
     )
 end
 
