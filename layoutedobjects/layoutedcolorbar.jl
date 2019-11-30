@@ -8,7 +8,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, alignment, maxsize, vertical, flipaxisposition, ticklabelalign)
+        alignment, vertical, flipaxisposition, ticklabelalign, width, height)
 
     decorations = Dict{Symbol, Any}()
 
@@ -19,8 +19,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
     limits = Node((0.0f0, 1.0f0))
 
     # here limits isn't really useful, maybe split up the functions for colorbar and axis
-    connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
-
+    connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, limits, width, height, alignment)
 
     scene = Scene(parent, scenearea, raw = true)
 
@@ -100,6 +99,98 @@ function protrusionnode(lc::LayoutedColorbar)
     node
 end
 
+function sizenodecontent(s)
+    if s isa Union{Real, Fixed}
+        s
+    else
+        nothing
+    end
+end
+
+function widthnode(lc::LayoutedColorbar)
+    node = Node{Union{Nothing, Float32}}(sizenodecontent(lc.attributes.width[]))
+    on(lc.attributes.width) do w
+        node[] = sizenodecontent(w)
+    end
+    node
+end
+
+function heightnode(lc::LayoutedColorbar)
+    node = Node{Union{Nothing, Float32}}(sizenodecontent(lc.attributes.height[]))
+    on(lc.attributes.height) do h
+        node[] = sizenodecontent(h)
+    end
+    node
+end
+
 function align_to_bbox!(lc::LayoutedColorbar, bbox)
     lc.bboxnode[] = bbox
+end
+
+
+function connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, limits, widthnode, heightnode, alignment)
+    onany(bboxnode, limits, widthnode, heightnode, alignment) do bbox, limits, widthnode, heightnode, alignment
+
+        w = width(bbox)
+        h = height(bbox)
+
+
+        mw = if isnothing(widthnode)
+            w
+        elseif widthnode isa Real
+            widthnode
+        elseif widthnode isa Fixed
+            widthnode.x
+        elseif widthnode isa Relative
+            widthnode.x * w
+        else
+            error("Invalid width $widthnode, can only be Fixed, Relative or Real")
+        end
+
+        mh = if isnothing(heightnode)
+            h
+        elseif heightnode isa Real
+            heightnode
+        elseif heightnode isa Fixed
+            heightnode.x
+        elseif heightnode isa Relative
+            heightnode.x * h
+        else
+            error("Invalid height $heightnode, can only be Fixed, Relative or Real")
+        end
+
+        restw = w - mw
+        resth = h - mh
+
+        xalign = if alignment[1] == :left
+            0
+        elseif alignment[1] == :center
+            0.5
+        elseif alignment[1] == :right
+            1
+        else
+            error("Invalid x alignment $(alignment[1])")
+        end
+
+        yalign = if alignment[2] == :bottom
+            0
+        elseif alignment[2] == :center
+            0.5
+        elseif alignment[2] == :top
+            1
+        else
+            error("Invalid y alignment $(alignment[1])")
+        end
+
+        l = left(bbox) + xalign * restw
+        b = bottom(bbox) + yalign * resth
+
+        newbbox = BBox(l, l + mw, b, b + mh)
+
+        # only update scene if pixel positions change
+        new_scenearea = IRect2D(newbbox)
+        if new_scenearea != scenearea[]
+            scenearea[] = new_scenearea
+        end
+    end
 end

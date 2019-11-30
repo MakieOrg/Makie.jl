@@ -678,13 +678,13 @@ function determinedirsize(pl::ProtrusionLayout, gdir::GridDir)
         if isnothing(heightnode(pl)[])
             nothing
         else
-            heightnode(pl)[] + protrusion(pl, Top()) + protrusion(pl, Bottom())
+            heightnode(pl)[] #+ protrusion(pl, Top()) + protrusion(pl, Bottom())
         end
     else
         if isnothing(widthnode(pl)[])
             nothing
         else
-            widthnode(pl)[] + protrusion(pl, Left()) + protrusion(pl, Right())
+            widthnode(pl)[] #+ protrusion(pl, Left()) + protrusion(pl, Right())
         end
     end
 end
