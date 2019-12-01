@@ -5,7 +5,7 @@ function LayoutedSlider(parent::Scene; kwargs...)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (
-        alignment, linewidth, buttonradius_inactive,
+        alignment, linewidth, buttonradius_inactive, horizontal,
         buttonradius_active, startvalue, value, color_active, color_inactive,
         color_active
     )
@@ -20,10 +20,17 @@ function LayoutedSlider(parent::Scene; kwargs...)
 
     connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, widthnode, heightnode, alignment)
 
-    endpoints = lift(bboxnode) do bb
-        y = bottom(bb) + height(bb) / 2
-        [Point2f0(left(bb), y),
-         Point2f0(right(bb), y)]
+    endpoints = lift(bboxnode, horizontal) do bb, horizontal
+
+        if horizontal
+            y = bottom(bb) + height(bb) / 2
+            [Point2f0(left(bb), y),
+            Point2f0(right(bb), y)]
+        else
+            x = left(bb) + width(bb) / 2
+            [Point2f0(x, bottom(bb)),
+            Point2f0(x, top(bb))]
+        end
     end
 
     selected_index = Node(1)
@@ -54,8 +61,12 @@ function LayoutedSlider(parent::Scene; kwargs...)
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], startvalue[])
 
-    buttonpoint = lift(bboxnode, displayed_sliderfraction) do bb, sf
-        [Point2f0(left(bb) + width(bb) * sf, bottom(bb) + height(bb) / 2)]
+    buttonpoint = lift(bboxnode, horizontal, displayed_sliderfraction) do bb, horizontal, sf
+        if horizontal
+            [Point2f0(left(bb) + width(bb) * sf, bottom(bb) + height(bb) / 2)]
+        else
+            [Point2f0(left(bb) + 0.5f0 * width(bb), bottom(bb) + sf * height(bb))]
+        end
     end
 
     line1points = lift(endpoints, buttonpoint) do eps, bp
@@ -91,7 +102,11 @@ function LayoutedSlider(parent::Scene; kwargs...)
         if typeof(state.state) == MouseDrag
             dragging[] = true
             dif = state.pos - state.prev
-            fraction = dif[1] / width(bboxnode[])
+            fraction = if horizontal[]
+                dif[1] / width(bboxnode[])
+            else
+                dif[2] / height(bboxnode[])
+            end
             if fraction != 0.0f0
                 newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
                 displayed_sliderfraction[] = newfraction
@@ -162,9 +177,17 @@ end
 
 function protrusionnode(ls::LayoutedSlider)
     br = ls.attributes.buttonradius_active
-    node = Node{Union{Nothing, RectSides{Float32}}}(RectSides{Float32}(br[], br[], 0, 0))
-    on(br) do br
-        node[] = RectSides{Float32}(br, br, 0, 0)
+    node = if ls.horizontal[]
+        Node{Union{Nothing, RectSides{Float32}}}(RectSides{Float32}(br[], br[], 0, 0))
+    else
+        Node{Union{Nothing, RectSides{Float32}}}(RectSides{Float32}(0, 0, br[], br[]))
+    end
+    onany(br, ls.horizontal) do br, horizontal
+        if horizontal
+            node[] = RectSides{Float32}(br, br, 0, 0)
+        else
+            node[] = RectSides{Float32}(0, 0, br, br)
+        end
     end
     node
 end

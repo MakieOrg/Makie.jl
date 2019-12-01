@@ -197,5 +197,6 @@ function default_attributes(::Type{LayoutedSlider})
         value = 3,
         color_active = RGBf0(0.2, 0.2, 0.2),
         color_inactive = RGBf0(0.9, 0.9, 0.9),
+        horizontal = true,
     )
 end
