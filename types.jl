@@ -252,8 +252,8 @@ end
 mutable struct LayoutedText
     parent::Scene
     bboxnode::Node{BBox}
-    height::Node{Float32}
-    width::Node{Float32}
+    width::Node{Union{Nothing, Float32}}
+    height::Node{Union{Nothing, Float32}}
     text::AbstractPlotting.Text
     attributes::Attributes
 end

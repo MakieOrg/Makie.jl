@@ -119,10 +119,11 @@ function default_attributes(::Type{LayoutedText})
         color = RGBf0(0, 0, 0),
         textsize = 20f0,
         font = "Dejavu Sans",
-        valign = :center,
-        halign = :center,
+        alignment = (:center, :center),
         rotation = 0f0,
-        padding = (0f0, 0f0, 0f0, 0f0),
+        padding = (0f0, 0f0, 40f0, 40f0),
+        height = nothing,
+        width = nothing,
     )
 end
 

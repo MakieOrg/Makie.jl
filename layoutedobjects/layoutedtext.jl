@@ -1,14 +1,20 @@
 function LayoutedText(parent::Scene; kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LayoutedText))
 
-    @extract attrs (text, textsize, font, color, visible, valign, halign,
+    @extract attrs (text, textsize, font, color, visible, alignment,
         rotation, padding)
+
+    heightattr = attrs.height
+    widthattr = attrs.width
+
+    heightnode = Node{Union{Nothing, Float32}}(heightattr[])
+    widthnode = Node{Union{Nothing, Float32}}(widthattr[])
 
     bboxnode = Node(BBox(0, 100, 0, 100))
 
-    # align = lift(valign, halign) do v, h
-    #     (h, v)
-    # end
+    # scenearea = Node(IRect(0, 0, 100, 100))
+    # # TODO: scenearea not needed, just for arguments for now
+    # connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, widthnode, heightnode, alignment)
 
     position = Node(Point2f0(0, 0))
 
@@ -16,28 +22,35 @@ function LayoutedText(parent::Scene; kwargs...)
         visible = visible, align = (:center, :center), rotation = rotation)[end]
 
     textbb = BBox(0, 1, 0, 1)
-    heightnode = Node(1f0)
-    widthnode = Node(1f0)
 
-    onany(text, textsize, font, visible, rotation, padding) do text, textsize, font, visible,
-            rotation, padding
+    onany(text, textsize, font, rotation, padding, heightattr, widthattr) do text,
+            textsize, font, rotation, padding, heightattr, widthattr
 
-        if visible
-            textbb = FRect2D(boundingbox(t))
+        textbb = FRect2D(boundingbox(t))
+
+        widthnode[] = width(textbb) + padding[1] + padding[2]
+
+        if isnothing(heightattr)
+            # self-calculate text height
             heightnode[] = height(textbb) + padding[3] + padding[4]
+        else
+            # use provided height
+            heightnode[] = heightattr
+        end
+
+        if isnothing(widthattr)
             widthnode[] = width(textbb) + padding[1] + padding[2]
         else
-            heightnode[] = 0f0
-            widthnode[] = 0f0
+            widthnode[] = widthattr
         end
     end
 
-    onany(bboxnode, valign, halign) do bbox, valign, halign
+    onany(bboxnode, alignment) do bbox, (halign, valign)
 
         tw = width(textbb)
         th = height(textbb)
-        w = widthnode[]
-        h = heightnode[]
+        # w = widthnode[]
+        # h = heightnode[]
 
         bw = width(bbox)
         bh = height(bbox)
@@ -68,7 +81,7 @@ function LayoutedText(parent::Scene; kwargs...)
         position[] = Point2f0(x, y)
     end
 
-    lt = LayoutedText(parent, bboxnode, heightnode, widthnode, t, attrs)
+    lt = LayoutedText(parent, bboxnode, widthnode, heightnode, t, attrs)
 
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
@@ -78,23 +91,24 @@ end
 
 defaultlayout(lt::LayoutedText) = ProtrusionLayout(lt)
 
-# workarounds for the new optional float in protrusionlayout
-# should actually be combined with a "shrink to text" setting
 function widthnode(lt::LayoutedText)
-    node = Node{Union{Nothing, Float32}}(lt.width[])
-    on(lt.width) do w
-        node[] = w
-    end
-    node
+    lt.width
 end
 function heightnode(lt::LayoutedText)
-    node = Node{Union{Nothing, Float32}}(lt.height[])
-    on(lt.height) do h
-        node[] = h
-    end
-    node
+    lt.height
 end
 
 function align_to_bbox!(lt::LayoutedText, bbox)
     lt.bboxnode[] = bbox
+end
+
+function Base.getproperty(lt::LayoutedText, s::Symbol)
+    if s in fieldnames(LayoutedText)
+        getfield(lt, s)
+    else
+        lt.attributes[s]
+    end
+end
+function Base.propertynames(lt::LayoutedText)
+    [fieldnames(LayoutedText)..., keys(lt.attributes)...]
 end
