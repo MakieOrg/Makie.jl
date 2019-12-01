@@ -191,12 +191,14 @@ function default_attributes(::Type{LayoutedSlider})
         width = nothing,
         height = nothing,
         range = 1:5,
-        buttonradius_inactive = 10f0,
-        buttonradius_active = 12f0,
+        buttonradius_inactive = 7f0,
+        buttonradius_active = 8f0,
         startvalue = 3,
         value = 3,
         color_active = RGBf0(0.2, 0.2, 0.2),
         color_inactive = RGBf0(0.9, 0.9, 0.9),
+        buttoncolor_inactive = RGBf0(1, 1, 1),
         horizontal = true,
+        buttonstrokewidth = 4f0,
     )
 end

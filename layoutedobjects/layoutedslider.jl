@@ -7,7 +7,7 @@ function LayoutedSlider(parent::Scene; kwargs...)
     @extract attrs (
         alignment, linewidth, buttonradius_inactive, horizontal,
         buttonradius_active, startvalue, value, color_active, color_inactive,
-        color_active
+        color_active, buttonstrokewidth, buttoncolor_inactive
     )
 
     sliderrange = attrs.range
@@ -81,20 +81,21 @@ function LayoutedSlider(parent::Scene; kwargs...)
 
     bsize = Node{Float32}(buttonradius_inactive[] * 2f0)
 
-    button = scatter!(parent, buttonpoint, markersize = bsize, color = color_active,
-        strokewidth = 0f0, raw = true)[end]
+    bcolor = Node{Any}(buttoncolor_inactive[])
+    button = scatter!(parent, buttonpoint, markersize = bsize, color = bcolor,
+        strokewidth = buttonstrokewidth, strokecolor = color_active, raw = true)[end]
 
     buttonstate = addmousestate!(parent, button)
-
-    # sliderfraction_proxy =
 
     on(buttonstate) do state
         typ = typeof(state.state)
         if typ == MouseOver
             bsize[] = buttonradius_active[] * 2f0
         elseif typ in (MouseDown, MouseDrag, MouseDragStart, MouseDragStop)
+            bcolor[] = color_active[]
         else
             bsize[] = buttonradius_inactive[] * 2f0
+            bcolor[] = buttoncolor_inactive[]
         end
     end
 
