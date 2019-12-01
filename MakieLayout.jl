@@ -10,6 +10,7 @@ using Observables: onany
 import Formatting
 
 include("types.jl")
+include("mousestatemachine.jl")
 include("geometry_integration.jl")
 include("layout_engine.jl")
 include("makie_integration.jl")
