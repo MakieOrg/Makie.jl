@@ -28,6 +28,8 @@ function LayoutedSlider(parent::Scene; kwargs...)
 
     selected_index = Node(1)
 
+    # the fraction on the slider corresponding to the selected_index
+    # this is only used after dragging
     sliderfraction = lift(selected_index, sliderrange) do i, r
         (i - 1) / (length(r) - 1)
     end
