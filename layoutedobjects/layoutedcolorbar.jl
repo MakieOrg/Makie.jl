@@ -27,7 +27,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
     scenearea = Node(IRect(0, 0, 100, 100))
 
     # here limits isn't really useful, maybe split up the functions for colorbar and axis
-    connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, limits, width, height, alignment)
+    connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, width, height, alignment)
 
     scene = Scene(parent, scenearea, camera = campixel!, raw = true)
 
@@ -191,8 +191,8 @@ function align_to_bbox!(lc::LayoutedColorbar, bbox)
 end
 
 
-function connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, limits, widthnode, heightnode, alignment)
-    onany(bboxnode, limits, widthnode, heightnode, alignment) do bbox, limits, widthnode, heightnode, alignment
+function connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, widthnode, heightnode, alignment)
+    onany(bboxnode, widthnode, heightnode, alignment) do bbox, widthnode, heightnode, alignment
 
         w = width(bbox)
         h = height(bbox)
