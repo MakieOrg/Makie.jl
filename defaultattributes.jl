@@ -181,3 +181,20 @@ function default_attributes(::Type{LineAxis})
         labelpadding = 10f0,
     )
 end
+
+function default_attributes(::Type{LayoutedSlider})
+    Attributes(
+        linewidth = 4f0,
+        alignment = (:center, :center),
+        # vertical = true,
+        width = nothing,
+        height = nothing,
+        range = 1:5,
+        buttonradius_inactive = 10f0,
+        buttonradius_active = 12f0,
+        startvalue = 3,
+        value = 3,
+        color_active = RGBf0(0.2, 0.2, 0.2),
+        color_inactive = RGBf0(0.9, 0.9, 0.9),
+    )
+end

@@ -270,8 +270,8 @@ end
 struct LayoutedSlider
     scene::Scene
     bboxnode::Node{BBox}
-    height::Node{Union{Nothing, Float32}}
-    slider::Slider
+    attributes::Attributes
+    decorations::Dict{Symbol, Any}
 end
 
 struct LayoutedButton
