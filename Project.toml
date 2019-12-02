@@ -34,6 +34,7 @@ UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
 <<<<<<< HEAD
+<<<<<<< HEAD
 ColorBrewer = "0.4"
 Contour = "0.5"
 ColorTypes = "0.8"
@@ -53,6 +54,8 @@ UnicodeFun = "0.4"
 SignedDistanceFields = "0.4"
 StructArrays = "≥ 0.3.0"
 Showoff = "0.3"
+StructArrays = "≥ 0.3.0"
+PlotUtils = "0.6"
 StructArrays = "≥ 0.3.0"
 julia = "≥ 1.0"
 
