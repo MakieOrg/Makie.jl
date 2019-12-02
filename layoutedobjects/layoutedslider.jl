@@ -88,40 +88,44 @@ function LayoutedSlider(parent::Scene; kwargs...)
     buttonstate = addmousestate!(parent, button)
 
     on(buttonstate) do state
-        typ = typeof(state.state)
-        if typ == MouseOver
-            bsize[] = buttonradius_active[] * 2f0
-        elseif typ in (MouseDown, MouseDrag, MouseDragStart, MouseDragStop)
+        typ = typeof(state.typ)
+        if typ in (MouseDown, MouseDrag, MouseDragStart, MouseDragStop)
             bcolor[] = color_active[]
-        else
-            bsize[] = buttonradius_inactive[] * 2f0
-            bcolor[] = buttoncolor_inactive[]
         end
     end
 
-    on(buttonstate) do state
-        if typeof(state.state) == MouseDrag
-            dragging[] = true
-            dif = state.pos - state.prev
-            fraction = if horizontal[]
-                dif[1] / width(bboxnode[])
-            else
-                dif[2] / height(bboxnode[])
-            end
-            if fraction != 0.0f0
-                newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
-                displayed_sliderfraction[] = newfraction
+    onmouseover(buttonstate) do state
+        bsize[] = buttonradius_active[] * 2f0
+    end
 
-                newindex = closest_fractionindex(sliderrange[], newfraction)
-                if selected_index[] != newindex
-                    selected_index[] = newindex
-                end
-            end
-        elseif typeof(state.state) == MouseDragStop
-            dragging[] = false
-            # adjust slider to last legal value
-            sliderfraction[] = sliderfraction[]
+    onmouseout(buttonstate) do state
+        bsize[] = buttonradius_inactive[] * 2f0
+        bcolor[] = buttoncolor_inactive[]
+    end
+
+    onmousedrag(buttonstate) do state
+        dragging[] = true
+        dif = state.pos - state.prev
+        fraction = if horizontal[]
+            dif[1] / width(bboxnode[])
+        else
+            dif[2] / height(bboxnode[])
         end
+        if fraction != 0.0f0
+            newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
+            displayed_sliderfraction[] = newfraction
+
+            newindex = closest_fractionindex(sliderrange[], newfraction)
+            if selected_index[] != newindex
+                selected_index[] = newindex
+            end
+        end
+    end
+
+    onmousedragstop(buttonstate) do state
+        dragging[] = false
+        # adjust slider to closest legal value
+        sliderfraction[] = sliderfraction[]
     end
 
     LayoutedSlider(parent, bboxnode, attrs, decorations)
