@@ -199,7 +199,7 @@ end
 
 function default_attributes(::Type{LayoutedSlider})
     Attributes(
-        linewidth = 4f0,
+        linewidth = 3f0,
         alignment = (:center, :center),
         # vertical = true,
         width = nothing,
@@ -213,6 +213,6 @@ function default_attributes(::Type{LayoutedSlider})
         color_inactive = RGBf0(0.9, 0.9, 0.9),
         buttoncolor_inactive = RGBf0(1, 1, 1),
         horizontal = true,
-        buttonstrokewidth = 4f0,
+        buttonstrokewidth = 3f0,
     )
 end
