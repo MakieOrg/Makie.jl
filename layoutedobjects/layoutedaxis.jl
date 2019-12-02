@@ -1,4 +1,4 @@
-function LayoutedAxis(parent::Scene; kwargs...)
+function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LayoutedAxis))
 
@@ -19,7 +19,11 @@ function LayoutedAxis(parent::Scene; kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    bboxnode = Node(BBox(0, 100, 0, 100))
+    bboxnode = if isnothing(bbox)
+        Node(BBox(0, 100, 0, 100))
+    else
+        AbstractPlotting.to_node(BBox, bbox)
+    end
 
     scenearea = Node(IRect(0, 0, 100, 100))
 
@@ -228,6 +232,10 @@ function LayoutedAxis(parent::Scene; kwargs...)
     on(protrusions) do prot
         needs_update[] = true
     end
+
+    # trigger bboxnode so the axis layouts itself even if not connected to a
+    # layout
+    bboxnode[] = bboxnode[]
 
     la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
         protrusions, needs_update, attrs, block_limit_linking, decorations)
