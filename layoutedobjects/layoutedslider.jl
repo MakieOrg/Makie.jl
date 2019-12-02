@@ -69,15 +69,24 @@ function LayoutedSlider(parent::Scene; kwargs...)
         end
     end
 
-    line1points = lift(endpoints, buttonpoint) do eps, bp
-        [eps[1], bp[1]]
-    end
-    line2points = lift(endpoints, buttonpoint) do eps, bp
-        [bp[1], eps[2]]
+    linepoints = lift(endpoints, buttonpoint) do eps, bp
+        [eps[1], bp[1], bp[1], eps[2]]
     end
 
-    lines!(parent, line1points, color = color_active, linewidth = linewidth, raw = true)
-    lines!(parent, line2points, color = color_inactive, linewidth = linewidth, raw = true)
+    linecolors = lift(color_active, color_inactive) do ca, ci
+        [ca, ci]
+    end
+
+    linesegs = linesegments!(parent, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+
+    linestate = addmousestate!(parent, linesegs)
+
+    onmouseclick(linestate) do state
+        pos = state.pos
+        dim = horizontal[] ? 1 : 2
+        frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
+        selected_index[] = closest_fractionindex(sliderrange[], frac)
+    end
 
     bsize = Node{Float32}(buttonradius_inactive[] * 2f0)
 
