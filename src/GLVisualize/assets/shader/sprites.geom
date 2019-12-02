@@ -58,7 +58,7 @@ out vec2 f_uv;
 flat out vec4 f_uv_texture_bbox;
 
 
-uniform mat4 projection, view, model;
+uniform mat4 projection, view, model, pixel_space;
 
 float get_distancefield_scale(sampler2D distancefield){
     // Glyph distance field units are in pixels; convert to dimensionless

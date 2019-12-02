@@ -45,9 +45,20 @@ if WORKING_OPENGL
     include("gl_backend.jl")
 end
 
+
+function activate!(use_display = true)
+    b = GLBackend()
+    AbstractPlotting.register_backend!(b)
+    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.High)
+    AbstractPlotting.current_backend[] = b
+    AbstractPlotting.inline!(!use_display)
+end
+
 function __init__()
     if WORKING_OPENGL
-        AbstractPlotting.register_backend!(GLBackend())
+        activate!()
+    else
+        @warn("Loaded OpenGL Backend, but OpenGL isn't working")
     end
 end
 
