@@ -122,6 +122,7 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
         idealtickdistance = idealtickdistance, ticklabelspace = ticklabelspace)
+    decorations[:axis] = axis
 
     protrusions = lift(axis.protrusion, vertical, flipaxisposition) do axprotrusion,
             vertical, flipaxisposition
@@ -256,4 +257,9 @@ function connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, widthnode, he
             scenearea[] = new_scenearea
         end
     end
+end
+
+
+function tight_ticklabel_spacing!(lc::LayoutedColorbar)
+    tight_ticklabel_spacing!(lc.decorations[:axis])
 end

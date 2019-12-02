@@ -638,17 +638,11 @@ end
 
 
 function tight_yticklabel_spacing!(la::LayoutedAxis)
-    maxwidth = maximum(la.decorations[:yaxis].decorations[:ticklabels]) do yt
-        yt.visible[] ? boundingbox(yt).widths[1] : 0f0
-    end
-    la.yticklabelspace = maxwidth
+    tight_ticklabel_spacing!(la.decorations[:yaxis])
 end
 
 function tight_xticklabel_spacing!(la::LayoutedAxis)
-    maxheight = maximum(la.decorations[:xaxis].decorations[:ticklabels]) do xt
-        xt.visible[] ? boundingbox(xt).widths[2] : 0f0
-    end
-    la.xticklabelspace = maxheight
+    tight_ticklabel_spacing!(la.decorations[:xaxis])
 end
 
 function tight_ticklabel_spacing!(la::LayoutedAxis)

@@ -227,3 +227,24 @@ function LineAxis(parent::Scene; kwargs...)
 
     LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings)
 end
+
+
+function tight_ticklabel_spacing!(la::LineAxis)
+
+    horizontal = if la.attributes.endpoints[][1][2] == la.attributes.endpoints[][2][2]
+        true
+    elseif la.attributes.endpoints[][1][1] == la.attributes.endpoints[][2][1]
+        false
+    else
+        error("endpoints not on a horizontal or vertical line")
+    end
+
+    maxwidth = maximum(la.decorations[:ticklabels]) do tl
+        if horizontal
+            tl.visible[] ? boundingbox(tl).widths[2] : 0f0
+        else
+            tl.visible[] ? boundingbox(tl).widths[1] : 0f0
+        end
+    end
+    la.attributes.ticklabelspace = maxwidth
+end
