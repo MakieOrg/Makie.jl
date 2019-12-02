@@ -33,7 +33,6 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
-<<<<<<< HEAD
 ColorBrewer = "0.4"
 Contour = "0.5"
 ColorTypes = "0.8"
@@ -45,6 +44,7 @@ DocStringExtensions = "≥ 0.8.0"
 FFMPEG = "0.2"
 FreeTypeAbstraction = "≥ 0.4.2"
 GeometryTypes = "≥ 0.7.2"
+IntervalSets = "0.3"
 Observables = "≥ 0.2.0"
 StaticArrays = "0.12"
 StructArrays = "≥ 0.3.0"
