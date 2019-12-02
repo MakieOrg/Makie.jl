@@ -128,6 +128,10 @@ function LayoutedSlider(parent::Scene; kwargs...)
         sliderfraction[] = sliderfraction[]
     end
 
+    onmousedoubleclick(buttonstate) do state
+        selected_index[] = closest_index(sliderrange[], startvalue[])
+    end
+
     LayoutedSlider(parent, bboxnode, attrs, decorations)
 end
 
