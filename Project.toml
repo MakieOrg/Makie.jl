@@ -43,6 +43,7 @@ GeometryTypes = "≥ 0.7.2"
 Observables = "≥ 0.2.0"
 StaticArrays = "0.12"
 StructArrays = "≥ 0.3.0"
+UnicodeFun = "0.4"
 julia = "≥ 1.0"
 
 [extras]
