@@ -110,7 +110,7 @@ void main(void)
     mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
     mat4 trans = scale_primitive ? model : mat4(1.0);
-    trans = (billboard ? pixel_space : pview * qmat(g_rotation[0])) * trans;
+    trans = (billboard ? projection : pview * qmat(g_rotation[0])) * trans;
 
     // Compute centre of billboard in clipping coordinates
     vec4 vclip = pview*model*vec4(g_position[0],1) + trans*vec4(sprite_bbox_centre,0,0);
