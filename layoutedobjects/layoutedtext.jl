@@ -28,20 +28,26 @@ function LayoutedText(parent::Scene; kwargs...)
 
         textbb = FRect2D(boundingbox(t))
 
-        widthnode[] = width(textbb) + padding[1] + padding[2]
+        # widthnode[] = width(textbb) + padding[1] + padding[2]
 
-        if isnothing(heightattr)
+        newheight = if isnothing(heightattr)
             # self-calculate text height
-            heightnode[] = height(textbb) + padding[3] + padding[4]
+            height(textbb) + padding[3] + padding[4]
         else
             # use provided height
-            heightnode[] = heightattr
+            heightattr
+        end
+        if newheight != heightnode[]
+            heightnode[] = newheight
         end
 
-        if isnothing(widthattr)
-            widthnode[] = width(textbb) + padding[1] + padding[2]
+        newwidth = if isnothing(widthattr)
+            width(textbb) + padding[1] + padding[2]
         else
-            widthnode[] = widthattr
+            widthattr
+        end
+        if newwidth != widthnode[]
+            widthnode[] = newwidth
         end
     end
 
