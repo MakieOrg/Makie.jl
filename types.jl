@@ -279,6 +279,6 @@ struct LayoutedButton
     bboxnode::Node{BBox}
     width::Node{Union{Nothing, Float32}}
     height::Node{Union{Nothing, Float32}}
-    button::Button
     attributes::Attributes
+    decorations::Dict{Symbol, Any}
 end
