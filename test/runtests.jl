@@ -1,11 +1,12 @@
 using AbstractPlotting
 using MakieGallery
 using Test
+using GLMakie
 
 const MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "false")
 
 # does this machine have a OPENGL?
-const OPENGL = haskey(ENV, "OPENGL") || haskey(ENV, "GITLAB_CI") || try success(pipeline(`glxinfo`, `grep version`)) catch; false end # if it's Gitlab, it must be JuliaGPU
+const OPENGL = GLMakie.WORKING_OPENGL
 OPENGL || (MINIMAL = "true")
 
 @show OPENGL MINIMAL
