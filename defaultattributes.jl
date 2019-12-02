@@ -142,11 +142,25 @@ end
 
 function default_attributes(::Type{LayoutedButton})
     Attributes(
-        valign = :center,
-        halign = :center,
-        padding = (0f0, 0f0, 0f0, 0f0),
+        alignment = (:center, :center),
+        padding = (10f0, 10f0, 10f0, 10f0),
         textsize = 20f0,
         label = "Button",
+        font = "Dejavu Sans",
+        width = nothing,
+        height = nothing,
+        cornerradius = 4,
+        cornersegments = 10,
+        strokewidth = 2f0,
+        strokecolor = :transparent,
+        buttoncolor = RGBf0(0.9, 0.9, 0.9),
+        autoshrink = (false, false),
+        labelcolor = :black,
+        labelcolor_hover = :black,
+        labelcolor_active = :white,
+        buttoncolor_active = RGBf0(0.2, 0.2, 0.2),
+        buttoncolor_hover = RGBf0(0.8, 0.8, 0.8),
+        clicks = 0,
     )
 end
 
