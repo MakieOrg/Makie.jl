@@ -34,6 +34,7 @@ UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
 ColorBrewer = "0.4"
+Contour = "0.5"
 DocStringExtensions = "≥ 0.8.0"
 FixedPointNumbers = "0.6"
 FreeType = "2.1"
