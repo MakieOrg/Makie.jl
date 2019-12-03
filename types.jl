@@ -241,6 +241,14 @@ mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
     decorations::Dict{Symbol, Any}
 end
 
+struct LayoutNodes
+    suggestedbbox::Node{BBox}
+    protrusions::Node{RectSides{Float32}}
+    computedwidth::Node{Optional{Float32}}
+    computedheight::Node{Optional{Float32}}
+    computedbbox::Node{BBox}
+end
+
 mutable struct LayoutedColorbar
     parent::Scene
     scene::Scene
