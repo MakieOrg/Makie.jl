@@ -1,5 +1,7 @@
 const BBox = Rect2D{Float32}
 
+const Optional{T} = Union{Nothing, T}
+
 struct RectSides{T<:Real}
     left::T
     right::T
