@@ -11,16 +11,16 @@ function LayoutedSlider(parent::Scene; kwargs...)
     )
 
     sliderrange = attrs.range
-    heightnode = attrs.height
-    widthnode = attrs.width
+    heightattr = attrs.height
+    widthattr = attrs.width
 
-    bboxnode = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = Node(BBox(0, 100, 0, 100))
 
-    scenearea = Node(IRect(0, 0, 100, 100))
+    computedwidth = computedsizenode!(1, widthattr)
+    computedheight = computedsizenode!(2, heightattr)
 
-    connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, widthnode, heightnode, alignment)
-
-    endpoints = lift(bboxnode, horizontal) do bb, horizontal
+    finalbbox = alignedbboxnode!(suggestedbbox, computedwidth, computedheight, alignment)
+    endpoints = lift(finalbbox, horizontal) do bb, horizontal
 
         if horizontal
             y = bottom(bb) + height(bb) / 2
@@ -61,7 +61,7 @@ function LayoutedSlider(parent::Scene; kwargs...)
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], startvalue[])
 
-    buttonpoint = lift(bboxnode, horizontal, displayed_sliderfraction) do bb, horizontal, sf
+    buttonpoint = lift(finalbbox, horizontal, displayed_sliderfraction) do bb, horizontal, sf
         if horizontal
             [Point2f0(left(bb) + width(bb) * sf, bottom(bb) + height(bb) / 2)]
         else
@@ -116,9 +116,9 @@ function LayoutedSlider(parent::Scene; kwargs...)
         dragging[] = true
         dif = state.pos - state.prev
         fraction = if horizontal[]
-            dif[1] / width(bboxnode[])
+            dif[1] / width(finalbbox[])
         else
-            dif[2] / height(bboxnode[])
+            dif[2] / height(finalbbox[])
         end
         if fraction != 0.0f0
             newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
@@ -141,7 +141,17 @@ function LayoutedSlider(parent::Scene; kwargs...)
         selected_index[] = closest_index(sliderrange[], startvalue[])
     end
 
-    LayoutedSlider(parent, bboxnode, attrs, decorations)
+    protrusions = lift(buttonradius_active, horizontal) do br, horizontal
+        if horizontal
+            RectSides{Float32}(br, br, 0, 0)
+        else
+            RectSides{Float32}(0, 0, br, br)
+        end
+    end
+
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedwidth, computedheight, finalbbox)
+
+    LayoutedSlider(parent, layoutnodes, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)
@@ -174,41 +184,13 @@ function closest_index(sliderrange, value)
 end
 
 function align_to_bbox!(ls::LayoutedSlider, bbox)
-    ls.bboxnode[] = bbox
+    ls.layoutnodes.suggestedbbox[] = bbox
 end
 
-function widthnode(ls::LayoutedSlider)
-    node = Node{Union{Nothing, Float32}}(sizenodecontent(ls.attributes.width[]))
-    on(ls.attributes.width) do w
-        node[] = sizenodecontent(w)
-    end
-    node
-end
+widthnode(ls::LayoutedSlider) = ls.layoutnodes.computedwidth
+heightnode(ls::LayoutedSlider) = ls.layoutnodes.computedheight
+protrusionnode(ls::LayoutedSlider) = ls.layoutnodes.protrusions
 
-function heightnode(ls::LayoutedSlider)
-    node = Node{Union{Nothing, Float32}}(sizenodecontent(ls.attributes.height[]))
-    on(ls.attributes.height) do h
-        node[] = sizenodecontent(h)
-    end
-    node
-end
-
-function protrusionnode(ls::LayoutedSlider)
-    br = ls.attributes.buttonradius_active
-    node = if ls.horizontal[]
-        Node{Union{Nothing, RectSides{Float32}}}(RectSides{Float32}(br[], br[], 0, 0))
-    else
-        Node{Union{Nothing, RectSides{Float32}}}(RectSides{Float32}(0, 0, br[], br[]))
-    end
-    onany(br, ls.horizontal) do br, horizontal
-        if horizontal
-            node[] = RectSides{Float32}(br, br, 0, 0)
-        else
-            node[] = RectSides{Float32}(0, 0, br, br)
-        end
-    end
-    node
-end
 
 defaultlayout(ls::LayoutedSlider) = ProtrusionLayout(ls)
 
