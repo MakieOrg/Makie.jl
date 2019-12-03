@@ -107,14 +107,14 @@ function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
         flipped = xaxis_flipped, ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
         label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
-        ticklabelspace = xticklabelspace)
+        ticklabelspace = xticklabelspace, ticks = xticks)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
         flipped = yaxis_flipped, ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
         label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign,
-        ticklabelspace = yticklabelspace)
+        ticklabelspace = yticklabelspace, ticks = yticks)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
