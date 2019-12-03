@@ -129,7 +129,7 @@ function LayoutedButton(scene::Scene; kwargs...)
     # put button in front so the text doesn't block the mouse
     reverse!(subscene.plots)
 
-    mousestate = addmousestate!(subscene, button)
+    mousestate = addmousestate!(scene, button, labeltext)
 
     onmouseover(mousestate) do state
         bcolor[] = buttoncolor_hover[]

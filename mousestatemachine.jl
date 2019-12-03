@@ -42,7 +42,7 @@ function Base.show(io::IO, ms::MouseState{T}) where T
     print(io, "$T(t: $(ms.t), pos: $(ms.pos[1]), $(ms.pos[2]), tprev: $(ms.tprev), prev: $(ms.prev[1]), $(ms.prev[2]))")
 end
 
-function addmousestate!(scene, element)
+function addmousestate!(scene, elements...)
 
     Mouse = AbstractPlotting.Mouse
 
@@ -71,7 +71,7 @@ function addmousestate!(scene, element)
                 mousestate[] = MouseState(MouseUp(), t, pos, tprev[], prev[])
                 mouse_downed_inside[] = false
                 # check after drag is over if we're also outside of the element now
-                if !mouseover(scene, element)
+                if !mouseover(scene, elements...)
                     mousestate[] = MouseState(MouseLeave(), t, pos, tprev[], prev[])
                     mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
                     mouse_was_inside[] = false
@@ -82,7 +82,7 @@ function addmousestate!(scene, element)
             end
         # no dragging already ongoing
         else
-            if mouseover(scene, element)
+            if mouseover(scene, elements...)
                 # guard against mouse coming in from outside when pressed
                 if !mouse_was_inside[] && dragstate != Mouse.pressed
                     mousestate[] = MouseState(MouseEnter(), t, pos, tprev[], prev[])
