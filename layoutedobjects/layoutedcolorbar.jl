@@ -30,7 +30,6 @@ function LayoutedColorbar(parent::Scene; kwargs...)
     computedwidth = computedsizenode!(1, widthattr)
     computedheight = computedsizenode!(2, heightattr)
 
-    # here limits isn't really useful, maybe split up the functions for colorbar and axis
     finalbbox = alignedbboxnode!(suggestedbbox, computedwidth, computedheight, alignment)
 
     scenearea = lift(IRect2D, finalbbox)
