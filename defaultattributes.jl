@@ -109,6 +109,7 @@ function default_attributes(::Type{LayoutedColorbar})
         width = nothing,
         height = nothing,
         colormap = :viridis,
+        limits = (0f0, 1f0),
     )
 end
 
