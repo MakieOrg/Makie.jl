@@ -1,22 +1,36 @@
 @inline ifnothing(optional, fallback) = isnothing(optional) ? fallback : optional
 
 function alignedbboxnode!(
-    layoutbbox,
-    computedwidthnode::Node{Optional{Float32}},
-    computedheightnode::Node{Optional{Float32}},
+    suggestedbbox,
+    widthattr,
+    heightattr,
     align)
 
     finalbbox = Node(BBox(0, 100, 0, 100))
 
-    onany(layoutbbox, computedwidthnode, computedheightnode, align) do lbbox, cwn, chn, al
+    onany(suggestedbbox, widthattr, heightattr, align) do sbbox, wattr, hattr, al
 
-        bw = width(lbbox)
-        bh = height(lbbox)
+        bw = width(sbbox)
+        bh = height(sbbox)
 
-        # the final width / height is either what the element computed itself or,
-        # if these values are nothing, what the layout provided
-        w = ifnothing(cwn, bw)
-        h = ifnothing(chn, bh)
+        w = @match wattr begin
+            wa::Nothing => bw
+            wa::Real => wa
+            wa::Fixed => wa.x
+            wa::Relative => bw * wa.x
+            wa => error("""
+                Invalid width attribute $wattr.
+                Can only be Nothing, Fixed, Relative or Real""")
+        end
+        h = @match hattr begin
+            ha::Nothing => bh
+            ha::Real => ha
+            ha::Fixed => ha.x
+            ha::Relative => bh * ha.x
+            ha => error("""
+                Invalid height attribute $hattr.
+                Can only be Nothing, Fixed, Relative or Real""")
+        end
 
         # how much space is left in the bounding box
         rw = bw - w
@@ -37,8 +51,8 @@ function alignedbboxnode!(
         end
 
         # align the final bounding box in the layout bounding box
-        l = left(lbbox) + xshift
-        b = bottom(lbbox) + yshift
+        l = left(sbbox) + xshift
+        b = bottom(sbbox) + yshift
         r = l + w
         t = b + h
 
