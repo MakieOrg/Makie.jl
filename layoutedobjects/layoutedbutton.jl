@@ -12,14 +12,16 @@ function LayoutedButton(scene::Scene; kwargs...)
     widthattr = attrs.width
     heightattr = attrs.height
 
-    heightnode = Node{Union{Nothing, Float32}}(heightattr[])
-    widthnode = Node{Union{Nothing, Float32}}(widthattr[])
+    computedwidth = computedsizenode!(1, widthattr)
+    computedheight = computedsizenode!(2, heightattr)
 
-    bboxnode = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = Node(BBox(0, 100, 0, 100))
+
+    finalbbox = alignedbboxnode!(suggestedbbox, widthattr, heightattr, alignment)
 
     textpos = Node(Point2f0(0, 0))
 
-    subarea = lift(bboxnode) do bbox
+    subarea = lift(finalbbox) do bbox
         IRect2D(bbox)
     end
     subscene = Scene(scene, subarea, camera=campixel!)
@@ -28,45 +30,42 @@ function LayoutedButton(scene::Scene; kwargs...)
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
         color = lcolor, align = (:center, :center))[end]
 
-    onany(label, textsize, font, padding, heightattr, widthattr, autoshrink) do label,
-            textsize, font, padding, heightattr, widthattr, autoshrink
+    buttonwidth = Node{Optional{Float32}}(nothing)
+    buttonheight = Node{Optional{Float32}}(nothing)
+
+    onany(label, textsize, font, padding, computedheight, computedwidth, autoshrink) do label,
+            textsize, font, padding, cheight, cwidth, autoshrink
 
         textbb = FRect2D(boundingbox(labeltext))
 
-        # widthnode[] = width(textbb) + padding[1] + padding[2]
-
-        newheight = if isnothing(heightattr)
-            # self-calculate text height
+        newbuttonheight = ifnothing(cheight,
             if autoshrink[2]
                 height(textbb) + padding[3] + padding[4]
             else
                 nothing
             end
-        else
-            # use provided height
-            heightattr
-        end
-        if newheight != heightnode[]
-            heightnode[] = newheight
+        )
+
+        if newbuttonheight != buttonheight[]
+            buttonheight[] = newbuttonheight
         end
 
-        newwidth = if isnothing(widthattr)
+        newbuttonwidth = ifnothing(cwidth,
             if autoshrink[1]
                 width(textbb) + padding[1] + padding[2]
             else
                 nothing
             end
-        else
-            widthattr
-        end
-        if newwidth != widthnode[]
-            widthnode[] = newwidth
+        )
+
+        if newbuttonwidth != buttonwidth[]
+            buttonwidth[] = newbuttonwidth
         end
     end
 
     label[] = label[]
 
-    buttonrect = lift(subarea, heightnode, widthnode, alignment) do bbox, h, w, al
+    buttonrect = lift(subarea, buttonwidth, buttonheight, alignment) do bbox, w, h, al
 
         bw = width(bbox)
         bh = height(bbox)
@@ -151,7 +150,10 @@ function LayoutedButton(scene::Scene; kwargs...)
         clicks[] = clicks[] + 1
     end
 
-    LayoutedButton(scene, bboxnode, widthnode, heightnode, attrs, decorations)
+    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedwidth, computedheight, finalbbox)
+
+    LayoutedButton(scene, layoutnodes, attrs, decorations)
 end
 
 function anglepoint(center::Point2, angle::Real, radius::Real)
@@ -159,11 +161,12 @@ function anglepoint(center::Point2, angle::Real, radius::Real)
 end
 
 function align_to_bbox!(lb::LayoutedButton, bbox)
-    lb.bboxnode[] = bbox
+    lb.layoutnodes.suggestedbbox[] = bbox
 end
 
-widthnode(lb::LayoutedButton) = lb.width
-heightnode(lb::LayoutedButton) = lb.height
+widthnode(lb::LayoutedButton) = lb.layoutnodes.computedwidth
+heightnode(lb::LayoutedButton) = lb.layoutnodes.computedheight
+protrusionnode(lb::LayoutedButton) = lb.layoutnodes.protrusions
 
 defaultlayout(lb::LayoutedButton) = ProtrusionLayout(lb)
 
