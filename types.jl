@@ -179,7 +179,7 @@ struct DataAspect end
 
 mutable struct ProtrusionLayout{T} <: AbstractLayout
     parent::Union{Nothing, GridLayout}
-    protrusions::Node{Union{Nothing, RectSides{Float32}}}
+    protrusions::Node{RectSides{Float32}}
     widthnode::Node{Union{Nothing, Float32}}
     heightnode::Node{Union{Nothing, Float32}}
     needs_update::Node{Bool}
