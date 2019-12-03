@@ -16,6 +16,8 @@ JSServe.session(jsb::JSBuffer) = JSServe.session(getfield(jsb, :three))
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
 Base.size(x::JSBuffer) = (getfield(x, :length),)
 
+JSServe.serialize_js(jso::JSBuffer) = JSServe.serialize_js(jsbuffer(jso))
+
 function JSServe.serialize_readable(io::IO, jso::JSBuffer)
     return JSServe.serialize_readable(io, jsbuffer(jso))
 end
@@ -43,7 +45,7 @@ function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) 
 end
 
 function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), vector)
+    flat = collect(reinterpret(eltype(T), vector))
     js_f32 = three.window.new.Float32Array(flat)
     jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
     # jsbuff.setDynamic(true)
@@ -56,7 +58,7 @@ end
 
 
 function JSBuffer(three, vector::AbstractVector{T}) where T
-    flat = reinterpret(eltype(T), vector)
+    flat = collect(reinterpret(eltype(T), vector))
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
     # jsbuff.setDynamic(true)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
