@@ -252,43 +252,35 @@ end
 mutable struct LayoutedColorbar
     parent::Scene
     scene::Scene
-    bboxnode::Node{BBox}
-    protrusions::Node{RectSides{Float32}}
-    needs_update::Node{Bool}
+    layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
 mutable struct LayoutedText
     parent::Scene
-    bboxnode::Node{BBox}
-    width::Node{Union{Nothing, Float32}}
-    height::Node{Union{Nothing, Float32}}
+    layoutnodes::LayoutNodes
     text::AbstractPlotting.Text
     attributes::Attributes
 end
 
 mutable struct LayoutedRect
     parent::Scene
-    bboxnode::Node{BBox}
-    height::Node{Union{Nothing, Float32}}
-    width::Node{Union{Nothing, Float32}}
+    layoutnodes::LayoutNodes
     rect::AbstractPlotting.Poly
     attributes::Attributes
 end
 
 struct LayoutedSlider
     scene::Scene
-    bboxnode::Node{BBox}
+    layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
 struct LayoutedButton
     scene::Scene
-    bboxnode::Node{BBox}
-    width::Node{Union{Nothing, Float32}}
-    height::Node{Union{Nothing, Float32}}
+    layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
