@@ -81,14 +81,14 @@ end
 
 function set_positions!(jsctx, geometry, positions::AbstractVector{<: Point{N, T}}) where {N, T}
     flat = reinterpret(T, positions)
-    geometry.addAttribute(
+    geometry.setAttribute(
         "position", jsctx.THREE.new.Float32BufferAttribute(flat, N)
     )
 end
 
 function set_colors!(jsctx, geometry, colors::AbstractVector{T}) where T <: Colorant
     flat = reinterpret(eltype(T), colors)
-    geometry.addAttribute(
+    geometry.setAttribute(
         "color", jsctx.THREE.new.Float32BufferAttribute(flat, length(T))
     )
 end
