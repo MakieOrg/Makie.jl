@@ -55,9 +55,9 @@ function LayoutedText(parent::Scene; kwargs...)
             end
 
         y = if valign == :bottom
-                boy + 0.5f0 * th + padding[][4]
+                boy + 0.5f0 * th + padding[][3]
             elseif valign == :top
-                boy + bh - 0.5f0 * th - padding[][3]
+                boy + bh - 0.5f0 * th - padding[][4]
             elseif valign == :center
                 boy + 0.5f0 * bh
             else
