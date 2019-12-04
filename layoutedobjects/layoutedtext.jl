@@ -90,16 +90,6 @@ end
 computedsizenode(lt::LayoutedText) = lt.layoutnodes.computedsize
 protrusionnode(lt::LayoutedText) = lt.layoutnodes.protrusions
 
-function Base.getproperty(lt::LayoutedText, s::Symbol)
-    if s in fieldnames(LayoutedText)
-        getfield(lt, s)
-    else
-        lt.attributes[s]
-    end
-end
-function Base.propertynames(lt::LayoutedText)
-    [fieldnames(LayoutedText)..., keys(lt.attributes)...]
-end
 
 function Base.getproperty(lt::LayoutedText, s::Symbol)
     if s in fieldnames(LayoutedText)
