@@ -357,7 +357,7 @@ function solve(gl::GridLayout, bbox::BBox)
         0.0
     elseif valign == :bottom
         gridheight - height(bbox)
-    elseif halign == :center
+    elseif valign == :center
         (gridheight - height(bbox)) / 2
     else
         error("Invalid grid layout valign $valign")
