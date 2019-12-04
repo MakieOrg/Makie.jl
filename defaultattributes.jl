@@ -143,6 +143,8 @@ function default_attributes(::Type{LayoutedRect})
         strokewidth = 2f0,
         strokevisible = true,
         strokecolor = RGBf0(0, 0, 0),
+        width = nothing,
+        height = nothing,
     )
 end
 
