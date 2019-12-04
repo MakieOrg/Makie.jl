@@ -21,6 +21,9 @@ struct TopRight <: Side end
 struct BottomLeft <: Side end
 struct BottomRight <: Side end
 
+struct Inner <: Side end
+struct Outer <: Side end
+
 abstract type GridDir end
 struct Col <: GridDir end
 struct Row <: GridDir end
@@ -50,6 +53,7 @@ a grid via its span.
 struct SpannedLayout{T <: AbstractLayout}
     al::T
     sp::Span
+    side::Side
 end
 
 abstract type AlignMode end
@@ -166,11 +170,6 @@ struct SolvedGridLayout <: AbstractLayout
     grid::RowCols{Vector{Float64}}
 end
 
-struct SolvedProtrusionLayout{T} <: AbstractLayout
-    bbox::BBox
-    content::T
-end
-
 struct AxisAspect
     aspect::Float32
 end
@@ -185,16 +184,7 @@ mutable struct ProtrusionLayout{T} <: AbstractLayout
     content::T
 end
 
-mutable struct ProtrusionContentLayout{T} <: AbstractLayout
-    parent::Union{Nothing, GridLayout}
-    widthnode::Node{Union{Nothing, Float32}}
-    heightnode::Node{Union{Nothing, Float32}}
-    side::Side
-    needs_update::Node{Bool}
-    content::T
-end
-
-struct SolvedProtrusionContentLayout{T} <: AbstractLayout
+struct SolvedProtrusionLayout{T} <: AbstractLayout
     bbox::BBox
     content::T
 end

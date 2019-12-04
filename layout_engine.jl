@@ -133,33 +133,6 @@ end
 protrusionnode(pl::ProtrusionLayout) = pl.protrusions
 computedsizenode(pl::ProtrusionLayout) = pl.computedsize
 
-parentlayout(pl::ProtrusionContentLayout) = pl.parent
-
-function ProtrusionContentLayout(content, side::Side)
-    needs_update = Node(false)
-
-    width = widthnode(content)
-    height = heightnode(content)
-
-    # the nothing parent here has to be replaced by a grid parent later
-    # when placing this layout in the grid layout
-    pl = ProtrusionContentLayout(nothing, width, height, side, needs_update, content)
-
-    update_func = x -> begin
-        p = parentlayout(pl)
-        if isnothing(p)
-            error("This layout has no parent and can't continue the update signal chain.")
-        end
-        p.needs_update[] = true
-    end
-
-    on(update_func, width)
-    on(update_func, height)
-
-    pl
-end
-
-
 
 """
 All the protrusion functions calculate how much stuff "sticks out" of a layoutable object.
@@ -175,35 +148,42 @@ protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions[]) ? 0f0 : a.p
 protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].right
 protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].top
 protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].bottom
-protrusion(sp::SpannedLayout, side::Side) = protrusion(sp.al, side)
 
-function protrusion(a::ProtrusionContentLayout, ::Left)
-    if a.side isa Left || a.side isa TopLeft || a.side isa BottomLeft
-        isnothing(a.widthnode[]) ? 0f0 : a.widthnode[]
-    else
-        0f0
+function protrusion(sp::SpannedLayout, side::Side)
+    prot = @match sp.side begin
+        sps::Inner => protrusion(sp.al, side)
+        # sps::Outer => BBox(l - pl, r + pr, b - pb, t + pt)
+        sps::Union{Left, Right} => @match side begin
+            si::typeof(sps) => determinedirsize(sp.al, Col(), sp.side)
+            si => 0.0
+        end
+        sps::Union{Top, Bottom} => @match side begin
+            si::typeof(sps) => determinedirsize(sp.al, Row(), sp.side)
+            si => 0.0
+        end
+        sps::TopLeft => @match side begin
+            si::Top => determinedirsize(sp.al, Row(), sp.side)
+            si::Left => determinedirsize(sp.al, Col(), sp.side)
+            si => 0.0
+        end
+        sps::TopRight => @match side begin
+            si::Top => determinedirsize(sp.al, Row(), sp.side)
+            si::Right => determinedirsize(sp.al, Col(), sp.side)
+            si => 0.0
+        end
+        sps::BottomLeft => @match side begin
+            si::Bottom => determinedirsize(sp.al, Row(), sp.side)
+            si::Left => determinedirsize(sp.al, Col(), sp.side)
+            si => 0.0
+        end
+        sps::BottomRight => @match side begin
+            si::Bottom => determinedirsize(sp.al, Row(), sp.side)
+            si::Right => determinedirsize(sp.al, Col(), sp.side)
+            si => 0.0
+        end
+        sps => error("Invalid side $sps")
     end
-end
-function protrusion(a::ProtrusionContentLayout, ::Right)
-    if a.side isa Right || a.side isa TopRight || a.side isa BottomRight
-        isnothing(a.widthnode[]) ? 0f0 : a.widthnode[]
-    else
-        0f0
-    end
-end
-function protrusion(a::ProtrusionContentLayout, ::Top)
-    if a.side isa Top || a.side isa TopLeft || a.side isa TopRight
-        isnothing(a.heightnode[]) ? 0f0 : a.heightnode[]
-    else
-        0f0
-    end
-end
-function protrusion(a::ProtrusionContentLayout, ::Bottom)
-    if a.side isa Bottom || a.side isa BottomRight || a.side isa BottomLeft
-        isnothing(a.heightnode[]) ? 0f0 : a.heightnode[]
-    else
-        0f0
-    end
+    ifnothing(prot, 0.0)
 end
 
 function protrusion(gl::GridLayout, side::Side)
@@ -251,7 +231,7 @@ function solve(gl::GridLayout, bbox::BBox)
     for c in gl.content
         idx_rect = side_indices(c)
         mapsides(idx_rect, maxgrid) do side, idx, grid
-            grid[idx] = max(grid[idx], protrusion(c.al, side))
+            grid[idx] = max(grid[idx], protrusion(c, side))
         end
     end
 
@@ -398,17 +378,11 @@ function solve(gl::GridLayout, bbox::BBox)
         bbox_cell = mapsides(idx_rect, gridboxes) do side, idx, gridside
             gridside[idx]
         end
-        solved = if c.al isa ProtrusionContentLayout
-            prot_l = maxgrid.lefts[idx_rect.lefts]
-            prot_r = maxgrid.rights[idx_rect.rights]
-            prot_t = maxgrid.tops[idx_rect.tops]
-            prot_b = maxgrid.bottoms[idx_rect.bottoms]
-            protrusion_bbox = BBox(prot_l, prot_r, prot_b, prot_t)
-            solve(c.al, bbox_cell, protrusion_bbox)
-        else
-            solve(c.al, bbox_cell)
-        end
-        return SpannedLayout(solved, c.sp)
+
+        solving_bbox = bbox_for_solving_from_side(maxgrid, bbox_cell, idx_rect, c.side)
+
+        solved = solve(c.al, solving_bbox)
+        return SpannedLayout(solved, c.sp, c.side)
     end
     # return a solved grid layout in which all objects are also solved layout objects
     return SolvedGridLayout(
@@ -416,6 +390,32 @@ function solve(gl::GridLayout, bbox::BBox)
         gl.nrows, gl.ncols,
         gridboxes
     )
+end
+
+function bbox_for_solving_from_side(maxgrid::RowCols, bbox_cell::BBox, idx_rect::RowCols, side::Side)
+    pl = maxgrid.lefts[idx_rect.lefts]
+    pr = maxgrid.rights[idx_rect.rights]
+    pt = maxgrid.tops[idx_rect.tops]
+    pb = maxgrid.bottoms[idx_rect.bottoms]
+
+    l = left(bbox_cell)
+    r = right(bbox_cell)
+    b = bottom(bbox_cell)
+    t = top(bbox_cell)
+
+    @match side begin
+        s::Inner => bbox_cell
+        s::Outer => BBox(l - pl, r + pr, b - pb, t + pt)
+        s::Left => BBox(l - pl, l, b, t)
+        s::Top => BBox(l, r, t, t + pt)
+        s::Right => BBox(r, r + pr, b, t)
+        s::Bottom => BBox(l, r, b - pb, b)
+        s::TopLeft => BBox(l - pl, l, t, t + pt)
+        s::TopRight => BBox(r, r + pr, t, t + pt)
+        s::BottomRight => BBox(r, r + pr, b - pb, b)
+        s::BottomLeft => BBox(l - pl, l, b - pb, b)
+        s => error("Invalid side $s")
+    end
 end
 
 startside(c::Col) = Left()
@@ -442,6 +442,12 @@ end
 dirsizes(gl::GridLayout, c::Col) = gl.colsizes
 dirsizes(gl::GridLayout, r::Row) = gl.rowsizes
 
+"""
+Determine the size of a grid layout along one of its dimensions.
+`Row` measures from bottom to top and `Col` from left to right.
+The size is dependent on the alignmode of the grid, `Outside` includes
+protrusions and paddings.
+"""
 function determinedirsize(gl::GridLayout, gdir::GridDir)
     sum_dirsizes = 0
 
@@ -493,9 +499,32 @@ function determinedirsize(gl::GridLayout, gdir::GridDir)
     end
 end
 
+"""
+Determine the size of a grid layout if it's placed as a spanned layout with
+a `Side` inside another grid layout.
+"""
+function determinedirsize(gl::GridLayout, gdir::GridDir, side::Side)
+    if gdir isa Row
+        @match side begin
+            si::Union{Inner, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight} =>
+                ifnothing(determinedirsize(gl, gdir), nothing)
+            si::Union{Left, Right} => nothing
+        end
+    else
+        @match side begin
+            si::Union{Inner, Left, Right, TopLeft, TopRight, BottomLeft, BottomRight} =>
+                ifnothing(determinedirsize(gl, gdir), nothing)
+            si::Union{Top, Bottom} => nothing
+        end
+    end
+end
+
 span(sp::SpannedLayout, dir::Col) = sp.sp.cols
 span(sp::SpannedLayout, dir::Row) = sp.sp.rows
 
+"""
+Determine the size of one row or column of a grid layout.
+"""
 function determinedirsize(idir, gl, dir::GridDir)
 
     sz = dirsizes(gl, dir)[idir]
@@ -516,8 +545,12 @@ function determinedirsize(idir, gl, dir::GridDir)
             # content has to be single span to be determinable in size
             singlespanned = span(c, dir).start == span(c, dir).stop == idir
 
-            if singlespanned
-                s = determinedirsize(c.al, dir)
+            # content has to be placed with Inner side, otherwise it's protrusion
+            # content
+            is_inner = c.side isa Inner
+
+            if singlespanned && is_inner
+                s = determinedirsize(c.al, dir, c.side)
                 if !isnothing(s)
                     dirsize = isnothing(dirsize) ? s : max(dirsize, s)
                 end
@@ -664,18 +697,33 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     colwidths, rowheights
 end
 
-function determinedirsize(pl::ProtrusionLayout, gdir::GridDir)
+"""
+Determine the size of a protrusion layout along a dimension. This size is dependent
+on the `Side` at which the layout is placed in its parent grid. An `Inside` side
+means that the protrusion layout reports its width but not its protrusions. `Left`
+means that the layout reports only its full width but not its height, because
+an element placed in the left protrusion loses its ability to influence height.
+"""
+function determinedirsize(pl::ProtrusionLayout, gdir::GridDir, side::Side)
     computedsize = computedsizenode(pl)
     if gdir isa Row
-        ifnothing(computedsize[][2], nothing)
+        @match side begin
+            # TODO: is computedsize the correct thing to return? or plus protrusions depending on the side
+            si::Union{Inner, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight} =>
+                ifnothing(computedsize[][2], nothing)
+            si::Union{Left, Right} => nothing
+            si => error("$side not implemented")
+        end
     else
-        ifnothing(computedsize[][1], nothing)
+        @match side begin
+            si::Union{Inner, Left, Right, TopLeft, TopRight, BottomLeft, BottomRight} =>
+                ifnothing(computedsize[][1], nothing)
+            si::Union{Top, Bottom} => nothing
+            si => error("$side not implemented")
+        end
     end
 end
 
-function determinedirsize(pcl::ProtrusionContentLayout, gdir::GridDir)
-    nothing
-end
 
 function solve(ua::ProtrusionLayout, innerbbox)
     ib = innerbbox
@@ -687,30 +735,6 @@ function solve(ua::ProtrusionLayout, innerbbox)
     SolvedProtrusionLayout(innerbbox, ua.content)
 end
 
-function solve(pcl::ProtrusionContentLayout, innerbbox, protrusion_bbox)
-    ib = innerbbox
-    pb = protrusion_bbox
-
-    bbox = if pcl.side isa Left
-        BBox(left(ib) - left(pb), left(ib), bottom(ib), top(ib))
-    elseif pcl.side isa Top
-        BBox(left(ib), right(ib), top(ib), top(ib) + top(pb))
-    elseif pcl.side isa Right
-        BBox(right(ib), right(ib) + right(pb), bottom(ib), top(ib))
-    elseif pcl.side isa Bottom
-        BBox(left(ib), right(ib), bottom(ib) - bottom(pb), bottom(ib))
-    elseif pcl.side isa TopLeft
-        BBox(left(ib) - left(pb), left(ib), top(ib), top(ib) + top(pb))
-    elseif pcl.side isa TopRight
-        BBox(right(ib), right(ib) + right(pb), top(ib), top(ib) + top(pb))
-    elseif pcl.side isa BottomRight
-        BBox(right(ib), right(ib) + right(pb), bottom(ib) - bottom(pb), bottom(ib))
-    elseif pcl.side isa BottomLeft
-        BBox(left(ib) - left(pb), left(ib), bottom(ib) - bottom(pb), bottom(ib))
-    end
-
-    SolvedProtrusionContentLayout(bbox, pcl.content)
-end
 
 const Indexables = Union{UnitRange, Int, Colon}
 
@@ -766,9 +790,9 @@ grid[1:3, 2:5] = obj
 
 and all combinations of the above
 """
-function Base.setindex!(g::GridLayout, a::AbstractLayout, rows::Indexables, cols::Indexables)
+function Base.setindex!(g::GridLayout, a::AbstractLayout, rows::Indexables, cols::Indexables, side::Side = Inner())
     detachfromparent!(a)
-    add_layout!(g, a, rows, cols)
+    add_layout!(g, a, rows, cols, side)
     a
 end
 
@@ -777,7 +801,7 @@ This function is similar to the other setindex! but is for all objects that are
 not themselves layouts. They need to be wrapped in a layout first before being
 added. This is determined by the defaultlayout function.
 """
-function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables)
+function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables, side::Side = Inner())
 
     # check if this content already sits somewhere in the grid layout tree
     # if yes, remove it from there before attaching it here
@@ -786,8 +810,8 @@ function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexabl
         deleteat!(parentlayout.content, index)
     end
 
-    layout = defaultlayout(content)
-    add_layout!(g, layout, rows, cols)
+    layout = ProtrusionLayout(content)
+    add_layout!(g, layout, rows, cols, side)
     content
 end
 
@@ -829,44 +853,10 @@ function Base.setindex!(g::GridLayout, content_array::AbstractArray, rows::Index
     content_array
 end
 
-function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables, side::Symbol)
-
-    side_struct = if side in (:t, :top)
-        Top()
-    elseif side in (:tr, :topright)
-        TopRight()
-    elseif side in (:r, :right)
-        Right()
-    elseif side in (:br, :bottomright)
-        BottomRight()
-    elseif side in (:b, :bottom)
-        Bottom()
-    elseif side in (:bl, :bottomleft)
-        BottomLeft()
-    elseif side in (:l, :left)
-        Left()
-    elseif side in (:tl, :topleft)
-        TopLeft()
-    else
-        error("Invalid side identifier $side")
-    end
-
-    # check if this content already sits somewhere in the grid layout tree
-    # if yes, remove it from there before attaching it here
-    parentlayout, index = find_in_grid_tree(content, g)
-    if !isnothing(parentlayout) && !isnothing(index)
-        deleteat!(parentlayout.content, index)
-    end
-
-    layout = ProtrusionContentLayout(content, side_struct)
-    add_layout!(g, layout, rows, cols)
-    content
-end
-
-function add_layout!(g::GridLayout, layout::AbstractLayout, rows, cols)
+function add_layout!(g::GridLayout, layout::AbstractLayout, rows, cols, side::Side)
     rows, cols = adjust_rows_cols!(g, rows, cols)
     layout.parent = g
-    sp = SpannedLayout(layout, Span(rows, cols))
+    sp = SpannedLayout(layout, Span(rows, cols), side)
     connectchildlayout!(g, sp)
 end
 
@@ -889,8 +879,7 @@ function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
     rows, cols = to_ranges(g, rows, cols)
 
     included = filter(g.content) do c
-        is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols) &&
-            !(c isa ProtrusionContentLayout) # protrusions get different syntax
+        is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols)
     end
 
     extracted_layouts = map(included) do c
@@ -977,7 +966,7 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
     gl.content = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows .+ n, span.cols)
-        SpannedLayout(spal.al, newspan)
+        SpannedLayout(spal.al, newspan, spal.side)
     end
 
     with_updates_suspended(gl) do
@@ -995,7 +984,7 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     gl.content = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows, span.cols .+ n)
-        SpannedLayout(spal.al, newspan)
+        SpannedLayout(spal.al, newspan, spal.side)
     end
 
     with_updates_suspended(gl) do
