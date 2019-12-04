@@ -180,8 +180,7 @@ struct DataAspect end
 mutable struct ProtrusionLayout{T} <: AbstractLayout
     parent::Union{Nothing, GridLayout}
     protrusions::Node{RectSides{Float32}}
-    widthnode::Node{Union{Nothing, Float32}}
-    heightnode::Node{Union{Nothing, Float32}}
+    computedsize::Node{NTuple{2, Optional{Float32}}}
     needs_update::Node{Bool}
     content::T
 end
@@ -226,27 +225,25 @@ mutable struct LineAxis
     ticklabels::Node{Vector{String}}
 end
 
+struct LayoutNodes
+    suggestedbbox::Node{BBox}
+    protrusions::Node{RectSides{Float32}}
+    computedsize::Node{NTuple{2, Optional{Float32}}}
+    computedbbox::Node{BBox}
+end
+
 mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
     parent::Scene
     scene::Scene
     plots::Vector{AxisContent}
     xaxislinks::Vector{LayoutedAxis}
     yaxislinks::Vector{LayoutedAxis}
-    bboxnode::Node{BBox}
     limits::Node{BBox}
-    protrusions::Node{RectSides{Float32}}
+    layoutnodes::LayoutNodes
     needs_update::Node{Bool}
     attributes::Attributes
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
-end
-
-struct LayoutNodes
-    suggestedbbox::Node{BBox}
-    protrusions::Node{RectSides{Float32}}
-    computedwidth::Node{Optional{Float32}}
-    computedheight::Node{Optional{Float32}}
-    computedbbox::Node{BBox}
 end
 
 mutable struct LayoutedColorbar

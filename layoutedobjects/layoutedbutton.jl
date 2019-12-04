@@ -2,22 +2,25 @@ function LayoutedButton(scene::Scene; kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LayoutedButton))
 
-    @extract attrs (padding, textsize, label, font, alignment, cornerradius,
-        cornersegments, strokewidth, strokecolor, buttoncolor, autoshrink,
+    @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
+        cornersegments, strokewidth, strokecolor, buttoncolor,
         labelcolor, labelcolor_hover, labelcolor_active,
         buttoncolor_active, buttoncolor_hover, clicks)
 
     decorations = Dict{Symbol, Any}()
 
-    widthattr = attrs.width
-    heightattr = attrs.height
+    sizeattrs = sizenode!(attrs.width, attrs.height)
 
-    computedwidth = computedsizenode!(1, widthattr)
-    computedheight = computedsizenode!(2, heightattr)
+    alignment = lift(tuple, halign, valign)
+
+    autosizenode = Node((0f0, 0f0))
+
+    computedsize = computedsizenode!(sizeattrs, autosizenode)
 
     suggestedbbox = Node(BBox(0, 100, 0, 100))
 
-    finalbbox = alignedbboxnode!(suggestedbbox, widthattr, heightattr, alignment)
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
+        sizeattrs)
 
     textpos = Node(Point2f0(0, 0))
 
@@ -28,75 +31,23 @@ function LayoutedButton(scene::Scene; kwargs...)
 
     lcolor = Node{Any}(labelcolor[])
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
-        color = lcolor, align = (:center, :center))[end]
+        color = lcolor, align = (:center, :center), raw = true)[end]
 
     buttonwidth = Node{Optional{Float32}}(nothing)
     buttonheight = Node{Optional{Float32}}(nothing)
 
-    onany(label, textsize, font, padding, computedheight, computedwidth, autoshrink) do label,
-            textsize, font, padding, cheight, cwidth, autoshrink
-
+    onany(label, textsize, font, padding) do label, textsize, font, padding
         textbb = FRect2D(boundingbox(labeltext))
-
-        newbuttonheight = ifnothing(cheight,
-            if autoshrink[2]
-                height(textbb) + padding[3] + padding[4]
-            else
-                nothing
-            end
-        )
-
-        if newbuttonheight != buttonheight[]
-            buttonheight[] = newbuttonheight
-        end
-
-        newbuttonwidth = ifnothing(cwidth,
-            if autoshrink[1]
-                width(textbb) + padding[1] + padding[2]
-            else
-                nothing
-            end
-        )
-
-        if newbuttonwidth != buttonwidth[]
-            buttonwidth[] = newbuttonwidth
-        end
+        autowidth = width(textbb) + padding[1] + padding[2]
+        autoheight = height(textbb) + padding[3] + padding[4]
+        autosizenode[] = (autowidth, autoheight)
     end
 
     label[] = label[]
 
-    buttonrect = lift(subarea, buttonwidth, buttonheight, alignment) do bbox, w, h, al
-
-        bw = width(bbox)
-        bh = height(bbox)
-
-        w = isnothing(w) ? bw : w
-        h = isnothing(h) ? bh : h
-
-        rw = bw - w
-        rh = bh - h
-
-        xshift = if al[1] == :left
-            0
-        elseif al[1] == :center
-            0.5rw
-        elseif al[1] == :right
-            rw
-        end
-
-        yshift = if al[2] == :bottom
-            0
-        elseif al[2] == :center
-            0.5rh
-        elseif al[2] == :top
-            rh
-        end
-
-        l = xshift
-        b = yshift
-        r = l + w
-        t = b + h
-        BBox(l, r, b, t)
+    # buttonrect is without the left bottom offset of the bbox
+    buttonrect = lift(finalbbox) do bbox
+        BBox(0, width(bbox), 0, height(bbox))
     end
 
     on(buttonrect) do rect
@@ -124,7 +75,7 @@ function LayoutedButton(scene::Scene; kwargs...)
 
     bcolor = Node{Any}(buttoncolor[])
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
-        color = bcolor)[end]
+        color = bcolor, raw = true)[end]
     decorations[:button] = button
     # put button in front so the text doesn't block the mouse
     reverse!(subscene.plots)
@@ -151,7 +102,7 @@ function LayoutedButton(scene::Scene; kwargs...)
     end
 
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedwidth, computedheight, finalbbox)
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
     LayoutedButton(scene, layoutnodes, attrs, decorations)
 end
@@ -164,8 +115,7 @@ function align_to_bbox!(lb::LayoutedButton, bbox)
     lb.layoutnodes.suggestedbbox[] = bbox
 end
 
-widthnode(lb::LayoutedButton) = lb.layoutnodes.computedwidth
-heightnode(lb::LayoutedButton) = lb.layoutnodes.computedheight
+computedsizenode(lb::LayoutedButton) = lb.layoutnodes.computedsize
 protrusionnode(lb::LayoutedButton) = lb.layoutnodes.protrusions
 
 defaultlayout(lb::LayoutedButton) = ProtrusionLayout(lb)

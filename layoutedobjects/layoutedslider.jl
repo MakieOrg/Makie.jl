@@ -5,21 +5,22 @@ function LayoutedSlider(parent::Scene; kwargs...)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (
-        alignment, linewidth, buttonradius_inactive, horizontal,
+        halign, valign, linewidth, buttonradius_inactive, horizontal,
         buttonradius_active, startvalue, value, color_active, color_inactive,
         color_active, buttonstrokewidth, buttoncolor_inactive
     )
 
     sliderrange = attrs.range
-    heightattr = attrs.height
-    widthattr = attrs.width
+
+    sizeattrs = sizenode!(attrs.width, attrs.height)
+    alignment = lift(tuple, halign, valign)
 
     suggestedbbox = Node(BBox(0, 100, 0, 100))
 
-    computedwidth = computedsizenode!(1, widthattr)
-    computedheight = computedsizenode!(2, heightattr)
+    computedsize = computedsizenode!(sizeattrs)
 
-    finalbbox = alignedbboxnode!(suggestedbbox, computedwidth, computedheight, alignment)
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs)
+
     endpoints = lift(finalbbox, horizontal) do bb, horizontal
 
         if horizontal
@@ -149,7 +150,7 @@ function LayoutedSlider(parent::Scene; kwargs...)
         end
     end
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedwidth, computedheight, finalbbox)
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
     LayoutedSlider(parent, layoutnodes, attrs, decorations)
 end
@@ -187,8 +188,7 @@ function align_to_bbox!(ls::LayoutedSlider, bbox)
     ls.layoutnodes.suggestedbbox[] = bbox
 end
 
-widthnode(ls::LayoutedSlider) = ls.layoutnodes.computedwidth
-heightnode(ls::LayoutedSlider) = ls.layoutnodes.computedheight
+computedsizenode(ls::LayoutedSlider) = ls.layoutnodes.computedsize
 protrusionnode(ls::LayoutedSlider) = ls.layoutnodes.protrusions
 
 

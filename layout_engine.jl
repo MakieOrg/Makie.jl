@@ -103,11 +103,6 @@ function GridLayout(nrows::Int, ncols::Int;
         addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign)
 end
 
-# these must be defined for special types that want protrusions or specified
-# widths and heights
-protrusionnode(anything) = Node{Union{Nothing, RectSides{Float32}}}(nothing)
-widthnode(anything) = Node{Union{Nothing, Float32}}(nothing)
-heightnode(anything) = Node{Union{Nothing, Float32}}(nothing)
 
 parentlayout(pl::ProtrusionLayout) = pl.parent
 
@@ -115,12 +110,11 @@ function ProtrusionLayout(content)
     needs_update = Node(false)
 
     protrusions = protrusionnode(content)
-    width = widthnode(content)
-    height = heightnode(content)
+    csize = computedsizenode(content)
 
     # the nothing parent here has to be replaced by a grid parent later
     # when placing this layout in the grid layout
-    pl = ProtrusionLayout(nothing, protrusions, width, height, needs_update, content)
+    pl = ProtrusionLayout(nothing, protrusions, csize, needs_update, content)
 
     update_func = x -> begin
         p = parentlayout(pl)
@@ -131,16 +125,13 @@ function ProtrusionLayout(content)
     end
 
     on(update_func, protrusions)
-    on(update_func, width)
-    on(update_func, height)
+    on(update_func, csize)
 
     pl
 end
 
 protrusionnode(pl::ProtrusionLayout) = pl.protrusions
-widthnode(pl::ProtrusionLayout) = pl.widthnode
-heightnode(pl::ProtrusionLayout) = pl.heightnode
-
+computedsizenode(pl::ProtrusionLayout) = pl.computedsize
 
 parentlayout(pl::ProtrusionContentLayout) = pl.parent
 
@@ -674,18 +665,11 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
 end
 
 function determinedirsize(pl::ProtrusionLayout, gdir::GridDir)
+    computedsize = computedsizenode(pl)
     if gdir isa Row
-        if isnothing(heightnode(pl)[])
-            nothing
-        else
-            heightnode(pl)[] #+ protrusion(pl, Top()) + protrusion(pl, Bottom())
-        end
+        ifnothing(computedsize[][2], nothing)
     else
-        if isnothing(widthnode(pl)[])
-            nothing
-        else
-            widthnode(pl)[] #+ protrusion(pl, Left()) + protrusion(pl, Right())
-        end
+        ifnothing(computedsize[][1], nothing)
     end
 end
 

@@ -13,26 +13,32 @@ function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
         ytickcolor, xpanlock, ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
         xgridwidth, ygridwidth, xgridcolor, ygridcolor, topspinevisible, rightspinevisible, leftspinevisible,
         bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, alignment, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey,
+        aspect, halign, valign, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey,
         xaxisposition, yaxisposition, xoppositespinevisible, yoppositespinevisible
     )
 
     decorations = Dict{Symbol, Any}()
 
-    bboxnode = if isnothing(bbox)
+    sizeattrs = sizenode!(attrs.width, attrs.height)
+    alignment = lift(tuple, halign, valign)
+
+    suggestedbbox = if isnothing(bbox)
         Node(BBox(0, 100, 0, 100))
     else
         AbstractPlotting.to_node(BBox, bbox)
     end
 
-    scenearea = Node(IRect(0, 0, 100, 100))
+    computedsize = computedsizenode!(sizeattrs)
 
-    scene = Scene(parent, scenearea, raw = true)
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs)
+
     limits = Node(FRect(0, 0, 100, 100))
 
-    block_limit_linking = Node(false)
+    scenearea = sceneareanode!(finalbbox, limits, aspect)
 
-    connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
+    scene = Scene(parent, scenearea, raw = true)
+
+    block_limit_linking = Node(false)
 
     plots = AbstractPlot[]
 
@@ -43,7 +49,6 @@ function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
     add_zoom!(scene, limits, xzoomlock, yzoomlock, xzoomkey, yzoomkey)
 
     campixel!(scene)
-
 
     xgridnode = Node(Point2f0[])
     xgridlines = linesegments!(
@@ -235,10 +240,12 @@ function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
-    bboxnode[] = bboxnode[]
+    suggestedbbox[] = suggestedbbox[]
 
-    la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, bboxnode, limits,
-        protrusions, needs_update, attrs, block_limit_linking, decorations)
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, limits,
+        layoutnodes, needs_update, attrs, block_limit_linking, decorations)
 
     add_reset_limits!(la)
 
@@ -312,17 +319,11 @@ function AbstractPlotting.plot!(
 end
 
 function align_to_bbox!(la::LayoutedAxis, bb::BBox)
-    la.bboxnode[] = bb
+    la.layoutnodes.suggestedbbox[] = bb
 end
 
-function protrusionnode(la::LayoutedAxis)
-    # work around the new optional protrusions
-    node = Node{Union{Nothing, RectSides{Float32}}}(la.protrusions[])
-    on(la.protrusions) do p
-        node[] = p
-    end
-    node
-end
+protrusionnode(la::LayoutedAxis) = la.layoutnodes.protrusions
+computedsizenode(la::LayoutedAxis) = la.layoutnodes.computedsize
 
 function bboxunion(bb1, bb2)
 

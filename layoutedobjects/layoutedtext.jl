@@ -1,57 +1,37 @@
 function LayoutedText(parent::Scene; kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LayoutedText))
 
-    @extract attrs (text, textsize, font, color, visible, alignment,
+    @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
 
-    heightattr = attrs.height
-    widthattr = attrs.width
+    sizeattrs = sizenode!(attrs.width, attrs.height)
 
-    heightnode = Node{Union{Nothing, Float32}}(heightattr[])
-    widthnode = Node{Union{Nothing, Float32}}(widthattr[])
+    alignment = lift(tuple, halign, valign)
 
-    bboxnode = Node(BBox(0, 100, 0, 100))
+    autosizenode = Node((0f0, 0f0))
 
-    # scenearea = Node(IRect(0, 0, 100, 100))
-    # # TODO: scenearea not needed, just for arguments for now
-    # connect_scenearea_and_bbox_colorbar!(scenearea, bboxnode, widthnode, heightnode, alignment)
+    computedsize = computedsizenode!(sizeattrs, autosizenode)
 
-    position = Node(Point2f0(0, 0))
+    suggestedbbox = Node(BBox(0, 100, 0, 100))
 
-    t = text!(parent, text, position = position, textsize = textsize, font = font, color = color,
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
+        sizeattrs)
+
+    textpos = Node(Point2f0(0, 0))
+
+    t = text!(parent, text, position = textpos, textsize = textsize, font = font, color = color,
         visible = visible, align = (:center, :center), rotation = rotation)[end]
 
     textbb = BBox(0, 1, 0, 1)
 
-    onany(text, textsize, font, rotation, padding, heightattr, widthattr) do text,
-            textsize, font, rotation, padding, heightattr, widthattr
-
+    onany(text, textsize, font, rotation, padding) do text, textsize, font, rotation, padding
         textbb = FRect2D(boundingbox(t))
-
-        # widthnode[] = width(textbb) + padding[1] + padding[2]
-
-        newheight = if isnothing(heightattr)
-            # self-calculate text height
-            height(textbb) + padding[3] + padding[4]
-        else
-            # use provided height
-            heightattr
-        end
-        if newheight != heightnode[]
-            heightnode[] = newheight
-        end
-
-        newwidth = if isnothing(widthattr)
-            width(textbb) + padding[1] + padding[2]
-        else
-            widthattr
-        end
-        if newwidth != widthnode[]
-            widthnode[] = newwidth
-        end
+        autowidth = width(textbb) + padding[1] + padding[2]
+        autoheight = height(textbb) + padding[3] + padding[4]
+        autosizenode[] = (autowidth, autoheight)
     end
 
-    onany(bboxnode, alignment) do bbox, (halign, valign)
+    onany(finalbbox, alignment) do bbox, (halign, valign)
 
         tw = width(textbb)
         th = height(textbb)
@@ -84,10 +64,16 @@ function LayoutedText(parent::Scene; kwargs...)
                 error("Invalid valign $valign")
             end
 
-        position[] = Point2f0(x, y)
+        textpos[] = Point2f0(x, y)
     end
 
-    lt = LayoutedText(parent, bboxnode, widthnode, heightnode, t, attrs)
+
+    # text has no protrusions
+    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
+
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    lt = LayoutedText(parent, layoutnodes, t, attrs)
 
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
@@ -97,15 +83,22 @@ end
 
 defaultlayout(lt::LayoutedText) = ProtrusionLayout(lt)
 
-function widthnode(lt::LayoutedText)
-    lt.width
-end
-function heightnode(lt::LayoutedText)
-    lt.height
+function align_to_bbox!(lt::LayoutedText, bbox)
+    lt.layoutnodes.suggestedbbox[] = bbox
 end
 
-function align_to_bbox!(lt::LayoutedText, bbox)
-    lt.bboxnode[] = bbox
+computedsizenode(lt::LayoutedText) = lt.layoutnodes.computedsize
+protrusionnode(lt::LayoutedText) = lt.layoutnodes.protrusions
+
+function Base.getproperty(lt::LayoutedText, s::Symbol)
+    if s in fieldnames(LayoutedText)
+        getfield(lt, s)
+    else
+        lt.attributes[s]
+    end
+end
+function Base.propertynames(lt::LayoutedText)
+    [fieldnames(LayoutedText)..., keys(lt.attributes)...]
 end
 
 function Base.getproperty(lt::LayoutedText, s::Symbol)
@@ -115,6 +108,15 @@ function Base.getproperty(lt::LayoutedText, s::Symbol)
         lt.attributes[s]
     end
 end
+
+function Base.setproperty!(lt::LayoutedText, s::Symbol, value)
+    if s in fieldnames(LayoutedText)
+        setfield!(lt, s, value)
+    else
+        lt.attributes[s][] = value
+    end
+end
+
 function Base.propertynames(lt::LayoutedText)
     [fieldnames(LayoutedText)..., keys(lt.attributes)...]
 end

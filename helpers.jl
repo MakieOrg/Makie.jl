@@ -1,35 +1,49 @@
+"""
+Shorthand for `isnothing(optional) ? fallback : optional`
+"""
 @inline ifnothing(optional, fallback) = isnothing(optional) ? fallback : optional
 
 function alignedbboxnode!(
-    suggestedbbox,
-    widthattr,
-    heightattr,
-    align)
+    suggestedbbox::Node{BBox},
+    computedsize::Node{NTuple{2, Optional{Float32}}},
+    alignment::Node,
+    sizeattrs::Node)
 
     finalbbox = Node(BBox(0, 100, 0, 100))
 
-    onany(suggestedbbox, widthattr, heightattr, align) do sbbox, wattr, hattr, al
+    onany(suggestedbbox, alignment, computedsize) do sbbox, al, csize
 
         bw = width(sbbox)
         bh = height(sbbox)
 
-        w = @match wattr begin
-            wa::Nothing => bw
-            wa::Real => wa
-            wa::Fixed => wa.x
-            wa::Relative => bw * wa.x
-            wa => error("""
-                Invalid width attribute $wattr.
-                Can only be Nothing, Fixed, Relative or Real""")
+        # we only passively retrieve sizeattrs here because if they change
+        # they also trigger computedsize, which triggers this node, too
+        # we only need to know here if there are relative sizes given, because
+        # those can only be computed knowing the suggestedbbox
+        widthattr, heightattr = sizeattrs[]
+
+        cwidth, cheight = csize
+
+        w = if isnothing(cwidth)
+            @match widthattr begin
+                wa::Relative => wa.x * bw
+                wa::Nothing => bw
+                wa => error("At this point, if computed width is not known,
+                widthattr should be a Relative or Nothing, not $wa.")
+            end
+        else
+            cwidth
         end
-        h = @match hattr begin
-            ha::Nothing => bh
-            ha::Real => ha
-            ha::Fixed => ha.x
-            ha::Relative => bh * ha.x
-            ha => error("""
-                Invalid height attribute $hattr.
-                Can only be Nothing, Fixed, Relative or Real""")
+
+        h = if isnothing(cheight)
+            @match heightattr begin
+                ha::Relative => ha.x * bh
+                ha::Nothing => bh
+                ha => error("At this point, if computed height is not known,
+                heightattr should be a Relative or Nothing, not $ha.")
+            end
+        else
+            cheight
         end
 
         # how much space is left in the bounding box
@@ -40,14 +54,14 @@ function alignedbboxnode!(
             :left => 0.0f0
             :center => 0.5f0 * rw
             :right => rw
-            x => error("Invalid halign $x (only :left, :center, or :right allowed).")
+            x => error("Invalid horizontal alignment $x (only :left, :center, or :right allowed).")
         end
 
         yshift = @match al[2] begin
             :bottom => 0.0f0
             :center => 0.5f0 * rh
             :top => rh
-            x => error("Invalid valign $x (only :bottom, :center, or :top allowed).")
+            x => error("Invalid vertical alignment $x (only :bottom, :center, or :top allowed).")
         end
 
         # align the final bounding box in the layout bounding box
@@ -65,32 +79,129 @@ function alignedbboxnode!(
     finalbbox
 end
 
+function computedsizenode!(sizeattrs, autosizenode::Node{NTuple{2, Float32}})
 
-function computedsizenode!(dim::Int, sizeattr)
+    # set up csizenode with correct type manually
+    csizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
-    if dim < 1 || dim > 2
-        error("Invalid dimension $dim, only 1 or 2 allowed.")
-    end
+    onany(sizeattrs, autosizenode) do sizeattrs, autosize
 
-    node = Node{Optional{Float32}}(nothing)
+        wattr, hattr = sizeattrs
+        wauto, hauto = autosize
 
-    on(sizeattr) do sizeattr
-        ms = @match sizeattr begin
-            sa::Nothing => nothing
-            sa::Real => sa
-            sa::Fixed => sa.x
-            # sa::Relative => sa.x * bsize
-            sa::Relative => nothing
-            sa => error("""
-                Invalid $(dim == 1 ? "width" : "height") attribute $sizeattr.
-                Can only be Nothing, Fixed, Relative or Real""")
-        end
+        wsize = computed_size(wattr, wauto)
+        hsize = computed_size(hattr, hauto)
 
-        node[] = ms
+        csizenode[] = (wsize, hsize)
     end
 
     # trigger first value
-    sizeattr[] = sizeattr[]
+    sizeattrs[] = sizeattrs[]
 
-    node
+    csizenode
+end
+
+function computedsizenode!(sizeattrs)
+
+    # set up csizenode with correct type manually
+    csizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
+
+    onany(sizeattrs) do sizeattrs
+
+        wattr, hattr = sizeattrs
+
+        wsize = computed_size(wattr)
+        hsize = computed_size(hattr)
+
+        csizenode[] = (wsize, hsize)
+    end
+
+    # trigger first value
+    sizeattrs[] = sizeattrs[]
+
+    csizenode
+end
+
+function computed_size(sizeattr, autosize)
+    ms = @match sizeattr begin
+        sa::Nothing => nothing
+        sa::Real => sa
+        sa::Fixed => sa.x
+        sa::Relative => nothing
+        sa::Auto => autosize
+        sa => error("""
+            Invalid size attribute $sizeattr.
+            Can only be Nothing, Fixed, Relative, Auto or Real""")
+    end
+end
+
+function computed_size(sizeattr)
+    ms = @match sizeattr begin
+        sa::Nothing => nothing
+        sa::Real => sa
+        sa::Fixed => sa.x
+        sa::Relative => nothing
+        sa => error("""
+            Invalid size attribute $sizeattr.
+            Can only be Nothing, Fixed, Relative or Real""")
+    end
+end
+
+function sizenode!(widthattr::Node, heightattr::Node)
+    sizeattrs = Node{Tuple{Any, Any}}((widthattr[], heightattr[]))
+    onany(widthattr, heightattr) do w, h
+        sizeattrs[] = (w, h)
+    end
+    sizeattrs
+end
+
+function sceneareanode!(finalbbox, limits, aspect)
+
+    scenearea = Node(IRect(0, 0, 100, 100))
+
+    onany(finalbbox, limits, aspect) do bbox, limits, aspect
+
+        w = width(bbox)
+        h = height(bbox)
+        # mw = min(w, maxsize[1])
+        # mh = min(h, maxsize[2])
+        # as = mw / mh
+        as = w / h
+        mw, mh = w, h
+
+
+        if aspect isa AxisAspect
+            aspect = aspect.aspect
+        elseif aspect isa DataAspect
+            aspect = limits.widths[1] / limits.widths[2]
+        end
+
+        if !isnothing(aspect)
+            if as >= aspect
+                # too wide
+                mw *= aspect / as
+            else
+                # too high
+                mh *= as / aspect
+            end
+        end
+
+        restw = w - mw
+        resth = h - mh
+
+        # l = left(bbox) + alignment[1] * restw
+        # b = bottom(bbox) + alignment[2] * resth
+        l = left(bbox) + 0.5f0 * restw
+        b = bottom(bbox) + 0.5f0 * resth
+
+        newbbox = BBox(l, l + mw, b, b + mh)
+
+        # only update scene if pixel positions change
+        new_scenearea = IRect2D(newbbox)
+        if new_scenearea != scenearea[]
+            scenearea[] = new_scenearea
+        end
+    end
+
+    scenearea
 end

@@ -54,48 +54,6 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     vec
 end
 
-function connect_scenearea_and_bbox!(scenearea, bboxnode, limits, aspect, alignment, maxsize)
-    onany(bboxnode, limits, aspect, alignment, maxsize) do bbox, limits, aspect, alignment, maxsize
-
-        w = width(bbox)
-        h = height(bbox)
-        mw = min(w, maxsize[1])
-        mh = min(h, maxsize[2])
-        as = mw / mh
-
-
-        if aspect isa AxisAspect
-            aspect = aspect.aspect
-        elseif aspect isa DataAspect
-            aspect = limits.widths[1] / limits.widths[2]
-        end
-
-        if !isnothing(aspect)
-            if as >= aspect
-                # too wide
-                mw *= aspect / as
-            else
-                # too high
-                mh *= as / aspect
-            end
-        end
-
-        restw = w - mw
-        resth = h - mh
-
-        l = left(bbox) + alignment[1] * restw
-        b = bottom(bbox) + alignment[2] * resth
-
-        newbbox = BBox(l, l + mw, b, b + mh)
-
-        # only update scene if pixel positions change
-        new_scenearea = IRect2D(newbbox)
-        if new_scenearea != scenearea[]
-            scenearea[] = new_scenearea
-        end
-    end
-end
-
 
 function applylayout(sg::SolvedGridLayout)
     for c in sg.content

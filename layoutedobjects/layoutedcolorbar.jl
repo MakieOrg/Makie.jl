@@ -18,19 +18,18 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
-        alignment, vertical, flipaxisposition, ticklabelalign)
-
-    widthattr = attrs.width
-    heightattr = attrs.height
+        halign, valign, vertical, flipaxisposition, ticklabelalign)
 
     decorations = Dict{Symbol, Any}()
 
+    sizeattrs = sizenode!(attrs.width, attrs.height)
+    alignment = lift(tuple, halign, valign)
+
     suggestedbbox = Node(BBox(0, 100, 0, 100))
 
-    computedwidth = computedsizenode!(1, widthattr)
-    computedheight = computedsizenode!(2, heightattr)
+    computedsize = computedsizenode!(sizeattrs)
 
-    finalbbox = alignedbboxnode!(suggestedbbox, widthattr, heightattr, alignment)
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs)
 
     scenearea = lift(IRect2D, finalbbox)
 
@@ -135,16 +134,15 @@ function LayoutedColorbar(parent::Scene; kwargs...)
         RectSides{Float32}(left, right, bottom, top)
     end
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedwidth, computedheight, finalbbox)
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
     LayoutedColorbar(parent, scene, layoutnodes, attrs, decorations)
 end
 
 defaultlayout(lc::LayoutedColorbar) = ProtrusionLayout(lc)
 
+computedsizenode(lc::LayoutedColorbar) = lc.layoutnodes.computedsize
 protrusionnode(lc::LayoutedColorbar) = lc.layoutnodes.protrusions
-widthnode(lc::LayoutedColorbar) = lc.layoutnodes.computedwidth
-heightnode(lc::LayoutedColorbar) = lc.layoutnodes.computedheight
 
 function align_to_bbox!(lc::LayoutedColorbar, bbox)
     lc.layoutnodes.suggestedbbox[] = bbox
