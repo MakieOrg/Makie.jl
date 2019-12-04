@@ -54,5 +54,6 @@ export AutoLinearTicks, ManualTicks
 export hidexdecorations!, hideydecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!
 export colsize!, rowsize!
+export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
 
 end # module
