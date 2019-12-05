@@ -1,4 +1,4 @@
-function LSlider(parent::Scene; kwargs...)
+function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LSlider))
 
@@ -15,7 +15,7 @@ function LSlider(parent::Scene; kwargs...)
     sizeattrs = sizenode!(attrs.width, attrs.height)
     alignment = lift(tuple, halign, valign)
 
-    suggestedbbox = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = create_suggested_bboxnode(bbox)
 
     computedsize = computedsizenode!(sizeattrs)
 
@@ -151,6 +151,9 @@ function LSlider(parent::Scene; kwargs...)
     end
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    # trigger bbox
+    suggestedbbox[] = suggestedbbox[]
 
     LSlider(parent, layoutnodes, attrs, decorations)
 end

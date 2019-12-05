@@ -205,3 +205,20 @@ function sceneareanode!(finalbbox, limits, aspect)
 
     scenearea
 end
+
+
+function create_suggested_bboxnode(n::Nothing)
+    Node(BBox(0, 100, 0, 100))
+end
+
+function create_suggested_bboxnode(tup::Tuple)
+    Node(BBox(tup...))
+end
+
+function create_suggested_bboxnode(bbox::AbstractPlotting.Rect2D)
+    Node(BBox(bbox))
+end
+
+function create_suggested_bboxnode(node::Node{BBox})
+    node
+end

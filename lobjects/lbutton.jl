@@ -1,4 +1,4 @@
-function LButton(scene::Scene; kwargs...)
+function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LButton))
 
@@ -17,7 +17,7 @@ function LButton(scene::Scene; kwargs...)
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 
-    suggestedbbox = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = create_suggested_bboxnode(bbox)
 
     finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
         sizeattrs)
@@ -42,8 +42,6 @@ function LButton(scene::Scene; kwargs...)
         autoheight = height(textbb) + padding[3] + padding[4]
         autosizenode[] = (autowidth, autoheight)
     end
-
-    label[] = label[]
 
     # buttonrect is without the left bottom offset of the bbox
     buttonrect = lift(finalbbox) do bbox
@@ -103,6 +101,10 @@ function LButton(scene::Scene; kwargs...)
 
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    label[] = label[]
+    # trigger bbox
+    suggestedbbox[] = suggestedbbox[]
 
     LButton(scene, layoutnodes, attrs, decorations)
 end

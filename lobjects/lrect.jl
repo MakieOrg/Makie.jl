@@ -1,4 +1,4 @@
-function LRect(parent::Scene; kwargs...)
+function LRect(parent::Scene; bbox = nothing, kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LRect))
 
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
@@ -7,7 +7,7 @@ function LRect(parent::Scene; kwargs...)
     sizeattrs = sizenode!(attrs.width, attrs.height)
     alignment = lift(tuple, halign, valign)
 
-    suggestedbbox = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = create_suggested_bboxnode(bbox)
 
     computedsize = computedsizenode!(sizeattrs)
 
@@ -24,6 +24,9 @@ function LRect(parent::Scene; kwargs...)
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    # trigger bbox
+    suggestedbbox[] = suggestedbbox[]
 
     LRect(parent, layoutnodes, r, attrs)
 end

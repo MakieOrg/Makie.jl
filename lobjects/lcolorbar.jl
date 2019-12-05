@@ -8,7 +8,7 @@ function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 
 end
 
-function LColorbar(parent::Scene; kwargs...)
+function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LColorbar))
 
     @extract attrs (
@@ -25,7 +25,7 @@ function LColorbar(parent::Scene; kwargs...)
     sizeattrs = sizenode!(attrs.width, attrs.height)
     alignment = lift(tuple, halign, valign)
 
-    suggestedbbox = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = create_suggested_bboxnode(bbox)
 
     computedsize = computedsizenode!(sizeattrs)
 
@@ -135,6 +135,9 @@ function LColorbar(parent::Scene; kwargs...)
     end
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    # trigger bbox
+    suggestedbbox[] = suggestedbbox[]
 
     LColorbar(parent, scene, layoutnodes, attrs, decorations)
 end

@@ -1,4 +1,4 @@
-function LAxis(parent::Scene; bbox=nothing, kwargs...)
+function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LAxis))
 
@@ -22,11 +22,7 @@ function LAxis(parent::Scene; bbox=nothing, kwargs...)
     sizeattrs = sizenode!(attrs.width, attrs.height)
     alignment = lift(tuple, halign, valign)
 
-    suggestedbbox = if isnothing(bbox)
-        Node(BBox(0, 100, 0, 100))
-    else
-        AbstractPlotting.to_node(BBox, bbox)
-    end
+    suggestedbbox = create_suggested_bboxnode(bbox)
 
     computedsize = computedsizenode!(sizeattrs)
 

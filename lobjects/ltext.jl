@@ -1,4 +1,8 @@
-function LText(parent::Scene; kwargs...)
+function LText(parent::Scene, text::String; kwargs...)
+    LText(parent; text = text, kwargs...)
+end
+
+function LText(parent::Scene; bbox = nothing, kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LText))
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
@@ -12,7 +16,7 @@ function LText(parent::Scene; kwargs...)
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 
-    suggestedbbox = Node(BBox(0, 100, 0, 100))
+    suggestedbbox = create_suggested_bboxnode(bbox)
 
     finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
         sizeattrs)
@@ -73,10 +77,12 @@ function LText(parent::Scene; kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    lt = LText(parent, layoutnodes, t, attrs)
-
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
+    # trigger bbox
+    suggestedbbox[] = suggestedbbox[]
+
+    lt = LText(parent, layoutnodes, t, attrs)
 
     lt
 end
