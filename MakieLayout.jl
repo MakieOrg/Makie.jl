@@ -19,12 +19,12 @@ include("makie_integration.jl")
 include("ticklocators/linear.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
-include("layoutedobjects/layoutedaxis.jl")
-include("layoutedobjects/layoutedcolorbar.jl")
-include("layoutedobjects/layoutedtext.jl")
-include("layoutedobjects/layoutedslider.jl")
-include("layoutedobjects/layoutedbutton.jl")
-include("layoutedobjects/layoutedrect.jl")
+include("lobjects/laxis.jl")
+include("lobjects/lcolorbar.jl")
+include("lobjects/ltext.jl")
+include("lobjects/lslider.jl")
+include("lobjects/lbutton.jl")
+include("lobjects/lrect.jl")
 
 export LAxis
 export LSlider
