@@ -88,7 +88,7 @@ struct Aspect <: ContentSize
 end
 
 mutable struct GridLayout <: AbstractLayout
-    parent::Union{Nothing, Scene, GridLayout}
+    parent::Union{Nothing, Scene, GridLayout, Node{<:Rect2D}}
     content::Vector{SpannedLayout}
     nrows::Int
     ncols::Int
@@ -102,6 +102,7 @@ mutable struct GridLayout <: AbstractLayout
     block_updates::Bool
     valign::Node{Symbol}
     halign::Node{Symbol}
+    _update_func_handle::Optional{Function} # stores a reference to the result of on(obs)
 
     function GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes,
@@ -128,40 +129,20 @@ mutable struct GridLayout <: AbstractLayout
             error("There are $ncols columns but $(length(addedcolgaps)) column gaps.")
         end
 
-        gl = new(parent, content, nrows, ncols, rowsizes, colsizes,
+        gl = new(nothing, content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
-            needs_update, false, valign, halign)
+            needs_update, false, valign, halign, nothing)
 
-        # set up updating mechanism
-        # so far this only works if the scene is assigned as a parent at creation
-        if parent isa Scene
-            on(pixelarea(parent)) do px
-                if !gl.block_updates
-                    gl.needs_update[] = true
-                end
-            end
-        end
+        attach_parent!(gl, parent)
 
-        # the other updates work also after reassigning the parent
         on(needs_update) do update
-
-            parent = parentlayout(gl)
-
-            if !gl.block_updates
-                if isnothing(parent)
-                    error("This grid layout has no parent defined and therefore can't update it.")
-                elseif parent isa Scene
-                    sg = solve(gl, BBox(pixelarea(parent)[]))
-                    applylayout(sg)
-                elseif parent isa GridLayout
-                    parent.needs_update[] = true
-                end
-            end
+            request_update(gl)
         end
 
         gl
     end
 end
+
 
 struct SolvedGridLayout <: AbstractLayout
     bbox::BBox

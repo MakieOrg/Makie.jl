@@ -7,10 +7,12 @@ using AbstractPlotting.Keyboard
 using AbstractPlotting.Mouse
 using AbstractPlotting: ispressed, is_mouseinside
 using Observables: onany
+import Observables
 import Formatting
 using Match
 
 include("types.jl")
+include("gridlayout.jl")
 include("helpers.jl")
 include("mousestatemachine.jl")
 include("geometry_integration.jl")
