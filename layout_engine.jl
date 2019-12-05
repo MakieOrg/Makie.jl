@@ -994,7 +994,7 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     end
 end
 
-function nest_content_into_gridlayout!(gl::GridLayout, rows::Indexables, cols::Indexables)
+function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
 
     newrows, newcols = adjust_rows_cols!(gl, rows, cols)
 
