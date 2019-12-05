@@ -1,5 +1,5 @@
-function LayoutedRect(parent::Scene; kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedRect))
+function LRect(parent::Scene; kwargs...)
+    attrs = merge!(Attributes(kwargs), default_attributes(LRect))
 
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)
@@ -25,14 +25,14 @@ function LayoutedRect(parent::Scene; kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    LayoutedRect(parent, layoutnodes, r, attrs)
+    LRect(parent, layoutnodes, r, attrs)
 end
 
-defaultlayout(lr::LayoutedRect) = ProtrusionLayout(lr)
+defaultlayout(lr::LRect) = ProtrusionLayout(lr)
 
-computedsizenode(lr::LayoutedRect) = lr.layoutnodes.computedsize
-protrusionnode(lr::LayoutedRect) = lr.layoutnodes.protrusions
+computedsizenode(lr::LRect) = lr.layoutnodes.computedsize
+protrusionnode(lr::LRect) = lr.layoutnodes.protrusions
 
-function align_to_bbox!(lt::LayoutedRect, bbox)
+function align_to_bbox!(lt::LRect, bbox)
     lt.layoutnodes.suggestedbbox[] = bbox
 end

@@ -1,6 +1,6 @@
-function LayoutedColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
+function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 
-    LayoutedColorbar(parent;
+    LColorbar(parent;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
@@ -8,8 +8,8 @@ function LayoutedColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 
 end
 
-function LayoutedColorbar(parent::Scene; kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedColorbar))
+function LColorbar(parent::Scene; kwargs...)
+    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar))
 
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
@@ -136,18 +136,18 @@ function LayoutedColorbar(parent::Scene; kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    LayoutedColorbar(parent, scene, layoutnodes, attrs, decorations)
+    LColorbar(parent, scene, layoutnodes, attrs, decorations)
 end
 
-defaultlayout(lc::LayoutedColorbar) = ProtrusionLayout(lc)
+defaultlayout(lc::LColorbar) = ProtrusionLayout(lc)
 
-computedsizenode(lc::LayoutedColorbar) = lc.layoutnodes.computedsize
-protrusionnode(lc::LayoutedColorbar) = lc.layoutnodes.protrusions
+computedsizenode(lc::LColorbar) = lc.layoutnodes.computedsize
+protrusionnode(lc::LColorbar) = lc.layoutnodes.protrusions
 
-function align_to_bbox!(lc::LayoutedColorbar, bbox)
+function align_to_bbox!(lc::LColorbar, bbox)
     lc.layoutnodes.suggestedbbox[] = bbox
 end
 
-function tight_ticklabel_spacing!(lc::LayoutedColorbar)
+function tight_ticklabel_spacing!(lc::LColorbar)
     tight_ticklabel_spacing!(lc.decorations[:axis])
 end

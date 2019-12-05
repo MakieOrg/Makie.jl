@@ -1,6 +1,6 @@
-function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
+function LAxis(parent::Scene; bbox=nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedAxis))
+    attrs = merge!(Attributes(kwargs), default_attributes(LAxis))
 
     @extract attrs (
         xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
@@ -42,8 +42,8 @@ function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
 
     plots = AbstractPlot[]
 
-    xaxislinks = LayoutedAxis[]
-    yaxislinks = LayoutedAxis[]
+    xaxislinks = LAxis[]
+    yaxislinks = LAxis[]
 
     add_pan!(scene, limits, xpanlock, ypanlock, panbutton, xpankey, ypankey)
     add_zoom!(scene, limits, xzoomlock, yzoomlock, xzoomkey, yzoomkey)
@@ -244,7 +244,7 @@ function LayoutedAxis(parent::Scene; bbox=nothing, kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    la = LayoutedAxis(parent, scene, plots, xaxislinks, yaxislinks, limits,
+    la = LAxis(parent, scene, plots, xaxislinks, yaxislinks, limits,
         layoutnodes, needs_update, attrs, block_limit_linking, decorations)
 
     add_reset_limits!(la)
@@ -304,7 +304,7 @@ function get_tick_labels(ticks::ManualTicks, tickvalues)
 end
 
 function AbstractPlotting.plot!(
-        la::LayoutedAxis, P::AbstractPlotting.PlotFunc,
+        la::LAxis, P::AbstractPlotting.PlotFunc,
         attributes::AbstractPlotting.Attributes, args...;
         kw_attributes...)
 
@@ -318,12 +318,12 @@ function AbstractPlotting.plot!(
 
 end
 
-function align_to_bbox!(la::LayoutedAxis, bb::BBox)
+function align_to_bbox!(la::LAxis, bb::BBox)
     la.layoutnodes.suggestedbbox[] = bb
 end
 
-protrusionnode(la::LayoutedAxis) = la.layoutnodes.protrusions
-computedsizenode(la::LayoutedAxis) = la.layoutnodes.computedsize
+protrusionnode(la::LAxis) = la.layoutnodes.protrusions
+computedsizenode(la::LAxis) = la.layoutnodes.computedsize
 
 function bboxunion(bb1, bb2)
 
@@ -363,7 +363,7 @@ function expandlimits(lims, marginleft, marginright)
     lims
 end
 
-function getlimits(la::LayoutedAxis, dim)
+function getlimits(la::LAxis, dim)
 
     limitables = if dim == 1
         filter(p -> p.attributes.xautolimit[], la.plots)
@@ -384,8 +384,8 @@ function getlimits(la::LayoutedAxis, dim)
     end
 end
 
-getxlimits(la::LayoutedAxis) = getlimits(la, 1)
-getylimits(la::LayoutedAxis) = getlimits(la, 2)
+getxlimits(la::LAxis) = getlimits(la, 1)
+getylimits(la::LAxis) = getlimits(la, 2)
 
 function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims)
 
@@ -434,7 +434,7 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
 end
 
 
-function autolimits!(la::LayoutedAxis)
+function autolimits!(la::LAxis)
 
     xlims = getxlimits(la)
     for link in la.xaxislinks
@@ -478,8 +478,8 @@ function autolimits!(la::LayoutedAxis)
     la.limits[] = bbox
 end
 
-function linkxaxes!(a::LayoutedAxis, others...)
-    axes = LayoutedAxis[a; others...]
+function linkxaxes!(a::LAxis, others...)
+    axes = LAxis[a; others...]
 
     for i in 1:length(axes)-1
         for j in i+1:length(axes)
@@ -496,8 +496,8 @@ function linkxaxes!(a::LayoutedAxis, others...)
     end
 end
 
-function linkyaxes!(a::LayoutedAxis, others...)
-    axes = LayoutedAxis[a; others...]
+function linkyaxes!(a::LAxis, others...)
+    axes = LAxis[a; others...]
 
     for i in 1:length(axes)-1
         for j in i+1:length(axes)
@@ -597,7 +597,7 @@ function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock, xzoomkey, yzo
     end
 end
 
-function add_reset_limits!(la::LayoutedAxis)
+function add_reset_limits!(la::LAxis)
     scene = la.scene
     e = events(scene)
     cam = camera(scene)
@@ -611,50 +611,50 @@ function add_reset_limits!(la::LayoutedAxis)
     end
 end
 
-function Base.getproperty(la::LayoutedAxis, s::Symbol)
-    if s in fieldnames(LayoutedAxis)
+function Base.getproperty(la::LAxis, s::Symbol)
+    if s in fieldnames(LAxis)
         getfield(la, s)
     else
         la.attributes[s]
     end
 end
 
-function Base.setproperty!(la::LayoutedAxis, s::Symbol, value)
-    if s in fieldnames(LayoutedAxis)
+function Base.setproperty!(la::LAxis, s::Symbol, value)
+    if s in fieldnames(LAxis)
         setfield!(la, s, value)
     else
         la.attributes[s][] = value
     end
 end
 
-function Base.propertynames(la::LayoutedAxis)
-    [fieldnames(LayoutedAxis)..., keys(la.attributes)...]
+function Base.propertynames(la::LAxis)
+    [fieldnames(LAxis)..., keys(la.attributes)...]
 end
 
-defaultlayout(la::LayoutedAxis) = ProtrusionLayout(la)
+defaultlayout(la::LAxis) = ProtrusionLayout(la)
 
-function hidexdecorations!(la::LayoutedAxis)
+function hidexdecorations!(la::LAxis)
     la.xlabelvisible = false
     la.xticklabelsvisible = false
     la.xticksvisible = false
 end
 
-function hideydecorations!(la::LayoutedAxis)
+function hideydecorations!(la::LAxis)
     la.ylabelvisible = false
     la.yticklabelsvisible = false
     la.yticksvisible = false
 end
 
 
-function tight_yticklabel_spacing!(la::LayoutedAxis)
+function tight_yticklabel_spacing!(la::LAxis)
     tight_ticklabel_spacing!(la.decorations[:yaxis])
 end
 
-function tight_xticklabel_spacing!(la::LayoutedAxis)
+function tight_xticklabel_spacing!(la::LAxis)
     tight_ticklabel_spacing!(la.decorations[:xaxis])
 end
 
-function tight_ticklabel_spacing!(la::LayoutedAxis)
+function tight_ticklabel_spacing!(la::LAxis)
     tight_xticklabel_spacing!(la)
     tight_yticklabel_spacing!(la)
 end

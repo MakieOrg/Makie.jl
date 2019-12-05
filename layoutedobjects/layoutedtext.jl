@@ -1,5 +1,5 @@
-function LayoutedText(parent::Scene; kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedText))
+function LText(parent::Scene; kwargs...)
+    attrs = merge!(Attributes(kwargs), default_attributes(LText))
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
@@ -73,7 +73,7 @@ function LayoutedText(parent::Scene; kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    lt = LayoutedText(parent, layoutnodes, t, attrs)
+    lt = LText(parent, layoutnodes, t, attrs)
 
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
@@ -81,32 +81,32 @@ function LayoutedText(parent::Scene; kwargs...)
     lt
 end
 
-defaultlayout(lt::LayoutedText) = ProtrusionLayout(lt)
+defaultlayout(lt::LText) = ProtrusionLayout(lt)
 
-function align_to_bbox!(lt::LayoutedText, bbox)
+function align_to_bbox!(lt::LText, bbox)
     lt.layoutnodes.suggestedbbox[] = bbox
 end
 
-computedsizenode(lt::LayoutedText) = lt.layoutnodes.computedsize
-protrusionnode(lt::LayoutedText) = lt.layoutnodes.protrusions
+computedsizenode(lt::LText) = lt.layoutnodes.computedsize
+protrusionnode(lt::LText) = lt.layoutnodes.protrusions
 
 
-function Base.getproperty(lt::LayoutedText, s::Symbol)
-    if s in fieldnames(LayoutedText)
+function Base.getproperty(lt::LText, s::Symbol)
+    if s in fieldnames(LText)
         getfield(lt, s)
     else
         lt.attributes[s]
     end
 end
 
-function Base.setproperty!(lt::LayoutedText, s::Symbol, value)
-    if s in fieldnames(LayoutedText)
+function Base.setproperty!(lt::LText, s::Symbol, value)
+    if s in fieldnames(LText)
         setfield!(lt, s, value)
     else
         lt.attributes[s][] = value
     end
 end
 
-function Base.propertynames(lt::LayoutedText)
-    [fieldnames(LayoutedText)..., keys(lt.attributes)...]
+function Base.propertynames(lt::LText)
+    [fieldnames(LText)..., keys(lt.attributes)...]
 end

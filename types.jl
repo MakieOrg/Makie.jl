@@ -223,12 +223,12 @@ struct LayoutNodes
     computedbbox::Node{BBox}
 end
 
-mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
+mutable struct LAxis <: AbstractPlotting.AbstractScene
     parent::Scene
     scene::Scene
     plots::Vector{AxisContent}
-    xaxislinks::Vector{LayoutedAxis}
-    yaxislinks::Vector{LayoutedAxis}
+    xaxislinks::Vector{LAxis}
+    yaxislinks::Vector{LAxis}
     limits::Node{BBox}
     layoutnodes::LayoutNodes
     needs_update::Node{Bool}
@@ -237,7 +237,7 @@ mutable struct LayoutedAxis <: AbstractPlotting.AbstractScene
     decorations::Dict{Symbol, Any}
 end
 
-mutable struct LayoutedColorbar
+mutable struct LColorbar
     parent::Scene
     scene::Scene
     layoutnodes::LayoutNodes
@@ -245,28 +245,28 @@ mutable struct LayoutedColorbar
     decorations::Dict{Symbol, Any}
 end
 
-mutable struct LayoutedText
+mutable struct LText
     parent::Scene
     layoutnodes::LayoutNodes
     text::AbstractPlotting.Text
     attributes::Attributes
 end
 
-mutable struct LayoutedRect
+mutable struct LRect
     parent::Scene
     layoutnodes::LayoutNodes
     rect::AbstractPlotting.Poly
     attributes::Attributes
 end
 
-struct LayoutedSlider
+struct LSlider
     scene::Scene
     layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
-struct LayoutedButton
+struct LButton
     scene::Scene
     layoutnodes::LayoutNodes
     attributes::Attributes

@@ -26,12 +26,12 @@ include("layoutedobjects/layoutedslider.jl")
 include("layoutedobjects/layoutedbutton.jl")
 include("layoutedobjects/layoutedrect.jl")
 
-export LayoutedAxis
-export LayoutedSlider
-export LayoutedButton
-export LayoutedColorbar
-export LayoutedText
-export LayoutedRect
+export LAxis
+export LSlider
+export LButton
+export LColorbar
+export LText
+export LRect
 export linkxaxes!
 export linkyaxes!
 export GridLayout

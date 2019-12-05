@@ -1,6 +1,6 @@
-function LayoutedButton(scene::Scene; kwargs...)
+function LButton(scene::Scene; kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedButton))
+    attrs = merge!(Attributes(kwargs), default_attributes(LButton))
 
     @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
         cornersegments, strokewidth, strokecolor, buttoncolor,
@@ -104,29 +104,29 @@ function LayoutedButton(scene::Scene; kwargs...)
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    LayoutedButton(scene, layoutnodes, attrs, decorations)
+    LButton(scene, layoutnodes, attrs, decorations)
 end
 
 function anglepoint(center::Point2, angle::Real, radius::Real)
     Ref(center) .+ Ref(Point2(cos(angle), sin(angle))) .* radius
 end
 
-function align_to_bbox!(lb::LayoutedButton, bbox)
+function align_to_bbox!(lb::LButton, bbox)
     lb.layoutnodes.suggestedbbox[] = bbox
 end
 
-computedsizenode(lb::LayoutedButton) = lb.layoutnodes.computedsize
-protrusionnode(lb::LayoutedButton) = lb.layoutnodes.protrusions
+computedsizenode(lb::LButton) = lb.layoutnodes.computedsize
+protrusionnode(lb::LButton) = lb.layoutnodes.protrusions
 
-defaultlayout(lb::LayoutedButton) = ProtrusionLayout(lb)
+defaultlayout(lb::LButton) = ProtrusionLayout(lb)
 
-function Base.getproperty(lb::LayoutedButton, s::Symbol)
-    if s in fieldnames(LayoutedButton)
+function Base.getproperty(lb::LButton, s::Symbol)
+    if s in fieldnames(LButton)
         getfield(lb, s)
     else
         lb.attributes[s]
     end
 end
-function Base.propertynames(lb::LayoutedButton)
-    [fieldnames(LayoutedButton)..., keys(lb.attributes)...]
+function Base.propertynames(lb::LButton)
+    [fieldnames(LButton)..., keys(lb.attributes)...]
 end

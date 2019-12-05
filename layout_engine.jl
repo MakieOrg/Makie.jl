@@ -1067,7 +1067,7 @@ end
 function find_in_grid_and_subgrids(obj, container::GridLayout)
     for i in 1:length(container.content)
         candidate = container.content[i].al
-        # for non layout objects like LayoutedAxis we check if they are inside
+        # for non layout objects like LAxis we check if they are inside
         # any protrusion layout we find
         if candidate isa ProtrusionLayout
             if candidate.content === obj

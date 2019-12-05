@@ -1,4 +1,4 @@
-function default_attributes(::Type{LayoutedAxis})
+function default_attributes(::Type{LAxis})
     Attributes(
         xlabel = "x label",
         ylabel = "y label",
@@ -79,7 +79,7 @@ function default_attributes(::Type{LayoutedAxis})
     )
 end
 
-function default_attributes(::Type{LayoutedColorbar})
+function default_attributes(::Type{LColorbar})
     Attributes(
         label = "label",
         labelcolor = RGBf0(0, 0, 0),
@@ -117,7 +117,7 @@ function default_attributes(::Type{LayoutedColorbar})
     )
 end
 
-function default_attributes(::Type{LayoutedText})
+function default_attributes(::Type{LText})
     Attributes(
         text = "Text",
         visible = true,
@@ -133,7 +133,7 @@ function default_attributes(::Type{LayoutedText})
     )
 end
 
-function default_attributes(::Type{LayoutedRect})
+function default_attributes(::Type{LRect})
     Attributes(
         visible = true,
         color = RGBf0(0.9, 0.9, 0.9),
@@ -148,7 +148,7 @@ function default_attributes(::Type{LayoutedRect})
     )
 end
 
-function default_attributes(::Type{LayoutedButton})
+function default_attributes(::Type{LButton})
     Attributes(
         halign = :center,
         valign = :center,
@@ -206,7 +206,7 @@ function default_attributes(::Type{LineAxis})
     )
 end
 
-function default_attributes(::Type{LayoutedSlider})
+function default_attributes(::Type{LSlider})
     Attributes(
         linewidth = 3f0,
         halign = :center,

@@ -1,6 +1,6 @@
-function LayoutedSlider(parent::Scene; kwargs...)
+function LSlider(parent::Scene; kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LayoutedSlider))
+    attrs = merge!(Attributes(kwargs), default_attributes(LSlider))
 
     decorations = Dict{Symbol, Any}()
 
@@ -152,7 +152,7 @@ function LayoutedSlider(parent::Scene; kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    LayoutedSlider(parent, layoutnodes, attrs, decorations)
+    LSlider(parent, layoutnodes, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)
@@ -184,23 +184,23 @@ function closest_index(sliderrange, value)
     selected_i
 end
 
-function align_to_bbox!(ls::LayoutedSlider, bbox)
+function align_to_bbox!(ls::LSlider, bbox)
     ls.layoutnodes.suggestedbbox[] = bbox
 end
 
-computedsizenode(ls::LayoutedSlider) = ls.layoutnodes.computedsize
-protrusionnode(ls::LayoutedSlider) = ls.layoutnodes.protrusions
+computedsizenode(ls::LSlider) = ls.layoutnodes.computedsize
+protrusionnode(ls::LSlider) = ls.layoutnodes.protrusions
 
 
-defaultlayout(ls::LayoutedSlider) = ProtrusionLayout(ls)
+defaultlayout(ls::LSlider) = ProtrusionLayout(ls)
 
-function Base.getproperty(ls::LayoutedSlider, s::Symbol)
-    if s in fieldnames(LayoutedSlider)
+function Base.getproperty(ls::LSlider, s::Symbol)
+    if s in fieldnames(LSlider)
         getfield(ls, s)
     else
         ls.attributes[s]
     end
 end
-function Base.propertynames(ls::LayoutedSlider)
-    [fieldnames(LayoutedSlider)..., keys(ls.attributes)...]
+function Base.propertynames(ls::LSlider)
+    [fieldnames(LSlider)..., keys(ls.attributes)...]
 end
