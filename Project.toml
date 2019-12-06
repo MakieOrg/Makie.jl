@@ -10,14 +10,24 @@ GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
 GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 Hyperscript = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
-LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
+
 [compat]
-Hyperscript = ">=0.0.3"
 julia = "1"
+
+AbstractPlotting = "0.9.9"
+Colors = "0.9"
+GeometryBasics = "0.1.2"
+GeometryTypes = "0.7.2"
+Hyperscript = "0.0.3"
+JSServe = "0.3.0"
+Observables = "0.2.0"
+ShaderAbstractions = "0.1.0"
+StaticArrays = "0.12"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
