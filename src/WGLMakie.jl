@@ -39,7 +39,7 @@ function code_to_keyboard(code::String)
         return getfield(Keyboard, Symbol(button[6:end]))
     end
     if startswith(button, "digit")
-        return getfield(Keyboard, Symbol(button[6:end]))
+        return getfield(Keyboard, Symbol("_" * button[6:end]))
     end
     if startswith(button, "key")
         return getfield(Keyboard, Symbol(button[4:end]))

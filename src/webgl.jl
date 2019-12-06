@@ -60,7 +60,7 @@ end
 function JSBuffer(three, vector::AbstractVector{T}) where T
     flat = collect(reinterpret(eltype(T), vector))
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
-    # jsbuff.setDynamic(true)
+    jsbuff.setDynamic(true)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
     if vector isa Buffer
         ShaderAbstractions.connect!(vector, buffer)
