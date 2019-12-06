@@ -221,7 +221,6 @@ end
 function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
-
     debug_shader("scatter", program.program)
     mesh.name = "Scatter"
     update_model!(mesh, plot)

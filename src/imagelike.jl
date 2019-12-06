@@ -25,7 +25,6 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         VertexArray(mesh);
         uniforms...
     )
-    debug_shader(name, program)
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = name

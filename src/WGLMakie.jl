@@ -1,59 +1,21 @@
 module WGLMakie
 
-using WebSockets, JSCall, WebIO, JSExpr, GeometryTypes, Colors
-using JSExpr: jsexpr
-using AbstractPlotting, Observables
+using Hyperscript
+using JSServe, Observables, AbstractPlotting
+using GeometryTypes, Colors
 using ShaderAbstractions, LinearAlgebra
+import GeometryBasics
+
+using JSServe: Application, Session, evaljs, linkjs, update_dom!, div, active_sessions
+using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
+using JSServe: JSObject, onload, uuidstr
+using JSServe.DOM
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
-import GeometryBasics
+
 import GeometryTypes: GLNormalMesh, GLPlainMesh
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
-
-function register_js_events!(comm)
-    @js begin
-        @var canvas = this.dom.querySelector("canvas")
-        function no_context(event)
-            event.preventDefault()
-            return false
-        end
-        # document.addEventListener("contextmenu", no_context, false)
-
-        function mousemove(event)
-            $(comm)[] = Dict(
-                :mouseposition => [event.pageX, event.pageY]
-            )
-            return false
-        end
-        canvas.addEventListener("mousemove", mousemove, false)
-
-        function mousedown(event)
-            $(comm)[] = Dict(
-                :mousedown => event.buttons
-            )
-            return false
-        end
-        canvas.addEventListener("mousedown", mousedown, false)
-
-        function mouseup(event)
-            $(comm)[] = Dict(
-                :mouseup => event.buttons
-            )
-            return false
-        end
-        canvas.addEventListener("mouseup", mouseup, false)
-
-        function wheel(event)
-            $(comm)[] = Dict(
-                :scroll => [event.deltaX, event.deltaY]
-            )
-            event.preventDefault()
-            return false
-        end
-        canvas.addEventListener("wheel", wheel, false)
-    end
-end
 
 macro handle(accessor, body)
     obj, field = accessor.args
@@ -68,12 +30,33 @@ macro handle(accessor, body)
     end
 end
 
-function connect_scene_events!(scene, js_doc)
-    comm = get_comm(js_doc)
-    evaljs(js_doc, register_js_events!(comm))
+function code_to_keyboard(code::String)
+    if length(code) == 1 && isnumeric(code[1])
+        return getfield(Keyboard, Symbol("_" * code))
+    end
+    button = lowercase(code)
+    if startswith(button, "arrow")
+        return getfield(Keyboard, Symbol(button[6:end]))
+    end
+    if startswith(button, "digit")
+        return getfield(Keyboard, Symbol("_" * button[6:end]))
+    end
+    if startswith(button, "key")
+        return getfield(Keyboard, Symbol(button[4:end]))
+    end
+    button = replace(button, r"(.*)left" => s"left_\1")
+    button = replace(button, r"(.*)right" => s"right_\1")
+    sym = Symbol(button)
+    if isdefined(Keyboard, sym)
+        return getfield(Keyboard, sym)
+    else
+        return Keyboard.unknown
+    end
+end
+
+function connect_scene_events!(scene, comm)
     e = events(scene)
     on(comm) do msg
-        msg isa Dict || return
         @handle msg.mouseposition begin
             x, y = Float64.((mouseposition...,))
             e.mouseposition[] = (x, size(scene)[2] - y)
@@ -95,6 +78,16 @@ function connect_scene_events!(scene, js_doc)
         @handle msg.scroll begin
             e.scroll[] = Float64.((sign.(scroll)...,))
         end
+        @handle msg.keydown begin
+            set = e.keyboardbuttons[]
+            push!(set, code_to_keyboard(keydown))
+            e.keyboardbuttons[] = set
+        end
+        @handle msg.keyup begin
+            set = e.keyboardbuttons[]
+            delete!(set, code_to_keyboard(keyup))
+            e.keyboardbuttons[] = set
+        end
         return
     end
 end
@@ -105,7 +98,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot)
 end
 
 
-function on_any_event(f, scene::Scene)
+function on_any_event(@nospecialize(f), scene::Scene)
     key_events = (
         :window_area, :mousebuttons, :mouseposition, :scroll,
         :keyboardbuttons, :hasfocus, :entered_window
@@ -125,58 +118,75 @@ function add_plots!(jsctx, jsscene, scene::Scene, x::Combined)
     end
 end
 
-function _add_scene!(jsctx, scene::Scene, scene_graph = [])
-    js_scene = jsctx.THREE.new.Scene()
-    cam, func = add_camera!(jsctx, js_scene, scene)
 
-    getfield(jsctx, :scene2jsscene)[scene] = (js_scene, cam)
-
-    push!(scene_graph, (js_scene, (cam, func)))
-    for plot in scene.plots
-        add_plots!(jsctx, js_scene, scene, plot)
-    end
-    for sub in scene.children
-        _add_scene!(jsctx, sub, scene_graph)
-    end
-    scene_graph
+function add_scene!(three, scene::Scene)
+    js_scene = to_jsscene(three, scene)
+    renderer = three.renderer
+    evaljs(three, js"""
+        function render_camera(scene, camera){
+            $(renderer).autoClear = scene.clearscene;
+            var bg = scene.backgroundcolor;
+            var area = scene.pixelarea;
+            if(area){
+                var x = area[0];
+                var y = area[1];
+                var w = area[2];
+                var h = area[3];
+                camera.aspect = w/h;
+                camera.updateProjectionMatrix();
+                $(renderer).setViewport(x, y, w, h);
+                $(renderer).setScissor(x, y, w, h);
+                $(renderer).setScissorTest(true);
+                $(renderer).setClearColor(scene.backgroundcolor);
+                $(renderer).render(scene, camera);
+            }
+        }
+        function render_scene(scene){
+            var camera = scene.getObjectByName("camera");
+            if(camera){
+                render_camera(scene, camera);
+            }
+            for(var i = 0; i < scene.children.length; i++){
+                var child = scene.children[i];
+                render_scene(child);
+            }
+        }
+        function render_all(){
+            render_scene($(js_scene));
+            // Schedule the next frame.
+            requestAnimationFrame(render_all);
+        }
+        requestAnimationFrame(render_all);
+    """)
 end
 
-function add_scene!(jsctx, scene::Scene)
-    scene_graph = _add_scene!(jsctx, scene)
-    on_redraw(jsctx) do _
-        # Fuse all calls in the event loop together!
-        JSCall.fused(jsctx.THREE) do
-            for (js_scene, (cam, update_func)) in scene_graph
-                update_func()
-            end
-        end
-    end
-end
-
-
-mutable struct ThreeDisplay <: AbstractPlotting.AbstractScreen
-    jsm::JSModule
+struct ThreeDisplay <: AbstractPlotting.AbstractScreen
+    THREE::JSObject
     renderer::JSObject
+    window::JSObject
     session_cache::Dict{UInt64, JSObject}
-    scene2jsscene::Dict{Scene, Tuple{JSObject, Any}}
+    scene2jsscene::Dict{Scene, JSObject}
     redraw::Observable{Bool}
     function ThreeDisplay(
-            jsm::JSModule,
+            jsm::JSObject,
             renderer::JSObject,
-            session_cache::Dict{UInt64, JSObject},
-            scene2jsscene::Dict{Scene, Tuple{JSObject, JSObject}}
+            window::JSObject,
         )
-        obj = new(jsm, renderer, session_cache, scene2jsscene, Observable(false))
-        finalizer(obj) do obj
-            # TODO we need to clean up the Javascript state
-        end
-        return obj
+        return new(
+            jsm, renderer, window,
+            Dict{UInt64, JSObject}(), Dict{Scene, JSObject}(),
+            Observable(false)
+        )
     end
 end
-function Base.insert!(x::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    #TODO implement
-    # js = to_jsscene(x, scene)
+
+function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
+    js_scene = to_jsscene(td, scene)
+    add_plots!(td, js_scene, scene, plot)
 end
+
+JSServe.session(x::ThreeDisplay) = JSServe.session(x.THREE)
+
 function redraw!(three::ThreeDisplay)
     getfield(three, :redraw)[] = true
 end
@@ -186,72 +196,128 @@ function on_redraw(f, three::ThreeDisplay)
 end
 
 function to_jsscene(three::ThreeDisplay, scene::Scene)
-    get!(getfield(three, :scene2jsscene)) do
-        three.Scene(), nothing
+    get!(getfield(three, :scene2jsscene), scene) do
+        return JSServe.fuse(three) do
+            js_scene = three.new.Scene()
+            add_camera!(three, js_scene, scene)
+            lift(pixelarea(scene)) do area
+                js_scene.pixelarea = [minimum(area)..., widths(area)...]
+                return
+            end
+            lift(scene.backgroundcolor) do color
+                js_scene.backgroundcolor = "#" * hex(Colors.color(to_color(color)))
+                return
+            end
+            lift(scene.clear) do clear
+                js_scene.clearscene = clear
+                return
+            end
+            for plot in scene.plots
+                add_plots!(three, js_scene, scene, plot)
+            end
+            for sub in scene.children
+                js_sub = to_jsscene(three, sub)
+                js_scene.add(js_sub)
+            end
+            return js_scene
+        end
     end
 end
 
 function Base.getproperty(x::ThreeDisplay, field::Symbol)
-    field === :renderer && return getfield(x, :renderer)
-    field === :THREE && return getfield(x, :jsm).mod
-    field === :session_cache && return getfield(x, :session_cache)
-    if Base.sym_in(field, (:window, :document))
-        return getfield(getfield(x, :jsm), field)
+    if Base.sym_in(field, fieldnames(ThreeDisplay))
+        return getfield(x, field)
     else
         # forward getproperty to THREE, to make js work
         return getproperty(x.THREE, field)
     end
 end
 
-function ThreeDisplay(width::Integer, height::Integer)
-    jsm = JSModule(
-            :THREE,
-            "https://cdnjs.cloudflare.com/ajax/libs/three.js/104/three.js",
-        ) do scope
-        # Render callback
-        style = Dict(
-            :width => string(width, "px"), :height => string(height, "px")
-        )
-        WebIO.node(
-            :div,
-            scope(dom"canvas"(attributes = style)),
-            style = style
-        )
-    end
-    THREE = jsm.mod
-    canvas = jsm.this.dom.querySelector("canvas")
-    context = canvas.getContext("webgl2");
-    renderer = THREE.new.WebGLRenderer(
-        antialias = true, canvas = canvas, context = context,
-        powerPreference = "high-performance"
-    )
-    renderer.setSize(width, height)
-    renderer.setClearColor("#ffffff")
-    renderer.setPixelRatio(jsm.window.devicePixelRatio);
-    return ThreeDisplay(
-        jsm, renderer,
-        Dict{UInt64, JSObject}(),
-        Dict{Scene, Tuple{JSObject, JSObject}}()
-    )
-end
+const THREE = JSServe.Dependency(:THREE, ["https://cdn.jsdelivr.net/gh/mrdoob/three.js/build/three.js"])
 
-function get_comm(jso)
-    # LOL TODO git gud
-    obs, sync = scope(jso).observs["_jscall_value_comm"]
-    return obs
-end
+function three_display(session::Session, scene::Scene)
+    update!(scene)
+    width, height = size(scene)
+    canvas = DOM.um("canvas", width = width, height = height)
+    comm = Observable(Dict{String, Any}())
+    threemod, renderer = JSObject(session, :THREE), JSObject(session, :renderer)
+    window = JSObject(session, :window)
+    onload(session, canvas, js"""
+        function threejs_module(canvas){
+            var context = canvas.getContext("webgl2");
+            if(!context){
+                context = canvas.getContext("webgl");
+            }
+            var renderer = new $THREE.WebGLRenderer({
+                antialias: true, canvas: canvas, context: context,
+                powerPreference: "high-performance"
+            });
+            renderer.setSize($width, $height);
+            renderer.setClearColor("#ff00ff");
+            renderer.setPixelRatio(window.devicePixelRatio);
+            put_on_heap($(uuidstr(threemod)), $THREE);
+            put_on_heap($(uuidstr(renderer)), renderer);
+            put_on_heap($(uuidstr(window)), window);
 
-function three_scene(scene::Scene)
-    jsctx = ThreeDisplay(size(scene)...)
-    connect_scene_events!(scene, jsctx.document)
+            function mousemove(event){
+                var rect = canvas.getBoundingClientRect();
+                var x = event.clientX - rect.left;
+                var y = event.clientY - rect.top;
+                update_obs($comm, {
+                    mouseposition: [x, y]
+                })
+                return false
+            }
+            canvas.addEventListener("mousemove", mousemove, false);
+
+            function mousedown(event){
+                update_obs($comm, {
+                    mousedown: event.buttons
+                })
+                return false;
+            }
+            canvas.addEventListener("mousedown", mousedown, false);
+
+            function mouseup(event){
+                update_obs($comm, {
+                    mouseup: event.buttons
+                })
+                return false;
+            }
+            canvas.addEventListener("mouseup", mouseup, false);
+
+            function wheel(event){
+                update_obs($comm, {
+                    scroll: [event.deltaX, -event.deltaY]
+                })
+                event.preventDefault()
+                return false;
+            }
+            canvas.addEventListener("wheel", wheel, false);
+
+            function keydown(event){
+                update_obs($comm, {
+                    keydown: event.code
+                })
+                return false;
+            }
+            document.addEventListener("keydown", keydown, false);
+
+            function keyup(event){
+                update_obs($comm, {
+                    keyup: event.code
+                })
+                return false;
+            }
+            document.addEventListener("keyup", keyup, false);
+        }"""
+    )
+    connect_scene_events!(scene, comm)
     mousedrag(scene, nothing)
-    add_scene!(jsctx, scene)
-    on_any_event(scene) do args...
-        redraw!(jsctx)
-    end
-    return jsctx
+    three = ThreeDisplay(threemod, renderer, window)
+    add_scene!(three, scene)
+    return three, canvas
 end
-
 
 include("camera.jl")
 include("webgl.jl")
@@ -265,28 +331,33 @@ include("picking.jl")
 struct WGLBackend <: AbstractPlotting.AbstractBackend
 end
 
-const WEB_MIMES = (MIME"text/html", WebIO.WEBIO_NODE_MIME, WebIO.WEBIO_APPLICATION_MIME, MIME"application/prs.juno.plotpane+html")
+function JSServe.jsrender(session::Session, scene::Scene)
+    three, canvas = WGLMakie.three_display(session, scene)
+    return canvas
+end
+
+const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html", MIME"application/prs.juno.plotpane+html")
 for M in WEB_MIMES
     @eval begin
         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
-            screen = three_scene(scene)
-            Base.show(io, m, screen)
-            return screen
+            three = nothing
+            inline_display = JSServe.with_session() do session, request
+                three, canvas = WGLMakie.three_display(session, scene)
+                canvas
+            end
+            Base.show(io, m, inline_display)
+
+            return three
         end
-        function Base.show(
-                io::IO, m::$M, x::ThreeDisplay
-            )
-            show(io, m, WebIO.render(x))
-            return x
-        end
+        # function Base.show(
+        #         io::IO, m::$M, x::ThreeDisplay
+        #     )
+        #     show(io, m, WebIO.render(x))
+        #     return x
+        # end
     end
 end
-
-
-function WebIO.render(three::ThreeDisplay)
-    WebIO.render(getfield(three, :jsm))
-end
-
+#
 function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
     return T in WEB_MIMES
 end
@@ -301,11 +372,6 @@ function activate!()
 end
 
 function __init__()
-    # Make webio stay even after server is down
-    ENV["WEBIO_BUNDLE_URL"] = "https://simondanisch.github.io/ReferenceImages/generic_http.js"
-    # TODO hopefully this gets deprecated soon
-    # But some WebIO backends have things easier with this:
-    WebIO.push!(WebIO.renderable_types, ThreeDisplay)
     # Activate WGLMakie as backend!
     activate!()
 end
