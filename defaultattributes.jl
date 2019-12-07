@@ -163,7 +163,6 @@ function default_attributes(::Type{LButton})
         strokewidth = 2f0,
         strokecolor = :transparent,
         buttoncolor = RGBf0(0.9, 0.9, 0.9),
-        autoshrink = (false, false),
         labelcolor = :black,
         labelcolor_hover = :black,
         labelcolor_active = :white,
@@ -224,5 +223,24 @@ function default_attributes(::Type{LSlider})
         buttoncolor_inactive = RGBf0(1, 1, 1),
         horizontal = true,
         buttonstrokewidth = 3f0,
+    )
+end
+
+function default_attributes(::Type{LToggle})
+    Attributes(
+        halign = :center,
+        valign = :center,
+        width = 60,
+        height = 30,
+        cornersegments = 10,
+        # strokewidth = 2f0,
+        # strokecolor = :transparent,
+        framecolor_inactive = RGBf0(0.9, 0.9, 0.9),
+        framecolor_active = RGBf0(0.5, 0.9, 0.5),
+        # buttoncolor = RGBf0(0.2, 0.2, 0.2),
+        buttoncolor = RGBf0(1, 1, 1),
+        active = false,
+        toggleduration = 0.2,
+        rimfraction = 0.25,
     )
 end

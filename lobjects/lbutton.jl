@@ -52,24 +52,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
         textpos[] = Point2f0(left(rect) + 0.5f0 * width(rect), bottom(rect) + 0.5f0 * height(rect))
     end
 
-    roundedrectpoints = lift(buttonrect, cornerradius, cornersegments) do rect,
-            cr, csegs
-
-        cr = min(width(rect) / 2, height(rect) / 2, cr)
-
-        # inner corners
-        ictl = topleft(rect) .+ Point2(cr, -cr)
-        ictr = topright(rect) .+ Point2(-cr, -cr)
-        icbl = bottomleft(rect) .+ Point2(cr, cr)
-        icbr = bottomright(rect) .+ Point2(-cr, cr)
-
-        cstr = anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
-        cstl = anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
-        csbl = anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
-        csbr = anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
-
-        arr = [cstr; cstl; csbl; csbr]
-    end
+    roundedrectpoints = lift(roundedrectvertices, buttonrect, cornerradius, cornersegments)
 
     bcolor = Node{Any}(buttoncolor[])
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
@@ -107,10 +90,6 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     suggestedbbox[] = suggestedbbox[]
 
     LButton(scene, layoutnodes, attrs, decorations)
-end
-
-function anglepoint(center::Point2, angle::Real, radius::Real)
-    Ref(center) .+ Ref(Point2(cos(angle), sin(angle))) .* radius
 end
 
 function align_to_bbox!(lb::LButton, bbox)

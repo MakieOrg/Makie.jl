@@ -222,3 +222,47 @@ end
 function create_suggested_bboxnode(node::Node{BBox})
     node
 end
+
+
+function roundedrectvertices(rect, cornerradius, cornersegments)
+    cr = cornerradius
+    csegs = cornersegments
+
+    cr = min(width(rect) / 2, height(rect) / 2, cr)
+
+    # inner corners
+    ictl = topleft(rect) .+ Point2(cr, -cr)
+    ictr = topright(rect) .+ Point2(-cr, -cr)
+    icbl = bottomleft(rect) .+ Point2(cr, cr)
+    icbr = bottomright(rect) .+ Point2(-cr, cr)
+
+    # check if corners touch so we can remove one vertex that is doubled
+    wtouching = width(rect) / 2 == cr
+    htouching = height(rect) / 2 == cr
+
+    cstr = if wtouching
+        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs), cr)
+    else
+        anglepoint.(Ref(ictr), LinRange(0, pi/2, csegs)[1:end-1], cr)
+    end
+    cstl = if htouching
+        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs), cr)
+    else
+        anglepoint.(Ref(ictl), LinRange(pi/2, pi, csegs)[1:end-1], cr)
+    end
+    csbl = if wtouching
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs), cr)
+    else
+        anglepoint.(Ref(icbl), LinRange(pi, 3pi/2, csegs)[1:end-1], cr)
+    end
+    csbr = if htouching
+        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs), cr)
+    else
+        anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs)[1:end-1], cr)
+    end
+    arr = [cstr; cstl; csbl; csbr]
+end
+
+function anglepoint(center::Point2, angle::Real, radius::Real)
+    Ref(center) .+ Ref(Point2(cos(angle), sin(angle))) .* radius
+end

@@ -10,6 +10,7 @@ using Observables: onany
 import Observables
 import Formatting
 using Match
+import Animations
 
 include("types.jl")
 include("gridlayout.jl")
@@ -27,6 +28,7 @@ include("lobjects/ltext.jl")
 include("lobjects/lslider.jl")
 include("lobjects/lbutton.jl")
 include("lobjects/lrect.jl")
+include("lobjects/ltoggle.jl")
 
 export LAxis
 export LSlider
@@ -34,6 +36,7 @@ export LButton
 export LColorbar
 export LText
 export LRect
+export LToggle
 export linkxaxes!
 export linkyaxes!
 export GridLayout
@@ -57,5 +60,7 @@ export hidexdecorations!, hideydecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!
 export colsize!, rowsize!
 export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
+
+const FPS = Node(30)
 
 end # module

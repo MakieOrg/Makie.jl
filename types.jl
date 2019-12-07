@@ -253,3 +253,10 @@ struct LButton
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
+
+struct LToggle
+    scene::Scene
+    layoutnodes::LayoutNodes
+    attributes::Attributes
+    decorations::Dict{Symbol, Any}
+end
