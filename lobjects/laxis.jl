@@ -3,18 +3,22 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LAxis))
 
     @extract attrs (
-        xlabel, ylabel, title, titlefont, titlesize, titlegap, titlevisible, titlealign,
-        xlabelcolor, ylabelcolor, xlabelsize,
-        ylabelsize, xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
+        title, titlefont, titlesize, titlegap, titlevisible, titlealign,
+        xlabel, ylabel, xlabelcolor, ylabelcolor, xlabelsize, ylabelsize,
+        xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
-        xticksize, yticksize, xticksvisible, yticksvisible, xticklabelspace,
-        yticklabelspace, xticklabelpad, yticklabelpad, xticklabelrotation, yticklabelrotation, xticklabelalign,
-        yticklabelalign, xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor,
-        ytickcolor, xpanlock, ypanlock, xzoomlock, yzoomlock, spinewidth, xgridvisible, ygridvisible,
-        xgridwidth, ygridwidth, xgridcolor, ygridcolor, topspinevisible, rightspinevisible, leftspinevisible,
-        bottomspinevisible, topspinecolor, leftspinecolor, rightspinecolor, bottomspinecolor,
-        aspect, halign, valign, maxsize, xticks, yticks, panbutton, xpankey, ypankey, xzoomkey, yzoomkey,
-        xaxisposition, yaxisposition, xoppositespinevisible, yoppositespinevisible
+        xticksize, yticksize, xticksvisible, yticksvisible,
+        xticklabelspace, yticklabelspace, xticklabelpad, yticklabelpad,
+        xticklabelrotation, yticklabelrotation, xticklabelalign, yticklabelalign,
+        xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor, ytickcolor,
+        xpanlock, ypanlock, xzoomlock, yzoomlock,
+        spinewidth,
+        xgridvisible, ygridvisible, xgridwidth, ygridwidth, xgridcolor, ygridcolor,
+        xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
+        aspect, halign, valign, maxsize, xticks, yticks, panbutton,
+        xpankey, ypankey, xzoomkey, yzoomkey,
+        xaxisposition, yaxisposition,
+        xspinevisible, yspinevisible, xoppositespinevisible, yoppositespinevisible
     )
 
     decorations = Dict{Symbol, Any}()
@@ -105,17 +109,21 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     yaxis_flipped = lift(x->x == :right, yaxisposition)
 
     xaxis = LineAxis(parent, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
-        flipped = xaxis_flipped, ticklabelalign = xticklabelalign, labelsize = xlabelsize,
+        flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
+        ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
         label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
-        ticklabelspace = xticklabelspace, ticks = xticks)
+        ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
+        ticksvisible = yticksvisible, spinevisible = yspinevisible)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
-        flipped = yaxis_flipped, ticklabelalign = yticklabelalign, labelsize = ylabelsize,
+        flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
+        ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
         label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign,
-        ticklabelspace = yticklabelspace, ticks = yticks)
+        ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
+        ticksvisible = yticksvisible, spinevisible = yspinevisible)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
