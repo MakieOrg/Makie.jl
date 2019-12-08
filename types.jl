@@ -73,8 +73,9 @@ abstract type GapSize <: ContentSize end
 struct Auto <: ContentSize
     trydetermine::Bool # false for determinable size content that should be ignored
     ratio::Float64 # float ratio in case it's not determinable
+
+    Auto(trydetermine::Bool = true, ratio::Real = 1.0) = new(trydetermine, ratio)
 end
-Auto(trydetermine::Bool = true, ratio::Real = 1.0) = Auto(trydetermine, ratio)
 
 struct Fixed <: GapSize
     x::Float64
