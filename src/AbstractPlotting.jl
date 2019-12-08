@@ -31,6 +31,7 @@ include("utilities/utilities.jl")
 include("utilities/logging.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
+include("interaction/liftmacro.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
@@ -85,7 +86,7 @@ export xlims!, ylims!, zlims!
 export xlabel!, ylabel!, zlabel!
 
 # Node/Signal related
-export Node, node, lift, map_once, to_value, on
+export Node, node, lift, map_once, to_value, on, @lift
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
