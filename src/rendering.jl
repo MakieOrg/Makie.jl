@@ -44,7 +44,7 @@ function setup!(screen)
                 glViewport(rt...)
                 bits = GL_STENCIL_BUFFER_BIT
                 glClearStencil(id)
-                if scene.clear[]
+                if scene.clear
                     c = to_color(scene.backgroundcolor[])
                     glScissor(rt...)
                     glClearColor(red(c), green(c), blue(c), alpha(c))
@@ -135,7 +135,7 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
             found || continue
             a = pixelarea(scene)[]
             glViewport(minimum(a)..., widths(a)...)
-            if scene.clear[]
+            if scene.clear
                 glStencilFunc(GL_EQUAL, screenid, 0xff)
             else
                 # if we don't clear, that means we have a screen that is overlaid
