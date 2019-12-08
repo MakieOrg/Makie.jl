@@ -1,4 +1,5 @@
-# AbstractPlotting
+
+![logo](assets/icons/logo.png)
 
 [![Build Status](https://travis-ci.org/JuliaPlots/AbstractPlotting.jl.svg?branch=master)](https://travis-ci.org/JuliaPlots/AbstractPlotting.jl)
 
