@@ -7,7 +7,7 @@ function LineAxis(parent::Scene; kwargs...)
     @extract attrs (endpoints, limits, flipped, ticksize, tickwidth,
         tickcolor, tickalign, ticks, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
-        ticklabelsize, ticklabelsvisible, spinewidth, label, labelsize, labelcolor,
+        ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelvisible, spinevisible)
 
     pos_extents_horizontal = lift(endpoints) do endpoints
@@ -42,7 +42,8 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible, raw = true)
+    lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
+        color = spinecolor, raw = true)
 
     ticksnode = Node(Point2f0[])
     ticklines = linesegments!(

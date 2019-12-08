@@ -18,7 +18,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         aspect, halign, valign, maxsize, xticks, yticks, panbutton,
         xpankey, ypankey, xzoomkey, yzoomkey,
         xaxisposition, yaxisposition,
-        xspinevisible, yspinevisible, xoppositespinevisible, yoppositespinevisible
+        xspinevisible, yspinevisible, xoppositespinevisible, yoppositespinevisible,
+        xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor
     )
 
     decorations = Dict{Symbol, Any}()
@@ -114,7 +115,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
         label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
-        ticksvisible = yticksvisible, spinevisible = yspinevisible)
+        ticksvisible = yticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
@@ -123,7 +124,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
         label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
-        ticksvisible = yticksvisible, spinevisible = yspinevisible)
+        ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
@@ -154,9 +155,11 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    xoppositeline = lines!(parent, xoppositelinepoints, linewidth = spinewidth, visible = xoppositespinevisible)
+    xoppositeline = lines!(parent, xoppositelinepoints, linewidth = spinewidth,
+        visible = xoppositespinevisible, color = xoppositespinecolor)
     decorations[:xoppositeline] = xoppositeline
-    yoppositeline = lines!(parent, yoppositelinepoints, linewidth = spinewidth, visible = yoppositespinevisible)
+    yoppositeline = lines!(parent, yoppositelinepoints, linewidth = spinewidth,
+        visible = yoppositespinevisible, color = yoppositespinecolor)
     decorations[:yoppositeline] = yoppositeline
 
     on(xaxis.tickpositions) do tickpos
