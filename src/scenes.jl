@@ -13,7 +13,7 @@ mutable struct Scene <: AbstractScene
     events::Events
 
     px_area::Node{IRect2D}
-    # plot_area::Node{IRect2D}
+    clear::Bool
 
     camera::Camera
     camera_controls::RefValue
@@ -36,11 +36,7 @@ end
 
 Base.haskey(scene::Scene, key::Symbol) = haskey(scene.attributes, key)
 function Base.getindex(scene::Scene, key::Symbol)
-    if haskey(scene.attributes, key)
-        return scene.attributes[key]
-    else
-        return scene.theme[key]
-    end
+    return haskey(scene.attributes, key) ? scene.attributes[key] : scene.theme[key]
 end
 
 function Base.setindex!(scene::Scene, value, key::Symbol)
@@ -50,6 +46,7 @@ end
 function Scene(
         events::Events,
         px_area::Node{IRect2D},
+        clear::Bool,
         camera::Camera,
         camera_controls::RefValue,
         scene_limits,
@@ -67,7 +64,7 @@ function Scene(
     updated = Node(false)
 
     scene = Scene(
-        parent, events, px_area, camera, camera_controls,
+        parent, events, px_area, clear, camera, camera_controls,
         Node{Union{Nothing, FRect3D}}(scene_limits),
         transformation, plots, theme, attributes,
         children, current_screens, updated
@@ -106,9 +103,7 @@ function Scene(
 end
 
 
-function Scene(
-        ;scene_attributes...
-    )
+function Scene(;clear = true, scene_attributes...)
     events = Events()
     theme = current_default_theme(; scene_attributes...)
     attributes = copy(theme)
@@ -123,6 +118,7 @@ function Scene(
     scene = Scene(
         events,
         px_area,
+        clear,
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
         nothing,
@@ -146,24 +142,25 @@ function Scene(
         scene::Scene;
         events = scene.events,
         px_area = scene.px_area,
+        clear = false,
         cam = scene.camera,
         camera_controls = scene.camera_controls,
         transformation = Transformation(scene),
         theme = copy(theme(scene)),
         current_screens = scene.current_screens,
-        clear = false,
         kw_args...
     )
     child = Scene(
         events,
         px_area,
+        clear,
         cam,
         camera_controls,
         nothing,
         transformation,
         AbstractPlot[],
         merge(current_default_theme(), theme),
-        merge!(Attributes(clear = clear; kw_args...), scene.attributes),
+        merge!(Attributes(; kw_args...), scene.attributes),
         Scene[],
         current_screens,
         scene
@@ -181,13 +178,14 @@ function Scene(parent::Scene, area; clear = false, attributes...)
     child = Scene(
         events,
         px_area,
+        clear,
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
         nothing,
         Transformation(),
         AbstractPlot[],
-        current_default_theme(clear = clear; attributes...),
-        merge!(Attributes(clear = clear; attributes...), parent.attributes),
+        current_default_theme(; attributes...),
+        merge!(Attributes(; attributes...), parent.attributes),
         Scene[],
         parent.current_screens,
         parent
