@@ -166,8 +166,9 @@ function default_attributes(::Type{LButton})
         labelcolor = :black,
         labelcolor_hover = :black,
         labelcolor_active = :white,
-        buttoncolor_active = RGBf0(0.2, 0.2, 0.2),
-        buttoncolor_hover = RGBf0(0.8, 0.8, 0.8),
+        buttoncolor_active = COLOR_ACCENT[],
+        # buttoncolor_hover = RGBf0(0.8, 0.8, 0.8),
+        buttoncolor_hover = COLOR_ACCENT_DIMMED[],
         clicks = 0,
     )
 end
@@ -207,7 +208,7 @@ end
 
 function default_attributes(::Type{LSlider})
     Attributes(
-        linewidth = 3f0,
+        linewidth = 4f0,
         halign = :center,
         valign = :center,
         # vertical = true,
@@ -215,14 +216,14 @@ function default_attributes(::Type{LSlider})
         height = nothing,
         range = 0:10,
         buttonradius_inactive = 7f0,
-        buttonradius_active = 8f0,
+        buttonradius_active = 7f0,
         startvalue = 0,
         value = 0,
-        color_active = RGBf0(0.2, 0.2, 0.2),
+        color_active = COLOR_ACCENT[],
         color_inactive = RGBf0(0.9, 0.9, 0.9),
         buttoncolor_inactive = RGBf0(1, 1, 1),
         horizontal = true,
-        buttonstrokewidth = 3f0,
+        buttonstrokewidth = 4f0,
     )
 end
 
@@ -236,7 +237,7 @@ function default_attributes(::Type{LToggle})
         # strokewidth = 2f0,
         # strokecolor = :transparent,
         framecolor_inactive = RGBf0(0.9, 0.9, 0.9),
-        framecolor_active = RGBf0(0.5, 0.9, 0.5),
+        framecolor_active = COLOR_ACCENT[],
         # buttoncolor = RGBf0(0.2, 0.2, 0.2),
         buttoncolor = RGBf0(1, 1, 1),
         active = false,
