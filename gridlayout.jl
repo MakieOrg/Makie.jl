@@ -1,3 +1,25 @@
+function validategridlayout(gl::GridLayout)
+    if gl.nrows < 1
+        error("Number of rows can't be smaller than 1")
+    end
+    if gl.ncols < 1
+        error("Number of columns can't be smaller than 1")
+    end
+
+    if length(gl.rowsizes) != gl.nrows
+        error("There are $nrows rows but $(length(rowsizes)) row sizes.")
+    end
+    if length(gl.colsizes) != gl.ncols
+        error("There are $ncols columns but $(length(colsizes)) column sizes.")
+    end
+    if length(gl.addedrowgaps) != gl.nrows - 1
+        error("There are $nrows rows but $(length(addedrowgaps)) row gaps.")
+    end
+    if length(gl.addedcolgaps) != gl.ncols - 1
+        error("There are $ncols columns but $(length(addedcolgaps)) column gaps.")
+    end
+end
+
 function detach_parent!(gl::GridLayout)
     detach_parent!(gl, gl.parent)
     nothing

@@ -110,29 +110,11 @@ mutable struct GridLayout <: AbstractLayout
         addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update,
         valign, halign)
 
-        if nrows < 1
-            error("Number of rows can't be smaller than 1")
-        end
-        if ncols < 1
-            error("Number of columns can't be smaller than 1")
-        end
-
-        if length(rowsizes) != nrows
-            error("There are $nrows rows but $(length(rowsizes)) row sizes.")
-        end
-        if length(colsizes) != ncols
-            error("There are $ncols columns but $(length(colsizes)) column sizes.")
-        end
-        if length(addedrowgaps) != nrows - 1
-            error("There are $nrows rows but $(length(addedrowgaps)) row gaps.")
-        end
-        if length(addedcolgaps) != ncols - 1
-            error("There are $ncols columns but $(length(addedcolgaps)) column gaps.")
-        end
-
         gl = new(nothing, content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
             needs_update, false, valign, halign, nothing)
+
+        validategridlayout(gl)
 
         attach_parent!(gl, parent)
 
