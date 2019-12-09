@@ -493,8 +493,11 @@ function determinedirsize(gl::GridLayout, gdir::GridDir)
     return if gl.alignmode isa Inside
         inner_size_combined
     elseif gl.alignmode isa Outside
-        r = gdir isa Row
-        paddings = sum(gl.alignmode.padding[gdir isa Row ? (1:2) : (3:4)])
+        paddings = if gdir isa Row
+            gl.alignmode.padding.top + gl.alignmode.padding.bottom
+        else
+            gl.alignmode.padding.left + gl.alignmode.padding.right
+        end
         inner_size_combined + dirgapsstart[1] + dirgapsstop[end] + paddings
     end
 end
