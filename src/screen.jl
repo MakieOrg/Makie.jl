@@ -105,7 +105,12 @@ function to_jl_layout!(A, B)
     n = first(ind2) + last(ind2)
     for i in ind1
         @simd for j in ind2
-            @inbounds B[n-j, i] = ImageCore.clamp01nan(A[i, j])
+            @inbounds c = A[i, j]
+            c = mapc(c) do channel
+                x = clamp(channel, 0.0, 1.0)
+                return ifelse(isfinite(x), x, 0.0)
+            end
+            @inbounds B[n-j, i] = c
         end
     end
     return B

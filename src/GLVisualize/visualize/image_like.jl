@@ -195,23 +195,3 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
         end
     end
 end
-
-function _default(main::IndirectArray{T}, s::Style, data::Dict) where T <: RGBA
-    @gen_defaults! data begin
-        volumedata       = main.index => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
-        model            = Mat4f0(I)
-        modelinv         = const_lift(inv, model)
-
-        color_map        = main.values => TextureBuffer
-        color_norm       = nothing
-        color            = nothing
-
-        algorithm        = IndexedAbsorptionRGBA
-        shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender()
-        postrender       = () -> begin
-            glDisable(GL_CULL_FACE)
-        end
-    end
-end
