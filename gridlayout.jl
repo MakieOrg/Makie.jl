@@ -198,6 +198,89 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
         prepend!(gl.addedcolgaps, addedcolgaps)
     end
 end
+
+function deleterow!(gl::GridLayout, irow::Int)
+    if !(1 <= irow <= gl.nrows)
+        error("Row $irow does not exist.")
+    end
+
+    if gl.nrows == 1
+        error("Can't delete the last row")
+    end
+
+    new_content = SpannedLayout[]
+    to_remove = SpannedLayout[]
+    for c in gl.content
+        rows = c.sp.rows
+        newrows = if irow in rows
+            # range is one shorter now
+            rows.start : rows.stop - 1
+        elseif irow > rows.stop
+            # content before deleted row stays the same
+            rows
+        else
+            # content completely after is moved forward 1 step
+            rows .- 1
+        end
+        if isempty(newrows)
+            # the row span was just one row and now zero, remove the element
+            push!(to_remove, c)
+        else
+            push!(new_content, SpannedLayout(c.al, Span(newrows, c.sp.cols), c.side))
+        end
+    end
+
+    for c in to_remove
+        detachfromparent!(c.al)
+    end
+    gl.content = new_content
+    deleteat!(gl.rowsizes, irow)
+    deleteat!(gl.addedrowgaps, irow == 1 ? 1 : irow - 1)
+    gl.nrows -= 1
+    gl.needs_update[] = true
+end
+
+function deletecol!(gl::GridLayout, icol::Int)
+    if !(1 <= icol <= gl.ncols)
+        error("Col $icol does not exist.")
+    end
+
+    if gl.ncols == 1
+        error("Can't delete the last col")
+    end
+
+    new_content = SpannedLayout[]
+    to_remove = SpannedLayout[]
+    for c in gl.content
+        cols = c.sp.cols
+        newcols = if icol in cols
+            # range is one shorter now
+            cols.start : cols.stop - 1
+        elseif icol > cols.stop
+            # content before deleted col stays the same
+            cols
+        else
+            # content completely after is moved forward 1 step
+            cols .- 1
+        end
+        if isempty(newcols)
+            # the col span was just one col and now zero, remove the element
+            push!(to_remove, c)
+        else
+            push!(new_content, SpannedLayout(c.al, Span(c.sp.rows, newcols), c.side))
+        end
+    end
+
+    for c in to_remove
+        detachfromparent!(c.al)
+    end
+    gl.content = new_content
+    deleteat!(gl.colsizes, icol)
+    deleteat!(gl.addedcolgaps, icol == 1 ? 1 : icol - 1)
+    gl.ncols -= 1
+    gl.needs_update[] = true
+end
+
 function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
 
     newrows, newcols = adjust_rows_cols!(gl, rows, cols)
