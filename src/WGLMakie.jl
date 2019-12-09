@@ -208,10 +208,7 @@ function to_jsscene(three::ThreeDisplay, scene::Scene)
                 js_scene.backgroundcolor = "#" * hex(Colors.color(to_color(color)))
                 return
             end
-            lift(scene.clear) do clear
-                js_scene.clearscene = clear
-                return
-            end
+            js_scene.clearscene = scene.clear
             for plot in scene.plots
                 add_plots!(three, js_scene, scene, plot)
             end

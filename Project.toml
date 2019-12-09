@@ -1,7 +1,7 @@
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 authors = ["SimonDanisch <sdanisch@gmail.com>"]
-version = "0.1.0"
+version = "0.1.1"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -19,7 +19,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [compat]
 julia = "1"
 
-AbstractPlotting = "0.9.9"
+AbstractPlotting = "^0.9.11"
 Colors = "0.9"
 GeometryBasics = "0.1"
 GeometryTypes = "0.7"
