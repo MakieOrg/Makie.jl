@@ -11,24 +11,12 @@ using Colors
 using AbstractPlotting
 using FixedPointNumbers
 using FileIO
-using FreeType
-import IterTools
 using Markdown
-using FreeTypeAbstraction
-using ImageCore
-import ColorVectorSpace
 using Observables
-
-import ImageCore
-import AxisArrays, ImageAxes
 
 import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
 using LinearAlgebra
-
-using IndirectArrays
-const HasAxesArray{T, N} = AxisArrays.AxisArray{T, N}
-const AxisMatrix{T} = HasAxesArray{T, 2}
 
 import AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
 import ..GLMakie: get_texture!
