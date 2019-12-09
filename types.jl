@@ -261,3 +261,5 @@ struct LToggle
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
+
+const Indexables = Union{UnitRange, Int, Colon}

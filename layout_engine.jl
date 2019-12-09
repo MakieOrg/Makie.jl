@@ -738,9 +738,6 @@ function solve(ua::ProtrusionLayout, innerbbox)
     SolvedProtrusionLayout(innerbbox, ua.content)
 end
 
-
-const Indexables = Union{UnitRange, Int, Colon}
-
 function to_ranges(g::GridLayout, rows::Indexables, cols::Indexables)
     if rows isa Int
         rows = rows:rows
