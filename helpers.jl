@@ -266,3 +266,8 @@ end
 function anglepoint(center::Point2, angle::Real, radius::Real)
     Ref(center) .+ Ref(Point2(cos(angle), sin(angle))) .* radius
 end
+
+
+function enlarge(bbox::BBox, l, r, b, t)
+    BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) + b, top(bbox) + t)
+end
