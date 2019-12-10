@@ -143,7 +143,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
 
-    LLegend(parent, entries, layoutnodes, attrs, decorations, entrytexts, entryplots)
+    LLegend(scene, entries, layoutnodes, attrs, decorations, entrytexts, entryplots)
 end
 
 defaultlayout(ll::LLegend) = ProtrusionLayout(ll)
