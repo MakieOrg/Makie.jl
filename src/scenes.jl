@@ -343,6 +343,21 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     # update!(scene)
 end
 
+function Base.delete!(screen::AbstractScreen, scene::Scene, plot::AbstractPlot)
+    @warn "Deleting plots not implemented for backend: $(typeof(screen))"
+end
+
+function Base.delete!(scene::Scene, plot::AbstractPlot)
+    len = length(scene.plots)
+    filter!(x-> x !== plot, scene.plots)
+    if length(scene.plots) == len
+        error("$(typeof(plot)) not in scene!")
+    end
+    for screen in scene.current_screens
+        delete!(screen, scene, plot)
+    end
+end
+
 function Base.push!(scene::Scene, child::Scene)
     push!(scene.children, child)
     disconnect!(child.camera)
