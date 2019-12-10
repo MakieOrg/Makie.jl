@@ -424,3 +424,19 @@ function rowsize!(gl::GridLayout, i::Int, s::ContentSize)
     gl.rowsizes[i] = s
     gl.needs_update[] = true
 end
+
+function colgap!(gl::GridLayout, i::Int, s::GapSize)
+    if !(1 <= i <= (gl.ncols - 1))
+        error("Can't set size of invalid column gap $i.")
+    end
+    gl.addedcolgaps[i] = s
+    gl.needs_update[] = true
+end
+
+function rowgap!(gl::GridLayout, i::Int, s::GapSize)
+    if !(1 <= i <= (gl.nrows - 1))
+        error("Can't set size of invalid row gap $i.")
+    end
+    gl.addedrowgaps[i] = s
+    gl.needs_update[] = true
+end
