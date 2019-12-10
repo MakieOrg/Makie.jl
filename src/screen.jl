@@ -61,6 +61,13 @@ function insertplots!(screen::GLScreen, scene::Scene)
     foreach(s-> insertplots!(screen, s), scene.children)
 end
 
+function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
+    renderobject = get(screen.cache, objectid(plot)) do
+        error("Could not find $(typeof(plot)) in current GLMakie screen!")
+    end
+    filter!(x-> x[3] !== renderobject, screen.renderlist)
+end
+
 function Base.empty!(screen::GLScreen)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
@@ -98,7 +105,6 @@ function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     screen.displayed_scene = scene
     return
 end
-
 
 function to_jl_layout!(A, B)
     ind1, ind2 = axes(A)
