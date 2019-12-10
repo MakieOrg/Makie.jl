@@ -269,5 +269,5 @@ end
 
 
 function enlarge(bbox::BBox, l, r, b, t)
-    BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) + b, top(bbox) + t)
+    BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) - b, top(bbox) + t)
 end
