@@ -5,10 +5,11 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (
         halign, valign, padding, margin,
         title, titlefont, titlesize,
-        labelsize, labelfont, labelcolor, labelalign,
+        labelsize, labelfont, labelcolor, labelhalign, labelvalign,
         bgcolor, strokecolor, strokewidth,
         patchsize, # the side length of the entry patch area
         ncols,
+        colgap, rowgap, patchlabelgap,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -100,16 +101,23 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             deletecol!(labelgrid, i)
         end
 
-        # for i in 1:2:labelgrid.ncols
-        #     colsize!(labelgrid, i, Fixed(30))
-        # end
+        for i in 1:(labelgrid.ncols - 1)
+            if i % 2 == 1
+                colgap!(labelgrid, i, Fixed(patchlabelgap[]))
+            else
+                colgap!(labelgrid, i, Fixed(colgap[]))
+            end
+        end
+
+        for i in 1:(labelgrid.nrows - 1)
+            rowgap!(labelgrid, i, Fixed(rowgap[]))
+        end
 
         manipulating_grid[] = false
         maingrid.needs_update[] = true
     end
 
-    on(ncols) do n; relayout(); end
-    # on(patchsize) do p; relayout(); end
+    onany(ncols, rowgap, colgap, patchlabelgap) do _, _, _, _; relayout(); end
 
     on(entries) do entries
         for (i, e) in enumerate(entries)
@@ -117,7 +125,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
                 entrytexts[i].attributes.text[] = e.label
             else
                 push!(entrytexts,
-                    LText(scene, text = e.label, textsize = labelsize, halign=:left)
+                    LText(scene, text = e.label, textsize = labelsize,
+                    halign = labelhalign, valign = labelvalign, font = labelfont)
                 )
             end
 
@@ -125,7 +134,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
                 # entryrects[i].attributes.text[] = e.label
             else
                 push!(entryrects,
-                    LRect(scene, color = rand(RGBf0), width = patchsize, height = patchsize)
+                    LRect(scene, color = rand(RGBf0), width = @lift($patchsize[1]), height = @lift($patchsize[2]))
                 )
             end
         end
