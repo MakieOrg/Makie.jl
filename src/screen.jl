@@ -62,10 +62,21 @@ function insertplots!(screen::GLScreen, scene::Scene)
 end
 
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    renderobject = get(screen.cache, objectid(plot)) do
-        error("Could not find $(typeof(plot)) in current GLMakie screen!")
+
+    function filterrecursively!(plotobj)
+        if !isempty(plotobj.plots)
+            # an AbstractPlot can have children, and only lowest-level children
+            # are saved in the renderlist, so we go down recursively until there
+            # are no more children to a plot object
+            filterrecursively!.(plotobj.plots)
+        else
+            renderobject = get(screen.cache, objectid(plotobj)) do
+                error("Could not find $(typeof(subplot)) in current GLMakie screen!")
+            end
+            filter!(x-> x[3] !== renderobject, screen.renderlist)
+        end
     end
-    filter!(x-> x[3] !== renderobject, screen.renderlist)
+    filterrecursively!(plot)
 end
 
 function Base.empty!(screen::GLScreen)
