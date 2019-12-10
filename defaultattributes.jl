@@ -243,3 +243,27 @@ function default_attributes(::Type{LToggle})
         rimfraction = 0.25,
     )
 end
+
+
+function default_attributes(::Type{LLegend})
+    Attributes(
+        halign = :center,
+        valign = :center,
+        width = Auto(),
+        height = Auto(),
+        title = "Legend",
+        titlefont = "Dejavu Sans",
+        titlesize = 20f0,
+        labelsize = 20f0,
+        labelfont = "Dejavu Sans",
+        labelcolor = :black,
+        labelalign = :left,
+        padding = (10f0, 10f0, 10f0, 10f0),
+        margin = (0f0, 0f0, 0f0, 0f0),
+        bgcolor = :white,
+        strokecolor = :black,
+        strokewidth = 1f0,
+        patchsize = 30f0,
+        ncols = 1,
+    )
+end

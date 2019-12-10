@@ -244,4 +244,19 @@ struct LToggle
     decorations::Dict{Symbol, Any}
 end
 
+struct LegendEntry
+    label::String
+    plots::Vector{AbstractPlot}
+end
+
+struct LLegend
+    scene::Scene
+    entries::Node{Vector{LegendEntry}}
+    layoutnodes::LayoutNodes
+    attributes::Attributes
+    decorations::Dict{Symbol, Any}
+    entrytexts::Vector{LText}
+    entryplots::Vector{Vector{AbstractPlot}}
+end
+
 const Indexables = Union{UnitRange, Int, Colon}

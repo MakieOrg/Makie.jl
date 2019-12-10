@@ -29,6 +29,7 @@ include("lobjects/lslider.jl")
 include("lobjects/lbutton.jl")
 include("lobjects/lrect.jl")
 include("lobjects/ltoggle.jl")
+include("lobjects/llegend.jl")
 
 export LAxis
 export LSlider
@@ -37,6 +38,7 @@ export LColorbar
 export LText
 export LRect
 export LToggle
+export LLegend
 export linkxaxes!
 export linkyaxes!
 export GridLayout
@@ -60,6 +62,7 @@ export hidexdecorations!, hideydecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!
 export colsize!, rowsize!
 export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
+export LegendEntry
 
 const FPS = Node(30)
 const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
