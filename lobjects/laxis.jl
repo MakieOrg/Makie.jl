@@ -325,13 +325,6 @@ function AbstractPlotting.plot!(
 
 end
 
-function align_to_bbox!(la::LAxis, bb::BBox)
-    la.layoutnodes.suggestedbbox[] = bb
-end
-
-protrusionnode(la::LAxis) = la.layoutnodes.protrusions
-computedsizenode(la::LAxis) = la.layoutnodes.computedsize
-
 function bboxunion(bb1, bb2)
 
     o1 = bb1.origin
@@ -617,28 +610,6 @@ function add_reset_limits!(la::LAxis)
         return
     end
 end
-
-function Base.getproperty(la::LAxis, s::Symbol)
-    if s in fieldnames(LAxis)
-        getfield(la, s)
-    else
-        la.attributes[s]
-    end
-end
-
-function Base.setproperty!(la::LAxis, s::Symbol, value)
-    if s in fieldnames(LAxis)
-        setfield!(la, s, value)
-    else
-        la.attributes[s][] = value
-    end
-end
-
-function Base.propertynames(la::LAxis)
-    [fieldnames(LAxis)..., keys(la.attributes)...]
-end
-
-defaultlayout(la::LAxis) = ProtrusionLayout(la)
 
 function hidexdecorations!(la::LAxis)
     la.xlabelvisible = false

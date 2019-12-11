@@ -91,23 +91,3 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     LButton(scene, layoutnodes, attrs, decorations)
 end
-
-function align_to_bbox!(lb::LButton, bbox)
-    lb.layoutnodes.suggestedbbox[] = bbox
-end
-
-computedsizenode(lb::LButton) = lb.layoutnodes.computedsize
-protrusionnode(lb::LButton) = lb.layoutnodes.protrusions
-
-defaultlayout(lb::LButton) = ProtrusionLayout(lb)
-
-function Base.getproperty(lb::LButton, s::Symbol)
-    if s in fieldnames(LButton)
-        getfield(lb, s)
-    else
-        lb.attributes[s]
-    end
-end
-function Base.propertynames(lb::LButton)
-    [fieldnames(LButton)..., keys(lb.attributes)...]
-end

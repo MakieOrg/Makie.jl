@@ -30,6 +30,7 @@ include("lobjects/lbutton.jl")
 include("lobjects/lrect.jl")
 include("lobjects/ltoggle.jl")
 include("lobjects/llegend.jl")
+include("lobjects/lobject.jl")
 
 export LAxis
 export LSlider

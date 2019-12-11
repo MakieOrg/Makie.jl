@@ -187,6 +187,8 @@ struct LayoutNodes
     computedbbox::Node{BBox}
 end
 
+abstract type LObject end
+
 mutable struct LAxis <: AbstractPlotting.AbstractScene
     parent::Scene
     scene::Scene
@@ -201,7 +203,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     decorations::Dict{Symbol, Any}
 end
 
-mutable struct LColorbar
+mutable struct LColorbar <: LObject
     parent::Scene
     scene::Scene
     layoutnodes::LayoutNodes
@@ -209,35 +211,35 @@ mutable struct LColorbar
     decorations::Dict{Symbol, Any}
 end
 
-mutable struct LText
+mutable struct LText <: LObject
     parent::Scene
     layoutnodes::LayoutNodes
     text::AbstractPlotting.Text
     attributes::Attributes
 end
 
-mutable struct LRect
+mutable struct LRect <: LObject
     parent::Scene
     layoutnodes::LayoutNodes
     rect::AbstractPlotting.Poly
     attributes::Attributes
 end
 
-struct LSlider
+struct LSlider <: LObject
     scene::Scene
     layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
-struct LButton
+struct LButton <: LObject
     scene::Scene
     layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
-struct LToggle
+struct LToggle <: LObject
     scene::Scene
     layoutnodes::LayoutNodes
     attributes::Attributes
@@ -249,7 +251,7 @@ struct LegendEntry
     plots::Vector{AbstractPlot}
 end
 
-struct LLegend
+struct LLegend <: LObject
     scene::Scene
     entries::Node{Vector{LegendEntry}}
     layoutnodes::LayoutNodes

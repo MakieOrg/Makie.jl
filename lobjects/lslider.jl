@@ -186,24 +186,3 @@ function closest_index(sliderrange, value)
     end
     selected_i
 end
-
-function align_to_bbox!(ls::LSlider, bbox)
-    ls.layoutnodes.suggestedbbox[] = bbox
-end
-
-computedsizenode(ls::LSlider) = ls.layoutnodes.computedsize
-protrusionnode(ls::LSlider) = ls.layoutnodes.protrusions
-
-
-defaultlayout(ls::LSlider) = ProtrusionLayout(ls)
-
-function Base.getproperty(ls::LSlider, s::Symbol)
-    if s in fieldnames(LSlider)
-        getfield(ls, s)
-    else
-        ls.attributes[s]
-    end
-end
-function Base.propertynames(ls::LSlider)
-    [fieldnames(LSlider)..., keys(ls.attributes)...]
-end

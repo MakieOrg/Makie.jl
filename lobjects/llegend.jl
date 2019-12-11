@@ -156,34 +156,19 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     LLegend(scene, entries, layoutnodes, attrs, decorations, entrytexts, entryplots)
 end
 
-defaultlayout(ll::LLegend) = ProtrusionLayout(ll)
 
-function align_to_bbox!(ll::LLegend, bbox)
-    ll.layoutnodes.suggestedbbox[] = bbox
+function legendsymbol!(scene, plot::Scatter, bbox)
+    fracpoint = Point2f0(0.5, 0.5)
+    points = @lift([fractionpoint($bbox, fracpoint)]) # array for the point because of scatter "bug" for single point
+    scatter!(scene, points, color = plot.color, marker = plot.marker,
+        markersize = 20, raw = true)[end]
 end
 
-computedsizenode(ll::LLegend) = ll.layoutnodes.computedsize
-protrusionnode(ll::LLegend) = ll.layoutnodes.protrusions
-
-
-function Base.getproperty(ll::LLegend, s::Symbol)
-    if s in fieldnames(LLegend)
-        getfield(ll, s)
-    else
-        ll.attributes[s]
-    end
-end
-
-function Base.setproperty!(ll::LLegend, s::Symbol, value)
-    if s in fieldnames(LLegend)
-        setfield!(ll, s, value)
-    else
-        ll.attributes[s][] = value
-    end
-end
-
-function Base.propertynames(ll::LLegend)
-    [fieldnames(LLegend)..., keys(ll.attributes)...]
+function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
+    fracpoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
+    points = @lift(fractionpoint.(Ref($bbox), fracpoints))
+    lines!(scene, points, linewidth = 3f0, color = plot.color,
+        raw = true)[end]
 end
 
 function LegendEntry(label::String, plot::AbstractPlot)

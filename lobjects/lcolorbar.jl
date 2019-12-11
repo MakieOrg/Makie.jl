@@ -142,15 +142,6 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     LColorbar(parent, scene, layoutnodes, attrs, decorations)
 end
 
-defaultlayout(lc::LColorbar) = ProtrusionLayout(lc)
-
-computedsizenode(lc::LColorbar) = lc.layoutnodes.computedsize
-protrusionnode(lc::LColorbar) = lc.layoutnodes.protrusions
-
-function align_to_bbox!(lc::LColorbar, bbox)
-    lc.layoutnodes.suggestedbbox[] = bbox
-end
-
 function tight_ticklabel_spacing!(lc::LColorbar)
     tight_ticklabel_spacing!(lc.decorations[:axis])
 end

@@ -117,13 +117,9 @@ function Base.propertynames(lt::LText)
     [fieldnames(LText)..., keys(lt.attributes)...]
 end
 
-function remove!(lt::LText)
-    index_in_plots = findfirst(x->x==lt.text, lt.parent.plots)
-    if !isnothing(index_in_plots)
-        deleteat!(lt.parent.plots, index_in_plots)
-    else
-        error("Object not found in scene plots")
-    end
+function Base.delete!(lt::LText)
+    # remove the plot object from the scene
+    delete!(lt.parent, lt.text)
     # remove all layout node callbacks
     for f in fieldnames(LayoutNodes)
         empty!(getfield(lt.layoutnodes, f).listeners)

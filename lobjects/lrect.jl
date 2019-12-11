@@ -31,11 +31,12 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
     LRect(parent, layoutnodes, r, attrs)
 end
 
-defaultlayout(lr::LRect) = ProtrusionLayout(lr)
 
-computedsizenode(lr::LRect) = lr.layoutnodes.computedsize
-protrusionnode(lr::LRect) = lr.layoutnodes.protrusions
-
-function align_to_bbox!(lt::LRect, bbox)
-    lt.layoutnodes.suggestedbbox[] = bbox
+function Base.delete!(lr::LRect)
+    # remove the plot object from the scene
+    delete!(lr.parent, lr.rect)
+    # remove all layout node callbacks
+    for f in fieldnames(LayoutNodes)
+        empty!(getfield(lr.layoutnodes, f).listeners)
+    end
 end
