@@ -196,20 +196,29 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 end
 
 
-function legendsymbol!(scene, element::MarkerElement, bbox, attrs::Attributes)
+function legendsymbol!(scene, element::MarkerElement, bbox, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attrs = element.attributes
+
     fracpoints = attrs.markerpoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    scatter!(scene, points, color = element.color, marker = element.marker,
-        markersize = (haskey(element.attributes, :markersize) ? element.markersize : attrs.markersize),
+    scatter!(scene, points, color = attrs.color, marker = attrs.marker,
+        markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = element.strokecolor, raw = true)[end]
+        strokecolor = attrs.strokecolor, raw = true)[end]
 end
 
-function legendsymbol!(scene, element::LineElement, bbox, attrs::Attributes)
+function legendsymbol!(scene, element::LineElement, bbox, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attrs = element.attributes
+
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    lines!(scene, points, linewidth = 3f0, color = element.color,
-        linestyle = element.linestyle,
+    lines!(scene, points, linewidth = attrs.linewidth, color = attrs.color,
+        linestyle = attrs.linestyle,
+        raw = true)[end]
+end
+
 function legendsymbol!(scene, element::PolyElement, bbox, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes

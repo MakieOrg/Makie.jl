@@ -279,25 +279,17 @@ function default_attributes(::Type{LLegend})
         markerpoints = [Point2f0(0.5, 0.5)],
         markersize = 20,
         markerstrokewidth = 2,
+        polypoints = [Point2f0(0.2, 0.2), Point2f0(0.8, 0.2), Point2f0(0.8, 0.8), Point2f0(0.2, 0.8)],
+        polystrokewidth = 2,
     )
 end
 
-# function default_attributes(::Type{LegendEntry})
-#     Attributes(
-#         label = "undefined",
-#         labelsize = 20f0,
-#         labelfont = "Dejavu Sans",
-#         labelcolor = :black,
-#         labelhalign = :left,
-#         labelvalign = :center,
-#         patchsize = (30f0, 30f0),
-#     )
-# end
 
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :markerpoints, :markersize, :markerstrokewidth)
+        :linepoints, :markerpoints, :markersize, :markerstrokewidth, :linewidth,
+        :polypoints, :polystrokewidth)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)
