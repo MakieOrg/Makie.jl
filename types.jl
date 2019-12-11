@@ -249,6 +249,15 @@ end
 struct LegendEntry
     label::String
     plots::Vector{AbstractPlot}
+    attributes::Attributes
+
+    function LegendEntry(label::String, plots::Vector{AbstractPlot}, attrs::Attributes = Attributes(); kwargs...)
+
+        attrs_merged_with_kws = merge!(Attributes(kwargs), attrs)
+        attrs_merged_with_defaults = merge!(attrs_merged_with_kws, default_attributes(LegendEntry))
+
+        new(label, plots, attrs_merged_with_defaults)
+    end
 end
 
 struct LLegend <: LObject

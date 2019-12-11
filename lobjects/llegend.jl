@@ -25,7 +25,6 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs)
 
-    # scenearea = @lift(IRect2D(enlarge($finalbbox, $margin...)))
     scenearea = @lift(IRect2D($finalbbox))
 
     scene = Scene(parent, scenearea, raw = true, camera = campixel!)
@@ -43,8 +42,6 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     entries = Node(LegendEntry[])
 
-    # titlet = text!(scene, title, position = Point2f0(0, 0), textsize = titlesize,
-    #     font = titlefont, align = (:left, :top))[end]
 
     maingrid = GridLayout(legendrect, alignmode = Outside(20))
     manipulating_grid = Ref(false)
@@ -61,7 +58,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     end
 
     entrytexts = LText[]
-    entryplots = Vector{AbstractPlot}[]
+    entryplots = [AbstractPlot[]]
     entryrects = LRect[]
 
     maingrid[1, 1] = LText(scene, text = title, textsize = titlesize, halign=:left)
@@ -71,8 +68,11 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     function relayout()
         manipulating_grid[] = true
 
-        nrows = ceil(Int, length(entries[]) / ncols[])
-        ncols_with_symbolcols = 2 * ncols[]
+        n_entries = length(entries[])
+        nrows = ceil(Int, n_entries / ncols[])
+
+        # the grid has twice as many columns as ncols, because of labels and patches
+        ncols_with_symbolcols = 2 * min(ncols[], n_entries) # if fewer entries than cols, not so many cols
 
         for (i, lt) in enumerate(entrytexts)
             irow = (i - 1) ÷ ncols[] + 1
@@ -93,11 +93,11 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         #     deleteat!(entrytexts, i)
         # end
 
-        for i in labelgrid.nrows : -1 : (nrows + 1)
+        for i in labelgrid.nrows : -1 : max((nrows + 1), 2) # not the last row
             deleterow!(labelgrid, i)
         end
 
-        for i in labelgrid.ncols : -1 : (ncols_with_symbolcols + 1)
+        for i in labelgrid.ncols : -1 : max((ncols_with_symbolcols + 1), 2) # not the last col
             deletecol!(labelgrid, i)
         end
 
@@ -120,30 +120,61 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     onany(ncols, rowgap, colgap, patchlabelgap) do _, _, _, _; relayout(); end
 
     on(entries) do entries
-        for (i, e) in enumerate(entries)
-            if i <= length(entrytexts)
-                entrytexts[i].attributes.text[] = e.label
-            else
-                push!(entrytexts,
-                    LText(scene, text = e.label, textsize = labelsize,
-                    halign = labelhalign, valign = labelvalign, font = labelfont)
-                )
-            end
 
-            if i <= length(entryrects)
-                # entryrects[i].attributes.text[] = e.label
-            else
-                push!(entryrects,
-                    LRect(scene, color = rand(RGBf0), width = @lift($patchsize[1]), height = @lift($patchsize[2]))
-                )
-            end
+        # first delete all existing labels and patches
+
+        # delete from grid layout
+        detachfromgridlayout!.(entrytexts, Ref(labelgrid))
+        # and from scene
+        delete!.(entrytexts)
+        empty!(entrytexts)
+
+        # delete from grid layout
+        detachfromgridlayout!.(entryrects, Ref(labelgrid))
+        # and from scene
+        delete!.(entryrects)
+        empty!(entryrects)
+
+        # delete patch plots
+        for eplots in entryplots
+            # each entry can have a vector of patch plots
+            delete!.(scene, eplots)
+        end
+        empty!(entryplots)
+
+        # the attributes for legend entries that the legend itself carries
+        # these serve as defaults unless the legendentry gets its own value set
+        preset_attrs = extractattributes(attrs, LegendEntry)
+
+        for (i, e) in enumerate(entries)
+            elemattrs = merge!(e.attributes, preset_attrs)
+
+            push!(entrytexts, LText(scene, text = e.label))
+
+            # t = entrytexts[i]
+            # t.attributes[:textsize] = elemattrs.labelsize
+            # t.attributes[:halign] = elemattrs.labelhalign
+            # t.attributes[:valign] = elemattrs.labelvalign
+            # t.attributes[:font] = elemattrs.labelfont
+
+            rect = LRect(scene, color = RGBf0(0.95, 0.95, 0.95), strokecolor = :transparent,
+                width = @lift($patchsize[1]),
+                height = @lift($patchsize[2]))
+            push!(entryrects, rect)
+
+            # plot the symbols belonging to this entry
+            symbolplots = AbstractPlot[
+                legendsymbol!(scene, plot, rect.layoutnodes.computedbbox)
+                for plot in e.plots]
+
+            push!(entryplots, symbolplots)
         end
         relayout()
     end
 
-    entries[] = [
-        LegendEntry("entry 1", AbstractPlot[]),
-    ]
+    # entries[] = [
+    #     LegendEntry("entry 1", AbstractPlot[]),
+    # ]
 
     # no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
@@ -171,6 +202,8 @@ function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
         raw = true)[end]
 end
 
-function LegendEntry(label::String, plot::AbstractPlot)
-    LegendEntry(label, AbstractPlot[plot])
-end
+# function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
+#     fracpoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
+#     points = @lift(fractionpoint.($bbox, fracpoints))
+#     lines!(scene, points)[end]
+# end

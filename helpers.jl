@@ -271,3 +271,14 @@ end
 function enlarge(bbox::BBox, l, r, b, t)
     BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) - b, top(bbox) + t)
 end
+
+function center(bbox::BBox)
+    Point2f0((right(bbox) + left(bbox)) / 2, (top(bbox) + bottom(bbox)) / 2)
+end
+
+"""
+Converts a point in fractions of rect dimensions into real coordinates.
+"""
+function fractionpoint(bbox::BBox, point::T) where T <: Point2
+    T(left(bbox) + point[1] * width(bbox), bottom(bbox) + point[2] * height(bbox))
+end

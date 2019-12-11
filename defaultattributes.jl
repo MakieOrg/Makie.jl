@@ -264,10 +264,35 @@ function default_attributes(::Type{LLegend})
         bgcolor = :white,
         strokecolor = :black,
         strokewidth = 1f0,
-        patchsize = (30f0, 30f0),
+        patchsize = (45f0, 30f0),
         ncols = 1,
         colgap = 20,
         rowgap = 10,
         patchlabelgap = 5,
     )
+end
+
+function default_attributes(::Type{LegendEntry})
+    Attributes(
+        labelsize = 20f0,
+        labelfont = "Dejavu Sans",
+        labelcolor = :black,
+        labelhalign = :left,
+        labelvalign = :center,
+        patchsize = (30f0, 30f0),
+    )
+end
+
+function attributenames(::Type{LegendEntry})
+    (:labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign, :patchsize)
+end
+
+function extractattributes(attributes::Attributes, typ::Type)
+    extracted = Attributes()
+    for name in attributenames(typ)
+        if haskey(attributes, name)
+            extracted[name] = attributes[name]
+        end
+    end
+    extracted
 end
