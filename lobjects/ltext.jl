@@ -21,7 +21,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
         sizeattrs)
 
-    textpos = Node(Point2f0(0, 0))
+    textpos = Node(Point3f0(0, 0, 0))
 
     t = text!(parent, text, position = textpos, textsize = textsize, font = font, color = color,
         visible = visible, align = (:center, :center), rotation = rotation)[end]
@@ -68,7 +68,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
                 error("Invalid valign $valign")
             end
 
-        textpos[] = Point2f0(x, y)
+        textpos[] = Point3f0(x, y, 0)
     end
 
 
