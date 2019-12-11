@@ -66,7 +66,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         # an AbstractPlot can have children, and only lowest-level children
         # are saved in the renderlist, so we go down recursively until there
         # are no more children to a plot object
-        delete!.(Ref(screen), Ref(scene), plot.plots)
+        delete!.(Ref(screen), Ref(scene), AbstractPlotting.flatten_plots(plot))
     else
         renderobject = get(screen.cache, objectid(plot)) do
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
