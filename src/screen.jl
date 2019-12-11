@@ -63,9 +63,7 @@ end
 
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     if !isempty(plot.plots)
-        # an AbstractPlot can have children, and only lowest-level children
-        # are saved in the renderlist, so we go down recursively until there
-        # are no more children to a plot object
+        # this plot consists of children, so we flatten it and delete the children instead
         delete!.(Ref(screen), Ref(scene), AbstractPlotting.flatten_plots(plot))
     else
         renderobject = get(screen.cache, objectid(plot)) do
