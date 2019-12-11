@@ -265,26 +265,37 @@ function default_attributes(::Type{LLegend})
         strokecolor = :black,
         strokewidth = 1f0,
         patchsize = (45f0, 30f0),
+        patchstrokecolor = :transparent,
+        patchstrokewidth = 1f0,
+        patchcolor = RGBf0(0.95, 0.95, 0.95),
+        label = "undefined",
         ncols = 1,
         colgap = 20,
         rowgap = 10,
         patchlabelgap = 5,
+        linepoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)],
+        linewidth = 3,
+        markerpoints = [Point2f0(0.5, 0.5)],
+        markersize = 20,
     )
 end
 
-function default_attributes(::Type{LegendEntry})
-    Attributes(
-        labelsize = 20f0,
-        labelfont = "Dejavu Sans",
-        labelcolor = :black,
-        labelhalign = :left,
-        labelvalign = :center,
-        patchsize = (30f0, 30f0),
-    )
-end
+# function default_attributes(::Type{LegendEntry})
+#     Attributes(
+#         label = "undefined",
+#         labelsize = 20f0,
+#         labelfont = "Dejavu Sans",
+#         labelcolor = :black,
+#         labelhalign = :left,
+#         labelvalign = :center,
+#         patchsize = (30f0, 30f0),
+#     )
+# end
 
 function attributenames(::Type{LegendEntry})
-    (:labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign, :patchsize)
+    (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
+        :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
+        :linepoints, :markerpoints, :markersize)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)

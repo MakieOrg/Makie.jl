@@ -147,9 +147,17 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         preset_attrs = extractattributes(attrs, LegendEntry)
 
         for (i, e) in enumerate(entries)
-            elemattrs = merge!(e.attributes, preset_attrs)
 
-            push!(entrytexts, LText(scene, text = e.label))
+            for a in attributenames(LegendEntry)
+                if !haskey(e.attributes, a)
+                    setindex!(e.attributes, lift(x -> x, preset_attrs[a]), a)
+                end
+            end
+
+            push!(entrytexts, LText(scene,
+                text = e.label, textsize = e.labelsize, font = e.labelfont,
+                color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
+                ))
 
             # t = entrytexts[i]
             # t.attributes[:textsize] = elemattrs.labelsize
@@ -158,13 +166,13 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             # t.attributes[:font] = elemattrs.labelfont
 
             rect = LRect(scene, color = RGBf0(0.95, 0.95, 0.95), strokecolor = :transparent,
-                width = @lift($patchsize[1]),
-                height = @lift($patchsize[2]))
+                width = lift(x -> x[1], e.patchsize),
+                height = lift(x -> x[2], e.patchsize))
             push!(entryrects, rect)
 
             # plot the symbols belonging to this entry
             symbolplots = AbstractPlot[
-                legendsymbol!(scene, plot, rect.layoutnodes.computedbbox)
+                legendsymbol!(scene, plot, rect.layoutnodes.computedbbox, e.attributes)
                 for plot in e.plots]
 
             push!(entryplots, symbolplots)
@@ -188,18 +196,49 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 end
 
 
-function legendsymbol!(scene, plot::Scatter, bbox)
-    fracpoint = Point2f0(0.5, 0.5)
-    points = @lift([fractionpoint($bbox, fracpoint)]) # array for the point because of scatter "bug" for single point
+function legendsymbol!(scene, plot::Scatter, bbox, attrs::Attributes)
+    fracpoints = attrs.markerpoints
+    points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     scatter!(scene, points, color = plot.color, marker = plot.marker,
-        markersize = 20, raw = true)[end]
+        markersize = attrs.markersize, raw = true)[end]
 end
 
-function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
-    fracpoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
-    points = @lift(fractionpoint.(Ref($bbox), fracpoints))
+function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox, attrs::Attributes)
+    fracpoints = attrs.linepoints
+    points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lines!(scene, points, linewidth = 3f0, color = plot.color,
         raw = true)[end]
+end
+
+function Base.getproperty(lentry::LegendEntry, s::Symbol)
+    if s in fieldnames(LegendEntry)
+        getfield(lentry, s)
+    else
+        lentry.attributes[s]
+    end
+end
+
+function Base.setproperty!(lentry::LegendEntry, s::Symbol, value)
+    if s in fieldnames(LegendEntry)
+        setfield!(lentry, s, value)
+    else
+        lentry.attributes[s][] = value
+    end
+end
+
+function Base.propertynames(lentry::LegendEntry)
+    [fieldnames(T)..., keys(lentry.attributes)...]
+end
+
+function LegendEntry(label::String, plot::AbstractPlot, plots...; kwargs...)
+    attrs = Attributes(label = label)
+    merge!(attrs, Attributes(kwargs))
+
+    # don't merge here, include missing ones later when inserted into the legend
+    # because the main settings should be in the legend
+    # merge!(attrs, default_attributes(LLegend))
+
+    LegendEntry(AbstractPlot[plot, plots...], attrs)
 end
 
 # function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
