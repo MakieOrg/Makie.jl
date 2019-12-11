@@ -277,6 +277,7 @@ function default_attributes(::Type{LLegend})
         linewidth = 3,
         markerpoints = [Point2f0(0.5, 0.5)],
         markersize = 20,
+        markerstrokewidth = 2,
     )
 end
 
@@ -295,7 +296,7 @@ end
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
         :patchsize, :patchstrokecolor, :patchstrokewidth, :patchcolor,
-        :linepoints, :markerpoints, :markersize)
+        :linepoints, :markerpoints, :markersize, :markerstrokewidth)
 end
 
 function extractattributes(attributes::Attributes, typ::Type)

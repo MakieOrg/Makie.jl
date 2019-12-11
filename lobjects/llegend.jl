@@ -4,7 +4,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     @extract attrs (
         halign, valign, padding, margin,
-        title, titlefont, titlesize,
+        title, titlefont, titlesize, titlealign,
         labelsize, labelfont, labelcolor, labelhalign, labelvalign,
         bgcolor, strokecolor, strokewidth,
         patchsize, # the side length of the entry patch area
@@ -29,7 +29,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     scene = Scene(parent, scenearea, raw = true, camera = campixel!)
 
-    # translate!(scene, (0, 0, 10))
+    translate!(scene, (0, 0, 10))
 
     legendrect = @lift(
         BBox($margin[1], width($scenearea) - $margin[2],
@@ -61,7 +61,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     entryplots = [AbstractPlot[]]
     entryrects = LRect[]
 
-    maingrid[1, 1] = LText(scene, text = title, textsize = titlesize, halign=:left)
+    titletext = maingrid[1, 1] = LText(scene, text = title, textsize = titlesize, halign = titlealign)
 
     labelgrid = maingrid[2, 1] = GridLayout()
 
@@ -115,6 +115,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
         manipulating_grid[] = false
         maingrid.needs_update[] = true
+
+        translate!(scene, (0, 0, 10))
     end
 
     onany(ncols, rowgap, colgap, patchlabelgap) do _, _, _, _; relayout(); end
@@ -165,7 +167,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             # t.attributes[:valign] = elemattrs.labelvalign
             # t.attributes[:font] = elemattrs.labelfont
 
-            rect = LRect(scene, color = RGBf0(0.95, 0.95, 0.95), strokecolor = :transparent,
+            rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                strokewidth = e.patchstrokewidth,
                 width = lift(x -> x[1], e.patchsize),
                 height = lift(x -> x[2], e.patchsize))
             push!(entryrects, rect)
@@ -200,13 +203,15 @@ function legendsymbol!(scene, plot::Scatter, bbox, attrs::Attributes)
     fracpoints = attrs.markerpoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     scatter!(scene, points, color = plot.color, marker = plot.marker,
-        markersize = attrs.markersize, raw = true)[end]
+        markersize = attrs.markersize, strokewidth = attrs.markerstrokewidth,
+        strokecolor = plot.strokecolor, raw = true)[end]
 end
 
 function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox, attrs::Attributes)
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lines!(scene, points, linewidth = 3f0, color = plot.color,
+        linestyle = plot.linestyle,
         raw = true)[end]
 end
 
