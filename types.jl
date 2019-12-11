@@ -246,17 +246,23 @@ struct LToggle <: LObject
     decorations::Dict{Symbol, Any}
 end
 
-struct LegendEntry
-    plots::Vector{AbstractPlot}
-    attributes::Attributes
+abstract type LegendElement end
 
-    # function LegendEntry(label::String, plots::Vector{AbstractPlot}, attrs::Attributes = Attributes(); kwargs...)
-    #
-    #     attrs_merged_with_kws = merge!(Attributes(kwargs), attrs)
-    #     attrs_merged_with_defaults = merge!(attrs_merged_with_kws, default_attributes(LegendEntry))
-    #
-    #     new(label, plots, attrs_merged_with_defaults)
-    # end
+struct LineElement <: LegendElement
+    attributes::Attributes
+end
+
+struct MarkerElement <: LegendElement
+    attributes::Attributes
+end
+
+struct PatchElement <: LegendElement
+    attributes::Attributes
+end
+
+struct LegendEntry
+    elements::Vector{LegendElement}
+    attributes::Attributes
 end
 
 struct LLegend <: LObject

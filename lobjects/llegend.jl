@@ -172,8 +172,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
             # plot the symbols belonging to this entry
             symbolplots = AbstractPlot[
-                legendsymbol!(scene, plot, rect.layoutnodes.computedbbox, e.attributes)
-                for plot in e.plots]
+                legendsymbol!(scene, element, rect.layoutnodes.computedbbox, e.attributes)
+                for element in e.elements]
 
             push!(entryplots, symbolplots)
         end
@@ -196,19 +196,20 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 end
 
 
-function legendsymbol!(scene, plot::Scatter, bbox, attrs::Attributes)
+function legendsymbol!(scene, element::MarkerElement, bbox, attrs::Attributes)
     fracpoints = attrs.markerpoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    scatter!(scene, points, color = plot.color, marker = plot.marker,
-        markersize = attrs.markersize, strokewidth = attrs.markerstrokewidth,
-        strokecolor = plot.strokecolor, raw = true)[end]
+    scatter!(scene, points, color = element.color, marker = element.marker,
+        markersize = (haskey(element.attributes, :markersize) ? element.markersize : attrs.markersize),
+        strokewidth = attrs.markerstrokewidth,
+        strokecolor = element.strokecolor, raw = true)[end]
 end
 
-function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox, attrs::Attributes)
+function legendsymbol!(scene, element::LineElement, bbox, attrs::Attributes)
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    lines!(scene, points, linewidth = 3f0, color = plot.color,
-        linestyle = plot.linestyle,
+    lines!(scene, points, linewidth = 3f0, color = element.color,
+        linestyle = element.linestyle,
         raw = true)[end]
 end
 
@@ -232,19 +233,83 @@ function Base.propertynames(lentry::LegendEntry)
     [fieldnames(T)..., keys(lentry.attributes)...]
 end
 
-function LegendEntry(label::String, plot::AbstractPlot, plots...; kwargs...)
-    attrs = Attributes(label = label)
-    merge!(attrs, Attributes(kwargs))
-
-    # don't merge here, include missing ones later when inserted into the legend
-    # because the main settings should be in the legend
-    # merge!(attrs, default_attributes(LLegend))
-
-    LegendEntry(AbstractPlot[plot, plots...], attrs)
-end
+# function LegendEntry(label::String, plot::AbstractPlot, plots...; kwargs...)
+#     attrs = Attributes(label = label)
+#     merge!(attrs, Attributes(kwargs))
+#
+#     # don't merge here, include missing ones later when inserted into the legend
+#     # because the main settings should be in the legend
+#     # merge!(attrs, default_attributes(LLegend))
+#
+#     LegendEntry(AbstractPlot[plot, plots...], attrs)
+# end
 
 # function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
 #     fracpoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
 #     points = @lift(fractionpoint.($bbox, fracpoints))
 #     lines!(scene, points)[end]
 # end
+function LegendEntry(label::String, plots::Vararg{AbstractPlot}; kwargs...)
+    attrs = Attributes(label = label)
+
+    kwargattrs = Attributes(kwargs)
+    merge!(attrs, kwargattrs)
+
+    elems = vcat(legendelements.(plots)...)
+    LegendEntry(elems, attrs)
+end
+
+function LegendEntry(label::String, elements::Vararg{LegendElement}; kwargs...)
+    attrs = Attributes(label = label)
+
+    kwargattrs = Attributes(kwargs)
+    merge!(attrs, kwargattrs)
+
+    elems = LegendElement[elements...]
+    LegendEntry(elems, attrs)
+end
+
+function LineElement(;kwargs...)
+    LineElement(Attributes(kwargs))
+end
+
+function MarkerElement(;kwargs...)
+    MarkerElement(Attributes(kwargs))
+end
+function PatchElement(;kwargs...)
+    PatchElement(Attributes(kwargs))
+end
+
+function legendelements(plot::Union{Lines, LineSegments})
+    LegendElement[LineElement(color = plot.color, linestyle = plot.linestyle)]
+end
+
+function legendelements(plot::Scatter)
+    LegendElement[MarkerElement(
+        color = plot.color, marker = plot.marker,
+        strokecolor = plot.strokecolor)]
+end
+
+function legendelements(plot::Poly)
+    LegendElement[PatchElement(color = plot.color, strokecolor = plot.strokecolor)]
+end
+
+function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
+    if s in fieldnames(T)
+        getfield(legendelement, s)
+    else
+        legendelement.attributes[s]
+    end
+end
+
+function Base.setproperty!(legendelement::T, s::Symbol, value) where T <: LegendElement
+    if s in fieldnames(T)
+        setfield!(legendelement, s, value)
+    else
+        legendelement.attributes[s][] = value
+    end
+end
+
+function Base.propertynames(legendelement::T) where T <: LegendElement
+    [fieldnames(T)..., keys(legendelement.attributes)...]
+end
