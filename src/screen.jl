@@ -62,10 +62,15 @@ function insertplots!(screen::GLScreen, scene::Scene)
 end
 
 function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
-    renderobject = get(screen.cache, objectid(plot)) do
-        error("Could not find $(typeof(plot)) in current GLMakie screen!")
+    if !isempty(plot.plots)
+        # this plot consists of children, so we flatten it and delete the children instead
+        delete!.(Ref(screen), Ref(scene), AbstractPlotting.flatten_plots(plot))
+    else
+        renderobject = get(screen.cache, objectid(plot)) do
+            error("Could not find $(typeof(subplot)) in current GLMakie screen!")
+        end
+        filter!(x-> x[3] !== renderobject, screen.renderlist)
     end
-    filter!(x-> x[3] !== renderobject, screen.renderlist)
 end
 
 function Base.empty!(screen::GLScreen)
