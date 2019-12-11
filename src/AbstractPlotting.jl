@@ -1,8 +1,9 @@
 module AbstractPlotting
 
 using FFMPEG # get FFMPEG on any system!
-using Observables, GeometryTypes, StaticArrays, ColorTypes, Colors, IntervalSets, PlotUtils
-using ColorBrewer, FixedPointNumbers, Packing, SignedDistanceFields
+using Observables, GeometryTypes, StaticArrays, IntervalSets, PlotUtils
+using ColorBrewer, ColorTypes, Colors, ColorSchemes
+using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
