@@ -108,7 +108,8 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
-        idealtickdistance = idealtickdistance, ticklabelspace = ticklabelspace)
+        idealtickdistance = idealtickdistance, ticklabelspace = ticklabelspace,
+        spinecolor = :transparent, spinevisible = :false)
     decorations[:axis] = axis
 
     protrusions = lift(axis.protrusion, vertical, flipaxisposition) do axprotrusion,
