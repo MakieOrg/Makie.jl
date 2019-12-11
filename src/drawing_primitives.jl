@@ -187,14 +187,14 @@ end
 function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
     atlas = get_texture_atlas()
     N = length(T)
-    positions, uv_offset_width, scale = Point{N, Float32}[], Vec4f0[], Vec2f0[]
+    positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
     # toffset = calc_offset(string, textsize, font, atlas)
     char_str_idx = iterate(string)
     broadcast_foreach(1:length(string), startpos, textsize, (font,), align) do idx, pos, tsize, font, align
         char, str_idx = char_str_idx
         _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
-        push!(positions, to_ndim(Point{N, Float32}, mpos, 0))
+        push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
         push!(uv_offset_width, glyph_uv_width!(atlas, char, _font))
         if isa(tsize, Vec2f0) # this needs better unit support
             push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
@@ -209,17 +209,17 @@ end
 function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
     atlas = get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    pos = to_ndim(Point{N, Float32}, mpos, 0f0)
+    pos = to_ndim(Point{3, Float32}, mpos, 0f0)
     rscale = Float32(textsize)
     chars = Vector{Char}(string)
     scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
     positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
     # font is Vector{FreeType.NativeFont} so we need to protec
     aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
-    aoffsetn = to_ndim(Point{N, Float32}, aoffset, 0f0)
+    aoffsetn = to_ndim(Point{3, Float32}, aoffset, 0f0)
     uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
     positions = map(positions2d) do p
-        pn = rot * (to_ndim(Point{N, Float32}, p, 0f0) .+ aoffsetn)
+        pn = rot * (to_ndim(Point{3, Float32}, p, 0f0) .+ aoffsetn)
         pn .+ pos
     end
     positions, Vec2f0(0), uv_offset_width, scale
