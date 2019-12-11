@@ -210,6 +210,14 @@ function legendsymbol!(scene, element::LineElement, bbox, attrs::Attributes)
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lines!(scene, points, linewidth = 3f0, color = element.color,
         linestyle = element.linestyle,
+function legendsymbol!(scene, element::PolyElement, bbox, defaultattrs::Attributes)
+    merge!(element.attributes, defaultattrs)
+    attrs = element.attributes
+
+    fracpoints = attrs.polypoints
+    points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
+    poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
+        strokecolor = attrs.polystrokecolor,
         raw = true)[end]
 end
 
@@ -276,8 +284,8 @@ end
 function MarkerElement(;kwargs...)
     MarkerElement(Attributes(kwargs))
 end
-function PatchElement(;kwargs...)
-    PatchElement(Attributes(kwargs))
+function PolyElement(;kwargs...)
+    PolyElement(Attributes(kwargs))
 end
 
 function legendelements(plot::Union{Lines, LineSegments})
@@ -291,7 +299,7 @@ function legendelements(plot::Scatter)
 end
 
 function legendelements(plot::Poly)
-    LegendElement[PatchElement(color = plot.color, strokecolor = plot.strokecolor)]
+    LegendElement[PolyElement(color = plot.color, strokecolor = plot.strokecolor)]
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement

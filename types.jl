@@ -256,7 +256,7 @@ struct MarkerElement <: LegendElement
     attributes::Attributes
 end
 
-struct PatchElement <: LegendElement
+struct PolyElement <: LegendElement
     attributes::Attributes
 end
 
