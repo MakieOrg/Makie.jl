@@ -638,6 +638,10 @@ function convert_attribute(r::Reverse, ::key"colormap")
     reverse(to_colormap(r.data))
 end
 
+function convert_attribute(cs::ColorScheme, ::key"colormap")
+    return to_colormap(cs.colors)
+end
+
 
 """
     to_colormap(b, x)
