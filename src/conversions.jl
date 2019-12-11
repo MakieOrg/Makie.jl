@@ -196,6 +196,14 @@ function convert_arguments(P::PointBased, x::Rect2D)
     # TODO fix the order of decompose
     convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
+
+function convert_arguments(::Type{<: LineSegments}, x::Rect2D)
+    # TODO fix the order of decompose
+    points = decompose(Point2f0, x)
+    return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
+end
+
+
 function convert_arguments(P::PointBased, x::Rect3D)
     inds = [
         1, 2, 3, 4, 5, 6, 7, 8,
