@@ -320,3 +320,23 @@ end
 function Base.propertynames(legendelement::T) where T <: LegendElement
     [fieldnames(T)..., keys(legendelement.attributes)...]
 end
+
+function Base.push!(legend::LLegend, entry::LegendEntry)
+    legend.entries[] = [legend.entries[]; entry]
+    nothing
+end
+
+function Base.pushfirst!(legend::LLegend, entry::LegendEntry)
+    legend.entries[] = [entry; legend.entries[]]
+    nothing
+end
+
+function Base.push!(legend::LLegend, label::String, plots::Vararg{AbstractPlot}; kwargs...)
+    entry = LegendEntry(label, plots...; kwargs...)
+    push!(legend, entry)
+end
+
+function Base.pushfirst!(legend::LLegend, label::String, plots::Vararg{AbstractPlot}; kwargs...)
+    entry = LegendEntry(label, plots...; kwargs...)
+    pushfirst!(legend, entry)
+end
