@@ -150,12 +150,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
         for (i, e) in enumerate(entries)
 
-            # lift attributes from the legend if the entry doesn't have them
-            for a in attributenames(LegendEntry)
-                if !haskey(e.attributes, a)
-                    setindex!(e.attributes, lift(x -> x, preset_attrs[a]), a)
-                end
-            end
+            # fill missing entry attributes with those carried by the legend
+            merge!(e.attributes, preset_attrs)
 
             # create the label
             push!(entrytexts, LText(scene,
