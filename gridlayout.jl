@@ -97,7 +97,11 @@ function request_update(gl::GridLayout)
 end
 
 function request_update(gl::GridLayout, parent::Nothing)
-    error("The GridLayout has no parent and therefore can't request an update.")
+    # do nothing, sometimes a GridLayout may be defined and only then inserted
+    # into another, so I don't want to break those cases
+    # this could on the other hand lead to people confused why nothing is happening
+    
+    # error("The GridLayout has no parent and therefore can't request an update.")
 end
 
 function request_update(gl::GridLayout, parent::Scene)
