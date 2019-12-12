@@ -10,6 +10,7 @@ function GridLayout(nrows::Int, ncols::Int;
         addedcolgaps = nothing,
         alignmode = Inside(),
         equalprotrusiongaps = (false, false),
+        bbox = nothing,
         halign::Union{Symbol, Node{Symbol}} = :center,
         valign::Union{Symbol, Node{Symbol}} = :center)
 
@@ -54,13 +55,31 @@ function GridLayout(nrows::Int, ncols::Int;
     valign = valign isa Symbol ? Node(valign) : valign
     halign = halign isa Symbol ? Node(halign) : halign
 
-    onany(valign, halign) do v, h
-        needs_update[] = true
-    end
+    attrs = Attributes(height = nothing, width = nothing)
+    sizeattrs = sizenode!(attrs.width, attrs.height)
+
+    alignment = lift(tuple, halign, valign)
+
+    autosizenode = Node((0f0, 0f0))
+
+    computedsize = computedsizenode!(sizeattrs, autosizenode)
+
+    suggestedbbox = create_suggested_bboxnode(bbox)
+
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
+        sizeattrs, autosizenode)
+
+    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
+
+    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+
+    # onany(valign, halign) do v, h
+    #     needs_update[] = true
+    # end
 
     GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign)
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes)
 end
 
 function validategridlayout(gl::GridLayout)

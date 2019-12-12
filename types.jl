@@ -88,6 +88,13 @@ struct Aspect <: ContentSize
     ratio::Float64
 end
 
+struct LayoutNodes
+    suggestedbbox::Node{BBox}
+    protrusions::Node{RectSides{Float32}}
+    computedsize::Node{NTuple{2, Optional{Float32}}}
+    computedbbox::Node{BBox}
+end
+
 mutable struct GridLayout <: AbstractLayout
     parent::Union{Nothing, Scene, GridLayout, Node{<:Rect2D}}
     content::Vector{SpannedLayout}
@@ -103,16 +110,17 @@ mutable struct GridLayout <: AbstractLayout
     block_updates::Bool
     valign::Node{Symbol}
     halign::Node{Symbol}
+    layoutnodes::LayoutNodes
     _update_func_handle::Optional{Function} # stores a reference to the result of on(obs)
 
     function GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes,
         addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update,
-        valign, halign)
+        valign, halign, layoutnodes)
 
         gl = new(nothing, content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
-            needs_update, false, valign, halign, nothing)
+            needs_update, false, valign, halign, layoutnodes, nothing)
 
         validategridlayout(gl)
 
@@ -178,13 +186,6 @@ mutable struct LineAxis
     tickpositions::Node{Vector{Point2f0}}
     tickvalues::Node{Vector{Float32}}
     ticklabels::Node{Vector{String}}
-end
-
-struct LayoutNodes
-    suggestedbbox::Node{BBox}
-    protrusions::Node{RectSides{Float32}}
-    computedsize::Node{NTuple{2, Optional{Float32}}}
-    computedbbox::Node{BBox}
 end
 
 abstract type LObject end
