@@ -246,22 +246,7 @@ function Base.propertynames(lentry::LegendEntry)
     [fieldnames(T)..., keys(lentry.attributes)...]
 end
 
-# function LegendEntry(label::String, plot::AbstractPlot, plots...; kwargs...)
-#     attrs = Attributes(label = label)
-#     merge!(attrs, Attributes(kwargs))
-#
-#     # don't merge here, include missing ones later when inserted into the legend
-#     # because the main settings should be in the legend
-#     # merge!(attrs, default_attributes(LLegend))
-#
-#     LegendEntry(AbstractPlot[plot, plots...], attrs)
-# end
 
-# function legendsymbol!(scene, plot::Union{Lines, LineSegments}, bbox)
-#     fracpoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
-#     points = @lift(fractionpoint.($bbox, fracpoints))
-#     lines!(scene, points)[end]
-# end
 function LegendEntry(label::String, plots::Vararg{AbstractPlot}; kwargs...)
     attrs = Attributes(label = label)
 
