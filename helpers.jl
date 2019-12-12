@@ -7,7 +7,8 @@ function alignedbboxnode!(
     suggestedbbox::Node{BBox},
     computedsize::Node{NTuple{2, Optional{Float32}}},
     alignment::Node,
-    sizeattrs::Node)
+    sizeattrs::Node,
+    autosizenode = nothing)
 
     finalbbox = Node(BBox(0, 100, 0, 100))
 
@@ -28,6 +29,16 @@ function alignedbboxnode!(
             @match widthattr begin
                 wa::Relative => wa.x * bw
                 wa::Nothing => bw
+                wa::Auto => if wa.trydetermine
+                        error("Auto(true) width was selected but the width couldn't be determined.")
+                    else
+                        # Auto(false) means we didn't report the size to the layout
+                        # but we still use it for the element
+                        if isnothing(autosizenode)
+                            error("No autosize node was given, even though width Auto(false) was requested.")
+                        end
+                        autosizenode[][1]
+                    end
                 wa => error("At this point, if computed width is not known,
                 widthattr should be a Relative or Nothing, not $wa.")
             end
@@ -39,6 +50,16 @@ function alignedbboxnode!(
             @match heightattr begin
                 ha::Relative => ha.x * bh
                 ha::Nothing => bh
+                ha::Auto => if ha.trydetermine
+                        error("Auto(true) height was selected but the height couldn't be determined.")
+                    else
+                        # Auto(false) means we didn't report the size to the layout
+                        # but we still use it for the element
+                        if isnothing(autosizenode)
+                            error("No autosize node was given, even though height Auto(false) was requested.")
+                        end
+                        autosizenode[][2]
+                    end
                 ha => error("At this point, if computed height is not known,
                 heightattr should be a Relative or Nothing, not $ha.")
             end
@@ -128,7 +149,15 @@ function computed_size(sizeattr, autosize)
         sa::Real => sa
         sa::Fixed => sa.x
         sa::Relative => nothing
-        sa::Auto => autosize
+        sa::Auto => if sa.trydetermine
+                # if trydetermine we report the autosize to the layout
+                autosize
+            else
+                # but not if it's false, this allows for single span content
+                # not to shrink its column or row, like a small legend next to an
+                # axis or a super title over a single axis
+                nothing
+            end
         sa => error("""
             Invalid size attribute $sizeattr.
             Can only be Nothing, Fixed, Relative, Auto or Real""")

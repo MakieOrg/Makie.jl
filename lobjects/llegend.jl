@@ -23,7 +23,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs)
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
 
     scenearea = @lift(IRect2D($finalbbox))
 

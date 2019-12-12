@@ -249,8 +249,8 @@ function default_attributes(::Type{LLegend})
     Attributes(
         halign = :center,
         valign = :center,
-        width = Auto(),
-        height = Auto(),
+        width = Auto(true),
+        height = Auto(false),
         title = "Legend",
         titlefont = "Dejavu Sans",
         titlesize = 20f0,

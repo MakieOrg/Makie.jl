@@ -20,7 +20,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     suggestedbbox = create_suggested_bboxnode(bbox)
 
     finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
-        sizeattrs)
+        sizeattrs, autosizenode)
 
     textpos = Node(Point2f0(0, 0))
 
