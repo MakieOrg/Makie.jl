@@ -82,6 +82,11 @@ function GridLayout(nrows::Int, ncols::Int;
         addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes)
 end
 
+
+computedsizenode(gridlayout::GridLayout) = gridlayout.layoutnodes.computedsize
+protrusionnode(gridlayout::GridLayout) = gridlayout.layoutnodes.protrusions
+
+
 function validategridlayout(gl::GridLayout)
     if gl.nrows < 1
         error("Number of rows can't be smaller than 1")
@@ -198,13 +203,11 @@ function request_update(gl::GridLayout, parent::Nothing)
 end
 
 function request_update(gl::GridLayout, parent::Scene)
-    sg = solve(gl, BBox(pixelarea(parent)[]))
-    applylayout(sg)
+    align_to_bbox!(gl, BBox(pixelarea(parent)[]))
 end
 
 function request_update(gl::GridLayout, parent::Node{<:Rect2D})
-    sg = solve(gl, BBox(parent[]))
-    applylayout(sg)
+    align_to_bbox!(gl, BBox(parent[]))
 end
 
 function request_update(gl::GridLayout, parent::GridLayout)
@@ -544,7 +547,7 @@ into a given bounding box. This means that the protrusions of all objects inside
 the grid are not taken into account. This is needed if the grid is itself placed
 inside another grid.
 """
-function solve(gl::GridLayout, bbox::BBox)
+function align_to_bbox!(gl::GridLayout, bbox::BBox)
 
     if gl.alignmode isa Outside
         pad = gl.alignmode.padding
@@ -703,7 +706,8 @@ function solve(gl::GridLayout, bbox::BBox)
         xleftcols, xrightcols,
         ytoprows, ybottomrows
     )
-    solvedcontent = map(gl.content) do c
+
+    for c in gl.content
         idx_rect = side_indices(c)
         bbox_cell = mapsides(idx_rect, gridboxes) do side, idx, gridside
             gridside[idx]
@@ -711,16 +715,14 @@ function solve(gl::GridLayout, bbox::BBox)
 
         solving_bbox = bbox_for_solving_from_side(maxgrid, bbox_cell, idx_rect, c.side)
 
-        solved = solve(c.al, solving_bbox)
-        return SpannedLayout(solved, c.sp, c.side)
+        align_to_bbox!(c.al, solving_bbox)
     end
-    # return a solved grid layout in which all objects are also solved layout objects
-    return SolvedGridLayout(
-        bbox, solvedcontent,
-        gl.nrows, gl.ncols,
-        gridboxes
-    )
+
+    nothing
 end
+
+# TODO: this is unnecessary, should go away once protrusionlayout is eliminated
+align_to_bbox!(pl::ProtrusionLayout, bbox) = align_to_bbox!(pl.content, bbox)
 
 
 dirlength(gl::GridLayout, c::Col) = gl.ncols

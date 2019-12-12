@@ -54,17 +54,6 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     vec
 end
 
-
-function applylayout(sg::SolvedGridLayout)
-    for c in sg.content
-        applylayout(c.al)
-    end
-end
-
-function applylayout(sa::SolvedProtrusionLayout)
-    align_to_bbox!(sa.content, sa.bbox)
-end
-
 function shrinkbymargin(rect, margin)
     IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
 end
