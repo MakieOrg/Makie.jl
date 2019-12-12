@@ -85,13 +85,6 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             icol = (i - 1) % ncols[] + 1
             labelgrid[irow, icol * 2 - 1] = rect
         end
-        # this is empty if no superfluous rows exist
-        # for i in length(entrytexts) : -1 : (length(entries[]) + 1)
-        #     # remove object from scene
-        #     remove!(entrytexts[i])
-        #     # remove reference from array
-        #     deleteat!(entrytexts, i)
-        # end
 
         for i in labelgrid.nrows : -1 : max((nrows + 1), 2) # not the last row
             deleterow!(labelgrid, i)
