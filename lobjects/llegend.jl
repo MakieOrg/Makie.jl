@@ -292,6 +292,15 @@ function legendelements(plot::Poly)
     LegendElement[PolyElement(color = plot.color, strokecolor = plot.strokecolor)]
 end
 
+function legendelements(plot::T) where T
+    error("""
+        There is no `legendelements` method defined for plot type $T. This means
+        that you can't automatically generate a legend entry for this plot type.
+        You can overload this method for your plot type that returns a `LegendElement`
+        vector, or manually construct a legend entry from those elements.
+    """)
+end
+
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
     if s in fieldnames(T)
         getfield(legendelement, s)
