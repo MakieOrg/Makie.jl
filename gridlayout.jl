@@ -1104,16 +1104,8 @@ function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
         is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols)
     end
 
-    extracted_layouts = map(included) do c
+    extracted_content = map(included) do c
         c.al
-    end
-
-    return if length(extracted_layouts) == 0
-        nothing
-    elseif length(extracted_layouts) == 1
-        extracted_layouts[1]
-    else
-        extracted_layouts
     end
 end
 
