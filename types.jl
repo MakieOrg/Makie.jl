@@ -50,10 +50,14 @@ end
 An object that can be aligned that also specifies how much space it occupies in
 a grid via its span.
 """
-struct SpannedLayout{T <: AbstractLayout}
+mutable struct GridContent{G, T} # G should be GridLayout but can't be used before definition
+    parent::Optional{G}
     al::T
     sp::Span
     side::Side
+    needs_update::Node{Bool}
+    protrusions_handle::Optional{Function}
+    computedsize_handle::Optional{Function}
 end
 
 abstract type AlignMode end
@@ -97,7 +101,7 @@ end
 
 mutable struct GridLayout <: AbstractLayout
     parent::Union{Nothing, Scene, GridLayout, Node{<:Rect2D}}
-    content::Vector{SpannedLayout}
+    content::Vector{GridContent}
     nrows::Int
     ncols::Int
     rowsizes::Vector{ContentSize}
@@ -135,13 +139,13 @@ mutable struct GridLayout <: AbstractLayout
 end
 
 
-struct SolvedGridLayout <: AbstractLayout
-    bbox::BBox
-    content::Vector{SpannedLayout}
-    nrows::Int
-    ncols::Int
-    grid::RowCols{Vector{Float64}}
-end
+# struct SolvedGridLayout <: AbstractLayout
+#     bbox::BBox
+#     content::Vector{GridContent}
+#     nrows::Int
+#     ncols::Int
+#     grid::RowCols{Vector{Float64}}
+# end
 
 struct AxisAspect
     aspect::Float32

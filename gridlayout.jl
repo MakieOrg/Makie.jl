@@ -271,7 +271,7 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
     gl.content = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows .+ n, span.cols)
-        SpannedLayout(spal.al, newspan, spal.side)
+        GridContent(spal.al, newspan, spal.side)
     end
 
     with_updates_suspended(gl) do
@@ -289,7 +289,7 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     gl.content = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows, span.cols .+ n)
-        SpannedLayout(spal.al, newspan, spal.side)
+        GridContent(spal.al, newspan, spal.side)
     end
 
     with_updates_suspended(gl) do
@@ -308,8 +308,8 @@ function deleterow!(gl::GridLayout, irow::Int)
         error("Can't delete the last row")
     end
 
-    new_content = SpannedLayout[]
-    to_remove = SpannedLayout[]
+    new_content = GridContent[]
+    to_remove = GridContent[]
     for c in gl.content
         rows = c.sp.rows
         newrows = if irow in rows
@@ -326,7 +326,7 @@ function deleterow!(gl::GridLayout, irow::Int)
             # the row span was just one row and now zero, remove the element
             push!(to_remove, c)
         else
-            push!(new_content, SpannedLayout(c.al, Span(newrows, c.sp.cols), c.side))
+            push!(new_content, GridContent(c.al, Span(newrows, c.sp.cols), c.side))
         end
     end
 
@@ -349,8 +349,8 @@ function deletecol!(gl::GridLayout, icol::Int)
         error("Can't delete the last col")
     end
 
-    new_content = SpannedLayout[]
-    to_remove = SpannedLayout[]
+    new_content = GridContent[]
+    to_remove = GridContent[]
     for c in gl.content
         cols = c.sp.cols
         newcols = if icol in cols
@@ -367,7 +367,7 @@ function deletecol!(gl::GridLayout, icol::Int)
             # the col span was just one col and now zero, remove the element
             push!(to_remove, c)
         else
-            push!(new_content, SpannedLayout(c.al, Span(c.sp.rows, newcols), c.side))
+            push!(new_content, GridContent(c.al, Span(c.sp.rows, newcols), c.side))
         end
     end
 
@@ -421,24 +421,21 @@ end
 
 function find_in_grid(obj, container::GridLayout)
     for i in 1:length(container.content)
-        layout = container.content[i].al
-        if layout isa ProtrusionLayout
-            if layout.content === obj
-                return i
-            end
-        end
-    end
-    nothing
-end
-
-function find_in_grid(layout::AbstractLayout, container::GridLayout)
-    for i in 1:length(container.content)
-        if container.content[i].al === layout
+        if container.content[i].al === obj
             return i
         end
     end
     nothing
 end
+
+# function find_in_grid(layout::AbstractLayout, container::GridLayout)
+#     for i in 1:length(container.content)
+#         if container.content[i].al === layout
+#             return i
+#         end
+#     end
+#     nothing
+# end
 
 function topmost_grid(gl::GridLayout)
     candidate = gl
@@ -454,12 +451,9 @@ end
 function find_in_grid_and_subgrids(obj, container::GridLayout)
     for i in 1:length(container.content)
         candidate = container.content[i].al
-        # for non layout objects like LAxis we check if they are inside
-        # any protrusion layout we find
-        if candidate isa ProtrusionLayout
-            if candidate.content === obj
-                return container, i
-            end
+
+        if candidate === obj
+            return container, i
         elseif candidate isa GridLayout
             return find_in_grid_and_subgrids(obj, candidate)
         end
@@ -467,17 +461,17 @@ function find_in_grid_and_subgrids(obj, container::GridLayout)
     nothing, nothing
 end
 
-function find_in_grid_and_subgrids(layout::AbstractLayout, container::GridLayout)
-    for i in 1:length(container.content)
-        candidate = container.content[i].al
-        if candidate === layout
-            return container, i
-        elseif candidate isa GridLayout
-            return find_in_grid_and_subgrids(layout, candidate)
-        end
-    end
-    nothing, nothing
-end
+# function find_in_grid_and_subgrids(layout::AbstractLayout, container::GridLayout)
+#     for i in 1:length(container.content)
+#         candidate = container.content[i].al
+#         if candidate === layout
+#             return container, i
+#         elseif candidate isa GridLayout
+#             return find_in_grid_and_subgrids(layout, candidate)
+#         end
+#     end
+#     nothing, nothing
+# end
 
 function find_in_grid_tree(obj, container::GridLayout)
     topmost = topmost_grid(container)
@@ -740,7 +734,7 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
 end
 
 # TODO: this is unnecessary, should go away once protrusionlayout is eliminated
-align_to_bbox!(pl::ProtrusionLayout, bbox) = align_to_bbox!(pl.content, bbox)
+# align_to_bbox!(pl::ProtrusionLayout, bbox) = align_to_bbox!(pl.content, bbox)
 
 
 dirlength(gl::GridLayout, c::Col) = gl.ncols
@@ -1016,4 +1010,136 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     end
 
     colwidths, rowheights
+end
+
+
+"""
+This function is similar to the other setindex! but is for all objects that are
+not themselves layouts. They need to be wrapped in a layout first before being
+added. This is determined by the defaultlayout function.
+"""
+function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables, side::Side = Inner())
+
+    # check if this content already sits somewhere in the grid layout tree
+    # if yes, remove it from there before attaching it here
+    parentlayout, index = find_in_grid_tree(content, g)
+    if !isnothing(parentlayout) && !isnothing(index)
+        deleteat!(parentlayout.content, index)
+    end
+
+    add_content!(g, content, rows, cols, side)
+    content
+end
+
+function Base.setindex!(g::GridLayout, content_array::AbstractArray, rows::Indexables, cols::Indexables)
+
+    rows, cols = to_ranges(g, rows, cols)
+
+    if rows.start < 1
+        error("Can't prepend rows using array syntax so far, start row $(rows.start) is smaller than 1.")
+    end
+    if cols.start < 1
+        error("Can't prepend columns using array syntax so far, start column $(cols.start) is smaller than 1.")
+    end
+
+    nrows = length(rows)
+    ncols = length(cols)
+    ncells = nrows * ncols
+
+    if ndims(content_array) == 2
+        if size(content_array) != (nrows, ncols)
+            error("Content array size is size $(size(content_array)) for $nrows rows and $ncols cols")
+        end
+        # put the array content into the grid layout in order
+        for (i, r) in enumerate(rows), (j, c) in enumerate(cols)
+            g[r, c] = content_array[i, j]
+        end
+    elseif ndims(content_array) == 1
+        if length(content_array) != nrows * ncols
+            error("Content array size is length $(length(content_array)) for $nrows * $ncols cells")
+        end
+        # put the content in the layout along columns first, because that is more
+        # intuitive
+        for (i, (c, r)) in enumerate(Iterators.product(cols, rows))
+            g[r, c] = content_array[i]
+        end
+    else
+        error("Can't assign a content array with $(ndims(content_array)) dimensions, only 1 or 2.")
+    end
+    content_array
+end
+
+function GridContent(content::T, span::Span, side::Side) where T
+    needs_update = Node(false)
+    GridContent{GridLayout, T}(nothing, content, span, side, needs_update, nothing, nothing)
+end
+
+function add_content!(g::GridLayout, content, rows, cols, side::Side)
+    rows, cols = adjust_rows_cols!(g, rows, cols)
+    # TODO: does content need a parent? or just gridlayouts, or not even them
+    # layout.parent = g
+    sp = GridContent(content, Span(rows, cols), side)
+    connect_content_to_grid!(g, sp)
+end
+
+function Base.lastindex(g::GridLayout, d)
+    if d == 1
+        g.nrows
+    elseif d == 2
+        g.ncols
+    else
+        error("A grid only has two dimensions, you're indexing dimension $d.")
+    end
+end
+
+function is_range_within(inner::UnitRange, outer::UnitRange)
+    inner.start >= outer.start && inner.stop <= outer.stop
+end
+
+function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
+
+    rows, cols = to_ranges(g, rows, cols)
+
+    included = filter(g.content) do c
+        is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols)
+    end
+
+    extracted_layouts = map(included) do c
+        c.al
+    end
+
+    return if length(extracted_layouts) == 0
+        nothing
+    elseif length(extracted_layouts) == 1
+        extracted_layouts[1]
+    else
+        extracted_layouts
+    end
+end
+
+function connect_content_to_grid!(g::GridLayout, spa::GridContent)
+    push!(g.content, spa)
+
+    # remove all listeners from needs_update because they could be pointing
+    # to previous parents if we're re-nesting layout objects
+    empty!(spa.al.needs_update.listeners)
+
+    on(spa.al.needs_update) do update
+        g.needs_update[] = true
+    end
+    # trigger relayout
+    g.needs_update[] = true
+end
+
+
+function detachfromparent!(l::AbstractLayout)
+    if l.parent isa Scene
+        error("Can't detach a grid layout from its parent if it's a Scene.")
+    elseif l.parent isa GridLayout
+        i = find_in_grid(l, l.parent)
+        isnothing(i) && error("Layout could not be found in its parent's content.")
+
+        deleteat!(l.parent.content, i)
+        l.parent = nothing
+    end
 end
