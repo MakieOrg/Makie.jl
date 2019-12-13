@@ -1114,9 +1114,9 @@ function connect_content_to_grid!(g::GridLayout, spa::GridContent)
 
     # remove all listeners from needs_update because they could be pointing
     # to previous parents if we're re-nesting layout objects
-    empty!(spa.al.needs_update.listeners)
+    empty!(spa.needs_update.listeners)
 
-    on(spa.al.needs_update) do update
+    on(spa.needs_update) do update
         g.needs_update[] = true
     end
     # trigger relayout
