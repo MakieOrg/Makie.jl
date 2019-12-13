@@ -493,17 +493,35 @@ end
 
 function Base.show(io::IO, gl::GridLayout)
 
+    function spaceindent(str, n, downconnection)
+        joinstr = if downconnection
+            "\n" * (" " ^ 1) * "┃" * (" " ^ (n-2))
+        else
+            "\n" * (" " ^ n)
+        end
+        join(split(str, "\n"), joinstr)
+    end
+
     println(io, "GridLayout[$(gl.nrows), $(gl.ncols)] with $(length(gl.content)) children")
+    println(io, " ┃")
+
     for (i, c) in enumerate(gl.content)
         rows = c.sp.rows
         cols = c.sp.cols
         al = c.al
+
         if i == 1
-            println(io, " ┗━┳━ [$rows | $cols] $(typeof(al))")
+            if al isa GridLayout
+                downconnection = i < length(gl.content)
+                str = spaceindent(string(al), 4, downconnection)
+                println(io, " ┣━ $str")
+            else
+                println(io, " ┣━ [$rows | $cols] $(typeof(al))")
+            end
         elseif i == length(gl.content)
-            println(io, "   ┗━ [$rows | $cols] $(typeof(al))")
+            println(io, " ┗━ [$rows | $cols] $(typeof(al))")
         else
-            println(io, "   ┣━ [$rows | $cols] $(typeof(al))")
+            println(io, " ┣━ [$rows | $cols] $(typeof(al))")
         end
     end
 
