@@ -102,10 +102,10 @@ function GridLayout(nrows::Int, ncols::Int;
         )
 
         if autosizenode[] == new_autosize &&
-                gl.layoutnodes.protrusions == new_protrusions
+                gl.layoutnodes.protrusions[] == new_protrusions
 
             println("Size or protrusions didn't change. Aligning to suggestedbbox")
-            align_to_bbox!(gl, gl.layoutnodes.suggestedbbox)
+            align_to_bbox!(gl, gl.layoutnodes.suggestedbbox[])
         else
             println("Size or protrusions changed.")
             # request_update(gl)
