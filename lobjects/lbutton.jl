@@ -13,7 +13,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     alignment = lift(tuple, halign, valign)
 
-    autosizenode = Node((0f0, 0f0))
+    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 

@@ -9,9 +9,11 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
 
     suggestedbbox = create_suggested_bboxnode(bbox)
 
-    computedsize = computedsizenode!(sizeattrs)
+    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs)
+    computedsize = computedsizenode!(sizeattrs, autosizenode)
+
+    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis
         vis ? col : RGBAf0(0, 0, 0, 0)

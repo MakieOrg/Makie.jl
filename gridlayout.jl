@@ -56,7 +56,8 @@ function GridLayout(nrows::Int, ncols::Int;
     valign = valign isa Symbol ? Node(valign) : valign
     halign = halign isa Symbol ? Node(halign) : halign
 
-    attrs = Attributes(kwargs)
+    attrs = merge!(Attributes(kwargs), default_attributes(GridLayout))
+
     sizeattrs = sizenode!(attrs.width, attrs.height)
 
     alignment = lift(tuple, halign, valign)

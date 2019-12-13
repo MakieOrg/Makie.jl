@@ -19,7 +19,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     suggestedbbox = create_suggested_bboxnode(bbox)
 
-    autosizenode = Node((500f0, 500f0))
+    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 
