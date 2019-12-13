@@ -12,7 +12,8 @@ function GridLayout(nrows::Int, ncols::Int;
         equalprotrusiongaps = (false, false),
         bbox = nothing,
         halign::Union{Symbol, Node{Symbol}} = :center,
-        valign::Union{Symbol, Node{Symbol}} = :center)
+        valign::Union{Symbol, Node{Symbol}} = :center,
+        kwargs...)
 
     if isnothing(rowsizes)
         rowsizes = [Auto() for _ in 1:nrows]
@@ -55,12 +56,12 @@ function GridLayout(nrows::Int, ncols::Int;
     valign = valign isa Symbol ? Node(valign) : valign
     halign = halign isa Symbol ? Node(halign) : halign
 
-    attrs = Attributes(height = nothing, width = nothing)
+    attrs = Attributes(kwargs)
     sizeattrs = sizenode!(attrs.width, attrs.height)
 
     alignment = lift(tuple, halign, valign)
 
-    autosizenode = Node((0f0, 0f0))
+    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 
@@ -77,9 +78,50 @@ function GridLayout(nrows::Int, ncols::Int;
     #     needs_update[] = true
     # end
 
-    GridLayout(
+    gl = GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes)
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes, attrs)
+
+    on(needs_update) do u
+        println("GridLayout got needs_update. Computing size and protrusions...")
+        # TODO: is this correct? or should the bbox change somehow when a member
+        # size changes
+
+        w = determinedirsize(gl, Col())
+        h = determinedirsize(gl, Row())
+
+        println("Width $w, Height $h")
+
+        new_autosize = (w, h)
+        new_protrusions = RectSides{Float32}(
+            protrusion(gl, Left()),
+            protrusion(gl, Right()),
+            protrusion(gl, Bottom()),
+            protrusion(gl, Top()),
+        )
+
+        if autosizenode[] == new_autosize &&
+                gl.layoutnodes.protrusions == new_protrusions
+
+            println("Size or protrusions didn't change. Aligning to suggestedbbox")
+            align_to_bbox!(gl, gl.layoutnodes.suggestedbbox)
+        else
+            println("Size or protrusions changed.")
+            # request_update(gl)
+            if !any(isnothing.(new_autosize))
+                autosizenode[] = new_autosize
+            end
+
+            gl.layoutnodes.protrusions[] = new_protrusions
+
+            println("Requesting update.")
+            request_update(gl)
+        end
+
+        nothing
+    end
+
+    gl
 end
 
 
@@ -1071,7 +1113,17 @@ end
 
 function GridContent(content::T, span::Span, side::Side) where T
     needs_update = Node(false)
-    GridContent{GridLayout, T}(nothing, content, span, side, needs_update, nothing, nothing)
+    # connect the correct nodes
+    protrusions_handle = on(protrusionnode(content)) do p
+        println("protrusions handle")
+        needs_update[] = true
+    end
+    computedsize_handle = on(computedsizenode(content)) do c
+        println("computedsize handle")
+        needs_update[] = true
+    end
+    GridContent{GridLayout, T}(nothing, content, span, side, needs_update,
+        protrusions_handle, computedsize_handle)
 end
 
 function add_content!(g::GridLayout, content, rows, cols, side::Side)
@@ -1117,9 +1169,11 @@ function connect_content_to_grid!(g::GridLayout, spa::GridContent)
     empty!(spa.needs_update.listeners)
 
     on(spa.needs_update) do update
+        println("$(typeof(spa.al)) needs update")
         g.needs_update[] = true
     end
     # trigger relayout
+    println("Connected $(typeof(spa.al)) at [$(spa.sp.rows), $(spa.sp.cols)] to grid. Update grid.")
     g.needs_update[] = true
 end
 

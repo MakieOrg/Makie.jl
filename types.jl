@@ -115,24 +115,25 @@ mutable struct GridLayout <: AbstractLayout
     valign::Node{Symbol}
     halign::Node{Symbol}
     layoutnodes::LayoutNodes
+    attributes::Attributes
     _update_func_handle::Optional{Function} # stores a reference to the result of on(obs)
 
     function GridLayout(
         parent, content, nrows, ncols, rowsizes, colsizes,
         addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update,
-        valign, halign, layoutnodes)
+        valign, halign, layoutnodes, attributes)
 
         gl = new(nothing, content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
-            needs_update, false, valign, halign, layoutnodes, nothing)
+            needs_update, false, valign, halign, layoutnodes, attributes, nothing)
 
         validategridlayout(gl)
 
         attach_parent!(gl, parent)
 
-        on(needs_update) do update
-            request_update(gl)
-        end
+        # on(needs_update) do update
+        #     request_update(gl)
+        # end
 
         gl
     end

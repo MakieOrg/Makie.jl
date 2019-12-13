@@ -8,7 +8,7 @@ function alignedbboxnode!(
     computedsize::Node{NTuple{2, Optional{Float32}}},
     alignment::Node,
     sizeattrs::Node,
-    autosizenode = nothing)
+    autosizenode::Node{NTuple{2, Optional{Float32}}})
 
     finalbbox = Node(BBox(0, 100, 0, 100))
 
@@ -29,14 +29,12 @@ function alignedbboxnode!(
             @match widthattr begin
                 wa::Relative => wa.x * bw
                 wa::Nothing => bw
-                wa::Auto => if wa.trydetermine
-                        error("Auto(true) width was selected but the width couldn't be determined.")
+                wa::Auto => if isnothing(autosizenode[][1])
+                        # we have no autowidth available anyway
+                        # take suggested width
+                        bw
                     else
-                        # Auto(false) means we didn't report the size to the layout
-                        # but we still use it for the element
-                        if isnothing(autosizenode)
-                            error("No autosize node was given, even though width Auto(false) was requested.")
-                        end
+                        # use the width that was auto-computed
                         autosizenode[][1]
                     end
                 wa => error("At this point, if computed width is not known,
@@ -50,14 +48,12 @@ function alignedbboxnode!(
             @match heightattr begin
                 ha::Relative => ha.x * bh
                 ha::Nothing => bh
-                ha::Auto => if ha.trydetermine
-                        error("Auto(true) height was selected but the height couldn't be determined.")
+                ha::Auto => if isnothing(autosizenode[][2])
+                        # we have no autoheight available anyway
+                        # take suggested height
+                        bh
                     else
-                        # Auto(false) means we didn't report the size to the layout
-                        # but we still use it for the element
-                        if isnothing(autosizenode)
-                            error("No autosize node was given, even though height Auto(false) was requested.")
-                        end
+                        # use the height that was auto-computed
                         autosizenode[][2]
                     end
                 ha => error("At this point, if computed height is not known,
@@ -100,7 +96,7 @@ function alignedbboxnode!(
     finalbbox
 end
 
-function computedsizenode!(sizeattrs, autosizenode::Node{NTuple{2, Float32}})
+function computedsizenode!(sizeattrs, autosizenode::Node{NTuple{2, Optional{Float32}}})
 
     # set up csizenode with correct type manually
     csizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
@@ -122,26 +118,26 @@ function computedsizenode!(sizeattrs, autosizenode::Node{NTuple{2, Float32}})
     csizenode
 end
 
-function computedsizenode!(sizeattrs)
-
-    # set up csizenode with correct type manually
-    csizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    onany(sizeattrs) do sizeattrs
-
-        wattr, hattr = sizeattrs
-
-        wsize = computed_size(wattr)
-        hsize = computed_size(hattr)
-
-        csizenode[] = (wsize, hsize)
-    end
-
-    # trigger first value
-    sizeattrs[] = sizeattrs[]
-
-    csizenode
-end
+# function computedsizenode!(sizeattrs)
+#
+#     # set up csizenode with correct type manually
+#     csizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
+#
+#     onany(sizeattrs) do sizeattrs
+#
+#         wattr, hattr = sizeattrs
+#
+#         wsize = computed_size(wattr)
+#         hsize = computed_size(hattr)
+#
+#         csizenode[] = (wsize, hsize)
+#     end
+#
+#     # trigger first value
+#     sizeattrs[] = sizeattrs[]
+#
+#     csizenode
+# end
 
 function computed_size(sizeattr, autosize)
     ms = @match sizeattr begin
@@ -164,17 +160,17 @@ function computed_size(sizeattr, autosize)
     end
 end
 
-function computed_size(sizeattr)
-    ms = @match sizeattr begin
-        sa::Nothing => nothing
-        sa::Real => sa
-        sa::Fixed => sa.x
-        sa::Relative => nothing
-        sa => error("""
-            Invalid size attribute $sizeattr.
-            Can only be Nothing, Fixed, Relative or Real""")
-    end
-end
+# function computed_size(sizeattr)
+#     ms = @match sizeattr begin
+#         sa::Nothing => nothing
+#         sa::Real => sa
+#         sa::Fixed => sa.x
+#         sa::Relative => nothing
+#         sa => error("""
+#             Invalid size attribute $sizeattr.
+#             Can only be Nothing, Fixed, Relative or Real""")
+#     end
+# end
 
 function sizenode!(widthattr::Node, heightattr::Node)
     sizeattrs = Node{Tuple{Any, Any}}((widthattr[], heightattr[]))
