@@ -72,9 +72,6 @@ function GridLayout(nrows::Int, ncols::Int;
 
     layoutnodes = LayoutNodes{GridLayout, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    # onany(valign, halign) do v, h
-    #     needs_update[] = true
-    # end
 
     gl = GridLayout(
         content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
