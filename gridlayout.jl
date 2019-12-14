@@ -1,9 +1,6 @@
-GridLayout(parent, nrows::Int, ncols::Int; kwargs...) = GridLayout(nrows, ncols; parent=parent, kwargs...)
-GridLayout(parent; kwargs...) = GridLayout(1, 1; parent=parent, kwargs...)
 GridLayout(; kwargs...) = GridLayout(1, 1; kwargs...)
 
 function GridLayout(nrows::Int, ncols::Int;
-        parent = nothing,
         rowsizes = nothing,
         colsizes = nothing,
         addedrowgaps = nothing,
@@ -73,14 +70,14 @@ function GridLayout(nrows::Int, ncols::Int;
 
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+    layoutnodes = LayoutNodes{GridLayout, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
 
     # onany(valign, halign) do v, h
     #     needs_update[] = true
     # end
 
     gl = GridLayout(
-        parent, content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
+        content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
         addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes, attrs)
 
     on(needs_update) do u
@@ -159,103 +156,101 @@ function with_updates_suspended(f::Function, gl::GridLayout)
     gl.needs_update[] = true
 end
 
-parentlayout(gl::GridLayout) = gl.parent
-
-function detach_parent!(gl::GridLayout)
-    detach_parent!(gl, gl.parent)
-    nothing
-end
-
-function detach_parent!(gl::GridLayout, parent::Scene)
-    if isnothing(gl._update_func_handle)
-        error("Trying to detach a Scene parent, but there is no update_func_handle. This must be a bug.")
-    end
-    Observables.off(pixelarea(parent), gl._update_func_handle)
-    gl._update_func_handle = nothing
-    gl.parent = nothing
-    nothing
-end
-
-function detach_parent!(gl::GridLayout, parent::Node{<:Rect2D})
-    if isnothing(gl._update_func_handle)
-        error("Trying to detach a Rect Node parent, but there is no update_func_handle. This must be a bug.")
-    end
-    Observables.off(parent, gl._update_func_handle)
-    gl._update_func_handle = nothing
-    gl.parent = nothing
-    nothing
-end
-
-function detach_parent!(gl::GridLayout, parent::GridLayout)
-    if !isnothing(gl._update_func_handle)
-        error("Trying to detach a GridLayout parent, but there is an update_func_handle. This must be a bug.")
-    end
-    gl.parent = nothing
-    nothing
-end
-
-function detach_parent!(gl::GridLayout, parent::Nothing)
-    if !isnothing(gl._update_func_handle)
-        error("Trying to detach a Nothing parent, but there is an update_func_handle. This must be a bug.")
-    end
-    nothing
-end
-
-function attach_parent!(gl::GridLayout, parent::Scene)
-    detach_parent!(gl)
-    gl._update_func_handle = on(pixelarea(parent)) do px
-        request_update(gl)
-    end
-    gl.parent = parent
-    nothing
-end
-
-function attach_parent!(gl::GridLayout, parent::Nothing)
-    detach_parent!(gl)
-    gl.parent = parent
-    nothing
-end
-
-function attach_parent!(gl::GridLayout, parent::GridLayout)
-    detach_parent!(gl)
-    gl.parent = parent
-    nothing
-end
-
-function attach_parent!(gl::GridLayout, parent::Node{<:Rect2D})
-    detach_parent!(gl)
-    gl._update_func_handle = on(parent) do rect
-        request_update(gl)
-    end
-    gl.parent = parent
-    nothing
-end
-
-function request_update(gl::GridLayout)
-    if !gl.block_updates
-        request_update(gl, gl.parent)
-    end
-end
-
-function request_update(gl::GridLayout, parent::Nothing)
-    # do nothing, sometimes a GridLayout may be defined and only then inserted
-    # into another, so I don't want to break those cases
-    # this could on the other hand lead to people confused why nothing is happening
-
-    # error("The GridLayout has no parent and therefore can't request an update.")
-end
-
-function request_update(gl::GridLayout, parent::Scene)
-    align_to_bbox!(gl, BBox(pixelarea(parent)[]))
-end
-
-function request_update(gl::GridLayout, parent::Node{<:Rect2D})
-    align_to_bbox!(gl, BBox(parent[]))
-end
-
-function request_update(gl::GridLayout, parent::GridLayout)
-    parent.needs_update[] = true
-end
+# function detach_parent!(gl::GridLayout)
+#     detach_parent!(gl, gl.parent)
+#     nothing
+# end
+#
+# function detach_parent!(gl::GridLayout, parent::Scene)
+#     if isnothing(gl._update_func_handle)
+#         error("Trying to detach a Scene parent, but there is no update_func_handle. This must be a bug.")
+#     end
+#     Observables.off(pixelarea(parent), gl._update_func_handle)
+#     gl._update_func_handle = nothing
+#     gl.parent = nothing
+#     nothing
+# end
+#
+# function detach_parent!(gl::GridLayout, parent::Node{<:Rect2D})
+#     if isnothing(gl._update_func_handle)
+#         error("Trying to detach a Rect Node parent, but there is no update_func_handle. This must be a bug.")
+#     end
+#     Observables.off(parent, gl._update_func_handle)
+#     gl._update_func_handle = nothing
+#     gl.parent = nothing
+#     nothing
+# end
+#
+# function detach_parent!(gl::GridLayout, parent::GridLayout)
+#     if !isnothing(gl._update_func_handle)
+#         error("Trying to detach a GridLayout parent, but there is an update_func_handle. This must be a bug.")
+#     end
+#     gl.parent = nothing
+#     nothing
+# end
+#
+# function detach_parent!(gl::GridLayout, parent::Nothing)
+#     if !isnothing(gl._update_func_handle)
+#         error("Trying to detach a Nothing parent, but there is an update_func_handle. This must be a bug.")
+#     end
+#     nothing
+# end
+#
+# function attach_parent!(gl::GridLayout, parent::Scene)
+#     detach_parent!(gl)
+#     gl._update_func_handle = on(pixelarea(parent)) do px
+#         request_update(gl)
+#     end
+#     gl.parent = parent
+#     nothing
+# end
+#
+# function attach_parent!(gl::GridLayout, parent::Nothing)
+#     detach_parent!(gl)
+#     gl.parent = parent
+#     nothing
+# end
+#
+# function attach_parent!(gl::GridLayout, parent::GridLayout)
+#     detach_parent!(gl)
+#     gl.parent = parent
+#     nothing
+# end
+#
+# function attach_parent!(gl::GridLayout, parent::Node{<:Rect2D})
+#     detach_parent!(gl)
+#     gl._update_func_handle = on(parent) do rect
+#         request_update(gl)
+#     end
+#     gl.parent = parent
+#     nothing
+# end
+#
+# function request_update(gl::GridLayout)
+#     if !gl.block_updates
+#         request_update(gl, gl.parent)
+#     end
+# end
+#
+# function request_update(gl::GridLayout, parent::Nothing)
+#     # do nothing, sometimes a GridLayout may be defined and only then inserted
+#     # into another, so I don't want to break those cases
+#     # this could on the other hand lead to people confused why nothing is happening
+#
+#     # error("The GridLayout has no parent and therefore can't request an update.")
+# end
+#
+# function request_update(gl::GridLayout, parent::Scene)
+#     align_to_bbox!(gl, BBox(pixelarea(parent)[]))
+# end
+#
+# function request_update(gl::GridLayout, parent::Node{<:Rect2D})
+#     align_to_bbox!(gl, BBox(parent[]))
+# end
+#
+# function request_update(gl::GridLayout, parent::GridLayout)
+#     parent.needs_update[] = true
+# end
 
 
 function convert_contentsizes(n, sizes)::Vector{ContentSize}
@@ -1065,10 +1060,13 @@ function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexabl
 
     # check if this content already sits somewhere in the grid layout tree
     # if yes, remove it from there before attaching it here
-    parentlayout, index = find_in_grid_tree(content, g)
-    if !isnothing(parentlayout) && !isnothing(index)
-        deleteat!(parentlayout.content, index)
-    end
+
+    # TODO: this was a nice functionality, how to get this back?
+
+    # parentlayout, index = find_in_grid_tree(content, g)
+    # if !isnothing(parentlayout) && !isnothing(index)
+    #     deleteat!(parentlayout.content, index)
+    # end
 
     add_content!(g, content, rows, cols, side)
     content

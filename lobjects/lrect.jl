@@ -25,7 +25,7 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
     # no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+    layoutnodes = LayoutNodes{LRect, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
 
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]

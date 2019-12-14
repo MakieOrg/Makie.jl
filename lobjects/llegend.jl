@@ -179,7 +179,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     # trigger suggestedbbox
     suggestedbbox[] = suggestedbbox[]
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+    layoutnodes = LayoutNodes{LLegend, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
 
     LLegend(scene, entries, layoutnodes, attrs, decorations, entrytexts, entryplots)
 end

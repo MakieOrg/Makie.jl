@@ -137,7 +137,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         RectSides{Float32}(left, right, bottom, top)
     end
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+    layoutnodes = LayoutNodes{LColorbar, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
 
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]

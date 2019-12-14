@@ -95,7 +95,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     # no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes(suggestedbbox, protrusions, computedsize, finalbbox)
+    layoutnodes = LayoutNodes{LToggle, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
 
     LToggle(parent, layoutnodes, attrs, decorations)
 end
