@@ -92,10 +92,11 @@ struct Aspect <: ContentSize
     ratio::Float64
 end
 
-struct LayoutNodes{T, G} # G again GridLayout
+mutable struct LayoutNodes{T, G} # G again GridLayout
     suggestedbbox::Node{BBox}
     protrusions::Node{RectSides{Float32}}
     computedsize::Node{NTuple{2, Optional{Float32}}}
+    autosize::Node{NTuple{2, Optional{Float32}}}
     computedbbox::Node{BBox}
     gridcontent::Optional{GridContent{G, T}} # the connecting link to the gridlayout
 end

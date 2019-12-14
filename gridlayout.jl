@@ -70,7 +70,7 @@ function GridLayout(nrows::Int, ncols::Int;
 
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes{GridLayout, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
+    layoutnodes = LayoutNodes{GridLayout, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # onany(valign, halign) do v, h
     #     needs_update[] = true

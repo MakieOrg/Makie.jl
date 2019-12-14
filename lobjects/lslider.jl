@@ -154,7 +154,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    layoutnodes = LayoutNodes{LSlider, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
+    layoutnodes = LayoutNodes{LSlider, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]

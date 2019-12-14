@@ -251,7 +251,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     # layout
     suggestedbbox[] = suggestedbbox[]
 
-    layoutnodes = LayoutNodes{LAxis, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
+    layoutnodes = LayoutNodes{LAxis, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     la = LAxis(parent, scene, plots, xaxislinks, yaxislinks, limits,
         layoutnodes, needs_update, attrs, block_limit_linking, decorations)

@@ -75,7 +75,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     # text has no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes{LText, GridLayout}(suggestedbbox, protrusions, computedsize, finalbbox, nothing)
+    layoutnodes = LayoutNodes{LText, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
