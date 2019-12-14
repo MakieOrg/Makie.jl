@@ -414,7 +414,7 @@ function deleterow!(gl::GridLayout, irow::Int)
         error("Can't delete the last row")
     end
 
-    new_content = GridContent[]
+    # new_content = GridContent[]
     to_remove = GridContent[]
     for c in gl.content
         rows = c.sp.rows
@@ -432,14 +432,15 @@ function deleterow!(gl::GridLayout, irow::Int)
             # the row span was just one row and now zero, remove the element
             push!(to_remove, c)
         else
-            push!(new_content, GridContent(c.al, Span(newrows, c.sp.cols), c.side))
+            c.sp = Span(newrows, c.sp.cols)
+            # push!(new_content, GridContent(c.al, Span(newrows, c.sp.cols), c.side))
         end
     end
 
     for c in to_remove
         remove_from_gridlayout!(c)
     end
-    gl.content = new_content
+    # gl.content = new_content
     deleteat!(gl.rowsizes, irow)
     deleteat!(gl.addedrowgaps, irow == 1 ? 1 : irow - 1)
     gl.nrows -= 1
@@ -455,7 +456,7 @@ function deletecol!(gl::GridLayout, icol::Int)
         error("Can't delete the last col")
     end
 
-    new_content = GridContent[]
+    # new_content = GridContent[]
     to_remove = GridContent[]
     for c in gl.content
         cols = c.sp.cols
@@ -473,14 +474,15 @@ function deletecol!(gl::GridLayout, icol::Int)
             # the col span was just one col and now zero, remove the element
             push!(to_remove, c)
         else
-            push!(new_content, GridContent(c.al, Span(c.sp.rows, newcols), c.side))
+            c.sp = Span(c.sp.rows, newcols)
+            # push!(new_content, GridContent(c.al, Span(c.sp.rows, newcols), c.side))
         end
     end
 
     for c in to_remove
         remove_from_gridlayout!(c)
     end
-    gl.content = new_content
+    # gl.content = new_content
     deleteat!(gl.colsizes, icol)
     deleteat!(gl.addedcolgaps, icol == 1 ? 1 : icol - 1)
     gl.ncols -= 1
