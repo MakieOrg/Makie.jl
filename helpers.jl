@@ -88,9 +88,10 @@ function alignedbboxnode!(
         t = b + h
 
         newbbox = BBox(l, r, b, t)
-        if finalbbox[] != newbbox
-            finalbbox[] = newbbox
-        end
+        # if finalbbox[] != newbbox
+        #     finalbbox[] = newbbox
+        # end
+        finalbbox[] = newbbox
     end
 
     finalbbox
