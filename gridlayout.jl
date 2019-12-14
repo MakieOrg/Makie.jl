@@ -80,6 +80,11 @@ function GridLayout(nrows::Int, ncols::Int;
         content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
         addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes, attrs)
 
+    on(finalbbox) do bb
+        println("GridLayout Finalbbox changed, align_to_bbox! $bb")
+        align_to_bbox!(gl, bb)
+    end
+
     on(needs_update) do u
         println("GridLayout got needs_update. Computing size and protrusions...")
         # TODO: is this correct? or should the bbox change somehow when a member
@@ -101,19 +106,22 @@ function GridLayout(nrows::Int, ncols::Int;
         if autosizenode[] == new_autosize &&
                 gl.layoutnodes.protrusions[] == new_protrusions
 
-            println("Size or protrusions didn't change. Aligning to suggestedbbox")
-            align_to_bbox!(gl, gl.layoutnodes.suggestedbbox[])
+            println("Size or protrusions didn't change. Retriggering suggestedbbox")
+            gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
         else
-            println("Size or protrusions changed.")
-            # request_update(gl)
-            if !any(isnothing.(new_autosize))
+            println("Size or protrusions changed. Is GridContent (therefore parent) available?")
+
+            if isnothing(gl.layoutnodes.gridcontent)
+                println("No GridContent available. Triggering suggestedbbox for children relayout.")
+                gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
+            else
+                println("GridContent available. Changing protrusions and triggering autosizenode, thereby updating.")
+
+                # gl.layoutnodes.protrusions.val = new_protrusions
+                # TODO: this is a double update?
+                gl.layoutnodes.protrusions[] = new_protrusions
                 autosizenode[] = new_autosize
             end
-
-            gl.layoutnodes.protrusions[] = new_protrusions
-
-            println("Requesting update.")
-            request_update(gl)
         end
 
         nothing
@@ -765,14 +773,12 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
 
         solving_bbox = bbox_for_solving_from_side(maxgrid, bbox_cell, idx_rect, c.side)
 
-        align_to_bbox!(c.al, solving_bbox)
+        # align_to_bbox!(c.al, solving_bbox)
+        c.al.layoutnodes.suggestedbbox[] = solving_bbox
     end
 
     nothing
 end
-
-# TODO: this is unnecessary, should go away once protrusionlayout is eliminated
-# align_to_bbox!(pl::ProtrusionLayout, bbox) = align_to_bbox!(pl.content, bbox)
 
 
 dirlength(gl::GridLayout, c::Col) = gl.ncols
