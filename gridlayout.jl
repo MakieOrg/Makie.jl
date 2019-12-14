@@ -257,6 +257,69 @@ end
 #     parent.needs_update[] = true
 # end
 
+function connect_layoutnodes!(gc::GridContent)
+
+    disconnect_layoutnodes!(gc::GridContent)
+
+    gc.protrusions_handle = on(protrusionnode(gc.al)) do p
+        gc.needs_update[] = true
+    end
+    gc.computedsize_handle = on(computedsizenode(gc.al)) do c
+        gc.needs_update[] = true
+    end
+end
+
+function disconnect_layoutnodes!(gc::GridContent)
+    if !isnothing(gc.protrusions_handle)
+        Observables.off(protrusionnode(gc.al), gc.protrusions_handle)
+        gc.protrusions_handle = nothing
+    end
+    if !isnothing(gc.computedsize_handle)
+        Observables.off(computedsizenode(gc.al), gc.computedsize_handle)
+        gc.computedsize_handle = nothing
+    end
+end
+
+function add_to_gridlayout!(g::GridLayout, gc::GridContent)
+
+    # to be safe
+    remove_from_gridlayout!(gc)
+
+    push!(g.content, gc)
+
+    # let the gridcontent know that it's inside a gridlayout
+    gc.parent = g
+
+    on(gc.needs_update) do update
+        println("$(typeof(gc.al)) needs update")
+        g.needs_update[] = true
+    end
+
+    # trigger relayout
+    println("Added $(typeof(gc.al)) at [$(gc.sp.rows), $(gc.sp.cols)] to grid. Update grid.")
+    g.needs_update[] = true
+end
+
+
+function remove_from_gridlayout!(gc::GridContent)
+    if isnothing(gc.parent)
+        return
+    end
+
+    i = findfirst(x -> x === gc, gc.parent.content)
+    if isnothing(i)
+        error("""GridContent had a parent but was not in the content array.
+        This must be a bug.""")
+    end
+    deleteat!(gc.parent.content, i)
+
+    gc.parent = nothing
+
+    # remove all listeners from needs_update because they could be pointing
+    # to previous parents if we're re-nesting layout objects
+    empty!(gc.needs_update.listeners)
+end
+
 
 function convert_contentsizes(n, sizes)::Vector{ContentSize}
     if isnothing(sizes)
@@ -1132,8 +1195,26 @@ function add_content!(g::GridLayout, content, rows, cols, side::Side)
     rows, cols = adjust_rows_cols!(g, rows, cols)
     # TODO: does content need a parent? or just gridlayouts, or not even them
     # layout.parent = g
-    sp = GridContent(content, Span(rows, cols), side)
-    connect_content_to_grid!(g, sp)
+
+
+    gc = if !isnothing(content.layoutnodes.gridcontent)
+        # take the existing gridcontent, remove it from its gridlayout if it has one,
+        # and modify it with the new span and side
+        gridc = content.layoutnodes.gridcontent
+        remove_from_gridlayout!(gridc)
+        gridc.sp = Span(rows, cols)
+        gridc.side = side
+        gridc
+    else
+        # make a new one if none existed
+        GridContent(content, Span(rows, cols), side)
+    end
+
+    content.layoutnodes.gridcontent = gc
+
+    connect_layoutnodes!(gc)
+
+    add_to_gridlayout!(g, gc)
 end
 
 function Base.lastindex(g::GridLayout, d)
@@ -1163,31 +1244,15 @@ function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
     end
 end
 
-function connect_content_to_grid!(g::GridLayout, spa::GridContent)
-    push!(g.content, spa)
 
-    # remove all listeners from needs_update because they could be pointing
-    # to previous parents if we're re-nesting layout objects
-    empty!(spa.needs_update.listeners)
-
-    on(spa.needs_update) do update
-        println("$(typeof(spa.al)) needs update")
-        g.needs_update[] = true
-    end
-    # trigger relayout
-    println("Connected $(typeof(spa.al)) at [$(spa.sp.rows), $(spa.sp.cols)] to grid. Update grid.")
-    g.needs_update[] = true
-end
-
-
-function detachfromparent!(l::AbstractLayout)
-    if l.parent isa Scene
-        error("Can't detach a grid layout from its parent if it's a Scene.")
-    elseif l.parent isa GridLayout
-        i = find_in_grid(l, l.parent)
-        isnothing(i) && error("Layout could not be found in its parent's content.")
-
-        deleteat!(l.parent.content, i)
-        l.parent = nothing
-    end
-end
+# function detachfromparent!(l::AbstractLayout)
+#     if l.parent isa Scene
+#         error("Can't detach a grid layout from its parent if it's a Scene.")
+#     elseif l.parent isa GridLayout
+#         i = find_in_grid(l, l.parent)
+#         isnothing(i) && error("Layout could not be found in its parent's content.")
+#
+#         deleteat!(l.parent.content, i)
+#         l.parent = nothing
+#     end
+# end
