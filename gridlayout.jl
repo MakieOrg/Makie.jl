@@ -437,7 +437,7 @@ function deleterow!(gl::GridLayout, irow::Int)
     end
 
     for c in to_remove
-        detachfromparent!(c.al)
+        remove_from_gridlayout!(c)
     end
     gl.content = new_content
     deleteat!(gl.rowsizes, irow)
@@ -478,13 +478,40 @@ function deletecol!(gl::GridLayout, icol::Int)
     end
 
     for c in to_remove
-        detachfromparent!(c.al)
+        remove_from_gridlayout!(c)
     end
     gl.content = new_content
     deleteat!(gl.colsizes, icol)
     deleteat!(gl.addedcolgaps, icol == 1 ? 1 : icol - 1)
     gl.ncols -= 1
     gl.needs_update[] = true
+end
+
+function Base.isempty(gl::GridLayout, dir::GridDir, i::Int)
+    !any(gl.content) do c
+        span = dir isa Row ? c.sp.rows : c.sp.cols
+        i in span
+    end
+end
+
+function trim!(gl::GridLayout)
+    irow = 1
+    while irow <= gl.nrows && gl.nrows > 1
+        if isempty(gl, Row(), irow)
+            deleterow!(gl, irow)
+        else
+            irow += 1
+        end
+    end
+
+    icol = 1
+    while icol <= gl.ncols && gl.ncols > 1
+        if isempty(gl, Col(), icol)
+            deletecol!(gl, icol)
+        else
+            icol += 1
+        end
+    end
 end
 
 function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
