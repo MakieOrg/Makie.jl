@@ -35,10 +35,14 @@ end
 
 
 function Base.delete!(lr::LRect)
+    disconnect_layoutnodes!(lr.layoutnodes.gridcontent)
+    remove_from_gridlayout!(lr.layoutnodes.gridcontent)
+    empty!(lr.layoutnodes.suggestedbbox.listeners)
+    empty!(lr.layoutnodes.computedbbox.listeners)
+    empty!(lr.layoutnodes.computedsize.listeners)
+    empty!(lr.layoutnodes.autosize.listeners)
+    empty!(lr.layoutnodes.protrusions.listeners)
+
     # remove the plot object from the scene
     delete!(lr.parent, lr.rect)
-    # remove all layout node callbacks
-    for f in fieldnames(LayoutNodes)
-        empty!(getfield(lr.layoutnodes, f).listeners)
-    end
 end

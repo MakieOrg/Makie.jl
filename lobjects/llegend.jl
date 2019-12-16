@@ -118,15 +118,9 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
         # first delete all existing labels and patches
 
-        # delete from grid layout
-        detachfromgridlayout!.(entrytexts, Ref(labelgrid))
-        # and from scene
         delete!.(entrytexts)
         empty!(entrytexts)
 
-        # delete from grid layout
-        detachfromgridlayout!.(entryrects, Ref(labelgrid))
-        # and from scene
         delete!.(entryrects)
         empty!(entryrects)
 

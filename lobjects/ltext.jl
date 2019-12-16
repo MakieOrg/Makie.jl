@@ -118,10 +118,15 @@ function Base.propertynames(lt::LText)
 end
 
 function Base.delete!(lt::LText)
+
+    disconnect_layoutnodes!(lt.layoutnodes.gridcontent)
+    remove_from_gridlayout!(lt.layoutnodes.gridcontent)
+    empty!(lt.layoutnodes.suggestedbbox.listeners)
+    empty!(lt.layoutnodes.computedbbox.listeners)
+    empty!(lt.layoutnodes.computedsize.listeners)
+    empty!(lt.layoutnodes.autosize.listeners)
+    empty!(lt.layoutnodes.protrusions.listeners)
+
     # remove the plot object from the scene
     delete!(lt.parent, lt.text)
-    # remove all layout node callbacks
-    for f in fieldnames(LayoutNodes)
-        empty!(getfield(lt.layoutnodes, f).listeners)
-    end
 end
