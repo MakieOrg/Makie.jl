@@ -3,6 +3,7 @@ uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
 version = "0.9.14"
 
 [deps]
+AbstractNumbers = "85c772de-338a-5e7f-b815-41e76c26ac1f"
 ColorBrewer = "a2cac450-b92f-5266-8821-25eda20663c8"
 ColorSchemes = "35d6a980-a343-548e-a6ea-1d62b119f2f4"
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
