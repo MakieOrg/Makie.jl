@@ -35,6 +35,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 
 [compat]
+AbstractNumbers = "0.2"
 ColorBrewer = "0.4"
 ColorSchemes = "3.5"
 ColorTypes = "0.8"
