@@ -8,7 +8,7 @@ end
 abstract type Unit{T} <: AbstractNumbers.AbstractNumber{T} end
 
 number(x::Unit) = x.value
-
+number(x) = x
 
 """
 Unit space of the scene it's displayed on.
