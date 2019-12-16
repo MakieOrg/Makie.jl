@@ -39,6 +39,7 @@ include("scenes.jl")
 include("theming.jl")
 include("recipes.jl")
 include("interfaces.jl")
+include("units.jl")
 include("conversions.jl")
 include("shorthands.jl")
 
