@@ -29,3 +29,5 @@ end
 function Base.propertynames(layoutable::T) where T <: Layoutable
     [fieldnames(T)..., keys(layoutable.attributes)...]
 end
+
+Base.Broadcast.broadcastable(l::Layoutable) = Ref(l)
