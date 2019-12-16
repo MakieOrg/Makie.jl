@@ -78,19 +78,15 @@ function GridLayout(nrows::Int, ncols::Int;
         addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes, attrs)
 
     on(finalbbox) do bb
-        println("GridLayout Finalbbox changed, align_to_bbox! $bb")
         align_to_bbox!(gl, bb)
     end
 
     on(needs_update) do u
-        println("GridLayout got needs_update. Computing size and protrusions...")
         # TODO: is this correct? or should the bbox change somehow when a member
         # size changes
 
         w = determinedirsize(gl, Col())
         h = determinedirsize(gl, Row())
-
-        println("Width $w, Height $h")
 
         new_autosize = (w, h)
         new_protrusions = RectSides{Float32}(
@@ -103,16 +99,12 @@ function GridLayout(nrows::Int, ncols::Int;
         if autosizenode[] == new_autosize &&
                 gl.layoutnodes.protrusions[] == new_protrusions
 
-            println("Size or protrusions didn't change. Retriggering suggestedbbox")
             gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
         else
-            println("Size or protrusions changed. Is GridContent (therefore parent) available?")
 
             if isnothing(gl.layoutnodes.gridcontent)
-                println("No GridContent available. Triggering suggestedbbox for children relayout.")
                 gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
             else
-                println("GridContent available. Changing protrusions and triggering autosizenode, thereby updating.")
 
                 # gl.layoutnodes.protrusions.val = new_protrusions
                 # TODO: this is a double update?
@@ -291,12 +283,10 @@ function add_to_gridlayout!(g::GridLayout, gc::GridContent)
     gc.parent = g
 
     on(gc.needs_update) do update
-        println("$(typeof(gc.al)) needs update")
         g.needs_update[] = true
     end
 
     # trigger relayout
-    println("Added $(typeof(gc.al)) at [$(gc.sp.rows), $(gc.sp.cols)] to grid. Update grid.")
     g.needs_update[] = true
 end
 
@@ -1209,11 +1199,9 @@ function GridContent(content::T, span::Span, side::Side) where T
     needs_update = Node(false)
     # connect the correct nodes
     protrusions_handle = on(protrusionnode(content)) do p
-        println("protrusions handle")
         needs_update[] = true
     end
     computedsize_handle = on(computedsizenode(content)) do c
-        println("computedsize handle")
         needs_update[] = true
     end
     GridContent{GridLayout, T}(nothing, content, span, side, needs_update,
