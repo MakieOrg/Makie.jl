@@ -24,7 +24,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     textpos = Node(Point3f0(0, 0, 0))
 
     t = text!(parent, text, position = textpos, textsize = textsize, font = font, color = color,
-        visible = visible, align = (:center, :center), rotation = rotation)[end]
+        visible = visible, align = (:center, :center), rotation = rotation, raw = true)[end]
 
     textbb = BBox(0, 1, 0, 1)
 
