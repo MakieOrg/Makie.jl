@@ -949,25 +949,25 @@ function determinedirsize(gl::GridLayout, gdir::GridDir)
     end
 end
 
-"""
-Determine the size of a grid layout if it's placed as a spanned layout with
-a `Side` inside another grid layout.
-"""
-function determinedirsize(gl::GridLayout, gdir::GridDir, side::Side)
-    if gdir isa Row
-        @match side begin
-            si::Union{Inner, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight} =>
-                ifnothing(determinedirsize(gl, gdir), nothing)
-            si::Union{Left, Right} => nothing
-        end
-    else
-        @match side begin
-            si::Union{Inner, Left, Right, TopLeft, TopRight, BottomLeft, BottomRight} =>
-                ifnothing(determinedirsize(gl, gdir), nothing)
-            si::Union{Top, Bottom} => nothing
-        end
-    end
-end
+# """
+# Determine the size of a grid layout if it's placed as a spanned layout with
+# a `Side` inside another grid layout.
+# """
+# function determinedirsize(gl::GridLayout, gdir::GridDir, side::Side)
+#     if gdir isa Row
+#         @match side begin
+#             si::Union{Inner, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight} =>
+#                     ifnothing(determinedirsize(gl, gdir), nothing)
+#             si::Union{Left, Right} => nothing
+#         end
+#     else
+#         @match side begin
+#             si::Union{Inner, Left, Right, TopLeft, TopRight, BottomLeft, BottomRight} =>
+#                     ifnothing(determinedirsize(gl, gdir), nothing)
+#             si::Union{Top, Bottom} => nothing
+#         end
+#     end
+# end
 
 
 """
