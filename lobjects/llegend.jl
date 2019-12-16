@@ -43,7 +43,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     entries = Node(LegendEntry[])
 
 
-    maingrid = GridLayout(legendrect, alignmode = Outside(20))
+    maingrid = GridLayout(bbox = legendrect, alignmode = Outside(20))
     manipulating_grid = Ref(false)
 
     onany(maingrid.needs_update, margin) do _, margin
