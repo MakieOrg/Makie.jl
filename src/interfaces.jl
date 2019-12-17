@@ -41,6 +41,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
         colorrange = automatic,
+        nan_color = RGBAf0(0,0,0,0),
         fxaa = false,
     )
 end
@@ -64,6 +65,7 @@ $(ATTRIBUTES)
         linewidth = 0.0,
         levels = 1,
         fxaa = true,
+        nan_color = RGBAf0(0,0,0,0),
         interpolate = false
     )
 end
