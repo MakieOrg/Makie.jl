@@ -363,7 +363,7 @@ end
 function activate!()
     b = WGLBackend()
     AbstractPlotting.register_backend!(b)
-    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
+    AbstractPlotting.set_glyph_resolution!(AbstractPlotting.High)
     AbstractPlotting.current_backend[] = b
     AbstractPlotting.inline!(true) # can't display any different atm
 end

@@ -1,6 +1,7 @@
 uniform mat4 projectionMatrix;
 uniform mat4 viewMatrix;
 uniform mat4 modelMatrix;
+uniform float atlas_tex_dim;
 
 out vec4 frag_color;
 out vec2 frag_uv;
@@ -35,8 +36,7 @@ float distancefield_scale(){
     // x-coordinate of texture instead for consistency with programmatic uv
     // distance fields in fragment shader. See also comments below.
     vec4 uv_rect = get_uv_offset_width();
-    float tsize = 1024.0;
-    float pixsize_x = (uv_rect.z - uv_rect.x) * tsize;
+    float pixsize_x = (uv_rect.z - uv_rect.x) * get_atlas_texture_size();
     return -1.0/pixsize_x;
 }
 

@@ -89,7 +89,9 @@ function scatter_shader(scene::Scene, attributes)
             magfilter = :linear,
             anisotropic = 16f0,
         )
+        uniform_dict[:atlas_texture_size] = Float32(size(atlas.data, 1)) # Texture must be quadratic
     else
+        uniform_dict[:atlas_texture_size] = 0f0
         uniform_dict[:distancefield] = Observable(false)
     end
     if !haskey(per_instance, :uv_offset_width)
