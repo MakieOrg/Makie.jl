@@ -528,8 +528,7 @@ function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
         if (spal.sp.rows.start >= newrows.start && spal.sp.rows.stop <= newrows.stop &&
             spal.sp.cols.start >= newcols.start && spal.sp.cols.stop <= newcols.stop)
 
-            detachfromparent!(spal.al) # this deletes the alignable from its old parent already
-            # which would happen anyway hidden in the next assignment, but makes the intent clearer
+            
             subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1)] = spal.al
             continue
             # don't advance i because there's one piece of content less in the queue
