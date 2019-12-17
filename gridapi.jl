@@ -46,7 +46,7 @@ function vbox!(content::Vararg; kwargs...)
 end
 
 """
-Creates a GridLayout whose bounding box is tied to the pixelarea of `scene` minus
+Creates a GridLayout in Outside align mode whose bounding box is tied to the pixelarea of `scene` minus
 a padding of `padding` pixels.
 """
 function grid!(scene::Scene, padding::Real, args...; kwargs...)
@@ -54,7 +54,7 @@ function grid!(scene::Scene, padding::Real, args...; kwargs...)
 end
 
 """
-Creates a single-row GridLayout whose bounding box is tied to the pixelarea
+Creates a single-row GridLayout in Outside align mode whose bounding box is tied to the pixelarea
 of `scene` minus a padding of `padding` pixels.
 """
 function hbox!(scene::Scene, padding::Real, args...; kwargs...)
@@ -62,7 +62,7 @@ function hbox!(scene::Scene, padding::Real, args...; kwargs...)
 end
 
 """
-Creates a single-column GridLayout whose bounding box is tied to the pixelarea
+Creates a single-column GridLayout in Outside align mode whose bounding box is tied to the pixelarea
 of `scene` minus a padding of `padding` pixels.
 """
 function vbox!(scene::Scene, padding::Real, args...; kwargs...)
