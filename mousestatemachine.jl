@@ -110,9 +110,15 @@ function addmousestate!(scene, elements...)
                         end
                     end
                     mouse_downed_inside[] = false
-                    # trigger mouseposition event to determine what happens after the click
-                    # the item might have moved?
-                    events(scene).mouseposition[] = events(scene).mouseposition[]
+
+                    if mouseover(scene, elements...)
+                        # something could have moved after the click
+                        mousestate[] = MouseState(MouseOver(), t, pos, tprev[], prev[])
+                    else
+                        mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
+                        mouse_was_inside[] = false
+                    end
+
                 elseif dragstate == Mouse.pressed && mouse_downed_inside[]
                     mousestate[] = MouseState(MouseDragStart(), t, pos, tprev[], prev[])
                     drag_ongoing[] = true
