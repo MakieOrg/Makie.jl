@@ -117,7 +117,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
         label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
-        ticksvisible = yticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor)
+        ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
