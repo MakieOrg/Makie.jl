@@ -1,5 +1,7 @@
 GridLayout(; kwargs...) = GridLayout(1, 1; kwargs...)
 
+GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> BBox(x), pixelarea(scene)), kwargs...)
+
 function GridLayout(nrows::Int, ncols::Int;
         rowsizes = nothing,
         colsizes = nothing,
