@@ -103,15 +103,15 @@ function GridLayout(nrows::Int, ncols::Int;
 
             gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
         else
+            # otherwise these values will not already be up to date when adding the
+            # gridlayout into the next one
+
+            # TODO: this is a double update?
+            gl.layoutnodes.protrusions[] = new_protrusions
+            autosizenode[] = new_autosize
 
             if isnothing(gl.layoutnodes.gridcontent)
                 gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
-            else
-
-                # gl.layoutnodes.protrusions.val = new_protrusions
-                # TODO: this is a double update?
-                gl.layoutnodes.protrusions[] = new_protrusions
-                autosizenode[] = new_autosize
             end
         end
 
