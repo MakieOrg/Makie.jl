@@ -15,8 +15,12 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     sizeattrs = sizenode!(attrs.width, attrs.height)
     alignment = lift(tuple, halign, valign)
 
-    autosizenode = lift(buttonradius_active, typ=NTuple{2, Optional{Float32}}) do br
-        (nothing, 2 * br)
+    autosizenode = lift(buttonradius_active, horizontal, typ=NTuple{2, Optional{Float32}}) do br, hori
+        if hori
+            (nothing, 2 * br)
+        else
+            (2 * br, nothing)
+        end
     end
 
     suggestedbbox = create_suggested_bboxnode(bbox)
