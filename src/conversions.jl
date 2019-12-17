@@ -223,17 +223,24 @@ outputs them in a Tuple.
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::SurfaceLike, x::AbstractVecOrMat, y::AbstractVecOrMat, z::AbstractMatrix)
-    (el32convert(x), el32convert(y), el32convert(z))
+    return (el32convert(x), el32convert(y), el32convert(z))
 end
 
-float32type(::Type{<: Number}) = Float32
+
+float32type(x) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
+float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
 
+function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}
+    map(x) do elem
+        return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
+    end::Array{Float32, N}
+end
 
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
