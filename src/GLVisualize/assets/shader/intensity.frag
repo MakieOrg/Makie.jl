@@ -9,6 +9,7 @@ uniform vec2 color_norm;
 uniform float stroke_width;
 uniform vec4 stroke_color;
 uniform float levels;
+uniform vec4 nan_color;
 
 vec4 getindex(sampler2D image, vec2 uv){return texture(image, vec2(uv.x, 1-uv.y));}
 vec4 getindex(sampler1D image, vec2 uv){return texture(image, uv.y);}
@@ -35,9 +36,11 @@ void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
     float i = float(getindex(intensity, o_uv).x);
-    i = clamp_01(i, color_norm.x, color_norm.y);
     vec4 color = vec4(0);
-    if(!isnan(i)){
+    if(isnan(i)){
+        color = nan_color;
+    }else{
+        i = clamp_01(i, color_norm.x, color_norm.y);
         color = texture(color_map, i);
         if(stroke_width > 0.0){
             float lines = i * levels;

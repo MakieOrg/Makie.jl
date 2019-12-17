@@ -261,6 +261,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         interp = interp ? :linear : :nearest
         tex = Texture(x[3], minfilter = interp)
         pop!(gl_attributes, :color)
+        if haskey(gl_attributes, :nan_color)
+            gl_attributes[:nan_color] = lift(to_color, gl_attributes[:nan_color])
+        end
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes)).children[]
     end
