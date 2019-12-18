@@ -231,7 +231,6 @@ float32type(x) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
-float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)

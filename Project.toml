@@ -1,6 +1,6 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.9.14"
+version = "0.9.15"
 
 [deps]
 AbstractNumbers = "85c772de-338a-5e7f-b815-41e76c26ac1f"
@@ -38,8 +38,8 @@ UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 AbstractNumbers = "0.2"
 ColorBrewer = "0.4"
 ColorSchemes = "3.5"
-ColorTypes = "0.8"
-Colors = "0.9"
+ColorTypes = "0.8, 0.9"
+Colors = "0.9, 0.10"
 Contour = "0.5"
 DocStringExtensions = "0.8.0"
 FFMPEG = "0.2"
