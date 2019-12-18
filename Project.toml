@@ -19,8 +19,8 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [compat]
 julia = "1"
 
-AbstractPlotting = "0.9.0"
-Colors = "0.9"
+AbstractPlotting = "0.9"
+Colors = "0.9, 0.10, 0.11"
 GeometryBasics = "0.1"
 GeometryTypes = "0.7"
 Hyperscript = "0.0.3"
