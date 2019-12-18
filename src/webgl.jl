@@ -34,21 +34,21 @@ function Base.setindex!(x::JSBuffer, value::AbstractArray, index::Colon)
 end
 
 function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
-    # JSServe.fuse(x) do
+    JSServe.fuse(x) do
         flat = collect(reinterpret(eltype(T), value))
         jsb = jsbuffer(x)
         off = (first(index) - 1) * tlength(T)
         jsb.set(flat, off)
         jsb.needsUpdate = true
         return value
-    # end
+    end
 end
 
 function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     flat = collect(reinterpret(eltype(T), vector))
     js_f32 = three.window.new.Float32Array(flat)
     jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
-    # jsbuff.setDynamic(true)
+    jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
     if vector isa Buffer
         ShaderAbstractions.connect!(vector, buffer)
@@ -60,7 +60,7 @@ end
 function JSBuffer(three, vector::AbstractVector{T}) where T
     flat = collect(reinterpret(eltype(T), vector))
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
-    jsbuff.setDynamic(true)
+    jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
     if vector isa Buffer
         ShaderAbstractions.connect!(vector, buffer)
@@ -168,13 +168,14 @@ function to_js_uniforms(scene, jsctx, dict::Dict)
         on(v) do val
             # TODO don't just use a random event like scroll to trigger
             # a new event to update the render loop!!!!
-            try
-                prop = getproperty(result, k)
-                prop.value = jl2js(jsctx, val)
-                prop.needsUpdate = true
-                # redraw!(jsctx)
-            catch e
-                @warn "Error in updating $k: " exception=e
+            JSServe.fuse(jsctx) do
+                try
+                    prop = getproperty(result, k)
+                    prop.value = jl2js(jsctx, val)
+                    prop.needsUpdate = true
+                catch e
+                    @warn "Error in updating $k: " exception=e
+                end
             end
         end
     end
@@ -254,10 +255,10 @@ function lift_convert(key, value, plot)
      end
 end
 
-function wgl_convert(scene, jsctx, ip::InstancedProgram)
-    js_vbo = jsctx.THREE.new.InstancedBufferGeometry()
+function wgl_convert(scene, THREE, ip::InstancedProgram)
+    js_vbo = THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
-        js_buff = JSBuffer(jsctx, buff)
+        js_buff = JSBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
@@ -267,17 +268,18 @@ function wgl_convert(scene, jsctx, ip::InstancedProgram)
 
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
-        js_buff = JSInstanceBuffer(jsctx, buff)
+        js_buff = JSInstanceBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
-    uniforms = to_js_uniforms(scene, jsctx, ip.program.uniforms)
+    uniforms = to_js_uniforms(scene, THREE, ip.program.uniforms)
     material = create_material(
-        jsctx.THREE,
+        THREE,
         ip.program.vertex_source,
         ip.program.fragment_source,
         uniforms
     )
-    return jsctx.THREE.new.Mesh(js_vbo, material)
+    js_vbo.computeBoundingSphere();
+    mesh = THREE.new.Mesh(js_vbo, material)
 end
 
 
@@ -300,6 +302,7 @@ function wgl_convert(scene, jsctx, program::Program)
         program.fragment_source,
         uniforms
     )
+    js_vbo.computeBoundingSphere();
     return jsctx.THREE.new.Mesh(js_vbo, material)
 end
 

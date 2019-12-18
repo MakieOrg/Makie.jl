@@ -54,39 +54,41 @@ function code_to_keyboard(code::String)
     end
 end
 
-function connect_scene_events!(scene, comm)
+function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
-        @handle msg.mouseposition begin
-            x, y = Float64.((mouseposition...,))
-            e.mouseposition[] = (x, size(scene)[2] - y)
-        end
-        @handle msg.mousedown begin
-            set = e.mousebuttons[]; empty!(set)
-            mousedown & 1 != 0 && push!(set, Mouse.left)
-            mousedown & 2 != 0 && push!(set, Mouse.right)
-            mousedown & 4 != 0 && push!(set, Mouse.middle)
-            e.mousebuttons[] = set
-        end
-        @handle msg.mouseup begin
-            set = e.mousebuttons[]; empty!(set)
-            mouseup & 1 != 0 && push!(set, Mouse.left)
-            mouseup & 2 != 0 && push!(set, Mouse.right)
-            mouseup & 4 != 0 && push!(set, Mouse.middle)
-            e.mousebuttons[] = set
-        end
-        @handle msg.scroll begin
-            e.scroll[] = Float64.((sign.(scroll)...,))
-        end
-        @handle msg.keydown begin
-            set = e.keyboardbuttons[]
-            push!(set, code_to_keyboard(keydown))
-            e.keyboardbuttons[] = set
-        end
-        @handle msg.keyup begin
-            set = e.keyboardbuttons[]
-            delete!(set, code_to_keyboard(keyup))
-            e.keyboardbuttons[] = set
+        JSServe.fuse(session) do
+            @handle msg.mouseposition begin
+                x, y = Float64.((mouseposition...,))
+                e.mouseposition[] = (x, size(scene)[2] - y)
+            end
+            @handle msg.mousedown begin
+                set = e.mousebuttons[]; empty!(set)
+                mousedown & 1 != 0 && push!(set, Mouse.left)
+                mousedown & 2 != 0 && push!(set, Mouse.right)
+                mousedown & 4 != 0 && push!(set, Mouse.middle)
+                e.mousebuttons[] = set
+            end
+            @handle msg.mouseup begin
+                set = e.mousebuttons[]; empty!(set)
+                mouseup & 1 != 0 && push!(set, Mouse.left)
+                mouseup & 2 != 0 && push!(set, Mouse.right)
+                mouseup & 4 != 0 && push!(set, Mouse.middle)
+                e.mousebuttons[] = set
+            end
+            @handle msg.scroll begin
+                e.scroll[] = Float64.((sign.(scroll)...,))
+            end
+            @handle msg.keydown begin
+                set = e.keyboardbuttons[]
+                push!(set, code_to_keyboard(keydown))
+                e.keyboardbuttons[] = set
+            end
+            @handle msg.keyup begin
+                set = e.keyboardbuttons[]
+                delete!(set, code_to_keyboard(keyup))
+                e.keyboardbuttons[] = set
+            end
         end
         return
     end
@@ -95,17 +97,6 @@ end
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot)
     @warn "Plot of type $(typeof(plot)) not supported yet"
-end
-
-
-function on_any_event(@nospecialize(f), scene::Scene)
-    key_events = (
-        :window_area, :mousebuttons, :mouseposition, :scroll,
-        :keyboardbuttons, :hasfocus, :entered_window
-    )
-    scene_events = getfield.((events(scene),), key_events)
-    f(getindex.(scene_events)) # call on first event
-    onany(f, scene_events...)
 end
 
 function add_plots!(jsctx, jsscene, scene::Scene, x::Combined)
@@ -117,7 +108,6 @@ function add_plots!(jsctx, jsscene, scene::Scene, x::Combined)
         end
     end
 end
-
 
 function add_scene!(three, scene::Scene)
     js_scene = to_jsscene(three, scene)
@@ -187,17 +177,9 @@ end
 
 JSServe.session(x::ThreeDisplay) = JSServe.session(x.THREE)
 
-function redraw!(three::ThreeDisplay)
-    getfield(three, :redraw)[] = true
-end
-
-function on_redraw(f, three::ThreeDisplay)
-    on(f, getfield(three, :redraw))
-end
-
 function to_jsscene(three::ThreeDisplay, scene::Scene)
     get!(getfield(three, :scene2jsscene), scene) do
-        return JSServe.fuse(three) do
+        # return JSServe.fuse(three) do
             js_scene = three.new.Scene()
             add_camera!(three, js_scene, scene)
             lift(pixelarea(scene)) do area
@@ -217,7 +199,7 @@ function to_jsscene(three::ThreeDisplay, scene::Scene)
                 js_scene.add(js_sub)
             end
             return js_scene
-        end
+        # end
     end
 end
 
@@ -309,7 +291,7 @@ function three_display(session::Session, scene::Scene)
             document.addEventListener("keyup", keyup, false);
         }"""
     )
-    connect_scene_events!(scene, comm)
+    connect_scene_events!(session, scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(threemod, renderer, window)
     add_scene!(three, scene)

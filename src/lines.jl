@@ -45,6 +45,7 @@ function create_shader(scene::Scene, plot::LineSegments)
             per_instance[Symbol("$(k)_end")] = Buffer(lift(x-> x[endr[]], attribute))
         end
     end
+
     uniforms[:resolution] = scene.camera.resolution
     prim = GLUVMesh2D(
         vertices = Vec2f0[(0, -1), (0, 1), (1, -1), (1, 1)],
@@ -135,6 +136,7 @@ function jslines!(jsctx, scene, plot, positions_nan, colors, linewidth, model, t
         material.linewidth = linewidth
         set_positions!(jsctx, geometry, positions)
         Typ = typ === :lines ? jsctx.THREE.new.Line : jsctx.THREE.new.LineSegments
+        geometry.computeBoundingSphere()
         mesh = Typ(geometry, material)
         mesh.matrixAutoUpdate = false;
         mesh.matrix.set(model...)
