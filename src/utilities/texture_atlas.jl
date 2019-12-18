@@ -10,6 +10,8 @@ mutable struct TextureAtlas
     extent          ::Vector{FontExtent{Float64}}
 end
 
+Base.size(atlas::TextureAtlas) = size(atlas.data)
+
 @enum GlyphResolution High Low
 
 const TEXTURE_RESOLUTION = Ref((2048, 2048))
@@ -124,7 +126,7 @@ begin #basically a singleton for the textureatlas
     end
     const global_texture_atlas = RefValue{TextureAtlas}()
     function get_texture_atlas()
-        if isassigned(global_texture_atlas)
+        if isassigned(global_texture_atlas) && size(global_texture_atlas[]) == TEXTURE_RESOLUTION[]
             global_texture_atlas[]
         else
             global_texture_atlas[] = cached_load() # initialize only on demand
