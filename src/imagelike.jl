@@ -27,7 +27,7 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
     )
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
-    three_geom.name = name
+    three_geom.name = string(objectid(plot))
     jsscene.add(three_geom)
 end
 
