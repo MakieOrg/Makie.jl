@@ -81,3 +81,9 @@ function grid!(content::AbstractMatrix; kwargs...)
     end
     g
 end
+
+function layoutscene(padding = 30; kwargs...)
+    scene = Scene(; camera = campixel!, kwargs...)
+    gl = GridLayout(scene, alignmode = Outside(padding))
+    scene, gl
+end
