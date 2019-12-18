@@ -19,7 +19,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [compat]
 julia = "1"
 
-AbstractPlotting = "^0.9.11"
+AbstractPlotting = "0.9.0"
 Colors = "0.9"
 GeometryBasics = "0.1"
 GeometryTypes = "0.7"
