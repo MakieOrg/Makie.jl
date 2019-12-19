@@ -227,7 +227,7 @@ function convert_arguments(::SurfaceLike, x::AbstractVecOrMat, y::AbstractVecOrM
 end
 
 
-float32type(x) = Float32
+float32type(x::Type) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
 float32type(::Type{<: Colorant}) = RGBA{Float32}
