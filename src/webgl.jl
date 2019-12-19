@@ -12,6 +12,7 @@ struct JSBuffer{T} <: AbstractVector{T}
     buffer::JSObject
     length::Int
 end
+
 JSServe.session(jsb::JSBuffer) = JSServe.session(getfield(jsb, :three))
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
 Base.size(x::JSBuffer) = (getfield(x, :length),)
