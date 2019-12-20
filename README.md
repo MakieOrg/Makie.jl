@@ -52,9 +52,15 @@ Examples, and test infrastructure, are hosted at [`MakieGallery.jl`](https://git
 
 ## Using Juno with Makie
 
-The default OpenGL backend for Makie is not interactive in the Juno plotpane - it just shows a PNG instead.  To get full interactivity, you can run `AbstractPlotting.inline!(false).
+The default OpenGL backend for Makie is not interactive in the Juno plotpane - it just shows a PNG instead.  To get full interactivity, you can run `AbstractPlotting.inline!(false)`.
 
 If that fails, you can disable the plotpane in Atom's settings by going to `Juno` - `Settings` - `UI Options` - Then, make sure `Enable Plot Plane` is __not__ checked. 
+
+## Using IJulia / Jupyter Notebook with Makie
+
+Currently, only non-interactive plots are supported. (See issues [#15](https://github.com/JuliaPlots/Makie.jl/issues/15) and [#266](https://github.com/JuliaPlots/Makie.jl/issues/266).)
+
+You may need to run `AbstractPlotting.inline!(true)` in order for plots to appear.
 
 ## Examples from the documentation: 
 
