@@ -23,7 +23,7 @@ Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 
 [compat]
 julia = "1"
-AbstractPlotting = "^0.9.11"
+AbstractPlotting = "^0.9.15"
 Colors = "0.9"
 ColorTypes = "0.8"
 FileIO = "^1.1"
