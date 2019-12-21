@@ -11,12 +11,16 @@ end
 mousestates = (:MouseOut, :MouseEnter, :MouseOver, :MouseDown,
     :MouseUp, :MouseDragStart, :MouseDrag, :MouseDragStop,
     :MouseClick, :MouseDoubleclick)
-    
+
 for statetype in mousestates
     onfunctionname = Symbol("on" * lowercase(String(statetype)))
     @eval begin
         struct $statetype <: AbstractMouseState end
 
+        """
+        Executes the function f whenever the `Node{MouseState}` statenode transitions
+        to $statetype.
+        """
         function $onfunctionname(f, statenode::Node{MouseState})
             on(statenode) do state
                 if state.typ isa $statetype
@@ -24,19 +28,10 @@ for statetype in mousestates
                 end
             end
         end
+        export $onfunctionname
     end
 end
-# struct MouseOut <: AbstractMouseState end
-# struct MouseEnter <: AbstractMouseState end
-# struct MouseOver <: AbstractMouseState end
-# struct MouseLeave <: AbstractMouseState end
-# struct MouseDown <: AbstractMouseState end
-# struct MouseUp <: AbstractMouseState end
-# struct MouseDragStart <: AbstractMouseState end
-# struct MouseDrag <: AbstractMouseState end
-# struct MouseDragStop <: AbstractMouseState end
-# struct MouseClick <: AbstractMouseState end
-# struct MouseDoubleclick <: AbstractMouseState end
+
 
 function Base.show(io::IO, ms::MouseState{T}) where T
     print(io, "$T(t: $(ms.t), pos: $(ms.pos[1]), $(ms.pos[2]), tprev: $(ms.tprev), prev: $(ms.prev[1]), $(ms.prev[2]))")
