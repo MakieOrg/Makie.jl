@@ -19,7 +19,7 @@ for statetype in mousestates
 
         """
         Executes the function f whenever the `Node{MouseState}` statenode transitions
-        to $statetype.
+        to `$($statetype)`.
         """
         function $onfunctionname(f, statenode::Node{MouseState})
             on(statenode) do state
