@@ -87,3 +87,9 @@ function layoutscene(padding = 30; kwargs...)
     gl = GridLayout(scene, alignmode = Outside(padding))
     scene, gl
 end
+
+function layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
+    scene = Scene(; camera = campixel!, kwargs...)
+    gl = GridLayout(scene, nrows, ncols, alignmode = Outside(padding))
+    scene, gl
+end
