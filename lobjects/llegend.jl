@@ -327,3 +327,21 @@ function Base.pushfirst!(legend::LLegend, label::String, plots::Vararg{AbstractP
     entry = LegendEntry(label, plots...; kwargs...)
     pushfirst!(legend, entry)
 end
+
+function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String}; kwargs...)
+    legend = LLegend(scene; kwargs...)
+    if length(plots) != length(labels)
+        error("Legend received $(length(plots)) plots but $(length(labels)) labels.")
+    end
+    legend.entries[] = [LegendEntry(label, plot) for (plot, label) in zip(plots, labels)]
+    legend
+end
+
+function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
+    legend = LLegend(scene; kwargs...)
+    if length(plotgroups) != length(labels)
+        error("Legend received $(length(plots)) plotgroups but $(length(labels)) labels.")
+    end
+    legend.entries[] = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
+    legend
+end
