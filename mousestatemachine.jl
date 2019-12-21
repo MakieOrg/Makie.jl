@@ -8,7 +8,7 @@ struct MouseState{T<:AbstractMouseState}
     prev::Point2f0
 end
 
-mousestates = (:MouseOut, :MouseEnter, :MouseOver, :MouseLeave, :MouseDown,
+mousestates = (:MouseOut, :MouseEnter, :MouseOver, :MouseDown,
     :MouseUp, :MouseDragStart, :MouseDrag, :MouseDragStop,
     :MouseClick, :MouseDoubleclick)
     
@@ -72,7 +72,6 @@ function addmousestate!(scene, elements...)
                 mouse_downed_inside[] = false
                 # check after drag is over if we're also outside of the element now
                 if !mouseover(scene, elements...)
-                    mousestate[] = MouseState(MouseLeave(), t, pos, tprev[], prev[])
                     mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
                     mouse_was_inside[] = false
                 else
@@ -127,7 +126,6 @@ function addmousestate!(scene, elements...)
                 end
             else
                 if mouse_was_inside[]
-                    mousestate[] = MouseState(MouseLeave(), t, pos, tprev[], prev[])
                     mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
                     mouse_was_inside[] = false
                 end
