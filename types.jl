@@ -80,6 +80,7 @@ struct Auto <: ContentSize
 
     Auto(trydetermine::Bool = true, ratio::Real = 1.0) = new(trydetermine, ratio)
 end
+Auto(ratio::Real) = Auto(true, ratio)
 
 struct Fixed <: GapSize
     x::Float64
