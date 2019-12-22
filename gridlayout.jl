@@ -530,7 +530,7 @@ function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
         if (spal.sp.rows.start >= newrows.start && spal.sp.rows.stop <= newrows.stop &&
             spal.sp.cols.start >= newcols.start && spal.sp.cols.stop <= newcols.stop)
 
-            
+
             subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1)] = spal.al
             continue
             # don't advance i because there's one piece of content less in the queue
@@ -611,7 +611,7 @@ function detachfromgridlayout!(obj, gl::GridLayout)
     end
 end
 
-function Base.show(io::IO, gl::GridLayout)
+function Base.show(io::IO, ::MIME"text/plain", gl::GridLayout)
 
     function spaceindent(str, n, downconnection)
         joinstr = if downconnection
@@ -623,28 +623,26 @@ function Base.show(io::IO, gl::GridLayout)
     end
 
     println(io, "GridLayout[$(gl.nrows), $(gl.ncols)] with $(length(gl.content)) children")
-    println(io, " ┃")
 
     for (i, c) in enumerate(gl.content)
         rows = c.sp.rows
         cols = c.sp.cols
         al = c.al
 
-        if i == 1
-            if al isa GridLayout
-                downconnection = i < length(gl.content)
-                str = spaceindent(string(al), 4, downconnection)
-                println(io, " ┣━ $str")
-            else
-                println(io, " ┣━ [$rows | $cols] $(typeof(al))")
-            end
-        elseif i == length(gl.content)
-            println(io, " ┗━ [$rows | $cols] $(typeof(al))")
+        connector = i == length(gl.content) ? " ┗━ " : " ┣━ "
+
+        if al isa GridLayout
+            downconnection = i < length(gl.content)
+            str = spaceindent(string(al), 2, downconnection)
+            println(io, connector * "[$rows | $cols] $str")
         else
-            println(io, " ┣━ [$rows | $cols] $(typeof(al))")
+            println(io, connector * "[$rows | $cols] $(typeof(al))")
         end
     end
+end
 
+function Base.show(io::IO, gl::GridLayout)
+    print(io, "GridLayout[$(gl.nrows), $(gl.ncols)] ($(length(gl.content)) children)")
 end
 
 function colsize!(gl::GridLayout, i::Int, s::ContentSize)
