@@ -644,3 +644,17 @@ function AxisContent(plot; kwargs...)
 
     AxisContent(plot, attrs)
 end
+
+function Base.show(io::IO, ::MIME"text/plain", ax::LAxis)
+    nplots = length(ax.scene.plots)
+    println(io, "LAxis with $nplots plots:")
+
+    for (i, p) in enumerate(ax.scene.plots)
+        println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
+    end
+end
+
+function Base.show(io::IO, ax::LAxis)
+    nplots = length(ax.scene.plots)
+    print(io, "LAxis ($nplots plots)")
+end
