@@ -10,8 +10,6 @@ function GridLayout(nrows::Int, ncols::Int;
         alignmode = Inside(),
         equalprotrusiongaps = (false, false),
         bbox = nothing,
-        halign::Union{Symbol, Node{Symbol}} = :center,
-        valign::Union{Symbol, Node{Symbol}} = :center,
         kwargs...)
 
     if isnothing(rowsizes)
@@ -52,14 +50,11 @@ function GridLayout(nrows::Int, ncols::Int;
 
     content = []
 
-    valign = valign isa Symbol ? Node(valign) : valign
-    halign = halign isa Symbol ? Node(halign) : halign
-
     attrs = merge!(Attributes(kwargs), default_attributes(GridLayout))
 
     sizeattrs = sizenode!(attrs.width, attrs.height)
 
-    alignment = lift(tuple, halign, valign)
+    alignment = lift(tuple, attrs.halign, attrs.valign)
 
     autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
@@ -77,7 +72,7 @@ function GridLayout(nrows::Int, ncols::Int;
 
     gl = GridLayout(
         content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, valign, halign, layoutnodes, attrs)
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, layoutnodes, attrs)
 
     on(finalbbox) do bb
         align_to_bbox!(gl, bb)
@@ -791,26 +786,31 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
     gridheight = sum(rowheights) + sum(finalrowgaps) +
         (gl.alignmode isa Outside ? (topprot + bottomprot) : 0.0)
 
-    halign = gl.halign[]
-    halign_offset = if halign == :left
-        0.0
-    elseif halign == :right
-        width(bbox) - gridwidth
-    elseif halign == :center
-        (width(bbox) - gridwidth) / 2
-    else
-        error("Invalid grid layout halign $halign")
-    end
-    valign = gl.valign[]
-    valign_offset = if valign == :top
-        0.0
-    elseif valign == :bottom
-        gridheight - height(bbox)
-    elseif valign == :center
-        (gridheight - height(bbox)) / 2
-    else
-        error("Invalid grid layout valign $valign")
-    end
+    # halign = gl.attributes.halign[]
+    # halign_offset = if halign == :left
+    #     0.0
+    # elseif halign == :right
+    #     width(bbox) - gridwidth
+    # elseif halign == :center
+    #     (width(bbox) - gridwidth) / 2
+    # else
+    #     error("Invalid grid layout halign $halign")
+    # end
+    # valign = gl.attributes.valign[]
+    # rv = gridheight - height(bbox)
+    # valign_offset = if valign == :top
+    #     0.0
+    # elseif valign == :bottom
+    #     rv
+    # elseif valign == :center
+    #     rv * 0.5
+    # elseif valign isa Real
+    #     valign * rv
+    # else
+    #     error("Invalid grid layout valign $valign")
+    # end
+    halign_offset = 0.0
+    valign_offset = 0.0
 
     # compute the x values for all left and right column boundaries
     xleftcols = if gl.alignmode isa Inside

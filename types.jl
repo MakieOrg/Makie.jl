@@ -114,8 +114,6 @@ mutable struct GridLayout <: AbstractLayout
     equalprotrusiongaps::Tuple{Bool, Bool}
     needs_update::Node{Bool}
     block_updates::Bool
-    valign::Node{Symbol}
-    halign::Node{Symbol}
     layoutnodes::LayoutNodes
     attributes::Attributes
     _update_func_handle::Optional{Function} # stores a reference to the result of on(obs)
@@ -123,11 +121,11 @@ mutable struct GridLayout <: AbstractLayout
     function GridLayout(
         content, nrows, ncols, rowsizes, colsizes,
         addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update,
-        valign, halign, layoutnodes, attributes)
+        layoutnodes, attributes)
 
         gl = new(content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
-            needs_update, false, valign, halign, layoutnodes, attributes, nothing)
+            needs_update, false, layoutnodes, attributes, nothing)
 
         validategridlayout(gl)
 
