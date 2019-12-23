@@ -71,14 +71,16 @@ function alignedbboxnode!(
             :left => 0.0f0
             :center => 0.5f0 * rw
             :right => rw
-            x => error("Invalid horizontal alignment $x (only :left, :center, or :right allowed).")
+            x::Real => x * rw
+            x => error("Invalid horizontal alignment $x (only Real or :left, :center, or :right allowed).")
         end
 
         yshift = @match al[2] begin
             :bottom => 0.0f0
             :center => 0.5f0 * rh
             :top => rh
-            x => error("Invalid vertical alignment $x (only :bottom, :center, or :top allowed).")
+            x::Real => x * rh
+            x => error("Invalid vertical alignment $x (only Real or :bottom, :center, or :top allowed).")
         end
 
         # align the final bounding box in the layout bounding box
