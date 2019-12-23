@@ -380,24 +380,25 @@ $(ATTRIBUTES)
     default_theme(scene, Text)
 end
 
-"""
-Pushes an updates to all listeners of `node`
-"""
-function notify!(node::Node)
-    node[] = node[]
+function convert_arguments(::Type{<: Annotations},
+                           strings::AbstractVector{<: AbstractString},
+                           text_positions::AbstractVector{<: Point{N}}) where N
+    return (map(strings, text_positions) do str, pos
+        (String(str), Point{N, Float32}(pos))
+    end,)
 end
 
 function plot!(plot::Annotations)
-    position = plot[2]
     sargs = (
         plot[:model], plot[:font],
-        plot[1], position,
+        plot[1],
         getindex.(plot, (:color, :textsize, :align, :rotation))...,
     )
-    N = to_value(position) |> eltype |> length
     atlas = get_texture_atlas()
-    combinedpos = [Point3f0(0)]; colors = RGBAf0[RGBAf0(0,0,0,0)]
-    scales = Vec2f0[(0,0)]; fonts = NativeFont[to_font("Dejavu Sans")]
+    combinedpos = [Point3f0(0)]
+    colors = RGBAf0[RGBAf0(0,0,0,0)]
+    scales = Vec2f0[(0,0)]
+    fonts = NativeFont[to_font("Dejavu Sans")]
     rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
 
     tplot = text!(plot, "",
@@ -405,15 +406,11 @@ function plot!(plot::Annotations)
         position = combinedpos, color = colors,
         textsize = scales, font = fonts, rotation = rotations
     ).plots[end]
-
-    onany(sargs...) do model, font, args...
-        if length(args[1]) != length(args[2])
-            error("For each text annotation, there needs to be one position. Found: $(length(t)) strings and $(length(p)) positions")
-        end
+    onany(sargs...) do model, font, text_pos, args...
         io = IOBuffer();
         empty!(combinedpos); empty!(colors); empty!(scales); empty!(fonts); empty!(rotations)
 
-        broadcast_foreach(1:length(args[1]), args...) do idx, text, startpos, color, tsize, alignment, rotation
+        broadcast_foreach(1:length(text_pos), text_pos, args...) do idx, (text, startpos), color, tsize, alignment, rotation
             # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
             # TODO have a better Font type!
             f = to_font(font)
@@ -436,7 +433,6 @@ function plot!(plot::Annotations)
         tplot[:color] = colors
         tplot[:rotation] = rotations
         # fonts shouldn't need an update, since it will get udpated when listening on string
-        #
         return
     end
     # update one time in the beginning, since otherwise the above won't run

@@ -86,6 +86,12 @@ function map_once(
     lift(f, input, inputrest..., init = init, typ = typ)
 end
 
+"""
+Pushes an updates to all listeners of `node`
+"""
+function notify!(node::Node)
+    node[] = node[]
+end
 #
 # call_count = Ref(1)
 # io = IOBuffer()
