@@ -35,7 +35,6 @@ struct RowCols{T <: Union{Number, Vector{Float64}}}
     bottoms::T
 end
 
-abstract type AbstractLayout end
 
 """
 Used to specify space that is occupied in a grid. Like 1:1|1:1 for the first square,
@@ -102,7 +101,7 @@ mutable struct LayoutNodes{T, G} # G again GridLayout
     gridcontent::Optional{GridContent{G, T}} # the connecting link to the gridlayout
 end
 
-mutable struct GridLayout <: AbstractLayout
+mutable struct GridLayout
     content::Vector{GridContent}
     nrows::Int
     ncols::Int
@@ -140,32 +139,11 @@ mutable struct GridLayout <: AbstractLayout
 end
 
 
-# struct SolvedGridLayout <: AbstractLayout
-#     bbox::BBox
-#     content::Vector{GridContent}
-#     nrows::Int
-#     ncols::Int
-#     grid::RowCols{Vector{Float64}}
-# end
-
 struct AxisAspect
     aspect::Float32
 end
 
 struct DataAspect end
-
-mutable struct ProtrusionLayout{T} <: AbstractLayout
-    parent::Union{Nothing, GridLayout}
-    protrusions::Node{RectSides{Float32}}
-    computedsize::Node{NTuple{2, Optional{Float32}}}
-    needs_update::Node{Bool}
-    content::T
-end
-
-struct SolvedProtrusionLayout{T} <: AbstractLayout
-    bbox::BBox
-    content::T
-end
 
 abstract type Ticks end
 

@@ -266,20 +266,3 @@ function adjust_rows_cols!(g::GridLayout, rows, cols)
 
     rows, cols
 end
-
-
-# """
-# This function allows indexing syntax to add a layout object to a grid.
-# You can do:
-#
-# grid[1, 1] = obj
-# grid[1, :] = obj
-# grid[1:3, 2:5] = obj
-#
-# and all combinations of the above
-# """
-# function Base.setindex!(g::GridLayout, a::AbstractLayout, rows::Indexables, cols::Indexables, side::Side = Inner())
-#     detachfromparent!(a)
-#     add_layout!(g, a, rows, cols, side)
-#     a
-# end

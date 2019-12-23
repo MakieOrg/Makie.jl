@@ -549,14 +549,6 @@ function find_in_grid(obj, container::GridLayout)
     nothing
 end
 
-# function find_in_grid(layout::AbstractLayout, container::GridLayout)
-#     for i in 1:length(container.content)
-#         if container.content[i].al === layout
-#             return i
-#         end
-#     end
-#     nothing
-# end
 
 function topmost_grid(gl::GridLayout)
     candidate = gl
@@ -581,18 +573,6 @@ function find_in_grid_and_subgrids(obj, container::GridLayout)
     end
     nothing, nothing
 end
-
-# function find_in_grid_and_subgrids(layout::AbstractLayout, container::GridLayout)
-#     for i in 1:length(container.content)
-#         candidate = container.content[i].al
-#         if candidate === layout
-#             return container, i
-#         elseif candidate isa GridLayout
-#             return find_in_grid_and_subgrids(layout, candidate)
-#         end
-#     end
-#     nothing, nothing
-# end
 
 function find_in_grid_tree(obj, container::GridLayout)
     topmost = topmost_grid(container)
@@ -1259,16 +1239,3 @@ function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
         c.al
     end
 end
-
-
-# function detachfromparent!(l::AbstractLayout)
-#     if l.parent isa Scene
-#         error("Can't detach a grid layout from its parent if it's a Scene.")
-#     elseif l.parent isa GridLayout
-#         i = find_in_grid(l, l.parent)
-#         isnothing(i) && error("Layout could not be found in its parent's content.")
-#
-#         deleteat!(l.parent.content, i)
-#         l.parent = nothing
-#     end
-# end
