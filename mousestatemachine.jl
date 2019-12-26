@@ -52,6 +52,8 @@ function addmousestate!(scene, elements...)
 
     mousestate = Node{MouseState}(MouseState(MouseOut(), 0.0, Point2f0(0, 0), 0.0, Point2f0(0, 0)))
 
+    is_mouse_over_relevant_area() = isempty(elements) ? AbstractPlotting.is_mouseinside(scene) : mouseover(scene, elements...)
+
     onany(events(scene).mouseposition, events(scene).mousedrag) do mp, dragstate
         pos = mouseposition(AbstractPlotting.rootparent(scene))
         t = time()
@@ -76,7 +78,7 @@ function addmousestate!(scene, elements...)
             end
         # no dragging already ongoing
         else
-            if mouseover(scene, elements...)
+            if is_mouse_over_relevant_area()
                 # guard against mouse coming in from outside when pressed
                 if !mouse_was_inside[] && dragstate != Mouse.pressed
                     mousestate[] = MouseState(MouseEnter(), t, pos, tprev[], prev[])
@@ -105,7 +107,7 @@ function addmousestate!(scene, elements...)
                     end
                     mouse_downed_inside[] = false
 
-                    if mouseover(scene, elements...)
+                    if is_mouse_over_relevant_area()
                         # something could have moved after the click
                         mousestate[] = MouseState(MouseOver(), t, pos, tprev[], prev[])
                     else
