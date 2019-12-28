@@ -41,8 +41,7 @@ export LText
 export LRect
 export LToggle
 export LLegend
-export linkxaxes!
-export linkyaxes!
+export linkxaxes!, linkyaxes!, linkaxes!
 export GridLayout
 export ProtrusionLayout
 export BBox

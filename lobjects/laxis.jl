@@ -405,9 +405,11 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
         for link in bothlinks
             otherlims = link.limits[]
             if lims != otherlims
-                link.block_limit_linking[] = true
-                link.limits[] = lims
-                link.block_limit_linking[] = false
+                @async begin
+                    link.block_limit_linking[] = true
+                    link.limits[] = lims
+                    link.block_limit_linking[] = false
+                end
             end
         end
 
@@ -416,9 +418,11 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
             otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
             otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
             if thisxlims != otherxlims
-                xlink.block_limit_linking[] = true
-                xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
-                xlink.block_limit_linking[] = false
+                @async begin
+                    xlink.block_limit_linking[] = true
+                    xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
+                    xlink.block_limit_linking[] = false
+                end
             end
         end
 
@@ -427,9 +431,11 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
             otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
             otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
             if thisylims != otherylims
-                ylink.block_limit_linking[] = true
-                ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
-                ylink.block_limit_linking[] = false
+                @async begin
+                    ylink.block_limit_linking[] = true
+                    ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
+                    ylink.block_limit_linking[] = false
+                end
             end
         end
     end
@@ -478,6 +484,11 @@ function autolimits!(la::LAxis)
 
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
     la.limits[] = bbox
+end
+
+function linkaxes!(a::LAxis, others...)
+    linkxaxes!(a, others...)
+    linkyaxes!(a, others...)
 end
 
 function linkxaxes!(a::LAxis, others...)
