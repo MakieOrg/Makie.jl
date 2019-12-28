@@ -117,15 +117,15 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     #     end
     # end
 
-    onmousedown(buttonstate) do state
+    onmouseleftdown(buttonstate) do state
         bcolor[] = color_active[]
     end
 
-    onmouseup(buttonstate) do state
+    onmouseleftup(buttonstate) do state
         bcolor[] = buttoncolor_inactive[]
     end
 
-    onmousedrag(buttonstate) do state
+    onmouseleftdrag(buttonstate) do state
 
         pad = buttonradius[] + buttonstrokewidth[]
 
@@ -147,7 +147,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    onmousedragstop(buttonstate) do state
+    onmouseleftdragstop(buttonstate) do state
         dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
@@ -155,7 +155,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     scenestate = addmousestate!(subscene)
 
-    onmouseclick(scenestate) do state
+    onmouseleftclick(scenestate) do state
 
         pad = buttonradius[] + buttonstrokewidth[]
 
@@ -165,7 +165,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         selected_index[] = closest_fractionindex(sliderrange[], frac)
     end
 
-    onmousedoubleclick(scenestate) do state
+    onmouseleftdoubleclick(scenestate) do state
         selected_index[] = closest_index(sliderrange[], startvalue[])
     end
 
