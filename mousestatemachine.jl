@@ -8,9 +8,15 @@ struct MouseState{T<:AbstractMouseState}
     prev::Point2f0
 end
 
-mousestates = (:MouseOut, :MouseEnter, :MouseOver, :MouseDown,
-    :MouseUp, :MouseDragStart, :MouseDrag, :MouseDragStop,
-    :MouseClick, :MouseDoubleclick)
+mousestates = (:MouseOut, :MouseEnter, :MouseOver,
+    :MouseLeftDown, :MouseRightDown, :MouseMiddleDown,
+    :MouseLeftUp, :MouseRightUp, :MouseMiddleUp,
+    :MouseLeftDragStart, :MouseRightDragStart, :MouseMiddleDragStart,
+    :MouseLeftDrag, :MouseRightDrag, :MouseMiddleDrag,
+    :MouseLeftDragStop, :MouseRightDragStop, :MouseMiddleDragStop,
+    :MouseLeftClick, :MouseRightClick, :MouseMiddleClick,
+    :MouseLeftDoubleclick, :MouseRightDoubleclick, :MouseMiddleDoubleclick,
+    )
 
 for statetype in mousestates
     onfunctionname = Symbol("on" * lowercase(String(statetype)))
@@ -42,11 +48,13 @@ function addmousestate!(scene, elements...)
     Mouse = AbstractPlotting.Mouse
 
     mouse_downed_inside = Ref(false)
+    mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
     drag_ongoing = Ref(false)
     mouse_was_inside = Ref(false)
     prev = Ref(Point2f0(0, 0))
     tprev = Ref(0.0)
     t_last_click = Ref(0.0)
+    b_last_click = Ref{Optional{Mouse.Button}}(nothing)
     dblclick_max_interval = 0.2
     last_click_was_double = Ref(false)
 
@@ -56,19 +64,37 @@ function addmousestate!(scene, elements...)
 
     onany(events(scene).mouseposition, events(scene).mousedrag) do mp, dragstate
         pos = mouseposition(AbstractPlotting.rootparent(scene))
+        pressed_buttons = events(scene).mousebuttons[]
         t = time()
 
         if drag_ongoing[]
             if dragstate == Mouse.pressed
-                mousestate[] = MouseState(MouseDrag(), t, pos, tprev[], prev[])
+                event = @match mouse_downed_button[] begin
+                    Mouse.left => MouseLeftDrag()
+                    Mouse.right => MouseRightDrag()
+                    Mouse.middle => MouseMiddleDrag()
+                    x => error("No recognized mouse button $x")
+                end
+                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
             else
-                # one last drag event
-                mousestate[] = MouseState(MouseDrag(), t, pos, tprev[], prev[])
-                mousestate[] = MouseState(MouseDragStop(), t, pos, tprev[], prev[])
-                mousestate[] = MouseState(MouseUp(), t, pos, tprev[], prev[])
+                event = @match mouse_downed_button[] begin
+                    Mouse.left => MouseLeftDragStop()
+                    Mouse.right => MouseRightDragStop()
+                    Mouse.middle => MouseMiddleDragStop()
+                    x => error("No recognized mouse button $x")
+                end
+                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+
+                event = @match mouse_downed_button[] begin
+                    Mouse.left => MouseLeftUp()
+                    Mouse.right => MouseRightUp()
+                    Mouse.middle => MouseMiddleUp()
+                    x => error("No recognized mouse button $x")
+                end
+                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
                 mouse_downed_inside[] = false
                 # check after drag is over if we're also outside of the element now
-                if !mouseover(scene, elements...)
+                if !is_mouse_over_relevant_area()
                     mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
                     mouse_was_inside[] = false
                 else
@@ -76,6 +102,7 @@ function addmousestate!(scene, elements...)
                 end
                 drag_ongoing[] = false
             end
+
         # no dragging already ongoing
         else
             if is_mouse_over_relevant_area()
@@ -86,37 +113,89 @@ function addmousestate!(scene, elements...)
                 end
 
                 if dragstate == Mouse.down
-                    # guard against pressed mouse dragged in from somewhere else
-                    mouse_downed_inside[] = true
-                    mousestate[] = MouseState(MouseDown(), t, pos, tprev[], prev[])
-                elseif dragstate == Mouse.up
+                    # don't do anything if multiple buttons are pressed
+                    if length(pressed_buttons) == 1
+                        # guard against pressed mouse dragged in from somewhere else
 
-                    mousestate[] = MouseState(MouseUp(), t, pos, tprev[], prev[])
-                    t = time()
-                    dt_last_click = t - t_last_click[]
-                    t_last_click[] = t
-                    # guard against mouse coming in from outside, then mouse upping
-                    if mouse_downed_inside[]
-                        if dt_last_click < dblclick_max_interval && !last_click_was_double[]
-                            mousestate[] = MouseState(MouseDoubleclick(), t, pos, tprev[], prev[])
-                            last_click_was_double[] = true
-                        else
-                            mousestate[] = MouseState(MouseClick(), t, pos, tprev[], prev[])
-                            last_click_was_double[] = false
+                        b = first(pressed_buttons)
+                        if isnothing(b)
+                            return
                         end
+                        mouse_downed_inside[] = true
+                        mouse_downed_button[] = b
+                        event = @match b begin
+                            Mouse.left => MouseLeftDown()
+                            Mouse.right => MouseRightDown()
+                            Mouse.middle => MouseMiddleDown()
+                            x => error("No recognized mouse button $x")
+                        end
+                        mousestate[] = MouseState(event, t, pos, tprev[], prev[])
                     end
-                    mouse_downed_inside[] = false
 
-                    if is_mouse_over_relevant_area()
-                        # something could have moved after the click
-                        mousestate[] = MouseState(MouseOver(), t, pos, tprev[], prev[])
-                    else
-                        mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
-                        mouse_was_inside[] = false
+                elseif dragstate == Mouse.up
+                    # only register up events and clicks if the upped button matches
+                    # the recorded downed one
+                    # and it can't be nothing (if the first up event comes from outside)
+                    if !(mouse_downed_button[] in pressed_buttons) && !isnothing(mouse_downed_button[])
+
+                        event = @match mouse_downed_button[] begin
+                            Mouse.left => MouseLeftUp()
+                            Mouse.right => MouseRightUp()
+                            Mouse.middle => MouseMiddleUp()
+                            x => error("No recognized mouse button $x")
+                        end
+
+                        mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                        t = time()
+                        dt_last_click = t - t_last_click[]
+                        t_last_click[] = t
+
+                        # guard against mouse coming in from outside, then mouse upping
+                        if mouse_downed_inside[]
+
+                            if dt_last_click < dblclick_max_interval && !last_click_was_double[] &&
+                                    mouse_downed_button[] == b_last_click[]
+
+                                event = @match mouse_downed_button[] begin
+                                    Mouse.left => MouseLeftDoubleclick()
+                                    Mouse.right => MouseRightDoubleclick()
+                                    Mouse.middle => MouseMiddleDoubleclick()
+                                    x => error("No recognized mouse button $x")
+                                end
+                                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                                last_click_was_double[] = true
+                            else
+                                event = @match mouse_downed_button[] begin
+                                    Mouse.left => MouseLeftClick()
+                                    Mouse.right => MouseRightClick()
+                                    Mouse.middle => MouseMiddleClick()
+                                    x => error("No recognized mouse button $x")
+                                end
+                                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                                last_click_was_double[] = false
+                            end
+                            # save what type the last downed button was
+                            b_last_click[] = mouse_downed_button[]
+                        end
+                        mouse_downed_inside[] = false
+
+                        if is_mouse_over_relevant_area()
+                            # something could have moved after the click
+                            mousestate[] = MouseState(MouseOver(), t, pos, tprev[], prev[])
+                        else
+                            mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
+                            mouse_was_inside[] = false
+                        end
                     end
 
                 elseif dragstate == Mouse.pressed && mouse_downed_inside[]
-                    mousestate[] = MouseState(MouseDragStart(), t, pos, tprev[], prev[])
+                    event = @match mouse_downed_button[] begin
+                        Mouse.left => MouseLeftDragStart()
+                        Mouse.right => MouseRightDragStart()
+                        Mouse.middle => MouseMiddleDragStart()
+                        x => error("No recognized mouse button $x")
+                    end
+                    mousestate[] = MouseState(event, t, pos, tprev[], prev[])
                     drag_ongoing[] = true
                 elseif dragstate == Mouse.notpressed
                     mousestate[] = MouseState(MouseOver(), t, pos, tprev[], prev[])
