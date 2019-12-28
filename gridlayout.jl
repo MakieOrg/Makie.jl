@@ -361,11 +361,13 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
     rowsizes = convert_contentsizes(n, rowsizes)
     addedrowgaps = convert_gapsizes(n, addedrowgaps)
 
-    gl.content = map(gl.content) do spal
+    newcontent = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows .+ n, span.cols)
         GridContent(spal.al, newspan, spal.side)
     end
+    # because of too specific typing with the new parametric GridContent
+    gl.content = convert(Vector{GridContent}, newcontent)
 
     with_updates_suspended(gl) do
         gl.nrows += n
@@ -379,11 +381,13 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     colsizes = convert_contentsizes(n, colsizes)
     addedcolgaps = convert_gapsizes(n, addedcolgaps)
 
-    gl.content = map(gl.content) do spal
+    newcontent = map(gl.content) do spal
         span = spal.sp
         newspan = Span(span.rows, span.cols .+ n)
         GridContent(spal.al, newspan, spal.side)
     end
+    # because of too specific typing with the new parametric GridContent
+    gl.content = convert(Vector{GridContent}, newcontent)
 
     with_updates_suspended(gl) do
         gl.ncols += n
