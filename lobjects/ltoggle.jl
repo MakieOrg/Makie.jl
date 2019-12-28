@@ -59,7 +59,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
 
     buttonstate = addmousestate!(parent, button, frame)
 
-    onmouseclick(buttonstate) do state
+    onmouseleftclick(buttonstate) do state
         if animating[]
             return
         end
