@@ -648,11 +648,31 @@ function colgap!(gl::GridLayout, i::Int, s::GapSize)
     gl.needs_update[] = true
 end
 
+function colgap!(gl::GridLayout, s::GapSize)
+    gl.addedcolgaps .= s
+    gl.needs_update[] = true
+end
+
+function colgap!(gl::GridLayout, r::Real)
+    gl.addedcolgaps .= Ref(Fixed(r))
+    gl.needs_update[] = true
+end
+
 function rowgap!(gl::GridLayout, i::Int, s::GapSize)
     if !(1 <= i <= (gl.nrows - 1))
         error("Can't set size of invalid row gap $i.")
     end
     gl.addedrowgaps[i] = s
+    gl.needs_update[] = true
+end
+
+function rowgap!(gl::GridLayout, s::GapSize)
+    gl.addedrowgaps .= s
+    gl.needs_update[] = true
+end
+
+function rowgap!(gl::GridLayout, r::Real)
+    gl.addedrowgaps .= Ref(Fixed(r))
     gl.needs_update[] = true
 end
 
