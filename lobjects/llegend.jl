@@ -4,7 +4,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     @extract attrs (
         halign, valign, padding, margin,
-        title, titlefont, titlesize, titlealign,
+        title, titlefont, titlesize, titlealign, titlevisible,
         labelsize, labelfont, labelcolor, labelhalign, labelvalign,
         bgcolor, strokecolor, strokewidth,
         patchsize, # the side length of the entry patch area
@@ -61,7 +61,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     entryplots = [AbstractPlot[]]
     entryrects = LRect[]
 
-    titletext = maingrid[1, 1] = LText(scene, text = title, textsize = titlesize, halign = titlealign)
+    titletext = maingrid[1, 1] = LText(scene, text = title, textsize = titlesize,
+        halign = titlealign, visible = titlevisible)
 
     labelgrid = maingrid[2, 1] = GridLayout()
 
@@ -106,13 +107,25 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             rowgap!(labelgrid, i, Fixed(rowgap[]))
         end
 
+        if titlevisible[]
+            if maingrid.nrows == 1
+                maingrid[0, 1] = titletext
+            end
+        else
+            if maingrid.nrows == 2
+                deleterow!(maingrid, 1)
+            end
+        end
+
         manipulating_grid[] = false
         maingrid.needs_update[] = true
 
         translate!(scene, (0, 0, 10))
     end
 
-    onany(ncols, rowgap, colgap, patchlabelgap) do _, _, _, _; relayout(); end
+    onany(ncols, rowgap, colgap, patchlabelgap, titlevisible) do _, _, _, _, _
+        relayout()
+    end
 
     on(entries) do entries
 

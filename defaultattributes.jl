@@ -255,6 +255,7 @@ function default_attributes(::Type{LLegend})
         titlefont = "Dejavu Sans",
         titlesize = 20f0,
         titlealign = :center,
+        titlevisible = true,
         labelsize = 20f0,
         labelfont = "Dejavu Sans",
         labelcolor = :black,
