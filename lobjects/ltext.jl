@@ -35,40 +35,18 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
         autosizenode[] = (autowidth, autoheight)
     end
 
-    onany(finalbbox, alignment) do bbox, (halign, valign)
+    onany(finalbbox, padding) do bbox, padding
 
         tw = width(textbb)
         th = height(textbb)
-        # w = widthnode[]
-        # h = heightnode[]
-
-        bw = width(bbox)
-        bh = height(bbox)
 
         box = bbox.origin[1]
         boy = bbox.origin[2]
 
-        x = if halign == :left
-                box + 0.5f0 * tw + padding[][1]
-            elseif halign == :right
-                box + bw - 0.5f0 * tw - padding[][2]
-            elseif halign == :center
-                box + 0.5f0 * bw
-            else
-                error("Invalid halign $halign")
-            end
+        tx = box + padding[1] + 0.5 * tw
+        ty = boy + padding[3] + 0.5 * th
 
-        y = if valign == :bottom
-                boy + 0.5f0 * th + padding[][3]
-            elseif valign == :top
-                boy + bh - 0.5f0 * th - padding[][4]
-            elseif valign == :center
-                boy + 0.5f0 * bh
-            else
-                error("Invalid valign $valign")
-            end
-
-        textpos[] = Point3f0(x, y, 0)
+        textpos[] = Point3f0(tx, ty, 0)
     end
 
 
