@@ -105,7 +105,7 @@ end
 function jl2js(jsctx, color::Sampler{T, 2}) where T
     # cache texture by their pointer
     key = reinterpret(UInt64, objectid(color.data))
-    # return get!(jsctx.session_cache, key) do
+    return get!(jsctx.session_cache, key) do
         data = to_js_buffer(jsctx, color.data)
 
         tex = jsctx.THREE.new.DataTexture(
@@ -127,7 +127,7 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
             end
         end
         return tex
-    # end
+    end
 end
 
 function jl2js(jsctx, color::Sampler{T, 3}) where T
