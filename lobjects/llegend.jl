@@ -222,7 +222,7 @@ function legendsymbol!(scene, element::PolyElement, bbox, defaultattrs::Attribut
     fracpoints = attrs.polypoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
-        strokecolor = attrs.polystrokecolor,
+        strokecolor = attrs.strokecolor,
         raw = true)[end]
 end
 
