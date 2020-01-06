@@ -8,7 +8,7 @@ function LineAxis(parent::Scene; kwargs...)
         tickcolor, tickalign, ticks, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
-        labelvisible, spinevisible)
+        labelvisible, spinevisible, trimspine)
 
     pos_extents_horizontal = lift(endpoints) do endpoints
         if endpoints[1][2] == endpoints[2][2]
@@ -25,25 +25,6 @@ function LineAxis(parent::Scene; kwargs...)
             error("Axis endpoints $(endpoints[1]) and $(endpoints[2]) are neither on a horizontal nor vertical line")
         end
     end
-
-    linepoints = lift(pos_extents_horizontal, flipped, spinewidth) do (position, extents, horizontal),
-            flipped, sw
-
-        if horizontal
-            y = position + (flipped ? 1f0 : -1f0) * 0.5f0 * sw
-            p1 = Point2f0(extents[1] - sw, y)
-            p2 = Point2(extents[2] + sw, y)
-            [p1, p2]
-        else
-            x = position + (flipped ? 1f0 : -1f0) * 0.5f0 * sw
-            p1 = Point2f0(x, extents[1] - sw)
-            p2 = Point2f0(x, extents[2] + sw)
-            [p1, p2]
-        end
-    end
-
-    lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true)
 
     ticksnode = Node(Point2f0[])
     ticklines = linesegments!(
@@ -206,6 +187,32 @@ function LineAxis(parent::Scene; kwargs...)
             ticksnode[] = interleave_vectors(tickstarts, tickends)
         end
     end
+
+    linepoints = lift(pos_extents_horizontal, flipped, spinewidth, trimspine, tickpositions, tickwidth) do (position, extents, horizontal),
+            flipped, sw, trimspine, tickpositions, tickwidth
+
+        if !trimspine
+            if horizontal
+                y = position + (flipped ? 1f0 : -1f0) * 0.5f0 * sw
+                p1 = Point2f0(extents[1] - sw, y)
+                p2 = Point2(extents[2] + sw, y)
+                [p1, p2]
+            else
+                x = position + (flipped ? 1f0 : -1f0) * 0.5f0 * sw
+                p1 = Point2f0(x, extents[1] - sw)
+                p2 = Point2f0(x, extents[2] + sw)
+                [p1, p2]
+            end
+        else
+            [tickpositions[1], tickpositions[end]] .+ [
+                (horizontal ? Point2f0(-0.5f0 * tickwidth, 0) : Point2f0(0, -0.5f0 * tickwidth)),
+                (horizontal ? Point2f0(0.5f0 * tickwidth, 0) : Point2f0(0, 0.5f0 * tickwidth)),
+            ]
+        end
+    end
+
+    lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
+        color = spinecolor, raw = true)
 
     protrusion = lift(ticksvisible, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
             tickspace, ticklabelsvisible, ticklabelspace, ticklabelpad) do ticksvisible,

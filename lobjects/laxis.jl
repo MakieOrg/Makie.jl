@@ -12,7 +12,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         xticklabelrotation, yticklabelrotation, xticklabelalign, yticklabelalign,
         xtickalign, ytickalign, xtickwidth, ytickwidth, xtickcolor, ytickcolor,
         xpanlock, ypanlock, xzoomlock, yzoomlock,
-        spinewidth,
+        spinewidth, xtrimspine, ytrimspine,
         xgridvisible, ygridvisible, xgridwidth, ygridwidth, xgridcolor, ygridcolor,
         xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
         aspect, halign, valign, maxsize, xticks, yticks, panbutton,
@@ -118,7 +118,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor,
-        ticklabelsize = xticklabelsize)
+        ticklabelsize = xticklabelsize, trimspine = xtrimspine)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
@@ -128,7 +128,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor,
-        ticklabelsize = yticklabelsize)
+        trimspine = ytrimspine, ticklabelsize = yticklabelsize)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos

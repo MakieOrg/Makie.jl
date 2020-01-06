@@ -74,6 +74,8 @@ function default_attributes(::Type{LAxis})
         yzoomkey = AbstractPlotting.Keyboard.y,
         xaxisposition = :bottom,
         yaxisposition = :left,
+        xtrimspine = false,
+        ytrimspine = false,
     )
 end
 
@@ -181,6 +183,7 @@ end
 function default_attributes(::Type{LineAxis})
     Attributes(
         endpoints = (Point2f0(0, 0), Point2f0(100, 0)),
+        trimspine = false,
         limits = (0f0, 100f0),
         flipped = false,
         ticksize = 10f0,
