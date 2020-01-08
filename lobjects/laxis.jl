@@ -14,6 +14,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         xpanlock, ypanlock, xzoomlock, yzoomlock,
         spinewidth, xtrimspine, ytrimspine,
         xgridvisible, ygridvisible, xgridwidth, ygridwidth, xgridcolor, ygridcolor,
+        xgridstyle, ygridstyle,
         xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
         aspect, halign, valign, maxsize, xticks, yticks, panbutton,
         xpankey, ypankey, xzoomkey, yzoomkey,
@@ -56,14 +57,14 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     xgridnode = Node(Point2f0[])
     xgridlines = linesegments!(
         parent, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
-        color = xgridcolor
+        color = xgridcolor, linestyle = xgridstyle,
     )[end]
     decorations[:xgridlines] = xgridlines
 
     ygridnode = Node(Point2f0[])
     ygridlines = linesegments!(
         parent, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
-        color = ygridcolor
+        color = ygridcolor, linestyle = ygridstyle,
     )[end]
     decorations[:ygridlines] = ygridlines
 

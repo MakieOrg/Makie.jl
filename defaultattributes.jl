@@ -49,6 +49,8 @@ function default_attributes(::Type{LAxis})
         ygridwidth = 1f0,
         xgridcolor = RGBAf0(0, 0, 0, 0.1),
         ygridcolor = RGBAf0(0, 0, 0, 0.1),
+        xgridstyle = nothing,
+        ygridstyle = nothing,
         xspinevisible = true,
         yspinevisible = true,
         xoppositespinevisible = true,
