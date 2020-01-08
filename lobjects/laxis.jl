@@ -69,6 +69,10 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     # connect camera, plot size or limit changes to the axis decorations
 
+    latestlimits = Ref(limits[])
+    isupdating = Ref(false)
+    missedupdate = Ref(false)
+
     onany(pixelarea(scene), limits) do pxa, lims
 
         px_ox, px_oy = pxa.origin
@@ -85,7 +89,27 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
 
-        update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims)
+        latestlimits[] = lims
+
+        if !isupdating[]
+            @async begin
+                isupdating[] = true
+                while true
+                    missedupdate[] = false
+                    update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, latestlimits[])
+                    if !missedupdate[]
+                        # the limit updating happens in async so there could be
+                        # a new set of limits once that's done, in that case just
+                        # do another update
+                        break
+                    end
+                end
+                isupdating[] = false
+            end
+        else
+            # this means that the limits will be updated once more
+            missedupdate[] = true
+        end
     end
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
@@ -407,11 +431,9 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
         for link in bothlinks
             otherlims = link.limits[]
             if lims != otherlims
-                @async begin
-                    link.block_limit_linking[] = true
-                    link.limits[] = lims
-                    link.block_limit_linking[] = false
-                end
+                link.block_limit_linking[] = true
+                link.limits[] = lims
+                link.block_limit_linking[] = false
             end
         end
 
@@ -420,11 +442,9 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
             otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
             otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
             if thisxlims != otherxlims
-                @async begin
-                    xlink.block_limit_linking[] = true
-                    xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
-                    xlink.block_limit_linking[] = false
-                end
+                xlink.block_limit_linking[] = true
+                xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
+                xlink.block_limit_linking[] = false
             end
         end
 
@@ -433,11 +453,9 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
             otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
             otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
             if thisylims != otherylims
-                @async begin
-                    ylink.block_limit_linking[] = true
-                    ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
-                    ylink.block_limit_linking[] = false
-                end
+                ylink.block_limit_linking[] = true
+                ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
+                ylink.block_limit_linking[] = false
             end
         end
     end
