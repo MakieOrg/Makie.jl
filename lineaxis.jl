@@ -33,21 +33,16 @@ function LineAxis(parent::Scene; kwargs...)
     )[end]
     decorations[:ticklines] = ticklines
 
-    nmaxticks = 20
-    ticklabelnodes = [Node("0") for i in 1:nmaxticks]
-    ticklabelposnodes = [Node(Point2f0(0.0, 0.0)) for i in 1:nmaxticks]
-    ticklabels = map(1:nmaxticks) do i
-        text!(
-            parent,
-            ticklabelnodes[i],
-            position = ticklabelposnodes[i],
-            align = ticklabelalign,
-            rotation = ticklabelrotation,
-            textsize = ticklabelsize,
-            show_axis = false,
-            visible = ticklabelsvisible
-        )[end]
-    end
+    ticklabelannosnode = Node{Vector{Tuple{String, Point2f0}}}([("temp", Point2f0(0, 0))])
+    ticklabels = annotations!(
+        parent,
+        ticklabelannosnode,
+        align = ticklabelalign,
+        rotation = ticklabelrotation,
+        textsize = ticklabelsize,
+        show_axis = false,
+        visible = ticklabelsvisible)[end]
+
     decorations[:ticklabels] = ticklabels
 
     tickspace = lift(ticksvisible, ticksize, tickalign) do ticksvisible,
@@ -151,25 +146,16 @@ function LineAxis(parent::Scene; kwargs...)
 
         nticks = length(tickvalues[])
 
-        for i in 1:length(ticklabels)
-            if i <= nticks
-                ticklabelnodes[i][] = tickstrings[i]
+        ticklabelgap = spinewidth[] + tickspace[] + ticklabelpad[]
 
-                ticklabelgap = spinewidth[] + tickspace[] + ticklabelpad[]
-
-                shift = if horizontal
-                    Point2f0(0f0, flipped ? ticklabelgap : -ticklabelgap)
-                else
-                    Point2f0(flipped ? ticklabelgap : -ticklabelgap, 0f0)
-                end
-
-                ticklabelposnodes[i][] = tickpositions[][i] .+ shift
-
-                ticklabels[i].visible = true && ticklabelsvisible[]
-            else
-                ticklabels[i].visible = false
-            end
+        shift = if horizontal
+            Point2f0(0f0, flipped ? ticklabelgap : -ticklabelgap)
+        else
+            Point2f0(flipped ? ticklabelgap : -ticklabelgap, 0f0)
         end
+
+        ticklabelpositions = tickpositions[] .+ Ref(shift)
+        ticklabelannosnode[] = collect(zip(tickstrings, ticklabelpositions))
     end
 
     onany(tickpositions, tickalign, ticksize, spinewidth) do tickpositions,
@@ -247,12 +233,13 @@ function tight_ticklabel_spacing!(la::LineAxis)
         error("endpoints not on a horizontal or vertical line")
     end
 
-    maxwidth = maximum(la.decorations[:ticklabels]) do tl
-        if horizontal
-            tl.visible[] ? boundingbox(tl).widths[2] : 0f0
+    tls = la.decorations[:ticklabels]
+    maxwidth = if horizontal
+            # height
+            tls.visible[] ? height(BBox(boundingbox(tls))) : 0f0
         else
-            tl.visible[] ? boundingbox(tl).widths[1] : 0f0
-        end
+            # width
+            tls.visible[] ? width(BBox(boundingbox(tls))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
 end
