@@ -6,7 +6,7 @@ using GeometryTypes, Colors
 using ShaderAbstractions, LinearAlgebra
 import GeometryBasics
 
-using JSServe: Application, Session, evaljs, linkjs, update_dom!, div, active_sessions
+using JSServe: Application, Session, evaljs, linkjs, div, active_sessions
 using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
 using JSServe: JSObject, onload, uuidstr
 using JSServe.DOM
@@ -223,9 +223,9 @@ function three_display(session::Session, scene::Scene)
     window = JSObject(session, :window)
     onload(session, canvas, js"""
         function threejs_module(canvas){
-            var context = canvas.getContext("webgl2");
+            var context = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
             if(!context){
-                context = canvas.getContext("webgl");
+                context = canvas.getContext("webgl", {preserveDrawingBuffer: true});
             }
             var renderer = new $THREE.WebGLRenderer({
                 antialias: true, canvas: canvas, context: context,
@@ -341,6 +341,17 @@ function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) wher
     return T in WEB_MIMES
 end
 
+function session2image(sessionlike)
+    s = JSServe.session(sessionlike)
+    picture_base64 = JSServe.evaljs_value(s, js"document.querySelector('canvas').toDataURL()")
+    picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
+    bytes = JSServe.Base64.base64decode(picture_base64)
+    return AbstractPlotting.ImageMagick.load_(bytes)
+end
+
+function AbstractPlotting.colorbuffer(screen::ThreeDisplay)
+    return session2image(screen)
+end
 
 function activate!()
     b = WGLBackend()
