@@ -17,7 +17,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
-julia = "1.1"
+julia = "1.0"
 
 AbstractPlotting = "0.9"
 Colors = "0.9, 0.10, 0.11"
