@@ -36,7 +36,7 @@ end
 
 function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) where T
     JSServe.fuse(x) do
-        flat = collect(reinterpret(eltype(T), value))
+        flat = flatten_buffer(value)
         jsb = jsbuffer(x)
         off = (first(index) - 1) * tlength(T)
         jsb.set(flat, off)
@@ -46,8 +46,7 @@ function Base.setindex!(x::JSBuffer, value::AbstractArray{T}, index::UnitRange) 
 end
 
 function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
-    flat = collect(reinterpret(eltype(T), vector))
-    js_f32 = three.window.new.Float32Array(flat)
+    js_f32 = to_js_buffer(three, vector)
     jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
     jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
@@ -59,7 +58,7 @@ end
 
 
 function JSBuffer(three, vector::AbstractVector{T}) where T
-    flat = collect(reinterpret(eltype(T), vector))
+    flat = flatten_buffer(vector)
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
     jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
@@ -70,16 +69,16 @@ function JSBuffer(three, vector::AbstractVector{T}) where T
 end
 
 jl2js(jsctx, val::Number) = val
-function jl2js(jsctx, val::Mat4f0)
-    x = jsctx.THREE.new.Matrix4()
+function jl2js(THREE, val::Mat4f0)
+    x = THREE.new.Matrix4()
     x.fromArray(vec(val))
     return x
 end
 
-jl2js(jsctx, val::Quaternion) = jsctx.THREE.new.Vector4(val.data...)
-jl2js(jsctx, val::Vec4f0) = jsctx.THREE.new.Vector4(val...)
-jl2js(jsctx, val::Vec3f0) = jsctx.THREE.new.Vector3(val...)
-jl2js(jsctx, val::Vec2f0) = jsctx.THREE.new.Vector2(val...)
+jl2js(THREE, val::Quaternion) = THREE.new.Vector4(val.data...)
+jl2js(THREE, val::Vec4f0) = THREE.new.Vector4(val...)
+jl2js(THREE, val::Vec3f0) = THREE.new.Vector3(val...)
+jl2js(THREE, val::Vec2f0) = THREE.new.Vector2(val...)
 
 function jl2js(jsctx, val::RGBA)
     return jsctx.THREE.new.Vector4(red(val), green(val), blue(val), alpha(val))
@@ -203,29 +202,63 @@ three_type(jsctx, ::Type{Float16}) = jsctx.FloatType
 three_type(jsctx, ::Type{Float32}) = jsctx.FloatType
 three_type(jsctx, ::Type{N0f8}) = jsctx.UnsignedByteType
 
-function to_js_buffer(jsctx, array::AbstractArray{T}) where T
-    return to_js_buffer(jsctx, reinterpret(eltype(T), array))
+"""
+    flatten_buffer(array::AbstractArray)
+Flattens `array` array to be a 1D Vector of Float32 / UInt8.
+If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
+to their element type.
+"""
+function flatten_buffer(array::AbstractArray{T}) where T
+    return flatten_buffer(reinterpret(eltype(T), array))
 end
-function to_js_buffer(jsctx, array::AbstractArray{Float32})
-    return jsctx.window.Float32Array.from(vec(array))
+
+function flatten_buffer(array::AbstractArray{<:AbstractFloat}) where T
+    return convert(Vector{Float32}, vec(array))
 end
-function to_js_buffer(jsctx, array::AbstractArray{<: AbstractFloat})
-    return jsctx.window.Float32Array.from(vec(array))
+
+function flatten_buffer(array::AbstractArray{<:Integer}) where T
+    return convert(Vector{Int32}, vec(array))
 end
-function to_js_buffer(jsctx, array::AbstractArray{T}) where T <: Union{N0f8, UInt8}
-    return jsctx.window.Uint8Array.from(vec(array))
+
+function flatten_buffer(array::AbstractArray{<:Unsigned}) where T
+    return convert(Vector{UInt32}, vec(array))
+end
+
+function flatten_buffer(array::AbstractArray{T}) where T <: UInt8
+    return convert(Vector{T}, vec(array))
+end
+
+function flatten_buffer(array::AbstractArray{T}) where T <: N0f8
+    return flatten_buffer(reinterpret(UInt8, array))
+end
+
+function to_js_buffer(jsctx, array::AbstractArray)
+    return to_js_buffer(jsctx, flatten_buffer(array))
+end
+
+function to_js_buffer(jsctx, array::Vector{UInt8})
+    return jsctx.window.Uint8Array.from(array)
+end
+function to_js_buffer(jsctx, array::Vector{Int32})
+    return jsctx.window.Int32Array.from(array)
+end
+function to_js_buffer(jsctx, array::Vector{UInt32})
+    return jsctx.window.Uint32Array.from(array)
+end
+function to_js_buffer(jsctx, array::Vector{Float32})
+    return jsctx.window.Float32Array.from(array)
 end
 
 function three_filter(jsctx, sym)
     sym == :linear && return jsctx.LinearFilter
     sym == :nearest && return jsctx.NearestFilter
 end
+
 function three_repeat(jsctx, s::Symbol)
     s == :clamp_to_edge && return jsctx.ClampToEdgeWrapping
     s == :mirrored_repeat && return jsctx.MirroredRepeatWrapping
     s == :repeat && return jsctx.RepeatWrapping
 end
-using StaticArrays
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 
@@ -237,7 +270,12 @@ ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext, t::T
 ShaderAbstractions.convert_uniform(context::ShaderAbstractions.AbstractContext, t::Quaternion) = convert(Quaternion, t)
 
 function wgl_convert(value, key1, key2)
-    AbstractPlotting.convert_attribute(value, key1, key2)
+    val = AbstractPlotting.convert_attribute(value, key1, key2)
+    if val isa AbstractArray{<: Float64}
+        return AbstractPlotting.el32convert(val)
+    else
+        return val
+    end
 end
 
 function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)

@@ -6,3 +6,5 @@
 /docs/build/
 /docs/site/
 /debug/
+/test/test_recordings
+/test/tested_different

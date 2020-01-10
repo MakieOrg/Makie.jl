@@ -13,7 +13,7 @@ JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
 Observables = "510215fc-4207-5dde-b226-833fc4488ee2"
 ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-
+ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
@@ -28,9 +28,10 @@ JSServe = "^0.3.3"
 Observables = "0.2.0"
 ShaderAbstractions = "0.1.0"
 StaticArrays = "0.12, 0.1"
-
+ImageTransformations = "0.7,0.8"
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+ElectronDisplay = "d872a56f-244b-5cc9-b574-2017b5b909a8"
 
 [targets]
-test = ["Test"]
+test = ["Test", "ElectronDisplay"]
