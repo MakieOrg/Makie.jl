@@ -24,11 +24,4 @@ for path in (tested_diff_path, test_record_path)
     mkpath(path)
 end
 examples = MakieGallery.record_examples(test_record_path)
-examples
 MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.01)
-MakieGallery.cr
-MakieGallery.generate_preview(test_record_path, joinpath(@__DIR__, "index.html"))
-AbstractPlotting.set_theme!(resolution=(500, 500))
-s = scatter(rand(4), rand(4), rand(4), color = rand(4));
-electrondisplay(s)
-center!(s);
