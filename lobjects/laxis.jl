@@ -690,3 +690,20 @@ function Base.show(io::IO, ax::LAxis)
     nplots = length(ax.scene.plots)
     print(io, "LAxis ($nplots plots)")
 end
+
+
+function AbstractPlotting.xlims!(ax::LAxis, xlims::Tuple{Real, Real})
+	lims = ax.limits[]
+	newlims = FRect2D((xlims[1], lims.origin[2]), (xlims[2] - xlims[1], lims.widths[2]))
+	ax.limits[] = newlims
+end
+
+AbstractPlotting.xlims!(ax::LAxis, lims::Real...) = xlims!(ax, lims)
+
+function AbstractPlotting.ylims!(ax::LAxis, ylims::Tuple{Real, Real})
+	lims = ax.limits[]
+	newlims = FRect2D((lims.origin[1], ylims[1]), (lims.widths[1], ylims[2] - ylims[1]))
+	ax.limits[] = newlims
+end
+
+AbstractPlotting.ylims!(ax::LAxis, lims::Real...) = ylims!(ax, lims)
