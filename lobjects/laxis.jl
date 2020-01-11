@@ -59,6 +59,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         parent, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle,
     )[end]
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(xgridlines, 0, 0, -10)
     decorations[:xgridlines] = xgridlines
 
     ygridnode = Node(Point2f0[])
@@ -66,6 +68,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         parent, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
         color = ygridcolor, linestyle = ygridstyle,
     )[end]
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
 
     # connect camera, plot size or limit changes to the axis decorations
