@@ -17,16 +17,22 @@ Base.size(atlas::TextureAtlas) = size(atlas.data)
 const TEXTURE_RESOLUTION = Ref((2048, 2048))
 const CACHE_RESOLUTION_PREFIX = Ref("high")
 const DOWN_SAMPLE_FACTOR = Ref(50)
+const DOWN_SAMPLE_HIGH = 50
+const DOWN_SAMPLE_LOW = 30
+
+function size_factor()
+    return DOWN_SAMPLE_HIGH / DOWN_SAMPLE_FACTOR[]
+end
 
 function set_glyph_resolution!(res::GlyphResolution)
     if res == High
         TEXTURE_RESOLUTION[] = (2048, 2048)
         CACHE_RESOLUTION_PREFIX[] = "high"
-        DOWN_SAMPLE_FACTOR[] = 50
+        DOWN_SAMPLE_FACTOR[] = DOWN_SAMPLE_HIGH
     else
         TEXTURE_RESOLUTION[] = (1024, 1024)
         CACHE_RESOLUTION_PREFIX[] = "low"
-        DOWN_SAMPLE_FACTOR[] = 30
+        DOWN_SAMPLE_FACTOR[] = DOWN_SAMPLE_LOW
     end
 end
 
@@ -157,9 +163,11 @@ glyph_uv_width!(c::Char) = glyph_uv_width!(get_texture_atlas(), c, defaultfont()
 function glyph_uv_width!(atlas::TextureAtlas, c::Char, font)
     atlas.attributes[glyph_index!(atlas, c, font)]
 end
+
 function glyph_scale!(atlas::TextureAtlas, c::Char, font, scale)
-    atlas.scale[glyph_index!(atlas, c, font)] .* (scale * 0.02)
+    atlas.scale[glyph_index!(atlas, c, font)] .* (scale * 0.02) .* size_factor()
 end
+
 function glyph_extent!(atlas::TextureAtlas, c::Char, font)
     atlas.extent[glyph_index!(atlas, c, font)]
 end
@@ -172,11 +180,11 @@ function bearing(extent)
 end
 
 function glyph_bearing!(atlas::TextureAtlas, c::Char, font, scale)
-    bearing(atlas.extent[glyph_index!(atlas, c, font)]) .* Point2f0(scale * 0.02)
+    bearing(atlas.extent[glyph_index!(atlas, c, font)]) .* Point2f0(scale * 0.02) .* size_factor()
 end
 
 function glyph_advance!(atlas::TextureAtlas, c::Char, font, scale)
-    atlas.extent[glyph_index!(atlas, c, font)].advance .* (scale * 0.02)
+    atlas.extent[glyph_index!(atlas, c, font)].advance .* (scale * 0.02) .* size_factor()
 end
 
 
@@ -239,7 +247,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     bitmap, extent = renderface(font, glyph, (DF*downsample, DF*downsample))
     sd = sdistancefield(bitmap, downsample, downsample*pad)
     sd = sd ./ downsample;
-    extent = extent ./ Vec2f0(downsample)
+    extent = (extent ./ Vec2f0(downsample))
     rect = SimpleRectangle(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) #find out where to place the rectangle
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at GLVisualize if you encounter this") #TODO resize surface
@@ -247,7 +255,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     for f in font_render_callbacks
         f(sd, uv.area)
     end
-    uv.area, extent, Vec2f0(size(bitmap)) ./ downsample, pad
+    uv.area, extent, Vec2f0(size(bitmap)) ./ (downsample), pad
 end
 
 make_iter(x) = repeated(x)
