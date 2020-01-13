@@ -159,7 +159,7 @@ end
 
 Creates a Stepper for generating progressive plot examples.
 
-Each "step" is saved as a separate file in the folder 
+Each "step" is saved as a separate file in the folder
 pointed to by `path`, and the format is customizable by
 `format`, which can be any output type your backend supports.
 """
