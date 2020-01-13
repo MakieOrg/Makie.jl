@@ -164,13 +164,24 @@ isaxis(x::Union{Axis2D, Axis3D}) = true
 
 const Limits{N} = NTuple{N, Tuple{Number, Number}}
 
-default_ticks(limits::Limits, ticks, scale_func::Function) = default_ticks.(limits, (ticks,), scale_func)
+function default_ticks(limits::Limits, ticks, scale_func::Function)
+    default_ticks.(limits, (ticks,), scale_func)
+end
+
+# function default_ticks(limits::Limits, ticks::Tuple, scale_func::Function)
+#     default_ticks.(limits, ticks, scale_func)
+# end
 default_ticks(limits::Tuple{Number, Number}, ticks, scale_func::Function) = default_ticks(limits..., ticks, scale_func)
 
-function default_ticks(lmin::Number, lmax::Number, ticks::AbstractVector{<: Number}, scale_func::Function)
+function default_ticks(
+        lmin::Number, lmax::Number,
+        ticks::AbstractVector{<: Number}, scale_func::Function
+    )
     scale_func.((filter(t -> lmin <= t <= lmax, ticks)))
 end
-function default_ticks(lmin::Number, lmax::Number, ::Automatic, scale_func::Function)
+function default_ticks(
+        lmin::Number, lmax::Number, ::Automatic, scale_func::Function
+    )
     # scale the limits
     scaled_ticks, mini, maxi = optimize_ticks(
         scale_func(lmin),
@@ -182,7 +193,9 @@ function default_ticks(lmin::Number, lmax::Number, ::Automatic, scale_func::Func
     scaled_ticks
 end
 
-function default_ticks(lmin::Number, lmax::Number, n::Integer, scale_func = identity)
+function default_ticks(
+        lmin::Number, lmax::Number, ticks::Integer, scale_func = identity
+    )
     scaled_ticks, mini, maxi = optimize_ticks(
         scale_func(lmin),
         scale_func(lmax);
@@ -196,7 +209,10 @@ function default_ticks(lmin::Number, lmax::Number, n::Integer, scale_func = iden
     scaled_ticks
 end
 
-default_ticks(x::Automatic, limits::Tuple, n) = default_ticks(limits, n, identity)
+function default_ticks(x::Automatic, limits::Tuple, n)
+    default_ticks(limits, n, identity)
+end
+
 function default_ticks(ticks::Tuple, limits::Tuple, n::Tuple)
     default_ticks.(ticks, (limits,), n)
 end

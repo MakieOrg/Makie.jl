@@ -53,6 +53,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
         convert_arguments(ct, args...; kw...)
     catch e
         if e isa MethodError
+            @show e
             error("No overload for $T and also no overload for trait $ct found! Arguments: $(typeof.(args))")
         else
             rethrow(e)
@@ -132,6 +133,25 @@ function convert_arguments(::PointBased, positions::NTuple{N, AbstractVector}) w
         Point{N, Float32}(categoric_position.(p, labels))
     end
     PlotSpec(points, tickranges = xyrange, ticklabels = labels)
+end
+
+function convert_arguments(
+        SL::SurfaceLike,
+        x::AbstractVector, y::AbstractVector, z::AbstractMatrix{<: Number}
+    )
+    n, m = size(z)
+    positions = (x, y)
+    labels = categoric_labels.(positions)
+    xyrange = categoric_range.(labels)
+    args = convert_arguments(SL, 0..n, 0..m, z)
+    xyranges = (
+        to_linspace(0.5..(n-0.5), n),
+        to_linspace(0.5..(m-0.5), m)
+    )
+    return PlotSpec(
+        args...,
+        tickranges = xyranges, ticklabels = labels
+    )
 end
 
 """
@@ -222,10 +242,12 @@ outputs them in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, x::AbstractVecOrMat, y::AbstractVecOrMat, z::AbstractMatrix)
+function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
     return (el32convert(x), el32convert(y), el32convert(z))
 end
-
+function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
+    return (el32convert(x), el32convert(y), el32convert(z))
+end
 
 float32type(x::Type) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
