@@ -35,6 +35,7 @@ julia = "1.0"
 ElectronDisplay = "d872a56f-244b-5cc9-b574-2017b5b909a8"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 
 [targets]
-test = ["Test", "ElectronDisplay", "MakieGallery"]
+test = ["Test", "ElectronDisplay", "MakieGallery", "MeshIO"]
