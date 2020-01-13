@@ -91,7 +91,7 @@ end
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
 for path in (tested_diff_path, test_record_path)
-    try 
+    try
         if isdir(path)
             rm(path, force=true, recursive=true)
         end
