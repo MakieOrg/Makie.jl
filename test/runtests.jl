@@ -7,7 +7,7 @@ using MakieGallery
 empty!(MakieGallery.plotting_backends)
 push!(MakieGallery.plotting_backends, "WGLMakie", "AbstractPlotting")
 
-# ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
+ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
 tests_wgl_makie = Set(Symbol.([
     "arc_1",
     "arrows_3d",
@@ -100,4 +100,4 @@ for path in (tested_diff_path, test_record_path)
     end
 end
 examples = MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
+MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.04)
