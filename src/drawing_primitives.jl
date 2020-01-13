@@ -39,15 +39,20 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     GLFW.PollEvents()
     robj = get!(screen.cache, objectid(x)) do
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw))
         end
-        gl_attributes = map(filtered) do key_value
+        gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
+        end)
+        if haskey(gl_attributes, :scale)
+            gl_attributes[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, gl_attributes[:scale])
+            gl_attributes[:scale] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:scale])
+            gl_attributes[:offset] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:offset])
         end
-        robj = robj_func(Dict{Symbol, Any}(gl_attributes))
+        robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
         end
