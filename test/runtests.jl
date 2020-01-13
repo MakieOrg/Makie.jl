@@ -7,7 +7,7 @@ using MakieGallery
 empty!(MakieGallery.plotting_backends)
 push!(MakieGallery.plotting_backends, "WGLMakie", "AbstractPlotting")
 
-ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
+# ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
 tests_wgl_makie = Set(Symbol.([
     "arc_1",
     "arrows_3d",
