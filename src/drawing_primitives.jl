@@ -50,7 +50,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         if haskey(gl_attributes, :scale)
             gl_attributes[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, gl_attributes[:scale])
             gl_attributes[:scale] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:scale])
-            gl_attributes[:offset] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:offset])
+            if haskey(gl_attributes, :offset)
+                gl_attributes[:offset] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:offset])
+            end
         end
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)

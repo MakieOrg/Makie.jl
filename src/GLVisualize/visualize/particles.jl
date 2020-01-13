@@ -256,6 +256,7 @@ vec2quaternion(rotation::Vec4f0) = rotation
 vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotation)
 vec2quaternion(rotation::Node) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
+GLAbstraction.gl_convert(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
