@@ -119,7 +119,7 @@ function jslines!(THREE, scene, plot, positions_nan, colors, linewidth, model, t
         opaque_color = "#"*hex(color(colors[]))
         opacity = alpha(colors[])
     else
-        flat = flattenbuffer(colors[])
+        flat = flatten_buffer(colors[])
         color_buffer = THREE.new.Float32BufferAttribute(flat, 4)
         geometry.setAttribute("color", color_buffer)
     end

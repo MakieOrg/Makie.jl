@@ -359,7 +359,7 @@ function scene2image(scene::Scene)
     # HMMMMPFH... This is annoying - we really need to find a way to have
     # devicePixelRatio work correctly
     img_device_scale = AbstractPlotting.colorbuffer(three)
-    return ImageTransformations.imresize(img_device_scale, size(scene))
+    return ImageTransformations.imresize(img_device_scale, reverse(size(scene)))
 end
 
 function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/png", scene::Scene)
