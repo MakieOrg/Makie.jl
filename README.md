@@ -25,11 +25,11 @@ Warning - this package is **in development** and **may break often**.
 
 # Usage
 
-Still to come, but it will use the `AbstractPlotting` standard interface:
+Now, it should just work like Makie:
 
 ```julia
 using AbstractPlotting, WGLMakie
 
-AbstractPlotting.current_backend[] = WGLMakie.WGLBackend()
+scatter(rand(4))
 ```
 
