@@ -18,7 +18,7 @@ ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-AbstractPlotting = "0.9"
+AbstractPlotting = "0.9.17"
 Colors = "0.9, 0.10, 0.11"
 FileIO = "1.1"
 GeometryBasics = "0.1"

@@ -4,18 +4,12 @@ ElectronDisplay.CONFIG.single_window = true
 using WGLMakie, AbstractPlotting, JSServe, Test
 using MakieGallery
 
-empty!(MakieGallery.plotting_backends)
-push!(MakieGallery.plotting_backends, "WGLMakie", "AbstractPlotting")
-
 # ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
 tests_wgl_makie = Set(Symbol.([
     "arc_1",
     "arrows_3d",
-    "arrows_on_hemisphere",
-    "arrows_on_sphere",
     "available_markers",
     "barplot_1",
-    "chess_game",
     "colored_mesh",
     "colored_triangle",
     "colored_triangle_1",
@@ -100,4 +94,4 @@ for path in (tested_diff_path, test_record_path)
     end
 end
 examples = MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.04)
+MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.091)
