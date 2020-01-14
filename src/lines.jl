@@ -119,7 +119,7 @@ function jslines!(THREE, scene, plot, positions_nan, colors, linewidth, model, t
         opaque_color = "#"*hex(color(colors[]))
         opacity = alpha(colors[])
     else
-        flat = collect(reinterpret(eltype(T), colors))
+        flat = flatten_buffer(colors[])
         color_buffer = THREE.new.Float32BufferAttribute(flat, 4)
         geometry.setAttribute("color", color_buffer)
     end
@@ -137,7 +137,7 @@ function jslines!(THREE, scene, plot, positions_nan, colors, linewidth, model, t
         position_buffer.set(flat, 0);
         position_buffer.needsUpdate = true;
     }""")
-    
+
     onjs(THREE, segments_ui32_0, js"""function (segments){
         var indices = deserialize_js(segments);
         var geometry = $(geometry);

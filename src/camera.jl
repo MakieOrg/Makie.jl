@@ -58,14 +58,18 @@ function add_camera!(jsctx, js_scene, scene, cam, cam_controls::Camera3D)
         (:eyeposition, :lookat, :upvector, :fov, :near, :far)
     )
     area = pixelarea(scene)
-    on(eyeposition) do eyeposition
-        jscam.position.set(eyeposition...)
-    end
-    on(lookat) do lookat
-        jscam.lookAt(lookat...)
-    end
-    on(upvector) do upvector
+
+    jscam.position.set(eyeposition[]...)
+    jscam.up.set(upvector[]...)
+    jscam.lookAt(lookat[]...)
+    jscam.fov = fov[]
+    jscam.far = far[]
+    jscam.aspect = (/)(widths(area[])...)
+
+    onany(eyeposition, lookat, upvector) do eyeposition, lookat, upvector
         jscam.up.set(upvector...)
+        jscam.position.set(eyeposition...)
+        jscam.lookAt(lookat...)
     end
     on(fov) do fov
         jscam.fov = fov

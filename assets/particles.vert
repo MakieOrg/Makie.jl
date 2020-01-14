@@ -20,6 +20,9 @@ void rotate(vec4 q, inout vec3 V, inout vec3 N){
     N = normalize(qmul(q, N));
 }
 
+vec4 to_vec4(vec3 v3){return vec4(v3, 1.0);}
+vec4 to_vec4(vec4 v4){return v4;}
+
 void main(){
     // get_* gets the global inputs (uniform, sampler, vertex array)
     // those functions will get inserted by the shader creation pipeline
@@ -31,7 +34,7 @@ void main(){
     vec4 position_world = modelMatrix * vec4(vertex_position, 1);
     frag_normal = N;
     frag_lightdir = normalize(lightpos - position_world.xyz);
-    frag_color = get_color();
+    frag_color = to_vec4(get_color());
     // direction to camera
     frag_position = -position_world.xyz;
     // screen space coordinates of the vertex

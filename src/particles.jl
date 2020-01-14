@@ -1,3 +1,24 @@
+function handle_color!(uniform_dict, instance_dict)
+    color, udict = if haskey(uniform_dict, :color)
+        to_value(uniform_dict[:color]), uniform_dict
+    elseif haskey(instance_dict, :color)
+        to_value(instance_dict[:color]), instance_dict
+    else
+        nothing, uniform_dict
+    end
+    if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
+        delete!(uniform_dict, :colormap)
+    elseif color isa AbstractArray{<:Real}
+        uniform_dict[:color_getter] = """
+            vec4 get_color(){
+                vec2 norm = get_colorrange();
+                float normed = (color - norm.x) / (norm.y - norm.x);
+                return texture(colormap, vec2(normed, 0));
+            }
+        """
+    end
+end
+
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -20,10 +41,8 @@ function create_shader(scene::Scene, plot::MeshScatter)
         k in (:shading, :overdraw, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
-    color = to_value(get(uniform_dict, :color, nothing))
-    if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
-        delete!(uniform_dict, :colormap)
-    end
+
+    handle_color!(uniform_dict, per_instance)
 
     instance = VertexArray(map(GLNormalMesh, plot.marker))
     if !GeometryBasics.hascolumn(instance, :texturecoordinate)
@@ -103,10 +122,9 @@ function scatter_shader(scene::Scene, attributes)
             end
         end
     end
-    color = to_value(get(uniform_dict, :color, nothing))
-    if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
-        delete!(uniform_dict, :colormap)
-    end
+
+    handle_color!(uniform_dict, per_instance)
+
     instance = VertexArray(GLUVMesh2D(GeometryTypes.SimpleRectangle(-0.5f0, -0.5f0, 1f0, 1f0)))
     for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
