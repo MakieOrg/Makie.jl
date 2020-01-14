@@ -405,10 +405,10 @@ function getlimits(la::LAxis, dim)
     end
 
     lim = if length(limitables) > 0
-        bbox = BBox(boundingbox(limitables[1].content))
+        bbox = BBox(AbstractPlotting.data_limits(limitables[1].content))
         templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
         for p in limitables[2:end]
-            bbox = BBox(boundingbox(p.content))
+            bbox = BBox(AbstractPlotting.data_limits(p.content))
             templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
         end
         templim
