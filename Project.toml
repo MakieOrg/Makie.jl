@@ -1,7 +1,7 @@
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 authors = ["SimonDanisch <sdanisch@gmail.com>"]
-version = "0.1.2"
+version = "0.1.3"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
