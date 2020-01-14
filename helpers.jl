@@ -315,4 +315,31 @@ end
 function tightlimits!(la::LAxis)
     la.xautolimitmargin = (0, 0)
     la.yautolimitmargin = (0, 0)
+    autolimits!(la)
+end
+
+function tightlimits!(la::LAxis, sides::Union{Left, Right, Bottom, Top}...)
+    for s in sides
+        tightlimits!(la, s)
+    end
+end
+
+function tightlimits!(la::LAxis, ::Left)
+    la.xautolimitmargin = Base.setindex(la.xautolimitmargin[], 0.0, 1)
+    autolimits!(la)
+end
+
+function tightlimits!(la::LAxis, ::Right)
+    la.xautolimitmargin = Base.setindex(la.xautolimitmargin[], 0.0, 2)
+    autolimits!(la)
+end
+
+function tightlimits!(la::LAxis, ::Bottom)
+    la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 1)
+    autolimits!(la)
+end
+
+function tightlimits!(la::LAxis, ::Top)
+    la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 2)
+    autolimits!(la)
 end
