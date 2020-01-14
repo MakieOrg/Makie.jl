@@ -175,13 +175,6 @@ function default_attributes(::Type{LButton})
     )
 end
 
-function default_attributes(::Type{AxisContent})
-    Attributes(
-        xautolimit = true,
-        yautolimit = true,
-    )
-end
-
 function default_attributes(::Type{LineAxis})
     Attributes(
         endpoints = (Point2f0(0, 0), Point2f0(100, 0)),

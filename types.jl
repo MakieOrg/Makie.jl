@@ -156,11 +156,6 @@ struct ManualTicks <: Ticks
     labels::Vector{String}
 end
 
-struct AxisContent{T}
-    content::T
-    attributes::Attributes
-end
-
 mutable struct LineAxis
     parent::Scene
     protrusion::Node{Float32}
@@ -176,7 +171,6 @@ abstract type LObject end
 mutable struct LAxis <: AbstractPlotting.AbstractScene
     parent::Scene
     scene::Scene
-    plots::Vector{AxisContent}
     xaxislinks::Vector{LAxis}
     yaxislinks::Vector{LAxis}
     limits::Node{BBox}

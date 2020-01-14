@@ -44,8 +44,6 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     block_limit_linking = Node(false)
 
-    plots = AbstractPlot[]
-
     xaxislinks = LAxis[]
     yaxislinks = LAxis[]
 
@@ -284,7 +282,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     layoutnodes = LayoutNodes{LAxis, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    la = LAxis(parent, scene, plots, xaxislinks, yaxislinks, limits,
+    la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
         layoutnodes, needs_update, attrs, block_limit_linking, decorations)
 
     add_reset_limits!(la)
@@ -350,12 +348,8 @@ function AbstractPlotting.plot!(
 
     plot = AbstractPlotting.plot!(la.scene, P, attributes, args...; kw_attributes...)[end]
 
-    # axiscontent = AxisContent(plot, xautolimit=xautolimit, yautolimit=yautolimit)
-    axiscontent = AxisContent(plot)
-    push!(la.plots, axiscontent)
     autolimits!(la)
     plot
-
 end
 
 function bboxunion(bb1, bb2)
@@ -398,17 +392,17 @@ end
 
 function getlimits(la::LAxis, dim)
 
-    limitables = if dim == 1
-        filter(p -> p.attributes.xautolimit[], la.plots)
+    plots_with_autolimits = if dim == 1
+        filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
     elseif dim == 2
-        filter(p -> p.attributes.yautolimit[], la.plots)
+        filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
     end
 
-    lim = if length(limitables) > 0
-        bbox = BBox(AbstractPlotting.data_limits(limitables[1].content))
+    lim = if length(plots_with_autolimits) > 0
+        bbox = BBox(AbstractPlotting.data_limits(plots_with_autolimits[1]))
         templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
-        for p in limitables[2:end]
-            bbox = BBox(AbstractPlotting.data_limits(p.content))
+        for p in plots_with_autolimits[2:end]
+            bbox = BBox(AbstractPlotting.data_limits(p))
             templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
         end
         templim
@@ -673,12 +667,6 @@ end
 function tight_ticklabel_spacing!(la::LAxis)
     tight_xticklabel_spacing!(la)
     tight_yticklabel_spacing!(la)
-end
-
-function AxisContent(plot; kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(AxisContent))
-
-    AxisContent(plot, attrs)
 end
 
 function Base.show(io::IO, ::MIME"text/plain", ax::LAxis)
