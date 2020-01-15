@@ -1,4 +1,4 @@
-using MakieGallery, AbstractPlotting, GLMakie, Test
+using MakieGallery, AbstractPlotting, GLMakie
 using MakieGallery: @block, @cell
 empty!(MakieGallery.plotting_backends)
 push!(MakieGallery.plotting_backends, "GLMakie", "AbstractPlotting")
@@ -26,7 +26,9 @@ for path in (tested_diff_path, test_record_path)
     mkpath(path)
 end
 recordings = MakieGallery.record_examples(test_record_path)
-@test length(recordings) == length(database)
+
+@show length(recordings) == length(database)
+
 MakieGallery.run_comparison(test_record_path, tested_diff_path)
 empty!(database) # remove other examples
 include("glmakie_tests.jl") # include GLMakie specific tests
@@ -35,6 +37,7 @@ for path in (tested_diff_path, test_record_path)
     rm(path, force = true, recursive = true)
     mkpath(path)
 end
+
 examples = MakieGallery.record_examples(test_record_path)
 MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.00001)
 # MakieGallery.generate_preview(test_record_path)
