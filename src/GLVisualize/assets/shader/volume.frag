@@ -14,7 +14,7 @@ uniform vec3 light_intensity = vec3(15.0);
 {{color_type}} color;
 {{color_norm_type}} color_norm;
 
-uniform float absorption = 20.0;
+uniform float absorption = 1.0;
 
 uniform vec3 eyeposition;
 
@@ -141,38 +141,28 @@ float rand(){
 
 vec4 volume(vec3 front, vec3 dir, float stepsize)
 {
-    vec3  stepsize_dir = normalize(dir) * stepsize;
+    vec3 stepsize_dir = normalize(dir) * stepsize;
+    // The per-voxel alpha channel is specified in units of opacity/length.
+    // If our voxels are not isotropic, then the distance that we trace through
+    // depends on the direction.
     vec3  pos = front;
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
-    pos += stepsize_dir;//apply first, to padd
+    pos += stepsize_dir * rand();//apply first, to padd
     for (i; i < num_samples && (!is_outside(pos) || i < 3); ++i, pos += stepsize_dir) {
-
-        float density = texture(volumedata, pos).x * density_factor;
-        if (density <= 0.0)
-            continue;
-
-        T *= 1.0-density*stepsize*absorption;
+        float intensity = texture(volumedata, pos).x;
+        vec4 density = color_lookup(intensity, color_map, color_norm, color);
+        float opacity = stepsize * density.a * absorption;
+        T *= 1.0-opacity;
         if (T <= 0.01)
             break;
 
-        vec3 lightDir = normalize(light_position-pos)*lscale;
-        float Tl = 1.0;
-        vec3 lpos = pos + lightDir;
-        int s = 0;
-        for (s; s < num_ligth_samples; ++s) {
-            float ld = texture(volumedata, lpos).x;
-            Tl *= 1.0-absorption*stepsize*ld;
-            if (Tl <= 0.01)
-            lpos += lightDir;
-        }
-
-        vec3 Li = light_intensity*Tl;
-        Lo += Li*T*density*stepsize;
+        Lo += (T*opacity)*density.rgb;
     }
     return vec4(Lo, 1-T);
 }
+
 
 vec4 volumergba(vec3 front, vec3 dir, float stepsize)
 {
