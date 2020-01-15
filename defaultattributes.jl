@@ -78,6 +78,7 @@ function default_attributes(::Type{LAxis})
         yaxisposition = :left,
         xtrimspine = false,
         ytrimspine = false,
+        backgroundcolor = :white,
     )
 end
 

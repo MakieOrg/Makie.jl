@@ -20,7 +20,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         xpankey, ypankey, xzoomkey, yzoomkey,
         xaxisposition, yaxisposition,
         xspinevisible, yspinevisible, xoppositespinevisible, yoppositespinevisible,
-        xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor
+        xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
+        backgroundcolor,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -40,7 +41,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     scenearea = sceneareanode!(finalbbox, limits, aspect)
 
-    scene = Scene(parent, scenearea, raw = true)
+    scene = Scene(parent, scenearea, raw = true, backgroundcolor = backgroundcolor, clear = true)
 
     block_limit_linking = Node(false)
 
