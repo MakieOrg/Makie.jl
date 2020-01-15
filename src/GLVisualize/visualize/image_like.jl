@@ -184,13 +184,13 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
         modelinv         = const_lift(inv, model)
 
         # These don't do anything but are needed for type specification in the frag shader
-        color_map        = nothing
+        color_map        = nothing => Texture
         color_norm       = nothing
         color            = color_map == nothing ? default(RGBA, s) : nothing
 
         algorithm        = AbsorptionRGBA
         shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender()
+        prerender        = VolumePrerender(data[:transparency], data[:overdraw])
         postrender       = () -> begin
             glDisable(GL_CULL_FACE)
         end

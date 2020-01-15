@@ -431,13 +431,13 @@ function surface_contours(volume::Volume)
     )
     robj = RenderObject(gl_data, shader, vp, bb)
     robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
-    robj
+    return robj
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
     robj = cached_robj!(screen, scene, vol) do gl_attributes
         if gl_attributes[:algorithm][] == 7
-            surface_contours(vol)
+            return surface_contours(vol)
         else
             model = vol[:model]
             x, y, z = vol[1], vol[2], vol[3]
@@ -453,7 +453,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
                 )
                 convert(Mat4f0, m) * m2
             end
-            visualize(vol[4], Style(:default), gl_attributes).children[]
+            return visualize(vol[4], Style(:default), gl_attributes).children[]
         end
     end
 end

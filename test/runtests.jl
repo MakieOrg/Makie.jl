@@ -12,7 +12,12 @@ exclude = (
     "Interaction with Mouse"
 )
 # Download is broken on CI
-filter!(entry-> !("download" in entry.tags) && !(entry.title in exclude), database)
+filter!(database) do entry
+    return !("download" in entry.tags) &&
+           !("diffeq" in entry.tags) &&
+           !(entry.title in exclude) &&
+           !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps))
+end
 
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
