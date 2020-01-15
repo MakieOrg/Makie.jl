@@ -23,7 +23,7 @@ gallerytest:
     - julia -e 'using InteractiveUtils; versioninfo()'
     - julia --project -e "using Pkg;
                           pkg\"add $CI_DEV_PKGS\""
-    - julia --project -e 'using Pkg; pkg"test"'
+    - julia --project -e 'using Pkg; pkg"build; test"'
 
   artifacts:
     when: on_failure
