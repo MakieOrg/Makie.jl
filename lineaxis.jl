@@ -8,6 +8,7 @@ function LineAxis(parent::Scene; kwargs...)
         tickcolor, tickalign, ticks, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
+        labelfont, ticklabelfont,
         labelvisible, spinevisible, trimspine)
 
     pos_extents_horizontal = lift(endpoints) do endpoints
@@ -40,6 +41,7 @@ function LineAxis(parent::Scene; kwargs...)
         align = ticklabelalign,
         rotation = ticklabelrotation,
         textsize = ticklabelsize,
+        font = ticklabelfont,
         show_axis = false,
         visible = ticklabelsvisible)[end]
 
@@ -90,7 +92,7 @@ function LineAxis(parent::Scene; kwargs...)
     labeltext = text!(
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,
-        align = labelalign, rotation = labelrotation
+        align = labelalign, rotation = labelrotation, font = labelfont,
     )[end]
 
     decorations[:labeltext] = labeltext
@@ -200,16 +202,20 @@ function LineAxis(parent::Scene; kwargs...)
     lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
         color = spinecolor, raw = true)
 
-    protrusion = lift(ticksvisible, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
-            tickspace, ticklabelsvisible, ticklabelspace, ticklabelpad) do ticksvisible,
-            labelvisible, labelpadding, labelsize, tickalign, spinewidth, tickspace, ticklabelsvisible,
-            ticklabelspace, ticklabelpad
+    protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
+            tickspace, ticklabelsvisible, ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
+            label, labelvisible, labelpadding, labelsize, tickalign, spinewidth, tickspace, ticklabelsvisible,
+            ticklabelspace, ticklabelpad, labelfont, ticklabelfont
 
         position, extents, horizontal = pos_extents_horizontal[]
 
-        real_labelsize = horizontal ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
+        real_labelsize = if iswhitespace(label)
+            0f0
+        else
+            horizontal ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
+        end
 
-        labelspace = labelvisible ? real_labelsize + labelpadding : 0f0
+        labelspace = (labelvisible && !iswhitespace(label)) ? real_labelsize + labelpadding : 0f0
         spinespace = spinewidth
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
         ticklabelgap = ticklabelsvisible ? ticklabelspace + ticklabelpad : 0f0
@@ -242,4 +248,8 @@ function tight_ticklabel_spacing!(la::LineAxis)
             tls.visible[] ? width(BBox(boundingbox(tls))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
+end
+
+function iswhitespace(str)
+    match(r"^\s+$", str) !== nothing
 end

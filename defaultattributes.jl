@@ -1,23 +1,39 @@
-function default_attributes(::Type{LAxis})
+function lift_parent_attribute(scene, attr::Symbol, default_value)
+    if haskey(scene.attributes, attr)
+        lift(identity, scene[attr])
+    else
+        lift_parent_attribute(scene.parent, attr, default_value)
+    end
+end
+
+function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
+    default_value
+end
+
+function default_attributes(::Type{LAxis}, scene)
     Attributes(
-        xlabel = "x label",
-        ylabel = "y label",
-        title = "Title",
-        titlefont = "DejaVu Sans",
-        titlesize = 30f0,
+        xlabel = " ",
+        ylabel = " ",
+        title = " ",
+        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        titlesize = lift_parent_attribute(scene, :fontsize, 20f0),
         titlegap = 10f0,
         titlevisible = true,
         titlealign = :center,
+        xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         xlabelcolor = RGBf0(0, 0, 0),
         ylabelcolor = RGBf0(0, 0, 0),
-        xlabelsize = 20f0,
-        ylabelsize = 20f0,
+        xlabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
+        ylabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         xlabelvisible = true,
         ylabelvisible = true,
         xlabelpadding = 5f0,
         ylabelpadding = 5f0,
-        xticklabelsize = 20f0,
-        yticklabelsize = 20f0,
+        xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        xticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
+        yticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         xticklabelsvisible = true,
         yticklabelsvisible = true,
         xticklabelspace = 20f0,

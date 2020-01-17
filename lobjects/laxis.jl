@@ -1,6 +1,6 @@
 function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LAxis))
+    attrs = merge!(Attributes(kwargs), default_attributes(LAxis, parent))
 
     @extract attrs (
         title, titlefont, titlesize, titlegap, titlevisible, titlealign,
@@ -22,6 +22,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         xspinevisible, yspinevisible, xoppositespinevisible, yoppositespinevisible,
         xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
         backgroundcolor,
+        xlabelfont, ylabelfont, xticklabelfont, yticklabelfont,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -143,7 +144,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
-        label = xlabel, labelcolor = xlabelcolor, tickalign = xtickalign,
+        label = xlabel, labelfont = xlabelfont, ticklabelfont = xticklabelfont, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor,
         ticklabelsize = xticklabelsize, trimspine = xtrimspine)
@@ -153,7 +154,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
-        label = ylabel, labelcolor = ylabelcolor, tickalign = ytickalign,
+        label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor,
         trimspine = ytrimspine, ticklabelsize = yticklabelsize)
