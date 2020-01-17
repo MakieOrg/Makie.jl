@@ -612,7 +612,7 @@ function Base.show(io::IO, ::MIME"text/plain", gl::GridLayout)
 
         if al isa GridLayout
             downconnection = i < length(gl.content)
-            str = spaceindent(string(al), 2, downconnection)
+            str = spaceindent(repr(MIME"text/plain"(), al), 2, downconnection)
             println(io, connector * "[$rows | $cols] $str")
         else
             println(io, connector * "[$rows | $cols] $(typeof(al))")
