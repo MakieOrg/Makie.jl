@@ -129,7 +129,6 @@ export disconnect!, must_update, force_update!, update!, update_limits!
 # currently special-cased functions (`textslider`) for example
 export textslider
 
-
 # gui
 export slider, button, playbutton
 export move!
@@ -147,6 +146,9 @@ export IRect, FRect, Rect, Sphere, Circle
 export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..), GLNormalUVMesh
+
+# Exports of units
+export px
 
 # conflicting identifiers
 using GeometryTypes: widths
