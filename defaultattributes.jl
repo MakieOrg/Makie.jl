@@ -98,14 +98,16 @@ function default_attributes(::Type{LAxis}, scene)
     )
 end
 
-function default_attributes(::Type{LColorbar})
+function default_attributes(::Type{LColorbar}, scene)
     Attributes(
         label = "label",
         labelcolor = RGBf0(0, 0, 0),
-        labelsize = 20f0,
+        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         labelvisible = true,
         labelpadding = 5f0,
-        ticklabelsize = 20f0,
+        ticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        ticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         ticklabelsvisible = true,
         ticksize = 10f0,
         ticksvisible = true,

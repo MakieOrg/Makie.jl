@@ -9,11 +9,11 @@ function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 end
 
 function LColorbar(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar))
+    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent))
 
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
-        ticklabelspace,
+        ticklabelspace, labelfont, ticklabelfont,
         ticklabelsvisible, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
@@ -106,7 +106,8 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
 
     axis = LineAxis(parent, endpoints = axispoints, flipped = flipaxisposition,
         limits = limits, ticklabelalign = ticklabelalign, label = label,
-        labelpadding = labelpadding, labelvisible = labelvisible,
+        labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
+        labelfont = labelfont, ticklabelfont = ticklabelfont,
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
