@@ -30,6 +30,8 @@ to correctly build their visualization and update parameters if they wish. These
 (LAxis is a SceneLike) or elements such as LText, LColorbar, LLegend, etc.
 - Plots that have been added to Scenes or LAxis instances
 
+## Plotting without a scene, layout or axis
+
 The user will not always want to specify all parameters needed for a single correctly
 plotted element. For example, a Scene should be generated when creating a Scatter
 plot, if there is no Scene given as a mutated argument. In the same way, an LAxis
@@ -42,11 +44,18 @@ Therefore, a simple Scatter plot can result in four (or even more?) objects bein
 scene, layout, ax, scat = scatter(rand(10, 2))
 ```
 
-It is probably not desirable to force the user to assign all of these to variables
-every time they create a simple plot. Also, it should still be possible to show the
-scene even after a single command like this is run. This could be achieved with
-multiple dispatch on the specific return Tuple or NamedTuple type from the scatter
-function.
+It is probably not desirable to force the user to assign all of these return objects to variables
+every time they create a simple plot. Single values could easily be retrieved using
+dot access, if they are needed.
+
+```julia
+scene = scatter(rand(10, 2)).scene
+layout = scatter(rand(10, 2)).layout
+```
+
+It should still be possible to display the scene after a single command like this
+is run, even though the return type is not Scene anymore. This could be achieved with
+multiple dispatch on any NamedTuple that partially matches our return type signature.
 
 ```julia
 function scatter(x, y)
@@ -58,4 +67,29 @@ end
 function Base.display(nt::NamedTuple{T, Tuple{Scene,GridLayout,U, V}}) where {T, U, V}
     display(nt.scene)
 end
+```
+
+## Plotting into an existing scene and layout
+
+In this case an existing scene is used and an object added to it. There could already
+be a top-level layout associated with the scene, in this case it should be used
+to add the new element to it. A new axis could be created, in this case it should
+be returned as well. In general, it should be clear from the inputs what outputs
+are expected, not so much because of the performance hit of type instabilities, but
+so that the user knows a priori how to deconstruct the returned NamedTuple
+
+```julia
+# layout[1, 1] should construct an object like SubplotSpec(layout, 1, 1) so it
+# can be dispatched on to put the resulting object into the specified layout position.
+axis, plotobj = plot!(scene, layout[1, 1], xyz)
+```
+> ⚠️ This could be a problem if the user doesn't want to plot into an axis. Maybe for this purpose the `raw` keyword could still be used.
+
+## Plotting into an existing axis
+
+In this case the scene and layout are already decided through the existing axis,
+so only the plot object needs to be returned.
+
+```julia
+plotobj = plot!(ax, xyz)
 ```
