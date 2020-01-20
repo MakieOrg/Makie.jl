@@ -100,7 +100,7 @@ end
 
 function default_attributes(::Type{LColorbar}, scene)
     Attributes(
-        label = "label",
+        label = " ",
         labelcolor = RGBf0(0, 0, 0),
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
