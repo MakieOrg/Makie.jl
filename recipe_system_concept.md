@@ -79,7 +79,7 @@ are expected, not so much because of the performance hit of type instabilities, 
 so that the user knows a priori how to deconstruct the returned NamedTuple
 
 ```julia
-# layout[1, 1] should construct an object like SubplotSpec(layout, 1, 1) so it
+# layout[1, 1] should construct an object like `GridPosition(layout, 1, 1)` so it
 # can be dispatched on to put the resulting object into the specified layout position.
 axis, plotobj = plot!(scene, layout[1, 1], xyz)
 ```
@@ -92,4 +92,16 @@ so only the plot object needs to be returned.
 
 ```julia
 plotobj = plot!(ax, xyz)
+```
+
+# Recipes
+
+## Recipes that create layouts
+
+It should be straightforward to allow recipes to place their created content
+in an existing layout. For this, again a new type `GridPosition` could be used to
+dispatch on, that specifies layout and position at the same time.
+
+```julia
+somerecipe!(scene, layout[1, 1], xyz)
 ```
