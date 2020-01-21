@@ -105,3 +105,16 @@ dispatch on, that specifies layout and position at the same time.
 ```julia
 somerecipe!(scene, layout[1, 1], xyz)
 ```
+
+If the GridLayout type was amended so it can have an optional parent Scene then
+this could simplify plotting syntax, as any layout in a layout tree whose parent
+has a Scene attached could serve as a surrogate for that Scene.
+
+```julia
+# if this holds
+parent(layout) == scene
+
+# then these two things should be equivalent
+plot!(scene, layout[1, 1], xyz)
+plot!(layout[1, 1], xyz)
+```
