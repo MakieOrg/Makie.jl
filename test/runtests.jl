@@ -77,7 +77,7 @@ if MINIMAL == "false"
         excluded_examples = Set()
     else
         # combine all exceptions into a single Set
-        excluded_examples = excluded_examples = union(
+        excluded_examples = union(
             ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs,
             save_exs, color_exs, curl_exs, stepper_exclude
         )
@@ -88,6 +88,11 @@ else
     database = MakieGallery.load_tests()
     excluded_examples = Set(["Comparing contours, image, surfaces and heatmaps"])
 end
+
+filter!(database) do entry
+    !("diffeq" in entry.tags) &&
+    !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps))
+ end
 
 if !OPENGL # run software only tests...
     # Make sure we don't include Makie in the usings
