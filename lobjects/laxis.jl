@@ -42,7 +42,10 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     scenearea = sceneareanode!(finalbbox, limits, aspect)
 
-    scene = Scene(parent, scenearea, raw = true, backgroundcolor = backgroundcolor, clear = true)
+    scene = Scene(parent, scenearea, raw = true)
+
+    background = poly!(parent, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)[end]
+    translate!(background, 0, 0, -100)
 
     block_limit_linking = Node(false)
 
