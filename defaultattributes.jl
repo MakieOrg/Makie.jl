@@ -111,6 +111,7 @@ function default_attributes(::Type{LColorbar}, scene)
         ticklabelsvisible = true,
         ticksize = 10f0,
         ticksvisible = true,
+        ticks = AutoLinearTicks(100f0),
         ticklabelspace = 30f0,
         ticklabelpad = 5f0,
         tickalign = 0f0,
