@@ -530,7 +530,7 @@ function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
             spal.sp.cols.start >= newcols.start && spal.sp.cols.stop <= newcols.stop)
 
 
-            subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1)] = spal.al
+            subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1), spal.side] = spal.al
             continue
             # don't advance i because there's one piece of content less in the queue
             # and the next item is in the same position as the old removed one
