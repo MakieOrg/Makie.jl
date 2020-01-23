@@ -115,6 +115,15 @@ has a Scene attached could serve as a surrogate for that Scene.
 parent(layout) == scene
 
 # then these two things should be equivalent
-plot!(scene, layout[1, 1], xyz)
-plot!(layout[1, 1], xyz)
+axis, plotobj = plot!(scene, layout[1, 1], xyz)
+axis, plotobj = plot!(layout[1, 1], xyz)
 ```
+
+The `axis` in the previous two function calls would be created because there was
+no specific axis given to the function. This could potentially be confusing behavior
+as users might expect to be able to just plot into a layout position and thereby
+target the axis already located there.
+
+Plotting like in the above example could also return new layout object if we're dealing
+with a recipe that creates its own sublayout. To have a clear expectation whether a
+recipe call creates a sublayout or not, a trait could be used (for example `CreatesSublayout`).
