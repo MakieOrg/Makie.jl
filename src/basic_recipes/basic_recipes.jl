@@ -580,18 +580,21 @@ end
 
 """
     band(x, ylower, yupper; kwargs...)
+    band(lower, upper; kwargs...)
 
 Plots a band from `ylower` to `yupper` along `x`.
 
 ## Theme
 $(ATTRIBUTES)
 """
-@recipe(Band, x, ylower, yupper) do scene
+@recipe(Band, lowerpoints, upperpoints) do scene
     Theme(;
         default_theme(scene, Mesh)...,
         color = RGBAf0(1.0,0,0,0.2)
     )
 end
+
+convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f0.(x, ylower), Point2f0.(x, yupper))
 
 function band_connect(n)
     ns = 1:n-1
@@ -600,7 +603,9 @@ function band_connect(n)
 end
 
 function plot!(plot::Band)
-    coordinates = lift( (x, ylower, yupper) -> [Point2f0.(x, ylower); Point2f0.(x, yupper)], plot[1], plot[2], plot[3])
+    @extract plot (lowerpoints, upperpoints)
+    @lift(@assert length($lowerpoints) == length($upperpoints) "length of lower band is not equal to length of upper band!")
+    coordinates = @lift([$lowerpoints; $upperpoints])
     connectivity = lift(x -> band_connect(length(x)), plot[1])
     mesh!(plot, coordinates, connectivity;
         color = plot[:color], colormap = plot[:colormap],
