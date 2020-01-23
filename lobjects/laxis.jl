@@ -15,12 +15,11 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         spinewidth, xtrimspine, ytrimspine,
         xgridvisible, ygridvisible, xgridwidth, ygridwidth, xgridcolor, ygridcolor,
         xgridstyle, ygridstyle,
-        xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
         aspect, halign, valign, maxsize, xticks, yticks, panbutton,
         xpankey, ypankey, xzoomkey, yzoomkey,
         xaxisposition, yaxisposition,
-        xspinevisible, yspinevisible, xoppositespinevisible, yoppositespinevisible,
-        xspinecolor, yspinecolor, xoppositespinecolor, yoppositespinecolor,
+        bottomspinevisible, leftspinevisible, topspinevisible, rightspinevisible,
+        bottomspinecolor, leftspinecolor, topspinecolor, rightspinecolor,
         backgroundcolor,
         xlabelfont, ylabelfont, xticklabelfont, yticklabelfont,
     )
@@ -143,6 +142,31 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     xaxis_flipped = lift(x->x == :top, xaxisposition)
     yaxis_flipped = lift(x->x == :right, yaxisposition)
 
+    xspinevisible = lift(xaxis_flipped, bottomspinevisible, topspinevisible) do xflip, bv, tv
+        xflip ? tv : bv
+    end
+    xoppositespinevisible = lift(xaxis_flipped, bottomspinevisible, topspinevisible) do xflip, bv, tv
+        xflip ? bv : tv
+    end
+    yspinevisible = lift(yaxis_flipped, leftspinevisible, rightspinevisible) do yflip, lv, rv
+        yflip ? rv : lv
+    end
+    yoppositespinevisible = lift(yaxis_flipped, leftspinevisible, rightspinevisible) do yflip, lv, rv
+        yflip ? lv : rv
+    end
+    xspinecolor = lift(xaxis_flipped, bottomspinecolor, topspinecolor) do xflip, bc, tc
+        xflip ? tc : bc
+    end
+    xoppositespinecolor = lift(xaxis_flipped, bottomspinecolor, topspinecolor) do xflip, bc, tc
+        xflip ? bc : tc
+    end
+    yspinecolor = lift(yaxis_flipped, leftspinecolor, rightspinecolor) do yflip, lc, rc
+        yflip ? rc : lc
+    end
+    yoppositespinecolor = lift(yaxis_flipped, leftspinecolor, rightspinecolor) do yflip, lc, rc
+        yflip ? lc : rc
+    end
+
     xaxis = LineAxis(parent, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
@@ -150,7 +174,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = xlabel, labelfont = xlabelfont, ticklabelfont = xticklabelfont, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor,
-        ticklabelsize = xticklabelsize, trimspine = xtrimspine)
+        ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
@@ -160,7 +184,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor,
-        trimspine = ytrimspine, ticklabelsize = yticklabelsize)
+        trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
