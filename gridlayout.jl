@@ -1138,26 +1138,37 @@ function compute_col_row_sizes(spaceforcolumns, spaceforrows, gl)
     colwidths, rowheights
 end
 
-
-"""
-This function is similar to the other setindex! but is for all objects that are
-not themselves layouts. They need to be wrapped in a layout first before being
-added. This is determined by the defaultlayout function.
-"""
 function Base.setindex!(g::GridLayout, content, rows::Indexables, cols::Indexables, side::Side = Inner())
-
-    # check if this content already sits somewhere in the grid layout tree
-    # if yes, remove it from there before attaching it here
-
-    # TODO: this was a nice functionality, how to get this back?
-
-    # parentlayout, index = find_in_grid_tree(content, g)
-    # if !isnothing(parentlayout) && !isnothing(index)
-    #     deleteat!(parentlayout.content, index)
-    # end
-
     add_content!(g, content, rows, cols, side)
     content
+end
+
+function Base.setindex!(g::GridLayout, content_array::AbstractArray{T, 2}) where T
+    rowrange = 1:size(content_array, 1)
+    colrange = 1:size(content_array, 2)
+    g[rowrange, colrange] = content_array
+end
+
+function Base.setindex!(g::GridLayout, content_array::AbstractArray{T, 1}) where T
+    error("""
+        You can only assign a one-dimensional content AbstractArray if you also specify the direction in the layout.
+        Valid options are :h for horizontal and :v for vertical.
+        Example:
+            layout[:h] = contentvector
+    """)
+end
+
+function Base.setindex!(g::GridLayout, content_array::AbstractArray{T, 1}, h_or_v::Symbol) where T
+    if h_or_v == :h
+        g[1, 1:length(content_array)] = content_array
+    elseif h_or_v == :v
+        g[1:length(content_array), 1] = content_array
+    else
+        error("""
+            Invalid direction specifier $h_or_v.
+            Valid options are :h for horizontal and :v for vertical.
+        """)
+    end
 end
 
 function Base.setindex!(g::GridLayout, content_array::AbstractArray, rows::Indexables, cols::Indexables)
