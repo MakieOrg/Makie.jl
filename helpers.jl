@@ -347,7 +347,7 @@ end
 function Base.foreach(f::Function, contenttype::Type, layout::GridLayout; recursive = true)
     for c in layout.content
         if recursive && c.al isa GridLayout
-            everyax(f, c.al)
+            foreach(f, contenttype, c.al)
         elseif c.al isa contenttype
             f(c.al)
         end
