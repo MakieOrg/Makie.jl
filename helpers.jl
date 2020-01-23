@@ -343,3 +343,13 @@ function tightlimits!(la::LAxis, ::Top)
     la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 2)
     autolimits!(la)
 end
+
+function Base.foreach(f::Function, contenttype::Type, layout::GridLayout; recursive = true)
+    for c in layout.content
+        if recursive && c.al isa GridLayout
+            everyax(f, c.al)
+        elseif c.al isa contenttype
+            f(c.al)
+        end
+    end
+end
