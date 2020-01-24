@@ -28,8 +28,8 @@ function default_attributes(::Type{LAxis}, scene)
         ylabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         xlabelvisible = true,
         ylabelvisible = true,
-        xlabelpadding = 5f0,
-        ylabelpadding = 5f0,
+        xlabelpadding = 10f0,
+        ylabelpadding = 15f0, # because of boundingbox inaccuracies of ticklabels
         xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         xticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
