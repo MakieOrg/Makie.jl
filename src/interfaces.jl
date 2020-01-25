@@ -108,6 +108,7 @@ end
     surface(x, y, z)
 
 Plots a surface, where `(x, y)`  define a grid whose heights are the entries in `z`.
+`x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
 
 ## Theme
 $(ATTRIBUTES)
@@ -128,6 +129,9 @@ end
     lines(x, y, z)
 
 Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `positions`.
+
+!!! tip
+    You can separate segments by inserting `NaN`s.
 
 ## Theme
 $(ATTRIBUTES)
@@ -164,7 +168,7 @@ end
     mesh(x, y, z, faces)
     mesh(xyz, faces)
 
-Plots a 3D mesh.
+Plots a 3D or 2D mesh.
 
 ## Theme
 $(ATTRIBUTES)
