@@ -48,7 +48,7 @@ export BBox
 export solve
 export shrinkbymargin
 export applylayout
-export Inside, Outside
+export Inside, Outside, Mixed
 export Fixed, Auto, Relative, Aspect
 export FixedSizeBox
 export FixedHeightBox

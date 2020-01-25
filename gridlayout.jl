@@ -682,15 +682,28 @@ into a given bounding box. This means that the protrusions of all objects inside
 the grid are not taken into account. This is needed if the grid is itself placed
 inside another grid.
 """
-function align_to_bbox!(gl::GridLayout, bbox::BBox)
+function align_to_bbox!(gl::GridLayout, suggestedbbox::BBox)
 
-    if gl.alignmode isa Outside
+    # compute the actual bbox for the content given that there might be outside
+    # padding that needs to be removed
+    bbox = if gl.alignmode isa Outside
         pad = gl.alignmode.padding
-        bbox = BBox(
-            left(bbox) + pad.left,
-            right(bbox) - pad.right,
-            bottom(bbox) + pad.bottom,
-            top(bbox) - pad.top)
+        BBox(
+            left(suggestedbbox) + pad.left,
+            right(suggestedbbox) - pad.right,
+            bottom(suggestedbbox) + pad.bottom,
+            top(suggestedbbox) - pad.top)
+    elseif gl.alignmode isa Inside
+        suggestedbbox
+    elseif gl.alignmode isa Mixed
+        pad = gl.alignmode.padding
+        BBox(
+            left(suggestedbbox) + ifnothing(pad.left, 0f0),
+            right(suggestedbbox) - ifnothing(pad.right, 0f0),
+            bottom(suggestedbbox) + ifnothing(pad.bottom, 0f0),
+            top(suggestedbbox) - ifnothing(pad.top, 0f0))
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
 
     # first determine how big the protrusions on each side of all columns and rows are
@@ -734,11 +747,28 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
         width(bbox) - sumcolgaps
     elseif gl.alignmode isa Outside
         width(bbox) - sumcolgaps - leftprot - rightprot
+    elseif gl.alignmode isa Mixed
+        rightal = getside(gl.alignmode, Right())
+        leftal = getside(gl.alignmode, Left())
+        width(bbox) - sumcolgaps -
+            (isnothing(leftal) ? 0 : leftprot) -
+            (isnothing(rightal) ? 0 : rightprot)
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
+
     remainingverticalspace = if gl.alignmode isa Inside
         height(bbox) - sumrowgaps
     elseif gl.alignmode isa Outside
         height(bbox) - sumrowgaps - topprot - bottomprot
+    elseif gl.alignmode isa Mixed
+        topal = getside(gl.alignmode, Top())
+        bottomal = getside(gl.alignmode, Bottom())
+        height(bbox) - sumrowgaps -
+            (isnothing(bottomal) ? 0 : bottomprot) -
+            (isnothing(topal) ? 0 : topprot)
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
 
     # compute how much gap to add, in case e.g. labels are too close together
@@ -813,6 +843,9 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
     # else
     #     error("Invalid grid layout valign $valign")
     # end
+
+    # this is useless right now but might be needed for special cases later?
+    # leave this here for now
     halign_offset = 0.0
     valign_offset = 0.0
 
@@ -823,6 +856,12 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
     elseif gl.alignmode isa Outside
         halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
             cumsum([0; finalcolgaps]) .+ leftprot
+    elseif gl.alignmode isa Mixed
+        leftal = getside(gl.alignmode, Left())
+        halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
+            cumsum([0; finalcolgaps]) .+ (isnothing(leftal) ? 0 : leftprot)
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
     xrightcols = xleftcols .+ colwidths
 
@@ -833,6 +872,12 @@ function align_to_bbox!(gl::GridLayout, bbox::BBox)
     elseif gl.alignmode isa Outside
         valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
             cumsum([0; finalrowgaps]) .- topprot
+    elseif gl.alignmode isa Mixed
+        topal = getside(gl.alignmode, Top())
+        valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
+            cumsum([0; finalrowgaps]) .- (isnothing(topal) ? 0 : topprot)
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
     ybottomrows = ytoprows .- rowheights
 
@@ -939,6 +984,8 @@ function determinedirsize(gl::GridLayout, gdir::GridDir)
             gl.alignmode.padding.left + gl.alignmode.padding.right
         end
         inner_size_combined + dirgapsstart[1] + dirgapsstop[end] + paddings
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
 end
 

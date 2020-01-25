@@ -2,7 +2,7 @@ const BBox = Rect2D{Float32}
 
 const Optional{T} = Union{Nothing, T}
 
-struct RectSides{T<:Real}
+struct RectSides{T}
     left::T
     right::T
     bottom::T
@@ -61,7 +61,10 @@ end
 
 abstract type AlignMode end
 
+"AlignMode that excludes the protrusions from the bounding box."
 struct Inside <: AlignMode end
+
+"AlignMode that includes the protrusions within the bounding box, plus paddings."
 struct Outside <: AlignMode
     padding::RectSides{Float32}
 end
@@ -69,6 +72,17 @@ Outside() = Outside(0f0)
 Outside(padding::Real) = Outside(RectSides{Float32}(padding, padding, padding, padding))
 Outside(left::Real, right::Real, bottom::Real, top::Real) =
     Outside(RectSides{Float32}(left, right, bottom, top))
+
+"AlignMode that is Inside where padding is Nothing and Outside where it is Real."
+struct Mixed <: AlignMode
+    padding::RectSides{Union{Nothing, Float32}}
+end
+function Mixed(; left = nothing, right = nothing, bottom = nothing, top = nothing)
+    paddings = map((left, right, bottom, top)) do side
+        isnothing(side) ? side : Float32(side)
+    end
+    Mixed(RectSides{Union{Nothing, Float32}}(paddings...))
+end
 
 abstract type ContentSize end
 abstract type GapSize <: ContentSize end

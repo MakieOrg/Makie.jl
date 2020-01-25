@@ -129,20 +129,38 @@ function protrusion(sp::GridContent, side::Side)
     ifnothing(prot, 0.0)
 end
 
+getside(m::Mixed, ::Left) = m.padding.left
+getside(m::Mixed, ::Right) = m.padding.right
+getside(m::Mixed, ::Top) = m.padding.top
+getside(m::Mixed, ::Bottom) = m.padding.bottom
+
+function inside_protrusion(gl::GridLayout, side::Side)
+    prot = 0.0
+    for elem in gl.content
+        if ismostin(elem, gl, side)
+            # take the max protrusion of all elements that are sticking
+            # out at this side
+            prot = max(protrusion(elem, side), prot)
+        end
+    end
+    return prot
+end
+
 function protrusion(gl::GridLayout, side::Side)
     # when we align with the outside there is by definition no protrusion
     if gl.alignmode isa Outside
         return 0.0
     elseif gl.alignmode isa Inside
-        prot = 0.0
-        for elem in gl.content
-            if ismostin(elem, gl, side)
-                # take the max protrusion of all elements that are sticking
-                # out at this side
-                prot = max(protrusion(elem, side), prot)
-            end
+        inside_protrusion(gl, side)
+    elseif gl.alignmode isa Mixed
+        if isnothing(getside(gl.alignmode, side))
+            inside_protrusion(gl, side)
+        else
+            # Outside alignment
+            0.0
         end
-        return prot
+    else
+        error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
 end
 
