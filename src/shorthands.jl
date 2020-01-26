@@ -104,3 +104,215 @@ zlims!(lims::NTuple{2, Real}) = zlims!(current_scene(), lims)
 xlims!(lims::Real...) = xlims!(current_scene(), lims)
 ylims!(lims::Real...) = ylims!(current_scene(), lims)
 zlims!(lims::Real...) = zlims!(current_scene(), lims)
+################################################################################
+"""
+    ticklabels(scene)
+
+Returns the all the axis tick labels.
+"""
+function ticklabels(scene)
+    axis = scene[Axis]
+    @assert !isnothing(axis)
+    return axis.ticks.ranges_labels[][2]
+end
+
+"""
+    xticklabels(scene)
+
+Returns the all the x-axis tick labels. See also [`ticklabels`](@ref).
+"""
+xticklabels(scene) = labels(scene)[1]
+
+"""
+    yticklabels(scene)
+
+Returns the all the y-axis tick labels. See also [`ticklabels`](@ref).
+"""
+yticklabels(scene) = labels(scene)[2]
+
+"""
+    zticklabels(scene)
+
+Returns the all the z-axis tick labels. See also [`ticklabels`](@ref).
+"""
+zticklabels(scene) = labels(scene)[3]
+
+"""
+    tickranges(scene)
+
+Returns the tick ranges along all axes.
+"""
+function tickranges(scene)
+    axis = scene[Axis]
+    @assert !isnothing(axis)
+    scene[Axis].ticks.ranges_labels[][1]
+end
+
+"""
+    xtickrange(scene)
+
+Returns the tick range along the x-axis. See also [`tickranges`](@ref).
+"""
+xtickrange(scene) = tickranges(scene)[1]
+
+"""
+    ytickrange(scene)
+
+Returns the tick range along the y-axis. See also [`tickranges`](@ref).
+"""
+ytickrange(scene) = tickranges(scene)[2]
+
+"""
+    ztickrange(scene)
+
+Returns the tick range along the z-axis. See also [`tickranges`](@ref).
+"""
+ztickrange(scene) = tickranges(scene)[3]
+
+"""
+    ticks!([scene,]; tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+
+Set the tick labels and ranges along all axes. The respective labels and ranges
+along each axis must be of the same length.
+"""
+function ticks!(scene; tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+    axis = scene[Axis]
+    @assert !isnothing(axis)
+    # Have to set `ranges_labels` first so that any changes in the length of these
+    # is reflected there first.
+    axis.ticks.ranges_labels[] = (tickranges, ticklabels)
+    axis.ticks.ranges[] = tickranges
+    axis.ticks.labels[] = ticklabels
+    return nothing
+end
+function ticks!(; tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+    ticks!(current_scene(), ranges=ranges, labels=labels)
+end
+
+"""
+    xticks!([scene,]; xtickranges=xtickrange(scene), xticklabels=xticklabel(scene))
+
+Set the tick labels and range along the x-axes. See also [`ticks!`](@ref).
+"""
+function xticks!(scene; xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
+    ticks!(scene, tickranges=(xtickrange, tickranges(scene)[2:end]...), ticklabels=(xticklabels, ticklabels(scene)[2:end]...))
+    return nothing
+end
+function xticks!(; xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
+    xticks!(current_scene(), xtickranges=xtickrange, xticklabels=xticklabels)
+end
+
+"""
+    yticks!([scene,]; ytickranges=ytickrange(scene), yticklabels=yticklabel(scene))
+
+Set the tick labels and range along all the y-axis. See also [`ticks!`](@ref).
+"""
+function yticks!(scene; ytickrange=ytickrange(scene), yticklabels=yticklabels(scene))
+    r = tickranges(scene)
+    l = ticklabels(scene)
+    if length(r) == 2
+        ticks!(scene, tickranges=(first(r), ytickrange), ticklabels=(first(l), yticklabels))
+    else  # length(r) == 3
+        ticks!(scene, tickranges=(first(r), ytickrange, last(r)), ticklabels =(first(l), yticklabels, last(l)))
+    end
+    return nothing
+end
+function yticks!(; ytickrange=ytickrange(scene), yticklabels=yticklabels(scene))
+    yticks!(current_scene(), ytickrange=ytickrange, yticklabels=yticklabels)
+end
+
+"""
+    zticks!([scene,]; ztickranges=ztickrange(scene), zticklabels=zticklabel(scene))
+
+Set the tick labels and range along all z-axis. See also [`ticks!`](@ref).
+"""
+function zticks!(scene; ztickrange=ztickrange(scene), zticklabels=zticklabels(scene))
+    ticks!(scene, tickranges=(tickranges(scene)[1:2]..., ztickrange), ticklabels=(ticklabels(scene)[1:2]..., zticklabels))
+    return nothing
+end
+function zticks!(; ztickrange=ztickrange(scene), zticklabels=zticklabels(scene))
+    zticks!(current_scene(), ztickrange=ztickrange, zticklabels=zticklabels)
+end
+
+###
+### Ticks rotations
+###
+"""
+    ticksrotations(scene)
+
+Returns the rotation of all tick labels.
+"""
+function ticksrotations(scene)
+    axis = scene[Axis]
+    @assert !isnothing(axis)
+    return axis.ticks.rotation[]
+end
+
+"""
+    xticksrotation(scene)
+
+Returns the rotation of tick labels along the x-axis. See also [`ticksrotations`](@ref)
+"""
+xticksrotation(scene) = first(ticksrotations(scene))
+
+"""
+    yticksrotation(scene)
+
+Returns the rotation of tick labels along the y-axis. See also [`ticksrotations`](@ref)
+"""
+yticksrotation(scene) = ticksrotations(scene)[2]
+
+"""
+    zticksrotation(scene)
+
+Returns the rotation of tick labels along the z-axis. See also [`ticksrotations`](@ref)
+"""
+zticksrotation(scene) = ticksrotations(scene)[3]
+
+"""
+    xticksrotation!([scene,] zangle)
+
+Set the rotation of all tick labels.
+"""
+function ticksrotations!(scene, angles)
+    axis = scene[Axis]
+    @assert !isnothing(axis)
+    scene[Axis].ticks.rotation[] = angles
+    return nothing
+end
+
+"""
+    xticksrotation!([scene,] xangle)
+
+Set the rotation of tick labels along the x-axis. See also [`ticksrotations!`](@ref).
+"""
+function xticksrotation!(scene, xangle)
+    ticksrotations!(scene, (xangle, ticksrotations(scene)[2:end]...))
+    return nothing
+end
+xticksrotation!(xangle) = xticksrotation!(current_scene(), xangle)
+
+"""
+    yticksrotation!([scene,] yangle)
+
+Set the rotation of tick labels along the y-axis. See also [`ticksrotations!`](@ref).
+"""
+function yticksrotation!(scene, yangle)
+    if length(r) == 2
+        ticksrotations!(scene, (xticksrotation(scene), yangle))
+    else  # length(r) == 3
+        ticksrotations!(scene, (xticksrotation(scene), yangle, zticksrotation(scene)))
+    end
+end
+yticksrotation!(yangle) = yticksrotation!(current_scene(), yangle)
+
+"""
+    zticksrotation!([scene,] zangle)
+
+Set the rotation of tick labels along the z-axis. See also [`ticksrotations!`](@ref).
+"""
+function zticksrotation!(scene, zangle)
+    ticksrotations!(scene, (ticksrotations(scene)[1:2]..., zangle))
+    return nothing
+end
+zticksrotation!(zangle) = zticksrotation!(current_scene(), zangle)
