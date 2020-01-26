@@ -26,6 +26,9 @@ include("projection_math.jl")
     @test scene[Axis].tickmarks.length[] == (3, 3)
 end
 
+@testset "shorthand functions" begin
+    include("shorthands_tests.jl")
+end
 
 if MINIMAL == "false"
 
@@ -144,3 +147,4 @@ else # full MakieGallery comparisons here
     examples = MakieGallery.record_examples(test_record_path)
     MakieGallery.run_comparison(test_record_path, tested_diff_path)
 end
+
