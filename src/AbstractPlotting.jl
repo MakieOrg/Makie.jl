@@ -87,6 +87,12 @@ export title
 export xlims!, ylims!, zlims!
 export xlabel!, ylabel!, zlabel!
 
+export xticklabels, yticklabels, zticklabels
+export xtickrange, ytickrange, ztickrange
+export xticks!, yticks!, zticks!
+export xtickrotation, ytickrotation, ztickrotation
+export xtickrotation!, ytickrotation!, ztickrotation!
+
 # Node/Signal related
 export Node, node, lift, map_once, to_value, on, @lift
 
