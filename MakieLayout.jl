@@ -42,7 +42,7 @@ export LRect
 export LToggle
 export LLegend
 export linkxaxes!, linkyaxes!, linkaxes!
-export GridLayout
+export GridLayout, GridPosition
 export ProtrusionLayout
 export BBox
 export solve

@@ -1309,15 +1309,19 @@ function is_range_within(inner::UnitRange, outer::UnitRange)
     inner.start >= outer.start && inner.stop <= outer.stop
 end
 
+# function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
+#
+#     rows, cols = to_ranges(g, rows, cols)
+#
+#     included = filter(g.content) do c
+#         is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols)
+#     end
+#
+#     extracted_content = map(included) do c
+#         c.al
+#     end
+# end
+
 function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
-
-    rows, cols = to_ranges(g, rows, cols)
-
-    included = filter(g.content) do c
-        is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols)
-    end
-
-    extracted_content = map(included) do c
-        c.al
-    end
+    GridPosition(g, rows, cols)
 end
