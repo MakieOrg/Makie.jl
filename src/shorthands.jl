@@ -6,7 +6,7 @@ Defaults to using the current Scene.
 """
 function xlabel!(scene, xlabel::AbstractString)
     axis = scene[Axis]
-    @assert !isnothing(axis)
+    @assert !isnothing(axis) "The Scene does not have an axis!"
     scene[Axis][:names][:axisnames][] = (xlabel, scene[Axis][:names][:axisnames][][2:end]...)
     nothing
 end
@@ -20,7 +20,7 @@ Defaults to using the current Scene.
 """
 function ylabel!(scene, ylabel::AbstractString)
     axis = scene[Axis]
-    @assert !isnothing(axis)
+    @assert !isnothing(axis) "The Scene does not have an axis!"
     if axis isa Axis2D
         scene[Axis][:names][:axisnames][] = (scene[Axis][:names][:axisnames][][1], ylabel)
     elseif axis isa Axis3D
@@ -42,8 +42,8 @@ Defaults to using the current Scene.
 """
 function zlabel!(scene, zlabel::AbstractString)
     axis = scene[Axis]
-    @assert !isnothing(axis)
-    @assert axis isa Axis3D
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    @assert axis isa Axis3D "The scene does not have a z-axis"
     scene[Axis][:names][:axisnames][] = (scene[Axis][:names][:axisnames][][1], scene[Axis][:names][:axisnames][][2], zlabel)
     nothing
 end
@@ -104,3 +104,214 @@ zlims!(lims::NTuple{2, Real}) = zlims!(current_scene(), lims)
 xlims!(lims::Real...) = xlims!(current_scene(), lims)
 ylims!(lims::Real...) = ylims!(current_scene(), lims)
 zlims!(lims::Real...) = zlims!(current_scene(), lims)
+################################################################################
+"""
+    ticklabels(scene)
+
+Returns the all the axis tick labels.
+"""
+function ticklabels(scene)
+    axis = scene[Axis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    return axis.ticks.ranges_labels[][2]
+end
+
+"""
+    xticklabels(scene)
+
+Returns the all the x-axis tick labels. See also [`ticklabels`](@ref).
+"""
+xticklabels(scene) = ticklabels(scene)[1]
+
+"""
+    yticklabels(scene)
+
+Returns the all the y-axis tick labels. See also [`ticklabels`](@ref).
+"""
+yticklabels(scene) = ticklabels(scene)[2]
+
+"""
+    zticklabels(scene)
+
+Returns the all the z-axis tick labels. See also [`ticklabels`](@ref).
+"""
+function zticklabels(scene)
+    @assert !is2d(scene)  "The Scene does not have a z-axis!"
+    ticklabels(scene)[3]
+end
+
+"""
+    tickranges(scene)
+
+Returns the tick ranges along all axes.
+"""
+function tickranges(scene)
+    axis = scene[Axis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    scene[Axis].ticks.ranges_labels[][1]
+end
+
+"""
+    xtickrange(scene)
+
+Returns the tick range along the x-axis. See also [`tickranges`](@ref).
+"""
+xtickrange(scene) = tickranges(scene)[1]
+
+"""
+    ytickrange(scene)
+
+Returns the tick range along the y-axis. See also [`tickranges`](@ref).
+"""
+ytickrange(scene) = tickranges(scene)[2]
+
+"""
+    ztickrange(scene)
+
+Returns the tick range along the z-axis. See also [`tickranges`](@ref).
+"""
+function ztickrange(scene)
+    @assert !is2d(scene)  "The Scene does not have a z-axis!"
+    return tickranges(scene)[3]
+end
+
+"""
+    ticks!([scene,]; tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+
+Set the tick labels and ranges along all axes. The respective labels and ranges
+along each axis must be of the same length.
+"""
+function ticks!(scene=current_scene(); tickranges=tickranges(scene), ticklabels=ticklabels(scene))
+    axis = scene[Axis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    # Have to set `ranges_labels` first so that any changes in the length of these
+    # is reflected there first.
+    axis.ticks.ranges_labels[] = (tickranges, ticklabels)
+    axis.ticks.ranges[] = tickranges
+    axis.ticks.labels[] = ticklabels
+    return nothing
+end
+
+"""
+    xticks!([scene,]; xtickranges=xtickrange(scene), xticklabels=xticklabel(scene))
+
+Set the tick labels and range along the x-axes. See also [`ticks!`](@ref).
+"""
+function xticks!(scene=current_scene(); xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
+    ticks!(scene, tickranges=(xtickrange, tickranges(scene)[2:end]...), ticklabels=(xticklabels, ticklabels(scene)[2:end]...))
+    return nothing
+end
+
+"""
+    yticks!([scene,]; ytickranges=ytickrange(scene), yticklabels=yticklabel(scene))
+
+Set the tick labels and range along all the y-axis. See also [`ticks!`](@ref).
+"""
+function yticks!(scene=current_scene(); ytickrange=ytickrange(scene), yticklabels=yticklabels(scene))
+    r = tickranges(scene)
+    l = ticklabels(scene)
+    if length(r) == 2
+        ticks!(scene, tickranges=(first(r), ytickrange), ticklabels=(first(l), yticklabels))
+    else  # length(r) == 3
+        ticks!(scene, tickranges=(first(r), ytickrange, last(r)), ticklabels =(first(l), yticklabels, last(l)))
+    end
+    return nothing
+end
+
+"""
+    zticks!([scene,]; ztickranges=ztickrange(scene), zticklabels=zticklabel(scene))
+
+Set the tick labels and range along all z-axis. See also [`ticks!`](@ref).
+"""
+function zticks!(scene=current_scene(); ztickrange=ztickrange(scene), zticklabels=zticklabels(scene))
+    @assert !is2d(scene)  "The Scene does not have a z-axis!"
+    ticks!(scene, tickranges=(tickranges(scene)[1:2]..., ztickrange), ticklabels=(ticklabels(scene)[1:2]..., zticklabels))
+    return nothing
+end
+
+###
+### Ticks rotations
+###
+"""
+    tickrotations(scene)
+
+Returns the rotation of all tick labels.
+"""
+function tickrotations(scene)
+    axis = scene[Axis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    return axis.ticks.rotation[]
+end
+
+"""
+    xtickrotation(scene)
+
+Returns the rotation of tick labels along the x-axis. See also [`tickrotations`](@ref)
+"""
+xtickrotation(scene) = first(tickrotations(scene))
+
+"""
+    ytickrotation(scene)
+
+Returns the rotation of tick labels along the y-axis. See also [`tickrotations`](@ref)
+"""
+ytickrotation(scene) = tickrotations(scene)[2]
+
+"""
+    ztickrotation(scene)
+
+Returns the rotation of tick labels along the z-axis. See also [`tickrotations`](@ref)
+"""
+function ztickrotation(scene)
+    @assert !is2d(scene)  "The Scene does not have a z-axis!"
+    return tickrotations(scene)[3]
+end
+
+"""
+    xtickrotation!([scene,] zangle)
+
+Set the rotation of all tick labels.
+"""
+function tickrotations!(scene::Scene, angles)
+    axis = scene[Axis]
+    @assert !isnothing(axis) "The Scene does not have an axis!"
+    scene[Axis].ticks.rotation[] = angles
+    return nothing
+end
+
+"""
+    xtickrotation!([scene,] xangle)
+
+Set the rotation of tick labels along the x-axis. See also [`tickrotations!`](@ref).
+"""
+function xtickrotation!(scene::Scene, xangle)
+    tickrotations!(scene, (xangle, tickrotations(scene)[2:end]...))
+    return nothing
+end
+xtickrotation!(xangle) = xtickrotation!(current_scene(), xangle)
+
+"""
+    ytickrotation!([scene,] yangle)
+
+Set the rotation of tick labels along the y-axis. See also [`tickrotations!`](@ref).
+"""
+function ytickrotation!(scene::Scene, yangle)
+    if is2d(scene)
+        tickrotations!(scene, (xtickrotation(scene), yangle))
+    else  # length(r) == 3
+        tickrotations!(scene, (xtickrotation(scene), yangle, ztickrotation(scene)))
+    end
+end
+ytickrotation!(yangle) = ytickrotation!(current_scene(), yangle)
+
+"""
+    ztickrotation!([scene,] zangle)
+
+Set the rotation of tick labels along the z-axis. See also [`tickrotations!`](@ref).
+"""
+function ztickrotation!(scene::Scene, zangle)
+    @assert !is2d(scene)  "The Scene does not have a z-axis!"
+    tickrotations!(scene, (tickrotations(scene)[1:2]..., zangle))
+    return nothing
+end
+ztickrotation!(zangle) = ztickrotation!(current_scene(), zangle)
