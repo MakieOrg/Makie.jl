@@ -65,15 +65,16 @@ function LineAxis(parent::Scene; kwargs...)
 
     labelpos = lift(pos_extents_horizontal, flipped, labelgap) do (position, extents, horizontal), flipped, labelgap
 
-        fullgap = tickspace[] + labelgap
+        # fullgap = tickspace[] + labelgap
 
-        w_ext = extents[2] - extents[1]
+        middle = extents[1] + 0.5f0 * (extents[2] - extents[1])
 
         x_or_y = flipped ? position + labelgap : position - labelgap
+
         if horizontal
-            Point2(extents[1] + 0.5f0 * w_ext, x_or_y)
+            Point2(middle, x_or_y)
         else
-            Point2(x_or_y, extents[1] + 0.5f0 * w_ext)
+            Point2(x_or_y, middle)
         end
     end
 
