@@ -271,7 +271,11 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
                 xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
 
-        top = titlevisible ? boundingbox(titlet).widths[2] + titlegap : 0f0
+        top = if !titlevisible || iswhitespace(title)
+            0f0
+        else
+            boundingbox(titlet).widths[2] + titlegap
+        end
 
         bottom = spinewidth
 
