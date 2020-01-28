@@ -1325,3 +1325,7 @@ end
 function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
     GridPosition(g, rows, cols)
 end
+
+function Base.setindex!(gp::GridPosition, element)
+    gp.layout[gp.rows, gp.cols] = element
+end
