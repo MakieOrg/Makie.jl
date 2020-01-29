@@ -157,7 +157,7 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     THREE::JSObject
     renderer::JSObject
     window::JSObject
-    session_cache::Dict{UInt64, JSObject}
+    session_cache::Dict{UInt, JSObject}
     scene2jsscene::Dict{Scene, JSObject}
     redraw::Observable{Bool}
     function ThreeDisplay(
@@ -167,7 +167,7 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
         )
         return new(
             jsm, renderer, window,
-            Dict{UInt64, JSObject}(), Dict{Scene, JSObject}(),
+            Dict{UInt, JSObject}(), Dict{Scene, JSObject}(),
             Observable(false)
         )
     end
