@@ -784,7 +784,7 @@ function dirgaps(gl::GridLayout, dir::GridDir)
     starts = zeros(Float32, dirlength(gl, dir))
     stops = zeros(Float32, dirlength(gl, dir))
     for c in gl.content
-        span = span(c, dir)
+        span = getspan(c, dir)
         start = span.start
         stop = span.stop
         starts[start] = max(starts[start], protrusion(c, startside(dir)))
@@ -880,7 +880,7 @@ function determinedirsize(idir, gl, dir::GridDir)
         dirsize = nothing
         for c in gl.content
             # content has to be single span to be determinable in size
-            singlespanned = span(c, dir).start == span(c, dir).stop == idir
+            singlespanned = getspan(c, dir).start == getspan(c, dir).stop == idir
 
             # content has to be placed with Inner side, otherwise it's protrusion
             # content

@@ -147,8 +147,8 @@ startside(r::Row) = Top()
 stopside(r::Row) = Bottom()
 
 
-span(gc::GridContent, dir::Col) = gc.span.cols
-span(gc::GridContent, dir::Row) = gc.span.rows
+getspan(gc::GridContent, dir::Col) = gc.span.cols
+getspan(gc::GridContent, dir::Row) = gc.span.rows
 
 
 
