@@ -150,102 +150,6 @@ function with_updates_suspended(f::Function, gl::GridLayout)
     gl.needs_update[] = true
 end
 
-# function detach_parent!(gl::GridLayout)
-#     detach_parent!(gl, gl.parent)
-#     nothing
-# end
-#
-# function detach_parent!(gl::GridLayout, parent::Scene)
-#     if isnothing(gl._update_func_handle)
-#         error("Trying to detach a Scene parent, but there is no update_func_handle. This must be a bug.")
-#     end
-#     Observables.off(pixelarea(parent), gl._update_func_handle)
-#     gl._update_func_handle = nothing
-#     gl.parent = nothing
-#     nothing
-# end
-#
-# function detach_parent!(gl::GridLayout, parent::Node{<:Rect2D})
-#     if isnothing(gl._update_func_handle)
-#         error("Trying to detach a Rect Node parent, but there is no update_func_handle. This must be a bug.")
-#     end
-#     Observables.off(parent, gl._update_func_handle)
-#     gl._update_func_handle = nothing
-#     gl.parent = nothing
-#     nothing
-# end
-#
-# function detach_parent!(gl::GridLayout, parent::GridLayout)
-#     if !isnothing(gl._update_func_handle)
-#         error("Trying to detach a GridLayout parent, but there is an update_func_handle. This must be a bug.")
-#     end
-#     gl.parent = nothing
-#     nothing
-# end
-#
-# function detach_parent!(gl::GridLayout, parent::Nothing)
-#     if !isnothing(gl._update_func_handle)
-#         error("Trying to detach a Nothing parent, but there is an update_func_handle. This must be a bug.")
-#     end
-#     nothing
-# end
-#
-# function attach_parent!(gl::GridLayout, parent::Scene)
-#     detach_parent!(gl)
-#     gl._update_func_handle = on(pixelarea(parent)) do px
-#         request_update(gl)
-#     end
-#     gl.parent = parent
-#     nothing
-# end
-#
-# function attach_parent!(gl::GridLayout, parent::Nothing)
-#     detach_parent!(gl)
-#     gl.parent = parent
-#     nothing
-# end
-#
-# function attach_parent!(gl::GridLayout, parent::GridLayout)
-#     detach_parent!(gl)
-#     gl.parent = parent
-#     nothing
-# end
-#
-# function attach_parent!(gl::GridLayout, parent::Node{<:Rect2D})
-#     detach_parent!(gl)
-#     gl._update_func_handle = on(parent) do rect
-#         request_update(gl)
-#     end
-#     gl.parent = parent
-#     nothing
-# end
-#
-# function request_update(gl::GridLayout)
-#     if !gl.block_updates
-#         request_update(gl, gl.parent)
-#     end
-# end
-#
-# function request_update(gl::GridLayout, parent::Nothing)
-#     # do nothing, sometimes a GridLayout may be defined and only then inserted
-#     # into another, so I don't want to break those cases
-#     # this could on the other hand lead to people confused why nothing is happening
-#
-#     # error("The GridLayout has no parent and therefore can't request an update.")
-# end
-#
-# function request_update(gl::GridLayout, parent::Scene)
-#     align_to_bbox!(gl, BBox(pixelarea(parent)[]))
-# end
-#
-# function request_update(gl::GridLayout, parent::Node{<:Rect2D})
-#     align_to_bbox!(gl, BBox(parent[]))
-# end
-#
-# function request_update(gl::GridLayout, parent::GridLayout)
-#     parent.needs_update[] = true
-# end
-
 function connect_layoutnodes!(gc::GridContent)
 
     disconnect_layoutnodes!(gc::GridContent)
@@ -800,9 +704,6 @@ function align_to_bbox!(gl::GridLayout, suggestedbbox::BBox)
     # don't allow smaller widths than 1 px even if it breaks the layout (better than weird glitches)
     colwidths = max.(colwidths, ones(length(colwidths)))
     rowheights = max.(rowheights, ones(length(rowheights)))
-    # # compute the column widths and row heights using the specified row and column ratios
-    # colwidths = gl.colratios ./ sum(gl.colratios) .* spaceforcolumns
-    # rowheights = gl.rowratios ./ sum(gl.rowratios) .* spaceforrows
 
     # this is the vertical / horizontal space between the inner lines of all plots
     finalcolgaps = colgaps .+ addedcolgaps
@@ -817,45 +718,17 @@ function align_to_bbox!(gl::GridLayout, suggestedbbox::BBox)
     gridheight = sum(rowheights) + sum(finalrowgaps) +
         (gl.alignmode isa Outside ? (topprot + bottomprot) : 0.0)
 
-    # halign = gl.attributes.halign[]
-    # halign_offset = if halign == :left
-    #     0.0
-    # elseif halign == :right
-    #     width(bbox) - gridwidth
-    # elseif halign == :center
-    #     (width(bbox) - gridwidth) / 2
-    # else
-    #     error("Invalid grid layout halign $halign")
-    # end
-    # valign = gl.attributes.valign[]
-    # rv = gridheight - height(bbox)
-    # valign_offset = if valign == :top
-    #     0.0
-    # elseif valign == :bottom
-    #     rv
-    # elseif valign == :center
-    #     rv * 0.5
-    # elseif valign isa Real
-    #     valign * rv
-    # else
-    #     error("Invalid grid layout valign $valign")
-    # end
-
-    # this is useless right now but might be needed for special cases later?
-    # leave this here for now
-    halign_offset = 0.0
-    valign_offset = 0.0
 
     # compute the x values for all left and right column boundaries
     xleftcols = if gl.alignmode isa Inside
-        halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
+        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
             cumsum([0; finalcolgaps])
     elseif gl.alignmode isa Outside
-        halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
+        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
             cumsum([0; finalcolgaps]) .+ leftprot
     elseif gl.alignmode isa Mixed
         leftal = getside(gl.alignmode, Left())
-        halign_offset .+ left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
+        left(bbox) .+ cumsum([0; colwidths[1:end-1]]) .+
             cumsum([0; finalcolgaps]) .+ (isnothing(leftal) ? 0 : leftprot)
     else
         error("Unknown AlignMode of type $(typeof(gl.alignmode))")
@@ -864,14 +737,14 @@ function align_to_bbox!(gl::GridLayout, suggestedbbox::BBox)
 
     # compute the y values for all top and bottom row boundaries
     ytoprows = if gl.alignmode isa Inside
-        valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
+        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
             cumsum([0; finalrowgaps])
     elseif gl.alignmode isa Outside
-        valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
+        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
             cumsum([0; finalrowgaps]) .- topprot
     elseif gl.alignmode isa Mixed
         topal = getside(gl.alignmode, Top())
-        valign_offset .+ top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
+        top(bbox) .- cumsum([0; rowheights[1:end-1]]) .-
             cumsum([0; finalrowgaps]) .- (isnothing(topal) ? 0 : topprot)
     else
         error("Unknown AlignMode of type $(typeof(gl.alignmode))")
@@ -984,26 +857,6 @@ function determinedirsize(gl::GridLayout, gdir::GridDir)
         error("Unknown AlignMode of type $(typeof(gl.alignmode))")
     end
 end
-
-# """
-# Determine the size of a grid layout if it's placed as a spanned layout with
-# a `Side` inside another grid layout.
-# """
-# function determinedirsize(gl::GridLayout, gdir::GridDir, side::Side)
-#     if gdir isa Row
-#         @match side begin
-#             si::Union{Inner, Top, Bottom, TopLeft, TopRight, BottomLeft, BottomRight} =>
-#                     ifnothing(determinedirsize(gl, gdir), nothing)
-#             si::Union{Left, Right} => nothing
-#         end
-#     else
-#         @match side begin
-#             si::Union{Inner, Left, Right, TopLeft, TopRight, BottomLeft, BottomRight} =>
-#                     ifnothing(determinedirsize(gl, gdir), nothing)
-#             si::Union{Top, Bottom} => nothing
-#         end
-#     end
-# end
 
 
 """
@@ -1267,9 +1120,6 @@ end
 
 function add_content!(g::GridLayout, content, rows, cols, side::Side)
     rows, cols = adjust_rows_cols!(g, rows, cols)
-    # TODO: does content need a parent? or just gridlayouts, or not even them
-    # layout.parent = g
-
 
     gc = if !isnothing(content.layoutnodes.gridcontent)
         # take the existing gridcontent, remove it from its gridlayout if it has one,
@@ -1304,19 +1154,6 @@ end
 function is_range_within(inner::UnitRange, outer::UnitRange)
     inner.start >= outer.start && inner.stop <= outer.stop
 end
-
-# function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
-#
-#     rows, cols = to_ranges(g, rows, cols)
-#
-#     included = filter(g.content) do c
-#         is_range_within(c.span.rows, rows) && is_range_within(c.span.cols, cols)
-#     end
-#
-#     extracted_content = map(included) do c
-#         c.content
-#     end
-# end
 
 function Base.getindex(g::GridLayout, rows::Indexables, cols::Indexables)
     GridPosition(g, rows, cols)

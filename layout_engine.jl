@@ -12,12 +12,8 @@ function side_indices(c::GridContent)
     )
 end
 
-
-
-"""
-These functions tell whether an object in a grid touches the left, top, etc. border
-of the grid. This means that it is relevant for the grid's own protrusion on that side.
-"""
+# These functions tell whether an object in a grid touches the left, top, etc. border
+# of the grid. This means that it is relevant for the grid's own protrusion on that side.
 ismostin(gc::GridContent, grid, ::Left) = gc.span.cols.start == 1
 ismostin(gc::GridContent, grid, ::Right) = gc.span.cols.stop == grid.ncols
 ismostin(gc::GridContent, grid, ::Bottom) = gc.span.rows.stop == grid.nrows
@@ -27,51 +23,6 @@ isleftmostin(gc::GridContent, grid) = ismostin(gc, grid, Left())
 isrightmostin(gc::GridContent, grid) = ismostin(gc, grid, Right())
 isbottommostin(gc::GridContent, grid) = ismostin(gc, grid, Bottom())
 istopmostin(gc::GridContent, grid) = ismostin(gc, grid, Top())
-
-# parentlayout(pl::ProtrusionLayout) = pl.parent
-#
-# function ProtrusionLayout(content)
-#     needs_update = Node(false)
-#
-#     protrusions = protrusionnode(content)
-#     csize = computedsizenode(content)
-#
-#     # the nothing parent here has to be replaced by a grid parent later
-#     # when placing this layout in the grid layout
-#     pl = ProtrusionLayout(nothing, protrusions, csize, needs_update, content)
-#
-#     update_func = x -> begin
-#         p = parentlayout(pl)
-#         if isnothing(p)
-#             error("This layout has no parent and can't continue the update signal chain.")
-#         end
-#         p.needs_update[] = true
-#     end
-#
-#     on(update_func, protrusions)
-#     on(update_func, csize)
-#
-#     pl
-# end
-
-# protrusionnode(pl::ProtrusionLayout) = pl.protrusions
-# computedsizenode(pl::ProtrusionLayout) = pl.computedsize
-
-
-# """
-# All the protrusion functions calculate how much stuff "sticks out" of a layoutable object.
-# This is so that collisions are avoided, while what is actually aligned is the
-# "important" edges of the layout objects.
-# """
-# leftprotrusion(x) = protrusion(x, Left())
-# rightprotrusion(x) = protrusion(x, Right())
-# bottomprotrusion(x) = protrusion(x, Bottom())
-# topprotrusion(x) = protrusion(x, Top())
-
-# protrusion(a::ProtrusionLayout, ::Left) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].left
-# protrusion(a::ProtrusionLayout, ::Right) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].right
-# protrusion(a::ProtrusionLayout, ::Top) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].top
-# protrusion(a::ProtrusionLayout, ::Bottom) = isnothing(a.protrusions[]) ? 0f0 : a.protrusions[].bottom
 
 function protrusionnode(x::T) where T
     error("protrusionnode() is not defined for type $T, if you want to include
@@ -164,11 +115,6 @@ function protrusion(gl::GridLayout, side::Side)
     end
 end
 
-# protrusion(s::SolvedProtrusionLayout, ::Left) = left(s.inner) - left(s.outer)
-# function protrusion(s::SolvedProtrusionLayout, side::Side)
-#     return s.outer[side] - s.inner[side]
-# end
-
 function bbox_for_solving_from_side(maxgrid::RowCols, bbox_cell::BBox, idx_rect::RowCols, side::Side)
     pl = maxgrid.lefts[idx_rect.lefts]
     pr = maxgrid.rights[idx_rect.rights]
@@ -232,17 +178,6 @@ function determinedirsize(content, gdir::GridDir, side::Side)
         end
     end
 end
-
-
-# function solve(ua::ProtrusionLayout, innerbbox)
-#     ib = innerbbox
-#     bbox = BBox(
-#         left(ib) - protrusion(ua, Left()),
-#         right(ib) + protrusion(ua, Right()),
-#         bottom(ib) - protrusion(ua, Bottom()),
-#         top(ib) + protrusion(ua, Top()))
-#     SolvedProtrusionLayout(innerbbox, ua.content)
-# end
 
 function to_ranges(g::GridLayout, rows::Indexables, cols::Indexables)
     if rows isa Int

@@ -121,27 +121,6 @@ function computedsizenode!(sizeattrs, autosizenode::Node{NTuple{2, Optional{Floa
     csizenode
 end
 
-# function computedsizenode!(sizeattrs)
-#
-#     # set up csizenode with correct type manually
-#     csizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-#
-#     onany(sizeattrs) do sizeattrs
-#
-#         wattr, hattr = sizeattrs
-#
-#         wsize = computed_size(wattr)
-#         hsize = computed_size(hattr)
-#
-#         csizenode[] = (wsize, hsize)
-#     end
-#
-#     # trigger first value
-#     sizeattrs[] = sizeattrs[]
-#
-#     csizenode
-# end
-
 function computed_size(sizeattr, autosize)
     ms = @match sizeattr begin
         sa::Nothing => nothing
@@ -162,18 +141,6 @@ function computed_size(sizeattr, autosize)
             Can only be Nothing, Fixed, Relative, Auto or Real""")
     end
 end
-
-# function computed_size(sizeattr)
-#     ms = @match sizeattr begin
-#         sa::Nothing => nothing
-#         sa::Real => sa
-#         sa::Fixed => sa.x
-#         sa::Relative => nothing
-#         sa => error("""
-#             Invalid size attribute $sizeattr.
-#             Can only be Nothing, Fixed, Relative or Real""")
-#     end
-# end
 
 function sizenode!(widthattr::Node, heightattr::Node)
     sizeattrs = Node{Tuple{Any, Any}}((widthattr[], heightattr[]))
