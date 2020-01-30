@@ -37,6 +37,8 @@ end
 
 
 """
+    struct Span
+
 Used to specify space that is occupied in a grid. Like 1:1|1:1 for the first square,
 or 2:3|1:4 for a rect over the 2nd and 3rd row and the first four columns.
 """
@@ -46,12 +48,13 @@ struct Span
 end
 
 """
-An object that can be aligned that also specifies how much space it occupies in
-a grid via its span.
+    mutable struct GridContent{G, T}
+
+Wraps content elements of a `GridLayout`. It keeps track of the `parent`, the `content` and its position in the grid via `span` and `side`.
 """
 mutable struct GridContent{G, T} # G should be GridLayout but can't be used before definition
     parent::Optional{G}
-    al::T
+    content::T
     sp::Span
     side::Side
     needs_update::Node{Bool}

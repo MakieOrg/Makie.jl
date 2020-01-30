@@ -250,21 +250,21 @@ function connect_layoutnodes!(gc::GridContent)
 
     disconnect_layoutnodes!(gc::GridContent)
 
-    gc.protrusions_handle = on(protrusionnode(gc.al)) do p
+    gc.protrusions_handle = on(protrusionnode(gc.content)) do p
         gc.needs_update[] = true
     end
-    gc.computedsize_handle = on(computedsizenode(gc.al)) do c
+    gc.computedsize_handle = on(computedsizenode(gc.content)) do c
         gc.needs_update[] = true
     end
 end
 
 function disconnect_layoutnodes!(gc::GridContent)
     if !isnothing(gc.protrusions_handle)
-        Observables.off(protrusionnode(gc.al), gc.protrusions_handle)
+        Observables.off(protrusionnode(gc.content), gc.protrusions_handle)
         gc.protrusions_handle = nothing
     end
     if !isnothing(gc.computedsize_handle)
-        Observables.off(computedsizenode(gc.al), gc.computedsize_handle)
+        Observables.off(computedsizenode(gc.content), gc.computedsize_handle)
         gc.computedsize_handle = nothing
     end
 end
@@ -361,10 +361,10 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
     rowsizes = convert_contentsizes(n, rowsizes)
     addedrowgaps = convert_gapsizes(n, addedrowgaps)
 
-    newcontent = map(gl.content) do spal
-        span = spal.sp
+    newcontent = map(gl.content) do gc
+        span = gc.sp
         newspan = Span(span.rows .+ n, span.cols)
-        GridContent(spal.al, newspan, spal.side)
+        GridContent(gc.content, newspan, gc.side)
     end
     # because of too specific typing with the new parametric GridContent
     gl.content = convert(Vector{GridContent}, newcontent)
@@ -381,10 +381,10 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     colsizes = convert_contentsizes(n, colsizes)
     addedcolgaps = convert_gapsizes(n, addedcolgaps)
 
-    newcontent = map(gl.content) do spal
-        span = spal.sp
+    newcontent = map(gl.content) do gc
+        span = gc.sp
         newspan = Span(span.rows, span.cols .+ n)
-        GridContent(spal.al, newspan, spal.side)
+        GridContent(gc.content, newspan, gc.side)
     end
     # because of too specific typing with the new parametric GridContent
     gl.content = convert(Vector{GridContent}, newcontent)
@@ -424,7 +424,6 @@ function deleterow!(gl::GridLayout, irow::Int)
             push!(to_remove, c)
         else
             c.sp = Span(newrows, c.sp.cols)
-            # push!(new_content, GridContent(c.al, Span(newrows, c.sp.cols), c.side))
         end
     end
 
@@ -447,7 +446,6 @@ function deletecol!(gl::GridLayout, icol::Int)
         error("Can't delete the last col")
     end
 
-    # new_content = GridContent[]
     to_remove = GridContent[]
     for c in gl.content
         cols = c.sp.cols
@@ -466,7 +464,6 @@ function deletecol!(gl::GridLayout, icol::Int)
             push!(to_remove, c)
         else
             c.sp = Span(c.sp.rows, newcols)
-            # push!(new_content, GridContent(c.al, Span(c.sp.rows, newcols), c.side))
         end
     end
 
@@ -524,13 +521,13 @@ function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
     subgl.block_updates = true
     i = 1
     while i <= length(gl.content)
-        spal = gl.content[i]
+        gc = gl.content[i]
 
-        if (spal.sp.rows.start >= newrows.start && spal.sp.rows.stop <= newrows.stop &&
-            spal.sp.cols.start >= newcols.start && spal.sp.cols.stop <= newcols.stop)
+        if (gc.sp.rows.start >= newrows.start && gc.sp.rows.stop <= newrows.stop &&
+            gc.sp.cols.start >= newcols.start && gc.sp.cols.stop <= newcols.stop)
 
 
-            subgl[spal.sp.rows .- (newrows.start - 1), spal.sp.cols .- (newcols.start - 1), spal.side] = spal.al
+            subgl[gc.sp.rows .- (newrows.start - 1), gc.sp.cols .- (newcols.start - 1), gc.side] = gc.content
             continue
             # don't advance i because there's one piece of content less in the queue
             # and the next item is in the same position as the old removed one
@@ -546,7 +543,7 @@ end
 
 function find_in_grid(obj, container::GridLayout)
     for i in 1:length(container.content)
-        if container.content[i].al === obj
+        if container.content[i].content === obj
             return i
         end
     end
@@ -567,7 +564,7 @@ end
 
 function find_in_grid_and_subgrids(obj, container::GridLayout)
     for i in 1:length(container.content)
-        candidate = container.content[i].al
+        candidate = container.content[i].content
 
         if candidate === obj
             return container, i
@@ -606,16 +603,16 @@ function Base.show(io::IO, ::MIME"text/plain", gl::GridLayout)
     for (i, c) in enumerate(gl.content)
         rows = c.sp.rows
         cols = c.sp.cols
-        al = c.al
+        content = c.content
 
         connector = i == length(gl.content) ? " ┗━ " : " ┣━ "
 
-        if al isa GridLayout
+        if content isa GridLayout
             downconnection = i < length(gl.content)
-            str = spaceindent(repr(MIME"text/plain"(), al), 2, downconnection)
+            str = spaceindent(repr(MIME"text/plain"(), content), 2, downconnection)
             println(io, connector * "[$rows | $cols] $str")
         else
-            println(io, connector * "[$rows | $cols] $(typeof(al))")
+            println(io, connector * "[$rows | $cols] $(typeof(content))")
         end
     end
 end
@@ -900,8 +897,7 @@ function align_to_bbox!(gl::GridLayout, suggestedbbox::BBox)
 
         solving_bbox = bbox_for_solving_from_side(maxgrid, bbox_cell, idx_rect, c.side)
 
-        # align_to_bbox!(c.al, solving_bbox)
-        c.al.layoutnodes.suggestedbbox[] = solving_bbox
+        c.content.layoutnodes.suggestedbbox[] = solving_bbox
     end
 
     nothing
@@ -1038,7 +1034,7 @@ function determinedirsize(idir, gl, dir::GridDir)
             is_inner = c.side isa Inner
 
             if singlespanned && is_inner
-                s = determinedirsize(c.al, dir, c.side)
+                s = determinedirsize(c.content, dir, c.side)
                 if !isnothing(s)
                     dirsize = isnothing(dirsize) ? s : max(dirsize, s)
                 end
@@ -1318,7 +1314,7 @@ end
 #     end
 #
 #     extracted_content = map(included) do c
-#         c.al
+#         c.content
 #     end
 # end
 

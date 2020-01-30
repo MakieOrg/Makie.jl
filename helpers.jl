@@ -346,10 +346,10 @@ end
 
 function Base.foreach(f::Function, contenttype::Type, layout::GridLayout; recursive = true)
     for c in layout.content
-        if recursive && c.al isa GridLayout
-            foreach(f, contenttype, c.al)
-        elseif c.al isa contenttype
-            f(c.al)
+        if recursive && c.content isa GridLayout
+            foreach(f, contenttype, c.content)
+        elseif c.content isa contenttype
+            f(c.content)
         end
     end
 end
@@ -366,6 +366,6 @@ function swap!(layout_elements...)
     sides = map(gc -> gc.side, gridcontents)
 
     for (gc, parent, span, side) in zip(circshift(gridcontents, 1), parents, spans, sides)
-        parent[span.rows, span.cols, side] = gc.al
+        parent[span.rows, span.cols, side] = gc.content
     end
 end

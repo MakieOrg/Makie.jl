@@ -92,39 +92,39 @@ function protrusion(x::T, side::Side) where T
     end
 end
 
-function protrusion(sp::GridContent, side::Side)
-    prot = @match sp.side begin
-        sps::Inner => protrusion(sp.al, side)
-        # sps::Outer => BBox(l - pl, r + pr, b - pb, t + pt)
-        sps::Union{Left, Right} => @match side begin
-            si::typeof(sps) => determinedirsize(sp.al, Col(), sp.side)
+function protrusion(gc::GridContent, side::Side)
+    prot = @match gc.side begin
+        gcside::Inner => protrusion(gc.content, side)
+        # gcside::Outer => BBox(l - pl, r + pr, b - pb, t + pt)
+        gcside::Union{Left, Right} => @match side begin
+            si::typeof(gcside) => determinedirsize(gc.content, Col(), gc.side)
             si => 0.0
         end
-        sps::Union{Top, Bottom} => @match side begin
-            si::typeof(sps) => determinedirsize(sp.al, Row(), sp.side)
+        gcside::Union{Top, Bottom} => @match side begin
+            si::typeof(gcside) => determinedirsize(gc.content, Row(), gc.side)
             si => 0.0
         end
-        sps::TopLeft => @match side begin
-            si::Top => determinedirsize(sp.al, Row(), sp.side)
-            si::Left => determinedirsize(sp.al, Col(), sp.side)
+        gcside::TopLeft => @match side begin
+            si::Top => determinedirsize(gc.content, Row(), gc.side)
+            si::Left => determinedirsize(gc.content, Col(), gc.side)
             si => 0.0
         end
-        sps::TopRight => @match side begin
-            si::Top => determinedirsize(sp.al, Row(), sp.side)
-            si::Right => determinedirsize(sp.al, Col(), sp.side)
+        gcside::TopRight => @match side begin
+            si::Top => determinedirsize(gc.content, Row(), gc.side)
+            si::Right => determinedirsize(gc.content, Col(), gc.side)
             si => 0.0
         end
-        sps::BottomLeft => @match side begin
-            si::Bottom => determinedirsize(sp.al, Row(), sp.side)
-            si::Left => determinedirsize(sp.al, Col(), sp.side)
+        gcside::BottomLeft => @match side begin
+            si::Bottom => determinedirsize(gc.content, Row(), gc.side)
+            si::Left => determinedirsize(gc.content, Col(), gc.side)
             si => 0.0
         end
-        sps::BottomRight => @match side begin
-            si::Bottom => determinedirsize(sp.al, Row(), sp.side)
-            si::Right => determinedirsize(sp.al, Col(), sp.side)
+        gcside::BottomRight => @match side begin
+            si::Bottom => determinedirsize(gc.content, Row(), gc.side)
+            si::Right => determinedirsize(gc.content, Col(), gc.side)
             si => 0.0
         end
-        sps => error("Invalid side $sps")
+        gcside => error("Invalid side $gcside")
     end
     ifnothing(prot, 0.0)
 end
