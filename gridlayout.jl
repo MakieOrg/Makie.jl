@@ -362,7 +362,7 @@ function prependrows!(gl::GridLayout, n::Int; rowsizes=nothing, addedrowgaps=not
     addedrowgaps = convert_gapsizes(n, addedrowgaps)
 
     newcontent = map(gl.content) do gc
-        span = gc.sp
+        span = gc.span
         newspan = Span(span.rows .+ n, span.cols)
         GridContent(gc.content, newspan, gc.side)
     end
@@ -382,7 +382,7 @@ function prependcols!(gl::GridLayout, n::Int; colsizes=nothing, addedcolgaps=not
     addedcolgaps = convert_gapsizes(n, addedcolgaps)
 
     newcontent = map(gl.content) do gc
-        span = gc.sp
+        span = gc.span
         newspan = Span(span.rows, span.cols .+ n)
         GridContent(gc.content, newspan, gc.side)
     end
@@ -408,7 +408,7 @@ function deleterow!(gl::GridLayout, irow::Int)
     # new_content = GridContent[]
     to_remove = GridContent[]
     for c in gl.content
-        rows = c.sp.rows
+        rows = c.span.rows
         newrows = if irow in rows
             # range is one shorter now
             rows.start : rows.stop - 1
@@ -423,7 +423,7 @@ function deleterow!(gl::GridLayout, irow::Int)
             # the row span was just one row and now zero, remove the element
             push!(to_remove, c)
         else
-            c.sp = Span(newrows, c.sp.cols)
+            c.span = Span(newrows, c.span.cols)
         end
     end
 
@@ -448,7 +448,7 @@ function deletecol!(gl::GridLayout, icol::Int)
 
     to_remove = GridContent[]
     for c in gl.content
-        cols = c.sp.cols
+        cols = c.span.cols
         newcols = if icol in cols
             # range is one shorter now
             cols.start : cols.stop - 1
@@ -463,7 +463,7 @@ function deletecol!(gl::GridLayout, icol::Int)
             # the col span was just one col and now zero, remove the element
             push!(to_remove, c)
         else
-            c.sp = Span(c.sp.rows, newcols)
+            c.span = Span(c.span.rows, newcols)
         end
     end
 
@@ -479,7 +479,7 @@ end
 
 function Base.isempty(gl::GridLayout, dir::GridDir, i::Int)
     !any(gl.content) do c
-        span = dir isa Row ? c.sp.rows : c.sp.cols
+        span = dir isa Row ? c.span.rows : c.span.cols
         i in span
     end
 end
@@ -523,11 +523,11 @@ function gridnest!(gl::GridLayout, rows::Indexables, cols::Indexables)
     while i <= length(gl.content)
         gc = gl.content[i]
 
-        if (gc.sp.rows.start >= newrows.start && gc.sp.rows.stop <= newrows.stop &&
-            gc.sp.cols.start >= newcols.start && gc.sp.cols.stop <= newcols.stop)
+        if (gc.span.rows.start >= newrows.start && gc.span.rows.stop <= newrows.stop &&
+            gc.span.cols.start >= newcols.start && gc.span.cols.stop <= newcols.stop)
 
 
-            subgl[gc.sp.rows .- (newrows.start - 1), gc.sp.cols .- (newcols.start - 1), gc.side] = gc.content
+            subgl[gc.span.rows .- (newrows.start - 1), gc.span.cols .- (newcols.start - 1), gc.side] = gc.content
             continue
             # don't advance i because there's one piece of content less in the queue
             # and the next item is in the same position as the old removed one
@@ -601,8 +601,8 @@ function Base.show(io::IO, ::MIME"text/plain", gl::GridLayout)
     println(io, "GridLayout[$(gl.nrows), $(gl.ncols)] with $(length(gl.content)) children")
 
     for (i, c) in enumerate(gl.content)
-        rows = c.sp.rows
-        cols = c.sp.cols
+        rows = c.span.rows
+        cols = c.span.cols
         content = c.content
 
         connector = i == length(gl.content) ? " ┗━ " : " ┣━ "
@@ -911,9 +911,9 @@ function dirgaps(gl::GridLayout, dir::GridDir)
     starts = zeros(Float32, dirlength(gl, dir))
     stops = zeros(Float32, dirlength(gl, dir))
     for c in gl.content
-        sp = span(c, dir)
-        start = sp.start
-        stop = sp.stop
+        span = span(c, dir)
+        start = span.start
+        stop = span.stop
         starts[start] = max(starts[start], protrusion(c, startside(dir)))
         stops[stop] = max(stops[stop], protrusion(c, stopside(dir)))
     end
@@ -1276,7 +1276,7 @@ function add_content!(g::GridLayout, content, rows, cols, side::Side)
         # and modify it with the new span and side
         gridc = content.layoutnodes.gridcontent
         remove_from_gridlayout!(gridc)
-        gridc.sp = Span(rows, cols)
+        gridc.span = Span(rows, cols)
         gridc.side = side
         gridc
     else
@@ -1310,7 +1310,7 @@ end
 #     rows, cols = to_ranges(g, rows, cols)
 #
 #     included = filter(g.content) do c
-#         is_range_within(c.sp.rows, rows) && is_range_within(c.sp.cols, cols)
+#         is_range_within(c.span.rows, rows) && is_range_within(c.span.cols, cols)
 #     end
 #
 #     extracted_content = map(included) do c

@@ -55,7 +55,7 @@ Wraps content elements of a `GridLayout`. It keeps track of the `parent`, the `c
 mutable struct GridContent{G, T} # G should be GridLayout but can't be used before definition
     parent::Optional{G}
     content::T
-    sp::Span
+    span::Span
     side::Side
     needs_update::Node{Bool}
     protrusions_handle::Optional{Function}

@@ -5,10 +5,10 @@ Indices of the rows / cols for each side
 """
 function side_indices(c::GridContent)
     return RowCols(
-        c.sp.cols.start,
-        c.sp.cols.stop,
-        c.sp.rows.start,
-        c.sp.rows.stop,
+        c.span.cols.start,
+        c.span.cols.stop,
+        c.span.rows.start,
+        c.span.rows.stop,
     )
 end
 
@@ -18,15 +18,15 @@ end
 These functions tell whether an object in a grid touches the left, top, etc. border
 of the grid. This means that it is relevant for the grid's own protrusion on that side.
 """
-ismostin(sp::GridContent, grid, ::Left) = sp.sp.cols.start == 1
-ismostin(sp::GridContent, grid, ::Right) = sp.sp.cols.stop == grid.ncols
-ismostin(sp::GridContent, grid, ::Bottom) = sp.sp.rows.stop == grid.nrows
-ismostin(sp::GridContent, grid, ::Top) = sp.sp.rows.start == 1
+ismostin(gc::GridContent, grid, ::Left) = gc.span.cols.start == 1
+ismostin(gc::GridContent, grid, ::Right) = gc.span.cols.stop == grid.ncols
+ismostin(gc::GridContent, grid, ::Bottom) = gc.span.rows.stop == grid.nrows
+ismostin(gc::GridContent, grid, ::Top) = gc.span.rows.start == 1
 
-isleftmostin(sp::GridContent, grid) = ismostin(sp, grid, Left())
-isrightmostin(sp::GridContent, grid) = ismostin(sp, grid, Right())
-isbottommostin(sp::GridContent, grid) = ismostin(sp, grid, Bottom())
-istopmostin(sp::GridContent, grid) = ismostin(sp, grid, Top())
+isleftmostin(gc::GridContent, grid) = ismostin(gc, grid, Left())
+isrightmostin(gc::GridContent, grid) = ismostin(gc, grid, Right())
+isbottommostin(gc::GridContent, grid) = ismostin(gc, grid, Bottom())
+istopmostin(gc::GridContent, grid) = ismostin(gc, grid, Top())
 
 # parentlayout(pl::ProtrusionLayout) = pl.parent
 #
@@ -201,8 +201,8 @@ startside(r::Row) = Top()
 stopside(r::Row) = Bottom()
 
 
-span(sp::GridContent, dir::Col) = sp.sp.cols
-span(sp::GridContent, dir::Row) = sp.sp.rows
+span(gc::GridContent, dir::Col) = gc.span.cols
+span(gc::GridContent, dir::Row) = gc.span.rows
 
 
 

@@ -362,7 +362,7 @@ function swap!(layout_elements...)
 
     # copy relevant fields before gridcontents are mutated
     parents = map(gc -> gc.parent, gridcontents)
-    spans = map(gc -> gc.sp, gridcontents)
+    spans = map(gc -> gc.span, gridcontents)
     sides = map(gc -> gc.side, gridcontents)
 
     for (gc, parent, span, side) in zip(circshift(gridcontents, 1), parents, spans, sides)
