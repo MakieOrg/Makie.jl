@@ -1,4 +1,6 @@
 """
+    grid!(content::Vararg{Pair}; kwargs...)
+
 Creates a GridLayout with all pairs contained in `content`. Each pair consists
 of an iterable with row and column spans, and a content object. Each content
 object is then placed in the GridLayout at the span from its pair.
@@ -20,6 +22,8 @@ function grid!(content::Vararg{Pair}; kwargs...)
 end
 
 """
+    hbox!(content::Vararg; kwargs...)
+
 Creates a single-row GridLayout with all elements contained in `content` placed
 from left to right.
 """
@@ -33,6 +37,8 @@ function hbox!(content::Vararg; kwargs...)
 end
 
 """
+    vbox!(content::Vararg; kwargs...)
+
 Creates a single-column GridLayout with all elements contained in `content` placed
 from top to bottom.
 """
@@ -46,6 +52,8 @@ function vbox!(content::Vararg; kwargs...)
 end
 
 """
+    grid!(scene::Scene, padding::Real, args...; kwargs...)
+
 Creates a GridLayout in Outside align mode whose bounding box is tied to the pixelarea of `scene` minus
 a padding of `padding` pixels.
 """
@@ -54,6 +62,8 @@ function grid!(scene::Scene, padding::Real, args...; kwargs...)
 end
 
 """
+    hbox!(scene::Scene, padding::Real, args...; kwargs...)
+
 Creates a single-row GridLayout in Outside align mode whose bounding box is tied to the pixelarea
 of `scene` minus a padding of `padding` pixels.
 """
@@ -62,6 +72,8 @@ function hbox!(scene::Scene, padding::Real, args...; kwargs...)
 end
 
 """
+    vbox!(scene::Scene, padding::Real, args...; kwargs...)
+    
 Creates a single-column GridLayout in Outside align mode whose bounding box is tied to the pixelarea
 of `scene` minus a padding of `padding` pixels.
 """
@@ -70,6 +82,8 @@ function vbox!(scene::Scene, padding::Real, args...; kwargs...)
 end
 
 """
+    grid!(content::AbstractMatrix; kwargs...)
+
 Creates a GridLayout filled with matrix-like content. The size of the grid will
 be the size of the matrix.
 """
@@ -82,12 +96,22 @@ function grid!(content::AbstractMatrix; kwargs...)
     g
 end
 
+"""
+    layoutscene(padding = 30; kwargs...)
+
+Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with `alignmode = Outside(padding)`.
+"""
 function layoutscene(padding = 30; kwargs...)
     scene = Scene(; camera = campixel!, kwargs...)
     gl = GridLayout(scene, alignmode = Outside(padding))
     scene, gl
 end
 
+"""
+    layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
+
+Create a `Scene` in `campixel!` mode and a `GridLayout` aligned to the scene's pixel area with size `nrows` x `ncols` and `alignmode = Outside(padding)`.
+"""
 function layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
     scene = Scene(; camera = campixel!, kwargs...)
     gl = GridLayout(scene, nrows, ncols, alignmode = Outside(padding))

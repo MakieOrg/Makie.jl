@@ -87,6 +87,19 @@ end
 abstract type ContentSize end
 abstract type GapSize <: ContentSize end
 
+"""
+    struct Auto <: ContentSize
+
+If used as a `GridLayout`'s row / column size and `trydetermine == true`, signals to the `GridLayout` that the row / column should shrink to match the largest determinable element inside.
+If no size of a content element can be determined, the remaining space is split between all `Auto` rows / columns according to their `ratio`.
+
+If used as width / height of a layoutable element and `trydetermine == true`, the element's computed width / height will report the auto width / height if it can be determined.
+This enables a parent `GridLayout` to adjust its column / rowsize to the element's width / height.
+If `trydetermine == false`, the element's computed width / height will report `nothing` even if an auto width / height can be determined, which will prohibit a parent `GridLayout` from adjusting a row / column to the element's width / height.
+This is useful to, e.g., prohibit a `GridLayout` from shrinking a column's width to the width of a super title, even though the title's width can be auto-determined.
+
+The `ratio` is ignored if `Auto` is used as an element size.
+"""
 struct Auto <: ContentSize
     trydetermine::Bool # false for determinable size content that should be ignored
     ratio::Float64 # float ratio in case it's not determinable
@@ -106,6 +119,20 @@ struct Aspect <: ContentSize
     ratio::Float64
 end
 
+"""
+    mutable struct LayoutNodes{T, G}
+
+`T` is the same type parameter of contained `GridContent`, `G` is `GridLayout` which is defined only after `LayoutNodes`.
+
+A collection of `Node`s and an optional `GridContent` that are needed to interface with the MakieLayout layouting system.
+
+- `suggestedbbox::Node{BBox}`: The bounding box that an element should place itself in. Depending on the element's `width` and `height` attributes, this is not necessarily equal to the computedbbox.
+- `protrusions::Node{RectSides{Float32}}`: The sizes of content "sticking out" of the main element into the `GridLayout` gaps.
+- `computedsize::Node{NTuple{2, Optional{Float32}}}`: The width and height that the element computes for itself if possible (else `nothing`).
+- `autosize::Node{NTuple{2, Optional{Float32}}}`: The width and height that the element reports to its parent `GridLayout`. If the element doesn't want to cause the parent to adjust to its size, autosize can hide the computedsize from it by being set to `nothing`.
+- `computedbbox::Node{BBox}`: The bounding box that the element computes for itself after it has received a suggestedbbox.
+- `gridcontent::Optional{GridContent{G, T}}`: A reference of a `GridContent` if the element is currently placed in a `GridLayout`. This can be used to retrieve the parent layout, remove the element from it or change its position, and assign it to a different layout.
+"""
 mutable struct LayoutNodes{T, G} # G again GridLayout
     suggestedbbox::Node{BBox}
     protrusions::Node{RectSides{Float32}}
