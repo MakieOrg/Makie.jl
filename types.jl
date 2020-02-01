@@ -200,6 +200,19 @@ struct ManualTicks <: Ticks
     labels::Vector{String}
 end
 
+"""
+    struct CustomTicks{F1<:Function, F2<:Function} <: Ticks
+
+For the use of custom functions that compute tick values and labels in an `LAxis`.
+
+- `f_tickvalues::F1`: A function that takes minimum_value, maximum_value, and pixelwidth as arguments and returns a `Float` array of tick values.
+- `f_ticklabels::F2`: A function that takes in an array of `Float`s and returns an array of `String` labels.
+"""
+struct CustomTicks{F1<:Function, F2<:Function} <: Ticks
+    f_tickvalues::F1
+    f_ticklabels::F2
+end
+
 mutable struct LineAxis
     parent::Scene
     protrusion::Node{Float32}

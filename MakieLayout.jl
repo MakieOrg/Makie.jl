@@ -58,7 +58,7 @@ export appendcols!, appendrows!, prependcols!, prependrows!, deletecol!, deleter
 export gridnest!
 export AxisAspect, DataAspect
 export autolimits!
-export AutoLinearTicks, ManualTicks
+export AutoLinearTicks, ManualTicks, CustomTicks
 export hidexdecorations!, hideydecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export colsize!, rowsize!, colgap!, rowgap!

@@ -253,3 +253,6 @@ end
 function iswhitespace(str)
     match(r"^\s+$", str) !== nothing
 end
+
+compute_tick_values(ct::CustomTicks, args...) = ct.f_tickvalues(args...)
+get_tick_labels(ct::CustomTicks, values) = ct.f_ticklabels(values)
