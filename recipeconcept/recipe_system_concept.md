@@ -127,3 +127,77 @@ target the axis already located there.
 Plotting like in the above example could also return new layout object if we're dealing
 with a recipe that creates its own sublayout. To have a clear expectation whether a
 recipe call creates a sublayout or not, a trait could be used (for example `CreatesSublayout`).
+
+
+
+
+
+# Function signatures:
+
+## Non-layout creating
+
+```julia
+scene, layout, axis, plotobj = plot(args...)
+       layout, axis, plotobj = plot!(scene, args...)
+               axis, plotobj = plot!(scene, layout[1, 1], args...)
+               axis, plotobj = plot!(layout[1, 1], args...) # if layout has scene connected
+                     plotobj = plot!(axis, args...)
+```
+
+## Layout creating
+
+```julia
+scene, layout, plotlayout, plotaxes, plotobjects = plot(args...)
+       layout, plotlayout, plotaxes, plotobjects = plot!(scene, args...)
+               plotlayout, plotaxes, plotobjects = plot!(scene, layout[1, 1], args...)
+               plotlayout, plotaxes, plotobjects = plot!(layout[1, 1], args...) # if layout has scene connected
+                                     plotobjects = plot!(plotaxes, args...)
+```
+
+Maybe the first version should also create a sublayout so the two signature groups collapse into one:
+
+```julia
+scene, layout, axislayout, axis, plotobj = plot(args...)
+       layout, axislayout, axis, plotobj = plot!(scene, args...)
+               axislayout, axis, plotobj = plot!(scene, layout[1, 1], args...)
+               axislayout, axis, plotobj = plot!(layout[1, 1], args...) # if layout has scene connected
+                                 plotobj = plot!(axis, args...)
+```
+
+Bundle `axislayout, axis` into one object? It seems to always go together in the signatures.
+This is kind of the "infrastructure" that a plot brings with it.
+
+```julia
+scene, layout, infrastructure, plotobj = plot(args...)
+       layout, infrastructure, plotobj = plot!(scene, args...)
+               infrastructure, plotobj = plot!(scene, layout[1, 1], args...)
+               infrastructure, plotobj = plot!(layout[1, 1], args...) # if layout has scene connected
+                               plotobj = plot!(infrastructure, args...)
+```
+
+What type should `infrastructure` have? Flexible enough for any plot type, also reuseable between different plot types, like adding a `Scatter` to infrastructure returned from `Lines`.
+Maybe just NamedTuple with a convention for fields.
+This convention could be tied to Traits like `SingleAxis`, and `FacetedAxes` or `CustomAxes`
+
+Fields for `SingleAxis`
+- layout
+- axis
+- support
+
+Fields for `FacetedAxes`
+- layout
+- axes # 2D array
+- support
+
+Fields for `CustomAxes`
+- layout
+- axes # named tuple
+- support
+
+
+# Keyword arguments
+
+There needs to be a robust mechanism to get keyword arguments to where they should go from a very high-level call
+like `plot(args...; kwargs...)`.
+Maybe this can be achieved by defining a few high-level keywords that other recipes can't use like `scene` or `axis` / `axes` that route their named-tuple arguments separately from the rest.
+Similar to Makie's nested attributes?
