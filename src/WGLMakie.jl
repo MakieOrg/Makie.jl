@@ -6,7 +6,7 @@ using GeometryTypes, Colors
 using ShaderAbstractions, LinearAlgebra
 import GeometryBasics
 
-using JSServe: Application, Session, evaljs, linkjs, div, active_sessions
+using JSServe: Application, Session, evaljs, linkjs
 using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
 using JSServe: JSObject, onload, uuidstr
 using JSServe.DOM
@@ -157,7 +157,7 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     THREE::JSObject
     renderer::JSObject
     window::JSObject
-    session_cache::Dict{UInt64, JSObject}
+    session_cache::Dict{UInt, JSObject}
     scene2jsscene::Dict{Scene, JSObject}
     redraw::Observable{Bool}
     function ThreeDisplay(
@@ -167,7 +167,7 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
         )
         return new(
             jsm, renderer, window,
-            Dict{UInt64, JSObject}(), Dict{Scene, JSObject}(),
+            Dict{UInt, JSObject}(), Dict{Scene, JSObject}(),
             Observable(false)
         )
     end
