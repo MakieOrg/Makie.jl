@@ -6,7 +6,7 @@ using GeometryTypes, Colors
 using ShaderAbstractions, LinearAlgebra
 import GeometryBasics
 
-using JSServe: Application, Session, evaljs, linkjs, div, active_sessions
+using JSServe: Application, Session, evaljs, linkjs
 using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
 using JSServe: JSObject, onload, uuidstr
 using JSServe.DOM
