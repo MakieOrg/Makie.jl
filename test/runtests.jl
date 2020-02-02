@@ -6,6 +6,7 @@ using MakieGallery
 
 # ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
 tests_wgl_makie = Set(Symbol.([
+    "cube_lattice",
     "arc_1",
     "arrows_3d",
     "available_markers",
