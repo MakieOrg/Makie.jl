@@ -8,7 +8,7 @@ uniform mat4 modelMatrix, modelinv;
 */
 
 const float max_distance = 1.3;
-const int num_samples = 150;
+const int num_samples = 200;
 const float step_size = max_distance / float(num_samples);
 
 uniform vec3 cameraPosition;
@@ -67,38 +67,46 @@ float rand(){
         sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453
     );
 }
+float _normalize(float val, float from, float to)
+{
+    return (val-from) / (to - from);
+}
+
+vec4 color_lookup(float intensity, sampler2D color_ramp, vec2 norm)
+{
+    return texture(color_ramp, vec2(_normalize(intensity, norm.x, norm.y), 0));
+}
+
 
 vec4 contours(vec3 front, vec3 dir, float stepsize)
 {
-    vec3 stepsize_dir = normalize(dir) * stepsize;
+    vec3  stepsize_dir = normalize(dir) * stepsize;
     // The per-voxel alpha channel is specified in units of opacity/length.
     // If our voxels are not isotropic, then the distance that we trace through
     // depends on the direction.
-    vec3 pos = front;
+    vec3  pos = front;
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
-    // add random offset to counteract sampling artifacts
-    pos += stepsize_dir * rand();
-    for (i; i < num_samples; i++) {
-        if(T <= 0.01)
-            break;
+    pos += stepsize_dir * rand();//apply first, to padd
+    for (i; i < num_samples && (!is_outside(pos) || i < 3); ++i, pos += stepsize_dir) {
+
         float intensity = texture(volumedata, pos).x;
-        intensity = range01(intensity, colorrange.x, colorrange.y);
-        vec4 density = texture(colormap, vec2(intensity, 0));
+        vec4 density = color_lookup(intensity, colormap, colorrange);
         float opacity = density.a;
         if(opacity > 0.0){
             vec3 N = gennormal(pos, vec3(stepsize));
             vec3 L = normalize(light_position - pos);
             vec3 L2 = -L;
-            Lo += (T*opacity) * blinn_phong(N, pos, L, density.rgb);
-            Lo += (T*opacity) * blinn_phong(N, pos, -L, density.rgb);
 
+            Lo += (T*opacity) * blinn_phong(N, pos, L, density.rgb);
+            Lo += (T*opacity) * blinn_phong(N, pos, L2, density.rgb);
             T *= 1.0 - opacity;
+            if (T <= 0.01)
+                break;
         }
-        pos += stepsize_dir;
     }
-    return vec4(Lo, 1.0 - T);
+    return vec4(Lo, 1.0-T);
 }
 
 void main()

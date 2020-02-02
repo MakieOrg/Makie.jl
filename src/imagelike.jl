@@ -155,7 +155,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
         lasset("volume.frag"),
         box,
 
-        volumedata = Sampler(vol),
+        volumedata = Sampler(lift(AbstractPlotting.el32convert, vol)),
         modelinv = modelinv,
         colormap = Sampler(lift(to_colormap, plot.colormap)),
         colorrange = lift(Vec2f0, plot.colorrange),
