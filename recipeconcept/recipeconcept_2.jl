@@ -3,6 +3,9 @@ using MakieLayout
 using AbstractPlotting: px
 using KernelDensity
 using StatsBase
+using GLFW; GLFW.WindowHint(GLFW.FLOATING, 1)
+using StatsMakie
+using DataFrames
 
 
 struct Infrastructure{T<:NamedTuple}
@@ -27,37 +30,65 @@ function myplot(T::Type, args...; kwargs...)
     layoutkw = pop!(dkwargs, :layout, NamedTuple())
 
     scene, layout = layoutscene(; scenekw..., layoutkw...)
-    infrastructure, plots = myplot!(T, scene, layout[1, 1], args...; dkwargs...)
-    scene, layout, infrastructure, plots
+    infrastructure, plots = myplot(T, layout[1, 1], args...; dkwargs...)
+    (scene = scene, layout = layout, infra = infrastructure, plots = plots)
 end
 
-function myplot!(T::Type, scene::Scene, args...; kwargs...)
+function myplot(T::Type, scene::Scene, args...; kwargs...)
     dkwargs = Dict(kwargs)
     scenekw = pop!(dkwargs, :scene, NamedTuple())
     layoutkw = pop!(dkwargs, :layout, NamedTuple())
 
     layout = GridLayout(scene; alignmode = Outside(30), scenekw..., layoutkw...)
-    infrastructure, plots = myplot!(T, scene, layout[1, 1], args...; dkwargs...)
-    layout, infrastructure, plots
+    infrastructure, plots = myplot(T, layout[1, 1], args...; dkwargs...)
+    (layout = layout, infra = infrastructure, plots = plots)
 end
 
-function myplot!(T::Type, scene::Scene, gp::GridPosition, args...; kwargs...)
+function get_layout_top_scene(layout::GridLayout)
+    if isnothing(layout.layoutnodes.gridcontent)
+        return layout.parentscene
+    else
+        parentgrid = layout.layoutnodes.gridcontent.parent
+        if isnothing(parentgrid)
+            return layout.parentscene
+        else
+            return get_layout_top_scene(parentgrid)
+        end
+    end 
+end
+
+abstract type InfrastructureType end
+struct SingleAxis <: InfrastructureType end
+struct FacetAxes <: InfrastructureType end
+
+infrastructure_type(any::Type) = any # if nothing is set, just use the type directly
+infrastructure_type(::Type{Scatter}) = SingleAxis
+infrastructure_type(::Type{Lines}) = SingleAxis
+
+function myplot(T::Type, gp::GridPosition, args...; kwargs...)
+    scene = get_layout_top_scene(gp.layout)
+    if isnothing(scene)
+        error("Could not retrieve a parent scene from the layout's tree. Can't plot using a GridLayout without top level parent scene.")
+    end
+
     dkwargs = Dict(kwargs)
     infrakw = pop!(dkwargs, :infra, NamedTuple())
 
-    infrastructure = create_infrastructure(T, scene, args...; infrakw...)
+    infrastructure = create_infrastructure(
+        infrastructure_type(T),
+        scene, args...; infrakw...)
+
     gp[] = infrastructure.layout
-    plots = myplot!(T, infrastructure, args...; dkwargs...)
+    plots = myplot(T, infrastructure, args...; dkwargs...)
     infrastructure, plots
 end
 
-function myplot!(T::Type, infra::Infrastructure, args...; kwargs...)
-    error("myplot! not defined for type $T")
+function myplot(T::Type, infra::Infrastructure, args...; kwargs...)
+    error("myplot not defined for type $T")
 end
 
 
-
-function create_infrastructure(::Type{Scatter}, scene::Scene, args...; kwargs...)
+function create_infrastructure(::Type{SingleAxis}, scene::Scene, args...; kwargs...)
     dkwargs = Dict(kwargs)
     axiskw = pop!(dkwargs, :axis, NamedTuple())
     layoutkw = pop!(dkwargs, :layout, NamedTuple())
@@ -67,16 +98,40 @@ function create_infrastructure(::Type{Scatter}, scene::Scene, args...; kwargs...
     Infrastructure((axis = axis, layout = layout))
 end
 
-function myplot!(::Type{Scatter}, infra::Infrastructure, args...; kwargs...)
+function create_infrastructure(::Union{Type{Heatmap}, Type{Image}}, scene::Scene, args...; kwargs...)
+    infra = create_infrastructure(SingleAxis, scene, args...; kwargs...)
+    tightlimits!(infra.axis)
+    infra
+end
+
+function Base.display(nt::NamedTuple{(:scene, :layout, :infra, :plots), Tuple{S,G,I,P}}) where {S<:SceneLike, G, I, P}
+    display(nt.scene)
+end
+
+function myplot(::Type{Scatter}, infra::Infrastructure, args...; kwargs...)
     scat = scatter!(infra.axis, args...; kwargs...)
 end
 
-scene, layout, infra, plots = myplot(Scatter, 1:10, rand(10), markersize = 20px, color = :red);
+function myplot(::Type{Lines}, infra::Infrastructure, args...; kwargs...)
+    lin = lines!(infra.axis, args...; kwargs...)
+end
+
+function myplot(::Type{Heatmap}, infra::Infrastructure, args...; kwargs...)
+    hm = heatmap!(infra.axis, args...; kwargs...)
+end
+
+function myplot(::Type{Image}, infra::Infrastructure, args...; kwargs...)
+    hm = image!(infra.axis, args...; kwargs...)
+end
+
+scene, layout, _ = myplot(Heatmap, rand(100, 100), infra = (;axis = (;aspect = DataAspect(), xlabel = "helloo"))); scene
+
+myplot(Image, rand(100, 100), infra = (; axis = (; xlabel = "hello", ylabel = "world", title = "whoop")))
+
+myplot(Lines, layout[1, 2], xx, yy)
 scene
 
-myplot!(Scatter, scene, layout[1, 2], 1:10, rand(10), markersize = 10px)
-myplot!(Scatter, scene, layout[2, 1:2], 1:10, rand(10), markersize = 10px)
-myplot!(Scatter, infra, 1:10, rand(10); color = :red, markersize = 10px)
+myplot(Scatter, Group(color = rand(1:3, 100)), rand(100), rand(100), markersize = 20px)
 
 struct MarginDensityScatter end
 
@@ -107,7 +162,7 @@ function create_infrastructure(::Type{MarginDensityScatter}, scene::Scene, args.
     Infrastructure((axes = (main = mainax, top = topax, right = rightax), layout = layout))
 end
 
-function myplot!(::Type{MarginDensityScatter}, infra::Infrastructure, x, y; kwargs...)
+function myplot(::Type{MarginDensityScatter}, infra::Infrastructure, x, y; kwargs...)
 
     dkwargs = Dict(kwargs)
 
@@ -128,7 +183,7 @@ end
 scene, layout = layoutscene()
 
 for i in 1:3, j in 1:3
-    myplot!(MarginDensityScatter, scene, layout[i, j], randn(100), randn(100);
+    myplot(MarginDensityScatter, scene, layout[i, j], randn(100), randn(100);
         color = rand(RGBAf0),
         infra = (
             marginfraction = 0.2,
@@ -141,12 +196,72 @@ scene
 
 
 
-function test(;kwargs...)
-    kwargs = Dict(kwargs)
-    @show kwargs
-    scenekw = pop!(kwargs, :scene, NamedTuple())
-    @show kwargs
-    nothing
+scene, layout = layoutscene()
+myplot(Scatter, layout[1, 1], rand(100), rand(100), markersize = 20px, color = :green, strokecolor = :black, strokewidth = 1)
+myplot(Scatter, layout[2, 1], rand(100), rand(100), markersize = 20px, color = :red, strokecolor = :black, strokewidth = 1)
+myplot(Scatter, layout[1:2, 2], rand(100), rand(100), markersize = 20px, color = :blue, strokecolor = :black, strokewidth = 1)
+myplot(MarginDensityScatter, layout[1:2, 3:4], randn(100), randn(100))
+scene
+
+
+struct FacetPlot end
+
+function create_infrastructure(::Type{FacetPlot}, scene::Scene, plottype, rows, cols, args...; kwargs...)
+
+    dkwargs = Dict(kwargs)
+
+    nrows = length(unique(rows))
+    ncols = length(unique(cols))
+
+    layout = GridLayout()
+
+    axs = [LAxis(scene) for x in CartesianIndices((nrows, ncols))]
+
+    layout[] = axs
+
+    for ax in axs[:, 2:end]
+        ax.ylabelvisible = false
+        ax.yticklabelsvisible = false
+        ax.yticksvisible[] = false
+    end
+
+    for ax in axs[1:end-1, :]
+        ax.xlabelvisible[] = false
+        ax.xticklabelsvisible = false
+        ax.xticksvisible[] = false
+    end
+
+
+    linkxaxes!(axs...)
+    linkyaxes!(axs...)
+
+    Infrastructure((axes = axs, layout = layout))
 end
 
-test(scen = 1, b = 3)
+
+function myplot(::Type{FacetPlot}, infra::Infrastructure, plottype, rows, cols, x, y; kwargs...)
+
+    dkwargs = Dict(kwargs)
+
+    df = DataFrame(rows = rows, cols = cols, x = x, y = y)
+
+    for (ax, sdf) in zip(infra.axes, groupby(df, [:rows, :cols]))
+        myplot(plottype, Infrastructure((axis = ax,)), sdf.x, sdf.y, kwargs...)
+    end
+
+    autolimits!(infra.axes[1])
+end
+
+
+
+myplot(FacetPlot, Scatter, rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000))
+myplot(FacetPlot, Lines, rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000))
+
+scene, layout = layoutscene()
+layout[1, 1] = ax = LAxis(scene)
+
+scene
+
+ax.yticksvisible = false
+
+
