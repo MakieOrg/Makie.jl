@@ -1,6 +1,6 @@
 GridLayout(; kwargs...) = GridLayout(1, 1; kwargs...)
 
-GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> BBox(x), pixelarea(scene)), kwargs...)
+GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> BBox(x), pixelarea(scene)), parentscene = scene, kwargs...)
 
 function GridLayout(nrows::Int, ncols::Int;
         rowsizes = nothing,
@@ -10,6 +10,7 @@ function GridLayout(nrows::Int, ncols::Int;
         alignmode = Inside(),
         equalprotrusiongaps = (false, false),
         bbox = nothing,
+        parentscene = nothing,
         kwargs...)
 
     if isnothing(rowsizes)
@@ -72,7 +73,7 @@ function GridLayout(nrows::Int, ncols::Int;
 
     gl = GridLayout(
         content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, layoutnodes, attrs)
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, layoutnodes, attrs, parentscene)
 
     on(finalbbox) do bb
         align_to_bbox!(gl, bb)

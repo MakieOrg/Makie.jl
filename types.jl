@@ -159,16 +159,17 @@ mutable struct GridLayout
     block_updates::Bool
     layoutnodes::LayoutNodes
     attributes::Attributes
+    parentscene::Optional{AbstractPlotting.Scene}
     _update_func_handle::Optional{Function} # stores a reference to the result of on(obs)
 
     function GridLayout(
         content, nrows, ncols, rowsizes, colsizes,
         addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps, needs_update,
-        layoutnodes, attributes)
+        layoutnodes, attributes, parentscene)
 
         gl = new(content, nrows, ncols, rowsizes, colsizes,
             addedrowgaps, addedcolgaps, alignmode, equalprotrusiongaps,
-            needs_update, false, layoutnodes, attributes, nothing)
+            needs_update, false, layoutnodes, attributes, parentscene, nothing)
 
         validategridlayout(gl)
 
