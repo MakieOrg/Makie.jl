@@ -31,6 +31,7 @@ include("lobjects/lrect.jl")
 include("lobjects/ltoggle.jl")
 include("lobjects/llegend.jl")
 include("lobjects/lobject.jl")
+include("lobjects/lscene.jl")
 include("gridapi.jl")
 
 export LAxis
@@ -41,6 +42,7 @@ export LText
 export LRect
 export LToggle
 export LLegend
+export LScene
 export linkxaxes!, linkyaxes!, linkaxes!
 export GridLayout, GridPosition
 export ProtrusionLayout

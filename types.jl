@@ -318,3 +318,9 @@ struct GridPosition
     rows::Indexables # this doesn't warrant type parameters I think
     cols::Indexables # as these objects will only be used briefly
 end
+
+struct LScene <: AbstractPlotting.AbstractScene
+    scene::Scene
+    attributes::Attributes
+    layoutnodes::MakieLayout.LayoutNodes
+end

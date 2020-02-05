@@ -329,3 +329,12 @@ function default_attributes(::Type{GridLayout})
         height = Auto(),
     )
 end
+
+function default_attributes(::Type{LScene}, scene)
+    Attributes(
+        height = nothing,
+        width = nothing,
+        halign = :center,
+        valign = :center,
+    )
+end
