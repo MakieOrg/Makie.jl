@@ -32,6 +32,7 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         )
     end
 end
+
 function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
         image                 = main => (Texture, "image, can be a Texture or Array of colors")
