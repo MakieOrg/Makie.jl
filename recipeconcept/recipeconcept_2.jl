@@ -210,12 +210,15 @@ function create_infrastructure(::Type{FacetPlot}, scene::Scene, plottype, rows, 
 
     dkwargs = Dict(kwargs)
 
+    axiskw = pop!(dkwargs, :axes, NamedTuple())
+    layoutkw = pop!(dkwargs, :layout, NamedTuple())
+
     nrows = length(unique(rows))
     ncols = length(unique(cols))
 
-    layout = GridLayout()
+    layout = GridLayout(; layoutkw...)
 
-    axs = [LAxis(scene) for x in CartesianIndices((nrows, ncols))]
+    axs = [LAxis(scene; axiskw...) for x in CartesianIndices((nrows, ncols))]
 
     layout[] = axs
 
@@ -246,22 +249,31 @@ function myplot(::Type{FacetPlot}, infra::Infrastructure, plottype, rows, cols, 
     df = DataFrame(rows = rows, cols = cols, x = x, y = y)
 
     for (ax, sdf) in zip(infra.axes, groupby(df, [:rows, :cols]))
-        myplot(plottype, Infrastructure((axis = ax,)), sdf.x, sdf.y, kwargs...)
+        myplot(plottype, Infrastructure((axis = ax,)), sdf.x, sdf.y; kwargs...)
     end
 
     autolimits!(infra.axes[1])
 end
 
 
+msize = Node(10px)
+scene, layout, infra = myplot(FacetPlot, Scatter,
+    rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000), markersize = msize, color = :orange, strokewidth = 1, strokecolor = :black, infra = (; axes = (;backgroundcolor = Gray(0.9))))
+myplot(FacetPlot, infra, Lines,
+    rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000); color = :red)
 
-myplot(FacetPlot, Scatter, rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000))
-myplot(FacetPlot, Lines, rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000))
+for c in 1:infra.layout.ncols
+    infra.layout[1, c, Top()] = LRect(scene, color = Gray(0.8))
+    infra.layout[1, c, Top()] = LText(scene, "Column $c", padding = (0, 0, 10, 10))
+end
 
-scene, layout = layoutscene()
-layout[1, 1] = ax = LAxis(scene)
+for r in 1:infra.layout.nrows
+    infra.layout[r, end, Right()] = LRect(scene, color = Gray(0.8))
+    infra.layout[r, end, Right()] = LText(scene, "Row $r", rotation = -pi/2, padding = (10, 10, 0, 0))
+end
 
-scene
+layout[0, :] = LRect(scene, color = Gray(0.7))
+layout[1, :] = LText(scene, "Columns", padding = (0, 0, 10, 10))
+layout.content[end].content.width = Auto(false)
 
-ax.yticksvisible = false
-
-
+foreach(LAxis, layout) do ax; tight_ticklabel_spacing!(ax); end
