@@ -1,14 +1,13 @@
 module CairoMakie
 
-using AbstractPlotting
+using AbstractPlotting, LinearAlgebra
+using Colors, GeometryTypes, FileIO, StaticArrays
+import Cairo
+
 using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
 using AbstractPlotting: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using AbstractPlotting: @info, @get_attribute, Combined
-using Colors, GeometryTypes
 using AbstractPlotting: to_value, to_colormap, extrema_nan
-using FileIO, StaticArrays
-using LinearAlgebra
-import Cairo
 using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface
 
 @enum RenderType SVG PNG
@@ -237,6 +236,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
     positions = primitive[1][]
     isempty(positions) && return
     N = length(positions)
+    if color isa AbstractArray{<: Number}
+        color = AbstractPlotting.interpolated_getindex.((to_colormap(primitive.colormap[]),), color, (primitive.colorrange[],))
+    end
     broadcast_foreach(1:N, positions, color, linewidth) do i, point, c, linewidth
         draw_segment(scene, ctx, point, model, c, linewidth, linestyle, primitive, i, N)
     end
@@ -469,9 +471,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
             font, align, rotation, model
         )
     end
+    stridx = 1
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
-        char = txt[i]
+        char = txt[stridx]
+        stridx = nextind(txt, stridx)
         rels = to_rel_scale(atlas, char, f, ts)
         pos = project_position(scene, p, Mat4f0(I))
         Cairo.move_to(ctx, pos[1], pos[2])
@@ -488,7 +492,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         # set_font_size(ctx, 16)
         # TODO this only works in 2d
         Cairo.rotate(ctx, 2acos(r[4]))
-        Cairo.show_text(ctx, string(txt[i]))
+        Cairo.show_text(ctx, string(char))
         Cairo.restore(ctx)
     end
     nothing
