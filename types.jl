@@ -250,7 +250,7 @@ end
 mutable struct LText <: LObject
     parent::Scene
     layoutnodes::LayoutNodes
-    text::AbstractPlotting.Text
+    textobject::AbstractPlotting.Text
     attributes::Attributes
 end
 
