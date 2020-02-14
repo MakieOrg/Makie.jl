@@ -1,4 +1,4 @@
-function LText(parent::Scene, text::String; kwargs...)
+function LText(parent::Scene, text; kwargs...)
     LText(parent; text = text, kwargs...)
 end
 
