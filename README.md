@@ -143,7 +143,11 @@ using PackageCompiler
 
 # This will create a system image in the current directory, which you can 
 # use by launching Julia with `julia -J ./MakieSys.so`.
-PackageCompiler.create_sysimage(:Makie; sysimage_path="MakieSys.so", precompile_execution_file=joinpath(pkgdir(Makie), "test", "test_for_precompile.jl"))
+PackageCompiler.create_sysimage(
+    :Makie; 
+    sysimage_path="MakieSys.so", 
+    precompile_execution_file=joinpath(pkgdir(Makie), "test", "test_for_precompile.jl")
+)
 ```
 
 Should the display not work after compilation, call `AbstractPlotting.__init__()` immediately after `using Makie`.
