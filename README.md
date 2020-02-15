@@ -1,8 +1,6 @@
 <div align="center">
-<img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png" alt="Makie.jl" width="480">
+    <img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/assets/logo.png" alt="Makie.jl" width="480">
 </div>
-
-
 
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so let's spread it out beautifully on the screen!
@@ -130,11 +128,6 @@ If that fails, you can disable the plotpane in Atom's settings by going to `Juno
 ## Complex examples
 <a href="https://github.com/JuliaPlots/Makie.jl/blob/master/examples/bigdata.jl#L2"><img src="https://user-images.githubusercontent.com/1010467/48002153-fc15a680-e10a-11e8-812d-a5d717c47288.gif" width="480"/></a>
 
-## IJulia examples:
-
-[![](https://user-images.githubusercontent.com/1010467/32204865-33482ddc-bdec-11e7-9693-b94d999187dc.png)](https://gist.github.com/SimonDanisch/8f5489cffaf6b89c9a3712ba3eb12a84)
-
-
 # Precompilation
 
 You can compile a binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
@@ -142,21 +135,15 @@ To do that, you need to check out the additional packages for precompilation.
 Then you can build a system image like this:
 
 ```julia
-import Pkg
+using Pkg
 # add PackageCompiler and other dependencies
-Pkg.add.(["PackageCompiler", "AbstractPlotting", "GDAL", "GeometryTypes", "MakieGallery", "RDatasets"])
+pkg"add PackageCompiler#master" # since there hasn't been a release of the new one yet
+
 using PackageCompiler
-# This is not well tested, so please be careful - I don't take any responsibilities for a messed up Julia install.
 
-# The safe option:
-PackageCompiler.compile_incremental(:Makie, :AbstractPlotting, force = false) # can take around ~20 minutes
-# After this, to use the system image, you will have to invoke Julia with the sysimg that PackageCompiler provides.
-
-# Replaces Julia's system image
-# please be very careful with the option below, since this can make your Julia stop working.
-# If Julia doesn't start for you anymore, consider doing:
-# using PackageCompiler; PackageCompiler.revert() # <- not well tested
-
-PackageCompiler.compile_incremental(:Makie, :AbstractPlotting, force = true)
+# This will create a system image in the current directory, which you can 
+# use by launching Julia with `julia -J ./MakieSys.so`.
+PackageCompiler.create_sysimage(:Makie; sysimage_path="MakieSys.so", precompile_execution_file=joinpath(pkgdir(Makie), "test", "test_for_precompile.jl"))
 ```
-Should the display not work after compilation, use `AbstractPlotting.__init__()`, or force display by calling `display(AbstractPlotting.PlotDisplay(), scene);` on your `Scene`. 
+
+Should the display not work after compilation, call `AbstractPlotting.__init__()` immediately after `using Makie`.
