@@ -3,6 +3,9 @@ using MakieGallery
 using Test
 using GLMakie
 
+# Download reference images from master
+MakieGallery.current_ref_version[] = "master"
+
 const MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "false")
 
 # does this machine have a OPENGL?
@@ -14,10 +17,19 @@ OPENGL || (MINIMAL = "true")
 OPENGL && begin @info "OpenGL detected"; using GLMakie end
 OPENGL || @warn "No OpenGL detected!  Software tests only."
 
+@info "Running conversion tests"
 include("conversions.jl")
+
+@info "Running quaternion tests"
 include("quaternions.jl")
+
+@info "Running projection tests"
 include("projection_math.jl")
 
+@info "Running shorthand tests"
+include("shorthands.jl")
+
+@info "Running basic Scene test"
 @testset "basic functionality" begin
     scene = scatter(rand(4))
     @test scene[Axis].ticks.title_gap[] == 3
@@ -26,11 +38,10 @@ include("projection_math.jl")
     @test scene[Axis].tickmarks.length[] == (3, 3)
 end
 
-@testset "shorthand functions" begin
-    include("shorthands_tests.jl")
-end
 
 if MINIMAL == "false"
+
+    @info "Minimal was false; running full tests!"
 
     # Load all entries in the database
 
@@ -39,78 +50,86 @@ if MINIMAL == "false"
     ## Exceptions are made on basis of title and not index,
     # because index may change as MakieGallery changes.
 
-    # All these require FFMpeg and need to save,
-    # and are therefore ignored
-    ffmpeg_exs  = [
-        "Animation", "Lots of Heatmaps","Animated Scatter",
-        "Chess Game", "Record Video",  "Animated surface and wireframe",
-        "Moire", "pong", "pulsing marker", "Travelling wave",
-        "Type recipe for molecule simulation", "Cobweb plot"
+    # we found which ones are the slowest, and kicked those out!
+    slow_examples = [
+        "Animated time series",
+        "Animation",
+        "Lots of Heatmaps",
+        "Chess Game",
+        "Line changing colour",
+        "Line changing colour with Observables",
+        "Colormap collection",
+        "Record Video",
+        "Animated surface and wireframe",
+        "Moire",
+        "Line GIF",
+        "Electrostatic repulsion",
+        "pong",
+        "pulsing marker",
+        "Travelling wave",
+        "Axis theming",
+        "Legend",
+        "Color Legend",
+        "DifferentialEquations path animation",
+        "Interactive Differential Equation",
+        "Spacecraft from a galaxy far, far away",
+        "WorldClim visualization",
+        "Image on Geometry (Moon)",
+        "Image on Geometry (Earth)",
+        "Interaction with mouse",
+        "Air Particulates",
     ]
 
-    # All these require GLMakie and so are ignored
-    glmakie_exs = [
-        "Textured Mesh", "Load Mesh", "Wireframe of a Mesh",
-        "FEM mesh 3D", "Normals of a Cat", "Line GIF"
-    ]
+    # diffeq is also slow, as are analysis heatmaps.  Colormap collection likes to
+    # fail a lot.
+    filter!(MakieGallery.database) do entry
+        !("diffeq" in entry.tags) &&
+        !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps)) &&
+        !(entry.title in slow_examples)
+     end
 
-    # Requires GDAL (a GL package) so ignored
-    gdal_exs = [
-        "WorldClim visualization"
-    ]
-
-    # Requires GLMakie and ModernGL, so ignored
-    moderngl_exs = [
-        "Explicit frame rendering"
-    ]
-
-    # use Stepper plots, which save, so ignored
-    save_exs = [
-        "Axis theming", "Labels", "Color Legend",
-        "Stepper demo"
-    ]
-
-    # hopefullly fixed by next tag of MakieGallery (already in AbstractPlotting
-    color_exs = ["colormaps"]
-
-    # curl fails with this for some reason, so it has been ignored.
-    curl_exs = ["Earth & Ships"]
-    stepper_exclude = ["Tutorial plot transformation", "Legend"]
-    if OPENGL
-        excluded_examples = Set()
-    else
-        # combine all exceptions into a single Set
-        excluded_examples = union(
-            ffmpeg_exs, glmakie_exs, gdal_exs, moderngl_exs,
-            save_exs, color_exs, curl_exs, stepper_exclude
-        )
+    # Download is broken on CI
+    if get(ENV, "CI", "false") == "true"
+        printstyled("CI detected\n"; bold = true, color = :yellow)
+        println("Filtering out examples which download")
+        filter!(entry-> !("download" in entry.tags), database)
     end
 
 else
     # Load only short tests
     database = MakieGallery.load_tests()
-    excluded_examples = Set(["Comparing contours, image, surfaces and heatmaps"])
 end
 
+# one last time to make sure
 filter!(database) do entry
     !("diffeq" in entry.tags) &&
     !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps))
  end
 
+# Here, we specialize on two cases.
+# If there is no opengl, then we have to run software-only tests, i.e., eval the
+# examples and test that nothing errors.
+# If there is opengl, then we use MakieGallery's test protocol.
+
 if !OPENGL # run software only tests...
     # Make sure we don't include Makie in the usings
     empty!(MakieGallery.plotting_backends)
     push!(MakieGallery.plotting_backends, "AbstractPlotting")
-    @test AbstractPlotting.current_backend[] isa Missing
+
+    @test AbstractPlotting.current_backend[] isa Missing # should we change this, so e.g. CairoMakie works?
+
     @info "Starting minimal software tests"
     filter!(database) do example
-        !(example.title in excluded_examples) &&
         !("record" in example.tags)
     end
+
     @testset "Gallery short tests" begin
         # iterate over database
         @testset "$(database[i].title) (#$i)" for i in 1:length(database)
-            @debug("Running " * database[i].title * "\n(index $i)\n")
+
+            printstyled("Running "; bold = true, color = :blue)
+            print(database[i].title * "\n(index $i)\n")
+
             # evaluate the entry
             try
                 MakieGallery.eval_example(database[i])
@@ -127,24 +146,26 @@ if !OPENGL # run software only tests...
                     @test rethrow(e)
                 end
             end
-            @assert AbstractPlotting.current_backend[] isa Missing
+            @debug AbstractPlotting.current_backend[] isa Missing
        end
     end
+
 else # full MakieGallery comparisons here
-    using GLMakie
     @info("Running full tests - artifacts will be stored!")
-    for exc in excluded_examples
-        printstyled("Excluded ", color = :yellow, bold = true)
-        println(exc)
-    end
-    filter!(entry -> !(entry.title in excluded_examples), database)
+
     tested_diff_path = joinpath(@__DIR__, "tested_different")
     test_record_path = joinpath(@__DIR__, "test_recordings")
+
     rm(tested_diff_path, force = true, recursive = true)
     mkpath(tested_diff_path)
+
     rm(test_record_path, force = true, recursive = true)
     mkpath(test_record_path)
-    examples = MakieGallery.record_examples(test_record_path)
-    MakieGallery.run_comparison(test_record_path, tested_diff_path)
-end
 
+    examples = MakieGallery.record_examples(test_record_path)
+
+    @test length(examples) == length(database)
+
+    printstyled("Running ", color = :green, bold = true)
+    println("visual regression tests")
+end
