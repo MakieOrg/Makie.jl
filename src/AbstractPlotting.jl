@@ -181,16 +181,8 @@ function icon()
     icons = reinterpret.(NTuple{4,UInt8}, icons)
 end
 
-const cached_logo = Ref{String}()
-
 function logo()
-    if !isassigned(cached_logo)
-        cached_logo[] = download(
-            "https://raw.githubusercontent.com/JuliaPlots/Makie.jl/sd/abstract/docs/src/assets/logo.png",
-            joinpath(@__DIR__, "logo.png")
-        )
-    end
-    FileIO.load(cached_logo[])
+    FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
 end
 
 
