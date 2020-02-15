@@ -8,7 +8,6 @@ database = MakieGallery.load_database([
                     "short_tests.jl"
                     ])
 
-tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
 recordings = MakieGallery.record_examples(test_record_path)
 @assert length(recordings) == length(database)
