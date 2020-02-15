@@ -667,12 +667,12 @@ struct Reverse{T}
     data::T
 end
 
-function convert_attribute(r::Reverse, ::key"colormap")
-    reverse(to_colormap(r.data))
+function convert_attribute(r::Reverse, ::key"colormap", n::Integer = 20)
+    reverse(to_colormap(r.data, n))
 end
 
-function convert_attribute(cs::ColorScheme, ::key"colormap")
-    return to_colormap(cs.colors)
+function convert_attribute(cs::ColorScheme, ::key"colormap", n::Integer = 20)
+    return to_colormap(cs.colors, n)
 end
 
 
@@ -690,7 +690,7 @@ function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap")
     [to_color.(cs)...]
 end
 
-to_colormap(x::Union{String, Symbol}, n::Integer) = convert_attribute(x, key"colormap"(), n)
+to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
 
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
