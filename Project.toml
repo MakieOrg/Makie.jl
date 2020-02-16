@@ -16,7 +16,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 AbstractPlotting = ">=0.9.2"
 GeometryTypes = ">=0.7.2"
-FFTW = "0.3.0"
+FFTW = "1"
 
 [extras]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"
