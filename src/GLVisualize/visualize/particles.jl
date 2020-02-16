@@ -404,17 +404,15 @@ function _default(
     ) where {C <: Colorant, P <: Point}
     images = to_value(p[1])
     isempty(images) && error("Can not display empty vector of images as primitive")
-    images = sort(images, by=size)
     sizes = map(size, images)
-    scale = Vec2f0(first(sizes))
     if !all(x-> x == sizes[1], sizes) # if differently sized
         # create texture atlas
         maxdims = sum(map(Vec{2, Int}, sizes))
         rectangles = map(x->SimpleRectangle(0, 0, x...), sizes)
         rpack = RectanglePacker(SimpleRectangle(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
-        max_xy = mapreduce(maximum, max, uv_coordinates)
-        texture_atlas = Texture(C, tuple((max_xy)...))
+        max_xy = maximum(maximum.(uv_coordinates))
+        texture_atlas = Texture(C, (max_xy...,))
         for (area, img) in zip(uv_coordinates, images)
             texture_atlas[area] = img #transfer to texture atlas
         end
