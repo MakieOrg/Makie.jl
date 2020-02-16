@@ -548,7 +548,9 @@ function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
 end
 
 function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
-    convert_arguments(P, PlotUtils.adapted_grid(f, endpoints(i)), f)
+    x, y = PlotUtils.adapted_grid(f, endpoints(i))
+    ptype = plottype(P, Lines)
+    to_plotspec(ptype, convert_arguments(ptype, x, y))
 end
 
 to_tuple(t::Tuple) = t
