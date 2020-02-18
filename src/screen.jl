@@ -136,13 +136,60 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
 end
 
 
+function render_colorbuffer(screen)
+    nw = to_native(screen)
+    GLAbstraction.is_context_active(nw) || return
+    fb = screen.framebuffer
+    w, h = size(fb)
+    glEnable(GL_STENCIL_TEST)
+    #prepare for geometry in need of anti aliasing
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
+    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0xff)
+    glClearStencil(0)
+    glClearColor(0,0,0,0)
+    glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    setup!(screen)
+
+    glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
+    GLAbstraction.render(screen, true)
+    glDisable(GL_STENCIL_TEST)
+
+    # transfer color to luma buffer and apply fxaa
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)
+    glViewport(0, 0, w, h)
+    glClearColor(0,0,0,0)
+    glClear(GL_COLOR_BUFFER_BIT)
+    GLAbstraction.render(fb.postprocess[1]) # add luma and preprocess
+
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
+    glViewport(0, 0, w, h)
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)
+    GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
+
+    #prepare for non anti aliased pass
+    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
+    GLAbstraction.render(screen, false)
+end
+
 function AbstractPlotting.colorbuffer(screen::Screen)
     if isopen(screen)
-        GLFW.PollEvents()
-        render_frame(screen) # let it render
-        GLFW.SwapBuffers(to_native(screen))
-        glFinish() # block until opengl is done rendering
         ctex = screen.framebuffer.color
+        # polling may change window size, when its bigger than monitor!
+        # we still need to poll though, to get all the newest events!
+        # GLFW.PollEvents()
+        # we need to resize the framebuffer to the dimensions before polling
+        render_colorbuffer(screen) # let it render
+        glFinish() # block until opengl is done rendering
         if size(ctex) != size(screen.framecache[1])
             s = size(ctex)
             screen.framecache = (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s)))
