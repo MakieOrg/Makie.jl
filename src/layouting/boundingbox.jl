@@ -93,7 +93,6 @@ function boundingbox(x::Text, text::String)
     FRect3D(minimum(bb) .- aoffset, whp)
 end
 
-
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
 
 function boundingbox(
