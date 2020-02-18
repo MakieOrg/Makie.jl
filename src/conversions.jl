@@ -667,27 +667,31 @@ struct Reverse{T}
     data::T
 end
 
-function convert_attribute(r::Reverse, ::key"colormap", n::Integer = 20)
+function convert_attribute(r::Reverse, ::key"colormap", n::Integer=20)
     reverse(to_colormap(r.data, n))
 end
 
-function convert_attribute(cs::ColorScheme, ::key"colormap", n::Integer = 20)
+function convert_attribute(cs::ColorScheme, ::key"colormap", n::Integer=20)
     return to_colormap(cs.colors, n)
 end
-
 
 """
     to_colormap(b, x)
 
 An `AbstractVector{T}` with any object that [`to_color`](@ref) accepts.
 """
-convert_attribute(cm::AbstractVector, ::key"colormap") = to_color.(cm)
+convert_attribute(cm::AbstractVector, ::key"colormap", n::Int=length(cm)) = to_colormap(to_color.(cm), n)
+
+function convert_attribute(cm::AbstractVector{<: Colorant}, ::key"colormap", n::Int=length(cm))
+    colormap = length(cm) == n ? cm : resample(cm, n)
+    return el32convert(colormap)
+end
 
 """
 Tuple(A, B) or Pair{A, B} with any object that [`to_color`](@ref) accepts
 """
-function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap")
-    [to_color.(cs)...]
+function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap", n::Int=2)
+    return to_colormap([to_color.(cs)...], n)
 end
 
 to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
@@ -696,23 +700,22 @@ to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer = 20)
+function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer=20)
     cs_string = string(cs)
-
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
-            return resample(ColorBrewer.palette(cs_string, 8), n)
+            return to_colormap(ColorBrewer.palette(cs_string, 8), n)
         else                                    # cs_string must be in plotutils_names
-            return PlotUtils.cvec(Symbol(cs), n) .|> color .|> x -> convert(RGB{FixedPointNumbers.Normed{UInt8,8}}, x)
+            return RGBf0.(PlotUtils.cvec(Symbol(cs), n))
         end
     else
         error("There is no color gradient named: $cs")
     end
 end
 
-function AbstractPlotting.convert_attribute(cg::PlotUtils.ColorGradient, ::key"colormap", n::Integer = 30)
+function AbstractPlotting.convert_attribute(cg::PlotUtils.ColorGradient, ::key"colormap", n::Integer=length(cg.values))
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return getindex.(Ref(cg), LinRange(first(c.values), last(c.values), n)) # workaround until PlotUtils tags a release
+    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n)) # workaround until PlotUtils tags a release
     # TODO change this once PlotUtils supports collections of indices
 end
 
