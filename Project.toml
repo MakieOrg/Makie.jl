@@ -1,6 +1,6 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.9.20"
+version = "0.9.21"
 
 [deps]
 AbstractNumbers = "85c772de-338a-5e7f-b815-41e76c26ac1f"
