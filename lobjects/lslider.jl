@@ -49,7 +49,11 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    selected_index = Node(1)
+    # this is the index of the selected value in the slider's range
+    # selected_index = Node(1)
+    # add the selected index to the attributes so it can be manipulated later
+    attrs.selected_index = 1
+    selected_index = attrs.selected_index
 
     # the fraction on the slider corresponding to the selected_index
     # this is only used after dragging
@@ -59,7 +63,8 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     dragging = Node(false)
 
-    # what the slider actually displays
+    # what the slider actually displays currently (also during dragging when
+    # the slider position is in an "invalid" position given the slider's range)
     displayed_sliderfraction = Node(0.0)
 
     on(sliderfraction) do frac
@@ -216,6 +221,16 @@ function closest_fractionindex(sliderrange, fraction)
 end
 
 function closest_index(sliderrange, value)
+    for (i, val) in enumerate(sliderrange)
+        if val == value
+            return i
+        end
+    end
+    # if the value wasn't found this way try inexact
+    closest_index_inexact(sliderrange, value)
+end
+
+function closest_index_inexact(sliderrange, value)
     distance = Inf
     selected_i = 0
     for (i, val) in enumerate(sliderrange)
@@ -227,3 +242,12 @@ function closest_index(sliderrange, value)
     end
     selected_i
 end
+
+"""
+Set the `slider` to the value in the slider's range that is closest to `value`.
+"""
+function set_close_to!(slider, value)
+    closest = closest_index(slider.range[], value)
+    slider.selected_index = closest
+end
+

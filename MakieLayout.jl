@@ -69,6 +69,7 @@ export LegendEntry, LineElement, MarkerElement, PolyElement
 export grid!, hbox!, vbox!
 export layoutscene
 export swap!
+export set_close_to!
 
 const FPS = Node(30)
 const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
