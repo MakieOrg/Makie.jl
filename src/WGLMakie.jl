@@ -300,6 +300,14 @@ function three_display(session::Session, scene::Scene)
             document.addEventListener("keyup", keyup, false);
         }"""
     )
+    canvas_width = lift(x-> [round.(Int, widths(x))...], pixelarea(scene))
+    onjs(session, canvas_width, js"""function update_size(canvas_width){
+        var w_h = deserialize_js(canvas_width);
+        $(renderer).setSize(w_h[0], w_h[1]);
+        var canvas = $(canvas)
+        canvas.style.width = w_h[0];
+        canvas.style.height = w_h[1];
+    }""")
     connect_scene_events!(session, scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(threemod, renderer, window)
