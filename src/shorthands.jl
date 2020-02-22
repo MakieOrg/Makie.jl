@@ -45,22 +45,27 @@ function zlabel!(scene, zlabel::AbstractString)
     @assert !isnothing(axis) "The Scene does not have an axis!"
     @assert axis isa Axis3D "The scene does not have a z-axis"
     scene[Axis][:names][:axisnames][] = (scene[Axis][:names][:axisnames][][1], scene[Axis][:names][:axisnames][][2], zlabel)
-    nothing
+    return
 end
 zlabel!(zlabel::AbstractString) = zlabel!(current_scene(), zlabel)
 
 ################################################################################
-
-function setlims!(scene::Scene, lims::NTuple{2, Real}, dim=1)
-    ol = scene.limits[]                          # get the Scene's limits as values
-    o_origin = ol.origin                         # get the original origin
-    o_widths = ol.widths                         # get the original widths
+"""
+    setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
+    
+Sets the limits of the scene for dim=1.
+"""
+function setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
+    ol = scene_limits(scene)             # get the Scene's limits as values
+    o_origin = minimum(ol)                         # get the original origin
+    o_widths = widths(ol)                         # get the original widths
     n_widths = convert(Vector, o_widths)         # convert to mutable form
     n_origin = convert(Vector, o_origin)         # convert to mutable form
-    n_origin[dim] = lims[1]                      # set the new origin in dim
-    n_widths[dim] = lims[2] - lims[1]            # set the new width in dim
+    n_origin[dim] = min_max[1]                      # set the new origin in dim
+    n_widths[dim] = min_max[2] - min_max[1]            # set the new width in dim
     scene.limits[] = FRect3D(n_origin, n_widths) # set the limits of the scene
-    nothing
+    center!(scene)
+    return
 end
 
 """
