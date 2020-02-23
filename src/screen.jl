@@ -179,6 +179,12 @@ function render_colorbuffer(screen)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
     GLAbstraction.render(screen, false)
+    glDisable(GL_STENCIL_TEST)
+    glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
+    glViewport(0, 0, w, h)
+    glClearColor(0, 0, 0, 0)
+    glClear(GL_COLOR_BUFFER_BIT)
+    GLAbstraction.render(fb.postprocess[3]) # copy postprocess
 end
 
 function AbstractPlotting.colorbuffer(screen::Screen)
