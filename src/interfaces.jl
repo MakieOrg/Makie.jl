@@ -42,7 +42,7 @@ $(ATTRIBUTES)
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
         colorrange = automatic,
         nan_color = RGBAf0(0,0,0,0),
-        interpolate = true
+        interpolate = true,
         fxaa = false,
     )
 end
