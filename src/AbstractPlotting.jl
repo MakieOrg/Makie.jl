@@ -185,10 +185,6 @@ function logo()
     FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
 end
 
-
-
-const has_ffmpeg = Ref(false)
-
 const config_file = "theme.jl"
 const config_path = joinpath(homedir(), ".config", "makie", config_file)
 
