@@ -42,6 +42,7 @@ $(ATTRIBUTES)
         colormap = [RGBAf0(0,0,0,1), RGBAf0(1,1,1,1)],
         colorrange = automatic,
         nan_color = RGBAf0(0,0,0,0),
+        interpolate = true
         fxaa = false,
     )
 end
@@ -342,20 +343,10 @@ function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
 end
 
 
-# # to allow one color per edge
-# function calculated_attributes!(plot::LineSegments)
-#     plot[:color] = lift(plot[:color], plot[1]) do c, p
-#         if (length(p) ÷ 2) == length(c)
-#             [c[k] for k in 1:length(c), l in 1:2]
-#         else
-#             c
-#         end
-#     end
-# end
-
 function (PT::Type{<: Combined})(parent, transformation, attributes, input_args, converted)
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
+
 plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(typeof(F).name.mt.name)
 
 """
@@ -380,7 +371,6 @@ Usage:
 """
 used_attributes(PlotType, args...) = ()
 
-
 """
 apply for return type
     (args...,)
@@ -388,7 +378,6 @@ apply for return type
 function apply_convert!(P, attributes::Attributes, x::Tuple)
     return (plottype(P, x...), x)
 end
-
 
 """
 apply for return type PlotSpec
@@ -402,7 +391,6 @@ function apply_convert!(P, attributes::Attributes, x::PlotSpec{S}) where S
     end
     return (plottype(P, S), args)
 end
-
 
 function seperate_tuple(args::Node{<: NTuple{N, Any}}) where N
     ntuple(N) do i
@@ -423,6 +411,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     PlotType(scene, attributes, input, argnodes)
 end
+
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, input, args) where Typ
     # The argument type of the final plot object is the assumened to stay constant after
