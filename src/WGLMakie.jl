@@ -52,10 +52,26 @@ function code_to_keyboard(code::String)
     sym = Symbol(button)
     if isdefined(Keyboard, sym)
         return getfield(Keyboard, sym)
+    elseif sym == :backquote
+        return Keyboard.grave_accent
+    elseif sym == :pageup
+        return Keyboard.page_up
+    elseif sym == :pagedown
+        return Keyboard.page_down
+    elseif sym == :end
+        return Keyboard._end
+    elseif sym == :capslock
+        return Keyboard.caps_lock
+    elseif sym == :contextmenu
+        return Keyboard.menu
     else
         return Keyboard.unknown
     end
 end
+# bild
+# ende
+# SHIFGLOTCK
+
 
 function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
     e = events(scene)
@@ -84,12 +100,21 @@ function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
             end
             @handle msg.keydown begin
                 set = e.keyboardbuttons[]
-                push!(set, code_to_keyboard(keydown))
-                e.keyboardbuttons[] = set
+                button = code_to_keyboard(keydown)
+                # don't add unknown buttons...we can't work with them
+                # and they won't get removed
+                if button != Keyboard.unknown
+                    push!(set, button)
+                    e.keyboardbuttons[] = set
+                end
             end
             @handle msg.keyup begin
                 set = e.keyboardbuttons[]
-                delete!(set, code_to_keyboard(keyup))
+                if keyup == "delete_keys"
+                    empty!(set)
+                else
+                    delete!(set, code_to_keyboard(keyup))
+                end
                 e.keyboardbuttons[] = set
             end
         end
@@ -256,7 +281,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false
             }
-            canvas.addEventListener("mousemove", mousemove, false);
+            canvas.addEventListener("mousemove", mousemove);
 
             function mousedown(event){
                 update_obs($comm, {
@@ -264,7 +289,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            canvas.addEventListener("mousedown", mousedown, false);
+            canvas.addEventListener("mousedown", mousedown);
 
             function mouseup(event){
                 update_obs($comm, {
@@ -272,7 +297,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            canvas.addEventListener("mouseup", mouseup, false);
+            canvas.addEventListener("mouseup", mouseup);
 
             function wheel(event){
                 update_obs($comm, {
@@ -281,7 +306,7 @@ function three_display(session::Session, scene::Scene)
                 event.preventDefault()
                 return false;
             }
-            canvas.addEventListener("wheel", wheel, false);
+            canvas.addEventListener("wheel", wheel);
 
             function keydown(event){
                 update_obs($comm, {
@@ -289,7 +314,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            document.addEventListener("keydown", keydown, false);
+            window.addEventListener("keydown", keydown);
 
             function keyup(event){
                 update_obs($comm, {
@@ -297,7 +322,20 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            document.addEventListener("keyup", keyup, false);
+            window.addEventListener("keyup", keyup);
+            // This is a pretty ugly work around......
+            // so on keydown, we add the key to the currently pressed keys set
+            // if we open the contextmenu before releasing the key, we'll never
+            // receive an up event, so the key will stay inside the currently_pressed
+            // set... Only option I found is to actually listen to the contextmenu
+            // and remove all keys if its opened.
+            function contextmenu(event){
+                update_obs($comm, {
+                    keyup: "delete_keys"
+                })
+                return false;
+            }
+            window.addEventListener("contextmenu", contextmenu);
         }"""
     )
     canvas_width = lift(x-> [round.(Int, widths(x))...], pixelarea(scene))
