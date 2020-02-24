@@ -314,7 +314,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            window.addEventListener("keydown", keydown);
+            document.addEventListener("keydown", keydown);
 
             function keyup(event){
                 update_obs($comm, {
@@ -322,7 +322,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            window.addEventListener("keyup", keyup);
+            document.addEventListener("keyup", keyup);
             // This is a pretty ugly work around......
             // so on keydown, we add the key to the currently pressed keys set
             // if we open the contextmenu before releasing the key, we'll never
@@ -335,7 +335,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            window.addEventListener("contextmenu", contextmenu);
+            document.addEventListener("contextmenu", contextmenu);
         }"""
     )
     canvas_width = lift(x-> [round.(Int, widths(x))...], pixelarea(scene))
