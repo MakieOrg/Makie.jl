@@ -52,10 +52,26 @@ function code_to_keyboard(code::String)
     sym = Symbol(button)
     if isdefined(Keyboard, sym)
         return getfield(Keyboard, sym)
+    elseif sym == :backquote
+        return Keyboard.grave_accent
+    elseif sym == :pageup
+        return Keyboard.page_up
+    elseif sym == :pagedown
+        return Keyboard.page_down
+    elseif sym == :end
+        return Keyboard._end
+    elseif sym == :capslock
+        return Keyboard.caps_lock
+    elseif sym == :contextmenu
+        return Keyboard.menu
     else
         return Keyboard.unknown
     end
 end
+# bild
+# ende
+# SHIFGLOTCK
+
 
 function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
     e = events(scene)
@@ -84,8 +100,13 @@ function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
             end
             @handle msg.keydown begin
                 set = e.keyboardbuttons[]
-                push!(set, code_to_keyboard(keydown))
-                e.keyboardbuttons[] = set
+                button = code_to_keyboard(keydown)
+                # don't add unknown buttons...we can't work with them
+                # and they won't get removed
+                if button != Keyboard.unknown
+                    push!(set, button)
+                    e.keyboardbuttons[] = set
+                end
             end
             @handle msg.keyup begin
                 set = e.keyboardbuttons[]
