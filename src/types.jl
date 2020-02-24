@@ -531,7 +531,7 @@ const automatic = Automatic()
 const Vecf0{N} = Vec{N, Float32}
 const Pointf0{N} = Point{N, Float32}
 export Vecf0, Pointf0
-const NativeFont = Vector{Ptr{FreeType.FT_FaceRec}}
+const NativeFont = FreeTypeAbstraction.FTFont
 
 """
 `PlotSpec{P<:AbstractPlot}(args...; kwargs...)`

@@ -581,7 +581,7 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
     get!(_font_cache, str) do
         str == "default" && return convert_attribute("Dejavu Sans", k)
         fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
-        font = FreeTypeAbstraction.findfont(str, additional_fonts = fontpath)
+        font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font == nothing
             @warn("Could not find font $str, using Dejavu Sans")
             if "dejavu sans" == lowercase(str)
@@ -590,7 +590,7 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
             end
             return convert_attribute("dejavu sans", k)
         end
-        [font] # TODO do we really need the array around it!??!?
+        return font # TODO do we really need the array around it!??!?
     end
 end
 convert_attribute(x::Vector{String}, k::key"font") = convert_attribute.(x, k)

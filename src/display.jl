@@ -290,6 +290,11 @@ struct VideoStream
     path::String
 end
 
+# This is compat between FFMPEG versions 0.2 and 0.3,
+# where 0.3 uses artifacts but 0.2 does not.
+# Because of this, we need to check which variable will give FFMPEG's path.
+const _ffmpeg_path = isdefined(FFMPEG, :ffmpeg_path) ? FFMPEG.ffmpeg_path : FFMPEG.ffmpeg
+
 """
     VideoStream(scene::Scene, framerate = 24)
 
@@ -309,7 +314,7 @@ function VideoStream(
     _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$ffmpeg -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
