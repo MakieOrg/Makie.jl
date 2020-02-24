@@ -16,7 +16,8 @@ test:
     script:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"add Makie#master StatsMakie#master MakieGallery#master GLMakie#master; test"'
+      - mkdir temporary_for_project
+      - julia --project=temporary_for_project -e 'using Pkg; Pkg.pkg"dev --local .; add StatsMakie#master MakieGallery#master GLMakie#master FFMPEG@0.3; test AbstractPlotting"'
 
     artifacts:
         when: on_failure

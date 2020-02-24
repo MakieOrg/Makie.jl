@@ -144,7 +144,7 @@ $(ATTRIBUTES)
             textcolor = (tick_color, tick_color, tick_color),
 
             rotation = tickrotations3d,
-            textsize =  (tsize, tsize, tsize),
+            textsize = (tsize, tsize, tsize),
             align = tickalign3d,
             gap = 1,
             font = lift(dim3, theme(scene, :font)),
@@ -248,16 +248,16 @@ default_labels(x::Tuple, ranges, formatter) = default_labels.(x, (ranges,), (for
 default_labels(x::AbstractVector{<: AbstractString}, ranges, formatter::Function) = x
 default_labels(x::AbstractVector{<: AbstractString}, ranges::AbstractVector, formatter::Function) = x
 
-
-
 function convert_arguments(::Type{<: Axis2D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
     (((e[1][1], e[2][1]), (e[1][2], e[2][2])),)
 end
+
 function convert_arguments(::Type{<: Axis3D}, limits::Rect)
     e = (minimum(limits), maximum(limits))
     (((e[1][1], e[2][1]), (e[1][2], e[2][2]), (e[1][3], e[2][3])),)
 end
+
 a_length(x::AbstractVector) = length(x)
 a_length(x::Automatic) = x
 
@@ -302,16 +302,10 @@ function draw_tickmarks(
         pos = ntuple(i-> i != dim ? origin[i] : tick, Val(2))
         posf0 = Point2f0(pos)
         dirf0  = Pointf0{N}(dir)
-        append!(linebuffer,
-              [posf0, posf0 .+ dirf0],
-              color = linecolor[dim], linewidth = linewidth[dim]
-              )
+        append!(linebuffer, [posf0, posf0 .+ dirf0],
+                color = linecolor[dim], linewidth = linewidth[dim])
     end
 end
-
-
-
-
 
 function draw_grid(
         linebuffer, dim, origin, ticks, dir::NTuple{N},

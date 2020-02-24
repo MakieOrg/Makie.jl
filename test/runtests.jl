@@ -104,7 +104,7 @@ end
 filter!(database) do entry
     !("diffeq" in entry.tags) &&
     !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps))
- end
+end
 
 # Here, we specialize on two cases.
 # If there is no opengl, then we have to run software-only tests, i.e., eval the
@@ -168,4 +168,5 @@ else # full MakieGallery comparisons here
 
     printstyled("Running ", color = :green, bold = true)
     println("visual regression tests")
+    MakieGallery.run_comparison(test_record_path, tested_diff_path)
 end

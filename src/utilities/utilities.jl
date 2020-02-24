@@ -88,8 +88,6 @@ function nan_extrema(array)
     Vec2f0(mini, maxi)
 end
 
-
-
 function extract_expr(extract_func, dictlike, args)
     if args.head != :tuple
         error("Usage: args need to be a tuple. Found: $args")
@@ -149,8 +147,6 @@ macro extractvalue(scene, args)
     extract_expr(getindex_value, scene, args)
 end
 
-
-
 bs_length(x::NativeFont) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 bs_length(x::VecTypes) = 1 # these are our rules, and for what we do, Vecs are usually scalars
 bs_length(x::AbstractArray) = length(x)
@@ -179,9 +175,6 @@ function broadcast_foreach(f, args...)
     return
 end
 
-
-
-
 """
     from_dict(::Type{T}, dict)
 Creates the type `T` from the fields in dict.
@@ -193,8 +186,6 @@ function from_dict(::Type{T}, dict) where T
     end...)
 end
 
-
-
 same_length_array(array, value::NativeFont) = repeated(value, length(array))
 same_length_array(array, value) = repeated(value, length(array))
 function same_length_array(arr, value::Vector)
@@ -204,8 +195,6 @@ function same_length_array(arr, value::Vector)
     value
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
-
-
 
 function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
     T(ntuple(Val(N)) do i
@@ -221,7 +210,6 @@ dim2(x) = ntuple(i-> x, Val(2))
 dim2(x::NTuple{2, Any}) = x
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
-
 
 function merge_attributes!(input::Attributes, theme::Attributes)
     for (key, value) in theme
