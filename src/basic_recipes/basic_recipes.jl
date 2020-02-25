@@ -78,7 +78,7 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVe
             push!(line, poly[1])
             push!(line, Point2f0(NaN))
         end
-        line
+        return line
     end
     lines!(
         plot, outline, visible = plot.visible,
@@ -852,7 +852,7 @@ function plot!(vs::VolumeSlices)
     hattributes = vs[:heatmap]
     sliders = map(zip(planes, (x, y, z))) do plane_r
         plane, r = plane_r
-        idx = node(plane, Node(1))
+        idx = Node(1)
         vs[plane] = idx
         hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[]))).plots[end]
         on(idx) do i

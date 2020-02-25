@@ -182,7 +182,7 @@ Automatically converts to the correct node types.
 """
 function from_dict(::Type{T}, dict) where T
     T(map(fieldnames(T)) do name
-        signal_convert(fieldtype(T, name), dict[name])
+        convert(fieldtype(T, name), dict[name])
     end...)
 end
 

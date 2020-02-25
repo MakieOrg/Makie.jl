@@ -556,32 +556,24 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
 
     textbuffer = TextBuffer(cplot, Point{2})
 
-    grid_linebuffer = to_node((
-        LinesegmentBuffer(
-            cplot, Point{2}, transparency = true,
-            linestyle = lift(first, cplot[:grid, :linestyle])
-        ),
-        LinesegmentBuffer(
-            cplot, Point{2}, transparency = true,
-            linestyle = lift(last, cplot[:grid, :linestyle])
-        )
+    grid_linebuffer = Node((
+        LinesegmentBuffer(cplot, Point{2}, transparency=true,
+                          linestyle=lift(first, cplot[:grid, :linestyle])),
+        LinesegmentBuffer(cplot, Point{2}; transparency=true,
+                          linestyle=lift(last, cplot[:grid, :linestyle]))
     ))
-    frame_linebuffer = to_node(LinesegmentBuffer(
-        cplot, Point{2}, transparency = true, linestyle = cplot.frame.linestyle
-    ))
-    tickmarks_linebuffer = to_node((
-                    LinesegmentBuffer(
-                              cplot, Point{2}, transparency = true,
-                              linestyle=lift(first, cplot[:tickmarks, :linestyle])
-                              ),
-                    LinesegmentBuffer(
-                              cplot, Point{2}, transparency = true,
-                              linestyle = lift(last, cplot[:tickmarks, :linestyle])
-                              )
+
+    frame_linebuffer = Node(LinesegmentBuffer(cplot, Point{2}; transparency=true,
+                                                    linestyle=cplot.frame.linestyle))
+    tickmarks_linebuffer = Node((
+        LinesegmentBuffer(cplot, Point{2}; transparency=true,
+                          linestyle=lift(first, cplot[:tickmarks, :linestyle])),
+        LinesegmentBuffer(cplot, Point{2}; transparency=true,
+                          linestyle=lift(last, cplot[:tickmarks, :linestyle]))
     ))
     map_once(
         draw_axis2d,
-        to_node(textbuffer),
+        Node(textbuffer),
         frame_linebuffer, grid_linebuffer,tickmarks_linebuffer,
         transformationmatrix(scene),
         cplot.padding, cplot[1], cplot.ticks.ranges_labels,

@@ -171,7 +171,7 @@ end
 
 function Scene(parent::Scene, area; clear = false, attributes...)
     events = parent.events
-    px_area = lift(pixelarea(parent), to_node(area)) do p, a
+    px_area = lift(pixelarea(parent), convert(Node, area)) do p, a
         # make coordinates relative to parent
         IRect2D(minimum(p) .+ minimum(a), widths(a))
     end

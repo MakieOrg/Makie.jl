@@ -45,8 +45,8 @@ combine(val1, val2; palette = nothing) = val2
 function combine!(theme1::Theme, theme2::Theme)
     palette = get(theme1, :palette, current_default_theme()[:palette])
     for (key, val) in theme2
-        tv = get(theme1, key, nothing) |> to_node
-        pv = get(palette, key, nothing) |> to_node
+        tv = convert(Node, get(theme1, key, nothing))
+        pv = convert(Node, get(palette, key, nothing))
         theme1[key] = lift((t, p, v) -> combine(t, v, palette = p), tv, pv, val)
     end
     theme1

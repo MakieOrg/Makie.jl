@@ -50,7 +50,7 @@ function Observables.on(f, c::Camera, nodes::Node...)
         on(cl, n)
     end
     push!(c.steering_nodes, nodes...)
-    node
+    return f
 end
 
 function Camera(px_area)
