@@ -16,7 +16,7 @@ Creates a 2D camera for the given Scene.
 function cam2d!(scene::SceneLike; kw_args...)
     cam_attributes = merged_get!(:cam2d, scene, Attributes(kw_args)) do
         Theme(
-            area = node(:area, FRect(0, 0, 1, 1)),
+            area = Node(FRect(0, 0, 1, 1)),
             zoomspeed = 0.10f0,
             zoombutton = nothing,
             panbutton = Mouse.right,

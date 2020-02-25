@@ -14,9 +14,14 @@ import ImageMagick, FileIO, SparseArrays
 import FileIO: save
 using Printf: @sprintf
 
+# Imports from Base which we don't want to have to qualify
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
+using Observables: listeners, notify!, to_value
+
+# Imports from Observables which we use a lot
+using Observables: notify!, listeners
 
 module ContoursHygiene
     import Contour
@@ -94,7 +99,7 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Node/Signal related
-export Node, node, lift, map_once, to_value, on, @lift
+export Node, lift, map_once, to_value, on, @lift
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute

@@ -9,9 +9,9 @@ Add a title with content `string` to `scene`.  Pass a `Function` to the `formatt
 if the value passed to `string` isn't actually a String.
 """
 function title(scene, tstring; align = (:center, :bottom), textsize = 30, parent = Scene(), formatter = string, kw...)
-    
-    string = to_node(tstring)
-    
+
+    string = convert(Node, tstring)
+
     pos = lift(pixelarea(scene)) do area
         x = widths(area)[1] ./ 2
         Vec2f0(x, 10) # offset 10px, to give it some space
@@ -24,7 +24,7 @@ function title(scene, tstring; align = (:center, :bottom), textsize = 30, parent
         textsize = textsize;
         kw...
     )
-    hbox(scene, t; parent = parent)
+    return hbox(scene, t; parent = parent)
 end
 
 function title(string; kw...)

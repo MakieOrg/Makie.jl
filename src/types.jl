@@ -210,21 +210,21 @@ end
 
 function Events()
     Events(
-        node(:window_area, IRect(0, 0, 0, 0)),
-        node(:window_dpi, 100.0),
-        node(:window_open, false),
+        Node(IRect(0, 0, 0, 0)),
+        Node(100.0),
+        Node(false),
 
-        node(:mousebuttons, Set{Mouse.Button}()),
-        node(:mouseposition, (0.0, 0.0)),
-        node(:mousedrag, Mouse.notpressed),
-        node(:scroll, (0.0, 0.0)),
+        Node(Set{Mouse.Button}()),
+        Node((0.0, 0.0)),
+        Node(Mouse.notpressed),
+        Node((0.0, 0.0)),
 
-        node(:keyboardbuttons, Set{Keyboard.Button}()),
+        Node(Set{Keyboard.Button}()),
 
-        node(:unicode_input, Char[]),
-        node(:dropped_files, String[]),
-        node(:hasfocus, false),
-        node(:entered_window, false),
+        Node(Char[]),
+        Node(String[]),
+        Node(false),
+        Node(false),
     )
 end
 
@@ -284,11 +284,9 @@ end
 
 value_convert(x::NamedTuple) = Attributes(x)
 
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => to_node(Any, value_convert(pair[2]), pair[1]))
+node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => convert(Node{Any}, value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
-Base.convert(::Type{<: Node}, x) = to_node(Any, x)
-Base.convert(::Type{T}, x::T) where T <: Node = x
-Base.convert(::Type{Node{T}}, x::Node) where T = to_node(T, x)
+
 
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
@@ -351,7 +349,7 @@ function setindex!(x::Attributes, value, key::Symbol)
     if haskey(x, key)
         x.attributes[key][] = value
     else
-        x.attributes[key] = to_node(Any, value, key)
+        x.attributes[key] = convert(Node{Any}, value)
     end
 end
 
@@ -361,10 +359,10 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
         # You can do this manually like this:
         # lift(val-> attributes[$key] = val, node::$(typeof(value)))
         # ")
-        return x.attributes[key] = to_node(Any, value)
+        return x.attributes[key] = convert(Node{Any}, value)
     else
         #TODO make this error. Attributes should be sort of immutable
-        return x.attributes[key] = to_node(Any, value)
+        return x.attributes[key] = convert(Node{Any}, value)
     end
     return x
 end
@@ -451,7 +449,7 @@ function setindex!(x::AbstractPlot, value, key::Symbol)
     if idx == nothing && haskey(x.attributes, key)
         return x.attributes[key][] = value
     elseif !haskey(x.attributes, key)
-        x.attributes[key] = to_node(value)
+        x.attributes[key] = convert(Node, value)
     else
         return setindex!(x.converted[idx], value)
     end

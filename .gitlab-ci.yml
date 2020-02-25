@@ -17,7 +17,7 @@ test:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - julia -e 'using InteractiveUtils; versioninfo()'
       - mkdir temporary_for_project
-      - julia --project=temporary_for_project -e 'using Pkg; Pkg.pkg"dev --local .; add StatsMakie#master MakieGallery#master GLMakie#master FFMPEG@0.3; test AbstractPlotting"'
+      - julia --project=temporary_for_project -e 'using Pkg; Pkg.pkg"dev --local .; add Observables#master StatsMakie#master MakieGallery#master GLMakie#master; test AbstractPlotting"'
 
     artifacts:
         when: on_failure

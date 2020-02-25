@@ -99,7 +99,7 @@ function plot!(slider::Slider)
     val = slider[:value]
     p2f0 = lift(Point2f0, position)
     startval = start[] === automatic ? first(range[]) : start[]
-    push!(val, startval)
+    val[] = startval
     label = lift((v, f)-> f(v), val, valueprinter)
     lplot = text!(
         slider, label,
@@ -128,7 +128,7 @@ function plot!(slider::Slider)
     ).plots[end]
     dragslider(slider, button)
     move!(slider, find_closest(range[], startval))
-    slider
+    return slider
 end
 
 function dragslider(slider, button)
