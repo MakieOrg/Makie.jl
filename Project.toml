@@ -29,7 +29,7 @@ GLFW = "^3"
 GeometryTypes = "^0.7.2"
 MeshIO = "^0.3"
 ModernGL = "^1"
-Observables = "0.2, 0.3"
+Observables = "0.2.0, 0.3"
 StaticArrays = "0.6.6,0.7,0.8,0.9,0.10,0.11,0.12"
 julia = "1"
 
