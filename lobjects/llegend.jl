@@ -346,6 +346,12 @@ function Base.pushfirst!(legend::LLegend, label::String, plots::Vararg{AbstractP
     pushfirst!(legend, entry)
 end
 
+"""
+    LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String}; kwargs...)
+
+Create a legend where one default legend marker derived from each plot in `plots` is
+combined with one label from `labels`.
+"""
 function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String}; kwargs...)
     legend = LLegend(scene; kwargs...)
     if length(plots) != length(labels)
@@ -355,6 +361,12 @@ function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractAr
     legend
 end
 
+"""
+    LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
+
+Create a legend where a stack of default legend markers derived from each group of
+plot objects in `plotgroups` is combined with one label from `labels`.
+"""
 function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
     legend = LLegend(scene; kwargs...)
     if length(plotgroups) != length(labels)
