@@ -26,16 +26,22 @@ $(ATTRIBUTES)
         colorrange = automatic,
         strokewidth = 0.0,
         shading = false,
+        # we turn this false for now, since otherwise shapes look transparent
+        # since we use meshes, which are drawn into a different framebuffer because of fxaa
+        # if we use fxaa=false, they're drawn into the same
+        # TODO, I still think this is a bug, since they should still use the same depth buffer!
+        fxaa = false,
         linestyle = nothing,
         overdraw = false,
         transparency = false,
     )
 end
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = ([convert_arguments(Scatter, v)[1]],)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle, HyperRectangle}}) = (v,)
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+
 
 function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
@@ -49,37 +55,55 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw]
     )
 end
+# Poly conversion
+poly_convert(geometries) = GLNormalMesh.(geometries)
+poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractVector{<: VecTypes}
-    polygons = plot[1]
-    color_node = plot[:color]
-    attributes = Attributes()
-    meshes = lift(polygons) do polygons
-        polys = Vector{Point2f0}[]
-        for poly in polygons
-            s = GeometryTypes.split_intersections(poly)
-            append!(polys, s)
-        end
-        GLNormalMesh.(polys)
+function poly_convert(polygon::AbstractVector{<: VecTypes})
+    return poly_convert([convert_arguments(Scatter, polygon)[1]])
+end
+
+function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
+    polys = Vector{Point2f0}[]
+    for poly in polygons
+        s = GeometryTypes.split_intersections(poly)
+        append!(polys, s)
     end
-    mesh!(plot, meshes,
+    return GLNormalMesh.(polys)
+end
+
+function to_line_segments(meshes)
+    line = Point2f0[]
+    for mesh in meshes
+        points = convert_arguments(PointBased(), mesh)[1]
+        append!(line, points)
+        push!(line, points[1])
+        push!(line, Point2f0(NaN))
+    end
+    return line
+end
+
+function to_line_segments(polygon::AbstractVector{<: VecTypes})
+    result = Point2f0.(polygon)
+    push!(result, polygon[1])
+    return result
+end
+
+const PolyElements = Union{Circle, Rectangle, HyperRectangle, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+
+function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
+    meshes = plot[1]
+    mesh!(plot, lift(poly_convert, meshes);
         visible = plot.visible,
         shading = plot.shading,
         color = plot.color,
         colormap = plot.colormap,
         colorrange = plot.colorrange,
         overdraw = plot.overdraw,
+        fxaa = plot.fxaa,
         transparency = plot.transparency
     )
-    outline = lift(polygons) do polygons
-        line = Point2f0[]
-        for poly in polygons
-            append!(line, poly)
-            push!(line, poly[1])
-            push!(line, Point2f0(NaN))
-        end
-        return line
-    end
+    outline = lift(to_line_segments, meshes)
     lines!(
         plot, outline, visible = plot.visible,
         color = plot.strokecolor, linestyle = plot.linestyle,
@@ -90,56 +114,33 @@ end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMesh
     meshes = plot[1]
-    color_node = plot[:color]
-    attributes = Attributes(
-        visible = plot[:visible], shading = plot[:shading]
-    )
-    if haskey(plot, :colormap)
-        attributes[:colormap] = plot[:colormap]
-    end
-    if haskey(plot, :colorrange)
-        attributes[:colorrange] = plot[:colorrange]
-    end
-    bigmesh = if color_node[] isa Vector && length(color_node[]) == length(meshes[])
-        lift(meshes, color_node) do meshes, colors
-            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), to_color.(colors))
-            merge(meshes)
+    color_node = plot.color
+    attributes = Attributes(visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa)
+
+    attributes[:colormap] = get(plot, :colormap, nothing)
+    attributes[:colorrange] = get(plot, :colorrange, nothing)
+
+    bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
+        # One color per mesh
+        lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
+            # Color are reals, so we need to transform it to colors first
+            real_colors = if colors isa AbstractVector{<:Number}
+                interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
+            else
+                to_color.(colors)
+            end
+            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), real_colors)
+            return merge(meshes)
         end
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            merge(GLPlainMesh.(meshes))
+            return merge(GLPlainMesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)
 end
 
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
-    positions = plot[1]
-    position = lift(positions) do rects
-        Point.(minimum.(rects))
-    end
-    markersize = lift(positions, name = "markersize") do rects
-        widths.(rects)
-    end
-    scatter!(
-        plot, position,
-        marker = T, markersize = markersize, transform_marker = true,
-        marker_offset = Vec2f0(0),
-        color = plot[:color],
-        strokecolor = plot[:strokecolor],
-        colormap = plot[:colormap],
-        colorrange = plot[:colorrange],
-        strokewidth = plot[:strokewidth], visible = plot[:visible]
-    )
-end
-function data_limits(p::Poly{<: Tuple{<: AbstractVector{T}}}) where T <: Union{Circle, Rectangle, Rect}
-    xyz = p.plots[1][1][]
-    msize = p.plots[1][:markersize][]
-    xybb = FRect3D(xyz)
-    mwidth = FRect3D(xyz .+ msize)
-    union(mwidth, xybb)
-end
 
 """
     `arrows(points, directions; kwargs...)`
@@ -501,44 +502,22 @@ $(ATTRIBUTES)
     )
 end
 
-function data_limits(p::BarPlot)
-    xy = p.plots[1][1][]
-    msize = p.plots[1][:markersize][]
-    xstart, xend = first(msize)[1], last(msize)[1]
-    xvals = first.(xy)
-    # correct widths
-    xvals[1] = xvals[1] - (xstart / 2)
-    xvals[end] = xvals[end] + (xend / 2)
-    xybb = FRect3D(xy)
-    y = last.(msize) .+ last.(xy)
-    bb = xyz_boundingbox(xvals, y)
-    union(bb, xybb)
-end
-
-
 conversion_trait(::Type{<: BarPlot}) = PointBased()
 
-
 function AbstractPlotting.plot!(p::BarPlot)
-    pos_scale = lift(p[1], p[:fillto], p[:width]) do xy, fillto, hw
+    pos_scale = lift(p[1], p.fillto, p.width) do xy, fillto, hw
         # compute half-width of bars
         if hw === automatic
             hw = mean(diff(first.(xy))) # TODO ignore nan?
         end
         # make fillto a vector... default fills to 0
-        positions = Point2f0.(first.(xy), Float32.(fillto))
+        positions = Vec2f0.(first.(xy), Float32.(fillto)) .+ Vec2f0.(hw ./ -2f0, 0)
         scales = Vec2f0.(abs.(hw), last.(xy))
-        offset = Vec2f0.(hw ./ -2f0, 0)
-        positions, scales, offset
+        return FRect.(positions, scales)
     end
-
-    scatter!(
-        p, lift(first, pos_scale),
-        marker = p[:marker], marker_offset = lift(last, pos_scale),
-        markersize = lift(getindex, pos_scale, Node(2)),
-        color = p[:color], colormap = p[:colormap], colorrange = p[:colorrange],
-        transform_marker = true, strokewidth = p[:strokewidth],
-        strokecolor = p[:strokecolor]
+    poly!(
+        p, pos_scale, color = p[:color], colormap = p[:colormap], colorrange = p[:colorrange],
+        strokewidth = p[:strokewidth], strokecolor = p[:strokecolor]
     )
 end
 
@@ -817,8 +796,9 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-function AbstractPlotting.data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    AbstractPlotting.xyz_boundingbox(to_value.((x[1], x[2]))...)
+
+function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
+    xyz_boundingbox(to_value.((x[1], x[2]))...)
 end
 
 """
