@@ -76,7 +76,7 @@ if MINIMAL == "false"
         "WorldClim visualization",
         "Image on Geometry (Moon)",
         "Image on Geometry (Earth)",
-        "Interaction with mouse",
+        "Interaction with Mouse",
         "Air Particulates",
     ]
 

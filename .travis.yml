@@ -8,7 +8,7 @@ julia:
 notifications:
   email: false
 git:
-  depth: 99999999
+  depth: 1
 
 # uncomment the following lines to allow failures on nightly julia
 # (tests will run but not make your overall status red)
@@ -17,10 +17,10 @@ matrix:
     - julia: 1.3
 
 script:
+  - mkdir temporary_for_project # https://github.com/JuliaLang/Pkg.jl/pull/1696
   - export JL_PKG=AbstractPlotting
-  - julia --color=yes -e "using Pkg; if VERSION >= v\"1.1.0-rc1\"; Pkg.build(verbose=true); else Pkg.build(); end"
-  - julia -e 'using Pkg; pkg"add MakieGallery#master"'
-  - julia --check-bounds=yes --color=yes -e "using Pkg; Pkg.test(coverage=true)"
+  - julia --project=temporary_for_project --color=yes -e "using Pkg; if VERSION >= v\"1.1.0-rc1\"; Pkg.build(verbose=true); else Pkg.build(); end; pkg\"dev --local .; add MakieGallery#master\""
+  - julia --project=temporary_for_project --check-bounds=yes --color=yes -e "using Pkg; Pkg.test(\"${JL_PKG}\"; coverage=true)"
 
 
 
