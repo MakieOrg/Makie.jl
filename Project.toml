@@ -1,7 +1,7 @@
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 authors = ["SimonDanisch <sdanisch@gmail.com>"]
-version = "0.1.7"
+version = "0.1.8"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -25,7 +25,7 @@ GeometryBasics = "0.1"
 GeometryTypes = "0.7"
 Hyperscript = "0.0.3"
 ImageTransformations = "0.7,0.8"
-JSServe = "^0.3.4"
+JSServe = "^0.3.4, 0.4"
 Observables = "0.2, 0.3"
 ShaderAbstractions = "0.1.1"
 StaticArrays = "0.12, 0.1"
