@@ -216,7 +216,16 @@ Takes an input `HyperRectangle` `x` and decomposes it to points.
 """
 function convert_arguments(P::PointBased, x::Rect2D)
     # TODO fix the order of decompose
-    convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
+    return convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
+end
+
+function convert_arguments(P::PointBased, x::SimpleRectangle)
+    # TODO fix the order of decompose
+    return convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
+end
+
+function convert_arguments(P::PointBased, mesh::AbstractMesh)
+    return convert_arguments(P, decompose(Point3f0, mesh))
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2D)
@@ -224,7 +233,6 @@ function convert_arguments(::Type{<: LineSegments}, x::Rect2D)
     points = decompose(Point2f0, x)
     return (points[[1, 2, 2, 4, 4, 3, 3, 1]],)
 end
-
 
 function convert_arguments(P::PointBased, x::Rect3D)
     inds = [
