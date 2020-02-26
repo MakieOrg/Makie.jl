@@ -1,6 +1,6 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.9.22"
+version = "0.9.24-DEV"
 
 [deps]
 AbstractNumbers = "85c772de-338a-5e7f-b815-41e76c26ac1f"
@@ -52,7 +52,7 @@ ImageMagick = "0.7, 1.0"
 IntervalSets = "0.3, 0.4"
 Observables = "0.3.1"
 Packing = "0.3"
-PlotUtils = "0.6.2"
+PlotUtils = "^0.6.2"
 Showoff = "0.3"
 SignedDistanceFields = "0.4"
 StaticArrays = "0.12"
