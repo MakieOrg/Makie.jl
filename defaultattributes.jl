@@ -287,7 +287,7 @@ function default_attributes(::Type{LLegend})
         patchsize = (40f0, 40f0),
         patchstrokecolor = :transparent,
         patchstrokewidth = 1f0,
-        patchcolor = RGBf0(0.97, 0.97, 0.97),
+        patchcolor = :transparent,
         label = "undefined",
         ncols = 1,
         colgap = 20,
