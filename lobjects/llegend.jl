@@ -10,6 +10,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         patchsize, # the side length of the entry patch area
         ncols,
         colgap, rowgap, patchlabelgap,
+        orientation,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -29,8 +30,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     scene = Scene(parent, scenearea, raw = true, camera = campixel!)
 
-    translate!(scene, (0, 0, 10))
-
+    # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift(
         BBox($margin[1], width($scenearea) - $margin[2],
              $margin[3], height($scenearea)- $margin[4]))
@@ -40,10 +40,14 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         color = bgcolor, strokewidth = strokewidth,
         strokecolor = strokecolor, raw = true)[end]
 
+    # the array of legend entries, when it changes the legend gets redrawn
     entries = Node(LegendEntry[])
 
-
+    # the grid containing title and entries_grid
     maingrid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
+
+    # while the entries are being manipulated through code, this Ref value is set to
+    # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
 
     on(padding) do p
@@ -62,6 +66,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
+    # these arrays store all the plot objects that the legend entries need
     entrytexts = LText[]
     entryplots = [AbstractPlot[]]
     entryrects = LRect[]
@@ -69,53 +74,67 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     titletext = maingrid[1, 1] = LText(scene, text = title, textsize = titlesize,
         halign = titlealign, visible = titlevisible)
 
-    labelgrid = maingrid[2, 1] = GridLayout()
+    # the grid in which the entries are placed
+    entries_grid = maingrid[2, 1] = GridLayout()
 
     function relayout()
         manipulating_grid[] = true
 
         n_entries = length(entries[])
-        nrows = ceil(Int, n_entries / ncols[])
+
+
+        ncolumns, nrows = if orientation[] == :vertical
+            (ncols[], ceil(Int, n_entries / ncols[]))
+        elseif orientation[] == :horizontal
+            # columns become rows
+            (ceil(Int, n_entries / ncols[]), ncols[])
+        else
+            error("Invalid legend orientation $(orientation[]), options are :horizontal or :vertical.")
+        end
+
 
         # the grid has twice as many columns as ncols, because of labels and patches
-        ncols_with_symbolcols = 2 * min(ncols[], n_entries) # if fewer entries than cols, not so many cols
+        ncols_with_symbolcols = 2 * min(ncolumns, n_entries) # if fewer entries than cols, not so many cols
 
         for (i, lt) in enumerate(entrytexts)
-            irow = (i - 1) ÷ ncols[] + 1
-            icol = (i - 1) % ncols[] + 1
-            labelgrid[irow, icol * 2] = lt
+            irow = (i - 1) ÷ ncolumns + 1
+            icol = (i - 1) % ncolumns + 1
+            entries_grid[irow, icol * 2] = lt
         end
 
         for (i, rect) in enumerate(entryrects)
-            irow = (i - 1) ÷ ncols[] + 1
-            icol = (i - 1) % ncols[] + 1
-            labelgrid[irow, icol * 2 - 1] = rect
+            irow = (i - 1) ÷ ncolumns + 1
+            icol = (i - 1) % ncolumns + 1
+            entries_grid[irow, icol * 2 - 1] = rect
         end
 
-        for i in labelgrid.nrows : -1 : max((nrows + 1), 2) # not the last row
-            deleterow!(labelgrid, i)
+        for i in entries_grid.nrows : -1 : max((nrows + 1), 2) # not the last row
+            deleterow!(entries_grid, i)
         end
 
-        for i in labelgrid.ncols : -1 : max((ncols_with_symbolcols + 1), 2) # not the last col
-            deletecol!(labelgrid, i)
+        for i in entries_grid.ncols : -1 : max((ncols_with_symbolcols + 1), 2) # not the last col
+            deletecol!(entries_grid, i)
         end
 
-        for i in 1:(labelgrid.ncols - 1)
+        for i in 1:(entries_grid.ncols - 1)
             if i % 2 == 1
-                colgap!(labelgrid, i, Fixed(patchlabelgap[]))
+                colgap!(entries_grid, i, Fixed(patchlabelgap[]))
             else
-                colgap!(labelgrid, i, Fixed(colgap[]))
+                colgap!(entries_grid, i, Fixed(colgap[]))
             end
         end
 
-        for i in 1:(labelgrid.nrows - 1)
-            rowgap!(labelgrid, i, Fixed(rowgap[]))
+        for i in 1:(entries_grid.nrows - 1)
+            rowgap!(entries_grid, i, Fixed(rowgap[]))
         end
 
+        # if there is a title visible, give it a row in the maingrid above the rest
         if titlevisible[]
             if maingrid.nrows == 1
                 maingrid[0, 1] = titletext
             end
+        # otherwise delete the first row as long as there is one more after that
+        # because we can't have zero rows in the current state of MakieLayout
         else
             if maingrid.nrows == 2
                 deleterow!(maingrid, 1)
@@ -125,10 +144,13 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         manipulating_grid[] = false
         maingrid.needs_update[] = true
 
+        # translate the legend forward so it is above the standard axis content
+        # which is at zero. this will not really work if the legend should be
+        # above a 3d plot, but for now this hack is ok.
         translate!(scene, (0, 0, 10))
     end
 
-    onany(ncols, rowgap, colgap, patchlabelgap, titlevisible) do _, _, _, _, _
+    onany(ncols, rowgap, colgap, patchlabelgap, titlevisible, orientation) do args...
         relayout()
     end
 
