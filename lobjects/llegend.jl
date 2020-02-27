@@ -129,7 +129,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         end
 
         # if there is a title visible, give it a row in the maingrid above the rest
-        if titlevisible[]
+        if titlevisible[] && !iswhitespace(title[])
             if maingrid.nrows == 1
                 maingrid[0, 1] = titletext
             end
@@ -150,7 +150,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         translate!(scene, (0, 0, 10))
     end
 
-    onany(ncols, rowgap, colgap, patchlabelgap, titlevisible, orientation) do args...
+    onany(title, ncols, rowgap, colgap, patchlabelgap, titlevisible, orientation) do args...
         relayout()
     end
 

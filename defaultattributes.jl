@@ -269,7 +269,7 @@ function default_attributes(::Type{LLegend})
         valign = :center,
         width = Auto(true),
         height = Auto(false),
-        title = "Legend",
+        title = " ", # hides the legend without title set
         titlefont = "Dejavu Sans",
         titlesize = 20f0,
         titlealign = :center,
