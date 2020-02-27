@@ -6,7 +6,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         halign, valign, padding, margin,
         title, titlefont, titlesize, titlealign, titlevisible,
         labelsize, labelfont, labelcolor, labelhalign, labelvalign,
-        bgcolor, strokecolor, strokewidth,
+        bgcolor, framecolor, framewidth, framevisible,
         patchsize, # the side length of the entry patch area
         ncols,
         colgap, rowgap, patchlabelgap,
@@ -36,9 +36,9 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
              $margin[3], height($scenearea)- $margin[4]))
 
     frame = poly!(scene,
-        @lift(enlarge($legendrect, repeat([-$strokewidth/2], 4)...)),
-        color = bgcolor, strokewidth = strokewidth,
-        strokecolor = strokecolor, raw = true)[end]
+        @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
+        color = bgcolor, strokewidth = framewidth, visible = framevisible,
+        strokecolor = framecolor, raw = true)[end]
 
     # the array of legend entries, when it changes the legend gets redrawn
     entries = Node(LegendEntry[])
