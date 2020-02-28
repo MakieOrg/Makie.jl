@@ -9,7 +9,7 @@ function LineAxis(parent::Scene; kwargs...)
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont,
-        labelvisible, spinevisible, trimspine)
+        labelvisible, spinevisible, trimspine, flip_vertical_label)
 
     pos_extents_horizontal = lift(endpoints) do endpoints
         if endpoints[1][2] == endpoints[2][2]
@@ -78,16 +78,29 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    labelalign = lift(pos_extents_horizontal, flipped) do (position, extents, horizontal), flipped
+    labelalign = lift(pos_extents_horizontal, flipped, flip_vertical_label) do (position, extents, horizontal), flipped, flip_vertical_label
         if horizontal
             (:center, flipped ? :bottom : :top)
         else
-            (:center, :bottom)
+            (:center, if flipped
+                    flip_vertical_label ? :bottom : :top
+                else
+                    flip_vertical_label ? :top : :bottom
+                end
+            )
         end
     end
 
-    labelrotation = lift(pos_extents_horizontal, flipped) do (position, extents, horizontal), flipped
-        horizontal ? 0f0 : (flipped ? Float32(-0.5pi) : Float32(0.5pi))
+    labelrotation = lift(pos_extents_horizontal, flip_vertical_label) do (position, extents, horizontal), flip_vertical_label
+        if horizontal
+            0f0
+        else
+            if flip_vertical_label
+                Float32(-0.5pi)
+            else
+                Float32(0.5pi)
+            end
+        end
     end
 
     labeltext = text!(

@@ -29,6 +29,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         bottomspinecolor, leftspinecolor, topspinecolor, rightspinecolor,
         backgroundcolor,
         xlabelfont, ylabelfont, xticklabelfont, yticklabelfont,
+        flip_ylabel
     )
 
     decorations = Dict{Symbol, Any}()
@@ -191,7 +192,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor,
-        trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize)
+        trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos

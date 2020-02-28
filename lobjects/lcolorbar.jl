@@ -18,7 +18,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
-        halign, valign, vertical, flipaxisposition, ticklabelalign)
+        halign, valign, vertical, flipaxisposition, ticklabelalign, flip_vertical_label)
 
     decorations = Dict{Symbol, Any}()
 
@@ -112,7 +112,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
         ticklabelspace = ticklabelspace,
-        spinecolor = :transparent, spinevisible = :false)
+        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = flip_vertical_label)
     decorations[:axis] = axis
 
     protrusions = lift(axis.protrusion, vertical, flipaxisposition) do axprotrusion,

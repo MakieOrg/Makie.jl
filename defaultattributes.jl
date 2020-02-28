@@ -95,6 +95,7 @@ function default_attributes(::Type{LAxis}, scene)
         xtrimspine = false,
         ytrimspine = false,
         backgroundcolor = :white,
+        flip_ylabel = false,
     )
 end
 
@@ -131,6 +132,7 @@ function default_attributes(::Type{LColorbar}, scene)
         halign = :center,
         vertical = true,
         flipaxisposition = true,
+        flip_vertical_label = false,
         width = nothing,
         height = nothing,
         colormap = :viridis,
@@ -200,6 +202,7 @@ function default_attributes(::Type{LineAxis})
         trimspine = false,
         limits = (0f0, 100f0),
         flipped = false,
+        flip_vertical_label = false,
         ticksize = 10f0,
         tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
