@@ -1,6 +1,6 @@
 function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LLegend))
+    attrs = merge!(Attributes(kwargs), default_attributes(LLegend, parent))
 
     @extract attrs (
         halign, valign, padding, margin,

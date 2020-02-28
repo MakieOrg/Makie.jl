@@ -263,19 +263,19 @@ function default_attributes(::Type{LToggle})
 end
 
 
-function default_attributes(::Type{LLegend})
+function default_attributes(::Type{LLegend}, scene)
     Attributes(
         halign = :center,
         valign = :center,
         width = Auto(true),
         height = Auto(false),
         title = " ", # hides the legend without title set
-        titlefont = "Dejavu Sans",
-        titlesize = 20f0,
+        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
+        titlesize = lift_parent_attribute(scene, :fontsize, 20f0),
         titlealign = :center,
         titlevisible = true,
-        labelsize = 20f0,
-        labelfont = "Dejavu Sans",
+        labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
+        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         labelcolor = :black,
         labelhalign = :left,
         labelvalign = :center,
