@@ -38,7 +38,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]
 
-    framecolor = Node{Any}(framecolor_inactive[])
+    framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
     frame = poly!(parent, buttonvertices, color = framecolor, raw = true)[end]
 
     animating = Node(false)
