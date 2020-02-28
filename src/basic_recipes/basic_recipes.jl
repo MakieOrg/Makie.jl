@@ -92,8 +92,9 @@ end
 const PolyElements = Union{Circle, Rectangle, HyperRectangle, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
 function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
-    meshes = plot[1]
-    mesh!(plot, lift(poly_convert, meshes);
+    geometries = plot[1]
+    meshes = lift(poly_convert, geometries)
+    mesh!(plot, meshes;
         visible = plot.visible,
         shading = plot.shading,
         color = plot.color,
@@ -103,7 +104,7 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
         fxaa = plot.fxaa,
         transparency = plot.transparency
     )
-    outline = lift(to_line_segments, meshes)
+    outline = lift(to_line_segments, geometries)
     lines!(
         plot, outline, visible = plot.visible,
         color = plot.strokecolor, linestyle = plot.linestyle,
@@ -504,20 +505,28 @@ end
 
 conversion_trait(::Type{<: BarPlot}) = PointBased()
 
+function bar_rectange(xy, width, fillto)
+    x, y = xy
+    # y could be smaller than fillto...
+    ymin = min(fillto, y)
+    ymax = max(fillto, y)
+    w = abs(width)
+    return FRect(x - (w / 2f0), ymin, w, ymax - ymin)
+end
+
 function AbstractPlotting.plot!(p::BarPlot)
-    pos_scale = lift(p[1], p.fillto, p.width) do xy, fillto, hw
+    bars = lift(p[1], p.fillto, p.width) do xy, fillto, width
         # compute half-width of bars
-        if hw === automatic
-            hw = mean(diff(first.(xy))) # TODO ignore nan?
+        if width === automatic
+            # times 0.8 for default gap
+            width = mean(diff(first.(xy))) * 0.8 # TODO ignore nan?
         end
-        # make fillto a vector... default fills to 0
-        positions = Vec2f0.(first.(xy), Float32.(fillto)) .+ Vec2f0.(hw ./ -2f0, 0)
-        scales = Vec2f0.(abs.(hw), last.(xy))
-        return FRect.(positions, scales)
+
+        return bar_rectange.(xy, width, fillto)
     end
     poly!(
-        p, pos_scale, color = p[:color], colormap = p[:colormap], colorrange = p[:colorrange],
-        strokewidth = p[:strokewidth], strokecolor = p[:strokecolor]
+        p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
+        strokewidth = p.strokewidth, strokecolor = p.strokecolor
     )
 end
 
