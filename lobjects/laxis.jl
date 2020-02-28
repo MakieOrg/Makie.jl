@@ -1,6 +1,6 @@
 """
     LAxis(parent::Scene; bbox = nothing, kwargs...)
-    
+
 Creates an `LAxis` object in the parent `Scene` which consists of a child scene
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
@@ -330,12 +330,36 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     la
 end
 
+"""
+AutoLinearTicks with ideally a number of `n_ideal` tick marks.
+"""
+function AutoLinearTicks(n_ideal::Int)
+    if n_ideal <= 0
+        error("Ideal number of ticks can't be smaller than 0, but is $ideal_pixel_spacing")
+    end
+    AutoLinearTicks{Int}(n_ideal)
+end
+
+"""
+AutoLinearTicks with ticks ideally spaced `ideal_pixel_spacing` pixels apart.
+"""
+function AutoLinearTicks(ideal_pixel_spacing::Real)
+    if ideal_pixel_spacing <= 0
+        error("Ideal pixel spacing can't be smaller than 0, but is $ideal_pixel_spacing")
+    end
+    AutoLinearTicks{Float32}(ideal_pixel_spacing)
+end
+
 function compute_tick_values(ticks::T, vmin, vmax, pxwidth) where T
     error("No behavior implemented for ticks of type $T")
 end
 
-function compute_tick_values(ticks::AutoLinearTicks, vmin, vmax, pxwidth)
-    locateticks(vmin, vmax, pxwidth, ticks.idealtickdistance)
+function compute_tick_values(ticks::AutoLinearTicks{Float32}, vmin, vmax, pxwidth)
+    locateticks(vmin, vmax, pxwidth, ticks.target)
+end
+
+function compute_tick_values(ticks::AutoLinearTicks{Int}, vmin, vmax, pxwidth)
+    locateticks(vmin, vmax, ticks.target)
 end
 
 function compute_tick_values(ticks::ManualTicks, vmin, vmax, pxwidth)

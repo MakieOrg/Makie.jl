@@ -192,8 +192,8 @@ struct DataAspect end
 
 abstract type Ticks end
 
-struct AutoLinearTicks <: Ticks
-    idealtickdistance::Float32
+struct AutoLinearTicks{T<:Union{Int, Float32}} <: Ticks
+    target::T
 end
 
 struct ManualTicks <: Ticks

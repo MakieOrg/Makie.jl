@@ -15,7 +15,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
         ticklabelspace, labelfont, ticklabelfont,
         ticklabelsvisible, ticks, ticksize, ticksvisible, ticklabelpad, tickalign,
-        tickwidth, tickcolor, spinewidth, idealtickdistance, topspinevisible,
+        tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
         halign, valign, vertical, flipaxisposition, ticklabelalign)
@@ -111,7 +111,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
-        idealtickdistance = idealtickdistance, ticklabelspace = ticklabelspace,
+        ticklabelspace = ticklabelspace,
         spinecolor = :transparent, spinevisible = :false)
     decorations[:axis] = axis
 

@@ -119,7 +119,6 @@ function default_attributes(::Type{LColorbar}, scene)
         tickcolor = RGBf0(0, 0, 0),
         ticklabelalign = (:left, :center),
         spinewidth = 1f0,
-        idealtickdistance = 100f0,
         topspinevisible = true,
         rightspinevisible = true,
         leftspinevisible = true,
