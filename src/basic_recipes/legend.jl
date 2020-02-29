@@ -100,17 +100,20 @@ function make_label(scene, plot, labeltext, i, attributes)
     )
     scale(args...) = _scale.(args...)
 
-    return if isa(plot, Union{Lines, LineSegments})
+    if isa(plot, Union{Lines, LineSegments})
         linesegments!(
             scene, lift(scale, lpattern, w, padding, gap, tsize),
-            color = plot[:color], linestyle = plot[:linestyle]
+            color = plot.color, linestyle = plot.linestyle
         )
     else
         scatter!(
             scene, lift(scale, mpattern, w, padding, gap, tsize),
-            markersize = msize, color = plot[:color], marker = plot[:marker]
+            markersize = msize, color = plot.color, marker = plot.marker
         )
     end
+    plot = scene.plots[end]
+    translate!(plot, 0, 0, 15) # zindex!
+    return
 end
 
 outerbox(x::AbstractPlot) = outerbox(x.parent)
@@ -134,7 +137,7 @@ function plot!(plot::Legend)
         :textsize, :textcolor, :rotation, :align, :font
     ))
 
-    legends = make_label.(plot, plots[], labels[], 1:N, plot)
+    make_label.(plot, plots[], labels[], 1:N, plot)
 
     map_once(labels, args...) do labels, w, gap, tgap, padding, font...
         start!(textbuffer)
@@ -153,6 +156,7 @@ function plot!(plot::Legend)
         finish!(textbuffer)
         return
     end
+    translate!(textbuffer, 0, 0, 15) # zindex!
     bb = boundingbox(plot)
     legendarea = map_once(position, outerbox(plot), opad, args[4:5]..., args[1:3]...) do xy, area, opad, padding, unused...
         mini = minimum(bb)

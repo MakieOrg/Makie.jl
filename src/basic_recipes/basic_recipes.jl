@@ -392,7 +392,7 @@ end
 
 function plot!(plot::Annotations)
     sargs = (
-        plot[:model], plot[:font],
+        plot.model, plot.font,
         plot[1],
         getindex.(plot, (:color, :textsize, :align, :rotation))...,
     )
@@ -400,7 +400,7 @@ function plot!(plot::Annotations)
     combinedpos = [Point3f0(0)]
     colors = RGBAf0[RGBAf0(0,0,0,0)]
     scales = Vec2f0[(0,0)]
-    fonts = NativeFont[to_font("Dejavu Sans")]
+    fonts = [to_font("Dejavu Sans")]
     rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
 
     tplot = text!(plot, "",
@@ -408,15 +408,11 @@ function plot!(plot::Annotations)
         position = combinedpos, color = colors, visible = plot.visible,
         textsize = scales, font = fonts, rotation = rotations
     ).plots[end]
-    onany(sargs...) do model, font, text_pos, args...
+    onany(sargs...) do model, pfonts, text_pos, args...
         io = IOBuffer();
         empty!(combinedpos); empty!(colors); empty!(scales); empty!(fonts); empty!(rotations)
-
-        broadcast_foreach(1:length(text_pos), text_pos, args...) do idx, (text, startpos), color, tsize, alignment, rotation
-            # the fact, that Font == Vector{FT_FreeType.Font} is pretty annoying for broadcasting.
-            # TODO have a better Font type!
-            f = to_font(font)
-            f = isa(f, NativeFont) ? f : f[idx]
+        broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f, (text, startpos), color, tsize, alignment, rotation
+           
             c = to_color(color)
             rot = to_rotation(rotation)
             pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
@@ -505,7 +501,7 @@ end
 
 conversion_trait(::Type{<: BarPlot}) = PointBased()
 
-function bar_rectange(xy, width, fillto)
+function bar_rectangle(xy, width, fillto)
     x, y = xy
     # y could be smaller than fillto...
     ymin = min(fillto, y)
@@ -522,7 +518,7 @@ function AbstractPlotting.plot!(p::BarPlot)
             width = mean(diff(first.(xy))) * 0.8 # TODO ignore nan?
         end
 
-        return bar_rectange.(xy, width, fillto)
+        return bar_rectangle.(xy, width, fillto)
     end
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
