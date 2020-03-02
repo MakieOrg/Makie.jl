@@ -7,6 +7,9 @@ You can use `norm`, to change the range of 0..1 to whatever you want.
 """
 function interpolated_getindex(cmap::AbstractArray{T}, value::AbstractFloat, norm = (0.0, 1.0)) where T
     cmin, cmax = norm
+    if cmin == cmax
+        return cmap[1]
+    end
     i01 = clamp((value - cmin) / (cmax - cmin), 0.0, 1.0)
     i1len = (i01 * (length(cmap) - 1)) + 1
     down = floor(Int, i1len)
@@ -14,11 +17,11 @@ function interpolated_getindex(cmap::AbstractArray{T}, value::AbstractFloat, nor
     down == up && return cmap[down]
     interp_val = i1len - down
     downc, upc = cmap[down], cmap[up]
-    convert(T, (downc * (1.0 - interp_val)) + (upc * interp_val))
+    return convert(T, (downc * (1.0 - interp_val)) + (upc * interp_val))
 end
 
 function to_image(image::AbstractMatrix{<: AbstractFloat}, colormap::AbstractVector{<: Colorant}, colorrange)
-    interpolated_getindex.((to_value(colormap),), image, (to_value(colorrange),))
+    return interpolated_getindex.((to_value(colormap),), image, (to_value(colorrange),))
 end
 
 """
@@ -27,7 +30,7 @@ Resample a vector with linear interpolation to have length `len`
 """
 function resample(A::AbstractVector, len::Integer)
     length(A) == len && return A
-    interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
+    return interpolated_getindex.((A,), range(0.0, stop=1.0, length=len))
 end
 
 """
