@@ -319,6 +319,11 @@ function legendelements(plot::Poly)
     LegendElement[PolyElement(color = plot.color, strokecolor = plot.strokecolor)]
 end
 
+function legendelements(plot::Band)
+    # there seems to be no stroke for Band, so we set it invisible
+    LegendElement[PolyElement(color = plot.color, strokecolor = :transparent)]
+end
+
 function legendelements(plot::T) where T
     error("""
         There is no `legendelements` method defined for plot type $T. This means
