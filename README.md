@@ -126,7 +126,7 @@ If that fails, you can disable the plotpane in Atom's settings by going to `Juno
 
 
 ## Complex examples
-<a href="https://github.com/JuliaPlots/Makie.jl/blob/master/examples/bigdata.jl#L2"><img src="https://user-images.githubusercontent.com/1010467/48002153-fc15a680-e10a-11e8-812d-a5d717c47288.gif" width="480"/></a>
+<a href="https://github.com/JuliaPlots/MakieGallery.jl/blob/master/examples/bigdata.jl#L2"><img src="https://user-images.githubusercontent.com/1010467/48002153-fc15a680-e10a-11e8-812d-a5d717c47288.gif" width="480"/></a>
 
 # Precompilation
 
