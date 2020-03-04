@@ -114,7 +114,7 @@ categoric_range(range::Automatic) = range
 categoric_range(range) = 1:length(range)
 
 function categoric_position(x, labels)
-    findfirst(l-> l === x, labels)
+    findfirst(l -> l == x, labels)
 end
 
 categoric_position(x, labels::Automatic) = x
