@@ -1,7 +1,7 @@
 name = "WGLMakie"
 uuid = "276b4fcb-3e11-5398-bf8b-a0c2d153d008"
 authors = ["SimonDanisch <sdanisch@gmail.com>"]
-version = "0.1.8"
+version = "0.1.9"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -22,7 +22,7 @@ AbstractPlotting = "0.9.17"
 Colors = "0.9, 0.10, 0.11"
 FileIO = "1.1"
 GeometryBasics = "0.1"
-GeometryTypes = "0.7"
+GeometryTypes = "0.7, 0.8"
 Hyperscript = "0.0.3"
 ImageTransformations = "0.7,0.8"
 JSServe = "^0.3.4, 0.4"
