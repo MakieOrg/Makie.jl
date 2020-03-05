@@ -88,10 +88,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     isupdating = Ref(false)
     missedupdate = Ref(false)
 
-    onany(pixelarea(scene), limits) do pxa, lims
-
-        px_ox, px_oy = pxa.origin
-        px_w, px_h = pxa.widths
+    onany(limits) do lims
 
         nearclip = -10_000f0
         farclip = 10_000f0
@@ -326,7 +323,14 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
         layoutnodes, needs_update, attrs, block_limit_linking, decorations)
 
+    # add action that resets limits on ctrl + click
     add_reset_limits!(la)
+
+    # compute limits that adhere to the limit aspect ratio whenever the targeted
+    # limits or the scene size change, because both influence the displayed ratio
+    onany(scene.px_area, la.targetlimits) do pxa, lims
+        adjustlimits!(la)
+    end
 
     la
 end
@@ -566,13 +570,64 @@ function autolimits!(la::LAxis)
             la.attributes.yautolimitmargin[][2])
     end
 
+
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-    la.limits[] = bbox
+    # la.limits[] = bbox
+    la.targetlimits[] = bbox
 end
 
 function linkaxes!(a::LAxis, others...)
     linkxaxes!(a, others...)
     linkyaxes!(a, others...)
+end
+
+
+function adjustlimits!(la)
+    asp = la.autolimitsaspect[]
+    target = la.targetlimits[]
+
+    if isnothing(asp)
+        la.limits[] = target
+        return
+    end
+
+    area = la.scene.px_area[]
+    xlims = (left(target), right(target))
+    ylims = (bottom(target), top(target))
+
+    size_aspect = width(area) / height(area)
+    data_aspect = (xlims[2] - xlims[1]) / (ylims[2] - ylims[1])
+
+    aspect_ratio = data_aspect / size_aspect
+
+    correction_factor = asp / aspect_ratio
+
+    if correction_factor > 1
+        # need to go wider
+
+        marginsum = sum(la.xautolimitmargin[])
+        ratios = if marginsum == 0
+            (0.5, 0.5)
+        else
+            (la.xautolimitmargin[] ./ marginsum)
+        end
+
+        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)...)
+    elseif correction_factor < 1
+        # need to go taller
+
+        marginsum = sum(la.yautolimitmargin[])
+        ratios = if marginsum == 0
+            (0.5, 0.5)
+        else
+            (la.yautolimitmargin[] ./ marginsum)
+        end
+        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)...)
+    end
+
+    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
+
+    la.limits[] = bbox
 end
 
 function linkxaxes!(a::LAxis, others...)
