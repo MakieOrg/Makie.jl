@@ -79,7 +79,7 @@ function cam3d_turntable!(scene; kw_args...)
     cam = from_dict(Camera3D, cam_attributes)
     # remove previously connected camera
     disconnect!(scene.camera)
-    add_translation!(scene, cam, cam.pan_button, cam.move_key, true)
+    add_translation!(scene, cam, cam.pan_button, cam.move_key, false)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, true)
     cameracontrols!(scene, cam)
     on(camera(scene), scene.px_area) do area
