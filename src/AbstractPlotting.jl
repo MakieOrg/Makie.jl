@@ -54,8 +54,6 @@ include("camera/camera.jl")
 include("camera/camera2d.jl")
 include("camera/camera3d.jl")
 
-
-
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
 include("basic_recipes/multiple.jl")
@@ -153,7 +151,7 @@ export Billboard
 export Quaternion, Quaternionf0, qrotation
 export RGBAf0, RGBf0, VecTypes, RealVector, FRect, FRect2D, IRect2D
 export FRect3D, IRect3D, Rect3D, Transformation
-export IRect, FRect, Rect, Sphere, Circle
+export IRect, FRect, Rect, Rect2D, Sphere, Circle
 export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..), GLNormalUVMesh
@@ -162,7 +160,7 @@ export (..), GLNormalUVMesh
 export px
 
 # conflicting identifiers
-using GeometryTypes: widths
+using GeometryTypes: widths, positive_widths
 export widths, decompose
 
 # building blocks for series recipes

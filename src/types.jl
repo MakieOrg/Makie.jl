@@ -8,9 +8,9 @@ abstract type Transformable end
 abstract type AbstractPlot{Typ} <: Transformable end
 abstract type AbstractScene <: Transformable end
 abstract type ScenePlot{Typ} <: AbstractPlot{Typ} end
+abstract type AbstractScreen <: AbstractDisplay end
 
 const SceneLike = Union{AbstractScene, ScenePlot}
-# const Attributes = Dict{Symbol, Any}
 
 abstract type AbstractCamera end
 
@@ -26,129 +26,18 @@ struct EmptyCamera <: AbstractCamera end
 end
 
 const RealVector{T} = AbstractVector{T} where T <: Number
-
-const Node = Observable
-
-const Rect{N, T} = HyperRectangle{N, T}
-const Rect2D{T} = HyperRectangle{2, T}
-const FRect2D = Rect2D{Float32}
-
-"A generic, three dimensional rectangle."
-const Rect3D{T} = Rect{3, T}
-
-"An float valued, three dimensional rectangle."
-const FRect3D = Rect3D{Float32}
-
-"An integer valued, three dimensional rectangle."
-const IRect3D = Rect3D{Int}
-
-"An integer valued, two dimensional rectangle."
-const IRect2D = Rect2D{Int}
-
+const Node = Observable# For now, we use Reactive.Signal as our Node type. This might change in the future
 const Point2d{T} = NTuple{2, T}
 const Vec2d{T} = NTuple{2, T}
 const VecTypes{N, T} = Union{StaticVector{N, T}, NTuple{N, T}}
 const NVec{N} = Union{StaticVector{N}, NTuple{N, Any}}
 const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
+const Vecf0{N} = Vec{N, Float32}
+const Pointf0{N} = Point{N, Float32}
+export Vecf0, Pointf0
+const NativeFont = FreeTypeAbstraction.FTFont
 
-
-abstract type AbstractScreen <: AbstractDisplay end
-
-"""
-    IRect(x, y, w, h)
-
-Creates a two dimensional rectangle of integer dimensions, at origin (x, y)
-and with width w and height h
-"""
-function IRect(x, y, w, h)
-    HyperRectangle{2, Int}(Vec(round(Int, x), round(Int, y)), Vec(round(Int, w), round(Int, h)))
-end
-
-"""
-    IRect(xy::VecTypes, w, h)
-
-Creates a two dimensional rectangle of integer dimensions, with origin
-at vector xy, and with width w and height h
-"""
-function IRect(xy::VecTypes, w, h)
-    IRect(xy[1], xy[2], w, h)
-end
-
-"""
-    IRect(x, y, wh::VecTypes)
-
-Creates a two dimensional rectangle of integer dimensions, with origin
-at (x, y), and with width and height as the respective components of vector wh
-"""
-function IRect(x, y, wh::VecTypes)
-    IRect(x, y, wh[1], wh[2])
-end
-
-"""
-    IRect(xy::VecTypes, wh::VecTypes)
-
-Creates a two dimensional rectangle of integer dimensions, with origin
-at vector xy, and with width and height as the respective components of vector wh
-"""
-function IRect(xy::VecTypes, wh::VecTypes)
-    IRect(xy[1], xy[2], wh[1], wh[2])
-end
-
-"""
-    IRect(xy::NamedTuple{(:x, :y)}, wh::NamedTuple{(:width, :height)})
-
-This takes two named tuples and constructs an integer valued rectangle with them.
-"""
-function IRect(xy::NamedTuple{(:x, :y)}, wh::NamedTuple{(:width, :height)})
-    IRect(xy.x, xy.y, wh.width, wh.height)
-end
-
-function positive_widths(rect::HyperRectangle{N, T}) where {N, T}
-    mini, maxi = minimum(rect), maximum(rect)
-    realmin = min.(mini, maxi)
-    realmax = max.(mini, maxi)
-    HyperRectangle{N, T}(realmin, realmax .- realmin)
-end
-
-"""
-    FRect(x, y, w, h)
-
-Creates a two dimensional rectangle, at origin (x, y)
-and with width w and height h.  Formally defined as the
-Cartesian product of the intervals (x, y) and (w, h).
-"""
-function FRect(x, y, w, h)
-    HyperRectangle{2, Float32}(Vec2f0(x, y), Vec2f0(w, h))
-end
-function FRect(r::SimpleRectangle)
-    FRect(r.x, r.y, r.w, r.h)
-end
-function FRect(r::Rect)
-    FRect(minimum(r), widths(r))
-end
-function FRect(xy::VecTypes, w, h)
-    FRect(xy[1], xy[2], w, h)
-end
-function FRect(x, y, wh::VecTypes)
-    FRect(x, y, wh[1], wh[2])
-end
-function FRect(xy::VecTypes, wh::VecTypes)
-    FRect(xy[1], xy[2], wh[1], wh[2])
-end
-
-function FRect3D(x::Tuple{Tuple{<: Number, <: Number}, Tuple{<: Number, <: Number}})
-    FRect3D(Vec3f0(x[1]..., 0), Vec3f0(x[2]..., 0))
-end
-function FRect3D(x::Tuple{Tuple{<: Number, <: Number, <: Number}, Tuple{<: Number, <: Number, <: Number}})
-    FRect3D(Vec3f0(x[1]...), Vec3f0(x[2]...))
-end
-
-function FRect3D(x::Rect2D)
-    FRect3D(Vec3f0(minimum(x)..., 0), Vec3f0(widths(x)..., 0.0))
-end
-# For now, we use Reactive.Signal as our Node type. This might change in the future
-const Node = Observable
 
 include("interaction/iodevices.jl")
 
@@ -209,7 +98,7 @@ The state of the mouse drag, represented by an enumerator of [`DragEnum`](@ref).
 end
 
 function Events()
-    Events(
+    return Events(
         Node(IRect(0, 0, 0, 0)),
         Node(100.0),
         Node(false),
@@ -254,6 +143,7 @@ struct Transformation <: Transformable
     model::Node{Mat4f0}
     flip::Node{NTuple{3, Bool}}
     align::Node{Vec2f0}
+    # data conversion node, for e.g. log / log10 etc
     data_func::Node{Any}
     function Transformation(translation, scale, rotation, model, flip, align, data_func)
         return new(
@@ -263,6 +153,10 @@ struct Transformation <: Transformable
     end
 end
 
+"""
+Main structure for holding attributes, for theming plots etc!
+Will turn all values into nodes, so that they can be updated.
+"""
 struct Attributes
     attributes::Dict{Symbol, Node}
 end
@@ -270,16 +164,15 @@ Base.broadcastable(x::AbstractScene) = Ref(x)
 Base.broadcastable(x::AbstractPlot) = Ref(x)
 Base.broadcastable(x::Attributes) = Ref(x)
 
-
+# The rules that we use to convert values to a Node in Attributes
 value_convert(x::Observables.AbstractObservable) = Observables.observe(x)
 value_convert(@nospecialize(x)) = x
 
+# We transform a tuple of observables into a Observable(tuple(values...))
 function value_convert(x::NTuple{N, Union{Any, Observables.AbstractObservable}}) where N
-    # with an observable at first place,
-    # lift correctly dispatches to create a new Node that updates on any
-    lift(Node(nothing), x...) do _, args...
-        args
-    end
+    result = Observable(to_value.(x))
+    onany((args...)-> args, x...)
+    return result
 end
 
 value_convert(x::NamedTuple) = Attributes(x)
@@ -320,6 +213,7 @@ function Base.merge!(target::Attributes, args::Attributes...)
     end
     return target
 end
+
 Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args...)
 
 @generated hasfield(x::T, ::Val{key}) where {T, key} = :($(key in fieldnames(T)))
@@ -331,6 +225,7 @@ Base.merge(target::Attributes, args::Attributes...) = merge!(copy(target), args.
         getindex(x, key)
     end
 end
+
 @inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Union{Attributes, Transformable}
     if hasfield(x, Val(key))
         setfield!(x, key, value)
@@ -339,10 +234,11 @@ end
     end
 end
 
-
 function getindex(x::Attributes, key::Symbol)
     x = attributes(x)[key]
-    x[] isa Attributes ? x[] : x
+    # We unpack Attributes, even though, for consistency, we store them as nodes
+    # this makes it easier to create nested attributes
+    return x[] isa Attributes ? x[] : x
 end
 
 function setindex!(x::Attributes, value, key::Symbol)
@@ -368,7 +264,6 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
 end
 
 function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
-
     d = Dict()
     for p in pairs(attr.attributes)
         d[p.first] = to_value(p.second)
@@ -431,6 +326,7 @@ function getindex(x::AbstractPlot, key::Symbol)
         x.converted[idx]
     end
 end
+
 function getindex(x::AttributeOrPlot, key::Symbol, key2::Symbol, rest::Symbol...)
     dict = to_value(x[key])
     dict isa Attributes || error("Trying to access $(typeof(dict)) with multiple keys: $key, $key2, $(rest)")
@@ -472,8 +368,8 @@ function setindex!(x::AbstractPlot, value::Node, key::Symbol)
         return setindex!(x.converted[idx], value)
     end
 end
-parent(x::AbstractPlot) = x.parent
 
+parent(x::AbstractPlot) = x.parent
 
 """
 Remove `combined` from the current parent, and add it to a new subscene of the
@@ -488,7 +384,7 @@ function detach!(x::Combined)
     sub = Scene(p2, pixelarea(p2)) # subscene
     push!(x.plots, x)
 
-    sub
+    return sub
 end
 
 
@@ -525,11 +421,6 @@ Singleton instance to indicate that an attribute will get calculated automatical
 """
 const automatic = Automatic()
 
-
-const Vecf0{N} = Vec{N, Float32}
-const Pointf0{N} = Point{N, Float32}
-export Vecf0, Pointf0
-const NativeFont = FreeTypeAbstraction.FTFont
 
 """
 `PlotSpec{P<:AbstractPlot}(args...; kwargs...)`

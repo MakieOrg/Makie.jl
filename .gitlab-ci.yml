@@ -6,16 +6,14 @@ variables:
 
 test:
     image: "juliagpu/julia:v1.3-${CI_IMAGE_TAG}"
-    
+
     tags:
         - xorg
-    
     cache:
         key: "hello" # fix this to refresh weekly later
         paths:
             - .julia/artifacts
-            - .julia/packages
-    
+
     before_script:
         - apt-get -qq update
         # glfw
@@ -24,7 +22,7 @@ test:
     script:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"add Makie#master StatsMakie#master MakieGallery#master GLMakie#master; gc; test"'
+      - julia --project -e 'using Pkg; Pkg.pkg"test"'
 
     artifacts:
         when: on_failure

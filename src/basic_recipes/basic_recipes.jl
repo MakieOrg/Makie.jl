@@ -412,7 +412,6 @@ function plot!(plot::Annotations)
         io = IOBuffer();
         empty!(combinedpos); empty!(colors); empty!(scales); empty!(fonts); empty!(rotations)
         broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f, (text, startpos), color, tsize, alignment, rotation
-           
             c = to_color(color)
             rot = to_rotation(rotation)
             pos, s = layout_text(text, startpos, tsize, f, alignment, rot, model)
