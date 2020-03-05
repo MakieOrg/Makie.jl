@@ -54,7 +54,6 @@ Useful when using the `Node` pipeline.
 """
 update_cam!(scene::SceneLike) = update_cam!(scene, cameracontrols(scene), limits(scene)[])
 
-
 function update_cam!(scene::Scene, cam::Camera2D, area3d::Rect)
     area = FRect2D(area3d)
     area = positive_widths(area)
@@ -88,12 +87,6 @@ function update_cam!(scene::SceneLike, cam::Camera2D)
     camera(scene).projection[] = projection
     camera(scene).projectionview[] = projection * view
     cam.last_area[] = Vec(size(scene))
-    if cam.update_limits[]
-        #
-        # update!(scene)
-        # w2 = Vec2f0(w, h) .* 0.2
-        # update_limits!(scene, Rect(origin(cam.area[]) .+ w2, widths(cam.area[]) .- 2w2))
-    end
     return
 end
 
@@ -161,22 +154,20 @@ end
 
 function camspace(scene::SceneLike, cam::Camera2D, point)
     point = Vec(point) .* wscale(pixelarea(scene)[], cam.area[])
-    Vec(point) .+ Vec(minimum(cam.area[]))
+    return Vec(point) .+ Vec(minimum(cam.area[]))
 end
-
-FRect() = FRect(NaN, NaN, NaN, NaN)
 
 function absrect(rect)
     xy, wh = minimum(rect), widths(rect)
     xy = ntuple(Val(2)) do i
         wh[i] < 0 ? xy[i] + wh[i] : xy[i]
     end
-    FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
+    return FRect(Vec2f0(xy), Vec2f0(abs.(wh)))
 end
 
 
 function selection_rect!(scene, cam, key)
-    rect = RefValue(FRect())
+    rect = RefValue(FRect(NaN, NaN, NaN, NaN))
     lw = 2f0
     scene_unscaled = Scene(
         scene, transformation = Transformation(),
@@ -217,8 +208,7 @@ function selection_rect!(scene, cam, key)
                 if w > 0.0 && h > 0.0
                     update_cam!(scene, cam, r)
                 end
-                #scene.limits[] = FRect3D(rect[])
-                rect[] = FRect()
+                rect[] = FRect(NaN, NaN, NaN, NaN)
                 rect_vis[1] = rect[]
             end
             # always hide if not the right key is pressed

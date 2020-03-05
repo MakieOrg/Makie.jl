@@ -1,4 +1,4 @@
-to_func_name(x::Symbol) = string(x) |> lowercase |> Symbol
+to_func_name(x::Symbol) = Symbol(lowercase(string(x)))
 
 """
      default_plot_signatures(funcname, funcname!, PlotType)

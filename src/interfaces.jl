@@ -412,6 +412,18 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     PlotType(scene, attributes, input, argnodes)
 end
 
+function plot(scene::Scene, plot::AbstractPlot)
+    # plot object contains local theme (default values), and user given values (from constructor)
+    # fill_theme now goes through all values that are missing from the user, and looks if the scene
+    # contains any theming values for them (via e.g. css rules). If nothing founds, the values will
+    # be taken from local theme! This will connect any values in the scene's theme
+    # with the plot values and track those connection, so that we can separate them
+    # when doing delete!(scene, plot)!
+    complete_theme!(scene, plot)
+    # we just return the plot... whoever calls plot (our pipeline usually)
+    # will need to push!(scene, plot) etc!
+    return plot
+end
 
 function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::Attributes, input, args) where Typ
     # The argument type of the final plot object is the assumened to stay constant after
