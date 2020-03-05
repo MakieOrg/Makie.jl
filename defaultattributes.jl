@@ -96,7 +96,7 @@ function default_attributes(::Type{LAxis}, scene)
         ytrimspine = false,
         backgroundcolor = :white,
         flip_ylabel = false,
-        autolimitsaspect = nothing,
+        autolimitaspect = nothing,
         targetlimits = BBox(0, 100, 0, 100),
     )
 end

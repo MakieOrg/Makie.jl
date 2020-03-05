@@ -583,7 +583,7 @@ end
 
 
 function adjustlimits!(la)
-    asp = la.autolimitsaspect[]
+    asp = la.autolimitaspect[]
     target = la.targetlimits[]
 
     if isnothing(asp)
