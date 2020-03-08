@@ -109,11 +109,11 @@ end
 projection ratio in terms of the rectangular view size `rect` rather
 than the aspect ratio.
 """
-function perspectiveprojection(wh::SimpleRectangle, fov::T, near::T, far::T) where T
+function perspectiveprojection(wh::Rect2D, fov::T, near::T, far::T) where T
     perspectiveprojection(fov, T(wh.w/wh.h), near, far)
 end
 function perspectiveprojection(
-        ::Type{T}, wh::SimpleRectangle, fov::Number, near::Number, far::Number
+        ::Type{T}, wh::Rect2D, fov::Number, near::Number, far::Number
     ) where T
     perspectiveprojection(T(fov), T(wh.w/wh.h), T(near), T(far))
 end
@@ -141,11 +141,11 @@ end
 function lookat(::Type{T}, eyePos::Vec{3}, lookAt::Vec{3}, up::Vec{3}) where T
     lookat(Vec{3,T}(eyePos), Vec{3,T}(lookAt), Vec{3,T}(up))
 end
-function orthographicprojection(wh::SimpleRectangle, near::T, far::T) where T
+function orthographicprojection(wh::Rect2D, near::T, far::T) where T
     orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
 end
 function orthographicprojection(
-        ::Type{T}, wh::SimpleRectangle, near::Number, far::Number
+        ::Type{T}, wh::Rect2D, near::Number, far::Number
     ) where T
     orthographicprojection(wh, T(near), T(far))
 end
@@ -176,8 +176,6 @@ function orthographicprojection(::Type{T},
     )
 end
 
-
-
 mutable struct Pivot{T}
     origin      ::Vec{3, T}
     xaxis       ::Vec{3, T}
@@ -188,7 +186,7 @@ mutable struct Pivot{T}
     scale       ::Vec{3, T}
 end
 
-GeometryTypes.origin(p::Pivot) = p.origin
+GeometryBasics.origin(p::Pivot) = p.origin
 
 rotationmatrix4(q::Quaternion{T}) where {T} = Mat4{T}(q)
 

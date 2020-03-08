@@ -165,8 +165,8 @@ function boundingbox(
             end
             s = glyph_scale!(atlas, c, font, scale)
             srot = rotation * to_ndim(Vec3f0, s, 0.0)
-            bb = GeometryTypes.update(bb, pos)
-            bb = GeometryTypes.update(bb, pos .+ srot)
+            bb = update(bb, pos)
+            bb = update(bb, pos .+ srot)
         end
     end
     return bb

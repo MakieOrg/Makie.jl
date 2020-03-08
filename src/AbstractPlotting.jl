@@ -1,12 +1,16 @@
 module AbstractPlotting
 
+using Random
 using FFMPEG # get FFMPEG on any system!
-using Observables, GeometryTypes, StaticArrays, IntervalSets, PlotUtils
+using Observables, GeometryBasics, StaticArrays, IntervalSets, PlotUtils
 using ColorBrewer, ColorTypes, Colors, ColorSchemes
 using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
+# conflicting identifiers
+using GeometryBasics: widths, positive_widths
+
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
@@ -159,8 +163,8 @@ export (..), GLNormalUVMesh
 # Exports of units
 export px
 
-# conflicting identifiers
-using GeometryTypes: widths, positive_widths
+
+
 export widths, decompose
 
 # building blocks for series recipes

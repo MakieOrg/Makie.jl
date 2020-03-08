@@ -38,7 +38,7 @@ $(ATTRIBUTES)
 end
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle, HyperRectangle}}) = (v,)
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rect}}) = (v,)
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 
@@ -89,7 +89,7 @@ function to_line_segments(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-const PolyElements = Union{Circle, Rectangle, HyperRectangle, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+const PolyElements = Union{Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
 function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
     geometries = plot[1]
@@ -251,7 +251,7 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
         points = vec(Point3f0.(xvector(x, M), yvector(y, N), z))
         # Connect the vetices with faces, as one would use for a 2D Rectangle
         # grid with M,N grid points
-        faces = decompose(Face{2, GLIndex}, SimpleRectangle(0, 0, 1, 1), (M, N))
+        faces = decompose(LineFace{GLIndex}, Rect2D(0, 0, 1, 1), (M, N))
         view(points, faces)
     end
     linesegments!(plot, Theme(plot), points_faces)
@@ -261,7 +261,7 @@ end
 function plot!(plot::Wireframe{Tuple{T}}) where T
     points = lift(plot[1]) do g
         # get the point representation of the geometry
-        indices = decompose(Face{2, GLIndex}, g)
+        indices = decompose(LineFace{GLIndex}, g)
         points = decompose(Point3f0, g)
         view(points, indices)
     end

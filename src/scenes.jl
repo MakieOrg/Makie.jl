@@ -254,9 +254,8 @@ Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 
 Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
-GeometryTypes.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
+GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
 struct Axis end
-
 
 zero_origin(area) = IRect(0, 0, widths(area))
 
@@ -541,8 +540,8 @@ function is2d(scene::SceneLike)
     lims === nothing && return nothing
     return is2d(lims)
 end
-is2d(lims::HyperRectangle{2}) = return true
-is2d(lims::HyperRectangle{3}) = widths(lims)[3] == 0.0
+is2d(lims::Rect2D) = return true
+is2d(lims::Rect3D) = widths(lims)[3] == 0.0
 
 """
     update_limits!(scene::Scene, limits::Union{Automatic, Rect} = scene.limits[], padding = scene.padding[])
@@ -580,19 +579,19 @@ function update_limits!(scene::Scene, limits::Automatic, padding = scene.padding
 end
 
 """
-    update_limits!(scene::Scene, new_limits::HyperRectangle, padding = Vec3f0(0))
+    update_limits!(scene::Scene, new_limits::Rect, padding = Vec3f0(0))
 
-This function updates the limits of the given `Scene` according to the given HyperRectangle.
+This function updates the limits of the given `Scene` according to the given Rect.
 
-A `HyperRectangle` is a generalization of a rectangle to n dimensions.  It contains two vectors.
+A `Rect` is a generalization of a rectangle to n dimensions.  It contains two vectors.
 The first vector defines the origin; the second defines the displacement of the vertices from the origin.
 This second vector can be thought of in two dimensions as a vector of width (x-axis) and height (y-axis),
 and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and height (z-axis).
 
-Such a `HyperRectangle` can be constructed using the `FRect` or `FRect3D` functions that are exported by
+Such a `Rect` can be constructed using the `FRect` or `FRect3D` functions that are exported by
 `AbstractPlotting.jl`.  See their documentation for more information.
 """
-function update_limits!(scene::Scene, new_limits::HyperRectangle, padding = scene.padding[])
+function update_limits!(scene::Scene, new_limits::Rect, padding = scene.padding[])
     lims = FRect3D(new_limits)
     lim_w = widths(lims)
     # use the smallest widths for scaling, to have a consistently wide padding for all sides

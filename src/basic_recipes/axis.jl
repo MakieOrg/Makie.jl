@@ -249,7 +249,7 @@ default_labels(x::AbstractVector{<: AbstractString}, ranges, formatter::Function
 default_labels(x::AbstractVector{<: AbstractString}, ranges::AbstractVector, formatter::Function) = x
 
 function convert_arguments(::Type{<: Axis2D}, limits::Rect)
-    e = (minimum(limits), maximum(limits))
+    e = extrema(limits)
     (((e[1][1], e[2][1]), (e[1][2], e[2][2])),)
 end
 
@@ -332,7 +332,7 @@ function draw_frame(
 
     mini = minimum.(limits)
     maxi = maximum.(limits)
-    rect = HyperRectangle(Vec(mini), Vec(maxi .- mini))
+    rect = Rect(Vec(mini), Vec(maxi .- mini))
     origin = Vec{N}(0.0)
     if (origin in rect) && axis_position == :origin
         for i = 1:N
@@ -591,13 +591,6 @@ function labelposition(ranges, dim, dir, tgap, origin::StaticVector{N}) where N
 
     origin .+ (halfaxis .+ (normalize(dir) * tgap))
 end
-
-
-function GeometryTypes.widths(x::AbstractRange)
-    mini, maxi = Float32.(extrema(x))
-    maxi - mini
-end
-
 
 _widths(x::Tuple{<: Number, <: Number}) = x[2] - x[1]
 _widths(x) = Float32(maximum(x) - minimum(x))
