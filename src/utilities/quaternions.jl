@@ -3,7 +3,7 @@
 # the bool in Quaternions.Quaternion is annoying for OpenGL + and an array of
 # Quaternions.
 # TODO replace this file by just `using Quaternions`
-using StaticArrays, GeometryTypes, Random
+
 struct Quaternion{T}
     data::NTuple{4, T}
     Quaternion{T}(x::NTuple{4, Any}) where T = new{T}(T.(x))
@@ -15,12 +15,14 @@ Base.eltype(::Type{Quaternion{T}}) where T = T
 Base.length(::Type{<: Quaternion}) = 4
 Base.length(::Quaternion) = 4
 
-
 const Quaternionf0 = Quaternion{Float32}
+const SMat{N, L} = Mat{N, N, T, L} where T
+
 function Base.show(io::IO, q::Quaternion)
     pm(x) = x < 0 ? " - $(-x)" : " + $x"
     print(io, q[4], pm(q[1]), "im", pm(q[2]), "jm", pm(q[3]), "km")
 end
+
 Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
 Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
@@ -55,11 +57,6 @@ function Base.:(*)(quat::Quaternion, vec::StaticVector{2, T}) where T
     VT(x3[1], x3[2])
 end
 
-# function (*)(q::Quaternions.Quaternion{T}, v::Vec{3, T}) where T
-#     t = T(2) * cross(Vec(q[1], q[2], q[3]), v)
-#     v + q[4] * t + cross(Vec(q[1], q[2], q[3]), t)
-# end
-
 function Base.:(*)(quat::Quaternion{T}, vec::StaticVector{3}) where T
     num = quat[1] * T(2)
     num2 = quat[2] * T(2)
@@ -90,8 +87,6 @@ function Base.:(*)(q::Quaternion, w::Quaternion)
         q[4] * w[4] - q[1] * w[1] - q[2] * w[2] - q[3] * w[3],
     )
 end
-
-const SMat{N, L} = Mat{N, N, T, L} where T
 
 SMat{N, L}(q::Quaternion{T}) where {N, T, L} = Mat{N, N, T, L}(q)
 
@@ -128,7 +123,6 @@ function orthogonal(v::T) where T <: StaticVector{3}
     other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
     return cross(v, other)
 end
-
 
 function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
     k_cos_theta = dot(u, v)

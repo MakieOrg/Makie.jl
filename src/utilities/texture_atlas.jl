@@ -40,7 +40,7 @@ end
 
 function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     return TextureAtlas(
-        RectanglePacker(SimpleRectangle(0, 0, initial_size...)),
+        RectanglePacker(Rect2D(0, 0, initial_size...)),
         Dict{Any, Int}(),
         1,
         zeros(Float16, initial_size...),
@@ -190,8 +190,8 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
     return get!(atlas.mapping, (glyph, font)) do
         uv, extent, width_nopadd, pad = render(atlas, glyph, font)
         tex_size = Vec2f0(size(atlas.data))
-        uv_start = Vec2f0(uv.x, uv.y)
-        uv_width = Vec2f0(uv.w, uv.h)
+        uv_start = Vec2f0(minimum(uv))
+        uv_width = Vec2f0(widths(uv))
         real_start = uv_start .+ pad .- 1 # include padding
         # padd one additional pixel
         relative_start = real_start ./ tex_size # use normalized texture coordinates
@@ -248,7 +248,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample = 5, pad = 8)
     sd = sdistancefield(bitmap, downsample, downsample*pad)
     sd = sd ./ downsample;
     extent = (extent ./ Vec2f0(downsample))
-    rect = SimpleRectangle(0, 0, size(sd)...)
+    rect = Rect2D(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) #find out where to place the rectangle
     uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at GLVisualize if you encounter this") #TODO resize surface
     atlas.data[uv.area] = sd

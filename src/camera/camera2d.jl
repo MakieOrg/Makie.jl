@@ -239,7 +239,7 @@ end
 
 
 
-function add_restriction!(cam, window, rarea::SimpleRectangle, minwidths::Vec)
+function add_restriction!(cam, window, rarea::Rect2D, minwidths::Vec)
     area_ref = Base.RefValue(cam[Area])
     restrict_action = paused_action(1.0) do t
         o = lerp(origin(area_ref[]), origin(cam[Area]), t)

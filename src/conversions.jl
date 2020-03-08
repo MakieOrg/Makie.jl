@@ -210,16 +210,11 @@ convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
 """
     convert_arguments(P, x)::(Vector)
 
-Takes an input `HyperRectangle` `x` and decomposes it to points.
+Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(P::PointBased, x::Rect2D)
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
-end
-
-function convert_arguments(P::PointBased, x::SimpleRectangle)
     # TODO fix the order of decompose
     return convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
@@ -403,7 +398,7 @@ end
     convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
 
 Takes real vectors x, y, z and constructs a triangle mesh out of those, using the
-faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryTypes.Face{N, <: Integer}.
+faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryBasics.NgonFace{N, <: Integer}.
 """
 function convert_arguments(
         T::Type{<: Mesh},
@@ -420,7 +415,7 @@ end
 function to_triangles(idx0::AbstractVector{UInt32})
     reinterpret(GLTriangle, idx0)
 end
-function to_triangles(faces::AbstractVector{Face{3, T}}) where T
+function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T
     elconvert(GLTriangle, faces)
 end
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
@@ -799,29 +794,11 @@ function available_marker_symbols()
     end
 end
 
-
-
-"""
-    to_spritemarker(b, x::Circle)
-
-`GeometryTypes.Circle(Point2(...), radius)`
-"""
 to_spritemarker(x::Circle) = x
-
-"""
-    to_spritemarker(b, ::Type{Circle})
-
-`Type{GeometryTypes.Circle}`
-"""
 to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
-"""
-    to_spritemarker(b, ::Type{Rectangle})
+to_spritemarker(::Type{<: Rect}) = Rect(Vec2f0(0), Vec2f0(1))
+to_spritemarker(x::Rect) = x
 
-`Type{GeometryTypes.Rectangle}`
-"""
-to_spritemarker(::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
-to_spritemarker(::Type{<: Rect}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
-to_spritemarker(x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)
 
@@ -850,7 +827,6 @@ function to_spritemarker(marker::Symbol)
         return '●'
     end
 end
-
 
 to_spritemarker(marker::String) = marker
 to_spritemarker(marker::AbstractVector{Char}) = String(marker)
