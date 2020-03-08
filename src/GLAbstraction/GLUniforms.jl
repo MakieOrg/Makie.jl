@@ -187,18 +187,17 @@ gl_promote(x::Type{T}) where {T <: BGR} = BGR{gl_promote(eltype(T))}
 
 gl_promote(x::Type{T}) where {T <: StaticVector} = similar_type(T, gl_promote(eltype(T)))
 
-gl_promote(x::Type{T}) where {T <: HomogenousMesh} = NativeMesh{T}
+gl_promote(x::Type{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}
 
 gl_convert(x::AbstractVector{Vec3f0}) = x
 
 gl_convert(x::T) where {T <: Number} = gl_promote(T)(x)
 gl_convert(x::T) where {T <: Colorant} = gl_promote(T)(x)
 gl_convert(x::T) where {T <: AbstractMesh} = gl_convert(convert(GLNormalMesh, x))
-gl_convert(x::T) where {T <: HomogenousMesh} = gl_promote(T)(x)
-gl_convert(x::Node{T}) where {T <: HomogenousMesh} = gl_promote(T)(x)
+gl_convert(x::T) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
+gl_convert(x::Node{T}) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 
 gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
-gl_convert(s::AABB) = s
 gl_convert(s::Nothing) = s
 
 isa_gl_struct(x::AbstractArray) = false
@@ -233,7 +232,7 @@ gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
 gl_convert(x::SMatrix{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
 
 
-gl_convert(a::AbstractVector{<: Face}) = indexbuffer(s)
+gl_convert(a::AbstractVector{<: AbstractFace}) = indexbuffer(s)
 
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
 

@@ -1,11 +1,11 @@
 
 function surfboundingbox(position_x, position_y, position_z)
     arr = const_lift(StructOfArrays, Point3f0, position_x, position_y, position_z)
-    map(AABB{Float32}, arr)
+    map(FRect3D, arr)
 end
 function surfboundingbox(grid, position_z)
     arr = const_lift(GridZRepeat, grid, position_z)
-    map(AABB{Float32}, arr)
+    map(FRect3D, arr)
 end
 
 function _default(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, s::Style{:surface}, data::Dict) where T <: AbstractFloat
@@ -38,7 +38,7 @@ function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) w
     end
     surface(position_z, s, data)
 end
-_extrema(x::AABB) = Vec2f0(minimum(x)[3], maximum(x)[3])
+_extrema(x::FRect3D) = Vec2f0(minimum(x)[3], maximum(x)[3])
 nothing_or_vec(x) = x
 nothing_or_vec(x::Array) = vec(x)
 
@@ -65,7 +65,7 @@ end
 
 function surface(main, s::Style{:surface}, data::Dict)
     @gen_defaults! data begin
-        primitive::GLMesh2D = SimpleRectangle(0f0,0f0,1f0,1f0)
+        primitive::GLMesh2D = Rect2D(0f0,0f0,1f0,1f0)
         scale       = nothing
         position    = nothing
         position_x  = nothing => Texture

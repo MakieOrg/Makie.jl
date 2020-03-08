@@ -414,7 +414,7 @@ function surface_contours(volume::Volume)
 
     modelinv = lift((a,b)-> inv(b) * inv(a), model, model2)
     model2 = lift(*, model, model2)
-    hull = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+    hull = FRect3D(Vec3f0(0), Vec3f0(1))
     gl_data = Dict(
         :hull => GLUVWMesh(hull),
         :volumedata => Texture(lift(x-> convert(Array{Float32}, x), vol)),

@@ -65,8 +65,8 @@ end
 export layout!
 
 
-Context() = Context{DeviceUnit}(Composable[], Node(AABB{Float32}(Vec3f0(0), Vec3f0(0))), Node(Mat{4,4, Float32}(I)))
-Context(trans::Node{Mat{4,4, Float32}}) = Context{DeviceUnit}(Composable[], Node(AABB{Float32}(Vec3f0(0), Vec3f0(0))), trans)
+Context() = Context{DeviceUnit}(Composable[], Node(FRect3D(Vec3f0(0), Vec3f0(0))), Node(Mat{4,4, Float32}(I)))
+Context(trans::Node{Mat{4,4, Float32}}) = Context{DeviceUnit}(Composable[], Node(FRect3D(Vec3f0(0), Vec3f0(0))), trans)
 function Context(a::Composable...; parent=Context())
     append!(parent, a)
     parent
@@ -104,10 +104,10 @@ function Base.push!(context::Context{unit}, x::Composable) where unit <: Unit
         a = transa*a
         b = transb*b
          # we need some zero element for an empty context
-         # sadly union(zero(AABB), ...) doesn't work for this
-        if a == AABB{Float32}(Vec3f0(0), Vec3f0(0))
+         # sadly union(zero(FRect3D), ...) doesn't work for this
+        if a == FRect3D(Vec3f0(0), Vec3f0(0))
             return b
-        elseif b == AABB{Float32}(Vec3f0(0), Vec3f0(0))
+        elseif b == FRect3D(Vec3f0(0), Vec3f0(0))
             return a
         end
         union(a, b)

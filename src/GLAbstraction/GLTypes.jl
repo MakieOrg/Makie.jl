@@ -316,7 +316,7 @@ end
 function RenderObject(
         data::Dict{Symbol, Any}, program,
         pre::Pre, post,
-        bbs=Node(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
+        bbs=Node(FRect3D(Vec3f0(0),Vec3f0(1))),
         main=nothing
     ) where Pre
     targets = get(data, :gl_convert_targets, Dict())

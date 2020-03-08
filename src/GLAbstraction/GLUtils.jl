@@ -121,7 +121,7 @@ macro gen_defaults!(dict, args)
                         doc_strings = :(doc_strings[$key_sym] = $elem)
                     elseif isa(elem, Symbol)
                         opengl_convert_target = quote
-                            if matches_target($elem, $key_name)
+                            if GLAbstraction.matches_target($elem, $key_name)
                                 gl_convert_targets[$key_sym] = $elem
                             end
                         end
@@ -158,14 +158,14 @@ AND(a,b) = a&&b
 OR(a,b) = a||b
 
 #Meshtype holding native OpenGL data.
-struct NativeMesh{MeshType <: Mesh}
+struct NativeMesh{MeshType <: GeometryBasics.Mesh}
     data::Dict{Symbol, Any}
 end
 export NativeMesh
 
-NativeMesh(m::T) where {T <: Mesh} = NativeMesh{T}(m)
+NativeMesh(m::T) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
 
-function (MT::Type{NativeMesh{T}})(mesh::T) where T <: HomogenousMesh
+function (MT::Type{NativeMesh{T}})(mesh::T) where T <: GeometryBasics.Mesh
     result = Dict{Symbol, Any}()
     attribs = GeometryBasics.attributes(mesh)
     result[:vertices] = GLBuffer(pop!(attribs, :position))
@@ -187,7 +187,7 @@ function (MT::Type{NativeMesh{T}})(mesh::T) where T <: HomogenousMesh
     return MT(result)
 end
 
-function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
+function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: GeometryBasics.Mesh
     result = Dict{Symbol, Any}()
     mv = to_value(m)
     attribs = GeometryBasics.attributes(mv)

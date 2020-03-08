@@ -22,7 +22,7 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
         primitive::GLUVMesh2D = const_lift(ranges) do r
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
-            SimpleRectangle{Float32}(x, y, xmax - x, ymax - y)
+            return FRect2D(x, y, xmax - x, ymax - y)
         end
         preferred_camera      = :orthographic_pixel
         fxaa                  = false
@@ -36,7 +36,7 @@ end
 function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
         image                 = main => (Texture, "image, can be a Texture or Array of colors")
-        primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0, 0f0, length(to_value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
+        primitive::GLUVMesh2D = FRect2D(0f0, 0f0, length(to_value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
         preferred_camera      = :orthographic_pixel
         fxaa                  = false
         shader                = GLVisualizeShader(
@@ -56,7 +56,7 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     end
     prim = const_lift(data[:ranges]) do ranges
         x, y, xw, yh = minimum(ranges[1]), minimum(ranges[2]), maximum(ranges[1]), maximum(ranges[2])
-        SimpleRectangle{Float32}(x, y, xw-x, yh-y)
+        return FRect2D(x, y, xw-x, yh-y)
     end
     delete!(data, :ranges)
     @gen_defaults! data begin
@@ -84,7 +84,7 @@ function _default(main::MatTypes{T}, s::style"distancefield", data::Dict) where 
         shape         = DISTANCEFIELD
         fxaa          = false
     end
-    rect = SimpleRectangle{Float32}(0f0,0f0, size(to_value(main))...)
+    rect = FRect2D(0f0,0f0, size(to_value(main))...)
     _default((rect, Point2f0[0]), s, data)
 end
 
@@ -101,7 +101,7 @@ float function(float x) {
 _default(func::String, s::Style{:shader}, data::Dict) = @gen_defaults! data begin
     color                 = default(RGBA, s) => Texture
     dimensions            = (120f0, 120f0)
-    primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0,0f0, dimensions...)
+    primitive::GLUVMesh2D = FRect2D(0f0,0f0, dimensions...)
     preferred_camera      = :orthographic_pixel
     fxaa                  = false
     shader                = GLVisualizeShader(
@@ -154,7 +154,7 @@ end
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeElTypes
     @gen_defaults! data begin
         volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+        hull::GLUVWMesh  = FRect3D(Vec3f0(0), Vec3f0(1))
         light_position   = Vec3f0(0.25, 1.0, 3.0)
         light_intensity  = Vec3f0(15.0)
         model            = Mat4f0(I)
@@ -179,7 +179,7 @@ end
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
         volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
+        hull::GLUVWMesh  = FRect3D(Vec3f0(0), Vec3f0(1))
         model            = Mat4f0(I)
         modelinv         = const_lift(inv, model)
 

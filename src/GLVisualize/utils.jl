@@ -34,7 +34,7 @@ function assemble_shader(data)
     delete!(data, :shader)
     glp = get(data, :gl_primitive, GL_TRIANGLES)
     robj = assemble_robj(
-        data, shader, bb, glp,
+        data, shader, FRect3D(), glp,
         get(data, :prerender, nothing),
         get(data, :postrender, nothing)
     )
@@ -61,7 +61,7 @@ end
 """
 If already GLuint, we assume its 0 based (bad heuristic, should better be solved with some Index type)
 """
-function to_index_buffer(x::VectorTypes{I}) where I <: Union{GLuint, Face{2, GLIndex}}
+function to_index_buffer(x::VectorTypes{I}) where I <: Union{GLuint, LineFace{GLIndex}}
     indexbuffer(x)
 end
 

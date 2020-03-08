@@ -105,7 +105,7 @@ end
 """
 Renders a vertex array which supplies an indexbuffer
 """
-function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, Face}
+function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, AbstractFace}
     glDrawElements(
         mode,
         length(vao.indices) * cardinality(vao.indices),
@@ -129,7 +129,7 @@ renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced
 """
 Renders `amount` instances of an indexed geometry
 """
-function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, Face}
+function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, AbstractFace}
     glDrawElementsInstanced(primitive, length(vao.indices)*cardinality(vao.indices), julia2glenum(T), C_NULL, amount)
     return
 end

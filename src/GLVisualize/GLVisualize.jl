@@ -21,7 +21,7 @@ using LinearAlgebra
 import AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
 import ..GLMakie: get_texture!
 
-const GLBoundingBox = AABB{Float32}
+const GLBoundingBox = FRect3D
 
 """
 Replacement of Pkg.dir("GLVisualize") --> GLVisualize.dir,

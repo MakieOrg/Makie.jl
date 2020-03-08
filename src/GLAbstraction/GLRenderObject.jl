@@ -1,6 +1,6 @@
 function RenderObject(
         data::Dict{Symbol}, program, pre,
-        bbs = Node(AABB{Float32}(Vec3f0(0),Vec3f0(1))),
+        bbs = Node(FRect3D(Vec3f0(0),Vec3f0(1))),
         main = nothing
     )
     RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
@@ -110,14 +110,14 @@ end
 export EmptyPrerender
 export prerendertype
 
-function instanced_renderobject(data, program, bb = Node(AABB(Vec3f0(0), Vec3f0(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
+function instanced_renderobject(data, program, bb = Node(FRect3D(Vec3f0(0), Vec3f0(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrenderInstanced(main, robj.vertexarray, primitive)
     robj
 end
 
-function std_renderobject(data, program, bb = Node(AABB(Vec3f0(0), Vec3f0(1))), primitive=GL_TRIANGLES, main=nothing)
+function std_renderobject(data, program, bb = Node(FRect3D(Vec3f0(0), Vec3f0(1))), primitive=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrender(robj.vertexarray, primitive)
@@ -159,12 +159,12 @@ function translate!(c::Composable, vec::TOrSignal{T}) where T <: Vec{3}
 end
 function _boundingbox(c::RenderObject)
     bb = to_value(c[:boundingbox])
-    bb == nothing && return AABB()
+    bb == nothing && return FRect3D()
     to_value(c[:model]) * bb
 end
 function _boundingbox(c::Composable)
     robjs = extract_renderable(c)
-    isempty(robjs) && return AABB()
+    isempty(robjs) && return FRect3D()
     mapreduce(_boundingbox, union, robjs)
 end
 """

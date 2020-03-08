@@ -39,7 +39,7 @@ end
 Matrices of floats are represented as 3D barplots with cubes as primitive
 """
 function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: AbstractFloat
-    _default((AABB(Vec3f0(-0.5,-0.5,0), Vec3f0(1.0)), main), s, data)
+    _default((FRect3D(Vec3f0(-0.5,-0.5,0), Vec3f0(1.0)), main), s, data)
 end
 """
 Vectors of n-dimensional points get ndimensional rectangles as default
@@ -209,7 +209,7 @@ function _default(
     meshparticle(p, s, data)
 end
 
-function Base.convert(::Type{T}, mesh::Node) where T<:GeometryTypes.HomogenousMesh
+function Base.convert(::Type{T}, mesh::Node) where T<:GeometryBasics.Mesh
     lift(T, mesh)
 end
 
@@ -228,7 +228,7 @@ function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
     gl_convert(const_lift(GLNormalMesh, mesh))
 end
 
-function to_mesh(mesh::TOrSignal{<: HomogenousMesh})
+function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
     gl_convert(to_value(mesh))
 end
 
@@ -343,8 +343,7 @@ returns the Shape for the distancefield algorithm
 primitive_shape(::Char) = DISTANCEFIELD
 primitive_shape(x::X) where {X} = primitive_shape(X)
 primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
-primitive_shape(::Type{T}) where {T <: SimpleRectangle} = RECTANGLE
-primitive_shape(::Type{T}) where {T <: HyperRectangle{2}} = RECTANGLE
+primitive_shape(::Type{T}) where {T <: Rect2D} = RECTANGLE
 primitive_shape(x::Shape) = x
 
 """
@@ -406,8 +405,8 @@ function _default(
     if !all(x-> x == sizes[1], sizes) # if differently sized
         # create texture atlas
         maxdims = sum(map(Vec{2, Int}, sizes))
-        rectangles = map(x->SimpleRectangle(0, 0, x...), sizes)
-        rpack = RectanglePacker(SimpleRectangle(0, 0, maxdims...))
+        rectangles = map(x->Rect2D(0, 0, x...), sizes)
+        rpack = RectanglePacker(Rect2D(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
         max_xy = maximum(maximum.(uv_coordinates))
         texture_atlas = Texture(C, (max_xy...,))
