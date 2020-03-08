@@ -1,7 +1,7 @@
 module GLAbstraction
 
 using StaticArrays
-using GeometryTypes
+using GeometryBasics
 using ModernGL
 using AbstractPlotting
 using FixedPointNumbers
@@ -15,8 +15,6 @@ using Observables
 import FileIO: load, save
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
-
-using GeometryTypes: attributes
 
 import AbstractPlotting: update!
 

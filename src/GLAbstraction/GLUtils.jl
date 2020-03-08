@@ -1,44 +1,3 @@
-macro gputime(codeblock)
-    quote
-        local const query        = GLuint[1]
-        local const elapsed_time = GLuint64[1]
-        local const done         = GLint[0]
-        glGenQueries(1, query)
-        glBeginQuery(GL_TIME_ELAPSED, query[1])
-        $(esc(codeblock))
-        glEndQuery(GL_TIME_ELAPSED)
-
-        while (done[1] != 1)
-            glGetQueryObjectiv(
-                query[1],
-                GL_QUERY_RESULT_AVAILABLE,
-                done
-            )
-        end
-        glGetQueryObjectui64v(query[1], GL_QUERY_RESULT, elapsed_time)
-        println("Time Elapsed: ", elapsed_time[1] / 1000000.0, "ms")
-    end
-end
-
-struct IterOrScalar{T}
-    val::T
-end
-
-minlenght(a::Tuple{Vararg{IterOrScalar}}) = foldl(typemax(Int), a) do len, elem
-    isa(elem.val, AbstractArray) && len > length(elem.val) && return length(elem.val)
-    len
-end
-getindex(A::IterOrScalar{T}, i::Integer) where {T<:AbstractArray} = A.val[i]
-getindex(A::IterOrScalar, i::Integer) = A.val
-
-#Some mapping functions for dictionaries
-function mapvalues(func, collection::Dict)
-    Dict([(key, func(value)) for (key, value) in collection])
-end
-function mapkeys(func, collection::Dict)
-    Dict([(func(key), value) for (key, value) in collection])
-end
-
 function print_with_lines(out::IO, text::AbstractString)
     io = IOBuffer()
     for (i,line) in enumerate(split(text, "\n"))
@@ -80,6 +39,7 @@ macro materialize(dict_splat)
     end
     esc(expr)
 end
+
 """
 splats keys from a dict into variables and removes them
 """
@@ -96,7 +56,6 @@ macro materialize!(dict_splat)
     esc(expr)
 end
 
-
 """
 Needed to match the lazy gl_convert exceptions.
     `Target`: targeted OpenGL type
@@ -106,10 +65,7 @@ matches_target(::Type{Target}, x::T) where {Target, T} = applicable(gl_convert, 
 matches_target(::Type{Target}, x::Node{T}) where {Target, T} = applicable(gl_convert, Target, x)  || T <: Target
 matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
-export matches_target
 
-
-signal_convert(T, y) = convert(T, y)
 signal_convert(T1, y::T2) where {T2<:Node} = lift(convert, Node(T1), y)
 """
 Takes a dict and inserts defaults, if not already available.
@@ -197,31 +153,29 @@ makesignal(v) = Node(v)
 @inline const_lift(f::Union{DataType, Type, Function}, inputs...) = lift(f, map(makesignal, inputs)...)
 export const_lift
 
-
-
 isnotempty(x) = !isempty(x)
 AND(a,b) = a&&b
 OR(a,b) = a||b
 
 #Meshtype holding native OpenGL data.
-struct NativeMesh{MeshType <: HomogenousMesh}
+struct NativeMesh{MeshType <: Mesh}
     data::Dict{Symbol, Any}
 end
 export NativeMesh
 
-NativeMesh(m::T) where {T <: HomogenousMesh} = NativeMesh{T}(m)
-(B::Type{AABB{T}})(a::NativeMesh) where {T} = B(gpu_data(a.data[:vertices]))
+NativeMesh(m::T) where {T <: Mesh} = NativeMesh{T}(m)
 
-function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
+function (MT::Type{NativeMesh{T}})(mesh::T) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
-    attribs = GeometryTypes.attributes(m)
-    @materialize! vertices, faces = attribs
-    result[:vertices] = GLBuffer(vertices)
-    result[:faces]    = indexbuffer(faces)
+    attribs = GeometryBasics.attributes(mesh)
+    result[:vertices] = GLBuffer(pop!(attribs, :position))
+    result[:faces] = indexbuffer(faces(mesh))
     for (field, val) in attribs
-        if field in (:texturecoordinates, :normals, :attribute_id, :color)
+        if field in (:uv, :normals, :attribute_id, :color)
             if field == :color
                 field = :vertex_color
+            elseif field == :uv
+                field = :texturecoordinates
             end
             if isa(val, AbstractVector)
                 result[field] = GLBuffer(val)
@@ -230,20 +184,21 @@ function (MT::Type{NativeMesh{T}})(m::T) where T <: HomogenousMesh
             result[field] = Texture(val)
         end
     end
-    MT(result)
+    return MT(result)
 end
 
 function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
     result = Dict{Symbol, Any}()
     mv = to_value(m)
-    attribs = GeometryTypes.attributes(mv)
-    @materialize! vertices, faces = attribs
-    result[:vertices] = GLBuffer(vertices)
-    result[:faces]    = indexbuffer(faces)
+    attribs = GeometryBasics.attributes(mv)
+    result[:vertices] = GLBuffer(pop!(attribs, :position))
+    result[:faces] = indexbuffer(faces(mesh))
     for (field, val) in attribs
-        if field in (:texturecoordinates, :normals, :attribute_id, :color)
+        if field in (:uv, :normals, :attribute_id, :color)
             if field == :color
                 field = :vertex_color
+            elseif field == :uv
+                field = :texturecoordinates
             end
             if isa(val, AbstractVector)
                 result[field] = GLBuffer(val)
@@ -255,8 +210,9 @@ function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
     on(m) do mesh
         for (field, val) in GeometryTypes.attributes(mesh)
             field == :color && (field = :vertex_color)
+            field == :uv && (field = :texturecoordinates)
             haskey(result, field) && update!(result[field], val)
         end
     end
-    MT(result)
+    return MT(result)
 end

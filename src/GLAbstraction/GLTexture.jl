@@ -195,8 +195,8 @@ Creates a texture from an Image
 #end
 
 
-GeometryTypes.width(t::Texture)  = size(t, 1)
-GeometryTypes.height(t::Texture) = size(t, 2)
+GeometryBasics.width(t::Texture)  = size(t, 1)
+GeometryBasics.height(t::Texture) = size(t, 2)
 depth(t::Texture)  = size(t, 3)
 
 

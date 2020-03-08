@@ -13,7 +13,6 @@ import Base: ndims
 import Base: size
 import Base: iterate
 using Serialization
-import GeometryTypes.SimpleRectangle
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 

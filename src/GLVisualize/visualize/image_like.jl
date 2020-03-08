@@ -110,9 +110,8 @@ _default(func::String, s::Style{:shader}, data::Dict) = @gen_defaults! data begi
     )
 end
 
-
 #Volumes
-const VolumeElTypes = Union{Gray, AbstractFloat, Intensity}
+const VolumeElTypes = Union{Gray, AbstractFloat}
 
 const default_style = Style{:default}()
 

@@ -38,7 +38,7 @@ Base.length(p::Grid) = prod(size(p))
 Base.size(p::Grid) = map(length, p.dims)
 function Base.getindex(p::Grid{N,T}, i) where {N,T}
     inds = ind2sub(size(p), i)
-    Point{N, eltype(T)}(ntuple(Val(N)) do i
+    return Point{N, eltype(T)}(ntuple(Val(N)) do i
         p.dims[i][inds[i]]
     end)
 end
@@ -66,48 +66,6 @@ function GLAbstraction.gl_convert_struct(g::Grid{1, T}, uniform_name::Symbol) wh
 end
 import Base: getindex, length, iterate, ndims, setindex!, eltype
 
-
-to_cpu_mem(x) = x
-to_cpu_mem(x::GPUArray) = gpu_data(x)
-
-const ScaleTypes = Union{Vector, Vec, AbstractFloat, Nothing, Grid}
-const PositionTypes = Union{Vector, Point, AbstractFloat, Nothing, Grid}
-
-mutable struct ScalarRepeat{T}
-    scalar::T
-end
-ndims(::ScalarRepeat) = 1
-getindex(s::ScalarRepeat, i...) = s.scalar
-#should setindex! really be allowed? It will set the index for the whole row...
-setindex!(s::ScalarRepeat{T}, value, i...) where {T} = (s.scalar = T(value))
-eltype(::ScalarRepeat{T}) where {T} = T
-
-iterate(sr::ScalarRepeat, i = 1) = (sr.scalar, i + 1)
-
-struct Instances{P,T,S,R}
-    primitive::P
-    translation::T
-    scale::S
-    rotation::R
-end
-
-
-
-function _Instances(position,px,py,pz, scale,sx,sy,sz, rotation, primitive)
-    args = (position,px,py,pz, scale,sx,sy,sz, rotation, primitive)
-    args = map(to_cpu_mem, args)
-    p = const_lift(ArrayOrStructOfArray, Point3f0, args[1:4]...)
-    s = const_lift(ArrayOrStructOfArray, Vec3f0, args[5:8]...)
-    r = const_lift(ArrayOrStructOfArray, Vec4f0, args[9])
-    const_lift(Instances, args[10], p, s, r)
-end
-function _Instances(position, scale, rotation, primitive)
-    p = const_lift(ArrayOrStructOfArray, Point3f0, position)
-    s = const_lift(ArrayOrStructOfArray, Vec3f0, scale)
-    r = const_lift(ArrayOrStructOfArray, Vec4f0, rotation)
-    const_lift(Instances, primitive, p, s, r)
-end
-
 struct GridZRepeat{G, T, N} <: AbstractArray{Point{3, T}, N}
     grid::G
     z::Array{T, N}
@@ -120,107 +78,6 @@ function Base.getindex(g::GridZRepeat{G, T}, i) where {G,T}
     pxy = g.grid[i]
     Point{3, T}(pxy[1], pxy[2], g.z[i])
 end
-
-
-
-
-
-
-function ArrayOrStructOfArray(::Type{T}, array::Nothing, a, elements...) where T
-    StructOfArrays(T, a, elements...)
-end
-function ArrayOrStructOfArray(::Type{T}, array::StaticVector, a, elements...) where T
-    StructOfArrays(T, a, elements...)
-end
-function ArrayOrStructOfArray(::Type{T}, scalar::StaticVector, a::Nothing, elements::Nothing...) where T
-    ScalarRepeat(transform_convert(T, scalar))
-end
-function ArrayOrStructOfArray(::Type{T1}, array::Array{T2}, a::Nothing, elements::Nothing...) where {T1,T2}
-    array
-end
-function ArrayOrStructOfArray(::Type{T1}, grid::Grid, x::Nothing, y::Nothing, z::Array) where T1<:Point
-    GridZRepeat(grid, z)
-end
-function ArrayOrStructOfArray(::Type{T1}, array::Grid, a::Nothing, elements::Nothing...) where T1<:Point
-    array
-end
-function ArrayOrStructOfArray(::Type{T}, scalar::T) where T
-    ScalarRepeat(scalar)
-end
-function ArrayOrStructOfArray(::Type{T}, array::Array) where T
-    array
-end
-
-
-
-
-struct TransformationIterator{T,S,R}
-    translation::T
-    scale::S
-    rotation::R
-end
-function TransformationIterator(instances::Instances)
-    TransformationIterator(
-        instances.translation,
-        instances.scale,
-        instances.rotation
-    )
-end
-function iterate(t::TransformationIterator, state = 1)
-    states = (
-        iterate(t.translation, state),
-        iterate(t.scale, state),
-        iterate(t.rotation, state)
-    )
-    all(x-> x !== nothing, states) || return nothing
-    _translation, _scale, _rotation = first.(states)
-    translation = Point3f0(transform_convert(Vec3f0, _translation))
-    scale = Vec3f0(transform_convert(Point3f0, _scale))
-    rotation = to_rotation_mat(_rotation)
-    (translation, scale, rotation), last.(states)
-end
-
-
-import GeometryTypes: transform_convert
-
-# For quaternions
-function to_rotation_mat(x::Vec{4, T}) where T
-    Mat4{T}(AbstractPlotting.Quaternionf0(x[1], x[2], x[3], x[4]))
-end
-# For relative rotations of a vector
-function to_rotation_mat(x::StaticVector{2, T}) where T
-    to_rotation_mat(Vec3f0(x[1], x[2], 0))
-end
-function to_rotation_mat(x::StaticVector{3, T}) where T
-    rotation = Vec3f0(transform_convert(Point3f0, x))
-    v, u = normalize(rotation), Vec3f0(0, 0, 1)
-    # Unfortunately, we have to check for when u == -v, as u + v
-    # in this case will be (0, 0, 0), which cannot be normalized.
-    q = if (u == -v)
-        # 180 degree rotation around any orthogonal vector
-        other = (abs(dot(u, Vec{3, T}(1,0,0))) < 1.0) ? Vec{3, T}(1,0,0) : Vec{3, T}(0,1,0)
-        AbstractPlotting.qrotation(normalize(cross(u, other)), T(180))
-    else
-        half = normalize(u+v)
-        vc = cross(u, half)
-        AbstractPlotting.Quaternionf0(dot(u, half), vc[1], vc[2], vc[3])
-    end
-    Mat4{T}(q)
-end
-
-
-
-
-struct Intensity{T <: AbstractFloat} <: FieldVector{1, T}
-    i::T
-end
-@inline (I::Type{Intensity{T}})(i::Tuple) where {T <: AbstractFloat} = I(i...)
-@inline (I::Type{Intensity{T}})(i::Intensity) where {T <: AbstractFloat} = I(i.i)
-Intensity{T}(x::Color{Tc, 1}) where {T <: AbstractFloat, Tc} = Intensity{T}(gray(x))
-
-const GLIntensity = Intensity{Float32}
-export Intensity, GLIntensity
-
 
 struct GLVisualizeShader <: AbstractLazyShader
     paths::Tuple

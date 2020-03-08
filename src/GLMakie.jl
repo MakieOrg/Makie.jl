@@ -1,6 +1,6 @@
 module GLMakie
 
-using ModernGL, FixedPointNumbers, Colors, GeometryTypes, StaticArrays
+using ModernGL, FixedPointNumbers, Colors, GeometryBasics, StaticArrays
 using AbstractPlotting, FileIO
 
 using AbstractPlotting: @key_str, Key, broadcast_foreach, to_ndim, NativeFont
@@ -43,7 +43,6 @@ if WORKING_OPENGL
      # don't put this into try catch, to not mess with normal errors
     include("gl_backend.jl")
 end
-
 
 function activate!(use_display = true)
     b = GLBackend()

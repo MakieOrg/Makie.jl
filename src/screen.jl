@@ -42,7 +42,8 @@ mutable struct Screen <: GLScreen
         obj
     end
 end
-GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
+
+GeometryBasics.widths(x::Screen) = size(x.framebuffer.color)
 
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(AbstractPlotting.getscreen(scene))

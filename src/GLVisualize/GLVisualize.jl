@@ -6,7 +6,7 @@ using AbstractPlotting: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensit
 using ..GLMakie.GLFW
 using ModernGL
 using StaticArrays
-using GeometryTypes
+using GeometryBasics
 using Colors
 using AbstractPlotting
 using FixedPointNumbers

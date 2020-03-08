@@ -209,11 +209,9 @@ function _default(
     meshparticle(p, s, data)
 end
 
-# make conversion of mesh signals work. TODO move to GeometryTypes?
 function Base.convert(::Type{T}, mesh::Node) where T<:GeometryTypes.HomogenousMesh
     lift(T, mesh)
 end
-
 
 function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
     TextureBuffer(color)
@@ -453,10 +451,10 @@ function _default(
     sprites(p, s, data)
 end
 
-
 function correct_scale(char, scale)
     Vec2f0(glyph_scale!(char, scale))
 end
+
 function correct_scale(char, scale::AbstractVector)
     Vec2f0(glyph_scale!.(char, scale))
 end
@@ -527,7 +525,6 @@ function sprites(p, s, data)
     data
 end
 
-
 """
 Transforms text into a particle system of sprites, by inferring the
 texture coordinates in the texture atlas, widths and positions of the characters.
@@ -536,8 +533,6 @@ function _default(main::Tuple{TOrSignal{S}, P}, s::Style, data::Dict) where {S <
     data[:position] = main[2]
     _default(main[1], s, data)
 end
-
-
 
 function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractString
     @gen_defaults! data begin
