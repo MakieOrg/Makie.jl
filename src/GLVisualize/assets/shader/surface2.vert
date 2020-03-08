@@ -3,7 +3,7 @@
 
 in vec2 vertices;
 
-uniform vec3 light[4];
+uniform vec3 lightposition;
 {{color_type}} color;
 uniform vec2 color_norm;
 
@@ -16,7 +16,7 @@ uniform vec3 scale;
 
 uniform mat4 view, model, projection;
 
-void render(vec3 vertices, vec3 normal, vec4 color, mat4 viewmodel, mat4 projection, vec3 light[4]);
+void render(vec3 vertices, vec3 normal, vec4 color, mat4 viewmodel, mat4 projection, vec3 lightposition);
 ivec2 ind2sub(ivec2 dim, int linearindex);
 vec2 linear_index(ivec2 dims, int index, vec2 offset);
 vec4 linear_texture(sampler2D tex, int index, vec2 offset);
@@ -28,12 +28,12 @@ bool isinbounds(vec2 uv)
 	return (uv.x <= 1.0 && uv.y <= 1.0 && uv.x >= 0.0 && uv.y >= 0.0);
 }
 vec3 getnormal(sampler2D zvalues, vec2 uv)
-{   
+{
     float weps = 1.0/textureSize(zvalues,0).x;
     float heps = 1.0/textureSize(zvalues,0).y;
 
     vec3 result = vec3(0);
-    
+
     vec3 s0 = vec3(uv, texture(zvalues, uv).x);
 
     vec2 off1 = uv + vec2(-weps,0);
@@ -82,8 +82,6 @@ void main()
 
 	vec4 instance_color = color_lookup(pos.z, color, color_norm);
 	vec3 normalvec 		= getnormal(z, linear_index(dims, index, vertices));
-	render(pos, normalvec, instance_color, view * model, projection, light);
+	render(pos, normalvec, instance_color, view * model, projection, lightposition);
 	o_id                = uvec2(objectid, index+1);
 }
-
-
