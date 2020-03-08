@@ -1,4 +1,3 @@
-Vec3f0[Vec3f0(0), Vec3f0(0), Vec3f0(0)]
 function default(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     # _default_light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     data = _default(main, s, copy(data))
