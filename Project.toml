@@ -3,6 +3,9 @@ uuid = "3c562d8e-4afa-4f1c-99bf-ad54af2b207f"
 authors = ["Simon Danisch"]
 version = "0.1.0"
 
+[deps]
+RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+
 [compat]
 julia = "1"
 
