@@ -1,10 +1,10 @@
-vertexbuffer(x) = vertexbuffer(GeometryTypes.vertices(x))
+vertexbuffer(x) = vertexbuffer(GeometryBasics.coordinates(x))
 
 vertexbuffer(x::Observable) = Buffer(lift(vertexbuffer, x))
 function vertexbuffer(x::AbstractArray{Point{N, T}}) where {N, T}
     reinterpret(GeometryBasics.Point{N, T}, x)
 end
-facebuffer(x) = facebuffer(GeometryTypes.faces(x))
+facebuffer(x) = facebuffer(GeometryBasics.faces(x))
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 function facebuffer(x::AbstractArray{GLTriangle})
     convert(Vector{GeometryBasics.TriangleFace{Cuint}}, x)
@@ -15,7 +15,7 @@ function array2color(colors, cmap, crange)
     AbstractPlotting.interpolated_getindex.((cmap,), colors, (crange,))
 end
 function array2color(colors::AbstractArray{<: Colorant}, cmap, crange)
-    RGBAf0.(colors)
+    return RGBAf0.(colors)
 end
 
 function converted_attribute(plot::AbstractPlot, key::Symbol)
@@ -27,11 +27,12 @@ end
 function create_shader(scene::Scene, plot::Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
-    mattributes = GeometryTypes.attributes
-    get_attribute(mesh, key) = lift(x-> mattributes(x)[key], mesh)
+    mattributes = GeometryBasics.attributes
+    get_attribute(mesh, key) = lift(x-> getproperty(mesh, key), mesh)
     data = mattributes(mesh_signal[])
 
     uniforms = Dict{Symbol, Any}(); attributes = Dict{Symbol, Any}()
+
     for (key, default) in (
             :texturecoordinates => Vec2f0(0),
             :normals => Vec3f0(0)
@@ -42,6 +43,7 @@ function create_shader(scene::Scene, plot::Mesh)
             uniforms[key] = Observable(default)
         end
     end
+
     if haskey(data, :attributes) && data[:attributes] isa AbstractVector
         attributes[:color] = Buffer(lift(get_attribute(mesh_signal, :attributes), get_attribute(mesh_signal, :attribute_id)) do color, attr
             color[Int.(attr) .+ 1]

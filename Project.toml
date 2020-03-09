@@ -8,7 +8,6 @@ AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 Colors = "5ae59095-9a9b-59fe-a467-6f913c188581"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GeometryBasics = "5c1252a2-5f33-56bf-86c9-59e7332b4326"
-GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
 Hyperscript = "47d2ed2b-36de-50cf-bf87-49c2cf4b8b91"
 ImageTransformations = "02fcd773-0e25-5acc-982a-7f6622650795"
 JSServe = "824d6782-a2ef-11e9-3a09-e5662e0c26f9"
@@ -22,7 +21,6 @@ AbstractPlotting = "0.9.17"
 Colors = "0.9, 0.10, 0.11"
 FileIO = "1.1"
 GeometryBasics = "0.1"
-GeometryTypes = "0.7, 0.8"
 Hyperscript = "0.0.3"
 ImageTransformations = "0.7,0.8"
 JSServe = "^0.3.4, 0.4"
@@ -33,10 +31,10 @@ julia = "1.0"
 
 [extras]
 ElectronDisplay = "d872a56f-244b-5cc9-b574-2017b5b909a8"
+MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 
 [targets]
 test = ["Test", "ElectronDisplay", "MakieGallery", "StatsMakie", "MeshIO"]

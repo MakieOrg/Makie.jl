@@ -2,7 +2,7 @@ module WGLMakie
 
 using Hyperscript
 using JSServe, Observables, AbstractPlotting
-using GeometryTypes, Colors
+using Colors, GeometryBasics
 using ShaderAbstractions, LinearAlgebra
 import GeometryBasics
 
@@ -15,7 +15,6 @@ using ShaderAbstractions: InstancedProgram
 import AbstractPlotting.FileIO
 using StaticArrays
 
-import GeometryTypes: GLNormalMesh, GLPlainMesh
 using ImageTransformations
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
