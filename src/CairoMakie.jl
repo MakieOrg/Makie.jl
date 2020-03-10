@@ -207,6 +207,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Mesh)
     vs = vertices(mesh); fs = faces(mesh)
     uv = hastexturecoordinates(mesh) ? texturecoordinates(mesh) : nothing
     pattern = Cairo.CairoPatternMesh()
+
+    if mesh.attributes !== nothing && mesh.attribute_id !== nothing
+        color = mesh.attributes[Int.(mesh.attribute_id .+ 1)]
+    end
     cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
     for (f, (c1, c2, c3)) in zip(fs, cols)
         t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
@@ -395,8 +399,7 @@ end
 fontname(x::String) = x
 fontname(x::Symbol) = string(x)
 function fontname(x::NativeFont)
-    ft_rect = unsafe_load(x[1])
-    unsafe_string(ft_rect.family_name)
+    return x.family_name
 end
 
 function fontscale(atlas, scene, c, font, s)
