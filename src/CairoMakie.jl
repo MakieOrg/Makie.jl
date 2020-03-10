@@ -221,12 +221,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Mesh)
         mesh_pattern_set_corner_color(pattern, 2, c3)
 
         Cairo.mesh_pattern_end_patch(pattern)
-
-        Cairo.set_source(ctx, pattern)
-        Cairo.close_path(ctx)
-        Cairo.paint(ctx)
     end
-    nothing
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    return nothing
 end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, LineSegments})
