@@ -553,6 +553,10 @@ function draw_plot(screen::CairoScreen, scene::Scene)
     top_offset = parent_area_height - scene_height - scene_y_origin
     Cairo.translate(screen.context, scene_x_origin, top_offset)
 
+    # clip the scene to its pixelarea
+    Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
+    Cairo.clip(screen.context)
+
     for elem in scene.plots
         draw_plot(scene, screen, elem)
     end
