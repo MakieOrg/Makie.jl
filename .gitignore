@@ -3,3 +3,4 @@
 *.jl.mem
 /src/display.*
 Manifest.toml
+.DS_Store

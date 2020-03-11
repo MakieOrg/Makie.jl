@@ -8,9 +8,9 @@ using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, b
 using AbstractPlotting: convert_attribute, @extractvalue, LineSegments, to_ndim, NativeFont
 using AbstractPlotting: @info, @get_attribute, Combined
 using AbstractPlotting: to_value, to_colormap, extrema_nan
-using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface
+using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface, CairoPDFSurface
 
-@enum RenderType SVG PNG
+@enum RenderType SVG PNG PDF
 
 const LIB_CAIRO = if isdefined(Cairo, :libcairo)
     Cairo.libcairo
@@ -25,6 +25,7 @@ end
 
 function to_mime(x::RenderType)
     x == SVG && return MIME"image/svg+xml"()
+    x == PDF && return MIME"application/pdf"()
     return MIME"image/png"()
 end
 
@@ -36,6 +37,8 @@ function CairoBackend(path::String)
         PNG
     elseif ext == ".svg"
         SVG
+    elseif ext == ".pdf"
+        PDF
     else
         error("Unsupported extension: $ext")
     end
@@ -51,6 +54,11 @@ end
 # # we render the scene directly, since we have no screen dependant state like in e.g. opengl
 Base.insert!(screen::CairoScreen, scene::Scene, plot) = nothing
 
+function Base.show(io::IO, ::MIME"text/plain", screen::CairoScreen{S}) where S
+    println(io, "CairoScreen{$S} with surface:")
+    println(io, screen.surface)
+end
+
 # Default to Window+Canvas as backing device
 function CairoScreen(scene::Scene)
     w, h = size(scene)
@@ -64,6 +72,8 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg)
     # TODO: Add other surface types (PDF, etc.)
     if mode == :svg
         surf = CairoSVGSurface(path, w, h)
+    elseif mode == :pdf
+        surf = CairoPDFSurface(path, w, h)
     else
         error("No available Cairo surface for mode $mode")
     end
@@ -565,11 +575,19 @@ function AbstractPlotting.colorbuffer(screen::CairoScreen)
 end
 
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
+AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"application/pdf", scene::Scene) = x.typ == PDF
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Scene) = x.typ == PNG
 
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
     screen = CairoScreen(scene, io)
+    cairo_draw(screen, scene)
+    Cairo.finish(screen.surface)
+    return screen
+end
+
+function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
+    screen = CairoScreen(scene, io,mode=:pdf)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -591,14 +609,18 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/jp
     return screen
 end
 
+# We need to introduce another format to mime conversion
+# TODO maybe move this to FileIO?
+AbstractPlotting.format2mime(::Type{FileIO.DataFormat{:PDF}}) = MIME("application/pdf")
+
 function __init__()
     activate!()
     AbstractPlotting.register_backend!(AbstractPlotting.current_backend[])
 end
 
 function display_path(type::String)
-    if !(type in ("svg", "png"))
-        error("Only \"svg\" and \"png\" are allowed for `type`. Found: $(type)")
+    if !(type in ("svg", "png", "pdf"))
+        error("Only \"svg\", \"png\" and \"pdf\" are allowed for `type`. Found: $(type)")
     end
     return joinpath(@__DIR__, "display." * type)
 end
