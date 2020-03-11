@@ -536,7 +536,7 @@ end
 function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
     isempty(primitive.plots) && return draw_atomic(scene, screen, primitive)
     for plot in primitive.plots
-        draw_plot(scene, screen, plot)
+        (plot.visible[] == true) && draw_plot(scene, screen, plot)
     end
 end
 
