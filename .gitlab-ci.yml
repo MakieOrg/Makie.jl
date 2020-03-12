@@ -6,24 +6,20 @@ variables:
 
 test:
     image: "juliagpu/julia:v1.3-${CI_IMAGE_TAG}"
-
     tags:
         - xorg
     cache:
-        key: "hello" # fix this to refresh weekly later
+        key: ${CI_JOB_NAME}
         paths:
-            - .julia/artifacts
-
+          - .julia/artifacts
     before_script:
         - apt-get -qq update
-        # glfw
-        - apt-get install -y cmake xorg-dev mesa-utils
-
+        - apt-get install -y cmake xorg-dev mesa-utils # glfw
     script:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
-      - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"test"'
-
+      - julia --project -e 'using Pkg; Pkg.test(; coverage=true)'
+    after_script:
+      - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit_local(process_folder(), ".")'
     artifacts:
         when: on_failure
         paths:

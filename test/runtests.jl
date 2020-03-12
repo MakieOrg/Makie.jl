@@ -103,7 +103,7 @@ end
 # one last time to make sure
 filter!(database) do entry
     !("diffeq" in entry.tags) &&
-    !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps))
+    !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps, :window_resizing, :aspect_ratios_stretching_circles))
 end
 
 # Here, we specialize on two cases.
