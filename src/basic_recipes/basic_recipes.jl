@@ -74,11 +74,14 @@ end
 
 function to_line_segments(meshes)
     line = Point2f0[]
-    for mesh in meshes
+    for (i, mesh) in enumerate(meshes)
         points = convert_arguments(PointBased(), mesh)[1]
         append!(line, points)
         push!(line, points[1])
-        push!(line, Point2f0(NaN))
+        # dont need to separate the last line segment
+        if i != length(meshes)
+            push!(line, Point2f0(NaN))
+        end
     end
     return line
 end
