@@ -541,15 +541,38 @@ function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
 end
 
 function draw_plot(screen::CairoScreen, scene::Scene)
+
+    # get the root area to correct for its pixel size when translating
+    root_area = AbstractPlotting.root(scene).px_area[]
+
+    root_area_height = widths(root_area)[2]
+    scene_area = pixelarea(scene)[]
+    scene_height = widths(scene_area)[2]
+    scene_x_origin, scene_y_origin = scene_area.origin
+
     Cairo.save(screen.context)
-    Cairo.translate(screen.context, minimum(pixelarea(scene)[])...)
+
+    # we need to translate x by the origin, so distance from the left
+    # but y by the distance from the top, which is not the origin, but can
+    # be calculated using the parent's height, the scene's height and the y origin
+    # this is because y goes downwards in Cairo and upwards in AbstractPlotting
+
+    top_offset = root_area_height - scene_height - scene_y_origin
+    Cairo.translate(screen.context, scene_x_origin, top_offset)
+
+    # clip the scene to its pixelarea
+    Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
+    Cairo.clip(screen.context)
+
     for elem in scene.plots
         draw_plot(scene, screen, elem)
     end
     Cairo.restore(screen.context)
+
     for child in scene.children
         draw_plot(screen, child)
     end
+
     return
 end
 
