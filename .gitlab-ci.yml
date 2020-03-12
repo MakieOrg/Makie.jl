@@ -22,7 +22,8 @@ test:
     script:
       - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
       - julia -e 'using InteractiveUtils; versioninfo()'
-      - julia --project -e 'using Pkg; Pkg.pkg"test"'
+      - julia --project -e 'using Pkg; Pkg.test(; coverage=true)'
+      - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
 
     artifacts:
         when: on_failure
