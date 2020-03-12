@@ -532,13 +532,10 @@ end
 
 function draw_plot(screen::CairoScreen, scene::Scene)
 
-    # get the parent area to correct for its pixel size when translating
-    parent_area = if isnothing(scene.parent)
-        pixelarea(scene)[]
-    else
-        pixelarea(scene.parent)[]
-    end
-    parent_area_height = widths(parent_area)[2]
+    # get the root area to correct for its pixel size when translating
+    root_area = AbstractPlotting.root(scene).px_area[]
+
+    root_area_height = widths(root_area)[2]
     scene_area = pixelarea(scene)[]
     scene_height = widths(scene_area)[2]
     scene_x_origin, scene_y_origin = scene_area.origin
@@ -550,7 +547,7 @@ function draw_plot(screen::CairoScreen, scene::Scene)
     # be calculated using the parent's height, the scene's height and the y origin
     # this is because y goes downwards in Cairo and upwards in AbstractPlotting
 
-    top_offset = parent_area_height - scene_height - scene_y_origin
+    top_offset = root_area_height - scene_height - scene_y_origin
     Cairo.translate(screen.context, scene_x_origin, top_offset)
 
     # clip the scene to its pixelarea
