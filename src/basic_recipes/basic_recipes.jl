@@ -528,24 +528,7 @@ function AbstractPlotting.plot!(p::BarPlot)
     )
 end
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
-end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
-    x, y = PlotUtils.adapted_grid(f, endpoints(i))
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, x, y))
-end
-
-to_tuple(t::Tuple) = t
-to_tuple(t) = (t,)
-
-function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
-    tmp = f(args...; kwargs...) |> to_tuple
-    convert_arguments(P, tmp...)
-end
 
 """
     scatterlines(xs, ys, [zs]; kwargs...)

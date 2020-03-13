@@ -16,7 +16,7 @@ test:
         - apt-get -qq update
         - apt-get install -y cmake xorg-dev mesa-utils # glfw
     script:
-      - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
+      - mkdir -p $JULIA_DEPOT_PATH # Pkg.jl#325
       - julia --project -e 'using Pkg; Pkg.test(; coverage=true)'
     after_script:
       - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit_local(process_folder(), ".")'
