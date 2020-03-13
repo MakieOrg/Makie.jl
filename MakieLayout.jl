@@ -11,6 +11,7 @@ import Observables
 import Formatting
 using Match
 import Animations
+import PlotUtils
 
 include("types.jl")
 include("gridlayout.jl")
@@ -20,6 +21,7 @@ include("geometry_integration.jl")
 include("layout_engine.jl")
 include("makie_integration.jl")
 include("ticklocators/linear.jl")
+include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("lobjects/laxis.jl")
@@ -60,7 +62,7 @@ export appendcols!, appendrows!, prependcols!, prependrows!, deletecol!, deleter
 export gridnest!
 export AxisAspect, DataAspect
 export autolimits!
-export AutoLinearTicks, ManualTicks, CustomTicks
+export AutoLinearTicks, ManualTicks, CustomTicks, WilkinsonTicks
 export hidexdecorations!, hideydecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export colsize!, rowsize!, colgap!, rowgap!

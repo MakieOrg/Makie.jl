@@ -59,9 +59,6 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     xaxislinks = LAxis[]
     yaxislinks = LAxis[]
 
-    add_pan!(scene, limits, xpanlock, ypanlock, panbutton, xpankey, ypankey)
-    add_zoom!(scene, limits, xzoomlock, yzoomlock, xzoomkey, yzoomkey)
-
     campixel!(scene)
 
     xgridnode = Node(Point2f0[])
@@ -325,6 +322,11 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     # add action that resets limits on ctrl + click
     add_reset_limits!(la)
+    # add action that allows zooming using mouse scrolling
+    add_zoom!(la)
+    # add action that allows panning using a mouse button
+    add_pan!(la)
+
 
     # compute limits that adhere to the limit aspect ratio whenever the targeted
     # limits or the scene size change, because both influence the displayed ratio
@@ -378,7 +380,10 @@ function get_tick_labels(ticks::T, tickvalues) where T
     error("No behavior implemented for ticks of type $T")
 end
 
-function get_tick_labels(ticks::AutoLinearTicks, tickvalues)
+get_tick_labels(ticks::AutoLinearTicks, tickvalues) = linearly_spaced_tick_labels(tickvalues)
+
+
+function linearly_spaced_tick_labels(tickvalues)
 
     # take difference of first two values (they are equally spaced anyway)
     dif = diff(view(tickvalues, 1:2))[1]
@@ -666,7 +671,17 @@ function linkyaxes!(a::LAxis, others...)
     end
 end
 
-function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock, panbutton, xpankey, ypankey)
+function add_pan!(ax::LAxis)
+
+    tlimits = ax.targetlimits
+    xpanlock = ax.xpanlock
+    ypanlock = ax.ypanlock
+    xpankey = ax.xpankey
+    ypankey = ax.ypankey
+    panbutton = ax.panbutton
+
+    scene = ax.scene
+
     startpos = Base.RefValue((0.0, 0.0))
     e = events(scene)
     on(
@@ -686,26 +701,34 @@ function add_pan!(scene::SceneLike, limits, xpanlock, ypanlock, panbutton, xpank
                 pxa = scene.px_area[]
                 diff_fraction = Vec2f0(diff) ./ Vec2f0(widths(pxa))
 
-                diff_limits = diff_fraction .* widths(limits[])
+                diff_limits = diff_fraction .* widths(tlimits[])
 
-                xori, yori = Vec2f0(limits[].origin) .+ Vec2f0(diff_limits)
+                xori, yori = Vec2f0(tlimits[].origin) .+ Vec2f0(diff_limits)
 
                 if xpanlock[] || ispressed(scene, ypankey[])
-                    xori = limits[].origin[1]
+                    xori = tlimits[].origin[1]
                 end
 
                 if ypanlock[] || ispressed(scene, xpankey[])
-                    yori = limits[].origin[2]
+                    yori = tlimits[].origin[2]
                 end
 
-                limits[] = FRect(Vec2f0(xori, yori), widths(limits[]))
+                tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
             end
         end
         return
     end
 end
 
-function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock, xzoomkey, yzoomkey)
+function add_zoom!(ax::LAxis)
+
+    tlimits = ax.targetlimits
+    xzoomlock = ax.xzoomlock
+    yzoomlock = ax.yzoomlock
+    xzoomkey = ax.xzoomkey
+    yzoomkey = ax.yzoomkey
+
+    scene = ax.scene
 
     e = events(scene)
     cam = camera(scene)
@@ -723,13 +746,13 @@ function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock, xzoomkey, yzo
             # limits[] = FRect(limits[].origin..., (limits[].widths .* 0.99)...)
             mp_fraction = (Vec2f0(e.mouseposition[]) - minimum(pa)) ./ widths(pa)
 
-            mp_data = limits[].origin .+ mp_fraction .* limits[].widths
+            mp_data = tlimits[].origin .+ mp_fraction .* tlimits[].widths
 
-            xorigin = limits[].origin[1]
-            yorigin = limits[].origin[2]
+            xorigin = tlimits[].origin[1]
+            yorigin = tlimits[].origin[2]
 
-            xwidth = limits[].widths[1]
-            ywidth = limits[].widths[2]
+            xwidth = tlimits[].widths[1]
+            ywidth = tlimits[].widths[2]
 
             newxwidth = xzoomlock[] ? xwidth : xwidth * z
             newywidth = yzoomlock[] ? ywidth : ywidth * z
@@ -738,11 +761,11 @@ function add_zoom!(scene::SceneLike, limits, xzoomlock, yzoomlock, xzoomkey, yzo
             newyorigin = yzoomlock[] ? yorigin : yorigin + mp_fraction[2] * (ywidth - newywidth)
 
             if AbstractPlotting.ispressed(scene, xzoomkey[])
-                limits[] = FRect(newxorigin, yorigin, newxwidth, ywidth)
+                tlimits[] = FRect(newxorigin, yorigin, newxwidth, ywidth)
             elseif AbstractPlotting.ispressed(scene, yzoomkey[])
-                limits[] = FRect(xorigin, newyorigin, xwidth, newywidth)
+                tlimits[] = FRect(xorigin, newyorigin, xwidth, newywidth)
             else
-                limits[] = FRect(newxorigin, newyorigin, newxwidth, newywidth)
+                tlimits[] = FRect(newxorigin, newyorigin, newxwidth, newywidth)
             end
         end
         return

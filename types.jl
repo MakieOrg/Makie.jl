@@ -196,6 +196,18 @@ struct AutoLinearTicks{T<:Union{Int, Float32}} <: Ticks
     target::T
 end
 
+struct WilkinsonTicks <: Ticks
+    k_ideal::Int
+    k_min::Int
+    k_max::Int
+    Q::Vector{Tuple{Float64, Float64}}
+    granularity_weight::Float64
+    simplicity_weight::Float64
+    coverage_weight::Float64
+    niceness_weight::Float64
+    min_px_dist::Float64
+end
+
 struct ManualTicks <: Ticks
     values::Vector{Float32}
     labels::Vector{String}
