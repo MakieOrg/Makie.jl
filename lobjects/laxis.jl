@@ -98,7 +98,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     latest_tlimits = Ref(limits[])
     isupdating = Ref(false)
     missedupdate = Ref(false)
-    
+
     on(attrs.targetlimits) do tlims
         latest_tlimits[] = tlims
 
@@ -386,6 +386,10 @@ get_tick_labels(ticks::AutoLinearTicks, tickvalues) = linearly_spaced_tick_label
 
 
 function linearly_spaced_tick_labels(tickvalues)
+
+    if length(tickvalues) == 1
+        return Formatting.format.(tickvalues)
+    end
 
     # take difference of first two values (they are equally spaced anyway)
     dif = diff(view(tickvalues, 1:2))[1]
