@@ -79,13 +79,9 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
 
-    # connect camera, plot size or limit changes to the axis decorations
 
-    latestlimits = Ref(limits[])
-    isupdating = Ref(false)
-    missedupdate = Ref(false)
 
-    onany(limits) do lims
+    on(limits) do lims
 
         nearclip = -10_000f0
         farclip = 10_000f0
@@ -97,15 +93,21 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
+    end
 
-        latestlimits[] = lims
+    latest_tlimits = Ref(limits[])
+    isupdating = Ref(false)
+    missedupdate = Ref(false)
+    
+    on(attrs.targetlimits) do tlims
+        latest_tlimits[] = tlims
 
         if !isupdating[]
             @async begin
                 isupdating[] = true
                 while true
                     missedupdate[] = false
-                    update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, latestlimits[])
+                    update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, latest_tlimits[])
                     if !missedupdate[]
                         # the limit updating happens in async so there could be
                         # a new set of limits once that's done, in that case just
@@ -488,10 +490,10 @@ end
 getxlimits(la::LAxis) = getlimits(la, 1)
 getylimits(la::LAxis) = getlimits(la, 2)
 
-function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims)
+function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
 
-    thisxlims = xlimits(lims)
-    thisylims = ylimits(lims)
+    thisxlims = xlimits(tlims)
+    thisylims = ylimits(tlims)
 
     # only change linked axis if not prohibited from doing so because
     # we're currently being updated by another axis' link
@@ -502,32 +504,32 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, lims
         ylinks = setdiff(yaxislinks, xaxislinks)
 
         for link in bothlinks
-            otherlims = link.limits[]
-            if lims != otherlims
+            otherlims = link.targetlimits[]
+            if tlims != otherlims
                 link.block_limit_linking[] = true
-                link.limits[] = lims
+                link.targetlimits[] = tlims
                 link.block_limit_linking[] = false
             end
         end
 
         for xlink in xlinks
-            otherlims = xlink.limits[]
+            otherlims = xlink.targetlimits[]
             otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
             otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
             if thisxlims != otherxlims
                 xlink.block_limit_linking[] = true
-                xlink.limits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
+                xlink.targetlimits[] = BBox(thisxlims[1], thisxlims[2], otherylims[1], otherylims[2])
                 xlink.block_limit_linking[] = false
             end
         end
 
         for ylink in ylinks
-            otherlims = ylink.limits[]
+            otherlims = ylink.targetlimits[]
             otherylims = (otherlims.origin[2], otherlims.origin[2] + otherlims.widths[2])
             otherxlims = (otherlims.origin[1], otherlims.origin[1] + otherlims.widths[1])
             if thisylims != otherylims
                 ylink.block_limit_linking[] = true
-                ylink.limits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
+                ylink.targetlimits[] = BBox(otherxlims[1], otherxlims[2], thisylims[1], thisylims[2])
                 ylink.block_limit_linking[] = false
             end
         end
@@ -549,7 +551,7 @@ function autolimits!(la::LAxis)
         end
     end
     if isnothing(xlims)
-        xlims = (la.limits[].origin[1], la.limits[].origin[1] + la.limits[].widths[1])
+        xlims = (la.targetlimits[].origin[1], la.targetlimits[].origin[1] + la.targetlimits[].widths[1])
     else
         xlims = expandlimits(xlims,
             la.attributes.xautolimitmargin[][1],
@@ -568,7 +570,7 @@ function autolimits!(la::LAxis)
         end
     end
     if isnothing(ylims)
-        ylims = (la.limits[].origin[2], la.limits[].origin[2] + la.limits[].widths[2])
+        ylims = (la.targetlimits[].origin[2], la.targetlimits[].origin[2] + la.targetlimits[].widths[2])
     else
         ylims = expandlimits(ylims,
             la.attributes.yautolimitmargin[][1],
@@ -828,17 +830,17 @@ end
 
 
 function AbstractPlotting.xlims!(ax::LAxis, xlims::Tuple{Real, Real})
-	lims = ax.limits[]
+	lims = ax.targetlimits[]
 	newlims = FRect2D((xlims[1], lims.origin[2]), (xlims[2] - xlims[1], lims.widths[2]))
-	ax.limits[] = newlims
+	ax.targetlimits[] = newlims
 end
 
 AbstractPlotting.xlims!(ax::LAxis, lims::Real...) = xlims!(ax, lims)
 
 function AbstractPlotting.ylims!(ax::LAxis, ylims::Tuple{Real, Real})
-	lims = ax.limits[]
+	lims = ax.targetlimits[]
 	newlims = FRect2D((lims.origin[1], ylims[1]), (lims.widths[1], ylims[2] - ylims[1]))
-	ax.limits[] = newlims
+	ax.targetlimits[] = newlims
 end
 
 AbstractPlotting.ylims!(ax::LAxis, lims::Real...) = ylims!(ax, lims)
