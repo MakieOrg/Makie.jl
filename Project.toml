@@ -22,7 +22,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 [compat]
 AbstractPlotting = "^0.9.15"
 ColorTypes = "0.8, 0.9, 0.10"
-Colors = "0.9, 0.10, 0.11"
+Colors = "0.9, 0.10, 0.11, 0.12"
 FileIO = "^1.1"
 FixedPointNumbers = "0.6, 0.7, 0.8"
 GLFW = "^3"
