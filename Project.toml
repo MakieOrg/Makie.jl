@@ -19,7 +19,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 AbstractPlotting = "0.9.17"
-Colors = "0.9, 0.10, 0.11"
+Colors = "0.9, 0.10, 0.11, 0.12"
 FileIO = "1.1"
 GeometryBasics = "0.1"
 GeometryTypes = "0.7, 0.8"
@@ -33,10 +33,10 @@ julia = "1.0"
 
 [extras]
 ElectronDisplay = "d872a56f-244b-5cc9-b574-2017b5b909a8"
+MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 
 [targets]
 test = ["Test", "ElectronDisplay", "MakieGallery", "StatsMakie", "MeshIO"]
