@@ -17,6 +17,11 @@ function default_theme(scene)
         alpha = 1.0,
         transparency = false,
         overdraw = false,
+        ambient = Vec3f0(0.55),
+        diffuse = Vec3f0(0.4),
+        specular = Vec3f0(0.2),
+        shininess = 32f0,
+        lightposition = :eyeposition
     )
 end
 
