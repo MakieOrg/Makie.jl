@@ -2,8 +2,8 @@ function default(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f0(I)
-        ambient = Vec3f0(0.3)
-        diffuse = Vec3f0(0.65)
+        ambient = Vec3f0(0.55)
+        diffuse = Vec3f0(0.4)
         specular = Vec3f0(0.2)
         shininess = 32f0
         lightposition = Vec3f0(1f6)
