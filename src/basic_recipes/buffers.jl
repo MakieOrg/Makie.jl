@@ -18,8 +18,8 @@ function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color 
     thickv = same_length_array(positions, linewidth, key"linewidth"())
     colorv = same_length_array(positions, color, key"color"())
     append!(lsb[1][], positions)
-    append!(lsb[:color][], colorv)
-    append!(lsb[:linewidth][], thickv)
+    append!(lsb.color[], colorv)
+    append!(lsb.linewidth[], thickv)
     return
 end
 
@@ -37,8 +37,8 @@ end
 function finish!(lsb::LineSegments)
     # update the signal!
     lsb[1][] = lsb[1][]
-    lsb[:color][] = lsb[:color][]
-    lsb[:linewidth][] = lsb[:linewidth][]
+    notify!(lsb.color)
+    notify!(lsb.linewidth)
     return
 end
 
@@ -52,6 +52,7 @@ function TextBuffer(
         raw = true,
         kw_args...
     ) where N
+
     annotations!(
         scene, String[" "], [Point{N, Float32}(0)];
         rotation = rotation,
@@ -83,9 +84,8 @@ function finish!(tb::Annotations)
     return
 end
 
-
-function push!(tb::Annotations, text::String, position::NVec{N}; kw_args...) where N
-    append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
+function push!(tb::Annotations, text::String, position; kw_args...)
+    append!(tb, [(String(text), Pointf0(position))]; kw_args...)
 end
 
 function append!(tb::Annotations, text::Vector{String}, positions::Vector{Point{N, Float32}}; kw_args...) where N
