@@ -2,11 +2,6 @@ function default(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f0(I)
-        ambient = Vec3f0(0.55)
-        diffuse = Vec3f0(0.4)
-        specular = Vec3f0(0.2)
-        shininess = 32f0
-        lightposition = :eyeposition
         preferred_camera = :perspective
         is_transparent_pass = Cint(false)
     end

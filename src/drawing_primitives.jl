@@ -54,12 +54,14 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 gl_attributes[:offset] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:offset])
             end
         end
+        if haskey(gl_attributes, :lightposition)
+            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition]) do pos
+                ifelse(pos == :eyeposition, getfield(scene.camera, :eyeposition), pos)
+            end
+        end
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
-        end
-        if robj[:lightposition] == :eyeposition
-            robj[:lightposition] = getfield(scene.camera, :eyeposition)
         end
         screen.cache2plot[robj.id] = x
         robj
