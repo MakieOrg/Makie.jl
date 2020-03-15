@@ -25,7 +25,7 @@ in CAD software cameras.
 """
 function cam3d_cad!(scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
-        Theme(
+        Attributes(
             rotationspeed = 0.3,
             translationspeed = 1.0,
             eyeposition = Vec3f0(3),
@@ -61,7 +61,7 @@ the plot's axis.
 """
 function cam3d_turntable!(scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
-        Theme(
+        Attributes(
             rotationspeed = 0.3,
             translationspeed = 1.0,
             eyeposition = Vec3f0(3),

@@ -1,7 +1,6 @@
 function ticks_and_labels end
 
 module Formatters
-
     using Showoff
 
     function scientific(ticks::AbstractVector)
@@ -26,11 +25,11 @@ using .Formatters
 
 Plots a 2-dimensional axis.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Axis2D) do scene
-    Theme(
+    Attributes(
         visible = true,
 
         showgrid = true,
@@ -38,7 +37,8 @@ $(ATTRIBUTES)
         showtickmarks = true,
         padding = 0.0,
 
-        ticks = Theme(
+        ticks = Attributes(
+
             ranges_labels = (automatic, automatic),
             formatter = Formatters.plain,
 
@@ -55,21 +55,20 @@ $(ATTRIBUTES)
             align = ((:center, :top), (:right, :center)),
             font = lift(dim2, theme(scene, :font)),
         ),
-
-        tickmarks = Theme(
+        tickmarks = Attributes(
             length = (1.0, 1.0),
             linewidth = (1, 1),
             linecolor = ((:black, 0.4), (:black, 0.2)),
             linestyle = (nothing, nothing)
         ),
 
-        grid = Theme(
+        grid = Attributes(
             linewidth = (0.5, 0.5),
             linecolor = ((:black, 0.3), (:black, 0.3)),
             linestyle = (nothing, nothing),
         ),
 
-        frame = Theme(
+        frame = Attributes(
             linewidth = 1.0,
             linecolor = :black,
             linestyle = nothing,
@@ -79,7 +78,7 @@ $(ATTRIBUTES)
             frames = ((false, false), (false, false)),
         ),
 
-        names = Theme(
+        names = Attributes(
             axisnames = ("x", "y"),
             title = nothing,
             textcolor = (:black, :black),
@@ -96,7 +95,7 @@ end
 
 Plots a 3-dimensional Axis.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Axis3D) do scene
@@ -120,14 +119,14 @@ $(ATTRIBUTES)
     grid_thickness = 1
     gridthickness = ntuple(x-> 1f0, Val(3))
     tsize = 5 # in percent
-    Theme(
+    Attributes(
         visible = true,
         showticks = (true, true, true),
         showaxis = (true, true, true),
         showgrid = (true, true, true),
         scale = Vec3f0(1),
         padding = 0.1,
-        names = Theme(
+        names = Attributes(
             axisnames = ("x", "y", "z"),
             textcolor = (:black, :black, :black),
             rotation = axisnames_rotation3d,
@@ -137,7 +136,7 @@ $(ATTRIBUTES)
             gap = 1
         ),
 
-        ticks = Theme(
+        ticks = Attributes(
             ranges_labels = (automatic, automatic),
             formatter = Formatters.plain,
 
@@ -150,7 +149,7 @@ $(ATTRIBUTES)
             font = lift(dim3, theme(scene, :font)),
         ),
 
-        frame = Theme(
+        frame = Attributes(
             linecolor = (grid_color, grid_color, grid_color),
             linewidth = (grid_thickness, grid_thickness, grid_thickness),
             axiscolor = (:black, :black, :black),

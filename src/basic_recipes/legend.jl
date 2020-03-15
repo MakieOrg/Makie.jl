@@ -4,11 +4,11 @@
 Plots a legend for the given plots with the given labels.
 `plots` may be a single Plot or a list of Plots.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Legend, plots, labels) do scene
-    Theme(
+    Attributes(
         outer_area = IRect(0, 0, 1, 1),
         backgroundcolor = :white,
         strokecolor = RGBA(0.3, 0.3, 0.3, 0.9),
@@ -40,7 +40,7 @@ end
 Creates a colorbar from the given colormap or range, or from the Attributes of the
 given Plot.
 
-## Theme
+## Attributes
 Available attributes and their defaults for ColorLegend{...} are:
 
   align            (:left, :hcenter)
@@ -63,7 +63,7 @@ Available attributes and their defaults for ColorLegend{...} are:
   width            (20, <the height of the scene> - 10)
 """
 @recipe(ColorLegend, colormap, colorrange) do scene
-    Theme(
+    Attributes(
         width = (20, lift(x -> x.widths[2] - 10, pixelarea(scene))),
         backgroundcolor = :white,
         strokecolor = RGBA(0.3, 0.3, 0.3, 0.9 ),

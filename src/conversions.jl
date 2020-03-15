@@ -599,8 +599,6 @@ to_2d_scale(x::Number) = Vec2f0(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::Tuple{<:Number, <:Number}) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
-to_2d_scale(x::Pixel) = Vec{2, Pixel{Float32}}(x, x)
-to_2d_scale(x::Tuple{<:Pixel, <:Pixel}) = Vec{2, Pixel{Float32}}(x, x)
 
 to_3d_scale(x::Number) = Vec3f0(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f0, x, 1)
