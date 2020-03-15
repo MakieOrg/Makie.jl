@@ -6,7 +6,7 @@ function default(@nospecialize(main), @nospecialize(s), @nospecialize(data))
         diffuse = Vec3f0(0.4)
         specular = Vec3f0(0.2)
         shininess = 32f0
-        lightposition = Vec3f0(1f6)
+        lightposition = :eyeposition
         preferred_camera = :perspective
         is_transparent_pass = Cint(false)
     end

@@ -58,6 +58,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
         end
+        if robj[:lightposition] == :eyeposition
+            robj[:lightposition] = getfield(scene.camera, :eyeposition)
+        end
         screen.cache2plot[robj.id] = x
         robj
     end
