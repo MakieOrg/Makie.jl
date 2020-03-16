@@ -4,12 +4,12 @@ in vec3 vertices;
 in vec3 normals;
 in float attribute_id;
 
-uniform vec3 light[4];
+uniform vec3 lightposition;
 
 uniform mat4 projection, view, model;
 uniform sampler1D attributes;
 
-void render(vec4 vertices, vec3 normals, mat4 view, mat4 projection, vec3 light[4]);
+void render(vec4 vertices, vec3 normals, mat4 view, mat4 projection, vec3 lightposition);
 
 uniform uint objectid;
 
@@ -22,5 +22,5 @@ void main()
 	o_uv = vec2(0.0);
 	o_id = uvec2(objectid, attribute_id+1);
 	o_color = texelFetch(attributes, int(attribute_id), 0);
-	render(model * vec4(vertices, 1), (model * vec4(normals, 0)).xyz, view, projection, light);
+	render(model * vec4(vertices, 1), (model * vec4(normals, 0)).xyz, view, projection, lightposition);
 }

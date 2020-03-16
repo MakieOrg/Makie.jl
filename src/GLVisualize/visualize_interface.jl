@@ -1,10 +1,7 @@
-
 function default(@nospecialize(main), @nospecialize(s), @nospecialize(data))
-    _default_light = Vec3f0[Vec3f0(1.0,1.0,1.0), Vec3f0(0.1,0.1,0.1), Vec3f0(0.9,0.9,0.9), Vec3f0(20,20,20)]
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f0(I)
-        light = _default_light
         preferred_camera = :perspective
         is_transparent_pass = Cint(false)
     end

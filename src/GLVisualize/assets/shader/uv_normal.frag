@@ -1,8 +1,14 @@
 {{GLSL_VERSION}}
 
+uniform vec3 ambient;
+uniform vec3 diffuse;
+uniform vec3 specular;
+uniform float shininess;
+
+
 in vec3 o_normal;
 in vec3 o_lightdir;
-in vec3 o_vertex;
+in vec3 o_camdir;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
@@ -18,15 +24,14 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color)
     // specular coefficient
     vec3 H = normalize(L+V);
 
-    float spec_coeff = pow(max(dot(H,N), 0.0), 8.0);
-    if (diff_coeff <= 0.0)
-        spec_coeff = 0.0;
+    float spec_coeff = pow(max(dot(H,N), 0.0), shininess);
 
     // final lighting model
-    return  vec3(
-            vec3(0.1)  * vec3(0.3)  +
-            vec3(0.9)  * color * diff_coeff +
-            vec3(0.3) * spec_coeff);
+    return vec3(
+        ambient * color +
+        diffuse * color * diff_coeff +
+        specular * spec_coeff
+    );
 }
 
 
@@ -55,9 +60,9 @@ void main(){
     vec3 L      	= normalize(o_lightdir);
     vec3 N 			= normalize(o_normal);
     vec3 f_color    = mix(vec3(0,0,1), vec3(1), square(o_uv));
-    vec3 light1 	= blinnphong(N, o_vertex, L, f_color);
-    vec3 light2 	= blinnphong(N, o_vertex, -L,f_color);
-    fragment_color 	= vec4(light1+light2*0.4, 1.0);
+    vec3 light1 	= blinnphong(N, o_camdir, L, f_color);
+    //vec3 light2 	= blinnphong(N, o_camdir, -L,f_color);
+    fragment_color 	= vec4(light1, 1.0); //+light2*0.4
     if(fragment_color.a > 0.0)
         fragment_groupid = o_id;
 }
