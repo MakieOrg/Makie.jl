@@ -4,6 +4,10 @@ function default(@nospecialize(main), @nospecialize(s), @nospecialize(data))
         model = Mat4f0(I)
         preferred_camera = :perspective
         is_transparent_pass = Cint(false)
+        ambient = Vec3f0(0.55)
+        diffuse = Vec3f0(0.4)
+        specular = Vec3f0(0.2)
+        shininess = 32f0
     end
 end
 
