@@ -52,7 +52,7 @@ end
 setindex!(A::GPUArray{T, N}, value::Union{T, Array{T, N}}) where {T, N} = (A[1] = value)
 
 function setindex!(A::GPUArray{T, N}, value, indexes...) where {T, N}
-    ranges = to_range(indexes)
+    ranges = to_range(Base.to_indices(A, indexes))
     v = isa(value, T) ? [value] : convert(Array{T,N}, value)
     setindex!(A, v, ranges...)
     nothing
@@ -95,19 +95,12 @@ function getindex(A::GPUArray{T, N}, ranges::UnitRange...) where {T, N}
     gpu_getindex(A, ranges...)
 end
 
-function getindex(A::GPUArray{T, N}, rect::SimpleRectangle) where {T, N}
-    A[rect.x+1:rect.x+rect.w, rect.y+1:rect.y+rect.h]
-end
-function setindex!(A::GPUArray{T, N}, value::AbstractArray{T, N}, rect::SimpleRectangle) where {T, N}
-    A[rect.x+1:rect.x+rect.w, rect.y+1:rect.y+rect.h] = value
-end
-
-
 mutable struct GPUVector{T} <: GPUArray{T, 1}
     buffer
     size
     real_length
 end
+
 GPUVector(x::GPUArray) = GPUVector{eltype(x)}(x, size(x), length(x))
 
 function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
@@ -116,7 +109,7 @@ function update!(A::GPUVector{T}, value::AbstractVector{T}) where T
     end
     dims = map(x->1:x, size(A))
     A.buffer[dims...] = value
-    nothing
+    return nothing
 end
 
 length(v::GPUVector)            = prod(size(v))
