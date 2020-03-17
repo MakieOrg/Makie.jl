@@ -78,6 +78,7 @@ if MINIMAL == "false"
         "Image on Geometry (Earth)",
         "Interaction with Mouse",
         "Air Particulates",
+        "Normals of a Cat",
     ]
 
     # diffeq is also slow, as are analysis heatmaps.  Colormap collection likes to
