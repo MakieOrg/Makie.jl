@@ -88,9 +88,25 @@ end
 
 function Base.resize!(window::GLFW.Window, resolution...)
     if isopen(window)
+        oldsize = GLFW.GetWindowSize(window)
         retina_scale = retina_scaling_factor(window)
         w, h = resolution ./ retina_scale
+        if oldsize.width == w && oldsize.height == h
+            return
+        end
         GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
+        for i in 1:100
+            newsize = GLFW.GetWindowSize(window)
+            # we aren't guaranteed to get exactly w & h, since the window
+            # manager is allowed to restrict the size...
+            # So we can only test, if the size changed, but not if it matches
+            # the desired size!
+            newsize != oldsize && return
+            # There is a bug here, were without `sleep` it doesn't update the size
+            # Not sure who's fault it is, but PollEvents/yield both dont work - only sleep!
+            GLFW.PollEvents()
+            sleep(0.001)
+        end
     end
 end
 
@@ -252,14 +268,12 @@ function renderloop end
 # the rendering loop
 const opengl_renderloop = Ref{Function}(renderloop)
 
-
 """
 Julia 1.0.3 doesn't have I:J, so we copy the implementation from 1.1 under a new name:
 """
 function irange(I::CartesianIndex{N}, J::CartesianIndex{N}) where N
     CartesianIndices(map((i,j) -> i:j, Tuple(I), Tuple(J)))
 end
-
 
 """
 Loads the makie loading icon and embedds it in an image the size of resolution
@@ -392,7 +406,7 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     screen = global_gl_screen()
     GLFW.set_visibility!(to_native(screen), visibility)
     resize!(screen, resolution...)
-    new_size = GLFW.GetWindowSize(to_native(screen))
+    new_size = GLFW.GetFramebufferSize(to_native(screen))
     # I'm not 100% sure, if there are platforms where I'm never
     # able to resize the screen (opengl might just allow that).
     # so, we guard against that with just trying another resize one time!
