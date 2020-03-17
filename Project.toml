@@ -10,9 +10,9 @@ ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 
 [compat]
-AbstractPlotting = "≥ 0.9.27"
-GLMakie = "≥ 0.0.17"
-MakieGallery = "≥ 0.1.0"
+AbstractPlotting = "0.9.27"
+GLMakie = "0.0.18"
+MakieGallery = "0.1"
 StaticArrays = "0"
 StatsMakie = "0"
 julia = "1"
