@@ -183,9 +183,15 @@ function Stepper(scene::Scene, path::String; format = :jpg)
     Stepper(scene, path, format, 1)
 end
 
-format2mime(::Type{FileIO.format"PNG"}) = MIME"image/png"()
-format2mime(::Type{FileIO.format"SVG"}) = MIME"image/svg+xml"()
-format2mime(::Type{FileIO.format"JPEG"}) = MIME"image/jpeg"()
+format2mime(::Type{FileIO.format"PNG"})  = MIME("image/png")
+format2mime(::Type{FileIO.format"SVG"})  = MIME("image/svg+xml")
+format2mime(::Type{FileIO.format"JPEG"}) = MIME("image/jpeg")
+format2mime(::Type{FileIO.format"TIFF"}) = MIME("image/tiff")
+format2mime(::Type{FileIO.format"BMP"}) = MIME("image/bmp")
+format2mime(::Type{FileIO.format"PDF"})  = MIME("application/pdf")
+format2mime(::Type{FileIO.format"TEX"})  = MIME("application/x-tex")
+format2mime(::Type{FileIO.format"EPS"})  = MIME("application/postscript")
+format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
 # Allow format to be overridden with first argument
 """
