@@ -1,35 +1,30 @@
 variables:
-  CI_IMAGE_TAG: "opengl"
-  MODERNGL_DEBUGGING: "true"
-  JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
-  CI_DEV_PKGS: "MakieGallery#master AbstractPlotting#master StatsMakie#master"
+    CI_IMAGE_TAG: "opengl"
+    MODERNGL_DEBUGGING: "true"
+    JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
+    ABSTRACTPLOTTING_MINIMAL: "false"
 
-stages:
-  - test
-
-gallerytest:
-  stage: test
-  tags:
-      - xorg
-  image: "juliagpu/julia:v1.2-${CI_IMAGE_TAG}"
-  before_script:
-      - apt-get -qq update
-      # glfw
-      - apt-get install -y cmake xorg-dev mesa-utils p7zip-full
-
-  script:
-    - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
-    - glxinfo | grep 'version'
-    - julia -e 'using InteractiveUtils; versioninfo()'
-    - julia --project -e "using Pkg;
-                          pkg\"add $CI_DEV_PKGS\""
-    - julia --project -e 'using Pkg; pkg"build; test"'
-
-  artifacts:
-    when: on_failure
-    paths:
-      - test/tested_different
-      - test/test_recordings
-      - Project.toml
-      - Manifest.toml
-    expire_in: 4 days
+test:
+    image: "juliagpu/julia:v1.3-${CI_IMAGE_TAG}"
+    tags:
+        - xorg
+    cache:
+        key: ${CI_JOB_NAME}
+        paths:
+          - .julia/artifacts
+    before_script:
+        - apt-get -qq update
+        - apt-get install -y cmake xorg-dev mesa-utils # glfw
+    script:
+      - mkdir $JULIA_DEPOT_PATH # Pkg.jl#325
+      - julia --project -e 'using Pkg; Pkg.test(; coverage=true)'
+    after_script:
+      - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit_local(process_folder(), ".")'
+    artifacts:
+        when: on_failure
+        paths:
+        - test/tested_different
+        - test/test_recordings
+        - Project.toml
+        - Manifest.toml
+        expire_in: 2 day

@@ -3,7 +3,6 @@ const ZIndex = Int
 # ID, Area, clear, is visible, background color
 const ScreenArea = Tuple{ScreenID, Scene}
 
-
 abstract type GLScreen <: AbstractScreen end
 
 mutable struct Screen <: GLScreen
@@ -34,14 +33,9 @@ mutable struct Screen <: GLScreen
             (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s))),
             nothing
         )
-        finalizer(obj) do obj
-            # save_print("Freeing screen")
-            empty!.((obj.renderlist, obj.screens, obj.cache, obj.screen2scene, obj.cache2plot))
-            return
-        end
-        obj
     end
 end
+
 GeometryTypes.widths(x::Screen) = size(x.framebuffer.color)
 
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
@@ -53,7 +47,7 @@ function insertplots!(screen::GLScreen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
-        id
+        return id
     end
     for elem in scene.plots
         insert!(screen, scene, elem)
@@ -95,7 +89,12 @@ function Base.resize!(window::GLFW.Window, resolution...)
             return
         end
         GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
+        # There is a problem, that window size update seems to take an arbitrary
+        # amount of time - GLFW.WaitEvents() / a single GLFW.PollEvent()
+        # doesn't help, so we try it a couple of times, to make sure
+        # we have the desired size in the end
         for i in 1:100
+            isopen(window) || return
             newsize = GLFW.GetWindowSize(window)
             # we aren't guaranteed to get exactly w & h, since the window
             # manager is allowed to restrict the size...
@@ -227,20 +226,20 @@ end
 
 Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::GLScreen, scene::Scene, robj)
+    # filter out gc'ed elements
     filter!(screen.screen2scene) do (k, v)
         k.value != nothing
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
-        id
+        return id
     end
     push!(screen.renderlist, (0, screenid, robj))
     return robj
 end
 
 to_native(x::Screen) = x.glscreen
-const gl_screens = GLFW.Window[]
 
 
 """
@@ -259,7 +258,7 @@ function rewrap(robj::RenderObject{Pre}) where Pre
     )
 end
 
-const _global_gl_screen = Ref{Screen}()
+const GLOBAL_GL_SCREEN = Ref{Screen}()
 
 # will get overloaded later
 function renderloop end
@@ -317,6 +316,8 @@ function display_loading_image(screen::Screen)
 
 end
 
+const gl_screens = GLFW.Window[]
+
 function Screen(;
         resolution = (10, 10), visible = false, title = "Makie",
         kw_args...
@@ -348,7 +349,7 @@ function Screen(;
         visible = false,
         kw_args...
     )
-    GLFW.SetWindowIcon(window , AbstractPlotting.icon())
+    GLFW.SetWindowIcon(window, AbstractPlotting.icon())
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
@@ -358,12 +359,8 @@ function Screen(;
 
     GLFW.SwapInterval(0)
 
-    # Retina screens on osx have a different scaling!
-    retina_scale = retina_scaling_factor(window)
-    resolution = round.(Int, retina_scale .* resolution)
-    # Set the resolution for real now!
-    GLFW.SetWindowSize(window, resolution...)
-    fb = GLFramebuffer(Int.(resolution))
+    resize!(window, resolution...)
+    fb = GLFramebuffer(resolution)
 
     screen = Screen(
         window, fb,
@@ -379,22 +376,22 @@ function Screen(;
         render_frame(screen)
         GLFW.SwapBuffers(window)
     end)
-
+    screen.rendertask[] = @async((opengl_renderloop[])(screen))
+    # display window if visible!
     if visible
         GLFW.ShowWindow(window)
     else
         GLFW.HideWindow(window)
     end
-    screen.rendertask[] = @async((opengl_renderloop[])(screen))
-    screen
+    return screen
 end
 
 function global_gl_screen()
-    screen = if isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
-        _global_gl_screen[]
+    screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
+        GLOBAL_GL_SCREEN[]
     else
-        _global_gl_screen[] = Screen()
-        _global_gl_screen[]
+        GLOBAL_GL_SCREEN[] = Screen()
+        GLOBAL_GL_SCREEN[]
     end
     return screen
 end
@@ -402,11 +399,11 @@ end
 function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     # ugly but easy way to find out if we create new screen.
     # could just be returned by global_gl_screen, but dont want to change the API
-    isold = isassigned(_global_gl_screen) && isopen(_global_gl_screen[])
+    isold = isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
     screen = global_gl_screen()
     GLFW.set_visibility!(to_native(screen), visibility)
     resize!(screen, resolution...)
-    new_size = GLFW.GetFramebufferSize(to_native(screen))
+    new_size = windowsize(to_native(screen))
     # I'm not 100% sure, if there are platforms where I'm never
     # able to resize the screen (opengl might just allow that).
     # so, we guard against that with just trying another resize one time!

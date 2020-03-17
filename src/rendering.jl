@@ -1,35 +1,31 @@
 function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
+    # Somehow errors get sometimes ignored, so we at least print them here
     try
         while isopen(screen)
-            # Somehow errors get sometimes ignored, so we at least print them here
-            try
-                t = time()
-                GLFW.PollEvents() # GLFW poll
-                prerender()
-                make_context_current(screen)
-                render_frame(screen)
-                GLFW.SwapBuffers(to_native(screen))
-                diff = framerate - (time() - t)
-                if diff > 0
-                    sleep(diff)
-                else # if we don't sleep, we need to yield explicitely
-                    yield()
-                end
-            catch e
-                @error "Error in renderloop!" exception=e
-                rethrow(e)
+            t = time()
+            GLFW.PollEvents() # GLFW poll
+            prerender()
+            make_context_current(screen)
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
+            diff = framerate - (time() - t)
+            error("Test")
+            if diff > 0
+                sleep(diff)
+            else # if we don't sleep, we need to yield explicitely
+                yield()
             end
         end
     catch e
-        @error "Error in renderloop!" exception=e
+        destroy!(screen)
+        ce = CapturedException(e, Base.catch_backtrace())
+        @error "Error in renderloop!" exception=ce
         rethrow(e)
     finally
         destroy!(screen)
     end
     return
 end
-
-
 
 function setup!(screen)
     glEnable(GL_SCISSOR_TEST)
@@ -122,7 +118,7 @@ function id2scene(screen, id1)
     for (id2, scene) in screen.screens
         id1 == id2 && return true, scene
     end
-    false, nothing
+    return false, nothing
 end
 
 function GLAbstraction.render(screen::Screen, fxaa::Bool)
