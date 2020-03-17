@@ -7,7 +7,6 @@ function print_with_lines(out::IO, text::AbstractString)
 end
 print_with_lines(text::AbstractString) = print_with_lines(stdout, text)
 
-
 """
 Style Type, which is used to choose different visualization/editing styles via multiple dispatch
 Usage pattern:
@@ -67,6 +66,8 @@ matches_target(::Function, x) = true
 matches_target(::Function, x::Nothing) = false
 
 signal_convert(T1, y::T2) where {T2<:Node} = lift(convert, Node(T1), y)
+
+
 """
 Takes a dict and inserts defaults, if not already available.
 The variables are made accessible in local scope, so things like this are possible:
@@ -164,12 +165,20 @@ end
 export NativeMesh
 
 NativeMesh(m::T) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
+NativeMesh(m::Observable{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
 
-function (MT::Type{NativeMesh{T}})(mesh::T) where T <: GeometryBasics.Mesh
+function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     result = Dict{Symbol, Any}()
     attribs = GeometryBasics.attributes(mesh)
-    result[:vertices] = GLBuffer(pop!(attribs, :position))
+    result[:vertices] = GLBuffer(coordinates(mesh))
     result[:faces] = indexbuffer(faces(mesh))
+
+    @show result[:vertices][1]
+    @show result[:faces][1]
+
+    if haskey(attribs, :position)
+        delete!(attribs, :position)
+    end
     for (field, val) in attribs
         if field in (:uv, :normals, :attribute_id, :color)
             if field == :color
@@ -184,35 +193,17 @@ function (MT::Type{NativeMesh{T}})(mesh::T) where T <: GeometryBasics.Mesh
             result[field] = Texture(val)
         end
     end
-    return MT(result)
+    return NativeMesh{T}(result)
 end
 
-function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: GeometryBasics.Mesh
-    result = Dict{Symbol, Any}()
-    mv = to_value(m)
-    attribs = GeometryBasics.attributes(mv)
-    result[:vertices] = GLBuffer(pop!(attribs, :position))
-    result[:faces] = indexbuffer(faces(mesh))
-    for (field, val) in attribs
-        if field in (:uv, :normals, :attribute_id, :color)
-            if field == :color
-                field = :vertex_color
-            elseif field == :uv
-                field = :texturecoordinates
-            end
-            if isa(val, AbstractVector)
-                result[field] = GLBuffer(val)
-            end
-        else
-            result[field] = Texture(val)
-        end
-    end
+function NativeMesh{T}(m::Node{T}) where T <: GeometryBasics.Mesh
+    result = NativeMesh{T}(m[])
     on(m) do mesh
         for (field, val) in GeometryTypes.attributes(mesh)
             field == :color && (field = :vertex_color)
             field == :uv && (field = :texturecoordinates)
-            haskey(result, field) && update!(result[field], val)
+            haskey(result.data, field) && update!(result.data[field], val)
         end
     end
-    return MT(result)
+    return result
 end

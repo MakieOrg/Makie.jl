@@ -365,6 +365,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             visualize(args[3], Style(:surface), gl_attributes).children[]
         end
     end
+    return robj
 end
 
 function to_width(x)

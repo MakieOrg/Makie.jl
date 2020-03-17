@@ -21,7 +21,7 @@ function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
             end
         end
     catch e
-        @error "Error in renderloop!" exception=e
+        @error "Error in renderloop!" exception=CapturedException(e, Base.catch_backtrace())
         rethrow(e)
     finally
         destroy!(screen)

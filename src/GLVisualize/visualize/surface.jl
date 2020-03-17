@@ -63,37 +63,41 @@ function light_calc(x::Bool)
     end
 end
 
+function native_triangle_mesh(mesh)
+    return gl_convert(triangle_mesh(mesh))
+end
+
 function surface(main, s::Style{:surface}, data::Dict)
     @gen_defaults! data begin
-        primitive::GLMesh2D = Rect2D(0f0,0f0,1f0,1f0)
-        scale       = nothing
-        position    = nothing
-        position_x  = nothing => Texture
-        position_y  = nothing => Texture
-        position_z  = nothing => Texture
-        wireframe   = false
-        glow_color       = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color     = RGBA{Float32}(0,0,0,1) => GLBuffer
-        stroke_width     = wireframe ? 0.03f0 : 0f0
-        glow_width       = 0f0
-        uv_offset_width  = Vec4f0(0) => GLBuffer
-        shape            = RECTANGLE
-        wireframe        = false
-        image            = nothing => Texture
-        distancefield    = nothing => Texture
-        shading          = true
-        normal           = shading
+        primitive = Rect2D(0f0,0f0,1f0,1f0) => native_triangle_mesh
+        scale = nothing
+        position = nothing
+        position_x = nothing => Texture
+        position_y = nothing => Texture
+        position_z = nothing => Texture
+        wireframe = false
+        glow_color = RGBA{Float32}(0,0,0,0) => GLBuffer
+        stroke_color = RGBA{Float32}(0,0,0,1) => GLBuffer
+        stroke_width = wireframe ? 0.03f0 : 0f0
+        glow_width = 0f0
+        uv_offset_width = Vec4f0(0) => GLBuffer
+        shape = RECTANGLE
+        wireframe = false
+        image = nothing => Texture
+        distancefield = nothing => Texture
+        shading = true
+        normal = shading
     end
     @gen_defaults! data begin
-        color      = (wireframe ? RGBA{Float32}(0,0,0,0) : nothing) => (Texture,
+        color = (wireframe ? RGBA{Float32}(0,0,0,0) : nothing) => (Texture,
             "must be single color value, must be nothing for color_map")
-        color_map  = ((!wireframe && color == nothing) ? default(Vector{RGBA}, s) : nothing) => (Texture,
+        color_map = ((!wireframe && color == nothing) ? default(Vector{RGBA}, s) : nothing) => (Texture,
         "must be `Vector{Color}`, `color` must be nothing")
         color_norm = (!wireframe && color_map != nothing ? Vec2f0(0, 1) : nothing) => begin
             "normalizes the heightvalues before looking up color in `color_map`."
         end
-        instances  = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
-        shader     = GLVisualizeShader(
+        instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
+        shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
             to_value(wireframe) ? "distance_shape.frag" : "standard.frag",
             view = Dict(

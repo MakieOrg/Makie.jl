@@ -225,11 +225,11 @@ function to_meshcolor(color)
 end
 
 function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
-    gl_convert(const_lift(GLNormalMesh, mesh))
+    return NativeMesh(const_lift(gl_normal_mesh3d, mesh))
 end
 
 function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
-    gl_convert(to_value(mesh))
+    return NativeMesh(mesh)
 end
 
 function orthogonal(v::T) where T <: StaticVector{3}

@@ -330,7 +330,8 @@ function RenderObject(
             data[k] = gl_convert(targets[k], v)
         else
             k in (:indices, :visible, :fxaa) && continue
-            if isa_gl_struct(v) # structs are treated differently, since they have to be composed into their fields
+            # structs are treated differently, since they have to be composed into their fields
+            if isa_gl_struct(v)
                 merge!(data, gl_convert_struct(v, k))
             elseif applicable(gl_convert, v) # if can't be converted to an OpenGL datatype,
                 data[k] = gl_convert(v)
@@ -345,7 +346,7 @@ function RenderObject(
     if !isempty(meshs)
         merge!(data, [v.data for (k,v) in meshs]...)
     end
-    buffers  = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
+    buffers = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
     uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
     get!(data, :visible, true) # make sure, visibility is set
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
@@ -361,7 +362,7 @@ function RenderObject(
     )
     # automatically integrate object ID, will be discarded if shader doesn't use it
     robj[:objectid] = robj.id
-    robj
+    return robj
 end
 
 include("GLRenderObject.jl")
