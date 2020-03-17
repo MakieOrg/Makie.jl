@@ -4,9 +4,14 @@ struct Nothing{ //Nothing type, to encode if some variable doesn't contain any d
     bool _; //empty structs are not allowed
 };
 
+uniform vec3 ambient;
+uniform vec3 diffuse;
+uniform vec3 specular;
+uniform float shininess;
+
 in vec3 o_normal;
 in vec3 o_lightdir;
-in vec3 o_vertex;
+in vec3 o_camdir;
 in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
@@ -36,17 +41,15 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float diff_coeff = max(dot(L, N), 0.0);
 
     // specular coefficient
-    vec3 H = normalize(L+V);
+    vec3 H = normalize(L + V);
 
-    float spec_coeff = pow(max(dot(H, N), 0.0), 8.0);
-    if (diff_coeff <= 0.0)
-        spec_coeff = 0.0;
+    float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
 
     // final lighting model
     return vec3(
-        vec3(0.1) * vec3(0.3)  +
-        vec3(0.9) * color * diff_coeff +
-        vec3(0.3) * spec_coeff
+        ambient * color +
+        diffuse * diff_coeff * color +
+        specular * spec_coeff
     );
 }
 

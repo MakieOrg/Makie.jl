@@ -28,7 +28,7 @@ in vec3 vertices;
 in vec3 normals;
 {{texturecoordinates_type}} texturecoordinates;
 
-uniform vec3 light[4];
+uniform vec3 lightposition;
 uniform mat4 view, model, projection;
 uniform uint objectid;
 uniform int len;
@@ -125,7 +125,7 @@ vec4 _color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color
     return vec4(0);
 }
 
-void render(vec4 vertices, vec3 normal, mat4 view, mat4 projection, vec3 light[4]);
+void render(vec4 vertices, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
 
 
 vec2 get_uv(Nothing x){return vec2(0.0);}
@@ -142,5 +142,5 @@ void main(){
     o_color    = _color(color, intensity, color_map, color_norm, index, len);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection, light);
+    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
 }
