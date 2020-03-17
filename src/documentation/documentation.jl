@@ -112,7 +112,7 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     attributes = default_theme(nothing, Typ)
 
     # manually filter out some attributes
-    filter_keys = Symbol.([:fxaa, :model, :transformation, :light])
+    filter_keys = Symbol.([:fxaa, :model, :transformation])
 
     # count the character length of the longest key
     longest = 0
