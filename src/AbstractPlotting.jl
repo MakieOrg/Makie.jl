@@ -43,6 +43,8 @@ include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
 
+include("colorsampler.jl")
+
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
 include("theming.jl")
