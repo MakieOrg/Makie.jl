@@ -315,3 +315,17 @@ end
 function Base.getindex(cs::ColorSampler, value::Number)
     return interpolated_getindex(cs.colormap, value, cs.color_range)
 end
+
+
+# This function was copied from GR.jl,
+# written by Josef Heinen.
+"""
+    peaks([n=49])
+
+Return a nonlinear function on a grid.  Useful for test cases.
+"""
+function peaks(n=49)
+    x = LinRange(-3, 3, n)
+    y = LinRange(-3, 3, n)
+    3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y.+1).^2) .- 10*(x'/5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1/3 * exp.(-(x'.+1).^2 .- y.^2)
+end
