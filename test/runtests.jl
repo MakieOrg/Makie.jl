@@ -16,7 +16,9 @@ filter!(database) do entry
     return !("download" in entry.tags) &&
            !("diffeq" in entry.tags) &&
            !(entry.title in exclude) &&
-           !(entry.unique_name in (:analysis, :colormap_collection, :lots_of_heatmaps))
+           !(entry.unique_name in (:analysis, :colormap_collection,
+                                   :lots_of_heatmaps, :window_resizing,
+                                   :aspect_ratios_stretching_circles))
 end
 
 tested_diff_path = joinpath(@__DIR__, "tested_different")
