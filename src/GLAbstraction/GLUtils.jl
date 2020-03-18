@@ -170,23 +170,18 @@ NativeMesh(m::Observable{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
 function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     result = Dict{Symbol, Any}()
     attribs = GeometryBasics.attributes(mesh)
-    result[:vertices] = GLBuffer(coordinates(mesh))
     result[:faces] = indexbuffer(faces(mesh))
-
-    @show result[:vertices][1]
-    @show result[:faces][1]
-
-    if haskey(attribs, :position)
-        delete!(attribs, :position)
-    end
+    @show keys(attribs)
     for (field, val) in attribs
-        if field in (:uv, :normals, :attribute_id, :color)
+        if field in (:position, :uv, :normals, :attribute_id, :color)
             if field == :color
                 field = :vertex_color
             elseif field == :uv
                 field = :texturecoordinates
+            elseif field == :position
+                field = :vertices
             end
-            if isa(val, AbstractVector)
+            if val isa AbstractVector
                 result[field] = GLBuffer(val)
             end
         else
@@ -202,6 +197,7 @@ function NativeMesh{T}(m::Node{T}) where T <: GeometryBasics.Mesh
         for (field, val) in GeometryTypes.attributes(mesh)
             field == :color && (field = :vertex_color)
             field == :uv && (field = :texturecoordinates)
+            field == :position && (field = :vertices)
             haskey(result.data, field) && update!(result.data[field], val)
         end
     end

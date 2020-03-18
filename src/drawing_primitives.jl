@@ -306,7 +306,6 @@ end
 
 convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
-
 function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
@@ -315,29 +314,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
         mesh = lift(x[1], color, cmap, crange) do m, c, cmap, crange
-            c = convert_mesh_color(c, cmap, crange)
-            if isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh) || isa(m, GLNormalVertexcolorMesh)
-                return m
-            elseif c isa Colorant
-                get!(gl_attributes, :color, Node(c))[] = c
-                if !(isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
-                    return GLNormalMesh(m)
-                else
-                    return m
-                end
-            elseif c isa AbstractMatrix{<: Colorant}
-                get!(gl_attributes, :color, Node(c))[] = c
-                return m
-            elseif c isa AbstractVector{<: Colorant}
-                if length(c) != length(vertices(m))
-                    error("Please use the same amount of colors as vertices. Found: $(length(vertices(m))) vertices, and $(length(c)) colors")
-                end
-                glm = GLNormalMesh(m)
-                return HomogenousMesh(glm, Dict{Symbol, Any}(:color => convert(Vector{RGBAf0}, c)))
-            else
-                error("Unsupported color type: $(typeof(c))")
-            end
+            return m
         end
+        gl_attributes[:color] = color
         visualize(mesh, Style(:default), gl_attributes).children[]
     end
 end

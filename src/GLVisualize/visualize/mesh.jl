@@ -1,16 +1,5 @@
-# function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M
-#     @gen_defaults! data begin
-#         main = mesh
-#         shading = true
-#         color = nothing
-#         shader = GLVisualizeShader(
-#             "fragment_output.frag", "util.vert", "attribute_mesh.vert", "standard.frag",
-#             view = Dict("light_calc" => light_calc(shading))
-#         )
-#     end
-# end
 
-function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalMesh
+function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GeometryBasics.Mesh
     @gen_defaults! data begin
         shading = true
         main = mesh
@@ -21,6 +10,7 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalM
         )
     end
 end
+
 function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GLNormalUVMesh
     @gen_defaults! data begin
         shading = true
