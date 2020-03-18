@@ -1,47 +1,63 @@
 
 """
-TODO document this
-
-## Fields
-$(FIELDS)
+    Scene TODO document this
 
 ## Constructors
 $(SIGNATURES)
+
+## Fields
+$(FIELDS)
 """
 mutable struct Scene <: AbstractScene
+    "The parent of the Scene; if it is a top-level Scene, `parent == nothing`."
     parent
+
+    "[`Events`](@ref) associated with the Scene."
     events::Events
 
+    "The current pixel area of the Scene."
     px_area::Node{IRect2D}
+
+    "Whether the scene should be cleared."
     clear::Bool
 
+    "The [`Camera`](@ref) associated with the Scene."
     camera::Camera
+
+    "The controls for the camera of the Scene."
     camera_controls::RefValue
 
-    # The limits of the data plotted in this scene
-    # Can't be set by user and is only used to store calculated data bounds
+    """
+    The limits of the data plotted in this scene.
+    Can't be set by user and is only used to store calculated data bounds.
+    """
     data_limits::Node{Union{Nothing, FRect3D}}
 
+    "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
 
+    "The plots contained in the Scene."
     plots::Vector{AbstractPlot}
+    # TODO why 2?
     theme::Attributes
+
     attributes::Attributes
+
+    "Children of the Scene inherit its transformation."
     children::Vector{Scene}
+
+    """
+    The Screens which the Scene is displayed to.
+    """
     current_screens::Vector{AbstractScreen}
-    # Signal to indicate, wheter layouting should happen. If updated to true
-    # Scene will be layouted according to its attributes (raw/center/scale_plot)
+
+    """
+    Signal to indicate whether layouting should happen. If updated to true,
+    the Scene will be layouted according to its attributes (`raw`, `center`, or `scale_plot`).
+    """
     updated::Node{Bool}
 end
 
-Base.haskey(scene::Scene, key::Symbol) = haskey(scene.attributes, key)
-function Base.getindex(scene::Scene, key::Symbol)
-    return haskey(scene.attributes, key) ? scene.attributes[key] : scene.theme[key]
-end
-
-function Base.setindex!(scene::Scene, value, key::Symbol)
-    scene.attributes[key] = value
-end
 
 function Scene(
         events::Events,
@@ -135,9 +151,6 @@ function Scene(;clear = true, scene_attributes...)
     scene
 end
 
-"""
-    Scene(scene::Scene; kwargs...)
-"""
 function Scene(
         scene::Scene;
         events = scene.events,
@@ -192,6 +205,19 @@ function Scene(parent::Scene, area; clear = false, attributes...)
     )
     push!(parent.children, child)
     child
+end
+
+# Base overloads for Scene
+
+Base.haskey(scene::Scene, key::Symbol) = haskey(scene.attributes, key)
+Base.propertynames(scene::Scene) = fieldnames(scene) ∪ propertynames(scene.attributes)
+
+function Base.getindex(scene::Scene, key::Symbol)
+    return haskey(scene.attributes, key) ? scene.attributes[key] : scene.theme[key]
+end
+
+function Base.setindex!(scene::Scene, value, key::Symbol)
+    scene.attributes[key] = value
 end
 
 Base.parent(scene::Scene) = scene.parent

@@ -3,10 +3,7 @@
 @inline function get_attribute(dict, key)
     convert_attribute(to_value(dict[key]), Key{key}())
 end
-"""
-Converts the elemen array type to `T1` without making a copy if the element type matches
-"""
-elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
+
 
 """
     to_color(color)
@@ -254,6 +251,10 @@ function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::Abs
     return (el32convert(x), el32convert(y), el32convert(z))
 end
 
+"""
+Converts the elemen array type to `T1` without making a copy if the element type matches
+"""
+elconvert(::Type{T1}, x::AbstractArray{T2, N}) where {T1, T2, N} = convert(AbstractArray{T1, N}, x)
 float32type(x::Type) = Float32
 float32type(::Type{<: RGB}) = RGB{Float32}
 float32type(::Type{<: RGBA}) = RGBA{Float32}
@@ -261,9 +262,10 @@ float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
+el32convert(x) = convert(float32type(x), x)
 
 function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}
-    map(x) do elem
+    return map(x) do elem
         return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
     end::Array{Float32, N}
 end
@@ -310,11 +312,11 @@ and stores the `ClosedInterval` to `n`, `m` and `k`, plus the original array in 
 """
 function convert_arguments(::VolumeLike, data::AbstractArray{T, 3}) where T
     n, m, k = Float32.(size(data))
-    (0f0 .. n, 0f0 .. m, 0f0 .. k, data)
+    return (0f0 .. n, 0f0 .. m, 0f0 .. k, el32convert(data))
 end
 
 function convert_arguments(::VolumeLike, x::RangeLike, y::RangeLike, z::RangeLike, data::AbstractArray{T, 3}) where T
-    (x, y, z, data)
+    return (x, y, z, el32convert(data))
 end
 """
     convert_arguments(P, x, y, z, i)::(Vector, Vector, Vector, Matrix)
@@ -324,7 +326,7 @@ Takes 3 `AbstractVector` `x`, `y`, and `z` and the `AbstractMatrix` `i`, and put
 `P` is the plot Type (it is optional).
 """
 function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z::AbstractVector, i::AbstractArray{T, 3}) where T
-    (x, y, z, i)
+    (x, y, z, el32convert(i))
 end
 
 
@@ -344,7 +346,7 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
         A = (x, y, z)[i]
         reshape(A, ntuple(j-> j != i ? 1 : length(A), Val(3)))
     end
-    (x, y, z, f.(_x, _y, _z))
+    return (x, y, z, el32convert.(f.(_x, _y, _z)))
 end
 
 
@@ -482,6 +484,55 @@ function convert_arguments(
     m = GLNormalMesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
+
+
+
+function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
+    ptype = plottype(P, Lines)
+    to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
+end
+
+function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
+    x, y = PlotUtils.adapted_grid(f, endpoints(i))
+    ptype = plottype(P, Lines)
+    to_plotspec(ptype, convert_arguments(ptype, x, y))
+end
+
+to_tuple(t::Tuple) = t
+to_tuple(t) = (t,)
+
+function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
+    tmp =to_tuple(f(args...; kwargs...))
+    convert_arguments(P, tmp...)
+end
+
+# The following `tryrange` code was copied from Plots.jl
+# https://github.com/JuliaPlots/Plots.jl/blob/15dc61feb57cba1df524ce5d69f68c2c4ea5b942/src/series.jl#L399-L416
+
+# try some intervals over which the function may be defined
+function tryrange(F::AbstractArray, vec)
+    rets = [tryrange(f, vec) for f in F] # get the preferred for each
+    maxind = maximum(indexin(rets, vec)) # get the last attempt that succeeded (most likely to fit all)
+    rets .= [tryrange(f, vec[maxind:maxind]) for f in F] # ensure that all functions compute there
+    rets[1]
+end
+
+function tryrange(F, vec)
+    for v in vec
+        try
+            tmp = F(v)
+            return v
+        catch
+        end
+    end
+    error("$F is not a Function, or is not defined at any of the values $vec")
+end
+
+
+################################################################################
+#                            Attribute conversions                             #
+################################################################################
+
 
 struct Palette{N}
    colors::SArray{Tuple{N},RGBA{Float32},1,N}

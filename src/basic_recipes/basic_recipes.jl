@@ -74,11 +74,14 @@ end
 
 function to_line_segments(meshes)
     line = Point2f0[]
-    for mesh in meshes
+    for (i, mesh) in enumerate(meshes)
         points = convert_arguments(PointBased(), mesh)[1]
         append!(line, points)
         push!(line, points[1])
-        push!(line, Point2f0(NaN))
+        # dont need to separate the last line segment
+        if i != length(meshes)
+            push!(line, Point2f0(NaN))
+        end
     end
     return line
 end
@@ -525,24 +528,7 @@ function AbstractPlotting.plot!(p::BarPlot)
     )
 end
 
-function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))
-end
 
-function convert_arguments(P::PlotFunc, i::AbstractInterval, f::Function)
-    x, y = PlotUtils.adapted_grid(f, endpoints(i))
-    ptype = plottype(P, Lines)
-    to_plotspec(ptype, convert_arguments(ptype, x, y))
-end
-
-to_tuple(t::Tuple) = t
-to_tuple(t) = (t,)
-
-function convert_arguments(P::PlotFunc, f::Function, args...; kwargs...)
-    tmp = f(args...; kwargs...) |> to_tuple
-    convert_arguments(P, tmp...)
-end
 
 """
     scatterlines(xs, ys, [zs]; kwargs...)
