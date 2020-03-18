@@ -122,15 +122,12 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             n_rows_added = ceil(Int, length(etexts) / ncolumns)
 
             if row_offset > 1
-                println("groupgap $(row_offset - 1)")
                 rowgap!(grid, row_offset - 1, Fixed(groupgap[]))
             end
             if n_rows_added > 0
-                println("titlegap $(row_offset)")
                 rowgap!(grid, row_offset, Fixed(titlegap[]))
             end
             for i in 2:n_rows_added
-                println("rowgap $(row_offset + i-1)")
                 rowgap!(grid, row_offset + i-1, Fixed(rowgap[]))
             end
             row_offset += n_rows_added
