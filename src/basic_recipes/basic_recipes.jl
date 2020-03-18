@@ -56,7 +56,7 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     )
 end
 # Poly conversion
-poly_convert(geometries) = GLNormalMesh.(geometries)
+poly_convert(geometries) = gl_triangle_mesh.(geometries)
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
@@ -66,10 +66,10 @@ end
 function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     polys = Vector{Point2f0}[]
     for poly in polygons
-        s = GeometryTypes.split_intersections(poly)
+        s = GeometryBasics.split_intersections(poly)
         append!(polys, s)
     end
-    return GLNormalMesh.(polys)
+    return gl_triangle_mesh.(polys)
 end
 
 function to_line_segments(meshes)
@@ -136,7 +136,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            return merge(GLPlainMesh.(meshes))
+            return merge(gl_triangle_mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)
