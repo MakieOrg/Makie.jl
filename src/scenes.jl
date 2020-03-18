@@ -339,7 +339,6 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     for screen in scene.current_screens
         insert!(screen, scene, plot)
     end
-    # update!(scene)
 end
 
 function Base.delete!(screen::AbstractScreen, scene::Scene, plot::AbstractPlot)

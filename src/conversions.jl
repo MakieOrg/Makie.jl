@@ -372,15 +372,23 @@ function convert_arguments(
         MT::Type{<:Mesh},
         xyz::AbstractVector
     )
-    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
-    convert_arguments(MT, xyz, faces)
+    faces = connect(UInt32(0):UInt32(length(xyz)-1), GLTriangleFace)
+    return convert_arguments(MT, xyz, faces)
 end
+
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
+    # we convert to UV mesh as default, because otherwise the uv informations get lost
+    # - we can still drop them, but we can't add them later on
+    return (mesh,)
+end
+
 function convert_arguments(
         MT::Type{<:Mesh},
         meshes::AbstractVector{<: AbstractMesh}
     )
-    (meshes,)
+    return (meshes,)
 end
+
 # # ambigious case
 # function convert_arguments(
 #         MT::Type{<:Mesh},
@@ -392,8 +400,11 @@ end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    (GLNormalUVMesh(geom),)
+    return (gl_uv_triangle_mesh3d(geom),)
 end
+
+
+
 """
     convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
 
@@ -405,7 +416,7 @@ function convert_arguments(
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
-    convert_arguments(T, Point3f0.(x, y, z), indices)
+    return convert_arguments(T, Point3f0.(x, y, z), indices)
 end
 
 function to_triangles(x::AbstractVector{Int})
