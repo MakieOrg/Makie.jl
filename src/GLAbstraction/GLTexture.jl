@@ -212,7 +212,7 @@ function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T,D}) where
     end
 end
 
-function Base.show(io::IOContext, ::MIME"text/plain", t::Texture{T,D}) where {T,D}
+function Base.show(io::IO, ::MIME"text/plain", t::Texture{T,D}) where {T,D}
     println(io, "Texture$(D)D: ")
     println(io, "                  ID: ", t.id)
     println(io, "                Size: ", reduce(size(t), init = "Dimensions: ") do v0, v1
