@@ -177,10 +177,10 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
         result[:vertices] = GLBuffer(collect(coordinates(mesh)))
     end
     for (field, val) in attribs
-        if field in (:position, :uv, :normals, :attribute_id, :color)
+        if field in (:position, :uv, :uvw, :normals, :attribute_id, :color)
             if field == :color
                 field = :vertex_color
-            elseif field == :uv
+            elseif field in (:uv, :uvw)
                 field = :texturecoordinates
             elseif field == :position
                 field = :vertices

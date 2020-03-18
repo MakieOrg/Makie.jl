@@ -55,8 +55,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             end
         end
         if haskey(gl_attributes, :lightposition)
-            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition]) do pos
-                ifelse(pos == :eyeposition, getfield(scene.camera, :eyeposition), pos)
+            eyepos = scene.camera.eyeposition
+            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition], eyepos) do pos, eyepos
+                return pos == :eyeposition ? eyepos : pos
             end
         end
         robj = robj_func(gl_attributes)

@@ -35,8 +35,12 @@ function to_uvmesh(geom)
     return NativeMesh(const_lift(GeometryBasics.gl_uv_triangle_mesh2d, geom))
 end
 
+function to_plainmesh(geom)
+    return NativeMesh(const_lift(GeometryBasics.gl_triangle_mesh, geom))
+end
+
 function to_uvwmesh3d(geom)
-    return NativeMesh(const_lift(gl_uvw_triangle_mesh3d, geom))
+    return NativeMesh(const_lift(GeometryBasics.gl_uvw_triangle_mesh3d, geom))
 end
 
 function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
@@ -157,46 +161,39 @@ end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeElTypes
     @gen_defaults! data begin
-        volumedata       = main => Texture
-        hull::GLUVWMesh  = FRect3D(Vec3f0(0), Vec3f0(1))
-        light_position   = Vec3f0(0.25, 1.0, 3.0)
-        light_intensity  = Vec3f0(15.0)
-        model            = Mat4f0(I)
-        modelinv         = const_lift(inv, model)
+        volumedata = main => Texture
+        hull = FRect3D(Vec3f0(0), Vec3f0(1)) => to_plainmesh
+        model = Mat4f0(I)
+        modelinv = const_lift(inv, model)
+        color_map = default(Vector{RGBA}, s) => Texture
+        color_norm = color_map == nothing ? nothing : const_lift(extrema2f0, main)
+        color = color_map == nothing ? default(RGBA, s) : nothing
 
-        color_map        = default(Vector{RGBA}, s) => Texture
-        color_norm       = color_map == nothing ? nothing : const_lift(extrema2f0, main)
-        color            = color_map == nothing ? default(RGBA, s) : nothing
-
-        algorithm        = MaximumIntensityProjection
-        absorption       = 1f0
-        isovalue         = 0.5f0
-        isorange         = 0.01f0
-        shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender(data[:transparency], data[:overdraw])
-        postrender       = () -> begin
-            glDisable(GL_CULL_FACE)
-        end
+        algorithm = MaximumIntensityProjection
+        absorption = 1f0
+        isovalue = 0.5f0
+        isorange = 0.01f0
+        shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
+        prerender = VolumePrerender(data[:transparency], data[:overdraw])
+        postrender = () -> glDisable(GL_CULL_FACE)
     end
+    return data
 end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
-        volumedata       = main => Texture
-        hull::GLUVWMesh  = FRect3D(Vec3f0(0), Vec3f0(1))
-        model            = Mat4f0(I)
-        modelinv         = const_lift(inv, model)
-
+        volumedata = main => Texture
+        hull = FRect3D(Vec3f0(0), Vec3f0(1)) => to_plainmesh
+        model = Mat4f0(I)
+        modelinv = const_lift(inv, model)
         # These don't do anything but are needed for type specification in the frag shader
-        color_map        = nothing => Texture
-        color_norm       = nothing
-        color            = color_map == nothing ? default(RGBA, s) : nothing
+        color_map = nothing => Texture
+        color_norm = nothing
+        color = color_map == nothing ? default(RGBA, s) : nothing
 
-        algorithm        = AbsorptionRGBA
-        shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender(data[:transparency], data[:overdraw])
-        postrender       = () -> begin
-            glDisable(GL_CULL_FACE)
-        end
+        algorithm = AbsorptionRGBA
+        shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
+        prerender = VolumePrerender(data[:transparency], data[:overdraw])
+        postrender = () -> glDisable(GL_CULL_FACE)
     end
 end
