@@ -10,6 +10,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         patchsize, # the side length of the entry patch area
         ncols,
         colgap, rowgap, patchlabelgap,
+        titlegap, groupgap,
         orientation,
     )
 
@@ -99,33 +100,44 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         ncols_with_symbolcols = 2 * min(ncolumns, n_max_entries) # if fewer entries than cols, not so many cols
 
         row_offset = 0
+        # loop through groups
         for (title, etexts, erects) in zip(titletexts, entrytexts, entryrects)
 
             row_offset += 1
             grid[row_offset, 1:ncols_with_symbolcols] = title
 
-
             for (i, lt) in enumerate(etexts)
                 irow = (i - 1) ÷ ncolumns + 1
                 icol = (i - 1) % ncolumns + 1
                 grid[row_offset + irow, icol * 2] = lt
-                println(row_offset + irow, " ", icol * 2, " ", "text $i")
             end
 
             for (i, rect) in enumerate(erects)
                 irow = (i - 1) ÷ ncolumns + 1
                 icol = (i - 1) % ncolumns + 1
                 grid[row_offset + irow, icol * 2 - 1] = rect
-                println(row_offset + irow, " ", icol * 2 - 1, " ", "rect $i")
             end
 
-            row_offset += ceil(Int, length(etexts) / ncolumns)
+
+            n_rows_added = ceil(Int, length(etexts) / ncolumns)
+
+            if row_offset > 1
+                println("groupgap $(row_offset - 1)")
+                rowgap!(grid, row_offset - 1, Fixed(groupgap[]))
+            end
+            if n_rows_added > 0
+                println("titlegap $(row_offset)")
+                rowgap!(grid, row_offset, Fixed(titlegap[]))
+            end
+            for i in 2:n_rows_added
+                println("rowgap $(row_offset + i-1)")
+                rowgap!(grid, row_offset + i-1, Fixed(rowgap[]))
+            end
+            row_offset += n_rows_added
         end
 
         # delete unused rows and columns
-        @show grid.nrows, grid.ncols
         trim!(grid)
-        @show grid.nrows, grid.ncols
 
         for i in 1:(grid.ncols - 1)
             if i % 2 == 1
@@ -133,10 +145,6 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             else
                 colgap!(grid, i, Fixed(colgap[]))
             end
-        end
-
-        for i in 1:(grid.nrows - 1)
-            rowgap!(grid, i, Fixed(rowgap[]))
         end
 
         # # if there is a title visible, give it a row in the maingrid above the rest
