@@ -41,108 +41,119 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         strokecolor = framecolor, raw = true)[end]
 
     # the array of legend entries, when it changes the legend gets redrawn
-    entries = Node(LegendEntry[])
 
-    # the grid containing title and entries_grid
-    maingrid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
+    # a vector with one entry for every legend group
+    # each legend group consists of one title and a vector of legendentries
+    attrs[:content_groups] = Node{Vector{Tuple{String, Vector{LegendEntry}}}}([])
+    content_groups = attrs.content_groups
+
+    entries_dummy = Node{Vector{LegendEntry}}([])
+
+    # the grid containing all content
+    grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
 
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
     manipulating_grid = Ref(false)
 
     on(padding) do p
-        maingrid.alignmode = Outside(p...)
+        grid.alignmode = Outside(p...)
         relayout()
     end
 
-    onany(maingrid.needs_update, margin) do _, margin
+    onany(grid.needs_update, margin) do _, margin
         if manipulating_grid[]
             return
         end
-        w = determinedirsize(maingrid, Col())
-        h = determinedirsize(maingrid, Row())
+        w = determinedirsize(grid, Col())
+        h = determinedirsize(grid, Row())
         if !any(isnothing.((w, h)))
             autosizenode[] = (w + sum(margin[1:2]), h + sum(margin[3:4]))
         end
     end
 
     # these arrays store all the plot objects that the legend entries need
-    entrytexts = LText[]
-    entryplots = [AbstractPlot[]]
-    entryrects = LRect[]
+    titletexts = LText[]
+    entrytexts = [LText[]]
+    entryplots = [[AbstractPlot[]]]
+    entryrects = [LRect[]]
 
-    titletext = maingrid[1, 1] = LText(scene, text = title, textsize = titlesize,
-        halign = titlealign, visible = titlevisible)
-
-    # the grid in which the entries are placed
-    entries_grid = maingrid[2, 1] = GridLayout()
 
     function relayout()
         manipulating_grid[] = true
 
-        n_entries = length(entries[])
+        n_max_entries = maximum(group -> length(group[2]), content_groups[])
 
 
         ncolumns, nrows = if orientation[] == :vertical
-            (ncols[], ceil(Int, n_entries / ncols[]))
+            (ncols[], ceil(Int, n_max_entries / ncols[]))
         elseif orientation[] == :horizontal
             # columns become rows
-            (ceil(Int, n_entries / ncols[]), ncols[])
+            (ceil(Int, n_max_entries / ncols[]), ncols[])
         else
             error("Invalid legend orientation $(orientation[]), options are :horizontal or :vertical.")
         end
 
 
         # the grid has twice as many columns as ncols, because of labels and patches
-        ncols_with_symbolcols = 2 * min(ncolumns, n_entries) # if fewer entries than cols, not so many cols
+        ncols_with_symbolcols = 2 * min(ncolumns, n_max_entries) # if fewer entries than cols, not so many cols
 
-        for (i, lt) in enumerate(entrytexts)
-            irow = (i - 1) ÷ ncolumns + 1
-            icol = (i - 1) % ncolumns + 1
-            entries_grid[irow, icol * 2] = lt
+        row_offset = 0
+        for (title, etexts, erects) in zip(titletexts, entrytexts, entryrects)
+
+            row_offset += 1
+            grid[row_offset, 1:ncols_with_symbolcols] = title
+
+
+            for (i, lt) in enumerate(etexts)
+                irow = (i - 1) ÷ ncolumns + 1
+                icol = (i - 1) % ncolumns + 1
+                grid[row_offset + irow, icol * 2] = lt
+                println(row_offset + irow, " ", icol * 2, " ", "text $i")
+            end
+
+            for (i, rect) in enumerate(erects)
+                irow = (i - 1) ÷ ncolumns + 1
+                icol = (i - 1) % ncolumns + 1
+                grid[row_offset + irow, icol * 2 - 1] = rect
+                println(row_offset + irow, " ", icol * 2 - 1, " ", "rect $i")
+            end
+
+            row_offset += ceil(Int, length(etexts) / ncolumns)
         end
 
-        for (i, rect) in enumerate(entryrects)
-            irow = (i - 1) ÷ ncolumns + 1
-            icol = (i - 1) % ncolumns + 1
-            entries_grid[irow, icol * 2 - 1] = rect
-        end
+        # delete unused rows and columns
+        @show grid.nrows, grid.ncols
+        trim!(grid)
+        @show grid.nrows, grid.ncols
 
-        for i in entries_grid.nrows : -1 : max((nrows + 1), 2) # not the last row
-            deleterow!(entries_grid, i)
-        end
-
-        for i in entries_grid.ncols : -1 : max((ncols_with_symbolcols + 1), 2) # not the last col
-            deletecol!(entries_grid, i)
-        end
-
-        for i in 1:(entries_grid.ncols - 1)
+        for i in 1:(grid.ncols - 1)
             if i % 2 == 1
-                colgap!(entries_grid, i, Fixed(patchlabelgap[]))
+                colgap!(grid, i, Fixed(patchlabelgap[]))
             else
-                colgap!(entries_grid, i, Fixed(colgap[]))
+                colgap!(grid, i, Fixed(colgap[]))
             end
         end
 
-        for i in 1:(entries_grid.nrows - 1)
-            rowgap!(entries_grid, i, Fixed(rowgap[]))
+        for i in 1:(grid.nrows - 1)
+            rowgap!(grid, i, Fixed(rowgap[]))
         end
 
-        # if there is a title visible, give it a row in the maingrid above the rest
-        if titlevisible[] && !iswhitespace(title[])
-            if maingrid.nrows == 1
-                maingrid[0, 1] = titletext
-            end
-        # otherwise delete the first row as long as there is one more after that
-        # because we can't have zero rows in the current state of MakieLayout
-        else
-            if maingrid.nrows == 2
-                deleterow!(maingrid, 1)
-            end
-        end
+        # # if there is a title visible, give it a row in the maingrid above the rest
+        # if titlevisible[] && !iswhitespace(title[])
+        #     if maingrid.nrows == 1
+        #         maingrid[0, 1] = titletext
+        #     end
+        # # otherwise delete the first row as long as there is one more after that
+        # # because we can't have zero rows in the current state of MakieLayout
+        # else
+        #     if maingrid.nrows == 2
+        #         deleterow!(maingrid, 1)
+        #     end
+        # end
 
         manipulating_grid[] = false
-        maingrid.needs_update[] = true
+        grid.needs_update[] = true
 
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
@@ -154,20 +165,24 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         relayout()
     end
 
-    on(entries) do entries
-
+    on(content_groups) do content_groups
         # first delete all existing labels and patches
 
-        delete!.(entrytexts)
+        delete!.(titletexts)
+        empty!(titletexts)
+
+        [delete!.(etexts) for etexts in entrytexts]
         empty!(entrytexts)
 
-        delete!.(entryrects)
+        [delete!.(erects) for erects in entrytexts]
         empty!(entryrects)
 
         # delete patch plots
-        for eplots in entryplots
-            # each entry can have a vector of patch plots
-            delete!.(scene, eplots)
+        for eplotgroup in entryplots
+            for eplots in eplotgroup
+                # each entry can have a vector of patch plots
+                delete!.(scene, eplots)
+            end
         end
         empty!(entryplots)
 
@@ -175,37 +190,43 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         # these serve as defaults unless the legendentry gets its own value set
         preset_attrs = extractattributes(attrs, LegendEntry)
 
-        for (i, e) in enumerate(entries)
+        for (title, entries) in content_groups
+            push!(titletexts, LText(scene, text = title, font = titlefont,
+                textsize = titlesize, halign = titlealign))
 
-            # fill missing entry attributes with those carried by the legend
-            merge!(e.attributes, preset_attrs)
+            etexts = []
+            erects = []
+            eplots = []
+            for (i, e) in enumerate(entries)
+                # fill missing entry attributes with those carried by the legend
+                merge!(e.attributes, preset_attrs)
 
-            # create the label
-            push!(entrytexts, LText(scene,
-                text = e.label, textsize = e.labelsize, font = e.labelfont,
-                color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
-                ))
+                # create the label
+                push!(etexts, LText(scene,
+                    text = e.label, textsize = e.labelsize, font = e.labelfont,
+                    color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
+                    ))
 
-            # create the patch rectangle
-            rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
-                strokewidth = e.patchstrokewidth,
-                width = lift(x -> x[1], e.patchsize),
-                height = lift(x -> x[2], e.patchsize))
-            push!(entryrects, rect)
+                # create the patch rectangle
+                rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                    strokewidth = e.patchstrokewidth,
+                    width = lift(x -> x[1], e.patchsize),
+                    height = lift(x -> x[2], e.patchsize))
+                push!(erects, rect)
 
-            # plot the symbols belonging to this entry
-            symbolplots = AbstractPlot[
-                legendsymbol!(scene, element, rect.layoutnodes.computedbbox, e.attributes)
-                for element in e.elements]
+                # plot the symbols belonging to this entry
+                symbolplots = AbstractPlot[
+                    legendsymbol!(scene, element, rect.layoutnodes.computedbbox, e.attributes)
+                    for element in e.elements]
 
-            push!(entryplots, symbolplots)
+                push!(eplots, symbolplots)
+            end
+            push!(entrytexts, etexts)
+            push!(entryrects, erects)
+            push!(entryplots, eplots)
         end
         relayout()
     end
-
-    # entries[] = [
-    #     LegendEntry("entry 1", AbstractPlot[]),
-    # ]
 
     # no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
@@ -215,7 +236,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     layoutnodes = LayoutNodes{LLegend, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    LLegend(scene, entries, layoutnodes, attrs, decorations, entrytexts, entryplots)
+    LLegend(scene, entries_dummy, layoutnodes, attrs, decorations, LText[], Vector{Vector{AbstractPlot}}())
 end
 
 
