@@ -142,13 +142,13 @@ function default_attributes(::Type{LColorbar}, scene)
     )
 end
 
-function default_attributes(::Type{LText})
+function default_attributes(::Type{LText}, scene)
     Attributes(
         text = "Text",
         visible = true,
         color = RGBf0(0, 0, 0),
-        textsize = 20f0,
-        font = "Dejavu Sans",
+        textsize = lift_parent_attribute(scene, :fontsize, 20f0),
+        font = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         valign = :center,
         halign = :center,
         rotation = 0f0,

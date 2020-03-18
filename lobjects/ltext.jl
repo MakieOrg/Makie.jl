@@ -3,7 +3,7 @@ function LText(parent::Scene, text; kwargs...)
 end
 
 function LText(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LText))
+    attrs = merge!(Attributes(kwargs), default_attributes(LText, parent))
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
