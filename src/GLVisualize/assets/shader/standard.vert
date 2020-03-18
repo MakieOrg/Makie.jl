@@ -1,6 +1,6 @@
 {{GLSL_VERSION}}
 
-in vec3 vertices;
+{{vertices_type}} vertices;
 in vec3 normals;
 
 
@@ -14,10 +14,14 @@ flat out uvec2 o_id;
 out vec2 o_uv;
 out vec4 o_color;
 
+vec3 to_3d(vec2 v){return vec3(v, 0);}
+vec3 to_3d(vec3 v){return v;}
+
 void main()
 {
   o_id = uvec2(objectid, gl_VertexID+1);
   o_uv = vec2(0);
   o_color = color;
-  render(model * vec4(vertices, 1), (model * vec4(normals, 0)).xyz, view, projection, lightposition);
+  vec3 v = to_3d(vertices);
+  render(model * vec4(v, 1), (model * vec4(normals, 0)).xyz, view, projection, lightposition);
 }

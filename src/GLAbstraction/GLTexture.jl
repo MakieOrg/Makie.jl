@@ -237,6 +237,7 @@ function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeo
     glBindTexture(a.texture.texturetype, a.texture.id)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
+
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 

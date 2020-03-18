@@ -19,27 +19,32 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
     delete!(data, :ranges)
     @gen_defaults! data begin
         image = main => (Texture, "image, can be a Texture or Array of colors")
-        primitive::GLUVMesh2D = const_lift(ranges) do r
+        primitive = const_lift(ranges) do r
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
             return FRect2D(x, y, xmax - x, ymax - y)
-        end
-        preferred_camera      = :orthographic_pixel
-        fxaa                  = false
-        shader                = GLVisualizeShader(
-            "fragment_output.frag", "uv_vert.vert", "texture.frag",
-            view = Dict("uv_swizzle" => "o_uv.$(spatialorder)")
-        )
+        end => to_uvmesh
+        preferred_camera = :orthographic_pixel
+        fxaa = false
+        shader = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "texture.frag",
+            view = Dict("uv_swizzle" => "o_uv.$(spatialorder)"))
     end
+end
+
+function to_uvmesh(geom)
+    return NativeMesh(const_lift(GeometryBasics.gl_uv_triangle_mesh2d, geom))
+end
+
+function to_uvwmesh3d(geom)
+    return NativeMesh(const_lift(gl_uvw_triangle_mesh3d, geom))
 end
 
 function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
-        image                 = main => (Texture, "image, can be a Texture or Array of colors")
-        primitive::GLUVMesh2D = FRect2D(0f0, 0f0, length(to_value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
-        preferred_camera      = :orthographic_pixel
-        fxaa                  = false
-        shader                = GLVisualizeShader(
+        image = main => Texture
+        primitive = FRect2D(0f0, 0f0, length(to_value(main)), 50f0) => to_uvmesh
+        fxaa = false
+        shader = GLVisualizeShader(
             "fragment_output.frag", "uv_vert.vert", "texture.frag",
             view = Dict("uv_swizzle" => "o_uv.xy")
         )
@@ -60,16 +65,16 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     end
     delete!(data, :ranges)
     @gen_defaults! data begin
-        intensity             = main => Texture
-        color_map             = default(Vector{RGBA{N0f8}},s) => Texture
-        primitive::GLUVMesh2D = prim
-        nan_color             = RGBAf0(1, 0, 0, 1)
-        color_norm            = const_lift(extrema2f0, main)
+        intensity = main => Texture
+        color_map = default(Vector{RGBA{N0f8}},s) => Texture
+        primitive = prim => to_uvmesh
+        nan_color = RGBAf0(1, 0, 0, 1)
+        color_norm = const_lift(extrema2f0, main)
         stroke_width::Float32 = 0.05f0
-        levels::Float32       = 5f0
-        stroke_color          = RGBA{Float32}(1,1,1,1)
-        shader                = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
-        fxaa                  = false
+        levels::Float32 = 5f0
+        stroke_color = RGBA{Float32}(1,1,1,1)
+        shader = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
+        fxaa = false
     end
 end
 
@@ -81,8 +86,8 @@ of the shape, negative values the outside and 0 the border
 function _default(main::MatTypes{T}, s::style"distancefield", data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         distancefield = main => Texture
-        shape         = DISTANCEFIELD
-        fxaa          = false
+        shape = DISTANCEFIELD
+        fxaa = false
     end
     rect = FRect2D(0f0,0f0, size(to_value(main))...)
     _default((rect, Point2f0[0]), s, data)
@@ -99,12 +104,11 @@ float function(float x) {
 ```
 """
 _default(func::String, s::Style{:shader}, data::Dict) = @gen_defaults! data begin
-    color                 = default(RGBA, s) => Texture
-    dimensions            = (120f0, 120f0)
-    primitive::GLUVMesh2D = FRect2D(0f0,0f0, dimensions...)
-    preferred_camera      = :orthographic_pixel
-    fxaa                  = false
-    shader                = GLVisualizeShader(
+    color = default(RGBA, s) => Texture
+    dimensions = (120f0, 120f0)
+    primitive = FRect2D(0f0,0f0, dimensions...) => to_uvmesh
+    fxaa = false
+    shader = GLVisualizeShader(
         "fragment_output.frag", "parametric.vert", "parametric.frag",
         view = Dict("function" => func)
     )

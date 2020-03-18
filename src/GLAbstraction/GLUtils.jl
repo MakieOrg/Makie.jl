@@ -171,7 +171,11 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     result = Dict{Symbol, Any}()
     attribs = GeometryBasics.attributes(mesh)
     result[:faces] = indexbuffer(faces(mesh))
-    @show keys(attribs)
+    if isempty(attribs)
+        # TODO position only shows up as attribute
+        # when it has meta informtion
+        result[:vertices] = GLBuffer(collect(coordinates(mesh)))
+    end
     for (field, val) in attribs
         if field in (:position, :uv, :normals, :attribute_id, :color)
             if field == :color
