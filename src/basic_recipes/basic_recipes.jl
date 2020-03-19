@@ -2,6 +2,7 @@
     `poly(vertices, indices; kwargs...)`
     `poly(points; kwargs...)`
     `poly(shape; kwargs...)`
+    `poly(mesh; kwargs...)`
 
 Plots a polygon based on the arguments given.
 When vertices and indices are given, it functions similarly to `mesh`.
