@@ -383,11 +383,9 @@ function draw_titles(
         textcolor, textsize, rotation, align, font,
         title
     )
-    tickspace_x = maximum(map(yticks) do tick
-        str = last(tick)
-        tick_bb = text_bb(str, to_font(tickfont[2]), tick_size[2])
-        widths(tick_bb)[1]
-    end)
+    tickspace_y = widths(text_bb(
+        last(first(yticks)), to_font(tickfont[2]), tick_size[2]
+    ))[2]
 
     tickspace_y = widths(text_bb(
         last(first(xticks)), to_font(tickfont[1]), tick_size[1]
