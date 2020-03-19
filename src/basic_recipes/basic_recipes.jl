@@ -36,6 +36,7 @@ $(ATTRIBUTES)
         transparency = false,
     )
 end
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractMesh}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rectangle, HyperRectangle}}) = (v,)
