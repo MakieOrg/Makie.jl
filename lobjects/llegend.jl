@@ -8,10 +8,11 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         labelsize, labelfont, labelcolor, labelhalign, labelvalign,
         bgcolor, framecolor, framewidth, framevisible,
         patchsize, # the side length of the entry patch area
-        ncols,
+        nbanks,
         colgap, rowgap, patchlabelgap,
         titlegap, groupgap,
         orientation,
+        titleposition,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -83,66 +84,148 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     function relayout()
         manipulating_grid[] = true
 
-        n_max_entries = maximum(group -> length(group[2]), content_groups[])
+        ngroups = length(content_groups[])
+        grouplengths = length.(last.(content_groups[]))
+        n_max_entries = maximum(grouplengths)
+
+        nbanks_real = min(n_max_entries, nbanks[]) # if there are fewer entries than banks
+
+        nvaris_per_group = ceil.(Int, grouplengths ./ nbanks_real)
+        nvaris_overall = sum(nvaris_per_group)
 
 
-        ncolumns, nrows = if orientation[] == :vertical
-            (ncols[], ceil(Int, n_max_entries / ncols[]))
+        nrows, ncols = if orientation[] == :vertical
+            (nvaris_overall, nbanks_real)
         elseif orientation[] == :horizontal
             # columns become rows
-            (ceil(Int, n_max_entries / ncols[]), ncols[])
+            (nbanks_real, nvaris_overall)
         else
             error("Invalid legend orientation $(orientation[]), options are :horizontal or :vertical.")
         end
 
+        # the grid has twice as many columns as nbanks, because of labels and patches
+        ncols_with_symbolcols = 2 * ncols
 
-        # the grid has twice as many columns as ncols, because of labels and patches
-        ncols_with_symbolcols = 2 * min(ncolumns, n_max_entries) # if fewer entries than cols, not so many cols
+        vari_starts = [1; 1 .+ cumsum(nvaris_per_group[1:end-1])]
 
-        row_offset = 0
+        # if titleposition[] == :above
+        #     row_starts .+= 1:ngroups
+        # elseif titleposition[] == :left
+        # else
+        # end
+
+        rows_per_group = if orientation[] == :vertical
+            nvaris_per_group
+        elseif orientation[] == :horizontal
+            [nbanks_real for _ in 1:ngroups]
+        end
+
+        cols_per_group = if orientation[] == :vertical
+            [nbanks_real for _ in 1:ngroups]
+        elseif orientation[] == :horizontal
+            nvaris_per_group
+        end
+
+        realcols_per_group = 2 .* cols_per_group
+
+        rowstarts = if orientation[] == :vertical
+            if titleposition[] == :above
+                [2; 2 .+ (1:ngroups-1) .+ cumsum(rows_per_group[1:ngroups-1])]
+            elseif titleposition[] == :left
+                [1; 1 .+ cumsum(rows_per_group[1:ngroups-1])]
+            end
+        elseif orientation[] == :horizontal
+            if titleposition[] == :above
+                [2 for _ in 1:ngroups]
+            elseif titleposition[] == :left
+                [1 for _ in 1:ngroups]
+            end
+        end
+
+        colstarts = if orientation[] == :vertical
+            if titleposition[] == :above
+                [1 for _ in 1:ngroups]
+            elseif titleposition[] == :left
+                [2 for _ in 1:ngroups]
+            end
+        elseif orientation[] == :horizontal
+            if titleposition[] == :above
+                [1; 1 .+ cumsum(realcols_per_group[1:ngroups-1])]
+            elseif titleposition[] == :left
+                [2; 2 .* cumsum(realcols_per_group[1:ngroups-1])]
+            end
+        end
+
+        rowcol(n, ncolumns) = ((n - 1) ÷ ncolumns + 1, (n - 1) % ncolumns + 1)
+
         # loop through groups
-        for (title, etexts, erects) in zip(titletexts, entrytexts, entryrects)
+        for g in 1:ngroups
+            title = titletexts[g]
+            etexts = entrytexts[g]
+            erects = entryrects[g]
 
-            row_offset += 1
-            grid[row_offset, 1:ncols_with_symbolcols] = title
+            vari_start = vari_starts[g]
+            nvaris = nvaris_per_group[g]
+
+            rowstart = rowstarts[g]
+            colstart = colstarts[g]
+
+            rowoffset = rowstart - 1
+            coloffset = colstart - 1
+
+            nrows_group = rows_per_group[g]
+
+            titlerows, titlecols = if orientation[] == :vertical
+                if titleposition[] == :above
+                    (rowstart-1, 1:ncols_with_symbolcols)
+                elseif titleposition[] == :left
+                    (rowstart:rowstart+nrows_group-1, 1)
+                end
+            elseif orientation[] == :horizontal
+                if titleposition[] == :above
+                    (rowstart-1, colstart:colstart+realcols_per_group[g]-1)
+                elseif titleposition[] == :left
+                    (rowstart:rowstart+nrows_group-1, colstart-1)
+                end
+            end
+
+            grid[titlerows, titlecols] = title
 
             for (i, lt) in enumerate(etexts)
-                irow = (i - 1) ÷ ncolumns + 1
-                icol = (i - 1) % ncolumns + 1
-                grid[row_offset + irow, icol * 2] = lt
+                irow, icol = rowcol(i, cols_per_group[g])
+                grid[rowoffset + irow, coloffset + icol * 2] = lt
             end
 
             for (i, rect) in enumerate(erects)
-                irow = (i - 1) ÷ ncolumns + 1
-                icol = (i - 1) % ncolumns + 1
-                grid[row_offset + irow, icol * 2 - 1] = rect
+                irow, icol = rowcol(i, cols_per_group[g])
+                grid[rowoffset + irow, coloffset + icol * 2 - 1] = rect
             end
 
 
-            n_rows_added = ceil(Int, length(etexts) / ncolumns)
-
-            if row_offset > 1
-                rowgap!(grid, row_offset - 1, Fixed(groupgap[]))
-            end
-            if n_rows_added > 0
-                rowgap!(grid, row_offset, Fixed(titlegap[]))
-            end
-            for i in 2:n_rows_added
-                rowgap!(grid, row_offset + i-1, Fixed(rowgap[]))
-            end
-            row_offset += n_rows_added
+            # n_rows_added = ceil(Int, length(etexts) / ncolumns)
+            #
+            # if row_offset > 1
+            #     rowgap!(grid, row_offset - 1, Fixed(groupgap[]))
+            # end
+            # if n_rows_added > 0
+            #     rowgap!(grid, row_offset, Fixed(titlegap[]))
+            # end
+            # for i in 2:n_rows_added
+            #     rowgap!(grid, row_offset + i-1, Fixed(rowgap[]))
+            # end
+            # row_offset += n_rows_added
         end
 
         # delete unused rows and columns
         trim!(grid)
 
-        for i in 1:(grid.ncols - 1)
-            if i % 2 == 1
-                colgap!(grid, i, Fixed(patchlabelgap[]))
-            else
-                colgap!(grid, i, Fixed(colgap[]))
-            end
-        end
+        # for i in 1:(grid.nbanks - 1)
+        #     if i % 2 == 1
+        #         colgap!(grid, i, Fixed(patchlabelgap[]))
+        #     else
+        #         colgap!(grid, i, Fixed(colgap[]))
+        #     end
+        # end
 
         # # if there is a title visible, give it a row in the maingrid above the rest
         # if titlevisible[] && !iswhitespace(title[])
@@ -160,13 +243,16 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         manipulating_grid[] = false
         grid.needs_update[] = true
 
+        display(grid)
+
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
         # above a 3d plot, but for now this hack is ok.
         translate!(scene, (0, 0, 10))
     end
 
-    onany(title, ncols, rowgap, colgap, patchlabelgap, titlevisible, orientation) do args...
+    onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap,
+            titlevisible, orientation) do args...
         relayout()
     end
 
