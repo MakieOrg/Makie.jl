@@ -278,6 +278,7 @@ function default_attributes(::Type{LLegend}, scene)
         titlesize = lift_parent_attribute(scene, :fontsize, 20f0),
         titlealign = :center,
         titlevisible = true,
+        titleposition = :above,
         labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         labelcolor = :black,
@@ -294,7 +295,7 @@ function default_attributes(::Type{LLegend}, scene)
         patchstrokewidth = 1f0,
         patchcolor = :transparent,
         label = "undefined",
-        ncols = 1,
+        nbanks = 1,
         colgap = 20,
         rowgap = 4,
         patchlabelgap = 5,
@@ -306,8 +307,8 @@ function default_attributes(::Type{LLegend}, scene)
         polypoints = [Point2f0(0, 0), Point2f0(1, 0), Point2f0(1, 1), Point2f0(0, 1)],
         polystrokewidth = 2,
         orientation = :vertical,
-        titlegap = 10,
-        groupgap = 20,
+        titlegap = 15,
+        groupgap = 30,
     )
 end
 

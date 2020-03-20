@@ -108,12 +108,6 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
         vari_starts = [1; 1 .+ cumsum(nvaris_per_group[1:end-1])]
 
-        # if titleposition[] == :above
-        #     row_starts .+= 1:ngroups
-        # elseif titleposition[] == :left
-        # else
-        # end
-
         rows_per_group = if orientation[] == :vertical
             nvaris_per_group
         elseif orientation[] == :horizontal
@@ -156,7 +150,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
             end
         end
 
-        rowcol(n, ncolumns) = ((n - 1) ÷ ncolumns + 1, (n - 1) % ncolumns + 1)
+        rowcol(n, nbanks) = ((n - 1) ÷ nbanks + 1, (n - 1) % nbanks + 1)
 
         # loop through groups
         for g in 1:ngroups
@@ -191,59 +185,89 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
             grid[titlerows, titlecols] = title
 
-            for (i, lt) in enumerate(etexts)
-                irow, icol = rowcol(i, cols_per_group[g])
+            for (i, (lt, rect)) in enumerate(zip(etexts, erects))
+                irow, icol = if orientation[] == :vertical
+                    rowcol(i, cols_per_group[g])
+                elseif orientation[] == :horizontal
+                    reverse(rowcol(i, rows_per_group[g]))
+                end
                 grid[rowoffset + irow, coloffset + icol * 2] = lt
-            end
-
-            for (i, rect) in enumerate(erects)
-                irow, icol = rowcol(i, cols_per_group[g])
                 grid[rowoffset + irow, coloffset + icol * 2 - 1] = rect
             end
-
-
-            # n_rows_added = ceil(Int, length(etexts) / ncolumns)
-            #
-            # if row_offset > 1
-            #     rowgap!(grid, row_offset - 1, Fixed(groupgap[]))
-            # end
-            # if n_rows_added > 0
-            #     rowgap!(grid, row_offset, Fixed(titlegap[]))
-            # end
-            # for i in 2:n_rows_added
-            #     rowgap!(grid, row_offset + i-1, Fixed(rowgap[]))
-            # end
-            # row_offset += n_rows_added
         end
+
+        if orientation[] == :vertical && titleposition[] == :above
+            # first all rowgaps because it's easier
+            for row in 1:nrows + ngroups - 1
+                rowgap!(grid, row, Fixed(rowgap[]))
+            end
+            for rs in rowstarts
+                rowgap!(grid, rs-1, Fixed(titlegap[]))
+            end
+            for rs in rowstarts[2:end]
+                rowgap!(grid, rs-2, Fixed(groupgap[]))
+            end
+            for col in 1:2:ncols_with_symbolcols
+                colgap!(grid, col, Fixed(patchlabelgap[]))
+            end
+            for col in 2:2:ncols_with_symbolcols-1
+                colgap!(grid, col, Fixed(colgap[]))
+            end
+        elseif orientation[] == :vertical && titleposition[] == :left
+            for row in 1:nrows-1
+                rowgap!(grid, row, Fixed(rowgap[]))
+            end
+            for rs in rowstarts[2:end]
+                rowgap!(grid, rs-1, Fixed(groupgap[]))
+            end
+            colgap!(grid, 1, Fixed(titlegap[]))
+            for col in 2:2:ncols_with_symbolcols
+                colgap!(grid, col, Fixed(patchlabelgap[]))
+            end
+            for col in 3:2:ncols_with_symbolcols-1
+                colgap!(grid, col, Fixed(colgap[]))
+            end
+        elseif orientation[] == :horizontal && titleposition[] == :above
+            for col in 1:2:ncols_with_symbolcols
+                colgap!(grid, col, Fixed(patchlabelgap[]))
+            end
+            for col in 2:2:ncols_with_symbolcols-1
+                colgap!(grid, col, Fixed(colgap[]))
+            end
+            for col in colstarts[2:end]
+                colgap!(grid, col-1, Fixed(groupgap[]))
+            end
+            rowgap!(grid, 1, Fixed(titlegap[]))
+            for row in 2:nrows
+                rowgap!(grid, row, Fixed(rowgap[]))
+            end
+        elseif orientation[] == :horizontal && titleposition[] == :left
+            for col in colstarts
+                colgap!(grid, col-1, Fixed(titlegap[]))
+            end
+            for col in colstarts[2:end]
+                colgap!(grid, col-2, Fixed(groupgap[]))
+            end
+            for (col, n) in zip(colstarts, realcols_per_group)
+                for c in col:2:col+n-1
+                    colgap!(grid, c, Fixed(patchlabelgap[]))
+                end
+                for c in col+1:2:col+n-2
+                    colgap!(grid, c, Fixed(colgap[]))
+                end
+            end
+            for row in 1:nrows-1
+                rowgap!(grid, row, Fixed(rowgap[]))
+            end
+        end
+
 
         # delete unused rows and columns
         trim!(grid)
 
-        # for i in 1:(grid.nbanks - 1)
-        #     if i % 2 == 1
-        #         colgap!(grid, i, Fixed(patchlabelgap[]))
-        #     else
-        #         colgap!(grid, i, Fixed(colgap[]))
-        #     end
-        # end
-
-        # # if there is a title visible, give it a row in the maingrid above the rest
-        # if titlevisible[] && !iswhitespace(title[])
-        #     if maingrid.nrows == 1
-        #         maingrid[0, 1] = titletext
-        #     end
-        # # otherwise delete the first row as long as there is one more after that
-        # # because we can't have zero rows in the current state of MakieLayout
-        # else
-        #     if maingrid.nrows == 2
-        #         deleterow!(maingrid, 1)
-        #     end
-        # end
 
         manipulating_grid[] = false
         grid.needs_update[] = true
-
-        display(grid)
 
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
