@@ -11,6 +11,7 @@ using ..GLMakie.GLFW
 using Printf
 using LinearAlgebra
 using Observables
+using ShaderAbstractions
 
 import FileIO: load, save
 

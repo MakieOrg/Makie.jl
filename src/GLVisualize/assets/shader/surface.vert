@@ -22,7 +22,7 @@ uniform sampler2D position_z;
 uniform vec3 lightposition;
 {{stroke_color_type}} stroke_color;
 {{glow_color_type}} glow_color;
-{{color_type}} color;
+{{image_type}} image;
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
 
@@ -81,31 +81,9 @@ void main()
     vec3 pos;
     {{position_calc}}
     //pos           += vec3(scale.xy*vertices, 0.0);
-    o_color = get_color(color, pos.z, color_map, color_norm, index);
+    o_color = get_color(image, pos.z, color_map, color_norm, index);
     o_id = uvec2(objectid, index1D+1);
-
-    if(wireframe){
-        if(offset.x == 0){
-            f_uv.x = -uv_w;
-        }else{
-            f_uv.x = uv_w;
-        }
-        if(offset.y == 0){
-            f_uv.y = -uv_w;
-        }else{
-            f_uv.y = uv_w;
-        }
-        f_id = o_id;
-        f_uv_offset = vec2(0);
-        f_color = o_color;
-        f_bg_color = o_color;
-        f_stroke_color = stroke_color;
-        f_glow_color = glow_color;
-        f_scale = vec2(-0.1, 0);
-        gl_Position = projection * view * model * vec4(pos, 1);
-    }else{
-        o_uv = index01;
-        vec3 normalvec = {{normal_calc}};
-        render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, lightposition);
-    }
+    o_uv = index01;
+    vec3 normalvec = {{normal_calc}};
+    render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, lightposition);
 }

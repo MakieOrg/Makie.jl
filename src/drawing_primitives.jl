@@ -314,11 +314,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         color = pop!(gl_attributes, :color)
         cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
-        mesh = lift(x[1], color, cmap, crange) do m, c, cmap, crange
-            return m
+        if to_value(color) isa Colorant
+            gl_attributes[:vertex_color] = color
         end
-        gl_attributes[:color] = color
-        visualize(mesh, Style(:default), gl_attributes).children[]
+        visualize(x[1], Style(:default), gl_attributes).children[]
     end
 end
 
@@ -340,14 +339,15 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             gl_attributes[:color] = nothing
             gl_attributes[:color_norm] = nothing
         end
-        gl_attributes[:color] = img
+        gl_attributes[:image] = img
         args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         if all(v-> to_value(v) isa AbstractMatrix, args)
-            visualize(args, Style(:surface), gl_attributes).children[]
+            return visualize(args, Style(:surface), gl_attributes).children[]
         else
             gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-            visualize(args[3], Style(:surface), gl_attributes).children[]
+            @show typeof(to_value(args[3]))
+            return visualize(args[3], Style(:surface), gl_attributes).children[]
         end
     end
     return robj

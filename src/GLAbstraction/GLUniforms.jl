@@ -193,7 +193,7 @@ gl_convert(x::AbstractVector{Vec3f0}) = x
 
 gl_convert(x::T) where {T <: Number} = gl_promote(T)(x)
 gl_convert(x::T) where {T <: Colorant} = gl_promote(T)(x)
-gl_convert(x::T) where {T <: AbstractMesh} = gl_convert(convert(GLNormalMesh, x))
+gl_convert(x::T) where {T <: AbstractMesh} = gl_convert(x)
 gl_convert(x::T) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 gl_convert(x::Node{T}) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 

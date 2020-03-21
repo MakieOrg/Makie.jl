@@ -343,11 +343,15 @@ function RenderObject(
     end
     # handle meshes seperately, since they need expansion
     meshs = filter(((key, value),) -> isa(value, NativeMesh), data)
+
     if !isempty(meshs)
         merge!(data, [v.data for (k,v) in meshs]...)
     end
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
     uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
+    if haskey(uniforms, :color)
+        @show typeof(uniforms[:color])
+    end
     get!(data, :visible, true) # make sure, visibility is set
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     p = gl_convert(to_value(program), data) # "compile" lazyshader

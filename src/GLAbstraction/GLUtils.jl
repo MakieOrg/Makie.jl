@@ -167,6 +167,9 @@ export NativeMesh
 NativeMesh(m::T) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
 NativeMesh(m::Observable{T}) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
 
+convert_texcoordinates(uv::AbstractVector{Vec2f0}) = uv
+convert_texcoordinates(x::AbstractVector{<:Number}) = convert(Vector{Float32}, x)
+
 function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     result = Dict{Symbol, Any}()
     attribs = GeometryBasics.attributes(mesh)
@@ -177,7 +180,10 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
         result[:vertices] = GLBuffer(collect(coordinates(mesh)))
     end
     for (field, val) in attribs
-        if field in (:position, :uv, :uvw, :normals, :attribute_id, :color)
+        if val isa AbstractPlotting.Sampler
+            result[:image] = Texture(val.colors)
+            result[:texturecoordinates] = GLBuffer(convert_texcoordinates(val.values))
+        elseif field in (:position, :uv, :uvw, :normals, :attribute_id, :color)
             if field == :color
                 field = :vertex_color
             elseif field in (:uv, :uvw)

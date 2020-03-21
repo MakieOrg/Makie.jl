@@ -314,7 +314,8 @@ function Screen(;
         end
         empty!(gl_screens)
     end
-
+    # Somehow this constant isn't wrapped by glfw
+    GLFW_FOCUS_ON_SHOW = 0x0002000C
     window = GLFW.Window(
         name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
         windowhints = [
@@ -330,9 +331,11 @@ function Screen(;
 
             (GLFW.STENCIL_BITS, 0),
             (GLFW.AUX_BUFFERS,  0),
-            # (GLFW.RESIZABLE, GL_TRUE)
+            (GLFW.FLOATING,     1),
+            (GLFW_FOCUS_ON_SHOW, 0),
         ],
-        visible = false,
+        focus = false,
+        visible = visible,
         kw_args...
     )
     GLFW.SetWindowIcon(window , AbstractPlotting.icon())
@@ -373,7 +376,7 @@ function Screen(;
         GLFW.HideWindow(window)
     end
     screen.rendertask[] = @async((opengl_renderloop[])(screen))
-    screen
+    return screen
 end
 
 function global_gl_screen()

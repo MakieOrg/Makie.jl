@@ -16,17 +16,6 @@ using Serialization
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 
-#=
-immutable GPUArray{T, NDim, GPUBuff <: GPUBuffer} <: DenseArray{T, NDim}
-    buff::GPUBuff{T, NDim}
-    size::NTuple{Int, NDim}
-end
-
-immutable BufferedGPUArray{GPUArr <: GPUArray}
-    buff::GPUBuff{T, NDim}
-    ram::Array{T, NDim}
-end
-=#
 length(A::GPUArray)                                     = prod(size(A))
 eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
 lastindex(A::GPUArray)                                      = length(A)
