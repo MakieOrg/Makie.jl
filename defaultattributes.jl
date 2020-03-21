@@ -273,7 +273,6 @@ function default_attributes(::Type{LLegend}, scene)
         valign = :center,
         width = Auto(true),
         height = Auto(false),
-        title = " ", # hides the legend without title set
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         titlesize = lift_parent_attribute(scene, :fontsize, 20f0),
         titlehalign = :center,
