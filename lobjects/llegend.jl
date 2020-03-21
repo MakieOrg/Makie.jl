@@ -334,9 +334,12 @@ function LLegend(
                 push!(erects, rect)
 
                 # plot the symbols belonging to this entry
-                symbolplots = AbstractPlot[
-                    legendsymbol!(scene, element, rect.layoutnodes.computedbbox, e.attributes)
-                    for element in e.elements]
+                symbolplots = AbstractPlot[]
+                for element in e.elements
+                    append!(symbolplots,
+                        legendelement_plots!(scene, element,
+                            rect.layoutnodes.computedbbox, e.attributes))
+                end
 
                 push!(eplots, symbolplots)
             end
@@ -362,38 +365,41 @@ function LLegend(
 end
 
 
-function legendsymbol!(scene, element::MarkerElement, bbox, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::MarkerElement, bbox::Node{BBox}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
     fracpoints = attrs.markerpoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    scatter!(scene, points, color = attrs.color, marker = attrs.marker,
+    scat = scatter!(scene, points, color = attrs.color, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
         strokecolor = attrs.strokecolor, raw = true)[end]
+    [scat]
 end
 
-function legendsymbol!(scene, element::LineElement, bbox, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::LineElement, bbox::Node{BBox}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
     fracpoints = attrs.linepoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    lines!(scene, points, linewidth = attrs.linewidth, color = attrs.color,
+    lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.color,
         linestyle = attrs.linestyle,
         raw = true)[end]
+    [lin]
 end
 
-function legendsymbol!(scene, element::PolyElement, bbox, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::PolyElement, bbox::Node{BBox}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
     fracpoints = attrs.polypoints
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
-    poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
+    pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
         strokecolor = attrs.strokecolor,
         raw = true)[end]
+    [pol]
 end
 
 function Base.getproperty(lentry::LegendEntry, s::Symbol)
@@ -416,26 +422,30 @@ function Base.propertynames(lentry::LegendEntry)
     [fieldnames(T)..., keys(lentry.attributes)...]
 end
 
+legendelements(le::LegendElement) = LegendElement[le]
+legendelements(les::AbstractArray{<:LegendElement}) = LegendElement[les...]
 
-function LegendEntry(label::String, plots::Vararg{AbstractPlot}; kwargs...)
+
+function LegendEntry(label::String, contentelements::AbstractArray; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = vcat(legendelements.(plots)...)
+    elems = vcat(legendelements.(contentelements)...)
     LegendEntry(elems, attrs)
 end
 
-function LegendEntry(label::String, elements::Vararg{LegendElement}; kwargs...)
+function LegendEntry(label::String, contentelement; kwargs...)
     attrs = Attributes(label = label)
 
     kwargattrs = Attributes(kwargs)
     merge!(attrs, kwargattrs)
 
-    elems = LegendElement[elements...]
+    elems = legendelements(contentelement)
     LegendEntry(elems, attrs)
 end
+
 
 function LineElement(;kwargs...)
     LineElement(Attributes(kwargs))
@@ -496,76 +506,67 @@ function Base.propertynames(legendelement::T) where T <: LegendElement
     [fieldnames(T)..., keys(legendelement.attributes)...]
 end
 
-function Base.push!(legend::LLegend, entry::LegendEntry)
-    legend.entries[] = [legend.entries[]; entry]
-    nothing
-end
 
-function Base.pushfirst!(legend::LLegend, entry::LegendEntry)
-    legend.entries[] = [entry; legend.entries[]]
-    nothing
-end
-
-function Base.push!(legend::LLegend, label::String, plots::Vararg{AbstractPlot}; kwargs...)
-    entry = LegendEntry(label, plots...; kwargs...)
-    push!(legend, entry)
-end
-
-function Base.pushfirst!(legend::LLegend, label::String, plots::Vararg{AbstractPlot}; kwargs...)
-    entry = LegendEntry(label, plots...; kwargs...)
-    pushfirst!(legend, entry)
-end
 
 """
-    LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String}; kwargs...)
+    LLegend(
+        scene,
+        contents::AbstractArray,
+        labels::AbstractArray{String},
+        title::Optional{String} = nothing;
+        kwargs...)
 
-Create a legend where one default legend marker derived from each plot in `plots` is
-combined with one label from `labels`.
+Create a legend from `contents` and `labels` where each label is associated to
+one content element. A content element can be an `AbstractPlot`, an array of
+`AbstractPlots`, a `LegendElement`, or any other object for which the
+`legendelements` method is defined.
 """
-function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String}; kwargs...)
-    if length(plots) != length(labels)
-        error("Legend received $(length(plots)) plots but $(length(labels)) labels.")
+function LLegend(scene,
+        contents::AbstractArray,
+        labels::AbstractArray{String},
+        title::Optional{String} = nothing;
+        kwargs...)
+
+    if length(contents) != length(labels)
+        error("Number of elements not equal: $(length(contents)) content elements and $(length(labels)) labels.")
     end
 
-    entries = [LegendEntry(label, plot) for (plot, label) in zip(plots, labels)]
-    entrygroups = Node{Vector{EntryGroup}}([(nothing, entries)])
-    legend = LLegend(scene, entrygroups; kwargs...)
-end
-
-
-function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String},
-        title::String; kwargs...)
-    if length(plots) != length(labels)
-        error("Legend received $(length(plots)) plots but $(length(labels)) labels.")
-    end
-
-    entries = [LegendEntry(label, plot) for (plot, label) in zip(plots, labels)]
+    entries = [LegendEntry(label, content) for (content, label) in zip(contents, labels)]
     entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
     legend = LLegend(scene, entrygroups; kwargs...)
 end
 
+
+
 """
-    LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
+    LLegend(
+        scene,
+        contentgroups::AbstractArray{<:AbstractArray},
+        labelgroups::AbstractArray{<:AbstractArray},
+        titles::AbstractArray{<:Optional{String}};
+        kwargs...)
 
-Create a legend where a stack of default legend markers derived from each group of
-plot objects in `plotgroups` is combined with one label from `labels`.
+Create a multi-group legend from `contentgroups`, `labelgroups` and `titles`.
+Each group from `contentgroups` and `labelgroups` is associated with one title
+from `titles` (a title can be `nothing` to hide it).
+
+Within each group, each content element is associated with one label. A content
+element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
+or any other object for which the `legendelements` method is defined.
 """
-function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
-    if length(plotgroups) != length(labels)
-        error("Legend received $(length(plots)) plotgroups but $(length(labels)) labels.")
-    end
-    entries = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
-    entrygroups = Node{Vector{EntryGroup}}([(nothing, entries)])
-    legend = LLegend(scene, entrygroups; kwargs...)
-end
+function LLegend(scene,
+        contentgroups::AbstractArray{<:AbstractArray},
+        labelgroups::AbstractArray{<:AbstractArray},
+        titles::AbstractArray{<:Optional{String}};
+        kwargs...)
 
-
-function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}},
-        labels::AbstractArray{String}, title::String; kwargs...)
-    if length(plotgroups) != length(labels)
-        error("Legend received $(length(plots)) plotgroups but $(length(labels)) labels.")
+    if !(length(titles) == length(contentgroups) == length(labelgroups))
+        error("Number of elements not equal: $(length(titles)) titles, $(length(contentgroups)) content groups and $(length(labelgroups)) label groups.")
     end
-    entries = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
-    entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
+
+    entries = [[LegendEntry(l, pg) for (l, pg) in zip(labelgroup, contentgroup)]
+        for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
+
+    entrygroups = Node{Vector{EntryGroup}}([(t, en) for (t, en) in zip(titles, entries)])
     legend = LLegend(scene, entrygroups; kwargs...)
 end
