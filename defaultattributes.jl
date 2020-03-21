@@ -278,7 +278,7 @@ function default_attributes(::Type{LLegend}, scene)
         titlehalign = :center,
         titlevalign = :center,
         titlevisible = true,
-        titleposition = :above,
+        titleposition = :top,
         labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
         labelcolor = :black,

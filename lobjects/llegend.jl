@@ -117,13 +117,13 @@ function LLegend(
         realcols_per_group = 2 .* cols_per_group
 
         rowstarts = if orientation[] == :vertical
-            if titleposition[] == :above
+            if titleposition[] == :top
                 [2; 2 .+ (1:ngroups-1) .+ cumsum(rows_per_group[1:ngroups-1])]
             elseif titleposition[] == :left
                 [1; 1 .+ cumsum(rows_per_group[1:ngroups-1])]
             end
         elseif orientation[] == :horizontal
-            if titleposition[] == :above
+            if titleposition[] == :top
                 [2 for _ in 1:ngroups]
             elseif titleposition[] == :left
                 [1 for _ in 1:ngroups]
@@ -131,13 +131,13 @@ function LLegend(
         end
 
         colstarts = if orientation[] == :vertical
-            if titleposition[] == :above
+            if titleposition[] == :top
                 [1 for _ in 1:ngroups]
             elseif titleposition[] == :left
                 [2 for _ in 1:ngroups]
             end
         elseif orientation[] == :horizontal
-            if titleposition[] == :above
+            if titleposition[] == :top
                 [1; 1 .+ cumsum(realcols_per_group[1:ngroups-1])]
             elseif titleposition[] == :left
                 [2; 2 .* cumsum(realcols_per_group[1:ngroups-1])]
@@ -164,13 +164,13 @@ function LLegend(
             nrows_group = rows_per_group[g]
 
             titlerows, titlecols = if orientation[] == :vertical
-                if titleposition[] == :above
+                if titleposition[] == :top
                     (rowstart-1, 1:ncols_with_symbolcols)
                 elseif titleposition[] == :left
                     (rowstart:rowstart+nrows_group-1, 1)
                 end
             elseif orientation[] == :horizontal
-                if titleposition[] == :above
+                if titleposition[] == :top
                     (rowstart-1, colstart:colstart+realcols_per_group[g]-1)
                 elseif titleposition[] == :left
                     (rowstart:rowstart+nrows_group-1, colstart-1)
@@ -192,7 +192,7 @@ function LLegend(
             end
         end
 
-        if orientation[] == :vertical && titleposition[] == :above
+        if orientation[] == :vertical && titleposition[] == :top
             # first all rowgaps because it's easier
             for row in 1:nrows + ngroups - 1
                 rowgap!(grid, row, Fixed(rowgap[]))
@@ -223,7 +223,7 @@ function LLegend(
             for col in 3:2:ncols_with_symbolcols-1
                 colgap!(grid, col, Fixed(colgap[]))
             end
-        elseif orientation[] == :horizontal && titleposition[] == :above
+        elseif orientation[] == :horizontal && titleposition[] == :top
             for col in 1:2:ncols_with_symbolcols
                 colgap!(grid, col, Fixed(patchlabelgap[]))
             end
