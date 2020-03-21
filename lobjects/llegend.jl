@@ -4,7 +4,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     @extract attrs (
         halign, valign, padding, margin,
-        title, titlefont, titlesize, titlealign, titlevisible,
+        title, titlefont, titlesize, titlehalign, titlevalign, titlevisible,
         labelsize, labelfont, labelcolor, labelhalign, labelvalign,
         bgcolor, framecolor, framewidth, framevisible,
         patchsize, # the side length of the entry patch area
@@ -307,7 +307,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
         for (title, entries) in content_groups
             push!(titletexts, LText(scene, text = title, font = titlefont,
-                textsize = titlesize, halign = titlealign))
+                textsize = titlesize, halign = titlehalign, valign = titlevalign))
 
             etexts = []
             erects = []
