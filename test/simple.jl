@@ -58,7 +58,6 @@ texture_mesh = GeometryBasics.Mesh(coords, triangles)
 
 scren = mesh(texture_mesh, show_axis=false) |> display
 
-
 texsampler = AbstractPlotting.sampler(:viridis, rand(length(positions)))
 coords = meta(positions, color=texsampler, normals=mesh_normals)
 texture_mesh = GeometryBasics.Mesh(coords, triangles)
@@ -73,7 +72,7 @@ image(rand(10, 10))
 heatmap(rand(10, 10)) |> display
 
 
-volume(rand(4, 4, 4), isovalue=0.5, isorange=0.01, algorithm=:iso)
+volume(rand(4, 4, 4), isovalue=0.5, isorange=0.01, algorithm=:iso) |> display
 volume(rand(4, 4, 4), algorithm=:mip)
 volume(rand(4, 4, 4), algorithm=:absorption)
 volume(rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)

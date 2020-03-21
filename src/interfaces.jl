@@ -88,7 +88,7 @@ $(ATTRIBUTES)
 @recipe(Volume, x, y, z, volume) do scene
     Theme(;
         default_theme(scene)...,
-        algorithm = :mpi,
+        algorithm = :mip,
         isovalue = 0.5,
         isorange = 0.05,
         color = nothing,
