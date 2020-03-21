@@ -532,6 +532,18 @@ function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractAr
     legend = LLegend(scene, entrygroups; kwargs...)
 end
 
+
+function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String},
+        title::String; kwargs...)
+    if length(plots) != length(labels)
+        error("Legend received $(length(plots)) plots but $(length(labels)) labels.")
+    end
+
+    entries = [LegendEntry(label, plot) for (plot, label) in zip(plots, labels)]
+    entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
+    legend = LLegend(scene, entrygroups; kwargs...)
+end
+
 """
     LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
 
@@ -544,5 +556,16 @@ function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot
     end
     entries = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
     entrygroups = Node{Vector{EntryGroup}}([(nothing, entries)])
+    legend = LLegend(scene, entrygroups; kwargs...)
+end
+
+
+function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}},
+        labels::AbstractArray{String}, title::String; kwargs...)
+    if length(plotgroups) != length(labels)
+        error("Legend received $(length(plots)) plotgroups but $(length(labels)) labels.")
+    end
+    entries = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
+    entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
     legend = LLegend(scene, entrygroups; kwargs...)
 end
