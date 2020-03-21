@@ -1,4 +1,7 @@
-function LLegend(parent::Scene; bbox = nothing, kwargs...)
+function LLegend(
+        parent::Scene,
+        entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
+        bbox = nothing, kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LLegend, parent))
 
@@ -42,15 +45,6 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
         strokecolor = framecolor, raw = true)[end]
 
-    # the array of legend entries, when it changes the legend gets redrawn
-
-    # a vector with one entry for every legend group
-    # each legend group consists of one title and a vector of legendentries
-    attrs[:content_groups] = Node{Vector{Tuple{String, Vector{LegendEntry}}}}([])
-    content_groups = attrs.content_groups
-
-    entries_dummy = Node{Vector{LegendEntry}}([])
-
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
 
@@ -75,7 +69,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     end
 
     # these arrays store all the plot objects that the legend entries need
-    titletexts = LText[]
+    titletexts = Optional{LText}[]
     entrytexts = [LText[]]
     entryplots = [[AbstractPlot[]]]
     entryrects = [LRect[]]
@@ -84,8 +78,8 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
     function relayout()
         manipulating_grid[] = true
 
-        ngroups = length(content_groups[])
-        grouplengths = length.(last.(content_groups[]))
+        ngroups = length(entry_groups[])
+        grouplengths = length.(last.(entry_groups[]))
         n_max_entries = maximum(grouplengths)
 
         nbanks_real = min(n_max_entries, nbanks[]) # if there are fewer entries than banks
@@ -183,7 +177,9 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
                 end
             end
 
-            grid[titlerows, titlecols] = title
+            if !isnothing(title)
+                grid[titlerows, titlecols] = title
+            end
 
             for (i, (lt, rect)) in enumerate(zip(etexts, erects))
                 irow, icol = if orientation[] == :vertical
@@ -280,10 +276,12 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         relayout()
     end
 
-    on(content_groups) do content_groups
+    on(entry_groups) do entry_groups
         # first delete all existing labels and patches
 
-        delete!.(titletexts)
+        for t in titletexts
+            !isnothing(t) && delete!(t)
+        end
         empty!(titletexts)
 
         [delete!.(etexts) for etexts in entrytexts]
@@ -305,9 +303,15 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         # these serve as defaults unless the legendentry gets its own value set
         preset_attrs = extractattributes(attrs, LegendEntry)
 
-        for (title, entries) in content_groups
-            push!(titletexts, LText(scene, text = title, font = titlefont,
-                textsize = titlesize, halign = titlehalign, valign = titlevalign))
+        for (title, entries) in entry_groups
+
+            if isnothing(title)
+                # in case a group has no title
+                push!(titletexts, nothing)
+            else
+                push!(titletexts, LText(scene, text = title, font = titlefont,
+                    textsize = titlesize, halign = titlehalign, valign = titlevalign))
+            end
 
             etexts = []
             erects = []
@@ -351,7 +355,10 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
 
     layoutnodes = LayoutNodes{LLegend, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    LLegend(scene, entries_dummy, layoutnodes, attrs, decorations, LText[], Vector{Vector{AbstractPlot}}())
+    leg = LLegend(scene, entry_groups, layoutnodes, attrs, decorations, LText[], Vector{Vector{AbstractPlot}}())
+    # trigger first relayout
+    entry_groups[] = entry_groups[]
+    leg
 end
 
 
@@ -516,12 +523,13 @@ Create a legend where one default legend marker derived from each plot in `plots
 combined with one label from `labels`.
 """
 function LLegend(scene, plots::AbstractArray{<:AbstractPlot}, labels::AbstractArray{String}; kwargs...)
-    legend = LLegend(scene; kwargs...)
     if length(plots) != length(labels)
         error("Legend received $(length(plots)) plots but $(length(labels)) labels.")
     end
-    legend.entries[] = [LegendEntry(label, plot) for (plot, label) in zip(plots, labels)]
-    legend
+
+    entries = [LegendEntry(label, plot) for (plot, label) in zip(plots, labels)]
+    entrygroups = Node{Vector{EntryGroup}}([(nothing, entries)])
+    legend = LLegend(scene, entrygroups; kwargs...)
 end
 
 """
@@ -531,10 +539,10 @@ Create a legend where a stack of default legend markers derived from each group 
 plot objects in `plotgroups` is combined with one label from `labels`.
 """
 function LLegend(scene, plotgroups::AbstractArray{<:AbstractArray{<:AbstractPlot}}, labels::AbstractArray{String}; kwargs...)
-    legend = LLegend(scene; kwargs...)
     if length(plotgroups) != length(labels)
         error("Legend received $(length(plots)) plotgroups but $(length(labels)) labels.")
     end
-    legend.entries[] = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
-    legend
+    entries = [LegendEntry(label, plotgroup...) for (plotgroup, label) in zip(plotgroups, labels)]
+    entrygroups = Node{Vector{EntryGroup}}([(nothing, entries)])
+    legend = LLegend(scene, entrygroups; kwargs...)
 end

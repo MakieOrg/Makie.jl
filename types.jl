@@ -313,9 +313,11 @@ struct LegendEntry
     attributes::Attributes
 end
 
+const EntryGroup = Tuple{Optional{String}, Vector{LegendEntry}}
+
 struct LLegend <: LObject
     scene::Scene
-    entries::Node{Vector{LegendEntry}}
+    entrygroups::Node{Vector{EntryGroup}}
     layoutnodes::LayoutNodes
     attributes::Attributes
     decorations::Dict{Symbol, Any}
