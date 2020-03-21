@@ -275,7 +275,7 @@ function LLegend(parent::Scene; bbox = nothing, kwargs...)
         translate!(scene, (0, 0, 10))
     end
 
-    onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap,
+    onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
             titlevisible, orientation) do args...
         relayout()
     end
