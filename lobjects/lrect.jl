@@ -4,31 +4,18 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-    alignment = lift(tuple, halign, valign)
-
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
+    layoutobservables = LayoutObservables(LRect, attrs.width, attrs.height,
+        halign, valign; suggestedbbox = bbox)
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis
         vis ? col : RGBAf0(0, 0, 0, 0)
     end
 
-    r = poly!(parent, finalbbox, color = color, visible = visible, raw = true,
+    r = poly!(parent, layoutobservables.computedbbox, color = color, visible = visible, raw = true,
         strokecolor = strokecolor_with_visibility, strokewidth = strokewidth)[end]
 
-    # no protrusions
-    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
-
-    layoutobservables = LayoutObservables{LRect, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
-
     # trigger bbox
-    suggestedbbox[] = suggestedbbox[]
+    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     LRect(parent, layoutobservables, r, attrs)
 end

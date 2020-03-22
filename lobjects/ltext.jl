@@ -8,18 +8,8 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-
-    alignment = lift(tuple, halign, valign)
-
-    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
-        sizeattrs, autosizenode)
+    layoutobservables = LayoutObservables(LText, attrs.width, attrs.height,
+        halign, valign; suggestedbbox = bbox)
 
     textpos = Node(Point3f0(0, 0, 0))
 
@@ -45,7 +35,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
         autosizenode[] = (autowidth, autoheight)
     end
 
-    onany(finalbbox, padding) do bbox, padding
+    onany(layoutobservables.computedbbox, padding) do bbox, padding
 
         tw = width(textbb[])
         th = height(textbb[])
@@ -66,15 +56,10 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     end
 
 
-    # text has no protrusions
-    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
-
-    layoutobservables = LayoutObservables{LText, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
-
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
     # trigger bbox
-    suggestedbbox[] = suggestedbbox[]
+    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     lt = LText(parent, layoutobservables, t, attrs)
 
