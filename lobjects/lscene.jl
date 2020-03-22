@@ -15,22 +15,10 @@ function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...
 
     attrs = merge!(Attributes(kwargs), default_attributes(LScene, parent))
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-    alignment = lift(tuple, attrs.halign, attrs.valign)
+    layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height,
+        attrs.halign, attrs.valign; suggestedbbox = bbox)
 
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
-
-    protrusions = Node(RectSides{Float32}(0, 0, 0, 0))
-
-    scene = Scene(parent, lift(IRect2D, finalbbox); scenekw...)
-
-    layoutobservables = LayoutObservables{LScene, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    scene = Scene(parent, lift(IRect2D_rounded, layoutobservables.computedbbox); scenekw...)
 
     LScene(scene, attrs, layoutobservables)
 end
