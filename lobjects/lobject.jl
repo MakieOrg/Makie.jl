@@ -3,11 +3,11 @@ const Layoutable = Union{LAxis, LObject, GridLayout}
 defaultlayout(layoutable::Layoutable) = ProtrusionLayout(layoutable)
 
 function align_to_bbox!(layoutable::Layoutable, bbox)
-    layoutable.layoutnodes.suggestedbbox[] = bbox
+    layoutable.layoutobservables.suggestedbbox[] = bbox
 end
 
-computedsizenode(layoutable::Layoutable) = layoutable.layoutnodes.computedsize
-protrusionnode(layoutable::Layoutable) = layoutable.layoutnodes.protrusions
+computedsizenode(layoutable::Layoutable) = layoutable.layoutobservables.computedsize
+protrusionnode(layoutable::Layoutable) = layoutable.layoutobservables.protrusions
 
 
 function Base.getproperty(layoutable::T, s::Symbol) where T <: Layoutable

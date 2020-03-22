@@ -325,7 +325,7 @@ end
 Swaps or rotates the layout positions of the given elements to their neighbor's. 
 """
 function swap!(layout_elements...)
-    gridcontents = [le.layoutnodes.gridcontent for le in layout_elements]
+    gridcontents = [le.layoutobservables.gridcontent for le in layout_elements]
 
     # copy relevant fields before gridcontents are mutated
     parents = map(gc -> gc.parent, gridcontents)

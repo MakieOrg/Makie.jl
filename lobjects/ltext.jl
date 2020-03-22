@@ -69,14 +69,14 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     # text has no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes{LText, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LText, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # trigger first update, otherwise bounds are wrong somehow
     text[] = text[]
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]
 
-    lt = LText(parent, layoutnodes, t, attrs)
+    lt = LText(parent, layoutobservables, t, attrs)
 
     lt
 end
@@ -84,11 +84,11 @@ end
 defaultlayout(lt::LText) = ProtrusionLayout(lt)
 
 function align_to_bbox!(lt::LText, bbox)
-    lt.layoutnodes.suggestedbbox[] = bbox
+    lt.layoutobservables.suggestedbbox[] = bbox
 end
 
-computedsizenode(lt::LText) = lt.layoutnodes.computedsize
-protrusionnode(lt::LText) = lt.layoutnodes.protrusions
+computedsizenode(lt::LText) = lt.layoutobservables.computedsize
+protrusionnode(lt::LText) = lt.layoutobservables.protrusions
 
 
 function Base.getproperty(lt::LText, s::Symbol)
@@ -113,13 +113,13 @@ end
 
 function Base.delete!(lt::LText)
 
-    disconnect_layoutnodes!(lt.layoutnodes.gridcontent)
-    remove_from_gridlayout!(lt.layoutnodes.gridcontent)
-    empty!(lt.layoutnodes.suggestedbbox.listeners)
-    empty!(lt.layoutnodes.computedbbox.listeners)
-    empty!(lt.layoutnodes.computedsize.listeners)
-    empty!(lt.layoutnodes.autosize.listeners)
-    empty!(lt.layoutnodes.protrusions.listeners)
+    disconnect_layoutnodes!(lt.layoutobservables.gridcontent)
+    remove_from_gridlayout!(lt.layoutobservables.gridcontent)
+    empty!(lt.layoutobservables.suggestedbbox.listeners)
+    empty!(lt.layoutobservables.computedbbox.listeners)
+    empty!(lt.layoutobservables.computedsize.listeners)
+    empty!(lt.layoutobservables.autosize.listeners)
+    empty!(lt.layoutobservables.protrusions.listeners)
 
     # remove the plot object from the scene
     delete!(lt.parent, lt.textobject)

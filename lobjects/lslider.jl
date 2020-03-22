@@ -196,12 +196,12 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    layoutnodes = LayoutNodes{LSlider, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LSlider, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]
 
-    LSlider(parent, layoutnodes, attrs, decorations)
+    LSlider(parent, layoutobservables, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)

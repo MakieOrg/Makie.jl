@@ -1,5 +1,3 @@
-const BBox = Rect2D{Float32}
-
 const Optional{T} = Union{Nothing, T}
 
 
@@ -64,7 +62,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     xaxislinks::Vector{LAxis}
     yaxislinks::Vector{LAxis}
     limits::Node{BBox}
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     needs_update::Node{Bool}
     attributes::Attributes
     block_limit_linking::Node{Bool}
@@ -74,42 +72,42 @@ end
 mutable struct LColorbar <: LObject
     parent::Scene
     scene::Scene
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
 mutable struct LText <: LObject
     parent::Scene
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     textobject::AbstractPlotting.Text
     attributes::Attributes
 end
 
 mutable struct LRect <: LObject
     parent::Scene
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     rect::AbstractPlotting.Poly
     attributes::Attributes
 end
 
 struct LSlider <: LObject
     scene::Scene
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
 struct LButton <: LObject
     scene::Scene
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
 struct LToggle <: LObject
     scene::Scene
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
@@ -138,7 +136,7 @@ const EntryGroup = Tuple{Optional{String}, Vector{LegendEntry}}
 struct LLegend <: LObject
     scene::Scene
     entrygroups::Node{Vector{EntryGroup}}
-    layoutnodes::LayoutNodes
+    layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
     entrytexts::Vector{LText}
@@ -156,5 +154,5 @@ end
 struct LScene <: AbstractPlotting.AbstractScene
     scene::Scene
     attributes::Attributes
-    layoutnodes::MakieLayout.LayoutNodes
+    layoutobservables::MakieLayout.LayoutObservables
 end

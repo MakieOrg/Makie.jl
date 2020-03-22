@@ -46,10 +46,10 @@ function myplot(T::Type, scene::Scene, args...; kwargs...)
 end
 
 function get_layout_top_scene(layout::GridLayout)
-    if isnothing(layout.layoutnodes.gridcontent)
+    if isnothing(layout.layoutobservables.gridcontent)
         return layout.parentscene
     else
-        parentgrid = layout.layoutnodes.gridcontent.parent
+        parentgrid = layout.layoutobservables.gridcontent.parent
         if isnothing(parentgrid)
             return layout.parentscene
         else

@@ -83,11 +83,11 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     end
 
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
-    layoutnodes = LayoutNodes{LButton, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LButton, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     label[] = label[]
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]
 
-    LButton(scene, layoutnodes, attrs, decorations)
+    LButton(scene, layoutobservables, attrs, decorations)
 end

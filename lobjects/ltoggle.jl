@@ -95,18 +95,18 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     # no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes{LToggle, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LToggle, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    LToggle(parent, layoutnodes, attrs, decorations)
+    LToggle(parent, layoutobservables, attrs, decorations)
 end
 
 defaultlayout(lt::LToggle) = ProtrusionLayout(lt)
 
-computedsizenode(lt::LToggle) = lt.layoutnodes.computedsize
-protrusionnode(lt::LToggle) = lt.layoutnodes.protrusions
+computedsizenode(lt::LToggle) = lt.layoutobservables.computedsize
+protrusionnode(lt::LToggle) = lt.layoutobservables.protrusions
 
 function align_to_bbox!(lt::LToggle, bbox)
-    lt.layoutnodes.suggestedbbox[] = bbox
+    lt.layoutobservables.suggestedbbox[] = bbox
 end
 
 function Base.getproperty(lt::LToggle, s::Symbol)

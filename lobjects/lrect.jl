@@ -25,23 +25,23 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
     # no protrusions
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes{LRect, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LRect, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]
 
-    LRect(parent, layoutnodes, r, attrs)
+    LRect(parent, layoutobservables, r, attrs)
 end
 
 
 function Base.delete!(lr::LRect)
-    disconnect_layoutnodes!(lr.layoutnodes.gridcontent)
-    remove_from_gridlayout!(lr.layoutnodes.gridcontent)
-    empty!(lr.layoutnodes.suggestedbbox.listeners)
-    empty!(lr.layoutnodes.computedbbox.listeners)
-    empty!(lr.layoutnodes.computedsize.listeners)
-    empty!(lr.layoutnodes.autosize.listeners)
-    empty!(lr.layoutnodes.protrusions.listeners)
+    disconnect_layoutnodes!(lr.layoutobservables.gridcontent)
+    remove_from_gridlayout!(lr.layoutobservables.gridcontent)
+    empty!(lr.layoutobservables.suggestedbbox.listeners)
+    empty!(lr.layoutobservables.computedbbox.listeners)
+    empty!(lr.layoutobservables.computedsize.listeners)
+    empty!(lr.layoutobservables.autosize.listeners)
+    empty!(lr.layoutobservables.protrusions.listeners)
 
     # remove the plot object from the scene
     delete!(lr.parent, lr.rect)

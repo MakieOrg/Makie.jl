@@ -233,7 +233,7 @@ function LLegend(
                 for element in e.elements
                     append!(symbolplots,
                         legendelement_plots!(scene, element,
-                            rect.layoutnodes.computedbbox, e.attributes))
+                            rect.layoutobservables.computedbbox, e.attributes))
                 end
 
                 push!(eplots, symbolplots)
@@ -251,9 +251,9 @@ function LLegend(
     # trigger suggestedbbox
     suggestedbbox[] = suggestedbbox[]
 
-    layoutnodes = LayoutNodes{LLegend, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LLegend, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    leg = LLegend(scene, entry_groups, layoutnodes, attrs, decorations, LText[], Vector{Vector{AbstractPlot}}())
+    leg = LLegend(scene, entry_groups, layoutobservables, attrs, decorations, LText[], Vector{Vector{AbstractPlot}}())
     # trigger first relayout
     entry_groups[] = entry_groups[]
     leg

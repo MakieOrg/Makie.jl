@@ -68,12 +68,12 @@ function GridLayout(nrows::Int, ncols::Int;
 
     protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
 
-    layoutnodes = LayoutNodes{GridLayout, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{GridLayout, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
 
     gl = GridLayout(
         content, nrows, ncols, rowsizes, colsizes, addedrowgaps,
-        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, layoutnodes, attrs, parentscene)
+        addedcolgaps, alignmode, equalprotrusiongaps, needs_update, layoutobservables, attrs, parentscene)
 
     on(finalbbox) do bb
         align_to_bbox!(gl, bb)
@@ -95,19 +95,19 @@ function GridLayout(nrows::Int, ncols::Int;
         )
 
         if autosizenode[] == new_autosize &&
-                gl.layoutnodes.protrusions[] == new_protrusions
+                gl.layoutobservables.protrusions[] == new_protrusions
 
-            gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
+            gl.layoutobservables.suggestedbbox[] = gl.layoutobservables.suggestedbbox[]
         else
             # otherwise these values will not already be up to date when adding the
             # gridlayout into the next one
 
             # TODO: this is a double update?
-            gl.layoutnodes.protrusions[] = new_protrusions
+            gl.layoutobservables.protrusions[] = new_protrusions
             autosizenode[] = new_autosize
 
-            if isnothing(gl.layoutnodes.gridcontent)
-                gl.layoutnodes.suggestedbbox[] = gl.layoutnodes.suggestedbbox[]
+            if isnothing(gl.layoutobservables.gridcontent)
+                gl.layoutobservables.suggestedbbox[] = gl.layoutobservables.suggestedbbox[]
             end
         end
 
@@ -118,8 +118,8 @@ function GridLayout(nrows::Int, ncols::Int;
 end
 
 
-computedsizenode(gridlayout::GridLayout) = gridlayout.layoutnodes.computedsize
-protrusionnode(gridlayout::GridLayout) = gridlayout.layoutnodes.protrusions
+computedsizenode(gridlayout::GridLayout) = gridlayout.layoutobservables.computedsize
+protrusionnode(gridlayout::GridLayout) = gridlayout.layoutobservables.protrusions
 
 
 function validategridlayout(gl::GridLayout)
@@ -775,7 +775,7 @@ function align_to_bbox!(gl::GridLayout, suggestedbbox::BBox)
 
         solving_bbox = bbox_for_solving_from_side(maxgrid, bbox_cell, idx_rect, c.side)
 
-        c.content.layoutnodes.suggestedbbox[] = solving_bbox
+        c.content.layoutobservables.suggestedbbox[] = solving_bbox
     end
 
     nothing
@@ -1126,10 +1126,10 @@ end
 function add_content!(g::GridLayout, content, rows, cols, side::Side)
     rows, cols = adjust_rows_cols!(g, rows, cols)
 
-    gc = if !isnothing(content.layoutnodes.gridcontent)
+    gc = if !isnothing(content.layoutobservables.gridcontent)
         # take the existing gridcontent, remove it from its gridlayout if it has one,
         # and modify it with the new span and side
-        gridc = content.layoutnodes.gridcontent
+        gridc = content.layoutobservables.gridcontent
         remove_from_gridlayout!(gridc)
         gridc.span = Span(rows, cols)
         gridc.side = side
@@ -1139,7 +1139,7 @@ function add_content!(g::GridLayout, content, rows, cols, side::Side)
         GridContent(content, Span(rows, cols), side)
     end
 
-    content.layoutnodes.gridcontent = gc
+    content.layoutobservables.gridcontent = gc
 
     connect_layoutnodes!(gc)
 

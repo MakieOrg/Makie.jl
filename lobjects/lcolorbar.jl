@@ -138,12 +138,12 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         RectSides{Float32}(left, right, bottom, top)
     end
 
-    layoutnodes = LayoutNodes{LColorbar, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LColorbar, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     # trigger bbox
     suggestedbbox[] = suggestedbbox[]
 
-    LColorbar(parent, scene, layoutnodes, attrs, decorations)
+    LColorbar(parent, scene, layoutobservables, attrs, decorations)
 end
 
 function tight_ticklabel_spacing!(lc::LColorbar)

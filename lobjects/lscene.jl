@@ -8,8 +8,8 @@ function AbstractPlotting.plot!(
     plot
 end
 
-protrusionnode(ls::LScene) = ls.layoutnodes.protrusions
-computedsizenode(ls::LScene) = ls.layoutnodes.computedsize
+protrusionnode(ls::LScene) = ls.layoutobservables.protrusions
+computedsizenode(ls::LScene) = ls.layoutobservables.computedsize
 
 function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
@@ -30,7 +30,7 @@ function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...
 
     scene = Scene(parent, lift(IRect2D, finalbbox); scenekw...)
 
-    layoutnodes = LayoutNodes{LScene, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables = LayoutObservables{LScene, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
-    LScene(scene, attrs, layoutnodes)
+    LScene(scene, attrs, layoutobservables)
 end
