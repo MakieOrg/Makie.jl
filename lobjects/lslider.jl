@@ -12,29 +12,23 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     sliderrange = attrs.range
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-    alignment = lift(tuple, halign, valign)
+    layoutobservables = LayoutObservables(LSlider, attrs.width, attrs.height,
+        halign, valign; suggestedbbox = bbox)
 
-    autosizenode = lift(buttonradius, horizontal, buttonstrokewidth, typ=NTuple{2, Optional{Float32}}) do br, hori, bstrw
-        if hori
+    onany(buttonradius, horizontal, buttonstrokewidth) do br, hori, bstrw
+        layoutobservables.autosize[] = if hori
             (nothing, 2 * (br + bstrw))
         else
             (2 * (br + bstrw), nothing)
         end
     end
 
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
-
-    subarea = lift(finalbbox) do bbox
-        IRect2D(bbox)
+    subarea = lift(layoutobservables.computedbbox) do bbox
+        IRect2D_rounded(bbox)
     end
     subscene = Scene(parent, subarea, camera=campixel!)
 
-    sliderbox = lift(bb -> Rect{2, Float32}(zeros(eltype(bb.origin), 2), bb.widths), finalbbox)
+    sliderbox = lift(bb -> Rect{2, Float32}(zeros(eltype(bb.origin), 2), bb.widths), layoutobservables.computedbbox)
 
     endpoints = lift(sliderbox, horizontal) do bb, horizontal
 
@@ -188,18 +182,19 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         button.strokecolor = color_active_dimmed[]
     end
 
-    protrusions = lift(buttonradius, horizontal) do br, horizontal
-        if horizontal
-            RectSides{Float32}(br, br, 0, 0)
+    onany(buttonradius, horizontal) do br, horizontal
+        layoutobservables.protrusions[] = if horizontal
+            GridLayoutBase.RectSides{Float32}(br, br, 0, 0)
         else
-            RectSides{Float32}(0, 0, br, br)
+            GridLayoutBase.RectSides{Float32}(0, 0, br, br)
         end
     end
 
-    layoutobservables = LayoutObservables{LSlider, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    # trigger protrusions using one observable
+    buttonradius[] = buttonradius[]
 
     # trigger bbox
-    suggestedbbox[] = suggestedbbox[]
+    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     LSlider(parent, layoutobservables, attrs, decorations)
 end
@@ -250,4 +245,3 @@ function set_close_to!(slider, value)
     closest = closest_index(slider.range[], value)
     slider.selected_index = closest
 end
-
