@@ -19,7 +19,6 @@ include("gridlayout.jl")
 include("helpers.jl")
 include("mousestatemachine.jl")
 include("geometry_integration.jl")
-include("layout_engine.jl")
 include("makie_integration.jl")
 include("ticklocators/linear.jl")
 include("ticklocators/wilkinson.jl")
@@ -48,11 +47,9 @@ export LLegend
 export LScene
 export linkxaxes!, linkyaxes!, linkaxes!
 export GridLayout, GridPosition
-export ProtrusionLayout
 export BBox
 export solve
 export shrinkbymargin
-export applylayout
 export Inside, Outside, Mixed
 export Fixed, Auto, Relative, Aspect
 export FixedSizeBox
