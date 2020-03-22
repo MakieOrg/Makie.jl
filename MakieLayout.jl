@@ -15,11 +15,8 @@ import PlotUtils
 using GridLayoutBase
 
 include("types.jl")
-include("gridlayout.jl")
 include("helpers.jl")
 include("mousestatemachine.jl")
-include("geometry_integration.jl")
-include("makie_integration.jl")
 include("ticklocators/linear.jl")
 include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
