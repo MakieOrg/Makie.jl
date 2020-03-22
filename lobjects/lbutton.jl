@@ -9,23 +9,13 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-
-    alignment = lift(tuple, halign, valign)
-
-    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment,
-        sizeattrs, autosizenode)
+    layoutobservables = LayoutObservables(LButton, attrs.width, attrs.height,
+        halign, valign; suggestedbbox = bbox)
 
     textpos = Node(Point2f0(0, 0))
 
-    subarea = lift(finalbbox) do bbox
-        IRect2D(bbox)
+    subarea = lift(layoutobservables.computedbbox) do bbox
+        IRect2D_rounded(bbox)
     end
     subscene = Scene(scene, subarea, camera=campixel!)
 
@@ -40,11 +30,11 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
         textbb = FRect2D(boundingbox(labeltext))
         autowidth = width(textbb) + padding[1] + padding[2]
         autoheight = height(textbb) + padding[3] + padding[4]
-        autosizenode[] = (autowidth, autoheight)
+        layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
     # buttonrect is without the left bottom offset of the bbox
-    buttonrect = lift(finalbbox) do bbox
+    buttonrect = lift(layoutobservables.computedbbox) do bbox
         BBox(0, width(bbox), 0, height(bbox))
     end
 
@@ -82,12 +72,9 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
         clicks[] = clicks[] + 1
     end
 
-    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
-    layoutobservables = LayoutObservables{LButton, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
-
     label[] = label[]
     # trigger bbox
-    suggestedbbox[] = suggestedbbox[]
+    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     LButton(scene, layoutobservables, attrs, decorations)
 end
