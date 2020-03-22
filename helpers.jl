@@ -188,3 +188,6 @@ function layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
     gl = GridLayout(scene, nrows, ncols, alignmode = Outside(padding))
     scene, gl
 end
+
+
+GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> BBox(x), pixelarea(scene)), kwargs...)
