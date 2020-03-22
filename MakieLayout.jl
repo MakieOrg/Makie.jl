@@ -12,6 +12,7 @@ import Formatting
 using Match
 import Animations
 import PlotUtils
+using GridLayoutBase
 
 include("types.jl")
 include("gridlayout.jl")
