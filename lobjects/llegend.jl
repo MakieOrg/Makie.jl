@@ -24,15 +24,13 @@ function LLegend(
     sizeattrs = sizenode!(attrs.width, attrs.height)
     alignment = lift(tuple, halign, valign)
 
-    suggestedbbox = create_suggested_bboxnode(bbox)
+    scenearea = lift(IRect2D_rounded, layoutobservables.computedbbox)
 
     autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
 
     computedsize = computedsizenode!(sizeattrs, autosizenode)
 
     finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
-
-    scenearea = @lift(IRect2D($finalbbox))
 
     scene = Scene(parent, scenearea, raw = true, camera = campixel!)
 

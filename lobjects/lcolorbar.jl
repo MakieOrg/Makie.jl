@@ -25,7 +25,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     layoutobservables = LayoutObservables(LColorbar, attrs.width, attrs.height,
         halign, valign; suggestedbbox = bbox)
 
-    scenearea = lift(IRect2D, layoutobservables.computedbbox)
+    scenearea = lift(IRect2D_rounded, layoutobservables.computedbbox)
 
     scene = Scene(parent, scenearea, camera = campixel!, raw = true)
 
