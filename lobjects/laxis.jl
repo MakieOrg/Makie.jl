@@ -301,8 +301,6 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     # trigger first protrusions with one of the observables
     title[] = title[]
 
-    needs_update_dummy = Node(true)
-
     # trigger a layout update whenever the protrusions change
     # on(protrusions) do prot
     #     needs_update[] = true
@@ -313,7 +311,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
-        layoutobservables, needs_update_dummy, attrs, block_limit_linking, decorations)
+        layoutobservables, attrs, block_limit_linking, decorations)
 
     # add action that resets limits on ctrl + click
     add_reset_limits!(la)

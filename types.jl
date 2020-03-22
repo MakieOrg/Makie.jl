@@ -63,7 +63,6 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     yaxislinks::Vector{LAxis}
     limits::Node{BBox}
     layoutobservables::LayoutObservables
-    needs_update::Node{Bool}
     attributes::Attributes
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
