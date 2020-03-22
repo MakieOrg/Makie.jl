@@ -6,37 +6,29 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-    alignment = lift(tuple, halign, valign)
+    layoutobservables = LayoutObservables(LToggle, attrs.width, attrs.height,
+        halign, valign; suggestedbbox = bbox)
 
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
-
-    markersize = lift(finalbbox) do bbox
+    markersize = lift(layoutobservables.computedbbox) do bbox
         min(width(bbox), height(bbox))
     end
 
     button_endpoint_inactive = lift(markersize) do ms
-        bbox = finalbbox[]
+        bbox = layoutobservables.computedbbox[]
         Point2f0(left(bbox) + ms / 2, bottom(bbox) + ms / 2)
     end
 
     button_endpoint_active = lift(markersize) do ms
-        bbox = finalbbox[]
+        bbox = layoutobservables.computedbbox[]
         Point2f0(right(bbox) - ms / 2, bottom(bbox) + ms / 2)
     end
 
     buttonvertices = lift(markersize, cornersegments) do ms, cs
-        roundedrectvertices(finalbbox[], ms * 0.499, cs)
+        roundedrectvertices(layoutobservables.computedbbox[], ms * 0.499, cs)
     end
 
     # trigger bbox
-    suggestedbbox[] = suggestedbbox[]
+    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
     frame = poly!(parent, buttonvertices, color = framecolor, raw = true)[end]
@@ -45,7 +37,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     buttonpos = Node(active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
 
     # make the button stay in the correct place (and start there)
-    on(finalbbox) do bbox
+    on(layoutobservables.computedbbox) do bbox
         if !animating[]
             buttonpos[] = active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]]
         end
@@ -91,11 +83,6 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
             sleep(1/FPS[])
         end
     end
-
-    # no protrusions
-    protrusions = Node(RectSides(0f0, 0f0, 0f0, 0f0))
-
-    layoutobservables = LayoutObservables{LToggle, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
 
     LToggle(parent, layoutobservables, attrs, decorations)
 end
