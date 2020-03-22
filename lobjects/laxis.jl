@@ -34,20 +34,11 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    sizeattrs = sizenode!(attrs.width, attrs.height)
-    alignment = lift(tuple, halign, valign)
-
-    suggestedbbox = create_suggested_bboxnode(bbox)
-
-    autosizenode = Node{NTuple{2, Optional{Float32}}}((nothing, nothing))
-
-    computedsize = computedsizenode!(sizeattrs, autosizenode)
-
-    finalbbox = alignedbboxnode!(suggestedbbox, computedsize, alignment, sizeattrs, autosizenode)
+    layoutobservables = LayoutObservables(LAxis, attrs.width, attrs.height, halign, valign; suggestedbbox = bbox)
 
     limits = Node(FRect(0, 0, 100, 100))
 
-    scenearea = sceneareanode!(finalbbox, limits, aspect)
+    scenearea = sceneareanode!(layoutobservables.computedbbox, limits, aspect)
 
     scene = Scene(parent, scenearea, raw = true)
 
@@ -299,28 +290,30 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             right += yaxisprotrusion
         end
 
-        RectSides{Float32}(left, right, bottom, top)
+        GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
 
-    protrusions = lift(compute_protrusions,
-        title, titlesize, titlegap, titlevisible, spinewidth,
-        xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition)
+    onany(title, titlesize, titlegap, titlevisible, spinewidth,
+            xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition) do args...
+        layoutobservables.protrusions[] = compute_protrusions(args...)
+    end
 
-    needs_update = Node(true)
+    # trigger first protrusions with one of the observables
+    title[] = title[]
+
+    needs_update_dummy = Node(true)
 
     # trigger a layout update whenever the protrusions change
-    on(protrusions) do prot
-        needs_update[] = true
-    end
+    # on(protrusions) do prot
+    #     needs_update[] = true
+    # end
 
     # trigger bboxnode so the axis layouts itself even if not connected to a
     # layout
-    suggestedbbox[] = suggestedbbox[]
-
-    layoutobservables = LayoutObservables{LAxis, GridLayout}(suggestedbbox, protrusions, computedsize, autosizenode, finalbbox, nothing)
+    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
-        layoutobservables, needs_update, attrs, block_limit_linking, decorations)
+        layoutobservables, needs_update_dummy, attrs, block_limit_linking, decorations)
 
     # add action that resets limits on ctrl + click
     add_reset_limits!(la)
