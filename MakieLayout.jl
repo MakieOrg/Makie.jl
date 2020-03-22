@@ -34,7 +34,6 @@ include("lobjects/ltoggle.jl")
 include("lobjects/llegend.jl")
 include("lobjects/lobject.jl")
 include("lobjects/lscene.jl")
-include("gridapi.jl")
 
 export LAxis
 export LSlider
@@ -46,29 +45,12 @@ export LToggle
 export LLegend
 export LScene
 export linkxaxes!, linkyaxes!, linkaxes!
-export GridLayout, GridPosition
-export BBox
-export solve
-export shrinkbymargin
-export Inside, Outside, Mixed
-export Fixed, Auto, Relative, Aspect
-export FixedSizeBox
-export FixedHeightBox
-export width, height, top, bottom, left, right
-export with_updates_suspended
-export appendcols!, appendrows!, prependcols!, prependrows!, deletecol!, deleterow!, trim!
-export gridnest!
 export AxisAspect, DataAspect
 export autolimits!
 export AutoLinearTicks, ManualTicks, CustomTicks, WilkinsonTicks
 export hidexdecorations!, hideydecorations!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
-export colsize!, rowsize!, colgap!, rowgap!
-export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
-export LegendEntry, LineElement, MarkerElement, PolyElement
-export grid!, hbox!, vbox!
 export layoutscene
-export swap!
 export set_close_to!
 
 const FPS = Node(30)
