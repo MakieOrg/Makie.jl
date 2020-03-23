@@ -2,8 +2,9 @@ using MakieGallery, AbstractPlotting, GLMakie
 using MakieGallery: @block, @cell
 empty!(MakieGallery.plotting_backends)
 push!(MakieGallery.plotting_backends, "GLMakie", "AbstractPlotting")
-database = MakieGallery.load_database()
 
+database = MakieGallery.load_database()
+scatter(rand(4)) |> display
 exclude = (
     "Cobweb plot", # has some weird scaling issue on CI
     "Colormap collection", # has one size different...
