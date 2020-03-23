@@ -199,8 +199,20 @@ GeometryTypes.width(t::Texture)  = size(t, 1)
 GeometryTypes.height(t::Texture) = size(t, 2)
 depth(t::Texture)  = size(t, 3)
 
+# AbstractArrays default show assumes `getindex`. Try to catch all calls
+# https://discourse.julialang.org/t/overload-show-for-array-of-custom-types/9589
 
-function Base.show(io::IO, t::Texture{T,D}) where {T,D}
+Base.show(io::IO, t::Texture) = show(IOContext(io), MIME"text/plain"(), t)
+
+function Base.show(io::IOContext, mime::MIME"text/plain", t::Texture{T,D}) where {T,D}
+    if get(io, :compact, false)
+        println(io, "Texture$(D)D, ID: $(t.id), Size: $(size(t))")
+    else
+        show(io.io, mime, t)
+    end
+end
+
+function Base.show(io::IO, ::MIME"text/plain", t::Texture{T,D}) where {T,D}
     println(io, "Texture$(D)D: ")
     println(io, "                  ID: ", t.id)
     println(io, "                Size: ", reduce(size(t), init = "Dimensions: ") do v0, v1

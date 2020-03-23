@@ -19,7 +19,7 @@ in vec2 vertices;
 {{position_y_type}} position_y;
 uniform sampler2D position_z;
 
-uniform vec3 light[4];
+uniform vec3 lightposition;
 {{stroke_color_type}} stroke_color;
 {{glow_color_type}} glow_color;
 {{color_type}} color;
@@ -43,7 +43,7 @@ uniform vec3 scale;
 
 uniform mat4 view, model, projection;
 
-void render(vec4 vertices, vec3 normal, mat4 viewmodel, mat4 projection, vec3 light[4]);
+void render(vec4 vertices, vec3 normal, mat4 viewmodel, mat4 projection, vec3 lightposition);
 ivec2 ind2sub(ivec2 dim, int linearindex);
 vec2 linear_index(ivec2 dims, int index);
 vec2 linear_index(ivec2 dims, int index, vec2 offset);
@@ -106,6 +106,6 @@ void main()
     }else{
         o_uv = index01;
         vec3 normalvec = {{normal_calc}};
-        render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, light);
+        render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, lightposition);
     }
 }

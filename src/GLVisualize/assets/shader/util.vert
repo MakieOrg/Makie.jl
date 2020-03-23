@@ -227,18 +227,20 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
 
 out vec3 o_normal;
 out vec3 o_lightdir;
-out vec3 o_vertex;
+out vec3 o_camdir;
 uniform mat3 normalmatrix;
+uniform vec3 lightposition;
+uniform vec3 eyeposition;
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 light[4])
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
     // normal in world space
     // TODO move transpose inverse calculation to cpu
     o_normal               = normal;
     // direction to light
-    o_lightdir             = normalize(light[3] - position_world.xyz);
+    o_lightdir             = normalize(lightposition - position_world.xyz);
     // direction to camera
-    o_vertex               = -position_world.xyz;
+    o_camdir               = normalize(eyeposition - position_world.xyz);
     // screen space coordinates of the vertex
     gl_Position            = projection * view * position_world;
 }
