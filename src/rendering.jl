@@ -9,7 +9,6 @@ function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
             diff = framerate - (time() - t)
-            error("Test")
             if diff > 0
                 sleep(diff)
             else # if we don't sleep, we need to yield explicitely
