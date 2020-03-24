@@ -162,10 +162,11 @@ function boundingbox(
             else
                 last_pos = calc_position(last_pos, Point2f0(0, 0), atlas, c, font, scale)
                 advance_x, advance_y = glyph_advance!(atlas, c, font, scale)
-                without_advance = if c != '\n'
-                    last_pos .- Point2f0(advance_x, 0)
-                else
+                without_advance = if c == '\n'
+                    # advance doesn't get added for newlines
                     last_pos
+                else
+                    last_pos .- Point2f0(advance_x, 0)
                 end
                 start_pos3d .+ (rotation * to_ndim(Vec3f0, without_advance, 0.0))
             end
