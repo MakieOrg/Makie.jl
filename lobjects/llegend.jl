@@ -16,6 +16,7 @@ function LLegend(
         titlegap, groupgap,
         orientation,
         titleposition,
+        gridshalign, gridsvalign,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -78,182 +79,76 @@ function LLegend(
     function relayout()
         manipulating_grid[] = true
 
-        ngroups = length(entry_groups[])
-        grouplengths = length.(last.(entry_groups[]))
-        n_max_entries = maximum(grouplengths)
+        rowcol(n) = ((n - 1) ÷ nbanks[] + 1, (n - 1) % nbanks[] + 1)
 
-        nbanks_real = min(n_max_entries, nbanks[]) # if there are fewer entries than banks
-
-        nvaris_per_group = ceil.(Int, grouplengths ./ nbanks_real)
-        nvaris_overall = sum(nvaris_per_group)
-
-
-        nrows, ncols = if orientation[] == :vertical
-            (nvaris_overall, nbanks_real)
-        elseif orientation[] == :horizontal
-            # columns become rows
-            (nbanks_real, nvaris_overall)
-        else
-            error("Invalid legend orientation $(orientation[]), options are :horizontal or :vertical.")
+        for i in length(grid.content):-1:1
+            GridLayoutBase.remove_from_gridlayout!(grid.content[i])
         end
-
-        # the grid has twice as many columns as nbanks, because of labels and patches
-        ncols_with_symbolcols = 2 * ncols
-
-        vari_starts = [1; 1 .+ cumsum(nvaris_per_group[1:end-1])]
-
-        rows_per_group = if orientation[] == :vertical
-            nvaris_per_group
-        elseif orientation[] == :horizontal
-            [nbanks_real for _ in 1:ngroups]
-        end
-
-        cols_per_group = if orientation[] == :vertical
-            [nbanks_real for _ in 1:ngroups]
-        elseif orientation[] == :horizontal
-            nvaris_per_group
-        end
-
-        realcols_per_group = 2 .* cols_per_group
-
-        rowstarts = if orientation[] == :vertical
-            if titleposition[] == :top
-                [2; 2 .+ (1:ngroups-1) .+ cumsum(rows_per_group[1:ngroups-1])]
-            elseif titleposition[] == :left
-                [1; 1 .+ cumsum(rows_per_group[1:ngroups-1])]
-            end
-        elseif orientation[] == :horizontal
-            if titleposition[] == :top
-                [2 for _ in 1:ngroups]
-            elseif titleposition[] == :left
-                [1 for _ in 1:ngroups]
-            end
-        end
-
-        colstarts = if orientation[] == :vertical
-            if titleposition[] == :top
-                [1 for _ in 1:ngroups]
-            elseif titleposition[] == :left
-                [2 for _ in 1:ngroups]
-            end
-        elseif orientation[] == :horizontal
-            if titleposition[] == :top
-                [1; 1 .+ cumsum(realcols_per_group[1:ngroups-1])]
-            elseif titleposition[] == :left
-                [2; 2 .* cumsum(realcols_per_group[1:ngroups-1])]
-            end
-        end
-
-        rowcol(n, nbanks) = ((n - 1) ÷ nbanks + 1, (n - 1) % nbanks + 1)
 
         # loop through groups
-        for g in 1:ngroups
+        for g in 1:length(entry_groups[])
             title = titletexts[g]
             etexts = entrytexts[g]
             erects = entryrects[g]
 
-            vari_start = vari_starts[g]
-            nvaris = nvaris_per_group[g]
-
-            rowstart = rowstarts[g]
-            colstart = colstarts[g]
-
-            rowoffset = rowstart - 1
-            coloffset = colstart - 1
-
-            nrows_group = rows_per_group[g]
-
-            titlerows, titlecols = if orientation[] == :vertical
-                if titleposition[] == :top
-                    (rowstart-1, 1:ncols_with_symbolcols)
-                elseif titleposition[] == :left
-                    (rowstart:rowstart+nrows_group-1, 1)
+            subgl = if orientation[] == :vertical
+                if titleposition[] == :left
+                    isnothing(title) || (grid[g, 1] = title)
+                    grid[g, 2] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
+                elseif titleposition[] == :top
+                    isnothing(title) || (grid[2g - 1, 1] = title)
+                    grid[2g, 1] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
                 end
             elseif orientation[] == :horizontal
-                if titleposition[] == :top
-                    (rowstart-1, colstart:colstart+realcols_per_group[g]-1)
-                elseif titleposition[] == :left
-                    (rowstart:rowstart+nrows_group-1, colstart-1)
+                if titleposition[] == :left
+                    isnothing(title) || (grid[1, 2g-1] = title)
+                    grid[1, 2g] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
+                elseif titleposition[] == :top
+                    isnothing(title) || (grid[1, g] = title)
+                    grid[2, g] = GridLayout(halign = gridshalign[], valign = gridsvalign[])
                 end
             end
 
-            if !isnothing(title)
-                grid[titlerows, titlecols] = title
+            for (n, (et, er)) in enumerate(zip(etexts, erects))
+                i, j = orientation[] == :vertical ? rowcol(n) : reverse(rowcol(n))
+                subgl[i, 2j-1] = er
+                subgl[i, 2j] = et
             end
 
-            for (i, (lt, rect)) in enumerate(zip(etexts, erects))
-                irow, icol = if orientation[] == :vertical
-                    rowcol(i, cols_per_group[g])
-                elseif orientation[] == :horizontal
-                    reverse(rowcol(i, rows_per_group[g]))
-                end
-                grid[rowoffset + irow, coloffset + icol * 2] = lt
-                grid[rowoffset + irow, coloffset + icol * 2 - 1] = rect
+            rowgap!(subgl, rowgap[])
+            for c in 1:subgl.ncols-1
+                colgap!(subgl, c, c % 2 == 1 ? patchlabelgap[] : colgap[])
             end
         end
 
-        if orientation[] == :vertical && titleposition[] == :top
-            # first all rowgaps because it's easier
-            for row in 1:nrows + ngroups - 1
-                rowgap!(grid, row, Fixed(rowgap[]))
-            end
-            for rs in rowstarts
-                rowgap!(grid, rs-1, Fixed(titlegap[]))
-            end
-            for rs in rowstarts[2:end]
-                rowgap!(grid, rs-2, Fixed(groupgap[]))
-            end
-            for col in 1:2:ncols_with_symbolcols
-                colgap!(grid, col, Fixed(patchlabelgap[]))
-            end
-            for col in 2:2:ncols_with_symbolcols-1
-                colgap!(grid, col, Fixed(colgap[]))
-            end
-        elseif orientation[] == :vertical && titleposition[] == :left
-            for row in 1:nrows-1
-                rowgap!(grid, row, Fixed(rowgap[]))
-            end
-            for rs in rowstarts[2:end]
-                rowgap!(grid, rs-1, Fixed(groupgap[]))
-            end
-            colgap!(grid, 1, Fixed(titlegap[]))
-            for col in 2:2:ncols_with_symbolcols
-                colgap!(grid, col, Fixed(patchlabelgap[]))
-            end
-            for col in 3:2:ncols_with_symbolcols-1
-                colgap!(grid, col, Fixed(colgap[]))
-            end
-        elseif orientation[] == :horizontal && titleposition[] == :top
-            for col in 1:2:ncols_with_symbolcols
-                colgap!(grid, col, Fixed(patchlabelgap[]))
-            end
-            for col in 2:2:ncols_with_symbolcols-1
-                colgap!(grid, col, Fixed(colgap[]))
-            end
-            for col in colstarts[2:end]
-                colgap!(grid, col-1, Fixed(groupgap[]))
-            end
-            rowgap!(grid, 1, Fixed(titlegap[]))
-            for row in 2:nrows
-                rowgap!(grid, row, Fixed(rowgap[]))
-            end
-        elseif orientation[] == :horizontal && titleposition[] == :left
-            for col in colstarts
-                colgap!(grid, col-1, Fixed(titlegap[]))
-            end
-            for col in colstarts[2:end]
-                colgap!(grid, col-2, Fixed(groupgap[]))
-            end
-            for (col, n) in zip(colstarts, realcols_per_group)
-                for c in col:2:col+n-1
-                    colgap!(grid, c, Fixed(patchlabelgap[]))
+        for r in 1:grid.nrows-1
+            if orientation[] == :horizontal
+                if titleposition[] == :left
+                    # nothing
+                elseif titleposition[] == :top
+                    rowgap!(grid, r, titlegap[])
                 end
-                for c in col+1:2:col+n-2
-                    colgap!(grid, c, Fixed(colgap[]))
+            elseif orientation[] == :vertical
+                if titleposition[] == :left
+                    rowgap!(grid, r, groupgap[])
+                elseif titleposition[] == :top
+                    rowgap!(grid, r, r % 2 == 1 ? titlegap[] : groupgap[])
                 end
             end
-            for row in 1:nrows-1
-                rowgap!(grid, row, Fixed(rowgap[]))
+        end
+        for c in 1:grid.ncols-1
+            if orientation[] == :horizontal
+                if titleposition[] == :left
+                    colgap!(grid, c, c % 2 == 1 ? titlegap[] : groupgap[])
+                elseif titleposition[] == :top
+                    colgap!(grid, c, groupgap[])
+                end
+            elseif orientation[] == :vertical
+                if titleposition[] == :left
+                    colgap!(grid, c, titlegap[])
+                elseif titleposition[] == :top
+                    # nothing here
+                end
             end
         end
 
@@ -272,7 +167,7 @@ function LLegend(
     end
 
     onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
-            titlevisible, orientation) do args...
+            titlevisible, orientation, gridshalign, gridsvalign) do args...
         relayout()
     end
 

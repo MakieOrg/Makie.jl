@@ -550,6 +550,8 @@ function colgap!(gl::GridLayout, i::Int, s::GapSize)
     gl.needs_update[] = true
 end
 
+colgap!(gl::GridLayout, i::Int, s::Real) = colgap!(gl, i, Fixed(s))
+
 function colgap!(gl::GridLayout, s::GapSize)
     gl.addedcolgaps .= s
     gl.needs_update[] = true
@@ -567,6 +569,8 @@ function rowgap!(gl::GridLayout, i::Int, s::GapSize)
     gl.addedrowgaps[i] = s
     gl.needs_update[] = true
 end
+
+rowgap!(gl::GridLayout, i::Int, s::Real) = rowgap!(gl, i, Fixed(s))
 
 function rowgap!(gl::GridLayout, s::GapSize)
     gl.addedrowgaps .= s

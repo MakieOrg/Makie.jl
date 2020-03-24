@@ -309,6 +309,8 @@ function default_attributes(::Type{LLegend}, scene)
         orientation = :vertical,
         titlegap = 15,
         groupgap = 30,
+        gridshalign = :center,
+        gridsvalign = :center,
     )
 end
 
