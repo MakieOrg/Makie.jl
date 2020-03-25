@@ -4,7 +4,6 @@ empty!(MakieGallery.plotting_backends)
 push!(MakieGallery.plotting_backends, "GLMakie", "AbstractPlotting")
 
 database = MakieGallery.load_database()
-scatter(rand(4)) |> display
 exclude = (
     "Cobweb plot", # has some weird scaling issue on CI
     "Colormap collection", # has one size different...
@@ -30,7 +29,7 @@ for path in (tested_diff_path, test_record_path)
 end
 recordings = MakieGallery.record_examples(test_record_path)
 
-@show length(recordings) == length(database)
+@test length(recordings) == length(database)
 
 MakieGallery.run_comparison(test_record_path, tested_diff_path)
 empty!(database) # remove other examples
