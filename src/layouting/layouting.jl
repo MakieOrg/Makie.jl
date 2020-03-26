@@ -21,15 +21,81 @@ function layout_text(
     pos = to_ndim(Point3f0, mpos, 0)
     scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
 
-    positions2d = calc_position(string, Point2f0(0), rscale, ft_font, atlas)
-    aoffset = align_offset(Point2f0(0), positions2d[end], atlas, rscale, ft_font, offset_vec)
-    aoffsetn = to_ndim(Point3f0, aoffset, 0f0)
-    positions = map(positions2d) do p
-        pn = rot * (to_ndim(Point3f0, p, 0f0) .+ aoffsetn)
-        pn .+ (pos)
+    glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2])
+
+    positions = Point3f0[]
+    for (i, group) in enumerate(glyphpos)
+        for gp in group
+            p = to_ndim(Point3f0, gp, 0) ./ Point3f0(4, 4, 1)
+            # rotate around the alignment point (this is now at [0, 0, 0])
+            p_rotated = rot * p
+            push!(positions, pos .+ p_rotated) # TODO why division by 4 necessary?
+        end
+        # between groups, push a random point for newline, it doesn't matter
+        # what it is
+        if i < length(glyphpos)
+            push!(positions, Point3f0(0, 0, 0))
+        end
     end
+
     return positions, scales
 end
+
+
+function glyph_positions(str::AbstractString, font, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+
+    # make lineheight a multiple of font's M height
+    lineheight = inkheight(FreeTypeAbstraction.get_extent(font, 'M')) * lineheight_factor
+
+    lines = split(str, "\n")
+    extents = [[FreeTypeAbstraction.get_extent(font, c) for c in l] for l in lines]
+
+    xkernings = [[FreeTypeAbstraction.kerning(c1, c2, font)[1]
+        for (c1, c2) in zip(chop(l, head = 0, tail = 1), chop(l, head = 1, tail = 0))]
+            for l in lines]
+
+    # add or subtract kernings?
+    xs = [cumsum([0; hadvance.(extgroup[1:end-1]) .+ kerngroup]) for (extgroup, kerngroup) in zip(extents, xkernings)]
+    [hadvance.(extgroup[1:end-1]) for extgroup in extents]
+
+    linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : hadvance(extgroup[end]) for extgroup in extents]
+    maxwidth = maximum(linewidths)
+
+    width_differences = (maxwidth .- linewidths) .* justification
+    xs_justified = [xsgroup .+ wd for (xsgroup, wd) in zip(xs, width_differences)]
+
+    # how to define line height relative to font size?
+    ys = cumsum([0; fill(-lineheight, length(lines)-1)])
+
+
+    # x alignment
+    xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs]
+
+    # y alignment
+    first_max_ascent = maximum(hbearing_ori_to_top, extents[1])
+    last_max_descent = maximum(x -> inkheight(x) - hbearing_ori_to_top(x), extents[end])
+
+    overall_height = first_max_ascent + ys[end] + last_max_descent
+
+    ys_aligned = ys .- first_max_ascent .+ (1 - valign) .* overall_height
+
+    # we are still operating in freetype units, let's convert to the chosen scale by dividing with 64
+    glyphorigins = [Vec2.(xsgroup, y)  ./ 64 .* fontscale for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
+end
+
+
+hadvance(ext::FontExtent) = ext.advance[1]
+inkwidth(ext::FontExtent) = ext.scale[1]
+inkheight(ext::FontExtent) = ext.scale[2]
+hbearing_ori_to_left(ext::FontExtent) = ext.horizontal_bearing[1]
+hbearing_ori_to_top(ext::FontExtent) = ext.horizontal_bearing[2]
+leftinkbound(ext::FontExtent) = hbearing_ori_to_left(ext)
+rightinkbound(ext::FontExtent) = leftinkbound(ext) + inkwidth(ext)
+bottominkbound(ext::FontExtent) = hbearing_ori_to_top(ext) - inkheight(ext)
+topinkbound(ext::FontExtent) = hbearing_ori_to_top(ext)
+
+inkboundingbox(ext::FontExtent) = BBox(leftinkbound(ext), rightinkbound(ext), bottominkbound(ext), topinkbound(ext))
+
 
 function text_bb(str, font, size)
     positions, scale = layout_text(
