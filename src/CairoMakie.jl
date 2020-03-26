@@ -565,7 +565,9 @@ function draw_plot(screen::CairoScreen, scene::Scene)
     Cairo.clip(screen.context)
 
     for elem in scene.plots
-        draw_plot(scene, screen, elem)
+        if to_value(get(elem, :visible, true))
+             draw_plot(scene, screen, elem)
+        end
     end
     Cairo.restore(screen.context)
 
