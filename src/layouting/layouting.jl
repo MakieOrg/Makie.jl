@@ -21,7 +21,8 @@ function layout_text(
     pos = to_ndim(Point3f0, mpos, 0)
     scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
 
-    glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2])
+    glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2];
+        lineheight_factor = 1.0, justification = 0.0)
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
@@ -43,7 +44,6 @@ end
 
 
 function glyph_positions(str::AbstractString, font, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
-
     # make lineheight a multiple of font's M height
     lineheight = inkheight(FreeTypeAbstraction.get_extent(font, 'M')) * lineheight_factor
 
@@ -61,21 +61,22 @@ function glyph_positions(str::AbstractString, font, fontscale, halign, valign; l
     linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : hadvance(extgroup[end]) for extgroup in extents]
     maxwidth = maximum(linewidths)
 
-    width_differences = (maxwidth .- linewidths) .* justification
-    xs_justified = [xsgroup .+ wd for (xsgroup, wd) in zip(xs, width_differences)]
+    width_differences = maxwidth .- linewidths
+
+    xs_justified = [xsgroup .+ wd * justification for (xsgroup, wd) in zip(xs, width_differences)]
 
     # how to define line height relative to font size?
     ys = cumsum([0; fill(-lineheight, length(lines)-1)])
 
 
     # x alignment
-    xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs]
+    xs_aligned = [xsgroup .- halign * maxwidth for xsgroup in xs_justified]
 
     # y alignment
     first_max_ascent = maximum(hbearing_ori_to_top, extents[1])
     last_max_descent = maximum(x -> inkheight(x) - hbearing_ori_to_top(x), extents[end])
 
-    overall_height = first_max_ascent + ys[end] + last_max_descent
+    overall_height = first_max_ascent - ys[end] + last_max_descent
 
     ys_aligned = ys .- first_max_ascent .+ (1 - valign) .* overall_height
 
