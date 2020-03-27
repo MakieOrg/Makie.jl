@@ -248,7 +248,7 @@ function LLegend(
 end
 
 
-function legendelement_plots!(scene, element::MarkerElement, bbox::Node{BBox}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::MarkerElement, bbox::Node{FRect2D}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
@@ -261,7 +261,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Node{BBox}, d
     [scat]
 end
 
-function legendelement_plots!(scene, element::LineElement, bbox::Node{BBox}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::LineElement, bbox::Node{FRect2D}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 
@@ -273,7 +273,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Node{BBox}, def
     [lin]
 end
 
-function legendelement_plots!(scene, element::PolyElement, bbox::Node{BBox}, defaultattrs::Attributes)
+function legendelement_plots!(scene, element::PolyElement, bbox::Node{FRect2D}, defaultattrs::Attributes)
     merge!(element.attributes, defaultattrs)
     attrs = element.attributes
 

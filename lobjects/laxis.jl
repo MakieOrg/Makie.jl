@@ -116,9 +116,9 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
         if xaxisposition == :bottom
-            bottomline(BBox(area))
+            bottomline(FRect2D(area))
         elseif xaxisposition == :top
-            topline(BBox(area))
+            topline(FRect2D(area))
         else
             error("Invalid xaxisposition $xaxisposition")
         end
@@ -126,9 +126,9 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     yaxis_endpoints = lift(yaxisposition, scene.px_area) do yaxisposition, area
         if yaxisposition == :left
-            leftline(BBox(area))
+            leftline(FRect2D(area))
         elseif yaxisposition == :right
-            rightline(BBox(area))
+            rightline(FRect2D(area))
         else
             error("Invalid xaxisposition $xaxisposition")
         end
@@ -470,10 +470,10 @@ function getlimits(la::LAxis, dim)
     end
 
     lim = if length(plots_with_autolimits) > 0
-        bbox = BBox(AbstractPlotting.data_limits(plots_with_autolimits[1]))
+        bbox = FRect2D(AbstractPlotting.data_limits(plots_with_autolimits[1]))
         templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
         for p in plots_with_autolimits[2:end]
-            bbox = BBox(AbstractPlotting.data_limits(p))
+            bbox = FRect2D(AbstractPlotting.data_limits(p))
             templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
         end
         templim

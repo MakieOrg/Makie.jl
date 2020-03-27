@@ -61,7 +61,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     scene::Scene
     xaxislinks::Vector{LAxis}
     yaxislinks::Vector{LAxis}
-    limits::Node{BBox}
+    limits::Node{FRect2D}
     layoutobservables::LayoutObservables
     attributes::Attributes
     block_limit_linking::Node{Bool}

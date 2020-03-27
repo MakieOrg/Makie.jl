@@ -69,7 +69,7 @@ function create_suggested_bboxnode(bbox::AbstractPlotting.Rect2D)
     Node(BBox(bbox))
 end
 
-function create_suggested_bboxnode(node::Node{BBox})
+function create_suggested_bboxnode(node::Node{FRect2D})
     node
 end
 
@@ -118,18 +118,18 @@ function anglepoint(center::Point2, angle::Real, radius::Real)
 end
 
 
-function enlarge(bbox::BBox, l, r, b, t)
+function enlarge(bbox::FRect2D, l, r, b, t)
     BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) - b, top(bbox) + t)
 end
 
-function center(bbox::BBox)
+function center(bbox::FRect2D)
     Point2f0((right(bbox) + left(bbox)) / 2, (top(bbox) + bottom(bbox)) / 2)
 end
 
 """
 Converts a point in fractions of rect dimensions into real coordinates.
 """
-function fractionpoint(bbox::BBox, point::T) where T <: Point2
+function fractionpoint(bbox::FRect2D, point::T) where T <: Point2
     T(left(bbox) + point[1] * width(bbox), bottom(bbox) + point[2] * height(bbox))
 end
 
@@ -190,7 +190,7 @@ function layoutscene(nrows::Int, ncols::Int, padding = 30; kwargs...)
 end
 
 
-GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> BBox(x), pixelarea(scene)), kwargs...)
+GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> FRect2D(x), pixelarea(scene)), kwargs...)
 
 
 bottomleft(bbox::Rect2D{T}) where T = Point2{T}(left(bbox), bottom(bbox))
@@ -198,10 +198,10 @@ topleft(bbox::Rect2D{T}) where T = Point2{T}(left(bbox), top(bbox))
 bottomright(bbox::Rect2D{T}) where T = Point2{T}(right(bbox), bottom(bbox))
 topright(bbox::Rect2D{T}) where T = Point2{T}(right(bbox), top(bbox))
 
-topline(bbox::BBox) = (topleft(bbox), topright(bbox))
-bottomline(bbox::BBox) = (bottomleft(bbox), bottomright(bbox))
-leftline(bbox::BBox) = (bottomleft(bbox), topleft(bbox))
-rightline(bbox::BBox) = (bottomright(bbox), topright(bbox))
+topline(bbox::FRect2D) = (topleft(bbox), topright(bbox))
+bottomline(bbox::FRect2D) = (bottomleft(bbox), bottomright(bbox))
+leftline(bbox::FRect2D) = (bottomleft(bbox), topleft(bbox))
+rightline(bbox::FRect2D) = (bottomright(bbox), topright(bbox))
 
 
 
