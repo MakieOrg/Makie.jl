@@ -11,7 +11,6 @@ FFTW = "7a1cc6ca-52ef-59f5-83cd-3a7055c09341"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 FreeType = "b38be410-82b0-50bf-ab77-7b57e271db43"
 GeometryTypes = "4d00f742-c7ba-57c2-abde-4428a4b178cb"
-ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
