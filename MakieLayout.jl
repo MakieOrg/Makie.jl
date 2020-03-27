@@ -40,6 +40,7 @@ export LText
 export LRect
 export LToggle
 export LLegend
+export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
