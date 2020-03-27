@@ -74,7 +74,7 @@ function LLegend(
         rowcol(n) = ((n - 1) ÷ nbanks[] + 1, (n - 1) % nbanks[] + 1)
 
         for i in length(grid.content):-1:1
-            remove_from_gridlayout!(grid.content[i])
+            GridLayoutBase.remove_from_gridlayout!(grid.content[i])
         end
 
         # loop through groups
