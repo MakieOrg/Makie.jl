@@ -422,54 +422,6 @@ function to_rel_scale(atlas, c, font, scale)
     (scale ./ 0.02) ./ gs
 end
 
-function calc_position(
-        last_pos, start_pos,
-        atlas, glyph, font,
-        scale, lineheight = 1.5
-    )
-    advance_x, advance_y = AbstractPlotting.glyph_advance!(atlas, glyph, font, scale)
-    if AbstractPlotting.isnewline(glyph)
-        return Point2f0(start_pos[1], last_pos[2] - advance_y * lineheight) #reset to startx
-    else
-        return last_pos + Point2f0(advance_x, 0)
-    end
-end
-
-function calc_position(glyphs, start_pos, scales, fonts, atlas)
-    positions = zeros(Point2f0, length(glyphs))
-    last_pos  = Point2f0(start_pos)
-    s, f = AbstractPlotting.iter_or_array(scales), AbstractPlotting.iter_or_array(fonts)
-    c1 = first(glyphs)
-    for (i, (c2, scale, font)) in enumerate(zip(glyphs, s, f))
-        c2 == '\r' && continue # stupid windows!
-        positions[i] = last_pos
-        last_pos = calc_position(last_pos, start_pos, atlas, c2, font, scale)
-    end
-    positions
-end
-function layout_text(
-        string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
-        font, align, rotation, model
-    ) where {N, T}
-    offset_vec = to_align(align)
-    ft_font = to_font(font)
-    rscale = to_textsize(textsize)
-    rot = to_rotation(rotation)
-    atlas = AbstractPlotting.get_texture_atlas()
-    mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    pos = AbstractPlotting.to_ndim(Point3f0, mpos, 0)
-    scales = Vec2f0[AbstractPlotting.glyph_scale!(atlas, c, ft_font, rscale) for c in string]
-    positions2d = calc_position(string, Point2f0(0), rscale, ft_font, atlas)
-    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, ft_font, offset_vec)
-    aoffsetn = AbstractPlotting.to_ndim(Point3f0, aoffset, 0f0)
-    positions = map(positions2d) do p
-        pn = rot * (AbstractPlotting.to_ndim(Point3f0, p, 0f0) .+ aoffsetn)
-        pn .+ (pos)
-    end
-    positions, scales
-end
-
-
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     ctx = screen.context
     @get_attribute(primitive, (textsize, color, font, align, rotation, model))
@@ -478,7 +430,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     N = length(txt)
     atlas = AbstractPlotting.get_texture_atlas()
     if position isa StaticArrays.StaticArray # one position to place text
-        position, textsize = layout_text(
+        position, textsize = AbstractPlotting.layout_text(
             txt, position, textsize,
             font, align, rotation, model
         )
