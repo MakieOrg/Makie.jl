@@ -62,7 +62,7 @@ end
 # Default to Window+Canvas as backing device
 function CairoScreen(scene::Scene)
     w, h = size(scene)
-    surf = CairoRGBSurface(w, h)
+    surf = CairoARGBSurface(w, h)
     ctx = CairoContext(surf)
     CairoScreen(scene, surf, ctx, nothing)
 end
@@ -593,10 +593,22 @@ function AbstractPlotting.backend_display(x::CairoBackend, scene::Scene)
 end
 
 function AbstractPlotting.colorbuffer(screen::CairoScreen)
-    # TODO this is super slow, we need to design the colorbuffer
-    # api to be able to reuse a RGB surface
-    FileIO.save(display_path("png"), screen.scene)
-    return FileIO.load(display_path("png"))
+    # extract scene
+    scene = screen.scene
+    # get resolution
+    w, h = size(scene)
+    # preallocate an image matrix
+    img = Matrix{ARGB32}(undef, w, h)
+    # create an image surface to draw onto the image
+    surf = Cairo.CairoImageSurface(img)
+    # draw the scene onto the image matrix
+    ctx = Cairo.CairoContext(surf)
+    scr = CairoScreen(scene, surf, ctx, nothing)
+    cairo_draw(scr, scene)
+
+    # x and y are flipped - return the transpose
+    return transpose(img)
+
 end
 
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
@@ -633,10 +645,6 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/jp
     FileIO.save(FileIO.Stream(format"JPEG", io),  FileIO.load(display_path("png")))
     return screen
 end
-
-# We need to introduce another format to mime conversion
-# TODO maybe move this to FileIO?
-AbstractPlotting.format2mime(::Type{FileIO.DataFormat{:PDF}}) = MIME("application/pdf")
 
 function __init__()
     activate!()
