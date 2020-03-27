@@ -32,7 +32,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
         textbb[] = FRect2D(boundingbox(t))
         autowidth = width(textbb[]) + padding[1] + padding[2]
         autoheight = height(textbb[]) + padding[3] + padding[4]
-        autosizenode[] = (autowidth, autoheight)
+        layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
     onany(layoutobservables.computedbbox, padding) do bbox, padding
