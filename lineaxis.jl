@@ -256,10 +256,10 @@ function tight_ticklabel_spacing!(la::LineAxis)
     tls = la.decorations[:ticklabels]
     maxwidth = if horizontal
             # height
-            tls.visible[] ? height(BBox(boundingbox(tls))) : 0f0
+            tls.visible[] ? height(FRect2D(boundingbox(tls))) : 0f0
         else
             # width
-            tls.visible[] ? width(BBox(boundingbox(tls))) : 0f0
+            tls.visible[] ? width(FRect2D(boundingbox(tls))) : 0f0
     end
     la.attributes.ticklabelspace = maxwidth
 end

@@ -66,7 +66,7 @@ function create_suggested_bboxnode(tup::Tuple)
 end
 
 function create_suggested_bboxnode(bbox::AbstractPlotting.Rect2D)
-    Node(BBox(bbox))
+    Node(FRect2D(bbox))
 end
 
 function create_suggested_bboxnode(node::Node{FRect2D})
