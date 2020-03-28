@@ -1,6 +1,11 @@
-using ImageMagick
+using ImageMagick, Test
 using CairoMakie, AbstractPlotting, MakieGallery
 CairoMakie.activate!(type = "png")
+        
+AbstractPlotting.format2mime(::Type{AbstractPlotting.FileIO.format"PDF"})  = MIME("application/pdf")
+
+include("saving.jl") # test saving params
+
 database = MakieGallery.load_database()
 filter!(database) do entry
     "2d" in entry.tags &&
