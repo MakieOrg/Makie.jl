@@ -101,6 +101,7 @@ end
 function draw_segment(scene, ctx, point::Point, model, c, linewidth, linestyle, primitive, idx, N)
     pos = project_position(scene, point, model)
     function stroke()
+        !isnothing(linestyle) && Cairo.set_dash(ctx, linestyle)
         Cairo.set_line_width(ctx, Float64(linewidth))
         Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
         if linestyle != nothing
@@ -244,6 +245,7 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, LineSegments})
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
+    linestyle = AbstractPlotting.convert_attribute(linestyle, AbstractPlotting.key"linestyle"())
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
