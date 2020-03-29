@@ -583,12 +583,15 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         pos = project_position(scene, p, Mat4f0(I))
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
+
+        # this is wrong for the same reason as noted in the Scatter code
         Cairo.select_font_face(
             ctx, fontname(f),
             Cairo.FONT_SLANT_NORMAL,
             Cairo.FONT_WEIGHT_NORMAL
         )
-        #set_ft_font(ctx, f)
+        # cairoface = set_ft_font(ctx, f)
+
         ts = fontscale(atlas, scene, char, f, ts)
         mat = scale_matrix(ts...)
         set_font_matrix(ctx, mat)
@@ -597,6 +600,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.rotate(ctx, -2acos(r[4]))
         Cairo.show_text(ctx, string(char))
         Cairo.restore(ctx)
+
+        # cairo_font_face_destroy(cairoface)
     end
     nothing
 end
