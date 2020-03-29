@@ -430,20 +430,42 @@ function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth)
 end
 
 function draw_marker(ctx, marker::Char, pos, scale, strokecolor, strokewidth)
-    pos += Point2f0(scale[1] / 2, -scale[2] / 2)
 
     #TODO this shouldn't be hardcoded, but isn't available in the plot right now
-    font = AbstractPlotting.assetpath("DejaVu Sans")
+
+    # this is not good because we're loading the same font again and again
+    font = AbstractPlotting.FreeTypeAbstraction.findfont("Dejavu sans"; additional_fonts = AbstractPlotting.assetpath("fonts"))
+
+    # this is not correct, you can't choose the right font by family name alone
+    # but set_ft_font crashes even with my current fixes
     Cairo.select_font_face(
-        ctx, font,
+        ctx, fontname(font),
         Cairo.FONT_SLANT_NORMAL,
         Cairo.FONT_WEIGHT_NORMAL
     )
-    Cairo.move_to(ctx, pos[1], pos[2])
+
+    # cairoface = set_ft_font(ctx, font)
+
+    # compute the "ink bounding box", so the exact area relative to the glyph origin
+    # in which its filled parts lie
+    charextent = AbstractPlotting.FreeTypeAbstraction.get_extent(font, marker)
+    inkbb = AbstractPlotting.inkboundingbox(charextent)
+
+    # normalize this first by FreeType units (64) and then scale by font size
+    inkbb_scaled = FRect2D(origin(inkbb) ./ 64 .* scale, widths(inkbb) ./ 64 .* scale)
+
+    # flip y for the centering shift of the character because in Cairo y goes down
+    centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
+    # this is the origin where we actually have to place the glyph so it's centered
+    charorigin = pos .+ centering_offset
+
+    Cairo.move_to(ctx, charorigin...)
     mat = scale_matrix(scale...)
     set_font_matrix(ctx, mat)
     Cairo.show_text(ctx, string(marker))
-    Cairo.fill(ctx)
+
+    # if we use set_ft_font we should destroy the pointer it returns
+    # cairo_font_face_destroy(cairoface)
 end
 
 
@@ -471,10 +493,16 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f0(I)
     broadcast_foreach(primitive[1][], fields...) do point, c, markersize, strokecolor, strokewidth, marker, mo
-        scale = project_scale(scene, markersize, size_model)
+
+        # if we give size in pixels, the size is always equal to that value
+        scale = if markersize isa AbstractPlotting.Pixel
+            [markersize.value, markersize.value]
+        else
+            # otherwise calculate a scaled size
+            project_scale(scene, markersize, size_model)
+        end
         pos = project_position(scene, point, model)
-        mo = project_scale(scene, mo, size_model)
-        pos += Point2f0(mo[1], -mo[2])
+
         Cairo.set_source_rgba(ctx, extract_color(cmap, crange, c)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
         draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
