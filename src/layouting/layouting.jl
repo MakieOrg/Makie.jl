@@ -95,7 +95,13 @@ rightinkbound(ext::FontExtent) = leftinkbound(ext) + inkwidth(ext)
 bottominkbound(ext::FontExtent) = hbearing_ori_to_top(ext) - inkheight(ext)
 topinkbound(ext::FontExtent) = hbearing_ori_to_top(ext)
 
-inkboundingbox(ext::FontExtent) = BBox(leftinkbound(ext), rightinkbound(ext), bottominkbound(ext), topinkbound(ext))
+function inkboundingbox(ext::FontExtent)
+    l = leftinkbound(ext)
+    r = rightinkbound(ext)
+    b = bottominkbound(ext)
+    t = topinkbound(ext)
+    FRect2D((l, b), (r - l, t - b))
+end
 
 
 function text_bb(str, font, size)
