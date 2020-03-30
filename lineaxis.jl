@@ -45,6 +45,30 @@ function LineAxis(parent::Scene; kwargs...)
         show_axis = false,
         visible = ticklabelsvisible)[end]
 
+    ticklabel_ideal_space = lift(ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible, typ=Float32) do args...
+        maxwidth = if pos_extents_horizontal[][3]
+                # height
+                ticklabelsvisible[] ? height(FRect2D(boundingbox(ticklabels))) : 0f0
+            else
+                # width
+                ticklabelsvisible[] ? width(FRect2D(boundingbox(ticklabels))) : 0f0
+        end
+    end
+
+    actual_ticklabelspace = Node(0f0)
+
+    onany(ticklabel_ideal_space, ticklabelspace) do idealspace, space
+        s = if space == AbstractPlotting.automatic
+            idealspace
+        else
+            space
+        end
+        if s != actual_ticklabelspace[]
+            actual_ticklabelspace[] = s
+        end
+    end
+
+
     decorations[:ticklabels] = ticklabels
 
     tickspace = lift(ticksvisible, ticksize, tickalign) do ticksvisible,
@@ -53,13 +77,13 @@ function LineAxis(parent::Scene; kwargs...)
         ticksvisible ? max(0f0, ticksize * (1f0 - tickalign)) : 0f0
     end
 
-    labelgap = lift(spinewidth, tickspace, ticklabelsvisible, ticklabelspace,
+    labelgap = lift(spinewidth, tickspace, ticklabelsvisible, actual_ticklabelspace,
         ticklabelpad, labelpadding) do spinewidth, tickspace, ticklabelsvisible,
-            ticklabelspace, ticklabelpad, labelpadding
+            actual_ticklabelspace, ticklabelpad, labelpadding
 
 
         spinewidth + tickspace +
-            (ticklabelsvisible ? ticklabelspace + ticklabelpad : 0f0) +
+            (ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0) +
             labelpadding
     end
 
@@ -218,9 +242,9 @@ function LineAxis(parent::Scene; kwargs...)
 
 
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
-            tickspace, ticklabelsvisible, ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
+            tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
             label, labelvisible, labelpadding, labelsize, tickalign, spinewidth, tickspace, ticklabelsvisible,
-            ticklabelspace, ticklabelpad, labelfont, ticklabelfont
+            actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont
 
         position, extents, horizontal = pos_extents_horizontal[]
 
@@ -233,7 +257,7 @@ function LineAxis(parent::Scene; kwargs...)
         labelspace = (labelvisible && !iswhitespace(label)) ? real_labelsize + labelpadding : 0f0
         spinespace = spinewidth
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
-        ticklabelgap = ticklabelsvisible ? ticklabelspace + ticklabelpad : 0f0
+        ticklabelgap = ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0
 
         together = spinespace + tickspace + ticklabelgap + labelspace
     end
