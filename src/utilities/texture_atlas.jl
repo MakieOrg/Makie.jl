@@ -290,12 +290,23 @@ function calc_position(glyphs, start_pos, scales, fonts, atlas)
     positions = zeros(Point2f0, length(glyphs))
     last_pos  = Point2f0(start_pos)
     s, f = iter_or_array(scales), iter_or_array(fonts)
-    c1 = first(glyphs)
-    for (i, (c2, scale, font)) in enumerate(zip(glyphs, s, f))
-        c2 == '\r' && continue # stupid windows!
-        b = glyph_bearing!(atlas, c2, font, scale)
-        positions[i] = last_pos .+ b
-        last_pos = calc_position(last_pos, start_pos, atlas, c2, font, scale)
+    iter = enumerate(zip(glyphs, s, f))
+    next = iterate(iter)
+    if next !== nothing
+        (i, (char, scale, font)), state = next
+        first_bearing = glyph_bearing!(atlas, char, font, scale)
+        while next !== nothing
+            (i, (char, scale, font)), state = next
+            next = iterate(iter, state)
+            char == '\r' && continue # stupid windows!
+            # we draw the glyph at the last position we calculated
+            bearing = glyph_bearing!(atlas, char, font, scale)
+            # we substract the first bearing, since we want to start at
+            # startposition without any additional offset!
+            positions[i] = last_pos .+ bearing .- first_bearing
+            # then we add the advance for the next glyph to start
+            last_pos = calc_position(last_pos, start_pos, atlas, char, font, scale)
+        end
     end
     return positions
 end

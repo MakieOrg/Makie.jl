@@ -99,11 +99,10 @@ function boundingbox(
         text::String, position, textsize;
         font = "default", align = (:left, :bottom), rotation = 0.0
     )
-    boundingbox(
+    return boundingbox(
         text, position, textsize,
         to_font(font), to_align(align), to_rotation(rotation)
     )
-
 end
 
 # function boundingbox(
@@ -138,6 +137,7 @@ end
 #     return bb
 # end
 
+
 function boundingbox(
         text::String, position, textsize, font,
         align, rotation, model = Mat4f0(I)
@@ -157,12 +157,20 @@ function boundingbox(
         ctext_state = iterate(text, text_state)
         # TODO fix center + align + rotation
         if c != '\r'
-            pos = if pos_per_char
-                to_ndim(Vec3f0, position[i], 0.0)
+            posnd = if pos_per_char
+                position[i]
             else
                 last_pos = calc_position(last_pos, Point2f0(0, 0), atlas, c, font, scale)
-                start_pos3d .+ (rotation * to_ndim(Vec3f0, last_pos, 0.0))
+                advance_x, advance_y = glyph_advance!(atlas, c, font, scale)
+                without_advance = if c == '\n'
+                    # advance doesn't get added for newlines
+                    last_pos
+                else
+                    last_pos .- Point2f0(advance_x, 0)
+                end
+                start_pos3d .+ (rotation * to_ndim(Vec3f0, without_advance, 0.0))
             end
+            pos = to_ndim(Vec3f0, posnd, 0.0)
             s = glyph_scale!(atlas, c, font, scale)
             srot = rotation * to_ndim(Vec3f0, s, 0.0)
             bb = GeometryTypes.update(bb, pos)
