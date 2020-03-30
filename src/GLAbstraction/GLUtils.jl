@@ -239,7 +239,7 @@ function (MT::Type{NativeMesh{T}})(m::Node{T}) where T <: HomogenousMesh
     attribs = GeometryTypes.attributes(mv)
     @materialize! vertices, faces = attribs
     result[:vertices] = GLBuffer(vertices)
-    result[:faces]    = indexbuffer(faces)
+    result[:faces] = indexbuffer(faces)
     for (field, val) in attribs
         if field in (:texturecoordinates, :normals, :attribute_id, :color)
             if field == :color
