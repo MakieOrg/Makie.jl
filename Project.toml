@@ -1,6 +1,6 @@
 name = "GLMakie"
 uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-version = "0.0.17"
+version = "0.0.18"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -20,12 +20,12 @@ Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-AbstractPlotting = "^0.9.15"
+AbstractPlotting = "0.9.27"
 ColorTypes = "0.8, 0.9, 0.10"
 Colors = "0.9, 0.10, 0.11, 0.12"
-FileIO = "^1.1"
+FileIO = "1.1"
 FixedPointNumbers = "0.6, 0.7, 0.8"
-GLFW = "^3"
+GLFW = "3"
 GeometryTypes = "0.8"
 MeshIO = "^0.3"
 ModernGL = "^1"
