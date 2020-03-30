@@ -22,7 +22,7 @@ function layout_text(
     scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
 
     glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2];
-        lineheight_factor = 1.0, justification = 0.0)
+        lineheight_factor = 1.3, justification = 1.0)
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
