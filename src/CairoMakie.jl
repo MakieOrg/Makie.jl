@@ -264,28 +264,28 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
 
-    # linestyle and linewidth can be set globally
+    # linestyle can be set globally
     !isnothing(linestyle) && Cairo.set_dash(ctx, linestyle)
-    Cairo.set_line_width(ctx, linewidth)
 
-    if color isa AbstractArray
+    if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
 
         # we can hide the gaps by setting the line cap to round
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
-        draw_multicolor(primitive, ctx, projected_positions, color)
+        draw_multi(primitive, ctx, projected_positions, color, linewidth)
     else
         # stroke the whole line at once if it has only one color
         # this allows correct linestyles and line joins as well and will be the
         # most common case
+        Cairo.set_line_width(ctx, linewidth)
         Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
-        draw_singlecolor(primitive, ctx, projected_positions)
+        draw_single(primitive, ctx, projected_positions)
     end
     nothing
 end
 
-function draw_singlecolor(primitive::Lines, ctx, positions)
+function draw_single(primitive::Lines, ctx, positions)
     Cairo.move_to(ctx, positions[1]...)
     for i in 2:length(positions)
         Cairo.line_to(ctx, positions[i]...)
@@ -293,7 +293,7 @@ function draw_singlecolor(primitive::Lines, ctx, positions)
     Cairo.stroke(ctx)
 end
 
-function draw_singlecolor(primitive::LineSegments, ctx, positions)
+function draw_single(primitive::LineSegments, ctx, positions)
     @assert iseven(length(positions))
     Cairo.move_to(ctx, positions[1]...)
     for i in 2:length(positions)
@@ -306,11 +306,26 @@ function draw_singlecolor(primitive::LineSegments, ctx, positions)
     Cairo.stroke(ctx)
 end
 
-function draw_multicolor(primitive::Lines, ctx, positions, colors)
+# if linewidth is not an array
+function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth)
+    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors])
+end
+
+# if color is not an array
+function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray)
+    draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths)
+end
+
+function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray)
     @assert length(positions) == length(colors)
+    @assert length(linewidths) == length(colors)
     for i in 2:length(positions)
         Cairo.move_to(ctx, positions[i-1]...)
         Cairo.line_to(ctx, positions[i]...)
+        if linewidths[i] != linewidths[i-1]
+            error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i-1])) at the endpoints of a line.")
+        end
+        Cairo.set_line_width(ctx, linewidths[i])
         c1 = colors[i-1]
         c2 = colors[i]
         pat = Cairo.pattern_create_linear(positions[i-1]..., positions[i]...)
@@ -322,12 +337,18 @@ function draw_multicolor(primitive::Lines, ctx, positions, colors)
     end
 end
 
-function draw_multicolor(primitive::LineSegments, ctx, positions, colors)
+function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray)
     @assert iseven(length(positions))
     @assert length(positions) == length(colors)
+    @assert length(linewidths) == length(colors)
+
     for i in 1:2:length(positions)
         Cairo.move_to(ctx, positions[i]...)
         Cairo.line_to(ctx, positions[i+1]...)
+        if linewidths[i] != linewidths[i+1]
+            error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
+        end
+        Cairo.set_line_width(ctx, linewidths[i])
         c1 = colors[i]
         c2 = colors[i+1]
         # we can avoid the more expensive gradient if the colors are the same
