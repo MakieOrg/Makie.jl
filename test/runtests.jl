@@ -1,4 +1,4 @@
-using MakieGallery, AbstractPlotting, GLMakie, Test
+using MakieGallery, Makie, Test
 using MakieGallery: @block, @cell
 database = MakieGallery.load_database()
 
