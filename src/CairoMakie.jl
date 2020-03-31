@@ -249,15 +249,101 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
+
     isempty(positions) && return
-    N = length(positions)
+
+    projected_positions = project_position.(Ref(scene), positions, Ref(model))
+
     if color isa AbstractArray{<: Number}
-        color = AbstractPlotting.interpolated_getindex.((to_colormap(primitive.colormap[]),), color, (primitive.colorrange[],))
+        color = AbstractPlotting.interpolated_getindex.(
+            (to_colormap(primitive.colormap[]),),
+            Float64.(color), # doesn't work for ints, therefore convert
+            (primitive.colorrange[],))
     end
-    broadcast_foreach(1:N, positions, color, linewidth) do i, point, c, linewidth
-        draw_segment(scene, ctx, point, model, c, linewidth, linestyle, primitive, i, N)
+
+    # color is now a color or an array of colors
+    # if it's an array of colors, each segment must be stroked separately
+
+    # linestyle and linewidth can be set globally
+    !isnothing(linestyle) && Cairo.set_dash(ctx, linestyle)
+    Cairo.set_line_width(ctx, linewidth)
+
+    if color isa AbstractArray
+        # stroke each segment separately, this means disjointed segments with probably
+        # wonky dash patterns if segments are short
+
+        # we can hide the gaps by setting the line cap to round
+        Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
+        draw_multicolor(primitive, ctx, projected_positions, color)
+    else
+        # stroke the whole line at once if it has only one color
+        # this allows correct linestyles and line joins as well and will be the
+        # most common case
+        Cairo.set_source_rgba(ctx, red(color), green(color), blue(color), alpha(color))
+        draw_singlecolor(primitive, ctx, projected_positions)
     end
     nothing
+end
+
+function draw_singlecolor(primitive::Lines, ctx, positions)
+    Cairo.move_to(ctx, positions[1]...)
+    for i in 2:length(positions)
+        Cairo.line_to(ctx, positions[i]...)
+    end
+    Cairo.stroke(ctx)
+end
+
+function draw_singlecolor(primitive::LineSegments, ctx, positions)
+    @assert iseven(length(positions))
+    Cairo.move_to(ctx, positions[1]...)
+    for i in 2:length(positions)
+        if iseven(i)
+            Cairo.line_to(ctx, positions[i]...)
+        else
+            Cairo.move_to(ctx, positions[i]...)
+        end
+    end
+    Cairo.stroke(ctx)
+end
+
+function draw_multicolor(primitive::Lines, ctx, positions, colors)
+    @assert length(positions) == length(colors)
+    for i in 2:length(positions)
+        Cairo.move_to(ctx, positions[i-1]...)
+        Cairo.line_to(ctx, positions[i]...)
+        c1 = colors[i-1]
+        c2 = colors[i]
+        pat = Cairo.pattern_create_linear(positions[i-1]..., positions[i]...)
+        Cairo.pattern_add_color_stop_rgba(pat, 0, red(c1), green(c1), blue(c1), alpha(c1))
+        Cairo.pattern_add_color_stop_rgba(pat, 1, red(c2), green(c2), blue(c2), alpha(c2))
+        Cairo.set_source(ctx, pat)
+        Cairo.stroke(ctx)
+        Cairo.destroy(pat)
+    end
+end
+
+function draw_multicolor(primitive::LineSegments, ctx, positions, colors)
+    @assert iseven(length(positions))
+    @assert length(positions) == length(colors)
+    for i in 1:2:length(positions)
+        Cairo.move_to(ctx, positions[i]...)
+        Cairo.line_to(ctx, positions[i+1]...)
+        c1 = colors[i]
+        c2 = colors[i+1]
+        # we can avoid the more expensive gradient if the colors are the same
+        # this happens if one color was given for each segment
+        if c1 == c2
+            Cairo.set_source_rgba(ctx, red(c1), green(c1), blue(c1), alpha(c1))
+            Cairo.stroke(ctx)
+        else
+            pat = Cairo.pattern_create_linear(positions[i]..., positions[i+1]...)
+            Cairo.pattern_add_color_stop_rgba(pat, 0, red(c1), green(c1), blue(c1), alpha(c1))
+            Cairo.pattern_add_color_stop_rgba(pat, 1, red(c2), green(c2), blue(c2), alpha(c2))
+            Cairo.set_source(ctx, pat)
+            Cairo.stroke(ctx)
+            Cairo.destroy(pat)
+        end
+    end
 end
 
 function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
