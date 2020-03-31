@@ -1,7 +1,5 @@
 using MakieGallery, AbstractPlotting, GLMakie, Test
 using MakieGallery: @block, @cell
-empty!(MakieGallery.plotting_backends)
-push!(MakieGallery.plotting_backends, "Makie")
 database = MakieGallery.load_database()
 
 exclude = (
@@ -9,7 +7,8 @@ exclude = (
     "Colormap collection", # has one size different...
     # doesn't match 0.035520551315007046 <= 0.032. Looked at the artifacts and it looks fairly similar
     # so blaming video compression
-    "Interaction with Mouse"
+    "Interaction with Mouse",
+    "Moire"
 )
 # Download is broken on CI
 filter!(entry-> !("download" in entry.tags) && !(entry.title in exclude), database)
