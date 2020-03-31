@@ -316,33 +316,20 @@ function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray)
     draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths)
 end
 
-function draw_multi(primitive::Lines, ctx, positions, colors::AbstractArray, linewidths::AbstractArray)
-    @assert length(positions) == length(colors)
-    @assert length(linewidths) == length(colors)
-    for i in 2:length(positions)
-        Cairo.move_to(ctx, positions[i-1]...)
-        Cairo.line_to(ctx, positions[i]...)
-        if linewidths[i] != linewidths[i-1]
-            error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i-1])) at the endpoints of a line.")
-        end
-        Cairo.set_line_width(ctx, linewidths[i])
-        c1 = colors[i-1]
-        c2 = colors[i]
-        pat = Cairo.pattern_create_linear(positions[i-1]..., positions[i]...)
-        Cairo.pattern_add_color_stop_rgba(pat, 0, red(c1), green(c1), blue(c1), alpha(c1))
-        Cairo.pattern_add_color_stop_rgba(pat, 1, red(c2), green(c2), blue(c2), alpha(c2))
-        Cairo.set_source(ctx, pat)
-        Cairo.stroke(ctx)
-        Cairo.destroy(pat)
+function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, colors::AbstractArray, linewidths::AbstractArray)
+    if primitive isa LineSegments
+        @assert iseven(length(positions))
     end
-end
-
-function draw_multi(primitive::LineSegments, ctx, positions, colors::AbstractArray, linewidths::AbstractArray)
-    @assert iseven(length(positions))
     @assert length(positions) == length(colors)
     @assert length(linewidths) == length(colors)
 
-    for i in 1:2:length(positions)
+    iterator = if primitive isa Lines
+        1:length(positions)-1
+    elseif primitive isa LineSegments
+        1:2:length(positions)
+    end
+
+    for i in iterator
         Cairo.move_to(ctx, positions[i]...)
         Cairo.line_to(ctx, positions[i+1]...)
         if linewidths[i] != linewidths[i+1]
