@@ -19,7 +19,6 @@ function handle_color!(uniform_dict, instance_dict)
     end
 end
 
-
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
     per_instance_keys = (:rotations, :markersize, :color, :intensity)
@@ -36,10 +35,18 @@ function create_shader(scene::Scene, plot::MeshScatter)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
 
+
     uniform_dict = Dict{Symbol, Any}()
     for (k,v) in uniforms
         k in (:shading, :overdraw, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
         uniform_dict[k] = lift_convert(k, v, plot)
+    end
+
+    if haskey(uniform_dict, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniform_dict[:lightposition] = lift(uniform_dict[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
     end
 
     handle_color!(uniform_dict, per_instance)
@@ -126,9 +133,18 @@ function scatter_shader(scene::Scene, attributes)
     handle_color!(uniform_dict, per_instance)
 
     instance = VertexArray(GLUVMesh2D(GeometryTypes.SimpleRectangle(-0.5f0, -0.5f0, 1f0, 1f0)))
+
     for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end
+
+    if haskey(uniform_dict, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniform_dict[:lightposition] = lift(uniform_dict[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     p = InstancedProgram(
         WebGL(),
         lasset("simple.vert"),

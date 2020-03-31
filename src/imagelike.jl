@@ -18,6 +18,14 @@ function surface_normals(x, y, z)
 end
 
 function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
+    uniforms = Dict(uniforms)
+    if haskey(uniforms, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     program = Program(
         WebGL(),
         lasset("mesh.vert"),
@@ -25,6 +33,7 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         VertexArray(mesh);
         uniforms...
     )
+    
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = string(objectid(plot))

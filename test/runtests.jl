@@ -4,7 +4,6 @@ ElectronDisplay.CONFIG.single_window = true
 using WGLMakie, AbstractPlotting, JSServe, Test
 using MakieGallery
 
-
 tests_wgl_makie = Set(Symbol.([
     "twisty_cube_thing",
     "arc_1",
