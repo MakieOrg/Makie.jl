@@ -1,5 +1,4 @@
 using MakieGallery, Makie, Test
-using MakieGallery: @block, @cell
 database = MakieGallery.load_database()
 
 exclude = (
