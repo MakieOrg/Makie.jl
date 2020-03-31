@@ -20,7 +20,7 @@ end
 function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
     uniforms = Dict(uniforms)
     if haskey(uniforms, :lightposition)
-        eyepos = getfield(scene.camera, :eyeposition)
+        eyepos = getfield(mscene.camera, :eyeposition)
         uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
             ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
         end
@@ -33,7 +33,7 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         VertexArray(mesh);
         uniforms...
     )
-    
+
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = string(objectid(plot))
@@ -103,23 +103,13 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
         uniform_color = color,
         color = Vec4f0(0),
         shading = plot.shading,
+        ambient = plot.ambient,
+        diffuse = plot.diffuse,
+        specular = plot.specular,
+        shininess = plot.shininess,
+        lightposition = plot.lightposition
     )
 end
-
-
-# function draw_js(jsctx, jsscene, mscene::Scene, plot::Image)
-#     image = plot[3]
-#     color = Sampler(lift(x-> x', image))
-#     mesh = limits_to_uvmesh(plot)
-#     draw_mesh(jsscene, mscene, mesh, "image", plot;
-#         uniform_color = color,
-#         color = Vec4f0(0),
-#         normals = Vec3f0(0),
-#         shading = false,
-#     )
-# end
-#
-
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]

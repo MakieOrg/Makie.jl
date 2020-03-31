@@ -44,12 +44,7 @@ function create_shader(scene::Scene, plot::Mesh)
         end
     end
 
-    if haskey(uniforms, :lightposition)
-        eyepos = getfield(scene.camera, :eyeposition)
-        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
-            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
-        end
-    end
+
 
     if haskey(data, :attributes) && data[:attributes] isa AbstractVector
         attributes[:color] = Buffer(lift(get_attribute(mesh_signal, :attributes), get_attribute(mesh_signal, :attribute_id)) do color, attr
@@ -86,6 +81,18 @@ function create_shader(scene::Scene, plot::Mesh)
         uniforms[:color] = Vec4f0(0) # make sure we have a color attribute
     end
     uniforms[:shading] = plot.shading
+
+    for key in (:ambient, :diffuse, :specular, :shininess, :lightposition)
+        uniforms[key] = plot[key]
+    end
+
+    if haskey(uniforms, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
 
