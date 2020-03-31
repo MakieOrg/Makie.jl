@@ -10,6 +10,7 @@ jobs:
         julia-version: [1.4]
         julia-arch: [x64]
         os: [ubuntu-latest, macOS-latest]
+      fail-fast: false
 
     steps:
       - uses: actions/checkout@v1.0.0
@@ -30,18 +31,21 @@ jobs:
         with:
           name: Recordings
           path: ./test/test_recordings
+        if: always()
 
       - name: Upload diffs
         uses: actions/upload-artifact@v1.0.0
         with:
           name: Recordings
           path: ./test/tested_different
+        if: always()
 
       - name: Upload format tests
         uses: actions/upload-artifact@v1.0.0
         with:
           name: Recordings
           path: ./test/test_formats
+        if: always()
           
       - name: Cache artifacts
         uses: actions/cache@v1
@@ -54,3 +58,4 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
+        if: always()
