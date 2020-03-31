@@ -9,7 +9,8 @@ exclude = (
     "Colormap collection", # has one size different...
     # doesn't match 0.035520551315007046 <= 0.032. Looked at the artifacts and it looks fairly similar
     # so blaming video compression
-    "Interaction with Mouse"
+    "Interaction with Mouse",
+    "Moire"
 )
 # Download is broken on CI
 filter!(database) do entry
