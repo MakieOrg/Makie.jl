@@ -1,9 +1,9 @@
-using MakieGallery, AbstractPlotting, GLMakie
+using MakieGallery, AbstractPlotting, GLMakie, Test
+
 using MakieGallery: @block, @cell
-empty!(MakieGallery.plotting_backends)
-push!(MakieGallery.plotting_backends, "GLMakie", "AbstractPlotting")
 
 database = MakieGallery.load_database()
+
 exclude = (
     "Cobweb plot", # has some weird scaling issue on CI
     "Colormap collection", # has one size different...
