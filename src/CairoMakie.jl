@@ -98,46 +98,6 @@ function project_scale(scene::Scene, s, model = Mat4f0(I))
     p .* scene.camera.resolution[]
 end
 
-function draw_segment(scene, ctx, point::Point, model, c, linewidth, linestyle, primitive, idx, N)
-    pos = project_position(scene, point, model)
-    function stroke()
-        !isnothing(linestyle) && Cairo.set_dash(ctx, linestyle)
-        Cairo.set_line_width(ctx, Float64(linewidth))
-        Cairo.set_source_rgba(ctx, red(c), green(c), blue(c), alpha(c))
-        if linestyle != nothing
-            #set_dash(ctx, linestyle, 0.0)
-        end
-        Cairo.stroke(ctx)
-    end
-    if !all(isfinite.(pos))
-        stroke() # stroke last points, ignore this one (NaN for disconnects)
-    else
-        if isa(primitive, LineSegments)
-            if isodd(idx) # on each odd move to
-                Cairo.move_to(ctx, pos[1], pos[2])
-            else
-                Cairo.line_to(ctx, pos[1], pos[2])
-                stroke() # stroke after each segment
-            end
-        else
-            if idx == 1
-                Cairo.move_to(ctx, pos[1], pos[2])
-            else
-                Cairo.line_to(ctx, pos[1], pos[2])
-                Cairo.move_to(ctx, pos[1], pos[2])
-            end
-        end
-    end
-    if idx == N && isa(primitive, Lines) # after adding all points, lines need a stroke
-        stroke()
-    end
-end
-
-function draw_segment(scene, ctx, point::Tuple{<: Point, <: Point}, model, c, linewidth, linestyle, primitive, idx, N)
-    draw_segment(scene, ctx, point[1], model, c, linewidth, linestyle, primitive, 1 + (idx - 1) * 2, N)
-    draw_segment(scene, ctx, point[2], model, c, linewidth, linestyle, primitive, (idx - 1) * 2, N)
-end
-
 function draw_atomic(::Scene, ::CairoScreen, x)
     @warn "$(typeof(x)) is not supported by cairo right now"
 end
