@@ -67,7 +67,7 @@ function create_shader(scene::Scene, plot::Mesh)
                 !haskey(attributes, :texturecoordinates) && @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
             end
         elseif color isa Colorant && !haskey(attributes, :color)
-            uniforms[:uniform_color] = color
+            uniforms[:uniform_color] = color_signal
         else
             error("Unsupported color type: $(typeof(color))")
         end
@@ -76,6 +76,7 @@ function create_shader(scene::Scene, plot::Mesh)
     if !haskey(attributes, :color)
         uniforms[:color] = Vec4f0(0) # make sure we have a color attribute
     end
+
     uniforms[:shading] = plot.shading
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
