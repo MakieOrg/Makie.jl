@@ -18,7 +18,7 @@ void main(){
     // get_* gets the global inputs (uniform, sampler, vertex array)
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = tovec3(get_position());
-    vec3 lightpos = vec3(20,20,20);
+    vec3 lightpos = get_lightposition();
     frag_normal = get_normals();
     vec4 position_world = modelMatrix * vec4(vertex_position, 1);
     frag_lightdir = normalize(lightpos - position_world.xyz);

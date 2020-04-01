@@ -56,7 +56,6 @@ function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     return buffer
 end
 
-
 function JSBuffer(three, vector::AbstractVector{T}) where T
     flat = flatten_buffer(vector)
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
@@ -283,6 +282,7 @@ function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
 end
 
 AbstractPlotting.plotkey(::Nothing) = :scatter
+
 function lift_convert(key, value, plot)
     val = lift(value) do value
          wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
@@ -310,7 +310,9 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
         js_buff = JSInstanceBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
+
     uniforms = to_js_uniforms(scene, THREE, ip.program.uniforms)
+
     material = create_material(
         THREE,
         ip.program.vertex_source,
@@ -321,7 +323,6 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
     mesh = THREE.new.Mesh(js_vbo, material)
 end
 
-
 function wgl_convert(scene, jsctx, program::Program)
     js_vbo = jsctx.THREE.new.BufferGeometry()
 
@@ -329,9 +330,11 @@ function wgl_convert(scene, jsctx, program::Program)
         js_buff = JSBuffer(jsctx, buff)
         js_vbo.setAttribute(name, js_buff)
     end
+
     indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
     indices = reinterpret(UInt32, indices) .- UInt32(1)
     js_vbo.setIndex(indices)
+
     # per instance data
     uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
 

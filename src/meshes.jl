@@ -14,6 +14,7 @@ function array2color(colors, cmap, crange)
     cmap = RGBAf0.(Colors.color.(to_colormap(cmap)), 1.0)
     AbstractPlotting.interpolated_getindex.((cmap,), colors, (crange,))
 end
+
 function array2color(colors::AbstractArray{<: Colorant}, cmap, crange)
     RGBAf0.(colors)
 end
@@ -42,6 +43,9 @@ function create_shader(scene::Scene, plot::Mesh)
             uniforms[key] = Observable(default)
         end
     end
+
+
+
     if haskey(data, :attributes) && data[:attributes] isa AbstractVector
         attributes[:color] = Buffer(lift(get_attribute(mesh_signal, :attributes), get_attribute(mesh_signal, :attribute_id)) do color, attr
             color[Int.(attr) .+ 1]
@@ -78,6 +82,18 @@ function create_shader(scene::Scene, plot::Mesh)
     end
 
     uniforms[:shading] = plot.shading
+
+    for key in (:ambient, :diffuse, :specular, :shininess, :lightposition)
+        uniforms[key] = plot[key]
+    end
+
+    if haskey(uniforms, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
 

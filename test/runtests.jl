@@ -1,9 +1,9 @@
 using ElectronDisplay
 ElectronDisplay.CONFIG.showable = showable
 ElectronDisplay.CONFIG.single_window = true
+ElectronDisplay.CONFIG.focus = false
 using WGLMakie, AbstractPlotting, JSServe, Test
 using MakieGallery
-
 
 tests_wgl_makie = Set(Symbol.([
     "twisty_cube_thing",
