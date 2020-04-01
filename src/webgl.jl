@@ -56,7 +56,6 @@ function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     return buffer
 end
 
-
 function JSBuffer(three, vector::AbstractVector{T}) where T
     flat = flatten_buffer(vector)
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))

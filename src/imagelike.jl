@@ -127,6 +127,11 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
         color = Vec4f0(0),
         normals = Vec3f0(0),
         shading = false,
+        ambient = plot.ambient,
+        diffuse = plot.diffuse,
+        specular = plot.specular,
+        shininess = plot.shininess,
+        lightposition = plot.lightposition
     )
 end
 
