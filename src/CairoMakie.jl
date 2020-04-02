@@ -578,6 +578,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
         char = txt[stridx]
+
         stridx = nextind(txt, stridx)
         rels = to_rel_scale(atlas, char, f, ts)
         pos = project_position(scene, p, Mat4f0(I))
@@ -593,8 +594,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         # set_font_size(ctx, 16)
         # TODO this only works in 2d
         Cairo.rotate(ctx, -2acos(r[4]))
-        Cairo.show_text(ctx, string(char))
 
+        if !(char in ('\r', '\n'))
+            Cairo.show_text(ctx, string(char))
+        end
+        
         cairo_font_face_destroy(cairoface)
 
         Cairo.restore(ctx)
