@@ -137,6 +137,10 @@ end
 #     return bb
 # end
 
+rectmult(rect, m) = Rect(origin(rect) .* m, widths(rect) .* m)
+rectshift(rect, vec) = Rect(origin(rect) .+ vec, widths(rect))
+
+to_ndim(type, rect, default = 0) = Rect(to_ndim(type, origin(rect), default), to_ndim(type, widths(rect), default))
 
 function boundingbox(
         text::String, position, textsize, font,
@@ -146,36 +150,30 @@ function boundingbox(
     N = length(text)
     ctext_state = iterate(text)
     ctext_state === nothing && return FRect3D()
-    pos_per_char = !isa(position, VecTypes)
-    start_pos = Vec(pos_per_char ? first(position) : position)
-    start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
-    last_pos = Point2f0(0, 0)
-    start_pos3d = project(model, to_ndim(Vec3f0, start_pos, 0.0))
-    bb = FRect3D(start_pos3d, Vec3f0(0))
+
+    if position isa VecTypes
+        bb = FRect3D(to_ndim(Vec3f0, position, 0.0), Vec3f0(0))
+
+        position, scales = layout_text(text, position, textsize, font, align, rotation, model)
+    end
+
+    bbox = nothing
+
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         c, text_state = ctext_state
         ctext_state = iterate(text, text_state)
         # TODO fix center + align + rotation
-        if c != '\r'
-            posnd = if pos_per_char
-                position[i]
+        if !(c in ('\r', '\n'))
+            raw_bb = inkboundingbox(FreeTypeAbstraction.internal_get_extent(font, c))
+            scaled_bb = to_ndim(Vec3f0, rectmult(raw_bb, scale / 64), 0)
+            # bb = rectdiv(bb, 1.5)
+            shifted_bb = rectshift(scaled_bb, position[i])
+            if isnothing(bbox)
+                bbox = shifted_bb
             else
-                last_pos = calc_position(last_pos, Point2f0(0, 0), atlas, c, font, scale)
-                advance_x, advance_y = glyph_advance!(atlas, c, font, scale)
-                without_advance = if c == '\n'
-                    # advance doesn't get added for newlines
-                    last_pos
-                else
-                    last_pos .- Point2f0(advance_x, 0)
-                end
-                start_pos3d .+ (rotation * to_ndim(Vec3f0, without_advance, 0.0))
+                bbox = union(bbox, shifted_bb)
             end
-            pos = to_ndim(Vec3f0, posnd, 0.0)
-            s = glyph_scale!(atlas, c, font, scale)
-            srot = rotation * to_ndim(Vec3f0, s, 0.0)
-            bb = update(bb, pos)
-            bb = update(bb, pos .+ srot)
         end
     end
-    return bb
+    return bbox
 end
