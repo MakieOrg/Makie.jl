@@ -539,7 +539,7 @@ end
 
 function cairo_font_face_destroy(font_face)
     ccall(
-        (:cairo_ft_font_face_create_for_ft_face, LIB_CAIRO),
+        (:cairo_font_face_destroy, LIB_CAIRO),
         Cvoid, (Ptr{Cvoid},),
         font_face
     )
