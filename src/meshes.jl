@@ -44,8 +44,6 @@ function create_shader(scene::Scene, plot::Mesh)
         end
     end
 
-
-
     if haskey(data, :attributes) && data[:attributes] isa AbstractVector
         attributes[:color] = Buffer(lift(get_attribute(mesh_signal, :attributes), get_attribute(mesh_signal, :attribute_id)) do color, attr
             color[Int.(attr) .+ 1]
