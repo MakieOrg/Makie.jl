@@ -44,6 +44,13 @@ end
 
 
 function glyph_positions(str::AbstractString, font, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+
+    # this is a countermeasure against Cairo messing with FreeType font pixel sizes
+    # when drawing. We reset them every time which is hacky but seems to work
+    FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(font, 64, 64)
+    FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
+    
+
     # make lineheight a multiple of font's M height
     lineheight = inkheight(FreeTypeAbstraction.internal_get_extent(font, 'M')) * lineheight_factor
 
