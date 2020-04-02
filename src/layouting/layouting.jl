@@ -45,10 +45,10 @@ end
 
 function glyph_positions(str::AbstractString, font, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
     # make lineheight a multiple of font's M height
-    lineheight = inkheight(FreeTypeAbstraction.get_extent(font, 'M')) * lineheight_factor
+    lineheight = inkheight(FreeTypeAbstraction.internal_get_extent(font, 'M')) * lineheight_factor
 
     lines = split(str, "\n")
-    extents = [[FreeTypeAbstraction.get_extent(font, c) for c in l] for l in lines]
+    extents = [[FreeTypeAbstraction.internal_get_extent(font, c) for c in l] for l in lines]
 
     xkernings = [[FreeTypeAbstraction.kerning(c1, c2, font)[1]
         for (c1, c2) in zip(chop(l, head = 0, tail = 1), chop(l, head = 1, tail = 0))]
