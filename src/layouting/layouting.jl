@@ -27,7 +27,7 @@ function layout_text(
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
         for gp in group
-            p = to_ndim(Point3f0, gp, 0) ./ Point3f0(4, 4, 1)
+            p = to_ndim(Point3f0, gp, 0) #./ Point3f0(4, 4, 1)
             # rotate around the alignment point (this is now at [0, 0, 0])
             p_rotated = rot * p
             push!(positions, pos .+ p_rotated) # TODO why division by 4 necessary?
