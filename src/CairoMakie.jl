@@ -429,26 +429,15 @@ function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth)
     end
 end
 
-function draw_marker(ctx, marker::Char, pos, scale, strokecolor, strokewidth)
+function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth)
 
-    #TODO this shouldn't be hardcoded, but isn't available in the plot right now
+    cairoface = set_ft_font(ctx, font)
 
-    # this is not good because we're loading the same font again and again
-    font = AbstractPlotting.FreeTypeAbstraction.findfont("Dejavu sans"; additional_fonts = AbstractPlotting.assetpath("fonts"))
+    # this is a countermeasure against Cairo messing with FreeType font pixel sizes
+    # when drawing. We reset them every time which is hacky but seems to work
+    AbstractPlotting.FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(font, 64, 64)
 
-    # this is not correct, you can't choose the right font by family name alone
-    # but set_ft_font crashes even with my current fixes
-    Cairo.select_font_face(
-        ctx, fontname(font),
-        Cairo.FONT_SLANT_NORMAL,
-        Cairo.FONT_WEIGHT_NORMAL
-    )
-
-    # cairoface = set_ft_font(ctx, font)
-
-    # compute the "ink bounding box", so the exact area relative to the glyph origin
-    # in which its filled parts lie
-    charextent = AbstractPlotting.FreeTypeAbstraction.get_extent(font, marker)
+    charextent = AbstractPlotting.FreeTypeAbstraction.internal_get_extent(font, marker)
     inkbb = AbstractPlotting.inkboundingbox(charextent)
 
     # normalize this first by FreeType units (64) and then scale by font size
@@ -465,7 +454,11 @@ function draw_marker(ctx, marker::Char, pos, scale, strokecolor, strokewidth)
     Cairo.show_text(ctx, string(marker))
 
     # if we use set_ft_font we should destroy the pointer it returns
-    # cairo_font_face_destroy(cairoface)
+    cairo_font_face_destroy(cairoface)
+
+    # this is a countermeasure against Cairo messing with FreeType font pixel sizes
+    # when drawing. We reset them every time which is hacky but seems to work
+    AbstractPlotting.FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(font, 64, 64)
 end
 
 
