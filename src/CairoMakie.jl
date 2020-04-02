@@ -584,13 +584,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
 
-        # this is wrong for the same reason as noted in the Scatter code
-        Cairo.select_font_face(
-            ctx, fontname(f),
-            Cairo.FONT_SLANT_NORMAL,
-            Cairo.FONT_WEIGHT_NORMAL
-        )
-        # cairoface = set_ft_font(ctx, f)
+
+        cairoface = set_ft_font(ctx, f)
 
         ts = fontscale(atlas, scene, char, f, ts)
         mat = scale_matrix(ts...)
@@ -599,9 +594,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         # TODO this only works in 2d
         Cairo.rotate(ctx, -2acos(r[4]))
         Cairo.show_text(ctx, string(char))
+
+        cairo_font_face_destroy(cairoface)
+
         Cairo.restore(ctx)
 
-        # cairo_font_face_destroy(cairoface)
+        # this is a countermeasure against Cairo messing with FreeType font pixel sizes
+        # when drawing. We reset them every time which is hacky but seems to work
+        AbstractPlotting.FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(f, 64, 64)
     end
     nothing
 end
