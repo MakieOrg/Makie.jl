@@ -485,6 +485,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f0(I)
+
+    font = AbstractPlotting.defaultfont()
+
     broadcast_foreach(primitive[1][], fields...) do point, c, markersize, strokecolor, strokewidth, marker, mo
 
         # if we give size in pixels, the size is always equal to that value
@@ -498,7 +501,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 
         Cairo.set_source_rgba(ctx, extract_color(cmap, crange, c)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
-        draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
+        if m isa Char
+            draw_marker(ctx, m, font, pos, scale, strokecolor, strokewidth)
+        else
+            draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
+        end
     end
     nothing
 end
