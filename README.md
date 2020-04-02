@@ -33,14 +33,13 @@ On linux you also need to add the following to get GLFW to build (if you don't h
 
 ### Debian/Ubuntu
 ```
-sudo apt-get install ffmpeg cmake xorg-dev
+sudo apt-get install cmake xorg-dev
 ```
 
 ### RedHat/Fedora
 ```
-sudo dnf install ffmpeg cmake libXrandr-devel libXinerama-devel libXcursor-devel
+sudo dnf install cmake libXrandr-devel libXinerama-devel libXcursor-devel
 ```
-Note that the [RPM Fusion repo](https://rpmfusion.org/) is needed for `ffmpeg`.
 
 # Ecosystem
 
