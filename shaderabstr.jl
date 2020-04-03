@@ -2,7 +2,7 @@ using ShaderAbstractions: Buffer, Sampler, VertexArray
 
 # Mesh
 mesh(Sphere(Point3f0(0), 1f0)) |> display
-mesh(Sphere(Point3f0(0), 1f0), color=:red)
+mesh(Sphere(Point3f0(0), 1f0), color=:red, ambient=Vec3f0(0.9))
 
 tocolor(x) = RGBf0(x...)
 positions = Observable(decompose(Point3f0, Sphere(Point3f0(0), 1f0)))
