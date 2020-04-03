@@ -143,7 +143,8 @@ rectshift(rect, vec) = Rect(origin(rect) .+ vec, widths(rect))
 to_ndim(type, rect, default = 0) = Rect(to_ndim(type, origin(rect), default), to_ndim(type, widths(rect), default))
 
 """
-Calculate the tight rectangle around a 2D rectangle rotated by `angle` radians.
+Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
+This is not perfect but works well enough. Check an A vs X to see the difference.
 """
 function rotatedrect(rect::HyperRectangle{2}, angle)
     ox, oy = rect.origin
