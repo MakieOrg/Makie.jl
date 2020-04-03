@@ -165,8 +165,6 @@ export (..), GLNormalUVMesh
 # Exports of units
 export px
 
-
-
 export widths, decompose
 
 # building blocks for series recipes
@@ -181,7 +179,6 @@ export save
 
 # colormap stuff from PlotUtils, and showlibrary, showgradients
 export clibraries, cgradients, clibrary, showlibrary, showgradients
-
 
 # default icon for Makie
 function icon()
