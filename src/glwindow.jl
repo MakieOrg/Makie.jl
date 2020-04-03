@@ -12,25 +12,28 @@ function draw_fullscreen(vao_id)
     glBindVertexArray(vao_id)
     glDrawArrays(GL_TRIANGLES, 0, 3)
     glBindVertexArray(0)
+    return
 end
-struct PostprocessPrerender
-end
+
+struct PostprocessPrerender end
+
 function (sp::PostprocessPrerender)()
     glDepthMask(GL_TRUE)
     glDisable(GL_DEPTH_TEST)
     glDisable(GL_BLEND)
     glDisable(GL_CULL_FACE)
-    nothing
+    return
 end
 
 const PostProcessROBJ = RenderObject{PostprocessPrerender}
+
 mutable struct GLFramebuffer
-    resolution ::Node{NTuple{2, Int}}
-    id         ::NTuple{2, GLuint}
-    color      ::Texture{RGBA{N0f8}, 2}
-    objectid   ::Texture{Vec{2, GLushort}, 2}
-    depth      ::Texture{GLAbstraction.DepthStencil_24_8, 2}
-    color_luma ::Texture{RGBA{N0f8}, 2}
+    resolution::Node{NTuple{2, Int}}
+    id::NTuple{2, GLuint}
+    color::Texture{RGBA{N0f8}, 2}
+    objectid::Texture{Vec{2, GLushort}, 2}
+    depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
+    color_luma::Texture{RGBA{N0f8}, 2}
     postprocess::NTuple{3, PostProcessROBJ}
 end
 
@@ -38,8 +41,7 @@ Base.size(fb::GLFramebuffer) = size(fb.color) # it's guaranteed, that they all h
 
 loadshader(name) = joinpath(@__DIR__, "GLVisualize", "assets", "shader", name)
 
-
-rcpframe(x) = 1f0./Vec2f0(x[1], x[2])
+rcpframe(x) = 1f0 ./ Vec2f0(x[1], x[2])
 
 """
 Creates a postprocessing render object.
@@ -83,7 +85,7 @@ function postprocess(color, color_luma, framebuffer_size)
     pass3.postrenderfunction = () -> draw_fullscreen(pass3.vertexarray.id)
 
 
-    (pass1, pass2, pass3)
+    return (pass1, pass2, pass3)
 end
 
 function attach_framebuffer(t::Texture{T, 2}, attachment) where T
@@ -124,14 +126,13 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     fb_size_node = Node(fb_size)
     p = postprocess(color_buffer, color_luma, fb_size_node)
 
-    fb = GLFramebuffer(
+    return GLFramebuffer(
         fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
         color_buffer, objectid_buffer, depth_buffer,
         color_luma,
         p
     )
-    fb
 end
 
 function Base.resize!(fb::GLFramebuffer, window_size)
@@ -171,33 +172,6 @@ function MonitorProperties(monitor::GLFW.Monitor)
     MonitorProperties(name, isprimary, position, physicalsize, videomode, videomode_supported, dpi, monitor)
 end
 
-abstract type AbstractContext end
-
-mutable struct GLContext <: AbstractContext
-    window::GLFW.Window
-    framebuffer::GLFramebuffer
-    visible::Bool
-    cache::Dict
-end
-GLContext(window, framebuffer, visible) = GLContext(window, framebuffer, visible, Dict())
-
-
-"""
-Sleep is pretty imprecise. E.g. anything under `0.001s` is not guaranteed to wake
-up before `0.001s`. So this timer is pessimistic in the way, that it will never
-sleep more than `time`.
-"""
-@inline function sleep_pessimistic(sleep_time)
-    st = convert(Float64,sleep_time) - 0.002
-    start_time = time()
-    while (time() - start_time) < st
-        sleep(0.001) # sleep for the minimal amount of time
-    end
-end
-function reactive_run_till_now()
-
-end
-
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
 
 
@@ -226,10 +200,16 @@ function destroy!(nw::GLFW.Window)
     was_current && GLAbstraction.switch_context!()
 end
 
+function windowsize(nw::GLFW.Window)
+    was_destroyed(nw) && return (0, 0)
+    size = GLFW.GetFramebufferSize(nw)
+    return (size.width, size.height)
+end
+
 function Base.isopen(window::GLFW.Window)
     was_destroyed(window) && return false
     try
-        !GLFW.WindowShouldClose(window)
+        return !GLFW.WindowShouldClose(window)
     catch e
         # can't be open if GLFW is already terminated
         e.code == GLFW.NOT_INITIALIZED && return false
