@@ -1,6 +1,8 @@
 using AbstractPlotting
 using GLMakie
 using GeometryBasics
+using ShaderAbstractions
+using Observables
 
 using GLFW
 GLFW.WindowHint(GLFW.FLOATING, true)
@@ -37,40 +39,12 @@ surface(-10..10, -10..10, data, color=rand(size(data)...)) |> display
 surface(-10..10, -10..10, data, color=rand(RGBf0, size(data)...))
 # surface(-10..10, -10..10, data, colormap=:magma, colorrange=(0.0, 2.0))
 
-# Mesh
-mesh(Sphere(Point3f0(0), 1f0)) |> display
-mesh(Sphere(Point3f0(0), 1f0), color=:red)
-
-tocolor(x) = RGBf0(x...)
-positions = decompose(Point3f0, Sphere(Point3f0(0), 1f0))
-triangles = decompose(GLTriangleFace, Sphere(Point3f0(0), 1f0))
-uv = GeometryBasics.decompose_uv(Sphere(Point3f0(0), 1f0))
-
-xyz_vertex_color = tocolor.(positions)
-mesh_normals = GeometryBasics.normals(positions, triangles)
-coords = meta(positions, color=xyz_vertex_color, normals=mesh_normals)
-vertexcolor_mesh = GeometryBasics.Mesh(coords, triangles)
-scren = mesh(vertexcolor_mesh, show_axis=false) |> display
-
-texsampler = AbstractPlotting.sampler(rand(RGBf0, 4, 4), uv)
-coords = meta(positions, color=texsampler, normals=mesh_normals)
-texture_mesh = GeometryBasics.Mesh(coords, triangles)
-
-scren = mesh(texture_mesh, show_axis=false) |> display
-
-texsampler = AbstractPlotting.sampler(:viridis, rand(length(positions)))
-coords = meta(positions, color=texsampler, normals=mesh_normals)
-texture_mesh = GeometryBasics.Mesh(coords, triangles)
-
-scren = mesh(texture_mesh, show_axis=false) |> display
-
 
 poly(decompose(Point2f0, Circle(Point2f0(0), 1f0))) |> display
 
 image(rand(10, 10))
 
 heatmap(rand(10, 10)) |> display
-
 
 volume(rand(4, 4, 4), isovalue=0.5, isorange=0.01, algorithm=:iso) |> display
 volume(rand(4, 4, 4), algorithm=:mip)
