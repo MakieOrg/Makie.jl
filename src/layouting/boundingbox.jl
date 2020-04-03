@@ -142,6 +142,30 @@ rectshift(rect, vec) = Rect(origin(rect) .+ vec, widths(rect))
 
 to_ndim(type, rect, default = 0) = Rect(to_ndim(type, origin(rect), default), to_ndim(type, widths(rect), default))
 
+"""
+Calculate the tight rectangle around a 2D rectangle rotated by `angle` radians.
+"""
+function rotatedrect(rect::HyperRectangle{2}, angle)
+    ox, oy = rect.origin
+    wx, wy = rect.widths
+    points = @SMatrix([
+        ox oy;
+        ox oy+wy;
+        ox+wx oy;
+        ox+wx oy+wy;
+    ])
+    mrot = @SMatrix([
+        cos(angle) -sin(angle);
+        sin(angle) cos(angle);
+    ])
+    rotated = mrot * points'
+
+    rmins = minimum(rotated, dims = 2)
+    rmaxs = maximum(rotated, dims = 2)
+
+    newrect = Rect2D(rmins..., (rmaxs .- rmins)...)
+end
+
 function boundingbox(
         text::String, position, textsize, font,
         align, rotation, model = Mat4f0(I)
@@ -166,9 +190,14 @@ function boundingbox(
         # TODO fix center + align + rotation
         if !(c in ('\r', '\n'))
             raw_bb = inkboundingbox(FreeTypeAbstraction.internal_get_extent(font, c))
-            scaled_bb = to_ndim(Vec3f0, rectmult(raw_bb, scale / 64), 0)
+            scaled_bb = rectmult(raw_bb, scale / 64)
+
+            # TODO this only works in 2d
+            rot_2d_radians = 2acos(rotation[4])
+            rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
+
             # bb = rectdiv(bb, 1.5)
-            shifted_bb = rectshift(scaled_bb, position[i])
+            shifted_bb = rectshift(to_ndim(Vec3f0, rotated_bb, 0), position[i])
             if isnothing(bbox)
                 bbox = shifted_bb
             else
