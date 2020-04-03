@@ -151,10 +151,11 @@ function boundingbox(
     ctext_state = iterate(text)
     ctext_state === nothing && return FRect3D()
 
+    # call the layouting algorithm to find out where all the glyphs end up
+    # this is kind of a doubling, maybe it could be avoided if at creation all
+    # positions would be populated in the text object, but that seems convoluted
     if position isa VecTypes
-        bb = FRect3D(to_ndim(Vec3f0, position, 0.0), Vec3f0(0))
-
-        position, scales = layout_text(text, position, textsize, font, align, rotation, model)
+        position, _ = layout_text(text, position, textsize, font, align, rotation, model)
     end
 
     bbox = nothing
