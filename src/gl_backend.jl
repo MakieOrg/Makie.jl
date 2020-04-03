@@ -32,9 +32,9 @@ function get_texture!(atlas)
             ctx = tex.context
             if GLAbstraction.context_alive(ctx)
                 prev_ctx = GLAbstraction.current_context()
-                GLAbstraction.switch_context!(ctx)
+                ShaderAbstractions.switch_context!(ctx)
                 tex[rectangle] = distance_field
-                GLAbstraction.switch_context!(prev_ctx)
+                ShaderAbstractions.switch_context!(prev_ctx)
             end
         end
         AbstractPlotting.font_render_callback!(callback)

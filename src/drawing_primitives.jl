@@ -161,10 +161,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-            visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes)).children[]
+            visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes))
         else
             handle_intensities!(gl_attributes)
-            visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+            visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes))
         end
     end
 end
@@ -176,7 +176,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
         data[:pattern] = to_value(linestyle)
         positions = handle_view(x[1], data)
         handle_intensities!(data)
-        visualize(positions, Style(:lines), data).children[]
+        visualize(positions, Style(:lines), data)
     end
 end
 
@@ -193,7 +193,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
             delete!(data, :color_map)
             delete!(data, :color_norm)
         end
-        visualize(positions, Style(:linesegment), data).children[]
+        visualize(positions, Style(:linesegment), data)
     end
 end
 
@@ -263,7 +263,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             uv_offset_width = uv_offset_width,
             distancefield = get_texture!(atlas),
             visible = gl_attributes[:visible]
-        ).children[]
+        )
     end
 end
 
@@ -278,7 +278,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
             gl_attributes[:nan_color] = lift(to_color, gl_attributes[:nan_color])
         end
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
-        GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes)).children[]
+        GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes))
     end
 end
 
@@ -301,7 +301,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         img = get_image(gl_attributes)
         # remove_automatic!(gl_attributes)
-        visualize(img, Style(:default), gl_attributes).children[]
+        visualize(img, Style(:default), gl_attributes)
     end
 end
 
@@ -317,7 +317,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
         end
-        visualize(x[1], Style(:default), gl_attributes).children[]
+        visualize(x[1], Style(:default), gl_attributes)
     end
 end
 
@@ -343,11 +343,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         if all(v-> to_value(v) isa AbstractMatrix, args)
-            return visualize(args, Style(:surface), gl_attributes).children[]
+            return visualize(args, Style(:surface), gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
             @show typeof(to_value(args[3]))
-            return visualize(args[3], Style(:surface), gl_attributes).children[]
+            return visualize(args[3], Style(:surface), gl_attributes)
         end
     end
     return robj
@@ -439,7 +439,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
                 )
                 convert(Mat4f0, m) * m2
             end
-            return visualize(vol[4], Style(:default), gl_attributes).children[]
+            return visualize(vol[4], Style(:default), gl_attributes)
         end
     end
 end

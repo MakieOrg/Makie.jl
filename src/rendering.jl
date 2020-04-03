@@ -59,7 +59,7 @@ Renders a single frame of a `window`
 """
 function render_frame(screen::Screen)
     nw = to_native(screen)
-    GLAbstraction.is_context_active(nw) || return
+    ShaderAbstractions.is_context_active(nw) || return
     fb = screen.framebuffer
     wh = Int.(framebuffer_size(nw))
     resize!(fb, wh)

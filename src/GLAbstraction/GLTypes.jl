@@ -263,7 +263,7 @@ end
 
 const RENDER_OBJECT_ID_COUNTER = Ref(zero(GLushort))
 
-mutable struct RenderObject{Pre} <: Composable{DeviceUnit}
+mutable struct RenderObject{Pre}
     main                 # main object
     uniforms            ::Dict{Symbol, Any}
     vertexarray         ::GLVertexArray

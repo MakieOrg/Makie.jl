@@ -33,12 +33,11 @@ function assemble_shader(data)
     shader = data[:shader]
     delete!(data, :shader)
     glp = get(data, :gl_primitive, GL_TRIANGLES)
-    robj = assemble_robj(
+    return assemble_robj(
         data, shader, FRect3D(), glp,
         get(data, :prerender, nothing),
         get(data, :postrender, nothing)
     )
-    return Context(robj)
 end
 
 points2f0(positions::Vector{T}, range::AbstractRange) where {T} = Point2f0[Point2f0(range[i], positions[i]) for i=1:length(range)]

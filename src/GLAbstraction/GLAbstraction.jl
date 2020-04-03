@@ -12,6 +12,7 @@ using Printf
 using LinearAlgebra
 using Observables
 using ShaderAbstractions
+using ShaderAbstractions: current_context, is_context_active, context_alive
 
 import FileIO: load, save
 
@@ -50,6 +51,7 @@ export @materialize!  #splats keywords from a dict into variables and deletes th
 export close_to_square
 export AND, OR, isnotempty
 
+include("shaderabstraction.jl")
 include("GLTypes.jl")
 export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array

@@ -302,7 +302,7 @@ function display_loading_image(screen::Screen)
     if size(image) == fbsize
         nw = to_native(screen)
         fb.color[1:size(image, 1), 1:size(image, 2)] = image # transfer loading image to gpu framebuffer
-        GLAbstraction.is_context_active(nw) || return
+        ShaderAbstractions.is_context_active(nw) || return
         w, h = fbsize
         glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
         glViewport(0, 0, w, h)
@@ -356,7 +356,7 @@ function Screen(;
 
     # tell GLAbstraction that we created a new context.
     # This is important for resource tracking, and only needed for the first context
-    GLAbstraction.switch_context!(window)
+    ShaderAbstractions.switch_context!(window)
     GLAbstraction.empty_shader_cache!()
     push!(gl_screens, window)
 

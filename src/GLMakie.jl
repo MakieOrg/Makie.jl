@@ -8,6 +8,7 @@ using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter
 using AbstractPlotting: convert_attribute, @extractvalue, LineSegments
 using AbstractPlotting: @get_attribute, to_value, to_colormap, extrema_nan
 using AbstractPlotting: ClosedInterval, (..)
+using ShaderAbstractions
 
 using Base: RefValue
 import Base: push!, isopen, show
@@ -24,7 +25,6 @@ end
 returns path relative to the assets folder
 """
 assetpath(folders...) = joinpath(@__DIR__, "GLVisualize", "assets", folders...)
-
 
 """
 Loads a file from the asset folder

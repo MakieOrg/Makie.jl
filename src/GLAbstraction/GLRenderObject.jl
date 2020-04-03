@@ -90,54 +90,6 @@ end
 prerendertype(::Type{RenderObject{Pre}}) where {Pre} = Pre
 prerendertype(::RenderObject{Pre}) where {Pre} = Pre
 
-extract_renderable(context::Vector{RenderObject}) = context
-extract_renderable(context::RenderObject) = RenderObject[context]
-extract_renderable(context::Vector{T}) where {T <: Composable} = map(extract_renderable, context)
-function extract_renderable(context::Context)
-    result = extract_renderable(context.children[1])
-    for elem in context.children[2:end]
-        push!(result, extract_renderable(elem)...)
-    end
-    result
-end
-transformation(c::RenderObject) = c[:model]
-function transformation(c::RenderObject, model)
-    c[:model] = const_lift(*, model, c[:model])
-end
-function transform!(c::RenderObject, model)
-    c[:model] = const_lift(*, model, c[:model])
-end
-
-function _translate!(c::RenderObject, trans::TOrSignal{Mat4f0})
-    c[:model] = const_lift(*, trans, c[:model])
-end
-function _translate!(c::Context, m::TOrSignal{Mat4f0})
-    for elem in c.children
-        _translate!(elem, m)
-    end
-end
-
-function translate!(c::Composable, vec::TOrSignal{T}) where T <: Vec{3}
-     _translate!(c, const_lift(translationmatrix, vec))
-end
-function _boundingbox(c::RenderObject)
-    bb = to_value(c[:boundingbox])
-    bb == nothing && return FRect3D()
-    to_value(c[:model]) * bb
-end
-function _boundingbox(c::Composable)
-    robjs = extract_renderable(c)
-    isempty(robjs) && return FRect3D()
-    mapreduce(_boundingbox, union, robjs)
-end
-"""
-Copy function for a context. We only need to copy the children
-"""
-function Base.copy(c::Context{T}) where T
-    new_children = [copy(child) for child in c.children]
-    Context{T}(new_children, c.boundingbox, c.transformation)
-end
-
 """
 Copy function for a RenderObject. We only copy the uniform dict
 """
