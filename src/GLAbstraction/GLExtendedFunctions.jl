@@ -73,8 +73,9 @@ function glGetActiveUniform(programID::GLuint, index::Integer)
 
     uname = unsafe_string(pointer(name), actualLength[1])
     uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
-    (uname, typ[1], uniformSize[1])
+    return (uname, typ[1], uniformSize[1])
 end
+
 function glGetActiveAttrib(programID::GLuint, index::Integer)
     actualLength   = GLsizei[1]
     attributeSize  = GLint[1]
@@ -88,21 +89,20 @@ function glGetActiveAttrib(programID::GLuint, index::Integer)
 
     uname = unsafe_string(pointer(name), actualLength[1])
     uname = Symbol(replace(uname, r"\[\d*\]" => "")) # replace array brackets. This is not really a good solution.
-    (uname, typ[1], attributeSize[1])
+    return (uname, typ[1], attributeSize[1])
 end
+
 function glGetProgramiv(programID::GLuint, variable::GLenum)
     result = Ref{GLint}(-1)
     glGetProgramiv(programID, variable, result)
-    result[]
+    return result[]
 end
+
 function glGetIntegerv(variable::GLenum)
     result = Ref{GLint}(-1)
     glGetIntegerv(UInt32(variable), result)
-    result[]
+    return result[]
 end
-
-
-
 
 function glGenBuffers(n=1)
     result = GLuint[0]
@@ -111,8 +111,9 @@ function glGenBuffers(n=1)
     if id <= 0
         error("glGenBuffers returned invalid id. OpenGL Context active?")
     end
-    id
+    return id
 end
+
 function glGenVertexArrays()
     result = GLuint[0]
     glGenVertexArrays(1, result)
@@ -120,8 +121,9 @@ function glGenVertexArrays()
     if id <=0
         error("glGenVertexArrays returned invalid id. OpenGL Context active?")
     end
-    id
+    return id
 end
+
 function glGenTextures()
     result = GLuint[0]
     glGenTextures(1, result)
@@ -129,8 +131,9 @@ function glGenTextures()
     if id <= 0
         error("glGenTextures returned invalid id. OpenGL Context active?")
     end
-    id
+    return id
 end
+
 function glGenFramebuffers()
     result = GLuint[0]
     glGenFramebuffers(1, result)
@@ -138,17 +141,19 @@ function glGenFramebuffers()
     if id <= 0
         error("glGenFramebuffers returned invalid id. OpenGL Context active?")
     end
-    id
+    return id
 end
 
 function glDeleteTextures(id::GLuint)
     arr = [id]
     glDeleteTextures(1, arr)
 end
+
 function glDeleteVertexArrays(id::GLuint)
     arr = [id]
     glDeleteVertexArrays(1, arr)
 end
+
 function glDeleteBuffers(id::GLuint)
     arr = [id]
     glDeleteBuffers(1, arr)
@@ -163,16 +168,14 @@ end
 glViewport(x::Rect2D) = glViewport(minimum(x)..., widths(x)...)
 glScissor(x::Rect2D) = glScissor(minimum(x)..., widths(x)...)
 
-
 function glGenRenderbuffers(format::GLenum, attachment::GLenum, dimensions)
     renderbuffer = GLuint[0]
     glGenRenderbuffers(1, renderbuffer)
     glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer[1])
     glRenderbufferStorage(GL_RENDERBUFFER, format, dimensions...)
     glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachment, GL_RENDERBUFFER, renderbuffer[1])
-    renderbuffer[1]
+    return renderbuffer[1]
 end
-
 
 function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, h::Integer, d::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
     glTexImage3D(GL_PROXY_TEXTURE_3D, level, internalFormat, w, h, d, border, format, datatype, C_NULL)
@@ -196,6 +199,7 @@ function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::In
     end
     glTexImage3D(ttype, level, internalFormat, w, h, d, border, format, datatype, data)
 end
+
 function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, h::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
     maxsize = glGetIntegerv(GL_MAX_TEXTURE_SIZE)
     glTexImage2D(GL_PROXY_TEXTURE_2D, level, internalFormat, w, h, border, format, datatype, C_NULL)
@@ -215,6 +219,7 @@ function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::In
     end
     glTexImage2D(ttype, level, internalFormat, w, h, border, format, datatype, data)
 end
+
 function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::Integer, border::Integer, format::GLenum, datatype::GLenum, data)
     glTexImage1D(GL_PROXY_TEXTURE_1D, level, internalFormat, w, border, format, datatype, C_NULL)
     for l in 0:level
@@ -228,4 +233,29 @@ function glTexImage(ttype::GLenum, level::Integer, internalFormat::GLenum, w::In
         end
     end
     glTexImage1D(ttype, level, internalFormat, w, border, format, datatype, data)
+end
+
+function glsl_version_number()
+    glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
+    if length(glsl) >= 2
+        return VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
+    else
+        error("could not parse GLSL version: $glsl")
+    end
+end
+
+function opengl_version_number()
+    ogl = split(unsafe_string(glGetString(GL_VERSION)), ['.', ' '])
+    if length(ogl) >= 3
+        return VersionNumber(parse(Int, ogl[1]), parse(Int, ogl[2]), parse(Int, ogl[3]))
+    else
+        error("could not parse OpenGL version: $ogl")
+    end
+end
+
+function glsl_version_string()
+    glsl = glsl_version_number()
+    glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
+    glsl_version = string(glsl.major) * rpad(string(glsl.minor), 2, "0")
+    return "#version $(glsl_version)\n"
 end

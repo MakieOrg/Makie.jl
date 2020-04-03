@@ -38,9 +38,7 @@ export visualize # Visualize an object
 export visualize_default # get the default parameter for a visualization
 
 include("utils.jl")
-export y_partition, y_partition_abs
-export x_partition, x_partition_abs
-export loop, bounce
+
 
 include(joinpath("visualize", "lines.jl"))
 include(joinpath("visualize", "image_like.jl"))

@@ -14,66 +14,12 @@ const VolumeTypes{T} = ArrayTypes{T, 3}
 @enum Projection PERSPECTIVE ORTHOGRAPHIC
 @enum MouseButton MOUSE_LEFT MOUSE_MIDDLE MOUSE_RIGHT
 
-const GLContext = Any
-
 """
 Returns the cardinality of a type. falls back to length
 """
 cardinality(x) = length(x)
 cardinality(x::Number) = 1
 cardinality(x::Type{T}) where {T <: Number} = 1
-
-#=
-We need to track the current OpenGL context.
-Since we can't do this via pointer identity  (OpenGL may reuse the same pointers)
-We go for this slightly ugly version.
-=#
-const context = Base.RefValue{GLContext}(:none)
-
-function current_context()
-    context[] == :none && error("No active context")
-    context[]
-end
-
-function is_current_context(x)
-    x == context[]
-end
-
-function native_context_alive(x)
-    error("Not implemented for $(typeof(x))")
-end
-
-"""
-Is current context & is alive
-"""
-is_context_active(x) = is_current_context(x) && context_alive(x)
-
-"""
-Has context been destroyed or is it still living?
-"""
-context_alive(x) = native_context_alive(x)
-
-function native_switch_context!(x)
-    error("Not implemented for $(typeof(x))")
-end
-
-"""
-Invalidates the current context
-"""
-function switch_context!()
-    # for reverting to no context
-    context[] = :none
-end
-
-"""
-Switches to a new context `x`. Is a noop if `x` is already current
-"""
-function switch_context!(x)
-    if !is_current_context(x)
-        context[] = x
-        native_switch_context!(x)
-    end
-end
 
 struct Shader
     name::Symbol
@@ -85,9 +31,11 @@ struct Shader
         new(name, source, typ, id, current_context())
     end
 end
+
 function Shader(name, source::Vector{UInt8}, typ)
     compile_shader(source, typ, name)
 end
+
 name(s::Shader) = s.name
 
 import Base: ==
@@ -119,6 +67,7 @@ mutable struct GLProgram
         obj
     end
 end
+
 function Base.show(io::IO, p::GLProgram)
     println(io, "GLProgram: $(p.id)")
     println(io, "Shaders:")
@@ -130,7 +79,6 @@ function Base.show(io::IO, p::GLProgram)
         println(io, "   ", name, "::", GLENUM(typ).name)
     end
 end
-
 
 ############################################
 # Framebuffers and the like
@@ -148,6 +96,7 @@ struct RenderBuffer
         new(id, format, current_context())
     end
 end
+
 function resize!(rb::RenderBuffer, newsize::AbstractArray)
     if length(newsize) != 2
         error("RenderBuffer needs to be 2 dimensional. Dimension found: ", newsize)
@@ -166,6 +115,7 @@ struct FrameBuffer{T}
         new(id, attachments, current_context())
     end
 end
+
 function resize!(fbo::FrameBuffer, newsize::AbstractArray)
     if length(newsize) != 2
         error("FrameBuffer needs to be 2 dimensional. Dimension found: ", newsize)
@@ -177,7 +127,6 @@ end
 
 ########################################################################################
 # OpenGL Arrays
-
 
 const GLArrayEltypes = Union{StaticVector, Real, Colorant}
 """
@@ -209,7 +158,6 @@ include("GLTexture.jl")
 
 ########################################################################
 
-
 """
 Represents an OpenGL vertex array type.
 Can be created from a dict of buffers and an opengl Program.
@@ -228,16 +176,15 @@ mutable struct GLVertexArray{T}
         new(program, id, bufferlength, buffers, indices, current_context())
     end
 end
+
 """
 returns the length of the vertex array.
 This is amount of primitives stored in the vertex array, needed for `glDrawArrays`
 """
-function length(vao::GLVertexArray)
-    length(first(vao.buffers)[2]) # all buffers have same length, so first should do!
-end
-function GLVertexArray(vao::GLVertexArray)
-    GLVertexArray(vao.buffers, vao.program)
-end
+length(vao::GLVertexArray) = length(first(vao.buffers)[2]) # all buffers have same length, so first should do!
+
+GLVertexArray(vao::GLVertexArray) = GLVertexArray(vao.buffers, vao.program)
+
 function GLVertexArray(bufferdict::Dict, program::GLProgram)
     #get the size of the first array, to assert later, that all have the same size
     indexes = -1
@@ -275,8 +222,34 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
     end
     obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indexes)
     finalizer(free, obj)
-    obj
+    return obj
 end
+using ShaderAbstractions: Buffer
+function GLVertexArray(program::GLProgram, buffers::Buffer, triangles::AbstractVector{<: GLTriangleFace})
+    #get the size of the first array, to assert later, that all have the same size
+    id = glGenVertexArrays()
+    glBindVertexArray(id)
+    for property_name in propertynames(buffers)
+        array = getproperty(buffers, property_name)
+        attribute = string(property_name)
+        # TODO: use glVertexAttribDivisor to allow multiples of the longest buffer
+        buffer = GLBuffer(array)
+        bind(buffer)
+        attribLocation = get_attribute_location(program.id, attribute)
+        if attribLocation == -1
+            error("could not bind attribute $(attribute)")
+        end
+        glVertexAttribPointer(attribLocation, cardinality(buffer), julia2glenum(eltype(buffer)), GL_FALSE, 0, C_NULL)
+        glEnableVertexAttribArray(attribLocation)
+        buffers[attribute] = buffer
+    end
+    glBindVertexArray(0)
+    indices = indexbuffer(triangles)
+    obj = GLVertexArray{typeof(indexes)}(program, id, len, buffers, indices)
+    finalizer(free, obj)
+    return obj
+end
+
 function Base.show(io::IO, vao::GLVertexArray)
     show(io, vao.program)
     println(io, "GLVertexArray $(vao.id):")
@@ -349,9 +322,6 @@ function RenderObject(
     end
     buffers = filter(((key, value),) -> isa(value, GLBuffer) || key == :indices, data)
     uniforms = filter(((key, value),) -> !isa(value, GLBuffer) && key != :indices, data)
-    if haskey(uniforms, :color)
-        @show typeof(uniforms[:color])
-    end
     get!(data, :visible, true) # make sure, visibility is set
     merge!(data, passthrough) # in the end, we insert back the non opengl data, to keep things simple
     p = gl_convert(to_value(program), data) # "compile" lazyshader
@@ -373,24 +343,12 @@ include("GLRenderObject.jl")
 
 ####################################################################################
 # freeing
-
-function log_finalizer(x)
-    open("finalizer_log.txt", "a") do io
-        print(io, x)
-        print(io, '\n')
-    end
-end
-
 function free(x)
     try
         unsafe_free(x)
     catch e
         isa(e, ContextNotAvailable) && return # if context got destroyed no need to worry!
-        if :msg in fieldnames(e)
-            log_finalizer(e.msg)
-        else
-            log_finalizer(typeof(e))
-        end
+        rethrow(e)
     end
 end
 
@@ -401,6 +359,7 @@ function unsafe_free(x::GLProgram)
     glDeleteProgram(x.id)
     return
 end
+
 function unsafe_free(x::GLBuffer)
     # don't free from other context
     is_context_active(x.context) || return
@@ -408,6 +367,7 @@ function unsafe_free(x::GLBuffer)
     glDeleteBuffers(1, id)
     return
 end
+
 function unsafe_free(x::Texture)
     is_context_active(x.context) || return
     id = Ref(x.id)

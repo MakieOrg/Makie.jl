@@ -54,7 +54,7 @@ function insertplots!(screen::GLScreen, scene::Scene)
     get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
         push!(screen.screens, (id, scene))
-        id
+        return id
     end
     for elem in scene.plots
         insert!(screen, scene, elem)

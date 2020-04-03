@@ -44,10 +44,6 @@ import ModernGL.glGetShaderiv
 import ModernGL.glViewport
 import ModernGL.glScissor
 
-include("composition.jl")
-export Composable, Context, convert!
-
-
 include("GLUtils.jl")
 export @materialize #splats keywords from a dict into variables
 export @materialize!  #splats keywords from a dict into variables and deletes them from the dict
@@ -79,8 +75,6 @@ export Style                    # Style Type, which is used to choose different 
 export mergedefault!            # merges a style dict via a given style
 export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VectorTypes, MatTypes, VolumeTypes
 export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
-
-
 
 include("GLExtendedFunctions.jl")
 export glTexImage # Julian wrapper for glTexImage1D, glTexImage2D, glTexImage3D

@@ -18,6 +18,7 @@ mutable struct GLBuffer{T} <: GPUArray{T, 1}
         obj
     end
 end
+
 bind(buffer::GLBuffer) = glBindBuffer(buffer.buffertype, buffer.id)
 #used to reset buffer target
 bind(buffer::GLBuffer, other_target) = glBindBuffer(buffer.buffertype, other_target)
@@ -105,14 +106,13 @@ function gpu_resize!(buffer::GLBuffer{T}, newdims::NTuple{1, Int}) where T
     nothing
 end
 
-
-
 function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::Integer) where T
     multiplicator = sizeof(T)
     bind(b)
     glBufferSubData(b.buffertype, multiplicator*(offset-1), sizeof(value), value)
     bind(b, 0)
 end
+
 function gpu_setindex!(b::GLBuffer{T}, value::Vector{T}, offset::UnitRange{Int}) where T
     multiplicator = sizeof(T)
     bind(b)
@@ -142,8 +142,9 @@ function Base.iterate(buffer::GLBuffer{T}) where T
     length(buffer) < 1 && return nothing
     glBindBuffer(buffer.buffertype, buffer.id)
     ptr = Ptr{T}(glMapBuffer(buffer.buffertype, GL_READ_WRITE))
-    (unsafe_load(ptr, i), (ptr, 1))
+    return (unsafe_load(ptr, i), (ptr, 1))
 end
+
 function Base.iterate(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
     ptr, i = state
     if i > length(buffer)
@@ -151,9 +152,8 @@ function Base.iterate(buffer::GLBuffer{T}, state::Tuple{Ptr{T}, Int}) where T
         return nothing
     end
     val = unsafe_load(ptr, i)
-    (val, (ptr, i + 1))
+    return (val, (ptr, i + 1))
 end
-
 
 #copy inside one buffer
 function unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, len::Int) where T
@@ -167,6 +167,7 @@ function unsafe_copy!(buffer::GLBuffer{T}, readoffset::Int, writeoffset::Int, le
     bind(buffer,0)
     return nothing
 end
+
 function unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeoffset::Int, len::Int) where T
     bind(b)
     ptr = Ptr{T}(glMapBuffer(b.buffertype, GL_WRITE_ONLY))
@@ -176,6 +177,7 @@ function unsafe_copy!(a::Vector{T}, readoffset::Int, b::GLBuffer{T}, writeoffset
     glUnmapBuffer(b.buffertype)
     bind(b,0)
 end
+
 function unsafe_copy!(a::GLBuffer{T}, readoffset::Int, b::Vector{T}, writeoffset::Int, len::Int) where T
     bind(a)
     ptr = Ptr{T}(glMapBuffer(a.buffertype, GL_READ_ONLY))
@@ -193,5 +195,5 @@ function gpu_getindex(b::GLBuffer{T}, range::UnitRange) where T
     bind(b)
     glGetBufferSubData(b.buffertype, multiplicator*offset, sizeof(value), value)
     bind(b, 0)
-    value
+    return value
 end

@@ -358,15 +358,3 @@ function template2source(source::AbstractString, view, attributes::Dict{Symbol, 
     end
     source, replacements
 end
-
-function glsl_version_string()
-    glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
-    if length(glsl) >= 2
-        glsl = VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
-        glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
-        glsl_version = string(glsl.major) * rpad(string(glsl.minor),2,"0")
-        return "#version $(glsl_version)\n"
-    else
-        error("could not parse GLSL version: $glsl")
-    end
-end

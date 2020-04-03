@@ -90,8 +90,6 @@ function attach_framebuffer(t::Texture{T, 2}, attachment) where T
     glFramebufferTexture2D(GL_FRAMEBUFFER, attachment, GL_TEXTURE_2D, t.id, 0)
 end
 
-
-
 function GLFramebuffer(fb_size::NTuple{2, Int})
     render_framebuffer = glGenFramebuffers()
 
@@ -107,7 +105,6 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         internalformat = GL_DEPTH24_STENCIL8,
         format = GL_DEPTH_STENCIL
     )
-
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
@@ -202,6 +199,14 @@ function reactive_run_till_now()
 end
 
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
+
+
+function GLContext()
+    context = GLFW.GetCurrentContext()
+    version = opengl_version_number()
+    glsl_version = glsl_version_number()
+    return GLContext(context, version, glsl_version, unique_context_counter())
+end
 
 function GLAbstraction.native_switch_context!(x::GLFW.Window)
     GLFW.MakeContextCurrent(x)

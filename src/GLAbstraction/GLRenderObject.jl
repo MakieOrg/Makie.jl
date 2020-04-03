@@ -25,43 +25,6 @@ Base.setindex!(obj::RenderObject, value, ::Val{:postrender}, x::Function) = obj.
 const empty_signal = Node(false)
 post_empty() = push!(empty_signal, false)
 
-"""
-Function which sets an argument of a Context/RenderObject.
-If multiple RenderObjects are supplied, it'll try to set the same argument in all
-of them.
-"""
-function set_arg!(robj::RenderObject, sym, value)
-    current_val = robj[sym]
-    set_arg!(robj, sym, current_val, value)
-    # GLVisualize relies on reactives event system no for rendering
-    # so if a change should be visible there must be an event to indicate change
-    post_empty()
-    nothing
-end
-function set_arg!(robj::Context, sym, value)
-    set_arg!(robj.children, sym, value)
-    nothing
-end
-function set_arg!(robj::Vector, sym, value)
-    for elem in robj
-        set_arg!(elem, sym, value)
-    end
-    nothing
-end
-
-function set_arg!(robj::RenderObject, sym, to_update::GPUArray, value)
-    update!(to_update, value)
-end
-function set_arg!(robj::RenderObject, sym, to_update, value)
-    robj[sym] = value
-end
-function set_arg!(robj::RenderObject, sym, to_update::Node, value::Node)
-    robj[sym] = value
-end
-function set_arg!(robj::RenderObject, sym, to_update::Node, value)
-    push!(to_update, value)
-end
-
 
 """
 Represents standard sets of function applied before rendering
@@ -175,7 +138,6 @@ function Base.copy(c::Context{T}) where T
     Context{T}(new_children, c.boundingbox, c.transformation)
 end
 
-
 """
 Copy function for a RenderObject. We only copy the uniform dict
 """
@@ -191,15 +153,3 @@ function Base.copy(robj::RenderObject{Pre}) where Pre
     )
     Context(robj)
 end
-
-# """
-# If you have an array of OptimizedPrograms, you only need to put PreRender in front.
-# """
-# type OptimizedProgram{PreRender}
-#     program::GLProgram
-#     uniforms::FixedDict
-#     vertexarray::GLVertexArray
-#     gl_parameters::PreRender
-#     renderfunc::Callable
-#     visible::Boolean
-# end
