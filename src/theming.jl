@@ -44,7 +44,7 @@ const minimal_default = Attributes(
     axis_type = automatic,
     camera = automatic,
     limits = automatic,
-    padding = Vec3f0(0.1),
+    padding = Vec3f0(0.05),
     raw = false
 )
 

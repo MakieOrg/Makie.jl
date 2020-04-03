@@ -30,7 +30,7 @@ function ylabel!(scene, ylabel::AbstractString)
     end
     nothing
 end
-ylabel!(ylabel::AbstractString) = xlabel!(current_scene(), ylabel)
+ylabel!(ylabel::AbstractString) = ylabel!(current_scene(), ylabel)
 
 """
     zlabel!([scene,] zlabel)

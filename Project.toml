@@ -1,6 +1,6 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.9.26"
+version = "0.9.27"
 
 [deps]
 AbstractNumbers = "85c772de-338a-5e7f-b815-41e76c26ac1f"
@@ -58,6 +58,7 @@ StaticArrays = "0.12"
 StructArrays = "0.3.0, 0.4"
 UnicodeFun = "0.4"
 julia = "1.0"
+MakieGallery = "0.1.9"
 
 [extras]
 Base64 = "2a0f44e3-6c83-55bd-87e4-b1978d98bd5f"

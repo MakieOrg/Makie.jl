@@ -36,14 +36,13 @@ $(ATTRIBUTES)
         showgrid = true,
         showticks = true,
         showtickmarks = true,
-        padding = 0.1,
+        padding = 0.0,
 
         ticks = Theme(
-
             ranges_labels = (automatic, automatic),
             formatter = Formatters.plain,
 
-            gap = 3,
+            gap = 1,
             title_gap = 3,
 
             linewidth = (1, 1),
@@ -56,9 +55,10 @@ $(ATTRIBUTES)
             align = ((:center, :top), (:right, :center)),
             font = lift(dim2, theme(scene, :font)),
         ),
+
         tickmarks = Theme(
-            length = (3.0, 3.0),
-            linewidth = (1,1),
+            length = (1.0, 1.0),
+            linewidth = (1, 1),
             linecolor = ((:black, 0.4), (:black, 0.2)),
             linestyle = (nothing, nothing)
         ),
@@ -383,6 +383,7 @@ function draw_titles(
         textcolor, textsize, rotation, align, font,
         title
     )
+
     tickspace_x = maximum(map(yticks) do tick
         str = last(tick)
         tick_bb = text_bb(str, to_font(tickfont[2]), tick_size[2])
@@ -411,7 +412,6 @@ function draw_titles(
             )
         end
     end
-
     if title !== nothing
         # TODO give title own text attributes
         push!(

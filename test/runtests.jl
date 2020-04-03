@@ -4,7 +4,6 @@ using Test
 using GLMakie
 
 # Download reference images from master
-MakieGallery.current_ref_version[] = "master"
 
 const MINIMAL = get(ENV, "ABSTRACTPLOTTING_MINIMAL", "false")
 
@@ -35,7 +34,7 @@ include("shorthands.jl")
     @test scene[Axis].ticks.title_gap[] == 3
     scene[Axis].ticks.title_gap = 4
     @test scene[Axis].ticks.title_gap[] == 4
-    @test scene[Axis].tickmarks.length[] == (3, 3)
+    @test scene[Axis].tickmarks.length[] == (1, 1)
 end
 
 
