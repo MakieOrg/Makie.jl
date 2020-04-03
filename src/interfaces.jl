@@ -92,7 +92,7 @@ $(ATTRIBUTES)
         isovalue = 0.5,
         isorange = 0.05,
         color = nothing,
-        colormap = theme(scene, :colormap),
+        colormap = :viridis,
         colorrange = (0, 1),
         fxaa = true,
     )
