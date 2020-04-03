@@ -1,11 +1,8 @@
 using AbstractPlotting
 using GLMakie
 using GeometryBasics
-using ShaderAbstractions
 using Observables
-
-using GLFW
-GLFW.WindowHint(GLFW.FLOATING, true)
+using GLMakie
 
 scatter(1:4, color=1:4) |> display
 scatter(1:4, color=rand(RGBAf0, 4))
@@ -38,7 +35,6 @@ surface(-10..10, -10..10, data)
 surface(-10..10, -10..10, data, color=rand(size(data)...)) |> display
 surface(-10..10, -10..10, data, color=rand(RGBf0, size(data)...))
 # surface(-10..10, -10..10, data, colormap=:magma, colorrange=(0.0, 2.0))
-
 
 poly(decompose(Point2f0, Circle(Point2f0(0), 1f0))) |> display
 
