@@ -18,31 +18,17 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
-        halign, valign, vertical, flipaxisposition, ticklabelalign, flip_vertical_label)
+        halign, valign, vertical, flipaxisposition, ticklabelalign, flip_vertical_label,
+        nsteps)
 
     decorations = Dict{Symbol, Any}()
 
     layoutobservables = LayoutObservables(LColorbar, attrs.width, attrs.height,
         halign, valign; suggestedbbox = bbox)
 
-    scenearea = lift(IRect2D_rounded, layoutobservables.computedbbox)
+    framebox = layoutobservables.computedbbox
 
-    scene = Scene(parent, scenearea, camera = campixel!, raw = true)
-
-    framebox = lift(scene.px_area) do pxa
-        BBox(0, pxa.widths[1], 0, pxa.widths[2])
-    end
-
-    vertices = Point3f0[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]
-    mesh = AbstractPlotting.GLNormalUVMesh(
-        vertices = copy(vertices),
-        faces = AbstractPlotting.GLTriangle[(1, 2, 3), (3, 4, 1)],
-        texturecoordinates = AbstractPlotting.UV{Float32}[(0, 1), (0, 0), (0, 0), (0, 1)]
-    )
-
-    nsteps = 100
-
-    colorlinepoints = lift(framebox) do fb
+    colorlinepoints = lift(framebox, nsteps) do fb, nsteps
         fbw = fb.widths[1]
         fbh = fb.widths[2]
 
@@ -51,10 +37,6 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         else
             [Point2f0(x * fbw, 0.5f0 * fbh) for x in LinRange(0f0, 1f0, nsteps)]
         end
-    end
-
-    cmap_node = lift(colormap) do cmap
-        c = AbstractPlotting.to_colormap(cmap, nsteps)
     end
 
     linewidth = lift(framebox) do fb
@@ -68,16 +50,29 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    lines!(scene, colorlinepoints, linewidth = linewidth, color = cmap_node, raw = true)
+    xrange = lift(framebox) do fb
+        range(left(fb), right(fb), length = 2)
+    end
+    yrange = lift(framebox) do fb
+        range(bottom(fb), top(fb), length = 2)
+    end
+
+    colorcells = lift(vertical, nsteps) do v, nsteps
+        if v
+            reshape(collect(1:nsteps), 1, :)
+        else
+            reshape(collect(1:nsteps), :, 1)
+        end
+    end
+
+    heatmap!(parent, xrange, yrange, colorcells, colormap = colormap, raw = true)
 
     axislines!(
-        parent, scene.px_area, spinewidth, topspinevisible, rightspinevisible,
+        parent, framebox, spinewidth, topspinevisible, rightspinevisible,
         leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
         rightspinecolor, bottomspinecolor)
 
-    campixel!(scene)
-
-    axispoints = lift(scenearea, vertical, flipaxisposition) do scenearea,
+    axispoints = lift(framebox, vertical, flipaxisposition) do scenearea,
             vertical, flipaxisposition
 
         if vertical
@@ -136,7 +131,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LColorbar(parent, scene, layoutobservables, attrs, decorations)
+    LColorbar(parent, Scene(), layoutobservables, attrs, decorations)
 end
 
 function tight_ticklabel_spacing!(lc::LColorbar)

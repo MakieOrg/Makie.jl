@@ -139,6 +139,7 @@ function default_attributes(::Type{LColorbar}, scene)
         height = nothing,
         colormap = :viridis,
         limits = (0f0, 1f0),
+        nsteps = 100
     )
 end
 
