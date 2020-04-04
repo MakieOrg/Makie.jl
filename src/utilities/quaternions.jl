@@ -26,21 +26,22 @@ end
 Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
 Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
-@inline Quaternion{T}(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
-@inline Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
+Quaternion{T}(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
+Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)
 function Base.convert(T::Type{Quaternion{T1}}, x::Quaternion{T2}) where {T1, T2}
     T(T2.(x.data))
 end
-@inline Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
-@inline Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
-@inline Base.getindex(x::Quaternion, i::Integer) = x.data[i]
+Quaternion(x1, x2, x3, s) = Quaternion(promote(x1, x2, x3, s))
+Quaternion(x::NTuple{4, T}) where T = Quaternion{T}(x)
+Base.getindex(x::Quaternion, i::Integer) = x.data[i]
 Base.isapprox(x::Quaternion, y::Quaternion) = all((x.data .≈ y.data))
 
 function qrotation(axis::StaticVector{3}, theta::Number)
     u = normalize(axis)
     s = sin(theta / 2)
-    Quaternion(s * u[1], s * u[2], s * u[3], cos(theta / 2))
+    return Quaternion(s * u[1], s * u[2], s * u[3], cos(theta / 2))
 end
+
 function Base.broadcast(f, arg1::Quaternion, arg2::Quaternion)
     Quaternion(f.(arg1.data, arg2.data))
 end
@@ -61,15 +62,19 @@ function Base.:(*)(quat::Quaternion{T}, vec::StaticVector{3}) where T
     num = quat[1] * T(2)
     num2 = quat[2] * T(2)
     num3 = quat[3] * T(2)
+
     num4 = quat[1] * num
     num5 = quat[2] * num2
     num6 = quat[3] * num3
+
     num7 = quat[1] * num2
     num8 = quat[1] * num3
     num9 = quat[2] * num3
+
     num10 = quat[4] * num
     num11 = quat[4] * num2
     num12 = quat[4] * num3
+
     VT = similar_type(vec, StaticArrays.Size(3,))
     return VT(
         (1f0 - (num5 + num6)) * vec[1] + (num7 - num12) * vec[2] + (num8 + num11) * vec[3],
@@ -80,7 +85,7 @@ end
 Base.conj(q::Quaternion) = Quaternion(-q[1], -q[2], -q[3], q[4])
 
 function Base.:(*)(q::Quaternion, w::Quaternion)
-    Quaternion(
+    return Quaternion(
         q[4] * w[1] + q[1] * w[4] + q[2] * w[3] - q[3] * w[2],
         q[4] * w[2] - q[1] * w[3] + q[2] * w[4] + q[3] * w[1],
         q[4] * w[3] + q[1] * w[2] - q[2] * w[1] + q[3] * w[4],
@@ -95,7 +100,7 @@ function Mat4{ET}(q::Quaternion{T}) where {T, ET}
     xx, xy, xz = 2q[1]^2,    2q[1]*q[2],  2q[1]*q[3]
     yy, yz, zz = 2q[2]^2,    2q[2]*q[3],  2q[3]^2
     T0, T1 = zero(ET), one(ET)
-    Mat{4, 4, ET}(
+    return Mat{4, 4, ET}(
         T1-(yy+zz), xy+sz,      xz-sy,      T0,
         xy-sz,      T1-(xx+zz), yz+sx,      T0,
         xz+sy,      yz-sx,      T1-(xx+yy), T0,
@@ -111,7 +116,7 @@ function Mat3{ET}(q::Quaternion{T}) where {T, ET}
     xx, xy, xz = 2q[1]^2,   2q[1]*q[2], 2q[1]*q[3]
     yy, yz, zz = 2q[2]^2,   2q[2]*q[3], 2q[3]^2
     T0, T1 = zero(ET), one(ET)
-    Mat{3, 3, ET}(
+    return Mat{3, 3, ET}(
         T1-(yy+zz), xy+sz,      xz-sy,
         xy-sz,      T1-(xx+zz), yz+sx,
         xz+sy,      yz-sx,      T1-(xx+yy)
@@ -129,8 +134,8 @@ function rotation_between(u::StaticVector{3, T}, v::StaticVector{3, T}) where T
     k = sqrt((norm(u) ^ 2) * (norm(v) ^ 2))
     if (k_cos_theta / k) ≈ T(-1)
         # 180 degree rotation around any orthogonal vector
-        Quaternion(normalize(orthogonal(u))..., T(0))
+        return Quaternion(normalize(orthogonal(u))..., T(0))
     else
-        normalize(Quaternion(cross(u, v)..., k_cos_theta + k))
+        return normalize(Quaternion(cross(u, v)..., k_cos_theta + k))
     end
 end
