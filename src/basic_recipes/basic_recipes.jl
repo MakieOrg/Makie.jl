@@ -627,6 +627,7 @@ $(ATTRIBUTES)
         colorrange = AbstractPlotting.automatic,
         levels = 5,
         linewidth = 1.0,
+        alpha = 1.0,
         fillrange = false,
     )
 end
