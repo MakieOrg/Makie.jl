@@ -2,7 +2,6 @@ using AbstractPlotting
 using GLMakie
 using GeometryBasics
 using Observables
-using GLMakie
 
 scene = Scene();
 
