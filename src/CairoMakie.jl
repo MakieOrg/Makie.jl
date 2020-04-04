@@ -212,6 +212,21 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
 
     isempty(positions) && return
 
+    # workaround for a LineSegments object created from a GLNormalMesh
+    # the input argument is a view of points using faces, which results in
+    # a vector of tuples of two points. we convert those to a list of points
+    # so they don't trip up the rest of the pipeline
+    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:Face}}} where P
+        positions = let
+            pos = Point3f0[]
+            for tup in positions
+                push!(pos, tup[1])
+                push!(pos, tup[2])
+            end
+            pos
+        end
+    end
+
     projected_positions = project_position.(Ref(scene), positions, Ref(model))
 
     if color isa AbstractArray{<: Number}
