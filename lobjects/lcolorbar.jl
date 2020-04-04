@@ -131,7 +131,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LColorbar(parent, Scene(), layoutobservables, attrs, decorations)
+    LColorbar(parent, layoutobservables, attrs, decorations)
 end
 
 function tight_ticklabel_spacing!(lc::LColorbar)

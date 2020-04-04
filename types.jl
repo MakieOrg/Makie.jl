@@ -70,7 +70,6 @@ end
 
 mutable struct LColorbar <: LObject
     parent::Scene
-    scene::Scene
     layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
