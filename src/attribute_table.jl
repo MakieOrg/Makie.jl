@@ -13,7 +13,7 @@ function makie_color(c)
     end
     convert(AbstractPlotting.RGBA, c)
 end
-const makie_seriestype_map = Dict{Symbol, Type}(
+makie_seriestype_map = Dict{Symbol, Type}(
     :path => AbstractPlotting.Lines,
     :path3d => AbstractPlotting.Lines,
     :scatter => AbstractPlotting.Scatter,
@@ -21,5 +21,6 @@ const makie_seriestype_map = Dict{Symbol, Type}(
     :heatmap => AbstractPlotting.Heatmap,
     :image => AbstractPlotting.Image,
     :spy => AbstractPlotting.Spy,
-    :surface => AbstractPlotting.Surface
+    :surface => AbstractPlotting.Surface,
+    :shape => AbstractPlotting.Poly,
 )

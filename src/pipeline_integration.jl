@@ -5,7 +5,6 @@ using Plots.RecipePipeline
 
 RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T"))
 
-
 # Allow a series type to be plotted.
 RecipePipeline.is_seriestype_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
 
@@ -58,16 +57,32 @@ end
 slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
 slice_arg(v, idx) = v
 
-function RecipePipeline.slice_series_attributes!(sc::Scene, kw_list, kw)
-    idx = Int(kw[:series_plotindex]) - Int(kw_list[1][:series_plotindex]) + 1
+# function RecipePipeline.slice_series_attributes!(sc::Scene, kw_list, kw)
+#     idx = Int(kw[:series_plotindex]) - Int(kw_list[1][:series_plotindex]) + 1
+#
+#     for k in keys(Plots._series_defaults)
+#         if haskey(kw, k)
+#         end
+#     end
+# end
 
-    for k in keys(Plots._series_defaults)
-        if haskey(kw, k)
-        end
+# Utilities
+function from_nansep_vec(v::Vector{T}) where T
+    idxs = findall(isnan, v)
+    vs = Vector{Vector{T}}(undef, length(idxs))
+    prev = 1
+    num = 1
+    for i in idxs
+        vs[num] = v[prev:i-1]
+
+        prev = i + 1
+        num += 1
     end
+
+    return vs
 end
 
-
+# Series type conversions
 
 """
     makie_plottype(st::Symbol)
@@ -80,7 +95,7 @@ function makie_plottype(st::Symbol)
 end
 
 function makie_args(::Union{Type{AbstractPlotting.Scatter}, Type{AbstractPlotting.Lines}}, plotattributes)
-    if haskey(plotattributes, :z)
+    if !isnothing(get(plotattributes, :z, nothing))
         return (plotattributes[:x], plotattributes[:y], plotattributes[:z])
     else
         return (plotattributes[:x], plotattributes[:y])
@@ -89,8 +104,22 @@ end
 
 makie_args(::Union{Type{AbstractPlotting.Surface},Type{AbstractPlotting.Heatmap}}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
+function makie_args(::Type{<: AbstractPlotting.Poly}, plotattributes)
+    return (from_nansep_vec(Point2f0.(plotattributes[:x], plotattributes[:y])),)
+end
+
 
 function translate_to_makie!(st, pa)
+
+    # general translations first
+
+    # handle colormap
+    haskey(pa, :cgrad) && (pa[:colormap] = pa[:cgrad])
+
+    # series color population
+    haskey(pa, :seriescolor) && (pa[:color] = pa[:seriescolor])
+
+    # series color
     if st == :path || st == :path3d
         if !isnothing(get!(pa, :line_z, nothing))
             pa[:color] = pa[:line_z]
@@ -115,8 +144,6 @@ function translate_to_makie!(st, pa)
         # some default transformations
     end
 
-    # handle colormap
-    haskey(pa, :cgrad) && (pa[:colormap] = pa[:cgrad])
 end
 
 ########################################
@@ -147,10 +174,31 @@ function set_series_color!(scene, st, plotattributes)
 
 end
 
+function plot_series_annotations!(plt, args, pt, plotattributes)
+
+    sa = plotattributes[:series_annotations]
+
+    @show sa pt
+
+    positions = Point2f0.(plotattributes[:x], plotattributes[:y])
+
+    strs = sa[1]
+
+    bbox_shape = sa[2]
+
+    fontsize = sa[3]
+
+    annotations!(plt, strs, positions; textsize = fontsize/30, align = (:center, :center))
+
+end
+
 # Add the "series" to the Scene.
 function RecipePipeline.add_series!(plt::Scene, plotattributes)
 
-    @show :hello
+    # kys = filter((x -> x !∈ (:plot_object, :x, :y)), keys(plotattributes))
+    # vals = getindex.(Ref(plotattributes), kys)
+    # fpa = Dict{Symbol, Any}(kys .=> vals)
+    # @show fpa
 
     # extract the seriestype
     st = plotattributes[:seriestype]
@@ -169,23 +217,29 @@ function RecipePipeline.add_series!(plt::Scene, plotattributes)
 
     # plot_fillrange!(plt, st, plotattributes)
 
+
+    args = makie_args(pt, plotattributes)
+
     for (k, v) in pairs(plotattributes)
         isnothing(v) && delete!(plotattributes, k)
     end
-
-    args = makie_args(pt, plotattributes)
 
     # @show plotattributes
 
     # @infiltrate
 
-    for (k, v) in pairs(plotattributes)
-        haskey(theme, k) || delete!(plotattributes, k)
+    ap_attrs = copy(plotattributes)
+    for (k, v) in pairs(ap_attrs)
+        haskey(theme, k) || delete!(ap_attrs, k)
     end
 
     # @infiltrate
 
-    AbstractPlotting.plot!(plt, pt, AbstractPlotting.Attributes(plotattributes), args...)
+    AbstractPlotting.plot!(plt, pt, AbstractPlotting.Attributes(ap_attrs), args...)
+
+    # handle series annotations after, so they can overdraw
+    !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
+
 
     return plt
 end
@@ -197,8 +251,8 @@ end
 # sc = Scene()
 #
 # # AbstractPlotting.scatter!(sc, rand(10))
-sc = Scene()
-RecipePipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(:seriestype => :scatter), (1:10, rand(10, 2)))
+# sc = Scene()
+# RecipePipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(:seriestype => :scatter), (1:10, rand(10, 2)))
 #
 # RecipePipeline.recipe_pipeline!(sc, Dict(:color => :blue, :seriestype => :path), (1:10, rand(10, 1)))
 #
@@ -254,5 +308,26 @@ RecipePipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(:seriestype => :scatter), 
 
 # # Timeseries with market data
 # using MarketData, TimeSeries
+#
+# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :path), (MarketData.ohlc,))
 
-# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :path), (MarketData.TimeSeries.Candlestick(MarketData.ohlc),))
+# # Julia AST with GraphRecipes
+# using GraphRecipes
+#
+# code = quote
+#     function mysum(list)
+#         out = 0
+#         for value in list
+#             out += value
+#         end
+#         out
+#     end
+# end
+#
+# plot(code, fontsize=12, shorten=0.01, axis_buffer=0.15, nodeshape=:rect)
+#
+# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:fontsize => 12, :shorten => 0.01, :axis_buffer => 0.15, :nodeshape => :rect), (code,))
+#
+# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:method=>:tree, :fontsize=>10, :nodeshape=>:ellipse), (AbstractFloat,))
+
+# # 
