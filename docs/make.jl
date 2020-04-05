@@ -1,6 +1,6 @@
 import Pkg
 Pkg.pkg"add CairoMakie#jk/scatter-glyphs AbstractPlotting#jk/text-layouting"
-using Documenter, Literate, Glob
+using Documenter, Literate
 # avoid font caching warning in docs
 using AbstractPlotting, CairoMakie, MakieLayout
 CairoMakie.activate!()
@@ -8,7 +8,7 @@ scatter(rand(10), rand(10))
 
 # generate examples
 GENERATED = joinpath(@__DIR__, "src", "literate")
-SOURCE_FILES = Glob.glob("*.jl", GENERATED)
+SOURCE_FILES = joinpath.(GENERATED, ["examples.jl"])
 foreach(fn -> Literate.markdown(fn, GENERATED), SOURCE_FILES)
 
 makedocs(
