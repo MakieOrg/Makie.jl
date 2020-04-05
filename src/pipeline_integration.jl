@@ -1,36 +1,13 @@
-using RecipePipeline
 import Plots
+using Plots.RecipePipeline
+
 # Define overrides for RecipesPipeline hooks.
-
-function RecipePipeline._recipe_init!(sc::Scene, plotattributes, args)
-    @info "Init"
-end
-
-function RecipePipeline._recipe_after_user!(sc::Scene, plotattributes, args)
-    @info "User complete"
-end
-
-function RecipePipeline._recipe_after_plot!(sc::Scene, plotattributes, args)
-    @info "Plot complete"
-end
-
-function RecipePipeline._recipe_before_series!(sc::Scene, plotattributes, args)
-    @info "Series initializing"
-    return plotattributes
-end
-
-function RecipePipeline._recipe_finish!(sc::Scene, plotattributes, args)
-    @info "Finished!"
-    return sc
-end
-
-RecipePipeline._process_userrecipe(plt::Scene, kw_list, recipedata) = RecipePipeline._process_userrecipe(Plots.Plot(), kw_list, recipedata)
 
 RecipePipeline.RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T")) # TODO: loosen this restriction and move to RecipesBase
 
 
 # Allow a series type to be plotted.
-RecipePipeline.is_st_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
+RecipePipeline.is_seriestype_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
 
 # Forward the argument preprocessing to Plots for now.
 RecipePipeline.series_defaults(sc::Scene, args...) = RecipePipeline.series_defaults(Plots.Plot(), args...)
@@ -66,7 +43,6 @@ function RecipePipeline.get_axis_limits(sc::Scene, f, letter)
     o = origin(lims)
     return (o[i], o[i] + widths(lims)[i])
 end
-
 
 ########################################
 #       Series argument slicing        #
@@ -199,6 +175,7 @@ end
 # sc = Scene()
 #
 # # AbstractPlotting.scatter!(sc, rand(10))
+# sc = Scene()
 # RecipePipeline.recipe_pipeline!(sc, Dict(:seriestype => :scatter), (1:10, rand(10, 2)))
 #
 # RecipePipeline.recipe_pipeline!(sc, Dict(:color => :blue, :seriestype => :path), (1:10, rand(10, 1)))
