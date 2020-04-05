@@ -23,7 +23,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.pkg"add AbstractPlotting#master GLMakie#master Documenter#master https://github.com/JuliaPlots/GeoMakie.jl"; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        run: julia --project=docs/ -e 'using Pkg; Pkg.pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl"; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
         env:
           DOCUMENTER_KEY: ${{ secrets.DocumenterDeployKey }}
