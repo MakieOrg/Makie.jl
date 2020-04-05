@@ -7,6 +7,9 @@ include("bezier.jl")
 include("pipeline_integration.jl")
 include("attribute_table.jl")
 
+# TODO FIXME
+RecipesBase.is_key_supported(::Symbol) = true
+# FIXME TODO
 
 function tomakie!(sc::Scene, args...; attrs...)
     RecipesPipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(attrs), args)
