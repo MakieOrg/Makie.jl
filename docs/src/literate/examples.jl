@@ -100,14 +100,6 @@ scp = recipeplot!(
 AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](phylo.svg)
 
-# ## Timeseries with market data
-using MarketData, TimeSeries
-
-recipeplot(MarketData.ohlc; seriestype = :path)
-
-AbstractPlotting.save("market.svg", AbstractPlotting.current_scene()); nothing #hide
-# ![](market.svg)
-
 # ## GraphRecipes
 using GraphRecipes
 
