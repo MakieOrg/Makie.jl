@@ -66,22 +66,6 @@ slice_arg(v, idx) = v
 #     end
 # end
 
-# Utilities
-function from_nansep_vec(v::Vector{T}) where T
-    idxs = findall(isnan, v)
-    vs = Vector{Vector{T}}(undef, length(idxs))
-    prev = 1
-    num = 1
-    for i in idxs
-        vs[num] = v[prev:i-1]
-
-        prev = i + 1
-        num += 1
-    end
-
-    return vs
-end
-
 # Series type conversions
 
 """
@@ -125,7 +109,7 @@ function translate_to_makie!(st, pa)
     haskey(pa, :seriescolor) && (pa[:color] = pa[:seriescolor])
 
     # series color
-    if st == :path || st == :path3d
+    if st ∈ (:path, :path3d, :curves)
         if !isnothing(get!(pa, :line_z, nothing))
             pa[:color] = pa[:line_z]
         elseif !isnothing(get!(pa, :linecolor, nothing))
@@ -188,8 +172,6 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     sa = plotattributes[:series_annotations]
 
-    @show sa pt
-
     positions = Point2f0.(plotattributes[:x], plotattributes[:y])
 
     strs = sa[1]
@@ -198,7 +180,7 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     fontsize = sa[3]
 
-    annotations!(plt, strs, positions; textsize = fontsize*30*AbstractPlotting.px, align = (:center, :center))
+    annotations!(plt, strs, positions; textsize = fontsize/30, align = (:center, :center))
 
 end
 
@@ -208,14 +190,9 @@ function RecipesPipeline.add_series!(plt::Scene, plotattributes)
     # kys = filter((x -> x !∈ (:plot_object, :x, :y)), keys(plotattributes))
     # vals = getindex.(Ref(plotattributes), kys)
     # fpa = Dict{Symbol, Any}(kys .=> vals)
-    # @show fpa
 
     # extract the seriestype
     st = plotattributes[:seriestype]
-
-    if st != :scatter
-        @debug "I hope you know what you're doing?"
-    end
 
     set_series_color!(plt, st, plotattributes)
 
@@ -225,18 +202,11 @@ function RecipesPipeline.add_series!(plt::Scene, plotattributes)
 
     translate_to_makie!(st, plotattributes)
 
-    # plot_fillrange!(plt, st, plotattributes)
-
-
     args = makie_args(pt, plotattributes)
 
     for (k, v) in pairs(plotattributes)
         isnothing(v) && delete!(plotattributes, k)
     end
-
-    # @show plotattributes
-
-    # @infiltrate
 
     ap_attrs = copy(plotattributes)
     for (k, v) in pairs(ap_attrs)
@@ -252,90 +222,3 @@ function RecipesPipeline.add_series!(plt::Scene, plotattributes)
 
     return plt
 end
-
-
-# Examples
-
-
-# sc = Scene()
-#
-# # AbstractPlotting.scatter!(sc, rand(10))
-# sc = Scene()
-# RecipesPipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(:seriestype => :scatter), (1:10, rand(10, 2)))
-#
-# RecipesPipeline.recipe_pipeline!(sc, Dict(:color => :blue, :seriestype => :path), (1:10, rand(10, 1)))
-#
-# RecipesPipeline.recipe_pipeline!(sc, Dict(:seriestype => :scatter), (1:10, rand(10, 2)))
-#
-#
-# using DifferentialEquations, RecipesPipeline, Makie
-# import Plots # we need some recipes from here
-#
-# f(u,p,t) = 1.01.*u
-# u0 = [1/2, 1]
-# tspan = (0.0,1.0)
-# prob = ODEProblem(f,u0,tspan)
-# sol = solve(prob, Tsit5(), reltol=1e-8, abstol=1e-8)
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(), (sol,))
-#
-#
-# A  = [1. 0  0 -5
-#       4 -2  4 -3
-#      -4  0  0  1
-#       5 -2  2  3]
-# u0 = rand(4,2)
-# tspan = (0.0,1.0)
-# f(u,p,t) = A*u
-# prob = ODEProblem(f,u0,tspan)
-# sol = solve(prob, Tsit5(), reltol=1e-8, abstol=1e-8)
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(), (sol,))
-#
-# f(du,u,p,t) = (du .= u)
-# g(du,u,p,t) = (du .= u)
-# u0 = rand(4,2)
-#
-# W = WienerProcess(0.0,0.0,0.0)
-# prob = SDEProblem(f,g,u0,(0.0,1.0),noise=W)
-# sol = solve(prob,SRIW1())
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(), (sol,))
-#
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :surface, :cgrad => :inferno), (rand(10, 10),))
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :heatmap), (rand(10, 10),))
-#
-# # # Phylogenetic tree
-# using Phylo
-# hummer = open(t -> parsenewick(t, NamedPolytomousTree), "/Users/Anshul/Downloads/hummingbirds.tree")
-# evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
-# trait = evolve(hummer)
-#
-# scp = RecipesPipeline.recipe_pipeline!(Scene(scale_plot = false, show_axis = false), Dict{Symbol, Any}(:treetype=>:fan, :line_z => trait, :linewidth => 5, :showtips => false, :cgrad => :RdYlBu, :seriestype => :path), (hummer,))
-#
-# # Timeseries with market data
-# using MarketData, TimeSeries
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :path), (MarketData.ohlc,))
-#
-# # Julia AST with GraphRecipes
-# using GraphRecipes
-#
-# code = quote
-#     function mysum(list)
-#         out = 0
-#         for value in list
-#             out += value
-#         end
-#         out
-#     end
-# end
-#
-# plot(code, fontsize=12, shorten=0.01, axis_buffer=0.15, nodeshape=:rect)
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:fontsize => 12, :shorten => 0.01, :axis_buffer => 0.15, :nodeshape => :rect), (code,))
-#
-# RecipesPipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:method=>:tree, :fontsize=>10, :nodeshape=>:ellipse), (AbstractFloat,))
-#

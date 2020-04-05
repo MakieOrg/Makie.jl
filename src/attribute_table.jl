@@ -24,5 +24,6 @@ makie_seriestype_map = Dict{Symbol, Type}(
     :surface => AbstractPlotting.Surface,
     :shape => AbstractPlotting.Poly,
     :contour => AbstractPlotting.Contour,
+    :curves => Bezier,
     # TODO: line, contour,
 )
