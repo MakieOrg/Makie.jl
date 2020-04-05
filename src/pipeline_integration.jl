@@ -3,7 +3,7 @@ using Plots.RecipePipeline
 
 # Define overrides for RecipesPipeline hooks.
 
-RecipePipeline.RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T")) # TODO: loosen this restriction and move to RecipesBase
+RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T"))
 
 
 # Allow a series type to be plotted.
