@@ -1,5 +1,5 @@
 import Pkg
-Pkg.pkg"add CairoMakie#jk/scatter-glyphs AbstractPlotting#jk/textlayouting"
+Pkg.pkg"add CairoMakie#jk/scatter-glyphs AbstractPlotting#jk/text-layouting"
 using Documenter, Literate, Glob
 # avoid font caching warning in docs
 using AbstractPlotting, CairoMakie, MakieLayout
