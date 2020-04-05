@@ -281,10 +281,11 @@ function meshparticle(p, s, data)
     end
 
     @gen_defaults! data begin
-        color_map  = nothing => Texture
+        color_map = nothing => Texture
         color_norm = nothing
-        intensity  = nothing
-        color      = if color_map == nothing
+        intensity = nothing
+        image = nothing
+        color = if color_map == nothing
             default(RGBA{Float32}, s)
         else
             nothing
@@ -521,7 +522,7 @@ function sprites(p, s, data)
         data[:intensity] = intensity_convert(intensity, position_x)
         data[:len] = const_lift(length, position_x)
     end
-    data
+    return data
 end
 
 """

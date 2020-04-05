@@ -17,17 +17,19 @@ in vec2 o_uv;
 flat in uvec2 o_id;
 
 {{image_type}} image;
+{{color_range_type}} color_range;
 
-vec4 get_color(Nothing image, vec2 uv){
+vec4 get_color(Nothing image, vec2 uv, Nothing color_range){
     return o_color;
 }
 
-vec4 get_color(sampler2D color, vec2 uv){
+vec4 get_color(sampler2D color, vec2 uv, Nothing color_range){
     return texture(color, uv);
 }
 
-vec4 get_color(sampler1D color, vec2 uv){
-    return texture(color, uv.x);
+vec4 get_color(sampler1D color, vec2 uv, vec2 color_range){
+    float value = (uv.y - color_range.x) / (color_range.y - color_range.x);
+    return texture(color, value);
 }
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
@@ -49,7 +51,7 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
-    vec4 color = get_color(image, o_uv);
+    vec4 color = get_color(image, o_uv, color_range);
     {{light_calc}}
     write2framebuffer(color, o_id);
 }

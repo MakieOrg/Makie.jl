@@ -17,12 +17,12 @@ vec4 tovec4(vec4 v){return v;}
 void main(){
     // get_* gets the global inputs (uniform, sampler, vertex array)
     // those functions will get inserted by the shader creation pipeline
-    vec3 vertex_position = tovec3(get_position());
+    vec3 position_object = tovec3(get_position());
     frag_normal = get_normals();
     frag_uv = get_texturecoordinates();
 
-    vec3 lightpos = vec3(20,20,20);
-    vec4 position_world = modelMatrix * vec4(vertex_position, 1);
+    vec3 lightpos = get_lightposition();
+    vec4 position_world = modelMatrix * vec4(position_object, 1);
     frag_lightdir = normalize(lightpos - position_world.xyz);
     // direction to camera
     frag_position = -position_world.xyz;

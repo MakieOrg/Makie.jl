@@ -162,6 +162,7 @@ OR(a,b) = a||b
 struct NativeMesh{MeshType <: GeometryBasics.Mesh}
     data::Dict{Symbol, Any}
 end
+
 export NativeMesh
 
 NativeMesh(m::T) where {T <: GeometryBasics.Mesh} = NativeMesh{T}(m)
@@ -177,12 +178,16 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     if isempty(attribs)
         # TODO position only shows up as attribute
         # when it has meta informtion
-        result[:vertices] = GLBuffer(collect(coordinates(mesh)))
+        result[:vertices] = GLBuffer(collect(metafree(coordinates(mesh))))
     end
+    result[:color_range] = nothing
     for (field, val) in attribs
         if val isa AbstractPlotting.Sampler
             result[:image] = Texture(val.colors)
             result[:texturecoordinates] = GLBuffer(convert_texcoordinates(val.values))
+            if val.scaling.range !== nothing
+                result[:color_range] = Observable(Vec2f0(val.scaling.range))
+            end
         elseif field in (:position, :uv, :uvw, :normals, :attribute_id, :color)
             if field == :color
                 field = :vertex_color
@@ -192,7 +197,7 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
                 field = :vertices
             end
             if val isa AbstractVector
-                result[field] = GLBuffer(val)
+                result[field] = GLBuffer(metafree(val))
             end
         else
             result[field] = Texture(val)
@@ -201,14 +206,23 @@ function NativeMesh{T}(mesh::T) where T <: GeometryBasics.Mesh
     return NativeMesh{T}(result)
 end
 
+
 function NativeMesh{T}(m::Node{T}) where T <: GeometryBasics.Mesh
     result = NativeMesh{T}(m[])
     on(m) do mesh
-        for (field, val) in GeometryTypes.attributes(mesh)
-            field == :color && (field = :vertex_color)
-            field == :uv && (field = :texturecoordinates)
-            field == :position && (field = :vertices)
-            haskey(result.data, field) && update!(result.data[field], val)
+        for (field, val) in GeometryBasics.attributes(mesh)
+            if val isa AbstractPlotting.Sampler
+                update!(result.data[:image], val.colors)
+                update!(result.data[:texturecoordinates], convert_texcoordinates(val.values))
+                if val.scaling.range !== nothing
+                    result.data[:color_range][] = Vec2f0(val.scaling.range)
+                end
+            else
+                field == :color && (field = :vertex_color)
+                field == :uv && (field = :texturecoordinates)
+                field == :position && (field = :vertices)
+                haskey(result.data, field) && update!(result.data[field], val)
+            end
         end
     end
     return result

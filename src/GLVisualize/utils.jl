@@ -28,7 +28,6 @@ function assemble_robj(data, program, bb, primitive, pre_fun, post_fun)
     robj
 end
 
-
 function assemble_shader(data)
     shader = data[:shader]
     delete!(data, :shader)

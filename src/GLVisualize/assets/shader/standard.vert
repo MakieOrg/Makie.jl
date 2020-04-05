@@ -26,7 +26,8 @@ vec4 to_color(vec4 c){return c;}
 void main()
 {
     o_id = uvec2(objectid, gl_VertexID+1);
-    o_uv = to_2d(texturecoordinates);
+    vec2 tex_uv = to_2d(texturecoordinates);
+    o_uv = vec2(1.0 - tex_uv.y, tex_uv.x);
     o_color = to_color(vertex_color);
     vec3 v = to_3d(vertices);
     render(model * vec4(v, 1), (model * vec4(normals, 0)).xyz, view, projection, lightposition);

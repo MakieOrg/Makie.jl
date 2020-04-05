@@ -81,8 +81,6 @@ vec3 _scale(vec3 scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int i
     return scale;
 }
 
-
-
 {{color_type}}      color;
 {{color_map_type}}  color_map;
 {{intensity_type}}  intensity;

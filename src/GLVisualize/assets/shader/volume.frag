@@ -191,6 +191,7 @@ vec4 contours(vec3 front, vec3 dir)
     float T = 1.0;
     vec3 Lo = vec3(0.0);
     int i = 0;
+    vec3 camdir = normalize(-dir);
     for (i; i < num_samples; ++i) {
         float intensity = texture(volumedata, pos).x;
         vec4 density = color_lookup(intensity, color_map, color_norm, color);
@@ -198,7 +199,8 @@ vec4 contours(vec3 front, vec3 dir)
         if(opacity > 0.0){
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
-            Lo += (T*opacity) * blinnphong(N, pos, L, density.rgb);
+            vec3 opaque = blinnphong(N, camdir, L, density.rgb);
+            Lo += (T * opacity) * opaque;
             T *= 1.0 - opacity;
             if (T <= 0.01)
                 break;
@@ -220,6 +222,7 @@ vec4 isosurface(vec3 front, vec3 dir)
         if(abs(density - isovalue) < isorange){
             vec3 N = gennormal(pos, step_size);
             vec3 L = normalize(o_light_dir - pos);
+            // back & frontface...
             vec3 c1 = blinnphong(N, camdir, L, diffuse_color.rgb);
             vec3 c2 = blinnphong(-N, camdir, L, diffuse_color.rgb);
             c = vec4(0.5*c1 + 0.5*c2, diffuse_color.a);

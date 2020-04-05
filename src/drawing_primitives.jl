@@ -307,6 +307,7 @@ end
 
 convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
+
 function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
@@ -317,7 +318,32 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
         end
-        visualize(x[1], Style(:default), gl_attributes)
+        if to_value(color) isa AbstractMatrix{<:Colorant}
+            gl_attributes[:image] = color
+        end
+        mesh = x[1]
+        if to_value(color) isa AbstractVector{<: Number}
+            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+                color_sampler = AbstractPlotting.sampler(cmap, color, crange)
+                GeometryBasics.pointmeta(mesh, color=color_sampler)
+            end
+        end
+
+        if to_value(color) isa AbstractMatrix{<: Number}
+            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+                color_sampler = convert_mesh_color(color, cmap, crange)
+                mesh, uv = GeometryBasics.pop_pointmeta(mesh, :uv)
+                uv_sampler = AbstractPlotting.sampler(color_sampler, uv)
+                GeometryBasics.pointmeta(mesh, color=uv_sampler)
+            end
+        end
+
+        if to_value(color) isa AbstractVector{<: Colorant}
+            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+                GeometryBasics.pointmeta(mesh, color=color)
+            end
+        end
+        visualize(mesh, Style(:default), gl_attributes)
     end
 end
 
@@ -346,7 +372,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             return visualize(args, Style(:surface), gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-            @show typeof(to_value(args[3]))
             return visualize(args[3], Style(:surface), gl_attributes)
         end
     end
@@ -402,7 +427,7 @@ function surface_contours(volume::Volume)
     model2 = lift(*, model, model2)
     hull = FRect3D(Vec3f0(0), Vec3f0(1))
     gl_data = Dict(
-        :hull => GLUVWMesh(hull),
+        :hull => gl_uv_triangle_mesh3d(hull),
         :volumedata => Texture(lift(x-> convert(Array{Float32}, x), vol)),
         :model => model2,
         :modelinv => modelinv,

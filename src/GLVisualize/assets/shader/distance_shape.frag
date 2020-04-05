@@ -36,7 +36,6 @@ flat in int             f_primitive_index;
 in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
 
-
 // Half width of antialiasing smoothstep
 #define ANTIALIAS_RADIUS  0.8
 // These versions of aastep assume that `dist` is a signed distance function
