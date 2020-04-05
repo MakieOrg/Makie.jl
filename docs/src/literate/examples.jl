@@ -63,7 +63,8 @@ recipeplot(sol)
 
 # ## Phylogenetic tree
 using Phylo
-hummer = open(t -> parsenewick(t, NamedPolytomousTree), "/Users/Anshul/Downloads/hummingbirds.tree")
+assetpath = joinpath(dirname(pathof(MakieRecipes)), "..", "docs", "src", "assets")
+hummer = open(t -> parsenewick(t, NamedPolytomousTree), joinpath(assetpath, "hummingbirds.tree"))
 evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
 trait = evolve(hummer)
 
