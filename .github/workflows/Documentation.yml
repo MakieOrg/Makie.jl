@@ -26,6 +26,6 @@ jobs:
         run: julia --project=docs/ -e 'using Pkg; Pkg.pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl CairoMakie#jk/scatter-glyphs AbstractPlotting#jk/text-layouting"; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
         env:
-          DOCUMENTER_KEY: ${{ secrets.DocumenterDeployKey }}
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: julia --project=docs/ docs/make.jl
