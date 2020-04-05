@@ -15,6 +15,9 @@ tomakie!(args...; attrs...) = tomakie!(AbstractPlotting.current_scene(), args...
 
 tomakie(args...; attrs...) = tomakie!(Scene(), args...; attrs...)
 
-export tomakie
+recipeplot = tomakie
+recipeplot! = tomakie!
+
+export tomakie, tomakie!, recipeplot, recipeplot!
 
 end
