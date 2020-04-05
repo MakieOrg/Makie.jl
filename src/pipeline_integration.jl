@@ -10,7 +10,7 @@ RecipePipeline.RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::
 RecipePipeline.is_seriestype_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
 
 # Forward the argument preprocessing to Plots for now.
-RecipePipeline.series_defaults(sc::Scene, args...) = RecipePipeline.series_defaults(Plots.Plot(), args...)
+RecipePipeline.series_defaults(sc::Scene, args...) = Dict{Symbol, Any}()
 
 # Pre-processing of user recipes
 function RecipePipeline.process_userrecipe!(sc::Scene, kw_list, kw)
@@ -25,6 +25,8 @@ function RecipePipeline.process_userrecipe!(sc::Scene, kw_list, kw)
         kw[:line_z] = isa(kw[:z], Nothing) ? map(kw[:line_z], kw[:x], kw[:y]) :
             map(kw[:line_z], kw[:x], kw[:y], kw[:z])
     end
+
+    push!(kw_list, kw)
 end
 
 # Determine axis limits
@@ -50,13 +52,22 @@ end
 
 function slice_arg(v::AbstractMatrix, idx::Int)
     c = mod1(idx, size(v,2))
-    m, n = axes(v)
-    size(v, 1) == 1 ? v[first(m), n[c]] : v[:, n[c]]
+    m,n = axes(v)
+    size(v,1) == 1 ? v[first(m),n[c]] : v[:,n[c]]
+end
+slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
+slice_arg(v, idx) = v
+
+function RecipePipeline.slice_series_attributes!(sc::Scene, kw_list, kw)
+    idx = Int(kw[:series_plotindex]) - Int(kw_list[1][:series_plotindex]) + 1
+
+    for k in keys(Plots._series_defaults)
+        if haskey(kw, k)
+        end
+    end
 end
 
-# slice_arg(wrapper::InputWrapper, idx) = wrapper.obj
 
-slice_arg(v, idx) = v
 
 """
     makie_plottype(st::Symbol)
@@ -88,7 +99,7 @@ function translate_to_makie!(st, pa)
         elseif !isnothing(get!(pa, :seriescolor, nothing))
             pa[:color] = pa[:seriescolor]
         end
-        pa[:linewidth] = get(pa, :linesize, 5)
+        pa[:linewidth] = get(pa, :linesize, 1)
     elseif st == :scatter
         if !isnothing(get!(pa, :marker_z, nothing))
             pa[:color] = pa[:marker_z]
@@ -97,7 +108,7 @@ function translate_to_makie!(st, pa)
         elseif !isnothing(get!(pa, :seriescolor, nothing))
             pa[:color] = pa[:seriescolor]
         end
-        pa[:markersize] = get(pa, :markersize, 5)
+        pa[:markersize] = get(pa, :markersize, .5)
     else
         # some default transformations
     end
@@ -108,6 +119,10 @@ end
 ########################################
 
 function set_series_color!(scene, st, plotattributes)
+
+    if get(plotattributes, :seriescolor, :match) == :match
+        delete!(plotattributes, :seriescolor)
+    end
 
     plts = filter(scene.plots) do plot
         !(plot isa Union{AbstractPlotting.Heatmap, AbstractPlotting.Surface, AbstractPlotting.Image, AbstractPlotting.Spy, AbstractPlotting.Axis2D, AbstractPlotting.Axis3D})
@@ -129,6 +144,8 @@ end
 
 # Add the "series" to the Scene.
 function RecipePipeline.add_series!(plt::Scene, plotattributes)
+
+    @show :hello
 
     # extract the seriestype
     st = plotattributes[:seriestype]
@@ -175,8 +192,8 @@ end
 # sc = Scene()
 #
 # # AbstractPlotting.scatter!(sc, rand(10))
-# sc = Scene()
-# RecipePipeline.recipe_pipeline!(sc, Dict(:seriestype => :scatter), (1:10, rand(10, 2)))
+sc = Scene()
+RecipePipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(:seriestype => :scatter), (1:10, rand(10, 2)))
 #
 # RecipePipeline.recipe_pipeline!(sc, Dict(:color => :blue, :seriestype => :path), (1:10, rand(10, 1)))
 #
