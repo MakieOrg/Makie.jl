@@ -200,8 +200,7 @@ $(ATTRIBUTES)
         color = :black,
         colormap = :viridis,
         marker = :circle,
-        markersize = 8px,
-        # markerspace = dpi,
+        markersize = 0.1,
 
         strokecolor = RGBA(0, 0, 0, 0),
         strokewidth = 0.0,
@@ -233,10 +232,12 @@ $(ATTRIBUTES)
     Theme(;
         default_theme(scene)...,
         color = :black,
+        colormap = :viridis,
+        colorrange = automatic,
         marker = Sphere(Point3f0(0), 1f0),
         markersize = 0.1,
         rotations = Quaternionf0(0, 0, 0, 1),
-        markerspace = relative,
+        # markerspace = relative,
         shading = true,
         fxaa = true,
     )
@@ -276,12 +277,6 @@ function color_and_colormap!(plot, intensity = plot[:color])
     end
 end
 
-
-"""
-    `calculated_attributes!(trait::Type{<: AbstractPlot}, plot)`
-trait version of calculated_attributes
-"""
-calculated_attributes!(trait, plot) = nothing
 
 function calculated_attributes!(::Type{<: Mesh}, plot)
     need_cmap = color_and_colormap!(plot)

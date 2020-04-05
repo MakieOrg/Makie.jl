@@ -89,7 +89,7 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::GeometryPrimitive) = (decompose(Point, x),)
+convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
@@ -218,6 +218,11 @@ end
 
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
     return convert_arguments(P, decompose(Point3f0, mesh))
+end
+
+function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
+    # TODO FaceView should be natively supported by backends!
+    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2D)
@@ -375,7 +380,8 @@ function convert_arguments(
         xyz::AbstractVector
     )
     faces = connect(UInt32(0):UInt32(length(xyz)-1), GLTriangleFace)
-    return convert_arguments(MT, xyz, faces)
+    # TODO support faceview natively
+    return convert_arguments(MT, xyz, collect(faces))
 end
 
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
@@ -396,13 +402,13 @@ end
 #         MT::Type{<:Mesh},
 #         xyz::AbstractVector{<: VecTypes{N, T}}
 #     ) where {T, N}
-#     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
+#     faces = reinterpret(GLTriangleFace, UInt32[0:(length(xyz)-1);])
 #     convert_arguments(MT, xyz, faces)
 # end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (gl_uv_triangle_mesh3d(geom),)
+    return (GeometryBasics.gl_uv_normal_triangle_mesh3d(geom),)
 end
 
 
@@ -425,16 +431,19 @@ function to_triangles(x::AbstractVector{Int})
     idx0 = UInt32.(x .- 1)
     to_triangles(idx0)
 end
+
 function to_triangles(idx0::AbstractVector{UInt32})
-    reinterpret(GLTriangle, idx0)
+    reinterpret(GLTriangleFace, idx0)
 end
+
 function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T
-    elconvert(GLTriangle, faces)
+    elconvert(GLTriangleFace, faces)
 end
+
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
     let N = Val(size(faces, 2)), lfaces = faces
         broadcast(1:size(faces, 1), N) do fidx, n
-            to_ndim(GLTriangle, ntuple(i-> lfaces[fidx, i], n), 0.0)
+            to_ndim(GLTriangleFace, ntuple(i-> lfaces[fidx, i], n), 0.0)
         end
     end
 end
@@ -481,7 +490,7 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = GLNormalMesh(to_vertices(vertices), to_triangles(indices))
+    m = gl_normal_mesh3d(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
 

@@ -110,6 +110,10 @@ function sampler(cmap::Union{Symbol, String, AbstractVector}, values;
     return Sampler(to_colormap(cmap), values, alpha, interpolation, scaling)
 end
 
+function sampler(cmap::Union{Symbol, String, AbstractVector}, values, crange;
+                 alpha=1.0, interpolation=Linear)
+    return Sampler(to_colormap(cmap), values, alpha, interpolation, Scaling(identity, crange))
+end
 # uv texture sampler
 function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f0};
                  alpha=1.0, interpolation=Linear)
