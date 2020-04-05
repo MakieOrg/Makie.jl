@@ -7,7 +7,7 @@ version = "0.1.0-DEV"
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 MakieLayout = "5a521ce4-ebb9-4793-b5b7-b334dfe8393c"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
-RecipePipeline = "01d81517-befc-4cb6-b9ec-a95719d0359c"
+RecipesPipeline = "01d81517-befc-4cb6-b9ec-a95719d0359c"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 
 [compat]
