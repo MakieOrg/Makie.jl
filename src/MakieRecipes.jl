@@ -8,7 +8,7 @@ include("attribute_table.jl")
 
 function tomakie!(sc::Scene, args...; attrs...)
     RecipePipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(; attrs...), args)
-end # module
+end
 
 tomakie!(args...; attrs...) = tomakie!(AbstractPlotting.current_scene(), args...; attrs...)
 
@@ -16,3 +16,5 @@ tomakie!(args...; attrs...) = tomakie!(AbstractPlotting.current_scene(), args...
 tomakie(args...; attrs...) = tomakie!(Scene(), args...; attrs...)
 
 export tomakie
+
+end
