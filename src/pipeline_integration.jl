@@ -269,8 +269,8 @@ end
 # sol = solve(prob, Tsit5(), reltol=1e-8, abstol=1e-8)
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(), (sol,))
-
-
+#
+#
 # A  = [1. 0  0 -5
 #       4 -2  4 -3
 #      -4  0  0  1
@@ -292,25 +292,25 @@ end
 # sol = solve(prob,SRIW1())
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(), (sol,))
-
-
+#
+#
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :surface, :cgrad => :inferno), (rand(10, 10),))
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :heatmap), (rand(10, 10),))
-
-# # Phylogenetic tree
+#
+# # # Phylogenetic tree
 # using Phylo
 # hummer = open(t -> parsenewick(t, NamedPolytomousTree), "/Users/Anshul/Downloads/hummingbirds.tree")
 # evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
 # trait = evolve(hummer)
 #
 # scp = RecipePipeline.recipe_pipeline!(Scene(scale_plot = false, show_axis = false), Dict{Symbol, Any}(:treetype=>:fan, :line_z => trait, :linewidth => 5, :showtips => false, :cgrad => :RdYlBu, :seriestype => :path), (hummer,))
-
+#
 # # Timeseries with market data
 # using MarketData, TimeSeries
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :path), (MarketData.ohlc,))
-
+#
 # # Julia AST with GraphRecipes
 # using GraphRecipes
 #
@@ -329,5 +329,5 @@ end
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:fontsize => 12, :shorten => 0.01, :axis_buffer => 0.15, :nodeshape => :rect), (code,))
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:method=>:tree, :fontsize=>10, :nodeshape=>:ellipse), (AbstractFloat,))
-
-# #
+#
+# # #
