@@ -1,9 +1,12 @@
 name = "MakieRecipes"
 uuid = "3c562d8e-4afa-4f1c-99bf-ad54af2b207f"
-authors = ["Simon Danisch"]
-version = "0.1.0"
+authors = ["Simon Danisch", "Anshul Singhvi <anshulsinghvi@gmail.com>"]
+version = "0.1.0-DEV"
 
 [deps]
+AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
+MakieLayout = "5a521ce4-ebb9-4793-b5b7-b334dfe8393c"
+RecipePipeline = "01d81517-befc-4cb6-b9ec-a95719d0359c"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 
 [compat]
