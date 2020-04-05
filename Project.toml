@@ -20,6 +20,6 @@ Phylo = "aea672f4-3940-5932-aa44-993d1c3ff149"
 StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 TimeSeries = "9e3dc215-6440-5c97-bce1-76c03772f85e"
-
+CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 [targets]
-test = ["Test", "MarketData", "TimeSeries", "OrdinaryDiffEq", "StochasticDiffEq", "Phylo", "Literate"]
+test = ["Test", "MarketData", "TimeSeries", "OrdinaryDiffEq", "StochasticDiffEq", "Phylo", "Literate", "CairoMakie"]
