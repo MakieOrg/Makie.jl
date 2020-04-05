@@ -128,14 +128,20 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
 
     bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
         # One color per mesh
+        real_colors = Observable(RGBAf0[])
+        attributes[:color] = real_colors
         lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
             # Color are reals, so we need to transform it to colors first
-            real_colors = if colors isa AbstractVector{<:Number}
+            single_colors = if colors isa AbstractVector{<:Number}
                 interpolated_getindex.((to_colormap(cmap),), colors, (crange,))
             else
                 to_color.(colors)
             end
-            meshes = GeometryTypes.add_attribute.(GLNormalMesh.(meshes), real_colors)
+            # Map one single color per mesh to each vertex
+            for (mesh, color) in zip(meshes, single_colors)
+                append!(real_colors[], Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))
+            end
+            real_colors[] = real_colors[]
             return merge(meshes)
         end
     else
@@ -257,7 +263,7 @@ function plot!(plot::Wireframe{<: Tuple{<: Any, <: Any, <: AbstractMatrix}})
         # Connect the vetices with faces, as one would use for a 2D Rectangle
         # grid with M,N grid points
         faces = decompose(LineFace{GLIndex}, Rect2D(0, 0, 1, 1), (M, N))
-        view(points, faces)
+        connect(points, faces)
     end
     linesegments!(plot, Theme(plot), points_faces)
 end
@@ -268,7 +274,7 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
         # get the point representation of the geometry
         indices = decompose(LineFace{GLIndex}, g)
         points = decompose(Point3f0, g)
-        view(points, indices)
+        return connect(points, indices)
     end
     linesegments!(plot, Theme(plot), points)
 end
@@ -563,7 +569,8 @@ $(ATTRIBUTES)
 @recipe(Band, lowerpoints, upperpoints) do scene
     Theme(;
         default_theme(scene, Mesh)...,
-        color = RGBAf0(1.0,0,0,0.2)
+        color = RGBAf0(1.0,0,0,0.2),
+        colorrange = automatic
     )
 end
 
@@ -572,7 +579,7 @@ convert_arguments(::Type{<: Band}, x, ylower, yupper) = (Point2f0.(x, ylower), P
 function band_connect(n)
     ns = 1:n-1
     ns2 = n+1:2n-1
-    [GLTriangle.(ns, ns .+ 1, ns2); GLTriangle.(ns .+ 1, ns2 .+ 1, ns2)]
+    [GLTriangleFace.(ns, ns .+ 1, ns2); GLTriangleFace.(ns .+ 1, ns2 .+ 1, ns2)]
 end
 
 function plot!(plot::Band)

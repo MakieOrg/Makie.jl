@@ -3,10 +3,12 @@ using GLMakie
 using GeometryBasics
 using Observables
 using GLMakie
+using FileIO
+using MakieGallery
 
-scene = Scene();
 
-scene = scatter(1:4, color=1:4);
+
+scatter(1:4, color=1:4)
 
 scatter(1:4, color=rand(RGBAf0, 4))
 scatter(1:4, color=rand(RGBf0, 4))
@@ -33,6 +35,9 @@ linesegments(1:4, linestyle=:dot)
 linesegments(1:4, linestyle=[0.0, 1.0, 2.0, 3.0, 4.0])
 linesegments(1:4, color=1:4)
 linesegments(1:4, color=rand(RGBf0, 4), linewidth=4)
+x = Point2f0[(1, 1), (2, 2), (3, 2), (4, 4)]
+points = connect(x, LineFace{Int}[(1, 2), (2, 3), (3, 4)])
+x = linesegments(points)
 
 # Surface
 data = AbstractPlotting.peaks()
@@ -41,13 +46,11 @@ surface(-10..10, -10..10, data, color=rand(size(data)...)) |> display
 surface(-10..10, -10..10, data, color=rand(RGBf0, size(data)...))
 surface(-10..10, -10..10, data, colormap=:magma, colorrange=(0.0, 2.0))
 
-
 # Polygons
 poly(decompose(Point2f0, Circle(Point2f0(0), 1f0))) |> display
 
 
 # Image like!
-
 image(rand(10, 10))
 heatmap(rand(10, 10)) |> display
 
@@ -61,6 +64,14 @@ volume(rand(4, 4, 4), algorithm=Int32(5)) |> display
 volume(rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)
 contour(rand(4, 4, 4)) |> display
 
+# Meshes
+cat = load(GLMakie.assetpath("cat.obj"))
+tex = load(GLMakie.assetpath("diffusemap.tga"))
+scren = mesh(cat, color=tex)
+
+m = mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
+     shading = false) |> display
+
 
 # Axis
 scene = lines(IRect(Vec2f0(0), Vec2f0(1)))
@@ -68,3 +79,45 @@ axis = scene[Axis]
 axis.ticks.ranges = ([0.1, 0.2, 0.9], [0.1, 0.2, 0.9])
 axis.ticks.labels = (["😸", "♡", "𝕴"], ["β ÷ δ", "22", "≙"])
 scene
+
+
+database = MakieGallery.load_database()
+
+mesh_examples = filter(database) do example
+    "mesh" in example.tags
+end
+666
+#=
+2, Pyramid decompose
+68, circle faces
+85 --> fuzzy text
+Contours 3D
+=#
+database[5].title
+
+
+function next_example()
+# i = 140
+i += 1
+println(i)
+eval_example(database[i-1]) |> display
+
+data = sort(randn(100))
+barplot(data)
+
+
+scene1 = mesh(
+    Sphere(Point3f0(0), 1f0), color=:red,
+    ambient = Vec3f0(0.5), diffuse = Vec3f0(0.3), specular = Vec3f0(1), shininess = 10f0,
+    lightposition = Vec3f0(10), show_axis=false
+)
+
+m= AbstractPlotting.convert_arguments(AbstractPlotting.Mesh, Sphere(Point3f0(0), 1f0))
+
+
+scren = display(scene1)
+robj = scren.renderlist[1][3]
+robj.uniforms[:sc][] = Vec3f0(0.5)
+robj.vertexarray.program.shader
+robj.uniforms[:]
+scene1[end].lightposition[] = Vec3f0(0.1, 10, 20)
