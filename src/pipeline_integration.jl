@@ -1,9 +1,9 @@
-import Plots
-using Plots.RecipePipeline
+# import Plots
+using RecipePipeline
 
 # Define overrides for RecipesPipeline hooks.
 
-RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T"))
+RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T"))
 
 # Allow a series type to be plotted.
 RecipePipeline.is_seriestype_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
@@ -54,7 +54,7 @@ function slice_arg(v::AbstractMatrix, idx::Int)
     m,n = axes(v)
     size(v,1) == 1 ? v[first(m),n[c]] : v[:,n[c]]
 end
-slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
+# slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
 slice_arg(v, idx) = v
 
 # function RecipePipeline.slice_series_attributes!(sc::Scene, kw_list, kw)
@@ -330,4 +330,4 @@ end
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:method=>:tree, :fontsize=>10, :nodeshape=>:ellipse), (AbstractFloat,))
 
-# # 
+# #
