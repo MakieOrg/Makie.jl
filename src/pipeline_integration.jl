@@ -30,10 +30,43 @@ RecipePipeline.RecipesBase.apply_recipe(plotattributes::Plots.AKW, ::Type{T}, ::
 
 
 # Allow a series type to be plotted.
-
 RecipePipeline.is_st_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
 
-RecipePipeline._preprocess_args(sc::Scene, args...) = RecipePipeline._preprocess_args(Plots.Plot(), args...)
+# Forward the argument preprocessing to Plots for now.
+RecipePipeline.series_defaults(sc::Scene, args...) = RecipePipeline.series_defaults(Plots.Plot(), args...)
+
+# Pre-processing of user recipes
+function RecipePipeline.process_userrecipe!(sc::Scene, kw_list, kw)
+    if isa(get(kw, :marker_z, nothing), Function)
+        # TODO: should this take y and/or z as arguments?
+        kw[:marker_z] = isa(kw[:z], Nothing) ? map(kw[:marker_z], kw[:x], kw[:y]) :
+            map(kw[:marker_z], kw[:x], kw[:y], kw[:z])
+    end
+
+    # map line_z if it's a Function
+    if isa(get(kw, :line_z, nothing), Function)
+        kw[:line_z] = isa(kw[:z], Nothing) ? map(kw[:line_z], kw[:x], kw[:y]) :
+            map(kw[:line_z], kw[:x], kw[:y], kw[:z])
+    end
+end
+
+# Determine axis limits
+function RecipePipeline.get_axis_limits(sc::Scene, f, letter)
+    lims = to_value(AbstractPlotting.data_limits(sc))
+    i = if letter === :x
+            1
+        elseif letter === :y
+            2
+        elseif letter === :z
+            3
+        else
+            throw(ArgumentError("Letter $letter does not correspond to an axis."))
+        end
+
+    o = origin(lims)
+    return (o[i], o[i] + widths(lims)[i])
+end
+
 
 ########################################
 #       Series argument slicing        #
@@ -49,7 +82,12 @@ end
 
 slice_arg(v, idx) = v
 
+"""
+    makie_plottype(st::Symbol)
 
+Returns the Makie plot type which corresponds to the given seriestype.
+The plot type is returned as a Type (`Lines`, `Scatter`, ...).
+"""
 function makie_plottype(st::Symbol)
     return get(makie_seriestype_map, st, AbstractPlotting.Lines)
 end
@@ -113,7 +151,7 @@ function set_series_color!(scene, st, plotattributes)
 
 end
 
-# TODO this only works for scatter
+# Add the "series" to the Scene.
 function RecipePipeline.add_series!(plt::Scene, plotattributes)
 
     # extract the seriestype
