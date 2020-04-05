@@ -99,7 +99,7 @@ function translate_to_makie!(st, pa)
         elseif !isnothing(get!(pa, :seriescolor, nothing))
             pa[:color] = pa[:seriescolor]
         end
-        pa[:linewidth] = get(pa, :linesize, 1)
+        pa[:linewidth] = get(pa, :linewidth, 1)
     elseif st == :scatter
         if !isnothing(get!(pa, :marker_z, nothing))
             pa[:color] = pa[:marker_z]
@@ -108,10 +108,15 @@ function translate_to_makie!(st, pa)
         elseif !isnothing(get!(pa, :seriescolor, nothing))
             pa[:color] = pa[:seriescolor]
         end
-        pa[:markersize] = get(pa, :markersize, .5)
+        pa[:markersize] = get(pa, :markersize, 5) / 10
+    elseif st == :surface
+        haskey(pa, :fill_z) && (pa[:color] = pa[:fill_z])
     else
         # some default transformations
     end
+
+    # handle colormap
+    haskey(pa, :cgrad) && (pa[:colormap] = pa[:cgrad])
 end
 
 ########################################
@@ -235,6 +240,19 @@ RecipePipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(:seriestype => :scatter), 
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(), (sol,))
 
 
-# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :surface), (rand(10, 10),))
+# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :surface, :cgrad => :inferno), (rand(10, 10),))
 #
 # RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :heatmap), (rand(10, 10),))
+
+# # Phylogenetic tree
+# using Phylo
+# hummer = open(t -> parsenewick(t, NamedPolytomousTree), "/Users/Anshul/Downloads/hummingbirds.tree")
+# evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
+# trait = evolve(hummer)
+#
+# scp = RecipePipeline.recipe_pipeline!(Scene(scale_plot = false, show_axis = false), Dict{Symbol, Any}(:treetype=>:fan, :line_z => trait, :linewidth => 5, :showtips => false, :cgrad => :RdYlBu, :seriestype => :path), (hummer,))
+
+# # Timeseries with market data
+# using MarketData, TimeSeries
+
+# RecipePipeline.recipe_pipeline!(Scene(), Dict{Symbol, Any}(:seriestype => :path), (MarketData.TimeSeries.Candlestick(MarketData.ohlc),))
