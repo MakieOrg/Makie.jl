@@ -61,12 +61,6 @@ sol = solve(prob,SRIW1())
 
 recipeplot(sol)
 
-# ## Surface-like types also work
-
-recipeplot(AbstractPlotting.peaks(); seriestype = :surface, cgrad = :inferno)
-
-recipeplot(AbstractPlotting.peaks(); seriestype = :heatmap, cgrad = :RdYlBu)
-
 # ## Phylogenetic tree
 using Phylo
 hummer = open(t -> parsenewick(t, NamedPolytomousTree), "/Users/Anshul/Downloads/hummingbirds.tree")
