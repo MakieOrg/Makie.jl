@@ -162,7 +162,7 @@ function set_series_color!(scene, st, plotattributes)
         return nothing
     end
 
-    get!(plotattributes, :seriescolor, AbstractPlotting.wong_colors[length(plts)])
+    get!(plotattributes, :seriescolor, AbstractPlotting.wong_colors[length(plts)+1])
 
     return nothing
 
