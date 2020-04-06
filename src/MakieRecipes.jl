@@ -28,13 +28,17 @@ recipeplot! = tomakie!
 
 export tomakie, tomakie!, recipeplot, recipeplot!
 
-# @AbstractPlotting.recipe(RecipePlot) do scene
+#  @AbstractPlotting.recipe(RecipePlot) do scene
 #     merge(
 #         default_theme(scene),
 #         Theme(seriestype = :path)
 #     )
 # end
-
-
-
-end
+#
+# function plot!(p::RecipePlot)
+#
+#     RecipePipeline.recipe_pipeline!(
+#         p,
+#     )
+#
+# end
