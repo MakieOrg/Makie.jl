@@ -6,3 +6,4 @@
 /dev/
 docs/Manifest.toml
 docs/literate/*.md
+*.svg

@@ -30,9 +30,13 @@ recipeplot!(sc, 1:10, rand(10, 1); seriestype = :path)
 AbstractPlotting.save("series.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](series.svg)
 
+# ## Distributions
+
+# ###
+
 # ## Differential Equations
 
-using OrdinaryDiffEq, StochasticDiffEq
+using OrdinaryDiffEq, StochasticDiffEq, DiffEqNoiseProcess
 
 # ### A simple exponential growth model
 
