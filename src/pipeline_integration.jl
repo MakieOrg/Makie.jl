@@ -93,10 +93,11 @@ makie_args(::AbstractPlotting.SurfaceLike, plotattributes) = (plotattributes[:x]
 
 makie_args(::Type{<: Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
+makie_args(::Type{<: BarPlot}, plotattributes) = (@show plotattributes[:width]; (plotattributes[:x], plotattributes[:y]))
+
 function makie_args(::Type{<: AbstractPlotting.Poly}, plotattributes)
     return (from_nansep_vec(Point2f0.(plotattributes[:x], plotattributes[:y])),)
 end
-
 
 function translate_to_makie!(st, pa)
 
@@ -133,7 +134,9 @@ function translate_to_makie!(st, pa)
         haskey(pa, :fill_z) && (pa[:color] = pa[:fill_z])
         pa[:shading] = false # set shading to false, default in Plots
     elseif st === :contour
-        pa[:levels]
+        # pa[:levels] = pa[:levels]
+    elseif st === :bar
+        haskey(pa, :widths) && (pa[:width] = pa[:widths])
     else
         # some default transformations
     end
