@@ -1,4 +1,4 @@
 # MakieRecipes
 
-[![Build Status](https://travis-ci.com/SimonDanisch/MakieRecipes.jl.svg?branch=master)](https://travis-ci.com/SimonDanisch/MakieRecipes.jl)
-[![Codecov](https://codecov.io/gh/SimonDanisch/MakieRecipes.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SimonDanisch/MakieRecipes.jl)
+[![build status](https://github.com/JuliaPlots/MakieRecipes.jl/workflows/CI/badge.svg)](https://github.com/JuliaPlots/MakieRecipes.jl/actions)
+[![codecov](https://codecov.io/gh/JuliaPlots/MakieRecipes.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/MakieRecipes.jl)
