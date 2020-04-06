@@ -1,41 +1,28 @@
 module MakieRecipes
 
-using RecipesBase, AbstractPlotting, GLMakie
+using RecipesBase, AbstractPlotting
 using RecipesBase: @recipe
 
-# Our user-defined data type
-struct T end
+include("bezier.jl")
+include("pipeline_integration.jl")
+include("attribute_table.jl")
 
-# This is all we define.  It uses a familiar signature, but strips it apart
-# in order to add a custom definition to the internal method `RecipesBase.apply_recipe`
-@recipe function plot(::T, n = 1; customcolor = :green)
-    markershape --> :auto        # if markershape is unset, make it :auto
-    markercolor :=  customcolor  # force markercolor to be customcolor
-    xrotation   --> 45           # if xrotation is unset, make it 45
-    zrotation   --> 90           # if zrotation is unset, make it 90
-    rand(10,n)                   # return the arguments (input data) for the next recipe
+# TODO FIXME
+RecipesBase.is_key_supported(::Symbol) = true
+# FIXME TODO
+
+function tomakie!(sc::Scene, args...; attrs...)
+    RecipesPipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(attrs), args)
 end
 
-apply_recipe(args...; kw...) = RecipesBase.apply_recipe(Dict{Symbol, Any}(kw), args...)
-
-RecipesBase.is_key_supported(k::Symbol) = true
+tomakie!(args...; attrs...) = tomakie!(AbstractPlotting.current_scene(), args...; attrs...)
 
 
-function tomakie(vector::Vector{RecipeData})
-    scene = Scene()
-    for recipe in vector
-        tomakie!(scene, recipe)
-    end
-    return scene
-end
+tomakie(args...; attrs...) = tomakie!(Scene(), args...; attrs...)
 
-function tomakie!(scene::Scene, recipe::RecipeData)
-    series!(scene, recipe.args...)
-end
+recipeplot = tomakie
+recipeplot! = tomakie!
 
-tomakie(apply_recipe(T(), 3))
-
+export tomakie, tomakie!, recipeplot, recipeplot!
 
 end
-
-end # module

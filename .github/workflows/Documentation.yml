@@ -1,0 +1,31 @@
+name: Documentation
+
+on:
+  push:
+    branches: master
+    tags: v*
+
+  pull_request:
+    branches: master
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: [1.4]
+        julia-arch: [x86]
+        os: [ubuntu-latest]
+    steps:
+      - uses: actions/checkout@v1.0.0
+      - name: Setup julia
+        uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+      - name: Install dependencies
+        run: julia --project=docs/ -e 'using Pkg; Pkg.pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl CairoMakie#jk/scatter-glyphs AbstractPlotting#jk/text-layouting"; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+      - name: Build and deploy
+        env:
+          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: julia --project=docs/ docs/make.jl

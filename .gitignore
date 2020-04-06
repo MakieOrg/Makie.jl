@@ -4,3 +4,6 @@
 .DS_Store
 /Manifest.toml
 /dev/
+docs/Manifest.toml
+docs/literate/*.md
+*.svg

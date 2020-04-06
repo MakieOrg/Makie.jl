@@ -1,0 +1,40 @@
+name: CI
+
+on: [push]
+
+jobs:
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: [1.4]
+        julia-arch: [x64]
+        os: [ubuntu-latest, macOS-latest]
+      fail-fast: false
+
+    steps:
+      - uses: actions/checkout@v1.0.0
+
+      - name: Set up Julia
+        uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+
+      - name: Add package versions
+        run: julia --project=. -e 'using Pkg; pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl"'
+
+      - name: Run tests
+        uses: julia-actions/julia-runtest@master
+
+      - name: Cache artifacts
+        uses: actions/cache@v1
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
+        if: always()
