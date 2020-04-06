@@ -451,7 +451,11 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     Cairo.move_to(ctx, charorigin...)
     mat = scale_matrix(scale...)
     set_font_matrix(ctx, mat)
-    Cairo.show_text(ctx, string(marker))
+    Cairo.text_path(ctx, string(marker))
+    Cairo.fill_preserve(ctx)
+    Cairo.set_line_width(ctx, strokewidth)
+    Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+    Cairo.stroke(ctx)
 
     # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
