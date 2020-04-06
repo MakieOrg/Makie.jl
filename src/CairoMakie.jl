@@ -585,19 +585,17 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
 
         stridx = nextind(txt, stridx)
         rels = to_rel_scale(atlas, char, f, ts)
-        pos = project_position(scene, p, Mat4f0(I))
+        pos = project_position(scene, p, model)
+        scale = project_scale(scene, ts, model)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-
         cairoface = set_ft_font(ctx, f)
 
-        mat = if ts isa Number
-            scale_matrix(ts, ts)
-        else
-            scale_matrix(ts...)
-        end
+        @debug pos
+
+        mat = scale_matrix(scale...)
         set_font_matrix(ctx, mat)
-        
+
         # TODO this only works in 2d
         Cairo.rotate(ctx, -2acos(r[4]))
 
