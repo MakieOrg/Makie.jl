@@ -28,6 +28,7 @@ for path in (tested_diff_path, test_record_path)
     rm(path, force = true, recursive = true)
     mkpath(path)
 end
+
 recordings = MakieGallery.record_examples(test_record_path)
 
 @test length(recordings) == length(database)

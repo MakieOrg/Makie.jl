@@ -32,15 +32,15 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
 end
 
 function to_uvmesh(geom)
-    return NativeMesh(const_lift(GeometryBasics.gl_uv_triangle_mesh2d, geom))
+    return NativeMesh(const_lift(GeometryBasics.uv_mesh, geom))
 end
 
 function to_plainmesh(geom)
-    return NativeMesh(const_lift(GeometryBasics.gl_triangle_mesh, geom))
+    return NativeMesh(const_lift(GeometryBasics.triangle_mesh, geom))
 end
 
 function to_uvwmesh3d(geom)
-    return NativeMesh(const_lift(GeometryBasics.gl_uvw_triangle_mesh3d, geom))
+    return NativeMesh(const_lift(GeometryBasics.uvw_triangle_mesh, geom))
 end
 
 function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant

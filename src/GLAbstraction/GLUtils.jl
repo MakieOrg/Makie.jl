@@ -210,7 +210,18 @@ end
 function NativeMesh{T}(m::Node{T}) where T <: GeometryBasics.Mesh
     result = NativeMesh{T}(m[])
     on(m) do mesh
-        for (field, val) in GeometryBasics.attributes(mesh)
+
+        attribs = GeometryBasics.attributes(mesh)
+
+        update!(result.data[:faces], faces(mesh))
+
+        if isempty(attribs)
+            # TODO position only shows up as attribute
+            # when it has meta informtion
+            update!(result.data[:vertices], metafree(coordinates(mesh)))
+        end
+
+        for (field, val) in attribs
             if val isa AbstractPlotting.Sampler
                 update!(result.data[:image], val.colors)
                 update!(result.data[:texturecoordinates], convert_texcoordinates(val.values))

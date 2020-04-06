@@ -194,11 +194,11 @@ function _default(
     ) where {Pr <: Primitives3D, G <: Tuple}
     @gen_defaults! data begin
         primitive = p[1]
-        position         = nothing => TextureBuffer
-        position_x       = p[2][1] => TextureBuffer
-        position_y       = p[2][2] => TextureBuffer
-        position_z       = length(p[2]) > 2 ? p[2][3] : 0f0 => TextureBuffer
-        instances        = const_lift(length, position_x)
+        position = nothing => TextureBuffer
+        position_x = p[2][1] => TextureBuffer
+        position_y = p[2][2] => TextureBuffer
+        position_z = length(p[2]) > 2 ? p[2][3] : 0f0 => TextureBuffer
+        instances = const_lift(length, position_x)
     end
     meshparticle(p, s, data)
 end
@@ -225,7 +225,7 @@ function to_meshcolor(color)
 end
 
 function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
-    return NativeMesh(const_lift(gl_normal_mesh3d, mesh))
+    return NativeMesh(const_lift(GeometryBasics.normal_mesh, mesh))
 end
 
 function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})

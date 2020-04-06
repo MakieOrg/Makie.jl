@@ -343,6 +343,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
                 GeometryBasics.pointmeta(mesh, color=color)
             end
         end
+        
         visualize(mesh, Style(:default), gl_attributes)
     end
 end
@@ -427,7 +428,7 @@ function surface_contours(volume::Volume)
     model2 = lift(*, model, model2)
     hull = FRect3D(Vec3f0(0), Vec3f0(1))
     gl_data = Dict(
-        :hull => gl_uv_triangle_mesh3d(hull),
+        :hull => uv_mesh(hull),
         :volumedata => Texture(lift(x-> convert(Array{Float32}, x), vol)),
         :model => model2,
         :modelinv => modelinv,
