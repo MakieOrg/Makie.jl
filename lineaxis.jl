@@ -213,8 +213,9 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true)
+    decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
+        color = spinecolor, raw = true)[end]
+
 
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
             tickspace, ticklabelsvisible, ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
