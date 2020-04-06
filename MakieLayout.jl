@@ -13,6 +13,7 @@ using Match
 import Animations
 import PlotUtils
 using GridLayoutBase
+import Showoff
 
 include("types.jl")
 include("helpers.jl")
