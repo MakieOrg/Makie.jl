@@ -15,7 +15,7 @@ makedocs(
          sitename="MakieRecipes",
          pages = Any[
                      "index.md",
-                     "literate/examples.md",
+                     "Examples" => "literate/examples.md",
                     ]
         )
 
