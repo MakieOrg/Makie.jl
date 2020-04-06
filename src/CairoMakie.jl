@@ -275,7 +275,11 @@ end
 function draw_single(primitive::Lines, ctx, positions)
     Cairo.move_to(ctx, positions[1]...)
     for i in 2:length(positions)
-        Cairo.line_to(ctx, positions[i]...)
+        if isnan(positions[i])
+            Cairo.move_to(ctx, positions[i+1]...)
+        else
+            Cairo.line_to(ctx, positions[i]...)
+        end
     end
     Cairo.stroke(ctx)
 end
@@ -317,7 +321,12 @@ function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, color
     end
 
     for i in iterator
+        if isnan(positions[i+1]) || isnan(positions[i])
+            # Cairo.move_to(ctx, positions[]...)
+            continue
+        end
         Cairo.move_to(ctx, positions[i]...)
+
         Cairo.line_to(ctx, positions[i+1]...)
         if linewidths[i] != linewidths[i+1]
             error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
