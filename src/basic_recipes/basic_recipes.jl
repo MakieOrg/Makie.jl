@@ -44,7 +44,6 @@ convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rect}}) = 
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 
-
 function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
@@ -57,8 +56,9 @@ function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
         linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw]
     )
 end
+
 # Poly conversion
-poly_convert(geometries) = gl_triangle_mesh.(geometries)
+poly_convert(geometries) = triangle_mesh.(geometries)
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
@@ -71,7 +71,7 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
         s = GeometryBasics.split_intersections(poly)
         append!(polys, s)
     end
-    return gl_triangle_mesh.(polys)
+    return triangle_mesh.(polys)
 end
 
 function to_line_segments(meshes)
@@ -147,7 +147,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            return merge(gl_triangle_mesh.(meshes))
+            return merge(triangle_mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)
@@ -328,7 +328,6 @@ end
 #     end
 #     linesegments!(plot, Theme(plot), lines)
 # end
-
 
 """
     Series - ?
@@ -651,7 +650,6 @@ $(ATTRIBUTES)
     default_theme(scene, Contour)
 end
 
-
 function contourlines(::Type{<: Contour}, contours, cols)
     result = Point2f0[]
     colors = RGBA{Float32}[]
@@ -680,18 +678,18 @@ function contourlines(::Type{<: Contour3d}, contours, cols)
     result, colors
 end
 
-
 to_levels(x::AbstractVector{<: Number}, cnorm) = x
+
 function to_levels(n::Integer, cnorm)
     zmin, zmax = cnorm
     dz = (zmax - zmin) / (n + 1)
     range(zmin + dz; step = dz, length = n)
 end
+
 conversion_trait(::Type{<: Contour3d}) = SurfaceLike()
 conversion_trait(::Type{<: Contour}) = SurfaceLike()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
-
 
 function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     x, y, z, volume = plot[1:4]
