@@ -3,6 +3,9 @@ module MakieRecipes
 using RecipesBase, AbstractPlotting
 using RecipesBase: @recipe
 
+using RecipesPipeline
+using Colors
+
 include("bezier.jl")
 include("pipeline_integration.jl")
 include("attribute_table.jl")
@@ -24,5 +27,14 @@ recipeplot = tomakie
 recipeplot! = tomakie!
 
 export tomakie, tomakie!, recipeplot, recipeplot!
+
+# @AbstractPlotting.recipe(RecipePlot) do scene
+#     merge(
+#         default_theme(scene),
+#         Theme(seriestype = :path)
+#     )
+# end
+
+
 
 end

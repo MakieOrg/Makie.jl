@@ -1,6 +1,3 @@
-# import Plots
-using RecipesPipeline
-
 # Define overrides for RecipesPipeline hooks.
 
 RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T"))
@@ -187,6 +184,19 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
 end
 
+function plot_fill!(plt, args, pt, plotattributes)
+    lowerval, opacity, color = plotattributes[:fill]
+    upper = plotattributes[:y]
+    x = plotattributes[:x]
+
+    lower = fill(lowerval, size(x))
+
+    c = AbstractPlotting.to_color(color)
+    bandcolor = RGBA(red(c), green(c), blue(c), alpha(c) * opacity)
+
+    band!(plt, x, upper, lower; color = bandcolor)
+end
+
 # Add the "series" to the Scene.
 function RecipesPipeline.add_series!(plt::Scene, plotattributes)
 
@@ -222,6 +232,8 @@ function RecipesPipeline.add_series!(plt::Scene, plotattributes)
 
     # handle series annotations after, so they can overdraw
     !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
+
+    !isnothing(get(plotattributes, :fill, nothing)) && plot_fill!(plt, args, pt, plotattributes)
 
     return plt
 end

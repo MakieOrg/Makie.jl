@@ -101,7 +101,7 @@ scp = recipeplot!(
     seriestype = :path
 )
 
-AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hide
+AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hideinc
 # ![](phylo.svg)
 
 # ## GraphRecipes
