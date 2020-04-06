@@ -648,6 +648,10 @@ function add_pan!(ax::LAxis)
 
     scene = ax.scene
 
+    reset_timer = Ref{Any}(nothing)
+    prev_xticklabelspace = Ref{Any}(0)
+    prev_yticklabelspace = Ref{Any}(0)
+
     startpos = Base.RefValue((0.0, 0.0))
     e = events(scene)
     on(
@@ -679,6 +683,8 @@ function add_pan!(ax::LAxis)
                     yori = tlimits[].origin[2]
                 end
 
+                timed_ticklabelspace_reset(ax, reset_timer, prev_xticklabelspace, prev_yticklabelspace, 0.1)
+
                 tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
             end
         end
@@ -698,6 +704,11 @@ function add_zoom!(ax::LAxis)
 
     e = events(scene)
     cam = camera(scene)
+
+    reset_timer = Ref{Any}(nothing)
+    prev_xticklabelspace = Ref{Any}(0)
+    prev_yticklabelspace = Ref{Any}(0)
+
     on(cam, e.scroll) do x
         # @extractvalue cam (zoomspeed, zoombutton, area)
         zoomspeed = 0.10f0
@@ -726,16 +737,48 @@ function add_zoom!(ax::LAxis)
             newxorigin = xzoomlock[] ? xorigin : xorigin + mp_fraction[1] * (xwidth - newxwidth)
             newyorigin = yzoomlock[] ? yorigin : yorigin + mp_fraction[2] * (ywidth - newywidth)
 
-            if AbstractPlotting.ispressed(scene, xzoomkey[])
-                tlimits[] = FRect(newxorigin, yorigin, newxwidth, ywidth)
+            timed_ticklabelspace_reset(ax, reset_timer, prev_xticklabelspace, prev_yticklabelspace, 0.1)
+
+            tlimits[] = if AbstractPlotting.ispressed(scene, xzoomkey[])
+                FRect(newxorigin, yorigin, newxwidth, ywidth)
             elseif AbstractPlotting.ispressed(scene, yzoomkey[])
-                tlimits[] = FRect(xorigin, newyorigin, xwidth, newywidth)
+                FRect(xorigin, newyorigin, xwidth, newywidth)
             else
-                tlimits[] = FRect(newxorigin, newyorigin, newxwidth, newywidth)
+                FRect(newxorigin, newyorigin, newxwidth, newywidth)
             end
+
         end
+
         return
     end
+end
+
+"""
+Keeps the ticklabelspace static for a short duration and then resets it to its previous
+value. If that value is AbstractPlotting.automatic, the reset will trigger new
+protrusions for the axis and the layout will adjust. This is so the layout doesn't
+immediately readjust during interaction, which would let the whole layout jitter around.
+"""
+function timed_ticklabelspace_reset(ax::LAxis, reset_timer::Ref,
+        prev_xticklabelspace::Ref, prev_yticklabelspace::Ref, threshold_sec::Real)
+
+    if !isnothing(reset_timer[])
+        close(reset_timer[])
+    else
+        prev_xticklabelspace[] = ax.xticklabelspace[]
+        prev_yticklabelspace[] = ax.yticklabelspace[]
+
+        ax.xticklabelspace = ax.decorations[:xaxis].attributes.actual_ticklabelspace[]
+        ax.yticklabelspace = ax.decorations[:yaxis].attributes.actual_ticklabelspace[]
+    end
+
+    reset_timer[] = Timer(threshold_sec) do t
+        reset_timer[] = nothing
+
+        ax.xticklabelspace = prev_xticklabelspace[]
+        ax.yticklabelspace = prev_yticklabelspace[]
+    end
+
 end
 
 function add_reset_limits!(la::LAxis)

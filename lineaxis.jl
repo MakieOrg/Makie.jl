@@ -55,7 +55,8 @@ function LineAxis(parent::Scene; kwargs...)
         end
     end
 
-    actual_ticklabelspace = Node(0f0)
+    attrs[:actual_ticklabelspace] = 0f0
+    actual_ticklabelspace = attrs[:actual_ticklabelspace]
 
     onany(ticklabel_ideal_space, ticklabelspace) do idealspace, space
         s = if space == AbstractPlotting.automatic
