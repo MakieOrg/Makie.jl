@@ -408,7 +408,7 @@ end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (GeometryBasics.gl_uv_normal_triangle_mesh3d(geom),)
+    return (GeometryBasics.uv_normal_mesh(geom),)
 end
 
 
@@ -490,7 +490,7 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = gl_normal_mesh3d(to_vertices(vertices), to_triangles(indices))
+    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
 
