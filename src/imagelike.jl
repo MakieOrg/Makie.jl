@@ -138,7 +138,7 @@ end
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
-    box = ShaderAbstractions.VertexArray(GLUVWMesh(FRect3D(Vec3f0(0), Vec3f0(1))))
+    box = ShaderAbstractions.VertexArray(GLPlainMesh(FRect3D(Vec3f0(0), Vec3f0(1))))
     cam = cameracontrols(mscene)
     model2 = lift(plot.model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
@@ -150,9 +150,16 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
             0, 0, w[3], 0,
             mi[1], mi[2], mi[3], 1
         )
-        convert(Mat4f0, m) * m2
+        return convert(Mat4f0, m) * m2
     end
     modelinv = lift(inv, model2)
+    algorithm = lift(x-> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
+
+    eyepos = getfield(mscene.camera, :eyeposition)
+    lightposition = lift(plot.lightposition, eyepos, typ=Vec3f0) do pos, eyepos
+        ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+    end
+
     program = Program(
         WebGL(),
         lasset("volume.vert"),
@@ -165,7 +172,15 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
         colorrange = lift(Vec2f0, plot.colorrange),
         isovalue = lift(Float32, plot.isovalue),
         isorange = lift(Float32, plot.isorange),
-        light_position = Vec3f0(20)
+        absorption = lift(Float32, plot.absorption),
+
+        algorithm = algorithm,
+        eyeposition = eyepos,
+        ambient = plot.ambient,
+        diffuse = plot.diffuse,
+        specular = plot.specular,
+        shininess = plot.shininess,
+        lightposition = lightposition,
     )
 
     debug_shader("volume", program)
@@ -176,6 +191,6 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     on(model2) do model
         three_geom.matrix.set((model')...)
     end
-    three_geom.material.side = jsctx.BackSide
+    three_geom.material.side = jsctx.FrontSide
     jsscene.add(three_geom)
 end
