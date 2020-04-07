@@ -29,7 +29,7 @@ function to_glvisualize_key(k)
     k == :colormap && return :color_map
     k == :colorrange && return :color_norm
     k == :transform_marker && return :scale_primitive
-    k
+    return k
 end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
@@ -86,7 +86,7 @@ function handle_view(array::SubArray, attributes)
     A = parent(array)
     indices = index1D(array)
     attributes[:indices] = indices
-    A
+    return A
 end
 
 function handle_view(array::Node{T}, attributes) where T <: SubArray
@@ -98,8 +98,8 @@ end
 
 function lift_convert(key, value, plot)
     lift(value) do value
-         convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
-     end
+        return convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
+    end
 end
 
 pixel2world(scene, msize::Number) = pixel2world(scene, Point2f0(msize))[1]
@@ -109,7 +109,7 @@ function pixel2world(scene, msize::StaticVector{2})
     p0 = AbstractPlotting.to_world(scene, Point2f0(0.0))
     p1 = AbstractPlotting.to_world(scene, Point2f0(msize))
     diff = p1 - p0
-    diff
+    return diff
 end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
@@ -148,7 +148,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
-            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
+            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
         end

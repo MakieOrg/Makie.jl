@@ -43,7 +43,7 @@ for path in (tested_diff_path, test_record_path)
 end
 
 examples = MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.00001)
+MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff=0.00001)
 # MakieGallery.generate_preview(test_record_path)
 # repo = joinpath(homedir(), "ReferenceImages", "gallery")
 # cp(test_record_path, repo, force = true)
