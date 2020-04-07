@@ -59,7 +59,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[key] = getfield(scene.camera, key)
     end
 
-    p = InstancedProgram(
+    return InstancedProgram(
         WebGL(),
         lasset("particles.vert"),
         lasset("particles.frag"),
@@ -132,10 +132,12 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict[:use_pixel_marker] = Observable(false)
     if haskey(uniform_dict, :markersize)
         msize = uniform_dict[:markersize]
-        moff = uniform_dict[:marker_offset]
+        if haskey(uniform_dict, :marker_offset)
+            moff = uniform_dict[:marker_offset]
+            uniform_dict[:marker_offset] = lift(x-> AbstractPlotting.number.(x), moff)
+        end
         uniform_dict[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, msize)
         uniform_dict[:markersize] = lift(x-> AbstractPlotting.number.(x), msize)
-        uniform_dict[:marker_offset] = lift(x-> AbstractPlotting.number.(x), moff)
     end
 
     handle_color!(uniform_dict, per_instance)
