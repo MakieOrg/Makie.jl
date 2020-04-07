@@ -343,7 +343,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
                 GeometryBasics.pointmeta(mesh, color=color)
             end
         end
-        
+
         visualize(mesh, Style(:default), gl_attributes)
     end
 end
@@ -379,93 +379,22 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
     return robj
 end
 
-function to_width(x)
-    mini, maxi = extrema(x)
-    maxi - mini
-end
-
-function makieshader(paths...)
-    view = Dict{String, String}()
-    if !Sys.isapple()
-        view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
-        view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
-    end
-    LazyShader(
-        paths...,
-        view = view,
-        fragdatalocation = [(0, "fragment_color"), (1, "fragment_groupid")]
-    )
-end
-
-function volume_prerender()
-    glEnable(GL_DEPTH_TEST)
-    glDepthMask(GL_TRUE)
-    glDepthFunc(GL_LEQUAL)
-    enabletransparency()
-    glEnable(GL_CULL_FACE)
-    glCullFace(GL_FRONT)
-end
-
-function surface_contours(volume::Volume)
-    frag = joinpath(@__DIR__, "surface_contours.frag")
-    paths = assetpath.("shader", ("fragment_output.frag", "util.vert", "volume.vert"))
-    shader = makieshader(paths..., frag)
-    model = volume[:model]
-    x, y, z, vol = volume[1], volume[2], volume[3], volume[4]
-    model2 = lift(x, y, z) do xyz...
-        mi = minimum.(xyz)
-        maxi = maximum.(xyz)
-        w = maxi .- mi
-        return Mat4f0(
-            w[1], 0, 0, 0,
-            0, w[2], 0, 0,
-            0, 0, w[3], 0,
-            mi[1], mi[2], mi[3], 1
-        )
-    end
-
-    modelinv = lift((a,b)-> inv(b) * inv(a), model, model2)
-    model2 = lift(*, model, model2)
-    hull = FRect3D(Vec3f0(0), Vec3f0(1))
-    gl_data = Dict(
-        :hull => uv_mesh(hull),
-        :volumedata => Texture(lift(x-> convert(Array{Float32}, x), vol)),
-        :model => model2,
-        :modelinv => modelinv,
-        :colormap => Texture(lift(to_colormap, volume[:colormap])),
-        :colorrange => lift(Vec2f0, volume[:colorrange]),
-        :fxaa => true
-    )
-    bb = lift(m-> m * hull, model)
-    vp = GLVisualize.VolumePrerender(
-        lift(identity, volume[:transparency]),
-        lift(identity, volume[:overdraw])
-    )
-    robj = RenderObject(gl_data, shader, vp, bb)
-    robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
-    return robj
-end
-
 function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
     robj = cached_robj!(screen, scene, vol) do gl_attributes
-        if gl_attributes[:algorithm][] == 7
-            return surface_contours(vol)
-        else
-            model = vol[:model]
-            x, y, z = vol[1], vol[2], vol[3]
-            gl_attributes[:model] = lift(model, x, y, z) do m, xyz...
-                mi = minimum.(xyz)
-                maxi = maximum.(xyz)
-                w = maxi .- mi
-                m2 = Mat4f0(
-                    w[1], 0, 0, 0,
-                    0, w[2], 0, 0,
-                    0, 0, w[3], 0,
-                    mi[1], mi[2], mi[3], 1
-                )
-                convert(Mat4f0, m) * m2
-            end
-            return visualize(vol[4], Style(:default), gl_attributes)
+        model = vol[:model]
+        x, y, z = vol[1], vol[2], vol[3]
+        gl_attributes[:model] = lift(model, x, y, z) do m, xyz...
+            mi = minimum.(xyz)
+            maxi = maximum.(xyz)
+            w = maxi .- mi
+            m2 = Mat4f0(
+                w[1], 0, 0, 0,
+                0, w[2], 0, 0,
+                0, 0, w[3], 0,
+                mi[1], mi[2], mi[3], 1
+            )
+            return convert(Mat4f0, m) * m2
         end
+        return visualize(vol[4], Style(:default), gl_attributes)
     end
 end
