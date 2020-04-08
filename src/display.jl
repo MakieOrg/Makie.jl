@@ -308,14 +308,14 @@ end
 const _ffmpeg_path = isdefined(FFMPEG, :ffmpeg_path) ? FFMPEG.ffmpeg_path : FFMPEG.ffmpeg
 
 """
-    VideoStream(scene::Scene, framerate = 24)
+    VideoStream(scene::Scene, framerate = 24, compression = 20)
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 [`save(path, stream)`](@ref) to save the video.
 """
 function VideoStream(
-        scene::Scene; framerate::Integer = 24
+        scene::Scene; framerate::Integer = 24, compression = 20
     )
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
@@ -326,7 +326,7 @@ function VideoStream(
     _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -crf $compression -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
@@ -355,7 +355,7 @@ function recordframe!(io::VideoStream)
 end
 
 """
-    save(path::String, io::VideoStream; framerate = 24)
+    save(path::String, io::VideoStream; framerate = 24, compression = 20)
 
 Flushes the video stream and converts the file to the extension found in `path`,
 which can be one of the following:
@@ -367,28 +367,31 @@ which can be one of the following:
 `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
 
+The `compression` argument controls the compression ratio; `51` is the 
+highest compression, and `0` is the lowest (lossless).
+
 See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
 If you want a simpler interface, consider using [`record`](@ref).
 
 """
 function save(path::String, io::VideoStream;
-              framerate::Int = 24)
+              framerate::Int = 24, compression = 20)
     close(io.process)
     wait(io.process)
     p, typ = splitext(path)
     if typ == ".mkv"
         cp(io.path, path, force=true)
     elseif typ == ".mp4"
-        ffmpeg_exe(`-loglevel quiet -i $(io.path) -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $path`)
     elseif typ == ".webm"
-        ffmpeg_exe(`-loglevel quiet -i $(io.path) -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $path`)
     elseif typ == ".gif"
         filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
         palette_path = dirname(io.path)
         pname = joinpath(palette_path, "palette.bmp")
         isfile(pname) && rm(pname, force = true)
-        ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-        ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -vf "$filters,palettegen" -y $pname`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
         rm(pname, force = true)
     else
         rm(io.path)
@@ -400,8 +403,8 @@ end
 
 
 """
-    record(func, scene, path; framerate = 24)
-    record(func, scene, path, iter; framerate = 24)
+    record(func, scene, path; framerate = 24, compression = 20)
+    record(func, scene, path, iter; framerate = 24, compression = 20)
 
 Records the Scene `scene` after the application of `func` on it for each element
 in `itr` (any iterator).  `func` must accept an element of `itr`.
@@ -415,6 +418,9 @@ extension.  Allowable extensions are:
 
 `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
+
+The `compression` argument controls the compression ratio; `51` is the 
+highest compression, and `0` is the lowest (lossless).
 
 Typical usage patterns would look like:
 
@@ -438,7 +444,11 @@ end
 If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
 [`save`](@ref).
 
-## Examples
+The `compression` argument controls the compression ratio; `51` is the 
+highest compression, and `0` is the lowest (lossless).
+
+## Extended help
+### Examples
 
 ```julia
 scene = lines(rand(10))
@@ -457,28 +467,14 @@ record(scene, "test.gif", 1:255) do i
 end
 ```
 """
-function record(func, scene, path; framerate::Int = 24)
-    io = VideoStream(scene; framerate = framerate)
+function record(func, scene, path; framerate::Int = 24, compression = 20)
+    io = VideoStream(scene; framerate = framerate, compression = compression)
     func(io)
-    save(path, io; framerate = framerate)
+    save(path, io; framerate = framerate, compression = compression)
 end
 
-"""
-    record(func, scene, path, iter; framerate = 24)
-
-This is simply a shorthand to wrap a for loop in `record`.
-
-Example:
-
-```example
-    scene = lines(rand(10))
-    record(scene, "test.gif", 1:100) do i
-        scene.plots[:color] = Colors.RGB(i/255, 0, 0) # animate scene
-    end
-```
-"""
-function record(func, scene, path, iter; framerate::Int = 24)
-    io = VideoStream(scene; framerate = framerate)
+function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
+    io = VideoStream(scene; framerate = framerate, compression = compression)
     for i in iter
         t1 = time()
         func(i)
@@ -490,7 +486,7 @@ function record(func, scene, path, iter; framerate::Int = 24)
             yield()
         end
     end
-    save(path, io, framerate = framerate)
+    save(path, io, framerate = framerate, compression = compression)
 end
 
 
