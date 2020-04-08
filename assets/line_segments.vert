@@ -3,9 +3,9 @@ uniform mat4 modelViewMatrix;
 
 #define AA_THICKNESS 2.0
 
-vec2 screen_space(vec4 vertex)
+vec2 screen_space(vec4 position)
 {
-    return vec2(vertex.xy / vertex.w) * get_resolution();
+    return vec2(position.xy / position.w) * get_resolution();
 }
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}

@@ -35,23 +35,31 @@ function create_shader(scene::Scene, plot::MeshScatter)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
 
+
     uniform_dict = Dict{Symbol, Any}()
     for (k,v) in uniforms
         k in (:shading, :overdraw, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
 
+    if haskey(uniform_dict, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniform_dict[:lightposition] = lift(uniform_dict[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     handle_color!(uniform_dict, per_instance)
 
     instance = VertexArray(map(GLNormalMesh, plot.marker))
-    if !GeometryBasics.hascolumn(instance, :texturecoordinate)
-        uniform_dict[:texturecoordinate] = Vec2f0(0)
+    if !hasproperty(instance, :uv)
+        uniform_dict[:uv] = Vec2f0(0)
     end
     for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end
 
-    p = InstancedProgram(
+    return InstancedProgram(
         WebGL(),
         lasset("particles.vert"),
         lasset("particles.frag"),
@@ -63,12 +71,14 @@ end
 
 
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
+
 primitive_shape(::Union{String, Char}) = Cint(DISTANCEFIELD)
 primitive_shape(x::X) where X = Cint(primitive_shape(X))
 primitive_shape(::Type{<: Circle}) = Cint(CIRCLE)
-primitive_shape(::Type{<: SimpleRectangle}) = Cint(RECTANGLE)
-primitive_shape(::Type{<: HyperRectangle{2}}) = Cint(RECTANGLE)
+primitive_shape(::Type{<: Rect2D}) = Cint(RECTANGLE)
 primitive_shape(x::Shape) = Cint(x)
+
+using AbstractPlotting: to_spritemarker
 
 function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
@@ -82,22 +92,27 @@ function scatter_shader(scene::Scene, attributes)
     per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
+
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, nothing))
     end
+
     uniforms = filter(attributes) do (k, v)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
+
     ignore_keys = (
         :shading, :overdraw, :rotation, :distancefield, :fxaa,
         :visible, :transformation, :alpha, :linewidth, :transparency, :marker
     )
-    for (k,v) in uniforms
+
+    for (k, v) in uniforms
         k in ignore_keys && continue
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
+
     get!(uniform_dict, :shape_type) do
-        lift(x-> primitive_shape(AbstractPlotting.to_spritemarker(x)), attributes[:marker])
+        lift(x-> primitive_shape(to_spritemarker(x)), attributes[:marker])
     end
     if uniform_dict[:shape_type][] == 3
         atlas = AbstractPlotting.get_texture_atlas()
@@ -112,23 +127,43 @@ function scatter_shader(scene::Scene, attributes)
         uniform_dict[:atlas_texture_size] = 0f0
         uniform_dict[:distancefield] = Observable(false)
     end
+
     if !haskey(per_instance, :uv_offset_width)
         get!(uniform_dict, :uv_offset_width) do
-            if haskey(attributes, :marker) && attributes[:marker][] isa Char
-                lift(AbstractPlotting.glyph_uv_width!, attributes[:marker])
+            if haskey(attributes, :marker) && to_spritemarker(attributes[:marker][]) isa Char
+                lift(x-> AbstractPlotting.glyph_uv_width!(to_spritemarker(x)), attributes[:marker])
             else
                 Vec4f0(0)
             end
         end
     end
+    uniform_dict[:use_pixel_marker] = Observable(false)
+    if haskey(uniform_dict, :markersize)
+        msize = uniform_dict[:markersize]
+        if haskey(uniform_dict, :marker_offset)
+            moff = uniform_dict[:marker_offset]
+            uniform_dict[:marker_offset] = lift(x-> AbstractPlotting.number.(x), moff)
+        end
+        uniform_dict[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, msize)
+        uniform_dict[:markersize] = lift(x-> AbstractPlotting.number.(x), msize)
+    end
 
     handle_color!(uniform_dict, per_instance)
 
-    instance = VertexArray(GLUVMesh2D(GeometryTypes.SimpleRectangle(-0.5f0, -0.5f0, 1f0, 1f0)))
+    instance = VertexArray(uv_mesh(Rect2D(-0.5f0, -0.5f0, 1f0, 1f0)))
+
     for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end
-    p = InstancedProgram(
+
+    if haskey(uniform_dict, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniform_dict[:lightposition] = lift(uniform_dict[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
+    return InstancedProgram(
         WebGL(),
         lasset("simple.vert"),
         lasset("sprites.frag"),
@@ -147,7 +182,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     attributes[:offset] = plot[1]
     attributes[:billboard] = Observable(true)
-
+    attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
 end
@@ -216,7 +251,8 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
         :offset => positions,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(true),
-        :billboard => Observable(false)
+        :billboard => Observable(false),
+        :pixelspace => getfield(scene.camera, :pixel_space)
     ))
 end
 

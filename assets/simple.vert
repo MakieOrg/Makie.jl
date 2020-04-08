@@ -56,7 +56,8 @@ void main(){
     mat4 pview = projectionMatrix * viewMatrix;
     // Compute transform for the offset vectors from the central point
     mat4 trans = get_transform_marker() ? modelMatrix : mat4(1.0);
-    trans = (get_billboard() ? projectionMatrix : pview * qmat(get_rotations())) * trans;
+    mat4 billtrans = get_use_pixel_marker() ? pixelspace : projectionMatrix;
+    trans = (get_billboard() ? billtrans : pview * qmat(get_rotations())) * trans;
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
@@ -102,9 +103,9 @@ void main(){
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
     frag_color = get_color();
-    frag_uv = get_texturecoordinates();
+    frag_uv = get_uv();
     frag_uv_offset_width = get_uv_offset_width();
-    // screen space coordinates of the vertex
+    // screen space coordinates of the position
     vec4 quad_vertex = (trans * vec4(2.0 * bbox_signed_radius * get_position(), 0.0, 0.0));
     gl_Position = vclip + quad_vertex;
 }

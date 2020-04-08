@@ -47,10 +47,9 @@ function create_shader(scene::Scene, plot::LineSegments)
     end
 
     uniforms[:resolution] = scene.camera.resolution
-    prim = GLUVMesh2D(
-        vertices = Vec2f0[(0, -1), (0, 1), (1, -1), (1, 1)],
-        texturecoordinates = UV{Float32}[(0,0), (0,0), (0,0), (0,0)],
-        faces = GLTriangleFace[(1, 2, 3), (2, 4, 3)]
+    prim = GeometryBasics.Mesh(
+        meta(Point2f0[(0, -1), (0, 1), (1, -1), (1, 1)], uv=Vec2f0[(0,0), (0,0), (0,0), (0,0)]),
+        GLTriangleFace[(1, 2, 3), (2, 4, 3)]
     )
     instance = VertexArray(prim)
     return InstancedProgram(

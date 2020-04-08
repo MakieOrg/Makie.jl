@@ -18,6 +18,14 @@ function surface_normals(x, y, z)
 end
 
 function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
+    uniforms = Dict(uniforms)
+    if haskey(uniforms, :lightposition)
+        eyepos = getfield(mscene.camera, :eyeposition)
+        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     program = Program(
         WebGL(),
         lasset("mesh.vert"),
@@ -25,6 +33,7 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         VertexArray(mesh);
         uniforms...
     )
+
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = string(objectid(plot))
@@ -37,7 +46,7 @@ function limits_to_uvmesh(plot)
     rectangle = lift(px, py) do x, y
         xmin, xmax = extrema(x)
         ymin, ymax = extrema(y)
-        SimpleRectangle(xmin, ymin, xmax - xmin, ymax - ymin)
+        Rect2D(xmin, ymin, xmax - xmin, ymax - ymin)
     end
     positions = Buffer(lift(rectangle) do rect
         ps = decompose(Point2f0, rect)
@@ -69,11 +78,11 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
         end)
     end)
     faces = Buffer(lift(pz) do z
-        tris = decompose(GLTriangleFace, SimpleRectangle(0f0, 0f0, 1f0, 1f0), size(z))
+        tris = decompose(GLTriangleFace, Rect2D(0f0, 0f0, 1f0, 1f0), size(z))
         convert(Vector{GeometryBasics.TriangleFace{Cuint}}, tris)
     end)
     uv = Buffer(lift(pz) do z
-        decompose(UV{Float32}, SimpleRectangle(0f0, 0f0, 1f0, 1f0), size(z))
+        decompose(UV{Float32}, Rect2D(0f0, 0f0, 1f0, 1f0), size(z))
     end)
     pcolor = if haskey(plot, :color) && plot.color[] isa AbstractArray
         plot.color
@@ -94,23 +103,13 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
         uniform_color = color,
         color = Vec4f0(0),
         shading = plot.shading,
+        ambient = plot.ambient,
+        diffuse = plot.diffuse,
+        specular = plot.specular,
+        shininess = plot.shininess,
+        lightposition = plot.lightposition
     )
 end
-
-
-# function draw_js(jsctx, jsscene, mscene::Scene, plot::Image)
-#     image = plot[3]
-#     color = Sampler(lift(x-> x', image))
-#     mesh = limits_to_uvmesh(plot)
-#     draw_mesh(jsscene, mscene, mesh, "image", plot;
-#         uniform_color = color,
-#         color = Vec4f0(0),
-#         normals = Vec3f0(0),
-#         shading = false,
-#     )
-# end
-#
-
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
@@ -128,13 +127,18 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
         color = Vec4f0(0),
         normals = Vec3f0(0),
         shading = false,
+        ambient = plot.ambient,
+        diffuse = plot.diffuse,
+        specular = plot.specular,
+        shininess = plot.shininess,
+        lightposition = plot.lightposition
     )
 end
 
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
-    box = ShaderAbstractions.VertexArray(GLUVWMesh(FRect3D(Vec3f0(0), Vec3f0(1))))
+    box = ShaderAbstractions.VertexArray(GLPlainMesh(FRect3D(Vec3f0(0), Vec3f0(1))))
     cam = cameracontrols(mscene)
     model2 = lift(plot.model, x, y, z) do m, xyz...
         mi = minimum.(xyz)
@@ -146,9 +150,16 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
             0, 0, w[3], 0,
             mi[1], mi[2], mi[3], 1
         )
-        convert(Mat4f0, m) * m2
+        return convert(Mat4f0, m) * m2
     end
     modelinv = lift(inv, model2)
+    algorithm = lift(x-> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
+
+    eyepos = getfield(mscene.camera, :eyeposition)
+    lightposition = lift(plot.lightposition, eyepos, typ=Vec3f0) do pos, eyepos
+        ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+    end
+
     program = Program(
         WebGL(),
         lasset("volume.vert"),
@@ -161,7 +172,15 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
         colorrange = lift(Vec2f0, plot.colorrange),
         isovalue = lift(Float32, plot.isovalue),
         isorange = lift(Float32, plot.isorange),
-        light_position = Vec3f0(20)
+        absorption = lift(Float32, plot.absorption),
+
+        algorithm = algorithm,
+        eyeposition = eyepos,
+        ambient = plot.ambient,
+        diffuse = plot.diffuse,
+        specular = plot.specular,
+        shininess = plot.shininess,
+        lightposition = lightposition,
     )
 
     debug_shader("volume", program)
@@ -172,6 +191,6 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     on(model2) do model
         three_geom.matrix.set((model')...)
     end
-    three_geom.material.side = jsctx.BackSide
+    three_geom.material.side = jsctx.FrontSide
     jsscene.add(three_geom)
 end

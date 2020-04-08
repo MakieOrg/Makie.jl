@@ -24,7 +24,7 @@ vec4 to_vec4(vec3 v3){return vec4(v3, 1.0);}
 vec4 to_vec4(vec4 v4){return v4;}
 
 void main(){
-    // get_* gets the global inputs (uniform, sampler, vertex array)
+    // get_* gets the global inputs (uniform, sampler, position array)
     // those functions will get inserted by the shader creation pipeline
     vec3 vertex_position = get_markersize() * get_position();
     vec3 lightpos = vec3(20,20,20);
@@ -37,6 +37,6 @@ void main(){
     frag_color = to_vec4(get_color());
     // direction to camera
     frag_position = -position_world.xyz;
-    // screen space coordinates of the vertex
+    // screen space coordinates of the position
     gl_Position = projectionMatrix * viewMatrix * position_world;
 }

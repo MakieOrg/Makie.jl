@@ -14,6 +14,7 @@ function array2color(colors, cmap, crange)
     cmap = RGBAf0.(Colors.color.(to_colormap(cmap)), 1.0)
     AbstractPlotting.interpolated_getindex.((cmap,), colors, (crange,))
 end
+
 function array2color(colors::AbstractArray{<: Colorant}, cmap, crange)
     return RGBAf0.(colors)
 end
@@ -24,7 +25,7 @@ function converted_attribute(plot::AbstractPlot, key::Symbol)
     end
 end
 
-function create_shader(scene::Scene, plot::Mesh)
+function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
     mattributes = GeometryBasics.attributes
@@ -69,7 +70,7 @@ function create_shader(scene::Scene, plot::Mesh)
                 !haskey(attributes, :texturecoordinates) && @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
             end
         elseif color isa Colorant && !haskey(attributes, :color)
-            uniforms[:uniform_color] = color
+            uniforms[:uniform_color] = color_signal
         else
             error("Unsupported color type: $(typeof(color))")
         end
@@ -78,7 +79,20 @@ function create_shader(scene::Scene, plot::Mesh)
     if !haskey(attributes, :color)
         uniforms[:color] = Vec4f0(0) # make sure we have a color attribute
     end
+
     uniforms[:shading] = plot.shading
+
+    for key in (:ambient, :diffuse, :specular, :shininess, :lightposition)
+        uniforms[key] = plot[key]
+    end
+
+    if haskey(uniforms, :lightposition)
+        eyepos = getfield(scene.camera, :eyeposition)
+        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
+            ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+    end
+
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
 
@@ -95,7 +109,7 @@ function create_shader(scene::Scene, plot::Mesh)
     )
 end
 
-function draw_js(jsctx, jsscene, scene::Scene, plot::Mesh)
+function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Mesh)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
     debug_shader("mesh", program)

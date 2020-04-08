@@ -67,10 +67,6 @@ function code_to_keyboard(code::String)
         return Keyboard.unknown
     end
 end
-# bild
-# ende
-# SHIFGLOTCK
-
 
 function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
     e = events(scene)
@@ -120,7 +116,6 @@ function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
         return
     end
 end
-
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot)
     @warn "Plot of type $(typeof(plot)) not supported yet"
@@ -206,7 +201,11 @@ JSServe.session(x::ThreeDisplay) = JSServe.session(x.THREE)
 
 function to_jsscene(three::ThreeDisplay, scene::Scene)
     get!(getfield(three, :scene2jsscene), scene) do
-        # return JSServe.fuse(three) do
+        # add the "display" to the scene
+        if !(three in scene.current_screens)
+            push!(scene.current_screens, three)
+        end
+        return JSServe.fuse(three) do
             js_scene = three.new.Scene()
             add_camera!(three, js_scene, scene)
             lift(pixelarea(scene)) do area
@@ -226,7 +225,7 @@ function to_jsscene(three::ThreeDisplay, scene::Scene)
                 js_scene.add(js_sub)
             end
             return js_scene
-        # end
+        end
     end
 end
 

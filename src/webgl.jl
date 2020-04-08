@@ -1,7 +1,6 @@
 using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
-using GeometryTypes: Mat4f0
 using Colors: N0f8
 
 tlength(T) = length(T)
@@ -55,7 +54,6 @@ function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     end
     return buffer
 end
-
 
 function JSBuffer(three, vector::AbstractVector{T}) where T
     flat = flatten_buffer(vector)
@@ -283,6 +281,7 @@ function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
 end
 
 AbstractPlotting.plotkey(::Nothing) = :scatter
+
 function lift_convert(key, value, plot)
     val = lift(value) do value
          wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
@@ -301,7 +300,7 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
         js_vbo.setAttribute(name, js_buff)
     end
     indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
-    indices = reinterpret(UInt32, indices) .- UInt32(1)
+    indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
     js_vbo.maxInstancedCount = length(ip.per_instance)
 
@@ -310,7 +309,11 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
         js_buff = JSInstanceBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
+    # for (k, v) in ip.program.uniforms
+    #     println(k, " ", typeof(to_value(v)))
+    # end
     uniforms = to_js_uniforms(scene, THREE, ip.program.uniforms)
+
     material = create_material(
         THREE,
         ip.program.vertex_source,
@@ -321,7 +324,6 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
     mesh = THREE.new.Mesh(js_vbo, material)
 end
 
-
 function wgl_convert(scene, jsctx, program::Program)
     js_vbo = jsctx.THREE.new.BufferGeometry()
 
@@ -329,9 +331,11 @@ function wgl_convert(scene, jsctx, program::Program)
         js_buff = JSBuffer(jsctx, buff)
         js_vbo.setAttribute(name, js_buff)
     end
+
     indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
     indices = reinterpret(UInt32, indices) .- UInt32(1)
     js_vbo.setIndex(indices)
+
     # per instance data
     uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
 
@@ -347,10 +351,10 @@ end
 
 
 function debug_shader(name, program)
-    # dir = joinpath(@__DIR__, "..", "debug")
-    # isdir(dir) || mkdir(dir)
-    # write(joinpath(dir, "$(name).frag"), program.fragment_source)
-    # write(joinpath(dir, "$(name).vert"), program.vertex_source)
+    dir = joinpath(@__DIR__, "..", "debug")
+    isdir(dir) || mkdir(dir)
+    write(joinpath(dir, "$(name).frag"), program.fragment_source)
+    write(joinpath(dir, "$(name).vert"), program.vertex_source)
 end
 
 function update_model!(geom, plot)
