@@ -1,15 +1,25 @@
+# # RecipesPipeline API implementation
+
+# ## Types and aliases
+
+const PlotContext = Union{
+                    AbstractPlotting.AbstractScene,
+                    AbstractPlotting.AbstractPlot,
+                    MakieLayout.LAxis
+                }
+
 # Define overrides for RecipesPipeline hooks.
 
-RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::AbstractPlotting.Scene) where T = throw(MethodError("Unmatched plot type: $T"))
+RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::PlotContext) where T = throw(MethodError("Unmatched plot type: $T"))
 
 # Allow a series type to be plotted.
-RecipesPipeline.is_seriestype_supported(sc::Scene, st) = haskey(makie_seriestype_map, st)
+RecipesPipeline.is_seriestype_supported(sc::PlotContext, st) = haskey(makie_seriestype_map, st)
 
 # Forward the argument preprocessing to Plots for now.
-RecipesPipeline.series_defaults(sc::Scene, args...) = Dict{Symbol, Any}()
+RecipesPipeline.series_defaults(sc::PlotContext, args...) = Dict{Symbol, Any}()
 
 # Pre-processing of user recipes
-function RecipesPipeline.process_userrecipe!(sc::Scene, kw_list, kw)
+function RecipesPipeline.process_userrecipe!(sc::PlotContext, kw_list, kw)
     if isa(get(kw, :marker_z, nothing), Function)
         # TODO: should this take y and/or z as arguments?
         kw[:marker_z] = isa(kw[:z], Nothing) ? map(kw[:marker_z], kw[:x], kw[:y]) :
@@ -26,7 +36,7 @@ function RecipesPipeline.process_userrecipe!(sc::Scene, kw_list, kw)
 end
 
 # Determine axis limits
-function RecipesPipeline.get_axis_limits(sc::Scene, f, letter)
+function RecipesPipeline.get_axis_limits(sc::PlotContext, f, letter)
     lims = to_value(AbstractPlotting.data_limits(sc))
     i = if letter === :x
             1
@@ -54,7 +64,7 @@ end
 # slice_arg(wrapper::Plots.InputWrapper, idx) = wrapper.obj
 slice_arg(v, idx) = v
 
-# function RecipesPipeline.slice_series_attributes!(sc::Scene, kw_list, kw)
+# function RecipesPipeline.slice_series_attributes!(sc::PlotContext, kw_list, kw)
 #     idx = Int(kw[:series_plotindex]) - Int(kw_list[1][:series_plotindex]) + 1
 #
 #     for k in keys(Plots._series_defaults)
@@ -78,6 +88,14 @@ end
 makie_args(::Type{T}, plotattributes) where T <: AbstractPlotting.AbstractPlot = makie_args(AbstractPlotting.conversion_trait(T), plotattributes)
 
 function makie_args(::AbstractPlotting.PointBased, plotattributes)
+
+    x, y = (plotattributes[:x], plotattributes[:y])
+    c = plotattributes[:color]
+
+    if isempty(x) && isempty(y)
+        return
+    end
+
     if !isnothing(get(plotattributes, :z, nothing))
         return (plotattributes[:x], plotattributes[:y], plotattributes[:z])
     else
@@ -89,8 +107,6 @@ end
 makie_args(::AbstractPlotting.SurfaceLike, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
 
 makie_args(::Type{<: Contour}, plotattributes) = (plotattributes[:x], plotattributes[:y], plotattributes[:z].surf)
-
-makie_args(::Type{<: BarPlot}, plotattributes) = (plotattributes[:x], plotattributes[:y])
 
 function makie_args(::Type{<: AbstractPlotting.Poly}, plotattributes)
     return (from_nansep_vec(Point2f0.(plotattributes[:x], plotattributes[:y])),)
@@ -198,7 +214,7 @@ function plot_fill!(plt, args, pt, plotattributes)
 end
 
 # Add the "series" to the Scene.
-function RecipesPipeline.add_series!(plt::Scene, plotattributes)
+function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
 
     # kys = filter((x -> x !∈ (:plot_object, :x, :y)), keys(plotattributes))
     # vals = getindex.(Ref(plotattributes), kys)
@@ -228,12 +244,18 @@ function RecipesPipeline.add_series!(plt::Scene, plotattributes)
 
     # @infiltrate
 
+    if args === nothing
+        @debug "Found an empty series with type $(plotattributes[:seriestype])."
+        return plt
+    end
+
     AbstractPlotting.plot!(plt, pt, AbstractPlotting.Attributes(ap_attrs), args...)
 
-    # handle series annotations after, so they can overdraw
-    !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
+    # handle fill and series annotations after, so they can overdraw
 
     !isnothing(get(plotattributes, :fill, nothing)) && plot_fill!(plt, args, pt, plotattributes)
+
+    !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
 
     return plt
 end
