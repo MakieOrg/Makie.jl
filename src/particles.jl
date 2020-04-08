@@ -59,7 +59,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[key] = getfield(scene.camera, key)
     end
 
-    p = InstancedProgram(
+    return InstancedProgram(
         WebGL(),
         lasset("particles.vert"),
         lasset("particles.frag"),
@@ -129,6 +129,16 @@ function scatter_shader(scene::Scene, attributes)
             end
         end
     end
+    uniform_dict[:use_pixel_marker] = Observable(false)
+    if haskey(uniform_dict, :markersize)
+        msize = uniform_dict[:markersize]
+        if haskey(uniform_dict, :marker_offset)
+            moff = uniform_dict[:marker_offset]
+            uniform_dict[:marker_offset] = lift(x-> AbstractPlotting.number.(x), moff)
+        end
+        uniform_dict[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, msize)
+        uniform_dict[:markersize] = lift(x-> AbstractPlotting.number.(x), msize)
+    end
 
     handle_color!(uniform_dict, per_instance)
 
@@ -145,7 +155,7 @@ function scatter_shader(scene::Scene, attributes)
         end
     end
 
-    p = InstancedProgram(
+    return InstancedProgram(
         WebGL(),
         lasset("simple.vert"),
         lasset("sprites.frag"),
@@ -164,7 +174,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes = copy(plot.attributes.attributes)
     attributes[:offset] = plot[1]
     attributes[:billboard] = Observable(true)
-
+    attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
 end
@@ -233,7 +243,8 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
         :offset => positions,
         :uv_offset_width => uv_offset_width,
         :transform_marker => Observable(true),
-        :billboard => Observable(false)
+        :billboard => Observable(false),
+        :pixelspace => getfield(scene.camera, :pixel_space)
     ))
 end
 

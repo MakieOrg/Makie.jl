@@ -5,6 +5,9 @@ ElectronDisplay.CONFIG.focus = false
 using WGLMakie, AbstractPlotting, JSServe, Test
 using MakieGallery
 
+win = ElectronDisplay.electrondisplay(scatter(0..1, 1:50, markersize=4px))
+ElectronDisplay.Electron.toggle_devtools(win)
+
 tests_wgl_makie = Set(Symbol.([
     "twisty_cube_thing",
     "arc_1",
