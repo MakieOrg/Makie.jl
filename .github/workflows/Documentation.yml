@@ -23,7 +23,7 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - name: Install dependencies
-        run: julia --project=docs/ -e 'using Pkg; Pkg.pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl CairoMakie#as/scale_text AbstractPlotting#jk/text-layouting"; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        run: julia --project=docs/ -e 'using Pkg; Pkg.pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl CairoMakie#as/scale_text AbstractPlotting#jk/text-layouting GraphRecipes#master"; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Build and deploy
         env:
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}

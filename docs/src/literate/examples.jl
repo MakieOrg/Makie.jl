@@ -83,6 +83,32 @@ recipeplot(sol)
 AbstractPlotting.save("stochastic.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](stochastic.svg)
 
+# ### Animating a differential equation solution
+
+# You can update arguments and attributes arbitrarily, and the recipe pipeline is rerun.
+
+function lorenz(du, u, p, t)
+    du[1] = p[1]*(u[2]-u[1])
+    du[2] = u[1]*(p[2]-u[3]) - u[2]
+    du[3] = u[1]*u[2] - p[3]*u[3]
+end
+
+prob = ODEProblem(lorenz, [1., 5., 10.], (0., 100.), (10.0, 28.0, 8/3))
+
+ρ = Node(28.0)
+
+sol = @lift solve(remake(prob; p = (10.0, $ρ, 8/3)), Tsit5())
+
+sc = recipeplot(sol)
+
+ylims!(sc, -30, 70) # avoid jitter when animating
+
+record(sc, "lorenz.gif", LinRange(0, 35, 100)) do ρᵢ
+    ρ[] = ρᵢ
+end
+
+# ![](lorenz.gif)
+
 # ## Phylogenetic tree
 using Phylo
 assetpath = joinpath(dirname(pathof(MakieRecipes)), "..", "docs", "src", "assets")
@@ -90,19 +116,32 @@ hummer = open(t -> parsenewick(t, NamedPolytomousTree), joinpath(assetpath, "hum
 evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
 trait = evolve(hummer)
 
-scp = recipeplot!(
-    Scene(scale_plot = false, show_axis = false),
+scp = recipeplot(
     hummer;
     treetype = :fan,
     line_z = trait,
     linewidth = 5,
     showtips = false,
     cgrad = :RdYlBu,
-    seriestype = :path
+    seriestype = :path,
+    # Makie attributes can be used here as well!
+    scale_plot = false,
+    show_axis = false
 )
 
 AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hideinc
 # ![](phylo.svg)
+
+# ### Animation with different colormaps (changing attributes)
+
+# You can update arguments and attributes arbitrarily, and the recipe pipeline is rerun.
+
+record(scp, "phylo_colormaps.gif", PlotUtils.cgradients(:colorcet), framerate = 3) do cmap
+    scp.plots[1].cgrad[] = cmap
+end
+
+# ![](phylo_colormaps.gif)
+
 
 # ## GraphRecipes
 using GraphRecipes

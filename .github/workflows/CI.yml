@@ -21,7 +21,7 @@ jobs:
           version: ${{ matrix.julia-version }}
 
       - name: Add package versions
-        run: julia --project=. -e 'using Pkg; pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl"'
+        run: julia --project=. -e 'using Pkg; pkg"add https://github.com/JuliaPlots/RecipesPipeline.jl GraphRecipes#master"'
 
       - name: Run tests
         uses: julia-actions/julia-runtest@master
