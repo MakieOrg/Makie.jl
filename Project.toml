@@ -1,6 +1,6 @@
 name = "GLMakie"
 uuid = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-version = "0.0.18"
+version = "0.1.0"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -21,16 +21,16 @@ ShaderAbstractions = "65257c39-d410-5151-9873-9b3e5be5013e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-AbstractPlotting = "0.9.27"
+AbstractPlotting = "0.10"
 ColorTypes = "0.8, 0.9, 0.10"
 Colors = "0.9, 0.10, 0.11, 0.12"
 FileIO = "1.1"
 FixedPointNumbers = "0.6, 0.7, 0.8"
 GLFW = "3"
-MakieGallery = "0.1.9"
-MeshIO = "^0.3"
+MakieGallery = "0.2"
+MeshIO = "0.4"
 ModernGL = "^1"
-Observables = "0.2.0, 0.3"
+Observables = "0.3"
 StaticArrays = "0.7,0.8,0.9,0.10,0.11,0.12"
 julia = "1"
 
