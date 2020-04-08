@@ -17,7 +17,7 @@ test:
         - apt-get install -y cmake xorg-dev mesa-utils # glfw
     script:
       - mkdir -p $JULIA_DEPOT_PATH # Pkg.jl#325
-      - julia --project -e 'using Pkg; pkg"add MeshIO#sd/geometrybasics https://github.com/SimonDanisch/GridLayoutBase.jl.git#sd/geometrybasics GLMakie#sd/geometrybasics StatsMakie#sd/geometrybasics"; Pkg.test(; coverage=true)'
+      - julia --project -e 'using Pkg; pkg"add MeshIO#sd/geometrybasics https://github.com/SimonDanisch/GridLayoutBase.jl.git#sd/geometrybasics GLMakie#sd/geometrybasics StatsMakie#sd/geometrybasics" MakieGallery#master; Pkg.test(; coverage=true)'
     after_script:
       - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit_local(process_folder(), ".")'
     artifacts:
