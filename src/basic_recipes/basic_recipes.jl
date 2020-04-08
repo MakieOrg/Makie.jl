@@ -568,8 +568,8 @@ $(ATTRIBUTES)
 @recipe(Band, lowerpoints, upperpoints) do scene
     Theme(;
         default_theme(scene, Mesh)...,
-        color = RGBAf0(1.0,0,0,0.2),
         colorrange = automatic
+        color = RGBAf0(0.0,0,0,0.2)
     )
 end
 
