@@ -15,10 +15,10 @@ expand_palette(palette; kwargs...) = RGBA.(distinguishable_colors(20, palette; k
 
 const wong = copy(AbstractPlotting.wong_colors)
 begin
-    global t
-    tmp = t[1]
-    t[1] = t[2]
-    t[2] = t[1]
+    global wong
+    tmp = wong[1]
+    wong[1] = wong[2]
+    wong[2] = wong[1]
 end
 const rwong = expand_palette(t; lchoices = [57], cchoices = [100])
 
