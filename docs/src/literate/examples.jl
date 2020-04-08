@@ -30,10 +30,6 @@ recipeplot!(sc, 1:10, rand(10, 1); seriestype = :path)
 AbstractPlotting.save("series.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](series.svg)
 
-# ## Distributions
-
-# ###
-
 # ## Differential Equations
 
 using OrdinaryDiffEq, StochasticDiffEq, DiffEqNoiseProcess
@@ -110,10 +106,14 @@ end
 # ![](lorenz.gif)
 
 # ## Phylogenetic tree
+
 using Phylo
+
 assetpath = joinpath(dirname(pathof(MakieRecipes)), "..", "docs", "src", "assets")
 hummer = open(t -> parsenewick(t, NamedPolytomousTree), joinpath(assetpath, "hummingbirds.tree"))
+
 evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
+
 trait = evolve(hummer)
 
 scp = recipeplot(
@@ -144,6 +144,7 @@ end
 
 
 # ## GraphRecipes
+
 using GraphRecipes
 
 # ### Julia AST with GraphRecipes
