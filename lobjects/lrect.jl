@@ -5,7 +5,7 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
         strokevisible, strokecolor)
 
     layoutobservables = LayoutObservables(LRect, attrs.width, attrs.height,
-        halign, valign; suggestedbbox = bbox)
+        halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis
         vis ? col : RGBAf0(0, 0, 0, 0)

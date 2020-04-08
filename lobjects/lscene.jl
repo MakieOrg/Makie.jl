@@ -16,7 +16,7 @@ function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...
     attrs = merge!(Attributes(kwargs), default_attributes(LScene, parent))
 
     layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height,
-        attrs.halign, attrs.valign; suggestedbbox = bbox)
+        attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
 
     scene = Scene(parent, lift(IRect2D_rounded, layoutobservables.computedbbox); scenekw...)
 

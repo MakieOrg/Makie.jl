@@ -7,7 +7,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     layoutobservables = LayoutObservables(LToggle, attrs.width, attrs.height,
-        halign, valign; suggestedbbox = bbox)
+        halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     markersize = lift(layoutobservables.computedbbox) do bbox
         min(width(bbox), height(bbox))

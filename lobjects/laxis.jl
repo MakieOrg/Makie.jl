@@ -34,7 +34,9 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LAxis, attrs.width, attrs.height, halign, valign; suggestedbbox = bbox)
+    protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
+    layoutobservables = LayoutObservables(LAxis, attrs.width, attrs.height, halign, valign, attrs.alignmode;
+        suggestedbbox = bbox, protrusions = protrusions)
 
     limits = Node(FRect(0, 0, 100, 100))
 
@@ -295,7 +297,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     onany(title, titlesize, titlegap, titlevisible, spinewidth,
             xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition) do args...
-        layoutobservables.protrusions[] = compute_protrusions(args...)
+        protrusions[] = compute_protrusions(args...)
     end
 
     # trigger first protrusions with one of the observables

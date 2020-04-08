@@ -23,8 +23,9 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
+    protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
     layoutobservables = LayoutObservables(LColorbar, attrs.width, attrs.height,
-        halign, valign; suggestedbbox = bbox)
+        halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     framebox = layoutobservables.computedbbox
 
@@ -122,7 +123,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
             end
         end
 
-        layoutobservables.protrusions[] = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
+        protrusions[] = GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
 
     # trigger protrusions with one of the attributes

@@ -12,8 +12,9 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     sliderrange = attrs.range
 
+    protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
     layoutobservables = LayoutObservables(LSlider, attrs.width, attrs.height,
-        halign, valign; suggestedbbox = bbox)
+        halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     onany(buttonradius, horizontal, buttonstrokewidth) do br, hori, bstrw
         layoutobservables.autosize[] = if hori
@@ -183,7 +184,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     end
 
     onany(buttonradius, horizontal) do br, horizontal
-        layoutobservables.protrusions[] = if horizontal
+        protrusions[] = if horizontal
             GridLayoutBase.RectSides{Float32}(br, br, 0, 0)
         else
             GridLayoutBase.RectSides{Float32}(0, 0, br, br)

@@ -9,7 +9,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
         rotation, padding)
 
     layoutobservables = LayoutObservables(LText, attrs.width, attrs.height,
-        halign, valign; suggestedbbox = bbox)
+        halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point3f0(0, 0, 0))
 

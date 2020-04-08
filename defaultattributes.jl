@@ -98,6 +98,7 @@ function default_attributes(::Type{LAxis}, scene)
         flip_ylabel = false,
         autolimitaspect = nothing,
         targetlimits = BBox(0, 100, 0, 100),
+        alignmode = Inside(),
     )
 end
 
@@ -139,6 +140,7 @@ function default_attributes(::Type{LColorbar}, scene)
         height = nothing,
         colormap = :viridis,
         limits = (0f0, 1f0),
+        alignmode = Inside(),
         nsteps = 100
     )
 end
@@ -156,6 +158,7 @@ function default_attributes(::Type{LText}, scene)
         padding = (0f0, 0f0, 0f0, 0f0),
         height = Auto(),
         width = Auto(),
+        alignmode = Inside(),
     )
 end
 
@@ -171,6 +174,7 @@ function default_attributes(::Type{LRect})
         strokecolor = RGBf0(0, 0, 0),
         width = nothing,
         height = nothing,
+        alignmode = Inside(),
     )
 end
 
@@ -196,6 +200,7 @@ function default_attributes(::Type{LButton})
         # buttoncolor_hover = RGBf0(0.8, 0.8, 0.8),
         buttoncolor_hover = COLOR_ACCENT_DIMMED[],
         clicks = 0,
+        alignmode = Inside(),
     )
 end
 
@@ -245,6 +250,7 @@ function default_attributes(::Type{LSlider})
         buttoncolor_inactive = RGBf0(1, 1, 1),
         horizontal = true,
         buttonstrokewidth = 4f0,
+        alignmode = Inside(),
     )
 end
 
@@ -264,6 +270,7 @@ function default_attributes(::Type{LToggle})
         active = false,
         toggleduration = 0.2,
         rimfraction = 0.25,
+        alignmode = Inside(),
     )
 end
 
@@ -312,6 +319,7 @@ function default_attributes(::Type{LLegend}, scene)
         groupgap = 30,
         gridshalign = :center,
         gridsvalign = :center,
+        alignmode = Inside(),
     )
 end
 
@@ -348,5 +356,6 @@ function default_attributes(::Type{LScene}, scene)
         width = nothing,
         halign = :center,
         valign = :center,
+        alignmode = Inside(),
     )
 end
