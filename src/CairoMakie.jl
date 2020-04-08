@@ -285,6 +285,7 @@ function draw_single(primitive::Lines, ctx, positions)
     Cairo.move_to(ctx, positions[1]...)
     for i in 2:length(positions)
         if isnan(positions[i])
+            i == length(positions) && break
             Cairo.move_to(ctx, positions[i+1]...)
         else
             Cairo.line_to(ctx, positions[i]...)
