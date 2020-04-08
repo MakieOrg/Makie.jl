@@ -11,7 +11,8 @@ RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 RecipesPipeline = "01d81517-befc-4cb6-b9ec-a95719d0359c"
 
 [compat]
-AbstractPlotting = "0.9"
+AbstractPlotting = "0.9.26"
+RecipesBase = "1"
 MakieLayout = "0.4, 0.5"
 julia = "1.1"
 
