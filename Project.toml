@@ -12,6 +12,7 @@ RecipesPipeline = "01d81517-befc-4cb6-b9ec-a95719d0359c"
 
 [compat]
 AbstractPlotting = "0.9"
+MakieLayout = "0.4, 0.5"
 julia = "1.1"
 
 [extras]
