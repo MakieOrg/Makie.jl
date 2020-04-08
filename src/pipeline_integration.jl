@@ -179,8 +179,12 @@ end
 
 function set_series_color!(scene, st, plotattributes)
 
-    if get(plotattributes, :seriescolor, :match) == :match
-        delete!(plotattributes, :seriescolor)
+    if haskey(plotattributes, :seriescolor)
+        if plotattributes[:seriescolor] ∈ (:match, :auto)
+            delete!(plotattributes, :seriescolor)
+        else
+            return nothing
+        end
     end
 
     plts = filter(scene.plots) do plot
