@@ -7,12 +7,13 @@ using MakieGallery
 
 using JSServe
 function test_handler(session, req)
-    return scatter(1:4)
+    return AbstractPlotting.mesh(Sphere(Point3f0(0), 1f0), color=:red, ambient=Vec3f0(0.1))
 end
 app = JSServe.Application(test_handler, "0.0.0.0", 8082)
+close(app)
 
-win = ElectronDisplay.electrondisplay(scatter(1:4))
-ElectronDisplay.Electron.toggle_devtools(win)
+win = ElectronDisplay.electrondisplay(surface(rand(4,4 )))
+# ElectronDisplay.Electron.toggle_devtools(win)
 
 tests_wgl_makie = Set(Symbol.([
     "twisty_cube_thing",

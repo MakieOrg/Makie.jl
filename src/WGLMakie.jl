@@ -14,6 +14,7 @@ using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
 import AbstractPlotting.FileIO
 using StaticArrays
+using GeometryBasics: decompose_uv
 
 using ImageTransformations
 

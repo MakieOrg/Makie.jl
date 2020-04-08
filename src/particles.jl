@@ -51,10 +51,12 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     handle_color!(uniform_dict, per_instance)
 
-    instance = VertexArray(map(GLNormalMesh, plot.marker))
-    if !hasproperty(instance, :uv)
+    instance = map(normal_mesh, plot.marker)
+
+    if !hasproperty(instance[], :uv)
         uniform_dict[:uv] = Vec2f0(0)
     end
+
     for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
     end

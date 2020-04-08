@@ -1,4 +1,4 @@
-vertexbuffer(x) = vertexbuffer(GeometryBasics.coordinates(x))
+vertexbuffer(x) = vertexbuffer(metafree(GeometryBasics.coordinates(x)))
 
 vertexbuffer(x::Observable) = Buffer(lift(vertexbuffer, x))
 function vertexbuffer(x::AbstractArray{Point{N, T}}) where {N, T}
@@ -7,7 +7,7 @@ end
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 function facebuffer(x::AbstractArray{GLTriangleFace})
-    convert(Vector{GeometryBasics.TriangleFace{Cuint}}, x)
+    return x
 end
 
 function array2color(colors, cmap, crange)
@@ -29,13 +29,13 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     # Potentially per instance attributes
     mesh_signal = plot[1]
     mattributes = GeometryBasics.attributes
-    get_attribute(mesh, key) = lift(x-> getproperty(mesh, key), mesh)
+    get_attribute(mesh, key) = lift(x-> getproperty(x, key), mesh)
     data = mattributes(mesh_signal[])
 
     uniforms = Dict{Symbol, Any}(); attributes = Dict{Symbol, Any}()
 
     for (key, default) in (
-            :texturecoordinates => Vec2f0(0),
+            :uv => Vec2f0(0),
             :normals => Vec3f0(0)
         )
         if haskey(data, key)
@@ -67,7 +67,7 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
                 attributes[:color] = Buffer(c_converted) # per vertex colors
             else
                 uniforms[:uniform_color] = Sampler(c_converted) # Texture
-                !haskey(attributes, :texturecoordinates) && @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
+                !haskey(attributes, :uv) && @warn "Mesh doesn't use Texturecoordinates, but has a Texture. Colors won't map"
             end
         elseif color isa Colorant && !haskey(attributes, :color)
             uniforms[:uniform_color] = color_signal
@@ -104,7 +104,7 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
         WebGL(),
         lasset("mesh.vert"),
         lasset("mesh.frag"),
-        VertexArray(instance);
+        instance;
         uniforms...
     )
 end

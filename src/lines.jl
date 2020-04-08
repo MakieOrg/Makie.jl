@@ -47,11 +47,10 @@ function create_shader(scene::Scene, plot::LineSegments)
     end
 
     uniforms[:resolution] = scene.camera.resolution
-    prim = GeometryBasics.Mesh(
+    instance = GeometryBasics.Mesh(
         meta(Point2f0[(0, -1), (0, 1), (1, -1), (1, 1)], uv=Vec2f0[(0,0), (0,0), (0,0), (0,0)]),
         GLTriangleFace[(1, 2, 3), (2, 4, 3)]
     )
-    instance = VertexArray(prim)
     return InstancedProgram(
         WebGL(),
         lasset("line_segments.vert"),

@@ -293,25 +293,34 @@ function lift_convert(key, value, plot)
      end
 end
 
+function Base.pairs(mesh::GeometryBasics.Mesh)
+    attr = GeometryBasics.attributes(mesh)
+    get!(attr, :position) do
+        decompose(Point, mesh)
+    end
+    return attr
+end
+
+function GeometryBasics.faces(x::VertexArray)
+    return GeometryBasics.faces(getfield(x, :data))
+end
+
 function wgl_convert(scene, THREE, ip::InstancedProgram)
     js_vbo = THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
         js_buff = JSBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
-    indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
+    indices = GeometryBasics.faces(ip.program.vertexarray)
     indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
     js_vbo.maxInstancedCount = length(ip.per_instance)
-
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
         js_buff = JSInstanceBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
-    # for (k, v) in ip.program.uniforms
-    #     println(k, " ", typeof(to_value(v)))
-    # end
+
     uniforms = to_js_uniforms(scene, THREE, ip.program.uniforms)
 
     material = create_material(
@@ -332,8 +341,8 @@ function wgl_convert(scene, jsctx, program::Program)
         js_vbo.setAttribute(name, js_buff)
     end
 
-    indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
-    indices = reinterpret(UInt32, indices) .- UInt32(1)
+    indices = GeometryBasics.faces(program.vertexarray)
+    indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
 
     # per instance data
