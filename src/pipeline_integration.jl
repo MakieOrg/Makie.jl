@@ -12,13 +12,16 @@ const PlotContext = Union{
 
 expand_palette(palette; kwargs...) = RGBA.(distinguishable_colors(20, palette; kwargs...))
 
-const rwong = begin
-    t = copy(AbstractPlotting.wong_colors)
+
+const wong = copy(AbstractPlotting.wong_colors)
+begin
+    global t
     tmp = t[1]
     t[1] = t[2]
     t[2] = t[1]
-    return expand_palette(t; lchoices = [57], cchoices = [100])
 end
+const rwong = expand_palette(t; lchoices = [57], cchoices = [100])
+
 
 # ## API implementation
 
