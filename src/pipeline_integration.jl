@@ -8,6 +8,20 @@ const PlotContext = Union{
                     MakieLayout.LAxis
                 }
 
+# ## Utilities
+
+expand_palette(palette; kwargs...) = RGBA.(distinguishable_colors(20, palette; kwargs...))
+
+const rwong = begin
+    t = copy(AbstractPlotting.wong_colors)
+    tmp = t[1]
+    t[1] = t[2]
+    t[2] = t[1]
+    return expand_palette(t; lchoices = [57], cchoices = [100])
+end
+
+# ## API implementation
+
 # Define overrides for RecipesPipeline hooks.
 
 RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::PlotContext) where T = throw(MethodError("Unmatched plot type: $T"))
@@ -170,15 +184,7 @@ function set_series_color!(scene, st, plotattributes)
         !(plot isa Union{AbstractPlotting.Heatmap, AbstractPlotting.Surface, AbstractPlotting.Image, AbstractPlotting.Spy, AbstractPlotting.Axis2D, AbstractPlotting.Axis3D})
     end
 
-    if length(plts) == 0
-        get!(plotattributes, :seriescolor, AbstractPlotting.wong_colors[2])
-        return nothing
-    elseif length(plts) == 1
-        get!(plotattributes, :seriescolor, AbstractPlotting.wong_colors[1])
-        return nothing
-    end
-
-    get!(plotattributes, :seriescolor, AbstractPlotting.wong_colors[length(plts)+1])
+    get!(plotattributes, :seriescolor, get(plotattributes, :palette, rwong)[length(plts) + 1])
 
     return nothing
 
