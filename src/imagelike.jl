@@ -44,7 +44,7 @@ function limits_to_uvmesh(plot)
         reinterpret(GeometryBasics.Point{2, Float32}, ps)
     end)
     faces = Buffer(lift(rectangle) do rect
-        tris = decompose(GLTriangle, rect)
+        tris = decompose(GLTriangleFace, rect)
         convert(Vector{GeometryBasics.TriangleFace{Cuint}}, tris)
     end)
     uv = Buffer(lift(rectangle) do rect
@@ -69,7 +69,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
         end)
     end)
     faces = Buffer(lift(pz) do z
-        tris = decompose(GLTriangle, SimpleRectangle(0f0, 0f0, 1f0, 1f0), size(z))
+        tris = decompose(GLTriangleFace, SimpleRectangle(0f0, 0f0, 1f0, 1f0), size(z))
         convert(Vector{GeometryBasics.TriangleFace{Cuint}}, tris)
     end)
     uv = Buffer(lift(pz) do z

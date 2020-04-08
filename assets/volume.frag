@@ -1,5 +1,6 @@
 in vec3 frag_vert;
 in vec3 frag_uv;
+
 /*
 uniform sampler3D volumedata;
 uniform sampler2D colormap;
@@ -67,6 +68,7 @@ float rand(){
         sin(gl_FragCoord.x * 12.9898 + gl_FragCoord.y * 78.233) * 43758.5453
     );
 }
+
 float _normalize(float val, float from, float to)
 {
     return (val-from) / (to - from);

@@ -6,7 +6,7 @@ function vertexbuffer(x::AbstractArray{Point{N, T}}) where {N, T}
 end
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
-function facebuffer(x::AbstractArray{GLTriangle})
+function facebuffer(x::AbstractArray{GLTriangleFace})
     convert(Vector{GeometryBasics.TriangleFace{Cuint}}, x)
 end
 

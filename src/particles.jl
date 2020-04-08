@@ -19,7 +19,6 @@ function handle_color!(uniform_dict, instance_dict)
     end
 end
 
-
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
     per_instance_keys = (:rotations, :markersize, :color, :intensity)

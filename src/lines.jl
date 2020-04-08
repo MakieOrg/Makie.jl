@@ -50,7 +50,7 @@ function create_shader(scene::Scene, plot::LineSegments)
     prim = GLUVMesh2D(
         vertices = Vec2f0[(0, -1), (0, 1), (1, -1), (1, 1)],
         texturecoordinates = UV{Float32}[(0,0), (0,0), (0,0), (0,0)],
-        faces = GLTriangle[(1, 2, 3), (2, 4, 3)]
+        faces = GLTriangleFace[(1, 2, 3), (2, 4, 3)]
     )
     instance = VertexArray(prim)
     return InstancedProgram(
