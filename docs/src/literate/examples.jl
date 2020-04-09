@@ -110,22 +110,21 @@ end
 using Phylo
 
 assetpath = joinpath(dirname(pathof(MakieRecipes)), "..", "docs", "src", "assets")
-hummer = open(t -> parsenewick(t, NamedPolytomousTree), joinpath(assetpath, "hummingbirds.tree"))
+hummers = open(t -> parsenewick(t, NamedPolytomousTree), joinpath(assetpath, "hummingbirds.tree"))
 
-evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
+evolve(tree) = map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
 
-trait = evolve(hummer)
+trait = evolve(hummers)
 
 scp = recipeplot(
-    hummer;
+    hummers;
     treetype = :fan,
     line_z = trait,
     linewidth = 5,
     showtips = false,
     cgrad = :RdYlBu,
     seriestype = :path,
-    # Makie attributes can be used here as well!
-    scale_plot = false,
+    scale_plot = false, # Makie attributes can be used here as well!
     show_axis = false
 )
 
