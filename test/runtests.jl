@@ -2,38 +2,17 @@ using MakieGallery, AbstractPlotting, GLMakie, Test
 
 using MakieGallery: @block, @cell
 
-database = MakieGallery.load_database()
-
-exclude = (
-    "Cobweb plot", # has some weird scaling issue on CI
-    "Colormap collection", # has one size different...
-    # doesn't match 0.035520551315007046 <= 0.032. Looked at the artifacts and it looks fairly similar
-    # so blaming video compression
-    "Interaction with Mouse",
-    "Moire"
-)
-# Download is broken on CI
-filter!(database) do entry
-    return !("download" in entry.tags) &&
-           !("diffeq" in entry.tags) &&
-           !(entry.title in exclude) &&
-           !(entry.unique_name in (:analysis, :colormap_collection,
-                                   :lots_of_heatmaps, :window_resizing,
-                                   :aspect_ratios_stretching_circles))
-end
-
+database = MakieGallery.load_test_database()
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
-for path in (tested_diff_path, test_record_path)
-    rm(path, force = true, recursive = true)
-    mkpath(path)
-end
-
-recordings = MakieGallery.record_examples(test_record_path)
-
-@test length(recordings) == length(database)
-
+isdir(tested_diff_path) && rm(tested_diff_path, force = true, recursive = true)
+mkpath(tested_diff_path)
+isdir(test_record_path) && rm(test_record_path, force = true, recursive = true)
+mkpath(test_record_path)
+examples = MakieGallery.record_examples(test_record_path)
+@test length(examples) == length(database)
 MakieGallery.run_comparison(test_record_path, tested_diff_path)
+
 empty!(database) # remove other examples
 include("glmakie_tests.jl") # include GLMakie specific tests
 # THese examples download additional data - don't want to deal with that!
@@ -44,6 +23,3 @@ end
 
 examples = MakieGallery.record_examples(test_record_path)
 MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff=0.00001)
-# MakieGallery.generate_preview(test_record_path)
-# repo = joinpath(homedir(), "ReferenceImages", "gallery")
-# cp(test_record_path, repo, force = true)
