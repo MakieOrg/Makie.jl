@@ -308,14 +308,14 @@ end
 const _ffmpeg_path = isdefined(FFMPEG, :ffmpeg_path) ? FFMPEG.ffmpeg_path : FFMPEG.ffmpeg
 
 """
-    VideoStream(scene::Scene, framerate = 24, compression = 20)
+    VideoStream(scene::Scene, framerate = 24)
 
 Returns a stream and a buffer that you can use, which don't allocate for new frames.
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 [`save(path, stream)`](@ref) to save the video.
 """
 function VideoStream(
-        scene::Scene; framerate::Integer = 24, compression = 20
+        scene::Scene; framerate::Integer = 24
     )
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
@@ -326,7 +326,7 @@ function VideoStream(
     _xdim, _ydim = size(scene)
     xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
     ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -crf $compression -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
@@ -468,13 +468,13 @@ end
 ```
 """
 function record(func, scene, path; framerate::Int = 24, compression = 20)
-    io = VideoStream(scene; framerate = framerate, compression = compression)
+    io = VideoStream(scene; framerate = framerate)
     func(io)
     save(path, io; framerate = framerate, compression = compression)
 end
 
 function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
-    io = VideoStream(scene; framerate = framerate, compression = compression)
+    io = VideoStream(scene; framerate = framerate)
     for i in iter
         t1 = time()
         func(i)
