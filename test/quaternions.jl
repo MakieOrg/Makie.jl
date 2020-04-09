@@ -1,7 +1,5 @@
 @testset "Quaternions" begin
 
-    using StaticArrays, GeometryTypes
-
     qx = qrotation(Vec(1, 0, 0), pi / 4)
     @test qx * qx ≈ qrotation(SVector(1.0, 0.0, 0.0), pi / 2)
     @test Base.power_by_squaring(qx, 2) ≈ qrotation(SVector(1.0, 0.0, 0.0), pi / 2)
