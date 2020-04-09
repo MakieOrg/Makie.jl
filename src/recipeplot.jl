@@ -5,8 +5,13 @@ end
 
 function AbstractPlotting.plot!(p::T) where T <: RecipePlot
 
-    # Node(1) is a dummy observable for dispatch
+    # What happens here is that I want to lift on every available observable,
+    # so they need to be splatted.  This also means that nested attributes
+    # will not be lifted on, but that's an acceptable tradeoff.
+    #
+    # After lifting on everything,
 
+    # Node(1) is a dummy observable for dispatch.
     lift(Node(1), p.attributes, p.converted, p.converted..., values(p.attributes)...) do _, attrs, args, __lifted...
 
         !isempty(p.plots) && empty!(p.plots)

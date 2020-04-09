@@ -187,7 +187,7 @@ function set_series_color!(scene, st, plotattributes)
         end
     end
 
-    plts = filter(scene.plots) do plot
+    plts = filter(plots(scene)) do plot
         !(plot isa Union{AbstractPlotting.Heatmap, AbstractPlotting.Surface, AbstractPlotting.Image, AbstractPlotting.Spy, AbstractPlotting.Axis2D, AbstractPlotting.Axis3D})
     end
 
@@ -228,10 +228,6 @@ end
 
 # Add the "series" to the Scene.
 function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
-
-    # kys = filter((x -> x !∈ (:plot_object, :x, :y)), keys(plotattributes))
-    # vals = getindex.(Ref(plotattributes), kys)
-    # fpa = Dict{Symbol, Any}(kys .=> vals)
 
     # extract the seriestype
     st = plotattributes[:seriestype]

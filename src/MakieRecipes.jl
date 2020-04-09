@@ -13,9 +13,10 @@ include("recipeplot.jl")
 
 # TODO FIXME
 RecipesBase.is_key_supported(::Symbol) = false
+AbstractPlotting.plots(la::MakieLayout.LAxis) = plots(la.scene)
 # FIXME TODO
 
-function tomakie!(sc::Scene, args...; attrs...)
+function tomakie!(sc::AbstractScene, args...; attrs...)
     RecipesPipeline.recipe_pipeline!(sc, Dict{Symbol, Any}(attrs), args)
 end
 
