@@ -20,7 +20,7 @@ begin
     wong[1] = wong[2]
     wong[2] = wong[1]
 end
-const rwong = expand_palette(wong, 30; lchoices = [57], cchoices = [100])
+const rwong = expand_palette(wong, 30)
 
 
 # ## API implementation
@@ -179,7 +179,8 @@ end
 
 function set_series_color!(scene, st, plotattributes)
 
-    has_color = any(haskey.(Ref(plotattributes), (:color, :seriescolor, :markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor)))
+    has_color = any(haskey.(Ref(plotattributes), (:markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor)))
+    cs = get.(Ref(plotattributes), (:markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor), nothing)
     has_seriescolor = haskey(plotattributes, :seriescolor)
 
     if has_color

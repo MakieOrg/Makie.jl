@@ -1,4 +1,5 @@
 using AbstractPlotting, CairoMakie, MakieRecipes; nothing# hide
+using MakieRecipes.RecipesPipeline; using MakieRecipes.RecipesPipeline: PlotUtils; nothing # hide
 # ```julia
 # using Makie, MakieRecipes
 # ```
@@ -10,7 +11,7 @@ struct T end
 
 RecipesBase.@recipe function plot(::T, n = 1; customcolor = :green)
     markershape --> :auto        # if markershape is unset, make it :auto
-    markercolor :=  customcolor       # force markercolor to be customcolor
+    markercolor :=  customcolor  # force markercolor to be customcolor
     xrotation   --> 45           # if xrotation is unset, make it 45
     zrotation   --> 90           # if zrotation is unset, make it 90
     rand(10,n)                   # return the arguments (input data) for the next recipe
@@ -128,7 +129,7 @@ scp = recipeplot(
     show_axis = false
 )
 
-AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hideinc
+AbstractPlotting.save("phylo.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](phylo.svg)
 
 # ### Animation with different colormaps (changing attributes)
