@@ -2,6 +2,7 @@ using AbstractPlotting
 using MakieGallery
 using Test
 using GLMakie
+using StaticArrays, GeometryBasics
 
 # Download reference images from master
 

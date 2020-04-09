@@ -7,7 +7,7 @@
 Plots a polygon based on the arguments given.
 When vertices and indices are given, it functions similarly to `mesh`.
 When points are given, it draws one polygon that connects all the points in order.
-When a shape is given (essentially anything decomposable by `GeometryTypes`), it will plot `decompose(shape)`.
+When a shape is given (essentially anything decomposable by `GeometryBasics`), it will plot `decompose(shape)`.
 
     poly(coordinates, connectivity; kwargs...)
 
