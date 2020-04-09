@@ -20,7 +20,7 @@ begin
     wong[1] = wong[2]
     wong[2] = wong[1]
 end
-const rwong = expand_palette(t; lchoices = [57], cchoices = [100])
+const rwong = expand_palette(wong; lchoices = [57], cchoices = [100])
 
 
 # ## API implementation
