@@ -26,6 +26,14 @@ jobs:
       - name: Run tests
         uses: julia-actions/julia-runtest@master
 
+      - name: Upload examples
+        uses: actions/upload-artifact@v1.0.0
+        with:
+          name: Examples
+          path: ./test
+        if: always()
+
+
       - name: Cache artifacts
         uses: actions/cache@v1
         env:
