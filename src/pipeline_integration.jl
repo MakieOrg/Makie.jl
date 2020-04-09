@@ -10,7 +10,7 @@ const PlotContext = Union{
 
 # ## Utilities
 
-expand_palette(palette; kwargs...) = RGBA.(distinguishable_colors(20, palette; kwargs...))
+expand_palette(palette, n = 20; kwargs...) = RGBA.(distinguishable_colors(n, palette; kwargs...))
 
 
 const wong = copy(AbstractPlotting.wong_colors)
@@ -20,7 +20,7 @@ begin
     wong[1] = wong[2]
     wong[2] = wong[1]
 end
-const rwong = expand_palette(wong; lchoices = [57], cchoices = [100])
+const rwong = expand_palette(wong, 30; lchoices = [57], cchoices = [100])
 
 
 # ## API implementation
@@ -179,8 +179,12 @@ end
 
 function set_series_color!(scene, st, plotattributes)
 
-    if haskey(plotattributes, :seriescolor)
-        if plotattributes[:seriescolor] ∈ (:match, :auto)
+    has_color = any(haskey.(Ref(plotattributes), (:color, :seriescolor, :markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor)))
+    has_seriescolor = haskey(plotattributes, :seriescolor)
+
+    if has_color
+        if has_seriescolor && plotattributes[:seriescolor] ∈ (:match, :auto)
+            @debug "Assigning new seriescolor from automatic"
             delete!(plotattributes, :seriescolor)
         else
             return nothing
