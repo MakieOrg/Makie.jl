@@ -113,7 +113,7 @@ using Phylo
 assetpath = joinpath(dirname(pathof(MakieRecipes)), "..", "docs", "src", "assets")
 hummers = open(t -> parsenewick(t, NamedPolytomousTree), joinpath(assetpath, "hummingbirds.tree"))
 
-evolve(tree) = map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
+evolve(tree) = Phylo.map_depthfirst((val, node) -> val + randn(), 0., tree, Float64)
 
 trait = evolve(hummers)
 
