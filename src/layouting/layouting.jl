@@ -1,5 +1,5 @@
-function zerorect(x::HyperRectangle{N, T}) where {N, T}
-    HyperRectangle(Vec{N, T}(0), widths(x))
+function zerorect(x::Rect{N, T}) where {N, T}
+    Rect(Vec{N, T}(0), widths(x))
 end
 function padrect(rect, pad)
     Rect(minimum(rect) .- pad, widths(rect) .+ 2pad)
@@ -36,7 +36,7 @@ function text_bb(str, font, size)
         str, Point2f0(0), size,
         font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I)
     )
-    union(AABB(positions),  AABB(positions .+ to_ndim.(Point3f0, scale, 0)))
+    union(FRect3D(positions),  FRect3D(positions .+ to_ndim.(Point3f0, scale, 0)))
 end
 
 """
@@ -118,7 +118,7 @@ end
 function align_offset(startpos, lastpos, atlas, rscale, font, align)
     xscale, yscale = glyph_scale!('X', rscale)
     xmove = (lastpos-startpos)[1] + xscale
-    if isa(align, GeometryTypes.Vec)
+    if align isa Vec
         return -Vec2f0(xmove, yscale) .* align
     elseif align == :top
         return -Vec2f0(xmove/2f0, yscale)
@@ -133,9 +133,8 @@ function alignment2num(x::Symbol)
     (x == :center) && return 0.5f0
     (x in (:left, :bottom)) && return 0.0f0
     (x in (:right, :top)) && return 1.0f0
-    0.0f0 # 0 default, or better to error?
+    return 0.0f0 # 0 default, or better to error?
 end
-
 
 grid(x::Transformable...; kw_args...) = grid([x...]; kw_args...)
 

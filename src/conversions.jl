@@ -89,7 +89,7 @@ convert_arguments(::PointBased, x::RealVector, y::RealVector, z::RealVector) = (
 Takes an input GeometryPrimitive `x` and decomposes it to points.
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::GeometryPrimitive) = (decompose(Point, x),)
+convert_arguments(p::PointBased, x::GeometryPrimitive) = convert_arguments(p, decompose(Point, x))
 
 function convert_arguments(::PointBased, pos::AbstractMatrix{<: Number})
     (to_vertices(pos),)
@@ -207,7 +207,7 @@ convert_arguments(::Type{<: Text}, x::AbstractString) = (String(x),)
 """
     convert_arguments(P, x)::(Vector)
 
-Takes an input `HyperRectangle` `x` and decomposes it to points.
+Takes an input `Rect` `x` and decomposes it to points.
 
 `P` is the plot Type (it is optional).
 """
@@ -216,13 +216,13 @@ function convert_arguments(P::PointBased, x::Rect2D)
     return convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
 end
 
-function convert_arguments(P::PointBased, x::SimpleRectangle)
-    # TODO fix the order of decompose
-    return convert_arguments(P, decompose(Point2f0, x)[[1, 2, 4, 3, 1]])
-end
-
 function convert_arguments(P::PointBased, mesh::AbstractMesh)
     return convert_arguments(P, decompose(Point3f0, mesh))
+end
+
+function convert_arguments(PB::PointBased, linesegments::FaceView{<:Line, P}) where {P<:AbstractPoint}
+    # TODO FaceView should be natively supported by backends!
+    return convert_arguments(PB, collect(reinterpret(P, linesegments)))
 end
 
 function convert_arguments(::Type{<: LineSegments}, x::Rect2D)
@@ -379,56 +379,71 @@ function convert_arguments(
         MT::Type{<:Mesh},
         xyz::AbstractVector
     )
-    faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
-    convert_arguments(MT, xyz, faces)
+    faces = connect(UInt32(0):UInt32(length(xyz)-1), GLTriangleFace)
+    # TODO support faceview natively
+    return convert_arguments(MT, xyz, collect(faces))
 end
+
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
+    # we convert to UV mesh as default, because otherwise the uv informations get lost
+    # - we can still drop them, but we can't add them later on
+    return (mesh,)
+end
+
 function convert_arguments(
         MT::Type{<:Mesh},
         meshes::AbstractVector{<: AbstractMesh}
     )
-    (meshes,)
+    return (meshes,)
 end
+
 # # ambigious case
 # function convert_arguments(
 #         MT::Type{<:Mesh},
 #         xyz::AbstractVector{<: VecTypes{N, T}}
 #     ) where {T, N}
-#     faces = reinterpret(GLTriangle, UInt32[0:(length(xyz)-1);])
+#     faces = reinterpret(GLTriangleFace, UInt32[0:(length(xyz)-1);])
 #     convert_arguments(MT, xyz, faces)
 # end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    (GLNormalUVMesh(geom),)
+    return (GeometryBasics.uv_normal_mesh(geom),)
 end
+
+
+
 """
     convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
 
 Takes real vectors x, y, z and constructs a triangle mesh out of those, using the
-faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryTypes.Face{N, <: Integer}.
+faces in `indices`, which can be integers (every 3 -> one triangle), or GeometryBasics.NgonFace{N, <: Integer}.
 """
 function convert_arguments(
         T::Type{<: Mesh},
         x::RealVector, y::RealVector, z::RealVector,
         indices::AbstractVector
     )
-    convert_arguments(T, Point3f0.(x, y, z), indices)
+    return convert_arguments(T, Point3f0.(x, y, z), indices)
 end
 
 function to_triangles(x::AbstractVector{Int})
     idx0 = UInt32.(x .- 1)
     to_triangles(idx0)
 end
+
 function to_triangles(idx0::AbstractVector{UInt32})
-    reinterpret(GLTriangle, idx0)
+    reinterpret(GLTriangleFace, idx0)
 end
-function to_triangles(faces::AbstractVector{Face{3, T}}) where T
-    elconvert(GLTriangle, faces)
+
+function to_triangles(faces::AbstractVector{TriangleFace{T}}) where T
+    elconvert(GLTriangleFace, faces)
 end
+
 function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
     let N = Val(size(faces, 2)), lfaces = faces
         broadcast(1:size(faces, 1), N) do fidx, n
-            to_ndim(GLTriangle, ntuple(i-> lfaces[fidx, i], n), 0.0)
+            to_ndim(GLTriangleFace, ntuple(i-> lfaces[fidx, i], n), 0.0)
         end
     end
 end
@@ -475,7 +490,7 @@ function convert_arguments(
         vertices::AbstractArray,
         indices::AbstractArray
     )
-    m = GLNormalMesh(to_vertices(vertices), to_triangles(indices))
+    m = normal_mesh(to_vertices(vertices), to_triangles(indices))
     (m,)
 end
 
@@ -850,29 +865,11 @@ function available_marker_symbols()
     end
 end
 
-
-
-"""
-    to_spritemarker(b, x::Circle)
-
-`GeometryTypes.Circle(Point2(...), radius)`
-"""
 to_spritemarker(x::Circle) = x
-
-"""
-    to_spritemarker(b, ::Type{Circle})
-
-`Type{GeometryTypes.Circle}`
-"""
 to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
-"""
-    to_spritemarker(b, ::Type{Rectangle})
+to_spritemarker(::Type{<: Rect}) = Rect(Vec2f0(0), Vec2f0(1))
+to_spritemarker(x::Rect) = x
 
-`Type{GeometryTypes.Rectangle}`
-"""
-to_spritemarker(::Type{<: Rectangle}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
-to_spritemarker(::Type{<: Rect}) = HyperRectangle(Vec2f0(0), Vec2f0(1))
-to_spritemarker(x::HyperRectangle) = x
 """
     to_spritemarker(b, marker::Char)
 
@@ -901,7 +898,6 @@ function to_spritemarker(marker::Symbol)
         return '●'
     end
 end
-
 
 to_spritemarker(marker::String) = marker
 to_spritemarker(marker::AbstractVector{Char}) = String(marker)

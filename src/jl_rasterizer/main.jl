@@ -34,7 +34,7 @@ function FixedGeomView(T, max_primitives, primitive_in, primitive_out)
         error("Not implemented for max_primitives == $max_primitives and primitive_out == $primitive_out.")
     end
     geometry_view = if primitive_out == :triangle_strip
-        view(buffer, [Face(1, 2, 3), Face(3, 2, 4)])
+        view(buffer, [TriangleFace(1, 2, 3), TriangleFace(3, 2, 4)])
     else
         error("$primitive_out not supported. Only :triangle_strip supported right now")
     end
@@ -360,11 +360,11 @@ function frag_particles(geom_out, uniforms)
     (sdf2color(dist, bg_color, color), )
 end
 
-function orthographicprojection(wh::SimpleRectangle, near::T, far::T) where T
+function orthographicprojection(wh::Rect2D, near::T, far::T) where T
     orthographicprojection(zero(T), T(wh.w), zero(T), T(wh.h), near, far)
 end
 function orthographicprojection(
-        ::Type{T}, wh::SimpleRectangle, near::Number, far::Number
+        ::Type{T}, wh::Rect2D, near::Number, far::Number
     ) where T
     orthographicprojection(wh, T(near), T(far))
 end
@@ -395,7 +395,7 @@ function orthographicprojection(::Type{T},
     )
 end
 
-proj = orthographicprojection(SimpleRectangle(0, 0, resolution...), -10_000f0, 10_000f0)
+proj = orthographicprojection(Rect2D(0, 0, resolution...), -10_000f0, 10_000f0)
 
 uniforms = Uniforms(
     proj,

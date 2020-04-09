@@ -231,8 +231,8 @@ function plot!(splot::Button)
         dimensions, textcolor, clicks, textsize, position,
         padvalue
     ))
-
-    textpos = lift(position, dimensions) do pos, dims
+    real_dimensions = Observable(Vec2f0(dimensions[]))
+    textpos = lift(position, real_dimensions) do pos, dims
         # always center the text in the button
         # the dims could be smaller than the text though
         Point2f0(pos .+ dims ./ 2)
@@ -246,14 +246,19 @@ function plot!(splot::Button)
         align = (:center, :center)
     ).plots[end]
 
+    wh = widths(boundingbox(lplot))[1:2]
     # position and dimensions
-    box = lift(position, dimensions) do pos, dims
-        FRect(pos, dims)
+    box = lift(position, dimensions, padvalue) do pos, dims, pad
+        wh = Vec2f0(max.(dims, wh))
+        pad_val = wh .* pad
+        wh = wh .+ Vec2f0(2*pad_val[1], 0.0) # only padd x
+        real_dimensions[] = wh
+        return FRect(pos, wh)
     end
 
-    poly!(
-        splot, box,
-        color = backgroundcolor, strokecolor = strokecolor, strokewidth = strokewidth)
+    poly!(splot, box, color = backgroundcolor, strokecolor = strokecolor,
+          strokewidth = strokewidth)
+
     reverse!(splot.plots) # make poly first
 
     on(events(splot).mousebuttons) do mb
@@ -307,16 +312,18 @@ end
 function textslider(
         range, label, scene = Scene(camera = campixel!);
         start = first(range), textalign = (:left, :center), textpos = (0, 50),
-        textcolor = :black,
+        textcolor = :black, sliderheight = 50, buttonsize = 15,
         kwargs...
     )
     t = text!(
         scene, "$label:", raw = true, position = textpos, align = textalign,
         color = textcolor, kwargs...
     )[end]
-    xp = widths(boundingbox(t))[1]
+
+    xp = widths(boundingbox(t))
     s = slider!(
-        scene, range, position = Point2f0(xp, 0), raw = true,
+        scene, range, position = Point2f0(xp[1] + buttonsize/2, (xp[2] / 2)), raw = true,
+        sliderheight = sliderheight,
         start = start, textcolor = textcolor, kwargs...
     )[end]
     scene, s[:value]
@@ -369,19 +376,19 @@ function popup(parent, position, width)
     popup = Scene(
         parent, parea,
         visible = vis, raw = true, camera = campixel!,
-        backgroundcolor = RGBAf0(0.95, 0.95, 0.95, 1.0)
+        backgroundcolor = RGBAf0(0.95, 0.95, 0.95, 1.0), clear = true
     )
     header = Scene(
         popup, harea,
-        backgroundcolor = RGBAf0(0.90, 0.90, 0.90, 1.0), visible = vis,
-        raw = true, camera = campixel!
+        backgroundcolor = RGBAf0(0.9, 0.90, 0.90, 1.0), visible = vis,
+        raw = true, camera = campixel!, clear = true
     )
     initialized = Ref(false)
-    but = button!(header, "x", strokewidth = 0.0) do click
+    but = button!(header, "x", strokewidth = 1.0, position=(1,1), dimensions=(26, 26)) do click
         vis[] = !vis[]
         return
     end
-    Popup(popup, vis, pos_n, width_n)
+    return Popup(popup, vis, pos_n, width_n)
 end
 
 """
