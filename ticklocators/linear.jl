@@ -133,6 +133,10 @@ function locateticks(vmin, vmax, n_ideal::Int, _integer::Bool = false, _min_n_ti
     ticks = ticks .+ offset #(first(ticks) + offset):step(ticks):(last(ticks) + offset)
     vals = filter(x -> vmin <= x <= vmax, ticks)
 
+    # for some reason, the values coming out of this method sometimes are ever so slightly off from
+    # their intended decimal representation, causing printed values like
+    # 0.08000000001 instead of 0.08
+    # so here we round off the numbers to the required number of digits after the decimal point
     exponent = floor(Int, minimum(log10.(abs.(diff(vals)))))
     round.(vals, digits = max(0, -exponent+1))
 end
