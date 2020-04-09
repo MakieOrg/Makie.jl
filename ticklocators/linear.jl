@@ -129,8 +129,12 @@ function locateticks(vmin, vmax, n_ideal::Int, _integer::Bool = false, _min_n_ti
             break
         end
     end
+
     ticks = ticks .+ offset #(first(ticks) + offset):step(ticks):(last(ticks) + offset)
-    filter(x -> vmin <= x <= vmax, ticks)
+    vals = filter(x -> vmin <= x <= vmax, ticks)
+
+    exponent = floor(Int, minimum(log10.(abs.(diff(vals)))))
+    round.(vals, digits = max(0, -exponent+1))
 end
 
 
