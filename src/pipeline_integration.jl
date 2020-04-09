@@ -20,7 +20,7 @@ begin
     wong[1] = wong[2]
     wong[2] = tmp
 end
-const rwong = expand_palette(wong, 30)
+const rwong = expand_palette(wong, 50)
 
 
 # ## API implementation
@@ -110,6 +110,7 @@ function makie_args(::AbstractPlotting.PointBased, plotattributes)
     c = plotattributes[:color]
 
     if isempty(x) && isempty(y)
+        @debug "Encountered an empty series of seriestype $(plotattributes[:seriestype])"
         return
     end
 
@@ -138,6 +139,9 @@ function translate_to_makie!(st, pa)
 
     # series color population
     haskey(pa, :seriescolor) && (pa[:color] = pa[:seriescolor])
+
+    haskey(pa, :fill_z) && (pa[:color] = pa[:fill_z])
+    pa[:shading] = false # set shading to false, default in Plots
 
     # series color
     if st ∈ (:path, :path3d, :curves)
