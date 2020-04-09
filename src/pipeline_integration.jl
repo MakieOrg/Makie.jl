@@ -18,7 +18,7 @@ begin
     global wong
     tmp = wong[1]
     wong[1] = wong[2]
-    wong[2] = wong[1]
+    wong[2] = tmp
 end
 const rwong = expand_palette(wong, 30)
 
@@ -181,6 +181,7 @@ function set_series_color!(scene, st, plotattributes)
 
     has_color = any(haskey.(Ref(plotattributes), (:markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor)))
     cs = get.(Ref(plotattributes), (:markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor), nothing)
+    @show cs
     has_seriescolor = haskey(plotattributes, :seriescolor)
 
     if has_color
