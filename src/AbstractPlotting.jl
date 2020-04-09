@@ -1,12 +1,16 @@
 module AbstractPlotting
 
+using Random
 using FFMPEG # get FFMPEG on any system!
-using Observables, GeometryTypes, StaticArrays, IntervalSets, PlotUtils
+using Observables, GeometryBasics, StaticArrays, IntervalSets, PlotUtils
 using ColorBrewer, ColorTypes, Colors, ColorSchemes
 using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
+# conflicting identifiers
+using GeometryBasics: widths, positive_widths
+
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
@@ -38,6 +42,8 @@ include("utilities/logging.jl")
 include("utilities/texture_atlas.jl")
 include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
+
+include("colorsampler.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
@@ -159,8 +165,6 @@ export (..), GLNormalUVMesh
 # Exports of units
 export px
 
-# conflicting identifiers
-using GeometryTypes: widths, positive_widths
 export widths, decompose
 
 # building blocks for series recipes
@@ -175,7 +179,6 @@ export save
 
 # colormap stuff from PlotUtils, and showlibrary, showgradients
 export clibraries, cgradients, clibrary, showlibrary, showgradients
-
 
 # default icon for Makie
 function icon()

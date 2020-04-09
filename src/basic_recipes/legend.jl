@@ -200,10 +200,9 @@ function plot!(plot::ColorLegend)
         )
     )
     vertices = Point3f0[(0, 0, 0), (0, 1, 0), (1, 1, 0), (1, 0, 0)]
-    mesh = GLNormalUVMesh(
-        vertices = copy(vertices),
-        faces = GLTriangle[(1, 2, 3), (3, 4, 1)],
-        texturecoordinates = UV{Float32}[(0, 1), (0, 0), (0, 0), (0, 1)]
+    mesh = GeometryBasics.Mesh(
+        meta(vertices, uv=Vec2f0[(0, 1), (0, 0), (0, 0), (0, 1)]),
+        GLTriangleFace[(1, 2, 3), (3, 4, 1)],
     )
 
     cmap_node = lift(colormap) do cmap
@@ -242,7 +241,7 @@ function plot!(plot::ColorLegend)
         rect
     end
     meshnode = lift(width, padding, textsize) do w, pad, ts
-        mesh.vertices .= broadcast(vertices) do v
+        mesh.position .= broadcast(vertices) do v
             Point3f0(((Point2f0(v[1], v[2]) .* Point2f0(w)) .+ Point2f0(0, ts/2) .+ pad)..., 0.0)
         end
         mesh
