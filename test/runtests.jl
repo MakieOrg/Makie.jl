@@ -1,12 +1,13 @@
 using ImageMagick, Test
 using CairoMakie, AbstractPlotting, MakieGallery
 CairoMakie.activate!(type = "png")
-        
-AbstractPlotting.format2mime(::Type{AbstractPlotting.FileIO.format"PDF"})  = MIME("application/pdf")
+
+# AbstractPlotting.format2mime(::Type{AbstractPlotting.FileIO.format"PDF"}) = MIME("application/pdf")
 
 include("saving.jl") # test saving params
 
 database = MakieGallery.load_database()
+
 filter!(database) do entry
     "2d" in entry.tags &&
     "Text rotation" != entry.title &&
@@ -19,8 +20,6 @@ filter!(database) do entry
     !("image" in entry.tags)
 end
 
-empty!(MakieGallery.plotting_backends)
-push!(MakieGallery.plotting_backends, "AbstractPlotting", "CairoMakie")
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
 rm(tested_diff_path, force = true, recursive = true)

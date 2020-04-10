@@ -1,7 +1,7 @@
 module CairoMakie
 
 using AbstractPlotting, LinearAlgebra
-using Colors, GeometryTypes, FileIO, StaticArrays
+using Colors, GeometryBasics, FileIO, StaticArrays
 import Cairo
 
 using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter, @key_str, broadcast_foreach
@@ -166,7 +166,7 @@ mesh_pattern_set_corner_color(pattern, id, c::Color3) =
 mesh_pattern_set_corner_color(pattern, id, c::Colorant{T,4} where T) =
     Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, colorant2tuple4(c)...)
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Mesh)
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
     @get_attribute(primitive, (color,))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
@@ -175,13 +175,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Mesh)
     ctx = screen.context
     model = primitive.model[]
     mesh = primitive[1][]
-    vs = vertices(mesh); fs = faces(mesh)
-    uv = hastexturecoordinates(mesh) ? texturecoordinates(mesh) : nothing
+    vs = coordinates(mesh); fs = faces(mesh)
+    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
 
-    if mesh.attributes !== nothing && mesh.attribute_id !== nothing
-        color = mesh.attributes[Int.(mesh.attribute_id .+ 1)]
-    end
     cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
     for (f, (c1, c2, c3)) in zip(fs, cols)
         t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
@@ -231,7 +228,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
     # the input argument is a view of points using faces, which results in
     # a vector of tuples of two points. we convert those to a list of points
     # so they don't trip up the rest of the pipeline
-    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:Face}}} where P
+    # TODO this shouldn't be necessary anymore!
+    if positions isa SubArray{<:Point3, 1, P, <:Tuple{Array{<:AbstractFace}}} where P
         positions = let
             pos = Point3f0[]
             for tup in positions
