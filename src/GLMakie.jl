@@ -1,6 +1,6 @@
 module GLMakie
 
-using ModernGL, FixedPointNumbers, Colors, GeometryTypes, StaticArrays
+using ModernGL, FixedPointNumbers, Colors, GeometryBasics, StaticArrays
 using AbstractPlotting, FileIO
 
 using AbstractPlotting: @key_str, Key, broadcast_foreach, to_ndim, NativeFont
@@ -8,6 +8,7 @@ using AbstractPlotting: Scene, Lines, Text, Image, Heatmap, Scatter
 using AbstractPlotting: convert_attribute, @extractvalue, LineSegments
 using AbstractPlotting: @get_attribute, to_value, to_colormap, extrema_nan
 using AbstractPlotting: ClosedInterval, (..)
+using ShaderAbstractions
 
 using Base: RefValue
 import Base: push!, isopen, show
@@ -24,7 +25,6 @@ end
 returns path relative to the assets folder
 """
 assetpath(folders...) = joinpath(@__DIR__, "GLVisualize", "assets", folders...)
-
 
 """
 Loads a file from the asset folder
@@ -43,7 +43,6 @@ if WORKING_OPENGL
      # don't put this into try catch, to not mess with normal errors
     include("gl_backend.jl")
 end
-
 
 function activate!(use_display = true)
     b = GLBackend()

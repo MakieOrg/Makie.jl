@@ -13,34 +13,21 @@ import Base: ndims
 import Base: size
 import Base: iterate
 using Serialization
-import GeometryTypes.SimpleRectangle
 
 abstract type GPUArray{T, NDim} <: AbstractArray{T, NDim} end
 
-#=
-immutable GPUArray{T, NDim, GPUBuff <: GPUBuffer} <: DenseArray{T, NDim}
-    buff::GPUBuff{T, NDim}
-    size::NTuple{Int, NDim}
-end
-
-immutable BufferedGPUArray{GPUArr <: GPUArray}
-    buff::GPUBuff{T, NDim}
-    ram::Array{T, NDim}
-end
-=#
-length(A::GPUArray)                                     = prod(size(A))
+length(A::GPUArray) = prod(size(A))
 eltype(b::GPUArray{T, NDim}) where {T, NDim} = T
-lastindex(A::GPUArray)                                      = length(A)
+lastindex(A::GPUArray) = length(A)
 ndims(A::GPUArray{T, NDim}) where {T, NDim} = NDim
-size(A::GPUArray)                                       = A.size
-size(A::GPUArray, i::Integer)                           = i <= ndims(A) ? A.size[i] : 1
+size(A::GPUArray) = A.size
+size(A::GPUArray, i::Integer) = i <= ndims(A) ? A.size[i] : 1
 
 function checkdimensions(value::Array, ranges::Union{Integer, UnitRange}...)
     array_size   = size(value)
     indexes_size = map(length, ranges)
-
     (array_size != indexes_size) && throw(DimensionMismatch("asigning a $array_size to a $(indexes_size) location"))
-    true
+    return true
 end
 function to_range(index)
     map(index) do val

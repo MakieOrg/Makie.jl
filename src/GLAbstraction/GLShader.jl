@@ -113,9 +113,6 @@ end
 
 gl_convert(shader::GLProgram, data) = shader
 
-
-
-
 # caching templated shaders is a pain -.-
 
 # cache for template keys per file
@@ -160,6 +157,7 @@ function get_shader!(path, template_replacement, view, attributes)
         compile_shader(path, source)
     end::Shader
 end
+
 function get_template!(path, view, attributes)
     get!(_template_cache, path) do
         _, ext = splitext(path)
@@ -337,15 +335,16 @@ function mustache2replacement(mustache_key, view, attributes)
         if haskey(attributes, keysym)
             val = attributes[keysym]
             if !isa(val, AbstractString)
-                return if postfix == "_type"
-                    toglsltype_string(val)::String
+                if postfix == "_type"
+                    return toglsltype_string(val)::String
                 else  postfix == "_calculation"
-                    glsl_variable_access(keystring, val)::String
+                    return glsl_variable_access(keystring, val)
                 end
             end
         end
     end
-    "" # no match found, leave empty!
+    return ""
+    # error("No match found: $(mustache_key)")
 end
 
 # Takes a shader template and renders the template and returns shader source
@@ -358,16 +357,4 @@ function template2source(source::AbstractString, view, attributes::Dict{Symbol, 
         r
     end
     source, replacements
-end
-
-function glsl_version_string()
-    glsl = split(unsafe_string(glGetString(GL_SHADING_LANGUAGE_VERSION)), ['.', ' '])
-    if length(glsl) >= 2
-        glsl = VersionNumber(parse(Int, glsl[1]), parse(Int, glsl[2]))
-        glsl.major == 1 && glsl.minor <= 2 && error("OpenGL shading Language version too low. Try updating graphic driver!")
-        glsl_version = string(glsl.major) * rpad(string(glsl.minor),2,"0")
-        return "#version $(glsl_version)\n"
-    else
-        error("could not parse GLSL version: $glsl")
-    end
 end

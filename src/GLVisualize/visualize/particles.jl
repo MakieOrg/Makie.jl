@@ -39,7 +39,7 @@ end
 Matrices of floats are represented as 3D barplots with cubes as primitive
 """
 function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: AbstractFloat
-    _default((AABB(Vec3f0(-0.5,-0.5,0), Vec3f0(1.0)), main), s, data)
+    _default((FRect3D(Vec3f0(-0.5,-0.5,0), Vec3f0(1.0)), main), s, data)
 end
 """
 Vectors of n-dimensional points get ndimensional rectangles as default
@@ -194,11 +194,11 @@ function _default(
     ) where {Pr <: Primitives3D, G <: Tuple}
     @gen_defaults! data begin
         primitive = p[1]
-        position         = nothing => TextureBuffer
-        position_x       = p[2][1] => TextureBuffer
-        position_y       = p[2][2] => TextureBuffer
-        position_z       = length(p[2]) > 2 ? p[2][3] : 0f0 => TextureBuffer
-        instances        = const_lift(length, position_x)
+        position = nothing => TextureBuffer
+        position_x = p[2][1] => TextureBuffer
+        position_y = p[2][2] => TextureBuffer
+        position_z = length(p[2]) > 2 ? p[2][3] : 0f0 => TextureBuffer
+        instances = const_lift(length, position_x)
     end
     meshparticle(p, s, data)
 end
@@ -209,11 +209,9 @@ function _default(
     meshparticle(p, s, data)
 end
 
-# make conversion of mesh signals work. TODO move to GeometryTypes?
-function Base.convert(::Type{T}, mesh::Node) where T<:GeometryTypes.HomogenousMesh
+function Base.convert(::Type{T}, mesh::Node) where T<:GeometryBasics.Mesh
     lift(T, mesh)
 end
-
 
 function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
     TextureBuffer(color)
@@ -227,11 +225,11 @@ function to_meshcolor(color)
 end
 
 function to_mesh(mesh::TOrSignal{<: GeometryPrimitive})
-    gl_convert(const_lift(GLNormalMesh, mesh))
+    return NativeMesh(const_lift(GeometryBasics.normal_mesh, mesh))
 end
 
-function to_mesh(mesh::TOrSignal{<: HomogenousMesh})
-    gl_convert(to_value(mesh))
+function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
+    return NativeMesh(mesh)
 end
 
 function orthogonal(v::T) where T <: StaticVector{3}
@@ -283,10 +281,11 @@ function meshparticle(p, s, data)
     end
 
     @gen_defaults! data begin
-        color_map  = nothing => Texture
+        color_map = nothing => Texture
         color_norm = nothing
-        intensity  = nothing
-        color      = if color_map == nothing
+        intensity = nothing
+        image = nothing
+        color = if color_map == nothing
             default(RGBA{Float32}, s)
         else
             nothing
@@ -345,8 +344,7 @@ returns the Shape for the distancefield algorithm
 primitive_shape(::Char) = DISTANCEFIELD
 primitive_shape(x::X) where {X} = primitive_shape(X)
 primitive_shape(::Type{T}) where {T <: Circle} = CIRCLE
-primitive_shape(::Type{T}) where {T <: SimpleRectangle} = RECTANGLE
-primitive_shape(::Type{T}) where {T <: HyperRectangle{2}} = RECTANGLE
+primitive_shape(::Type{T}) where {T <: Rect2D} = RECTANGLE
 primitive_shape(x::Shape) = x
 
 """
@@ -408,8 +406,8 @@ function _default(
     if !all(x-> x == sizes[1], sizes) # if differently sized
         # create texture atlas
         maxdims = sum(map(Vec{2, Int}, sizes))
-        rectangles = map(x->SimpleRectangle(0, 0, x...), sizes)
-        rpack = RectanglePacker(SimpleRectangle(0, 0, maxdims...))
+        rectangles = map(x->Rect2D(0, 0, x...), sizes)
+        rpack = RectanglePacker(Rect2D(0, 0, maxdims...))
         uv_coordinates = [push!(rpack, rect).area for rect in rectangles]
         max_xy = maximum(maximum.(uv_coordinates))
         texture_atlas = Texture(C, (max_xy...,))
@@ -453,10 +451,10 @@ function _default(
     sprites(p, s, data)
 end
 
-
 function correct_scale(char, scale)
     Vec2f0(glyph_scale!(char, scale))
 end
+
 function correct_scale(char, scale::AbstractVector)
     Vec2f0(glyph_scale!.(char, scale))
 end
@@ -524,9 +522,8 @@ function sprites(p, s, data)
         data[:intensity] = intensity_convert(intensity, position_x)
         data[:len] = const_lift(length, position_x)
     end
-    data
+    return data
 end
-
 
 """
 Transforms text into a particle system of sprites, by inferring the
@@ -536,8 +533,6 @@ function _default(main::Tuple{TOrSignal{S}, P}, s::Style, data::Dict) where {S <
     data[:position] = main[2]
     _default(main[1], s, data)
 end
-
-
 
 function _default(main::TOrSignal{S}, s::Style, data::Dict) where S <: AbstractString
     @gen_defaults! data begin

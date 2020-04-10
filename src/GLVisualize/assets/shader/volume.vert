@@ -1,18 +1,18 @@
 {{GLSL_VERSION}}
 
 in vec3 vertices;
-in vec3 texturecoordinates;
 
 out vec3 frag_vert;
-out vec3 frag_uv;
+out vec3 o_light_dir;
 
-uniform mat4 projection, view, model;
-
+uniform mat4 projectionview, model;
+uniform vec3 lightposition;
+uniform mat4 modelinv;
 
 void main()
 {
     vec4 world_vert = model * vec4(vertices, 1);
     frag_vert = world_vert.xyz;
-    frag_uv = texturecoordinates;
-    gl_Position = projection * view * world_vert;
+    o_light_dir = vec3(modelinv * vec4(lightposition, 1));
+    gl_Position = projectionview * world_vert;
 }

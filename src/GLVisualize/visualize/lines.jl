@@ -104,9 +104,9 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
     data
 end
 
-to_points(x::Vector{LineSegment{T}}) where {T} = reinterpret(T, x, (length(x)*2,))
+to_points(x::Vector{Line{T}}) where {T} = reinterpret(T, x, (length(x)*2,))
 
-_default(positions::VectorTypes{LineSegment{T}}, s::Style, data::Dict) where {T <: Point} =
+_default(positions::VectorTypes{Line{T}}, s::Style, data::Dict) where {T <: Point} =
     _default(const_lift(to_points, positions), style"linesegment"(), data)
 
 function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) where T <: Point

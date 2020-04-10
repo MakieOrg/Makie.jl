@@ -174,22 +174,30 @@ end
 
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
 
-function GLAbstraction.native_switch_context!(x::GLFW.Window)
+
+function GLContext()
+    context = GLFW.GetCurrentContext()
+    version = opengl_version_number()
+    glsl_version = glsl_version_number()
+    return GLContext(context, version, glsl_version, unique_context_counter())
+end
+
+function ShaderAbstractions.native_switch_context!(x::GLFW.Window)
     GLFW.MakeContextCurrent(x)
 end
 
-function GLAbstraction.native_context_alive(x::GLFW.Window)
+function ShaderAbstractions.native_context_alive(x::GLFW.Window)
     GLFW.is_initialized() && !was_destroyed(x)
 end
 
 function destroy!(nw::GLFW.Window)
-    was_current = GLAbstraction.is_current_context(nw)
+    was_current = ShaderAbstractions.is_current_context(nw)
     if !was_destroyed(nw)
         GLFW.DestroyWindow(nw)
         GLFW.PollEvents()
         nw.handle = C_NULL
     end
-    was_current && GLAbstraction.switch_context!()
+    was_current && ShaderAbstractions.switch_context!()
 end
 
 function windowsize(nw::GLFW.Window)

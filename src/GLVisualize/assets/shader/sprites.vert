@@ -112,7 +112,7 @@ out vec4  g_glow_color;
 
 void main(){
     int index         = gl_VertexID;
-	g_primitive_index = index;
+    g_primitive_index = index;
     vec3 pos;
     {{position_calc}}
     g_position        = pos;

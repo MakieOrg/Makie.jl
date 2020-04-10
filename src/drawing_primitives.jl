@@ -29,7 +29,7 @@ function to_glvisualize_key(k)
     k == :colormap && return :color_map
     k == :colorrange && return :color_norm
     k == :transform_marker && return :scale_primitive
-    k
+    return k
 end
 
 make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen))
@@ -55,8 +55,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             end
         end
         if haskey(gl_attributes, :lightposition)
-            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition]) do pos
-                ifelse(pos == :eyeposition, getfield(scene.camera, :eyeposition), pos)
+            eyepos = scene.camera.eyeposition
+            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition], eyepos) do pos, eyepos
+                return pos == :eyeposition ? eyepos : pos
             end
         end
         robj = robj_func(gl_attributes)
@@ -85,7 +86,7 @@ function handle_view(array::SubArray, attributes)
     A = parent(array)
     indices = index1D(array)
     attributes[:indices] = indices
-    A
+    return A
 end
 
 function handle_view(array::Node{T}, attributes) where T <: SubArray
@@ -97,8 +98,8 @@ end
 
 function lift_convert(key, value, plot)
     lift(value) do value
-         convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
-     end
+        return convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
+    end
 end
 
 pixel2world(scene, msize::Number) = pixel2world(scene, Point2f0(msize))[1]
@@ -108,7 +109,7 @@ function pixel2world(scene, msize::StaticVector{2})
     p0 = AbstractPlotting.to_world(scene, Point2f0(0.0))
     p1 = AbstractPlotting.to_world(scene, Point2f0(msize))
     diff = p1 - p0
-    diff
+    return diff
 end
 
 pixel2world(scene, msize::AbstractVector) = pixel2world.(scene, msize)
@@ -147,7 +148,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         marker = lift_convert(:marker, pop!(gl_attributes, :marker), x)
         if isa(x, Scatter)
-            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.attributes[:rotations])
+            gl_attributes[:billboard] = map(rot-> isa(rot, Billboard), x.rotations)
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
         end
@@ -160,10 +161,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
                 delete!(gl_attributes, :color_norm)
                 delete!(gl_attributes, :color_map)
             end
-            visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes)).children[]
+            visualize(positions, Style(:speed), Dict{Symbol, Any}(gl_attributes))
         else
             handle_intensities!(gl_attributes)
-            visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes)).children[]
+            visualize((marker, positions), Style(:default), Dict{Symbol, Any}(gl_attributes))
         end
     end
 end
@@ -175,7 +176,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
         data[:pattern] = to_value(linestyle)
         positions = handle_view(x[1], data)
         handle_intensities!(data)
-        visualize(positions, Style(:lines), data).children[]
+        visualize(positions, Style(:lines), data)
     end
 end
 
@@ -192,7 +193,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
             delete!(data, :color_map)
             delete!(data, :color_norm)
         end
-        visualize(positions, Style(:linesegment), data).children[]
+        visualize(positions, Style(:linesegment), data)
     end
 end
 
@@ -262,7 +263,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             uv_offset_width = uv_offset_width,
             distancefield = get_texture!(atlas),
             visible = gl_attributes[:visible]
-        ).children[]
+        )
     end
 end
 
@@ -277,7 +278,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
             gl_attributes[:nan_color] = lift(to_color, gl_attributes[:nan_color])
         end
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
-        GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes)).children[]
+        GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes))
     end
 end
 
@@ -300,7 +301,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         img = get_image(gl_attributes)
         # remove_automatic!(gl_attributes)
-        visualize(img, Style(:default), gl_attributes).children[]
+        visualize(img, Style(:default), gl_attributes)
     end
 end
 
@@ -314,31 +315,36 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         color = pop!(gl_attributes, :color)
         cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
-        mesh = lift(x[1], color, cmap, crange) do m, c, cmap, crange
-            c = convert_mesh_color(c, cmap, crange)
-            if isa(m, GLNormalColorMesh) || isa(m, GLNormalAttributeMesh) || isa(m, GLNormalVertexcolorMesh)
-                return m
-            elseif c isa Colorant
-                get!(gl_attributes, :color, Node(c))[] = c
-                if !(isa(m, GLPlainMesh) || isa(m, GLNormalMesh))
-                    return GLNormalMesh(m)
-                else
-                    return m
-                end
-            elseif c isa AbstractMatrix{<: Colorant}
-                get!(gl_attributes, :color, Node(c))[] = c
-                return m
-            elseif c isa AbstractVector{<: Colorant}
-                if length(c) != length(vertices(m))
-                    error("Please use the same amount of colors as vertices. Found: $(length(vertices(m))) vertices, and $(length(c)) colors")
-                end
-                glm = GLNormalMesh(m)
-                return HomogenousMesh(glm, Dict{Symbol, Any}(:color => convert(Vector{RGBAf0}, c)))
-            else
-                error("Unsupported color type: $(typeof(c))")
+        if to_value(color) isa Colorant
+            gl_attributes[:vertex_color] = color
+        end
+        if to_value(color) isa AbstractMatrix{<:Colorant}
+            gl_attributes[:image] = color
+        end
+        mesh = x[1]
+        if to_value(color) isa AbstractVector{<: Number}
+            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+                color_sampler = AbstractPlotting.sampler(cmap, color, crange)
+                GeometryBasics.pointmeta(mesh, color=color_sampler)
             end
         end
-        visualize(mesh, Style(:default), gl_attributes).children[]
+
+        if to_value(color) isa AbstractMatrix{<: Number}
+            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+                color_sampler = convert_mesh_color(color, cmap, crange)
+                mesh, uv = GeometryBasics.pop_pointmeta(mesh, :uv)
+                uv_sampler = AbstractPlotting.sampler(color_sampler, uv)
+                GeometryBasics.pointmeta(mesh, color=uv_sampler)
+            end
+        end
+
+        if to_value(color) isa AbstractVector{<: Colorant}
+            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+                GeometryBasics.pointmeta(mesh, color=color)
+            end
+        end
+
+        visualize(mesh, Style(:default), gl_attributes)
     end
 end
 
@@ -360,105 +366,35 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             gl_attributes[:color] = nothing
             gl_attributes[:color_norm] = nothing
         end
-        gl_attributes[:color] = img
+        gl_attributes[:image] = img
         args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         if all(v-> to_value(v) isa AbstractMatrix, args)
-            visualize(args, Style(:surface), gl_attributes).children[]
+            return visualize(args, Style(:surface), gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-            visualize(args[3], Style(:surface), gl_attributes).children[]
+            return visualize(args[3], Style(:surface), gl_attributes)
         end
     end
-end
-
-function to_width(x)
-    mini, maxi = extrema(x)
-    maxi - mini
-end
-
-function makieshader(paths...)
-    view = Dict{String, String}()
-    if !Sys.isapple()
-        view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
-        view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
-    end
-    LazyShader(
-        paths...,
-        view = view,
-        fragdatalocation = [(0, "fragment_color"), (1, "fragment_groupid")]
-    )
-end
-
-function volume_prerender()
-    glEnable(GL_DEPTH_TEST)
-    glDepthMask(GL_TRUE)
-    glDepthFunc(GL_LEQUAL)
-    enabletransparency()
-    glEnable(GL_CULL_FACE)
-    glCullFace(GL_FRONT)
-end
-
-function surface_contours(volume::Volume)
-    frag = joinpath(@__DIR__, "surface_contours.frag")
-    paths = assetpath.("shader", ("fragment_output.frag", "util.vert", "volume.vert"))
-    shader = makieshader(paths..., frag)
-    model = volume[:model]
-    x, y, z, vol = volume[1], volume[2], volume[3], volume[4]
-    model2 = lift(x, y, z) do xyz...
-        mi = minimum.(xyz)
-        maxi = maximum.(xyz)
-        w = maxi .- mi
-        return Mat4f0(
-            w[1], 0, 0, 0,
-            0, w[2], 0, 0,
-            0, 0, w[3], 0,
-            mi[1], mi[2], mi[3], 1
-        )
-    end
-
-    modelinv = lift((a,b)-> inv(b) * inv(a), model, model2)
-    model2 = lift(*, model, model2)
-    hull = AABB{Float32}(Vec3f0(0), Vec3f0(1))
-    gl_data = Dict(
-        :hull => GLUVWMesh(hull),
-        :volumedata => Texture(lift(x-> convert(Array{Float32}, x), vol)),
-        :model => model2,
-        :modelinv => modelinv,
-        :colormap => Texture(lift(to_colormap, volume[:colormap])),
-        :colorrange => lift(Vec2f0, volume[:colorrange]),
-        :fxaa => true
-    )
-    bb = lift(m-> m * hull, model)
-    vp = GLVisualize.VolumePrerender(
-        lift(identity, volume[:transparency]),
-        lift(identity, volume[:overdraw])
-    )
-    robj = RenderObject(gl_data, shader, vp, bb)
-    robj.postrenderfunction = GLAbstraction.StandardPostrender(robj.vertexarray, GL_TRIANGLES)
     return robj
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, vol::Volume)
     robj = cached_robj!(screen, scene, vol) do gl_attributes
-        if gl_attributes[:algorithm][] == 7
-            return surface_contours(vol)
-        else
-            model = vol[:model]
-            x, y, z = vol[1], vol[2], vol[3]
-            gl_attributes[:model] = lift(model, x, y, z) do m, xyz...
-                mi = minimum.(xyz)
-                maxi = maximum.(xyz)
-                w = maxi .- mi
-                m2 = Mat4f0(
-                    w[1], 0, 0, 0,
-                    0, w[2], 0, 0,
-                    0, 0, w[3], 0,
-                    mi[1], mi[2], mi[3], 1
-                )
-                convert(Mat4f0, m) * m2
-            end
-            return visualize(vol[4], Style(:default), gl_attributes).children[]
+        model = vol[:model]
+        x, y, z = vol[1], vol[2], vol[3]
+        gl_attributes[:model] = lift(model, x, y, z) do m, xyz...
+            mi = minimum.(xyz)
+            maxi = maximum.(xyz)
+            w = maxi .- mi
+            m2 = Mat4f0(
+                w[1], 0, 0, 0,
+                0, w[2], 0, 0,
+                0, 0, w[3], 0,
+                mi[1], mi[2], mi[3], 1
+            )
+            return convert(Mat4f0, m) * m2
         end
+        return visualize(vol[4], Style(:default), gl_attributes)
     end
 end

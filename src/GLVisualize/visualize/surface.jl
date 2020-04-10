@@ -1,11 +1,11 @@
 
 function surfboundingbox(position_x, position_y, position_z)
     arr = const_lift(StructOfArrays, Point3f0, position_x, position_y, position_z)
-    map(AABB{Float32}, arr)
+    map(FRect3D, arr)
 end
 function surfboundingbox(grid, position_z)
     arr = const_lift(GridZRepeat, grid, position_z)
-    map(AABB{Float32}, arr)
+    map(FRect3D, arr)
 end
 
 function _default(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, s::Style{:surface}, data::Dict) where T <: AbstractFloat
@@ -38,7 +38,7 @@ function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) w
     end
     surface(position_z, s, data)
 end
-_extrema(x::AABB) = Vec2f0(minimum(x)[3], maximum(x)[3])
+_extrema(x::FRect3D) = Vec2f0(minimum(x)[3], maximum(x)[3])
 nothing_or_vec(x) = x
 nothing_or_vec(x::Array) = vec(x)
 
@@ -55,7 +55,6 @@ function light_calc(x::Bool)
         vec3 L      = normalize(o_lightdir);
         vec3 N      = normalize(o_normal);
         vec3 light1 = blinnphong(N, o_camdir, L, color.rgb);
-        //vec3 light2 = blinnphong(N, o_camdir, -L, color.rgb);
         color       = vec4(light1, color.a); // + light2 * 0.4
         """
     else
@@ -63,37 +62,37 @@ function light_calc(x::Bool)
     end
 end
 
+function native_triangle_mesh(mesh)
+    return gl_convert(triangle_mesh(mesh))
+end
+
 function surface(main, s::Style{:surface}, data::Dict)
     @gen_defaults! data begin
-        primitive::GLMesh2D = SimpleRectangle(0f0,0f0,1f0,1f0)
-        scale       = nothing
-        position    = nothing
-        position_x  = nothing => Texture
-        position_y  = nothing => Texture
-        position_z  = nothing => Texture
-        wireframe   = false
-        glow_color       = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color     = RGBA{Float32}(0,0,0,1) => GLBuffer
-        stroke_width     = wireframe ? 0.03f0 : 0f0
-        glow_width       = 0f0
-        uv_offset_width  = Vec4f0(0) => GLBuffer
-        shape            = RECTANGLE
-        wireframe        = false
-        image            = nothing => Texture
-        distancefield    = nothing => Texture
-        shading          = true
-        normal           = shading
+        primitive = Rect2D(0f0,0f0,1f0,1f0) => native_triangle_mesh
+        scale = nothing
+        position = nothing
+        position_x = nothing => Texture
+        position_y = nothing => Texture
+        position_z = nothing => Texture
+        wireframe = false
+        glow_color = RGBA{Float32}(0,0,0,0) => GLBuffer
+        stroke_color = RGBA{Float32}(0,0,0,1) => GLBuffer
+        stroke_width = wireframe ? 0.03f0 : 0f0
+        glow_width = 0f0
+        uv_offset_width = Vec4f0(0) => GLBuffer
+        shape = RECTANGLE
+        wireframe = false
+        image = nothing => Texture
+        distancefield = nothing => Texture
+        shading = true
+        normal = shading
     end
     @gen_defaults! data begin
-        color      = (wireframe ? RGBA{Float32}(0,0,0,0) : nothing) => (Texture,
-            "must be single color value, must be nothing for color_map")
-        color_map  = ((!wireframe && color == nothing) ? default(Vector{RGBA}, s) : nothing) => (Texture,
-        "must be `Vector{Color}`, `color` must be nothing")
-        color_norm = (!wireframe && color_map != nothing ? Vec2f0(0, 1) : nothing) => begin
-            "normalizes the heightvalues before looking up color in `color_map`."
-        end
-        instances  = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
-        shader     = GLVisualizeShader(
+        color = nothing => Texture
+        color_map = nothing => Texture
+        color_norm = nothing
+        instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
+        shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
             to_value(wireframe) ? "distance_shape.frag" : "standard.frag",
             view = Dict(

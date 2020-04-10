@@ -195,8 +195,8 @@ Creates a texture from an Image
 #end
 
 
-GeometryTypes.width(t::Texture)  = size(t, 1)
-GeometryTypes.height(t::Texture) = size(t, 2)
+GeometryBasics.width(t::Texture)  = size(t, 1)
+GeometryBasics.height(t::Texture) = size(t, 2)
 depth(t::Texture)  = size(t, 3)
 
 # AbstractArrays default show assumes `getindex`. Try to catch all calls
@@ -225,7 +225,6 @@ function Base.show(io::IO, ::MIME"text/plain", t::Texture{T,D}) where {T,D}
     println(io, "          Parameters: ", t.parameters)
 end
 
-
 # GPUArray interface:
 function unsafe_copy!(a::Vector{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     copy!(a, readoffset, b.buffer, writeoffset, len)
@@ -238,6 +237,7 @@ function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::Vector{T}, writeo
     glBindTexture(a.texture.texturetype, a.texture.id)
     glTexBuffer(a.texture.texturetype, a.texture.internalformat, a.buffer.id) # update texture
 end
+
 function unsafe_copy!(a::TextureBuffer{T}, readoffset::Int, b::TextureBuffer{T}, writeoffset::Int, len::Int) where T
     unsafe_copy!(a.buffer, readoffset, b.buffer, writeoffset, len)
 

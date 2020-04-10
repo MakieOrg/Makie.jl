@@ -6,7 +6,7 @@ using AbstractPlotting: RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensit
 using ..GLMakie.GLFW
 using ModernGL
 using StaticArrays
-using GeometryTypes
+using GeometryBasics
 using Colors
 using AbstractPlotting
 using FixedPointNumbers
@@ -21,7 +21,7 @@ using LinearAlgebra
 import AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
 import ..GLMakie: get_texture!
 
-const GLBoundingBox = AABB{Float32}
+const GLBoundingBox = FRect3D
 
 """
 Replacement of Pkg.dir("GLVisualize") --> GLVisualize.dir,
@@ -38,9 +38,7 @@ export visualize # Visualize an object
 export visualize_default # get the default parameter for a visualization
 
 include("utils.jl")
-export y_partition, y_partition_abs
-export x_partition, x_partition_abs
-export loop, bounce
+
 
 include(joinpath("visualize", "lines.jl"))
 include(joinpath("visualize", "image_like.jl"))

@@ -19,27 +19,36 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
     delete!(data, :ranges)
     @gen_defaults! data begin
         image = main => (Texture, "image, can be a Texture or Array of colors")
-        primitive::GLUVMesh2D = const_lift(ranges) do r
+        primitive = const_lift(ranges) do r
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
-            SimpleRectangle{Float32}(x, y, xmax - x, ymax - y)
-        end
-        preferred_camera      = :orthographic_pixel
-        fxaa                  = false
-        shader                = GLVisualizeShader(
-            "fragment_output.frag", "uv_vert.vert", "texture.frag",
-            view = Dict("uv_swizzle" => "o_uv.$(spatialorder)")
-        )
+            return FRect2D(x, y, xmax - x, ymax - y)
+        end => to_uvmesh
+        preferred_camera = :orthographic_pixel
+        fxaa = false
+        shader = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "texture.frag",
+            view = Dict("uv_swizzle" => "o_uv.$(spatialorder)"))
     end
+end
+
+function to_uvmesh(geom)
+    return NativeMesh(const_lift(GeometryBasics.uv_mesh, geom))
+end
+
+function to_plainmesh(geom)
+    return NativeMesh(const_lift(GeometryBasics.triangle_mesh, geom))
+end
+
+function to_uvwmesh3d(geom)
+    return NativeMesh(const_lift(GeometryBasics.uvw_triangle_mesh, geom))
 end
 
 function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
     @gen_defaults! data begin
-        image                 = main => (Texture, "image, can be a Texture or Array of colors")
-        primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0, 0f0, length(to_value(main)), 50f0) => "the 2D mesh the image is mapped to. Can be a 2D Geometry or mesh"
-        preferred_camera      = :orthographic_pixel
-        fxaa                  = false
-        shader                = GLVisualizeShader(
+        image = main => Texture
+        primitive = FRect2D(0f0, 0f0, length(to_value(main)), 50f0) => to_uvmesh
+        fxaa = false
+        shader = GLVisualizeShader(
             "fragment_output.frag", "uv_vert.vert", "texture.frag",
             view = Dict("uv_swizzle" => "o_uv.xy")
         )
@@ -56,20 +65,20 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     end
     prim = const_lift(data[:ranges]) do ranges
         x, y, xw, yh = minimum(ranges[1]), minimum(ranges[2]), maximum(ranges[1]), maximum(ranges[2])
-        SimpleRectangle{Float32}(x, y, xw-x, yh-y)
+        return FRect2D(x, y, xw-x, yh-y)
     end
     delete!(data, :ranges)
     @gen_defaults! data begin
-        intensity             = main => Texture
-        color_map             = default(Vector{RGBA{N0f8}},s) => Texture
-        primitive::GLUVMesh2D = prim
-        nan_color             = RGBAf0(1, 0, 0, 1)
-        color_norm            = const_lift(extrema2f0, main)
+        intensity = main => Texture
+        color_map = default(Vector{RGBA{N0f8}},s) => Texture
+        primitive = prim => to_uvmesh
+        nan_color = RGBAf0(1, 0, 0, 1)
+        color_norm = const_lift(extrema2f0, main)
         stroke_width::Float32 = 0.05f0
-        levels::Float32       = 5f0
-        stroke_color          = RGBA{Float32}(1,1,1,1)
-        shader                = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
-        fxaa                  = false
+        levels::Float32 = 5f0
+        stroke_color = RGBA{Float32}(1,1,1,1)
+        shader = GLVisualizeShader("fragment_output.frag", "uv_vert.vert", "intensity.frag")
+        fxaa = false
     end
 end
 
@@ -81,10 +90,10 @@ of the shape, negative values the outside and 0 the border
 function _default(main::MatTypes{T}, s::style"distancefield", data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         distancefield = main => Texture
-        shape         = DISTANCEFIELD
-        fxaa          = false
+        shape = DISTANCEFIELD
+        fxaa = false
     end
-    rect = SimpleRectangle{Float32}(0f0,0f0, size(to_value(main))...)
+    rect = FRect2D(0f0,0f0, size(to_value(main))...)
     _default((rect, Point2f0[0]), s, data)
 end
 
@@ -99,20 +108,18 @@ float function(float x) {
 ```
 """
 _default(func::String, s::Style{:shader}, data::Dict) = @gen_defaults! data begin
-    color                 = default(RGBA, s) => Texture
-    dimensions            = (120f0, 120f0)
-    primitive::GLUVMesh2D = SimpleRectangle{Float32}(0f0,0f0, dimensions...)
-    preferred_camera      = :orthographic_pixel
-    fxaa                  = false
-    shader                = GLVisualizeShader(
+    color = default(RGBA, s) => Texture
+    dimensions = (120f0, 120f0)
+    primitive = FRect2D(0f0,0f0, dimensions...) => to_uvmesh
+    fxaa = false
+    shader = GLVisualizeShader(
         "fragment_output.frag", "parametric.vert", "parametric.frag",
         view = Dict("function" => func)
     )
 end
 
-
 #Volumes
-const VolumeElTypes = Union{Gray, AbstractFloat, Intensity}
+const VolumeElTypes = Union{Gray, AbstractFloat}
 
 const default_style = Style{:default}()
 
@@ -154,46 +161,39 @@ end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: VolumeElTypes
     @gen_defaults! data begin
-        volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
-        light_position   = Vec3f0(0.25, 1.0, 3.0)
-        light_intensity  = Vec3f0(15.0)
-        model            = Mat4f0(I)
-        modelinv         = const_lift(inv, model)
+        volumedata = main => Texture
+        hull = FRect3D(Vec3f0(0), Vec3f0(1)) => to_plainmesh
+        model = Mat4f0(I)
+        modelinv = const_lift(inv, model)
+        color_map = default(Vector{RGBA}, s) => Texture
+        color_norm = color_map == nothing ? nothing : const_lift(extrema2f0, main)
+        color = color_map == nothing ? default(RGBA, s) : nothing
 
-        color_map        = default(Vector{RGBA}, s) => Texture
-        color_norm       = color_map == nothing ? nothing : const_lift(extrema2f0, main)
-        color            = color_map == nothing ? default(RGBA, s) : nothing
-
-        algorithm        = MaximumIntensityProjection
-        absorption       = 1f0
-        isovalue         = 0.5f0
-        isorange         = 0.01f0
-        shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender(data[:transparency], data[:overdraw])
-        postrender       = () -> begin
-            glDisable(GL_CULL_FACE)
-        end
+        algorithm = MaximumIntensityProjection
+        absorption = 1f0
+        isovalue = 0.5f0
+        isorange = 0.01f0
+        shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
+        prerender = VolumePrerender(data[:transparency], data[:overdraw])
+        postrender = () -> glDisable(GL_CULL_FACE)
     end
+    return data
 end
 
 function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
     @gen_defaults! data begin
-        volumedata       = main => Texture
-        hull::GLUVWMesh  = AABB{Float32}(Vec3f0(0), Vec3f0(1))
-        model            = Mat4f0(I)
-        modelinv         = const_lift(inv, model)
-
+        volumedata = main => Texture
+        hull = FRect3D(Vec3f0(0), Vec3f0(1)) => to_plainmesh
+        model = Mat4f0(I)
+        modelinv = const_lift(inv, model)
         # These don't do anything but are needed for type specification in the frag shader
-        color_map        = nothing => Texture
-        color_norm       = nothing
-        color            = color_map == nothing ? default(RGBA, s) : nothing
+        color_map = nothing => Texture
+        color_norm = nothing
+        color = color_map == nothing ? default(RGBA, s) : nothing
 
-        algorithm        = AbsorptionRGBA
-        shader           = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
-        prerender        = VolumePrerender(data[:transparency], data[:overdraw])
-        postrender       = () -> begin
-            glDisable(GL_CULL_FACE)
-        end
+        algorithm = AbsorptionRGBA
+        shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")
+        prerender = VolumePrerender(data[:transparency], data[:overdraw])
+        postrender = () -> glDisable(GL_CULL_FACE)
     end
 end

@@ -1,7 +1,7 @@
 module GLAbstraction
 
 using StaticArrays
-using GeometryTypes
+using GeometryBasics
 using ModernGL
 using AbstractPlotting
 using FixedPointNumbers
@@ -11,12 +11,12 @@ using ..GLMakie.GLFW
 using Printf
 using LinearAlgebra
 using Observables
+using ShaderAbstractions
+using ShaderAbstractions: current_context, is_context_active, context_alive
 
 import FileIO: load, save
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
-
-using GeometryTypes: attributes
 
 import AbstractPlotting: update!
 
@@ -45,17 +45,13 @@ import ModernGL.glGetShaderiv
 import ModernGL.glViewport
 import ModernGL.glScissor
 
-include("composition.jl")
-export Composable, Context, convert!
-
-
 include("GLUtils.jl")
-export @gputime # measures the time an OpenGL call takes on the GPU (usually OpenGL calls return immidiately)
 export @materialize #splats keywords from a dict into variables
 export @materialize!  #splats keywords from a dict into variables and deletes them from the dict
 export close_to_square
 export AND, OR, isnotempty
 
+include("shaderabstraction.jl")
 include("GLTypes.jl")
 export GLProgram                # Shader/program object
 export Texture                  # Texture object, basically a 1/2/3D OpenGL data array
@@ -81,8 +77,6 @@ export Style                    # Style Type, which is used to choose different 
 export mergedefault!            # merges a style dict via a given style
 export TOrSignal, VecOrSignal, ArrayOrSignal, MatOrSignal, VolumeOrSignal, ArrayTypes, VectorTypes, MatTypes, VolumeTypes
 export MouseButton, MOUSE_LEFT, MOUSE_MIDDLE, MOUSE_RIGHT
-
-
 
 include("GLExtendedFunctions.jl")
 export glTexImage # Julian wrapper for glTexImage1D, glTexImage2D, glTexImage3D

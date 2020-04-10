@@ -94,18 +94,17 @@ function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: T
     glDrawArrays(mode, max(first(r)-1, 0), length(r)+1)
     return nothing
 end
+
 function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{Int}
     r = to_value(vao.indices)
     glDrawArrays(mode, 0, r)
     return nothing
 end
 
-
-
 """
 Renders a vertex array which supplies an indexbuffer
 """
-function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, Face}
+function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, AbstractFace}
     glDrawElements(
         mode,
         length(vao.indices) * cardinality(vao.indices),
@@ -113,6 +112,7 @@ function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) wher
     )
     return
 end
+
 """
 Renders a normal vertex array only containing the usual buffers buffers.
 """
@@ -129,10 +129,11 @@ renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced
 """
 Renders `amount` instances of an indexed geometry
 """
-function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, Face}
+function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, AbstractFace}
     glDrawElementsInstanced(primitive, length(vao.indices)*cardinality(vao.indices), julia2glenum(T), C_NULL, amount)
     return
 end
+
 """
 Renders `amount` instances of an not indexed geoemtry geometry
 """
@@ -141,8 +142,6 @@ function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIAN
     return
 end
 #handle all uniform objects
-
-
 
 ##############################################################################################
 #  Generic render functions
