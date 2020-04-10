@@ -22,6 +22,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 julia = "1"
+MakieGallery = "0.2"
 AbstractPlotting = "0.10"
 GeometryBasics = "0.2"
 ShaderAbstractions = "0.2"
