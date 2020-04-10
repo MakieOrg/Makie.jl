@@ -15,6 +15,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
+julia = "1.3"
 AbstractPlotting = "0.10"
 Cairo = "1"
 Colors = "0.9, 0.10, 0.11"
@@ -23,7 +24,7 @@ FileIO = "1.1"
 FreeType = "3"
 GeometryBasics = "0.2"
 StaticArrays = "0.12"
-julia = "1.3"
+MakieGallery = "0.2"
 
 [extras]
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
