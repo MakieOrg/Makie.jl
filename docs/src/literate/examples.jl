@@ -149,13 +149,19 @@ using GraphRecipes
 
 # ### The simplest graph recipe
 # Because `userplot` is unsupported, we have to use the low-level interface to user plot recipes,
-# by wrapping our arguments in the userplot type.
+# by wrapping our arguments in the userplot type.  Arguments must be supplied as a `Tuple` or some other iterable.
 
-g = [0  1  1;
-     1  0  1;
-     1  1  0]
-
-recipeplot(GraphPlot((g,)); show_axis = false, scale_plot = false)
+recipeplot(
+    GraphPlot(
+        (
+        [0  1  1;
+         1  0  1;
+         1  1  0],
+         )
+    );
+    show_axis = false,
+    scale_plot = false
+)
 
 AbstractPlotting.save("simplegraph.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](simplegraph.svg)
