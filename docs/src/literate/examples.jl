@@ -147,7 +147,51 @@ end
 
 using GraphRecipes
 
-# ### Julia AST with GraphRecipes
+# ### The simplest graph recipe
+# Because `userplot` is unsupported, we have to use the low-level interface to user plot recipes,
+# by wrapping our arguments in the userplot type.
+
+g = [0  1  1;
+     1  0  1;
+     1  1  0]
+
+recipeplot(GraphPlot((g,)); show_axis = false, scale_plot = false)
+
+AbstractPlotting.save("simplegraph.svg", AbstractPlotting.current_scene()); nothing #hide
+# ![](simplegraph.svg)
+
+# ### Undirected graph with node labels and sizes
+n = 15
+A = Float64[ rand() < 0.5 ? 0 : rand() for i=1:n, j=1:n]
+for i=1:n
+    A[i, 1:i-1] = A[1:i-1, i]
+    A[i, i] = 0
+end
+
+recipeplot(GraphPlot((A,));
+          markersize = 0.2,
+          node_weights = 1:n,
+          markercolor = range(colorant"yellow", stop=colorant"red", length=n),
+          names = 1:n,
+          fontsize = 10,
+          linecolor = :darkgrey,
+          show_axis = false,
+          scale_plot = false
+          )
+
+AbstractPlotting.save("undigraph.svg", AbstractPlotting.current_scene()); nothing #hide
+# ![](undigraph.svg)
+
+
+# ### Multigraphs
+
+recipeplot(GraphPlot(([[1,1,2,2],[1,1,1],[1]],)); names="node_".*string.(1:3), nodeshape=:circle, self_edge_size=0.25, show_axis = false, scale_plot = false)
+
+AbstractPlotting.save("digraph.svg", AbstractPlotting.current_scene()); nothing #hide
+# ![](digraph.svg)
+
+
+# ### Julia AST
 
 code = quote
     function mysum(list)
