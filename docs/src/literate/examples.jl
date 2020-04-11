@@ -146,6 +146,10 @@ end
 # ## GraphRecipes
 
 using GraphRecipes
+using GraphRecipes: GraphPlot
+
+# In tis case, we don't need access to all of the functions which GraphRecipes provides - just the
+# `GraphPlot` struct, which is used for recipe dispatch.  The rest is handled by the GraphRecipes internals.
 
 # ### The simplest graph recipe
 # Because `userplot` is unsupported, we have to use the low-level interface to user plot recipes,
