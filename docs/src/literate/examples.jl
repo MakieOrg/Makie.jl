@@ -178,16 +178,17 @@ for i=1:n
     A[i, i] = 0
 end
 
-recipeplot(GraphPlot((A,));
-          markersize = 0.2,
-          node_weights = 1:n,
-          markercolor = range(colorant"yellow", stop=colorant"red", length=n),
-          names = 1:n,
-          fontsize = 10,
-          linecolor = :darkgrey,
-          show_axis = false,
-          scale_plot = false
-          )
+recipeplot(
+        GraphPlot((A,));
+        markersize = 0.2,
+        node_weights = 1:n,
+        markercolor = range(colorant"yellow", stop=colorant"red", length=n),
+        names = 1:n,
+        fontsize = 10,
+        linecolor = :darkgrey,
+        show_axis = false,
+        scale_plot = false
+    )
 
 AbstractPlotting.save("undigraph.svg", AbstractPlotting.current_scene()); nothing #hide
 # ![](undigraph.svg)
