@@ -345,10 +345,6 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
 
     pt = makie_plottype(st)
 
-    if st === :path
-        println(plotattributes[:color])
-    end
-
     theme = AbstractPlotting.default_theme(plt, pt)
 
     translate_to_makie!(st, plotattributes)
