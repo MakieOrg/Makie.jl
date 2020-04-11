@@ -8,26 +8,18 @@ const PlotContext = Union{
                     MakieLayout.LAxis
                 }
 
-# ## Utilities
-
-expand_palette(palette, n = 20; kwargs...) = RGBA.(distinguishable_colors(n, palette; kwargs...))
-
-
-const wong = copy(AbstractPlotting.wong_colors)
-begin
-    global wong
-    tmp = wong[1]
-    wong[1] = wong[2]
-    wong[2] = tmp
-end
-const rwong = expand_palette(wong, 50)
-
-
 # ## API implementation
 
 # Define overrides for RecipesPipeline hooks.
 
 RecipesBase.apply_recipe(plotattributes, ::Type{T}, ::PlotContext) where T = throw(MethodError("Unmatched plot type: $T"))
+
+# Preprocessing involves resetting the palette for now.
+# Later, it may involve setting up a layouting context, among other things.
+function RecipesPipeline.preprocess_attributes!(plt::PlotContext, plotattributes)
+    plt.palette[].i[] = zero(UInt8)
+end
+
 
 # Allow a series type to be plotted.
 RecipesPipeline.is_seriestype_supported(sc::PlotContext, st) = haskey(makie_seriestype_map, st)
@@ -173,7 +165,7 @@ function translate_to_makie!(st, pa)
         end
         if haskey(pa, :nodecolor)
             if pa[:nodecolor] isa Int
-                pa[:color] = get(pa, :palette, rwong)[pa[:nodecolor]]
+                pa[:color] = get(pa, :palette, default_palette).colors[pa[:nodecolor]]
             else
                 pa[:color] = pa[:nodecolor]
             end
@@ -182,7 +174,7 @@ function translate_to_makie!(st, pa)
 
         if haskey(pa, :markercolor)
             if pa[:markercolor] isa Int
-                pa[:color] = get(pa, :palette, rwong)[pa[:markercolor]]
+                pa[:color] = get(pa, :palette, default_palette).colors[pa[:markercolor]]
             else
                 pa[:color] = pa[:markercolor]
             end
@@ -207,7 +199,7 @@ function translate_to_makie!(st, pa)
     elseif st == :shape
         if haskey(pa, :nodecolor)
             if pa[:nodecolor] isa Int
-                pa[:color] = get(pa, :palette, rwong)[pa[:nodecolor]]
+                pa[:color] = get(pa, :palette, default_palette).colors[pa[:nodecolor]]
 
             else
                 pa[:color] = pa[:nodecolor]
@@ -217,7 +209,7 @@ function translate_to_makie!(st, pa)
 
         if haskey(pa, :fillcolor)
             if pa[:fillcolor] isa Int
-                pa[:color] = get(pa, :palette, rwong)[pa[:fillcolor]]
+                pa[:color] = get(pa, :palette, default_palette).colors[pa[:fillcolor]]
             else
                 pa[:color] = pa[:fillcolor]
             end
@@ -242,7 +234,7 @@ end
 
 function set_series_color!(scene, st, plotattributes)
 
-    has_color = haskey(plotattributes, :color) || any(
+    has_color = (haskey(plotattributes, :color) && plotattributes[:color] !== AbstractPlotting.automatic) || any(
         if st ∈ (:path, :path3d, :curves)
             haskey.(Ref(plotattributes), (:linecolor, :line_z, :seriescolor))
         elseif st == :scatter
@@ -257,6 +249,9 @@ function set_series_color!(scene, st, plotattributes)
     has_seriescolor = haskey(plotattributes, :seriescolor)
 
     if has_color
+        if haskey(plotattributes, :color) && plotattributes[:color] isa AbstractPlotting.Automatic
+            delete!(plotattributes, :color)
+        end
         if has_seriescolor
             if plotattributes[:seriescolor] ∈ (:match, :auto)
                 @debug "Assigning new seriescolor from automatic"
@@ -280,14 +275,25 @@ function set_series_color!(scene, st, plotattributes)
         # println()
     end
 
-    plts = filter(plots(scene)) do plot
-        !(plot isa Union{AbstractPlotting.Heatmap, AbstractPlotting.Surface, AbstractPlotting.Image, AbstractPlotting.Spy, AbstractPlotting.Axis2D, AbstractPlotting.Axis3D})
-    end
+    if !(plot isa Union{AbstractPlotting.Heatmap, AbstractPlotting.Surface, AbstractPlotting.Image, AbstractPlotting.Spy, AbstractPlotting.Axis2D, AbstractPlotting.Axis3D})
 
-    get!(plotattributes, :seriescolor, get(plotattributes, :palette, rwong)[length(plts) + 1])
+        get!(plotattributes, :seriescolor, to_color(plotattributes[:palette]))
+
+    end
 
     return nothing
 
+end
+
+function set_palette!(plt, plotattributes)
+    pt = get!(plotattributes, :palette, default_palette)
+    if pt isa Palette
+        # nothing
+    elseif pt isa Vector{<: Colorant}
+        plotattributes[:palette] = Palette(pt)
+    else
+        @warn "Palette was unrecognizable!"
+    end
 end
 
 function plot_series_annotations!(plt, args, pt, plotattributes)
@@ -347,9 +353,11 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
 
     theme = AbstractPlotting.default_theme(plt, pt)
 
-    translate_to_makie!(st, plotattributes)
+    set_palette!(plt, plotattributes)
 
     set_series_color!(plt, st, plotattributes)
+
+    translate_to_makie!(st, plotattributes)
 
     args = makie_args(pt, plotattributes)
 

@@ -1,6 +1,11 @@
 
 @AbstractPlotting.recipe(RecipePlot) do scene
-    default_theme(scene)
+    th = merge(
+        default_theme(scene),
+        Attributes(palette = Palette(rwong))
+    )
+    th.color = AbstractPlotting.automatic
+    return th
 end
 
 function AbstractPlotting.plot!(p::T) where T <: RecipePlot

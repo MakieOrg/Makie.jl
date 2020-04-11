@@ -1,5 +1,5 @@
 using AbstractPlotting, CairoMakie, MakieRecipes; nothing# hide
-using MakieRecipes.RecipesPipeline; using MakieRecipes.RecipesPipeline: PlotUtils; nothing # hide
+using MakieRecipes.RecipesPipeline; using MakieRecipes.RecipesPipeline: PlotUtils; using using MakieRecipes.Colors: @colorant_str; nothing # hide
 # ```julia
 # using Makie, MakieRecipes
 # ```
