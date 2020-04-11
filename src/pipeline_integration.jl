@@ -107,7 +107,6 @@ makie_args(::Type{T}, plotattributes) where T <: AbstractPlotting.AbstractPlot =
 function makie_args(::AbstractPlotting.PointBased, plotattributes)
 
     x, y = (plotattributes[:x], plotattributes[:y])
-    c = plotattributes[:color]
 
     if isempty(x) && isempty(y)
         @debug "Encountered an empty series of seriestype $(plotattributes[:seriestype])"
@@ -143,34 +142,94 @@ function translate_to_makie!(st, pa)
     haskey(pa, :fill_z) && (pa[:color] = pa[:fill_z])
     pa[:shading] = false # set shading to false, default in Plots
 
+    pa[:linestyle] = get(pa, :linestyle, :auto)
+
+    if pa[:linestyle] ∈ (:auto, :solid)
+        pa[:linestyle] = nothing
+    end
+
     # series color
     if st ∈ (:path, :path3d, :curves)
-        if !isnothing(get!(pa, :line_z, nothing))
+
+        if !isnothing(get(pa, :line_z, nothing))
             pa[:color] = pa[:line_z]
-        elseif !isnothing(get!(pa, :linecolor, nothing))
+        elseif !isnothing(get(pa, :linecolor, nothing))
             pa[:color] = pa[:linecolor]
-        elseif !isnothing(get!(pa, :seriescolor, nothing))
+        elseif !isnothing(get(pa, :seriescolor, nothing))
             pa[:color] = pa[:seriescolor]
         end
+
         pa[:linewidth] = get(pa, :linewidth, 1)
 
     elseif st == :scatter
-        if !isnothing(get!(pa, :marker_z, nothing))
+        if !isnothing(get(pa, :color, nothing))
+            # pa[:color] = pa[:color]
+        end
+        if !isnothing(get(pa, :marker_z, nothing))
             pa[:color] = pa[:marker_z]
-        elseif !isnothing(get!(pa, :markercolor, nothing))
+        end
+        if !isnothing(get(pa, :markercolor, nothing))
             pa[:color] = pa[:markercolor]
-        elseif !isnothing(get!(pa, :seriescolor, nothing))
+        end
+        if haskey(pa, :nodecolor)
+            if pa[:nodecolor] isa Int
+                pa[:color] = get(pa, :palette, rwong)[pa[:nodecolor]]
+            else
+                pa[:color] = pa[:nodecolor]
+            end
+            return
+        end
+
+        if haskey(pa, :markercolor)
+            if pa[:markercolor] isa Int
+                pa[:color] = get(pa, :palette, rwong)[pa[:markercolor]]
+            else
+                pa[:color] = pa[:markercolor]
+            end
+            return
+        end
+        if !isnothing(get(pa, :seriescolor, nothing))
             pa[:color] = pa[:seriescolor]
         end
+
         pa[:markersize] = get(pa, :markersize, 5) * 5 * AbstractPlotting.px
 
+        # handle strokes
+        pa[:strokewidth] = get(pa, :markerstrokewidth, 1)
+        pa[:strokecolor] = get(pa, :markerstrokecolor, :transparent)
     elseif st ∈ (:surface, :heatmap, :image)
         haskey(pa, :fill_z) && (pa[:color] = pa[:fill_z])
         pa[:shading] = false # set shading to false, default in Plots
-    elseif st === :contour
+    elseif st == :contour
         # pa[:levels] = pa[:levels]
-    elseif st === :bar
+    elseif st == :bar
         haskey(pa, :widths) && (pa[:width] = pa[:widths])
+    elseif st == :shape
+        if haskey(pa, :nodecolor)
+            if pa[:nodecolor] isa Int
+                pa[:color] = get(pa, :palette, rwong)[pa[:nodecolor]]
+
+            else
+                pa[:color] = pa[:nodecolor]
+            end
+            return
+        end
+
+        if haskey(pa, :fillcolor)
+            if pa[:fillcolor] isa Int
+                pa[:color] = get(pa, :palette, rwong)[pa[:fillcolor]]
+            else
+                pa[:color] = pa[:fillcolor]
+            end
+            return
+        end
+
+        haskey(pa, :fillcolor) && (pa[:color] = pa[:fillcolor]; return)
+        haskey(pa, :markercolor) && (pa[:color] = pa[:markercolor]; return)
+
+        # handle strokes
+        pa[:strokewidth] = get(pa, :markerstrokewidth, 1)
+        pa[:strokecolor] = get(pa, :markerstrokecolor, :transparent)
     else
         # some default transformations
     end
@@ -183,18 +242,42 @@ end
 
 function set_series_color!(scene, st, plotattributes)
 
-    has_color = any(haskey.(Ref(plotattributes), (:markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor)))
-    cs = get.(Ref(plotattributes), (:markercolor, :line_z, :marker_z, :fill_z, :linecolor, :fillcolor), nothing)
-    @show cs
+    has_color = haskey(plotattributes, :color) || any(
+        if st ∈ (:path, :path3d, :curves)
+            haskey.(Ref(plotattributes), (:linecolor, :line_z, :seriescolor))
+        elseif st == :scatter
+            haskey.(Ref(plotattributes), (:markercolor, :marker_z, :seriescolor))
+        elseif st ∈ (:shape, :heatmap, :image, :surface, :contour, :bar)
+            haskey.(Ref(plotattributes), (:fillcolor, :fill_z, :seriescolor, :cgrad))
+        else # what else?
+            haskey.(Ref(plotattributes), (:linecolor, :markercolor, :fillcolor, :line_z, :marker_z, :fill_z, :seriescolor))
+        end
+    )
+
     has_seriescolor = haskey(plotattributes, :seriescolor)
 
     if has_color
-        if has_seriescolor && plotattributes[:seriescolor] ∈ (:match, :auto)
-            @debug "Assigning new seriescolor from automatic"
-            delete!(plotattributes, :seriescolor)
+        if has_seriescolor
+            if plotattributes[:seriescolor] ∈ (:match, :auto)
+                @debug "Assigning new seriescolor from automatic"
+                delete!(plotattributes, :seriescolor)
+                # printstyled(st, color=:yellow)
+                # println()
+            else
+                # printstyled(st, color=:green)
+                # println()
+                return nothing # series has seriescolor
+            end
         else
+            # printstyled(st; color = :blue)
+            # println()
             return nothing
         end
+
+
+    else # TODO FIXME DEBUG REMOVE
+        # printstyled(st; color = :red)
+        # println()
     end
 
     plts = filter(plots(scene)) do plot
@@ -219,7 +302,25 @@ function plot_series_annotations!(plt, args, pt, plotattributes)
 
     fontsize = sa[3]
 
-    annotations!(plt, strs, positions; textsize = fontsize/30, align = (:center, :center))
+    @debug("Series annotations say hi")
+
+    annotations!(plt, strs, positions; textsize = fontsize/30, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
+
+end
+
+function plot_annotations!(plt, args, pt, plotattributes)
+
+    sa = plotattributes[:annotations]
+
+    positions = Point2f0.(plotattributes[:x], plotattributes[:y])
+
+    strs = string.(getindex.(sa, 3))
+
+    fontsizes = Float32.(getindex.(sa, 4))
+
+    @debug("Annotations say hi")
+
+    annotations!(plt, strs, positions; textsize = fontsizes ./ 80, align = (:center, :center), color = get(plotattributes, :textcolor, :black))
 
 end
 
@@ -242,13 +343,17 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
     # extract the seriestype
     st = plotattributes[:seriestype]
 
-    set_series_color!(plt, st, plotattributes)
-
     pt = makie_plottype(st)
+
+    if st === :path
+        println(plotattributes[:color])
+    end
 
     theme = AbstractPlotting.default_theme(plt, pt)
 
     translate_to_makie!(st, plotattributes)
+
+    set_series_color!(plt, st, plotattributes)
 
     args = makie_args(pt, plotattributes)
 
@@ -268,11 +373,13 @@ function RecipesPipeline.add_series!(plt::PlotContext, plotattributes)
         return plt
     end
 
-    AbstractPlotting.plot!(plt, pt, AbstractPlotting.Attributes(ap_attrs), args...)
+    AbstractPlotting.plot!(plt, pt, args...; ap_attrs...)
 
     # handle fill and series annotations after, so they can overdraw
 
     !isnothing(get(plotattributes, :fill, nothing)) && plot_fill!(plt, args, pt, plotattributes)
+
+    haskey(plotattributes, :annotations) && plot_annotations!(plt, args, pt, plotattributes)
 
     !isnothing(get(plotattributes, :series_annotations, nothing)) && plot_series_annotations!(plt, args, pt, plotattributes)
 
