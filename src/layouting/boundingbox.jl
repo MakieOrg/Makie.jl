@@ -169,7 +169,13 @@ end
 
 function boundingbox(
         text::String, position, textsize, font,
-        align, rotation, model = Mat4f0(I)
+        align, rotation, model = Mat4f0(I);
+        # use the font's ascenders and descenders for the bounding box
+        # this means that a string's boundingbox doesn't change in the vertical
+        # dimension when characters change (for example numbers during an animation)
+        # this is not wanted in most cases because of the jitter it creates when
+        # the boundingbox slightly changes size in each frame (in MakieLayout mostly)
+        use_vertical_dimensions_from_font = true
     )
     atlas = get_texture_atlas()
     N = length(text)
@@ -188,9 +194,15 @@ function boundingbox(
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         c, text_state = ctext_state
         ctext_state = iterate(text, text_state)
-        # TODO fix center + align + rotation
+
         if !(c in ('\r', '\n'))
-            raw_bb = inkboundingbox(FreeTypeAbstraction.internal_get_extent(font, c))
+            raw_bb = if use_vertical_dimensions_from_font
+                height_insensitive_boundingbox(
+                    FreeTypeAbstraction.internal_get_extent(font, c), font)
+            else
+                inkboundingbox(FreeTypeAbstraction.internal_get_extent(font, c))
+            end
+
             scaled_bb = rectmult(raw_bb, scale / 64)
 
             # TODO this only works in 2d
