@@ -110,6 +110,14 @@ function inkboundingbox(ext::FontExtent)
     FRect2D((l, b), (r - l, t - b))
 end
 
+function height_insensitive_boundingbox(ext::FontExtent, font::FTFont)
+    l = leftinkbound(ext)
+    r = rightinkbound(ext)
+    b = font.descender / font.units_per_EM * 64 # times 64 because everything else is scaled that way, too
+    t = font.ascender / font.units_per_EM * 64
+    FRect2D((l, b), (r - l, t - b))
+end
+
 
 function text_bb(str, font, size)
     positions, scale = layout_text(
