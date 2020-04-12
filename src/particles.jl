@@ -9,6 +9,7 @@ function handle_color!(uniform_dict, instance_dict)
     if color isa Colorant || color isa AbstractVector{<: Colorant} || color === nothing
         delete!(uniform_dict, :colormap)
     elseif color isa AbstractArray{<:Real}
+        udict[:color] = lift(x-> convert(Vector{Float32}, x), udict[:color])
         uniform_dict[:color_getter] = """
             vec4 get_color(){
                 vec2 norm = get_colorrange();
@@ -51,9 +52,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
 
     handle_color!(uniform_dict, per_instance)
 
-    instance = map(normal_mesh, plot.marker)
+    instance = normal_mesh(plot.marker[])
 
-    if !hasproperty(instance[], :uv)
+    if !hasproperty(instance, :uv)
         uniform_dict[:uv] = Vec2f0(0)
     end
 
@@ -74,10 +75,11 @@ end
 
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 
-primitive_shape(::Union{String, Char}) = Cint(DISTANCEFIELD)
+primitive_shape(::Union{String, Char, Vector{Char}}) = Cint(DISTANCEFIELD)
 primitive_shape(x::X) where X = Cint(primitive_shape(X))
 primitive_shape(::Type{<: Circle}) = Cint(CIRCLE)
 primitive_shape(::Type{<: Rect2D}) = Cint(RECTANGLE)
+primitive_shape(::Type{T}) where T = error("Type $(T) not supported")
 primitive_shape(x::Shape) = Cint(x)
 
 using AbstractPlotting: to_spritemarker

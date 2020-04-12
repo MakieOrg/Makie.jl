@@ -294,11 +294,7 @@ function lift_convert(key, value, plot)
 end
 
 function Base.pairs(mesh::GeometryBasics.Mesh)
-    attr = GeometryBasics.attributes(mesh)
-    get!(attr, :position) do
-        decompose(Point, mesh)
-    end
-    return attr
+    return GeometryBasics.attributes(mesh)
 end
 
 function GeometryBasics.faces(x::VertexArray)
@@ -344,7 +340,6 @@ function wgl_convert(scene, jsctx, program::Program)
     indices = GeometryBasics.faces(program.vertexarray)
     indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
-
     # per instance data
     uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
 

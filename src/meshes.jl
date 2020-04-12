@@ -1,9 +1,6 @@
-vertexbuffer(x) = vertexbuffer(metafree(GeometryBasics.coordinates(x)))
-
+vertexbuffer(x) = decompose(Point, x)
 vertexbuffer(x::Observable) = Buffer(lift(vertexbuffer, x))
-function vertexbuffer(x::AbstractArray{Point{N, T}}) where {N, T}
-    reinterpret(GeometryBasics.Point{N, T}, x)
-end
+
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
 function facebuffer(x::AbstractArray{GLTriangleFace})
@@ -95,11 +92,9 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
 
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
-
     instance = GeometryBasics.Mesh(
         GeometryBasics.meta(positions; attributes...), faces
     )
-
     return Program(
         WebGL(),
         lasset("mesh.vert"),

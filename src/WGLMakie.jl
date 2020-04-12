@@ -246,7 +246,8 @@ function three_display(session::Session, scene::Scene)
     width, height = size(scene)
     canvas = DOM.um("canvas", width = width, height = height)
     comm = Observable(Dict{String, Any}())
-    threemod, renderer = JSObject(session, :THREE), JSObject(session, :renderer)
+    threemod = JSObject(session, THREE)
+    renderer = JSObject(session, :renderer)
     window = JSObject(session, :window)
     onload(session, canvas, js"""
         function threejs_module(canvas){
@@ -267,7 +268,6 @@ function three_display(session::Session, scene::Scene)
             renderer.setClearColor("#ff00ff");
             renderer.setPixelRatio(ratio);
 
-            put_on_heap($(uuidstr(threemod)), $THREE);
             put_on_heap($(uuidstr(renderer)), renderer);
             put_on_heap($(uuidstr(window)), window);
 

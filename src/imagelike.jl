@@ -50,20 +50,18 @@ function limits_to_uvmesh(plot)
     end
 
     positions = Buffer(lift(rectangle) do rect
-        ps = decompose(Point2f0, rect)
-        reinterpret(GeometryBasics.Point{2, Float32}, ps)
+        return decompose(Point2f0, rect)
     end)
 
     faces = Buffer(lift(rectangle) do rect
-        tris = decompose(GLTriangleFace, rect)
-        convert(Vector{GeometryBasics.TriangleFace{Cuint}}, tris)
+        return decompose(GLTriangleFace, rect)
     end)
 
     uv = Buffer(lift(decompose_uv, rectangle))
 
-    vertices = GeometryBasics.meta(positions; uv = uv)
+    vertices = GeometryBasics.meta(positions; uv=uv)
 
-    mesh = GeometryBasics.Mesh(vertices, faces)
+    return GeometryBasics.Mesh(vertices, faces)
 end
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
@@ -81,8 +79,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
     end)
 
     faces = Buffer(lift(pz) do z
-        tris = decompose(GLTriangleFace, Rect2D(0f0, 0f0, 1f0, 1f0), size(z))
-        convert(Vector{GeometryBasics.TriangleFace{Cuint}}, tris)
+        return decompose(GLTriangleFace, Rect2D(0f0, 0f0, 1f0, 1f0), size(z))
     end)
 
     uv = Buffer(lift(pz) do z
@@ -103,7 +100,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
     normals = Buffer(lift(surface_normals, px, py, pz))
 
     vertices = GeometryBasics.meta(
-        positions; uv = uv, normals = normals
+        positions; uv=uv, normals=normals
     )
 
     mesh = GeometryBasics.Mesh(vertices, faces)

@@ -13,7 +13,7 @@ app = JSServe.Application(test_handler, "0.0.0.0", 8082)
 close(app)
 
 win = ElectronDisplay.electrondisplay(surface(rand(4,4 )))
-# ElectronDisplay.Electron.toggle_devtools(win)
+ElectronDisplay.Electron.toggle_devtools(win)
 
 tests_wgl_makie = Set(Symbol.([
     "twisty_cube_thing",

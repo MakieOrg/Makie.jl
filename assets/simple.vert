@@ -43,6 +43,9 @@ float distancefield_scale(){
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
 
+vec4 tovec4(vec3 v){return vec4(v, 1.0);}
+vec4 tovec4(vec4 v){return v;}
+
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);
 }
@@ -102,7 +105,7 @@ void main(){
     float sprite_from_u_scale = abs(get_markersize().x);
     frag_uvscale = viewport_from_sprite_scale * sprite_from_u_scale;
     frag_distancefield_scale = distancefield_scale();
-    frag_color = get_color();
+    frag_color = tovec4(get_color());
     frag_uv = get_uv();
     frag_uv_offset_width = get_uv_offset_width();
     // screen space coordinates of the position
