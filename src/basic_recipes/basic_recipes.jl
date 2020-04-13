@@ -147,7 +147,11 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            return merge(triangle_mesh.(meshes))
+            if meshes isa AbstractVector{<: AbstractPoint}
+                return triangle_mesh(meshes)
+            else
+                return merge(triangle_mesh.(meshes))
+            end
         end
     end
     mesh!(plot, attributes, bigmesh)
