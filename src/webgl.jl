@@ -318,14 +318,15 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
     end
 
     uniforms = to_js_uniforms(scene, THREE, ip.program.uniforms)
-
+    js_vbo.boundingSphere = THREE.new.Sphere()
+    # don't use intersection / culling
+    js_vbo.boundingSphere.radius = 10000000000000f0
     material = create_material(
         THREE,
         ip.program.vertex_source,
         ip.program.fragment_source,
         uniforms
     )
-    js_vbo.computeBoundingSphere();
     mesh = THREE.new.Mesh(js_vbo, material)
 end
 
@@ -342,14 +343,15 @@ function wgl_convert(scene, jsctx, program::Program)
     js_vbo.setIndex(indices)
     # per instance data
     uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
-
+    # don't use intersection / culling
+    js_vbo.boundingSphere = THREE.new.Sphere()
+    js_vbo.boundingSphere.radius = 10000000000000f0
     material = create_material(
         jsctx.THREE,
         program.vertex_source,
         program.fragment_source,
         uniforms
     )
-    js_vbo.computeBoundingSphere();
     return jsctx.THREE.new.Mesh(js_vbo, material)
 end
 
