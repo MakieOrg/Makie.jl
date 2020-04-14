@@ -22,6 +22,10 @@ function JSServe.serialize_readable(io::IO, jso::JSBuffer)
     return JSServe.serialize_readable(io, jsbuffer(jso))
 end
 
+function JSServe.serialize2string(io::IO, data_dependencies::Vector{Any}, jso::JSBuffer)
+    return JSServe.serialize2string(io, data_dependencies, jsbuffer(jso))
+end
+
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
     setindex!(x, [value], index:(index+1))
 end
@@ -102,7 +106,7 @@ end
 function jl2js(jsctx, color::Sampler{T, 2}) where T
     # cache texture by their pointer
     key = reinterpret(UInt, objectid(color.data))
-    return get!(jsctx.session_cache, key) do
+    tex = get!(jsctx.session_cache, key) do
         data = to_js_buffer(jsctx, color.data)
 
         tex = jsctx.THREE.new.DataTexture(
@@ -114,7 +118,6 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
         tex.wrapS = three_repeat(jsctx, color.repeat[1])
         tex.wrapT = three_repeat(jsctx, color.repeat[2])
         tex.anisotropy = color.anisotropic
-        tex.needsUpdate = true
         # TODO propperly connect
         on(ShaderAbstractions.updater(color).update) do (f, args)
             if args[2] isa Colon && f == setindex!
@@ -125,6 +128,8 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
         end
         return tex
     end
+    tex.needsUpdate = true
+    return tex
 end
 
 function jl2js(jsctx, color::Sampler{T, 3}) where T

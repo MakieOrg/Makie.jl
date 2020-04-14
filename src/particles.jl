@@ -88,7 +88,7 @@ function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width, :marker_offset)
     uniform_dict = Dict{Symbol, Any}()
-    if haskey(attributes, :marker) && attributes[:marker][] isa String
+    if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char}, String}
         x = pop!(attributes, :marker)
         attributes[:uv_offset_width] = lift(x-> AbstractPlotting.glyph_uv_width!.(collect(x)), x)
         uniform_dict[:shape_type] = Cint(3)
