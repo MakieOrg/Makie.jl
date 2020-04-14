@@ -167,6 +167,11 @@ function rotatedrect(rect::Rect{2}, angle)
     newrect = Rect2D(rmins..., (rmaxs .- rmins)...)
 end
 
+function quaternion_to_2d_angle(quat)
+    # this assumes that the quaternion was calculated from a simple 2d rotation as well
+    2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
+end
+
 function boundingbox(
         text::String, position, textsize, font,
         align, rotation, model = Mat4f0(I);
@@ -206,7 +211,7 @@ function boundingbox(
             scaled_bb = rectmult(raw_bb, scale / 64)
 
             # TODO this only works in 2d
-            rot_2d_radians = 2acos(rotation[4])
+            rot_2d_radians = quaternion_to_2d_angle(rotation)
             rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
 
             # bb = rectdiv(bb, 1.5)
