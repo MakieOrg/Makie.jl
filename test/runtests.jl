@@ -4,7 +4,6 @@ using Test
 using GLMakie
 using StaticArrays, GeometryBasics
 
-
 @testset "Minimal AbstractPlotting tests" begin
 
     include("conversions.jl")
@@ -20,6 +19,7 @@ using StaticArrays, GeometryBasics
         @test scene[Axis].tickmarks.length[] == (1, 1)
     end
 end
+
 if GLMakie.WORKING_OPENGL
     # full MakieGallery comparisons here
     include("glmakie_tests.jl")
