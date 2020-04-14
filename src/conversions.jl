@@ -397,6 +397,15 @@ function convert_arguments(
     return (meshes,)
 end
 
+function convert_arguments(
+        MT::Type{<:Mesh},
+        xyz::AbstractVector{<: AbstractPoint}
+    )
+    faces = connect(UInt32(0):UInt32(length(xyz)-1), GLTriangleFace)
+    # TODO support faceview natively
+    return convert_arguments(MT, xyz, collect(faces))
+end
+
 # # ambigious case
 # function convert_arguments(
 #         MT::Type{<:Mesh},
@@ -429,7 +438,7 @@ end
 
 function to_triangles(x::AbstractVector{Int})
     idx0 = UInt32.(x .- 1)
-    to_triangles(idx0)
+    return to_triangles(idx0)
 end
 
 function to_triangles(idx0::AbstractVector{UInt32})
@@ -450,7 +459,7 @@ end
 
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
     vert3f0 = T != Float32 ? Point3f0.(verts) : verts
-    reinterpret(Point3f0, vert3f0)
+    return reinterpret(Point3f0, vert3f0)
 end
 
 function to_vertices(verts::AbstractVector{<: VecTypes})

@@ -199,7 +199,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = :black,
         colormap = :viridis,
-        marker = :circle,
+        marker = Circle,
         markersize = 0.1,
 
         strokecolor = RGBA(0, 0, 0, 0),
