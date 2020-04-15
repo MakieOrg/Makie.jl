@@ -185,7 +185,7 @@ function create_shader(scene::Scene, plot::Scatter)
     end
     attributes = copy(plot.attributes.attributes)
     attributes[:offset] = plot[1]
-    attributes[:billboard] = Observable(true)
+    attributes[:billboard] = map(rot-> isa(rot, Billboard), plot.rotations)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)

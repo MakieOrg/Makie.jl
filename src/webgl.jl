@@ -349,7 +349,7 @@ function wgl_convert(scene, jsctx, program::Program)
     # per instance data
     uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
     # don't use intersection / culling
-    js_vbo.boundingSphere = THREE.new.Sphere()
+    js_vbo.boundingSphere = jsctx.new.Sphere()
     js_vbo.boundingSphere.radius = 10000000000000f0
     material = create_material(
         jsctx.THREE,
