@@ -25,7 +25,7 @@ $(ATTRIBUTES)
         strokecolor = RGBAf0(0,0,0,0),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        strokewidth = 0.0,
+        strokewidth = 1.0,
         shading = false,
         # we turn this false for now, since otherwise shapes look transparent
         # since we use meshes, which are drawn into a different framebuffer because of fxaa
