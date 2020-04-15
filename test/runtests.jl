@@ -8,6 +8,11 @@ cd(@__DIR__)
     literatedir = joinpath(@__DIR__, "..", "docs", "src", "literate")
     ispath("test_examples") || mkpath("test_examples")
     cd("test_examples") do
-        @test_nowarn include(joinpath(literatedir, "examples.jl")) # execute the source file directly
+        @test try
+            include(joinpath(literatedir, "examples.jl")) # execute the source file directly
+            true
+        catch
+            false
+        end
     end
 end
