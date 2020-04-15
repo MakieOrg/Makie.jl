@@ -11,7 +11,6 @@ function add_camera!(jsctx, js_scene, scene, cam, cam_controls::AbstractPlotting
     return
 end
 
-
 function update_ortho(jscam, area)
     mini, maxi = minimum(area), maximum(area)
     left, right, top, bottom = mini[1], maxi[1], maxi[2], mini[2]

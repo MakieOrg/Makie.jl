@@ -1,12 +1,14 @@
 using ElectronDisplay
 ElectronDisplay.CONFIG.showable = showable
 ElectronDisplay.CONFIG.single_window = true
+ElectronDisplay.CONFIG.focus = false
 using WGLMakie, AbstractPlotting, JSServe, Test
 using MakieGallery
 
-# ElectronDisplay.toggle_devtools(ElectronDisplay._window[])
+
 tests_wgl_makie = Set(Symbol.([
     "cube_lattice",
+    "twisty_cube_thing",
     "arc_1",
     "arrows_3d",
     "available_markers",
@@ -19,7 +21,8 @@ tests_wgl_makie = Set(Symbol.([
     "fem_mesh_2d",
     "fem_mesh_3d",
     "fem_polygon_2d",
-    "fluctuation_3d",
+    # how did fluctuation_3d ever work?
+    # "fluctuation_3d",
     "heatmap_1",
     "image_1",
     "image_on_geometry__earth_",

@@ -47,12 +47,10 @@ function create_shader(scene::Scene, plot::LineSegments)
     end
 
     uniforms[:resolution] = scene.camera.resolution
-    prim = GLUVMesh2D(
-        vertices = Vec2f0[(0, -1), (0, 1), (1, -1), (1, 1)],
-        texturecoordinates = UV{Float32}[(0,0), (0,0), (0,0), (0,0)],
-        faces = GLTriangle[(1, 2, 3), (2, 4, 3)]
+    instance = GeometryBasics.Mesh(
+        meta(Point2f0[(0, -1), (0, 1), (1, -1), (1, 1)], uv=Vec2f0[(0,0), (0,0), (0,0), (0,0)]),
+        GLTriangleFace[(1, 2, 3), (2, 4, 3)]
     )
-    instance = VertexArray(prim)
     return InstancedProgram(
         WebGL(),
         lasset("line_segments.vert"),
@@ -145,7 +143,14 @@ function jslines!(THREE, scene, plot, positions_nan, colors, linewidth, model, t
         // position_buffer.needsUpdate = true;
     }""")
 
-    geometry.computeBoundingSphere()
+    # ThreeJS does culling by calculating the boundingsphere
+    # But somehow it doesn't play well with our custom attributes.
+    # We just set it to a huge sphere, to not get them culled.
+    # Would be nice to just set them to null or so, but that's
+    # what triggers threejs to actually calculate the sphere
+    geometry.boundingSphere = THREE.new.Sphere()
+    geometry.boundingSphere.radius = 10000000000000f0
+
     mesh = THREE.new.LineSegments(geometry, material)
     mesh.matrixAutoUpdate = false;
     mesh.matrix.set(model[]...)

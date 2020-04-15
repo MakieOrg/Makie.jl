@@ -2,11 +2,11 @@ module WGLMakie
 
 using Hyperscript
 using JSServe, Observables, AbstractPlotting
-using GeometryTypes, Colors
+using Colors, GeometryBasics
 using ShaderAbstractions, LinearAlgebra
 import GeometryBasics
 
-using JSServe: Application, Session, evaljs, linkjs, div, active_sessions
+using JSServe: Application, Session, evaljs, linkjs
 using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
 using JSServe: JSObject, onload, uuidstr
 using JSServe.DOM
@@ -14,8 +14,8 @@ using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
 using ShaderAbstractions: InstancedProgram
 import AbstractPlotting.FileIO
 using StaticArrays
+using GeometryBasics: decompose_uv
 
-import GeometryTypes: GLNormalMesh, GLPlainMesh
 using ImageTransformations
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
@@ -52,6 +52,18 @@ function code_to_keyboard(code::String)
     sym = Symbol(button)
     if isdefined(Keyboard, sym)
         return getfield(Keyboard, sym)
+    elseif sym == :backquote
+        return Keyboard.grave_accent
+    elseif sym == :pageup
+        return Keyboard.page_up
+    elseif sym == :pagedown
+        return Keyboard.page_down
+    elseif sym == :end
+        return Keyboard._end
+    elseif sym == :capslock
+        return Keyboard.caps_lock
+    elseif sym == :contextmenu
+        return Keyboard.menu
     else
         return Keyboard.unknown
     end
@@ -84,19 +96,27 @@ function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
             end
             @handle msg.keydown begin
                 set = e.keyboardbuttons[]
-                push!(set, code_to_keyboard(keydown))
-                e.keyboardbuttons[] = set
+                button = code_to_keyboard(keydown)
+                # don't add unknown buttons...we can't work with them
+                # and they won't get removed
+                if button != Keyboard.unknown
+                    push!(set, button)
+                    e.keyboardbuttons[] = set
+                end
             end
             @handle msg.keyup begin
                 set = e.keyboardbuttons[]
-                delete!(set, code_to_keyboard(keyup))
+                if keyup == "delete_keys"
+                    empty!(set)
+                else
+                    delete!(set, code_to_keyboard(keyup))
+                end
                 e.keyboardbuttons[] = set
             end
         end
         return
     end
 end
-
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot)
     @warn "Plot of type $(typeof(plot)) not supported yet"
@@ -157,7 +177,7 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     THREE::JSObject
     renderer::JSObject
     window::JSObject
-    session_cache::Dict{UInt64, JSObject}
+    session_cache::Dict{UInt, JSObject}
     scene2jsscene::Dict{Scene, JSObject}
     redraw::Observable{Bool}
     function ThreeDisplay(
@@ -167,7 +187,7 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
         )
         return new(
             jsm, renderer, window,
-            Dict{UInt64, JSObject}(), Dict{Scene, JSObject}(),
+            Dict{UInt, JSObject}(), Dict{Scene, JSObject}(),
             Observable(false)
         )
     end
@@ -182,7 +202,11 @@ JSServe.session(x::ThreeDisplay) = JSServe.session(x.THREE)
 
 function to_jsscene(three::ThreeDisplay, scene::Scene)
     get!(getfield(three, :scene2jsscene), scene) do
-        # return JSServe.fuse(three) do
+        # add the "display" to the scene
+        if !(three in scene.current_screens)
+            push!(scene.current_screens, three)
+        end
+        return JSServe.fuse(three) do
             js_scene = three.new.Scene()
             add_camera!(three, js_scene, scene)
             lift(pixelarea(scene)) do area
@@ -202,7 +226,7 @@ function to_jsscene(three::ThreeDisplay, scene::Scene)
                 js_scene.add(js_sub)
             end
             return js_scene
-        # end
+        end
     end
 end
 
@@ -222,7 +246,8 @@ function three_display(session::Session, scene::Scene)
     width, height = size(scene)
     canvas = DOM.um("canvas", width = width, height = height)
     comm = Observable(Dict{String, Any}())
-    threemod, renderer = JSObject(session, :THREE), JSObject(session, :renderer)
+    threemod = JSObject(session, THREE)
+    renderer = JSObject(session, :renderer)
     window = JSObject(session, :window)
     onload(session, canvas, js"""
         function threejs_module(canvas){
@@ -243,7 +268,6 @@ function three_display(session::Session, scene::Scene)
             renderer.setClearColor("#ff00ff");
             renderer.setPixelRatio(ratio);
 
-            put_on_heap($(uuidstr(threemod)), $THREE);
             put_on_heap($(uuidstr(renderer)), renderer);
             put_on_heap($(uuidstr(window)), window);
 
@@ -256,7 +280,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false
             }
-            canvas.addEventListener("mousemove", mousemove, false);
+            canvas.addEventListener("mousemove", mousemove);
 
             function mousedown(event){
                 update_obs($comm, {
@@ -264,7 +288,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            canvas.addEventListener("mousedown", mousedown, false);
+            canvas.addEventListener("mousedown", mousedown);
 
             function mouseup(event){
                 update_obs($comm, {
@@ -272,7 +296,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            canvas.addEventListener("mouseup", mouseup, false);
+            canvas.addEventListener("mouseup", mouseup);
 
             function wheel(event){
                 update_obs($comm, {
@@ -281,7 +305,7 @@ function three_display(session::Session, scene::Scene)
                 event.preventDefault()
                 return false;
             }
-            canvas.addEventListener("wheel", wheel, false);
+            canvas.addEventListener("wheel", wheel);
 
             function keydown(event){
                 update_obs($comm, {
@@ -289,7 +313,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            document.addEventListener("keydown", keydown, false);
+            document.addEventListener("keydown", keydown);
 
             function keyup(event){
                 update_obs($comm, {
@@ -297,9 +321,30 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            document.addEventListener("keyup", keyup, false);
+            document.addEventListener("keyup", keyup);
+            // This is a pretty ugly work around......
+            // so on keydown, we add the key to the currently pressed keys set
+            // if we open the contextmenu before releasing the key, we'll never
+            // receive an up event, so the key will stay inside the currently_pressed
+            // set... Only option I found is to actually listen to the contextmenu
+            // and remove all keys if its opened.
+            function contextmenu(event){
+                update_obs($comm, {
+                    keyup: "delete_keys"
+                })
+                return false;
+            }
+            document.addEventListener("contextmenu", contextmenu);
         }"""
     )
+    canvas_width = lift(x-> [round.(Int, widths(x))...], pixelarea(scene))
+    onjs(session, canvas_width, js"""function update_size(canvas_width){
+        var w_h = deserialize_js(canvas_width);
+        $(renderer).setSize(w_h[0], w_h[1]);
+        var canvas = $(canvas)
+        canvas.style.width = w_h[0];
+        canvas.style.height = w_h[1];
+    }""")
     connect_scene_events!(session, scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(threemod, renderer, window)
