@@ -67,10 +67,10 @@ function glyph_positions(str::AbstractString, font, fontscale, halign, valign; l
 
     # add or subtract kernings?
     xs = map(extents, xkernings) do extgroup, kerngroup
-        cumsum([0; hadvance.(extgroup[1:end-1]) .+ kerngroup])
+        cumsum([isempty(extgroup) ? 0.0 : -leftinkbound(extgroup[1]); hadvance.(extgroup[1:end-1]) .+ kerngroup])
     end
 
-    linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : hadvance(extgroup[end]) for extgroup in extents]
+    linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : inkwidth(extgroup[end]) for extgroup in extents]
     maxwidth = maximum(linewidths)
 
     width_differences = maxwidth .- linewidths
