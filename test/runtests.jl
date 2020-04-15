@@ -7,6 +7,7 @@ using MakieGallery
 
 
 tests_wgl_makie = Set(Symbol.([
+    "cube_lattice",
     "twisty_cube_thing",
     "arc_1",
     "arrows_3d",
