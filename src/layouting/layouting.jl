@@ -21,8 +21,7 @@ function layout_text(
     pos = to_ndim(Point3f0, mpos, 0)
     scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
 
-    glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2];
-        lineheight_factor = 1.5, justification = 0.0)
+    glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2])
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
