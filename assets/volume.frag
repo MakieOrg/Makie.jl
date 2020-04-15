@@ -232,7 +232,7 @@ void main()
 {
     vec4 color;
     vec3 eye_unit = vec3(modelinv * vec4(eyeposition, 1));
-    vec3 back_position = vec3(modelinv * vec4(frag_vert, 1));
+    vec3 back_position = frag_vert;
     vec3 dir = normalize(eye_unit - back_position);
     // solve back_position + distance * dir == 1
     // solve back_position + distance * dir == 0

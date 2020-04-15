@@ -1,7 +1,6 @@
 using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
-using GeometryTypes: Mat4f0
 using Colors: N0f8
 
 tlength(T) = length(T)
@@ -21,6 +20,10 @@ JSServe.serialize_js(jso::JSBuffer) = JSServe.serialize_js(jsbuffer(jso))
 
 function JSServe.serialize_readable(io::IO, jso::JSBuffer)
     return JSServe.serialize_readable(io, jsbuffer(jso))
+end
+
+function JSServe.serialize2string(io::IO, data_dependencies::Vector{Any}, jso::JSBuffer)
+    return JSServe.serialize2string(io, data_dependencies, jsbuffer(jso))
 end
 
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
@@ -103,7 +106,7 @@ end
 function jl2js(jsctx, color::Sampler{T, 2}) where T
     # cache texture by their pointer
     key = reinterpret(UInt, objectid(color.data))
-    return get!(jsctx.session_cache, key) do
+    tex = get!(jsctx.session_cache, key) do
         data = to_js_buffer(jsctx, color.data)
 
         tex = jsctx.THREE.new.DataTexture(
@@ -115,7 +118,6 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
         tex.wrapS = three_repeat(jsctx, color.repeat[1])
         tex.wrapT = three_repeat(jsctx, color.repeat[2])
         tex.anisotropy = color.anisotropic
-        tex.needsUpdate = true
         # TODO propperly connect
         on(ShaderAbstractions.updater(color).update) do (f, args)
             if args[2] isa Colon && f == setindex!
@@ -126,6 +128,8 @@ function jl2js(jsctx, color::Sampler{T, 2}) where T
         end
         return tex
     end
+    tex.needsUpdate = true
+    return tex
 end
 
 function jl2js(jsctx, color::Sampler{T, 3}) where T
@@ -294,17 +298,24 @@ function lift_convert(key, value, plot)
      end
 end
 
+function Base.pairs(mesh::GeometryBasics.Mesh)
+    return GeometryBasics.attributes(mesh)
+end
+
+function GeometryBasics.faces(x::VertexArray)
+    return GeometryBasics.faces(getfield(x, :data))
+end
+
 function wgl_convert(scene, THREE, ip::InstancedProgram)
     js_vbo = THREE.new.InstancedBufferGeometry()
     for (name, buff) in pairs(ip.program.vertexarray)
         js_buff = JSBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
     end
-    indices = GeometryBasics.faces(getfield(ip.program.vertexarray, :data))
-    indices = reinterpret(UInt32, indices) .- UInt32(1)
+    indices = GeometryBasics.faces(ip.program.vertexarray)
+    indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
     js_vbo.maxInstancedCount = length(ip.per_instance)
-
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
         js_buff = JSInstanceBuffer(THREE, buff)
@@ -312,14 +323,15 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
     end
 
     uniforms = to_js_uniforms(scene, THREE, ip.program.uniforms)
-
+    js_vbo.boundingSphere = THREE.new.Sphere()
+    # don't use intersection / culling
+    js_vbo.boundingSphere.radius = 10000000000000f0
     material = create_material(
         THREE,
         ip.program.vertex_source,
         ip.program.fragment_source,
         uniforms
     )
-    js_vbo.computeBoundingSphere();
     mesh = THREE.new.Mesh(js_vbo, material)
 end
 
@@ -331,29 +343,29 @@ function wgl_convert(scene, jsctx, program::Program)
         js_vbo.setAttribute(name, js_buff)
     end
 
-    indices = GeometryBasics.faces(getfield(program.vertexarray, :data))
-    indices = reinterpret(UInt32, indices) .- UInt32(1)
+    indices = GeometryBasics.faces(program.vertexarray)
+    indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
-
     # per instance data
     uniforms = to_js_uniforms(scene, jsctx, program.uniforms)
-
+    # don't use intersection / culling
+    js_vbo.boundingSphere = jsctx.new.Sphere()
+    js_vbo.boundingSphere.radius = 10000000000000f0
     material = create_material(
         jsctx.THREE,
         program.vertex_source,
         program.fragment_source,
         uniforms
     )
-    js_vbo.computeBoundingSphere();
     return jsctx.THREE.new.Mesh(js_vbo, material)
 end
 
 
 function debug_shader(name, program)
-    # dir = joinpath(@__DIR__, "..", "debug")
-    # isdir(dir) || mkdir(dir)
-    # write(joinpath(dir, "$(name).frag"), program.fragment_source)
-    # write(joinpath(dir, "$(name).vert"), program.vertex_source)
+    dir = joinpath(@__DIR__, "..", "debug")
+    isdir(dir) || mkdir(dir)
+    write(joinpath(dir, "$(name).frag"), program.fragment_source)
+    write(joinpath(dir, "$(name).vert"), program.vertex_source)
 end
 
 function update_model!(geom, plot)
