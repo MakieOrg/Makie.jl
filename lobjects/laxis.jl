@@ -619,6 +619,8 @@ function linkxaxes!(a::LAxis, others...)
             end
         end
     end
+    # update limits because users will expect to see the effect
+    autolimits!(a)
 end
 
 function linkyaxes!(a::LAxis, others...)
@@ -637,6 +639,8 @@ function linkyaxes!(a::LAxis, others...)
             end
         end
     end
+    # update limits because users will expect to see the effect
+    autolimits!(a)
 end
 
 function add_pan!(ax::LAxis)
