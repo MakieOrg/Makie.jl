@@ -413,7 +413,7 @@ function plot!(plot::Annotations)
     atlas = get_texture_atlas()
     combinedpos = [Point3f0(0)]
     colors = RGBAf0[RGBAf0(0,0,0,0)]
-    scales = Vec2f0[(0,0)]
+    scales = Float32[0]
     fonts = [to_font("Dejavu Sans")]
     rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
 
@@ -428,11 +428,11 @@ function plot!(plot::Annotations)
         broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f, (text, startpos), color, tsize, alignment, rotation
             c = to_color(color)
             rot = to_rotation(rotation)
-            pos, _ = layout_text(text, startpos, tsize, f, alignment, rot, model)
+            pos = layout_text(text, startpos, tsize, f, alignment, rot, model)
             print(io, text)
             n = length(pos)
             append!(combinedpos, pos)
-            append!(scales, repeated(Vec2f0(tsize, tsize), n))
+            append!(scales, repeated(tsize, n))
             append!(colors, repeated(c, n))
             append!(fonts, repeated(f, n))
             append!(rotations, repeated(rot, n))

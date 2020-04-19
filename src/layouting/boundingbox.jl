@@ -1,3 +1,4 @@
+using FreeTypeAbstraction: height_insensitive_boundingbox
 
 """
 Calculates the exact boundingbox of a Scene/Plot, without considering any transformation
@@ -85,12 +86,7 @@ end
 function boundingbox(x::Text, text::String)
     position = to_value(x[:position])
     @get_attribute x (textsize, font, align, rotation)
-    bb = boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
-    # pm = inv(transformationmatrix(parent(x))[])
-    # wh = widths(bb)
-    # whp = project_widths(pm, wh)
-    # aoffset = whp .* to_ndim(Vec3f0, align, 0f0)
-    # return FRect3D(minimum(bb) .- aoffset, whp)
+    return boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
 end
 
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
@@ -104,38 +100,6 @@ function boundingbox(
         to_font(font), to_align(align), to_rotation(rotation)
     )
 end
-
-# function boundingbox(
-#         text::String, position, textsize, fonts,
-#         align, rotation, model = Mat4f0(I)
-#     )
-#     isempty(text) && return FRect3D()
-#     pos_per_char = !isa(position, VecTypes)
-#
-#     start_pos = Vec(pos_per_char ? first(position) : position)
-#     start_pos3d = project(model, to_ndim(Vec3f0, start_pos, 0.0))
-#     bb = FRect3D(start_pos3d, Vec3f0(0))
-#
-#     if pos_per_char
-#         broadcast_foreach(position, textsize, fonts, collect(text)) do pos, scale, font, char
-#             rect, extent = FreeTypeAbstraction.metrics_bb(char, font, scale)
-#             bb = union(FRect3D(rect) + to_ndim(Vec3f0, pos, 0.0), bb)
-#             @show pos scale
-#         end
-#     else
-#         y_advance = 0.0
-#         line_advance = FreeTypeAbstraction.get_extent(fonts, 'x').advance[2]
-#         for line in split(text, r"(\r\n|\r|\n)")
-#             rectangles = FreeTypeAbstraction.glyph_rects(line, fonts, textsize)
-#             bb2d = reduce(union, rectangles)
-#             bb2d = bb2d + Vec2f0(0, y_advance)
-#             bb = union(bb, FRect3D(bb2d))
-#             y_advance += line_advance
-#             @show y_advance
-#         end
-#     end
-#     return bb
-# end
 
 rectmult(rect, m) = Rect(origin(rect) .* m, widths(rect) .* m)
 rectshift(rect, vec) = Rect(origin(rect) .+ vec, widths(rect))
@@ -169,7 +133,7 @@ end
 
 function quaternion_to_2d_angle(quat)
     # this assumes that the quaternion was calculated from a simple 2d rotation as well
-    2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
+    return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
 end
 
 function boundingbox(
@@ -191,7 +155,7 @@ function boundingbox(
     # this is kind of a doubling, maybe it could be avoided if at creation all
     # positions would be populated in the text object, but that seems convoluted
     if position isa VecTypes
-        position, _ = layout_text(text, position, textsize, font, align, rotation, model)
+        position = layout_text(text, position, textsize, font, align, rotation, model)
     end
 
     bbox = nothing
@@ -201,21 +165,21 @@ function boundingbox(
         ctext_state = iterate(text, text_state)
 
         if !(c in ('\r', '\n'))
-            raw_bb = if use_vertical_dimensions_from_font
+            bb_unitspace = if use_vertical_dimensions_from_font
                 height_insensitive_boundingbox(
-                    FreeTypeAbstraction.internal_get_extent(font, c), font)
+                    FreeTypeAbstraction.get_extent(font, c), font)
             else
-                inkboundingbox(FreeTypeAbstraction.internal_get_extent(font, c))
+                inkboundingbox(FreeTypeAbstraction.get_extent(font, c))
             end
 
-            scaled_bb = rectmult(raw_bb, scale / 64)
+            scaled_bb = bb_unitspace * scale
 
             # TODO this only works in 2d
             rot_2d_radians = quaternion_to_2d_angle(rotation)
             rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
 
             # bb = rectdiv(bb, 1.5)
-            shifted_bb = rectshift(to_ndim(Vec3f0, rotated_bb, 0), position[i])
+            shifted_bb = FRect3D(rotated_bb) + position[i]
             if isnothing(bbox)
                 bbox = shifted_bb
             else

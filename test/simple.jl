@@ -2,7 +2,6 @@ using AbstractPlotting
 using GLMakie
 using GeometryBasics
 using Observables
-using GLMakie
 using FileIO
 using MakieGallery
 
@@ -85,3 +84,49 @@ axis = scene[Axis]
 axis.ticks.ranges = ([0.1, 0.2, 0.9], [0.1, 0.2, 0.9])
 axis.ticks.labels = (["😸", "♡", "𝕴"], ["β ÷ δ", "22", "≙"])
 scene
+
+
+# Text
+x = text("heyllo")
+
+using GLMakie.GLAbstraction: gpu_data
+scren = annotations(string.(collect("heybrobr")), Point2f0.(LinRange(1, 100, 8)), show_axis=false, scale_plot=false) |> display
+
+robj = scren.renderlist[1][3]
+
+scales = gpu_data(robj.uniforms[:scale])
+position = gpu_data(robj.uniforms[:position])
+offset = robj.uniforms[:offset][]
+
+scren = text("bro", scale_plot=false, show_axis=false) |> display
+robj = scren.renderlist[1][3]
+
+scales = gpu_data(robj.uniforms[:scale])
+position = gpu_data(robj.uniforms[:position])
+offset = robj.uniforms[:offset][]
+uv_offset_width = gpu_data(robj.uniforms[:uv_offset_width])
+
+scatter!(position, marker=Rect, marker_offset=offset, markersize=scales, raw=true, color=(:blue, 0.3), transform_marker=false)
+
+atlas = AbstractPlotting.get_texture_atlas()
+
+scatter(position,
+    marker="bro", marker_offset=offset,
+    markersize=scales, scale_plot=false, show_axis=false,
+    color=(:blue, 0.3), uv_offset_width = uv_offset_width,
+    transform_marker=false)
+
+posstart = Vec2(round.(Int, uv_offset_width[3][1:2] .* size(atlas.data)))
+posstop = Vec2(round.(Int, uv_offset_width[3][3:4] .* size(atlas.data)))
+
+f = AbstractPlotting.defaultfont()
+
+using FreeTypeAbstraction
+
+FreeTypeAbstraction.get_pixelsize(f)
+
+rm(AbstractPlotting.get_cache_path())
+xx = IRect2D(posstart, posstop .- posstart)
+atlas.data[xx]
+
+heatmap(atlas.data[xx])

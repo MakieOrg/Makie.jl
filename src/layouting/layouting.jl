@@ -1,3 +1,5 @@
+using FreeTypeAbstraction: hadvance, leftinkbound, inkwidth, get_extent, ascender, descender
+
 function zerorect(x::Rect{N, T}) where {N, T}
     Rect(Vec{N, T}(0), widths(x))
 end
@@ -6,8 +8,29 @@ function padrect(rect, pad)
 end
 
 
+function attribute_per_char(string, ft_font)
+    if ft_font isa AbstractVector
+        if length(ft_font) == length(string)
+            return ft_font
+        else
+            n_words = length(split(string, r"\s+"))
+            if length(ft_font) == n_words
+                i = 1
+                return map(collect(string)) do char
+                    f = ft_font[i]
+                    char == "\n" && (i += 1)
+                    return f
+                end
+            end
+        end
+    else
+        return (ft_font for char in string)
+    end
+    error("A vector of fonts with $(length(ft_font)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
+end
+
 function layout_text(
-        string::AbstractString, startpos::VecTypes{N, T}, textsize::Number,
+        string::AbstractString, startpos::VecTypes{N, T}, textsize::Union{AbstractVector, Number},
         font, align, rotation, model
     ) where {N, T}
 
@@ -20,31 +43,11 @@ function layout_text(
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point3f0, mpos, 0)
 
-    # scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
+    @show rscale
+    fontperchar = attribute_per_char(string, ft_font)
+    textsizeperchar = attribute_per_char(string, rscale)
 
-    font_per_char = let
-        if ft_font isa AbstractVector
-            n_words = length(split(string, r"\s+"))
-            if length(ft_font) == n_words
-                i = 1
-                map(collect(string)) do char
-                    f = ft_font[i]
-                    if char == "\n"
-                        i += 1
-                    end
-                    f
-                end
-            elseif length(ft_font) == length(string)
-                ft_font
-            else
-                error("A vector of fonts with $(length(ft_font)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
-            end
-        else
-            [ft_font for char in string]
-        end
-    end
-
-    glyphpos = glyph_positions(string, font_per_char, rscale, offset_vec[1], offset_vec[2])
+    glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset_vec[1], offset_vec[2])
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
@@ -61,24 +64,15 @@ function layout_text(
         end
     end
 
-    return positions, nothing
+    return positions
 end
 
 
-function glyph_positions(str::AbstractString, font_per_char::Vector, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign; lineheight_factor = 1.0, justification = 0.0)
 
+    char_font_scale = collect(zip([c for c in str], font_per_char, fontscale_px))
 
-    # this is a countermeasure against Cairo messing with FreeType font pixel sizes
-    # when drawing. We reset them every time which is hacky but seems to work
-    for font in font_per_char
-        FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(font, 64, 64)
-        FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
-    end
-
-    char_font_scale = collect(zip([c for c in str], font_per_char, [fontscale for c in str]))
-
-
-    linebreak_indices = [i for (i, c) in enumerate(str) if c == '\n']
+    linebreak_indices = (i for (i, c) in enumerate(str) if c == '\n')
 
     groupstarts = [1; linebreak_indices .+ 1]
     groupstops = [linebreak_indices .- 1; length(str)]
@@ -89,7 +83,7 @@ function glyph_positions(str::AbstractString, font_per_char::Vector, fontscale, 
 
     extents = map(cfs_groups) do group
         # TODO: scale as SVector not Number
-        [FreeTypeAbstraction.internal_get_extent(font, char) .* SVector(scale, scale) for (char, font, scale) in group]
+        [get_extent(font, char) .* SVector(scale, scale) for (char, font, scale) in group]
     end
 
     # add or subtract kernings?
@@ -126,53 +120,29 @@ function glyph_positions(str::AbstractString, font_per_char::Vector, fontscale, 
     # last_max_descent = maximum(x -> inkheight(x) - hbearing_ori_to_top(x), extents[end])
 
     first_line_ascender = maximum(cfs_groups[1]) do (char, font, scale)
-        font.ascender / font.units_per_EM * 64 * scale
+        ascender(font) * scale
     end
+
     last_line_descender = minimum(cfs_groups[end]) do (char, font, scale)
-        font.descender / font.units_per_EM * 64 * scale
+        descender(font) * scale
     end
+
     overall_height = first_line_ascender - ys[end] - last_line_descender
 
     ys_aligned = ys .- first_line_ascender .+ (1 - valign) .* overall_height
 
     # we are still operating in freetype units, let's convert to the chosen scale by dividing with 64
-    glyphorigins = [Vec2.(xsgroup, y)  ./ 64 for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
+    return [Vec2.(xsgroup, y) for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
 end
-
-
-hadvance(ext::FontExtent) = ext.advance[1]
-inkwidth(ext::FontExtent) = ext.scale[1]
-inkheight(ext::FontExtent) = ext.scale[2]
-hbearing_ori_to_left(ext::FontExtent) = ext.horizontal_bearing[1]
-hbearing_ori_to_top(ext::FontExtent) = ext.horizontal_bearing[2]
-leftinkbound(ext::FontExtent) = hbearing_ori_to_left(ext)
-rightinkbound(ext::FontExtent) = leftinkbound(ext) + inkwidth(ext)
-bottominkbound(ext::FontExtent) = hbearing_ori_to_top(ext) - inkheight(ext)
-topinkbound(ext::FontExtent) = hbearing_ori_to_top(ext)
-
-function inkboundingbox(ext::FontExtent)
-    l = leftinkbound(ext)
-    r = rightinkbound(ext)
-    b = bottominkbound(ext)
-    t = topinkbound(ext)
-    FRect2D((l, b), (r - l, t - b))
-end
-
-function height_insensitive_boundingbox(ext::FontExtent, font::FTFont)
-    l = leftinkbound(ext)
-    r = rightinkbound(ext)
-    b = font.descender / font.units_per_EM * 64 # times 64 because everything else is scaled that way, too
-    t = font.ascender / font.units_per_EM * 64
-    FRect2D((l, b), (r - l, t - b))
-end
-
 
 function text_bb(str, font, size)
-    positions, scale = layout_text(
+    positions = layout_text(
         str, Point2f0(0), size,
         font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I)
     )
-    union(FRect3D(positions),  FRect3D(positions .+ to_ndim.(Point3f0, scale, 0)))
+
+    scale = widths.(first.(FreeTypeAbstraction.metrics_bb.(collect(str), font, size)))
+    return union(FRect3D(positions),  FRect3D(positions .+ to_ndim.(Point3f0, scale, 0)))
 end
 
 """
