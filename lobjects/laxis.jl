@@ -821,6 +821,34 @@ function hideydecorations!(la::LAxis)
     la.ygridvisible = false
 end
 
+"""
+    hidedecorations!(la::LAxis)
+
+Hide all decorations of both x and y-axis: label, ticklabels, ticks and grid.
+"""
+function hidedecorations!(la::LAxis)
+    hidexdecorations!(la)
+    hideydecorations!(la)
+end
+
+"""
+    hidespines!(la::LAxis, spines::Symbol... = (:l, :r, :b, :t)...)
+
+Hide all specified axis spines. Hides all spines by default, otherwise choose
+with the symbols :l, :r, :b and :t.
+"""
+function hidespines!(la::LAxis, spines::Symbol... = (:l, :r, :b, :t)...)
+    for s in spines
+        @match s begin
+            :l => (la.leftspinevisible = false)
+            :r => (la.rightspinevisible = false)
+            :b => (la.bottomspinevisible = false)
+            :t => (la.topspinevisible = false)
+            x => error("Invalid spine identifier $x. Valid options are :l, :r, :b and :t.")
+        end
+    end
+end
+
 
 function tight_yticklabel_spacing!(la::LAxis)
     tight_ticklabel_spacing!(la.decorations[:yaxis])
