@@ -797,6 +797,11 @@ function add_reset_limits!(la::LAxis)
     end
 end
 
+"""
+    hidexdecorations!(la::LAxis)
+
+Hide all decorations of the x-axis: label, ticklabels, ticks and grid.
+"""
 function hidexdecorations!(la::LAxis)
     la.xlabelvisible = false
     la.xticklabelsvisible = false
@@ -804,6 +809,11 @@ function hidexdecorations!(la::LAxis)
     la.xgridvisible = false
 end
 
+"""
+    hideydecorations!(la::LAxis)
+
+Hide all decorations of the y-axis: label, ticklabels, ticks and grid.
+"""
 function hideydecorations!(la::LAxis)
     la.ylabelvisible = false
     la.yticklabelsvisible = false
