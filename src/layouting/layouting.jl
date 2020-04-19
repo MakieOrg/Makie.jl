@@ -19,9 +19,32 @@ function layout_text(
     atlas = get_texture_atlas()
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point3f0, mpos, 0)
-    scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
 
-    glyphpos = glyph_positions(string, ft_font, rscale, offset_vec[1], offset_vec[2])
+    # scales = Vec2f0[glyph_scale!(atlas, c, ft_font, rscale) for c in string]
+
+    font_per_char = let
+        if ft_font isa AbstractVector
+            n_words = length(split(string, r"\s+"))
+            if length(ft_font) == n_words
+                i = 1
+                map(collect(string)) do char
+                    f = ft_font[i]
+                    if char == "\n"
+                        i += 1
+                    end
+                    f
+                end
+            elseif length(ft_font) == length(string)
+                ft_font
+            else
+                error("A vector of fonts with $(length(ft_font)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
+            end
+        else
+            [ft_font for char in string]
+        end
+    end
+
+    glyphpos = glyph_positions(string, font_per_char, rscale, offset_vec[1], offset_vec[2])
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
@@ -38,37 +61,43 @@ function layout_text(
         end
     end
 
-    return positions, scales
+    return positions, nothing
 end
 
 
-function glyph_positions(str::AbstractString, font, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+function glyph_positions(str::AbstractString, font_per_char::Vector, fontscale, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+
 
     # this is a countermeasure against Cairo messing with FreeType font pixel sizes
     # when drawing. We reset them every time which is hacky but seems to work
-    FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(font, 64, 64)
-    FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
-
-
-    # make lineheight a multiple of font's height
-    lineheight = font.height / font.units_per_EM * lineheight_factor * 64
-
-    lines = split(str, "\n")
-
-    extents = map(lines) do l
-        [FreeTypeAbstraction.internal_get_extent(font, c) for c in l]
+    for font in font_per_char
+        FreeTypeAbstraction.FreeType.FT_Set_Pixel_Sizes(font, 64, 64)
+        FreeTypeAbstraction.FreeType.FT_Set_Transform(font, C_NULL, C_NULL)
     end
 
-    xkernings = map(lines) do l
-        [FreeTypeAbstraction.kerning(c1, c2, font)[1]
-            for (c1, c2) in zip(chop(l, head = 0, tail = 1), chop(l, head = 1, tail = 0))]
+    char_font_scale = collect(zip([c for c in str], font_per_char, [fontscale for c in str]))
+
+
+    linebreak_indices = [i for (i, c) in enumerate(str) if c == '\n']
+
+    groupstarts = [1; linebreak_indices .+ 1]
+    groupstops = [linebreak_indices .- 1; length(str)]
+
+    cfs_groups = map(groupstarts, groupstops) do start, stop
+        char_font_scale[start:stop]
+    end
+
+    extents = map(cfs_groups) do group
+        # TODO: scale as SVector not Number
+        [FreeTypeAbstraction.internal_get_extent(font, char) .* SVector(scale, scale) for (char, font, scale) in group]
     end
 
     # add or subtract kernings?
-    xs = map(extents, xkernings) do extgroup, kerngroup
-        cumsum([isempty(extgroup) ? 0.0 : -leftinkbound(extgroup[1]); hadvance.(extgroup[1:end-1]) .+ kerngroup])
+    xs = map(extents) do extgroup
+        cumsum([isempty(extgroup) ? 0.0 : -leftinkbound(extgroup[1]); hadvance.(extgroup[1:end-1])])
     end
 
+    # each linewidth is the last origin plus inkwidth
     linewidths = last.(xs) .+ [isempty(extgroup) ? 0.0 : inkwidth(extgroup[end]) for extgroup in extents]
     maxwidth = maximum(linewidths)
 
@@ -78,8 +107,15 @@ function glyph_positions(str::AbstractString, font, fontscale, halign, valign; l
         xsgroup .+ wd * justification
     end
 
+    # make lineheight a multiple of the largest lineheight in each line
+    lineheights = map(cfs_groups) do group
+        maximum(group) do (char, font, scale)
+            font.height / font.units_per_EM * lineheight_factor * 64 * scale
+        end
+    end
+
     # how to define line height relative to font size?
-    ys = cumsum([0; fill(-lineheight, length(lines)-1)])
+    ys = cumsum([0; -lineheights[2:end]])
 
 
     # x alignment
@@ -89,13 +125,18 @@ function glyph_positions(str::AbstractString, font, fontscale, halign, valign; l
     # first_max_ascent = maximum(hbearing_ori_to_top, extents[1])
     # last_max_descent = maximum(x -> inkheight(x) - hbearing_ori_to_top(x), extents[end])
 
-    first_line_ascender = font.ascender / font.units_per_EM * 64
-    overall_height = first_line_ascender - ys[end] - (font.descender / font.units_per_EM * 64)
+    first_line_ascender = maximum(cfs_groups[1]) do (char, font, scale)
+        font.ascender / font.units_per_EM * 64 * scale
+    end
+    last_line_descender = minimum(cfs_groups[end]) do (char, font, scale)
+        font.descender / font.units_per_EM * 64 * scale
+    end
+    overall_height = first_line_ascender - ys[end] - last_line_descender
 
     ys_aligned = ys .- first_line_ascender .+ (1 - valign) .* overall_height
 
     # we are still operating in freetype units, let's convert to the chosen scale by dividing with 64
-    glyphorigins = [Vec2.(xsgroup, y)  ./ 64 .* fontscale for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
+    glyphorigins = [Vec2.(xsgroup, y)  ./ 64 for (xsgroup, y) in zip(xs_aligned, ys_aligned)]
 end
 
 
