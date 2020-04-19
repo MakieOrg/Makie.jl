@@ -802,37 +802,53 @@ function add_reset_limits!(la::LAxis)
 end
 
 """
-    hidexdecorations!(la::LAxis)
+    hidexdecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
 
-Hide all decorations of the x-axis: label, ticklabels, ticks and grid.
+Hide decorations of the x-axis: label, ticklabels, ticks and grid.
 """
-function hidexdecorations!(la::LAxis)
-    la.xlabelvisible = false
-    la.xticklabelsvisible = false
-    la.xticksvisible = false
-    la.xgridvisible = false
+function hidexdecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+    if label
+        la.xlabelvisible = false
+    end
+    if ticklabels
+        la.xticklabelsvisible = false
+    end
+    if ticks
+        la.xticksvisible = false
+    end
+    if grid
+        la.xgridvisible = false
+    end
 end
 
 """
-    hideydecorations!(la::LAxis)
+    hideydecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
 
-Hide all decorations of the y-axis: label, ticklabels, ticks and grid.
+Hide decorations of the y-axis: label, ticklabels, ticks and grid.
 """
-function hideydecorations!(la::LAxis)
-    la.ylabelvisible = false
-    la.yticklabelsvisible = false
-    la.yticksvisible = false
-    la.ygridvisible = false
+function hideydecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+    if label
+        la.ylabelvisible = false
+    end
+    if ticklabels
+        la.yticklabelsvisible = false
+    end
+    if ticks
+        la.yticksvisible = false
+    end
+    if grid
+        la.ygridvisible = false
+    end
 end
 
 """
     hidedecorations!(la::LAxis)
 
-Hide all decorations of both x and y-axis: label, ticklabels, ticks and grid.
+Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
 """
-function hidedecorations!(la::LAxis)
-    hidexdecorations!(la)
-    hideydecorations!(la)
+function hidedecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+    hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid)
+    hideydecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid)
 end
 
 """
