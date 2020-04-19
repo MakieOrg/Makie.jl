@@ -215,7 +215,7 @@ function select_line(scene; kwargs...)
         else
             if drag == Mouse.up && waspressed[] # User has selected the rectangle
                 waspressed[] = false
-                if sum(abs2.(line[][1] - line[][2])) > 0
+                if line[][1] != line[][2]
                     line_ret[] = copy(line[])
                 end
             end
