@@ -183,7 +183,8 @@ to the selected line on the scene. In addition the function
 _plots_ the line on the scene as the user clicks and moves the mouse
 around. When the button is not clicked any more, the plotted line disappears.
 
-The value of the returned line is updated **only** when the user un-clicks.
+The value of the returned line is updated **only** when the user un-clicks
+and only if the selected line has non-zero length.
 
 The `kwargs...` are propagated into `lines!` which plots the selected line.
 """
@@ -214,7 +215,9 @@ function select_line(scene; kwargs...)
         else
             if drag == Mouse.up && waspressed[] # User has selected the rectangle
                 waspressed[] = false
-                line_ret[] = copy(line[])
+                if sum(abs2.(line[][1] - line[][2])) > 0
+                    line_ret[] = copy(line[])
+                end
             end
             # always hide if not the right key is pressed
             plotted_line[:visible] = false
