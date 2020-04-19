@@ -801,12 +801,14 @@ function hidexdecorations!(la::LAxis)
     la.xlabelvisible = false
     la.xticklabelsvisible = false
     la.xticksvisible = false
+    la.xgridvisible = false
 end
 
 function hideydecorations!(la::LAxis)
     la.ylabelvisible = false
     la.yticklabelsvisible = false
     la.yticksvisible = false
+    la.ygridvisible = false
 end
 
 
