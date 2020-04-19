@@ -777,6 +777,11 @@ function convert_attribute(cs::Union{Tuple, Pair}, ::key"colormap", n::Int=2)
     return to_colormap([to_color.(cs)...], n)
 end
 
+function convert_attribute(cs::Tuple{Union{Symbol, AbstractString}, Real}, ::key"colormap", n::Int=30)
+    return RGBAf0.(to_colormap(cs[1]), cs[2]) # We need to rework this to conform to the backend interface.
+end
+
+
 to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
 
 """
