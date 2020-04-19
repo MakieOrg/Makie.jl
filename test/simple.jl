@@ -60,7 +60,7 @@ poly(decompose(Point2f0, Circle(Point2f0(0), 1f0))) |> display
 
 # Image like!
 image(rand(10, 10))
-heatmap(rand(10, 10)) |> display
+heatmap(rand(10, 10))
 
 # Volumes
 volume(rand(4, 4, 4), isovalue=0.5, isorange=0.01, algorithm=:iso) |> display
