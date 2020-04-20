@@ -339,7 +339,7 @@ macro documented_attributes(exp)
 
     # make a dictionary of :variable_name => docstring_expression
     defaults_dict = Expr(:call, :Dict,
-        (Expr(:call, Symbol("=>"), QuoteNode(name), string(exp))
+        (Expr(:call, Symbol("=>"), QuoteNode(name), exp isa String ? "\"$exp\"" : string(exp))
             for (name, exp, _) in vars_and_exps)...)
 
     # make an Attributes instance with of variable_name = variable_expression
