@@ -1,45 +1,3 @@
-macro documented_attributes(exp)
-    if exp.head != :block
-        error("Not a block")
-    end
-
-    expressions = filter(x -> !(x isa LineNumberNode), exp.args)
-
-    vars_and_exps = map(expressions) do e
-        if e.head == :macrocall && e.args[1] == GlobalRef(Core, Symbol("@doc"))
-            varname = e.args[4].args[1]
-            var_exp = e.args[4].args[2]
-            str_exp = e.args[3]
-        elseif e.head == Symbol("=")
-            varname = e.args[1]
-            var_exp = e.args[2]
-            str_exp = "no description"
-        else
-            error("Neither docstringed variable nor normal variable: $e")
-        end
-        varname, var_exp, str_exp
-    end
-
-    # make a dictionary of :variable_name => docstring_expression
-    exp_docdict = Expr(:call, :Dict,
-        (Expr(:call, Symbol("=>"), QuoteNode(name), strexp)
-            for (name, _, strexp) in vars_and_exps)...)
-
-    # make a dictionary of :variable_name => docstring_expression
-    defaults_dict = Expr(:call, :Dict,
-        (Expr(:call, Symbol("=>"), QuoteNode(name), string(exp))
-            for (name, exp, _) in vars_and_exps)...)
-
-    # make an Attributes instance with of variable_name = variable_expression
-    exp_attrs = Expr(:call, :Attributes,
-        (Expr(:kw, name, exp)
-            for (name, exp, _) in vars_and_exps)...)
-
-    esc(quote
-        ($exp_attrs, $exp_docdict, $defaults_dict)
-    end)
-end
-
 function lift_parent_attribute(scene, attr::Symbol, default_value)
     if haskey(scene.attributes, attr)
         lift(identity, scene[attr])
@@ -230,15 +188,6 @@ function default_attributes(::Type{LAxis}, scene)
     end
 
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
-end
-
-function docvarstring(docdict, defaultdict)
-    buffer = IOBuffer()
-    maxwidth = maximum(length ∘ string, keys(docdict))
-    for (var, doc) in sort(pairs(docdict))
-        print(buffer, "`$var`\\\nDefault: `$(defaultdict[var])`\\\n$doc\n\n")
-    end
-    String(take!(buffer))
 end
 
 @doc """

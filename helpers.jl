@@ -279,3 +279,88 @@ end
 
 xlimits(r::Rect{2}) = limits(r, 1)
 ylimits(r::Rect{2}) = limits(r, 2)
+
+
+"""
+Take a sequence of variable definitions with docstrings above each and turn
+them into Attributes, a Dict of varname => docstring pairs and a Dict of
+varname => default_value pairs.
+
+# Example
+
+    attrs, docdict, defaultdict = @documented_attributes begin
+        "The width."
+        width = 10
+        "The height."
+        height = 20 + x
+    end
+
+    attrs == Attributes(
+        width = 10,
+        height = 20
+    )
+
+    docdict == Dict(
+        width => "The width.",
+        height => "The height."
+    )
+
+    defaultdict == Dict(
+        width => "10",
+        height => "20 + x"
+    )
+"""
+macro documented_attributes(exp)
+    if exp.head != :block
+        error("Not a block")
+    end
+
+    expressions = filter(x -> !(x isa LineNumberNode), exp.args)
+
+    vars_and_exps = map(expressions) do e
+        if e.head == :macrocall && e.args[1] == GlobalRef(Core, Symbol("@doc"))
+            varname = e.args[4].args[1]
+            var_exp = e.args[4].args[2]
+            str_exp = e.args[3]
+        elseif e.head == Symbol("=")
+            varname = e.args[1]
+            var_exp = e.args[2]
+            str_exp = "no description"
+        else
+            error("Neither docstringed variable nor normal variable: $e")
+        end
+        varname, var_exp, str_exp
+    end
+
+    # make a dictionary of :variable_name => docstring_expression
+    exp_docdict = Expr(:call, :Dict,
+        (Expr(:call, Symbol("=>"), QuoteNode(name), strexp)
+            for (name, _, strexp) in vars_and_exps)...)
+
+    # make a dictionary of :variable_name => docstring_expression
+    defaults_dict = Expr(:call, :Dict,
+        (Expr(:call, Symbol("=>"), QuoteNode(name), string(exp))
+            for (name, exp, _) in vars_and_exps)...)
+
+    # make an Attributes instance with of variable_name = variable_expression
+    exp_attrs = Expr(:call, :Attributes,
+        (Expr(:kw, name, exp)
+            for (name, exp, _) in vars_and_exps)...)
+
+    esc(quote
+        ($exp_attrs, $exp_docdict, $defaults_dict)
+    end)
+end
+
+"""
+Turn a combination of docdict and defaultdict from `@documented_attributes`
+into a string to insert into a docstring.
+"""
+function docvarstring(docdict, defaultdict)
+    buffer = IOBuffer()
+    maxwidth = maximum(length ∘ string, keys(docdict))
+    for (var, doc) in sort(pairs(docdict))
+        print(buffer, "`$var`\\\nDefault: `$(defaultdict[var])`\\\n$doc\n\n")
+    end
+    String(take!(buffer))
+end
