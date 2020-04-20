@@ -55,174 +55,174 @@ end
 
 function default_attributes(::Type{LAxis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
-        "The xlabel string"
+        "The xlabel string."
         xlabel = " "
-        "The ylabel string"
+        "The ylabel string."
         ylabel = " "
-        "The axis title string"
+        "The axis title string."
         title = " "
-        "The font family of the title"
+        "The font family of the title."
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The title's font size"
+        "The title's font size."
         titlesize = lift_parent_attribute(scene, :fontsize, 20f0)
-        "The gap between axis and title"
+        "The gap between axis and title."
         titlegap = 10f0
-        "Controls if the title is visible"
+        "Controls if the title is visible."
         titlevisible = true
-        "The horizontal alignment of the title"
+        "The horizontal alignment of the title."
         titlealign = :center
-        "The font family of the xlabel"
+        "The font family of the xlabel."
         xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The font family of the ylabel"
+        "The font family of the ylabel."
         ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The color of the xlabel"
+        "The color of the xlabel."
         xlabelcolor = RGBf0(0, 0, 0)
-        "The color of the ylabel"
+        "The color of the ylabel."
         ylabelcolor = RGBf0(0, 0, 0)
-        "The font size of the xlabel"
+        "The font size of the xlabel."
         xlabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
-        "The font size of the ylabel"
+        "The font size of the ylabel."
         ylabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
-        "Controls if the xlabel is visible"
+        "Controls if the xlabel is visible."
         xlabelvisible = true
-        "Controls if the ylabel is visible"
+        "Controls if the ylabel is visible."
         ylabelvisible = true
-        "The padding between the xlabel and the ticks or axis"
+        "The padding between the xlabel and the ticks or axis."
         xlabelpadding = 15f0
-        "The padding between the ylabel and the ticks or axis"
+        "The padding between the ylabel and the ticks or axis."
         ylabelpadding = 15f0 # because of boundingbox inaccuracies of ticklabels
-        "The font family of the xticklabels"
+        "The font family of the xticklabels."
         xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The font family of the yticklabels"
+        "The font family of the yticklabels."
         yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
-        "The font size of the xticklabels"
+        "The font size of the xticklabels."
         xticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
-        "The font size of the yticklabels"
+        "The font size of the yticklabels."
         yticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
-        "Controls if the xticklabels are visible"
+        "Controls if the xticklabels are visible."
         xticklabelsvisible = true
-        "Controls if the yticklabels are visible"
+        "Controls if the yticklabels are visible."
         yticklabelsvisible = true
-        "The space reserved for the xticklabels"
+        "The space reserved for the xticklabels."
         xticklabelspace = AbstractPlotting.automatic
-        "The space reserved for the yticklabels"
+        "The space reserved for the yticklabels."
         yticklabelspace = AbstractPlotting.automatic
-        "The space between xticks and xticklabels"
+        "The space between xticks and xticklabels."
         xticklabelpad = 5f0
-        "The space between yticks and yticklabels"
+        "The space between yticks and yticklabels."
         yticklabelpad = 5f0
-        "The rotation of the xticklabels in radians"
+        "The counterclockwise rotation of the xticklabels in radians."
         xticklabelrotation = 0f0
-        "The rotation of the yticklabels in radians"
+        "The counterclockwise rotation of the yticklabels in radians."
         yticklabelrotation = 0f0
-        "The horizontal and vertical alignment of the xticklabels"
+        "The horizontal and vertical alignment of the xticklabels."
         xticklabelalign = (:center, :top)
-        "The horizontal and vertical alignment of the yticklabels"
+        "The horizontal and vertical alignment of the yticklabels."
         yticklabelalign = (:right, :center)
-        "The size of the xtick marks"
+        "The size of the xtick marks."
         xticksize = 10f0
-        "The size of the ytick marks"
+        "The size of the ytick marks."
         yticksize = 10f0
-        "Controls if the xtick marks are visible"
+        "Controls if the xtick marks are visible."
         xticksvisible = true
-        "Controls if the ytick marks are visible"
+        "Controls if the ytick marks are visible."
         yticksvisible = true
-        "The alignment of the xtick marks relative to the axis spine (0 = out, 1 = in)"
+        "The alignment of the xtick marks relative to the axis spine (0 = out, 1 = in)."
         xtickalign = 0f0
-        "The alignment of the ytick marks relative to the axis spine (0 = out, 1 = in)"
+        "The alignment of the ytick marks relative to the axis spine (0 = out, 1 = in)."
         ytickalign = 0f0
-        "The width of the xtick marks"
+        "The width of the xtick marks."
         xtickwidth = 1f0
-        "The width of the ytick marks"
+        "The width of the ytick marks."
         ytickwidth = 1f0
-        "The color of the xtick marks"
+        "The color of the xtick marks."
         xtickcolor = RGBf0(0, 0, 0)
-        "The color of the ytick marks"
+        "The color of the ytick marks."
         ytickcolor = RGBf0(0, 0, 0)
-        "Locks interactive panning in the x direction"
+        "Locks interactive panning in the x direction."
         xpanlock = false
-        "Locks interactive panning in the y direction"
+        "Locks interactive panning in the y direction."
         ypanlock = false
-        "Locks interactive zooming in the x direction"
+        "Locks interactive zooming in the x direction."
         xzoomlock = false
-        "Locks interactive zooming in the y direction"
+        "Locks interactive zooming in the y direction."
         yzoomlock = false
-        "The width of the axis spines"
+        "The width of the axis spines."
         spinewidth = 1f0
-        "Controls if the x grid lines are visible"
+        "Controls if the x grid lines are visible."
         xgridvisible = true
-        "Controls if the y grid lines are visible"
+        "Controls if the y grid lines are visible."
         ygridvisible = true
-        "The width of the x grid lines"
+        "The width of the x grid lines."
         xgridwidth = 1f0
-        "The width of the y grid lines"
+        "The width of the y grid lines."
         ygridwidth = 1f0
-        "The color of the x grid lines"
+        "The color of the x grid lines."
         xgridcolor = RGBAf0(0, 0, 0, 0.1)
-        "The color of the y grid lines"
+        "The color of the y grid lines."
         ygridcolor = RGBAf0(0, 0, 0, 0.1)
-        "The linestyle of the x grid lines"
+        "The linestyle of the x grid lines."
         xgridstyle = nothing
-        "The linestyle of the y grid lines"
+        "The linestyle of the y grid lines."
         ygridstyle = nothing
-        "Controls if the bottom axis spine is visible"
+        "Controls if the bottom axis spine is visible."
         bottomspinevisible = true
-        "Controls if the left axis spine is visible"
+        "Controls if the left axis spine is visible."
         leftspinevisible = true
-        "Controls if the top axis spine is visible"
+        "Controls if the top axis spine is visible."
         topspinevisible = true
-        "Controls if the right axis spine is visible"
+        "Controls if the right axis spine is visible."
         rightspinevisible = true
-        "The color of the bottom axis spine"
+        "The color of the bottom axis spine."
         bottomspinecolor = :black
-        "The color of the left axis spine"
+        "The color of the left axis spine."
         leftspinecolor = :black
-        "The color of the top axis spine"
+        "The color of the top axis spine."
         topspinecolor = :black
-        "The color of the right axis spine"
+        "The color of the right axis spine."
         rightspinecolor = :black
         "The forced aspect ratio of the axis. `nothing` leaves the axis unconstrained, `DataAspect()` forces the same ratio as the ratio in data limits between x and y axis, `AxisAspect(ratio)` sets a manual ratio."
         aspect = nothing
-        "The vertical alignment of the axis within its suggested bounding box"
+        "The vertical alignment of the axis within its suggested bounding box."
         valign = :center
-        "The horizontal alignment of the axis within its suggested bounding box"
+        "The horizontal alignment of the axis within its suggested bounding box."
         halign = :center
-        "The width of the axis"
+        "The width of the axis."
         width = nothing
-        "The height of the axis"
+        "The height of the axis."
         height = nothing
         maxsize = (Inf32, Inf32)
-        "The relative margins added to the autolimits in x direction"
+        "The relative margins added to the autolimits in x direction."
         xautolimitmargin = (0.05f0, 0.05f0)
-        "The relative margins added to the autolimits in y direction"
+        "The relative margins added to the autolimits in y direction."
         yautolimitmargin = (0.05f0, 0.05f0)
-        "The xticks tick object"
+        "The xticks tick object."
         xticks = AutoLinearTicks(5)
-        "The yticks tick object"
+        "The yticks tick object."
         yticks = AutoLinearTicks(5)
-        "The button for panning"
+        "The button for panning."
         panbutton = AbstractPlotting.Mouse.right
-        "The key for limiting panning to the x direction"
+        "The key for limiting panning to the x direction."
         xpankey = AbstractPlotting.Keyboard.x
-        "The key for limiting panning to the y direction"
+        "The key for limiting panning to the y direction."
         ypankey = AbstractPlotting.Keyboard.y
-        "The key for limiting zooming to the x direction"
+        "The key for limiting zooming to the x direction."
         xzoomkey = AbstractPlotting.Keyboard.x
-        "The key for limiting zooming to the y direction"
+        "The key for limiting zooming to the y direction."
         yzoomkey = AbstractPlotting.Keyboard.y
-        "The position of the x axis (`:bottom` or `:top`)"
+        "The position of the x axis (`:bottom` or `:top`)."
         xaxisposition = :bottom
-        "The position of the y axis (`:left` or `:right`)"
+        "The position of the y axis (`:left` or `:right`)."
         yaxisposition = :left
-        "Controls if the x spine is limited to the furthest tick marks or not"
+        "Controls if the x spine is limited to the furthest tick marks or not."
         xtrimspine = false
-        "Controls if the y spine is limited to the furthest tick marks or not"
+        "Controls if the y spine is limited to the furthest tick marks or not."
         ytrimspine = false
-        "The background color of the axis"
+        "The background color of the axis."
         backgroundcolor = :white
-        "Controls if the ylabel's rotation is flipped"
+        "Controls if the ylabel's rotation is flipped."
         flip_ylabel = false
-        "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)"
+        "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
         autolimitaspect = nothing
         targetlimits = BBox(0, 100, 0, 100)
         "The align mode of the axis in its parent GridLayout."
