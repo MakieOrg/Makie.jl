@@ -15,6 +15,10 @@ import PlotUtils
 using GridLayoutBase
 import Showoff
 
+const FPS = Node(30)
+const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
+const COLOR_ACCENT_DIMMED = Ref(RGBf0(((174, 192, 230) ./ 255)...))
+
 include("types.jl")
 include("helpers.jl")
 include("mousestatemachine.jl")
@@ -70,11 +74,5 @@ export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
 export grid!, hbox!, vbox!
 export swap!
 export ncols, nrows
-
-
-
-const FPS = Node(30)
-const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
-const COLOR_ACCENT_DIMMED = Ref(RGBf0(((174, 192, 230) ./ 255)...))
 
 end # module
