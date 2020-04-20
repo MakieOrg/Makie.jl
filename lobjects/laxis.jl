@@ -7,7 +7,7 @@ parent.
 """
 function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LAxis, parent))
+    attrs = merge!(Attributes(kwargs), default_attributes(LAxis, parent).attributes)
 
     @extract attrs (
         title, titlefont, titlesize, titlegap, titlevisible, titlealign,
