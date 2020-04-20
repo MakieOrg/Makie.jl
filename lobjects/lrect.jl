@@ -1,5 +1,5 @@
 function LRect(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LRect))
+    attrs = merge!(Attributes(kwargs), default_attributes(LRect, parent).attributes)
 
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)

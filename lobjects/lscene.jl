@@ -13,7 +13,7 @@ computedsizenode(ls::LScene) = ls.layoutobservables.computedsize
 
 function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LScene, parent))
+    attrs = merge!(Attributes(kwargs), default_attributes(LScene, parent).attributes)
 
     layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)

@@ -3,7 +3,7 @@ function LLegend(
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LLegend, parent))
+    attrs = merge!(Attributes(kwargs), default_attributes(LLegend, parent).attributes)
 
     @extract attrs (
         halign, valign, padding, margin,

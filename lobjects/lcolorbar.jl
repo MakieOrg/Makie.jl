@@ -9,7 +9,7 @@ function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 end
 
 function LColorbar(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent))
+    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent).attributes)
 
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,

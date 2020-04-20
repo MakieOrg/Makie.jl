@@ -25,13 +25,18 @@ macro documented_attributes(exp)
         (Expr(:call, Symbol("=>"), QuoteNode(name), strexp)
             for (name, _, strexp) in vars_and_exps)...)
 
+    # make a dictionary of :variable_name => docstring_expression
+    defaults_dict = Expr(:call, :Dict,
+        (Expr(:call, Symbol("=>"), QuoteNode(name), string(exp))
+            for (name, exp, _) in vars_and_exps)...)
+
     # make an Attributes instance with of variable_name = variable_expression
     exp_attrs = Expr(:call, :Attributes,
         (Expr(:kw, name, exp)
             for (name, exp, _) in vars_and_exps)...)
 
     esc(quote
-        ($exp_attrs, $exp_docdict)
+        ($exp_attrs, $exp_docdict, $defaults_dict)
     end)
 end
 
@@ -49,7 +54,7 @@ end
 
 
 function default_attributes(::Type{LAxis}, scene)
-    attrs, docdict = @documented_attributes begin
+    attrs, docdict, defaultdict = @documented_attributes begin
         "The xlabel string"
         xlabel = " "
         "The ylabel string"
@@ -224,14 +229,14 @@ function default_attributes(::Type{LAxis}, scene)
         alignmode = Inside()
     end
 
-    (attributes = attrs, documentation = docdict)
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
 
-function docvarstring(docdict)
+function docvarstring(docdict, defaultdict)
     buffer = IOBuffer()
     maxwidth = maximum(length ∘ string, keys(docdict))
     for (var, doc) in sort(pairs(docdict))
-        print(buffer, "`$(rpad(var, maxwidth, '.'))`: $doc\\\n")
+        print(buffer, "`$var`\\\nDefault: `$(defaultdict[var])`\\\n$doc\n\n")
     end
     String(take!(buffer))
 end
@@ -239,111 +244,158 @@ end
 @doc """
 LAxis has the following attributes:
 
-$(docvarstring(default_attributes(LAxis, nothing).documentation))
+$(let
+    _, docs, defaults = default_attributes(LAxis, nothing)
+    docvarstring(docs, defaults)
+end)
 """
 LAxis
 
 function default_attributes(::Type{LColorbar}, scene)
-    Attributes(
-        label = " ",
-        labelcolor = RGBf0(0, 0, 0),
-        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
-        labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
-        labelvisible = true,
-        labelpadding = 15f0,
-        ticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
-        ticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0),
-        ticklabelsvisible = true,
-        ticksize = 10f0,
-        ticksvisible = true,
-        ticks = AutoLinearTicks(5),
-        ticklabelspace = AbstractPlotting.automatic,
-        ticklabelpad = 5f0,
-        tickalign = 0f0,
-        tickwidth = 1f0,
-        tickcolor = RGBf0(0, 0, 0),
-        ticklabelalign = (:left, :center),
-        spinewidth = 1f0,
-        topspinevisible = true,
-        rightspinevisible = true,
-        leftspinevisible = true,
-        bottomspinevisible = true,
-        topspinecolor = RGBf0(0, 0, 0),
-        leftspinecolor = RGBf0(0, 0, 0),
-        rightspinecolor = RGBf0(0, 0, 0),
-        bottomspinecolor = RGBf0(0, 0, 0),
-        valign = :center,
-        halign = :center,
-        vertical = true,
-        flipaxisposition = true,
-        flip_vertical_label = false,
-        width = nothing,
-        height = nothing,
-        colormap = :viridis,
-        limits = (0f0, 1f0),
-        alignmode = Inside(),
+    attrs, docdict, defaultdict = @documented_attributes begin
+        label = " "
+        labelcolor = RGBf0(0, 0, 0)
+        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        labelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        labelvisible = true
+        labelpadding = 15f0
+        ticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        ticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        ticklabelsvisible = true
+        ticksize = 10f0
+        ticksvisible = true
+        ticks = AutoLinearTicks(5)
+        ticklabelspace = AbstractPlotting.automatic
+        ticklabelpad = 5f0
+        tickalign = 0f0
+        tickwidth = 1f0
+        tickcolor = RGBf0(0, 0, 0)
+        ticklabelalign = (:left, :center)
+        spinewidth = 1f0
+        topspinevisible = true
+        rightspinevisible = true
+        leftspinevisible = true
+        bottomspinevisible = true
+        topspinecolor = RGBf0(0, 0, 0)
+        leftspinecolor = RGBf0(0, 0, 0)
+        rightspinecolor = RGBf0(0, 0, 0)
+        bottomspinecolor = RGBf0(0, 0, 0)
+        valign = :center
+        halign = :center
+        vertical = true
+        flipaxisposition = true
+        flip_vertical_label = false
+        width = nothing
+        height = nothing
+        colormap = :viridis
+        limits = (0f0, 1f0)
+        alignmode = Inside()
         nsteps = 100
-    )
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
+
+@doc """
+LColorbar has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LColorbar, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LColorbar
 
 function default_attributes(::Type{LText}, scene)
-    Attributes(
-        text = "Text",
-        visible = true,
-        color = RGBf0(0, 0, 0),
-        textsize = lift_parent_attribute(scene, :fontsize, 20f0),
-        font = lift_parent_attribute(scene, :font, "DejaVu Sans"),
-        valign = :center,
-        halign = :center,
-        rotation = 0f0,
-        padding = (0f0, 0f0, 0f0, 0f0),
-        height = Auto(),
-        width = Auto(),
-        alignmode = Inside(),
-    )
+    attrs, docdict, defaultdict = @documented_attributes begin
+        text = "Text"
+        visible = true
+        color = RGBf0(0, 0, 0)
+        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        font = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        valign = :center
+        halign = :center
+        rotation = 0f0
+        padding = (0f0, 0f0, 0f0, 0f0)
+        height = Auto()
+        width = Auto()
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
 
-function default_attributes(::Type{LRect})
-    Attributes(
-        visible = true,
-        color = RGBf0(0.9, 0.9, 0.9),
-        valign = :center,
-        halign = :center,
-        padding = (0f0, 0f0, 0f0, 0f0),
-        strokewidth = 2f0,
-        strokevisible = true,
-        strokecolor = RGBf0(0, 0, 0),
-        width = nothing,
-        height = nothing,
-        alignmode = Inside(),
-    )
+@doc """
+LText has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LText, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LText
+
+function default_attributes(::Type{LRect}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        visible = true
+        color = RGBf0(0.9, 0.9, 0.9)
+        valign = :center
+        halign = :center
+        padding = (0f0, 0f0, 0f0, 0f0)
+        strokewidth = 2f0
+        strokevisible = true
+        strokecolor = RGBf0(0, 0, 0)
+        width = nothing
+        height = nothing
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
 
-function default_attributes(::Type{LButton})
-    Attributes(
-        halign = :center,
-        valign = :center,
-        padding = (10f0, 10f0, 10f0, 10f0),
-        textsize = 20f0,
-        label = "Button",
-        font = "Dejavu Sans",
-        width = Auto(true),
-        height = Auto(true),
-        cornerradius = 4,
-        cornersegments = 10,
-        strokewidth = 2f0,
-        strokecolor = :transparent,
-        buttoncolor = RGBf0(0.9, 0.9, 0.9),
-        labelcolor = :black,
-        labelcolor_hover = :black,
-        labelcolor_active = :white,
-        buttoncolor_active = COLOR_ACCENT[],
-        # buttoncolor_hover = RGBf0(0.8, 0.8, 0.8),
-        buttoncolor_hover = COLOR_ACCENT_DIMMED[],
-        clicks = 0,
-        alignmode = Inside(),
-    )
+@doc """
+LRect has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LRect, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LRect
+
+function default_attributes(::Type{LButton}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        halign = :center
+        valign = :center
+        padding = (10f0, 10f0, 10f0, 10f0)
+        textsize = 20f0
+        label = "Button"
+        font = "Dejavu Sans"
+        width = Auto(true)
+        height = Auto(true)
+        cornerradius = 4
+        cornersegments = 10
+        strokewidth = 2f0
+        strokecolor = :transparent
+        buttoncolor = RGBf0(0.9, 0.9, 0.9)
+        labelcolor = :black
+        labelcolor_hover = :black
+        labelcolor_active = :white
+        buttoncolor_active = COLOR_ACCENT[]
+        # buttoncolor_hover = RGBf0(0.8, 0.8, 0.8)
+        buttoncolor_hover = COLOR_ACCENT_DIMMED[]
+        clicks = 0
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
+
+@doc """
+LButton has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LButton, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LButton
 
 function default_attributes(::Type{LineAxis})
     Attributes(
@@ -373,97 +425,129 @@ function default_attributes(::Type{LineAxis})
     )
 end
 
-function default_attributes(::Type{LSlider})
-    Attributes(
-        linewidth = 4f0,
-        halign = :center,
-        valign = :center,
-        # vertical = true,
-        width = nothing,
-        height = Auto(true),
-        range = 0:10,
-        buttonradius = 7f0,
-        startvalue = 0,
-        value = 0,
-        color_active_dimmed = COLOR_ACCENT_DIMMED[],
-        color_active = COLOR_ACCENT[],
-        color_inactive = RGBf0(0.9, 0.9, 0.9),
-        buttoncolor_inactive = RGBf0(1, 1, 1),
-        horizontal = true,
-        buttonstrokewidth = 4f0,
-        alignmode = Inside(),
-    )
+function default_attributes(::Type{LSlider}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        linewidth = 4f0
+        halign = :center
+        valign = :center
+        # vertical = true
+        width = nothing
+        height = Auto(true)
+        range = 0:10
+        buttonradius = 7f0
+        startvalue = 0
+        value = 0
+        color_active_dimmed = COLOR_ACCENT_DIMMED[]
+        color_active = COLOR_ACCENT[]
+        color_inactive = RGBf0(0.9, 0.9, 0.9)
+        buttoncolor_inactive = RGBf0(1, 1, 1)
+        horizontal = true
+        buttonstrokewidth = 4f0
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
 
-function default_attributes(::Type{LToggle})
-    Attributes(
-        halign = :center,
-        valign = :center,
-        width = 60,
-        height = 30,
-        cornersegments = 10,
-        # strokewidth = 2f0,
-        # strokecolor = :transparent,
-        framecolor_inactive = RGBf0(0.9, 0.9, 0.9),
-        framecolor_active = COLOR_ACCENT[],
-        # buttoncolor = RGBf0(0.2, 0.2, 0.2),
-        buttoncolor = RGBf0(1, 1, 1),
-        active = false,
-        toggleduration = 0.2,
-        rimfraction = 0.25,
-        alignmode = Inside(),
-    )
+@doc """
+LSlider has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LSlider, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LSlider
+
+function default_attributes(::Type{LToggle}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        halign = :center
+        valign = :center
+        width = 60
+        height = 30
+        cornersegments = 10
+        # strokewidth = 2f0
+        # strokecolor = :transparent
+        framecolor_inactive = RGBf0(0.9, 0.9, 0.9)
+        framecolor_active = COLOR_ACCENT[]
+        # buttoncolor = RGBf0(0.2, 0.2, 0.2)
+        buttoncolor = RGBf0(1, 1, 1)
+        active = false
+        toggleduration = 0.2
+        rimfraction = 0.25
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
+
+@doc """
+LToggle has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LToggle, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LToggle
 
 
 function default_attributes(::Type{LLegend}, scene)
-    Attributes(
-        halign = :center,
-        valign = :center,
-        width = Auto(true),
-        height = Auto(false),
-        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
-        titlesize = lift_parent_attribute(scene, :fontsize, 20f0),
-        titlehalign = :center,
-        titlevalign = :center,
-        titlevisible = true,
-        titleposition = :top,
-        labelsize = lift_parent_attribute(scene, :fontsize, 20f0),
-        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans"),
-        labelcolor = :black,
-        labelhalign = :left,
-        labelvalign = :center,
-        padding = (10f0, 10f0, 10f0, 10f0),
-        margin = (0f0, 0f0, 0f0, 0f0),
-        bgcolor = :white,
-        framecolor = :black,
-        framewidth = 1f0,
-        framevisible = true,
-        patchsize = (20f0, 20f0),
-        patchstrokecolor = :transparent,
-        patchstrokewidth = 1f0,
-        patchcolor = :transparent,
-        label = "undefined",
-        nbanks = 1,
-        colgap = 20,
-        rowgap = 4,
-        patchlabelgap = 5,
-        linepoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)],
-        linewidth = 3,
-        markerpoints = [Point2f0(0.5, 0.5)],
-        markersize = 12,
-        markerstrokewidth = 2,
-        polypoints = [Point2f0(0, 0), Point2f0(1, 0), Point2f0(1, 1), Point2f0(0, 1)],
-        polystrokewidth = 2,
-        orientation = :vertical,
-        titlegap = 15,
-        groupgap = 30,
-        gridshalign = :center,
-        gridsvalign = :center,
-        alignmode = Inside(),
-    )
+    attrs, docdict, defaultdict = @documented_attributes begin
+        halign = :center
+        valign = :center
+        width = Auto(true)
+        height = Auto(false)
+        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        titlesize = lift_parent_attribute(scene, :fontsize, 20f0)
+        titlehalign = :center
+        titlevalign = :center
+        titlevisible = true
+        titleposition = :top
+        labelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        labelcolor = :black
+        labelhalign = :left
+        labelvalign = :center
+        padding = (10f0, 10f0, 10f0, 10f0)
+        margin = (0f0, 0f0, 0f0, 0f0)
+        bgcolor = :white
+        framecolor = :black
+        framewidth = 1f0
+        framevisible = true
+        patchsize = (20f0, 20f0)
+        patchstrokecolor = :transparent
+        patchstrokewidth = 1f0
+        patchcolor = :transparent
+        label = "undefined"
+        nbanks = 1
+        colgap = 20
+        rowgap = 4
+        patchlabelgap = 5
+        linepoints = [Point2f0(0, 0.5), Point2f0(1, 0.5)]
+        linewidth = 3
+        markerpoints = [Point2f0(0.5, 0.5)]
+        markersize = 12
+        markerstrokewidth = 2
+        polypoints = [Point2f0(0, 0), Point2f0(1, 0), Point2f0(1, 1), Point2f0(0, 1)]
+        polystrokewidth = 2
+        orientation = :vertical
+        titlegap = 15
+        groupgap = 30
+        gridshalign = :center
+        gridsvalign = :center
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
 
+@doc """
+LLegend has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LLegend, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LLegend
 
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
@@ -492,11 +576,22 @@ function default_attributes(::Type{GridLayout})
 end
 
 function default_attributes(::Type{LScene}, scene)
-    Attributes(
-        height = nothing,
-        width = nothing,
-        halign = :center,
-        valign = :center,
-        alignmode = Inside(),
-    )
+    attrs, docdict, defaultdict = @documented_attributes begin
+        height = nothing
+        width = nothing
+        halign = :center
+        valign = :center
+        alignmode = Inside()
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
+
+@doc """
+LScene has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(LScene, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LScene
