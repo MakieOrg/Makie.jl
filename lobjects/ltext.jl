@@ -97,8 +97,7 @@ function Base.propertynames(lt::LText)
 end
 
 function Base.delete!(lt::LText)
-
-    disconnect_layoutnodes!(lt.layoutobservables.gridcontent)
+    GridLayoutBase.disconnect_layoutobservables!(lt.layoutobservables.gridcontent)
     GridLayoutBase.remove_from_gridlayout!(lt.layoutobservables.gridcontent)
     empty!(lt.layoutobservables.suggestedbbox.listeners)
     empty!(lt.layoutobservables.computedbbox.listeners)

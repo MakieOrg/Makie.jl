@@ -67,6 +67,11 @@ function LLegend(
     entryplots = [[AbstractPlot[]]]
     entryrects = [LRect[]]
 
+    decorations[:titletexts] = titletexts
+    decorations[:entrytexts] = entrytexts
+    decorations[:entryplots] = entryplots
+    decorations[:entryrects] = entryrects
+
 
     function relayout()
         manipulating_grid[] = true
@@ -241,7 +246,7 @@ function LLegend(
     # trigger suggestedbbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    leg = LLegend(scene, entry_groups, layoutobservables, attrs, decorations, LText[], Vector{Vector{AbstractPlot}}())
+    leg = LLegend(scene, entry_groups, layoutobservables, attrs, decorations)
     # trigger first relayout
     entry_groups[] = entry_groups[]
     leg

@@ -22,7 +22,7 @@ end
 
 
 function Base.delete!(lr::LRect)
-    disconnect_layoutnodes!(lr.layoutobservables.gridcontent)
+    GridLayoutBase.disconnect_layoutobservables!(lr.layoutobservables.gridcontent)
     GridLayoutBase.remove_from_gridlayout!(lr.layoutobservables.gridcontent)
     empty!(lr.layoutobservables.suggestedbbox.listeners)
     empty!(lr.layoutobservables.computedbbox.listeners)

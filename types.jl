@@ -138,8 +138,6 @@ struct LLegend <: LObject
     layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
-    entrytexts::Vector{LText}
-    entryplots::Vector{Vector{AbstractPlot}}
 end
 
 const Indexables = Union{UnitRange, Int, Colon}
