@@ -46,6 +46,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     background = poly!(parent, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)[end]
     translate!(background, 0, 0, -100)
+    decorations[:background] = background
 
     block_limit_linking = Node(false)
 
@@ -213,10 +214,10 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     end
 
     xoppositeline = lines!(parent, xoppositelinepoints, linewidth = spinewidth,
-        visible = xoppositespinevisible, color = xoppositespinecolor)
+        visible = xoppositespinevisible, color = xoppositespinecolor)[end]
     decorations[:xoppositeline] = xoppositeline
     yoppositeline = lines!(parent, yoppositelinepoints, linewidth = spinewidth,
-        visible = yoppositespinevisible, color = yoppositespinecolor)
+        visible = yoppositespinevisible, color = yoppositespinecolor)[end]
     decorations[:yoppositeline] = yoppositeline
 
     on(xaxis.tickpositions) do tickpos
