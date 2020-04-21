@@ -27,6 +27,9 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     subarea = lift(layoutobservables.computedbbox) do bbox
         IRect2D_rounded(bbox)
     end
+
+    # the slider gets its own subscene so a click doesn't have to hit the line
+    # perfectly but can be registered in the whole area that the slider scene has
     subscene = Scene(parent, subarea, camera=campixel!)
 
     sliderbox = lift(bb -> Rect{2, Float32}(zeros(eltype(bb.origin), 2), bb.widths), layoutobservables.computedbbox)
@@ -98,6 +101,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     end
 
     linesegs = linesegments!(subscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+    decorations[:linesegments] = linesegs
 
     linestate = addmousestate!(subscene, linesegs)
 
@@ -107,6 +111,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor,
         strokewidth = buttonstrokewidth, strokecolor = color_active_dimmed, raw = true)[end]
+    decorations[:button] = button
 
     buttonstate = addmousestate!(subscene, button)
 
@@ -197,7 +202,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LSlider(parent, layoutobservables, attrs, decorations)
+    LSlider(parent, subscene, layoutobservables, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)

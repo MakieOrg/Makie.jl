@@ -66,12 +66,17 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    heatmap!(parent, xrange, yrange, colorcells, colormap = colormap, raw = true)
+    hm = heatmap!(parent, xrange, yrange, colorcells, colormap = colormap, raw = true)[end]
+    decorations[:heatmap] = hm
 
-    axislines!(
+    ab, al, ar, at = axislines!(
         parent, framebox, spinewidth, topspinevisible, rightspinevisible,
         leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
         rightspinecolor, bottomspinecolor)
+    decorations[:topspine] = at
+    decorations[:leftspine] = al
+    decorations[:rightspine] = ar
+    decorations[:bottomspine] = ab
 
     axispoints = lift(framebox, vertical, flipaxisposition) do scenearea,
             vertical, flipaxisposition

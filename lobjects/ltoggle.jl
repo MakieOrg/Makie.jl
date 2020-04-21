@@ -32,6 +32,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
 
     framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
     frame = poly!(parent, buttonvertices, color = framecolor, raw = true)[end]
+    decorations[:frame] = frame
 
     animating = Node(false)
     buttonpos = Node(active[] ? [button_endpoint_active[]] : [button_endpoint_inactive[]])
@@ -48,6 +49,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     end
 
     button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, raw = true)[end]
+    decorations[:button] = button
 
     buttonstate = addmousestate!(parent, button, frame)
 

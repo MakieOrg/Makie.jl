@@ -90,6 +90,7 @@ mutable struct LRect <: LObject
 end
 
 struct LSlider <: LObject
+    parent::Scene
     scene::Scene
     layoutobservables::LayoutObservables
     attributes::Attributes
@@ -97,14 +98,14 @@ struct LSlider <: LObject
 end
 
 struct LButton <: LObject
-    scene::Scene
+    parent::Scene
     layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}
 end
 
 struct LToggle <: LObject
-    scene::Scene
+    parent::Scene
     layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}

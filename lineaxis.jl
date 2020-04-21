@@ -296,3 +296,14 @@ end
 
 compute_tick_values(ct::CustomTicks, args...) = ct.f_tickvalues(args...)
 get_tick_labels(ct::CustomTicks, values) = ct.f_ticklabels(values)
+
+
+function Base.delete!(la::LineAxis)
+    for (_, d) in la.decorations
+        if d isa AbstractPlot
+            delete!(d.parent, d)
+        else
+            delete!(d)
+        end
+    end
+end

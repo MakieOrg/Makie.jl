@@ -237,14 +237,14 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
         [p1, p2]
     end
 
-    lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
-        visible = bottomspinevisible, color = bottomspinecolor)
+    (lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
+        visible = bottomspinevisible, color = bottomspinecolor)[end],
     lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
-        visible = leftspinevisible, color = leftspinecolor)
+        visible = leftspinevisible, color = leftspinecolor)[end],
     lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
-        visible = rightspinevisible, color = rightspinecolor)
+        visible = rightspinevisible, color = rightspinecolor)[end],
     lines!(scene, topline, linewidth = spinewidth, show_axis = false,
-        visible = topspinevisible, color = topspinecolor)
+        visible = topspinevisible, color = topspinecolor)[end])
 end
 
 
@@ -363,4 +363,28 @@ function docvarstring(docdict, defaultdict)
         print(buffer, "`$var`\\\nDefault: `$(defaultdict[var])`\\\n$doc\n\n")
     end
     String(take!(buffer))
+end
+
+function Base.delete!(lobject::Union{LObject, LAxis})
+    for (_, d) in lobject.decorations
+        if d isa AbstractPlot
+            delete!(d.parent, d)
+        else
+            delete!(d)
+        end
+    end
+    if hasfield(typeof(lobject), :scene)
+        delete_scene!(lobject.scene)
+    end
+
+    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(lobject))
+    nothing
+end
+
+function delete_scene!(s::Scene)
+    for p in s.plots
+        delete!(s, p)
+    end
+    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
+    nothing
 end
