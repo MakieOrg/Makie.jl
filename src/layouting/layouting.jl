@@ -137,7 +137,7 @@ end
 function text_bb(str, font, size)
     positions = layout_text(
         str, Point2f0(0), size,
-        font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I)
+        font, Vec2f0(0), Quaternionf0(0,0,0,1), Mat4f0(I), 0.5, 1.0
     )
 
     scale = widths.(first.(FreeTypeAbstraction.metrics_bb.(collect(str), font, size)))
