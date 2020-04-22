@@ -103,7 +103,7 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
     # make lineheight a multiple of the largest lineheight in each line
     lineheights = map(cfs_groups) do group
         maximum(group) do (char, font, scale)
-            font.height / font.units_per_EM * lineheight_factor * 64 * scale
+            font.height / font.units_per_EM * lineheight_factor * scale
         end
     end
 
