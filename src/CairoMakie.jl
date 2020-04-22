@@ -579,7 +579,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     N = length(txt)
     atlas = AbstractPlotting.get_texture_atlas()
     if position isa StaticArrays.StaticArray # one position to place text
-        position, _ = AbstractPlotting.layout_text(
+        position = AbstractPlotting.layout_text(
             txt, position, textsize,
             font, align, rotation, model
         )
@@ -590,14 +590,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         char = txt[stridx]
 
         stridx = nextind(txt, stridx)
-        rels = to_rel_scale(atlas, char, f, ts)
         pos = project_position(scene, p, model)
         scale = project_scale(scene, ts, model)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         cairoface = set_ft_font(ctx, f)
-
-        @debug pos
 
         mat = scale_matrix(scale...)
         set_font_matrix(ctx, mat)
