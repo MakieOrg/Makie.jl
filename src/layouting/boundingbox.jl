@@ -3,9 +3,9 @@ using FreeTypeAbstraction: height_insensitive_boundingbox
 """
 Calculates the exact boundingbox of a Scene/Plot, without considering any transformation
 """
-function raw_boundingbox(x::Atomic)
-    bb = data_limits(x)
-end
+raw_boundingbox(x::Atomic) = data_limits(x)
+
+
 rootparent(x) = rootparent(parent(x))
 rootparent(x::Scene) = x
 
@@ -13,12 +13,9 @@ function raw_boundingbox(x::Annotations)
     bb = raw_boundingbox(x.plots)
     inv(modelmatrix(rootparent(x))) * bb
 end
-function raw_boundingbox(x::Combined)
-    raw_boundingbox(x.plots)
-end
-function boundingbox(x)
-    raw_boundingbox(x)
-end
+
+raw_boundingbox(x::Combined) = raw_boundingbox(x.plots)
+boundingbox(x) = raw_boundingbox(x)
 
 function combined_modelmatrix(x)
     m = Mat4f0(I)
@@ -30,7 +27,7 @@ function combined_modelmatrix(x)
             break
         end
     end
-    m
+    return m
 end
 
 function modelmatrix(x)
@@ -40,7 +37,7 @@ end
 
 function boundingbox(x::Atomic)
     bb = raw_boundingbox(x)
-    combined_modelmatrix(x) * bb
+    return combined_modelmatrix(x) * bb
 end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
@@ -74,19 +71,20 @@ function raw_boundingbox(plots::Vector)
         isfinite(bb2) || continue
         bb = union(bb, bb2)
     end
-    bb
+    return bb
 end
 
 function project_widths(matrix, vec)
     pr = project(matrix, vec)
     zero = project(matrix, zeros(typeof(vec)))
-    pr - zero
+    return pr - zero
 end
 
 function boundingbox(x::Text, text::String)
     position = to_value(x[:position])
-    @get_attribute x (textsize, font, align, rotation)
-    return boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
+    @get_attribute x (textsize, font, align, rotation, justification, lineheight)
+    return boundingbox(text, position, textsize, font, align, rotation,
+        modelmatrix(x), justification, lineheight)
 end
 
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
@@ -100,11 +98,6 @@ function boundingbox(
         to_font(font), to_align(align), to_rotation(rotation)
     )
 end
-
-rectmult(rect, m) = Rect(origin(rect) .* m, widths(rect) .* m)
-rectshift(rect, vec) = Rect(origin(rect) .+ vec, widths(rect))
-
-to_ndim(type, rect, default = 0) = Rect(to_ndim(type, origin(rect), default), to_ndim(type, widths(rect), default))
 
 """
 Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
@@ -128,7 +121,7 @@ function rotatedrect(rect::Rect{2}, angle)
     rmins = minimum(rotated, dims = 2)
     rmaxs = maximum(rotated, dims = 2)
 
-    newrect = Rect2D(rmins..., (rmaxs .- rmins)...)
+    return Rect2D(rmins..., (rmaxs .- rmins)...)
 end
 
 function quaternion_to_2d_angle(quat)
@@ -138,7 +131,7 @@ end
 
 function boundingbox(
         text::String, position, textsize, font,
-        align, rotation, model = Mat4f0(I);
+        align, rotation, model, justification, lineheight;
         # use the font's ascenders and descenders for the bounding box
         # this means that a string's boundingbox doesn't change in the vertical
         # dimension when characters change (for example numbers during an animation)
@@ -155,7 +148,8 @@ function boundingbox(
     # this is kind of a doubling, maybe it could be avoided if at creation all
     # positions would be populated in the text object, but that seems convoluted
     if position isa VecTypes
-        position = layout_text(text, position, textsize, font, align, rotation, model)
+        position = layout_text(text, position, textsize, font, align,
+            rotation, model, justification, lineheight)
     end
 
     bbox = nothing

@@ -408,7 +408,7 @@ function plot!(plot::Annotations)
     sargs = (
         plot.model, plot.font,
         plot[1],
-        getindex.(plot, (:color, :textsize, :align, :rotation))...,
+        getindex.(plot, (:color, :textsize, :align, :rotation, :justification, :lineheight))...,
     )
     atlas = get_texture_atlas()
     combinedpos = [Point3f0(0)]
@@ -426,10 +426,11 @@ function plot!(plot::Annotations)
     onany(sargs...) do model, pfonts, text_pos, args...
         io = IOBuffer();
         empty!(combinedpos); empty!(colors); empty!(textsize); empty!(fonts); empty!(rotations)
-        broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f, (text, startpos), color, tsize, alignment, rotation
+        broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f,
+                (text, startpos), color, tsize, alignment, rotation
             c = to_color(color)
             rot = to_rotation(rotation)
-            pos = layout_text(text, startpos, tsize, f, alignment, rot, model)
+            pos = layout_text(text, startpos, tsize, f, alignment, rot, model, justification, lineheight)
             print(io, text)
             n = length(pos)
             append!(combinedpos, pos)
@@ -441,7 +442,6 @@ function plot!(plot::Annotations)
         str = String(take!(io))
         # update string the signals
         tplot[1] = str
-        # tplot[1] = str
         return
     end
     # update one time in the beginning, since otherwise the above won't run

@@ -7,7 +7,6 @@ function padrect(rect, pad)
     Rect(minimum(rect) .- pad, widths(rect) .+ 2pad)
 end
 
-
 function attribute_per_char(string, attribute)
     n_words = 0
     if attribute isa AbstractVector
@@ -32,7 +31,7 @@ end
 
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Union{AbstractVector, Number},
-        font, align, rotation, model
+        font, align, rotation, model, justification, lineheight
     ) where {N, T}
 
     offset_vec = to_align(align)
@@ -46,7 +45,9 @@ function layout_text(
 
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
-    glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset_vec[1], offset_vec[2])
+
+    glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset_vec[1],
+        offset_vec[2], lineheight, justification)
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
@@ -66,8 +67,7 @@ function layout_text(
     return positions
 end
 
-
-function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification)
 
     char_font_scale = collect(zip([c for c in str], font_per_char, fontscale_px))
 
@@ -103,7 +103,7 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
     # make lineheight a multiple of the largest lineheight in each line
     lineheights = map(cfs_groups) do group
         maximum(group) do (char, font, scale)
-            font.height / font.units_per_EM * lineheight_factor * 64 * scale
+            font.height / font.units_per_EM * lineheight_factor * scale
         end
     end
 
