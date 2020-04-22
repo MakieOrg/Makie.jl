@@ -193,6 +193,7 @@ format2mime(::Type{FileIO.format"TEX"})  = MIME("application/x-tex")
 format2mime(::Type{FileIO.format"EPS"})  = MIME("application/postscript")
 format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
+filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
 """
     FileIO.save(filename, scene; resolution = size(scene))
@@ -205,13 +206,32 @@ Allowable formats depend on the backend;
 Resolution can be specified, via `save("path", scene, resolution = (1000, 1000))`!
 """
 function FileIO.save(
-        f::FileIO.File{F}, scene::Scene;
-        resolution = size(scene)
-    ) where F
+        f::FileIO.File, scene::Scene;
+        resolution = size(scene), kwargs...
+    )
 
     resolution !== size(scene) && resize!(scene, resolution)
-    open(FileIO.filename(f), "w") do s
-        show(IOContext(s, :full_fidelity => true), format2mime(F), scene)
+
+    # Delete previous file if it exists and query only the file string for type.
+    # We overwrite existing files anyway, so this doesn't change the behavior.
+    # But otherwise we could get a filetype :UNKOWN from a corrupt existing file
+    # (from an error during save, e.g.), therefore we don't want to rely on the
+    # type readout from an existing file.
+    filename = FileIO.filename(f)
+    isfile(filename) && rm(filename)
+    # query the filetype only from the file extension
+    F = filetype(FileIO.query(filename))
+
+    # we can pass arbitrary keywords to the backend saving functions
+    # which they can retrieve using `get(::IOContext, :kw, default_value)`
+    # an example would be a resolution scaling factor for CairoMakie's png backend
+    kwarg_pairs = pairs((full_fidelity = true, kwargs...))
+
+    open(filename, "w") do s
+        show(
+            IOContext(s, kwarg_pairs...),
+            format2mime(F),
+            scene)
     end
 end
 
