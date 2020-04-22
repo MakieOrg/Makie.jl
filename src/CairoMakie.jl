@@ -10,7 +10,7 @@ using AbstractPlotting: @info, @get_attribute, Combined
 using AbstractPlotting: to_value, to_colormap, extrema_nan
 using Cairo: CairoContext, CairoARGBSurface, CairoSVGSurface, CairoPDFSurface
 
-@enum RenderType SVG PNG PDF
+@enum RenderType SVG PNG PDF EPS
 
 const LIB_CAIRO = if isdefined(Cairo, :libcairo)
     Cairo.libcairo
@@ -24,9 +24,10 @@ struct CairoBackend <: AbstractPlotting.AbstractBackend
 end
 
 function to_mime(x::RenderType)
-    x == SVG && return MIME"image/svg+xml"()
-    x == PDF && return MIME"application/pdf"()
-    return MIME"image/png"()
+    x == SVG && return MIME("image/svg+xml")
+    x == PDF && return MIME("application/pdf")
+    x == EPS && return MIME("application/postscript")
+    return MIME("image/png")
 end
 
 to_mime(x::CairoBackend) = to_mime(x.typ)
@@ -39,6 +40,8 @@ function CairoBackend(path::String)
         SVG
     elseif ext == ".pdf"
         PDF
+    elseif ext == ".eps"
+        EPS
     else
         error("Unsupported extension: $ext")
     end
@@ -77,6 +80,8 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_
         surf = CairoSVGSurface(path, w, h)
     elseif mode == :pdf
         surf = CairoPDFSurface(path, w, h)
+    elseif mode == :eps
+        surf = Cairo.CairoEPSSurface(path, w, h)
     else
         error("No available Cairo surface for mode $mode")
     end
@@ -791,6 +796,7 @@ end
 
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"application/pdf", scene::Scene) = x.typ == PDF
+AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"application/postscript", scene::Scene) = x.typ == EPS
 AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Scene) = x.typ == PNG
 
 
@@ -799,7 +805,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg
     pt_per_unit = get(io, :pt_per_unit, nothing)
     isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
 
-    screen = CairoScreen(scene, io; device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io; mode = :svg, device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -811,6 +817,14 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"applicati
     isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
 
     screen = CairoScreen(scene, io, mode=:pdf, device_scaling_factor = pt_per_unit)
+    cairo_draw(screen, scene)
+    Cairo.finish(screen.surface)
+    return screen
+end
+
+
+function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
+    screen = CairoScreen(scene, io; mode=:eps)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -844,8 +858,8 @@ function __init__()
 end
 
 function display_path(type::String)
-    if !(type in ("svg", "png", "pdf"))
-        error("Only \"svg\", \"png\" and \"pdf\" are allowed for `type`. Found: $(type)")
+    if !(type in ("svg", "png", "pdf", "eps"))
+        error("Only \"svg\", \"png\", \"eps\" and \"pdf\" are allowed for `type`. Found: $(type)")
     end
     return joinpath(@__DIR__, "display." * type)
 end
