@@ -602,7 +602,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         cairo_font_face_destroy(cairoface)
 
         Cairo.restore(ctx)
-
     end
     nothing
 end
