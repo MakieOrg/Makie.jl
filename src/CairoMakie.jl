@@ -573,7 +573,7 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, align, rotation, model))
+    @get_attribute(primitive, (textsize, color, font, align, rotation, model, justification, lineheight))
     txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
     N = length(txt)
@@ -581,7 +581,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     if position isa StaticArrays.StaticArray # one position to place text
         position = AbstractPlotting.layout_text(
             txt, position, textsize,
-            font, align, rotation, model
+            font, align, rotation, model, justification, lineheight
         )
     end
     stridx = 1
