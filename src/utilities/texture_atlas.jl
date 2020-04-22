@@ -106,7 +106,7 @@ begin
             end
         end
         atlas = TextureAtlas()
-        @info("Caching fonts, this may take a while. Needed only on first run!")
+        @info("Makie/AbstractPlotting Caching fonts, this may take a while. Needed only on first run!")
         load_ascii_chars!(atlas)
         to_cache(atlas) # cache it
         return atlas
@@ -134,7 +134,6 @@ begin
             global_texture_atlas[]
         end
     end
-
 end
 
 function glyph_index!(atlas::TextureAtlas, c::Char, font::NativeFont)
@@ -163,10 +162,11 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
         uv_pixel = render(atlas, glyph, font, downsample, pad)
         tex_size = Vec2f0(size(atlas.data)) # starts at 1
 
-        idx_left_bottom = minimum(uv_pixel) # 0 based!!!
+        idx_left_bottom = minimum(uv_pixel)# 0 based!!!
         idx_right_top = maximum(uv_pixel)
 
         # include padding
+
         left_bottom_pad = idx_left_bottom .+ pad
         # -1 for indexing offset
         right_top_pad = idx_right_top .- pad
@@ -182,8 +182,6 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
         return i
     end
 end
-
-
 
 """
     sdistancefield(img, downsample, pad)
