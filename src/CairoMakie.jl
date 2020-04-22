@@ -63,14 +63,15 @@ function Base.show(io::IO, ::MIME"text/plain", screen::CairoScreen{S}) where S
 end
 
 # Default to Window+Canvas as backing device
-function CairoScreen(scene::Scene)
+function CairoScreen(scene::Scene; antialias = Cairo.ANTIALIAS_BEST)
     w, h = size(scene)
-    surf = CairoARGBSurface(w, h)
+    surf = Cairo.CairoARGBSurface(w, h)
     ctx = CairoContext(surf)
+    Cairo.set_antialias(ctx, antialias)
     CairoScreen(scene, surf, ctx, nothing)
 end
 
-function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_scaling_factor = 1)
+function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
 
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
@@ -93,8 +94,9 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_
         surf.ptr, device_scaling_factor, device_scaling_factor)
 
     ctx = CairoContext(surf)
-
-    CairoScreen(scene, surf, ctx, nothing)
+    Cairo.set_antialias(ctx, antialias)
+    
+    return CairoScreen(scene, surf, ctx, nothing)
 end
 
 function project_position(scene, point, model)
