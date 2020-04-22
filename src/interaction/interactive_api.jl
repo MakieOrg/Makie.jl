@@ -244,7 +244,7 @@ function select_point(scene; kwargs...)
     pmarker = Circle(Point2f0(0, 0), Float32(1))
     waspressed = Node(false)
     point = Node([Point2f0(0,0)])
-    point_ret = Node([Point2f0(0,0)])
+    point_ret = Node(Point2f0(0,0))
     # Create an initially hidden  arrow
     plotted_point = scatter!(
         scene, point; visible = false, marker = pmarker, markersize = 20px,
@@ -266,7 +266,7 @@ function select_point(scene; kwargs...)
         else
             if drag == Mouse.up && waspressed[] # User has selected the rectangle
                 waspressed[] = false
-                point_ret[] = copy(point[])
+                point_ret[] = copy(point[][1])
             end
             # always hide if not the right key is pressed
             plotted_point[:visible] = false
