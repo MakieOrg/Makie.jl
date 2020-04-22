@@ -335,6 +335,7 @@ function three_display(session::Session, scene::Scene)
                 return false;
             }
             document.addEventListener("contextmenu", contextmenu);
+            document.addEventListener("focusout", contextmenu);
         }"""
     )
     canvas_width = lift(x-> [round.(Int, widths(x))...], pixelarea(scene))
