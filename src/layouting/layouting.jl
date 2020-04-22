@@ -31,7 +31,7 @@ end
 
 function layout_text(
         string::AbstractString, startpos::VecTypes{N, T}, textsize::Union{AbstractVector, Number},
-        font, align, rotation, model
+        font, align, rotation, model, justification, lineheight
     ) where {N, T}
 
     offset_vec = to_align(align)
@@ -46,7 +46,8 @@ function layout_text(
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
 
-    glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset_vec[1], offset_vec[2])
+    glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset_vec[1],
+        offset_vec[2], lineheight, justification)
 
     positions = Point3f0[]
     for (i, group) in enumerate(glyphpos)
@@ -67,7 +68,7 @@ function layout_text(
 end
 
 
-function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign; lineheight_factor = 1.0, justification = 0.0)
+function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification)
 
     char_font_scale = collect(zip([c for c in str], font_per_char, fontscale_px))
 

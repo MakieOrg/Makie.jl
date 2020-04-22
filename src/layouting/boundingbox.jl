@@ -85,8 +85,9 @@ end
 
 function boundingbox(x::Text, text::String)
     position = to_value(x[:position])
-    @get_attribute x (textsize, font, align, rotation)
-    return boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
+    @get_attribute x (textsize, font, align, rotation, justification, lineheight)
+    return boundingbox(text, position, textsize, font, align, rotation,
+        modelmatrix(x), justification, lineheight)
 end
 
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
@@ -138,7 +139,7 @@ end
 
 function boundingbox(
         text::String, position, textsize, font,
-        align, rotation, model = Mat4f0(I);
+        align, rotation, model, justification, lineheight;
         # use the font's ascenders and descenders for the bounding box
         # this means that a string's boundingbox doesn't change in the vertical
         # dimension when characters change (for example numbers during an animation)
@@ -155,7 +156,8 @@ function boundingbox(
     # this is kind of a doubling, maybe it could be avoided if at creation all
     # positions would be populated in the text object, but that seems convoluted
     if position isa VecTypes
-        position = layout_text(text, position, textsize, font, align, rotation, model)
+        position = layout_text(text, position, textsize, font, align,
+            rotation, model, justification, lineheight)
     end
 
     bbox = nothing
