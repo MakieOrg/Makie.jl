@@ -43,7 +43,6 @@ function layout_text(
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point3f0, mpos, 0)
 
-    @show rscale
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
 
