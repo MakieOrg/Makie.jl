@@ -214,7 +214,7 @@ function FileIO.save(
 
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
-    # But otherwise we could get a filetype :UNKOWN from a corrupt existing file
+    # But otherwise we could get a filetype :UNKNOWN from a corrupt existing file
     # (from an error during save, e.g.), therefore we don't want to rely on the
     # type readout from an existing file.
     filename = FileIO.filename(f)
