@@ -152,6 +152,10 @@ function glyph_uv_width!(atlas::TextureAtlas, c::Char, font::NativeFont)
     return atlas.uv_rectangles[glyph_index!(atlas, c, font)]
 end
 
+function glyph_uv_width!(c::Char)
+    return glyph_uv_width!(get_texture_atlas(), c, defaultfont())
+end
+
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
     return get!(atlas.mapping, (glyph, font)) do
         downsample = 5 # render font 5x larger, and then downsample back to desired pixelsize

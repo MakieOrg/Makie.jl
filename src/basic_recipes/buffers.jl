@@ -47,7 +47,7 @@ function TextBuffer(
         rotation = [Quaternionf0(0,0,0,1)],
         color = RGBAf0[RGBAf0(0,0,0,0)],
         textsize = Float32[0],
-        font = [to_font("default")],
+        font = [defaultfont()],
         align = [Vec2f0(0)],
         raw = true,
         kw_args...
@@ -66,7 +66,7 @@ end
 
 function start!(tb::Annotations)
     for key in (1, :color, :rotation, :textsize, :font, :align)
-        resize!(tb[key][], 0)
+        empty!(tb[key][])
     end
     return
 end
@@ -100,7 +100,7 @@ function append!(tb::Annotations, text_positions::Vector{Tuple{String, Point{N, 
     for key in (:color, :rotation, :textsize, :font, :align)
         val = get(kw, key) do
             isempty(tb[key][]) && error("please provide default for $key")
-            last(tb[key][])
+            return last(tb[key][])
         end
         val_vec = same_length_array(text_positions, val, Key{key}())
         append!(tb[key][], val_vec)

@@ -8,25 +8,26 @@ function padrect(rect, pad)
 end
 
 
-function attribute_per_char(string, ft_font)
-    if ft_font isa AbstractVector
-        if length(ft_font) == length(string)
-            return ft_font
+function attribute_per_char(string, attribute)
+    n_words = 0
+    if attribute isa AbstractVector
+        if length(attribute) == length(string)
+            return attribute
         else
             n_words = length(split(string, r"\s+"))
-            if length(ft_font) == n_words
+            if length(attribute) == n_words
                 i = 1
                 return map(collect(string)) do char
-                    f = ft_font[i]
+                    f = attribute[i]
                     char == "\n" && (i += 1)
                     return f
                 end
             end
         end
     else
-        return (ft_font for char in string)
+        return (attribute for char in string)
     end
-    error("A vector of fonts with $(length(ft_font)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
+    error("A vector of attributes with $(length(attribute)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
 end
 
 function layout_text(
@@ -43,10 +44,8 @@ function layout_text(
     mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
     pos = to_ndim(Point3f0, mpos, 0)
 
-    @show rscale
     fontperchar = attribute_per_char(string, ft_font)
     textsizeperchar = attribute_per_char(string, rscale)
-
     glyphpos = glyph_positions(string, fontperchar, textsizeperchar, offset_vec[1], offset_vec[2])
 
     positions = Point3f0[]
