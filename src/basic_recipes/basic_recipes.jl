@@ -413,18 +413,19 @@ function plot!(plot::Annotations)
     atlas = get_texture_atlas()
     combinedpos = [Point3f0(0)]
     colors = RGBAf0[RGBAf0(0,0,0,0)]
-    scales = Float32[0]
-    fonts = [to_font("Dejavu Sans")]
+    textsize = Float32[0]
+    fonts = [defaultfont()]
     rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
 
-    tplot = text!(plot, "",
+    tplot = text!(plot, " ",
         align = Vec2f0(0), model = Mat4f0(I),
         position = combinedpos, color = colors, visible = plot.visible,
-        textsize = scales, font = fonts, rotation = rotations
+        textsize = textsize, font = fonts, rotation = rotations
     ).plots[end]
+
     onany(sargs...) do model, pfonts, text_pos, args...
         io = IOBuffer();
-        empty!(combinedpos); empty!(colors); empty!(scales); empty!(fonts); empty!(rotations)
+        empty!(combinedpos); empty!(colors); empty!(textsize); empty!(fonts); empty!(rotations)
         broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f, (text, startpos), color, tsize, alignment, rotation
             c = to_color(color)
             rot = to_rotation(rotation)
@@ -432,7 +433,7 @@ function plot!(plot::Annotations)
             print(io, text)
             n = length(pos)
             append!(combinedpos, pos)
-            append!(scales, repeated(tsize, n))
+            append!(textsize, repeated(tsize, n))
             append!(colors, repeated(c, n))
             append!(fonts, repeated(f, n))
             append!(rotations, repeated(rot, n))
@@ -440,10 +441,7 @@ function plot!(plot::Annotations)
         str = String(take!(io))
         # update string the signals
         tplot[1] = str
-        tplot[:scales] = scales
-        tplot[:color] = colors
-        tplot[:rotation] = rotations
-        # fonts shouldn't need an update, since it will get udpated when listening on string
+        # tplot[1] = str
         return
     end
     # update one time in the beginning, since otherwise the above won't run
