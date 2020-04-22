@@ -172,14 +172,14 @@ function boundingbox(
                 inkboundingbox(FreeTypeAbstraction.get_extent(font, c))
             end
 
-            scaled_bb = bb_unitspace * scale
+            scaled_bb = rectmult(bb_unitspace, scale)
 
             # TODO this only works in 2d
             rot_2d_radians = quaternion_to_2d_angle(rotation)
             rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
 
             # bb = rectdiv(bb, 1.5)
-            shifted_bb = FRect3D(rotated_bb) + position[i]
+            shifted_bb = rectshift(FRect3D(rotated_bb), position[i])
             if isnothing(bbox)
                 bbox = shifted_bb
             else
