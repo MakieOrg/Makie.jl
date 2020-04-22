@@ -442,7 +442,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     charextent = AbstractPlotting.FreeTypeAbstraction.internal_get_extent(font, marker)
     inkbb = AbstractPlotting.FreeTypeAbstraction.inkboundingbox(charextent)
 
-    # normalize this first by FreeType units (64) and then scale by font size
+    # scale normalized bbox by font size
     inkbb_scaled = FRect2D(origin(inkbb) .* scale, widths(inkbb) .* scale)
 
     # flip y for the centering shift of the character because in Cairo y goes down
