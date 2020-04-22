@@ -781,7 +781,7 @@ function convert_attribute(cs::Tuple{<: Union{Symbol, AbstractString}, Real}, ::
     return RGBAf0.(to_colormap(cs[1]), cs[2]) # We need to rework this to conform to the backend interface.
 end
 
-function convert_attribute(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{<: Union{Symbol, AbstractString}, <: Real, Int}}, ::key"colormap")
+Tuple{Union{Symbol, AbstractString}, Real, Int}
     return RGBAf0.(to_colormap(cs.colormap, cs.n), cs.alpha)
 end
 
