@@ -29,8 +29,12 @@ function default_attributes(::Type{LMenu}, scene)
         cell_color_inactive_odd = RGBf0(0.9, 0.9, 0.9)
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.3)
+        "Size of the dropdown arrow"
+        dropdown_arrow_size = 12px
         "Options"
         options = ["no options"]
+        "Font size of the cell texts"
+        textsize = 20
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -54,7 +58,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
-        options)
+        options, dropdown_arrow_size, textsize)
 
     decorations = Dict{Symbol, Any}()
 
@@ -75,7 +79,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, height(x) / 2)], scenearea),
         marker = '▼',
-        markersize = 12px,
+        markersize = dropdown_arrow_size,
         visible = @lift(!$is_open),
         color = dropdown_arrow_color,
         raw = true)[end]
@@ -98,6 +102,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     # strings = ["Bananas", "Apples", "Oranges", "Kiwi", "Grapes"]
     texts = [LText(scene, s, halign = :left, width = Auto(false),
+        textsize = textsize,
         padding = (10, 10, 10, 10)) for s in options[]]
 
     contentgrid[:v] = rects
@@ -111,10 +116,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     i_selected[] = i_selected[]
     is_open[] = is_open[]
 
-    on(i -> println("selected: $i"), i_selected)
-
     rowgap!(contentgrid, 0)
-
 
     mousestates = [addmousestate!(scene, r.rect) for r in rects]
 
