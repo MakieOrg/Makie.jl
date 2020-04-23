@@ -23,13 +23,15 @@ FFTW = "1"
 FileIO = "1.1"
 FreeType = "3"
 GeometryBasics = "0.2"
+MakieGallery = "0.2"
 StaticArrays = "0.12"
 MakieGallery = "0.2.1"
 
 [extras]
 ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
+GeoMakie = "db073c08-6b98-4ee5-b6a4-5efafb3259c6"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["MakieGallery", "ImageMagick", "Test"]
+test = ["MakieGallery", "ImageMagick", "GeoMakie", "Test"]
