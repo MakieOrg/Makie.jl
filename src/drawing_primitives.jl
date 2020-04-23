@@ -200,7 +200,7 @@ end
 using FreeTypeAbstraction
 
 function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
-                    font, align, rot, model) where T <: VecTypes
+                    font, align, rot, model, j, l) where T <: VecTypes
     atlas = get_texture_atlas()
     N = length(T)
     positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
@@ -226,9 +226,9 @@ end
 
 using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
     atlas = get_texture_atlas()
-    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model)
+    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
     uv = Vec4f0[]
     scales = Vec2f0[]
     offsets = Vec2f0[]
@@ -243,9 +243,10 @@ end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-        gl_text = lift(x[1], getindex.(Ref(gl_attributes), liftkeys)...) do str, pos, tsize, font, align, rotation, model
-            to_gl_text(str, pos, x.textsize[], font, align, rotation, model)
+        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight)
+        gl_text = lift(x[1], getindex.(Ref(gl_attributes), liftkeys)...) do str,
+                pos, tsize, font, align, rotation, model, j, l
+            to_gl_text(str, pos, x.textsize[], font, align, rotation, model, j, l)
         end
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
