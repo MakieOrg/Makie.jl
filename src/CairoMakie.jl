@@ -52,9 +52,10 @@ struct CairoScreen{S} <: AbstractPlotting.AbstractScreen
     scene::Scene
     surface::S
     context::CairoContext
-    pane::Nothing#Union{CairoGtkPane, Void}
+    pane::Nothing # TODO: Union{CairoGtkPane, Void}
 end
-# # we render the scene directly, since we have no screen dependant state like in e.g. opengl
+
+# we render the scene directly, since we have no screen dependant state like in e.g. opengl
 Base.insert!(screen::CairoScreen, scene::Scene, plot) = nothing
 
 function Base.show(io::IO, ::MIME"text/plain", screen::CairoScreen{S}) where S
@@ -62,13 +63,22 @@ function Base.show(io::IO, ::MIME"text/plain", screen::CairoScreen{S}) where S
     println(io, screen.surface)
 end
 
-# Default to Window+Canvas as backing device
-function CairoScreen(scene::Scene; antialias = Cairo.ANTIALIAS_BEST)
+# Default to ARGB Surface as backing device
+# TODO: integrate Gtk into this, so we can have an interactive display
+function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
     w, h = size(scene)
     surf = Cairo.CairoARGBSurface(w, h)
+
+    # this sets a scaling factor on the lowest level that is "hidden" so its even
+    # enabled when the drawing space is reset for strokes
+    # that means it can be used to increase or decrease the image resolution
+    ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
+        surf.ptr, device_scaling_factor, device_scaling_factor)
+        
     ctx = CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
-    CairoScreen(scene, surf, ctx, nothing)
+
+    return CairoScreen(scene, surf, ctx, nothing)
 end
 
 function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
@@ -76,13 +86,14 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
 
-    # TODO: Add other surface types (PDF, etc.)
     if mode == :svg
         surf = CairoSVGSurface(path, w, h)
     elseif mode == :pdf
         surf = CairoPDFSurface(path, w, h)
     elseif mode == :eps
         surf = Cairo.CairoEPSSurface(path, w, h)
+    elseif mode == :png
+        surf = CairoARGBSurface(w, h)
     else
         error("No available Cairo surface for mode $mode")
     end
@@ -234,7 +245,7 @@ function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
     AbstractPlotting.interpolated_getindex.(
         Ref(colormap),
-        Float64.(numbers), # ints don't work in AbstractPlotting
+        Float64.(numbers), # ints don't work in interpolated_getindex
         Ref(colorrange))
 end
 
@@ -344,7 +355,6 @@ function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, color
 
     for i in iterator
         if isnan(positions[i+1]) || isnan(positions[i])
-            # Cairo.move_to(ctx, positions[]...)
             continue
         end
         Cairo.move_to(ctx, positions[i]...)
@@ -379,15 +389,17 @@ function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
 end
 
 function to_cairo_image(img::Matrix{UInt32}, attributes)
-    CairoARGBSurface([img[j, i] for i in size(img, 2):-1:1, j in 1:size(img, 1)])
+    CairoARGBSurface(
+        [
+            img[j, i]
+            for i in size(img, 2):-1:1, # account for Y-axis discrepancy in Cairo
+                j in 1:size(img, 1)
+        ]
+    )
 end
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 function to_cairo_image(img, attributes)
     to_cairo_image(to_uint32_color.(img), attributes)
-end
-
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Image)
-    draw_image(scene, screen, primitive)
 end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap, Image})
@@ -521,21 +533,10 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
-function rot_scale_matrix(x, y, q)
-    sx, sy, sz = 2q[4]*q[1], 2q[4]*q[2], 2q[4]*q[3]
-    xx, xy, xz = 2q[1]^2, 2q[1]*q[2], 2q[1]*q[3]
-    yy, yz, zz = 2q[2]^2, 2q[2]*q[3], 2q[3]^2
-    m = Cairo.CairoMatrix(
-        x, 1 - (xx + zz), yz + sx,
-        y, yz - sx, 1 - (xx + yy)
-    )
-    m
-end
 
 function set_font_matrix(cr, matrix)
     ccall((:cairo_set_font_matrix, LIB_CAIRO), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, Ref(matrix))
 end
-
 
 function set_ft_font(cr, font)
     font_face = ccall(
@@ -559,16 +560,6 @@ fontname(x::String) = x
 fontname(x::Symbol) = string(x)
 function fontname(x::NativeFont)
     return x.family_name
-end
-
-function fontscale(atlas, scene, c, font, s)
-    s = (s ./ atlas.scale[AbstractPlotting.glyph_index!(atlas, c, font)]) ./ 0.02
-    project_scale(scene, s)
-end
-
-function to_rel_scale(atlas, c, font, scale)
-    gs = atlas.scale[AbstractPlotting.glyph_index!(atlas, c, font)]
-    (scale ./ 0.02) ./ gs
 end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
@@ -627,9 +618,9 @@ function draw_background(screen::CairoScreen, scene::Scene)
     Cairo.save(cr)
     if scene.clear[]
         bg = to_color(theme(scene, :backgroundcolor)[])
-        Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));    # light gray
+        Cairo.set_source_rgba(cr, red(bg), green(bg), blue(bg), alpha(bg));
         r = pixelarea(scene)[]
-        Cairo.rectangle(cr, minimum(r)..., widths(r)...) # background
+        Cairo.rectangle(cr, origin(r)..., widths(r)...) # background
         fill(cr)
     end
     Cairo.restore(cr)
@@ -796,10 +787,10 @@ function AbstractPlotting.colorbuffer(screen::CairoScreen)
 
 end
 
-AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
-AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"application/pdf", scene::Scene) = x.typ == PDF
-AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"application/postscript", scene::Scene) = x.typ == EPS
-AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Scene) = x.typ == PNG
+AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"image/svg+xml", scene::Scene) = x.typ == SVG
+AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"application/pdf", scene::Scene) = x.typ == PDF
+AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"application/postscript", scene::Scene) = x.typ == EPS
+AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Scene) = x.typ == PNG
 
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
@@ -833,22 +824,25 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"applicati
 end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
+    screen = CairoScreen(scene; device_scaling_factor = px_per_unit)
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, nothing)
     isnothing(px_per_unit) && error("Keyword argument :px_per_unit missing from IOContext.")
 
-    screen = CairoScreen(scene, io; device_scaling_factor = px_per_unit)
+    screen = CairoScreen(scene; device_scaling_factor = px_per_unit) # create an ARGB surface, to speed up drawing ops
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, io)
     return screen
 end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
+    # TODO: depend on OpenJPEG or JPEGTurbo to do in-memory JPEG conversion
+    # Not sure how much it matters, though, since no one uses JPEG
     screen = nothing
     open(display_path("png"), "w") do fio
-        screen = AbstractPlotting.backend_show(x, fio, MIME"image/png"(), scene)
+        screen = AbstractPlotting.backend_show(x, fio, MIME("image/png"), scene)
     end
     FileIO.save(FileIO.Stream(format"JPEG", io),  FileIO.load(display_path("png")))
     return screen
