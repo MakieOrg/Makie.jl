@@ -197,8 +197,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
     end
 end
 
-using FreeTypeAbstraction
-
 function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
                     font, align, rot, model, j, l) where T <: VecTypes
     atlas = get_texture_atlas()

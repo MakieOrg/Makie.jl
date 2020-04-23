@@ -9,6 +9,7 @@ using AbstractPlotting: convert_attribute, @extractvalue, LineSegments
 using AbstractPlotting: @get_attribute, to_value, to_colormap, extrema_nan
 using AbstractPlotting: ClosedInterval, (..)
 using ShaderAbstractions
+using FreeTypeAbstraction
 
 using Base: RefValue
 import Base: push!, isopen, show
