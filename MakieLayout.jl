@@ -36,6 +36,7 @@ include("lobjects/ltoggle.jl")
 include("lobjects/llegend.jl")
 include("lobjects/lobject.jl")
 include("lobjects/lscene.jl")
+include("lobjects/lmenu.jl")
 
 export LAxis
 export LSlider
@@ -47,6 +48,7 @@ export LToggle
 export LLegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
+export LMenu
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!
