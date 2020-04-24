@@ -9,7 +9,7 @@ Data is basically the gold and silver of our age, so let's spread it out beautif
 
 Build status: [![][gitlab-img]][gitlab-url]
 
-![DOI](https://zenodo.org/badge/104806923.svg)
+[![DOI](https://zenodo.org/badge/104806923.svg)](https://zenodo.org/badge/latestdoi/104806923)
 
 [gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
 [gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
@@ -58,7 +58,7 @@ If that fails, you can disable the plotpane in Atom's settings by going to `Juno
 
 ## Using IJulia / Jupyter Notebook with Makie
 
-Currently, only non-interactive plots are supported. (See issues #15](https://github.com/JuliaPlots/Makie.jl/issues/15) and [#266
+Currently, only non-interactive plots are supported. (See the issues [#15](https://github.com/JuliaPlots/Makie.jl/issues/15) and [#266](https://github.com/JuliaPlots/Makie.jl/issues/266).)
 
 You may need to run `AbstractPlotting.inline!(true)` in order for plots to appear.
 
