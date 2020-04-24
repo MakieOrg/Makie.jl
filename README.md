@@ -2,7 +2,7 @@
     <img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/assets/logo.png" alt="Makie.jl" width="480">
 </div>
 
-From the japanese word _Maki-e_
+From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so let's spread it out beautifully on the screen!
 
 **Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
@@ -29,16 +29,15 @@ pkg> test Makie
 If you plan to use `Makie#master`, you likely also need to check out `AbstractPlotting#master` and `GLMakie#master`.
 
 ## Dependencies
-You will need to have ffmpeg in the path to run the video recording examples.
-On linux you also need to add the following to get GLFW to build (if you don't have those already):
+On Linux, you also need to add the following to get GLFW to build (if you don't have those already):
 
 ### Debian/Ubuntu
-```
+```bash
 sudo apt-get install cmake xorg-dev
 ```
 
 ### RedHat/Fedora
-```
+```bash
 sudo dnf install cmake libXrandr-devel libXinerama-devel libXcursor-devel
 ```
 
@@ -50,7 +49,7 @@ Makie is the metapackage for a rich ecosystem, which consists of [GLMakie.jl](ht
 
 There is experimental support for using Plots.jl and RecipesBase.jl recipes in [MakieRecipes.jl](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support in [MakieTeX.jl](https://github.com/JuliaPlots/MakieTeX.jl).
 
-Examples, and test infrastructure, are in [MakieGallery.jl](https://github.com/JuliaPlots/MakieGallery.jl)
+Examples, and test infrastructure, are in [MakieGallery.jl](https://github.com/JuliaPlots/MakieGallery.jl).
 
 ## Using Juno with Makie
 
