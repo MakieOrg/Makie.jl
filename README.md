@@ -5,19 +5,18 @@
 From the japanese word _Maki-e_
 Data is basically the gold and silver of our age, so let's spread it out beautifully on the screen!
 
-**Documentation**: ![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url
+**Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
 
-Build status: ![][gitlab-img]][gitlab-url
+Build status: [![][gitlab-img]][gitlab-url]
 
 ![DOI](https://zenodo.org/badge/104806923.svg)
 
-gitlab-img
-gitlab-url
-docs-stable-img
-docs-stable-url
-docs-master-img
-docs-master-url
-
+[gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
+[gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
+[docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg
+[docs-stable-url]: http://makie.juliaplots.org/stable/
+[docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
+[docs-master-url]: http://makie.juliaplots.org/dev/
 
 # Installation
 
