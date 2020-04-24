@@ -1,5 +1,5 @@
 export mouseover, mouse_selection, mouseposition, hovered_scene
-export select_rectangle
+export select_rectangle, select_line, select_point
 
 
 """
@@ -124,7 +124,7 @@ hovered_scene() = error("hoevered_scene is not implemented yet.")
 
 """
     select_rectangle(scene; kwargs...) -> rect
-Interactively select a rectangle on a `scene` by clicking the left mouse button,
+Interactively select a rectangle on a 2D `scene` by clicking the left mouse button,
 dragging and then un-clicking. The function returns an **observable** `rect` whose
 value corresponds to the selected rectangle on the scene. In addition the function
 _plots_ the selected rectangle on the scene as the user clicks and moves the mouse
@@ -143,8 +143,8 @@ function select_rectangle(scene; kwargs...)
     rect_ret = Node(FRect(0, 0, 1, 1)) # returned rectangle
 
     # Create an initially hidden rectangle
-    rect_vis = lines!(
-        scene, rect, raw = true, visible = false, kwargs...,
+    plotted_rect = lines!(
+        scene, rect, raw = true, visible = false, color = RGBAf0(0.1, 0.1, 0.8, 0.5), kwargs...,
     )[end] # Why do I have to do [end] ?
 
     on(events(scene).mousedrag) do drag
@@ -152,7 +152,7 @@ function select_rectangle(scene; kwargs...)
             mp = mouseposition(scene)
             if drag == Mouse.down
                 waspressed[] = true
-                rect_vis[:visible] = true # start displaying
+                plotted_rect[:visible] = true # start displaying
                 rect[] = FRect(mp, 0.0, 0.0)
             elseif drag == Mouse.pressed
                 mini = minimum(rect[])
@@ -168,9 +168,110 @@ function select_rectangle(scene; kwargs...)
                 end
             end
             # always hide if not the right key is pressed
-            rect_vis[:visible] = false # make the plotted rectangle invisible
+            plotted_rect[:visible] = false # make the plotted rectangle invisible
         end
         return rect_ret
     end
     return rect_ret
+end
+
+"""
+    select_line(scene; kwargs...) -> line
+Interactively select a line (typically an arrow) on a 2D `scene` by clicking the left mouse button,
+dragging and then un-clicking. Return an **observable** whose value corresponds
+to the selected line on the scene. In addition the function
+_plots_ the line on the scene as the user clicks and moves the mouse
+around. When the button is not clicked any more, the plotted line disappears.
+
+The value of the returned line is updated **only** when the user un-clicks
+and only if the selected line has non-zero length.
+
+The `kwargs...` are propagated into `lines!` which plots the selected line.
+"""
+function select_line(scene; kwargs...)
+    key = Mouse.left
+    waspressed = Node(false)
+    line = Node([Point2f0(0,0), Point2f0(1,1)])
+    line_ret = Node([Point2f0(0,0), Point2f0(1,1)])
+    # Create an initially hidden  arrow
+    plotted_line = lines!(
+        scene, line; visible = false, color = RGBAf0(0.1, 0.1, 0.8, 0.5),
+        linewidth = 4, kwargs...,
+    )[end]
+
+    on(events(scene).mousedrag) do drag
+        if ispressed(scene, key) && is_mouseinside(scene)
+            mp = mouseposition(scene)
+            if drag == Mouse.down
+                waspressed[] = true
+                plotted_line[:visible] = true  # start displaying
+                line[][1] = mp
+                line[][2] = mp
+                line[] = line[]
+            elseif drag == Mouse.pressed
+                line[][2] = mp
+                line[] = line[] # actually update observable
+            end
+        else
+            if drag == Mouse.up && waspressed[] # User has selected the rectangle
+                waspressed[] = false
+                if line[][1] != line[][2]
+                    line_ret[] = copy(line[])
+                end
+            end
+            # always hide if not the right key is pressed
+            plotted_line[:visible] = false
+        end
+        return line_ret
+    end
+    return line_ret
+end
+
+"""
+    select_point(scene; kwargs...) -> point
+Interactively select a point on a 2D `scene` by clicking the left mouse button,
+dragging and then un-clicking. Return an **observable** whose value corresponds
+to the selected point on the scene. In addition the function
+_plots_ the point on the scene as the user clicks and moves the mouse
+around. When the button is not clicked any more, the plotted point disappears.
+
+The value of the returned point is updated **only** when the user un-clicks.
+
+The `kwargs...` are propagated into `scatter!` which plots the selected point.
+"""
+function select_point(scene; kwargs...)
+    key = Mouse.left
+    pmarker = Circle(Point2f0(0, 0), Float32(1))
+    waspressed = Node(false)
+    point = Node([Point2f0(0,0)])
+    point_ret = Node(Point2f0(0,0))
+    # Create an initially hidden  arrow
+    plotted_point = scatter!(
+        scene, point; visible = false, marker = pmarker, markersize = 20px,
+        color = RGBAf0(0.1, 0.1, 0.8, 0.5), kwargs...,
+    )[end]
+
+    on(events(scene).mousedrag) do drag
+        if ispressed(scene, key) && is_mouseinside(scene)
+            mp = mouseposition(scene)
+            if drag == Mouse.down
+                waspressed[] = true
+                plotted_point[:visible] = true  # start displaying
+                point[][1] = mp
+                point[] = point[]
+            elseif drag == Mouse.pressed
+                point[][1] = mp
+                point[] = point[] # actually update observable
+            end
+        else
+            if drag == Mouse.up && waspressed[] # User has selected the rectangle
+                waspressed[] = false
+                point_ret[] = copy(point[][1])
+            end
+            # always hide if not the right key is pressed
+            plotted_point[:visible] = false
+        end
+        return point_ret
+    end
+    return point_ret
 end

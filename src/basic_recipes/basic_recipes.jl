@@ -476,7 +476,7 @@ function plot!(p::Arc)
     args = getindex.(p, (:origin, :radius, :start_angle, :stop_angle, :resolution))
     positions = lift(args...) do origin, radius, start_angle, stop_angle, resolution
         map(range(start_angle, stop=stop_angle, length=resolution)) do angle
-            origin .+ Point2f0((sin(angle), cos(angle)) .* radius)
+            origin .+ Point2f0((cos(angle), sin(angle)) .* radius)
         end
     end
     lines!(p, Theme(p), positions)
