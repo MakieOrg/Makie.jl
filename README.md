@@ -2,21 +2,21 @@
     <img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/assets/logo.png" alt="Makie.jl" width="480">
 </div>
 
-From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
+From the japanese word _Maki-e_
 Data is basically the gold and silver of our age, so let's spread it out beautifully on the screen!
 
-**Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
+**Documentation**: ![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url
 
-Build status: [![][gitlab-img]][gitlab-url]
+Build status: ![][gitlab-img]][gitlab-url
 
-[![DOI](https://zenodo.org/badge/104806923.svg)](https://zenodo.org/badge/latestdoi/104806923)
+![DOI](https://zenodo.org/badge/104806923.svg)
 
-[gitlab-img]: https://gitlab.com/JuliaGPU/Makie.jl/badges/master/pipeline.svg
-[gitlab-url]: https://gitlab.com/JuliaGPU/Makie.jl/pipelines
-[docs-stable-img]: https://img.shields.io/badge/docs-stable-lightgrey.svg
-[docs-stable-url]: http://makie.juliaplots.org/stable/
-[docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
-[docs-master-url]: http://makie.juliaplots.org/dev/
+gitlab-img
+gitlab-url
+docs-stable-img
+docs-stable-url
+docs-master-img
+docs-master-url
 
 
 # Installation
@@ -45,99 +45,25 @@ sudo dnf install cmake libXrandr-devel libXinerama-devel libXcursor-devel
 
 # Ecosystem
 
-`Makie.jl` is the metapackage for a rich ecosystem, which consists of [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) and [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [`StatsMakie.jl`](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in [`StatsPlots.jl`](https://github.com/JuliaPlots/StatsPlots.jl)).
+`Makie.jl` is the metapackage for a rich ecosystem, which consists of `GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) and [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [`StatsMakie.jl`](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in [`StatsPlots.jl`
 
-There is experimental support for using Plots.jl and RecipesBase.jl recipes at [`MakieRecipes.jl`](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support at [`MakieTeX.jl`](https://github.com/JuliaPlots/MakieTeX.jl).
+There is experimental support for using Plots.jl and RecipesBase.jl recipes at `MakieRecipes.jl`](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support at [`MakieTeX.jl`
 
-Examples, and test infrastructure, are hosted at [`MakieGallery.jl`](https://github.com/JuliaPlots/MakieGallery.jl)
+Examples, and test infrastructure, are hosted at `MakieGallery.jl`
 
 ## Using Juno with Makie
 
 The default OpenGL backend for Makie is not interactive in the Juno plotpane - it just shows a PNG instead.  To get full interactivity, you can run `AbstractPlotting.inline!(false)`.
 
-If that fails, you can disable the plotpane in Atom's settings by going to `Juno` - `Settings` - `UI Options` - Then, make sure `Enable Plot Plane` is __not__ checked. 
+If that fails, you can disable the plotpane in Atom's settings by going to `Juno` - `Settings` - `UI Options` - Then, make sure `Enable Plot Plane` is __not__ checked.
 
 ## Using IJulia / Jupyter Notebook with Makie
 
-Currently, only non-interactive plots are supported. (See issues [#15](https://github.com/JuliaPlots/Makie.jl/issues/15) and [#266](https://github.com/JuliaPlots/Makie.jl/issues/266).)
+Currently, only non-interactive plots are supported. (See issues #15](https://github.com/JuliaPlots/Makie.jl/issues/15) and [#266
 
 You may need to run `AbstractPlotting.inline!(true)` in order for plots to appear.
 
-## Examples from the documentation: 
-
-[![](http://makie.juliaplots.org/stable/media/thumb-3d_contour_with_2d_contour_slices.jpg)](http://makie.juliaplots.org/stable/examples-volume.html#3D-Contour-with-2D-contour-slices-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-animated_scatter.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Animated-Scatter-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-animated_surface_and_wireframe.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Animated-surface-and-wireframe-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-arrows_3d.jpg)](http://makie.juliaplots.org/stable/examples-arrows.html#Arrows-3D-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-arrows_on_sphere.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Arrows-on-Sphere-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-axis___surface.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Axis-+-Surface-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-barplot_1.jpg)](http://makie.juliaplots.org/stable/examples-barplot.html#barplot-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-colored_mesh.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Colored-Mesh-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-colored_triangle.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#colored-triangle-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-colormaps.jpg)](http://makie.juliaplots.org/stable/examples-image.html#colormaps-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-connected_sphere.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Connected-Sphere-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-contour_1.jpg)](http://makie.juliaplots.org/stable/examples-contour.html#contour-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-contour_function.jpg)](http://makie.juliaplots.org/stable/examples-contour.html#Contour-Function-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-fem_mesh_3d.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#FEM-mesh-3D-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-fem_polygon_2d.jpg)](http://makie.juliaplots.org/stable/examples-poly.html#FEM-polygon-2D-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-fluctuation_3d.jpg)](http://makie.juliaplots.org/stable/examples-meshscatter.html#Fluctuation-3D-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-heatmap_1.jpg)](http://makie.juliaplots.org/stable/examples-heatmap.html#Heatmap-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-heatmap_interpolation.jpg)](http://makie.juliaplots.org/stable/examples-heatmap.html#heatmap-interpolation-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-image_1.jpg)](http://makie.juliaplots.org/stable/examples-image.html#image-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-image_on_surface_sphere.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Image-on-Surface-Sphere-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-image_scatter.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#image-scatter-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-interaction.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Interaction-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-interaction_with_mouse.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Interaction-with-Mouse-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-line_function.jpg)](http://makie.juliaplots.org/stable/examples-lines.html#Line-Function-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-line_gif.jpg)](http://makie.juliaplots.org/stable/examples-lines.html#Line-GIF-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-load_mesh.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Load-Mesh-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-marker_offset.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Marker-offset-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-marker_sizes.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Marker-sizes-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-marker_sizes___marker_colors.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Marker-sizes-+-Marker-colors-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-merged_color_mesh.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Merged-color-Mesh-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-meshscatter_function.jpg)](http://makie.juliaplots.org/stable/examples-meshscatter.html#Meshscatter-Function-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-moire.jpg)](http://makie.juliaplots.org/stable/examples-linesegments.html#Moire-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-mouse_picking.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Mouse-Picking-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-normals_of_a_cat.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Normals-of-a-Cat-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-polygons.jpg)](http://makie.juliaplots.org/stable/examples-linesegments.html#Polygons-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-pong.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#pong-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-quiver_1.jpg)](http://makie.juliaplots.org/stable/examples-arrows.html#quiver-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-record_video.jpg)](http://makie.juliaplots.org/stable/examples-meshscatter.html#Record-Video-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-scatter_1.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#scatter-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-scatter_colormap.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#scatter-colormap-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-simple_meshscatter.jpg)](http://makie.juliaplots.org/stable/examples-meshscatter.html#Simple-meshscatter-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-sphere_mesh.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Sphere-Mesh-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-subscenes.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Subscenes-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-surface_1.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Surface-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-surface_with_image.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Surface-with-image-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-surface___contour3d.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#surface-+-contour3d-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-test_heatmap___image_overlap.jpg)](http://makie.juliaplots.org/stable/examples-heatmap.html#Test-heatmap-+-image-overlap-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-textured_mesh.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Textured-Mesh-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-text_annotation.jpg)](http://makie.juliaplots.org/stable/examples-text.html#Text-Annotation-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-text_rotation.jpg)](http://makie.juliaplots.org/stable/examples-text.html#Text-rotation-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-travelling_wave.jpg)](http://makie.juliaplots.org/stable/examples-lines.html#Travelling-wave-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-type_recipe_for_molecule_simulation.jpg)](http://makie.juliaplots.org/stable/examples-meshscatter.html#Type-recipe-for-molecule-simulation-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-unicode_marker.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Unicode-Marker-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-viridis_meshscatter.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Viridis-meshscatter-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-viridis_scatter.jpg)](http://makie.juliaplots.org/stable/examples-scatter.html#Viridis-scatter-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-volume_function.jpg)](http://makie.juliaplots.org/stable/examples-volume.html#Volume-Function-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-wireframe_of_a_mesh.jpg)](http://makie.juliaplots.org/stable/examples-mesh.html#Wireframe-of-a-Mesh-1)
-[![](http://makie.juliaplots.org/stable/media/thumb-wireframe_of_a_surface.jpg)](http://makie.juliaplots.org/stable/examples-surface.html#Wireframe-of-a-Surface-1)
-
-
-## Mouse interaction:
-
-[<img src="https://user-images.githubusercontent.com/1010467/31519651-5992ca62-afa3-11e7-8b10-b66e6d6bee42.png" width="489">](https://vimeo.com/237204560 "Mouse Interaction")
-
-## Animating a surface:
-
-[<img src="https://user-images.githubusercontent.com/1010467/31519521-fd67907e-afa2-11e7-8c43-5f125780ae26.png" width="489">](https://vimeo.com/237284958 "Surface Plot")
-
-
-## Complex examples
-<a href="https://github.com/JuliaPlots/MakieGallery.jl/blob/master/examples/bigdata.jl#L2"><img src="https://user-images.githubusercontent.com/1010467/48002153-fc15a680-e10a-11e8-812d-a5d717c47288.gif" width="480"/></a>
-
-# Precompilation
+## Precompilation
 
 You can compile a binary for Makie and add it to your system image for fast plotting times with no JIT overhead.
 To do that, you need to check out the additional packages for precompilation.
@@ -151,13 +77,88 @@ pkg"add PackageCompiler"
 
 using PackageCompiler
 
-# This will create a system image in the current directory, which you can 
+# This will create a system image in the current directory, which you can
 # use by launching Julia with `julia -J ./MakieSys.so`.
 PackageCompiler.create_sysimage(
-    :Makie; 
-    sysimage_path="MakieSys.so", 
+    :Makie;
+    sysimage_path="MakieSys.so",
     precompile_execution_file=joinpath(pkgdir(Makie), "test", "test_for_precompile.jl")
 )
 ```
 
 Should the display not work after compilation, call `AbstractPlotting.__init__()` immediately after `using Makie`.
+
+
+## Examples from the documentation:
+
+![](http://juliaplots.org/MakieReferenceImages/gallery/3d_contour_with_2d_contour_slices/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/animated_scatter/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/animated_surface_and_wireframe/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/arrows_3d/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/arrows_on_sphere/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/axis___surface/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/barplot_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/colored_mesh/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/colored_triangle/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/colormaps/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/connected_sphere/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/contour_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/contour_function/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/fem_mesh_3d/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/fem_polygon_2d/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/fluctuation_3d/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/heatmap_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/heatmap_interpolation/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/image_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/image_on_surface_sphere/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/image_scatter/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/interaction/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/interaction_with_mouse/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/line_function/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/line_gif/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/load_mesh/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/marker_offset/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/marker_sizes/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/marker_sizes___marker_colors/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/merged_color_mesh/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/meshscatter_function/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/moire/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/mouse_picking/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/normals_of_a_cat/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/polygons/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/pong/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/quiver_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/record_video/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/scatter_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/scatter_colormap/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/simple_meshscatter/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/sphere_mesh/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/subscenes/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/surface_1/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/surface_with_image/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/surface___contour3d/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/test_heatmap___image_overlap/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/textured_mesh/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/text_annotation/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/text_rotation/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/travelling_wave/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/type_recipe_for_molecule_simulation/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/unicode_marker/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/viridis_meshscatter/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/viridis_scatter/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/volume_function/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/wireframe_of_a_mesh/media/thumb.jpg)
+![](http://juliaplots.org/MakieReferenceImages/gallery/wireframe_of_a_surface/media/thumb.jpg)
+
+
+## Mouse interaction:
+
+<img src="https://user-images.githubusercontent.com/1010467/31519651-5992ca62-afa3-11e7-8b10-b66e6d6bee42.png" width="489">
+
+## Animating a surface:
+
+<img src="https://user-images.githubusercontent.com/1010467/31519521-fd67907e-afa2-11e7-8c43-5f125780ae26.png" width="489">
+
+
+## Complex examples
+<a href="https://github.com/JuliaPlots/MakieGallery.jl/blob/master/examples/bigdata.jl#L2"><img src="https://user-images.githubusercontent.com/1010467/48002153-fc15a680-e10a-11e8-812d-a5d717c47288.gif" width="480"/></a>
