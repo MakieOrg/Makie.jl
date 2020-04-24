@@ -85,6 +85,7 @@ function boundingbox(x::Text, text::String)
     @get_attribute x (textsize, font, align, rotation, justification, lineheight)
     return boundingbox(text, position, textsize, font, align, rotation,
         modelmatrix(x), justification, lineheight)
+
 end
 
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
