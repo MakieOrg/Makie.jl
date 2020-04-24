@@ -85,13 +85,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
         valign = :top)
 
-    on(is_open) do open
-        if open
-            sceneheight[] = contentgrid.layoutobservables.autosize[][2]
-        else
-            sceneheight[] = layoutobservables.autosize[][2]
-        end
-    end
+
 
     rects = [LRect(scene, width = nothing, height = nothing,
         color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[], strokewidth = 0) for i in 1:length(options[])]
@@ -102,14 +96,53 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         textsize = textsize,
         padding = (10, 10, 10, 10)) for s in strings]
 
+    dropdown_arrow = scatter!(scene,
+        lift(x -> [Point2f0(width(x) - 20, height(x) / 2)], scenearea),
+        marker = '▼',
+        markersize = dropdown_arrow_size,
+        visible = @lift(!$is_open),
+        color = dropdown_arrow_color,
+        raw = true)[end]
+    translate!(dropdown_arrow, 0, 0, 1)
+
+
+    onany(i_selected, is_open, contentgrid.layoutobservables.autosize) do i, open, gridautosize
+
+        h = texts[i].layoutobservables.autosize[][2]
+        layoutobservables.autosize[] = (nothing, h)
+        autosize = layoutobservables.autosize[]
+
+        (isnothing(gridautosize[2]) || isnothing(autosize[2])) && return
+
+        if open
+            sceneheight[] = gridautosize[2]
+
+            # reset vertically and bring forward
+            translate!(scene, 0, 0, 10)
+
+        else
+            sceneheight[] = texts[i].layoutobservables.autosize[][2]
+            menuheight = gridautosize[2]
+            top_border_offset = if i == 1
+                0.0
+            else
+                sum(height(r.layoutobservables.computedbbox[]) for r in rects[1:i-1])
+            end
+            # shift selected cell into view
+            translate!(scene, 0, top_border_offset, 0)
+            translate!(dropdown_arrow, 0, -top_border_offset, 1)
+        end
+    end
+
     contentgrid[:v] = rects
     contentgrid[:v] = texts
 
-    onany(i_selected, textsize) do i, args...
+    on(i_selected) do i
         h = texts[i].layoutobservables.autosize[][2]
         layoutobservables.autosize[] = (nothing, h)
     end
 
+    # trigger size without triggering selection
     i_selected[] = i_selected[]
     is_open[] = is_open[]
 
@@ -127,14 +160,6 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         onmouseleftclick(mousestate) do state
             if is_open[]
                 i_selected[] = i
-                menuheight = height(contentgrid.layoutobservables.computedbbox[])
-                top_border_offset = top(r.layoutobservables.computedbbox[])
-                # shift selected cell into view
-                translate!(scene, 0, menuheight - top_border_offset, 0)
-                translate!(dropdown_arrow, 0, -(menuheight - top_border_offset), 1)
-            else
-                # reset vertically and bring forward
-                translate!(scene, 0, 0, 10)
             end
             is_open[] = !is_open[]
         end
@@ -150,15 +175,6 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
             r.color = cell_color_active[]
         end
     end
-
-    dropdown_arrow = scatter!(scene,
-        lift(x -> [Point2f0(width(x) - 20, height(x) / 2)], scenearea),
-        marker = '▼',
-        markersize = dropdown_arrow_size,
-        visible = @lift(!$is_open),
-        color = dropdown_arrow_color,
-        raw = true)[end]
-    translate!(dropdown_arrow, 0, 0, 1)
 
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
