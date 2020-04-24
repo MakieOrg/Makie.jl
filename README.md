@@ -46,6 +46,7 @@ sudo dnf install cmake libXrandr-devel libXinerama-devel libXcursor-devel
 
 Makie is the metapackage for a rich ecosystem, which consists of [GLMakie.jl](https://github.com/JuliaPlots/GLMakie.jl), [CairoMakie.jl](https://github.com/JuliaPlots/CairoMakie.jl) and [WGLMakie.jl](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [AbstractPlotting.jl](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [StatsMakie.jl](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in [StatsPlots.jl](https://github.com/JuliaPlots/StatsPlots.jl)).
 
+[MakieLayout.jl](https://github.com/jkrumbiegel/MakieLayout.jl) is a layout manager for Makie.  It brings grid layouts, a new 2D axis, and widgets like sliders and buttons that behave well in a layout to Makie.
 
 There is experimental support for using Plots.jl and RecipesBase.jl recipes in [MakieRecipes.jl](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support in [MakieTeX.jl](https://github.com/JuliaPlots/MakieTeX.jl).
 
