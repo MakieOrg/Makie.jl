@@ -44,11 +44,11 @@ sudo dnf install cmake libXrandr-devel libXinerama-devel libXcursor-devel
 
 # Ecosystem
 
-`Makie.jl` is the metapackage for a rich ecosystem, which consists of [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) and [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [`StatsMakie.jl`](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in [`StatsPlots.jl`](https://github.com/JuliaPlots/StatsPlots.jl)
+Makie is the metapackage for a rich ecosystem, which consists of [GLMakie.jl](https://github.com/JuliaPlots/GLMakie.jl), [CairoMakie.jl](https://github.com/JuliaPlots/CairoMakie.jl) and [WGLMakie.jl](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [AbstractPlotting.jl](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [StatsMakie.jl](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in [StatsPlots.jl](https://github.com/JuliaPlots/StatsPlots.jl)
 
-There is experimental support for using Plots.jl and RecipesBase.jl recipes at [`MakieRecipes.jl`](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support at [`MakieTeX.jl`](https://github.com/JuliaPlots/MakieTeX.jl)
+There is experimental support for using Plots.jl and RecipesBase.jl recipes at [MakieRecipes.jl](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support at [MakieTeX.jl](https://github.com/JuliaPlots/MakieTeX.jl)
 
-Examples, and test infrastructure, are hosted at [`MakieGallery.jl`](https://github.com/JuliaPlots/MakieGallery.jl)
+Examples, and test infrastructure, are hosted at [MakieGallery.jl](https://github.com/JuliaPlots/MakieGallery.jl)
 
 ## Using Juno with Makie
 
