@@ -47,6 +47,8 @@ sudo dnf install cmake libXrandr-devel libXinerama-devel libXcursor-devel
 
 `Makie.jl` is the metapackage for a rich ecosystem, which consists of [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) and [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (the backends); [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) (the bulk of the package); and [`StatsMakie.jl`](https://github.com/JuliaPlots/StatsMakie.jl) (statistical plotting support, as in [`StatsPlots.jl`](https://github.com/JuliaPlots/StatsPlots.jl)).
 
+There is experimental support for using Plots.jl and RecipesBase.jl recipes at [`MakieRecipes.jl`](https://github.com/JuliaPlots/MakieRecipes.jl), and a prototype TeX plotting implementation with vector support at [`MakieTeX.jl`](https://github.com/JuliaPlots/MakieTeX.jl).
+
 Examples, and test infrastructure, are hosted at [`MakieGallery.jl`](https://github.com/JuliaPlots/MakieGallery.jl)
 
 ## Using Juno with Makie
@@ -144,7 +146,8 @@ Then you can build a system image like this:
 ```julia
 using Pkg
 # add PackageCompiler and other dependencies
-pkg"add PackageCompiler#master" # since there hasn't been a release of the new one yet
+pkg"add PackageCompiler"
+# Make sure you have v1.0 or higher of PackageCompiler!
 
 using PackageCompiler
 
