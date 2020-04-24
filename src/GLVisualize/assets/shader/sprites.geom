@@ -1,6 +1,9 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
+// Half width of antialiasing smoothstep. NB: Should match fragment shader
+#define ANTIALIAS_RADIUS  0.6
+
 struct Nothing{ bool _; };
 
 layout(points) in;
@@ -36,7 +39,7 @@ uniform float glow_width;
 uniform int shape; // for RECTANGLE hack below
 uniform vec2 resolution;
 
-in int  g_primitive_index[];
+in int g_primitive_index[];
 in vec4 g_uv_texture_bbox[];
 in vec4 g_color[];
 in vec4 g_stroke_color[];
@@ -68,6 +71,7 @@ float get_distancefield_scale(sampler2D distancefield){
                       textureSize(distancefield, 0).x;
     return -1.0/pixsize_x;
 }
+
 float get_distancefield_scale(Nothing distancefield){
     return 1.0;
 }
@@ -86,8 +90,6 @@ void emit_vertex(vec4 vertex, vec2 uv)
     EmitVertex();
 }
 
-// Half width of antialiasing smoothstep. NB: Should match fragment shader
-#define ANTIALIAS_RADIUS  0.8
 
 mat2 diagm(vec2 v){
     return mat2(v.x, 0.0, 0.0, v.y);

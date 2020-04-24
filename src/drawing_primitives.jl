@@ -1,4 +1,5 @@
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!
+using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
@@ -220,9 +221,6 @@ function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
     end
     return positions, offsets, uv_offset_width, scale
 end
-
-
-using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
 function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
     atlas = get_texture_atlas()

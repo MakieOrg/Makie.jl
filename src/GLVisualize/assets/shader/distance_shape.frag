@@ -2,6 +2,8 @@
 {{GLSL_EXTENSIONS}}
 {{SUPPORTED_EXTENSIONS}}
 
+// Half width of antialiasing smoothstep
+#define ANTIALIAS_RADIUS  0.6
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
@@ -36,8 +38,6 @@ flat in int             f_primitive_index;
 in vec2                 f_uv; // f_uv.{x,y} are in the interval [-a, 1+a]
 flat in vec4            f_uv_texture_bbox;
 
-// Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS  0.8
 // These versions of aastep assume that `dist` is a signed distance function
 // which has been scaled to be in units of pixels.
 float aastep(float threshold1, float dist) {
@@ -157,7 +157,7 @@ void main(){
     write2framebuffer(final_color, f_id);
     // Debug tools:
     // * Show the background of the sprite.
-    //   write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
+      // write2framebuffer(mix(final_color, vec4(1,0,0,1), 0.2), f_id);
     // * Show the antialiasing border around glyphs
     //   write2framebuffer(vec4(vec3(abs(signed_distance)),1), f_id);
 }

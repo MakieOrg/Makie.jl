@@ -490,9 +490,9 @@ end
 const GL_TEXTURE_MAX_ANISOTROPY_EXT = GLenum(0x84FE)
 
 function set_parameters(t::Texture{T, N}, params::TextureParameters=t.parameters) where {T, N}
-    fnames    = (:minfilter, :magfilter, :repeat)
-    data      = Dict([(name, map_texture_paramers(getfield(params, name))) for name in fnames])
-    result    = Tuple{GLenum, Any}[]
+    fnames = (:minfilter, :magfilter, :repeat)
+    data = Dict([(name, map_texture_paramers(getfield(params, name))) for name in fnames])
+    result = Tuple{GLenum, Any}[]
     push!(result, (GL_TEXTURE_MIN_FILTER, data[:minfilter]))
     push!(result, (GL_TEXTURE_MAG_FILTER, data[:magfilter]))
     push!(result, (GL_TEXTURE_WRAP_S, data[:repeat][1]))
