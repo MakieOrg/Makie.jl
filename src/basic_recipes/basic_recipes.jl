@@ -436,7 +436,7 @@ function plot!(plot::Annotations)
             append!(combinedpos, pos)
             append!(textsize, repeated(tsize, n))
             append!(colors, repeated(c, n))
-            append!(fonts, repeated(f, n))
+            append!(fonts, one_attribute_per_char(f, text))
             append!(rotations, repeated(rot, n))
         end
         str = String(take!(io))
