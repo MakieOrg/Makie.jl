@@ -28,9 +28,11 @@ function default_attributes(::Type{LMenu}, scene)
         "Cell color when active"
         cell_color_active = COLOR_ACCENT[]
         "Cell color when inactive even"
-        cell_color_inactive_even = RGBf0(0.95, 0.95, 0.95)
+        cell_color_inactive_even = RGBf0(0.97, 0.97, 0.97)
         "Cell color when inactive odd"
-        cell_color_inactive_odd = RGBf0(0.95, 0.95, 0.95)
+        cell_color_inactive_odd = RGBf0(0.97, 0.97, 0.97)
+        "Selection cell color when inactive"
+        selection_cell_color_inactive = RGBf0(0.94, 0.94, 0.94)
         "Color of the dropdown arrow"
         dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
@@ -102,7 +104,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
         options, dropdown_arrow_size, textsize, selection, cell_color_active,
-        textpadding)
+        textpadding, selection_cell_color_inactive)
 
     decorations = Dict{Symbol, Any}()
 
@@ -125,13 +127,13 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         valign = :top)
 
     selectionrect = LRect(scene, width = nothing, height = nothing,
-        color = cell_color_inactive_odd[], strokewidth = 0)
+        color = selection_cell_color_inactive[], strokewidth = 0)
     selectiontext = LText(scene, "Select...", width = Auto(false), halign = :left,
-        padding = textpadding)
+        padding = textpadding, textsize = textsize)
 
 
     rects = [LRect(scene, width = nothing, height = nothing,
-        color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[], strokewidth = 0) for i in 2:length(options[])+1]
+        color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[], strokewidth = 0) for i in 1:length(options[])]
 
     strings = optionlabel.(options[])
 
@@ -215,7 +217,12 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         end
 
         onmouseout(mousestate) do state
-            r.color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
+            if i == 1
+                r.color = selection_cell_color_inactive[]
+            else
+                i_option = i - 1
+                r.color = iseven(i_option) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
+            end
         end
 
         onmouseleftdown(mousestate) do state
