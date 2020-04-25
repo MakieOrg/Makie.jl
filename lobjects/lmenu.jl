@@ -98,9 +98,8 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, height(x) / 2)], scenearea),
-        marker = '▼',
+        marker = @lift($is_open ? '▲' : '▼'),
         markersize = dropdown_arrow_size,
-        visible = @lift(!$is_open),
         color = dropdown_arrow_color,
         raw = true)[end]
     translate!(dropdown_arrow, 0, 0, 1)
@@ -171,6 +170,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         onmouseout(mousestate) do state
             r.color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
         end
+
         onmouseleftdown(mousestate) do state
             r.color = cell_color_active[]
         end
