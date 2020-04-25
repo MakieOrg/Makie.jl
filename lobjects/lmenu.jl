@@ -43,6 +43,8 @@ function default_attributes(::Type{LMenu}, scene)
         textsize = 20
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
+        "Color of entry texts"
+        textcolor = :black
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -104,7 +106,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
         options, dropdown_arrow_size, textsize, selection, cell_color_active,
-        textpadding, selection_cell_color_inactive)
+        textpadding, selection_cell_color_inactive, textcolor)
 
     decorations = Dict{Symbol, Any}()
 
@@ -129,7 +131,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     selectionrect = LRect(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
     selectiontext = LText(scene, "Select...", width = Auto(false), halign = :left,
-        padding = textpadding, textsize = textsize)
+        padding = textpadding, textsize = textsize, color = textcolor)
 
 
     rects = [LRect(scene, width = nothing, height = nothing,
@@ -138,7 +140,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     strings = optionlabel.(options[])
 
     texts = [LText(scene, s, halign = :left, width = Auto(false),
-        textsize = textsize,
+        textsize = textsize, color = textcolor,
         padding = textpadding) for s in strings]
 
 
