@@ -45,6 +45,8 @@ function default_attributes(::Type{LMenu}, scene)
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"
         textcolor = :black
+        "The opening direction of the menu (:up or :down)"
+        direction = :down
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -60,7 +62,11 @@ overloaded for custom types. The default is that elements which are `AbstractStr
 are both label and value, and all other elements are expected to have two entries,
 where the first is the label and the second is the value.
 
-When an item is selected in the menu, the menu's `selection` attribute is set to `optionvalue(selected_element)`.
+When an item is selected in the menu, the menu's `selection` attribute is set to
+`optionvalue(selected_element)`.
+
+If the menu is located close to the lower scene border, you can change its open
+direction to `direction = :up`.
 
 # Example
 
@@ -106,7 +112,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
         options, dropdown_arrow_size, textsize, selection, cell_color_active,
-        textpadding, selection_cell_color_inactive, textcolor)
+        textpadding, selection_cell_color_inactive, textcolor, direction)
 
     decorations = Dict{Symbol, Any}()
 
@@ -118,15 +124,19 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
 
 
-    scenearea = lift(layoutobservables.computedbbox, sceneheight) do bbox, h
-        IRect2D_rounded(BBox(left(bbox), right(bbox), top(bbox) - h, top(bbox)))
+    scenearea = lift(layoutobservables.computedbbox, sceneheight, direction) do bbox, h, d
+        IRect2D_rounded(BBox(
+            left(bbox),
+            right(bbox),
+            d == :down ? top(bbox) - h : bottom(bbox),
+            d == :down ? top(bbox) : bottom(bbox) + h))
     end
 
     scene = Scene(parent, scenearea, raw = true, camera = campixel!)
 
     contentgrid = GridLayout(
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
-        valign = :top)
+        valign = @lift($direction == :down ? :top : :bottom))
 
     selectionrect = LRect(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
@@ -182,6 +192,18 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     contentgrid[:v] = allrects
     contentgrid[:v] = alltexts
+
+    on(direction) do d
+        if d == :down
+            contentgrid[:v] = allrects
+            contentgrid[:v] = alltexts
+        elseif d == :up
+            contentgrid[:v] = reverse(allrects)
+            contentgrid[:v] = reverse(alltexts)
+        else
+            error("Invalid direction $d. Possible values are :up and :down.")
+        end
+    end
 
     on(i_selected) do i
         h = selectiontext.layoutobservables.autosize[][2]
