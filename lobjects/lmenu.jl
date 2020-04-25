@@ -46,7 +46,43 @@ function default_attributes(::Type{LMenu}, scene)
 end
 
 @doc """
-LMenu
+    LMenu(parent::Scene; bbox = nothing, kwargs...)
+
+Create a drop-down menu with multiple selectable options. You can pass options
+with the keyword argument `options`. Options are given as an iterable of elements.
+For each element, the option label in the menu is determined with `optionstring(element)`
+and the option value with `optionvalue(element)`. These functions can be
+overloaded for custom types. The default is that elements which are `AbstractStrings`
+are both label and value, and all other elements are expected to have two entries,
+where the first is the label and the second is the value.
+
+When an item is selected in the menu, the menu's `selection` attribute is set to `optionvalue(selected_element)`.
+
+# Example
+
+Menu with string entries:
+
+```julia
+menu1 = LMenu(scene, options = ["first", "second", "third"])
+```
+
+Menu with two-element entries, label and function:
+
+```julia
+funcs = [sin, cos, tan]
+labels = ["Sine", "Cosine", "Tangens"]
+
+menu2 = LMenu(scene, options = zip(labels, funcs))
+```
+
+Lifting on the selection value:
+
+```julia
+on(menu2.selection) do func
+    # do something with the selected function
+end
+```
+
 LMenu has the following attributes:
 
 $(let
