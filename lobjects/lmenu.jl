@@ -254,6 +254,13 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
+    # close the menu if the user clicks somewhere else
+    onmouseupoutside(addmousestate!(scene)) do state
+        if is_open[]
+            is_open[] = !is_open[]
+        end
+    end
+
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
