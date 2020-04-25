@@ -184,7 +184,6 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     contentgrid[:v] = alltexts
 
     on(i_selected) do i
-        selectiontext.text = strings[i]
         h = selectiontext.layoutobservables.autosize[][2]
         layoutobservables.autosize[] = (nothing, h)
     end
@@ -195,6 +194,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     on(i_selected) do i
         # collect in case options is a zip or other generator without indexing
+        selectiontext.text = strings[i]
         option = collect(options[])[i]
         selection[] = optionvalue(option)
     end
