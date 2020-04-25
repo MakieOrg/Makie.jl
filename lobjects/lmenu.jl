@@ -32,7 +32,7 @@ function default_attributes(::Type{LMenu}, scene)
         "Cell color when inactive odd"
         cell_color_inactive_odd = RGBf0(0.95, 0.95, 0.95)
         "Color of the dropdown arrow"
-        dropdown_arrow_color = (:black, 0.3)
+        dropdown_arrow_color = (:black, 0.2)
         "Size of the dropdown arrow"
         dropdown_arrow_size = 12px
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
@@ -88,13 +88,14 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
         valign = :top)
 
-    selectionrect = LRect(scene, width = nothing, height = nothing, color = :red, strokewidth = 0)
+    selectionrect = LRect(scene, width = nothing, height = nothing,
+        color = cell_color_inactive_odd[], strokewidth = 0)
     selectiontext = LText(scene, "Select...", width = Auto(false), halign = :left,
         padding = textpadding)
 
 
     rects = [LRect(scene, width = nothing, height = nothing,
-        color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[], strokewidth = 0) for i in 1:length(options[])]
+        color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[], strokewidth = 0) for i in 2:length(options[])+1]
 
     strings = optionlabel.(options[])
 
@@ -109,7 +110,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
-        marker = @lift($is_open ? '▲' : '▼'),
+        marker = @lift($is_open ? '▾' : '▴'),
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         raw = true)[end]
