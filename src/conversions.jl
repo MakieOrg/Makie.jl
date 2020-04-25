@@ -617,7 +617,9 @@ convert_attribute(A::AbstractVector, ::key"linestyle") = A
     A `Symbol` equal to `:dash`, `:dot`, `:dashdot`, `:dashdotdot`
 """
 function convert_attribute(ls::Symbol, ::key"linestyle")
-    return if ls == :dash
+    return if ls == :solid
+        nothing
+    elseif ls == :dash
         [0.0, 1.0, 2.0, 3.0, 4.0]
     elseif ls == :dot
         tick, gap = 1/2, 1/4
@@ -631,7 +633,7 @@ function convert_attribute(ls::Symbol, ::key"linestyle")
         ptick, pgap = 1/2, 1/4
         [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap, dtick+dgap+ptick+pgap+ptick,  dtick+dgap+ptick+pgap+ptick+pgap]
     else
-        error("Unkown line style: $ls. Available: :dash, :dot, :dashdot, :dashdotdot or a sequence of numbers enumerating the next transparent/opaque region")
+        error("Unkown line style: $ls. Available: :solid, :dash, :dot, :dashdot, :dashdotdot, or a sequence of numbers enumerating the next transparent/opaque region.")
     end
 end
 
