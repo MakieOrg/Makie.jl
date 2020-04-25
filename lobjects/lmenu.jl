@@ -150,7 +150,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
-        marker = @lift($is_open ? '▾' : '▴'),
+        marker = @lift($is_open ? '▴' : '▾'),
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         raw = true)[end]
