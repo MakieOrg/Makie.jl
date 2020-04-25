@@ -39,6 +39,8 @@ function default_attributes(::Type{LMenu}, scene)
         options = ["no options"]
         "Font size of the cell texts"
         textsize = 20
+        "Padding of entry texts"
+        textpadding = (10, 10, 10, 10)
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -63,7 +65,8 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
-        options, dropdown_arrow_size, textsize, selection, cell_color_active)
+        options, dropdown_arrow_size, textsize, selection, cell_color_active,
+        textpadding)
 
     decorations = Dict{Symbol, Any}()
 
@@ -85,6 +88,9 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
         valign = :top)
 
+    selectionrect = LRect(scene, width = nothing, height = nothing, color = :red, strokewidth = 0)
+    selectiontext = LText(scene, "Select...", width = Auto(false), halign = :left,
+        padding = textpadding)
 
 
     rects = [LRect(scene, width = nothing, height = nothing,
@@ -94,10 +100,15 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     texts = [LText(scene, s, halign = :left, width = Auto(false),
         textsize = textsize,
-        padding = (10, 10, 10, 10)) for s in strings]
+        padding = textpadding) for s in strings]
+
+
+    allrects = [selectionrect; rects]
+    alltexts = [selectiontext; texts]
+
 
     dropdown_arrow = scatter!(scene,
-        lift(x -> [Point2f0(width(x) - 20, height(x) / 2)], scenearea),
+        lift(x -> [Point2f0(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
         marker = @lift($is_open ? '▲' : '▼'),
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
@@ -116,28 +127,24 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         if open
             sceneheight[] = gridautosize[2]
 
-            # reset vertically and bring forward
+            # bring forward
             translate!(scene, 0, 0, 10)
 
         else
-            sceneheight[] = texts[i].layoutobservables.autosize[][2]
-            menuheight = gridautosize[2]
-            top_border_offset = if i == 1
-                0.0
-            else
-                sum(height(r.layoutobservables.computedbbox[]) for r in rects[1:i-1])
-            end
-            # shift selected cell into view
-            translate!(scene, 0, top_border_offset, 0)
-            translate!(dropdown_arrow, 0, -top_border_offset, 1)
+            sceneheight[] = texts[1].layoutobservables.autosize[][2]
+
+            # back to normal z
+            translate!(scene, 0, 0, 0)
+            # translate!(dropdown_arrow, 0, -top_border_offset, 1)
         end
     end
 
-    contentgrid[:v] = rects
-    contentgrid[:v] = texts
+    contentgrid[:v] = allrects
+    contentgrid[:v] = alltexts
 
     on(i_selected) do i
-        h = texts[i].layoutobservables.autosize[][2]
+        selectiontext.text = strings[i]
+        h = selectiontext.layoutobservables.autosize[][2]
         layoutobservables.autosize[] = (nothing, h)
     end
 
@@ -153,12 +160,15 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     rowgap!(contentgrid, 0)
 
-    mousestates = [addmousestate!(scene, r.rect, t.textobject) for (r, t) in zip(rects, texts)]
+    mousestates = [addmousestate!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
 
-    for (i, (mousestate, r, t)) in enumerate(zip(mousestates, rects, texts))
+    for (i, (mousestate, r, t)) in enumerate(zip(mousestates, allrects, alltexts))
         onmouseleftclick(mousestate) do state
             if is_open[]
-                i_selected[] = i
+                # first item is already selected
+                if i > 1
+                    i_selected[] = i - 1
+                end
             end
             is_open[] = !is_open[]
         end
