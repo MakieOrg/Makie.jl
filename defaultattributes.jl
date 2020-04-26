@@ -370,6 +370,7 @@ end)
 """
 LRect
 
+
 function default_attributes(::Type{LButton}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the button in its suggested boundingbox"
@@ -379,11 +380,11 @@ function default_attributes(::Type{LButton}, scene)
         "The extra space added to the sides of the button label's boundingbox."
         padding = (10f0, 10f0, 10f0, 10f0)
         "The font size of the button label."
-        textsize = 20f0
+        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
         "The text of the button label."
         label = "Button"
         "The font family of the button label."
-        font = "Dejavu Sans"
+        font = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The width setting of the button."
         width = Auto(true)
         "The height setting of the button."
