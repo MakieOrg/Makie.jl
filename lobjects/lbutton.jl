@@ -22,6 +22,9 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     lcolor = Node{Any}(labelcolor[])
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
         color = lcolor, align = (:center, :center), raw = true)[end]
+        
+    # move text in front of background to be sure it's not occluded
+    translate!(labeltext, 0, 0, 1)
 
     buttonwidth = Node{Optional{Float32}}(nothing)
     buttonheight = Node{Optional{Float32}}(nothing)
