@@ -19,22 +19,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     end
     subscene = Scene(scene, subarea, camera=campixel!)
 
-    lcolor = Node{Any}(labelcolor[])
-    labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
-        color = lcolor, align = (:center, :center), raw = true)[end]
-        
-    # move text in front of background to be sure it's not occluded
-    translate!(labeltext, 0, 0, 1)
 
-    buttonwidth = Node{Optional{Float32}}(nothing)
-    buttonheight = Node{Optional{Float32}}(nothing)
-
-    onany(label, textsize, font, padding) do label, textsize, font, padding
-        textbb = FRect2D(boundingbox(labeltext))
-        autowidth = width(textbb) + padding[1] + padding[2]
-        autoheight = height(textbb) + padding[3] + padding[4]
-        layoutobservables.autosize[] = (autowidth, autoheight)
-    end
 
     # buttonrect is without the left bottom offset of the bbox
     buttonrect = lift(layoutobservables.computedbbox) do bbox
@@ -51,8 +36,26 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
         color = bcolor, raw = true)[end]
     decorations[:button] = button
-    # put button in front so the text doesn't block the mouse
-    reverse!(subscene.plots)
+
+
+
+
+    lcolor = Node{Any}(labelcolor[])
+    labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
+        color = lcolor, align = (:center, :center), raw = true)[end]
+
+    # move text in front of background to be sure it's not occluded
+    translate!(labeltext, 0, 0, 1)
+
+
+    onany(label, textsize, font, padding) do label, textsize, font, padding
+        textbb = FRect2D(boundingbox(labeltext))
+        autowidth = width(textbb) + padding[1] + padding[2]
+        autoheight = height(textbb) + padding[3] + padding[4]
+        layoutobservables.autosize[] = (autowidth, autoheight)
+    end
+
+
 
     mousestate = addmousestate!(scene, button, labeltext)
 
