@@ -26,25 +26,11 @@ jobs:
       - name: Run tests
         uses: julia-actions/julia-runtest@master
 
-      - name: Upload recordings
+      - name: Upload artifacts
         uses: actions/upload-artifact@v1.0.0
         with:
           name: Recordings
-          path: ./test/test_recordings
-        if: always()
-
-      - name: Upload diffs
-        uses: actions/upload-artifact@v1.0.0
-        with:
-          name: Recordings
-          path: ./test/tested_different
-        if: always()
-
-      - name: Upload format tests
-        uses: actions/upload-artifact@v1.0.0
-        with:
-          name: Recordings
-          path: ./test/test_formats
+          path: ./test
         if: always()
 
       - name: Cache artifacts
