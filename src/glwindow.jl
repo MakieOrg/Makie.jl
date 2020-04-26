@@ -34,6 +34,8 @@ mutable struct GLFramebuffer
     objectid::Texture{Vec{2, GLushort}, 2}
     depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
     color_luma::Texture{RGBA{N0f8}, 2}
+    position::Texture{Vec4f0, 2}
+    normal::Texture{Vec3f0, 2}
     postprocess::NTuple{3, PostProcessROBJ}
 end
 
@@ -100,6 +102,8 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 
     objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
+    position_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
+    normal_buffer = Texture(Vec3f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 
     depth_buffer = Texture(
         Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
@@ -110,6 +114,8 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
 
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
+    attach_framebuffer(position_buffer, GL_COLOR_ATTACHMENT2)
+    attach_framebuffer(normal_buffer, GL_COLOR_ATTACHMENT3)
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
@@ -130,7 +136,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
         color_buffer, objectid_buffer, depth_buffer,
-        color_luma,
+        color_luma, position_buffer, normal_buffer,
         p
     )
 end
@@ -142,6 +148,8 @@ function Base.resize!(fb::GLFramebuffer, window_size)
         resize_nocopy!(fb.color_luma, ws)
         resize_nocopy!(fb.objectid, ws)
         resize_nocopy!(fb.depth, ws)
+        resize_nocopy!(fb.position, ws)
+        resize_nocopy!(fb.normal, ws)
         fb.resolution[] = ws
     end
     nothing
