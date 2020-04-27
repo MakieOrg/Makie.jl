@@ -753,7 +753,8 @@ AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Sc
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, 1.0)
+    pt_per_unit = get(io, :pt_per_unit, nothing)
+    isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
 
     screen = CairoScreen(scene, io; device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
@@ -763,8 +764,9 @@ end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, 1.0)
-    
+    pt_per_unit = get(io, :pt_per_unit, nothing)
+    isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
+
     screen = CairoScreen(scene, io, mode=:pdf, device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
@@ -775,7 +777,8 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/pn
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
-    px_per_unit = get(io, :px_per_unit, 1.0)
+    px_per_unit = get(io, :px_per_unit, nothing)
+    isnothing(px_per_unit) && error("Keyword argument :px_per_unit missing from IOContext.")
 
     screen = CairoScreen(scene, io; device_scaling_factor = px_per_unit)
     cairo_draw(screen, scene)
