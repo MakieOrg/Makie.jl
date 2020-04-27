@@ -17,11 +17,6 @@ const float radius = 1.0; // max range for depth check :shrug:
 
 void main(void)
 {
-    // Testing
-    // fragment_color = vec4(0.9, 0.6, 0.2, 1.0);
-    fragment_color = vec4(texture(color_buffer, frag_uv).xyz, 1.0);
-
-    /*
     vec3 frag_pos = texture(position_buffer, frag_uv).xyz;
     vec3 normal  = texture(normal_buffer, frag_uv).xyz;
     vec3 rand_vec = texture(noise, frag_uv * noise_scale).xyz;
@@ -46,8 +41,12 @@ void main(void)
         occlusion += (sample_depth >= sample.z + bias ? 1.0 : 0.0);
     }
     occlusion = 1.0 - (occlusion / 64); // TODO mustache
-    fragment_color = vec4(vec3(0.5+occlusion), 1.0);
-    */
+    fragment_color = vec4(vec3(occlusion), 1.0);
+
+    // Testing
+    // fragment_color = vec4(0.9, 0.6, 0.2, 1.0);
+    // fragment_color = vec4(texture(position_buffer, frag_uv).xyz, 1.0);
+
 }
 
 // TODO blur
