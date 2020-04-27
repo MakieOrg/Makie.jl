@@ -479,6 +479,7 @@ function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
         t1 = time()
         func(i)
         recordframe!(io)
+        @debug "Recording" progress=i/length(iter)
         diff = (1/framerate) - (time() - t1)
         if diff > 0.0
             sleep(diff)
