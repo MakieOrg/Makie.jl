@@ -106,7 +106,7 @@ begin
             end
         end
         atlas = TextureAtlas()
-        @info("Makie/AbstractPlotting Caching fonts, this may take a while. Needed only on first run!")
+        @info("Makie/AbstractPlotting is caching fonts, this may take a while. Needed only on first run!")
         load_ascii_chars!(atlas)
         to_cache(atlas) # cache it
         return atlas
