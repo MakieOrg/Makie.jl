@@ -367,7 +367,7 @@ which can be one of the following:
 `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
 
-The `compression` argument controls the compression ratio; `51` is the 
+The `compression` argument controls the compression ratio; `51` is the
 highest compression, and `0` is the lowest (lossless).
 
 See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
@@ -404,7 +404,10 @@ end
 
 """
     record(func, scene, path; framerate = 24, compression = 20)
-    record(func, scene, path, iter; framerate = 24, compression = 20)
+    record(func, scene, path, iter;
+            framerate = 24, compression = 20, sleep = true)
+
+The first signature provides `func` with a VideoStream, which it should call `recordframe!(io)` on when recording a frame.
 
 Records the Scene `scene` after the application of `func` on it for each element
 in `itr` (any iterator).  `func` must accept an element of `itr`.
@@ -419,8 +422,16 @@ extension.  Allowable extensions are:
 `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
 
-The `compression` argument controls the compression ratio; `51` is the 
+The `compression` argument controls the compression ratio; `51` is the
 highest compression, and `0` is the lowest (lossless).
+
+When `sleep` is set to `true` (the default), AbstractPlotting will
+display the animation in real-time by sleeping in between frames.
+Thus, a 24-frame, 24-fps recording would take one second to record.
+
+When it is set to `false`, frames are rendered as fast as the backend
+can render them.  Thus, a 24-frame, 24-fps recording would usually
+take much less than one second in GLMakie.
 
 Typical usage patterns would look like:
 
@@ -443,9 +454,6 @@ end
 
 If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
 [`save`](@ref).
-
-The `compression` argument controls the compression ratio; `51` is the 
-highest compression, and `0` is the lowest (lossless).
 
 ## Extended help
 ### Examples
