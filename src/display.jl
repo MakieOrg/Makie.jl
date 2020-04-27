@@ -481,7 +481,7 @@ function record(func, scene, path; framerate::Int = 24, compression = 20)
     save(path, io; framerate = framerate, compression = compression)
 end
 
-function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
+function record(func, scene, path, iter; framerate::Int = 24, compression = 20, sleep = true)
     io = VideoStream(scene; framerate = framerate)
     for i in iter
         t1 = time()
@@ -489,8 +489,8 @@ function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
         recordframe!(io)
         @debug "Recording" progress=i/length(iter)
         diff = (1/framerate) - (time() - t1)
-        if diff > 0.0
-            sleep(diff)
+        if sleep && diff > 0.0
+            Base.sleep(diff)
         else
             yield()
         end
