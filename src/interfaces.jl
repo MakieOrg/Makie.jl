@@ -261,6 +261,8 @@ $(ATTRIBUTES)
         rotation = 0.0,
         textsize = 20,
         position = Point2f0(0),
+        justification = 0.5,
+        lineheight = 1.0
     )
 end
 

@@ -1,10 +1,11 @@
+using FreeTypeAbstraction: height_insensitive_boundingbox
 
 """
 Calculates the exact boundingbox of a Scene/Plot, without considering any transformation
 """
-function raw_boundingbox(x::Atomic)
-    bb = data_limits(x)
-end
+raw_boundingbox(x::Atomic) = data_limits(x)
+
+
 rootparent(x) = rootparent(parent(x))
 rootparent(x::Scene) = x
 
@@ -12,12 +13,9 @@ function raw_boundingbox(x::Annotations)
     bb = raw_boundingbox(x.plots)
     inv(modelmatrix(rootparent(x))) * bb
 end
-function raw_boundingbox(x::Combined)
-    raw_boundingbox(x.plots)
-end
-function boundingbox(x)
-    raw_boundingbox(x)
-end
+
+raw_boundingbox(x::Combined) = raw_boundingbox(x.plots)
+boundingbox(x) = raw_boundingbox(x)
 
 function combined_modelmatrix(x)
     m = Mat4f0(I)
@@ -29,7 +27,7 @@ function combined_modelmatrix(x)
             break
         end
     end
-    m
+    return m
 end
 
 function modelmatrix(x)
@@ -39,7 +37,7 @@ end
 
 function boundingbox(x::Atomic)
     bb = raw_boundingbox(x)
-    combined_modelmatrix(x) * bb
+    return combined_modelmatrix(x) * bb
 end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
@@ -73,24 +71,20 @@ function raw_boundingbox(plots::Vector)
         isfinite(bb2) || continue
         bb = union(bb, bb2)
     end
-    bb
+    return bb
 end
 
 function project_widths(matrix, vec)
     pr = project(matrix, vec)
     zero = project(matrix, zeros(typeof(vec)))
-    pr - zero
+    return pr - zero
 end
 
 function boundingbox(x::Text, text::String)
     position = to_value(x[:position])
-    @get_attribute x (textsize, font, align, rotation)
-    bb = boundingbox(text, position, textsize, font, align, rotation, modelmatrix(x))
-    pm = inv(transformationmatrix(parent(x))[])
-    wh = widths(bb)
-    whp = project_widths(pm, wh)
-    aoffset = whp .* to_ndim(Vec3f0, align, 0f0)
-    return FRect3D(minimum(bb) .- aoffset, whp)
+    @get_attribute x (textsize, font, align, rotation, justification, lineheight)
+    return boundingbox(text, position, textsize, font, align, rotation,
+        modelmatrix(x), justification, lineheight)
 end
 
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))
@@ -105,77 +99,87 @@ function boundingbox(
     )
 end
 
-# function boundingbox(
-#         text::String, position, textsize, fonts,
-#         align, rotation, model = Mat4f0(I)
-#     )
-#     isempty(text) && return FRect3D()
-#     pos_per_char = !isa(position, VecTypes)
-#
-#     start_pos = Vec(pos_per_char ? first(position) : position)
-#     start_pos3d = project(model, to_ndim(Vec3f0, start_pos, 0.0))
-#     bb = FRect3D(start_pos3d, Vec3f0(0))
-#
-#     if pos_per_char
-#         broadcast_foreach(position, textsize, fonts, collect(text)) do pos, scale, font, char
-#             rect, extent = FreeTypeAbstraction.metrics_bb(char, font, scale)
-#             bb = union(FRect3D(rect) + to_ndim(Vec3f0, pos, 0.0), bb)
-#             @show pos scale
-#         end
-#     else
-#         y_advance = 0.0
-#         line_advance = FreeTypeAbstraction.get_extent(fonts, 'x').advance[2]
-#         for line in split(text, r"(\r\n|\r|\n)")
-#             rectangles = FreeTypeAbstraction.glyph_rects(line, fonts, textsize)
-#             bb2d = reduce(union, rectangles)
-#             bb2d = bb2d + Vec2f0(0, y_advance)
-#             bb = union(bb, FRect3D(bb2d))
-#             y_advance += line_advance
-#             @show y_advance
-#         end
-#     end
-#     return bb
-# end
+"""
+Calculate an approximation of a tight rectangle around a 2D rectangle rotated by `angle` radians.
+This is not perfect but works well enough. Check an A vs X to see the difference.
+"""
+function rotatedrect(rect::Rect{2}, angle)
+    ox, oy = rect.origin
+    wx, wy = rect.widths
+    points = @SMatrix([
+        ox oy;
+        ox oy+wy;
+        ox+wx oy;
+        ox+wx oy+wy;
+    ])
+    mrot = @SMatrix([
+        cos(angle) -sin(angle);
+        sin(angle) cos(angle);
+    ])
+    rotated = mrot * points'
 
+    rmins = minimum(rotated, dims = 2)
+    rmaxs = maximum(rotated, dims = 2)
+
+    return Rect2D(rmins..., (rmaxs .- rmins)...)
+end
+
+function quaternion_to_2d_angle(quat)
+    # this assumes that the quaternion was calculated from a simple 2d rotation as well
+    return 2acos(quat[4]) * (signbit(quat[1]) ? -1 : 1)
+end
 
 function boundingbox(
         text::String, position, textsize, font,
-        align, rotation, model = Mat4f0(I)
+        align, rotation, model, justification, lineheight;
+        # use the font's ascenders and descenders for the bounding box
+        # this means that a string's boundingbox doesn't change in the vertical
+        # dimension when characters change (for example numbers during an animation)
+        # this is not wanted in most cases because of the jitter it creates when
+        # the boundingbox slightly changes size in each frame (in MakieLayout mostly)
+        use_vertical_dimensions_from_font = true
     )
     atlas = get_texture_atlas()
     N = length(text)
     ctext_state = iterate(text)
     ctext_state === nothing && return FRect3D()
-    pos_per_char = !isa(position, VecTypes)
-    start_pos = Vec(pos_per_char ? first(position) : position)
-    start_pos2D = to_ndim(Point2f0, start_pos, 0.0)
-    last_pos = Point2f0(0, 0)
-    start_pos3d = project(model, to_ndim(Vec3f0, start_pos, 0.0))
-    bb = FRect3D(start_pos3d, Vec3f0(0))
+
+    # call the layouting algorithm to find out where all the glyphs end up
+    # this is kind of a doubling, maybe it could be avoided if at creation all
+    # positions would be populated in the text object, but that seems convoluted
+    if position isa VecTypes
+        position = layout_text(text, position, textsize, font, align,
+            rotation, model, justification, lineheight)
+    end
+
+    bbox = nothing
+
     broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
         c, text_state = ctext_state
         ctext_state = iterate(text, text_state)
-        # TODO fix center + align + rotation
-        if c != '\r'
-            posnd = if pos_per_char
-                position[i]
+
+        if !(c in ('\r', '\n'))
+            bb_unitspace = if use_vertical_dimensions_from_font
+                height_insensitive_boundingbox(
+                    FreeTypeAbstraction.get_extent(font, c), font)
             else
-                last_pos = calc_position(last_pos, Point2f0(0, 0), atlas, c, font, scale)
-                advance_x, advance_y = glyph_advance!(atlas, c, font, scale)
-                without_advance = if c == '\n'
-                    # advance doesn't get added for newlines
-                    last_pos
-                else
-                    last_pos .- Point2f0(advance_x, 0)
-                end
-                start_pos3d .+ (rotation * to_ndim(Vec3f0, without_advance, 0.0))
+                inkboundingbox(FreeTypeAbstraction.get_extent(font, c))
             end
-            pos = to_ndim(Vec3f0, posnd, 0.0)
-            s = glyph_scale!(atlas, c, font, scale)
-            srot = rotation * to_ndim(Vec3f0, s, 0.0)
-            bb = update(bb, pos)
-            bb = update(bb, pos .+ srot)
+
+            scaled_bb = bb_unitspace * scale
+
+            # TODO this only works in 2d
+            rot_2d_radians = quaternion_to_2d_angle(rotation)
+            rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
+
+            # bb = rectdiv(bb, 1.5)
+            shifted_bb = FRect3D(rotated_bb) + position[i]
+            if isnothing(bbox)
+                bbox = shifted_bb
+            else
+                bbox = union(bbox, shifted_bb)
+            end
         end
     end
-    return bb
+    return bbox
 end
