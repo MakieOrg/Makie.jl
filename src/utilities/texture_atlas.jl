@@ -136,6 +136,22 @@ begin
     end
 end
 
+
+"""
+    find_font_for_char(c::Char, font::NativeFont)
+Finds the best font for a character from a list of fallback fonts, that get chosen
+if `font` can't represent char `c`
+"""
+function find_font_for_char(c::Char, font::NativeFont)
+    FT_Get_Char_Index(font, c) != 0 && return font
+    for afont in alternativefonts()
+        if FT_Get_Char_Index(afont, c) != 0
+            return afont
+        end
+    end
+    error("Can't represent character $(c) with any fallback font nor $(font.family_name)!")
+end
+
 function glyph_index!(atlas::TextureAtlas, c::Char, font::NativeFont)
     if FT_Get_Char_Index(font, c) == 0
         for afont in alternativefonts()
@@ -147,6 +163,7 @@ function glyph_index!(atlas::TextureAtlas, c::Char, font::NativeFont)
     return insert_glyph!(atlas, c, font)
 end
 
+
 function glyph_uv_width!(atlas::TextureAtlas, c::Char, font::NativeFont)
     return atlas.uv_rectangles[glyph_index!(atlas, c, font)]
 end
@@ -155,25 +172,37 @@ function glyph_uv_width!(c::Char)
     return glyph_uv_width!(get_texture_atlas(), c, defaultfont())
 end
 
+function glyph_boundingbox(c::Char, font::NativeFont, pixelsize)
+    if FT_Get_Char_Index(font, c) == 0
+        for afont in alternativefonts()
+            if FT_Get_Char_Index(afont, c) != 0
+                font = afont
+                break
+            end
+        end
+    end
+    bb, ext = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
+    return bb
+end
+
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
     return get!(atlas.mapping, (glyph, font)) do
         downsample = 5 # render font 5x larger, and then downsample back to desired pixelsize
-        pad = 5 # padd rendered font by 6 pixel in each direction
+        pad = 8 # padd rendered font by 6 pixel in each direction
         uv_pixel = render(atlas, glyph, font, downsample, pad)
-        tex_size = Vec2f0(size(atlas.data)) # starts at 1
+        tex_size = Vec2f0(size(atlas.data) .- 1) # starts at 1
 
         idx_left_bottom = minimum(uv_pixel)# 0 based!!!
         idx_right_top = maximum(uv_pixel)
 
         # include padding
-
-        left_bottom_pad = idx_left_bottom .+ pad
+        left_bottom_pad = idx_left_bottom .+ pad .- 1
         # -1 for indexing offset
         right_top_pad = idx_right_top .- pad
 
         # transform to normalized texture coordinates
-        uv_left_bottom_pad = left_bottom_pad ./ tex_size
-        uv_right_top_pad =  right_top_pad ./ tex_size
+        uv_left_bottom_pad = (left_bottom_pad) ./ tex_size
+        uv_right_top_pad =  (right_top_pad) ./ tex_size
 
         uv_offset_rect = Vec4f0(uv_left_bottom_pad..., uv_right_top_pad...)
         i = atlas.index

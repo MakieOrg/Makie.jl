@@ -7,6 +7,12 @@ function padrect(rect, pad)
     Rect(minimum(rect) .- pad, widths(rect) .+ 2pad)
 end
 
+one_attribute_per_char(attribute, string) = (attribute for char in string)
+
+function one_attribute_per_char(font::NativeFont, string)
+    return (find_font_for_char(char, font) for char in string)
+end
+
 function attribute_per_char(string, attribute)
     n_words = 0
     if attribute isa AbstractVector
@@ -24,7 +30,7 @@ function attribute_per_char(string, attribute)
             end
         end
     else
-        return (attribute for char in string)
+        return one_attribute_per_char(attribute, string)
     end
     error("A vector of attributes with $(length(attribute)) elements was given but this fits neither the length of '$string' ($(length(string))) nor the number of words ($(n_words))")
 end

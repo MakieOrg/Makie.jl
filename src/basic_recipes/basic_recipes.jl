@@ -283,7 +283,6 @@ function plot!(plot::Wireframe{Tuple{T}}) where T
     linesegments!(plot, Theme(plot), points)
 end
 
-
 function sphere_streamline(linebuffer, ∇ˢf, pt, h, n)
     push!(linebuffer, pt)
     df = normalize(∇ˢf(pt[1], pt[2], pt[3]))
@@ -315,24 +314,6 @@ $(ATTRIBUTES)
     )
 end
 
-# typeof(([1, 2, 3] |> vec, [1, 2, 3] |> vec)) <: Tuple{<: AbstractVector{T}, <: AbstractVector{T}} where T
-# true
-# streamlines([1, 2, 3] |> vec, [1, 2, 3] |> vec)
-# ERROR: Plotting for the arguments (::Array{Int64,1}, ::Array{Int64,1}) not defined for AbstractPlotting.streamlines. If you want to support those arguments, overload plot!(plot::AbstractPlotting.streamlines{ <: Tuple{Array{Int64,1},Array{Int64,1}}})
-
-# function plot!(plot::StreamLines) where T
-#     @extract plot (points, directions)
-#     linebuffer = T[]
-#     lines = lift(directions, points, plot[:h], plot[:n]) do ∇ˢf, origins, h, n
-#         empty!(linebuffer)
-#         for point in origins
-#             sphere_streamline(linebuffer, ∇ˢf, point, h, n)
-#         end
-#         linebuffer
-#     end
-#     linesegments!(plot, Theme(plot), lines)
-# end
-
 """
     Series - ?
 
@@ -348,7 +329,9 @@ $(ATTRIBUTES)
         seriestype = :lines
     )
 end
+
 convert_arguments(::Type{<: Series}, A::AbstractMatrix{<: Number}) = (A,)
+
 function plot!(sub::Series)
     A = sub[1]
     colors = map_once(sub[:seriescolors], A) do colors, A
@@ -436,7 +419,7 @@ function plot!(plot::Annotations)
             append!(combinedpos, pos)
             append!(textsize, repeated(tsize, n))
             append!(colors, repeated(c, n))
-            append!(fonts, repeated(f, n))
+            append!(fonts, one_attribute_per_char(f, text))
             append!(rotations, repeated(rot, n))
         end
         str = String(take!(io))
@@ -536,8 +519,6 @@ function AbstractPlotting.plot!(p::BarPlot)
         strokewidth = p.strokewidth, strokecolor = p.strokecolor
     )
 end
-
-
 
 """
     scatterlines(xs, ys, [zs]; kwargs...)
