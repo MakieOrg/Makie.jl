@@ -16,6 +16,10 @@ import AbstractPlotting.FileIO
 using StaticArrays
 using GeometryBasics: decompose_uv
 
+using FreeTypeAbstraction
+using AbstractPlotting: get_texture_atlas, glyph_uv_width!
+using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
+
 using ImageTransformations
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
@@ -321,6 +325,7 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
+            console.log("ADD KEYP EVENT LISTENER")
             document.addEventListener("keyup", keyup);
             // This is a pretty ugly work around......
             // so on keydown, we add the key to the currently pressed keys set
