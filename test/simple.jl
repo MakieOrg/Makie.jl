@@ -2,7 +2,6 @@ using AbstractPlotting
 using GLMakie
 using GeometryBasics
 using Observables
-using GLMakie
 using FileIO
 using MakieGallery
 
@@ -72,6 +71,7 @@ volume(rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)
 contour(rand(4, 4, 4)) |> display
 
 # Meshes
+using MeshIO, FileIO
 cat = load(GLMakie.assetpath("cat.obj"))
 tex = load(GLMakie.assetpath("diffusemap.tga"))
 scren = mesh(cat, color=tex)
@@ -85,3 +85,7 @@ axis = scene[Axis]
 axis.ticks.ranges = ([0.1, 0.2, 0.9], [0.1, 0.2, 0.9])
 axis.ticks.labels = (["😸", "♡", "𝕴"], ["β ÷ δ", "22", "≙"])
 scene
+
+
+# Text
+x = text("heyllo") |> display
