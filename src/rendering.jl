@@ -104,9 +104,14 @@ function render_frame(screen::Screen)
     GLAbstraction.render(screen, false)
     glDisable(GL_STENCIL_TEST)
     glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
+
     glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
+    if !isempty(screen.renderlist)
+        projection = screen.renderlist[1][3].uniforms[:projection][]
+        fb.postprocess[3].uniforms[:projection][] = projection
+    end
     GLAbstraction.render(fb.postprocess[3]) # copy postprocess
     return
 end
