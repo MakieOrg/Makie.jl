@@ -195,19 +195,35 @@ format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
 filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
-"""
-    FileIO.save(filename, scene; resolution = size(scene))
 
-Saves a `Scene` to file!
-Allowable formats depend on the backend;
-- `GLMakie` allows `.png`, `.jpeg`, and `.bmp`.
-- `CairoMakie` allows `.svg`, `pdf`, and `.jpeg`.
-- `WGLMakie` allows `.png`.
-Resolution can be specified, via `save("path", scene, resolution = (1000, 1000))`!
+
+"""
+    FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 1.0, px_per_unit = 1.0)
+
+Save a `Scene` with the specified filename and format.
+
+# Supported Formats
+
+- `GLMakie`: `.png`, `.jpeg`, and `.bmp`
+- `CairoMakie`: `.svg`, `.pdf`, `.png`, and `.jpeg`
+- `WGLMakie`: `.png`
+
+# Supported Keyword Arguments
+
+## All Backends
+
+- `resolution`: `(width::Int, height::Int)` of the scene in dimensionless units (equivalent to `px` for GLMakie and WGLMakie).
+
+## CairoMakie
+
+- `pt_per_unit`: The size of one scene unit in `pt` when exporting to a vector format.
+- `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
         f::FileIO.File, scene::Scene;
-        resolution = size(scene), kwargs...
+        resolution = size(scene),
+        pt_per_unit = 1.0,
+        px_per_unit = 1.0,
     )
 
     resolution !== size(scene) && resize!(scene, resolution)
@@ -222,10 +238,8 @@ function FileIO.save(
     # query the filetype only from the file extension
     F = filetype(FileIO.query(filename))
 
-    # we can pass arbitrary keywords to the backend saving functions
-    # which they can retrieve using `get(::IOContext, :kw, default_value)`
-    # an example would be a resolution scaling factor for CairoMakie's png backend
-    kwarg_pairs = pairs((full_fidelity = true, kwargs...))
+    kwarg_pairs = pairs((full_fidelity = true, pt_per_unit = pt_per_unit,
+        px_per_unit = px_per_unit))
 
     open(filename, "w") do s
         show(
