@@ -19,4 +19,4 @@ An abstract plotting library part of the
 [docs-master-url]: http://makie.juliaplots.org/dev/
 
 ## Issues
-Please file all issues in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention GLMakie in the issue text!
+Please file all issues in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention AbstractPlotting in the issue text!
