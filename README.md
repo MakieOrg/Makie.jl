@@ -17,3 +17,6 @@ An abstract plotting library part of the
 [docs-stable-url]: http://makie.juliaplots.org/stable/
 [docs-master-img]: https://img.shields.io/badge/docs-master-blue.svg
 [docs-master-url]: http://makie.juliaplots.org/dev/
+
+## Issues
+Please file all issues in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention GLMakie in the issue text!
