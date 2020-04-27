@@ -83,8 +83,23 @@ end
 function boundingbox(x::Text, text::String)
     position = to_value(x[:position])
     @get_attribute x (textsize, font, align, rotation, justification, lineheight)
-    return boundingbox(text, position, textsize, font, align, rotation,
-        modelmatrix(x), justification, lineheight)
+    pm = inv(transformationmatrix(parent(x))[])
+    bb = boundingbox(text, position, textsize, font, align, rotation,
+                     modelmatrix(x), justification, lineheight)
+    # Annoyingly we combine different spaces in the textlayout
+    # The start position is in modelspace (multiplied by modelmatrix, which also
+    # contains the scaling from any parent scene)
+    # But than, from that startposition, we substract the align - which is in
+    # unscaled space... Also the boundingbox we get returned is unscaled
+    # and the fonts are actually getting drawn unscaled... Buhut,
+    # the boundingbox will get scaled when drawing, so we need to apply the
+    # inverse transformation.
+    pm = inv(transformationmatrix(parent(x))[])
+    wh = widths(bb)
+    whp = project_widths(pm, wh)
+    aoffset = wh .* to_ndim(Vec3f0, align, 0f0)
+    aoffsetp = whp .* to_ndim(Vec3f0, align, 0f0)
+    return FRect3D(minimum(bb) .+ aoffset .- aoffsetp, whp)
 end
 
 boundingbox(x::Text) = boundingbox(x, to_value(x[1]))

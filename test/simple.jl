@@ -4,12 +4,8 @@ using GeometryBasics
 using Observables
 using FileIO
 using MakieGallery
-
 using GeometryBasics: Pyramid
 
-scatter(1:4, color=1:4)
-
-scatter(1:4, color=rand(RGBAf0, 4))
 scatter(1:4, color=rand(RGBf0, 4))
 scatter(1:4, color=:red)
 
