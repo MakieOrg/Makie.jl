@@ -39,15 +39,18 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     GLFW.PollEvents()
     robj = get!(screen.cache, objectid(x)) do
+
         filtered = filter(x.attributes) do (k, v)
             !(k in (:transformation, :tickranges, :ticklabels, :raw))
         end
+
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end)
+
         if haskey(gl_attributes, :scale)
             gl_attributes[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, gl_attributes[:scale])
             gl_attributes[:scale] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:scale])
@@ -94,11 +97,11 @@ function handle_view(array::Node{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices
-    A
+    return A
 end
 
 function lift_convert(key, value, plot)
-    lift(value) do value
+    return lift(value) do value
         return convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
     end
 end
@@ -240,9 +243,10 @@ end
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight)
-        gl_text = lift(x[1], getindex.(Ref(gl_attributes), liftkeys)...) do str,
-                pos, tsize, font, align, rotation, model, j, l
-            to_gl_text(str, pos, x.textsize[], font, align, rotation, model, j, l)
+        args = getindex.(Ref(gl_attributes), liftkeys)
+        gl_text = lift(x[1], args...) do str, pos, tsize, font, align, rotation, model, j, l
+            args = @get_attribute x (position, textsize, font, align, rotation)
+            to_gl_text(str, args..., model, j, l)
         end
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i

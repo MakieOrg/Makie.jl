@@ -2,7 +2,7 @@
 {{GLSL_EXTENSIONS}}
 
 // Half width of antialiasing smoothstep. NB: Should match fragment shader
-#define ANTIALIAS_RADIUS  0.6
+#define ANTIALIAS_RADIUS 0.8
 
 struct Nothing{ bool _; };
 

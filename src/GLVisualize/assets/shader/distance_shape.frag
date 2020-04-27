@@ -3,7 +3,7 @@
 {{SUPPORTED_EXTENSIONS}}
 
 // Half width of antialiasing smoothstep
-#define ANTIALIAS_RADIUS  0.6
+#define ANTIALIAS_RADIUS 0.8
 
 struct Nothing{ //Nothing type, to encode if some variable doesn't contain any data
     bool _; //empty structs are not allowed
