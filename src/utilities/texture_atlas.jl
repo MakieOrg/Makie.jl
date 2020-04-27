@@ -192,17 +192,17 @@ function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
         uv_pixel = render(atlas, glyph, font, downsample, pad)
         tex_size = Vec2f0(size(atlas.data) .- 1) # starts at 1
 
-        idx_left_bottom = minimum(uv_pixel) .+ 1# 0 based!!!
+        idx_left_bottom = minimum(uv_pixel)# 0 based!!!
         idx_right_top = maximum(uv_pixel)
 
         # include padding
-        left_bottom_pad = idx_left_bottom .+ (pad)
+        left_bottom_pad = idx_left_bottom .+ pad .- 1
         # -1 for indexing offset
-        right_top_pad = idx_right_top .- (pad)
+        right_top_pad = idx_right_top .- pad
 
         # transform to normalized texture coordinates
-        uv_left_bottom_pad = (left_bottom_pad .- 1) ./ tex_size
-        uv_right_top_pad =  (right_top_pad .- 1) ./ tex_size
+        uv_left_bottom_pad = (left_bottom_pad) ./ tex_size
+        uv_right_top_pad =  (right_top_pad) ./ tex_size
 
         uv_offset_rect = Vec4f0(uv_left_bottom_pad..., uv_right_top_pad...)
         i = atlas.index

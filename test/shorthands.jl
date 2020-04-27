@@ -6,13 +6,13 @@
 
     @testset "tick labels" begin
 
-        @test xticklabels(scene) == ["0.0", "2.5", "5.0", "7.5", "10.0"]
-        @test yticklabels(scene) == ["2", "4", "6", "8", "10"]
+        @test xticklabels(scene) == ["2", "4", "6", "8", "10"]
+        @test yticklabels(scene) ==  ["0.0", "2.5", "5.0", "7.5", "10.0"]
         @test zticklabels(scene) == ["2", "4", "6", "8", "10"]
         @test_throws AssertionError("The Scene does not have a z-axis!") zticklabels(scene2d)
 
-        @test xtickrange(scene) == [0.0, 2.5, 5.0, 7.5, 10.0]
-        @test ytickrange(scene) == [2.0, 4.0, 6.0, 8.0, 10.0]
+        @test xtickrange(scene) == [2.0, 4.0, 6.0, 8.0, 10.0]
+        @test ytickrange(scene) == [0.0, 2.5, 5.0, 7.5, 10.0]
         @test ztickrange(scene) == [2.0, 4.0, 6.0, 8.0, 10.0]
         @test_throws AssertionError("The Scene does not have a z-axis!") ztickrange(scene2d)
 
