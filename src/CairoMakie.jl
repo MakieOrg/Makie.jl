@@ -67,8 +67,11 @@ function CairoScreen(scene::Scene)
     CairoScreen(scene, surf, ctx, nothing)
 end
 
-function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg)
-    w, h = round.(Int, scene.camera.resolution[])
+function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_scaling_factor = 1)
+
+    # the surface size is the scene size scaled by the device scaling factor
+    w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
+
     # TODO: Add other surface types (PDF, etc.)
     if mode == :svg
         surf = CairoSVGSurface(path, w, h)
@@ -77,7 +80,15 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg)
     else
         error("No available Cairo surface for mode $mode")
     end
+
+    # this sets a scaling factor on the lowest level that is "hidden" so its even
+    # enabled when the drawing space is reset for strokes
+    # that means it can be used to increase or decrease the image resolution
+    ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
+        surf.ptr, device_scaling_factor, device_scaling_factor)
+
     ctx = CairoContext(surf)
+
     CairoScreen(scene, surf, ctx, nothing)
 end
 
@@ -741,21 +752,35 @@ AbstractPlotting.backend_showable(x::CairoBackend, m::MIME"image/png", scene::Sc
 
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
-    screen = CairoScreen(scene, io)
+
+    pt_per_unit = get(io, :pt_per_unit, nothing)
+    isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
+
+    screen = CairoScreen(scene, io; device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
 end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
-    screen = CairoScreen(scene, io,mode=:pdf)
+
+    pt_per_unit = get(io, :pt_per_unit, nothing)
+    isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
+
+    screen = CairoScreen(scene, io, mode=:pdf, device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
 end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
-    screen = CairoScreen(scene, io)
+
+    # multiply the resolution of the png with this factor for more or less detail
+    # while relative line and font sizes are unaffected
+    px_per_unit = get(io, :px_per_unit, nothing)
+    isnothing(px_per_unit) && error("Keyword argument :px_per_unit missing from IOContext.")
+
+    screen = CairoScreen(scene, io; device_scaling_factor = px_per_unit)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, io)
     return screen
