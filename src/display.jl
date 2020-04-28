@@ -86,7 +86,7 @@ for M in (MIME"text/plain", MIME)
             if m isa MIME"image/svg+xml"
                 res = round.(Int, res .* 0.75)
             end
-            resize!(scene, res)
+            resize!(scene, res...)
         end
 
         ioc = IOContext(io, :full_fidelity => true, :pt_per_unit => get(io, :pt_per_unit, 1.0), :px_per_unit => get(io, :px_per_unit, 1.0))
