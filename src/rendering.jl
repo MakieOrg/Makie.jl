@@ -86,7 +86,7 @@ function render_frame(screen::Screen)
     # SSAO + gen luma
     # luma + occlusion framebuffer
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)
+    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]) # color_luma, occlusion
     glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
@@ -100,15 +100,19 @@ function render_frame(screen::Screen)
     GLAbstraction.render(fb.postprocess[1])
 
     # FXAA + blur maybe?
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
+    glViewport(0, 0, w, h)
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)
+    GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
 
     # copy + occluded colors
 
     #####################
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
-    glViewport(0, 0, w, h)
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)
-    GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
+    # glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
+    # glViewport(0, 0, w, h)
+    # glDrawBuffer(GL_COLOR_ATTACHMENT0)
+    # GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
 
     #prepare for non anti aliased pass
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
