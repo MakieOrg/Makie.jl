@@ -816,7 +816,7 @@ end
 
 function AbstractPlotting.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return vcat(fill.(cg.colors, n ÷ length(cg.colors)))
+    return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
 end
 
 """
