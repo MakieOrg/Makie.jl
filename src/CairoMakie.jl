@@ -66,7 +66,7 @@ end
 # Default to ARGB Surface as backing device
 # TODO: integrate Gtk into this, so we can have an interactive display
 function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
-    w, h = size(scene)
+    w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
     surf = Cairo.CairoARGBSurface(w, h)
 
     # this sets a scaling factor on the lowest level that is "hidden" so its even
@@ -824,7 +824,6 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"applicati
 end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/png", scene::Scene)
-    screen = CairoScreen(scene; device_scaling_factor = px_per_unit)
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
