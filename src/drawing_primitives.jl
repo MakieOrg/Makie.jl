@@ -245,6 +245,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight)
         args = getindex.(Ref(gl_attributes), liftkeys)
         gl_text = lift(x[1], args...) do str, pos, tsize, font, align, rotation, model, j, l
+            # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation)
             to_gl_text(str, args..., model, j, l)
         end
@@ -254,14 +255,22 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :stroke_color, :stroke_width, :rotation)
-        signals = getindex.(Ref(gl_attributes), keys)
+        keys = (:color, :strokecolor, :strokewidth, :rotation)
+
+        signals = map(keys) do key
+            return lift(x[1], x[key]) do str, attr
+                AbstractPlotting.get_attribute(x, key)
+            end
+        end
+
         visualize(
             (DISTANCEFIELD, positions),
+
             color = signals[1],
             stroke_color = signals[2],
             stroke_width = signals[3],
             rotation = signals[4],
+
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,

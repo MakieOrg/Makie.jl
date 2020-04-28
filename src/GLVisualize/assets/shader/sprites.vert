@@ -108,8 +108,8 @@ out vec4  g_color;
 out vec4  g_stroke_color;
 out vec4  g_glow_color;
 
-to_vec4(vec3 x){return vec4(x, 1.0);}
-to_vec4(vec4 x){return x;}
+vec4 to_vec4(vec3 x){return vec4(x, 1.0);}
+vec4 to_vec4(vec4 x){return x;}
 
 void main(){
     int index         = gl_VertexID;
