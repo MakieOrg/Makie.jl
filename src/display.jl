@@ -70,7 +70,7 @@ end
 function backend_show end
 
 for M in (MIME"text/plain", MIME)
-    @eval AbstractPlotting function Base.show(io::IO, m::$M, scene::Scene)
+    @eval function Base.show(io::IO, m::$M, scene::Scene)
         # set update to true, without triggering an event
         # this just indicates, that now we may update on e.g. resize
         update!(scene)
