@@ -105,14 +105,29 @@ function Base.getindex(sampler::Sampler{2, <: AbstractVector{Vec2f0}}, i)::RGBAf
     return RGBAf0(color(c), alpha(c) * sampler.alpha)
 end
 
-function sampler(cmap::Union{Symbol, String, AbstractVector}, values;
+function sampler(cmap::Union{Symbol, String}, n::Int = 20;
                  scaling=Scaling(), alpha=1.0, interpolation=Linear)
-    return Sampler(to_colormap(cmap), values, alpha, interpolation, scaling)
+    return sampler(cmap, LinRange(0, 1, n); scaling = scaling, alpha = alpha, interpolation = interpolation)
 end
 
-function sampler(cmap::Union{Symbol, String, AbstractVector}, values, crange;
+function sampler(cmap::Union{Symbol, String}, values::AbstractVector{<: AbstractFloat};
+                 scaling=Scaling(), alpha=1.0, interpolation=Linear)
+
+    cs = PlotUtils.get_colorscheme(cmap)
+
+    colors = getindex.(Ref(cs), values)
+
+    return Sampler(colors, values, alpha, interpolation, scaling)
+end
+
+function sampler(cmap::Vector{<: Colorant}, values::AbstractVector{<: AbstractFloat};
+                 scaling=Scaling(), alpha=1.0, interpolation=Linear)
+    return Sampler(RGBAf0.(cmap), values, alpha, interpolation, scaling)
+end
+
+function sampler(cmap::AbstractVector, values, crange;
                  alpha=1.0, interpolation=Linear)
-    return Sampler(to_colormap(cmap), values, alpha, interpolation, Scaling(identity, crange))
+    return Sampler(to_color.(cmap), values, alpha, interpolation, Scaling(identity, crange))
 end
 # uv texture sampler
 function sampler(cmap::Matrix{<: Colorant}, uv::AbstractVector{Vec2f0};
