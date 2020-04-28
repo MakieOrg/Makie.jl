@@ -74,7 +74,7 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     # that means it can be used to increase or decrease the image resolution
     ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
         surf.ptr, device_scaling_factor, device_scaling_factor)
-        
+
     ctx = CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
 
@@ -106,7 +106,7 @@ function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_
 
     ctx = CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
-    
+
     return CairoScreen(scene, surf, ctx, nothing)
 end
 
@@ -840,8 +840,9 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/jp
     # TODO: depend on OpenJPEG or JPEGTurbo to do in-memory JPEG conversion
     # Not sure how much it matters, though, since no one uses JPEG
     screen = nothing
+    ioc = IOContext(fio, :full_fidelity => true, :px_per_unit => get(io, :px_per_unit, 1.0))
     open(display_path("png"), "w") do fio
-        screen = AbstractPlotting.backend_show(x, fio, MIME("image/png"), scene)
+        screen = AbstractPlotting.backend_show(x, ioc, MIME("image/png"), scene)
     end
     FileIO.save(FileIO.Stream(format"JPEG", io),  FileIO.load(display_path("png")))
     return screen
