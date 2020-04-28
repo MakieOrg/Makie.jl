@@ -76,7 +76,8 @@ for M in (MIME"text/plain", MIME)
         update!(scene)
         res = get(io, :juno_plotsize, nothing)
         res !== nothing && resize!(scene, res...)
-        screen = backend_show(current_backend[], io, m, scene)
+        ioc = IOContext(io, :full_fidelity => true, :pt_per_unit => get(io, :pt_per_unit, 0.75), :px_per_unit => get(io, :px_per_unit, 1.0))
+        screen = backend_show(current_backend[], ioc, m, scene)
 
         # E.g. text/plain doesn't have a display
         screen isa AbstractScreen && push_screen!(scene, screen)
