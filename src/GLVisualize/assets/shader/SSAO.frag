@@ -13,13 +13,14 @@ out vec4 fragment_color;
 
 // bias/epsilon for depth check
 const float bias = 0.025;
-const float radius = 1.0; // max range for depth check :shrug:
+// max range for depth check
+const float radius = 0.5;
 
 void main(void)
 {
     vec3 frag_pos = texture(position_buffer, frag_uv).xyz;
     vec3 normal  = texture(normal_buffer, frag_uv).xyz;
-    vec3 rand_vec = texture(noise, frag_uv * noise_scale).xyz;
+    vec3 rand_vec = vec3(texture(noise, frag_uv * noise_scale).xy, 0.0);
 
     vec3 tangent = normalize(rand_vec - normal * dot(rand_vec, normal));
     vec3 bitangent = cross(normal, tangent);
@@ -38,7 +39,7 @@ void main(void)
 
         float sample_depth = texture(position_buffer, offset.xy).z;
         float range_check = smoothstep(0.0, 1.0, radius / abs(frag_pos.z - sample_depth));
-        occlusion += (sample_depth >= sample.z + bias ? 1.0 : 0.0);
+        occlusion += (sample_depth >= sample.z + bias ? 1.0 : 0.0) * range_check;
     }
     occlusion = 1.0 - (occlusion / 64); // TODO mustache
     fragment_color = vec4(vec3(occlusion), 1.0);

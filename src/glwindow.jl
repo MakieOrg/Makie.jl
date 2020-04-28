@@ -94,15 +94,13 @@ function postprocess(
 
     # Setup
     N_samples = 64
-    # TODO get this to the gpu
-    kernel = map(1:N_samples) do _
-        Vec3f0(rand() * normalize([
-            2.0rand() .- 1.0,
-            2.0rand() .- 1.0,
-            rand()
-        ].^2))
+    lerp_min = 0.1f0
+    lerp_max = 1.0f0
+    kernel = map(1:N_samples) do i
+        n = normalize([2.0rand() .- 1.0, 2.0rand() .- 1.0, rand()])
+        scale = lerp_min + (lerp_max - lerp_min) * (i / N_samples)^2
+        v = Vec3f0(scale * rand() * n)
     end
-    @info kernel
 
     shader4 = LazyShader(
         loadshader("fullscreen.vert"),
@@ -150,7 +148,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     )
 
     ssao_noise = Texture(
-        [Vec2f0(2.0rand(2) .- 1.0) for _ in 1:4, __ in 1:4],
+        [normalize(Vec2f0(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
         minfilter = :nearest, x_repeat = :repeat
     )
 

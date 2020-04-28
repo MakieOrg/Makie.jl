@@ -48,10 +48,10 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
-void write2framebuffer(vec4 color, uvec2 id, vec3 normal);
+void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
     vec4 color = get_color(image, o_uv, color_range);
     {{light_calc}}
-    write2framebuffer(color, o_id, normalize(o_normal)); //, normalize(o_normal)
+    write2framebuffer(color, o_id); //, normalize(o_normal)
 }
