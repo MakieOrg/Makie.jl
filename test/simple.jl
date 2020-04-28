@@ -3,10 +3,9 @@ using GLMakie
 using GeometryBasics
 using Observables
 using FileIO
-using MakieGallery
 using GeometryBasics: Pyramid
 
-scatter(1:4, color=rand(RGBf0, 4))
+scatter(1:4, color=rand(RGBf0, 4)) |> display
 scatter(1:4, color=:red)
 
 scatter(1:4, marker='☼')
@@ -69,11 +68,14 @@ contour(rand(4, 4, 4)) |> display
 # Meshes
 using MeshIO, FileIO
 cat = load(GLMakie.assetpath("cat.obj"))
-tex = load(GLMakie.assetpath("diffusemap.tga"))
+tex = load(GLMakie.assetpath("diffusemap.tga"));
 scren = mesh(cat, color=tex)
 
 m = mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
      shading = false) |> display
+
+meshes = GeometryBasics.normal_mesh.([Sphere(Point3f0(0.5), 1), Rect(Vec3f0(1, 0, 0), Vec3f0(1))])
+mesh(meshes, color=[1, 2])
 
 # Axis
 scene = lines(IRect(Vec2f0(0), Vec2f0(1)))
@@ -85,3 +87,23 @@ scene
 
 # Text
 x = text("heyllo") |> display
+
+
+# Animations
+function n_times(f, n=10, interval=0.05)
+    obs = Observable(f(1))
+    @async for i in 2:n
+        try
+            obs[] = f(i)
+            sleep(interval)
+        catch e
+            @warn "Error!" exception=CapturedException(e, Base.catch_backtrace())
+        end
+    end
+    return obs
+end
+
+annotations(n_times(i-> map(j-> ("$j", Point2f0(j*30, 0)), 1:i)), textsize=20, limits=FRect2D(30, 0, 320, 50))
+scatter(n_times(i-> Point2f0.((1:i).*30, 0)), limits=FRect2D(30, 0, 320, 50), markersize=20px)
+linesegments(n_times(i-> Point2f0.((2:2:2i).*30, 0)), limits=FRect2D(30, 0, 620, 50), markersize=20px)
+lines(n_times(i-> Point2f0.((2:2:2i).*30, 0)), limits=FRect2D(30, 0, 620, 50), markersize=20px)
