@@ -26,6 +26,7 @@ function get_texture!(atlas)
                 # filtering should happen *after* the SDF thresholding, but
                 # with the builtin sampler it happens before.
                 anisotropic = 16f0,
+                mipmap = true
         )
         # update the texture, whenever a new font is added to the atlas
         function callback(distance_field, rectangle)
@@ -40,7 +41,7 @@ function get_texture!(atlas)
         AbstractPlotting.font_render_callback!(callback)
         return (tex, callback)
     end
-    tex
+    return tex
 end
 
 include("GLVisualize/GLVisualize.jl")
