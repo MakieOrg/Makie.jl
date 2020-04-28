@@ -96,9 +96,14 @@ function project_position(scene, point, model)
     res = scene.camera.resolution[]
     p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, point, 0f0), 1f0)
     clip = scene.camera.projectionview[] * model * p4d
+    # between -1 and 1
     p = (clip ./ clip[4])[Vec(1, 2)]
-    p = Vec2f0(p[1], -p[2])
-    ((((p .+ 1f0) / 2f0) .* (res .- 1f0)) .+ 1f0)
+    # flip y to match cairo
+    p_yflip = Vec2f0(p[1], -p[2])
+    # normalize to between 0 and 1
+    p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+    # multiply with scene resolution for final position
+    result = p_0_to_1 .* res
 end
 
 project_scale(scene::Scene, s::Number, model = Mat4f0(I)) = project_scale(scene, Vec2f0(s), model)
@@ -285,6 +290,7 @@ function draw_single(primitive::Lines, ctx, positions)
     Cairo.move_to(ctx, positions[1]...)
     for i in 2:length(positions)
         if isnan(positions[i])
+            i == length(positions) && break
             Cairo.move_to(ctx, positions[i+1]...)
         else
             Cairo.line_to(ctx, positions[i]...)
@@ -429,21 +435,33 @@ function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth)
     end
 end
 
-function draw_marker(ctx, marker::Char, pos, scale, strokecolor, strokewidth)
-    pos += Point2f0(scale[1] / 2, -scale[2] / 2)
+function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth)
 
-    #TODO this shouldn't be hardcoded, but isn't available in the plot right now
-    font = AbstractPlotting.assetpath("DejaVu Sans")
-    Cairo.select_font_face(
-        ctx, font,
-        Cairo.FONT_SLANT_NORMAL,
-        Cairo.FONT_WEIGHT_NORMAL
-    )
-    Cairo.move_to(ctx, pos[1], pos[2])
+    cairoface = set_ft_font(ctx, font)
+
+    charextent = AbstractPlotting.FreeTypeAbstraction.internal_get_extent(font, marker)
+    inkbb = AbstractPlotting.FreeTypeAbstraction.inkboundingbox(charextent)
+
+    # scale normalized bbox by font size
+    inkbb_scaled = FRect2D(origin(inkbb) .* scale, widths(inkbb) .* scale)
+
+    # flip y for the centering shift of the character because in Cairo y goes down
+    centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
+    # this is the origin where we actually have to place the glyph so it's centered
+    charorigin = pos .+ centering_offset
+
+    Cairo.move_to(ctx, charorigin...)
     mat = scale_matrix(scale...)
     set_font_matrix(ctx, mat)
-    Cairo.show_text(ctx, string(marker))
-    Cairo.fill(ctx)
+    Cairo.text_path(ctx, string(marker))
+    Cairo.fill_preserve(ctx)
+    Cairo.set_line_width(ctx, strokewidth)
+    Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+    Cairo.stroke(ctx)
+
+    # if we use set_ft_font we should destroy the pointer it returns
+    cairo_font_face_destroy(cairoface)
+
 end
 
 
@@ -470,14 +488,27 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f0(I)
+
+    font = AbstractPlotting.defaultfont()
+
     broadcast_foreach(primitive[1][], fields...) do point, c, markersize, strokecolor, strokewidth, marker, mo
-        scale = project_scale(scene, markersize, size_model)
+
+        # if we give size in pixels, the size is always equal to that value
+        scale = if markersize isa AbstractPlotting.Pixel
+            [markersize.value, markersize.value]
+        else
+            # otherwise calculate a scaled size
+            project_scale(scene, markersize, size_model)
+        end
         pos = project_position(scene, point, model)
-        mo = project_scale(scene, mo, size_model)
-        pos += Point2f0(mo[1], -mo[2])
+
         Cairo.set_source_rgba(ctx, extract_color(cmap, crange, c)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
-        draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
+        if m isa Char
+            draw_marker(ctx, m, font, pos, scale, strokecolor, strokewidth)
+        else
+            draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
+        end
     end
     nothing
 end
@@ -502,11 +533,21 @@ end
 function set_ft_font(cr, font)
     font_face = ccall(
         (:cairo_ft_font_face_create_for_ft_face, LIB_CAIRO),
-        Ptr{Cvoid}, (Ptr{Cvoid}, Cint),
+        Ptr{Cvoid}, (AbstractPlotting.FreeTypeAbstraction.FT_Face, Cint),
         font, 0
     )
     ccall((:cairo_set_font_face, LIB_CAIRO), Cvoid, (Ptr{Cvoid}, Ptr{Cvoid}), cr.ptr, font_face)
+    font_face
 end
+
+function cairo_font_face_destroy(font_face)
+    ccall(
+        (:cairo_font_face_destroy, LIB_CAIRO),
+        Cvoid, (Ptr{Cvoid},),
+        font_face
+    )
+end
+
 fontname(x::String) = x
 fontname(x::Symbol) = string(x)
 function fontname(x::NativeFont)
@@ -525,40 +566,43 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, align, rotation, model))
+    @get_attribute(primitive, (textsize, color, font, align, rotation, model, justification, lineheight))
     txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
     N = length(txt)
     atlas = AbstractPlotting.get_texture_atlas()
     if position isa StaticArrays.StaticArray # one position to place text
-        position, textsize = AbstractPlotting.layout_text(
+        position = AbstractPlotting.layout_text(
             txt, position, textsize,
-            font, align, rotation, model
+            font, align, rotation, model, justification, lineheight
         )
     end
     stridx = 1
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
         char = txt[stridx]
+
         stridx = nextind(txt, stridx)
-        rels = to_rel_scale(atlas, char, f, ts)
-        pos = project_position(scene, p, Mat4f0(I))
+        pos = project_position(scene, p, model)
+        scale = project_scale(scene, ts, model)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-        Cairo.select_font_face(
-            ctx, fontname(f),
-            Cairo.FONT_SLANT_NORMAL,
-            Cairo.FONT_WEIGHT_NORMAL
-        )
-        #set_ft_font(ctx, f)
-        ts = fontscale(atlas, scene, char, f, ts)
-        mat = scale_matrix(ts...)
+        cairoface = set_ft_font(ctx, f)
+
+        mat = scale_matrix(scale...)
         set_font_matrix(ctx, mat)
-        # set_font_size(ctx, 16)
+
         # TODO this only works in 2d
-        Cairo.rotate(ctx, -2acos(r[4]))
-        Cairo.show_text(ctx, string(char))
+        Cairo.rotate(ctx, -AbstractPlotting.quaternion_to_2d_angle(r))
+
+        if !(char in ('\r', '\n'))
+            Cairo.show_text(ctx, string(char))
+        end
+
+        cairo_font_face_destroy(cairoface)
+
         Cairo.restore(ctx)
+
     end
     nothing
 end
