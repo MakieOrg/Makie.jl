@@ -4,6 +4,7 @@ using GeometryBasics
 using Observables
 using FileIO
 using GeometryBasics: Pyramid
+using PlotUtils
 
 scatter(1:4, color=rand(RGBf0, 4)) |> display
 scatter(1:4, color=:red)
@@ -89,6 +90,11 @@ scene
 x = text("heyllo") |> display
 
 
+# Gradients
+data = ((x, y) -> x^2 + y^2).(1:100, (1:100)')
+heatmap(data; colormap=cgrad(:RdYlBu; categorical=true), interpolate=true)
+
+
 # Animations
 function n_times(f, n=10, interval=0.05)
     obs = Observable(f(1))
@@ -107,3 +113,35 @@ annotations(n_times(i-> map(j-> ("$j", Point2f0(j*30, 0)), 1:i)), textsize=20, l
 scatter(n_times(i-> Point2f0.((1:i).*30, 0)), limits=FRect2D(30, 0, 320, 50), markersize=20px)
 linesegments(n_times(i-> Point2f0.((2:2:2i).*30, 0)), limits=FRect2D(30, 0, 620, 50), markersize=20px)
 lines(n_times(i-> Point2f0.((2:2:2i).*30, 0)), limits=FRect2D(30, 0, 620, 50), markersize=20px)
+
+
+# Set up sliders to control lighting attributes
+s1, ambient = textslider(0f0:0.01f0:1f0, "ambient", start = 0.55f0)
+s2, diffuse = textslider(0f0:0.025f0:2f0, "diffuse", start = 0.4f0)
+s3, specular = textslider(0f0:0.025f0:2f0, "specular", start = 0.2f0)
+s4, shininess = textslider(2f0.^(2f0:8f0), "shininess", start = 32f0)
+
+# Set up (r, θ, ϕ) for lightposition
+s5, radius = textslider(2f0.^(0.5f0:0.25f0:20f0), "light pos r", start = 2f0)
+s6, theta = textslider(0:5:180, "light pos theta", start = 30f0)
+s7, phi = textslider(0:5:360, "light pos phi", start = 45f0)
+
+# transform signals into required types
+la = map(Vec3f0, ambient)
+ld = map(Vec3f0, diffuse)
+ls = map(Vec3f0, specular)
+lp = map(radius, theta, phi) do r, theta, phi
+    r * Vec3f0(
+        cosd(phi) * sind(theta),
+        sind(phi) * sind(theta),
+        cosd(theta)
+    )
+end
+
+scene = Scene()
+contour!(scene, 0..1, 0..1, 0..1, rand(10, 10, 10), levels = 2;
+ambient = la, diffuse = ld, specular = ls, shininess = shininess,
+lightposition = lp)
+scatter!(scene, map(v -> [v], lp), color=:yellow, markersize=0.2f0)
+
+vbox(hbox(s4, s3, s2, s1, s7, s6, s5), scene) |> display
