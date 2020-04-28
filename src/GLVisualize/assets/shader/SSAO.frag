@@ -8,16 +8,15 @@ in vec2 frag_uv;
 // SSAO
 uniform sampler2D position_buffer;
 uniform sampler2D normal_buffer;
-uniform vec3 kernel[64];
+uniform vec3 kernel[{{N_samples}}];
 uniform sampler2D noise;
 uniform vec2 noise_scale;
 uniform mat4 projection;
 
-// TODO make these uniforms
 // bias/epsilon for depth check
-const float bias = 0.025;
+uniform float bias;
 // max range for depth check
-const float radius = 0.5;
+uniform float radius;
 
 layout(location=1) out float o_occlusion;
 // out float FragColor;
@@ -49,7 +48,7 @@ void main(void)
     mat3 TBN = mat3(tangent, bitangent, normal);
 
     float occlusion = 0.0;
-    for (int i = 0; i < 64; ++i) {// TODO mustache? TODO ++i or i++?
+    for (int i = 0; i < {{N_samples}}; ++i) {
         vec3 sample = TBN * kernel[i];
         sample = frag_pos + sample * radius;
 
@@ -63,7 +62,7 @@ void main(void)
         float range_check = smoothstep(0.0, 1.0, radius / abs(frag_pos.z - sample_depth));
         occlusion += (sample_depth >= sample.z + bias ? 1.0 : 0.0) * range_check;
     }
-    occlusion = 1.0 - (occlusion / 64); // TODO mustache
+    occlusion = 1.0 - (occlusion / {{N_samples}});
     o_occlusion = occlusion;
 
     // luma

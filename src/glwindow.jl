@@ -77,19 +77,22 @@ function postprocess(
 
     shader1 = LazyShader(
         loadshader("fullscreen.vert"),
-        loadshader("SSAO.frag")
+        loadshader("SSAO.frag"),
+        view = Dict(
+            "N_samples" => "$N_samples"
+        )
     )
     data1 = Dict{Symbol, Any}(
         :position_buffer => position,
         :normal_buffer => normal,
         # NOTE only this is needed for luma (but named color_texture in postprocess)
         :color_buffer => color,
-        #:N_samples => N_samples, # TODO mustache
         :kernel => kernel,
-        # # random rotations to be applied to kernel
         :noise => ssao_noise,
         :noise_scale => map(s -> Vec2f0(s ./ 4.0), framebuffer_size),
-        :projection => AbstractPlotting.Node(Mat4f0(I))
+        :projection => AbstractPlotting.Node(Mat4f0(I)),
+        :bias => 0.025f0,
+        :radius => 0.5f0
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
