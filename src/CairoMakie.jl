@@ -81,7 +81,7 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     return CairoScreen(scene, surf, ctx, nothing)
 end
 
-function CairoScreen(scene::Scene, path::Union{String, IO}; mode = :svg, device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
+function CairoScreen(scene::Scene, path::Union{String, IO}, mode = :svg; device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
 
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
@@ -389,6 +389,11 @@ function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
 end
 
 function to_cairo_image(img::Matrix{UInt32}, attributes)
+    # In Cairo, the y-axis is expected to go from the top
+    # to the bottom of the image, whereas in Makie we
+    # expect it to go from the bottom to the top.
+    # Therefore, we flip the y-axis here, to conform
+    # to Cairo's notion of the image direction.
     CairoARGBSurface(
         [
             img[j, i]
@@ -797,7 +802,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg
 
     pt_per_unit = get(io, :pt_per_unit, 1.0)
 
-    screen = CairoScreen(scene, io; mode = :svg, device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :svg, device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -805,10 +810,9 @@ end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, nothing)
-    isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
+    pt_per_unit = get(io, :pt_per_unit, 1.0)
 
-    screen = CairoScreen(scene, io, mode=:pdf, device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :pdf, device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -816,7 +820,11 @@ end
 
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
-    screen = CairoScreen(scene, io; mode=:eps)
+
+    pt_per_unit = get(io, :pt_per_unit, 1.0)
+
+    screen = CairoScreen(scene, io, :eps; device_scaling_factor = pt_per_unit)
+
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
