@@ -70,13 +70,16 @@ end
 function backend_show end
 
 for M in (MIME"text/plain", MIME)
-    @eval function Base.show(io::IO, m::$M, scene::Scene)
+    @eval AbstractPlotting function Base.show(io::IO, m::$M, scene::Scene)
         # set update to true, without triggering an event
         # this just indicates, that now we may update on e.g. resize
+        println("Hello")
         update!(scene)
         res = get(io, :juno_plotsize, nothing)
+        @show res
         res !== nothing && resize!(scene, res...)
-        screen = backend_show(current_backend[], io, m, scene)
+        ioc = IOContext(io, :full_fidelity => true, :pt_per_unit => 0.75, :px_per_unit => 1.0)
+        screen = backend_show(current_backend[], ioc, m, scene)
 
         # E.g. text/plain doesn't have a display
         screen isa AbstractScreen && push_screen!(scene, screen)
