@@ -16,201 +16,12 @@ const AllPrimitives = Union{AbstractGeometry, Shape, Char, AbstractMesh}
 
 using AbstractPlotting: RectanglePacker
 
-"""
-We plot simple Geometric primitives as particles with length one.
-At some point, this should all be appended to the same particle system to increase
-performance.
-"""
-function _default(
-        geometry::TOrSignal{G}, s::Style, data::Dict
-    ) where G <: GeometryPrimitive{2}
-    data[:offset] = Vec2f0(0)
-    _default((geometry, const_lift(x-> Point2f0[minimum(x)], geometry)), s, data)
-end
-
-"""
-Vectors of floats are treated as barplots, so they get a HyperRectangle as
-default primitive.
-"""
-function _default(main::VectorTypes{T}, s::Style, data::Dict) where T <: AbstractFloat
-    _default((centered(HyperRectangle{2, Float32}), main), s, data)
-end
-"""
-Matrices of floats are represented as 3D barplots with cubes as primitive
-"""
-function _default(main::MatTypes{T}, s::Style, data::Dict) where T <: AbstractFloat
-    _default((FRect3D(Vec3f0(-0.5,-0.5,0), Vec3f0(1.0)), main), s, data)
-end
-"""
-Vectors of n-dimensional points get ndimensional rectangles as default
-primitives. (Particles)
-"""
-function _default(main::VectorTypes{P}, s::Style, data::Dict) where P <: Point
-    N = length(P)
-    @gen_defaults! data begin
-        scale = N == 2 ? Vec2f0(30) : Vec3f0(0.03) # for 2D points we assume they're in pixels
-    end
-    _default((centered(HyperRectangle{N, Float32}), main), s, data)
-end
-
-"""
-3D matrices of vectors are 3D vector field with a pyramid (arrow) like default
-primitive.
-"""
-function _default(main::ArrayTypes{T, 3}, s::Style, data::Dict) where T<:Vec
-    _default((Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0), main), s, data)
-end
-"""
-2D matrices of vectors are 2D vector field with a an unicode arrow as the default
-primitive.
-"""
-function _default(main::ArrayTypes{T, 2}, s::Style, data::Dict) where T<:Vec
-    _default(('⬆', main), s, data)
-end
-
-"""
-Vectors with `Vec` as element type are treated as vectors of rotations.
-The position is assumed to be implicitely on the grid the vector defines (1D,2D,3D grid)
-"""
-function _default(
-        main::Tuple{P, ArrayTypes{T, N}}, s::Style, data::Dict
-    ) where {P <: AllPrimitives, T <: Vec, N}
-    primitive, rotation_s = main
-    rotation_v = to_value(rotation_s)
-    @gen_defaults! data begin
-        color_norm = const_lift(extrema2f0, rotation_s)
-        ranges = ntuple(i->LinRange(0f0, 1f0, size(rotation_v, i)), N)
-    end
-    grid = Grid(rotation_v, ranges)
-
-    if N == 1
-        scalevec = Vec2f0(step(grid.dims[1]), 1)
-    elseif N == 2
-        scalevec = Vec2f0(step(grid.dims[1]), step(grid.dims[2]))
-    else
-        scalevec = Vec3f0(ntuple(i->step(grid.dims[i]), 3)).*Vec3f0(0.4,0.4, 1/to_value(color_norm)[2]*4)
-    end
-    if P <: Char # we need to preserve proportion of the glyph
-        scalevec = Vec2f0(glyph_scale!(primitive, scalevec[1]))
-        @gen_defaults! data begin # for chars we need to make sure they're centered
-            offset = -scalevec/2f0
-        end
-    end
-    @gen_defaults! data begin
-        rotation   = const_lift(vec, rotation_s)
-        color_map  = default(Vector{RGBA})
-        scale      = scalevec
-        color      = nothing
-    end
-    _default((primitive, grid), s, data)
-end
-
-"""
-arrays of floats with any geometry primitive, will be spaced out on a grid defined
-by `ranges` and will use the floating points as the
-height for the primitives (`scale_z`)
-"""
-function _default(
-        main::Tuple{P, ArrayTypes{T,N}}, s::Style, data::Dict
-    ) where {P<:AbstractGeometry, T<:AbstractFloat, N}
-    primitive, heightfield_s = main
-    heightfield = to_value(heightfield_s)
-    @gen_defaults! data begin
-        ranges = ntuple(i->LinRange(0f0, 1f0, size(heightfield, i)), N)
-    end
-    grid = Grid(heightfield, ranges)
-    @gen_defaults! data begin
-        scale = nothing
-        scale_x::Float32 = step(grid.dims[1])
-        scale_y::Float32 = N == 1 ? 1f0 : step(grid.dims[2])
-        scale_z = const_lift(vec, heightfield_s)
-        color = nothing
-        color_map  = color == nothing ? default(Vector{RGBA}) : nothing
-        color_norm = color == nothing ? const_lift(extrema2f0, heightfield_s) : nothing
-    end
-    _default((primitive, grid), s, data)
-end
-
-"""
-arrays of floats with the sprite primitive type (2D geometry + picture like),
-will be spaced out on a grid defined
-by `ranges` and will use the floating points as the
-z position for the primitives.
-"""
-function _default(
-        main::Tuple{P, ArrayTypes{T,N}}, s::Style, data::Dict
-    ) where {P <: Sprites, T <: AbstractFloat, N}
-    primitive, heightfield_s = main
-    heightfield = to_value(heightfield_s)
-    @gen_defaults! data begin
-        ranges = ntuple(i->LinRange(0f0, 1f0, size(heightfield, i)), N)
-    end
-    grid = Grid(heightfield, ranges)
-    @gen_defaults! data begin
-        position_z = const_lift(vec, heightfield_s)
-        scale      = Vec2f0(step(grid.dims[1]), N>=2 ? step(grid.dims[2]) : 1f0)
-        color_map  = default(Vector{RGBA})
-        color      = nothing
-        color_norm = const_lift(extrema2f0, heightfield_s)
-    end
-    _default((primitive, grid), s, data)
-end
-
-"""
-Sprites primitives with a vector of floats are treated as something barplot like
-"""
-function _default(
-        main::Tuple{P, VectorTypes{T}}, s::Style, data::Dict
-    ) where {P <: AllPrimitives, T <: AbstractFloat}
-    primitive, heightfield_s = main
-    heightfield = to_value(heightfield_s)
-    @gen_defaults! data begin
-        ranges = range(0f0, stop = 1f0, length = length(heightfield))
-    end
-    grid = Grid(heightfield, ranges)
-    delete!(data, :ranges)
-    @gen_defaults! data begin
-        scale = nothing
-        scale_x::Float32 = step(grid.dims[1])
-        scale_y = heightfield_s
-        scale_z::Float32 = 1f0
-    end
-    _default((primitive, grid), s, data)
-end
-
-
-
-
 # There is currently no way to get the two following two signatures
 # under one function, which is why we delegate to meshparticle
 function _default(
         p::Tuple{TOrSignal{Pr}, VectorTypes{P}}, s::Style, data::Dict
     ) where {Pr <: Primitives3D, P <: Point}
-    meshparticle(p, s, data)
-end
-
-function _default(
-        p::Tuple{TOrSignal{Pr}, G}, s::Style, data::Dict
-    ) where {Pr <: Primitives3D, G <: Tuple}
-    @gen_defaults! data begin
-        primitive = p[1]
-        position = nothing => TextureBuffer
-        position_x = p[2][1] => TextureBuffer
-        position_y = p[2][2] => TextureBuffer
-        position_z = length(p[2]) > 2 ? p[2][3] : 0f0 => TextureBuffer
-        instances = const_lift(length, position_x)
-    end
-    meshparticle(p, s, data)
-end
-
-function _default(
-        p::Tuple{TOrSignal{Pr}, G}, s::Style, data::Dict
-    ) where {Pr <: Primitives3D, G <: Grid}
-    meshparticle(p, s, data)
-end
-
-function Base.convert(::Type{T}, mesh::Node) where T<:GeometryBasics.Mesh
-    lift(T, mesh)
+    return meshparticle(p, s, data)
 end
 
 function to_meshcolor(color::TOrSignal{Vector{T}}) where T <: Colorant
@@ -232,15 +43,8 @@ function to_mesh(mesh::TOrSignal{<: GeometryBasics.Mesh})
     return NativeMesh(mesh)
 end
 
-function orthogonal(v::T) where T <: StaticVector{3}
-    x, y, z = abs.(v)
-    other = x < y ? (x < z ? unit(T, 1) : unit(T, 3)) : (y < z ? unit(T, 2) : unit(T, 3))
-    return cross(v, other)
-end
-
 using AbstractPlotting
 using AbstractPlotting: get_texture_atlas
-
 
 vec2quaternion(rotation::StaticVector{4}) = rotation
 
@@ -256,6 +60,8 @@ vec2quaternion(rotation::VectorTypes) = const_lift(x-> vec2quaternion.(x), rotat
 vec2quaternion(rotation::Node) = lift(vec2quaternion, rotation)
 vec2quaternion(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
 GLAbstraction.gl_convert(rotation::AbstractPlotting.Quaternion)= Vec4f0(rotation.data)
+
+
 """
 This is the main function to assemble particles with a GLNormalMesh as a primitive
 """
@@ -435,8 +241,6 @@ end
 _default(p::Tuple{TOrSignal{Pr}, VectorTypes{P}}, s::Style, data::Dict) where {Pr <: Sprites, P<:Point} =
     sprites(p,s,data)
 
-_default(p::Tuple{TOrSignal{Pr}, G}, s::Style, data::Dict) where {Pr <: Sprites, G<:Grid} =
-    sprites(p,s,data)
 
 function _default(
             p::Tuple{TOrSignal{Pr}, G}, s::Style, data::Dict
@@ -451,13 +255,6 @@ function _default(
     sprites(p, s, data)
 end
 
-function correct_scale(char, scale)
-    Vec2f0(glyph_scale!(char, scale))
-end
-
-function correct_scale(char, scale::AbstractVector)
-    Vec2f0(glyph_scale!.(char, scale))
-end
 """
 Main assemble functions for sprite particles.
 Sprites are anything like distance fields, images and simple geometries
@@ -524,6 +321,7 @@ function sprites(p, s, data)
     end
     return data
 end
+
 
 """
 Transforms text into a particle system of sprites, by inferring the

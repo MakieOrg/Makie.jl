@@ -104,11 +104,6 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
     data
 end
 
-to_points(x::Vector{Line{T}}) where {T} = reinterpret(T, x, (length(x)*2,))
-
-_default(positions::VectorTypes{Line{T}}, s::Style, data::Dict) where {T <: Point} =
-    _default(const_lift(to_points, positions), style"linesegment"(), data)
-
 function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) where T <: Point
     @gen_defaults! data begin
         vertex              = positions           => GLBuffer
@@ -133,38 +128,4 @@ function _default(positions::VectorTypes{T}, s::style"linesegment", data::Dict) 
         data[:pattern_length] = Float32(last(pattern))
     end
     data
-end
-
-function _default(positions::Vector{T}, range::AbstractRange, s::style"lines", data::Dict) where T <: AbstractFloat
-    length(positions) != length(range) && throw(
-        DimensionMismatsch("length of $(typeof(positions)) $(length(positions)) and $(typeof(range)) $(length(range)) must match")
-    )
-    _default(points2f0(positions, range), s, data)
-end
-
-function line_indices(array)
-    len = length(array)
-    result = Array(GLuint, len*2)
-    idx = 1
-    for i=0:(len-3), j=0:1
-        result[idx] = i+j
-        idx += 1
-    end
-    result
-    #GLuint[i+j for i=0:(len-3) for j=0:1] # on 0.5
-end
-"""
-Fast, non anti aliased lines
-"""
-function _default(position::VectorTypes{T}, s::style"speedlines", data::Dict) where T <: Point
-    @gen_defaults! data begin
-        vertex       = position => GLBuffer
-        color_map    = nothing  => Vec2f0
-        indices      = const_lift(line_indices, position) => to_index_buffer
-        color        = (color_map == nothing ? default(RGBA{Float32}, s) : nothing) => GLBuffer
-        color_norm   = nothing  => Vec2f0
-        intensity    = nothing  => GLBuffer
-        shader       = GLVisualizeShader("fragment_output.frag", "dots.vert", "dots.frag")
-        gl_primitive = GL_LINES
-    end
 end
