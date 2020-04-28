@@ -795,8 +795,7 @@ AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Sce
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, nothing)
-    isnothing(pt_per_unit) && error("Keyword argument :pt_per_unit missing from IOContext.")
+    pt_per_unit = get(io, :pt_per_unit, 1.0)
 
     screen = CairoScreen(scene, io; mode = :svg, device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
@@ -827,8 +826,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/pn
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
-    px_per_unit = get(io, :px_per_unit, nothing)
-    isnothing(px_per_unit) && error("Keyword argument :px_per_unit missing from IOContext.")
+    px_per_unit = get(io, :px_per_unit, 1.0)
 
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit) # create an ARGB surface, to speed up drawing ops
     cairo_draw(screen, scene)
