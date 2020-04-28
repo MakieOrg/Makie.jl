@@ -32,13 +32,17 @@ const PostProcessROBJ = RenderObject{PostprocessPrerender}
 mutable struct GLFramebuffer
     resolution::Node{NTuple{2, Int}}
     id::NTuple{2, GLuint}
+
     color::Texture{RGBA{N0f8}, 2}
     objectid::Texture{Vec{2, GLushort}, 2}
     depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
-    color_luma::Texture{RGBA{N0f8}, 2}
     position::Texture{Vec4f0, 2}
     normal::Texture{Vec3f0, 2}
     ssao_noise::Texture{Vec2f0, 2}
+
+    color_luma::Texture{RGBA{N0f8}, 2}
+    occlusion::Texture{Float32, 2}
+
     postprocess::NTuple{3, PostProcessROBJ}
 end
 
@@ -55,15 +59,34 @@ to the screen and while at it, it can do some postprocessing (not doing it right
 E.g fxaa anti aliasing, color correction etc.
 """
 function postprocess(
-        color, color_luma, position, normal, ssao_noise,
+        color, position, normal, ssao_noise, color_luma, occlusion,
         framebuffer_size
     )
+    # SSAO & FXAA preparation (compute occlusion & luma)
+    # Setup SSAO
+    N_samples = 64
+    lerp_min = 0.1f0
+    lerp_max = 1.0f0
+    kernel = map(1:N_samples) do i
+        n = normalize([2.0rand() .- 1.0, 2.0rand() .- 1.0, rand()])
+        scale = lerp_min + (lerp_max - lerp_min) * (i / N_samples)^2
+        v = Vec3f0(scale * rand() * n)
+    end
+
     shader1 = LazyShader(
         loadshader("fullscreen.vert"),
-        loadshader("postprocess.frag")
+        loadshader("SSAO.frag")
     )
     data1 = Dict{Symbol, Any}(
-        :color_texture => color
+        :position_buffer => position,
+        :normal_buffer => normal,
+        :color_buffer => color,
+        #:N_samples => N_samples, # TODO mustache
+        :kernel => kernel,
+        # # random rotations to be applied to kernel
+        :noise => ssao_noise,
+        :noise_scale => map(s -> Vec2f0(s ./ 4.0), framebuffer_size),
+        :projection => AbstractPlotting.Node(Mat4f0(I))
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
@@ -92,36 +115,7 @@ function postprocess(
     pass3.postrenderfunction = () -> draw_fullscreen(pass3.vertexarray.id)
 
 
-    # Setup
-    N_samples = 64
-    lerp_min = 0.1f0
-    lerp_max = 1.0f0
-    kernel = map(1:N_samples) do i
-        n = normalize([2.0rand() .- 1.0, 2.0rand() .- 1.0, rand()])
-        scale = lerp_min + (lerp_max - lerp_min) * (i / N_samples)^2
-        v = Vec3f0(scale * rand() * n)
-    end
-
-    shader4 = LazyShader(
-        loadshader("fullscreen.vert"),
-        loadshader("SSAO.frag")
-    )
-    data4 = Dict{Symbol, Any}(
-        :position_buffer => position,
-        :normal_buffer => normal,
-        :color_buffer => color,
-        #:N_samples => N_samples, # TODO mustache
-        :kernel => kernel,
-        # # random rotations to be applied to kernel
-        :noise => ssao_noise,
-        :noise_scale => map(s -> Vec2f0(s ./ 4.0), framebuffer_size),
-        :projection => AbstractPlotting.Node(Mat4f0(I))
-    )
-    pass4 = RenderObject(data4, shader4, PostprocessPrerender(), nothing)
-    pass4.postrenderfunction = () -> draw_fullscreen(pass4.vertexarray.id)
-
-
-    return (pass1, pass2, pass4)
+    return (pass1, pass2, pass3)
 end
 
 function attach_framebuffer(t::Texture{T, 2}, attachment) where T
@@ -129,16 +123,14 @@ function attach_framebuffer(t::Texture{T, 2}, attachment) where T
 end
 
 function GLFramebuffer(fb_size::NTuple{2, Int})
+    # First Framebuffer
     render_framebuffer = glGenFramebuffers()
-
     glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
 
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-
     objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     position_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     normal_buffer = Texture(Vec3f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-
 
     depth_buffer = Texture(
         Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
@@ -162,18 +154,25 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     status = glCheckFramebufferStatus(GL_FRAMEBUFFER)
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
-    color_luma = Texture(RGBA{N0f8}, fb_size, minfilter=:linear, x_repeat=:clamp_to_edge)
+
+    # Second Framebuffer
     color_luma_framebuffer = glGenFramebuffers()
     glBindFramebuffer(GL_FRAMEBUFFER, color_luma_framebuffer)
+
+    color_luma = Texture(RGBA{N0f8}, fb_size, minfilter=:linear, x_repeat=:clamp_to_edge)
+    occlusion = Texture(Float32, fb_size, minfilter=:nearest, x_repeat=:clamp_to_edge)
+
     attach_framebuffer(color_luma, GL_COLOR_ATTACHMENT0)
+    attach_framebuffer(color_luma, GL_COLOR_ATTACHMENT1)
+
     @assert status == GL_FRAMEBUFFER_COMPLETE
 
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
     fb_size_node = Node(fb_size)
 
     p = postprocess(
-        color_buffer, color_luma,
-        position_buffer, normal_buffer, ssao_noise,
+        color_buffer, position_buffer, normal_buffer, ssao_noise,
+        color_luma, occlusion,
         fb_size_node
     )
 
@@ -181,8 +180,8 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
         color_buffer, objectid_buffer, depth_buffer,
-        color_luma, position_buffer, normal_buffer,
-        ssao_noise,
+        position_buffer, normal_buffer, ssao_noise,
+        color_luma, occlusion,
         p
     )
 end
@@ -191,11 +190,12 @@ function Base.resize!(fb::GLFramebuffer, window_size)
     ws = Int.((window_size[1], window_size[2]))
     if ws != size(fb) && all(x-> x > 0, window_size)
         resize_nocopy!(fb.color, ws)
-        resize_nocopy!(fb.color_luma, ws)
         resize_nocopy!(fb.objectid, ws)
         resize_nocopy!(fb.depth, ws)
         resize_nocopy!(fb.position, ws)
         resize_nocopy!(fb.normal, ws)
+        resize_nocopy!(fb.color_luma, ws)
+        resize_nocopy!(fb.occlusion, ws)
         fb.resolution[] = ws
     end
     nothing

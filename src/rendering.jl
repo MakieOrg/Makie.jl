@@ -82,13 +82,28 @@ function render_frame(screen::Screen)
     GLAbstraction.render(screen, true)
     glDisable(GL_STENCIL_TEST)
 
-    # transfer color to luma buffer and apply fxaa
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
+
+    # SSAO + gen luma
+    # luma + occlusion framebuffer
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
     glDrawBuffer(GL_COLOR_ATTACHMENT0)
     glViewport(0, 0, w, h)
-    glClearColor(0,0,0,0)
+    glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(fb.postprocess[1]) # add luma and preprocess
+    # TODO remove this dirty hack!
+    if !isempty(screen.renderlist)
+        projection = screen.renderlist[1][3].uniforms[:projection][]
+        fb.postprocess[1].uniforms[:projection][] = projection
+    end
+    # /TODO
+    # compute occlusion & luma for FXAA
+    GLAbstraction.render(fb.postprocess[1])
+
+    # FXAA + blur maybe?
+
+    # copy + occluded colors
+
+    #####################
 
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
     glViewport(0, 0, w, h)
@@ -105,13 +120,12 @@ function render_frame(screen::Screen)
     glDisable(GL_STENCIL_TEST)
     glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
 
+
+    # glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    # glBindFramebuffer(GL_FRAMEBUFFER, 0)
     glViewport(0, 0, w, h)
     glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
-    if !isempty(screen.renderlist)
-        projection = screen.renderlist[1][3].uniforms[:projection][]
-        fb.postprocess[3].uniforms[:projection][] = projection
-    end
     GLAbstraction.render(fb.postprocess[3]) # copy postprocess
     return
 end

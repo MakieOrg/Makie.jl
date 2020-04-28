@@ -1,23 +1,45 @@
 {{GLSL_VERSION}}
 
+// SSAO + prepare luma for FXAA
+
+in vec2 frag_uv;
+
+
+// SSAO
 uniform sampler2D position_buffer;
 uniform sampler2D normal_buffer;
-uniform sampler2D color_buffer;
 uniform vec3 kernel[64];
 uniform sampler2D noise;
 uniform vec2 noise_scale;
 uniform mat4 projection;
 
-in vec2 frag_uv;
-out vec4 fragment_color;
-
+// TODO make these uniforms
 // bias/epsilon for depth check
 const float bias = 0.025;
 // max range for depth check
 const float radius = 0.5;
 
+layout(location=1) out float o_occlusion;
+// out float FragColor;
+
+
+// luma
+uniform sampler2D color_buffer;
+
+layout(location=0) out vec4 o_color_luma;
+
+vec3 linear_tone_mapping(vec3 color, float gamma)
+{
+    color = clamp(color, 0., 1.);
+    color = pow(color, vec3(1. / gamma));
+    return color;
+}
+
+
+// both
 void main(void)
 {
+    // SSAO
     vec3 frag_pos = texture(position_buffer, frag_uv).xyz;
     vec3 normal  = texture(normal_buffer, frag_uv).xyz;
     vec3 rand_vec = vec3(texture(noise, frag_uv * noise_scale).xy, 0.0);
@@ -27,7 +49,7 @@ void main(void)
     mat3 TBN = mat3(tangent, bitangent, normal);
 
     float occlusion = 0.0;
-    for (int i = 0; i < 64; ++i) {// TODO mustache?
+    for (int i = 0; i < 64; ++i) {// TODO mustache? TODO ++i or i++?
         vec3 sample = TBN * kernel[i];
         sample = frag_pos + sample * radius;
 
@@ -42,12 +64,14 @@ void main(void)
         occlusion += (sample_depth >= sample.z + bias ? 1.0 : 0.0) * range_check;
     }
     occlusion = 1.0 - (occlusion / 64); // TODO mustache
-    fragment_color = vec4(vec3(occlusion), 1.0);
+    o_occlusion = occlusion;
 
-    // Testing
-    // fragment_color = vec4(0.9, 0.6, 0.2, 1.0);
-    // fragment_color = vec4(texture(position_buffer, frag_uv).xyz, 1.0);
-
+    // luma
+    vec4 color = texture(color_buffer, frag_uv).rgba;
+    if(color.a <= 0) discard; // TODO is this necessary?
+    // do tonemapping
+    //opaque = linear_tone_mapping(color.rgb, 1.8);  // linear color output
+    o_color_luma.rgb = color.rgb;
+    // save luma in alpha for FXAA
+    o_color_luma.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
 }
-
-// TODO blur
