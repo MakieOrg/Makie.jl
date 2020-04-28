@@ -150,7 +150,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
             if meshes isa AbstractVector{<: AbstractPoint}
                 return triangle_mesh(meshes)
             else
-                return merge(triangle_mesh.(meshes))
+                return merge(GeometryBasics.mesh.(meshes))
             end
         end
     end
