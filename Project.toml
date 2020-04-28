@@ -23,7 +23,6 @@ FFTW = "1"
 FileIO = "1.1"
 FreeType = "3"
 GeometryBasics = "0.2"
-MakieGallery = "0.2"
 StaticArrays = "0.12"
 MakieGallery = "0.2.1"
 
