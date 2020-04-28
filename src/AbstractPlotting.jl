@@ -103,7 +103,7 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Node/Signal related
-export Node, lift, map_once, to_value, on, @lift
+export Node, Observable, lift, map_once, to_value, on, @lift
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
