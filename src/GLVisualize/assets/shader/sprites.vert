@@ -93,7 +93,7 @@ vec4 _color(Nothing color, Nothing intensity, sampler1D color_map, vec2 color_no
 }
 
 {{stroke_color_type}} stroke_color;
-{{glow_color_type}}   glow_color;
+{{glow_color_type}} glow_color;
 
 uniform uint objectid;
 uniform int len;
@@ -108,7 +108,8 @@ out vec4  g_color;
 out vec4  g_stroke_color;
 out vec4  g_glow_color;
 
-
+vec4 to_vec4(vec3 x){return vec4(x, 1.0);}
+vec4 to_vec4(vec4 x){return x;}
 
 void main(){
     int index         = gl_VertexID;
@@ -121,8 +122,8 @@ void main(){
     g_color           = _color(color, intensity, color_map, color_norm, g_primitive_index, len);
     g_rotation        = _rotation(rotation);
     g_uv_texture_bbox = uv_offset_width;
-    g_stroke_color    = stroke_color;
-    g_glow_color      = glow_color;
+    g_stroke_color    = to_vec4(stroke_color);
+    g_glow_color      = to_vec4(glow_color);
 
     g_id              = uvec2(objectid, index+1);
 }
