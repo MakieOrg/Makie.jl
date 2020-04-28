@@ -728,8 +728,11 @@ const colorbrewer_8color_names = String.([
     :Set2
 ])
 
-# throw an error i
-const plotutils_names = PlotUtils.clibraries() .|> PlotUtils.cgradients |> x -> vcat(x...) .|> String
+const plotutils_names = String.(union(
+    keys(PlotUtils.ColorSchemes.colorschemes),
+    keys(PlotUtils.COLORSCHEME_ALIASES),
+    keys(PlotUtils.MISC_COLORSCHEMES)
+))
 
 const all_gradient_names = Set(vcat(plotutils_names, colorbrewer_8color_names))
 
@@ -787,32 +790,34 @@ function convert_attribute(cs::NamedTuple{(:colormap, :alpha, :n), Tuple{Union{S
     return RGBAf0.(to_colormap(cs.colormap, cs.n), cs.alpha)
 end
 
-
 to_colormap(x, n::Integer) = convert_attribute(x, key"colormap"(), n)
 
 """
 A Symbol/String naming the gradient. For more on what names are available please see: `available_gradients()`.
 For now, we support gradients from `PlotUtils` natively.
 """
-function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer=20)
+function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Integer=40)
     cs_string = string(cs)
     if cs_string in all_gradient_names
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
             return to_colormap(ColorBrewer.palette(cs_string, 8), n)
         else                                    # cs_string must be in plotutils_names
-            return RGBf0.(PlotUtils.cvec(Symbol(cs), n))
+            return to_colormap(PlotUtils.get_colorscheme(:viridis).colors, n)
         end
     else
         error("There is no color gradient named: $cs")
     end
 end
 
-function AbstractPlotting.convert_attribute(cg::PlotUtils.ColorGradient, ::key"colormap", n::Integer=length(cg.values))
+function AbstractPlotting.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
-    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n)) # workaround until PlotUtils tags a release
-    # TODO change this once PlotUtils supports collections of indices
+    return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
 end
 
+function AbstractPlotting.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
+    # PlotUtils does not always give [0, 1] range, so we adapt to what it has
+    return vcat(fill.(cg.colors, n ÷ length(cg.colors)))
+end
 
 """
     to_volume_algorithm(b, x)
