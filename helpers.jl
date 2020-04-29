@@ -13,8 +13,6 @@ function sceneareanode!(finalbbox, limits, aspect)
 
         w = width(bbox)
         h = height(bbox)
-        # mw = min(w, maxsize[1])
-        # mh = min(h, maxsize[2])
         # as = mw / mh
         as = w / h
         mw, mh = w, h

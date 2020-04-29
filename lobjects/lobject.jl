@@ -6,7 +6,7 @@ function align_to_bbox!(layoutable::Layoutable, bbox)
     layoutable.layoutobservables.suggestedbbox[] = bbox
 end
 
-computedsizenode(layoutable::Layoutable) = layoutable.layoutobservables.computedsize
+reportedsizenode(layoutable::Layoutable) = layoutable.layoutobservables.reportedsize
 protrusionnode(layoutable::Layoutable) = layoutable.layoutobservables.protrusions
 
 

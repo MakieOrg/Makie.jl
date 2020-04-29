@@ -8,7 +8,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
 
-    layoutobservables = LayoutObservables(LText, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(LText, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point3f0(0, 0, 0))
@@ -72,7 +72,7 @@ function align_to_bbox!(lt::LText, bbox)
     lt.layoutobservables.suggestedbbox[] = bbox
 end
 
-computedsizenode(lt::LText) = lt.layoutobservables.computedsize
+reportedsizenode(lt::LText) = lt.layoutobservables.reportedsize
 protrusionnode(lt::LText) = lt.layoutobservables.protrusions
 
 
@@ -101,7 +101,7 @@ function Base.delete!(lt::LText)
     GridLayoutBase.remove_from_gridlayout!(lt.layoutobservables.gridcontent)
     empty!(lt.layoutobservables.suggestedbbox.listeners)
     empty!(lt.layoutobservables.computedbbox.listeners)
-    empty!(lt.layoutobservables.computedsize.listeners)
+    empty!(lt.layoutobservables.reportedsize.listeners)
     empty!(lt.layoutobservables.autosize.listeners)
     empty!(lt.layoutobservables.protrusions.listeners)
 

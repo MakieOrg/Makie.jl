@@ -8,9 +8,13 @@ end
 function default_attributes(::Type{LMenu}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the menu."
-        height = Auto(true)
+        height = Auto()
         "The width setting of the menu."
         width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The horizontal alignment of the menu in its suggested bounding box."
         halign = :center
         "The vertical alignment of the menu in its suggested bounding box."
@@ -116,7 +120,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LMenu, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(LMenu, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 
@@ -140,7 +144,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     selectionrect = LRect(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
-    selectiontext = LText(scene, "Select...", width = Auto(false), halign = :left,
+    selectiontext = LText(scene, "Select...", tellwidth = false, halign = :left,
         padding = textpadding, textsize = textsize, color = textcolor)
 
 
@@ -149,7 +153,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     strings = optionlabel.(options[])
 
-    texts = [LText(scene, s, halign = :left, width = Auto(false),
+    texts = [LText(scene, s, halign = :left, tellwidth = false,
         textsize = textsize, color = textcolor,
         padding = textpadding) for s in strings]
 

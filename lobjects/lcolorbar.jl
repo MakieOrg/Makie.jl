@@ -24,7 +24,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables(LColorbar, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(LColorbar, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     framebox = layoutobservables.computedbbox

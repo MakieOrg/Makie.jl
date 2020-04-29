@@ -6,7 +6,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LToggle, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(LToggle, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     markersize = lift(layoutobservables.computedbbox) do bbox
@@ -91,7 +91,7 @@ end
 
 defaultlayout(lt::LToggle) = ProtrusionLayout(lt)
 
-computedsizenode(lt::LToggle) = lt.layoutobservables.computedsize
+reportedsizenode(lt::LToggle) = lt.layoutobservables.reportedsize
 protrusionnode(lt::LToggle) = lt.layoutobservables.protrusions
 
 function align_to_bbox!(lt::LToggle, bbox)

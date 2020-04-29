@@ -9,13 +9,13 @@ function AbstractPlotting.plot!(
 end
 
 protrusionnode(ls::LScene) = ls.layoutobservables.protrusions
-computedsizenode(ls::LScene) = ls.layoutobservables.computedsize
+reportedsizenode(ls::LScene) = ls.layoutobservables.reportedsize
 
 function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
     attrs = merge!(Attributes(kwargs), default_attributes(LScene, parent).attributes)
 
-    layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
 
     scene = Scene(parent, lift(IRect2D_rounded, layoutobservables.computedbbox); scenekw...)

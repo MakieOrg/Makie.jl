@@ -4,7 +4,7 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)
 
-    layoutobservables = LayoutObservables(LRect, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables(LRect, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis
@@ -26,7 +26,7 @@ function Base.delete!(lr::LRect)
     GridLayoutBase.remove_from_gridlayout!(lr.layoutobservables.gridcontent)
     empty!(lr.layoutobservables.suggestedbbox.listeners)
     empty!(lr.layoutobservables.computedbbox.listeners)
-    empty!(lr.layoutobservables.computedsize.listeners)
+    empty!(lr.layoutobservables.reportedsize.listeners)
     empty!(lr.layoutobservables.autosize.listeners)
     empty!(lr.layoutobservables.protrusions.listeners)
 

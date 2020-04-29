@@ -55,7 +55,7 @@ function get_layout_top_scene(layout::GridLayout)
         else
             return get_layout_top_scene(parentgrid)
         end
-    end 
+    end
 end
 
 abstract type InfrastructureType end
@@ -279,6 +279,6 @@ end
 
 layout[0, :] = LRect(scene, color = Gray(0.7))
 layout[1, :] = LText(scene, "Columns", padding = (0, 0, 10, 10))
-layout.content[end].content.width = Auto(false)
+layout.content[end].content.tellwidth = false
 
 foreach(LAxis, layout) do ax; tight_ticklabel_spacing!(ax); end

@@ -149,7 +149,10 @@ function default_attributes(::Type{LAxis}, scene)
         width = nothing
         "The height of the axis."
         height = nothing
-        maxsize = (Inf32, Inf32)
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The relative margins added to the autolimits in x direction."
         xautolimitmargin = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
@@ -270,6 +273,10 @@ function default_attributes(::Type{LColorbar}, scene)
         width = nothing
         "The height setting of the colorbar."
         height = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The colormap that the colorbar uses."
         colormap = :viridis
         "The range of values depicted in the colorbar."
@@ -316,6 +323,10 @@ function default_attributes(::Type{LText}, scene)
         height = Auto()
         "The width setting of the text."
         width = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The align mode of the text in its parent GridLayout."
         alignmode = Inside()
     end
@@ -354,6 +365,10 @@ function default_attributes(::Type{LRect}, scene)
         width = nothing
         "The height setting of the rectangle."
         height = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The align mode of the rectangle in its parent GridLayout."
         alignmode = Inside()
     end
@@ -386,9 +401,13 @@ function default_attributes(::Type{LButton}, scene)
         "The font family of the button label."
         font = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The width setting of the button."
-        width = Auto(true)
+        width = Auto()
         "The height setting of the button."
-        height = Auto(true)
+        height = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The radius of the rounded corners of the button."
         cornerradius = 4
         "The number of poly segments used for each rounded corner."
@@ -466,8 +485,12 @@ function default_attributes(::Type{LSlider}, scene)
         "The width setting of the slider."
         width = nothing
         "The height setting of the slider."
-        height = Auto(true)
+        height = Auto()
         "The range of values that the slider can pick from."
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         range = 0:10
         "The radius of the slider button."
         buttonradius = 7f0
@@ -513,6 +536,10 @@ function default_attributes(::Type{LToggle}, scene)
         width = 60
         "The height of the toggle."
         height = 30
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The number of poly segments in each rounded corner."
         cornersegments = 10
         # strokewidth = 2f0
@@ -554,9 +581,13 @@ function default_attributes(::Type{LLegend}, scene)
         "The vertical alignment of the legend in its suggested bounding box."
         valign = :center
         "The width setting of the legend."
-        width = Auto(true)
+        width = Auto()
         "The height setting of the legend."
-        height = Auto(false)
+        height = Auto()
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = false
         "The font family of the legend group titles."
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font size of the legend group titles."
@@ -666,14 +697,6 @@ function extractattributes(attributes::Attributes, typ::Type)
     extracted
 end
 
-function default_attributes(::Type{GridLayout})
-    Attributes(
-        halign = :center,
-        valign = :center,
-        width = Auto(),
-        height = Auto(),
-    )
-end
 
 function default_attributes(::Type{LScene}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
@@ -681,6 +704,10 @@ function default_attributes(::Type{LScene}, scene)
         height = nothing
         "The width setting of the scene."
         width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
         "The horizontal alignment of the scene in its suggested bounding box."
         halign = :center
         "The vertical alignment of the scene in its suggested bounding box."
