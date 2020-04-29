@@ -912,18 +912,55 @@ function Base.show(io::IO, ax::LAxis)
 end
 
 
-function AbstractPlotting.xlims!(ax::LAxis, xlims::Tuple{Real, Real})
+function AbstractPlotting.xlims!(ax::LAxis, xlims)
+    if xlims[1] == xlims[2]
+        error("Can't set x limits to the same value $(xlims[1]).")
+    elseif xlims[1] > xlims[2]
+        xlims = reverse(xlims)
+        ax.xreversed[] = true
+    else
+        ax.xreversed[] = false
+    end
+
 	lims = ax.targetlimits[]
 	newlims = FRect2D((xlims[1], lims.origin[2]), (xlims[2] - xlims[1], lims.widths[2]))
 	ax.targetlimits[] = newlims
+    nothing
 end
 
-AbstractPlotting.xlims!(ax::LAxis, lims::Real...) = xlims!(ax, lims)
+AbstractPlotting.xlims!(ax::LAxis, x1, x2) = xlims!(ax, (x1, x2))
 
-function AbstractPlotting.ylims!(ax::LAxis, ylims::Tuple{Real, Real})
+function AbstractPlotting.ylims!(ax::LAxis, ylims)
+    if ylims[1] == ylims[2]
+        error("Can't set y limits to the same value $(ylims[1]).")
+    elseif ylims[1] > ylims[2]
+        ylims = reverse(ylims)
+        ax.yreversed[] = true
+    else
+        ax.yreversed[] = false
+    end
+
 	lims = ax.targetlimits[]
 	newlims = FRect2D((lims.origin[1], ylims[1]), (lims.widths[1], ylims[2] - ylims[1]))
 	ax.targetlimits[] = newlims
+    nothing
 end
 
-AbstractPlotting.ylims!(ax::LAxis, lims::Real...) = ylims!(ax, lims)
+AbstractPlotting.ylims!(ax::LAxis, y1, y2) = ylims!(ax, (y1, y2))
+
+function limits!(ax::LAxis, xlims, ylims)
+    xlims!(ax, xlims)
+    ylims!(ax, ylims)
+end
+
+function limits!(ax::LAxis, x1, x2, y1, y2)
+    xlims!(ax, x1, x2)
+    ylims!(ax, y1, y2)
+end
+
+function limits!(ax::LAxis, rect::Rect2D)
+    xmin, ymin = minimum(rect)
+    xmax, ymax = maximum(rect)
+    xlims!(ax, xmin, xmax)
+    ylims!(ax, ymin, ymax)
+end
