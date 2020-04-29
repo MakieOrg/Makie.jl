@@ -188,6 +188,10 @@ function default_attributes(::Type{LAxis}, scene)
         targetlimits = BBox(0, 100, 0, 100)
         "The align mode of the axis in its parent GridLayout."
         alignmode = Inside()
+        "Controls if the y axis goes upwards (false) or downwards (true)"
+        yaxisreversed = false
+        "Controls if the x axis goes rightwards (false) or leftwards (true)"
+        xaxisreversed = false
     end
 
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
@@ -471,6 +475,7 @@ function default_attributes(::Type{LineAxis})
         ticklabelspace = AbstractPlotting.automatic,
         ticklabelpad = 5f0,
         labelpadding = 15f0,
+        reversed = false,
     )
 end
 

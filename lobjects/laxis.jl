@@ -29,7 +29,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         bottomspinecolor, leftspinecolor, topspinecolor, rightspinecolor,
         backgroundcolor,
         xlabelfont, ylabelfont, xticklabelfont, yticklabelfont,
-        flip_ylabel
+        flip_ylabel, xaxisreversed, yaxisreversed,
     )
 
     decorations = Dict{Symbol, Any}()
@@ -75,16 +75,19 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
 
 
-    on(limits) do lims
+    onany(limits, xaxisreversed, yaxisreversed) do lims, xrev, yrev
 
         nearclip = -10_000f0
         farclip = 10_000f0
 
-        limox, limoy = lims.origin
-        limw, limh = lims.widths
+        left, bottom = minimum(lims)
+        right, top = maximum(lims)
+
+        leftright = xrev ? (right, left) : (left, right)
+        bottomtop = yrev ? (top, bottom) : (bottom, top)
 
         projection = AbstractPlotting.orthographicprojection(
-            limox, limox + limw, limoy, limoy + limh, nearclip, farclip)
+            leftright..., bottomtop..., nearclip, farclip)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
     end
