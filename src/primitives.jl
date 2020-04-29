@@ -280,7 +280,6 @@ end
 #                                Heatmap, Image                                #
 ################################################################################
 
-
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap, Image})
     ctx = screen.context
     image = primitive[3][]
@@ -306,4 +305,42 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     Cairo.pattern_set_filter(p, interp)
     Cairo.fill(ctx)
     Cairo.restore(ctx)
+end
+
+################################################################################
+#                                     Mesh                                     #
+################################################################################
+
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
+    @get_attribute(primitive, (color,))
+
+    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
+    colorrange = get(primitive, :colorrange, nothing) |> to_value
+
+    ctx = screen.context
+    model = primitive.model[]
+    mesh = primitive[1][]
+    vs = coordinates(mesh); fs = faces(mesh)
+    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
+    pattern = Cairo.CairoPatternMesh()
+
+    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+    for (f, (c1, c2, c3)) in zip(fs, cols)
+        t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
+        Cairo.mesh_pattern_begin_patch(pattern)
+
+        Cairo.mesh_pattern_move_to(pattern, t1...)
+        Cairo.mesh_pattern_line_to(pattern, t2...)
+        Cairo.mesh_pattern_line_to(pattern, t3...)
+
+        mesh_pattern_set_corner_color(pattern, 0, c1)
+        mesh_pattern_set_corner_color(pattern, 1, c2)
+        mesh_pattern_set_corner_color(pattern, 2, c3)
+
+        Cairo.mesh_pattern_end_patch(pattern)
+    end
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    return nothing
 end
