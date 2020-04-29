@@ -17,32 +17,7 @@ else
 end
 
 include("infrastructure.jl")
-
-function project_position(scene, point, model)
-    res = scene.camera.resolution[]
-    p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, point, 0f0), 1f0)
-    clip = scene.camera.projectionview[] * model * p4d
-    # between -1 and 1
-    p = (clip ./ clip[4])[Vec(1, 2)]
-    # flip y to match cairo
-    p_yflip = Vec2f0(p[1], -p[2])
-    # normalize to between 0 and 1
-    p_0_to_1 = (p_yflip .+ 1f0) / 2f0
-    # multiply with scene resolution for final position
-    result = p_0_to_1 .* res
-end
-
-project_scale(scene::Scene, s::Number, model = Mat4f0(I)) = project_scale(scene, Vec2f0(s), model)
-
-function project_scale(scene::Scene, s, model = Mat4f0(I))
-    p4d = to_ndim(Vec4f0, s, 0f0)
-    p = (scene.camera.projectionview[] * model * p4d)[Vec(1, 2)] ./ 2f0
-    p .* scene.camera.resolution[]
-end
-
-function draw_atomic(::Scene, ::CairoScreen, x)
-    @warn "$(typeof(x)) is not supported by cairo right now"
-end
+include("utils.jl")
 
 struct FaceIterator{Iteration, T, F, ET} <: AbstractVector{ET}
     data::T
