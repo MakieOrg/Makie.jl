@@ -14,7 +14,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
         ticklabelspace, labelfont, ticklabelfont,
-        ticklabelsvisible, ticks, ticksize, ticksvisible, ticklabelpad, tickalign,
+        ticklabelsvisible, ticks, tickformat, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
@@ -100,7 +100,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     axis = LineAxis(parent, endpoints = axispoints, flipped = flipaxisposition,
         limits = limits, ticklabelalign = ticklabelalign, label = label,
         labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
-        labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks,
+        labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks, tickformat = tickformat,
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,

@@ -235,8 +235,10 @@ function default_attributes(::Type{LColorbar}, scene)
         ticksize = 10f0
         "Controls if the tick marks are visible."
         ticksvisible = true
-        "The ticks object."
-        ticks = LinearTicks(5)
+        "The ticks."
+        ticks = AbstractPlotting.automatic
+        "Format for ticks."
+        tickformat = AbstractPlotting.automatic
         "The space reserved for the tick labels."
         ticklabelspace = AbstractPlotting.automatic
         "The gap between tick labels and tick marks."
