@@ -86,53 +86,6 @@ function draw_image(scene, screen, attributes)
     Cairo.restore(ctx)
 end
 
-function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
-    ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, align, rotation, model, justification, lineheight))
-    txt = to_value(primitive[1])
-    position = primitive.attributes[:position][]
-    N = length(txt)
-    atlas = AbstractPlotting.get_texture_atlas()
-    if position isa StaticArrays.StaticArray # one position to place text
-        position = AbstractPlotting.layout_text(
-            txt, position, textsize,
-            font, align, rotation, model, justification, lineheight
-        )
-    end
-    stridx = 1
-    broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
-        Cairo.save(ctx)
-        char = txt[stridx]
-
-        stridx = nextind(txt, stridx)
-        pos = project_position(scene, p, model)
-        scale = project_scale(scene, ts, model)
-        Cairo.move_to(ctx, pos[1], pos[2])
-        Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-        cairoface = set_ft_font(ctx, f)
-
-        mat = scale_matrix(scale...)
-        set_font_matrix(ctx, mat)
-
-        # TODO this only works in 2d
-        Cairo.rotate(ctx, -AbstractPlotting.quaternion_to_2d_angle(r))
-
-        if !(char in ('\r', '\n'))
-            Cairo.show_text(ctx, string(char))
-        end
-
-        cairo_font_face_destroy(cairoface)
-
-        Cairo.restore(ctx)
-    end
-    nothing
-end
-
-function rgbatuple(c::Colorant)
-    rgba = RGBA(c)
-    red(rgba), green(rgba), blue(rgba), alpha(rgba)
-end
-
 """
 Special method for polys so we don't fall back to atomic meshes, which are much more
 complex and slower to draw than standard paths with single color.
