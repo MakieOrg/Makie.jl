@@ -53,21 +53,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     return nothing
 end
 
-function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
-
-    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    colorrange = get(primitive, :colorrange, nothing) |> to_value
-
-    if colorrange === AbstractPlotting.automatic
-        colorrange = extrema(numbers)
-    end
-
-    AbstractPlotting.interpolated_getindex.(
-        Ref(colormap),
-        Float64.(numbers), # ints don't work in interpolated_getindex
-        Ref(colorrange))
-end
-
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, LineSegments})
     fields = @get_attribute(primitive, (color, linewidth, linestyle))
     linestyle = AbstractPlotting.convert_attribute(linestyle, AbstractPlotting.key"linestyle"())
