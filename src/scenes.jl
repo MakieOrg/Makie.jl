@@ -210,7 +210,7 @@ end
 # Base overloads for Scene
 
 Base.haskey(scene::Scene, key::Symbol) = haskey(scene.attributes, key)
-Base.propertynames(scene::Scene) = fieldnames(scene) ∪ propertynames(scene.attributes)
+Base.propertynames(scene::Scene) = fieldnames(Scene) ∪ propertynames(scene.attributes)
 
 function Base.getindex(scene::Scene, key::Symbol)
     return haskey(scene.attributes, key) ? scene.attributes[key] : scene.theme[key]
