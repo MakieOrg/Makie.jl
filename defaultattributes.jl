@@ -157,10 +157,14 @@ function default_attributes(::Type{LAxis}, scene)
         xautolimitmargin = (0.05f0, 0.05f0)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin = (0.05f0, 0.05f0)
-        "The xticks tick object."
-        xticks = AutoLinearTicks(5)
-        "The yticks tick object."
-        yticks = AutoLinearTicks(5)
+        "The xticks."
+        xticks = AbstractPlotting.automatic
+        "Format for xticks."
+        xtickformat = AbstractPlotting.automatic
+        "The yticks."
+        yticks = AbstractPlotting.automatic
+        "Format for yticks."
+        ytickformat = AbstractPlotting.automatic
         "The button for panning."
         panbutton = AbstractPlotting.Mouse.right
         "The key for limiting panning to the x direction."
@@ -232,7 +236,7 @@ function default_attributes(::Type{LColorbar}, scene)
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks object."
-        ticks = AutoLinearTicks(5)
+        ticks = LinearTicks(5)
         "The space reserved for the tick labels."
         ticklabelspace = AbstractPlotting.automatic
         "The gap between tick labels and tick marks."
@@ -461,7 +465,8 @@ function default_attributes(::Type{LineAxis})
         tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
         tickalign = 0f0,
-        ticks = AutoLinearTicks(5),
+        ticks = AbstractPlotting.automatic,
+        tickformat = AbstractPlotting.automatic,
         ticklabelalign = (:center, :top),
         ticksvisible = true,
         ticklabelrotation = 0f0,

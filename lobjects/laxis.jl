@@ -22,7 +22,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         spinewidth, xtrimspine, ytrimspine,
         xgridvisible, ygridvisible, xgridwidth, ygridwidth, xgridcolor, ygridcolor,
         xgridstyle, ygridstyle,
-        aspect, halign, valign, xticks, yticks, panbutton,
+        aspect, halign, valign, xticks, yticks, xtickformat, ytickformat, panbutton,
         xpankey, ypankey, xzoomkey, yzoomkey,
         xaxisposition, yaxisposition,
         bottomspinevisible, leftspinevisible, topspinevisible, rightspinevisible,
@@ -173,7 +173,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
         label = xlabel, labelfont = xlabelfont, ticklabelfont = xticklabelfont, labelcolor = xlabelcolor, tickalign = xtickalign,
-        ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
+        ticklabelspace = xticklabelspace, ticks = xticks, tickformat = xtickformat, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = spinewidth,
         ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize,
         reversed = xreversed)
@@ -184,7 +184,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
         label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, labelcolor = ylabelcolor, tickalign = ytickalign,
-        ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
+        ticklabelspace = yticklabelspace, ticks = yticks, tickformat = ytickformat, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
         trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yreversed)
     decorations[:yaxis] = yaxis
@@ -335,57 +335,6 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     end
 
     la
-end
-
-"""
-AutoLinearTicks with ideally a number of `n_ideal` tick marks.
-"""
-function AutoLinearTicks(n_ideal::Int)
-    if n_ideal <= 0
-        error("Ideal number of ticks can't be smaller than 0, but is $ideal_pixel_spacing")
-    end
-    AutoLinearTicks{Int}(n_ideal)
-end
-
-"""
-AutoLinearTicks with ticks ideally spaced `ideal_pixel_spacing` pixels apart.
-"""
-function AutoLinearTicks(ideal_pixel_spacing::Real)
-    if ideal_pixel_spacing <= 0
-        error("Ideal pixel spacing can't be smaller than 0, but is $ideal_pixel_spacing")
-    end
-    AutoLinearTicks{Float32}(ideal_pixel_spacing)
-end
-
-function compute_tick_values(ticks::T, vmin, vmax, pxwidth) where T
-    error("No behavior implemented for ticks of type $T")
-end
-
-function compute_tick_values(ticks::AutoLinearTicks{Float32}, vmin, vmax, pxwidth)
-    locateticks(vmin, vmax, pxwidth, ticks.target)
-end
-
-function compute_tick_values(ticks::AutoLinearTicks{Int}, vmin, vmax, pxwidth)
-    locateticks(vmin, vmax, ticks.target)
-end
-
-function compute_tick_values(ticks::ManualTicks, vmin, vmax, pxwidth)
-    # only show manual ticks that fit in the value range
-    filter(ticks.values) do v
-        vmin <= v <= vmax
-    end
-end
-
-function get_tick_labels(ticks::T, tickvalues) where T
-    error("No behavior implemented for ticks of type $T")
-end
-
-get_tick_labels(ticks::AutoLinearTicks, tickvalues) = Showoff.showoff(tickvalues)
-
-
-function get_tick_labels(ticks::ManualTicks, tickvalues)
-    # remove labels of ticks that are not shown because the limits cut them off
-    String[ticks.labels[findfirst(x -> x == tv, ticks.values)] for tv in tickvalues]
 end
 
 function AbstractPlotting.plot!(

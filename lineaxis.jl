@@ -5,7 +5,7 @@ function LineAxis(parent::Scene; kwargs...)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (endpoints, limits, flipped, ticksize, tickwidth,
-        tickcolor, tickalign, ticks, ticklabelalign, ticklabelrotation, ticksvisible,
+        tickcolor, tickalign, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont,
@@ -138,22 +138,17 @@ function LineAxis(parent::Scene; kwargs...)
 
     tickvalues = Node(Float32[])
 
-    tickvalues = lift(pos_extents_horizontal, limits, ticks) do (position, extents, horizontal),
+    tickvalues_unfiltered = lift(pos_extents_horizontal, limits, ticks) do (position, extents, horizontal),
             limits, ticks
-        px_width = extents[2] - extents[1]
-        compute_tick_values(ticks, limits..., px_width)
+        get_tickvalues(ticks, limits...)
     end
 
     tickpositions = Node(Point2f0[])
     tickstrings = Node(String[])
 
-    onany(tickvalues, reversed) do tickvalues, reversed
-        # limoy = limits[].origin[2]
-        # limh = limits[].widths[2]
-        # px_ox = pixelarea(scene)[].origin[1]
-        # px_oy = pixelarea(scene)[].origin[2]
-        # px_w = pixelarea(scene)[].widths[1]
-        # px_h = pixelarea(scene)[].widths[2]
+    onany(tickvalues_unfiltered, reversed, tickformat) do tickvalues_unfiltered, reversed, tickformat
+
+        tickstrings_unfiltered = get_ticklabels(tickformat, ticks[], tickvalues_unfiltered)
 
         position, extents_uncorrected, horizontal = pos_extents_horizontal[]
 
@@ -165,7 +160,11 @@ function LineAxis(parent::Scene; kwargs...)
         lim_o = limits[][1]
         lim_w = limits[][2] - limits[][1]
 
-        tick_fractions = (tickvalues .- lim_o) ./ lim_w
+        # if labels are given manually, it's possible that some of them are outside the displayed limits
+        i_values_within_limits = findall(tv -> lim_o <= tv <= (lim_o + lim_w), tickvalues_unfiltered)
+        tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
+
+        tick_fractions = (tickvalues[] .- lim_o) ./ lim_w
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
         tickpos = if horizontal
@@ -177,7 +176,7 @@ function LineAxis(parent::Scene; kwargs...)
         # now trigger updates
         tickpositions[] = tickpos
 
-        tickstrings[] = get_tick_labels(ticks[], tickvalues)
+        tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
     end
 
     onany(tickstrings, labelgap, flipped) do tickstrings, labelgap, flipped
@@ -296,9 +295,6 @@ function iswhitespace(str)
     match(r"^\s+$", str) !== nothing
 end
 
-compute_tick_values(ct::CustomTicks, args...) = ct.f_tickvalues(args...)
-get_tick_labels(ct::CustomTicks, values) = ct.f_ticklabels(values)
-
 
 function Base.delete!(la::LineAxis)
     for (_, d) in la.decorations
@@ -309,3 +305,79 @@ function Base.delete!(la::LineAxis)
         end
     end
 end
+
+"""
+    get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax)
+
+Calls the default tick finding algorithm, which could depend on the current LAxis
+state.
+"""
+get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax) = get_tickvalues(LinearTicks(5), vmin, vmax)
+
+"""
+    get_tickvalues(lt::LinearTicks, vmin, vmax)
+
+Runs a common tick finding algorithm to as many ticks as requested by the
+`LinearTicks` instance.
+"""
+get_tickvalues(lt::LinearTicks, vmin, vmax) = locateticks(vmin, vmax, lt.n_ideal)
+
+"""
+    get_tickvalues(tup::Tuple{<:Any, <:Any}, vmin, vmax)
+
+Calls `get_tickvalues(tup[1], vmin, vmax)` where the first entry of the tuple
+should contain an iterable tick values and the second entry should contain an
+iterable of the respective labels.
+"""
+get_tickvalues(tup::Tuple{<:Any, <:Any}, vmin, vmax) = get_tickvalues(tup[1], vmin, vmax)
+
+"""
+    get_tickvalues(tickvalues, vmin, vmax)
+
+Uses tickvalues directly.
+"""
+get_tickvalues(tickvalues, vmin, vmax) = tickvalues
+
+# there is an opportunity to overload formatters for specific ticks,
+# but the generic case doesn't use this and just forwards to a less specific method
+"""
+    get_ticklabels(formatter, ticks, values)
+
+Forwards to `get_ticklabels(formatter, values)` if no specialization exists.
+"""
+get_ticklabels(formatter, ticks, values) = get_ticklabels(formatter, values)
+
+"""
+    get_ticklabels(::AbstractPlotting.Automatic, tup::Tuple{<:Any, <:Any}, values)
+
+Returns the second entry of `tup`, which should be an iterable of strings, as the tick labels for `values`.
+"""
+function get_ticklabels(::AbstractPlotting.Automatic, tup::Tuple{<:Any, <:Any}, values)
+    n1 = length(tup[1])
+    n2 = length(tup[2])
+    if n1 != n2
+        error("There are $n1 tick values in $(tup[1]) but $n2 tick labels in $(tup[2]).")
+    end
+    tup[2]
+end
+
+"""
+    get_ticklabels(::AbstractPlotting.Automatic, values)
+
+Gets tick labels by applying `Showoff.showoff` to `values`.
+"""
+get_ticklabels(::AbstractPlotting.Automatic, values) = Showoff.showoff(values)
+
+"""
+    get_ticklabels(formatfunction::Function, values)
+
+Gets tick labels by applying `formatfunction` to `values`.
+"""
+get_ticklabels(formatfunction::Function, values) = formatfunction(values)
+
+"""
+    get_ticklabels(formatstring::AbstractString, values)
+
+Gets tick labels by formatting each value in `values` according to a `Formatting.format` format string.
+"""
+get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(formatstring, v) for v in values]

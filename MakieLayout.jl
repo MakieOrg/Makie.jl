@@ -52,7 +52,7 @@ export LMenu
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!
-export AutoLinearTicks, ManualTicks, CustomTicks, WilkinsonTicks
+export LinearTicks, WilkinsonTicks
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export layoutscene

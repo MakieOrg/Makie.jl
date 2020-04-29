@@ -8,13 +8,22 @@ end
 
 struct DataAspect end
 
-abstract type Ticks end
 
-struct AutoLinearTicks{T<:Union{Int, Float32}} <: Ticks
-    target::T
+"""
+LinearTicks with ideally a number of `n_ideal` tick marks.
+"""
+struct LinearTicks
+    n_ideal::Int
+
+    function LinearTicks(n_ideal)
+        if n_ideal <= 0
+            error("Ideal number of ticks can't be smaller than 0, but is $n_ideal")
+        end
+        new(n_ideal)
+    end
 end
 
-struct WilkinsonTicks <: Ticks
+struct WilkinsonTicks
     k_ideal::Int
     k_min::Int
     k_max::Int
@@ -26,23 +35,6 @@ struct WilkinsonTicks <: Ticks
     min_px_dist::Float64
 end
 
-struct ManualTicks <: Ticks
-    values::Vector{Float32}
-    labels::Vector{String}
-end
-
-"""
-    struct CustomTicks{F1<:Function, F2<:Function} <: Ticks
-
-For the use of custom functions that compute tick values and labels in an `LAxis`.
-
-- `f_tickvalues::F1`: A function that takes minimum_value, maximum_value, and pixelwidth as arguments and returns a `Float` array of tick values.
-- `f_ticklabels::F2`: A function that takes in an array of `Float`s and returns an array of `String` labels.
-"""
-struct CustomTicks{F1<:Function, F2<:Function} <: Ticks
-    f_tickvalues::F1
-    f_ticklabels::F2
-end
 
 mutable struct LineAxis
     parent::Scene
