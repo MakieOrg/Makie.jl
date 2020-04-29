@@ -567,8 +567,7 @@ end
 convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
 function convert_attribute(c::String, ::key"color")
-    c in all_gradient_names && return to_colormap(c)
-    parse(RGBA{Float32}, c)
+    return parse(RGBA{Float32}, c)
 end
 
 # Do we really need all colors to be RGBAf0?!
@@ -578,9 +577,11 @@ convert_attribute(c::AbstractArray{<: Union{Tuple{Any, Number}, Symbol}}, k::key
 convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
 
 convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
+
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     RGBAf0(Colors.color(to_color(c[1])), c[2])
 end
+
 convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
 convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
 convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
@@ -802,7 +803,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
             return to_colormap(ColorBrewer.palette(cs_string, 8), n)
         else                                    # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(:viridis).colors, n)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors, n)
         end
     else
         error("There is no color gradient named: $cs")

@@ -702,8 +702,9 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
     end
     volume!(
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
-        transparency = plot[:transparency],
-        overdraw = plot[:overdraw]
+        transparency = plot.transparency, overdraw = plot.overdraw,
+        ambient = plot.ambient, diffuse = plot.diffuse, lightposition = plot.lightposition,
+        shininess = plot.shininess, specular = plot.specular
     )
 end
 
