@@ -9,9 +9,13 @@ function LineAxis(parent::Scene; kwargs...)
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont,
-        labelvisible, spinevisible, trimspine, flip_vertical_label)
+        labelvisible, spinevisible, trimspine, flip_vertical_label, reversed)
 
-    pos_extents_horizontal = lift(endpoints) do endpoints
+    endpoints_with_reversal = lift(endpoints, reversed) do ep, rev
+        rev ? reverse(ep) : ep
+    end
+
+    pos_extents_horizontal = lift(endpoints_with_reversal) do endpoints
         if endpoints[1][2] == endpoints[2][2]
             horizontal = true
             extents = (endpoints[1][1], endpoints[2][1])

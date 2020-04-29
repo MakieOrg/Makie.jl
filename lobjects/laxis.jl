@@ -175,7 +175,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = xlabel, labelfont = xlabelfont, ticklabelfont = xticklabelfont, labelcolor = xlabelcolor, tickalign = xtickalign,
         ticklabelspace = xticklabelspace, ticks = xticks, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = spinewidth,
-        ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize)
+        ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize,
+        reversed = xaxisreversed)
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
@@ -185,7 +186,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         label = ylabel, labelfont = ylabelfont, ticklabelfont = yticklabelfont, labelcolor = ylabelcolor, tickalign = ytickalign,
         ticklabelspace = yticklabelspace, ticks = yticks, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
-        trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel)
+        trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yaxisreversed)
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
