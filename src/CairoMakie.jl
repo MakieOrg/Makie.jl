@@ -81,7 +81,7 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     return CairoScreen(scene, surf, ctx, nothing)
 end
 
-function CairoScreen(scene::Scene, path::Union{String, IO}, mode = :svg; device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
+function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device_scaling_factor = 1, antialias = Cairo.ANTIALIAS_BEST)
 
     # the surface size is the scene size scaled by the device scaling factor
     w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
@@ -394,13 +394,16 @@ function to_cairo_image(img::Matrix{UInt32}, attributes)
     # expect it to go from the bottom to the top.
     # Therefore, we flip the y-axis here, to conform
     # to Cairo's notion of the image direction.
-    CairoARGBSurface(
-        [
-            img[j, i]
-            for i in size(img, 2):-1:1, # account for Y-axis discrepancy in Cairo
-                j in 1:size(img, 1)
-        ]
-    )
+
+    # In addition, we are iterating over the y-axis first,
+    # such that the "first" axis of the image is what used to
+    # be the rows, instead of the columns.
+    # This conforms to the row-major matrix interface which
+    # Cairo expects, again.
+
+    # To achieve all of this, it is sufficient to "rotate" the
+    # matrix left by 90 degrees.
+    return CairoARGBSurface(rotl90(img))
 end
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 function to_cairo_image(img, attributes)
@@ -802,7 +805,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg
 
     pt_per_unit = get(io, :pt_per_unit, 1.0)
 
-    screen = CairoScreen(scene, io, :svg, device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :svg; device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -812,7 +815,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"applicati
 
     pt_per_unit = get(io, :pt_per_unit, 1.0)
 
-    screen = CairoScreen(scene, io, :pdf, device_scaling_factor = pt_per_unit)
+    screen = CairoScreen(scene, io, :pdf; device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
     Cairo.finish(screen.surface)
     return screen
@@ -835,8 +838,8 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/pn
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
     px_per_unit = get(io, :px_per_unit, 1.0)
-
-    screen = CairoScreen(scene; device_scaling_factor = px_per_unit) # create an ARGB surface, to speed up drawing ops
+    # create an ARGB surface, to speed up drawing ops.
+    screen = CairoScreen(scene; device_scaling_factor = px_per_unit)
     cairo_draw(screen, scene)
     Cairo.write_to_png(screen.surface, io)
     return screen
