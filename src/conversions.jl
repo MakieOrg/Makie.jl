@@ -803,7 +803,7 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
         if cs_string in colorbrewer_8color_names # special handling for 8 color only
             return to_colormap(ColorBrewer.palette(cs_string, 8), n)
         else                                    # cs_string must be in plotutils_names
-            return to_colormap(PlotUtils.get_colorscheme(:viridis).colors, n)
+            return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors, n)
         end
     else
         error("There is no color gradient named: $cs")
