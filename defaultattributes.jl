@@ -189,9 +189,9 @@ function default_attributes(::Type{LAxis}, scene)
         "The align mode of the axis in its parent GridLayout."
         alignmode = Inside()
         "Controls if the y axis goes upwards (false) or downwards (true)"
-        yaxisreversed = false
+        yreversed = false
         "Controls if the x axis goes rightwards (false) or leftwards (true)"
-        xaxisreversed = false
+        xreversed = false
     end
 
     (attributes = attrs, documentation = docdict, defaults = defaultdict)

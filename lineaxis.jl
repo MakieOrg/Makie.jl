@@ -11,11 +11,7 @@ function LineAxis(parent::Scene; kwargs...)
         labelfont, ticklabelfont,
         labelvisible, spinevisible, trimspine, flip_vertical_label, reversed)
 
-    endpoints_with_reversal = lift(endpoints, reversed) do ep, rev
-        rev ? reverse(ep) : ep
-    end
-
-    pos_extents_horizontal = lift(endpoints_with_reversal) do endpoints
+    pos_extents_horizontal = lift(endpoints) do endpoints
         if endpoints[1][2] == endpoints[2][2]
             horizontal = true
             extents = (endpoints[1][1], endpoints[2][1])
@@ -151,7 +147,7 @@ function LineAxis(parent::Scene; kwargs...)
     tickpositions = Node(Point2f0[])
     tickstrings = Node(String[])
 
-    onany(tickvalues) do tickvalues
+    onany(tickvalues, reversed) do tickvalues, reversed
         # limoy = limits[].origin[2]
         # limh = limits[].widths[2]
         # px_ox = pixelarea(scene)[].origin[1]
@@ -159,7 +155,9 @@ function LineAxis(parent::Scene; kwargs...)
         # px_w = pixelarea(scene)[].widths[1]
         # px_h = pixelarea(scene)[].widths[2]
 
-        position, extents, horizontal = pos_extents_horizontal[]
+        position, extents_uncorrected, horizontal = pos_extents_horizontal[]
+
+        extents = reversed ? reverse(extents_uncorrected) : extents_uncorrected
 
         px_o = extents[1]
         px_width = extents[2] - extents[1]
