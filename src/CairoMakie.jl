@@ -19,65 +19,6 @@ end
 include("infrastructure.jl")
 include("utils.jl")
 
-struct FaceIterator{Iteration, T, F, ET} <: AbstractVector{ET}
-    data::T
-    faces::F
-end
-
-function (::Type{FaceIterator{Typ}})(data::T, faces::F) where {Typ, T, F}
-    FaceIterator{Typ, T, F}(data, faces)
-end
-function (::Type{FaceIterator{Typ, T, F}})(data::AbstractVector, faces::F) where {Typ, F, T}
-    FaceIterator{Typ, T, F, NTuple{3, eltype(data)}}(data, faces)
-end
-function (::Type{FaceIterator{Typ, T, F}})(data::T, faces::F) where {Typ, T, F}
-    FaceIterator{Typ, T, F, NTuple{3, T}}(data, faces)
-end
-function FaceIterator(data::AbstractVector, faces)
-    if length(data) == length(faces)
-        FaceIterator{:PerFace}(data, faces)
-    else
-        FaceIterator{:PerVert}(data, faces)
-    end
-end
-
-
-Base.size(fi::FaceIterator) = size(fi.faces)
-Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
-Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
-Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
-
-function per_face_colors(color, colormap, colorrange, vertices, faces, uv)
-    if color isa Colorant
-        return FaceIterator{:Const}(color, faces)
-    elseif color isa AbstractArray
-        if color isa AbstractVector{<: Colorant}
-            return FaceIterator(color, faces)
-        elseif color isa AbstractVector{<: Number}
-            cvec = AbstractPlotting.interpolated_getindex.((colormap,), color, (colorrange,))
-            return FaceIterator(cvec, faces)
-        elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
-            cvec = map(uv) do uv
-                wsize = reverse(size(color))
-                wh = wsize .- 1
-                x, y = round.(Int, Tuple(uv) .* wh) .+ 1
-                return color[size(color, 1) - (y - 1), x]
-            end
-            # TODO This is wrong and doesn't actually interpolate
-            # Inside the triangle sampling the color image
-            return FaceIterator(cvec, faces)
-        end
-    end
-    error("Unsupported Color type: $(typeof(color))")
-end
-
-function color2tuple3(c)
-    (red(c), green(c), blue(c))
-end
-
-mesh_pattern_set_corner_color(pattern, id, c::Colorant) =
-    Cairo.mesh_pattern_set_corner_color_rgba(pattern, id, rgbatuple(c)...)
-
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
     @get_attribute(primitive, (color,))
 
