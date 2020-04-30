@@ -4,3 +4,5 @@
 /src/display.*
 Manifest.toml
 .DS_Store
+*.png
+*.pdf
