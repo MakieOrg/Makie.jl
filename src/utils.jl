@@ -31,6 +31,9 @@ function project_rect(scene, rect::Rect, model)
     maxi = project_position(scene, maximum(rect), model)
     return Rect(mini, maxi .- mini)
 end
+
+scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
+
 ################################################################################
 #                                Color handling                                #
 ################################################################################

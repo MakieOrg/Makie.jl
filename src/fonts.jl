@@ -20,9 +20,6 @@ function cairo_font_face_destroy(font_face)
     )
 end
 
-scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
-
-
 """
 Finds a font that can represent the unicode character!
 Returns AbstractPlotting.defaultfont() if not representable!
