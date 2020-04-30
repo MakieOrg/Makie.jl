@@ -65,10 +65,10 @@ function CairoScreen(scene::Scene; device_scaling_factor = 1, antialias = Cairo.
     # this sets a scaling factor on the lowest level that is "hidden" so its even
     # enabled when the drawing space is reset for strokes
     # that means it can be used to increase or decrease the image resolution
-    ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
+    ccall((:cairo_surface_set_device_scale, LIB_CAIRO), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
         surf.ptr, device_scaling_factor, device_scaling_factor)
 
-    ctx = CairoContext(surf)
+    ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
 
     return CairoScreen(scene, surf, ctx, nothing)
@@ -77,8 +77,8 @@ end
 
 """
     CairoScreen(
-        scene::Scene, path::Union{String, IO};
-        mode = :svg, antialias = Cairo.ANTIALIAS_BEST
+        scene::Scene, path::Union{String, IO}, mode::Symbol;
+        antialias = Cairo.ANTIALIAS_BEST
     )
 Creates a CairoScreen pointing to a given output path, with some rendering type defined by `mode`.
 """
@@ -88,13 +88,13 @@ function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device
     w, h = round.(Int, scene.camera.resolution[] .* device_scaling_factor)
 
     if mode == :svg
-        surf = CairoSVGSurface(path, w, h)
+        surf = Cairo.CairoSVGSurface(path, w, h)
     elseif mode == :pdf
-        surf = CairoPDFSurface(path, w, h)
+        surf = Cairo.CairoPDFSurface(path, w, h)
     elseif mode == :eps
         surf = Cairo.CairoEPSSurface(path, w, h)
     elseif mode == :png
-        surf = CairoARGBSurface(w, h)
+        surf = Cairo.CairoARGBSurface(w, h)
     else
         error("No available Cairo surface for mode $mode")
     end
@@ -105,7 +105,7 @@ function CairoScreen(scene::Scene, path::Union{String, IO}, mode::Symbol; device
     ccall((:cairo_surface_set_device_scale, Cairo.libcairo), Cvoid, (Ptr{Nothing}, Cdouble, Cdouble),
         surf.ptr, device_scaling_factor, device_scaling_factor)
 
-    ctx = CairoContext(surf)
+    ctx = Cairo.CairoContext(surf)
     Cairo.set_antialias(ctx, antialias)
 
     return CairoScreen(scene, surf, ctx, nothing)
