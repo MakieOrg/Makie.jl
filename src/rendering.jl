@@ -85,7 +85,7 @@ function render_frame(screen::Screen)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
     GLAbstraction.render(screen, true)
-    glDisable(GL_STENCIL_TEST)
+    # glDisable(GL_STENCIL_TEST)
 
 
     # SSAO - calculate occlusion
@@ -93,11 +93,23 @@ function render_frame(screen::Screen)
     glViewport(0, 0, w, h)
     glClearColor(1, 1, 1, 1)            # 1 means no darkening
     glClear(GL_COLOR_BUFFER_BIT)
-    if !isempty(screen.renderlist)
-        projection = screen.renderlist[1][3].uniforms[:projection][]
-        fb.postprocess[1].uniforms[:projection][] = projection
+    try
+        for (screenid, scene) in screen.screens
+            if !isempty(scene.plots)
+                # use stencil to select one scene,
+                # draw with appropriate projection matrix
+                projection = scene.camera.projection[]
+                fb.postprocess[1].uniforms[:projection][] = projection
+                glStencilFunc(GL_EQUAL, screenid, 0xff)
+                GLAbstraction.render(fb.postprocess[1])
+            end
+        end
+    catch e
+        @error "Error while rendering!" exception=e
+        rethrow(e)
     end
-    GLAbstraction.render(fb.postprocess[1])
+    glDisable(GL_STENCIL_TEST)
+
 
     # SSAO - blur occlusion and apply to color
     glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
@@ -133,7 +145,7 @@ function render_frame(screen::Screen)
     glClearColor(0, 1, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     GLAbstraction.render(fb.postprocess[5]) # copy postprocess
-    
+
     return
 end
 
