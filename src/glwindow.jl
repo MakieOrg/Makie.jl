@@ -76,8 +76,8 @@ function postprocess(
     end
 
     shader1 = LazyShader(
-        loadshader("fullscreen.vert"),
-        loadshader("SSAO.frag"),
+        loadshader("postprocessing/fullscreen.vert"),
+        loadshader("postprocessing/SSAO.frag"),
         view = Dict(
             "N_samples" => "$N_samples"
         )
@@ -99,8 +99,8 @@ function postprocess(
 
 
     shader2 = LazyShader(
-        loadshader("fullscreen.vert"),
-        loadshader("fxaa.frag")
+        loadshader("postprocessing/fullscreen.vert"),
+        loadshader("postprocessing/fxaa.frag")
     )
     data2 = Dict{Symbol, Any}(
         :color_texture => color_luma,
@@ -114,8 +114,8 @@ function postprocess(
 
 
     shader3 = LazyShader(
-        loadshader("fullscreen.vert"),
-        loadshader("copy.frag")
+        loadshader("postprocessing/fullscreen.vert"),
+        loadshader("postprocessing/copy.frag")
     )
     data3 = Dict{Symbol, Any}(
         :color_texture => color

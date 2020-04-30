@@ -1064,5 +1064,5 @@ void main(void)
     blurred_occlusion = 0.0625 * result; // 1 / (4*4)
     fragment_color.rgb *= blurred_occlusion;
     // Display occlusion instead:
-    // fragment_color.rgb = vec3(blurred_occlusion);
+    fragment_color.rgb = vec3(blurred_occlusion);
 }
