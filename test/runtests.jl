@@ -12,13 +12,12 @@ ignored_titles = Set((
     "arrows on hemisphere",
     "cobweb plot",
     "orbit diagram", # takes too long
-    "edit polygon", # not implemented yet
+    "edit polygon",  # not implemented yet
 ))
 
 filter!(database) do entry
     "2d" in entry.tags &&
-    lowercase(entry.title) != "arrows on hemisphere" &&
-    lowercase(entry.title) != "cobweb plot"
+    !(lowercase(entry.title) ∈ ignored_titles)
 end
 
 tested_diff_path = joinpath(@__DIR__, "tested_different")
