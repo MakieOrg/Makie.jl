@@ -22,7 +22,7 @@ and a context which are used to draw a Scene.
 struct CairoScreen{S} <: AbstractPlotting.AbstractScreen
     scene::Scene
     surface::S
-    context::CairoContext
+    context::Cairo.CairoContext
     pane::Nothing # TODO: GtkWindowLeaf
 end
 
