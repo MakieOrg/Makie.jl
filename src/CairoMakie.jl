@@ -19,6 +19,7 @@ include("infrastructure.jl")
 include("utils.jl")
 include("fonts.jl")
 include("primitives.jl")
+include("overrides.jl")
 
 function __init__()
     activate!()
