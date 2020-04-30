@@ -21,7 +21,7 @@ jobs:
           version: ${{ matrix.julia-version }}
 
       - name: Add package versions
-        run: julia --project=. -e 'using Pkg; pkg"add MakieGallery#master AbstractPlotting#master"'
+        run: julia --project=. -e 'using Pkg; pkg"add MakieGallery#master"'
 
       - name: Run tests
         uses: julia-actions/julia-runtest@master
