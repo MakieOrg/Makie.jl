@@ -1023,12 +1023,7 @@ uniform sampler2D color_texture;
 uniform vec2 RCPFrame;
 in vec2 frag_uv;
 
-layout(location=0) out vec4 fragment_color;
-
-// For SSAO blur
-uniform sampler2D occlusion;
-uniform vec2 inv_texel_size;
-layout(location=1) out float blurred_occlusion;
+out vec4 fragment_color;
 
 
 void main(void)
@@ -1052,17 +1047,4 @@ void main(void)
         0.0f,                                    // FxaaFloat fxaaConsoleEdgeThresholdMin,
         FxaaFloat4(0.0f, 0.0f, 0.0f, 0.0f)        // FxaaFloat fxaaConsole360ConstDir,
     ).rgb;
-
-    // occlusion blur
-    float result = 0.0;
-    for (int x = -2; x < 2; ++x){
-        for (int y = -2; y < 2; ++y){
-            vec2 offset = vec2(float(x), float(y)) * inv_texel_size;
-            result += texture(occlusion, frag_uv + offset).r;
-        }
-    }
-    blurred_occlusion = 0.0625 * result; // 1 / (4*4)
-    fragment_color.rgb *= blurred_occlusion;
-    // Display occlusion instead:
-    fragment_color.rgb = vec3(blurred_occlusion);
 }

@@ -64,10 +64,15 @@ function render_frame(screen::Screen)
     wh = Int.(framebuffer_size(nw))
     resize!(fb, wh)
     w, h = wh
+
+    # primary render
     glEnable(GL_STENCIL_TEST)
     #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
-    glDrawBuffers(4, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1, GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3])
+    glDrawBuffers(4, [
+        GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+        GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+    ])
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0xff)
@@ -83,54 +88,52 @@ function render_frame(screen::Screen)
     glDisable(GL_STENCIL_TEST)
 
 
-    # SSAO + gen luma
-    # luma + occlusion framebuffer
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]) # color_luma, occlusion
+    # SSAO - calculate occlusion
+    glDrawBuffer(GL_COLOR_ATTACHMENT4)  # occlusion buffer
     glViewport(0, 0, w, h)
-    glClearColor(0, 0, 0, 0)
+    glClearColor(1, 1, 1, 1)            # 1 means no darkening
     glClear(GL_COLOR_BUFFER_BIT)
-    # TODO remove this dirty hack!
     if !isempty(screen.renderlist)
         projection = screen.renderlist[1][3].uniforms[:projection][]
         fb.postprocess[1].uniforms[:projection][] = projection
     end
-    # /TODO
-    # compute occlusion & luma for FXAA
     GLAbstraction.render(fb.postprocess[1])
 
-    # FXAA + blur maybe?
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
+    # SSAO - blur occlusion and apply to color
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+    GLAbstraction.render(fb.postprocess[2])
+
+    # FXAA - calculate LUMA
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color_luma buffer
     glViewport(0, 0, w, h)
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)
-    GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
+    # clear shouldn't be necessary. every pixel should be written to
+    glClearColor(1, 0, 1, 1)
+    glClear(GL_COLOR_BUFFER_BIT)
+    GLAbstraction.render(fb.postprocess[3])
 
-    # copy + occluded colors
+    # FXAA - perform anti-aliasing
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+    # glViewport(0, 0, w, h) # not necessary
+    GLAbstraction.render(fb.postprocess[4])
 
-    #####################
-
-    # glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
-    # glViewport(0, 0, w, h)
-    # glDrawBuffer(GL_COLOR_ATTACHMENT0)
-    # GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
-
-    #prepare for non anti aliased pass
+    # no FXAA primary render
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
-
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
     GLAbstraction.render(screen, false)
     glDisable(GL_STENCIL_TEST)
-    glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
 
-
-    # glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
-    # glBindFramebuffer(GL_FRAMEBUFFER, 0)
+    # transfer everything to the screen
+    glBindFramebuffer(GL_FRAMEBUFFER, 0)
     glViewport(0, 0, w, h)
-    glClearColor(0, 0, 0, 0)
+    # not necessary? color buffer should be full
+    glClearColor(0, 1, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(fb.postprocess[3]) # copy postprocess
+    GLAbstraction.render(fb.postprocess[5]) # copy postprocess
+    
     return
 end
 

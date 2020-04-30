@@ -1,10 +1,5 @@
 {{GLSL_VERSION}}
 
-// SSAO + prepare luma for FXAA
-
-in vec2 frag_uv;
-
-
 // SSAO
 uniform sampler2D position_buffer;
 uniform sampler2D normal_buffer;
@@ -18,28 +13,13 @@ uniform float bias;
 // max range for depth check
 uniform float radius;
 
-layout(location=1) out float o_occlusion;
-// out float FragColor;
+
+in vec2 frag_uv;
+out float o_occlusion;
 
 
-// luma
-uniform sampler2D color_buffer;
-
-layout(location=0) out vec4 o_color_luma;
-
-vec3 linear_tone_mapping(vec3 color, float gamma)
-{
-    color = clamp(color, 0., 1.);
-    color = pow(color, vec3(1. / gamma));
-    return color;
-}
-
-
-// both
 void main(void)
 {
-    // if (frag_uv.x > 0.5) discard;
-    // SSAO
     vec3 view_pos = texture(position_buffer, frag_uv).xyz;
     vec3 normal  = texture(normal_buffer, frag_uv).xyz;
 
@@ -107,13 +87,4 @@ void main(void)
     } else {
         o_occlusion = 1.0;
     }
-
-    // luma
-    vec4 color = texture(color_buffer, frag_uv).rgba;
-    if(color.a <= 0) discard; // TODO is this necessary?
-    // do tonemapping
-    //opaque = linear_tone_mapping(color.rgb, 1.8);  // linear color output
-    o_color_luma.rgb = color.rgb;
-    // save luma in alpha for FXAA
-    o_color_luma.a = dot(color.rgb, vec3(0.299, 0.587, 0.114)); // compute luma
 }
