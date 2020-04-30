@@ -271,7 +271,10 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     decorations[:title] = titlet
 
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
+                topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
                 xaxisprotrusion, yaxisprotrusion, xaxisposition, yaxisposition)
+
+        left, right, bottom, top = 0f0, 0f0, 0f0, 0f0
 
         top = if !titlevisible || iswhitespace(title)
             0f0
@@ -279,28 +282,27 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             boundingbox(titlet).widths[2] + titlegap
         end
 
-        bottom = spinewidth
-
         if xaxisposition == :bottom
-            bottom += xaxisprotrusion
+            topspinevisible && (top = spinewidth)
+            bottom = xaxisprotrusion
         else
-            top += xaxisprotrusion
+            bottomspinevisible && (bottom = spinewidth)
+            top = xaxisprotrusion
         end
 
-        left = spinewidth
-
-        right = spinewidth
-
         if yaxisposition == :left
-            left += yaxisprotrusion
+            rightspinevisible && (right = spinewidth)
+            left = yaxisprotrusion
         else
-            right += yaxisprotrusion
+            leftspinevisible && (left = spinewidth)
+            right = yaxisprotrusion
         end
 
         GridLayoutBase.RectSides{Float32}(left, right, bottom, top)
     end
 
     onany(title, titlesize, titlegap, titlevisible, spinewidth,
+            topspinevisible, bottomspinevisible, leftspinevisible, rightspinevisible,
             xaxis.protrusion, yaxis.protrusion, xaxisposition, yaxisposition) do args...
         protrusions[] = compute_protrusions(args...)
     end

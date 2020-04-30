@@ -244,8 +244,8 @@ function LineAxis(parent::Scene; kwargs...)
 
 
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
-            tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
-            label, labelvisible, labelpadding, labelsize, tickalign, spinewidth, tickspace, ticklabelsvisible,
+            spinevisible, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
+            label, labelvisible, labelpadding, labelsize, tickalign, spinewidth, spinevisible, tickspace, ticklabelsvisible,
             actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont
 
         position, extents, horizontal = pos_extents_horizontal[]
@@ -257,7 +257,7 @@ function LineAxis(parent::Scene; kwargs...)
         end
 
         labelspace = (labelvisible && !iswhitespace(label)) ? real_labelsize + labelpadding : 0f0
-        spinespace = spinewidth
+        spinespace = spinevisible ? spinewidth : 0f0
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
         ticklabelgap = ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0
 
