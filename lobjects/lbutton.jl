@@ -1,7 +1,7 @@
 function LButton(scene::Scene; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LButton, parent).attributes
-    theme_attrs = subtheme(parent, :LButton)
+    default_attrs = default_attributes(LButton, scene).attributes
+    theme_attrs = subtheme(scene, :LButton)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
