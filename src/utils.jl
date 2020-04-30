@@ -42,6 +42,7 @@ end
 
 rgbatuple(c) = rgbatuple(to_color(c))
 
+to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
 function numbers_to_colors(numbers::AbstractArray{<:Number}, primitive)
 
@@ -61,8 +62,6 @@ end
 ########################################
 #     Image/heatmap -> ARGBSurface     #
 ########################################
-
-to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
 function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
     AbstractPlotting.@get_attribute attributes (colormap, colorrange)
@@ -89,12 +88,12 @@ function to_cairo_image(img::Matrix{UInt32}, attributes)
 
     # To achieve all of this, it is sufficient to physically
     # rotate the matrix left by 90 degrees.
-    return CairoARGBSurface(rotl90(img))
+    return Cairo.CairoARGBSurface(rotl90(img))
 end
 
 
 ################################################################################
-#                           Mesh handling for Cairo                            #
+#                                Mesh handling                                 #
 ################################################################################
 
 struct FaceIterator{Iteration, T, F, ET} <: AbstractVector{ET}
