@@ -398,3 +398,12 @@ function delete_scene!(s::Scene)
     deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
     nothing
 end
+
+
+function subtheme(scene, key::Symbol)
+    sub = haskey(theme(scene), key) ? theme(scene, key) : Attributes()
+    if !(sub isa Attributes)
+        error("Subtheme is not of type Attributes but is $sub")
+    end
+    sub
+end

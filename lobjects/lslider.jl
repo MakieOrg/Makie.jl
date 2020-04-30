@@ -1,6 +1,8 @@
 function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LSlider, parent).attributes)
+    default_attrs = default_attributes(LSlider, parent).attributes
+    theme_attrs = subtheme(parent, :LSlider)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     decorations = Dict{Symbol, Any}()
 

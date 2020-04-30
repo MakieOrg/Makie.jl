@@ -11,6 +11,10 @@ end
 function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent).attributes)
 
+    default_attrs = default_attributes(LColorbar, parent).attributes
+    theme_attrs = subtheme(parent, :LColorbar)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
+
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
         ticklabelspace, labelfont, ticklabelfont,

@@ -109,9 +109,9 @@ LMenu
 
 function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
-    attrs = merge!(
-        Attributes(kwargs),
-        default_attributes(LMenu, parent).attributes)
+    default_attrs = default_attributes(LMenu, parent).attributes
+    theme_attrs = subtheme(parent, :LMenu)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,

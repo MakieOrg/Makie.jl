@@ -13,7 +13,9 @@ reportedsizenode(ls::LScene) = ls.layoutobservables.reportedsize
 
 function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LScene, parent).attributes)
+    default_attrs = default_attributes(LScene, parent).attributes
+    theme_attrs = subtheme(parent, :LScene)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)

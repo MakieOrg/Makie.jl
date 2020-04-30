@@ -3,7 +3,10 @@ function LText(parent::Scene, text; kwargs...)
 end
 
 function LText(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LText, parent).attributes)
+
+    default_attrs = default_attributes(LText, parent).attributes
+    theme_attrs = subtheme(parent, :LText)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)

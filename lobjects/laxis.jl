@@ -7,7 +7,9 @@ parent.
 """
 function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
-    attrs = merge!(Attributes(kwargs), default_attributes(LAxis, parent).attributes)
+    default_attrs = default_attributes(LAxis, parent).attributes
+    theme_attrs = subtheme(parent, :LAxis)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
         title, titlefont, titlesize, titlegap, titlevisible, titlealign,

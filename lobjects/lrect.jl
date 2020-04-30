@@ -1,5 +1,8 @@
 function LRect(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LRect, parent).attributes)
+
+    default_attrs = default_attributes(LRect, parent).attributes
+    theme_attrs = subtheme(parent, :LRect)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)

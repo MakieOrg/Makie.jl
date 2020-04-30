@@ -1,5 +1,8 @@
 function LToggle(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LToggle, parent).attributes)
+
+    default_attrs = default_attributes(LToggle, parent).attributes
+    theme_attrs = subtheme(parent, :LToggle)
+    attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, cornersegments, framecolor_inactive,
         framecolor_active, buttoncolor, active, toggleduration, rimfraction)
