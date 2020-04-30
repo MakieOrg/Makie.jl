@@ -38,8 +38,9 @@ vec3 linear_tone_mapping(vec3 color, float gamma)
 // both
 void main(void)
 {
+    // if (frag_uv.x > 0.5) discard;
     // SSAO
-    vec3 frag_pos = texture(position_buffer, frag_uv).xyz;
+    vec3 view_pos = texture(position_buffer, frag_uv).xyz;
     vec3 normal  = texture(normal_buffer, frag_uv).xyz;
 
     // The normal buffer gets cleared every frame. (also position, color etc)
@@ -53,18 +54,53 @@ void main(void)
 
         float occlusion = 0.0;
         for (int i = 0; i < {{N_samples}}; ++i) {
-            vec3 sample = TBN * kernel[i];
-            sample = frag_pos + sample * radius;
+            // random offset in view space
+            vec3 sample_view_offset = TBN * kernel[i] * radius;
 
-            // view to screen space
-            vec4 offset = vec4(sample, 1.0);
-            offset = projection * offset;
-            offset.xyz /= offset.w;
-            offset.xyz = offset.xyz * 0.5 + 0.5;
+            /*
+                We want to get the uv (screen) coordinate of position + offset in
+                view space. Usually this would be:
+                clip_coordinate = projection * view_coordinate
+                clip_coordinate /= clip_coordinate.w
+                screen_coordinate = 0.5 * clip_coordinate + 0.5
 
-            float sample_depth = texture(position_buffer, offset.xy).z;
-            float range_check = smoothstep(0.0, 1.0, radius / abs(frag_pos.z - sample_depth));
-            occlusion += (sample_depth >= sample.z + bias ? 1.0 : 0.0) * range_check;
+                But Makie allows multiple scenes, which each have their own
+                coordinate system. This means it is possible that multiple
+                regions of the screen (different scenes) refer to the same view
+                position. To differentiate between them we must calculate the
+                screen space coordinate using frag_uv and an offset derived from
+                the view space offset.
+
+                Instead of
+
+                clip_coord = projection * (view_pos + view_offset)
+                clip_coord /= clip_coord.w
+                screen_coordinate = 0.5 * clip_coord + 0.5
+
+                we essentially calculate
+
+                clip_offset = projection * view_offset
+                clip_offset /= (projection * (view_pos + view_offset)).w
+                clip_position = frag_uv - 0.5
+                clip_position *= (projection * view_pos).w
+                clip_position /= (projection * (view_pos + view_offset)).w
+                screen_coordinate = clip_position + 0.5 * clip_offset+ 0.5
+            */
+
+            vec4 sample_frag_pos = vec4(
+                (projection * vec4(sample_view_offset, 1.0)).xyz,
+                (projection * vec4(view_pos + sample_view_offset, 1.0)).w
+            );
+            float sample_clip_pos_w = sample_frag_pos.w;
+            float clip_pos_w = (projection * vec4(view_pos, 1.0)).w;
+            sample_frag_pos.xyz /= sample_frag_pos.w;
+            sample_frag_pos.xyz = sample_frag_pos.xyz * 0.5 + 0.5;
+            sample_frag_pos.xy += (frag_uv - 0.5) * clip_pos_w / sample_clip_pos_w;
+
+
+            float sample_depth = texture(position_buffer, sample_frag_pos.xy).z;
+            float range_check = smoothstep(0.0, 1.0, radius / abs(view_pos.z - sample_depth));
+            occlusion += (sample_depth >= sample_view_offset.z + view_pos.z + bias ? 1.0 : 0.0) * range_check;
         }
         occlusion = 1.0 - (occlusion / {{N_samples}});
         o_occlusion = occlusion;
