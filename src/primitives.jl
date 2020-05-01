@@ -229,30 +229,29 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     # flip y for the centering shift of the character because in Cairo y goes down
     centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
-
     # this is the origin where we actually have to place the glyph so it can be centered
     charorigin = pos .+ Vec2f0(marker_offset[1], -marker_offset[2])
 
     set_font_matrix(ctx, scale_matrix(scale...))
 
-    # First, translate to the appropriate point
+    # First, we translate to the point where the
+    # marker is supposed to go.
     Cairo.translate(ctx, charorigin...)
-    # Then, rotate the canvas by the marker's rotation
+    # Then, we rotate the context by the
+    # appropriate amount,
     Cairo.rotate(ctx, to_2d_rotation(rotation))
-    # Now, apply a centering offset to account for
+    # and apply a centering offset to account for
     # the fact that text is shown from the (relative)
     # bottom left corner.
     Cairo.translate(ctx, centering_offset...)
 
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
-
     # stroke
-    if strokewidth > 0.0
-        Cairo.set_line_width(ctx, strokewidth)
-        Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
-        Cairo.stroke(ctx)
-    end
+    Cairo.set_line_width(ctx, strokewidth)
+    Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+    Cairo.stroke(ctx)
+
     # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
 
