@@ -45,7 +45,13 @@ const minimal_default = Attributes(
     camera = automatic,
     limits = automatic,
     padding = Vec3f0(0.05),
-    raw = false
+    raw = false,
+    SSAO = Attributes(
+        enable = Node(false),
+        bias = Node(0.025f0),       # z threshhold for occlusion
+        radius = Node(0.5f0),       # range of sample positions (in world space)
+        # N_samples = Node(64),       # number of samples (requires shader reload)
+    ),
 )
 
 const _current_default_theme = copy(minimal_default)
