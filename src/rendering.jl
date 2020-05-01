@@ -95,11 +95,15 @@ function render_frame(screen::Screen)
     glClear(GL_COLOR_BUFFER_BIT)
     try
         for (screenid, scene) in screen.screens
-            if !isempty(scene.plots)
-                # use stencil to select one scene,
-                # draw with appropriate projection matrix
-                projection = scene.camera.projection[]
-                fb.postprocess[1].uniforms[:projection][] = projection
+            SSAO = scene.attributes.SSAO
+            if SSAO.enable[]
+                # update uniforms
+                uniforms = fb.postprocess[1].uniforms
+                uniforms[:projection][] = scene.camera.projection[]
+                uniforms[:bias][] = SSAO.bias[]
+                uniforms[:radius][] = SSAO.radius[]
+
+                # use stencil to select one scene
                 glStencilFunc(GL_EQUAL, screenid, 0xff)
                 GLAbstraction.render(fb.postprocess[1])
             end
@@ -119,8 +123,8 @@ function render_frame(screen::Screen)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
     glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color_luma buffer
     glViewport(0, 0, w, h)
-    # clear shouldn't be necessary. every pixel should be written to
-    glClearColor(1, 0, 1, 1)
+    # necessary with negative SSAO bias...
+    glClearColor(1, 1, 1, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     GLAbstraction.render(fb.postprocess[3])
 
@@ -141,8 +145,6 @@ function render_frame(screen::Screen)
     # transfer everything to the screen
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
     glViewport(0, 0, w, h)
-    # not necessary? color buffer should be full
-    glClearColor(0, 1, 0, 1)
     glClear(GL_COLOR_BUFFER_BIT)
     GLAbstraction.render(fb.postprocess[5]) # copy postprocess
 

@@ -41,7 +41,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value

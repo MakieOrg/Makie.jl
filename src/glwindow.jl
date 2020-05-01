@@ -88,9 +88,9 @@ function postprocess(
         :kernel => kernel,
         :noise => ssao_noise,
         :noise_scale => map(s -> Vec2f0(s ./ 4.0), framebuffer_size),
-        :projection => AbstractPlotting.Node(Mat4f0(I)),
-        :bias => 0.025f0,
-        :radius => 0.5f0
+        :projection => Node(Mat4f0(I)),
+        :bias => Node(0.025f0),
+        :radius => Node(0.5f0)
     )
     pass1 = RenderObject(data1, shader1, PostprocessPrerender(), nothing)
     pass1.postrenderfunction = () -> draw_fullscreen(pass1.vertexarray.id)
