@@ -149,7 +149,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f0(I)
 
-    font = AbstractPlotting.defaultfont()
+    font = to_font(to_value(get(primitive, :font, AbstractPlotting.defaultfont())))
 
     colors = if color isa AbstractArray{<: Number}
         numbers_to_colors(color, primitive)
@@ -226,9 +226,10 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     # this is the origin where we actually have to place the glyph so it's centered
     charorigin = pos .+ centering_offset + Vec2f0(marker_offset[1], -marker_offset[2])
 
-    Cairo.move_to(ctx, charorigin...)
     set_font_matrix(ctx, scale_matrix(scale...))
+    Cairo.translate(ctx, charorigin...)
     Cairo.rotate(ctx, to_2d_rotation(rotation))
+    @show Cairo.get_current_point(ctx)
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
     # stroke
