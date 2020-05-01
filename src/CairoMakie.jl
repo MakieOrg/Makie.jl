@@ -17,8 +17,8 @@ end
 
 const OneOrVec{T} = Union{
     T,
-    Vec{T},
-    NTuple{N, T} where N,
+    Vec{N1, T} where N1,
+    NTuple{N2, T} where N2,
 }
 
 include("infrastructure.jl")
