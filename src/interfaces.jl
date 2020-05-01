@@ -607,7 +607,8 @@ function extract_scene_attributes!(attributes)
         :camera,
         :limits,
         :padding,
-        :raw
+        :raw,
+        :SSAO
     )
     result = Attributes()
     for k in scene_attributes
