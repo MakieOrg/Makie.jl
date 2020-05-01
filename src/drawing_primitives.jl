@@ -1,4 +1,5 @@
-using AbstractPlotting: get_texture_atlas, glyph_bearing!, glyph_uv_width!, glyph_scale!, calc_position, calc_offset
+using AbstractPlotting: get_texture_atlas, glyph_uv_width!
+using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
@@ -38,15 +39,18 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
     GLFW.PollEvents()
     robj = get!(screen.cache, objectid(x)) do
+
         filtered = filter(x.attributes) do (k, v)
             !(k in (:transformation, :tickranges, :ticklabels, :raw))
         end
+
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
             key, value = key_value
             gl_key = to_glvisualize_key(key)
             gl_value = lift_convert(key, value, x)
             gl_key => gl_value
         end)
+
         if haskey(gl_attributes, :scale)
             gl_attributes[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, gl_attributes[:scale])
             gl_attributes[:scale] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:scale])
@@ -93,11 +97,11 @@ function handle_view(array::Node{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices
-    A
+    return A
 end
 
 function lift_convert(key, value, plot)
-    lift(value) do value
+    return lift(value) do value
         return convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
     end
 end
@@ -197,67 +201,76 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
     end
 end
 
-function to_gl_text(string, startpos::AbstractVector{T}, textsize, font, align, rot, model) where T <: VecTypes
+function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
+                    font, align, rot, model, j, l) where T <: VecTypes
     atlas = get_texture_atlas()
     N = length(T)
     positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
-    # toffset = calc_offset(string, textsize, font, atlas)
     char_str_idx = iterate(string)
-    broadcast_foreach(1:length(string), startpos, textsize, (font,), align) do idx, pos, tsize, font, align
+    offsets = Vec2f0[]
+    broadcast_foreach(1:length(string), positions_per_char, textsize, font, align) do idx, pos, tsize, font, align
         char, str_idx = char_str_idx
-        _font = isa(font[1], NativeFont) ? font[1] : font[1][idx]
         mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
         push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
-        push!(uv_offset_width, glyph_uv_width!(atlas, char, _font))
+        push!(uv_offset_width, glyph_uv_width!(atlas, char, font))
+        glyph_bb, ext = FreeTypeAbstraction.metrics_bb(char, font, tsize)
         if isa(tsize, Vec2f0) # this needs better unit support
             push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
         else
-            push!(scale, glyph_scale!(atlas, char,_font, tsize))
+            push!(scale, widths(glyph_bb))
         end
+        push!(offsets, minimum(glyph_bb))
         char_str_idx = iterate(string, str_idx)
     end
-    positions, Vec2f0(0), uv_offset_width, scale
+    return positions, offsets, uv_offset_width, scale
 end
 
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model) where {N, T}
+function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
     atlas = get_texture_atlas()
-    mpos = model * Vec4f0(to_ndim(Vec3f0, startpos, 0f0)..., 1f0)
-    pos = to_ndim(Point{3, Float32}, mpos, 0f0)
-    rscale = Float32(textsize)
-    chars = Vector{Char}(string)
-    scale = glyph_scale!.(Ref(atlas), chars, (font,), rscale)
-    positions2d = calc_position(string, Point2f0(0), rscale, font, atlas)
-    # font is Vector{FreeType.NativeFont} so we need to protec
-    aoffset = AbstractPlotting.align_offset(Point2f0(0), positions2d[end], atlas, rscale, font, aoffsetvec)
-    aoffsetn = to_ndim(Point{3, Float32}, aoffset, 0f0)
-    uv_offset_width = glyph_uv_width!.(Ref(atlas), chars, (font,))
-    positions = map(positions2d) do p
-        pn = rot * (to_ndim(Point{3, Float32}, p, 0f0) .+ aoffsetn)
-        pn .+ pos
+    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
+    uv = Vec4f0[]
+    scales = Vec2f0[]
+    offsets = Vec2f0[]
+    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
+        push!(uv, glyph_uv_width!(atlas, c, font))
+        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
+        push!(scales, widths(glyph_bb))
+        push!(offsets, minimum(glyph_bb))
     end
-    positions, Vec2f0(0), uv_offset_width, scale
+    return positions, offsets, uv, scales
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model)
-
-        gl_text = lift(to_gl_text, x[1], getindex.(Ref(gl_attributes), liftkeys)...)
+        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight)
+        args = getindex.(Ref(gl_attributes), liftkeys)
+        gl_text = lift(x[1], args...) do str, pos, tsize, font, align, rotation, model, j, l
+            # For annotations, only str (x[1]) will get updated, but all others are updated too!
+            args = @get_attribute x (position, textsize, font, align, rotation)
+            to_gl_text(str, args..., model, j, l)
+        end
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             lift(getindex, gl_text, i)
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :stroke_color, :stroke_width, :rotation)
-        signals = getindex.(Ref(gl_attributes), keys)
+        keys = (:color, :strokecolor, :strokewidth, :rotation)
+
+        signals = map(keys) do key
+            return lift(x[1], x[key]) do str, attr
+                AbstractPlotting.get_attribute(x, key)
+            end
+        end
+
         visualize(
             (DISTANCEFIELD, positions),
+
             color = signals[1],
             stroke_color = signals[2],
             stroke_width = signals[3],
             rotation = signals[4],
+
             scale = scale,
             offset = offset,
             uv_offset_width = uv_offset_width,
