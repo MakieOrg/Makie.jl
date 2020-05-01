@@ -47,7 +47,13 @@ to_2d_rotation(::AbstractPlotting.Billboard) = 0
 
 to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
 
-# TODO: wtf
+# TODO: this is a hack around a hack.
+# AbstractPlotting encodes the transformation from a 2-vector
+# to a quaternion as a rotation around the Y-axis,
+# when it should be a rotation around the X-axis.
+# Since I don't know how to fix this in GLMakie,
+# I've reversed the order of arguments to atan,
+# such that our behaviour is consistent with GLMakie's.
 to_2d_rotation(vec::Vec2f0) = atan(vec[1], vec[2])
 
 to_2d_rotation(n::Real) = n
