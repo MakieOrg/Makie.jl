@@ -47,7 +47,8 @@ to_2d_rotation(::AbstractPlotting.Billboard) = 0
 
 to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
 
-to_2d_rotation(vec::Vec2f0) = (atan(vec[2], vec[1]))
+# TODO: wtf
+to_2d_rotation(vec::Vec2f0) = atan(vec[1], vec[2])
 
 to_2d_rotation(n::Real) = n
 

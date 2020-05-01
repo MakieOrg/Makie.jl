@@ -177,7 +177,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
-        @show rotation
         if m isa Char
             draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
         else
@@ -224,12 +223,15 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     # flip y for the centering shift of the character because in Cairo y goes down
     centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
     # this is the origin where we actually have to place the glyph so it's centered
-    charorigin = pos .+ centering_offset + Vec2f0(marker_offset[1], -marker_offset[2])
+    charorigin = pos .+ Vec2f0(marker_offset[1], -marker_offset[2])
 
     set_font_matrix(ctx, scale_matrix(scale...))
+    # @show charorigin
     Cairo.translate(ctx, charorigin...)
+    # @show Cairo.get_current_point(ctx)
     Cairo.rotate(ctx, to_2d_rotation(rotation))
-    @show Cairo.get_current_point(ctx)
+    Cairo.translate(ctx, centering_offset...)
+    # @show Cairo.get_current_point(ctx)
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
     # stroke
