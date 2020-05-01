@@ -439,8 +439,8 @@ function save(path::String, io::VideoStream;
         palette_path = dirname(io.path)
         pname = joinpath(palette_path, "palette.bmp")
         isfile(pname) && rm(pname, force = true)
-        ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -vf "$filters,palettegen" -y $pname`)
-        ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+        ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $path`)
         rm(pname, force = true)
     else
         rm(io.path)
