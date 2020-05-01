@@ -81,7 +81,6 @@ function surface(main, s::Style{:surface}, data::Dict)
         glow_width = 0f0
         uv_offset_width = Vec4f0(0) => GLBuffer
         shape = RECTANGLE
-        wireframe = false
         image = nothing => Texture
         distancefield = nothing => Texture
         shading = true

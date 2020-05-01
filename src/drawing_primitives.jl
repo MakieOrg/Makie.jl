@@ -1,5 +1,5 @@
-using AbstractPlotting: get_texture_atlas, glyph_uv_width!
-using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
+using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
+using AbstractPlotting: attribute_per_char, layout_text, FastPixel
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
@@ -143,9 +143,6 @@ function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     end
 end
 
-struct FastPixel end
-AbstractPlotting.to_spritemarker(x::FastPixel) = x
-
 function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
@@ -156,7 +153,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
         end
+
         positions = handle_view(x[1], gl_attributes)
+        positions = apply_transform(transform_func_obs(x), positions)
+
         if marker[] isa FastPixel
             filter!(gl_attributes) do (k, v,)
                 k in (:color_map, :color, :color_norm, :scale, :fxaa, :model)
@@ -179,6 +179,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = to_value(linestyle)
         positions = handle_view(x[1], data)
+        positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
         visualize(positions, Style(:lines), data)
     end
@@ -190,6 +191,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = to_value(linestyle)
         positions = handle_view(x.converted[1], data)
+        positions = apply_transform(transform_func_obs(x), positions)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
             c = pop!(data, :color)
             data[:color] = lift(AbstractPlotting.el32convert, c)
