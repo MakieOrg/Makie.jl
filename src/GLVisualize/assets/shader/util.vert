@@ -225,35 +225,27 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
 
 
 
+out vec4 o_view_pos;
 out vec3 o_normal;
 out vec3 o_lightdir;
 out vec3 o_camdir;
-// TODO: implement
-// uniform mat3 normalmatrix;
-// should be transpose(inverse(view * model))
+uniform mat3 normalmatrix;
 uniform vec3 lightposition;
 uniform vec3 eyeposition;
 
-out vec4 o_view_pos;
-out vec3 o_view_normal; // TODO calculate with normalmatrix
 
-void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
+void render(vec4 position_world, vec3 normal, mat4 viewmodel, mat4 projection, vec3 lightposition)
 {
     // normal in world space
-    // (only model applied - but should be transpose(inverse(model)))
-    // see https://learnopengl.com/Lighting/Basic-Lighting
-    // http://www.lighthouse3d.com/tutorials/glsl-12-tutorial/the-normal-matrix/
-    o_normal               = normal;
+    o_normal               = normalmatrix * normal;
     // direction to light
     o_lightdir             = normalize(lightposition - position_world.xyz);
     // direction to camera
     o_camdir               = normalize(eyeposition - position_world.xyz);
-    // Shouldn't this just be position_world?
-    o_view_pos             = view * position_world;
-    // screen space coordinates of the vertex
+    // position in view space (as seen from camera)
+    o_view_pos             = viewmodel * position_world;
+    // position in clip space (w/ depth)
     gl_Position            = projection * o_view_pos;
-    // TODO calculate w/ normalmatrix (see o_normal links)
-    o_view_normal          = transpose(inverse(mat3(view))) * normal;
 }
 
 

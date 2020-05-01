@@ -68,6 +68,11 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
         end
+        if !haskey(gl_attributes, :normalmatrix)
+            robj[:normalmatrix] = map(robj[:view], robj[:model]) do v, m
+                Mat3f0(transpose(inv(v[1:3, 1:3] * m[1:3, 1:3])))
+            end
+        end
         screen.cache2plot[robj.id] = x
         robj
     end

@@ -30,5 +30,5 @@ void main()
     o_uv = vec2(1.0 - tex_uv.y, tex_uv.x);
     o_color = to_color(vertex_color);
     vec3 v = to_3d(vertices);
-    render(model * vec4(v, 1), (model * vec4(normals, 0)).xyz, view, projection, lightposition);
+    render(vec4(v, 1), normals, view*model, projection, lightposition);
 }

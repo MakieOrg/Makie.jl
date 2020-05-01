@@ -85,5 +85,5 @@ void main()
     o_id = uvec2(objectid, index1D+1);
     o_uv = index01;
     vec3 normalvec = {{normal_calc}};
-    render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, lightposition);
+    render(vec4(pos, 1), normalvec, view*model, projection, lightposition);
 }

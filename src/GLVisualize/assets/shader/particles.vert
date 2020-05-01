@@ -140,5 +140,5 @@ void main(){
     o_color    = _color(color, intensity, color_map, color_norm, index, len);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);
-    render(model * vec4(pos + V, 1), N, view, projection, lightposition);
+    render(vec4(pos + V, 1), N, view*model, projection, lightposition);
 }
