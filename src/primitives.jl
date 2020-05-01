@@ -157,11 +157,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
         color
     end
 
-    broadcast_foreach(primitive[1][], colors, fields..., primitive.rotations[]) do point, col, c, markersize, strokecolor, strokewidth, marker, mo, _, rotation
+    broadcast_foreach(primitive[1][], colors, markersize, strokecolor, strokewidth, marker, marker_offset, primitive.rotations[]) do point, col, markersize, strokecolor, strokewidth, marker, mo, rotation
 
         # if we give size in pixels, the size is always equal to that value
-        scale = if markersize isa AbstractPlotting.Pixel
-            Vec2f0(markersize.value)
+        scale = if markersize isa OneOrVec{<: AbstractPlotting.Pixel}
+            Vec2f0(getproperty.(markersize, :value))
         else
             # otherwise calculate a scaled size
             project_scale(scene, markersize, size_model)
