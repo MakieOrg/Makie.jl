@@ -16,7 +16,7 @@ To add CairoMakie to your environment, simply run the following in the REPL:
 If you are using CairoMakie and GLMakie together, you can use each backend's `activate!` function to switch between them.
 
 ## Issues
-Please file all issues in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention CairoMakie in the issue text!
+Please file all issues in [Makie.jl](https://github.com/JuliaPlots/Makie.jl/issues/new), and mention CairoMakie in the issue text!
 
 ## Limitations
 
