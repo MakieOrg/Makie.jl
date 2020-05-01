@@ -210,6 +210,13 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     Cairo.save(ctx)
 
+    # Marker offset is meant to be relative to the
+    # bottom left corner of the box centered at
+    # `pos` with sides defined by `scale`, but
+    # this does not take the character's dimensions
+    # into account.
+    # Here, we reposition the marker offset to be
+    # relative to the center of the char.
     marker_offset = marker_offset .+ scale ./ 2
 
     cairoface = set_ft_font(ctx, font)
@@ -222,23 +229,30 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     # flip y for the centering shift of the character because in Cairo y goes down
     centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
-    # this is the origin where we actually have to place the glyph so it's centered
+
+    # this is the origin where we actually have to place the glyph so it can be centered
     charorigin = pos .+ Vec2f0(marker_offset[1], -marker_offset[2])
 
     set_font_matrix(ctx, scale_matrix(scale...))
-    # @show charorigin
+
+    # First, translate to the appropriate point
     Cairo.translate(ctx, charorigin...)
-    # @show Cairo.get_current_point(ctx)
+    # Then, rotate the canvas by the marker's rotation
     Cairo.rotate(ctx, to_2d_rotation(rotation))
+    # Now, apply a centering offset to account for
+    # the fact that text is shown from the (relative)
+    # bottom left corner.
     Cairo.translate(ctx, centering_offset...)
-    # @show Cairo.get_current_point(ctx)
+
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
-    # stroke
-    Cairo.set_line_width(ctx, strokewidth)
-    Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
-    Cairo.stroke(ctx)
 
+    # stroke
+    if strokewidth > 0.0
+        Cairo.set_line_width(ctx, strokewidth)
+        Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+        Cairo.stroke(ctx)
+    end
     # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
 
@@ -264,7 +278,7 @@ function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, stroke
     Cairo.fill_preserve(ctx);
     if strokewidth > 0.0
         sc = to_color(strokecolor)
-        Cairo.set_source_rgba(ctx, red(sc), green(sc), blue(sc), alpha(sc))
+        Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
         Cairo.set_line_width(ctx, Float64(strokewidth))
         Cairo.stroke(ctx)
     end
@@ -304,7 +318,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         set_font_matrix(ctx, mat)
 
         # TODO this only works in 2d
-        Cairo.rotate(ctx, -AbstractPlotting.quaternion_to_2d_angle(r))
+        Cairo.rotate(ctx, to_2d_rotation(r))
 
         if !(char in ('\r', '\n'))
             Cairo.show_text(ctx, string(char))
