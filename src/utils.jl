@@ -34,6 +34,21 @@ end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
+########################################
+#          Rotation handling           #
+########################################
+
+function to_2d_rotation(::T) where T
+    error("Type $T cannot be converted to a 2D rotation")
+end
+
+to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
+
+to_2d_rotation(vec::Vec2f0) = (atan(vec[2], vec[1]))
+
+to_2d_rotation(n::Real) = n
+
+
 ################################################################################
 #                                Color handling                                #
 ################################################################################
