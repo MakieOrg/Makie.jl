@@ -8,6 +8,8 @@ uniform sampler1D color_map;
 uniform vec2 color_norm;
 uniform float stroke_width;
 uniform vec4 stroke_color;
+uniform vec4 highclip;
+uniform vec4 lowclip;
 uniform float levels;
 uniform vec4 nan_color;
 
@@ -37,9 +39,13 @@ void write2framebuffer(vec4 color, uvec2 id);
 void main(){
     float i = float(getindex(intensity, o_uv).x);
     vec4 color = vec4(0);
-    if(isnan(i)){
+    if (isnan(i)) {
         color = nan_color;
-    }else{
+    } else if (i < color_norm.x) {
+        color = lowclip;
+    } else if (i > color_norm.y) {
+        color = highclip;
+    } else {
         i = clamp_01(i, color_norm.x, color_norm.y);
         color = texture(color_map, i);
         if(stroke_width > 0.0){
