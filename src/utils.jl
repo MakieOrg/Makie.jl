@@ -38,8 +38,9 @@ scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 #          Rotation handling           #
 ########################################
 
-function to_2d_rotation(::T) where T
-    error("Type $T cannot be converted to a 2D rotation")
+function to_2d_rotation(x)
+    quat = to_rotation(x)
+    return -AbstractPlotting.quaternion_to_2d_angle(quat)
 end
 
 to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
