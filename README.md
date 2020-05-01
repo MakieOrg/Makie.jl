@@ -22,6 +22,12 @@ Please file all issues in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl/
 
 As of now, CairoMakie only supports 2D scenes.  It is also noticeably slower than GLMakie.
 
+## Saving
+
+Makie overloads the FileIO interface, so you can save a Scene `scene` as `save("filename.extension", scene)`.  CairoMakie supports saving to PNG, PDF, SVG and EPS.
+
+Additionally, when using CairoMakie, you can scale the resolution or size which you save a figure at, without changing its appearance.  This scaling factor is configured by passing keyword arguments to `save`.  PNGs can be scaled by `px_per_unit` (default 1) and vector graphics (SVG, PDF, EPS) can be scaled by `pt_per_unit`.
+
 ## Using CairoMakie with Gtk.jl
 
 You can render onto a GtkCanvas using Gtk, and use that as a display for your scenes.

@@ -139,60 +139,85 @@ end
 #                                   Scatter                                    #
 ################################################################################
 
-
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
-    fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset))
+    fields = @get_attribute(primitive, (color, markersize, strokecolor, strokewidth, marker, marker_offset, rotations))
     @get_attribute(primitive, (transform_marker,))
 
-    cmap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
-    crange = get(primitive, :colorrange, nothing) |> to_value
     ctx = screen.context
     model = primitive[:model][]
     positions = primitive[1][]
     isempty(positions) && return
     size_model = transform_marker ? model : Mat4f0(I)
 
-    if color isa AbstractVector{<: Real}
-        color = numbers_to_colors(color, primitive)
+    font = to_font(to_value(get(primitive, :font, AbstractPlotting.defaultfont())))
+
+    colors = if color isa AbstractArray{<: Number}
+        numbers_to_colors(color, primitive)
+    else
+        color
     end
 
-    font = AbstractPlotting.defaultfont()
-
-    broadcast_foreach(primitive[1][], color, markersize, strokecolor, strokewidth, marker, marker_offset) do point, c, markersize, strokecolor, strokewidth, marker, mo
+    broadcast_foreach(primitive[1][], colors, markersize, strokecolor, strokewidth, marker, marker_offset, primitive.rotations[]) do point, col, markersize, strokecolor, strokewidth, marker, mo, rotation
 
         # if we give size in pixels, the size is always equal to that value
-        scale = if markersize isa AbstractPlotting.Pixel
-            [markersize.value, markersize.value]
+        scale = if markersize isa OneOrVec{<: AbstractPlotting.Pixel}
+            Vec2f0(getproperty.(markersize, :value))
         else
             # otherwise calculate a scaled size
             project_scale(scene, markersize, size_model)
         end
+
+        offset = if mo isa OneOrVec{<: AbstractPlotting.Pixel}
+            Vec2f0(getproperty.(mo, :value))
+        else
+            project_scale(scene, mo, size_model)
+        end
+
         pos = project_position(scene, point, model)
 
-        Cairo.set_source_rgba(ctx, rgbatuple(c)...)
+        Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
         if m isa Char
-            draw_marker(ctx, m, font, pos, scale, strokecolor, strokewidth)
+            draw_marker(ctx, m, best_font(m, font), pos, scale, strokecolor, strokewidth, offset, rotation)
         else
-            draw_marker(ctx, m, pos, scale, strokecolor, strokewidth)
+            draw_marker(ctx, m, pos, scale, strokecolor, strokewidth, offset, rotation)
         end
     end
     nothing
 end
 
-function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth)
-    pos += Point2f0(scale[1] / 2, -scale[2] / 2)
-    Cairo.arc(ctx, pos[1], pos[2], scale[1] / 2, 0, 2*pi)
+
+function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+
+    marker_offset = marker_offset + scale ./ 2
+
+    pos += Point2f0(marker_offset[1], -marker_offset[2])
+
+    # Cairo.scale(ctx, scale...)
+    Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
     Cairo.fill(ctx)
+
+
     sc = to_color(strokecolor)
     if strokewidth > 0.0
-        Cairo.set_source_rgba(ctx, red(sc), green(sc), blue(sc), alpha(sc))
+        Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
         Cairo.set_line_width(ctx, Float64(strokewidth))
         Cairo.stroke(ctx)
     end
 end
 
-function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth)
+function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+
+    Cairo.save(ctx)
+
+    # Marker offset is meant to be relative to the
+    # bottom left corner of the box centered at
+    # `pos` with sides defined by `scale`, but
+    # this does not take the character's dimensions
+    # into account.
+    # Here, we reposition the marker offset to be
+    # relative to the center of the char.
+    marker_offset = marker_offset .+ scale ./ 2
 
     cairoface = set_ft_font(ctx, font)
 
@@ -204,35 +229,61 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     # flip y for the centering shift of the character because in Cairo y goes down
     centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
-    # this is the origin where we actually have to place the glyph so it's centered
-    charorigin = pos .+ centering_offset
 
-    Cairo.move_to(ctx, charorigin...)
-    mat = scale_matrix(scale...)
-    set_font_matrix(ctx, mat)
+    # this is the origin where we actually have to place the glyph so it can be centered
+    charorigin = pos .+ Vec2f0(marker_offset[1], -marker_offset[2])
+
+    set_font_matrix(ctx, scale_matrix(scale...))
+
+    # First, translate to the appropriate point
+    Cairo.translate(ctx, charorigin...)
+    # Then, rotate the canvas by the marker's rotation
+    Cairo.rotate(ctx, to_2d_rotation(rotation))
+    # Now, apply a centering offset to account for
+    # the fact that text is shown from the (relative)
+    # bottom left corner.
+    Cairo.translate(ctx, centering_offset...)
+
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
-    Cairo.set_line_width(ctx, strokewidth)
-    Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
-    Cairo.stroke(ctx)
 
+    # stroke
+    if strokewidth > 0.0
+        Cairo.set_line_width(ctx, strokewidth)
+        Cairo.set_source_rgba(ctx, rgbatuple(strokecolor)...)
+        Cairo.stroke(ctx)
+    end
     # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
+
+    Cairo.restore(ctx)
 
 end
 
 
-function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, strokecolor, strokewidth)
-    s2 = Point2f0(scale[1], -scale[2])
-    Cairo.rectangle(ctx, pos..., s2...)
-    Cairo.fill(ctx);
+function draw_marker(ctx, marker::Union{Rect, Type{<: Rect}}, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+    s2 = if marker isa Type{Rect}
+        Point2(scale[1], -scale[2])
+    else
+        Point2((widths(marker) .* scale .* (1, -1))...)
+    end
+
+    offset = marker_offset .+ scale ./ 2
+
+    pos += Point2f0(offset[1], -offset[2])
+
+    Cairo.move_to(ctx, pos...)
+    Cairo.rotate(ctx, to_2d_rotation(rotation))
+    Cairo.rectangle(ctx, 0, 0, s2...)
+    Cairo.fill_preserve(ctx);
     if strokewidth > 0.0
         sc = to_color(strokecolor)
-        Cairo.set_source_rgba(ctx, red(sc), green(sc), blue(sc), alpha(sc))
+        Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
         Cairo.set_line_width(ctx, Float64(strokewidth))
         Cairo.stroke(ctx)
     end
 end
+
 
 ################################################################################
 #                                     Text                                     #
@@ -267,7 +318,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         set_font_matrix(ctx, mat)
 
         # TODO this only works in 2d
-        Cairo.rotate(ctx, -AbstractPlotting.quaternion_to_2d_angle(r))
+        Cairo.rotate(ctx, to_2d_rotation(r))
 
         if !(char in ('\r', '\n'))
             Cairo.show_text(ctx, string(char))

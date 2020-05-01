@@ -34,6 +34,25 @@ end
 
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
+########################################
+#          Rotation handling           #
+########################################
+
+function to_2d_rotation(x)
+    quat = to_rotation(x)
+    return -AbstractPlotting.quaternion_to_2d_angle(quat)
+end
+
+to_2d_rotation(::AbstractPlotting.Billboard) = 0
+
+to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
+
+# TODO: wtf
+to_2d_rotation(vec::Vec2f0) = atan(vec[1], vec[2])
+
+to_2d_rotation(n::Real) = n
+
+
 ################################################################################
 #                                Color handling                                #
 ################################################################################

@@ -17,6 +17,7 @@ ignored_titles = Set((
 
 filter!(database) do entry
     "2d" in entry.tags &&
+    !("3d" in entry.tags) &&
     !(lowercase(entry.title) ∈ ignored_titles)
 end
 
