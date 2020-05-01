@@ -15,6 +15,12 @@ else
     Cairo._jl_libcairo
 end
 
+const OneOrVec{T} = Union{
+    T,
+    Vec{T},
+    NTuple{N, T} where N,
+}
+
 include("infrastructure.jl")
 include("utils.jl")
 include("fonts.jl")
