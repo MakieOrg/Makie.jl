@@ -119,7 +119,7 @@ function Scene(
 end
 
 
-function Scene(;clear = true, scene_attributes...)
+function Scene(;clear = true, transform_func=identity, scene_attributes...)
     events = Events()
     theme = current_default_theme(; scene_attributes...)
     attributes = copy(theme)
@@ -138,7 +138,7 @@ function Scene(;clear = true, scene_attributes...)
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
         nothing,
-        Transformation(),
+        Transformation(transform_func),
         AbstractPlot[],
         theme,
         attributes,
@@ -182,7 +182,7 @@ function Scene(
     child
 end
 
-function Scene(parent::Scene, area; clear = false, attributes...)
+function Scene(parent::Scene, area; clear=false, transform_func=identity, attributes...)
     events = parent.events
     px_area = lift(pixelarea(parent), convert(Node, area)) do p, a
         # make coordinates relative to parent
@@ -195,7 +195,7 @@ function Scene(parent::Scene, area; clear = false, attributes...)
         Camera(px_area),
         RefValue{Any}(EmptyCamera()),
         nothing,
-        Transformation(),
+        Transformation(transform_func),
         AbstractPlot[],
         current_default_theme(; attributes...),
         merge!(Attributes(; attributes...), parent.attributes),
@@ -204,7 +204,7 @@ function Scene(parent::Scene, area; clear = false, attributes...)
         parent
     )
     push!(parent.children, child)
-    child
+    return child
 end
 
 # Base overloads for Scene

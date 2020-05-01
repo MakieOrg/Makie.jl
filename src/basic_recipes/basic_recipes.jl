@@ -1192,24 +1192,17 @@ function plot!(p::Spy)
         end
         points, convert(Vector{Float32}, color)
     end
+
     replace_automatic!(p, :colorrange) do
         lift(xycol) do (xy, col)
             extrema_nan(col)
         end
     end
+
     marker = lift(p.marker) do x
-        if x === automatic
-            # If we currently use GLMakie, we can go super fast!
-            BackendModule = parentmodule(typeof(AbstractPlotting.current_backend[]))
-            if nameof(BackendModule) == :GLMakie
-                BackendModule.FastPixel()
-            else
-                :rect
-            end
-        else
-            x
-        end
+        return x === automatic ? FastPixel() : x
     end
+
     scatter!(
         p,
         lift(first, xycol), color = lift(last, xycol),

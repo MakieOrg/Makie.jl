@@ -5,10 +5,9 @@ using Observables
 using FileIO
 using GeometryBasics: Pyramid
 using PlotUtils
+using AbstractPlotting: apply_transform, transform_func, xyz_boundingbox, raw_boundingbox, atomic_limits
 
-scatter(1:4, color=rand(RGBf0, 4)) |> display
 scatter(1:4, color=:red)
-
 scatter(1:4, marker='☼')
 scatter(1:4, marker=['☼', '◒', '◑', '◐'])
 scatter(1:4, marker="☼◒◑◐")
@@ -51,7 +50,7 @@ surface(-10..10, -10..10, data, color=rand(RGBf0, size(data)...))
 surface(-10..10, -10..10, data, colormap=:magma, colorrange=(0.0, 2.0))
 
 # Polygons
-poly(decompose(Point2f0, Circle(Point2f0(0), 1f0))) |> display
+poly(decompose(Point2f0, Circle(Point2f0(0), 1f0)))
 
 # Image like!
 image(rand(10, 10))
@@ -145,3 +144,9 @@ lightposition = lp)
 scatter!(scene, map(v -> [v], lp), color=:yellow, markersize=0.2f0)
 
 vbox(hbox(s4, s3, s2, s1, s7, s6, s5), scene) |> display
+
+# Scaling
+scene = Scene(transform_func=(identity, log10))
+linesegments!(1:4, color=:black, linewidth=20, transparency=true)
+scatter!(1:4, color=rand(RGBf0, 4), markersize=20px)
+lines!(1:4, color=rand(RGBf0, 4)) |> display
