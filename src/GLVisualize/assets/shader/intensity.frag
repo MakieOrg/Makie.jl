@@ -37,14 +37,16 @@ float aastep(float threshold1, float value) {
 void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
+    vec4 start_color = texture(color_map, 0.0);
+    vec4 end_color = texture(color_map, 1.0);
     float i = float(getindex(intensity, o_uv).x);
     vec4 color = vec4(0);
     if (isnan(i)) {
         color = nan_color;
     } else if (i < color_norm.x) {
-        color = lowclip;
+        color = mix(lowclip, start_color, aastep(color_norm.x, i));
     } else if (i > color_norm.y) {
-        color = highclip;
+        color = mix(end_color, highclip, aastep(color_norm.y, i));
     } else {
         i = clamp_01(i, color_norm.x, color_norm.y);
         color = texture(color_map, i);
