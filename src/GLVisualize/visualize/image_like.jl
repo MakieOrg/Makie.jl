@@ -73,6 +73,8 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
         color_map = default(Vector{RGBA{N0f8}},s) => Texture
         primitive = prim => to_uvmesh
         nan_color = RGBAf0(1, 0, 0, 1)
+        highclip = RGBAf0(0, 0, 0, 0)
+        lowclip = RGBAf0(0, 0, 0, 0)
         color_norm = const_lift(extrema2f0, main)
         stroke_width::Float32 = 0.05f0
         levels::Float32 = 5f0
