@@ -878,7 +878,6 @@ const _marker_map = Dict(
     :circle => '●'
 )
 
-
 """
     available_marker_symbols()
 
@@ -891,6 +890,21 @@ function available_marker_symbols()
     end
 end
 
+"""
+    FastPixel()
+
+Use
+
+```julia
+scatter(..., marker=FastPixel())
+```
+
+For significant faster plotting times for large amount of points.
+Note, that this will draw markers always as 1 pixel.
+"""
+struct FastPixel end
+
+to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
 to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
 to_spritemarker(::Type{<: Rect}) = Rect(Vec2f0(0), Vec2f0(1))
