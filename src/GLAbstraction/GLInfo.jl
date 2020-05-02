@@ -10,50 +10,27 @@ function getUniformsInfo(p::GLProgram)
     program = p.id
     # Get uniforms info (not in named blocks)
     @show activeUnif = glGetProgramiv(program, GL_ACTIVE_UNIFORMS)
+    bufSize = 16
+    name = zeros(UInt8, bufSize)
+    buflen = Ref{GLsizei}(0)
+    size = Ref{GLint}(0)
+    type = Ref{GLenum}()
 
     for i=0:activeUnif-1
-        @show index = glGetActiveUniformsiv(program, i, GL_UNIFORM_BLOCK_INDEX)
-        if (index == -1)
-            @show name = glGetActiveUniformName(program, i)
-            @show uniType = glGetActiveUniformsiv(program, i, GL_UNIFORM_TYPE)
-
-            @show uniSize = glGetActiveUniformsiv(program, i, GL_UNIFORM_SIZE)
-            @show uniArrayStride = glGetActiveUniformsiv(program, i, GL_UNIFORM_ARRAY_STRIDE)
-
-            auxSize = 0
-            if (uniArrayStride > 0)
-                @show auxSize = uniArrayStride * uniSize
-            else
-                @show auxSize = spGLSLTypeSize[uniType]
-            end
-        end
-    end
-    # Get named blocks info
-    @show count = glGetProgramiv(program, GL_ACTIVE_UNIFORM_BLOCKS)
-
-    for i=0:count-1
-        # Get blocks name
-        @show name = glGetActiveUniformBlockName(program, i)
-        @show dataSize = glGetActiveUniformBlockiv(program, i, GL_UNIFORM_BLOCK_DATA_SIZE)
-
-        @show index = glGetActiveUniformBlockiv(program, i,  GL_UNIFORM_BLOCK_BINDING)
-        @show binding_point = glGetIntegeri_v(GL_UNIFORM_BUFFER_BINDING, index)
-
-        @show activeUnif = glGetActiveUniformBlockiv(program, i, GL_UNIFORM_BLOCK_ACTIVE_UNIFORMS)
-
-        indices = zeros(GLuint, activeUnif)
-        glGetActiveUniformBlockiv(program, i, GL_UNIFORM_BLOCK_ACTIVE_UNIFORM_INDICES, indices)
-        @show indices
-        for ubindex in indices
-            @show name = glGetActiveUniformName(program, ubindex)
-            @show uniType = glGetActiveUniformsiv(program, ubindex, GL_UNIFORM_TYPE)
-            @show uniOffset = glGetActiveUniformsiv(program, ubindex, GL_UNIFORM_OFFSET)
-            @show uniSize = glGetActiveUniformsiv(program, ubindex, GL_UNIFORM_SIZE)
-            @show uniMatStride = glGetActiveUniformsiv(program, ubindex, GL_UNIFORM_MATRIX_STRIDE)
-        end
+        glGetActiveUniform(program, i, bufSize, buflen, size, type, name)
+        println(String(name),  " ", buflen[], " ", size[], " ", GLENUM(type[]).name)
     end
 end
 
+function uniform_name_type(p::GLProgram, location)
+    bufSize = 32
+    name = zeros(UInt8, bufSize)
+    buflen = Ref{GLsizei}(0)
+    size = Ref{GLint}(0)
+    type = Ref{GLenum}()
+    glGetActiveUniform(p.id, location, bufSize, buflen, size, type, name)
+    println(String(name),  " ", buflen[], " ", size[], " ", GLENUM(type[]).name)
+end
 
 # display the values for uniforms in the default block
 function getUniformInfo(p::GLProgram, uniName::Symbol)

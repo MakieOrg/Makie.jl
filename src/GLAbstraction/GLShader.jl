@@ -354,7 +354,7 @@ function template2source(source::AbstractString, view, attributes::Dict{Symbol, 
     source = mustache_replace(source) do mustache_key
         r = mustache2replacement(mustache_key, view, attributes)
         replacements[mustache_key] = r
-        r
+        return r
     end
-    source, replacements
+    return source, replacements
 end

@@ -61,6 +61,8 @@ function render(renderobject::RenderObject, vertexarray = renderobject.vertexarr
         glUseProgram(program.id)
         for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)
+                # @show key typeof(to_value(renderobject.uniforms[key]))
+                # uniform_name_type(program, value[1])
                 if length(value) == 1
                     gluniform(value[1], renderobject.uniforms[key])
                 elseif length(value) == 2

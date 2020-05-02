@@ -8,19 +8,17 @@ uniform sampler1D color_map;
 uniform vec2 color_norm;
 uniform float stroke_width;
 uniform vec4 stroke_color;
+
+uniform float levels;
+
 uniform vec4 highclip;
 uniform vec4 lowclip;
-uniform float levels;
 uniform vec4 nan_color;
 
 vec4 getindex(sampler2D image, vec2 uv){return texture(image, vec2(uv.x, 1-uv.y));}
 vec4 getindex(sampler1D image, vec2 uv){return texture(image, uv.y);}
-float clamp_01(float val, float from, float to){
-    return clamp((val - from) / (to - from), 0.0, 1.0);
-}
-
-vec4 color_lookup(float intensity, sampler1D color_ramp, vec2 norm){
-    return texture(color_ramp, clamp_01(intensity, norm.x, norm.y));
+float range_01(float val, float from, float to){
+    return (val - from) / (to - from);
 }
 
 #define ALIASING_CONST 0.70710678118654757
@@ -37,19 +35,16 @@ float aastep(float threshold1, float value) {
 void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
-    vec4 start_color = texture(color_map, 0.0);
-    vec4 end_color = texture(color_map, 1.0);
     float i = float(getindex(intensity, o_uv).x);
-    vec4 color = vec4(0);
+    i = range_01(i, color_norm.x, color_norm.y);
+    vec4 color = texture(color_map, clamp(i, 0.0, 1.0));
     if (isnan(i)) {
         color = nan_color;
-    } else if (i < color_norm.x) {
-        color = mix(lowclip, start_color, aastep(color_norm.x, i));
-    } else if (i > color_norm.y) {
-        color = mix(end_color, highclip, aastep(color_norm.y, i));
+    } else if (i < 0.0) {
+        color = lowclip;
+    } else if (i > 1.0) {
+        color = highclip;
     } else {
-        i = clamp_01(i, color_norm.x, color_norm.y);
-        color = texture(color_map, i);
         if(stroke_width > 0.0){
             float lines = i * levels;
             lines = abs(fract(lines - 0.5));
