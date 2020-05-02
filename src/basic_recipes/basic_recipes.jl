@@ -778,9 +778,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
     plot
 end
 
-
 function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(to_value.((x[1], x[2]))...)
+    xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
 end
 
 """
@@ -1192,24 +1191,17 @@ function plot!(p::Spy)
         end
         points, convert(Vector{Float32}, color)
     end
+
     replace_automatic!(p, :colorrange) do
         lift(xycol) do (xy, col)
             extrema_nan(col)
         end
     end
+
     marker = lift(p.marker) do x
-        if x === automatic
-            # If we currently use GLMakie, we can go super fast!
-            BackendModule = parentmodule(typeof(AbstractPlotting.current_backend[]))
-            if nameof(BackendModule) == :GLMakie
-                BackendModule.FastPixel()
-            else
-                :rect
-            end
-        else
-            x
-        end
+        return x === automatic ? FastPixel() : x
     end
+
     scatter!(
         p,
         lift(first, xycol), color = lift(last, xycol),

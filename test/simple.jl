@@ -6,9 +6,7 @@ using FileIO
 using GeometryBasics: Pyramid
 using PlotUtils
 
-scatter(1:4, color=rand(RGBf0, 4)) |> display
 scatter(1:4, color=:red)
-
 scatter(1:4, marker='☼')
 scatter(1:4, marker=['☼', '◒', '◑', '◐'])
 scatter(1:4, marker="☼◒◑◐")
@@ -39,9 +37,7 @@ linesegments(1:4, linestyle=:dot)
 linesegments(1:4, linestyle=[0.0, 1.0, 2.0, 3.0, 4.0])
 linesegments(1:4, color=1:4)
 linesegments(1:4, color=rand(RGBf0, 4), linewidth=4)
-x = Point2f0[(1, 1), (2, 2), (3, 2), (4, 4)]
-points = connect(x, LineFace{Int}[(1, 2), (2, 3), (3, 4)])
-x = linesegments(points)
+
 
 # Surface
 data = AbstractPlotting.peaks()
@@ -51,7 +47,7 @@ surface(-10..10, -10..10, data, color=rand(RGBf0, size(data)...))
 surface(-10..10, -10..10, data, colormap=:magma, colorrange=(0.0, 2.0))
 
 # Polygons
-poly(decompose(Point2f0, Circle(Point2f0(0), 1f0))) |> display
+poly(decompose(Point2f0, Circle(Point2f0(0), 1f0)))
 
 # Image like!
 image(rand(10, 10))
@@ -93,7 +89,8 @@ x = text("heyllo") |> display
 # Gradients
 data = ((x, y) -> x^2 + y^2).(1:100, (1:100)')
 heatmap(data; colormap=cgrad(:RdYlBu; categorical=true), interpolate=true)
-
+extrema(data)
+heatmap(data; interpolate=true, colorrange=(-6.0, 7.0), highclip=:black, lowclip=:pink)
 
 # Animations
 function n_times(f, n=10, interval=0.05)
@@ -140,8 +137,21 @@ end
 
 scene = Scene()
 contour!(scene, 0..1, 0..1, 0..1, rand(10, 10, 10), levels = 2;
-ambient = la, diffuse = ld, specular = ls, shininess = shininess,
-lightposition = lp)
+ambient = la, diffuse = ld, specular = ls, shininess = shininess,lightposition = lp)
 scatter!(scene, map(v -> [v], lp), color=:yellow, markersize=0.2f0)
 
 vbox(hbox(s4, s3, s2, s1, s7, s6, s5), scene) |> display
+
+# Scaling
+scene = Scene(transform_func=(identity, log10))
+linesegments!(1:4, color=:black, linewidth=20, transparency=true)
+scatter!(1:4, color=rand(RGBf0, 4), markersize=20px)
+lines!(1:4, color=rand(RGBf0, 4)) |> display
+
+
+# Views
+
+x = Point2f0[(1, 1), (2, 2), (3, 2), (4, 4)]
+points = connect(x, LineFace{Int}[(1, 2), (2, 3), (3, 4)])
+linesegments(points)
+scatter(x)
