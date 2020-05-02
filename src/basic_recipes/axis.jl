@@ -538,6 +538,8 @@ end
 function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     cplot = Axis2D(scene, attributes, args)
+    # Disable any non linear transform for the axis plot!
+    cplot.transformation.transform_func[] = identity
     g_keys = (:linewidth, :linecolor, :linestyle)
     f_keys = (:linewidth, :linecolor, :linestyle, :axis_position, :axis_arrow, :arrow_size, :frames)
     t_keys = (
@@ -697,6 +699,8 @@ end
 
 function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
     axis = Axis3D(scene, attributes, args)
+    # Disable any non linear transform for the axis plot!
+    axis.transformation.transform_func[] = identity
     textbuffer = TextBuffer(axis, Point{3}, transparency = true)
     linebuffer = LinesegmentBuffer(axis, Point{3}, transparency = true)
 

@@ -144,11 +144,11 @@ struct Transformation <: Transformable
     flip::Node{NTuple{3, Bool}}
     align::Node{Vec2f0}
     # data conversion node, for e.g. log / log10 etc
-    data_func::Node{Any}
-    function Transformation(translation, scale, rotation, model, flip, align, data_func)
+    transform_func::Node{Any}
+    function Transformation(translation, scale, rotation, model, flip, align, transform_func)
         return new(
             RefValue{Transformable}(),
-            translation, scale, rotation, model, flip, align, data_func
+            translation, scale, rotation, model, flip, align, transform_func
         )
     end
 end
