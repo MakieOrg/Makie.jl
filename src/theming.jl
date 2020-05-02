@@ -47,10 +47,10 @@ const minimal_default = Attributes(
     padding = Vec3f0(0.05),
     raw = false,
     SSAO = Attributes(
-        # enable = Node(false),
-        bias = Node(0.025f0),       # z threshhold for occlusion
-        radius = Node(0.5f0),       # range of sample positions (in world space)
-        # N_samples = Node(64),       # number of samples (requires shader reload)
+        # enable = false,
+        bias = 0.025f0,       # z threshhold for occlusion
+        radius = 0.5f0,       # range of sample positions (in world space)
+        # N_samples = 64,       # number of samples (requires shader reload)
     ),
 )
 
