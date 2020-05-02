@@ -302,7 +302,7 @@ function RenderObject(
             # but in some cases we want a Texture, sometimes a GLBuffer or TextureBuffer
             data[k] = gl_convert(targets[k], v)
         else
-            k in (:indices, :visible, :fxaa) && continue
+            k in (:indices, :visible, :fxaa, :ssao) && continue
             # structs are treated differently, since they have to be composed into their fields
             if isa_gl_struct(v)
                 merge!(data, gl_convert_struct(v, k))

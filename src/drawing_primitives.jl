@@ -73,6 +73,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 Mat3f0(transpose(inv(v[1:3, 1:3] * m[1:3, 1:3])))
             end
         end
+        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Node(false))
         screen.cache2plot[robj.id] = x
         robj
     end

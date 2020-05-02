@@ -65,7 +65,7 @@ function render_frame(screen::Screen)
     resize!(fb, wh)
     w, h = wh
 
-    # primary render (prepare for FXAA & SSAO)
+    # prepare stencil (for sub-scenes)
     glEnable(GL_STENCIL_TEST)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
     glDrawBuffers(4, [
@@ -80,10 +80,11 @@ function render_frame(screen::Screen)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     setup!(screen)
 
+    # render with FXAA & SSAO
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, true)
+    GLAbstraction.render(screen, true, true)
 
 
     # SSAO - calculate occlusion
@@ -93,9 +94,9 @@ function render_frame(screen::Screen)
     glClear(GL_COLOR_BUFFER_BIT)
     try
         for (screenid, scene) in screen.screens
+            # update uniforms
             SSAO = scene.attributes.SSAO
-            if SSAO.enable[]
-                # update uniforms
+            # if SSAO.enable[]
                 uniforms = fb.postprocess[1].uniforms
                 uniforms[:projection][] = scene.camera.projection[]
                 uniforms[:bias][] = get(SSAO, :bias, 0.025)[]
@@ -104,7 +105,7 @@ function render_frame(screen::Screen)
                 # use stencil to select one scene
                 glStencilFunc(GL_EQUAL, screenid, 0xff)
                 GLAbstraction.render(fb.postprocess[1])
-            end
+            # end
         end
     catch e
         @error "Error while rendering!" exception=e
@@ -112,10 +113,18 @@ function render_frame(screen::Screen)
     end
     glDisable(GL_STENCIL_TEST)
 
-
     # SSAO - blur occlusion and apply to color
     glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+    # glViewport?
     GLAbstraction.render(fb.postprocess[2])
+
+    # render with FXAA but no SSAO
+    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
+    GLAbstraction.render(screen, true, false)
+    glDisable(GL_STENCIL_TEST)
 
     # FXAA - calculate LUMA
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
@@ -157,7 +166,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::Screen, fxaa::Bool)
+function GLAbstraction.render(screen::Screen, fxaa::Bool, ssao::Bool=false)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
@@ -175,7 +184,10 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
                 # so we can't do the stencil test
                 glStencilFunc(GL_ALWAYS, screenid, 0xff)
             end
-            if fxaa && elem[:fxaa][]
+            if (fxaa && elem[:fxaa][]) && ssao && elem[:ssao][]
+                render(elem)
+            end
+            if (fxaa && elem[:fxaa][]) && !ssao && !elem[:ssao][]
                 render(elem)
             end
             if !fxaa && !elem[:fxaa][]
