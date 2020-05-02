@@ -22,6 +22,7 @@ function default_theme(scene)
         shininess = 32f0,
         lightposition = :eyeposition,
         nan_color = RGBAf0(0,0,0,0),
+        ssao = false
     )
 end
 
