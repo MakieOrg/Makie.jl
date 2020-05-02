@@ -21,12 +21,6 @@ struct Grid3D{
     vec3 stop;
     ivec3 dims;
 };
-struct Light{
-    vec3 diffuse;
-    vec3 specular;
-    vec3 ambient;
-    vec3 position;
-};
 
 // stretch is
 vec3 stretch(vec3 val, vec3 from, vec3 to){
