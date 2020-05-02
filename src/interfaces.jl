@@ -74,6 +74,8 @@ $(ATTRIBUTES)
         interpolate = false,
         levels = 1,
         fxaa = true,
+        lowclip = nothing,
+        highclip = nothing,
     )
 end
 
