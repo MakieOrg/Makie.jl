@@ -36,16 +36,30 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
     # color is now a color or an array of colors
     # if it's an array of colors, each segment must be stroked separately
 
-    # linestyle can be set globally
-    !isnothing(linestyle) && Cairo.set_dash(ctx, linestyle)
-
+    # The linestyle can be set globally, as we do here.
+    # However, there is a discrepancy between AbstractPlotting
+    # and Cairo when it comes to linestyles.
+    # For AbstractPlotting, the linestyle array is cumulative,
+    # and defines the "absolute" endpoints of segments.
+    # However, for Cairo, each value provides the length of
+    # alternate "on" and "off" portions of the stroke.
+    # Therefore, we take the diff of the given linestyle,
+    # to convert the "absolute" coordinates into "relative" ones.
+    if !isnothing(linestyle) && !(linewidth isa AbstractArray)
+        Cairo.set_dash(ctx, diff(Float64.(linestyle)) .* linewidth)
+    end
     if color isa AbstractArray || linewidth isa AbstractArray
         # stroke each segment separately, this means disjointed segments with probably
         # wonky dash patterns if segments are short
 
         # we can hide the gaps by setting the line cap to round
         Cairo.set_line_cap(ctx, Cairo.CAIRO_LINE_CAP_ROUND)
-        draw_multi(primitive, ctx, projected_positions, color, linewidth)
+        draw_multi(
+            primitive, ctx,
+            projected_positions,
+            color, linewidth,
+            isnothing(linestyle) ? nothing : diff(Float64.(linestyle))
+        )
     else
         # stroke the whole line at once if it has only one color
         # this allows correct linestyles and line joins as well and will be the
@@ -84,16 +98,16 @@ function draw_single(primitive::LineSegments, ctx, positions)
 end
 
 # if linewidth is not an array
-function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth)
-    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors])
+function draw_multi(primitive, ctx, positions, colors::AbstractArray, linewidth, dash)
+    draw_multi(primitive, ctx, positions, colors, [linewidth for c in colors], dash)
 end
 
 # if color is not an array
-function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray)
-    draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths)
+function draw_multi(primitive, ctx, positions, color, linewidths::AbstractArray, dash)
+    draw_multi(primitive, ctx, positions, [color for l in linewidths], linewidths, dash)
 end
 
-function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, colors::AbstractArray, linewidths::AbstractArray)
+function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, colors::AbstractArray, linewidths::AbstractArray, dash)
     if primitive isa LineSegments
         @assert iseven(length(positions))
     end
@@ -117,6 +131,7 @@ function draw_multi(primitive::Union{Lines, LineSegments}, ctx, positions, color
             error("Cairo doesn't support two different line widths ($(linewidths[i]) and $(linewidths[i+1])) at the endpoints of a line.")
         end
         Cairo.set_line_width(ctx, linewidths[i])
+        !isnothing(dash) && Cairo.set_dash(ctx, dash .* linewidths[i])
         c1 = colors[i]
         c2 = colors[i+1]
         # we can avoid the more expensive gradient if the colors are the same
