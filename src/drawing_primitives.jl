@@ -293,13 +293,14 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
             gl_attributes[:nan_color] = lift(to_color, gl_attributes[:nan_color])
         end
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
-        
+
         gl_attributes[:highclip] = lift(gl_attributes[:color_map], gl_attributes[:highclip]) do map, hc
             to_color(isnothing(hc) ? map[end] : hc)
         end
         gl_attributes[:lowclip] = lift(gl_attributes[:color_map], gl_attributes[:lowclip]) do map, lc
             to_color(isnothing(lc) ? map[1] : lc)
         end
+        # gl_attributes[:color_map] = Texture(gl_attributes[:color_map], minfilter=:nearest)
         GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes))
     end
 end
@@ -322,8 +323,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         img = get_image(gl_attributes)
-        # remove_automatic!(gl_attributes)
-        visualize(img, Style(:default), gl_attributes)
+        interp = to_value(pop!(gl_attributes, :interpolate))
+        interp = interp ? :linear : :nearest
+        tex = Texture(img, minfilter = interp)
+        visualize(tex, Style(:default), gl_attributes)
     end
 end
 
