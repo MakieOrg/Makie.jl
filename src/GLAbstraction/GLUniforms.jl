@@ -47,21 +47,20 @@ _ndims(p::Type{T}) where {T <: Colorant} = 1
 @generated function gluniform(location::Integer, x::Vector{FSA}) where FSA <: Union{StaticArray, Colorant}
     func = uniformfunc(eltype(FSA), _size(FSA))
     callexpr = if _ndims(FSA) == 2
-        :($func(location, length(x), GL_FALSE, xref))
+        :($func(location, length(x), GL_FALSE, x))
     else
-        :($func(location, length(x), xref))
+        :($func(location, length(x), x))
     end
     quote
-        xref = reinterpret(eltype(FSA), x)
         $callexpr
     end
 end
 
 
 #Some additional uniform functions, not related to Imutable Arrays
-gluniform(location::Integer, target::Integer, t::Texture)   = gluniform(GLint(location), GLint(target), t)
+gluniform(location::Integer, target::Integer, t::Texture) = gluniform(GLint(location), GLint(target), t)
 gluniform(location::Integer, target::Integer, t::GPUVector) = gluniform(GLint(location), GLint(target), t.buffer)
-gluniform(location::Integer, target::Integer, t::Node)    = gluniform(GLint(location), GLint(target), to_value(t))
+gluniform(location::Integer, target::Integer, t::Node) = gluniform(GLint(location), GLint(target), to_value(t))
 gluniform(location::Integer, target::Integer, t::TextureBuffer) = gluniform(GLint(location), GLint(target), t.texture)
 function gluniform(location::GLint, target::GLint, t::Texture)
     activeTarget = GL_TEXTURE0 + UInt32(target)
@@ -75,17 +74,16 @@ function gluniform(loc::Integer, x::Node{T}) where T
     gluniform(GLint(loc), to_value(x))
 end
 
-gluniform(location::Integer, x::Union{GLubyte, GLushort, GLuint}) 	 = glUniform1ui(GLint(location), x)
+gluniform(location::Integer, x::Union{GLubyte, GLushort, GLuint}) = glUniform1ui(GLint(location), x)
 gluniform(location::Integer, x::Union{GLbyte, GLshort, GLint, Bool}) = glUniform1i(GLint(location),  x)
-gluniform(location::Integer, x::GLfloat)                             = glUniform1f(GLint(location),  x)
-gluniform(location::Integer, x::GLdouble)                            = glUniform1d(GLint(location),  x)
+gluniform(location::Integer, x::GLfloat) = glUniform1f(GLint(location),  x)
+gluniform(location::Integer, x::GLdouble) = glUniform1d(GLint(location),  x)
 
 #Uniform upload functions for julia arrays...
 gluniform(location::GLint, x::Vector{Float32}) = glUniform1fv(location,  length(x), x)
 gluniform(location::GLint, x::Vector{GLdouble}) = glUniform1dv(location,  length(x), x)
-gluniform(location::GLint, x::Vector{GLint})   = glUniform1iv(location,  length(x), x)
-gluniform(location::GLint, x::Vector{GLuint})  = glUniform1uiv(location, length(x), x)
-
+gluniform(location::GLint, x::Vector{GLint}) = glUniform1iv(location,  length(x), x)
+gluniform(location::GLint, x::Vector{GLuint}) = glUniform1uiv(location, length(x), x)
 
 glsl_typename(x::T) where {T} = glsl_typename(T)
 glsl_typename(t::DataType) = error("Datatype $(t) not supported")
@@ -102,6 +100,7 @@ function glsl_typename(t::Texture{T, D}) where {T, D}
     t.texturetype == GL_TEXTURE_2D_ARRAY && (str *= "Array")
     str
 end
+
 function glsl_typename(t::Type{T}) where T <: SMatrix
     M, N = size(t)
     string(opengl_prefix(eltype(t)), "mat", M==N ? M : string(M, "x", N))
@@ -162,17 +161,17 @@ end
 
 
 gl_promote(x::Type{T}) where {T <: Integer} = Cint
-gl_promote(x::Type{Union{Int16, Int8}})    = x
+gl_promote(x::Type{Union{Int16, Int8}}) = x
 
 gl_promote(x::Type{T}) where {T <: Unsigned} = Cuint
-gl_promote(x::Type{Union{UInt16, UInt8}})  = x
+gl_promote(x::Type{Union{UInt16, UInt8}}) = x
 
 gl_promote(x::Type{T}) where {T <: AbstractFloat} = Float32
-gl_promote(x::Type{Float16})               = x
+gl_promote(x::Type{Float16}) = x
 
 gl_promote(x::Type{T}) where {T <: Normed} = N0f32
-gl_promote(x::Type{N0f16})              = x
-gl_promote(x::Type{N0f8})               = x
+gl_promote(x::Type{N0f16}) = x
+gl_promote(x::Type{N0f8}) = x
 
 const Color3{T} = Colorant{T, 3}
 const Color4{T} = Colorant{T, 4}
@@ -224,19 +223,12 @@ end
 
 # native types don't need convert!
 gl_convert(a::T) where {T <: NATIVE_TYPES} = a
-
 gl_convert(s::Node{T}) where {T <: NATIVE_TYPES} = s
 gl_convert(s::Node{T}) where T = const_lift(gl_convert, s)
-
 gl_convert(x::StaticVector{N, T}) where {N, T} = map(gl_promote(T), x)
 gl_convert(x::SMatrix{N, M, T}) where {N, M, T} = map(gl_promote(T), x)
-
-
 gl_convert(a::AbstractVector{<: AbstractFace}) = indexbuffer(s)
-
 gl_convert(t::Type{T}, a::T; kw_args...) where T <: NATIVE_TYPES = a
-
-
 gl_convert(::Type{<: GPUArray}, a::StaticVector) = gl_convert(a)
 
 function gl_convert(T::Type{<: GPUArray}, a::AbstractArray{X, N}; kw_args...) where {X, N}

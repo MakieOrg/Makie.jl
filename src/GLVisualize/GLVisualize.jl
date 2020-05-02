@@ -18,7 +18,7 @@ import Base: merge, convert, show
 using Base.Iterators: Repeated, repeated
 using LinearAlgebra
 
-import AbstractPlotting: to_font, glyph_uv_width!, glyph_scale!
+import AbstractPlotting: to_font, glyph_uv_width!
 import ..GLMakie: get_texture!
 
 const GLBoundingBox = FRect3D

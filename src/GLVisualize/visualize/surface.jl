@@ -45,10 +45,12 @@ nothing_or_vec(x::Array) = vec(x)
 function normal_calc(x::Bool)
     if x
         "getnormal(position_z, linear_index(dims, index1D));"
+        # "getnormal_fast(position_z, ind2sub(dims, index1D));"
     else
         "vec3(0, 0, 1);"
     end
 end
+
 function light_calc(x::Bool)
     if x
         """
@@ -81,7 +83,6 @@ function surface(main, s::Style{:surface}, data::Dict)
         glow_width = 0f0
         uv_offset_width = Vec4f0(0) => GLBuffer
         shape = RECTANGLE
-        wireframe = false
         image = nothing => Texture
         distancefield = nothing => Texture
         shading = true

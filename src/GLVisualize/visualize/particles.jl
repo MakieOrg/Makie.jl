@@ -69,43 +69,6 @@ function _default(main::ArrayTypes{T, 2}, s::Style, data::Dict) where T<:Vec
 end
 
 """
-Vectors with `Vec` as element type are treated as vectors of rotations.
-The position is assumed to be implicitely on the grid the vector defines (1D,2D,3D grid)
-"""
-function _default(
-        main::Tuple{P, ArrayTypes{T, N}}, s::Style, data::Dict
-    ) where {P <: AllPrimitives, T <: Vec, N}
-    primitive, rotation_s = main
-    rotation_v = to_value(rotation_s)
-    @gen_defaults! data begin
-        color_norm = const_lift(extrema2f0, rotation_s)
-        ranges = ntuple(i->LinRange(0f0, 1f0, size(rotation_v, i)), N)
-    end
-    grid = Grid(rotation_v, ranges)
-
-    if N == 1
-        scalevec = Vec2f0(step(grid.dims[1]), 1)
-    elseif N == 2
-        scalevec = Vec2f0(step(grid.dims[1]), step(grid.dims[2]))
-    else
-        scalevec = Vec3f0(ntuple(i->step(grid.dims[i]), 3)).*Vec3f0(0.4,0.4, 1/to_value(color_norm)[2]*4)
-    end
-    if P <: Char # we need to preserve proportion of the glyph
-        scalevec = Vec2f0(glyph_scale!(primitive, scalevec[1]))
-        @gen_defaults! data begin # for chars we need to make sure they're centered
-            offset = -scalevec/2f0
-        end
-    end
-    @gen_defaults! data begin
-        rotation   = const_lift(vec, rotation_s)
-        color_map  = default(Vector{RGBA})
-        scale      = scalevec
-        color      = nothing
-    end
-    _default((primitive, grid), s, data)
-end
-
-"""
 arrays of floats with any geometry primitive, will be spaced out on a grid defined
 by `ranges` and will use the floating points as the
 height for the primitives (`scale_z`)
@@ -451,13 +414,6 @@ function _default(
     sprites(p, s, data)
 end
 
-function correct_scale(char, scale)
-    Vec2f0(glyph_scale!(char, scale))
-end
-
-function correct_scale(char, scale::AbstractVector)
-    Vec2f0(glyph_scale!.(char, scale))
-end
 """
 Main assemble functions for sprite particles.
 Sprites are anything like distance fields, images and simple geometries

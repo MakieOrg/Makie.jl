@@ -233,7 +233,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     // normal in world space
     o_normal               = normalmatrix * normal;
     // direction to light
-    o_lightdir             = normalize(lightposition - position_world.xyz);
+    o_lightdir = normalize(lightposition - position_world.xyz);
     // direction to camera
     o_camdir               = normalize(eyeposition - position_world.xyz);
     // position in view space (as seen from camera)
@@ -242,13 +242,21 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     gl_Position            = projection * o_view_pos;
 }
 
-
-
+//
+vec3 getnormal_fast(sampler2D zvalues, ivec2 uv)
+{
+    vec3 a = vec3(0, 0, 0);
+    vec3 b = vec3(1, 1, 0);
+    a.z = texelFetch(zvalues, uv, 0).r;
+    b.z = texelFetch(zvalues, uv + ivec2(1, 1), 0).r;
+    return normalize(a - b);
+}
 
 bool isinbounds(vec2 uv)
 {
     return (uv.x <= 1.0 && uv.y <= 1.0 && uv.x >= 0.0 && uv.y >= 0.0);
 }
+
 vec3 getnormal(sampler2D zvalues, vec2 uv)
 {
     float weps = 1.0/textureSize(zvalues,0).x;

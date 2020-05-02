@@ -1,5 +1,5 @@
-using AbstractPlotting: get_texture_atlas, glyph_uv_width!
-using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
+using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
+using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
@@ -58,6 +58,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
                 gl_attributes[:offset] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:offset])
             end
         end
+
         if haskey(gl_attributes, :lightposition)
             eyepos = scene.camera.eyeposition
             gl_attributes[:lightposition] = lift(gl_attributes[:lightposition], eyepos) do pos, eyepos
@@ -107,8 +108,29 @@ function handle_view(array::Node{T}, attributes) where T <: SubArray
 end
 
 function lift_convert(key, value, plot)
+    return lift_convert_inner(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}(), plot)
+end
+
+function lift_convert_inner(value, key, plot_key, plot)
     return lift(value) do value
-        return convert_attribute(value, Key{key}(), Key{AbstractPlotting.plotkey(plot)}())
+        return convert_attribute(value, key, plot_key)
+    end
+end
+
+to_vec4(val::RGB) = RGBAf0(val, 1.0)
+to_vec4(val::RGBA) = RGBAf0(val)
+
+function lift_convert_inner(value, ::key"highclip", plot_key, plot)
+    return lift(value, plot.colormap) do value, cmap
+        val = value === nothing ? to_colormap(cmap)[end] : to_color(value)
+        return to_vec4(val)
+    end
+end
+
+function lift_convert_inner(value, ::key"lowclip", plot_key, plot)
+    return lift(value, plot.colormap) do value, cmap
+        val = value === nothing ? to_colormap(cmap)[1] : to_color(value)
+        return to_vec4(val)
     end
 end
 
@@ -149,9 +171,6 @@ function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     end
 end
 
-struct FastPixel end
-AbstractPlotting.to_spritemarker(x::FastPixel) = x
-
 function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
@@ -162,7 +181,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
             gl_attributes[:distancefield][] == nothing && delete!(gl_attributes, :distancefield)
             gl_attributes[:uv_offset_width][] == Vec4f0(0) && delete!(gl_attributes, :uv_offset_width)
         end
+
         positions = handle_view(x[1], gl_attributes)
+        positions = apply_transform(transform_func_obs(x), positions)
+
         if marker[] isa FastPixel
             filter!(gl_attributes) do (k, v,)
                 k in (:color_map, :color, :color_norm, :scale, :fxaa, :model)
@@ -185,6 +207,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = to_value(linestyle)
         positions = handle_view(x[1], data)
+        positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
         visualize(positions, Style(:lines), data)
     end
@@ -196,9 +219,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
         data = Dict{Symbol, Any}(gl_attributes)
         data[:pattern] = to_value(linestyle)
         positions = handle_view(x.converted[1], data)
+        positions = apply_transform(transform_func_obs(x), positions)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
             c = pop!(data, :color)
-            data[:color] = lift(AbstractPlotting.el32convert, c)
+            data[:color] = el32convert(c)
         else
             delete!(data, :color_map)
             delete!(data, :color_norm)
@@ -291,12 +315,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(x[3], minfilter = interp)
+        tex = Texture(el32convert(x[3]), minfilter = interp)
         pop!(gl_attributes, :color)
-        if haskey(gl_attributes, :nan_color)
-            gl_attributes[:nan_color] = lift(to_color, gl_attributes[:nan_color])
-        end
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
+        # gl_attributes[:color_map] = Texture(gl_attributes[:color_map], minfilter=:nearest)
         GLVisualize.assemble_shader(GLVisualize.gl_heatmap(tex, gl_attributes))
     end
 end
@@ -319,8 +341,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Image)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         img = get_image(gl_attributes)
-        # remove_automatic!(gl_attributes)
-        visualize(img, Style(:default), gl_attributes)
+        interp = to_value(pop!(gl_attributes, :interpolate))
+        interp = interp ? :linear : :nearest
+        tex = Texture(el32convert(img), minfilter = interp)
+        visualize(tex, Style(:default), gl_attributes)
     end
 end
 
@@ -385,14 +409,19 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             gl_attributes[:color] = nothing
             gl_attributes[:color_norm] = nothing
         end
+
         gl_attributes[:image] = img
         args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
         if all(v-> to_value(v) isa AbstractMatrix, args)
+            args = map(args) do arg
+                Texture(el32convert(arg); minfilter=:nearest)
+            end
             return visualize(args, Style(:surface), gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-            return visualize(args[3], Style(:surface), gl_attributes)
+            z_data = Texture(el32convert(args[3]); minfilter=:nearest)
+            return visualize(z_data, Style(:surface), gl_attributes)
         end
     end
     return robj
