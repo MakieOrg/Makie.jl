@@ -225,21 +225,6 @@ function fit_ratio(rect, lims)
     stretches ./ s
 end
 
-
-function align_offset(startpos, lastpos, atlas, rscale, font, align)
-    xscale, yscale = glyph_scale!('X', rscale)
-    xmove = (lastpos-startpos)[1] + xscale
-    if align isa Vec
-        return -Vec2f0(xmove, yscale) .* align
-    elseif align == :top
-        return -Vec2f0(xmove/2f0, yscale)
-    elseif align == :right
-        return -Vec2f0(xmove, yscale/2f0)
-    else
-        error("Align $align not known")
-    end
-end
-
 function alignment2num(x::Symbol)
     (x == :center) && return 0.5f0
     (x in (:left, :bottom)) && return 0.0f0
