@@ -234,7 +234,7 @@ uniform vec3 lightposition;
 uniform vec3 eyeposition;
 
 
-void render(vec4 position_world, vec3 normal, mat4 viewmodel, mat4 projection, vec3 lightposition)
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
     // normal in world space
     o_normal               = normalmatrix * normal;
@@ -243,7 +243,7 @@ void render(vec4 position_world, vec3 normal, mat4 viewmodel, mat4 projection, v
     // direction to camera
     o_camdir               = normalize(eyeposition - position_world.xyz);
     // position in view space (as seen from camera)
-    o_view_pos             = viewmodel * position_world;
+    o_view_pos             = view * position_world;
     // position in clip space (w/ depth)
     gl_Position            = projection * o_view_pos;
 }
