@@ -278,12 +278,6 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
         left, right, bottom, top = 0f0, 0f0, 0f0, 0f0
 
-        top = if !titlevisible || iswhitespace(title)
-            0f0
-        else
-            boundingbox(titlet).widths[2] + titlegap
-        end
-
         if xaxisposition == :bottom
             topspinevisible && (top = spinewidth)
             bottom = xaxisprotrusion
@@ -291,6 +285,13 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             bottomspinevisible && (bottom = spinewidth)
             top = xaxisprotrusion
         end
+
+        titlespace = if !titlevisible || iswhitespace(title)
+            0f0
+        else
+            boundingbox(titlet).widths[2] + titlegap
+        end
+        top += titlespace
 
         if yaxisposition == :left
             rightspinevisible && (right = spinewidth)
