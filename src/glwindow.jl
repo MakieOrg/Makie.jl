@@ -1,5 +1,3 @@
-using LinearAlgebra # TODO move
-
 """
 Selection of random objects on the screen is realized by rendering an
 object id + plus an arbitrary index into the framebuffer.
@@ -225,9 +223,8 @@ function Base.resize!(fb::GLFramebuffer, window_size)
         resize_nocopy!(fb.depth, ws)
         resize_nocopy!(fb.position, ws)
         resize_nocopy!(fb.normal, ws)
-        # resize_nocopy!(fb.blurred_occlusion, ws)
-        resize_nocopy!(fb.color_luma, ws)
         resize_nocopy!(fb.occlusion, ws)
+        resize_nocopy!(fb.color_luma, ws)
         fb.resolution[] = ws
     end
     nothing

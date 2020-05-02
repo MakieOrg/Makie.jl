@@ -65,9 +65,8 @@ function render_frame(screen::Screen)
     resize!(fb, wh)
     w, h = wh
 
-    # primary render
+    # primary render (prepare for FXAA & SSAO)
     glEnable(GL_STENCIL_TEST)
-    #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
     glDrawBuffers(4, [
         GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
@@ -85,7 +84,6 @@ function render_frame(screen::Screen)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
     GLAbstraction.render(screen, true)
-    # glDisable(GL_STENCIL_TEST)
 
 
     # SSAO - calculate occlusion
@@ -100,8 +98,8 @@ function render_frame(screen::Screen)
                 # update uniforms
                 uniforms = fb.postprocess[1].uniforms
                 uniforms[:projection][] = scene.camera.projection[]
-                uniforms[:bias][] = SSAO.bias[]
-                uniforms[:radius][] = SSAO.radius[]
+                uniforms[:bias][] = get(SSAO, :bias, 0.025)[]
+                uniforms[:radius][] = get(SSAO, :radius, 0.5)[]
 
                 # use stencil to select one scene
                 glStencilFunc(GL_EQUAL, screenid, 0xff)

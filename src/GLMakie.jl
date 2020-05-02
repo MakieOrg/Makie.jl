@@ -15,6 +15,8 @@ using Base: RefValue
 import Base: push!, isopen, show
 using Base.Iterators: repeated, drop
 
+using LinearAlgebra
+
 for name in names(AbstractPlotting)
     @eval import AbstractPlotting: $(name)
 end
