@@ -110,6 +110,4 @@ export getUniformsInfo
 export getProgramInfo
 export getAttributesInfo
 
-dir(dirs...) = joinpath(dirname(@__FILE__), "..", dirs...)
-
 end # module

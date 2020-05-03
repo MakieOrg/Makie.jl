@@ -39,22 +39,6 @@ function to_plainmesh(geom)
     return NativeMesh(const_lift(GeometryBasics.triangle_mesh, geom))
 end
 
-function to_uvwmesh3d(geom)
-    return NativeMesh(const_lift(GeometryBasics.uvw_triangle_mesh, geom))
-end
-
-function _default(main::VectorTypes{T}, ::Style, data::Dict) where T <: Colorant
-    @gen_defaults! data begin
-        image = main => Texture
-        primitive = FRect2D(0f0, 0f0, length(to_value(main)), 50f0) => to_uvmesh
-        fxaa = false
-        shader = GLVisualizeShader(
-            "fragment_output.frag", "uv_vert.vert", "texture.frag",
-            view = Dict("uv_swizzle" => "o_uv.xy")
-        )
-    end
-end
-
 """
 A matrix of Intensities will result in a contourf kind of plot
 """
@@ -84,69 +68,11 @@ function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
     end
 end
 
-"""
-Float matrix with the style distancefield will be interpreted as a distancefield.
-A distancefield is describing a shape, with positive values denoting the inside
-of the shape, negative values the outside and 0 the border
-"""
-function _default(main::MatTypes{T}, s::style"distancefield", data::Dict) where T <: AbstractFloat
-    @gen_defaults! data begin
-        distancefield = main => Texture
-        shape = DISTANCEFIELD
-        fxaa = false
-    end
-    rect = FRect2D(0f0,0f0, size(to_value(main))...)
-    _default((rect, Point2f0[0]), s, data)
-end
-
-"""
-Takes a shader as a parametric function. The shader should contain a function stubb
-like this:
-```GLSL
-uniform float arg1; // you can add arbitrary uniforms and supply them via the keyword args
-float function(float x) {
- return arg1*sin(1/tan(x));
-}
-```
-"""
-_default(func::String, s::Style{:shader}, data::Dict) = @gen_defaults! data begin
-    color = default(RGBA, s) => Texture
-    dimensions = (120f0, 120f0)
-    primitive = FRect2D(0f0,0f0, dimensions...) => to_uvmesh
-    fxaa = false
-    shader = GLVisualizeShader(
-        "fragment_output.frag", "parametric.vert", "parametric.frag",
-        view = Dict("function" => func)
-    )
-end
 
 #Volumes
 const VolumeElTypes = Union{Gray, AbstractFloat}
 
 const default_style = Style{:default}()
-
-function _default(a::VolumeTypes{T}, s::Style{:iso}, data::Dict) where T <: VolumeElTypes
-    data = @gen_defaults! data begin
-        isovalue  = 0.5f0
-        algorithm = IsoValue
-    end
-     _default(a, default_style, data)
-end
-
-function _default(a::VolumeTypes{T}, s::Style{:absorption}, data::Dict) where T<:VolumeElTypes
-    data = @gen_defaults! data begin
-        absorption = 1f0
-        algorithm  = Absorption
-    end
-    _default(a, default_style, data)
-end
-
-function _default(a::VolumeTypes{T}, s::Style{:absorption}, data::Dict) where T<:RGBA
-    data = @gen_defaults! data begin
-        algorithm  = AbsorptionRGBA
-    end
-    _default(a, default_style, data)
-end
 
 using .GLAbstraction: StandardPrerender
 

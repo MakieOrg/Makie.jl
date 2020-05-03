@@ -1,13 +1,4 @@
 
-function surfboundingbox(position_x, position_y, position_z)
-    arr = const_lift(StructOfArrays, Point3f0, position_x, position_y, position_z)
-    map(FRect3D, arr)
-end
-function surfboundingbox(grid, position_z)
-    arr = const_lift(GridZRepeat, grid, position_z)
-    map(FRect3D, arr)
-end
-
 function _default(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, s::Style{:surface}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         position_x = main[1] => (Texture, "x position, must be an `Matrix{Float}`")
