@@ -779,7 +779,7 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
 end
 
 function data_limits(x::Contour{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
+    return xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
 end
 
 """
