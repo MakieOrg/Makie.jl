@@ -52,6 +52,8 @@ $(ATTRIBUTES)
         colormap = [:black, :white],
         interpolate = true,
         fxaa = false,
+        lowclip = nothing,
+        highclip = nothing,
     )
 end
 
@@ -120,8 +122,9 @@ $(ATTRIBUTES)
         color = nothing,
         colormap = :viridis,
         shading = true,
-        interpolate = true,
         fxaa = true,
+        lowclip = nothing,
+        highclip = nothing,
     )
 end
 
@@ -292,6 +295,7 @@ function calculated_attributes!(::Type{<: Union{Heatmap, Image}}, plot)
     plot[:color] = plot[3]
     color_and_colormap!(plot)
 end
+
 function calculated_attributes!(::Type{<: Surface}, plot)
     colors = plot[3]
     if haskey(plot, :color)
