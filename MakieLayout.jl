@@ -23,17 +23,17 @@ const COLOR_ACCENT_DIMMED = Ref(RGBf0(((174, 192, 230) ./ 255)...))
 # This mutates module-level state so it could mess up other libraries using
 # GridLayoutBase at the same time as MakieLayout, which is unlikely, though
 GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-    cs = AbstractPlotting.current_scene()
-    if haskey(theme(cs), :colgap)
-        theme(cs, :colgap)[]
+    ct = AbstractPlotting.current_default_theme()
+    if haskey(ct, :colgap)
+        ct[:colgap][]
     else
         GridLayoutBase.DEFAULT_COLGAP[]
     end
 end
 GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-    cs = AbstractPlotting.current_scene()
-    if haskey(theme(cs), :rowgap)
-        theme(cs, :rowgap)[]
+    ct = AbstractPlotting.current_default_theme()
+    if haskey(ct, :rowgap)
+        ct[:rowgap][]
     else
         GridLayoutBase.DEFAULT_ROWGAP[]
     end
