@@ -8,7 +8,7 @@ using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using GeometryBasics: widths, positive_widths
+using GeometryBasics: widths, positive_widths, VecTypes
 
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
@@ -22,7 +22,6 @@ using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
 using Observables: listeners, notify!, to_value
-using GeometryTypes: VecTypes
 # Imports from Observables which we use a lot
 using Observables: notify!, listeners
 

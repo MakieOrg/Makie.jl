@@ -1,13 +1,6 @@
 
-# a few shortcut functions to make attribute conversion easier
-@inline function get_attribute(dict, key)
-    convert_attribute(to_value(dict[key]), Key{key}())
-end
-
-
 """
     to_color(color)
-
 Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
 """
 to_color(color) = convert_attribute(color, key"color"())

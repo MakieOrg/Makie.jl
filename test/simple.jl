@@ -24,6 +24,7 @@ function n_times(f, n=10, interval=0.05)
 end
 
 ## Scatter
+
 scatter(1:4, color=:red)
 scatter(1:4, marker='☼')
 scatter(1:4, marker=['☼', '◒', '◑', '◐'])
@@ -63,7 +64,14 @@ surface(args_2d..., color=rand(size(data_2d)...))
 surface(args_2d..., color=rand(RGBf0, size(data_2d)...))
 surface(args_2d..., colormap=:magma, colorrange=(-3.0, 4.0))
 surface(args_2d..., shading=false); wireframe!(args_2d..., linewidth=0.5)
-
+surface(1:30, 1:31, rand(30, 31))
+n = 20
+θ = [0;(0.5:n-0.5)/n;1]
+φ = [(0:2n-2)*2/(2n-1);2]
+x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
+y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
+z = [cospi(θ) for θ in θ, φ in φ]
+surface(x, y, z)
 ## Polygons
 poly(decompose(Point2f0, Circle(Point2f0(0), 1f0)))
 
