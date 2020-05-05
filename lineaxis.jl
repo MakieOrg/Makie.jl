@@ -264,7 +264,9 @@ function LineAxis(parent::Scene; kwargs...)
         together = spinespace + tickspace + ticklabelgap + labelspace
     end
 
-    # extents[] = extents[] # trigger
+    # trigger whole pipeline once to fill tickpositions and tickstrings
+    # etc to avoid empty ticks bug #69
+    limits[] = limits[]
 
     LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings)
 end
