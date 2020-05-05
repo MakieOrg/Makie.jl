@@ -69,7 +69,7 @@ end
 
 const NumOrArray = Union{AbstractArray, Number}
 
-function xyz_boundingbox(transform_func, x::AbstractVector, y::AbstractVector, z::Number=0)
+function xyz_boundingbox(transform_func, x::AbstractVector, y::AbstractVector, z::NumOrArray=0)
     # use lazy variant of broadcast!
     points = Base.broadcasted(Point3, x, y', z)
     return xyz_boundingbox(transform_func, points)
