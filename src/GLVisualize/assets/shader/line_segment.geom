@@ -30,7 +30,7 @@ void emit_vertex(vec2 position, vec2 uv, int index)
     vec4 inpos = gl_in[index].gl_Position;
     f_uv = uv;
     f_color = g_color[index];
-    gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w + 0.01);
+    gl_Position = vec4((position / resolution) * inpos.w, inpos.z, inpos.w);
     f_id = g_id[index];
     f_thickness = g_thickness[index] + AA_THICKNESS;
     EmitVertex();
