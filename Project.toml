@@ -1,6 +1,6 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.10.8"
+version = "0.10.11"
 
 [deps]
 AbstractNumbers = "85c772de-338a-5e7f-b815-41e76c26ac1f"
@@ -51,7 +51,7 @@ GLMakie = "0.1"
 GeometryBasics = "0.2.4"
 ImageMagick = "1"
 IntervalSets = "0.3, 0.4, 0.5"
-MakieGallery = "0.2"
+MakieGallery = "0.2.4"
 MeshIO = "0.4"
 Observables = "0.3.1"
 Packing = "0.4"

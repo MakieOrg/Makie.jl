@@ -267,6 +267,7 @@ float32type(::Type{<: Colorant}) = RGBA{Float32}
 float32type(x::AbstractArray{T}) where T = float32type(T)
 float32type(x::T) where T = float32type(T)
 el32convert(x::AbstractArray) = elconvert(float32type(x), x)
+el32convert(x::Observable) = lift(el32convert, x)
 el32convert(x) = convert(float32type(x), x)
 
 function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}, N}
@@ -551,6 +552,11 @@ end
 #                            Attribute conversions                             #
 ################################################################################
 
+convert_attribute(p, ::key"highclip") = to_color(p)
+convert_attribute(p::Nothing, ::key"highclip") = p
+convert_attribute(p, ::key"lowclip") = to_color(p)
+convert_attribute(p::Nothing, ::key"lowclip") = p
+convert_attribute(p, ::key"nan_color") = to_color(p)
 
 struct Palette{N}
    colors::SArray{Tuple{N},RGBA{Float32},1,N}
@@ -878,7 +884,6 @@ const _marker_map = Dict(
     :circle => '●'
 )
 
-
 """
     available_marker_symbols()
 
@@ -891,6 +896,21 @@ function available_marker_symbols()
     end
 end
 
+"""
+    FastPixel()
+
+Use
+
+```julia
+scatter(..., marker=FastPixel())
+```
+
+For significant faster plotting times for large amount of points.
+Note, that this will draw markers always as 1 pixel.
+"""
+struct FastPixel end
+
+to_spritemarker(x::FastPixel) = x
 to_spritemarker(x::Circle) = x
 to_spritemarker(::Type{<: Circle}) = Circle(Point2f0(0), 1f0)
 to_spritemarker(::Type{<: Rect}) = Rect(Vec2f0(0), Vec2f0(1))

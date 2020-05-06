@@ -13,27 +13,23 @@ end
 Data limits calculate a minimal boundingbox from the data points in a plot.
 This doesn't include any transformations, markers etc.
 """
-atomic_limits(x::Atomic{<: Tuple{Arg1}}) where Arg1 = FRect3D(to_value(x[1]))
-
-# TODO makes this generically work
-atomic_limits(x::Atomic{<: Tuple{<: AbstractVector{<: NTuple{N, <: Number}}}}) where N = FRect3D(Point{N, Float32}.(to_value(x[1])))
-function atomic_limits(x::Atomic{<: Tuple{<: AbstractVector{<: NTuple{2, T}}}}) where T <: VecTypes
-    FRect3D(reinterpret(T, to_value(x[1])))
+function atomic_limits(x::Atomic{<: Tuple{Arg1}}) where Arg1
+    return xyz_boundingbox(transform_func(x), to_value(x[1]))
 end
 
 function atomic_limits(x::Atomic{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(to_value.(x[1:3])...)
+    return xyz_boundingbox(transform_func(x), to_value.(x[1:3])...)
 end
 
 function atomic_limits(x::Atomic{<: Tuple{X, Y}}) where {X, Y}
-    xyz_boundingbox(to_value.(x[1:2])...)
+    return xyz_boundingbox(transform_func(x), to_value.(x[1:2])...)
 end
 
 _isfinite(x) = isfinite(x)
 _isfinite(x::VecTypes) = all(isfinite, x)
-scalarmax(x::AbstractArray, y::AbstractArray) = max.(x, y)
+scalarmax(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = max.(x, y)
 scalarmax(x, y) = max(x, y)
-scalarmin(x::AbstractArray, y::AbstractArray) = min.(x, y)
+scalarmin(x::Union{Tuple, AbstractArray}, y::Union{Tuple, AbstractArray}) = min.(x, y)
 scalarmin(x, y) = min(x, y)
 
 extrema_nan(itr::Pair) = (itr[1], itr[2])
@@ -60,32 +56,59 @@ function extrema_nan(itr)
     return (vmin, vmax)
 end
 
+function xyz_boundingbox(transform_func, mesh::GeometryBasics.Mesh)
+    xyz_boundingbox(transform_func, coordinates(mesh))
+end
 
-function xyz_boundingbox(x, y, z = (0 => 0))
-    minmax = extrema_nan.((x, y, z))
-    mini, maxi = first.(minmax), last.(minmax)
-    FRect3D(mini, maxi .- mini)
+function xyz_boundingbox(transform_func, xyz)
+    isempty(xyz) && return FRect3D()
+    mini, maxi = extrema_nan((apply_transform(transform_func, point) for point in xyz))
+    w = maxi .- mini
+    return FRect3D(to_ndim(Vec3f0, mini, 0), to_ndim(Vec3f0, w, 0))
+end
+
+const NumOrArray = Union{AbstractArray, Number}
+
+function xyz_boundingbox(transform_func, x::AbstractVector, y::AbstractVector, z::NumOrArray=0)
+    # use lazy variant of broadcast!
+    points = Base.broadcasted(Point3, x, y', z)
+    return xyz_boundingbox(transform_func, points)
+end
+
+function xyz_boundingbox(transform_func, x::NumOrArray, y::NumOrArray, z::NumOrArray = 0)
+    # use lazy variant of broadcast!
+    points = Base.broadcasted(Point3, x, y, z)
+    return xyz_boundingbox(transform_func, points)
+end
+
+function xyz_boundingbox(transform_func, x, y, z = 0)
+    isempty(x) && return FRect3D()
+    minmax = extrema_nan.(apply_transform.((transform_func,), (x, y, z)))
+    mini, maxi = Vec(first.(minmax)), Vec(last.(minmax))
+    w = maxi .- mini
+    return FRect3D(to_ndim(Vec3f0, mini, 0), to_ndim(Vec3f0, w, 0))
 end
 
 const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
 function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(to_value.((x[1], x[2]))...)
+    xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
 end
 
 function data_limits(x::Volume)
-    xyz_boundingbox(to_value.((x[1], x[2], x[3]))...)
+    xyz_boundingbox(transform_func(x), to_value.((x[1], x[2], x[3]))...)
 end
-
 
 function text_limits(x::VecTypes)
     p = to_ndim(Vec3f0, x, 0.0)
-    FRect3D(p, p)
+    return FRect3D(p, p)
 end
+
 function text_limits(x::AbstractVector)
-    FRect3D(x)
+    return FRect3D(x)
 end
+
 function atomic_limits(x::Text{<: Tuple{Arg1}}) where Arg1
-    boundingbox(x)
+    return boundingbox(x)
 end
 
 function data_limits(x::Annotations)
@@ -93,7 +116,7 @@ function data_limits(x::Annotations)
     # for the annotation, we use the model matrix directly, so we need to
     # to inverse that transformation for the correct limits
     bb = data_limits(x.plots[1])
-    inv(modelmatrix(x)) * bb
+    return inv(modelmatrix(x)) * bb
 end
 
 Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
