@@ -1,5 +1,5 @@
 
-function Transformation()
+function Transformation(transform_func=identity)
     flip = Node((false, false, false))
     scale = Node(Vec3f0(1))
     scale = lift(flip, scale) do f, s
@@ -19,14 +19,14 @@ function Transformation()
         end
         transformationmatrix(o, s, q, a, flip, parent)
     end
-    trans = Transformation(
+    return Transformation(
         translation,
         scale,
         rotation,
         model,
         flip,
         align,
-        Node{Any}(identity)
+        Node{Any}(transform_func)
     )
 end
 
@@ -46,8 +46,11 @@ function Transformation(scene::SceneLike)
         else
             nothing
         end
-        p * transformationmatrix(o, s, q, align, f, bb)
+        return p * transformationmatrix(o, s, q, align, f, bb)
     end
+
+    ptrans = transformation(scene)
+
     trans = Transformation(
         translation,
         scale,
@@ -55,7 +58,7 @@ function Transformation(scene::SceneLike)
         model,
         flip,
         align,
-        Node{Any}(identity)
+        copy(ptrans.transform_func)
     )
     return trans
 end
@@ -200,3 +203,43 @@ function transform!(scene::Transformable, x::Tuple{Symbol, <: Number})
 end
 
 transformationmatrix(x) = transformation(x).model
+
+transform_func(x) = transform_func_obs(x)[]
+transform_func_obs(x) = transformation(x).transform_func
+
+"""
+    apply_transform(f, data)
+Apply the data transform func to the data
+"""
+apply_transform(f::typeof(identity), position::Number) = position
+apply_transform(f::typeof(identity), positions::AbstractArray) = positions
+apply_transform(f::typeof(identity), positions::AbstractVector) = positions
+apply_transform(f::typeof(identity), position::VecTypes) = position
+
+function apply_transform(f, data::AbstractArray)
+    return map(point-> apply_transform(f, point), data)
+end
+
+function apply_transform(f::NTuple{N, Any}, point::VecTypes{N}) where {N, T}
+    return Point{N, Float32}(ntuple(i-> apply_transform(f[i], point[i]), N))
+end
+
+apply_transform(f, number::Number) = f(number)
+
+function apply_transform(f::Union{typeof(log), typeof(log10), typeof(log2)}, number::Number)
+    if number <= 0.0
+        return 0.0
+    else
+        return f(number)
+    end
+end
+
+function apply_transform(f::Observable, data::Observable)
+    return lift((f, d)-> apply_transform(f, d), f, data)
+end
+
+apply_transform(f, itr::Pair) = apply_transform(f, itr[1]) => apply_transform(f, itr[2])
+function apply_transform(f, itr::ClosedInterval)
+    mini, maxi = extrema(itr)
+    return apply_transform(f, mini) .. apply_transform(f, maxi)
+end
