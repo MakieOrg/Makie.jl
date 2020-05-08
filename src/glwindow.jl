@@ -102,7 +102,8 @@ function postprocess(
     data2 = Dict{Symbol, Any}(
         :occlusion => occlusion,
         :inv_texel_size => map(t -> Vec2f0(1f0/t[1], 1f0/t[2]), framebuffer_size),
-        :color_texture => color
+        :color_texture => color,
+        :blur_range => Node(Int32(2))
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
     pass2.postrenderfunction = () -> draw_fullscreen(pass2.vertexarray.id)

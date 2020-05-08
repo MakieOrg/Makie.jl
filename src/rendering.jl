@@ -111,12 +111,29 @@ function render_frame(screen::Screen)
         @error "Error while rendering!" exception=e
         rethrow(e)
     end
-    glDisable(GL_STENCIL_TEST)
+
 
     # SSAO - blur occlusion and apply to color
     glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
-    # glViewport?
-    GLAbstraction.render(fb.postprocess[2])
+    try
+        for (screenid, scene) in screen.screens
+            # update uniforms
+            SSAO = scene.attributes.SSAO
+            # if SSAO.enable[]
+                uniforms = fb.postprocess[2].uniforms
+                uniforms[:blur_range][] = get(SSAO, :blur, Int32(2))[]
+
+                # use stencil to select one scene
+                glStencilFunc(GL_EQUAL, screenid, 0xff)
+                GLAbstraction.render(fb.postprocess[2])
+            # end
+        end
+    catch e
+        @error "Error while rendering!" exception=e
+        rethrow(e)
+    end
+    glDisable(GL_STENCIL_TEST)
+
 
     # render with FXAA but no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
