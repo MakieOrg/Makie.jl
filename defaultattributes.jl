@@ -53,6 +53,10 @@ function default_attributes(::Type{LAxis}, scene)
         xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font family of the yticklabels."
         yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The color of xticklabels."
+        xticklabelcolor = RGBf0(0, 0, 0)
+        "The color of yticklabels."
+        yticklabelcolor = RGBf0(0, 0, 0)
         "The font size of the xticklabels."
         xticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
         "The font size of the yticklabels."
@@ -473,6 +477,7 @@ function default_attributes(::Type{LineAxis})
         ticksvisible = true,
         ticklabelrotation = 0f0,
         ticklabelsize = 20f0,
+        ticklabelcolor = RGBf0(0, 0, 0),
         ticklabelsvisible = true,
         spinewidth = 1f0,
         label = "label",

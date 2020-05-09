@@ -8,7 +8,7 @@ function LineAxis(parent::Scene; kwargs...)
         tickcolor, tickalign, ticks, tickformat, ticklabelalign, ticklabelrotation, ticksvisible,
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
-        labelfont, ticklabelfont,
+        labelfont, ticklabelfont, ticklabelcolor,
         labelvisible, spinevisible, trimspine, flip_vertical_label, reversed)
 
     pos_extents_horizontal = lift(endpoints) do endpoints
@@ -42,6 +42,7 @@ function LineAxis(parent::Scene; kwargs...)
         rotation = ticklabelrotation,
         textsize = ticklabelsize,
         font = ticklabelfont,
+        color = ticklabelcolor,
         show_axis = false,
         visible = ticklabelsvisible)[end]
 
