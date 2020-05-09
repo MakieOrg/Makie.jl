@@ -236,12 +236,15 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
     o_normal               = normalmatrix * normal;
     // position in view space (as seen from camera)
     o_view_pos             = view * position_world;
+    // position in clip space (w/ depth)
+    gl_Position            = projection * o_view_pos;
     // direction to light
     o_lightdir             = normalize(view*vec4(lightposition, 1.0) - o_view_pos).xyz;
     // direction to camera
-    o_camdir               = normalize(view*vec4(eyeposition, 1.0) - o_view_pos).xyz;
-    // position in clip space (w/ depth)
-    gl_Position            = projection * o_view_pos;
+    // This is equivalent to
+    // normalize(view*vec4(eyeposition, 1.0) - o_view_pos).xyz
+    // (by definition `view * eyeposition = 0`)
+    o_camdir               = normalize(-o_view_pos).xyz;
 }
 
 //
