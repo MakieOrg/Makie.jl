@@ -57,8 +57,7 @@ to the screen and while at it, it can do some postprocessing (not doing it right
 E.g fxaa anti aliasing, color correction etc.
 """
 function postprocess(
-        color, position, normal, ssao_noise, occlusion,
-        color_luma,
+        color, position, normal, ssao_noise, occlusion, objectid, color_luma,
         framebuffer_size
     )
 
@@ -101,8 +100,9 @@ function postprocess(
     )
     data2 = Dict{Symbol, Any}(
         :occlusion => occlusion,
-        :inv_texel_size => map(t -> Vec2f0(1f0/t[1], 1f0/t[2]), framebuffer_size),
         :color_texture => color,
+        :ids => objectid,
+        :inv_texel_size => map(t -> Vec2f0(1f0/t[1], 1f0/t[2]), framebuffer_size),
         :blur_range => Node(Int32(2))
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
@@ -202,7 +202,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
 
     p = postprocess(
         color_buffer, position_buffer, normal_buffer, ssao_noise, occlusion,
-        color_luma,
+        objectid_buffer, color_luma,
         fb_size_node
     )
 
