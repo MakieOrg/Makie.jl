@@ -19,10 +19,11 @@ Calls `f(idx)` whenever the mouse is over any of `plots`.
 `idx` is an index, e.g. when over a scatter plot, it will be the index of the
 hovered element
 """
-function onpick(f, scene::SceneLike, plots::AbstractPlot...)
+function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     fplots = flatten_plots(plots)
+    args = range == 1 ? (scene,) : (scene, range)
     map_once(events(scene).mouseposition) do mp
-        p, idx = mouse_selection(scene)
+        p, idx = mouse_selection(args...)
         (p in fplots) && f(idx)
         return
     end
@@ -34,6 +35,9 @@ Returns the plot that is under the current mouse position
 """
 function mouse_selection(scene::SceneLike)
     pick(scene, events(scene).mouseposition[])
+end
+function mouse_selection(scene::SceneLike, range)
+    pick(scene, events(scene).mouseposition[], range)
 end
 
 function flatten_plots(x::Atomic, plots = AbstractPlot[])
@@ -80,13 +84,19 @@ end
 
 
 """
-    pick(scene::Scene, xy::VecLike)
+    pick(scene::Scene, xy::VecLike[, range])
+
 Return the plot under pixel position xy
 """
 function pick(scene::SceneLike, xy)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
     pick(scene, screen, Vec{2, Float64}(xy))
+end
+function pick(scene::SceneLike, xy, range)
+    screen = getscreen(scene)
+    screen === nothing && return (nothing, 0)
+    pick(scene, screen, Vec{2, Float64}(xy), Float64(range))
 end
 
 """
