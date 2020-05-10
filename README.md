@@ -51,11 +51,32 @@ There is experimental support for using Plots.jl and RecipesBase.jl recipes in [
 
 Examples, and test infrastructure, are in [MakieGallery.jl](https://github.com/JuliaPlots/MakieGallery.jl).
 
+You can also follow Makie on [twitter](https://twitter.com/MakiePlots) to get the latest, outstanding examples:
+[![image](https://user-images.githubusercontent.com/1010467/81500210-e7523a00-92d0-11ea-9849-1240f165e0f8.png)](https://twitter.com/MakiePlots)
+
+### MakieLayout
+[![](https://raw.githubusercontent.com/jkrumbiegel/MakieLayout.jl/gh-pages/additional_media/layoutdemo.gif)](https://github.com/jkrumbiegel/MakieLayout.jl/)
+
+### InteractiveChaos
+[![](https://user-images.githubusercontent.com/1010467/81500069-ea005f80-92cf-11ea-81db-2b7bcbfea297.gif)
+](https://github.com/JuliaDynamics/InteractiveChaos.jl)
+
+### GeomMakie
+[![](https://user-images.githubusercontent.com/32143268/74341805-5bcf1880-4d76-11ea-86ee-d0822ba70ab4.png)](https://github.com/JuliaPlots/GeoMakie.jl)
+
+### MakieTeX
+[![](https://user-images.githubusercontent.com/32143268/79641464-5696ab80-81b5-11ea-902d-d65da76dfa69.png)](https://github.com/JuliaPlots/MakieTeX.jl)
+
+### StatsMakie
+[![](https://user-images.githubusercontent.com/6333339/49150576-38e94d80-f305-11e8-99e7-fedf0a2f114d.png)](https://github.com/JuliaPlots/StatsMakie.jl)
+
+
 ## Using Juno with Makie
 
 The default OpenGL backend for Makie is not interactive in the Juno plotpane - it just shows a PNG instead.  To get full interactivity, you can run `AbstractPlotting.inline!(false)`.
 
 If that fails, you can disable the plotpane in Atom's settings by going to `Juno` - `Settings` - `UI Options` - Then, make sure `Enable Plot Plane` is __not__ checked.
+
 
 ## Using IJulia / Jupyter Notebook with Makie
 
