@@ -55,7 +55,10 @@ You can also follow Makie on [twitter](https://twitter.com/MakiePlots) to get th
 [![image](https://user-images.githubusercontent.com/1010467/81500210-e7523a00-92d0-11ea-9849-1240f165e0f8.png)](https://twitter.com/MakiePlots)
 
 ### MakieLayout
-[![](https://raw.githubusercontent.com/jkrumbiegel/MakieLayout.jl/gh-pages/additional_media/layoutdemo.gif)](https://github.com/jkrumbiegel/MakieLayout.jl/)
+Interactive MakieLayout example by [AlexisRenchon](https://github.com/AlexisRenchon):
+
+[![out](https://user-images.githubusercontent.com/1010467/81500379-2e8cfa80-92d2-11ea-884a-7069d401e5d0.gif)](https://github.com/jkrumbiegel/MakieLayout.jl)
+
 
 ### InteractiveChaos
 [![](https://user-images.githubusercontent.com/1010467/81500069-ea005f80-92cf-11ea-81db-2b7bcbfea297.gif)
