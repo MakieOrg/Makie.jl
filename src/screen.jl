@@ -436,11 +436,47 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
         glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
         return convert(SelectionID{Int}, sid[])
     end
-    return SelectionID{Int}(0, 0)
+    return return SelectionID{Int}(0, 0)
+end
+function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
+    isopen(screen) || return SelectionID{Int}(0, 0)
+    window_size = widths(screen)
+    fb = screen.framebuffer
+    buff = fb.objectid
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glReadBuffer(GL_COLOR_ATTACHMENT1)
+
+    w, h = window_size
+    x0, y0 = max.(1, floor.(Int, xy .- range))
+    x1, y1 = min.([w, h], floor.(Int, xy .+ range))
+    dx = x1 - x0; dy = y1 - y0
+    sid = Matrix{SelectionID{UInt16}}(undef, dx, dy)
+    glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sid)
+
+    min_dist = range^2 # squared distance
+    id = SelectionID{Int}(0, 0)
+    x, y =  xy .+ 1 .- Vec2f0(x0, y0)
+    for i in 1:dx, j in 1:dy
+        d = (x-i)^2 + (y-j)^2
+        if (d < min_dist) && (sid[i, j][2] < 0xffff)
+            min_dist = d
+            id = convert(SelectionID{Int}, sid[i, j])
+        end
+    end
+    return id
 end
 
 function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
     sid = pick_native(screen, xy)
+    if haskey(screen.cache2plot, sid.id)
+        plot = screen.cache2plot[sid.id]
+        return (plot, sid.index)
+    else
+        return (nothing, 0)
+    end
+end
+function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64}, range::Float64)
+    sid = pick_native(screen, xy, range)
     if haskey(screen.cache2plot, sid.id)
         plot = screen.cache2plot[sid.id]
         return (plot, sid.index)
