@@ -285,7 +285,7 @@ function draw_ticks(
         pos = ntuple(i-> i != dim ? origin[i] : tick, Val(2))
         push!(
             textbuffer,
-            str, pos,
+            str, Point(pos),
             rotation = rotation[dim], textsize = textsize[dim],
             align = align[dim], color = textcolor[dim], font = font[dim]
         )

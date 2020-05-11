@@ -174,3 +174,8 @@ p4 = heatmap(rand(100, 100))
 # Interpolation
 heatmap(data_2d, interpolate=true)
 image(data_2d, interpolate=false)
+
+
+# Categorical
+
+barplot(["hi", "ima", "string"], rand(3))
