@@ -32,7 +32,7 @@ using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 
 const RealVector{T} = AbstractVector{T} where T <: Number
-const Node = Observable# For now, we use Reactive.Signal as our Node type. This might change in the future
+const Node = Observable # shorthand
 const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
 const Vecf0{N} = Vec{N, Float32}
