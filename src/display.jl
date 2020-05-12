@@ -393,7 +393,7 @@ Returns the content of the given scene or screen rasterised to a Matrix of
 Colors.  The return type is backend-dependent, but will be some form of RGB
 or RGBA.
 """
-function colorbuffer(sc::Scene)
+function colorbuffer(scene::Scene)
     screen = getscreen(scene)
     if screen === nothing
         error("""
