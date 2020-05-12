@@ -235,6 +235,8 @@ function default_attributes(::Type{LColorbar}, scene)
         ticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
         "Controls if the tick labels are visible."
         ticklabelsvisible = true
+        "The color of the tick labels."
+        ticklabelcolor = RGBf0(0, 0, 0)
         "The size of the tick marks."
         ticksize = 10f0
         "Controls if the tick marks are visible."

@@ -17,7 +17,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
 
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
-        ticklabelspace, labelfont, ticklabelfont,
+        ticklabelspace, labelfont, ticklabelfont, ticklabelcolor,
         ticklabelsvisible, ticks, tickformat, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
@@ -108,7 +108,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
-        ticklabelspace = ticklabelspace,
+        ticklabelspace = ticklabelspace, ticklabelcolor = ticklabelcolor,
         spinecolor = :transparent, spinevisible = :false, flip_vertical_label = flip_vertical_label)
     decorations[:axis] = axis
 
