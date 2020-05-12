@@ -325,7 +325,6 @@ function three_display(session::Session, scene::Scene)
                 })
                 return false;
             }
-            console.log("ADD KEYP EVENT LISTENER")
             document.addEventListener("keyup", keyup);
             // This is a pretty ugly work around......
             // so on keydown, we add the key to the currently pressed keys set
