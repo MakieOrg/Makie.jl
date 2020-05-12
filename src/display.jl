@@ -379,8 +379,29 @@ function VideoStream(
     VideoStream(process.in, process, screen, abspath(path))
 end
 
+
+# This has to be overloaded by the backend for its screen type.
 function colorbuffer(x)
     error("colorbuffer not implemented for screen $(typeof(x))")
+end
+
+"""
+    colorbuffer(scene)
+    colorbuffer(screen)
+
+Returns the content of the given scene or screen rasterised to a Matrix of
+Colors.  The return type is backend-dependent, but will be some form of RGB
+or RGBA.
+"""
+function colorbuffer(sc::Scene)
+    screen = getscreen(scene)
+    if screen === nothing
+        error("""
+        It looks like your scene does not have a Screen attached.  
+        Try displaying it explicitly, and ensure that there is an active backend!
+        """)
+    end
+    return colorbuffer(screen)
 end
 
 """
