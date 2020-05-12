@@ -401,10 +401,12 @@ function colorbuffer(scene::Scene)
                 You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
                 before trying to render a Scene.
                 """)
+        else
+            error("""
+                The Scene needs an active screen before a colorbuffer can be rendered from it.
+                Ensure that it has one via `display(scene)`.
+                """)
         end
-        # If the Scene has not been displayed, then explicitly display it.
-        # The backend has to return its screen object anyway, so we can use that.
-        screen = display(scene)
     end
     return colorbuffer(screen)
 end
