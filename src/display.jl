@@ -395,11 +395,16 @@ or RGBA.
 """
 function colorbuffer(scene::Scene)
     screen = getscreen(scene)
-    if screen === nothing
-        error("""
-        It looks like your scene does not have a Screen attached.  
-        Try displaying it explicitly, and ensure that there is an active backend!
-        """)
+    if isnothing(screen)
+        if ismissing(current_backend[])
+            error("""
+                You have not loaded a backend.  Please load one (`using GLMakie` or `using CairoMakie`)
+                before trying to render a Scene.
+                """)
+        end
+        # If the Scene has not been displayed, then explicitly display it.
+        # The backend has to return its screen object anyway, so we can use that.
+        screen = display(scene)
     end
     return colorbuffer(screen)
 end
