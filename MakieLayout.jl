@@ -22,20 +22,22 @@ const COLOR_ACCENT_DIMMED = Ref(RGBf0(((174, 192, 230) ./ 255)...))
 # Make GridLayoutBase default row and colgaps themeable when using MakieLayout
 # This mutates module-level state so it could mess up other libraries using
 # GridLayoutBase at the same time as MakieLayout, which is unlikely, though
-GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-    ct = AbstractPlotting.current_default_theme()
-    if haskey(ct, :colgap)
-        ct[:colgap][]
-    else
-        GridLayoutBase.DEFAULT_COLGAP[]
+function __init__()
+    GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
+        ct = AbstractPlotting.current_default_theme()
+        if haskey(ct, :colgap)
+            ct[:colgap][]
+        else
+            GridLayoutBase.DEFAULT_COLGAP[]
+        end
     end
-end
-GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-    ct = AbstractPlotting.current_default_theme()
-    if haskey(ct, :rowgap)
-        ct[:rowgap][]
-    else
-        GridLayoutBase.DEFAULT_ROWGAP[]
+    GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
+        ct = AbstractPlotting.current_default_theme()
+        if haskey(ct, :rowgap)
+            ct[:rowgap][]
+        else
+            GridLayoutBase.DEFAULT_ROWGAP[]
+        end
     end
 end
 
