@@ -57,13 +57,15 @@ const selection_queries = Function[]
 """
 Renders a single frame of a `window`
 """
-function render_frame(screen::Screen)
+function render_frame(screen::Screen; resize_buffers=true)
     nw = to_native(screen)
     ShaderAbstractions.is_context_active(nw) || return
     fb = screen.framebuffer
-    wh = Int.(framebuffer_size(nw))
-    resize!(fb, wh)
-    w, h = wh
+    if resize_buffers
+        wh = Int.(framebuffer_size(nw))
+        resize!(fb, wh)
+    end
+    w, h = size(fb)
 
     # prepare stencil (for sub-scenes)
     glEnable(GL_STENCIL_TEST)
