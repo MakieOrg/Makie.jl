@@ -79,7 +79,7 @@ function cam3d_turntable!(scene; kw_args...)
     cam = from_dict(Camera3D, cam_attributes)
     # remove previously connected camera
     disconnect!(scene.camera)
-    add_translation!(scene, cam, cam.pan_button, cam.move_key, false)
+    add_translation!(scene, cam, cam.pan_button, cam.move_key, true)
     add_rotation!(scene, cam, cam.rotate_button, cam.move_key, true)
     cameracontrols!(scene, cam)
     on(camera(scene), scene.px_area) do area
@@ -221,21 +221,30 @@ Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`.
 """
 function zoom!(scene, point, zoom_step, shift_lookat::Bool)
     cam = cameracontrols(scene)
-    @extractvalue cam (projectiontype, lookat, eyeposition, upvector)
+    @extractvalue cam (projectiontype, lookat, eyeposition, upvector, projectiontype)
+
+
+    # split zoom into two components:
+    # the offset perpendicular to `eyeposition - lookat`, based on mouse offset ~ ray_dir
+    # the offset parallel to `eyeposition - lookat` ~ dir
+    ray_eye = inv(scene.camera.projection[]) * Vec4f0(point[1],point[2],0,0)
+    ray_eye = Vec4f0(ray_eye[1:2]...,0,0)
+    ray_dir = Vec3f0((inv(scene.camera.view[]) * ray_eye))
 
     dir = eyeposition - lookat
-    dir_len = norm(dir)
-    zoom_step *= 0.1f0 * dir_len
 
-    ray_eye = inv(scene.camera.projection[]) * Vec4f0(point[1],point[2],-1,1)
-    ray_eye = Vec4f0(ray_eye[1:2]...,-1,0)
-    ray_dir = Vec3f0((inv(scene.camera.view[]) * ray_eye))
-    ray_dir = normalize(ray_dir)
-    zoom_translation = ray_dir * zoom_step
-    cam.eyeposition[] = eyeposition + zoom_translation
     if shift_lookat
-        cam.lookat[] = lookat + zoom_translation
+        # This results in the point under the cursor remaining stationary
+        if projectiontype == Perspective
+            ray_dir *= norm(dir)
+        end
+        cam.eyeposition[] = eyeposition + (ray_dir - dir) * 0.1f0 * zoom_step
+        cam.lookat[] = lookat + zoom_step * 0.1f0 * ray_dir
+    else
+        # Rotations need more extreme eyeposition shifts
+        cam.eyeposition[] = eyeposition + (ray_dir - dir * 0.1f0) * zoom_step
     end
+
     update_cam!(scene, cam)
 end
 
