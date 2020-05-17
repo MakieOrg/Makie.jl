@@ -95,7 +95,14 @@ const minimal_default = Attributes(
     camera = automatic,
     limits = automatic,
     padding = Vec3f0(0.05),
-    raw = false
+    raw = false,
+    SSAO = Attributes(
+        # enable = false,
+        bias = 0.025f0,       # z threshhold for occlusion
+        radius = 0.5f0,       # range of sample positions (in world space)
+        blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
+        # N_samples = 64,       # number of samples (requires shader reload)
+    ),
 )
 
 const _current_default_theme = copy(minimal_default)

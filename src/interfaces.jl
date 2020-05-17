@@ -19,6 +19,7 @@ function default_theme(scene)
         shininess = 32f0,
         lightposition = :eyeposition,
         nan_color = RGBAf0(0,0,0,0),
+        ssao = false
     )
 end
 
@@ -610,7 +611,8 @@ function extract_scene_attributes!(attributes)
         :camera,
         :limits,
         :padding,
-        :raw
+        :raw,
+        :SSAO
     )
     result = Attributes()
     for k in scene_attributes
