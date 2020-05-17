@@ -1,5 +1,16 @@
 abstract type AbstractMouseState end
 
+"""
+    MouseState{T<:AbstractMouseState}
+
+Describes a mouse state change.
+Fields:
+- `typ`: Symbol describing the mouse state
+- `t`: Time of the event
+- `pos`: Mouse position
+- `tprev`: Time of previous event
+- `prev`: Previous mouse position
+"""
 struct MouseState{T<:AbstractMouseState}
     typ::T
     t::Float64
@@ -44,6 +55,25 @@ function Base.show(io::IO, ms::MouseState{T}) where T
     print(io, "$T(t: $(ms.t), pos: $(ms.pos[1]), $(ms.pos[2]), tprev: $(ms.tprev), prev: $(ms.prev[1]), $(ms.prev[2]))")
 end
 
+"""
+    addmousestate!(scene, elements...)
+
+Returns an `Observable{MouseState}` which is triggered by all mouse
+interactions with the `scene` and optionally restricted to all given
+plot objects in `elements`.
+
+To react to mouse events, use the onmouse... handlers.
+
+Example:
+
+```
+mousestate = addmousestate!(scene, scatterplot)
+
+onmouseleftclick(mousestate) do state
+    # do something with the mousestate
+end
+```
+"""
 function addmousestate!(scene, elements...)
 
     Mouse = AbstractPlotting.Mouse
