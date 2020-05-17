@@ -55,22 +55,6 @@ function sceneareanode!(finalbbox, limits, aspect)
 end
 
 
-function create_suggested_bboxnode(n::Nothing)
-    Node(BBox(0, 100, 0, 100))
-end
-
-function create_suggested_bboxnode(tup::Tuple)
-    Node(BBox(tup...))
-end
-
-function create_suggested_bboxnode(bbox::AbstractPlotting.Rect2D)
-    Node(FRect2D(bbox))
-end
-
-function create_suggested_bboxnode(node::Node{FRect2D})
-    node
-end
-
 
 function roundedrectvertices(rect, cornerradius, cornersegments)
     cr = cornerradius
