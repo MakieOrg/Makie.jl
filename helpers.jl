@@ -407,3 +407,28 @@ function subtheme(scene, key::Symbol)
     end
     sub
 end
+
+
+function xaxis_top!(la::LAxis)
+    la.xaxisposition = :top
+    la.xticklabelalign = (la.xticklabelalign[][1], :bottom)
+    nothing
+end
+
+function xaxis_bottom!(la::LAxis)
+    la.xaxisposition = :bottom
+    la.xticklabelalign = (la.xticklabelalign[][1], :top)
+    nothing
+end
+
+function yaxis_left!(la::LAxis)
+    la.yaxisposition = :left
+    la.yticklabelalign = (:right, la.yticklabelalign[][2])
+    nothing
+end
+
+function yaxis_right!(la::LAxis)
+    la.yaxisposition = :right
+    la.yticklabelalign = (:left, la.yticklabelalign[][2])
+    nothing
+end

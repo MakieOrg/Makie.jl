@@ -79,6 +79,7 @@ export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export layoutscene
 export set_close_to!
+export xaxis_bottom!, xaxis_top!, yaxis_left!, yaxis_right!
 
 
 # from GridLayoutBase
