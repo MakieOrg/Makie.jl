@@ -57,17 +57,23 @@ const selection_queries = Function[]
 """
 Renders a single frame of a `window`
 """
-function render_frame(screen::Screen)
+function render_frame(screen::Screen; resize_buffers=true)
     nw = to_native(screen)
     ShaderAbstractions.is_context_active(nw) || return
     fb = screen.framebuffer
-    wh = Int.(framebuffer_size(nw))
-    resize!(fb, wh)
-    w, h = wh
+    if resize_buffers
+        wh = Int.(framebuffer_size(nw))
+        resize!(fb, wh)
+    end
+    w, h = size(fb)
+
+    # prepare stencil (for sub-scenes)
     glEnable(GL_STENCIL_TEST)
-    #prepare for geometry in need of anti aliasing
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
-    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glDrawBuffers(4, [
+        GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
+        GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
+    ])
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0xff)
@@ -76,38 +82,98 @@ function render_frame(screen::Screen)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     setup!(screen)
 
+    # render with FXAA & SSAO
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
-    GLAbstraction.render(screen, true)
+    GLAbstraction.render(screen, true, true)
+
+
+    # SSAO - calculate occlusion
+    glDrawBuffer(GL_COLOR_ATTACHMENT4)  # occlusion buffer
+    glViewport(0, 0, w, h)
+    glClearColor(1, 1, 1, 1)            # 1 means no darkening
+    glClear(GL_COLOR_BUFFER_BIT)
+    try
+        for (screenid, scene) in screen.screens
+            # update uniforms
+            SSAO = scene.attributes.SSAO
+            # if SSAO.enable[]
+                uniforms = fb.postprocess[1].uniforms
+                uniforms[:projection][] = scene.camera.projection[]
+                uniforms[:bias][] = get(SSAO, :bias, 0.025)[]
+                uniforms[:radius][] = get(SSAO, :radius, 0.5)[]
+
+                # use stencil to select one scene
+                glStencilFunc(GL_EQUAL, screenid, 0xff)
+                GLAbstraction.render(fb.postprocess[1])
+            # end
+        end
+    catch e
+        @error "Error while rendering!" exception=e
+        rethrow(e)
+    end
+
+
+    # SSAO - blur occlusion and apply to color
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+    try
+        for (screenid, scene) in screen.screens
+            # update uniforms
+            SSAO = scene.attributes.SSAO
+            # if SSAO.enable[]
+                uniforms = fb.postprocess[2].uniforms
+                uniforms[:blur_range][] = get(SSAO, :blur, Int32(2))[]
+
+                # use stencil to select one scene
+                glStencilFunc(GL_EQUAL, screenid, 0xff)
+                GLAbstraction.render(fb.postprocess[2])
+            # end
+        end
+    catch e
+        @error "Error while rendering!" exception=e
+        rethrow(e)
+    end
     glDisable(GL_STENCIL_TEST)
 
-    # transfer color to luma buffer and apply fxaa
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2]) # luma framebuffer
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)
-    glViewport(0, 0, w, h)
-    glClearColor(0,0,0,0)
-    glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(fb.postprocess[1]) # add luma and preprocess
 
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # transfer to non fxaa framebuffer
-    glViewport(0, 0, w, h)
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)
-    GLAbstraction.render(fb.postprocess[2]) # copy with fxaa postprocess
-
-    #prepare for non anti aliased pass
+    # render with FXAA but no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
+    glEnable(GL_STENCIL_TEST)
+    glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
+    glStencilMask(0x00)
+    GLAbstraction.render(screen, true, false)
+    glDisable(GL_STENCIL_TEST)
 
+    # FXAA - calculate LUMA
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color_luma buffer
+    glViewport(0, 0, w, h)
+    # necessary with negative SSAO bias...
+    glClearColor(1, 1, 1, 1)
+    glClear(GL_COLOR_BUFFER_BIT)
+    GLAbstraction.render(fb.postprocess[3])
+
+    # FXAA - perform anti-aliasing
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
+    # glViewport(0, 0, w, h) # not necessary
+    GLAbstraction.render(fb.postprocess[4])
+
+    # no FXAA primary render
+    glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0x00)
     GLAbstraction.render(screen, false)
     glDisable(GL_STENCIL_TEST)
-    glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
+
+    # transfer everything to the screen
+    glBindFramebuffer(GL_FRAMEBUFFER, 0)
     glViewport(0, 0, w, h)
-    glClearColor(0, 0, 0, 0)
     glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(fb.postprocess[3]) # copy postprocess
+    GLAbstraction.render(fb.postprocess[5]) # copy postprocess
+
     return
 end
 
@@ -119,7 +185,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::Screen, fxaa::Bool)
+function GLAbstraction.render(screen::Screen, fxaa::Bool, ssao::Bool=false)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
@@ -137,7 +203,10 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool)
                 # so we can't do the stencil test
                 glStencilFunc(GL_ALWAYS, screenid, 0xff)
             end
-            if fxaa && elem[:fxaa][]
+            if (fxaa && elem[:fxaa][]) && ssao && elem[:ssao][]
+                render(elem)
+            end
+            if (fxaa && elem[:fxaa][]) && !ssao && !elem[:ssao][]
                 render(elem)
             end
             if !fxaa && !elem[:fxaa][]

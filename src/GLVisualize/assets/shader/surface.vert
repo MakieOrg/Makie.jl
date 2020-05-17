@@ -57,7 +57,7 @@ uniform vec3 scale;
 
 uniform mat4 view, model, projection;
 
-void render(vec4 vertices, vec3 normal, mat4 viewmodel, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
 ivec2 ind2sub(ivec2 dim, int linearindex);
 vec2 linear_index(ivec2 dims, int index);
 vec2 linear_index(ivec2 dims, int index, vec2 offset);
@@ -100,5 +100,5 @@ void main()
     o_id = uvec2(objectid, index1D+1);
     o_uv = index01;
     vec3 normalvec = {{normal_calc}};
-    render(model * vec4(pos, 1), (model * vec4(normalvec, 0)).xyz, view, projection, lightposition);
+    render(model * vec4(pos, 1), normalvec, view, projection, lightposition);
 }

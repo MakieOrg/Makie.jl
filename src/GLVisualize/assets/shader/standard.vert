@@ -7,7 +7,7 @@ in vec3 normals;
 
 uniform vec3 lightposition;
 uniform mat4 projection, view, model;
-void render(vec4 vertices, vec3 normals, mat4 viewmodel, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
 
 uniform uint objectid;
 flat out uvec2 o_id;
@@ -30,5 +30,5 @@ void main()
     o_uv = vec2(1.0 - tex_uv.y, tex_uv.x);
     o_color = to_color(vertex_color);
     vec3 v = to_3d(vertices);
-    render(model * vec4(v, 1), (model * vec4(normals, 0)).xyz, view, projection, lightposition);
+    render(model * vec4(v, 1), normals, view, projection, lightposition);
 }

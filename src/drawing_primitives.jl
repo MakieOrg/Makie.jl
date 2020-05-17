@@ -41,7 +41,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
@@ -69,6 +69,12 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
         end
+        if !haskey(gl_attributes, :normalmatrix)
+            robj[:normalmatrix] = map(robj[:view], robj[:model]) do v, m
+                Mat3f0(transpose(inv(v[1:3, 1:3] * m[1:3, 1:3])))
+            end
+        end
+        !haskey(gl_attributes, :ssao) && (robj[:ssao] = Node(false))
         screen.cache2plot[robj.id] = x
         robj
     end

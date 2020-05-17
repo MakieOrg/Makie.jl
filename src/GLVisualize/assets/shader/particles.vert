@@ -123,7 +123,7 @@ vec4 _color(sampler2D color, Nothing intensity, Nothing color_map, Nothing color
     return vec4(0);
 }
 
-void render(vec4 vertices, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
+void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
 
 
 vec2 get_uv(Nothing x){return vec2(0.0);}
