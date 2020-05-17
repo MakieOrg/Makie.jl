@@ -131,13 +131,28 @@ function fractionpoint(bbox::FRect2D, point::T) where T <: Point2
     T(left(bbox) + point[1] * width(bbox), bottom(bbox) + point[2] * height(bbox))
 end
 
+"""
+    tightlimits!(la::LAxis)
 
+Sets the autolimit margins to zero on all sides.
+"""
 function tightlimits!(la::LAxis)
     la.xautolimitmargin = (0, 0)
     la.yautolimitmargin = (0, 0)
     autolimits!(la)
 end
 
+"""
+    tightlimits!(la::LAxis, sides::Union{Left, Right, Bottom, Top}...)
+
+Sets the autolimit margins to zero on all given sides.
+
+Example:
+
+```
+tightlimits!(laxis, Bottom())
+```
+"""
 function tightlimits!(la::LAxis, sides::Union{Left, Right, Bottom, Top}...)
     for s in sides
         tightlimits!(la, s)
