@@ -111,7 +111,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     bcolor = Node{Any}(buttoncolor_inactive[])
 
-    button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor,
+    button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor, marker = '⚫',
         strokewidth = buttonstrokewidth, strokecolor = color_active_dimmed, raw = true)[end]
     decorations[:button] = button
 
