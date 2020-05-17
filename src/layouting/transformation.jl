@@ -50,7 +50,6 @@ function Transformation(scene::SceneLike)
     end
 
     ptrans = transformation(scene)
-
     trans = Transformation(
         translation,
         scale,

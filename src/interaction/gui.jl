@@ -42,11 +42,11 @@ lift(scene[end].value) do val
 end
 ```
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Slider, range) do scene
-    Theme(
+    Attributes(
         value = 0,
         start = automatic,
         position = (0, 0),
@@ -196,11 +196,11 @@ lift(scene[end].clicks) do clicks
 end
 ```
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Button) do scene
-    Theme(
+    Attributes(
         dimensions = (40, 40),
         backgroundcolor = (:white, 0.4),
         strokecolor = (:black, 0.4),
@@ -397,7 +397,7 @@ end
 TODO add function signatures
 TODO add description
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 function colorswatch(scene = Scene(camera = campixel!)) # TODO convert to Recipe?

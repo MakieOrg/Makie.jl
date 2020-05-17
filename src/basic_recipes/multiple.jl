@@ -42,7 +42,7 @@ end
 
 combine(val1, val2; palette = nothing) = val2
 
-function combine!(theme1::Theme, theme2::Theme)
+function combine!(theme1::Attributes, theme2::Attributes)
     palette = get(theme1, :palette, current_default_theme()[:palette])
     for (key, val) in theme2
         tv = convert(Node, get(theme1, key, nothing))
@@ -51,16 +51,16 @@ function combine!(theme1::Theme, theme2::Theme)
     end
     theme1
 end
-combine(theme1::Theme, theme2) = combine!(copy(theme1), theme2)
+combine(theme1::Attributes, theme2) = combine!(copy(theme1), theme2)
 
 # This allows plotting an arbitrary combination of series form one argument
 # The recipe framework can be constructed using this as a building block and computing
 # PlotList with convert_arguments
 function plot!(p::Combined{multipleplot, <:Tuple{PlotList}})
     mp = to_value(p[1]) # TODO how to preserve interactivity here, as number of series may change?
-    theme = Theme(p)
+    theme = Attributes(p)
     for s in mp.plots
-        attr = combine(theme, Theme(; s.kwargs...))
+        attr = combine(theme, Attributes(; s.kwargs...))
         plot!(p, plottype(s), attr, s.args...)
     end
 end
@@ -71,7 +71,7 @@ end
 
 function plot!(p::Combined{S, <:Tuple{Vararg{Any, N}}}) where {S <: Tuple, N}
     for pt in S.parameters
-        plot!(p, Combined{pt}, Theme(p), p[1:N]...)
+        plot!(p, Combined{pt}, Attributes(p), p[1:N]...)
     end
 end
 

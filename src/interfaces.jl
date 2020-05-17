@@ -1,14 +1,11 @@
 not_implemented_for(x) = error("Not implemented for $(x). You might want to put:  `using Makie` into your code!")
 
-#TODO only have one?
-const Theme = Attributes
-
-Theme(x::AbstractPlot) = x.attributes
+Attributes(x::AbstractPlot) = x.attributes
 
 default_theme(scene, T) = Attributes()
 
 function default_theme(scene)
-    Theme(
+    Attributes(
         color = theme(scene, :color),
         linewidth = 1,
         transformation = automatic,
@@ -43,11 +40,11 @@ calculated_attributes!(plot::T) where T = calculated_attributes!(T, plot)
 
 Plots an image on range `x, y` (defaults to dimensions).
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Image, x, y, image) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         colormap = [:black, :white],
         interpolate = true,
@@ -65,11 +62,11 @@ end
 
 Plots a heatmap as an image on `x, y` (defaults to interpretation as dimensions).
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Heatmap, x, y, values) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         colormap = :viridis,
         linewidth = 0.0,
@@ -91,11 +88,11 @@ Plots a volume. Available algorithms are:
 * `:absorptionrgba` => AbsorptionRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Volume, x, y, z, volume) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         algorithm = :mip,
         isovalue = 0.5,
@@ -113,11 +110,11 @@ end
 Plots a surface, where `(x, y)`  define a grid whose heights are the entries in `z`.
 `x` and `y` may be `Vectors` which define a regular grid, **or** `Matrices` which define an irregular grid.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Surface, x, y, z) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         color = nothing,
         colormap = :viridis,
@@ -138,11 +135,11 @@ Creates a connected line plot for each element in `(x, y, z)`, `(x, y)` or `posi
 !!! tip
     You can separate segments by inserting `NaN`s.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Lines, positions) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         linewidth = 1.0,
         color = :black,
@@ -159,7 +156,7 @@ end
 
 Plots a line for each pair of points in `(x, y, z)`, `(x, y)`, or `positions`.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(LineSegments, positions) do scene
@@ -175,11 +172,11 @@ end
 
 Plots a 3D or 2D mesh.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Mesh, mesh) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         color = :black,
         colormap = :viridis,
@@ -196,11 +193,11 @@ end
 
 Plots a marker for each element in `(x, y, z)`, `(x, y)`, or `positions`.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Scatter, positions) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         color = :black,
         colormap = :viridis,
@@ -230,11 +227,11 @@ end
 Plots a mesh for each element in `(x, y, z)`, `(x, y)`, or `positions` (similar to `scatter`).
 `markersize` is a scaling applied to the primitive passed as `marker`.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(MeshScatter, positions) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         color = :black,
         colormap = :viridis,
@@ -253,11 +250,11 @@ end
 
 Plots a text.
 
-## Theme
+## Attributes
 $(ATTRIBUTES)
 """
 @recipe(Text, text) do scene
-    Theme(;
+    Attributes(;
         default_theme(scene)...,
         font = theme(scene, :font),
         strokecolor = (:black, 0.0),
@@ -407,7 +404,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     argnodes = lift(input...) do args...
         convert_arguments(PlotType, args...)
     end
-    PlotType(scene, attributes, input, argnodes)
+    return PlotType(scene, attributes, input, argnodes)
 end
 
 function plot(scene::Scene, plot::AbstractPlot)

@@ -15,7 +15,6 @@ function default_plot_signatures(funcname, funcname!, PlotType)
             plot!(Scene(;kw...), $PlotType, attr, args...)
         end
 
-
         Core.@__doc__ function ($funcname!)(args...; attributes...)
             plot!(current_scene(), $PlotType, Attributes(attributes), args...)
         end
@@ -74,7 +73,7 @@ We use an example to show how this works:
 
     # arguments (x, y, z) && theme are optional
     @recipe(MyPlot, x, y, z) do scene
-        Theme(
+        Attributes(
             plot_color => :red
         )
     end
@@ -112,7 +111,7 @@ specialization of `default_theme` which inserts the theme into any scene that
 plots `MyPlot`:
 
     function default_theme(scene, ::MyPlot)
-        Theme(
+        Attributes(
             plot_color => :red
         )
     end

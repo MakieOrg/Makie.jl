@@ -84,7 +84,7 @@ function finish!(tb::Annotations)
 end
 
 
-function push!(tb::Annotations, text::String, position::NVec{N}; kw_args...) where N
+function push!(tb::Annotations, text::String, position::VecTypes{N}; kw_args...) where N
     append!(tb, [(String(text), Point{N, Float32}(position))]; kw_args...)
 end
 

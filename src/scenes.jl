@@ -85,20 +85,7 @@ function Scene(
         transformation, plots, theme, attributes,
         children, current_screens, updated
     )
-    finalizer(scene) do scene
-        # save_print("Freeing scene")
-        close_all_nodes(scene.events)
-        close_all_nodes(scene.transformation)
-        for field in (:px_area, :data_limits)
-            close(getfield(scene, field))
-        end
-        disconnect!(scene.camera)
-        empty!(scene.theme)
-        empty!(scene.attributes)
-        empty!(scene.children)
-        empty!(scene.current_screens)
-        return
-    end
+
     onany(updated, px_area) do update, px_area
         if update && !(scene.camera_controls[] isa PixelCamera)
             if !scene.raw[]
@@ -432,57 +419,6 @@ end
 
 const current_global_scene = Ref{Any}()
 
-if Sys.iswindows()
-    function _primary_resolution()
-        # ccall((:GetSystemMetricsForDpi, :user32), Cint, (Cint, Cuint), 0, ccall((:GetDpiForSystem, :user32), Cuint, ()))
-        # ccall((:GetSystemMetrics, :user32), Cint, (Cint,), 17)
-        dc = ccall((:GetDC, :user32), Ptr{Cvoid}, (Ptr{Cvoid},), C_NULL)
-        ntuple(2) do i
-            Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
-        end
-    end
-elseif Sys.isapple()
-    function _primary_resolution()
-        s = read(pipeline(`system_profiler SPDisplaysDataType`, `grep Resolution`)) |> String
-        sarr = split(s)
-        return parse.(Int, (sarr[2], sarr[4]))
-    end
-# elseif Sys.islinux()
-#     function _primary_resolution()
-#         s = read(pipeline(`xrandr`)) |> String
-#         sp = split(s, '\n')
-#         s1 = sp[4]
-#     end
-else
-    # TODO implement linux
-    _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
-end
-
-"""
-Returns the resolution of the primary monitor.
-If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
-"""
-function primary_resolution()
-    # Since this is pretty low level and os specific + we can't test on all possible
-    # computers, I assume we'll have bugs here. Let's not sweat about it too much,
-    # we just use primary_resolution to have a good estimate for a default window resolution
-    # if this fails, only thing happening will be a too small/big window when the user doesn't give any resolution.
-    try
-        _primary_resolution()
-    catch e
-        @warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
-        Error: $(sprint(io->showerror(io, e))).")
-        (1920, 1080)
-    end
-end
-
-"""
-Returns a reasonable resolution for the main monitor.
-(right now just half the resolution of the main monitor)
-"""
-reasonable_resolution() = primary_resolution() .÷ 2
-
-
 """
 Returns the current active scene (the last scene that got created)
 """
@@ -493,8 +429,6 @@ function current_scene()
         Scene()
     end
 end
-
-
 
 """
 Fetches all plots sharing the same camera

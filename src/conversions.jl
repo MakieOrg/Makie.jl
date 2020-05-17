@@ -1,13 +1,6 @@
 
-# a few shortcut functions to make attribute conversion easier
-@inline function get_attribute(dict, key)
-    convert_attribute(to_value(dict[key]), Key{key}())
-end
-
-
 """
     to_color(color)
-
 Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
 """
 to_color(color) = convert_attribute(color, key"color"())
@@ -599,8 +592,6 @@ to_2d_scale(x::Number) = Vec2f0(x)
 to_2d_scale(x::VecTypes) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::Tuple{<:Number, <:Number}) = to_ndim(Vec2f0, x, 1)
 to_2d_scale(x::AbstractVector) = to_2d_scale.(x)
-to_2d_scale(x::Pixel) = Vec{2, Pixel{Float32}}(x, x)
-to_2d_scale(x::Tuple{<:Pixel, <:Pixel}) = Vec{2, Pixel{Float32}}(x, x)
 
 to_3d_scale(x::Number) = Vec3f0(x)
 to_3d_scale(x::VecTypes) = to_ndim(Vec3f0, x, 1)
