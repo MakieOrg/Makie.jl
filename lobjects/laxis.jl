@@ -461,7 +461,13 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
     end
 end
 
+"""
+    autolimits!(la::LAxis)
 
+Set the target limits of `la` to an automatically determined rectangle, that depends
+on the data limits of all plot objects in the axis, as well as the autolimit margins
+for x and y axis. 
+"""
 function autolimits!(la::LAxis)
 
     xlims = getxlimits(la)
@@ -508,6 +514,11 @@ function autolimits!(la::LAxis)
     la.targetlimits[] = bbox
 end
 
+"""
+    linkaxes!(a::LAxis, others...)
+
+Link both x and y axes of all given `LAxis` so that they stay synchronized.
+"""
 function linkaxes!(a::LAxis, others...)
     linkxaxes!(a, others...)
     linkyaxes!(a, others...)
@@ -562,6 +573,11 @@ function adjustlimits!(la)
     la.limits[] = bbox
 end
 
+"""
+    linkxaxes!(a::LAxis, others...)
+
+Link the x axes of all given `LAxis` so that they stay synchronized.
+"""
 function linkxaxes!(a::LAxis, others...)
     axes = LAxis[a; others...]
 
@@ -582,6 +598,11 @@ function linkxaxes!(a::LAxis, others...)
     autolimits!(a)
 end
 
+"""
+    linkyaxes!(a::LAxis, others...)
+
+Link the y axes of all given `LAxis` so that they stay synchronized.
+"""
 function linkyaxes!(a::LAxis, others...)
     axes = LAxis[a; others...]
 
@@ -902,16 +923,34 @@ end
 
 AbstractPlotting.ylims!(ax::LAxis, y1, y2) = ylims!(ax, (y1, y2))
 
+"""
+    limits!(ax::LAxis, xlims, ylims)
+
+Set the axis limits to `xlims` and `ylims`.
+If limits are ordered high-low, this reverses the axis orientation.
+"""
 function limits!(ax::LAxis, xlims, ylims)
     xlims!(ax, xlims)
     ylims!(ax, ylims)
 end
 
+"""
+    limits!(ax::LAxis, x1, x2, y1, y2)
+
+Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
+If limits are ordered high-low, this reverses the axis orientation.
+"""
 function limits!(ax::LAxis, x1, x2, y1, y2)
     xlims!(ax, x1, x2)
     ylims!(ax, y1, y2)
 end
 
+"""
+    limits!(ax::LAxis, rect::Rect2D)
+
+Set the axis limits to `rect`.
+If limits are ordered high-low, this reverses the axis orientation.
+"""
 function limits!(ax::LAxis, rect::Rect2D)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
