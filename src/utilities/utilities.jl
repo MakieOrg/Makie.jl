@@ -194,28 +194,6 @@ dim2(x::NTuple{2, Any}) = x
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
-function merge_attributes!(input::Attributes, theme::Attributes)
-    for (key, value) in theme
-        if !haskey(input, key)
-            input[key] = copy(value)
-        else
-            current_value = input[key]
-            if value isa Attributes && current_value isa Attributes
-                # if nested attribute, we merge recursively
-                merge_attributes!(current_value, value)
-            elseif value isa Attributes || current_value isa Attributes
-                error("""
-                Type missmatch while merging plot attributes with theme for key: $(key).
-                Found $(value) in theme, while attributes contains: $(current_value)
-                """)
-            else
-                # we're good! input already has a value, can ignore theme
-            end
-        end
-    end
-    return input
-end
-
 function merged_get!(defaults::Function, key, scene, input::Vector{Any})
     return merged_get!(defaults, key, scene, Attributes(input))
 end
