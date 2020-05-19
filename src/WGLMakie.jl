@@ -170,10 +170,11 @@ function add_scene!(three, scene::Scene)
         }
         function render_all(){
             render_scene($(js_scene));
-            // Schedule the next frame.
-            requestAnimationFrame(render_all);
         }
-        requestAnimationFrame(render_all);
+        // render first frame
+        render_all();
+        // Render only when something updates!
+        on_update_observables_callbacks.push(render_all);
     """)
 end
 
