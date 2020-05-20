@@ -381,7 +381,7 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
-    return (mesh,)
+    return (uv_normal_mesh(mesh),)
 end
 
 function convert_arguments(
