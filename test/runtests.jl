@@ -2,6 +2,8 @@ using MakieGallery, Makie, Test
 
 using MakieGallery: @block, @cell
 
+@info "It is normal for the Makie window to not appear during tests"
+
 database = MakieGallery.load_test_database()
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
