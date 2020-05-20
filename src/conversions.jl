@@ -379,9 +379,11 @@ function convert_arguments(
 end
 
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
-    # we convert to UV mesh as default, because otherwise the uv informations get lost
-    # - we can still drop them, but we can't add them later on
-    return (uv_normal_mesh(mesh),)
+    # Make sure we have normals!
+    if !hasproperty(mesh, :normals)
+        mesh = GeometryBasics.pointmeta(mesh, Normal())
+    end
+    return (mesh,)
 end
 
 function convert_arguments(
