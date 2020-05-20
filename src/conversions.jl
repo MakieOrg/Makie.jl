@@ -43,8 +43,16 @@ function convert_arguments(T::PlotFunc, args...; kw...)
         convert_arguments(ct, args...; kw...)
     catch e
         if e isa MethodError
-            @show e
-            error("No overload for $T and also no overload for trait $ct found! Arguments: $(typeof.(args))")
+            error(
+                """
+                There was no `AbstractPlotting.convert_arguments` overload found for
+                the plot type $T, or its conversion trait $ct.
+                The arguments were:
+                $(typeof.(args))
+
+                To fix this, define `AbstractPlotting.convert_arguments(::$T, $(join(Ref("::") .* string.(typeof.(args)), ", ")))`.
+                """
+            )
         else
             rethrow(e)
         end
