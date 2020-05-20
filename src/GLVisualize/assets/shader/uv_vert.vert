@@ -13,8 +13,8 @@ flat out uvec2 o_objectid;
 vec4 _position(vec3 p){return vec4(p,1);}
 vec4 _position(vec2 p){return vec4(p,0,1);}
 
-in vec4 o_view_pos;
-in vec3 o_normal;
+out vec4 o_view_pos;
+out vec3 o_normal;
 
 void main()
 {

@@ -9,8 +9,8 @@ uniform mat4 projectionview, model;
 uniform vec3 lightposition;
 uniform mat4 modelinv;
 
-in vec4 o_view_pos;
-in vec3 o_normal;
+out vec4 o_view_pos;
+out vec3 o_normal;
 
 void main()
 {
