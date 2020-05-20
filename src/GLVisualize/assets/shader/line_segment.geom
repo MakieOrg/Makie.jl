@@ -38,8 +38,13 @@ void emit_vertex(vec2 position, vec2 uv, int index)
 
 uniform int max_primtives;
 
+out vec4 o_view_pos;
+out vec3 o_normal;
+
 void main(void)
 {
+    o_view_pos = vec4(0);
+    o_normal = vec3(0);
     // get the four vertices passed to the shader:
     vec2 p0 = screen_space(gl_in[0].gl_Position); // start of previous segment
     vec2 p1 = screen_space(gl_in[1].gl_Position); // end of previous segment, start of current segment

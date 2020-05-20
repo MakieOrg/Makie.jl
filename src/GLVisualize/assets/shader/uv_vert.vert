@@ -13,8 +13,14 @@ flat out uvec2 o_objectid;
 vec4 _position(vec3 p){return vec4(p,1);}
 vec4 _position(vec2 p){return vec4(p,0,1);}
 
-void main(){
-	o_uv        = texturecoordinates;
-	o_objectid  = uvec2(objectid, gl_VertexID+1);
+out vec4 o_view_pos;
+out vec3 o_normal;
+
+void main()
+{
+    o_view_pos = vec4(0);
+    o_normal = vec3(0);
+	o_uv = texturecoordinates;
+	o_objectid = uvec2(objectid, gl_VertexID+1);
 	gl_Position = projection * view * model * _position(vertices);
 }
