@@ -42,6 +42,7 @@ Returns a signal, which is true as long as the window is open.
 returns `Node{Bool}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#gaade9264e79fae52bdb78e2df11ee8d6a)
 """
+window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     @csafe(function windowclose(win)
@@ -62,7 +63,8 @@ function window_position(window::GLFW.Window)
     xy = GLFW.GetWindowPos(window)
     (xy.x, xy.y)
 end
-function window_area(scene::Scene, window)
+window_area(scene::Scene, screen) = window_area(scene, to_native(screen))
+function window_area(scene::Scene, window::GLFW.Window)
     event = scene.events.window_area
     dpievent = scene.events.window_dpi
     @csafe function windowposition(window, x::Cint, y::Cint)
@@ -103,6 +105,7 @@ Registers a callback for the mouse buttons + modifiers
 returns `Node{NTuple{4, Int}}`
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
+mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
 function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebuttons
     @csafe function mousebuttons(window, button, action, mods)
@@ -114,6 +117,7 @@ end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
     GLFW.SetMouseButtonCallback(window, nothing)
 end
+keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(screen))
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
     @csafe function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
@@ -132,6 +136,7 @@ Registers a callback for drag and drop of files.
 returns `Node{Vector{String}}`, which are absolute file paths
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
+dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
     @csafe function droppedfiles(window, files)
@@ -152,6 +157,7 @@ returns an `Node{Vector{Char}}`,
 containing the pressed char. Is empty, if no key is pressed.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
+unicode_input(scene::Scene, screen) = unicode_input(scene, to_native(screen))
 function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
     @csafe function unicodeinput(window, c::Char)
@@ -201,16 +207,19 @@ returns an `Node{Vec{2, Float64}}`,
 which is not in scene coordinates, with the upper left window corner being 0
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga1e008c7a8751cea648c8f42cc91104cf)
 """
-function mouse_position(scene::Scene, window::GLFW.Window)
-    event = scene.events.mouseposition
-    @csafe function cursorposition(window, w::Cdouble, h::Cdouble)
-        event[] = correct_mouse(window, w, h)
+function mouse_position(scene::Scene, screen::Screen)
+    window = to_native(screen)
+    map!(scene.events.mouseposition, screen.render_tick) do _
+        # Maybe do this as the tick? Do it at all?
+        # GLFW.PollEvents()
+        x, y = GLFW.GetCursorPos(window)
+        correct_mouse(window, x, y)
     end
-    disconnect!(window, mouse_position)
-    GLFW.SetCursorPosCallback(window, cursorposition)
+    nothing
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_position))
-    GLFW.SetCursorPosCallback(window, nothing)
+    nothing
+    #GLFW.SetCursorPosCallback(window, nothing)
 end
 
 """
@@ -219,6 +228,7 @@ returns an `Node{Vec{2, Float64}}`,
 which is an x and y offset.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#gacc95e259ad21d4f666faa6280d4018fd)
 """
+scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
 function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
     @csafe function scrollcb(window, w::Cdouble, h::Cdouble)
@@ -238,6 +248,7 @@ returns an `Node{Bool}`,
 which is true whenever the window has focus.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__window.html#ga6b5f973531ea91663ad707ba4f2ac104)
 """
+hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
     @csafe function hasfocuscb(window, focus::Bool)
@@ -256,6 +267,7 @@ returns an `Node{Bool}`,
 which is true whenever the cursor enters the window.
 [GLFW Docs](http://www.glfw.org/docs/latest/group__input.html#ga762d898d9b0241d7e3e3b767c6cf318f)
 """
+entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
     @csafe function enteredwindowcb(window, entered::Bool)

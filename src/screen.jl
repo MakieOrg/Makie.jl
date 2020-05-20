@@ -16,6 +16,7 @@ mutable struct Screen <: GLScreen
     cache2plot::Dict{UInt16, AbstractPlot}
     framecache::Tuple{Matrix{RGB{N0f8}}, Matrix{RGB{N0f8}}}
     displayed_scene::Union{Scene, Nothing}
+    render_tick::Node{Nothing}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLFramebuffer,
@@ -31,7 +32,7 @@ mutable struct Screen <: GLScreen
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, cache, cache2plot,
             (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s))),
-            nothing
+            nothing, Node(nothing)
         )
     end
 end
@@ -118,7 +119,7 @@ end
 
 function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     empty!(screen)
-    register_callbacks(scene, to_native(screen))
+    register_callbacks(scene, screen)
     GLFW.PollEvents()
     insertplots!(screen, scene)
     GLFW.PollEvents()
