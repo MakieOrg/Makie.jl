@@ -209,11 +209,14 @@ which is not in scene coordinates, with the upper left window corner being 0
 """
 function mouse_position(scene::Scene, screen::Screen)
     window = to_native(screen)
-    map!(scene.events.mouseposition, screen.render_tick) do _
-        # Maybe do this as the tick? Do it at all?
-        # GLFW.PollEvents()
+    on(screen.render_tick) do _
+        !scene.events.hasfocus[] && return nothing
         x, y = GLFW.GetCursorPos(window)
-        correct_mouse(window, x, y)
+        pos = correct_mouse(window, x, y)
+        if pos != scene.events.mouseposition[]
+            scene.events.mouseposition[] = pos
+        end
+        nothing
     end
     nothing
 end
