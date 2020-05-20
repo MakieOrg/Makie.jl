@@ -381,7 +381,11 @@ end
 function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
-        mesh = GeometryBasics.pointmeta(mesh, Normal())
+        n = normals(mesh)
+        # Normals can be nothing, when it's impossible to calculate the normals (e.g. 2d mesh)
+        if n !== nothing
+            mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f0, n))
+        end
     end
     return (mesh,)
 end
