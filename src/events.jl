@@ -259,6 +259,8 @@ function hasfocus(scene::Scene, window::GLFW.Window)
     end
     disconnect!(window, hasfocus)
     GLFW.SetWindowFocusCallback(window, hasfocuscb)
+    event[] = GLFW.GetWindowAttrib(window, GLFW.FOCUSED)
+    nothing
 end
 function disconnect!(window::GLFW.Window, ::typeof(hasfocus))
     GLFW.SetWindowFocusCallback(window, nothing)
