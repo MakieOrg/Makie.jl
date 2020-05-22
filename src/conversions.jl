@@ -51,6 +51,13 @@ function convert_arguments(T::PlotFunc, args...; kw...)
     end
 end
 
+"""
+Wrap a single point or equivalent object in a single-element array.
+"""
+function convert_arguments(::PointBased, position::VecTypes{N, <: Number}) where N
+    ([convert(Point{N, Float32}, position)],)
+end
+
 function convert_arguments(::PointBased, positions::AbstractVector{<: VecTypes{N, <: Number}}) where N
     (elconvert(Point{N, Float32}, positions),)
 end
