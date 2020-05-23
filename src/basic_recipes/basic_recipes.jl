@@ -1225,3 +1225,75 @@ function plot!(p::Spy)
 
     lines!(p, rect, color = p.framecolor, linewidth = p.framesize)
 end
+
+
+
+"""
+    histogram(values; bins = 15, relative = false)
+
+Plot a histogram of `values`. `bins` can be an `Int` to create that
+number of equal-width bins over the range of `values`.
+Alternatively, it can be a sorted iterable of bin edges. The histogram
+can be normed by setting `relative = true`.
+
+## Attributes
+$(ATTRIBUTES)
+"""
+@recipe(Histogram, values) do scene
+    Attributes(
+        bins = 15, # Int or iterable of edges
+        relative = false,
+    )
+end
+
+
+function plot!(plot::Histogram)
+
+    values = plot[:values]
+
+    edges = lift(values, plot.bins) do vals, bins
+        if bins isa Int
+            mi, ma = float.(extrema(vals))
+            ma = nextfloat(ma) # hist is right-open, so to include the upper data point, make the last bin a tiny bit bigger
+            return range(mi, ma, length = bins+1)
+        else
+            if !issorted(bins)
+                error("Histogram bins are not sorted: $bins")
+            end
+            return bins
+        end
+    end
+    
+    points = lift(edges, plot.relative) do edges, relative
+        range = last(edges) - first(edges)
+
+        counts = zeros(length(edges)-1)
+        foreach(values[]) do v
+            @inbounds for (i, (le, ue)) in enumerate(zip(edges[1:end-1], edges[2:end]))
+                if le <= v < ue
+                    counts[i] += 1
+                    continue
+                end
+            end
+        end
+        centers = edges[1:end-1] .+ (diff(edges) ./ 2)
+
+        weights = relative ? counts ./ sum(counts) : counts
+
+        Point2f0.(centers, weights)
+    end
+
+    widths = lift(diff, edges)
+
+    # plot the values, not the observables, to be in control of updating
+    bp = barplot!(plot, points[]; width = widths[], plot.attributes...).plots[1]
+
+
+    # update the barplot points without triggering, then trigger with `width`
+    on(widths) do w
+        bp[1].val = points[]
+        bp.width = w
+    end
+
+    plot
+end
