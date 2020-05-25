@@ -155,8 +155,9 @@ function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Millimeter)
     (SceneSpace, mm)
 end
 
-to_2d_scale(x::Pixel) = Vec{2, Pixel{Float32}}(x, x)
-to_2d_scale(x::Tuple{<:Pixel, <:Pixel}) = Vec{2, Pixel{Float32}}(x, x)
+to_2d_scale(x::Pixel) = Vec2f0(number(x))
+to_2d_scale(x::Tuple{<:Pixel, <:Pixel}) = Vec2f0(number.(x))
+to_2d_scale(x::VecTypes{2, <:Pixel}) = Vec2f0(number.(x))
 
 # Exports of units
 export px

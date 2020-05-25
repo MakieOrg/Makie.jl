@@ -12,8 +12,4 @@ mkpath(test_record_path)
 examples = MakieGallery.record_examples(test_record_path)
 
 @test length(examples) == length(database)
-
-printstyled("Running ", color = :green, bold = true)
-println("visual regression tests")
-
 MakieGallery.run_comparison(test_record_path, tested_diff_path)
