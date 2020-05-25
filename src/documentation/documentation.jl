@@ -36,16 +36,16 @@ function _help(io::IO, input::Type{T}; extended = false) where T <: AbstractPlot
 
     # Arguments
     help_arguments(io, func)
-	if extended
-		println(io, "Please refer to [`convert_arguments`](@ref) to find the full list of accepted arguments\n")
-	end
+    if extended
+        println(io, "Please refer to [`convert_arguments`](@ref) to find the full list of accepted arguments\n")
+    end
 
     # Keyword arguments
     help_attributes(io, input; extended = extended)
-	if extended
-	    println(io, "You can see usage examples of `$func` by running:\n")
-	    println(io, "`example_database($func)`\n")
-	end
+    if extended
+        println(io, "You can see usage examples of `$func` by running:\n")
+        println(io, "`example_database($func)`\n")
+    end
 end
 
 function _help(io::IO, input::Function; extended = false)
@@ -60,8 +60,8 @@ help_arguments(x) = help_arguments(stdout, x)
 # Other help functions
 
 function help_arguments(io::IO, x::Function)
-	@warn("argument help isn't currently implemented correctly")
-	#TODO: will need to parse what arguments from convert_arguments apply to x
+    @warn("argument help isn't currently implemented correctly")
+    #TODO: will need to parse what arguments from convert_arguments apply to x
     println(io, "`$x` has the following function signatures: \n")
     println(io, "```")
     println(io, "  ", "(Vector, Vector)")
@@ -69,8 +69,6 @@ function help_arguments(io::IO, x::Function)
     println(io, "  ", "(Matrix)")
     println(io, "```")
 end
-
-
 
 """
     help_attributes([io], Union{PlotType, PlotFunction}; extended = false)
@@ -83,25 +81,25 @@ in addition the default values of each attribute.
 usage:
 ```example
 >help_attributes(scatter)
-	alpha
-	color
-	colormap
-	colorrange
-	distancefield
-	glowcolor
-	glowwidth
-	linewidth
-	marker
-	marker_offset
-	markersize
-	overdraw
-	rotations
-	strokecolor
-	strokewidth
-	transform_marker
-	transparency
-	uv_offset_width
-	visible
+    alpha
+    color
+    colormap
+    colorrange
+    distancefield
+    glowcolor
+    glowwidth
+    linewidth
+    marker
+    marker_offset
+    markersize
+    overdraw
+    rotations
+    strokecolor
+    strokewidth
+    transform_marker
+    transparency
+    uv_offset_width
+    visible
 ```
 """
 help_attributes(x; kw...) = help_attributes(stdout, x; kw...)
@@ -134,7 +132,7 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
     println(io, "```")
     if extended
         for attribute in allkeys
-			value = attributes[attribute]
+            value = attributes[attribute]
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
                 print(io, "  ", attribute, " "^padding)
