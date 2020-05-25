@@ -215,7 +215,7 @@ $(ATTRIBUTES)
         transform_marker = false, # Applies the plots transformation to marker
         uv_offset_width = Vec4f0(0),
         distancefield = nothing,
-
+        markerspace = automatic,
         fxaa = false,
     )
 end
@@ -312,9 +312,20 @@ end
 function calculated_attributes!(::Type{<: Scatter}, plot)
     # calculate base case
     color_and_colormap!(plot)
+
     replace_automatic!(plot, :marker_offset) do
         # default to middle
         lift(x-> to_2d_scale(x .* (-0.5f0)), plot[:markersize])
+    end
+
+    replace_automatic!(plot, :markerspace) do
+        lift(plot.markersize) do ms
+            if ms isa Pixel || (ms isa AbstractVector && all(x-> ms isa Pixel, ms))
+                return Pixel
+            else
+                return SceneSpace
+            end
+        end
     end
 end
 
