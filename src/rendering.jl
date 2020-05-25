@@ -4,6 +4,7 @@ function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
         while isopen(screen)
             t = time()
             GLFW.PollEvents() # GLFW poll
+            screen.render_tick[] = nothing
             prerender()
             make_context_current(screen)
             render_frame(screen)
