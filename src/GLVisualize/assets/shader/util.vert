@@ -217,8 +217,6 @@ vec4 _color(Nothing color, float intensity, sampler1D color_map, vec2 color_norm
     return color_lookup(intensity, color_map, color_norm);
 }
 
-
-
 out vec4 o_view_pos;
 out vec3 o_normal;
 out vec3 o_lightdir;
@@ -233,18 +231,18 @@ uniform vec3 eyeposition;
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition)
 {
     // normal in world space
-    o_normal               = normalmatrix * normal;
+    o_normal = normalmatrix * normal;
     // position in view space (as seen from camera)
-    o_view_pos             = view * position_world;
+    o_view_pos = view * position_world;
     // position in clip space (w/ depth)
-    gl_Position            = projection * o_view_pos;
+    gl_Position = projection * o_view_pos;
     // direction to light
-    o_lightdir             = normalize(view*vec4(lightposition, 1.0) - o_view_pos).xyz;
+    o_lightdir = normalize(view*vec4(lightposition, 1.0) - o_view_pos).xyz;
     // direction to camera
     // This is equivalent to
     // normalize(view*vec4(eyeposition, 1.0) - o_view_pos).xyz
     // (by definition `view * eyeposition = 0`)
-    o_camdir               = normalize(-o_view_pos).xyz;
+    o_camdir = normalize(-o_view_pos).xyz;
 }
 
 //
