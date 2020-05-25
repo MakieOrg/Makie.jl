@@ -2,18 +2,18 @@ module AbstractPlotting
 
 using Random
 using FFMPEG # get FFMPEG on any system!
-using Observables, GeometryBasics, StaticArrays, IntervalSets, PlotUtils
+using Observables, GeometryBasics, IntervalSets, PlotUtils
 using ColorBrewer, ColorTypes, Colors, ColorSchemes
 using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
 using GeometryBasics: widths, positive_widths, VecTypes
-
+using StaticArrays
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
-import ImageMagick, FileIO, SparseArrays
+import ImageIO, FileIO, SparseArrays
 import FileIO: save
 using Printf: @sprintf
 
@@ -28,6 +28,7 @@ using Observables: notify!, listeners
 module ContoursHygiene
     import Contour
 end
+
 using .ContoursHygiene
 const Contours = ContoursHygiene.Contour
 
