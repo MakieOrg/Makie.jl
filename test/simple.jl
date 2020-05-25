@@ -5,6 +5,7 @@ using Observables
 using GeometryBasics: Pyramid
 using PlotUtils
 using MeshIO, FileIO
+using AbstractPlotting: Pixel
 
 ## Some helpers
 data_2d = AbstractPlotting.peaks()
@@ -24,8 +25,11 @@ function n_times(f, n=10, interval=0.05)
 end
 
 ## Scatter
+scatter(1:4, color=:red, markersize=0.3)
+scatter(1:4, color=:red, markersize=10px)
+scatter(1:4, color=:red, markersize=10, markerspace=Pixel)
+scatter(1:4, color=:red, markersize=(1:4).*8, markerspace=Pixel)
 
-scatter(1:4, color=:red)
 scatter(1:4, marker='☼')
 scatter(1:4, marker=['☼', '◒', '◑', '◐'])
 scatter(1:4, marker="☼◒◑◐")
