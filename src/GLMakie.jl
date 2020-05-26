@@ -40,7 +40,16 @@ end
 
 export assetpath, loadasset
 
-include("../deps/deps.jl")
+if isfile("../deps/deps.jl")
+    include("../deps/deps.jl")
+else
+    error("""
+        The file $(joinpath(dirname(@__DIR__), "deps", "deps.jl")) does not exist.
+        This file is generated during the build process; it is possible that GLMakie
+        wasn't built correctly.  To rerun the build process, run `Pkg.build("GLMakie"),
+        or enter the Pkg REPL mode (`]`) and then type `build GLMakie`.
+        """)
+end
 
 if WORKING_OPENGL
      # don't put this into try catch, to not mess with normal errors
