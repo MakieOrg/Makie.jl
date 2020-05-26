@@ -71,12 +71,15 @@ function scene2image(scene::Scene)
     AbstractPlotting.colorbuffer(screen)
 end
 
+raw_io(io::IO) = io
+raw_io(io::IOContext) = raw_io(io.io)
+
 function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
     img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
+    FileIO.save(FileIO.Stream(FileIO.format"PNG", raw_io(io)), img)
 end
 
 function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
     img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"JPEG", io), img)
+    FileIO.save(FileIO.Stream(FileIO.format"JPEG", raw_io(io)), img)
 end
