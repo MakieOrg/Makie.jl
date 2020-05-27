@@ -93,8 +93,8 @@ volume(rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)
 contour(rand(4, 4, 4)) |> display
 
 ## Meshes
-cat = load(GLMakie.assetpath("cat.obj"))
-tex = load(GLMakie.assetpath("diffusemap.tga"));
+cat = MakieGallery.loadasset("cat.obj")
+tex = MakieGallery.loadasset("diffusemap.png");
 scren = mesh(cat, color=tex)
 
 m = mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
