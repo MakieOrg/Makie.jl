@@ -43,8 +43,16 @@ function convert_arguments(T::PlotFunc, args...; kw...)
         convert_arguments(ct, args...; kw...)
     catch e
         if e isa MethodError
-            @show e
-            error("No overload for $T and also no overload for trait $ct found! Arguments: $(typeof.(args))")
+            error(
+                """
+                There was no `AbstractPlotting.convert_arguments` overload found for
+                the plot type $T, or its conversion trait $ct.
+                The arguments were:
+                $(typeof.(args))
+
+                To fix this, define `AbstractPlotting.convert_arguments(::$T, $(join(Ref("::") .* string.(typeof.(args)), ", ")))`.
+                """
+            )
         else
             rethrow(e)
         end
@@ -115,7 +123,7 @@ convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector, z::Abstra
 function convert_arguments(::PointBased, positions::NTuple{N, AbstractVector}) where N
     x = first(positions)
     if any(n-> length(x) != length(n), positions)
-        error("all vector need to be same length. Found: $(length.(positions))")
+        error("All vectors need to have the same length. Found: $(length.(positions))")
     end
     labels = categoric_labels.(positions)
     xyrange = categoric_range.(labels)
@@ -637,7 +645,14 @@ function convert_attribute(ls::Symbol, ::key"linestyle")
         ptick, pgap = 1/2, 1/4
         [0.0, dtick, dtick+dgap, dtick+dgap+ptick, dtick+dgap+ptick+pgap, dtick+dgap+ptick+pgap+ptick,  dtick+dgap+ptick+pgap+ptick+pgap]
     else
-        error("Unkown line style: $ls. Available: :solid, :dash, :dot, :dashdot, :dashdotdot, or a sequence of numbers enumerating the next transparent/opaque region.")
+        error(
+            """
+            Unkown line style: $ls. Available linestyles are:
+            :solid, :dash, :dot, :dashdot, :dashdotdot
+            or a sequence of numbers enumerating the next transparent/opaque region.
+            This sequence of numbers must be cumulative; 1 unit corresponds to 1 line width.
+            """
+        )
     end
 end
 
@@ -675,7 +690,7 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
             @warn("Could not find font $str, using Dejavu Sans")
             if "dejavu sans" == lowercase(str)
                 # since we fall back to dejavu sans, we need to check for recursion
-                error("recursion, font path seems to not contain dejavu sans: $fontpath")
+                error("Recursion encountered; DejaVu Sans cannot be located in the font path $fontpath")
             end
             return to_font("dejavu sans")
         end
@@ -703,7 +718,7 @@ function convert_attribute(s::VecTypes{N}, ::key"rotation") where N
 
         rotation_between(Vec3f0(0, 1, 0), to_ndim(Vec3f0, s, 0.0))
     else
-        error("$N dimensional vector $s can't be converted to a rotation")
+        error("The $N dimensional vector $s can't be converted to a rotation.")
     end
 end
 
@@ -809,7 +824,13 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
             return to_colormap(PlotUtils.get_colorscheme(Symbol(cs_string)).colors, n)
         end
     else
-        error("There is no color gradient named: $cs")
+        error(
+            """
+            There is no color gradient named $cs.
+            See `AbstractPlotting.available_gradients()` for the list of available gradients,
+            or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
+            """
+        )
     end
 end
 
@@ -836,7 +857,7 @@ function convert_attribute(value, ::key"algorithm")
     elseif value == 7
         return value # makie internal contour implementation
     else
-        error("$value is not a valid volume algorithm. Please have a look at the documentation of `to_volume_algorithm`")
+        error("$value is not a valid volume algorithm. Please have a look at the docstring of `to_volume_algorithm` (in the REPL, `?to_volume_algorithm`).")
     end
 end
 
@@ -852,7 +873,7 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         :indexedabsorption => IndexedAbsorptionRGBA,
     )
     convert_attribute(get(vals, Symbol(value)) do
-        error("$value not a valid volume algorithm. Needs to be in $(keys(vals))")
+        error("$value is not a valid volume algorithm. It must be one of $(keys(vals))")
     end, k)
 end
 
