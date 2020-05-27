@@ -1,5 +1,5 @@
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
-using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert
+using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert, Pixel
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
@@ -51,12 +51,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_key => gl_value
         end)
 
-        if haskey(gl_attributes, :scale)
-            gl_attributes[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, gl_attributes[:scale])
-            gl_attributes[:scale] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:scale])
-            if haskey(gl_attributes, :offset)
-                gl_attributes[:offset] = lift(x-> AbstractPlotting.number.(x), gl_attributes[:offset])
-            end
+        if haskey(gl_attributes, :markerspace)
+            mspace = pop!(gl_attributes, :markerspace)
+            gl_attributes[:use_pixel_marker] = lift(x-> x <: Pixel, mspace)
         end
 
         if haskey(gl_attributes, :lightposition)
