@@ -15,20 +15,20 @@
 # struct Pixel <: DisplaySpace end
 # struct DPI <: DisplaySpace end
 # struct DIP <: DisplaySpace end
-
 #########
-
-using AbstractNumbers
-import AbstractNumbers: number, basetype
 
 function to_screen(scene::Scene, mpos)
     return Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
 end
 
-abstract type Unit{T} <: AbstractNumbers.AbstractNumber{T} end
+abstract type Unit{T} <: Number end
 
 number(x::Unit) = x.value
 number(x) = x
+
+Base.:(*)(a::T, b::Number) where {T<:Unit} = basetype(T)(number(a) * b)
+Base.:(*)(a::Number, b::T) where {T<:Unit} = basetype(T)(a * number(b))
+Base.convert(::Type{T}, x::Unit) where T<:Number = convert(T, number(x))
 
 """
 Unit space of the scene it's displayed on.
@@ -37,7 +37,6 @@ Also referred to as data units
 struct SceneSpace{T} <: Unit{T}
     value::T
 end
-basetype(::Type{<: SceneSpace}) = SceneSpace
 
 """
 Unit is relative to bounding frame.
@@ -47,7 +46,6 @@ Point(0.5rel, 0.5rel) == Point(50, 50)
 struct Relative{T <: Number} <: Unit{T}
     value::T
 end
-basetype(::Type{<: Relative}) = Relative
 const rel = Relative(1)
 
 """
@@ -60,12 +58,12 @@ application that an underlying system then converts to physical pixels.
 struct DeviceIndependentPixel{T <: Number} <: Unit{T}
     value::T
 end
+basetype(::Type{<: DeviceIndependentPixel}) = DeviceIndependentPixel
+
 const DIP = DeviceIndependentPixel
 const dip = DIP(1)
 const dip_in_millimeter = 0.15875
 const dip_in_inch = 1/160
-
-basetype(::Type{<: DIP}) = DIP
 
 """
 Unit in pixels on screen.
@@ -79,7 +77,7 @@ struct Pixel{T} <: Unit{T}
     value::T
 end
 basetype(::Type{<: Pixel}) = Pixel
-(::Type{Pixel{T}})(x::Pixel{T}) where T = x
+
 const px = Pixel(1)
 
 """
@@ -94,12 +92,10 @@ end
 basetype(::Type{<: Millimeter}) = Millimeter
 const mm = Millimeter(1)
 
-
 Base.show(io::IO, x::DIP) = print(io, number(x), "dip")
 Base.:(*)(a::Number, b::DIP) = DIP(a * number(b))
 
 dpi(scene::Scene) = events(scene).window_dpi[]
-
 
 function pixel_per_mm(scene)
     dpi(scene) ./ 25.4
@@ -114,6 +110,7 @@ function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Relative{T}) where
     rel = maximum(widths(scene_limits(scene)[])) .* number(x)
     SceneSpace(rel)
 end
+
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Point{2, Relative{T}}) where T
     idx = Vec(1, 2)
     lims = scene_limits(scene)
@@ -140,15 +137,6 @@ function Base.convert(::Type{<: Pixel}, scene::Scene, x::DIP)
     dots = dpi(scene) * inch
     Pixel(number(dots))
 end
-# function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::DIP)
-#     px = convert(Pixel, scene, x)
-#     convert(SceneSpace, scene, px)
-# end
-
-# function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Point{2, <: Pixel})
-#     s = to_world(scene, to_screen(scene, number.(x)))
-#     SceneSpace.(s)
-# end
 
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Vec{2, <:Pixel})
     zero = to_world(scene, to_screen(scene, Point2f0(0)))
@@ -167,8 +155,9 @@ function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Millimeter)
     (SceneSpace, mm)
 end
 
-to_2d_scale(x::Pixel) = Vec{2, Pixel{Float32}}(x, x)
-to_2d_scale(x::Tuple{<:Pixel, <:Pixel}) = Vec{2, Pixel{Float32}}(x, x)
+to_2d_scale(x::Pixel) = Vec2f0(number(x))
+to_2d_scale(x::Tuple{<:Pixel, <:Pixel}) = Vec2f0(number.(x))
+to_2d_scale(x::VecTypes{2, <:Pixel}) = Vec2f0(number.(x))
 
 # Exports of units
 export px
