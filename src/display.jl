@@ -74,8 +74,8 @@ for M in (MIME"text/plain", MIME)
         # set update to true, without triggering an event
         # this just indicates, that now we may update on e.g. resize
         update!(scene)
-        
-        # Here, we deal with the Juno plotsize.  
+
+        # Here, we deal with the Juno plotsize.
         # Since SVGs are in units of pt, which is 1/72 in,
         # and pixels (which Juno reports its plotsize as)
         # are 1/96 in, we need to rescale the scene,
@@ -191,11 +191,23 @@ mutable struct Stepper
     step::Int
 end
 
-Stepper(scene::Scene, path::String, step::Int; format=:jpg) = Stepper(scene, path, format, step)
+Stepper(scene::Scene, path::String, step::Int; format=:png) = Stepper(scene, path, format, step)
 
-function Stepper(scene::Scene, path::String; format = :jpg)
+function Stepper(scene::Scene, path::String; format = :png)
     ispath(path) || mkpath(path)
     Stepper(scene, path, format, 1)
+end
+
+"""
+    step!(s::Stepper)
+
+steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
+This is useful for generating progressive plot examples.
+"""
+function step!(s::Stepper)
+    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.scene)
+    s.step += 1
+    return s
 end
 
 format2mime(::Type{FileIO.format"PNG"})  = MIME("image/png")
@@ -263,19 +275,6 @@ function FileIO.save(
             scene)
     end
 end
-
-"""
-    step!(s::Stepper)
-
-steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
-This is useful for generating progressive plot examples.
-"""
-function step!(s::Stepper)
-    FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.scene)
-    s.step += 1
-    return s
-end
-
 
 """
     record_events(f, scene::Scene, path::String)

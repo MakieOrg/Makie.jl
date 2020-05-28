@@ -5,6 +5,7 @@ using Observables
 using GeometryBasics: Pyramid
 using PlotUtils
 using MeshIO, FileIO
+using AbstractPlotting: Pixel
 
 ## Some helpers
 data_2d = AbstractPlotting.peaks()
@@ -24,8 +25,11 @@ function n_times(f, n=10, interval=0.05)
 end
 
 ## Scatter
+scatter(1:4, color=:red, markersize=0.3)
+scatter(1:4, color=:red, markersize=10px)
+scatter(1:4, color=:red, markersize=10, markerspace=Pixel)
+scatter(1:4, color=:red, markersize=(1:4).*8, markerspace=Pixel)
 
-scatter(1:4, color=:red)
 scatter(1:4, marker='☼')
 scatter(1:4, marker=['☼', '◒', '◑', '◐'])
 scatter(1:4, marker="☼◒◑◐")
@@ -89,8 +93,8 @@ volume(rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)
 contour(rand(4, 4, 4)) |> display
 
 ## Meshes
-cat = load(GLMakie.assetpath("cat.obj"))
-tex = load(GLMakie.assetpath("diffusemap.tga"));
+cat = MakieGallery.loadasset("cat.obj")
+tex = MakieGallery.loadasset("diffusemap.png");
 scren = mesh(cat, color=tex)
 
 m = mesh([(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)], color = [:red, :green, :blue],
