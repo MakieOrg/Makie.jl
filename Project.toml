@@ -1,6 +1,6 @@
 name = "Makie"
 uuid = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
-version = "0.10.0"
+version = "0.11.0"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -11,7 +11,7 @@ MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 
 [compat]
-AbstractPlotting = "0.10"
+AbstractPlotting = "0.11"
 FileIO = "1.1"
 GLMakie = "0.1"
 ImageMagick = "0.7, 1"
