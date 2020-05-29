@@ -64,7 +64,7 @@ Interactive MakieLayout example by [AlexisRenchon](https://github.com/AlexisRenc
 [![](https://user-images.githubusercontent.com/1010467/81500069-ea005f80-92cf-11ea-81db-2b7bcbfea297.gif)
 ](https://github.com/JuliaDynamics/InteractiveChaos.jl)
 
-### GeomMakie
+### GeoMakie
 [![](https://user-images.githubusercontent.com/32143268/74341805-5bcf1880-4d76-11ea-86ee-d0822ba70ab4.png)](https://github.com/JuliaPlots/GeoMakie.jl)
 
 ### MakieTeX
