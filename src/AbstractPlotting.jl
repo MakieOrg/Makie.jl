@@ -200,20 +200,8 @@ function logo()
     FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
 end
 
-const config_file = "theme.jl"
-const config_path = joinpath(homedir(), ".config", "makie", config_file)
-
 function __init__()
     pushdisplay(PlotDisplay())
-    cfg_path = config_path
-    if isfile(cfg_path)
-        theme = include(cfg_path)
-        if theme isa Attributes
-            set_theme!(theme)
-        else
-            @warn("Found config file in $(cfg_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
-        end
-    end
 end
 
 
