@@ -511,8 +511,6 @@ function convert_arguments(
     (m,)
 end
 
-
-
 function convert_arguments(P::PlotFunc, r::AbstractVector, f::Function)
     ptype = plottype(P, Lines)
     to_plotspec(ptype, convert_arguments(ptype, r, f.(r)))

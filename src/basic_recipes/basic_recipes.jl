@@ -137,6 +137,8 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
             else
                 to_color.(colors)
             end
+            empty!(real_colors[])
+            
             # Map one single color per mesh to each vertex
             for (mesh, color) in zip(meshes, single_colors)
                 append!(real_colors[], Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))
@@ -1263,7 +1265,7 @@ function plot!(plot::Histogram)
             return bins
         end
     end
-    
+
     points = lift(edges, plot.relative) do edges, relative
         range = last(edges) - first(edges)
 
