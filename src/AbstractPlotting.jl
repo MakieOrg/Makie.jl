@@ -202,6 +202,11 @@ end
 
 function __init__()
     pushdisplay(PlotDisplay())
+    cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
+    if isfile(cfg_path)
+        @warn "The global configuration file is no longer supported."*
+        "Please include the file manually with `include(\"$cfg_path\")` before plotting."
+    end
 end
 
 
