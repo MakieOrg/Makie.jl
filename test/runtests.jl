@@ -1,5 +1,6 @@
 using ImageMagick, Test
 using CairoMakie, AbstractPlotting, MakieGallery
+using AbstractPlotting: Pixel
 CairoMakie.activate!(type = "png")
 
 # AbstractPlotting.format2mime(::Type{AbstractPlotting.FileIO.format"PDF"}) = MIME("application/pdf")
@@ -17,7 +18,7 @@ ignored_titles = Set((
     "lots of heatmaps",# it actually looks crisper, but w/e
     "sliders",         # window events are not propagated
     "subscenes",       # need to implement gaussian blurring
-    "fem mesh 2d",     # the colormap is different somehow 
+    "fem mesh 2d",     # the colormap is different somehow
     "fem polygon 2d",  # the colormap is different somehow
 ))
 
