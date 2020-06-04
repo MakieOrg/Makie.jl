@@ -319,8 +319,8 @@ function Screen(;
     fb = GLFramebuffer(resolution)
 
     postprocessors = [
-        ssao_postprocessor(fb),
-        fxaa_postprocessor(fb),
+        enable_SSAO[] ? ssao_postprocessor(fb) : empty_postprocessor(),
+        enable_FXAA[] ? fxaa_postprocessor(fb) : empty_postprocessor(),
         to_screen_postprocessor(fb)
     ]
 
