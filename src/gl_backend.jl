@@ -48,6 +48,7 @@ include("GLVisualize/GLVisualize.jl")
 using .GLVisualize
 
 include("glwindow.jl")
+include("postprocessing.jl")
 include("screen.jl")
 include("rendering.jl")
 include("events.jl")

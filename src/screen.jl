@@ -12,6 +12,7 @@ mutable struct Screen <: GLScreen
     screen2scene::Dict{WeakRef, ScreenID}
     screens::Vector{ScreenArea}
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
+    postprocessors::Vector{PostProcessor}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
     framecache::Tuple{Matrix{RGB{N0f8}}, Matrix{RGB{N0f8}}}
@@ -24,13 +25,14 @@ mutable struct Screen <: GLScreen
             screen2scene::Dict{WeakRef, ScreenID},
             screens::Vector{ScreenArea},
             renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}},
+            postprocessors::Vector{PostProcessor},
             cache::Dict{UInt64, RenderObject},
             cache2plot::Dict{UInt16, AbstractPlot},
         )
         s = size(framebuffer)
         obj = new(
             glscreen, framebuffer, rendertask, screen2scene,
-            screens, renderlist, cache, cache2plot,
+            screens, renderlist, postprocessors, cache, cache2plot,
             (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s))),
             nothing, Node(nothing)
         )
@@ -258,7 +260,8 @@ function display_loading_image(screen::Screen)
         glViewport(0, 0, w, h)
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT)
-        GLAbstraction.render(fb.postprocess[end]) # copy postprocess
+        # GLAbstraction.render(fb.postprocess[end]) # copy postprocess
+        GLAbstraction.render(screen.postprocessors[end].robjs[1])
         GLFW.SwapBuffers(nw)
     else
         error("loading_image needs to be Matrix{RGBA{N0f8}} with size(loading_image) == resolution")
@@ -315,12 +318,19 @@ function Screen(;
     resize!(window, resolution...)
     fb = GLFramebuffer(resolution)
 
+    postprocessors = [
+        ssao_postprocessor(fb),
+        fxaa_postprocessor(fb),
+        to_screen_postprocessor(fb)
+    ]
+
     screen = Screen(
         window, fb,
         RefValue{Task}(),
         Dict{WeakRef, ScreenID}(),
         ScreenArea[],
         Tuple{ZIndex, ScreenID, RenderObject}[],
+        postprocessors,
         Dict{UInt64, RenderObject}(),
         Dict{UInt16, AbstractPlot}(),
     )

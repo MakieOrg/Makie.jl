@@ -90,41 +90,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     GLAbstraction.render(screen, true, true)
 
 
-    # SSAO - calculate occlusion
-    glDrawBuffer(GL_COLOR_ATTACHMENT4)  # occlusion buffer
-    glViewport(0, 0, w, h)
-    glClearColor(1, 1, 1, 1)            # 1 means no darkening
-    glClear(GL_COLOR_BUFFER_BIT)
-
-    for (screenid, scene) in screen.screens
-        # update uniforms
-        SSAO = scene.SSAO
-        # if SSAO.enable[]
-            uniforms = fb.postprocess[1].uniforms
-            uniforms[:projection][] = scene.camera.projection[]
-            uniforms[:bias][] = Float32(to_value(get(SSAO, :bias, 0.025)))
-            uniforms[:radius][] = Float32(to_value(get(SSAO, :radius, 0.5)))
-            # use stencil to select one scene
-            glStencilFunc(GL_EQUAL, screenid, 0xff)
-            GLAbstraction.render(fb.postprocess[1])
-        # end
-    end
-
-    # SSAO - blur occlusion and apply to color
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
-    for (screenid, scene) in screen.screens
-        # update uniforms
-        SSAO = scene.attributes.SSAO
-        # if SSAO.enable[]
-            uniforms = fb.postprocess[2].uniforms
-            uniforms[:blur_range][] = Int32(to_value(get(SSAO, :blur, 2)))
-
-            # use stencil to select one scene
-            glStencilFunc(GL_EQUAL, screenid, 0xff)
-            GLAbstraction.render(fb.postprocess[2])
-        # end
-    end
-    glDisable(GL_STENCIL_TEST)
+    # SSAO
+    screen.postprocessors[1].render(screen)
 
     # render with FXAA but no SSAO
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
@@ -134,20 +101,9 @@ function render_frame(screen::Screen; resize_buffers=true)
     GLAbstraction.render(screen, true, false)
     glDisable(GL_STENCIL_TEST)
 
-    # FXAA - calculate LUMA
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[2])
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color_luma buffer
-    glViewport(0, 0, w, h)
-    # necessary with negative SSAO bias...
-    glClearColor(1, 1, 1, 1)
-    glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(fb.postprocess[3])
+    # FXAA
+    screen.postprocessors[2].render(screen)
 
-    # FXAA - perform anti-aliasing
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
-    # glViewport(0, 0, w, h) # not necessary
-    GLAbstraction.render(fb.postprocess[4])
 
     # no FXAA primary render
     glDrawBuffers(2, [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1])
@@ -158,10 +114,8 @@ function render_frame(screen::Screen; resize_buffers=true)
     glDisable(GL_STENCIL_TEST)
 
     # transfer everything to the screen
-    glBindFramebuffer(GL_FRAMEBUFFER, 0)
-    glViewport(0, 0, w, h)
-    glClear(GL_COLOR_BUFFER_BIT)
-    GLAbstraction.render(fb.postprocess[5]) # copy postprocess
+    screen.postprocessors[3].render(screen)
+
 
     return
 end
