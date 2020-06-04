@@ -30,21 +30,12 @@ const PostProcessROBJ = RenderObject{PostprocessPrerender}
 mutable struct GLFramebuffer
     resolution::Node{NTuple{2, Int}}
     id::NTuple{2, GLuint}
-
-    color::Texture{RGBA{N0f8}, 2}
-    objectid::Texture{Vec{2, GLushort}, 2}
-    depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
-    position::Texture{Vec4f0, 2}
-    normal::Texture{Vec3f0, 2}
-    ssao_noise::Texture{Vec2f0, 2}
-    occlusion::Texture{Float32, 2}
-
-    color_luma::Texture{RGBA{N0f8}, 2}
-
+    buffers::Dict{Symbol, Texture}
     postprocess::NTuple{5, PostProcessROBJ}
 end
 
-Base.size(fb::GLFramebuffer) = size(fb.color) # it's guaranteed, that they all have the same size
+# it's guaranteed, that they all have the same size
+Base.size(fb::GLFramebuffer) = size(fb.buffers[:color])
 
 loadshader(name) = joinpath(@__DIR__, "GLVisualize", "assets", "shader", name)
 
@@ -56,11 +47,7 @@ This will transfer the pixels from the color texture of the Framebuffer
 to the screen and while at it, it can do some postprocessing (not doing it right now):
 E.g fxaa anti aliasing, color correction etc.
 """
-function postprocess(
-        color, position, normal, ssao_noise, occlusion, objectid, color_luma,
-        framebuffer_size
-    )
-
+function postprocess(buffers, framebuffer_size)
     # SSAO setup
     N_samples = 64
     lerp_min = 0.1f0
@@ -80,10 +67,10 @@ function postprocess(
         )
     )
     data1 = Dict{Symbol, Any}(
-        :position_buffer => position,
-        :normal_buffer => normal,
+        :position_buffer => buffers[:position],
+        :normal_buffer => buffers[:normal],
         :kernel => kernel,
-        :noise => ssao_noise,
+        :noise => buffers[:ssao_noise],
         :noise_scale => map(s -> Vec2f0(s ./ 4.0), framebuffer_size),
         :projection => Node(Mat4f0(I)),
         :bias => Node(0.025f0),
@@ -99,10 +86,10 @@ function postprocess(
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :occlusion => occlusion,
-        :color_texture => color,
-        :ids => objectid,
-        :inv_texel_size => map(t -> Vec2f0(1f0/t[1], 1f0/t[2]), framebuffer_size),
+        :occlusion => buffers[:occlusion],
+        :color_texture => buffers[:color],
+        :ids => buffers[:objectid],
+        :inv_texel_size => lift(rcpframe, framebuffer_size),
         :blur_range => Node(Int32(2))
     )
     pass2 = RenderObject(data2, shader2, PostprocessPrerender(), nothing)
@@ -115,7 +102,7 @@ function postprocess(
         loadshader("postprocessing/postprocess.frag")
     )
     data3 = Dict{Symbol, Any}(
-        :color_texture => color
+        :color_texture => buffers[:color]
     )
     pass3 = RenderObject(data3, shader3, PostprocessPrerender(), nothing)
     pass3.postrenderfunction = () -> draw_fullscreen(pass3.vertexarray.id)
@@ -127,7 +114,7 @@ function postprocess(
         loadshader("postprocessing/fxaa.frag")
     )
     data4 = Dict{Symbol, Any}(
-        :color_texture => color_luma,
+        :color_texture => buffers[:color_luma],
         :RCPFrame => lift(rcpframe, framebuffer_size),
     )
     pass4 = RenderObject(data4, shader4, PostprocessPrerender(), nothing)
@@ -140,7 +127,7 @@ function postprocess(
         loadshader("postprocessing/copy.frag")
     )
     data5 = Dict{Symbol, Any}(
-        :color_texture => color
+        :color_texture => buffers[:color]
     )
     pass5 = RenderObject(data5, shader5, PostprocessPrerender(), nothing)
     pass5.postrenderfunction = () -> draw_fullscreen(pass5.vertexarray.id)
@@ -200,18 +187,25 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     glBindFramebuffer(GL_FRAMEBUFFER, 0)
     fb_size_node = Node(fb_size)
 
-    p = postprocess(
-        color_buffer, position_buffer, normal_buffer, ssao_noise, occlusion,
-        objectid_buffer, color_luma,
-        fb_size_node
+    buffers = Dict(
+        :color => color_buffer,
+        :objectid => objectid_buffer,
+        :depth => depth_buffer,
+
+        :color_luma => color_luma,
+
+        :position => position_buffer,
+        :normal => normal_buffer,
+        :ssao_noise => ssao_noise,
+        :occlusion => occlusion
     )
+
+    p = postprocess(buffers, fb_size_node)
 
     return GLFramebuffer(
         fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
-        color_buffer, objectid_buffer, depth_buffer,
-        position_buffer, normal_buffer, ssao_noise, occlusion,
-        color_luma,
+        buffers,
         p
     )
 end
@@ -219,13 +213,9 @@ end
 function Base.resize!(fb::GLFramebuffer, window_size)
     ws = Int.((window_size[1], window_size[2]))
     if ws != size(fb) && all(x-> x > 0, window_size)
-        resize_nocopy!(fb.color, ws)
-        resize_nocopy!(fb.objectid, ws)
-        resize_nocopy!(fb.depth, ws)
-        resize_nocopy!(fb.position, ws)
-        resize_nocopy!(fb.normal, ws)
-        resize_nocopy!(fb.occlusion, ws)
-        resize_nocopy!(fb.color_luma, ws)
+        for (name, buffer) in fb.buffers
+            resize_nocopy!(buffer, ws)
+        end
         fb.resolution[] = ws
     end
     nothing

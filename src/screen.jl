@@ -37,7 +37,7 @@ mutable struct Screen <: GLScreen
     end
 end
 
-GeometryBasics.widths(x::Screen) = size(x.framebuffer.color)
+GeometryBasics.widths(x::Screen) = size(x.framebuffer)
 
 Base.wait(x::Screen) = isassigned(x.rendertask) && wait(x.rendertask[])
 Base.wait(scene::Scene) = wait(AbstractPlotting.getscreen(scene))
@@ -247,18 +247,18 @@ end
 
 function display_loading_image(screen::Screen)
     fb = screen.framebuffer
-    fbsize = size(fb.color)
+    fbsize = size(fb)
     image = get_loading_image(fbsize)
     if size(image) == fbsize
         nw = to_native(screen)
-        fb.color[1:size(image, 1), 1:size(image, 2)] = image # transfer loading image to gpu framebuffer
+        fb.buffers[:color][1:size(image, 1), 1:size(image, 2)] = image # transfer loading image to gpu framebuffer
         ShaderAbstractions.is_context_active(nw) || return
         w, h = fbsize
         glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
         glViewport(0, 0, w, h)
         glClearColor(0, 0, 0, 0)
         glClear(GL_COLOR_BUFFER_BIT)
-        GLAbstraction.render(fb.postprocess[3]) # copy postprocess
+        GLAbstraction.render(fb.postprocess[end]) # copy postprocess
         GLFW.SwapBuffers(nw)
     else
         error("loading_image needs to be Matrix{RGBA{N0f8}} with size(loading_image) == resolution")
@@ -377,7 +377,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     sid = Base.RefValue{SelectionID{UInt16}}()
     window_size = widths(screen)
     fb = screen.framebuffer
-    buff = fb.objectid
+    buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = floor.(Int, xy)
@@ -392,7 +392,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     isopen(screen) || return SelectionID{Int}(0, 0)
     window_size = widths(screen)
     fb = screen.framebuffer
-    buff = fb.objectid
+    buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
 
