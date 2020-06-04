@@ -36,9 +36,6 @@ const RealVector{T} = AbstractVector{T} where T <: Number
 const Node = Observable # shorthand
 const RGBAf0 = RGBA{Float32}
 const RGBf0 = RGB{Float32}
-const Vecf0{N} = Vec{N, Float32}
-const Pointf0{N} = Point{N, Float32}
-export Vecf0, Pointf0
 const NativeFont = FreeTypeAbstraction.FTFont
 
 include("documentation/docstringextension.jl")
