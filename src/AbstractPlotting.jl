@@ -197,19 +197,12 @@ function logo()
     FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
 end
 
-const config_file = "theme.jl"
-const config_path = joinpath(homedir(), ".config", "makie", config_file)
-
 function __init__()
     pushdisplay(PlotDisplay())
-    cfg_path = config_path
+    cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
-        theme = include(cfg_path)
-        if theme isa Attributes
-            set_theme!(theme)
-        else
-            @warn("Found config file in $(cfg_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
-        end
+        @warn "The global configuration file is no longer supported."*
+        "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
 end
 
