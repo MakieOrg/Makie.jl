@@ -20,7 +20,7 @@ function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...
     layoutobservables = LayoutObservables(LScene, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
 
-    scene = Scene(parent, lift(IRect2D_rounded, layoutobservables.computedbbox); scenekw...)
+    scene = Scene(parent, lift(IRect2D, layoutobservables.computedbbox); scenekw...)
 
     LScene(scene, attrs, layoutobservables)
 end

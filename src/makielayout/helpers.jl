@@ -3,7 +3,7 @@ Shorthand for `isnothing(optional) ? fallback : optional`
 """
 @inline ifnothing(optional, fallback) = isnothing(optional) ? fallback : optional
 
-IRect2D_rounded(r::Rect{2}) = Rect{2, Int}(round.(Int, r.origin), round.(Int, r.widths))
+IRect2D(r::Rect{2}) = Rect{2, Int}(round.(Int, r.origin), round.(Int, r.widths))
 
 function sceneareanode!(finalbbox, limits, aspect)
 
@@ -45,7 +45,7 @@ function sceneareanode!(finalbbox, limits, aspect)
         newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
-        new_scenearea = IRect2D_rounded(newbbox)
+        new_scenearea = IRect2D(newbbox)
         if new_scenearea != scenearea[]
             scenearea[] = new_scenearea
         end
@@ -93,26 +93,6 @@ function roundedrectvertices(rect, cornerradius, cornersegments)
         anglepoint.(Ref(icbr), LinRange(3pi/2, 2pi, csegs)[1:end-1], cr)
     end
     arr = [cstr; cstl; csbl; csbr]
-end
-
-function anglepoint(center::Point2, angle::Real, radius::Real)
-    Ref(center) .+ Ref(Point2(cos(angle), sin(angle))) .* radius
-end
-
-
-function enlarge(bbox::FRect2D, l, r, b, t)
-    BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) - b, top(bbox) + t)
-end
-
-function center(bbox::FRect2D)
-    Point2f0((right(bbox) + left(bbox)) / 2, (top(bbox) + bottom(bbox)) / 2)
-end
-
-"""
-Converts a point in fractions of rect dimensions into real coordinates.
-"""
-function fractionpoint(bbox::FRect2D, point::T) where T <: Point2
-    T(left(bbox) + point[1] * width(bbox), bottom(bbox) + point[2] * height(bbox))
 end
 
 """
@@ -189,19 +169,6 @@ end
 
 GridLayoutBase.GridLayout(scene::Scene, args...; kwargs...) = GridLayout(args...; bbox = lift(x -> FRect2D(x), pixelarea(scene)), kwargs...)
 
-
-bottomleft(bbox::Rect2D{T}) where T = Point2{T}(left(bbox), bottom(bbox))
-topleft(bbox::Rect2D{T}) where T = Point2{T}(left(bbox), top(bbox))
-bottomright(bbox::Rect2D{T}) where T = Point2{T}(right(bbox), bottom(bbox))
-topright(bbox::Rect2D{T}) where T = Point2{T}(right(bbox), top(bbox))
-
-topline(bbox::FRect2D) = (topleft(bbox), topright(bbox))
-bottomline(bbox::FRect2D) = (bottomleft(bbox), bottomright(bbox))
-leftline(bbox::FRect2D) = (bottomleft(bbox), topleft(bbox))
-rightline(bbox::FRect2D) = (bottomright(bbox), topright(bbox))
-
-
-
 function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
     rightspinecolor, bottomspinecolor)
@@ -257,26 +224,6 @@ function interleave_vectors(vec1::Vector{T}, vec2::Vector{T}) where T
     end
     vec
 end
-
-function shrinkbymargin(rect, margin)
-    IRect((rect.origin .+ margin), (rect.widths .- 2 .* margin))
-end
-
-function limits(r::Rect{N, T}) where {N, T}
-    ows = r.origin .+ r.widths
-    ntuple(i -> (r.origin[i], ows[i]), N)
-    # tuple(zip(r.origin, ows)...)
-end
-
-function limits(r::Rect{N, T}, dim::Int) where {N, T}
-    o = r.origin[dim]
-    w = r.widths[dim]
-    (o, o + w)
-end
-
-xlimits(r::Rect{2}) = limits(r, 1)
-ylimits(r::Rect{2}) = limits(r, 2)
-
 
 """
 Take a sequence of variable definitions with docstrings above each and turn
@@ -356,7 +303,7 @@ into a string to insert into a docstring.
 function docvarstring(docdict, defaultdict)
     buffer = IOBuffer()
     maxwidth = maximum(length ∘ string, keys(docdict))
-    for (var, doc) in sort(pairs(docdict))
+    for (var, doc) in sort(collect(pairs(docdict)))
         print(buffer, "`$var`\\\nDefault: `$(defaultdict[var])`\\\n$doc\n\n")
     end
     String(take!(buffer))

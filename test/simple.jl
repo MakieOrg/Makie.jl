@@ -183,3 +183,5 @@ image(data_2d, interpolate=false)
 # Categorical
 
 barplot(["hi", "ima", "string"], rand(3))
+
+using AbstractPlotting.MakieLayout

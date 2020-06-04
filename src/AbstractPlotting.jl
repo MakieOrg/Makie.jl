@@ -214,5 +214,7 @@ function __init__()
 end
 
 
+include("makielayout/MakieLayout.jl")
+
 
 end # module
