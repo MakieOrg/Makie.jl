@@ -138,7 +138,7 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
                 to_color.(colors)
             end
             empty!(real_colors[])
-            
+
             # Map one single color per mesh to each vertex
             for (mesh, color) in zip(meshes, single_colors)
                 append!(real_colors[], Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))

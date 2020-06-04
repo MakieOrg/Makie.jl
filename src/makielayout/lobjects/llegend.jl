@@ -26,7 +26,7 @@ function LLegend(
     layoutobservables = LayoutObservables(LLegend, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
-    scenearea = lift(IRect2D_rounded, layoutobservables.computedbbox)
+    scenearea = lift(IRect2D, layoutobservables.computedbbox)
 
     scene = Scene(parent, scenearea, raw = true, camera = campixel!)
 

@@ -17,7 +17,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     textpos = Node(Point2f0(0, 0))
 
     subarea = lift(layoutobservables.computedbbox) do bbox
-        IRect2D_rounded(bbox)
+        IRect2D(bbox)
     end
     subscene = Scene(scene, subarea, camera=campixel!)
 
