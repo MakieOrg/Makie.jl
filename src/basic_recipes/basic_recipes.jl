@@ -1229,6 +1229,11 @@ function plot!(p::Spy)
 end
 
 
+# recipes export by default, but histogram clashes and breaks e.g. StatsMakie
+module HistogramNoExport
+
+using ..AbstractPlotting
+using AbstractPlotting: @recipe, ATTRIBUTES
 
 """
     histogram(values; bins = 15, relative = false)
@@ -1248,8 +1253,7 @@ $(ATTRIBUTES)
     )
 end
 
-
-function plot!(plot::Histogram)
+function AbstractPlotting.plot!(plot::Histogram)
 
     values = plot[:values]
 
@@ -1282,7 +1286,7 @@ function plot!(plot::Histogram)
 
         weights = relative ? counts ./ sum(counts) : counts
 
-        Point2f0.(centers, weights)
+        return Point2f0.(centers, weights)
     end
 
     widths = lift(diff, edges)
@@ -1299,3 +1303,7 @@ function plot!(plot::Histogram)
 
     plot
 end
+
+end
+
+using .HistogramNoExport
