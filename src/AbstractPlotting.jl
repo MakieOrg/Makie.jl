@@ -126,6 +126,10 @@ export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolut
 export boundingbox, insertplots!, center!, translation, scene_limits
 export hbox, vbox
 
+# Spaces for widths and markers
+const PixelSpace = Pixel
+export SceneSpace, PixelSpace, Pixel
+
 # camera related
 export AbstractCamera, EmptyCamera, Camera, Camera2D, Camera3D, cam2d!, cam2d
 export campixel!, campixel, cam3d!, cam3d_cad!, update_cam!, rotate_cam!, translate_cam!, zoom!
@@ -197,19 +201,12 @@ function logo()
     FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
 end
 
-const config_file = "theme.jl"
-const config_path = joinpath(homedir(), ".config", "makie", config_file)
-
 function __init__()
     pushdisplay(PlotDisplay())
-    cfg_path = config_path
+    cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
-        theme = include(cfg_path)
-        if theme isa Attributes
-            set_theme!(theme)
-        else
-            @warn("Found config file in $(cfg_path), which doesn't return an instance of Attributes. Ignoring faulty file!")
-        end
+        @warn "The global configuration file is no longer supported."*
+        "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
 end
 
