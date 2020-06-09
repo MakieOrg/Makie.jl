@@ -1,5 +1,12 @@
 database = MakieGallery.load_test_database()
 
+# Filter out MakieLayout for now!
+filter!(database) do example
+    !("makielayout" in lowercase.(example.tags)) &&
+    !occursin("MakieLayout", example.toplevel) &&
+    !occursin("LAxis", example.source)
+end
+
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
 
