@@ -62,7 +62,7 @@ You can also use parentheses around an expression if that expression evaluates t
 
 ```julia
 nt = (x = Node(1), y = Node(2))
-@lift($(nt.x) + $(nt.y))
+@lift(\$(nt.x) + \$(nt.y))
 ```
 """
 macro lift(exp)
