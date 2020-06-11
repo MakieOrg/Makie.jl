@@ -29,6 +29,7 @@ end
     include("quaternions.jl")
     include("projection_math.jl")
     include("shorthands.jl")
+    include("liftmacro.jl")
 
     @testset "basic functionality" begin
         scene = scatter(rand(4))
