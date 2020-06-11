@@ -162,6 +162,7 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
     data = _default(main, s, copy(data))
     @gen_defaults! data begin # make sure every object has these!
         model = Mat4f0(I)
+        uv_scale = Vec2f0(1) # move this to everything using standard.vert
     end
     return assemble_shader(data)
 end

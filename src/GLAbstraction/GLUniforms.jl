@@ -197,6 +197,7 @@ gl_convert(x::T) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 gl_convert(x::Node{T}) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 
 gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
+gl_convert(s::AbstractPlotting.Texture) = Texture(s.img; s.data...)
 gl_convert(s::Nothing) = s
 
 isa_gl_struct(x::AbstractArray) = false

@@ -361,6 +361,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         if to_value(color) isa AbstractMatrix{<:Colorant}
             gl_attributes[:image] = color
         end
+        if to_value(color) isa AbstractPlotting.Texture
+            gl_attributes[:image] = color
+        end
         mesh = x[1]
         if to_value(color) isa AbstractVector{<: Number}
             mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
@@ -400,7 +403,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             img = lift(color, cmap, crange) do img, cmap, norm
                 AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
-        elseif isa(to_value(color), AbstractMatrix{<: Colorant})
+        elseif isa(to_value(color), AbstractMatrix{<: Colorant}) ||
+                isa(to_value(color), AbstractPlotting.Texture)
             img = color
             gl_attributes[:color_map] = nothing
             gl_attributes[:color] = nothing

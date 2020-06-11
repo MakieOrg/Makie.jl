@@ -68,6 +68,7 @@ vec3 getnormal(sampler2D zvalues, vec2 uv);
 uniform bool wireframe;
 uniform uint objectid;
 uniform float stroke_width;
+uniform vec2 uv_scale;
 flat out uvec2 o_id;
 out vec4 o_color;
 out vec2 o_uv;
@@ -98,7 +99,7 @@ void main()
     //pos           += vec3(scale.xy*vertices, 0.0);
     o_color = get_color(image, pos.z, color_map, color_norm, index);
     o_id = uvec2(objectid, index1D+1);
-    o_uv = index01;
+    o_uv = index01 * uv_scale;
     vec3 normalvec = {{normal_calc}};
     render(model * vec4(pos, 1), normalvec, view, projection, lightposition);
 }
