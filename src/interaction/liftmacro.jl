@@ -73,8 +73,9 @@ macro lift(exp)
         error("Did not find any expressions that looked like nodes.")
     end
 
-    # store expressions with their substitute symbols
-    node_expr_arg_dict = Dict(expr => Symbol("arg$i") for (i, expr) in enumerate(node_expr_set))
+    # store expressions with their substitute symbols, gensym them manually to be
+    # able to escape the expression later
+    node_expr_arg_dict = Dict(expr => gensym("arg$i") for (i, expr) in enumerate(node_expr_set))
 
     replace_node_expressions!(exp, node_expr_arg_dict)
 
@@ -93,8 +94,7 @@ macro lift(exp)
     lift_expression = Expr(
         Symbol(:call),
         Symbol(:lift),
-        function_expression,
-        # the original expressions without dollar signs need to be escaped
+        esc(function_expression),
         esc.(node_expressions_without_dollar)...
     )
 
