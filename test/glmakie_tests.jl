@@ -14,5 +14,6 @@ database = MakieGallery.load_database(joinpath.(example_dir, readdir(example_dir
 examples = MakieGallery.record_examples(test_record_path);
 
 @test length(examples) == length(database)
-path = MakieGallery.download_reference("v0.6.0");
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
+path = MakieGallery.download_reference("v0.6.0")
+
+MakieGallery.run_comparison(test_record_path, tested_diff_path, joinpath(dirname(path), "test_recordings"))
