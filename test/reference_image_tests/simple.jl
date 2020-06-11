@@ -148,7 +148,13 @@ using MakieGallery: @substep
         @substep
         mesh(meshes, color=[1, 2])
         @substep
-
+        t = Tesselation(FRect2D(0, 0, 2, 2), (30, 30))
+        m = GeometryBasics.mesh(t, pointtype=Point3f0, facetype=QuadFace{GLIndex})
+        s = AbstractPlotting.mesh(m)
+        wireframe!(s, m, color=("#ddd", 0.8), transparency=true, linewidth=2)
+        scatter!(s, m, markersize=5px, color=:red)
+        @substep
+        
         ## Axis
         scene = lines(IRect(Vec2f0(0), Vec2f0(1)))
         axis = scene[Axis]
@@ -204,5 +210,6 @@ using MakieGallery: @substep
         barplot(["hi", "ima", "string"], rand(3))
         @substep
         heatmap(["a", "b", "c"], ["α", "β", "γ"], rand(3, 3))
+
     end
 end
