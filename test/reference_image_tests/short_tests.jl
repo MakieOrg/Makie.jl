@@ -1,4 +1,6 @@
 @block SimonDanisch ["short tests", "2d"] begin
+    @cell arc(Point2f0(0, 0), 1, 0, pi)
+
     @cell begin
         scene = Scene(raw = true, camera = campixel!)
         text!(

@@ -3,6 +3,11 @@ using MakieGallery
 using Test
 using GLMakie
 using StaticArrays, GeometryBasics
+using Observables
+using GeometryBasics: Pyramid
+using PlotUtils
+using MeshIO, FileIO
+using AbstractPlotting: Pixel
 
 @testset "Minimal AbstractPlotting tests" begin
 

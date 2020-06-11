@@ -58,32 +58,8 @@
         end
         result = Simulation(molecules)
         scene = plot(result)
-        N = 100
-        record(scene, @replace_with_a_path(mp4), 1:N) do i
+        record(scene, @replace_with_a_path(mp4), 1:3) do i
             scene[end][:advance] = i
         end
     end
 end
-
-#
-#
-# # or a slider example
-# scene = Scene()
-# # the whole layouting is still horrible - which is next on the todo list!
-# ui_scene = Scene(scene, lift(x-> IRect(0, 0, widths(x)[1], 50), pixelarea(scene)))
-# campixel!(ui_scene)
-# plot_scene = Scene(scene, lift(x-> IRect(0, 50, widths(x) .- Vec(0, 50)), pixelarea(scene)))
-# sim = plot!(plot_scene, result)[end]
-# sim_index = slider!(ui_scene, 1:length(result.solution.t), raw = true)[end]
-# foreach(sim_index[:value]) do idx
-#     sim[:simulation_index] = idx
-# end
-# scene
-#
-# #the above should soon become:
-# sim = plot(result)
-# slider = slider(1:N)
-# foreach(slider) do idx
-#     sim[end][:simulation_index] = idx
-# end
-# hbox(sim, slider)
