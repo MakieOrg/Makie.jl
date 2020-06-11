@@ -393,7 +393,7 @@ function convert_arguments(
     return convert_arguments(MT, xyz, collect(faces))
 end
 
-function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
+function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh{N}) where {N}
     # Make sure we have normals!
     if !hasproperty(mesh, :normals)
         n = normals(mesh)
@@ -402,7 +402,7 @@ function convert_arguments(::Type{<:Mesh}, mesh::GeometryBasics.Mesh)
             mesh = GeometryBasics.pointmeta(mesh, decompose(Vec3f0, n))
         end
     end
-    return (mesh,)
+    return (GeometryBasics.mesh(mesh, pointtype=Point{N, Float32}, facetype=GLTriangleFace),)
 end
 
 function convert_arguments(

@@ -325,8 +325,8 @@
         ne = size(edges, 1); np = size(pts, 1)
         cylinder = Cylinder(Point3f0(0), Point3f0(0, 0, 1.0), 1f0)
         # define markers meshes
-        meshC = normal_mesh(cylinder; nvertices=nbfacese)
-        meshS = normal_mesh(large_sphere; nvertices=20)
+        meshC = normal_mesh(Tesselation(cylinder, nbfacese))
+        meshS = normal_mesh(Tesselation(large_sphere, 20))
         # define colors, markersizes and rotations
         pG = [Point3f0(pts[k, 1], pts[k, 2], pts[k, 3]) for k = 1:np]
         lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]) .^ 2, dims = 2))
