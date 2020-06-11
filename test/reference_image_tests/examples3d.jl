@@ -157,9 +157,7 @@
             map((a, b)-> (a, b), pos1, pos2)
         end
         linesegments!(scene, lines, linestyle = :dot, limits = limits)
-        # record a video
-        N = 150
-        record(scene, @replace_with_a_path(mp4), 1:N) do i
+        record(scene, @replace_with_a_path(mp4), 1:2) do i
             t[] = Base.time()
         end
     end
@@ -192,19 +190,6 @@
         contour3d(r, r, (x,y)-> xy_data(10x, 10y), levels = 20, linewidth = 3)
     end
 
-    # @cell "3d volume animation" [volume, animation, gui, slices, layout] begin
-    #     # # TODO: is this example unfinished?
-    #     # scene = Scene(@resolution)
-    #     # r = range(-2pi, stop = 2pi, length = 100)
-    #     # psps = map(1:100) do i
-    #     #     broadcast(r, reshape(r, (1, 100, 1)), reshape(r, (1, 1, 100))) do x, y, z
-    #     #         j = (i/100)
-    #     #         sin(x * j) + cos(y * j) + sin(z)
-    #     #     end
-    #     # end
-    #
-    #     println("placeholder")
-    # end
 
     @cell "Arrows 3D" [arrows, "3d"] begin
         using LinearAlgebra
@@ -422,9 +407,7 @@
         wf = wireframe!(scene, r, r, lift(x-> x .+ 1.0, surf[3]),
             linewidth = 2f0, color = lift(x-> to_colormap(x)[5], surf[:colormap])
         )
-        N = 150
-        scene
-        record(scene, @replace_with_a_path(mp4), range(5, stop = 40, length = N)) do i
+        record(scene, @replace_with_a_path(mp4), range(5, stop = 40, length = 3)) do i
             surf[3] = surf_func(i)
         end
     end
@@ -529,8 +512,7 @@
         update_cam!(scene, eyepos, lookat)
         scene.center = false # prevent scene from recentering on display
         l = scene[1]
-        N = 150
-        record(scene, @replace_with_a_path(mp4), 1:N) do i
+        record(scene, @replace_with_a_path(mp4), 1:2) do i
             t = (time() - start) * 700
             pos .= calcpositions.((rings,), 1:N2, t, (t_audio,))
             l[1] = pos # update argument 1
@@ -547,8 +529,7 @@
         translate!(p, 0, 0, 0)
         colors = to_colormap(:RdYlBu)
         #display(scene) # would be needed without the record
-        N = 150
-        path = record(scene, "test.gif", 1:N) do i
+        path = record(scene, "test.gif", 1:3) do i
             global lineplots, scene
             if length(lineplots) < 20
                 p = lines!(
@@ -603,85 +584,6 @@
         streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap = :magma, gridsize = (10, 10), arrow_size = 0.06)
     end
 
-    @cell "Fractional Brownian surface" ["3d"] begin
-        "This example was provided by Moritz Schauer (@mschauer)."
-        using SparseArrays, LinearAlgebra
-
-        #=
-        Define the precision matrix (inverse covariance matrix)
-        for the Gaussian noise matrix.  It approximately coincides
-        with the Laplacian of the 2d grid or the graph representing
-        the neighborhood relation of pixels in the picture,
-        https://en.wikipedia.org/wiki/Laplacian_matrix
-        =#
-        function gridlaplacian(m, n)
-            S = sparse(0.0I, n*m, n*m)
-            linear = LinearIndices((1:m, 1:n))
-            for i in 1:m
-                for j in 1:n
-                    for (i2, j2) in ((i + 1, j), (i, j + 1))
-                        if i2 <= m && j2 <= n
-                            S[linear[i, j], linear[i2, j2]] -= 1
-                            S[linear[i2, j2], linear[i, j]] -= 1
-                            S[linear[i, j], linear[i, j]] += 1
-                            S[linear[i2, j2], linear[i2, j2]] += 1
-                        end
-                    end
-                end
-            end
-            return S
-        end
-
-        # d is used to denote the size of the data
-        d = 150
-
-         # Sample centered Gaussian noise with the right correlation by the method
-         # based on the Cholesky decomposition of the precision matrix
-        data = 0.1randn(d,d) + reshape(
-                cholesky(gridlaplacian(d,d) + 0.003I) \ randn(d*d),
-                d, d
-        )
-
-        surface(data; shading=false, show_axis=false, colormap=:deep)
-    end
-
-    @cell "Coloured fractional Brownian noise field" ["3d"] begin
-        "This example was contributed by Harmen Stoppels (@haampie)"
-
-        using FFTW
-
-        # Obtain approximately fractal Brownian noise, appropriately damping
-        # the high frequencies of Fourier transformed spatial white noise,
-        # and (inverse) Fourier transforming the result back into the spatial domain.
-        function cloud(n = 256, p = 0.75f0)
-            ωs = fft(randn(Float32, n, n, n))
-            r = Float32[0:n÷2; n÷2-1:-1:(iseven(n) ? 1 : 0)]
-            xs, ys, zs = reshape(r, :, 1, 1), reshape(r, 1, :, 1), reshape(r, 1, 1, :)
-            ωs ./= (1.0f0 .+ (xs.^2 .+ ys.^2 .+ zs.^2) .^ p)
-            return real.(ifft(ωs))
-        end
-
-        z = cloud(256, 0.75)
-
-        volume(z; algorithm = :mip, colorrange = extrema(z))
-
-    end
-
-    @cell "2D text in 3D" [text, annotations] begin
-        using GeometryBasics
-        import AbstractPlotting: project
-        scene = meshscatter(rand(10), rand(10), rand(10), markersize = 0.02)
-        scat = scene[end]
-        project_pos(pv, res, x) = AbstractPlotting.project.((pv,), (res,), x .+ 0.1)
-        cam = camera(scene)
-        projected = lift(cam.projectionview, cam.resolution, scat[1]) do pv, res, pos
-            positions = project_pos(pv, res, pos)
-            return [("point $i", p) for (i, p) in enumerate(positions)]
-        end
-
-        annotations!(campixel(scene), projected, raw=true)
-        scene
-    end
 end
 
 @block AnshulSinghvi ["3d"] begin
@@ -757,8 +659,7 @@ end
         end
         update_cam!(s, FRect3D(Vec3f0(0), Vec3f0(1)))
         s.center = false # don't reset the camera by display
-        N = 1000 # N gets replaced by 100 for testing
-        record(s, @replace_with_a_path(mp4), 1:N) do iter
+        record(s, @replace_with_a_path(mp4), 1:3) do iter
             isodd(iter) && addparticle!(particles, colors, nparticles)
             repel(particles, nparticles[])
         end
