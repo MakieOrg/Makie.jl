@@ -218,4 +218,6 @@ end
 
 
 
+include("Texture.jl")
+
 end # module
