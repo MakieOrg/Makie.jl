@@ -197,8 +197,8 @@ gl_convert(x::T) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 gl_convert(x::Node{T}) where {T <: GeometryBasics.Mesh} = gl_promote(T)(x)
 
 gl_convert(s::Vector{Matrix{T}}) where {T<:Colorant} = Texture(s)
-gl_convert(s::AbstractPlotting.Texture) = Texture(s.img; s.data...)
 gl_convert(s::Nothing) = s
+
 
 isa_gl_struct(x::AbstractArray) = false
 isa_gl_struct(x::NATIVE_TYPES) = false
@@ -249,6 +249,18 @@ function gl_convert(::Type{T}, a::Node{<: AbstractArray{X, N}}; kw_args...) wher
     TGL = gl_promote(X)
     s = (X == TGL) ? a : lift(x-> convert(Array{TGL, N}, x), a)
     T(s; kw_args...)
+end
+
+lift_convert(a::AbstractArray, T, N) = lift(x -> convert(Array{T, N}, x), a)
+function lift_convert(a::ShaderAbstractions.Sampler, T, N)
+    ShaderAbstractions.Sampler(
+        lift(x -> convert(Array{T, N}, x.data), a),
+        minfilter = a[].minfilter, magfilter = a[].magfilter,
+        x_repeat = a[].repeat[1],
+        y_repeat = a[].repeat[min(2, N)],
+        z_repeat = a[].repeat[min(3, N)],
+        anisotropic = a[].anisotropic, swizzle_mask = a[].swizzle_mask
+    )
 end
 
 gl_convert(f::Function, a) = f(a)

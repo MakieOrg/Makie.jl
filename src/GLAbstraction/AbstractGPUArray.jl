@@ -72,6 +72,7 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     A[dims...] = value
     nothing
 end
+update!(A::GPUArray, value::ShaderAbstractions.Sampler) = update!(A, value.data)
 
 function getindex(A::GPUArray{T, N}, i::Int) where {T, N}
     checkbounds(A, i)
