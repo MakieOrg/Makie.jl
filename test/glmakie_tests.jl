@@ -1,6 +1,13 @@
 example_dir = joinpath(@__DIR__, "reference_image_tests")
 MakieGallery.load_database(joinpath.(example_dir, readdir(example_dir)))
 
+# Filter out MakieLayout for now!
+filter!(database) do example
+    !("makielayout" in lowercase.(example.tags)) &&
+    !occursin("MakieLayout", example.toplevel) &&
+    !occursin("LAxis", example.source)
+end
+
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
 
