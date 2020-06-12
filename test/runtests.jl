@@ -6,7 +6,7 @@ using StaticArrays, GeometryBasics
 using Observables
 using GeometryBasics: Pyramid
 using PlotUtils
-using MeshIO, FileIOtractPlotting.MakieLayout
+using MeshIO, FileIO, AbstractPlotting.MakieLayout
 
 # Minimal sanity checks for MakieLayout
 @testset "Layoutables constructors" begin
