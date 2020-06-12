@@ -3,13 +3,10 @@ using MakieGallery
 using Test
 using GLMakie
 using StaticArrays, GeometryBasics
-<<<<<<< HEAD
 using Observables
 using GeometryBasics: Pyramid
 using PlotUtils
-using MeshIO, FileIO
-=======
-using AbstractPlotting.MakieLayout
+using MeshIO, FileIOtractPlotting.MakieLayout
 
 # Minimal sanity checks for MakieLayout
 @testset "Layoutables constructors" begin
@@ -28,7 +25,6 @@ using AbstractPlotting.MakieLayout
     me = layout[end+1, :] = LMenu(scene, options = ["one", "two", "three"])
     @test true
 end
->>>>>>> master
 
 @testset "Minimal AbstractPlotting tests" begin
 
