@@ -2,6 +2,7 @@ using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, 
 using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert, Pixel
 using AbstractPlotting: convert_arguments
 
+convert_attribute(p::AbstractPlotting.Pattern, k::key"color") = p
 convert_attribute(s::ShaderAbstractions.Sampler{RGBAf0}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
     ShaderAbstractions.Sampler(
@@ -367,8 +368,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
-        end
-        if to_value(color) isa AbstractMatrix{<:Colorant}
+        elseif to_value(color) isa AbstractPlotting.Pattern
+            img = lift(x -> x.img, color)
+            gl_attributes[:image] = ShaderAbstractions.Sampler(el32convert(img), x_repeat=:repeat)
+            haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+        elseif to_value(color) isa AbstractMatrix{<:Colorant}
             gl_attributes[:image] = color
         end
         mesh = x[1]
@@ -410,6 +414,12 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             img = lift(color, cmap, crange) do img, cmap, norm
                 AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
+        elseif to_value(color) isa AbstractPlotting.Pattern
+            img = ShaderAbstractions.Sampler(lift(x -> el32convert(x.img), color), x_repeat=:repeat)
+            haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+            gl_attributes[:color_map] = nothing
+            gl_attributes[:color] = nothing
+            gl_attributes[:color_norm] = nothing
         elseif isa(to_value(color), AbstractMatrix{<: Colorant})
             img = color
             gl_attributes[:color_map] = nothing

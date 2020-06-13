@@ -96,6 +96,8 @@ function meshparticle(p, s, data)
         else
             nothing
         end => to_meshcolor
+        fetch_pixel = false
+        uv_scale = Vec2f0(1)
 
         instances = const_lift(length, position)
         shading = true

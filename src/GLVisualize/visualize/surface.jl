@@ -83,6 +83,8 @@ function surface(main, s::Style{:surface}, data::Dict)
         color = nothing => Texture
         color_map = nothing => Texture
         color_norm = nothing
+        fetch_pixel = false
+        uv_scale = Vec2f0(1)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
