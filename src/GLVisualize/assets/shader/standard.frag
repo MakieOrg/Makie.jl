@@ -39,14 +39,8 @@ vec4 get_pattern_color(sampler2D color){
     vec2 pos = gl_FragCoord.xy * uv_scale;
     return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
-vec4 get_pattern_color(sampler3D color){
-    ivec3 size = textureSize(color, 0);
-    vec3 pos = gl_FragCoord.xyz;
-    return texelFetch(color, ivec3(mod(pos.x, size.x), mod(pos.y, size.y), mod(pos.z, size.z)), 0);
-}
-vec4 get_pattern_color(Nothing color){
-    return vec4(1,0,1,1);
-}
+// Needs to exist for opengl to be happy
+vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float diff_coeff = max(dot(L, N), 0.0);
