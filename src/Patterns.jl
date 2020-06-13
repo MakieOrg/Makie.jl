@@ -6,7 +6,7 @@ end
 
 function Pattern(
         mask::Array{T, 2}, color1, color2; kwargs...
-    ) where {T <: AbstractFloat}
+    ) where {T <: Real}
     # to color
     img = map(x -> to_color(color1) * x + to_color(color2) * (1-x), mask)
     Pattern(img)
