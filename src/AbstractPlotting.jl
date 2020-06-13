@@ -218,6 +218,7 @@ end
 
 
 
-include("Texture.jl")
+include("Patterns.jl")
+export Pattern
 
 end # module
