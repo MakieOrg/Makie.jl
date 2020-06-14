@@ -663,10 +663,10 @@ function extract_scene_attributes!(attributes)
     return result
 end
 
-function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N, PlotType <: AbstractPlot}
+function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
-    plot_object = PlotType(scene, copy(attributes), input, args)
+    plot_object = P(scene, copy(attributes), input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
         scene.attributes[k] = v
@@ -699,17 +699,18 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     scene
 end
 
-function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
+
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object = PlotType(scene, attributes, args)
+    plot_object = P(scene, attributes, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
     scene
 end
-function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N, PlotType <: AbstractPlot}
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object = PlotType(scene, attributes, input, args)
+    plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
