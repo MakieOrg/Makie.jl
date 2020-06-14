@@ -525,14 +525,47 @@ end
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
-plot(P::PlotFunc, args...; kw_attributes...) = plot!(Scene(), P, Attributes(kw_attributes), args...)
-plot!(P::PlotFunc, args...; kw_attributes...) = plot!(current_scene(), P, Attributes(kw_attributes), args...)
-plot(scene::SceneLike, P::PlotFunc, args...; kw_attributes...) = plot!(Scene(scene), P, Attributes(kw_attributes), args...)
-plot!(scene::SceneLike, P::PlotFunc, args...; kw_attributes...) = plot!(scene, P, Attributes(kw_attributes), args...)
 
-plot(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(scene), P, merge!(Attributes(kw_attributes), attributes), args...)
-plot!(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
-plot(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
+######################################################################
+# In this section, the plotting functions have P as the first argument
+# These are called from type recipes
+
+# non-mutating, without positional attributes
+
+function plot(P::PlotFunc, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot(P, attributes, args...)
+end
+
+# with positional attributes
+
+function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
+    attributes = merge!(Attributes(kw_attributes), attrs)
+    scene_attributes = extract_scene_attributes!(attributes)
+    scene = Scene(; scene_attributes...)
+    plot!(scene, P, attributes, args...)
+end
+
+# mutating, without positional attributes
+
+function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot!(scene, P, attributes, args...)
+end
+
+# without scenelike, use current scene
+
+function plot!(P::PlotFunc, args...; kw_attributes...)
+    plot!(P, current_scene(), args...; kw_attributes...)
+end
+
+# with positional attributes
+
+function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_attributes...)
+    attributes = merge!(Attributes(kw_attributes), attrs)
+    plot!(scene, P, attributes, args...)
+end
+######################################################################
 
 
 # plots to scene
