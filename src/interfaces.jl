@@ -534,8 +534,6 @@ plot(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attribut
 plot!(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
 plot(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
 
-# Overload remaining functions
-eval(default_plot_signatures(:plot, :plot!, :Any))
 
 # plots to scene
 
