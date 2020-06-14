@@ -64,6 +64,8 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
             resize!(A, length(value))
         elseif isa(A, Texture)
             resize_nocopy!(A, size(value))
+        elseif isa(A, TextureBuffer)
+            gpu_resize!(A, size(value))
         else
             error("Dynamic resizing not implemented for $(typeof(A))")
         end
