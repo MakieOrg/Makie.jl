@@ -597,6 +597,7 @@ convert_attribute(c::AbstractArray{<: Union{Tuple{Any, Number}, Symbol}}, k::key
 convert_attribute(c::AbstractArray, ::key"color", ::key"heatmap") = el32convert(c)
 
 convert_attribute(c::Tuple, k::key"color") = convert_attribute.(c, k)
+convert_attribute(p::AbstractPattern, k::key"color") = p
 
 function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     RGBAf0(Colors.color(to_color(c[1])), c[2])
