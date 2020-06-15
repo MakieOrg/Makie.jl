@@ -567,6 +567,11 @@ function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_att
 end
 ######################################################################
 
+# Register plot / plot! using the Any type as PlotType.
+# This is done so that plot(args...) / plot!(args...) can by default go
+# through a pipeline where the appropriate PlotType is determined
+# from the input arguments themselves.
+eval(default_plot_signatures(:plot, :plot!, :Any))
 
 # plots to scene
 
