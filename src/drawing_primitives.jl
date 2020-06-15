@@ -2,7 +2,6 @@ using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, 
 using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert, Pixel
 using AbstractPlotting: convert_arguments
 
-convert_attribute(p::AbstractPlotting.AbstractPattern, k::key"color") = p
 convert_attribute(s::ShaderAbstractions.Sampler{RGBAf0}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
     ShaderAbstractions.Sampler(
