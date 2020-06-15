@@ -525,16 +525,52 @@ end
 # all the plotting functions that get a plot type
 const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 
-plot(P::PlotFunc, args...; kw_attributes...) = plot!(Scene(), P, Attributes(kw_attributes), args...)
-plot!(P::PlotFunc, args...; kw_attributes...) = plot!(current_scene(), P, Attributes(kw_attributes), args...)
-plot(scene::SceneLike, P::PlotFunc, args...; kw_attributes...) = plot!(Scene(scene), P, Attributes(kw_attributes), args...)
-plot!(scene::SceneLike, P::PlotFunc, args...; kw_attributes...) = plot!(scene, P, Attributes(kw_attributes), args...)
 
-plot(scene::SceneLike, P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(scene), P, merge!(Attributes(kw_attributes), attributes), args...)
-plot!(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(current_scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
-plot(P::PlotFunc, attributes::Attributes, args...; kw_attributes...) = plot!(Scene(), P, merge!(Attributes(kw_attributes), attributes), args...)
+######################################################################
+# In this section, the plotting functions have P as the first argument
+# These are called from type recipes
 
-# Overload remaining functions
+# non-mutating, without positional attributes
+
+function plot(P::PlotFunc, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot(P, attributes, args...)
+end
+
+# with positional attributes
+
+function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
+    attributes = merge!(Attributes(kw_attributes), attrs)
+    scene_attributes = extract_scene_attributes!(attributes)
+    scene = Scene(; scene_attributes...)
+    plot!(scene, P, attributes, args...)
+end
+
+# mutating, without positional attributes
+
+function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
+    attributes = Attributes(kw_attributes)
+    plot!(scene, P, attributes, args...)
+end
+
+# without scenelike, use current scene
+
+function plot!(P::PlotFunc, args...; kw_attributes...)
+    plot!(P, current_scene(), args...; kw_attributes...)
+end
+
+# with positional attributes
+
+function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_attributes...)
+    attributes = merge!(Attributes(kw_attributes), attrs)
+    plot!(scene, P, attributes, args...)
+end
+######################################################################
+
+# Register plot / plot! using the Any type as PlotType.
+# This is done so that plot(args...) / plot!(args...) can by default go
+# through a pipeline where the appropriate PlotType is determined
+# from the input arguments themselves.
 eval(default_plot_signatures(:plot, :plot!, :Any))
 
 # plots to scene
@@ -632,10 +668,10 @@ function extract_scene_attributes!(attributes)
     return result
 end
 
-function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N, PlotType <: AbstractPlot}
+function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTuple{N, Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     scene_attributes = extract_scene_attributes!(attributes)
-    plot_object = PlotType(scene, copy(attributes), input, args)
+    plot_object = P(scene, copy(attributes), input, args)
     # transfer the merged attributes from theme and user defined to the scene
     for (k, v) in scene_attributes
         scene.attributes[k] = v
@@ -668,17 +704,18 @@ function plot!(scene::SceneLike, ::Type{PlotType}, attributes::Attributes, input
     scene
 end
 
-function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, args...) where PlotType <: AbstractPlot
+
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object = PlotType(scene, attributes, args)
+    plot_object = P(scene, attributes, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
     scene
 end
-function plot!(scene::Combined, ::Type{PlotType}, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N, PlotType <: AbstractPlot}
+function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
-    plot_object = PlotType(scene, attributes, input, args)
+    plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
