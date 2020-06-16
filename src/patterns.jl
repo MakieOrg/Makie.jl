@@ -1,22 +1,38 @@
-# TODO move this?
+"""
+    AbstractPattern{T} <: AbstractArray{T, 2}
 
-abstract type AbstractPattern{T, D} <: AbstractArray{T, D} end
+`AbstractPatterns` are image-like array types which can be used to color
+plottable objects. There are currently two subtypes: [`LinePattern`](@ref) and
+[`ImagePattern`](@ref). Any abstract pattern must implement the `to_image(pat)`
+function, which must return a `Matrix{<: AbstractRGB}`.
+"""
+abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
 
 # TODO do we need all of those?
-function show(io::IO, mime, p::AbstractPattern)
+function Base.show(io::IO, mime, p::AbstractPattern)
     println(io, typeof(p))
     show(io, mime, image(p))
 end
-display(x, p::AbstractPattern) = display(x, image(p))
-display(p::AbstractPattern) = display(image(p))
+Base.display(x, p::AbstractPattern) = display(x, to_image(p))
+Base.display(p::AbstractPattern) = display(to_image(p))
 
 
 
-struct ImagePattern{T, D} <: AbstractPattern{T, D}
-    img::Array{T, D}
-    ImagePattern(img::Array{T, 2}) where {T <: Colorant} = new{T, 2}(img)
+
+struct ImagePattern{T} <: AbstractPattern{T}
+    img::Array{T, 2}
+    ImagePattern(img::Array{T, 2}) where {T <: Colorant} = new{T}(img)
 end
 
+"""
+    Pattern(image)
+    Pattern(mask[; color1, color2])
+
+Creates an `ImagePattern` from an `image` (a matrix of colors) or a `mask`
+(a matrix of real numbers). The pattern can be passed as a `color` to a plot to
+texture it. If a `mask` is passed, one can specify to colors between which colors are
+interpolated.
+"""
 Pattern(img::Array{<: Colorant, 2}) = ImagePattern(img)
 
 function Pattern(mask::Array{<: Real, 2}; color1=RGBA(0,0,0,1), color2=RGBA(1,1,1,0))
@@ -24,11 +40,11 @@ function Pattern(mask::Array{<: Real, 2}; color1=RGBA(0,0,0,1), color2=RGBA(1,1,
     ImagePattern(img)
 end
 
-image(p::ImagePattern) = p.img
+to_image(p::ImagePattern) = p.img
 
 
 
-struct LinePattern{T, D} <: AbstractPattern{T, D}
+struct LinePattern{T} <: AbstractPattern{T}
     dirs::Vector{Vec2}
     widths::Vector{AbstractFloat}
     shifts::Vector{Vec2}
@@ -37,10 +53,25 @@ struct LinePattern{T, D} <: AbstractPattern{T, D}
     colors::NTuple{2, T}
 end
 
+"""
+    LinePattern([; kwargs...])
+
+Creates a `LinePattern` for the given keyword arguments:
+- `direction`: The direction of the line.
+- `width`: The width of the line
+- `tilesize`: The size of the image on which the line is drawn. This should be
+compatible with the direction.
+- `shift`: Sets the starting point for the line.
+- `linecolor`: The color with which the line is replaced.
+- `background_color`:: The background color.
+
+Multiple `direction`s, `width`s and `shift`s can also be given to create more
+complex patterns, e.g. a cross-hatching pattern.
+"""
 function LinePattern(;
         direction = Vec2f0(1), width = 2f0, tilesize = (10,10),
         shift = map(w -> Vec2f0(0.5 - 0.5(w%2)), width),
-        color1 = RGBA(0,0,0,1), color2 = RGBA(1,1,1,0)
+        linecolor = RGBA(0,0,0,1), background_color = RGBA(1,1,1,0)
     )
     N = 1
     direction isa Vector{<:Vec2} && (N = length(direction))
@@ -50,12 +81,19 @@ function LinePattern(;
     dirs = direction isa Vector{<:Vec2} ? direction : [direction for _ in 1:N]
     widths = width isa Vector ? width : [width for _ in 1:N]
     shifts = shift isa Vector{<:Vec2} ? shift : [shift for _ in 1:N]
-    colors = (to_color(color1), to_color(color2))
+    colors = (to_color(linecolor), to_color(background_color))
 
-    LinePattern{typeof(colors[1]), 2}(dirs, widths, shifts, tilesize, colors)
+    LinePattern{eltype(colors)}(dirs, widths, shifts, tilesize, colors)
 end
 
-# Pattern from String/Character
+"""
+    Pattern(style::String = "/"; kwargs...)
+    Pattern(style::Char = '/'; kwargs...)
+
+Creates a line pattern based on the given argument. Available patterns are
+`'/'`, `'\\'`, `'-'`, `'|'`, `'x'`, and `'+'`. All keyword arguments correspond
+to the keyword arguments for [`LinePattern`](@ref).
+"""
 Pattern(style::String; kwargs...) = Pattern(style[1]; kwargs...)
 function Pattern(style::Char = '/'; kwargs...)
     if style == '/'
@@ -76,7 +114,7 @@ function Pattern(style::Char = '/'; kwargs...)
 end
 
 
-function image(p::LinePattern)
+function to_image(p::LinePattern)
     tilesize = p.tilesize
     full_mask = zeros(tilesize...)
     for (dir, width, shift) in zip(p.dirs, p.widths, p.shifts)
