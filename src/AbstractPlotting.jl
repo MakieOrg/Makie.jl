@@ -53,7 +53,7 @@ include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
 
 include("colorsampler.jl")
-include("Patterns.jl")
+include("patterns.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
