@@ -116,12 +116,14 @@ Texture(image::Array{T, NDim}; kw_args...) where {T <: GLArrayEltypes, NDim} =
     Texture(pointer(image), size(image); kw_args...)::Texture{T, NDim}
 
 function Texture(s::ShaderAbstractions.Sampler{T, N}; kwargs...) where {T, N}
-    Texture(
+    tex = Texture(
         pointer(s.data), size(s.data),
         minfilter = s.minfilter, magfilter = s.magfilter,
         x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
         anisotropic = s.anisotropic; kwargs...
     )
+    ShaderAbstractions.connect!(s, tex)
+    return tex
 end
 
 """
