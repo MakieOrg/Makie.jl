@@ -21,7 +21,21 @@
         end
         scene
     end
-
+    @cell "Sampler type" [Sampler] begin
+        using GLMakie.ShaderAbstractions
+        using GLMakie.ShaderAbstractions: Sampler
+        # Directly access texture parameters:
+        x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
+        scene = image(x, show_axis=false)
+        # indexing will go straight to the GPU, while only transfering the changes
+        st = Stepper(sc, @replace_with_a_path)
+        x[1:10, 1:50] .= to_color(:red)
+        step!(st)
+        x[1:10, end] .= to_color(:green)
+        step!(st)
+        x[end, end] = to_color(:blue)
+        step!(st)
+    end
     # Test for resizing of TextureBuffer
     @cell "Dynamically adjusting number of particles in a meshscatter" [meshscatter] begin
 

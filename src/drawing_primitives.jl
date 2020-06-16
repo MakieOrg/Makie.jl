@@ -322,7 +322,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(el32convert(x[3]), minfilter = interp)
+        if !(to_value(x[3]) isa ShaderAbstractions.Sampler)
+            tex = Texture(el32convert(x[3]), minfilter = interp)
+        else
+            tex = to_value(x[3])
+        end
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         # gl_attributes[:color_map] = Texture(gl_attributes[:color_map], minfilter=:nearest)
