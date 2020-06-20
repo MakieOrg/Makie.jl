@@ -13,6 +13,7 @@ mutable struct GLFramebuffer
     resolution::Node{NTuple{2, Int}}
     id::NTuple{2, GLuint}
     buffers::Dict{Symbol, Texture}
+    render_buffer_ids::Vector{GLuint}
 end
 
 # it's guaranteed, that they all have the same size
@@ -66,7 +67,8 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     return GLFramebuffer(
         fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
-        buffers
+        buffers,
+        [GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1]
     )
 end
 

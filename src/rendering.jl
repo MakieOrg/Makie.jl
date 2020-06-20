@@ -71,10 +71,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     # prepare stencil (for sub-scenes)
     glEnable(GL_STENCIL_TEST)
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1]) # color framebuffer
-    glDrawBuffers(4, [
-        GL_COLOR_ATTACHMENT0, GL_COLOR_ATTACHMENT1,
-        GL_COLOR_ATTACHMENT2, GL_COLOR_ATTACHMENT3
-    ])
+    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
     glEnable(GL_STENCIL_TEST)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0xff)

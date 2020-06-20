@@ -62,6 +62,14 @@ function ssao_postprocessor(framebuffer)
         push!(framebuffer.buffers, :occlusion => occlusion_buffer)
     end
 
+    # Add buffers written in primary render (before postprocessing)
+    if !(GL_COLOR_ATTACHMENT2 in framebuffer.render_buffer_ids)
+        push!(framebuffer.render_buffer_ids, GL_COLOR_ATTACHMENT2)
+    end
+    if !(GL_COLOR_ATTACHMENT3 in framebuffer.render_buffer_ids)
+        push!(framebuffer.render_buffer_ids, GL_COLOR_ATTACHMENT3)
+    end
+
     # SSAO setup
     N_samples = 64
     lerp_min = 0.1f0
