@@ -50,6 +50,7 @@ include("interaction/nodes.jl")
 include("interaction/liftmacro.jl")
 
 include("colorsampler.jl")
+include("patterns.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
@@ -190,6 +191,9 @@ export save
 # colormap stuff from PlotUtils, and showgradients
 export cgrad, available_gradients, showgradients
 
+export Pattern
+
+
 # default icon for Makie
 function icon()
     path = joinpath(dirname(pathof(AbstractPlotting)), "..", "assets", "icons")
@@ -210,8 +214,6 @@ function __init__()
     end
 end
 
-
 include("makielayout/MakieLayout.jl")
-
 
 end # module
