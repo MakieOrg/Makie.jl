@@ -100,7 +100,7 @@ begin
                     TextureAtlas(fields...)
                 end
             catch e
-                @info("You can likely ignore the following warning, if you just switched Julia versions for GLVisualize")
+                @info("You can likely ignore the following warning, if you just switched Julia versions for Makie")
                 @warn(e)
                 rm(get_cache_path())
             end
@@ -261,7 +261,7 @@ function render(atlas::TextureAtlas, glyph::Char, font, downsample=5, pad=6)
     sd = sdistancefield(bitmap, downsample, pad)
     rect = Rect2D(0, 0, size(sd)...)
     uv = push!(atlas.rectangle_packer, rect) # find out where to place the rectangle
-    uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at GLVisualize if you encounter this") #TODO resize surface
+    uv == nothing && error("texture atlas is too small. Resizing not implemented yet. Please file an issue at Makie if you encounter this") #TODO resize surface
     # write distancefield into texture
     atlas.data[uv.area] = sd
     for f in font_render_callbacks
