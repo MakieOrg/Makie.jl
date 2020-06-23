@@ -512,7 +512,7 @@ function default_attributes(::Type{LSlider}, scene)
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The radius of the slider button."
-        buttonradius = 7f0
+        buttonradius = 9f0
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = 0
         "The current value of the slider."
