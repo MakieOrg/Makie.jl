@@ -107,7 +107,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     linestate = addmousestate!(subscene, linesegs)
 
-    bsize = Node{Float32}(buttonradius[] * 2f0)
+    bsize = @lift($buttonradius * 2f0)
 
     bcolor = Node{Any}(buttoncolor_inactive[])
 
