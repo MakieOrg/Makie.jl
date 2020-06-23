@@ -111,28 +111,19 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     bcolor = Node{Any}(buttoncolor_inactive[])
 
+
     button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor, marker = '⚫',
         strokewidth = buttonstrokewidth, strokecolor = color_active_dimmed, raw = true)[end]
     decorations[:button] = button
 
-    buttonstate = addmousestate!(subscene, button)
 
-    # on(buttonstate) do state
-    #     typ = typeof(state.typ)
-    #     if typ in (MouseDown, MouseDrag, MouseDragStart, MouseDragStop)
-    #         bcolor[] = color_active[]
-    #     end
-    # end
+    scenestate = addmousestate!(subscene)
 
-    onmouseleftdown(buttonstate) do state
-        bcolor[] = color_active[]
-    end
-
-    onmouseleftup(buttonstate) do state
+    onmouseleftup(scenestate) do state
         bcolor[] = buttoncolor_inactive[]
     end
 
-    onmouseleftdrag(buttonstate) do state
+    onmouseleftdrag(scenestate) do state
 
         pad = buttonradius[] + buttonstrokewidth[]
 
@@ -156,15 +147,15 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    onmouseleftdragstop(buttonstate) do state
+    onmouseleftdragstop(scenestate) do state
         dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
     end
 
-    scenestate = addmousestate!(subscene)
+    onmouseleftdown(scenestate) do state
 
-    onmouseleftclick(scenestate) do state
+        bcolor[] = color_active[]
 
         pad = buttonradius[] + buttonstrokewidth[]
 
