@@ -174,7 +174,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::Screen, fxaa::Bool, ssao::Bool=false)
+function GLAbstraction.render(screen::GLScreen, fxaa::Bool, ssao::Bool=false)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
