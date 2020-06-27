@@ -120,9 +120,9 @@ end
 function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     empty!(screen)
     register_callbacks(scene, screen)
-    GLFW.PollEvents()
+    pollevents(screen)
     insertplots!(screen, scene)
-    GLFW.PollEvents()
+    pollevents(screen)
     screen.displayed_scene = scene
     return
 end
@@ -452,3 +452,6 @@ function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     end
     return Tuple{AbstractPlot, Int}[]
 end
+
+pollevents(::GLScreen) = nothing
+pollevents(::Screen) = GLFW.PollEvents()

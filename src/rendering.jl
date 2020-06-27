@@ -3,7 +3,7 @@ function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
     try
         while isopen(screen)
             t = time()
-            GLFW.PollEvents() # GLFW poll
+            pollevents(screen) # GLFW poll
             screen.render_tick[] = nothing
             prerender()
             make_context_current(screen)
@@ -174,7 +174,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::Screen, fxaa::Bool, ssao::Bool=false)
+function GLAbstraction.render(screen::GLScreen, fxaa::Bool, ssao::Bool=false)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!

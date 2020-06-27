@@ -37,7 +37,7 @@ make_context_current(screen::Screen) = GLFW.MakeContextCurrent(to_native(screen)
 
 function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     # poll inside functions to make wait on compile less prominent
-    GLFW.PollEvents()
+    pollevents(screen)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
@@ -156,13 +156,13 @@ end
 
 function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     # poll inside functions to make wait on compile less prominent
-    GLFW.PollEvents()
+    pollevents(screen)
     if isempty(x.plots) # if no plots inserted, this truely is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
             # poll inside functions to make wait on compile less prominent
-            GLFW.PollEvents()
+            pollevents(screen)
             insert!(screen, scene, x)
         end
     end
