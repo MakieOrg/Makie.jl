@@ -315,7 +315,7 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
     indices = GeometryBasics.faces(ip.program.vertexarray)
     indices = reinterpret(UInt32, indices)
     js_vbo.setIndex(indices)
-    js_vbo.maxInstancedCount = length(ip.per_instance)
+    js_vbo.instanceCount = length(ip.per_instance)
     # per instance data
     for (name, buff) in pairs(ip.per_instance)
         js_buff = JSInstanceBuffer(THREE, buff)
