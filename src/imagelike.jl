@@ -83,7 +83,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
     end)
 
     uv = Buffer(lift(pz) do z
-        decompose_uv(Rect2D(0f0, 0f0, 1f0, 1f0), size(z))
+        decompose_uv(Tesselation(Rect2D(0f0, 0f0, 1f0, 1f0), size(z)))
     end)
 
     pcolor = if haskey(plot, :color) && plot.color[] isa AbstractArray
