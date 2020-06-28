@@ -34,6 +34,14 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_range){
 
 uniform bool fetch_pixel;
 uniform vec2 uv_scale;
+
+vec4 get_pattern_color(sampler1D color) {
+    int size = textureSize(color, 0);
+    vec2 pos = gl_FragCoord.xy * uv_scale;
+    int idx = int(mod(pos.x, size));
+    return texelFetch(color, idx, 0);
+}
+
 vec4 get_pattern_color(sampler2D color){
     ivec2 size = textureSize(color, 0);
     vec2 pos = gl_FragCoord.xy * uv_scale;
