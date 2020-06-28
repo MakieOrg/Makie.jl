@@ -5,7 +5,7 @@ function handler(session, request)
 end
 
 dir = joinpath(@__DIR__, "exported")
-mkdir(dir)
+isdir(dir) || mkdir(dir)
 JSServe.export_standalone(handler, dir)
 # Then serve it with e.g. LiveServer
 using LiveServer
