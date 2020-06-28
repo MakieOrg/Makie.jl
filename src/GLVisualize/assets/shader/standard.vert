@@ -11,6 +11,7 @@ void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 l
 
 uniform uint objectid;
 flat out uvec2 o_id;
+uniform vec2 uv_scale;
 out vec2 o_uv;
 out vec4 o_color;
 
@@ -27,7 +28,7 @@ void main()
 {
     o_id = uvec2(objectid, gl_VertexID+1);
     vec2 tex_uv = to_2d(texturecoordinates);
-    o_uv = vec2(1.0 - tex_uv.y, tex_uv.x);
+    o_uv = vec2(1.0 - tex_uv.y, tex_uv.x) * uv_scale;
     o_color = to_color(vertex_color);
     vec3 v = to_3d(vertices);
     render(model * vec4(v, 1), normals, view, projection, lightposition);

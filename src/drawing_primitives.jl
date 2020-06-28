@@ -1,5 +1,15 @@
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
 using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert, Pixel
+using AbstractPlotting: convert_arguments
+
+convert_attribute(s::ShaderAbstractions.Sampler{RGBAf0}, k::key"color") = s
+function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
+    ShaderAbstractions.Sampler(
+        el32convert(s.data), minfilter = s.minfilter, magfilter = s.magfilter,
+        x_repeat = s.repeat[1], y_repeat = s.repeat[min(2, N)], z_repeat = s.repeat[min(3, N)],
+        anisotropic = s.anisotropic, color_swizzel = s.color_swizzel
+    )
+end
 
 gpuvec(x) = GPUVector(GLBuffer(x))
 
@@ -312,7 +322,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         gl_attributes[:ranges] = lift(to_range, x[1], x[2])
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        tex = Texture(el32convert(x[3]), minfilter = interp)
+        if !(to_value(x[3]) isa ShaderAbstractions.Sampler)
+            tex = Texture(el32convert(x[3]), minfilter = interp)
+        else
+            tex = to_value(x[3])
+        end
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
         # gl_attributes[:color_map] = Texture(gl_attributes[:color_map], minfilter=:nearest)
@@ -357,8 +371,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
-        end
-        if to_value(color) isa AbstractMatrix{<:Colorant}
+        elseif to_value(color) isa AbstractPlotting.AbstractPattern
+            img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
+            gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
+            haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+        elseif to_value(color) isa AbstractMatrix{<:Colorant}
             gl_attributes[:image] = color
         end
         mesh = x[1]
@@ -400,6 +417,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
             img = lift(color, cmap, crange) do img, cmap, norm
                 AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
             end
+        elseif to_value(color) isa AbstractPlotting.AbstractPattern
+            pattern_img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
+            img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)
+            haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
+            gl_attributes[:color_map] = nothing
+            gl_attributes[:color] = nothing
+            gl_attributes[:color_norm] = nothing
         elseif isa(to_value(color), AbstractMatrix{<: Colorant})
             img = color
             gl_attributes[:color_map] = nothing
