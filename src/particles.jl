@@ -20,6 +20,11 @@ function handle_color!(uniform_dict, instance_dict)
     end
 end
 
+const IGNORE_KEYS = Set([
+    :shading, :overdraw, :rotation, :distancefield, :markerspace, :fxaa,
+    :visible, :transformation, :alpha, :linewidth, :transparency, :marker
+])
+
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
     per_instance_keys = (:rotations, :markersize, :color, :intensity)
@@ -36,10 +41,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
 
-
     uniform_dict = Dict{Symbol, Any}()
     for (k,v) in uniforms
-        k in (:shading, :overdraw, :fxaa, :visible, :transformation, :alpha, :linewidth, :transparency, :marker) && continue
+        k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, plot)
     end
 
@@ -105,13 +109,8 @@ function scatter_shader(scene::Scene, attributes)
         (!haskey(per_instance, k)) && isscalar(v[])
     end
 
-    ignore_keys = (
-        :shading, :overdraw, :rotation, :distancefield, :fxaa,
-        :visible, :transformation, :alpha, :linewidth, :transparency, :marker
-    )
-
     for (k, v) in uniforms
-        k in ignore_keys && continue
+        k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, nothing)
     end
 
@@ -141,15 +140,10 @@ function scatter_shader(scene::Scene, attributes)
             end
         end
     end
-    uniform_dict[:use_pixel_marker] = Observable(false)
-    if haskey(uniform_dict, :markersize)
-        msize = uniform_dict[:markersize]
-        if haskey(uniform_dict, :marker_offset)
-            moff = uniform_dict[:marker_offset]
-            uniform_dict[:marker_offset] = lift(x-> AbstractPlotting.number.(x), moff)
-        end
-        uniform_dict[:use_pixel_marker] = lift(x-> x isa Vec{2, <:AbstractPlotting.Pixel}, msize)
-        uniform_dict[:markersize] = lift(x-> AbstractPlotting.number.(x), msize)
+
+    space = get(uniforms, :markerspace, Observable(SceneSpace))
+    uniform_dict[:use_pixel_marker] = map(space) do space
+        space == Pixel
     end
 
     handle_color!(uniform_dict, per_instance)
