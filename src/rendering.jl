@@ -1,6 +1,13 @@
-function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
+function renderloop(screen::Screen; framerate = :vsync, prerender = () -> nothing)
     # Somehow errors get sometimes ignored, so we at least print them here
     try
+        # set GLFW up for vsync
+        if framerate == :vsync
+            GLFW.SwapInterval(1)
+        elseif !(framerate isa Number)
+            error("Invalid framerate setting $framerate. Valid options are a number in seconds or :vsync.")
+        end
+
         while isopen(screen)
             t = time()
             pollevents(screen) # GLFW poll
@@ -9,11 +16,18 @@ function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
             make_context_current(screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
-            diff = framerate - (time() - t)
-            if diff > 0
-                sleep(diff)
-            else # if we don't sleep, we need to yield explicitely
+
+            # if we use vsync we don't do anything to target the next render time
+            # point, if we are too slow we'll drop frames, but we can never go too fast
+            if framerate == :vsync
                 yield()
+            else
+                diff = framerate - (time() - t)
+                if diff > 0
+                    sleep(diff)
+                else # if we don't sleep, we need to yield explicitely
+                    yield()
+                end
             end
         end
     catch e
