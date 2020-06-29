@@ -35,12 +35,15 @@ function create_shader(scene::Scene, plot::LineSegments)
     )
     uniforms = Dict{Symbol, Any}()
     for k in (:linewidth, :color)
-        attribute = lift(x-> convert_attribute(x, Key{k}(), key"scatter"()), plot[k])
+        attribute = lift(x-> convert_attribute(x, Key{k}(), key"lines"()), plot[k])
         if isscalar(attribute)
             uniforms[k] = attribute
             uniforms[Symbol("$(k)_start")] = attribute
             uniforms[Symbol("$(k)_end")] = attribute
         else
+            if attribute[] isa AbstractVector{<: Number} && haskey(plot, :colorrange)
+                attribute = lift(array2color, attribute, plot.colormap, plot.colorrange)
+            end
             per_instance[Symbol("$(k)_start")] = Buffer(lift(x-> x[startr[]], attribute))
             per_instance[Symbol("$(k)_end")] = Buffer(lift(x-> x[endr[]], attribute))
         end

@@ -15,9 +15,10 @@ using ShaderAbstractions: InstancedProgram
 import AbstractPlotting.FileIO
 using StaticArrays
 using GeometryBasics: decompose_uv
+import ImageMagick
 
 using FreeTypeAbstraction
-using AbstractPlotting: get_texture_atlas, glyph_uv_width!
+using AbstractPlotting: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
 using ImageTransformations
@@ -431,7 +432,7 @@ function session2image(sessionlike)
     picture_base64 = JSServe.evaljs_value(s, js"document.querySelector('canvas').toDataURL()")
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
-    return AbstractPlotting.ImageMagick.load_(bytes)
+    return ImageMagick.load_(bytes)
 end
 
 function AbstractPlotting.colorbuffer(screen::ThreeDisplay)
