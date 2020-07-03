@@ -64,5 +64,28 @@
         end
     end
 
+    @cell "Explicit frame rendering" [opengl, render_frame, meshscatter] begin
+        using ModernGL, GLMakie
+        using GLFW
+        set_window_config!(renderloop=(screen) -> nothing)
+        function update_loop(m, buff, screen)
+            for i = 1:20
+                GLFW.PollEvents()
+                buff .= rand.(Point3f0) .* 20f0
+                m[1] = buff
+                GLMakie.render_frame(screen)
+                GLFW.SwapBuffers(GLMakie.to_native(screen))
+                glFinish()
+            end
+        end
+        scene = meshscatter(rand(Point3f0, 10^4) .* 20f0)
+        screen = AbstractPlotting.backend_display(GLMakie.GLBackend(), scene)
+        meshplot = scene[end]
+        buff = rand(Point3f0, 10^4) .* 20f0;
+        update_loop(meshplot, buff, screen)
+        set_window_config!(renderloop=GLMakie.renderloop)
+        scene
+    end
+
 
 end

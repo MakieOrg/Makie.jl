@@ -210,13 +210,6 @@ end
 
 const GLOBAL_GL_SCREEN = Ref{Screen}()
 
-# will get overloaded later
-function renderloop end
-
-# TODO a global is not very nice, but it's the simplest way right now to swap out
-# the rendering loop
-const opengl_renderloop = Ref{Function}(renderloop)
-
 """
 Julia 1.0.3 doesn't have I:J, so we copy the implementation from 1.1 under a new name:
 """
@@ -269,7 +262,7 @@ end
 const gl_screens = GLFW.Window[]
 
 function Screen(;
-        resolution = (10, 10), visible = false, title = "Makie",
+        resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
         kw_args...
     )
     if !isempty(gl_screens)
@@ -280,24 +273,27 @@ function Screen(;
     end
     # Somehow this constant isn't wrapped by glfw
     GLFW_FOCUS_ON_SHOW = 0x0002000C
+    windowhints = [
+        (GLFW.SAMPLES,      0),
+        (GLFW.DEPTH_BITS,   0),
+
+        # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
+        # WITHOUT ANY ERROR -.-
+        (GLFW.ALPHA_BITS,   8),
+        (GLFW.RED_BITS,     8),
+        (GLFW.GREEN_BITS,   8),
+        (GLFW.BLUE_BITS,    8),
+
+        (GLFW.STENCIL_BITS, 0),
+        (GLFW.AUX_BUFFERS,  0),
+        (GLFW_FOCUS_ON_SHOW, WINDOW_CONFIG.focus_on_show[]),
+        (GLFW.DECORATED, WINDOW_CONFIG.decorated[]),
+        (GLFW.FLOATING, WINDOW_CONFIG.float[]),
+    ]
+
     window = GLFW.Window(
         name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
-        windowhints = [
-            (GLFW.SAMPLES,      0),
-            (GLFW.DEPTH_BITS,   0),
-
-            # SETTING THE ALPHA BIT IS REALLY IMPORTANT ON OSX, SINCE IT WILL JUST KEEP SHOWING A BLACK SCREEN
-            # WITHOUT ANY ERROR -.-
-            (GLFW.ALPHA_BITS,   8),
-            (GLFW.RED_BITS,     8),
-            (GLFW.GREEN_BITS,   8),
-            (GLFW.BLUE_BITS,    8),
-
-            (GLFW.STENCIL_BITS, 0),
-            (GLFW.AUX_BUFFERS,  0),
-            (GLFW_FOCUS_ON_SHOW, false)
-            # (GLFW.RESIZABLE, GL_TRUE)
-        ],
+        windowhints = windowhints,
         visible = false,
         focus = false,
         kw_args...
@@ -309,8 +305,6 @@ function Screen(;
     ShaderAbstractions.switch_context!(window)
     GLAbstraction.empty_shader_cache!()
     push!(gl_screens, window)
-
-    GLFW.SwapInterval(0)
 
     resize!(window, resolution...)
     fb = GLFramebuffer(resolution)
@@ -329,7 +323,7 @@ function Screen(;
         render_frame(screen)
         GLFW.SwapBuffers(window)
     end)
-    screen.rendertask[] = @async((opengl_renderloop[])(screen))
+    screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     # display window if visible!
     if visible
         GLFW.ShowWindow(window)
@@ -388,6 +382,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
     end
     return return SelectionID{Int}(0, 0)
 end
+
 function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     isopen(screen) || return SelectionID{Int}(0, 0)
     window_size = widths(screen)
