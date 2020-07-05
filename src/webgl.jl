@@ -12,6 +12,10 @@ struct JSBuffer{T} <: AbstractVector{T}
     length::Int
 end
 
+# we need to overload it for the Buffer resize to work
+# But resizing is a bit more complicated so cant be implemented here (needs the ThreeJS scene)
+Base.resize!(x::JSBuffer, len) = nothing
+
 JSServe.session(jsb::JSBuffer) = JSServe.session(getfield(jsb, :three))
 jsbuffer(x::JSBuffer) = getfield(x, :buffer)
 Base.size(x::JSBuffer) = (getfield(x, :length),)
@@ -29,6 +33,7 @@ end
 function Base.setindex!(x::JSBuffer{T}, value::T, index::Int) where T
     setindex!(x, [value], index:(index+1))
 end
+
 function Base.getindex(x::JSBuffer, idx::Int)
     # jlvalue(jsbuffer(x))[idx]
 end
@@ -53,9 +58,9 @@ function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
     jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
-    if vector isa Buffer
-        ShaderAbstractions.connect!(vector, buffer)
-    end
+    # if vector isa Buffer
+    #     ShaderAbstractions.connect!(vector, buffer)
+    # end
     return buffer
 end
 
@@ -317,6 +322,7 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
     js_vbo.setIndex(indices)
     js_vbo.instanceCount = length(ip.per_instance)
     # per instance data
+
     for (name, buff) in pairs(ip.per_instance)
         js_buff = JSInstanceBuffer(THREE, buff)
         js_vbo.setAttribute(name, js_buff)
@@ -332,7 +338,7 @@ function wgl_convert(scene, THREE, ip::InstancedProgram)
         ip.program.fragment_source,
         uniforms
     )
-    mesh = THREE.new.Mesh(js_vbo, material)
+    return THREE.new.Mesh(js_vbo, material)
 end
 
 function wgl_convert(scene, jsctx, program::Program)
