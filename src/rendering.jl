@@ -2,11 +2,11 @@
 function vsynced_renderloop(screen)
     while isopen(screen)
         pollevents(screen) # GLFW poll
+        screen.render_tick[] = nothing
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
             make_context_current(screen)
-            screen.render_tick[] = nothing
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
             yield()
@@ -19,11 +19,11 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
     while isopen(screen)
         t = time_ns()
         pollevents(screen) # GLFW poll
+        screen.render_tick[] = nothing
         if WINDOW_CONFIG.pause_rendering[]
             sleep(0.1)
         else
             make_context_current(screen)
-            screen.render_tick[] = nothing
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
             t_elapsed = (time_ns() - t) / 1e9
