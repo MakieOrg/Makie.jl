@@ -28,7 +28,7 @@
         x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
         scene = image(x, show_axis=false)
         # indexing will go straight to the GPU, while only transfering the changes
-        st = Stepper(sc, @replace_with_a_path)
+        st = Stepper(scene, @replace_with_a_path)
         x[1:10, 1:50] .= to_color(:red)
         step!(st)
         x[1:10, end] .= to_color(:green)
