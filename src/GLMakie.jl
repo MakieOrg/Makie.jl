@@ -74,4 +74,6 @@ function __init__()
     end
 end
 
+export set_window_config!
+
 end
