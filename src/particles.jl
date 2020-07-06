@@ -356,7 +356,7 @@ function resize_pogram(jsctx, program::InstancedProgram, mesh)
                 js_buff = JSInstanceBuffer(jsctx, buff)
                 js_vbo.setAttribute(name, js_buff)
             end
-            js_vbo.boundingSphere = THREE.new.Sphere()
+            js_vbo.boundingSphere = jsctx.new.Sphere()
             # don't use intersection / culling
             js_vbo.boundingSphere.radius = 10000000000000f0
             mesh.geometry = js_vbo
@@ -413,7 +413,7 @@ function resize_pogram(jsctx, program::Program, mesh)
             indices = GeometryBasics.faces(program.vertexarray)
             indices = reinterpret(UInt32, indices)
             js_vbo.setIndex(indices)
-            js_vbo.boundingSphere = THREE.new.Sphere()
+            js_vbo.boundingSphere = jsctx.new.Sphere()
             # don't use intersection / culling
             js_vbo.boundingSphere.radius = 10000000000000f0
             mesh.geometry = js_vbo
