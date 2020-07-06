@@ -277,3 +277,46 @@ end
         step!(st)
     end
 end
+
+@block JuliusKrumbiegel ["2d"] begin
+    @cell "Errorbars x y low high" [errorbars] begin
+        using Random
+        Random.seed!(2)
+
+        x = 1:10
+        y = sin.(x)
+        scene = scatter(x, y)
+        errorbars!(scene, x, y, rand(10) .+ 0.5, rand(10) .+ 0.5)
+        errorbars!(scene, x, y, rand(10) .* 0.3 .+ 0.1, rand(10) .* 0.3 .+ 0.1,
+            color = :red, direction = :x)
+        scene
+    end
+
+    @cell "Errorbars xy low high" [errorbars] begin
+        using Random
+        Random.seed!(2)
+
+        x = 1:10
+        y = sin.(x)
+        xy = Point2f0.(x, y)
+        scene = scatter(xy)
+        errorbars!(scene, xy, rand(10) .+ 0.5, rand(10) .+ 0.5)
+        errorbars!(scene, xy, rand(10) .* 0.3 .+ 0.1, rand(10) .* 0.3 .+ 0.1,
+            color = :red, direction = :x)
+        scene
+    end
+
+    @cell "Errorbars xy error" [errorbars] begin
+        using Random
+        Random.seed!(2)
+
+        x = 1:10
+        y = sin.(x)
+        xy = Point2f0.(x, y)
+        scene = scatter(xy)
+        errorbars!(scene, xy, rand(10) .+ 0.5)
+        errorbars!(scene, xy, rand(10) .* 0.3 .+ 0.1,
+            color = :red, direction = :x)
+        scene
+    end
+end
