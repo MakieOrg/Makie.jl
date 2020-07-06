@@ -277,3 +277,37 @@ end
         step!(st)
     end
 end
+
+
+@block JuliusKrumbiegel ["2d"] begin
+
+    @cell "Simple pie chart" [pie] begin
+         using AbstractPlotting.MakieLayout
+         scene, layout = layoutscene(resolution = (800, 800))
+         ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
+
+         pie!(ax, 1:5, color = 1:5)
+
+         scene
+    end
+
+    @cell "Hollow pie chart" [pie] begin
+         using AbstractPlotting.MakieLayout
+         scene, layout = layoutscene(resolution = (800, 800))
+         ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
+
+         pie!(ax, 1:5, color = 1:5, radius = 2, inner_radius = 1)
+
+         scene
+    end
+
+    @cell "Open pie chart" [pie] begin
+        using AbstractPlotting.MakieLayout
+        scene, layout = layoutscene(resolution = (800, 800))
+        ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
+
+        pie!(ax, 0.3:0.1:0.7)
+
+        scene
+    end
+end
