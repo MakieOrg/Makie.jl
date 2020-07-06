@@ -107,6 +107,7 @@ end
 function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Mesh)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
+    resize_pogram(jsctx, program, mesh)
     debug_shader("mesh", program)
     mesh.name = "Mesh"
     update_model!(mesh, plot)

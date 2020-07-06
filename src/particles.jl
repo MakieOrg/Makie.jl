@@ -92,15 +92,16 @@ function scatter_shader(scene::Scene, attributes)
     # Potentially per instance attributes
     per_instance_keys = (:offset, :rotations, :markersize, :color, :intensity, :uv_offset_width, :marker_offset)
     uniform_dict = Dict{Symbol, Any}()
+
     if haskey(attributes, :marker) && attributes[:marker][] isa Union{Vector{Char}, String}
         x = pop!(attributes, :marker)
         attributes[:uv_offset_width] = lift(x-> AbstractPlotting.glyph_uv_width!.(collect(x)), x)
         uniform_dict[:shape_type] = Cint(3)
     end
+
     per_instance = filter(attributes) do (k, v)
         k in per_instance_keys && !(isscalar(v[]))
     end
-
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, nothing))
     end
@@ -239,12 +240,19 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
         lift(getindex, gl_text, i)
     end
-    keys = (:color, :rotation)
-    signals = getindex.(plot.attributes, keys)
+    # Sigh, we also allow inplace mutation without triggering
+    # plot.rotation to update, so we need to update also on the string array (plot[1])
+    rotation = lift(plot[1], plot.rotation) do str, rotation
+        return to_rotation(rotation)
+    end
+    color = lift(plot[1], plot.color) do str, color
+        return to_color(color)
+    end
+
     return scatter_shader(scene, Dict(
         :shape_type => Observable(Cint(3)),
-        :color => signals[1],
-        :rotations => signals[2],
+        :color => color,
+        :rotations => rotation,
         :markersize => scale,
         :marker_offset => offset,
         :offset => positions,
@@ -258,6 +266,7 @@ end
 function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
+    resize_pogram(jsctx, program, mesh)
     mesh.name = string(objectid(plot))
     debug_shader("meshscatter", program.program)
     jsscene.add(mesh)
@@ -267,6 +276,7 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
     program = create_shader(scene, plot)
     debug_shader("text", program.program)
     mesh = wgl_convert(scene, jsctx, program)
+    resize_pogram(jsctx, program, mesh)
     mesh.name = string(objectid(plot))
     update_model!(mesh, plot)
     jsscene.add(mesh)
@@ -275,8 +285,114 @@ end
 function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
+    resize_pogram(jsctx, program, mesh)
     debug_shader("scatter", program.program)
     mesh.name = string(objectid(plot))
     update_model!(mesh, plot)
     jsscene.add(mesh)
+end
+
+
+function resize_pogram(jsctx, program::InstancedProgram, mesh)
+    real_size = Ref(length(program.per_instance))
+    buffers = [v for (k, v) in pairs(program.per_instance)]
+    resize = Observable(Set{Symbol}())
+    for (name, buffer) in pairs(program.per_instance)
+        if buffer isa Buffer
+            on(ShaderAbstractions.updater(buffer).update) do (f, args)
+                # update to replace the whole buffer!
+                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                    new_array = args[1]
+                    flat = flatten_buffer(new_array)
+                    len = length(new_array)
+                    if real_size[] >= length(new_array)
+                        evaljs(jsctx, js"""
+                            const geometry = $(mesh).geometry
+                            const jsb = geometry.attributes[$name]
+                            jsb.set($(flat), 0)
+                            jsb.needsUpdate = true
+                            geometry.instanceCount = $(len)
+                        """)
+                    else
+                        push!(resize[], name)
+                        if (length(resize[]) == length(buffers)) || all(buffers) do buff
+                                    length(new_array) == length(buff)
+                                end
+                            real_size[] = length(buffer)
+                            resize[] = resize[]
+                            empty!(resize[])
+                        end
+                    end
+                end
+            end
+        end
+    end
+    on(resize) do new_data
+        JSServe.fuse(jsctx) do
+            js_vbo = jsctx.new.InstancedBufferGeometry()
+            for (name, buff) in pairs(program.program.vertexarray)
+                js_buff = JSBuffer(jsctx, buff)
+                js_vbo.setAttribute(name, js_buff)
+            end
+            indices = GeometryBasics.faces(program.program.vertexarray)
+            indices = reinterpret(UInt32, indices)
+            js_vbo.setIndex(indices)
+            js_vbo.instanceCount = length(program.per_instance)
+            for (name, buff) in pairs(program.per_instance)
+                js_buff = JSInstanceBuffer(jsctx, buff)
+                js_vbo.setAttribute(name, js_buff)
+            end
+            mesh.geometry = js_vbo
+            mesh.needsUpdate = true
+        end
+    end
+end
+
+
+function resize_pogram(jsctx, program::Program, mesh)
+    real_size = Ref(length(program.vertexarray))
+    buffers = [v for (k, v) in pairs(program.vertexarray)]
+    resize = Observable(Set{Symbol}())
+    for (name, buffer) in pairs(program.vertexarray)
+        if buffer isa Buffer
+            on(ShaderAbstractions.updater(buffer).update) do (f, args)
+                # update to replace the whole buffer!
+                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                    new_array = args[1]
+                    flat = flatten_buffer(new_array)
+                    len = length(new_array)
+                    if real_size[] >= length(new_array)
+                        evaljs(jsctx, js"""
+                            const geometry = $(mesh).geometry
+                            const jsb = geometry.attributes[$name]
+                            jsb.set($(flat), 0)
+                            jsb.needsUpdate = true
+                            geometry.instanceCount = $(len)
+                        """)
+                    else
+                        push!(resize[], name)
+                        if length(resize[]) == length(buffers)
+                            real_size[] = length(buffer)
+                            resize[] = resize[]
+                            empty!(resize[])
+                        end
+                    end
+                end
+            end
+        end
+    end
+    on(resize) do new_data
+        JSServe.fuse(jsctx) do
+            js_vbo = jsctx.new.BufferGeometry()
+            for (name, buff) in pairs(program.vertexarray)
+                js_buff = JSBuffer(jsctx, buff)
+                js_vbo.setAttribute(name, js_buff)
+            end
+            indices = GeometryBasics.faces(program.vertexarray)
+            indices = reinterpret(UInt32, indices)
+            js_vbo.setIndex(indices)
+            mesh.geometry = js_vbo
+            mesh.needsUpdate = true
+        end
+    end
 end

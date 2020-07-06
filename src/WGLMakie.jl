@@ -150,8 +150,10 @@ function add_scene!(three, scene::Scene)
                 var y = area[1];
                 var w = area[2];
                 var h = area[3];
-                camera.aspect = w/h;
-                camera.updateProjectionMatrix();
+                if(camera.matrixAutoUpdate){
+                    camera.aspect = w/h;
+                    jscam.updateProjectionMatrix()
+                }
                 $(renderer).setViewport(x, y, w, h);
                 $(renderer).setScissor(x, y, w, h);
                 $(renderer).setScissorTest(true);

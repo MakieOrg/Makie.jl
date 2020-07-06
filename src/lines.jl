@@ -67,6 +67,7 @@ end
 function draw_js(jsctx, jsscene, mscene::Scene, plot::LineSegments)
     program = create_shader(mscene, plot)
     mesh = wgl_convert(mscene, jsctx, program)
+    resize_pogram(jsctx, program, mesh)
     update_model!(mesh, plot)
     debug_shader("linesegments", program.program)
     mesh.name = string(objectid(plot))
