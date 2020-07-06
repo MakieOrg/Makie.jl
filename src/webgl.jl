@@ -69,9 +69,9 @@ function JSBuffer(three, vector::AbstractVector{T}) where T
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
     jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
-    if vector isa Buffer
-        ShaderAbstractions.connect!(vector, buffer)
-    end
+    # if vector isa Buffer
+    #     ShaderAbstractions.connect!(vector, buffer)
+    # end
     return buffer
 end
 

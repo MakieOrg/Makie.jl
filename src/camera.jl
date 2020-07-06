@@ -23,13 +23,18 @@ end
 function add_camera!(jsctx, js_scene, scene, cam, cam_controls::PixelCamera)
     area = pixelarea(scene)
     mini, maxi = Vec2f0(0), widths(area[])
-    jscam = jsctx.THREE.new.OrthographicCamera(
+    jscam = jsctx.new.OrthographicCamera(
         mini[1], maxi[1], maxi[2], mini[2], -10_000, 10_000
     )
-    jscam.name = "camera"
     js_scene.add(jscam)
-    on(area) do area
-        update_ortho(jscam, AbstractPlotting.zerorect(area))
+    jscam.name = "camera"
+    # For MakieLayout, we need to work with a PixelCamera that updates the
+    # projectionmatrix directly -.-
+    jscam.matrixAutoUpdate = false
+    jscam.frustumCulled = false
+    jscam.projectionMatrix.set((cam.projection[]')...)
+    onany(area, cam.projection) do area, proj
+        jscam.projectionMatrix.set((proj')...)
     end
     return
 end
