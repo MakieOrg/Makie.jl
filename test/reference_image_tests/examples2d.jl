@@ -306,7 +306,7 @@ end
         scene, layout = layoutscene(resolution = (800, 800))
         ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
 
-        pie!(ax, 0.3:0.1:0.7)
+        pie!(ax, 0.1:0.1:1.0, normalize = false)
 
         scene
     end
