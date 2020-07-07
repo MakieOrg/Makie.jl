@@ -1,6 +1,6 @@
 @recipe(Errorbars) do scene
     Theme(
-        whiskerwidth = 5,
+        whiskerwidth = 10,
         color = :black,
         linewidth = 1,
         direction = :y

@@ -70,6 +70,7 @@ include("camera/camera3d.jl")
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
 include("basic_recipes/multiple.jl")
+include("basic_recipes/errorbars.jl")
 # layouting of plots
 include("layouting/transformation.jl")
 include("layouting/data_limits.jl")
