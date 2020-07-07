@@ -200,13 +200,13 @@ $(ATTRIBUTES)
 @recipe(Scatter, positions) do scene
     Attributes(;
         default_theme(scene)...,
-        color = :black,
+        color = :gray65,
         colormap = :viridis,
         marker = Circle,
-        markersize = 0.1,
+        markersize = 10,
 
-        strokecolor = RGBA(0, 0, 0, 0),
-        strokewidth = 0.0,
+        strokecolor = :black,
+        strokewidth = 1.0,
         glowcolor = RGBA(0, 0, 0, 0),
         glowwidth = 0.0,
 
@@ -215,7 +215,7 @@ $(ATTRIBUTES)
         transform_marker = false, # Applies the plots transformation to marker
         uv_offset_width = Vec4f0(0),
         distancefield = nothing,
-        markerspace = automatic,
+        markerspace = Pixel,
         fxaa = false,
     )
 end
