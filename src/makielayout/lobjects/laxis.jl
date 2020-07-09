@@ -94,32 +94,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         camera(scene).projectionview[] = projection
     end
 
-    latest_tlimits = Ref(limits[])
-    isupdating = Ref(false)
-    missedupdate = Ref(false)
-
     on(attrs.targetlimits) do tlims
-        latest_tlimits[] = tlims
-
-        if !isupdating[]
-            @async begin
-                isupdating[] = true
-                while true
-                    missedupdate[] = false
-                    update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, latest_tlimits[])
-                    if !missedupdate[]
-                        # the limit updating happens in async so there could be
-                        # a new set of limits once that's done, in that case just
-                        # do another update
-                        break
-                    end
-                end
-                isupdating[] = false
-            end
-        else
-            # this means that the limits will be updated once more
-            missedupdate[] = true
-        end
+        update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
     end
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
