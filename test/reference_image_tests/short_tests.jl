@@ -33,18 +33,18 @@
         scatter!(Rect(0, 0, 20, 20), color = :red, markersize = 2)
     end
 
-    @cell scatter(rand(10), color = rand(10), colormap = :Spectral)
+    @cell scatter(RNG.rand(10), color = RNG.rand(10), colormap = :Spectral)
 
     @cell begin
         lines(Rect(0, 0, 1, 1), linewidth = 4, scale_plot = false)
         scatter!([Point2f0(0.5, 0.5)], markersize = 1, marker = 'I', scale_plot = false)
     end
 
-    @cell lines(rand(10), rand(10), color = rand(10), linewidth = 10)
-    @cell lines(rand(10), rand(10), color = rand(RGBAf0, 10), linewidth = 10)
-    @cell scatter(0..1, rand(10), markersize = rand(10) .* 0.1)
-    @cell scatter(LinRange(0, 1, 10), rand(10))
-    @cell scatter(rand(10), LinRange(0, 1, 10))
+    @cell lines(RNG.rand(10), RNG.rand(10), color = RNG.rand(10), linewidth = 10)
+    @cell lines(RNG.rand(10), RNG.rand(10), color = RNG.rand(RGBAf0, 10), linewidth = 10)
+    @cell scatter(0..1, RNG.rand(10), markersize = RNG.rand(10) .* 0.1)
+    @cell scatter(LinRange(0, 1, 10), RNG.rand(10))
+    @cell scatter(RNG.rand(10), LinRange(0, 1, 10))
 
 
     @cell begin
@@ -67,19 +67,19 @@
         scatter(pos, rotations = -angles , marker = '▲', scale_plot = false)
         scatter!(pos, markersize = 0.02, color = :red, scale_plot = false)
     end
-    @cell heatmap(rand(50, 50), colormap = :RdBu, alpha = 0.2)
+    @cell heatmap(RNG.rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
     @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
 
     # themes
-    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.1)
-    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10), markersize = 0.01)
-    @cell scatter!(Scene(), Theme(color = :green), rand(10), rand(10))
-    @cell scatter(Theme(color = :green), rand(10), rand(10))
-    @cell scatter(Theme(color = :green), rand(10), rand(10), markersize = 0.05)
+    @cell scatter(Theme(color = :green), RNG.rand(10), RNG.rand(10), markersize = 0.1)
+    @cell scatter!(Scene(), Theme(color = :green), RNG.rand(10), RNG.rand(10), markersize = 0.01)
+    @cell scatter!(Scene(), Theme(color = :green), RNG.rand(10), RNG.rand(10))
+    @cell scatter(Theme(color = :green), RNG.rand(10), RNG.rand(10))
+    @cell scatter(Theme(color = :green), RNG.rand(10), RNG.rand(10), markersize = 0.05)
 
-    @cell contour(rand(10, 100))
-    @cell contour(rand(100, 10))
+    @cell contour(RNG.rand(10, 100))
+    @cell contour(RNG.rand(100, 10))
     @cell contour(randn(100, 90), levels = 3)
 
     @cell contour(randn(100, 90), levels = [0.1, 0.5, 0.8])
@@ -87,7 +87,7 @@
     @cell contour(randn(33, 30), levels = [0.1, 0.5, 0.9], color = [:black, :green, (:blue, 0.4)], linewidth = 2)
     @cell contour(randn(33, 30), levels = [0.1, 0.5, 0.9], colormap = :Spectral)
     @cell contour(
-        rand(33, 30) .* 6 .- 3, levels = [-2.5, 0.4, 0.5, 0.6, 2.5],
+        RNG.rand(33, 30) .* 6 .- 3, levels = [-2.5, 0.4, 0.5, 0.6, 2.5],
         colormap = [(:black, 0.2), :red, :blue, :green, (:black, 0.2)],
         colorrange = (0.2, 0.8)
     )
@@ -114,18 +114,18 @@ end
     end
 
 
-    @cell meshscatter(rand(10), rand(10), rand(10), color = rand(10))
-    @cell meshscatter(rand(10), rand(10), rand(10), color = rand(RGBAf0, 10))
+    @cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color = RNG.rand(10))
+    @cell meshscatter(RNG.rand(10), RNG.rand(10), RNG.rand(10), color = RNG.rand(RGBAf0, 10))
 
 
     @cell begin
         using GeometryBasics
         s1 = uv_mesh(Sphere(Point3f0(0), 1f0))
-        mesh(uv_mesh(Sphere(Point3f0(0), 1f0)), color = rand(50, 50))
+        mesh(uv_mesh(Sphere(Point3f0(0), 1f0)), color = RNG.rand(50, 50))
         # ugh, bug In GeometryTypes for UVs of non unit spheres.
         s2 = uv_mesh(Sphere(Point3f0(0), 1f0))
         s2.position .= s2.position .+ (Point3f0(0, 2, 0),)
-        mesh!(s2, color = rand(RGBAf0, 50, 50))
+        mesh!(s2, color = RNG.rand(RGBAf0, 50, 50))
     end
 
     @cell begin
