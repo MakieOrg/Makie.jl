@@ -2,7 +2,7 @@
 
 
     @cell "align" [scatter, text, align, "2d"] begin
-        scene = scatter(rand(10), color=:red)
+        scene = scatter(RNG.rand(10), color=:red)
         text!(scene,"adding text",textsize = 0.6, align = (:center, :center))
     end
 
@@ -15,7 +15,7 @@
 
     @cell "font" [text, scatter, font, "2d"] begin
         scene = Scene()
-        scatter!(scene, rand(10), color=:red)
+        scatter!(scene, RNG.rand(10), color=:red)
         text!(scene,"adding text",textsize = 0.6, align = (:center, :center), font = "Blackchancery")
     end
 
@@ -39,7 +39,7 @@
 
     @cell "position" [scatter, text, position, "2d"] begin
         scene = Scene()
-        scatter!(scene, rand(10), color=:red)
+        scatter!(scene, RNG.rand(10), color=:red)
         text!(scene,"adding text",textsize = 0.6, position = (5.0, 1.1))
     end
 

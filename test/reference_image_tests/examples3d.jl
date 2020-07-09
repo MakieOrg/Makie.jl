@@ -52,7 +52,7 @@
     end
 
     @cell "Volume Function" [volume] begin
-        volume(rand(32, 32, 32), algorithm = :mip)
+        volume(RNG.rand(32, 32, 32), algorithm = :mip)
     end
     @cell "Textured Mesh" [mesh, texture, cat] begin
         using FileIO
@@ -115,7 +115,7 @@
         surf_func(i) = [Float32(xy_data(x*i, y*i)) for x = r, y = r]
         surface(
             r, r, surf_func(10),
-            color = rand(RGBAf0, 124, 124)
+            color = RNG.rand(RGBAf0, 124, 124)
         )
     end
     @cell "Line Function" ["2d", lines] begin
@@ -129,17 +129,17 @@
         using GeometryBasics
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
-        colS = [RGBAf0(rand(), rand(), rand(), 1.0) for i = 1:length(positions)]
-        sizesS = [rand(Point3f0) .* 0.05f0 for i = 1:length(positions)]
+        colS = [RGBAf0(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:length(positions)]
+        sizesS = [RNG.rand(Point3f0) .* 0.05f0 for i = 1:length(positions)]
         meshscatter(positions, color = colS, markersize = sizesS)
     end
 
     @cell "scatter" ["2d", scatter] begin
-        scatter(rand(20), rand(20), markersize = 0.03)
+        scatter(RNG.rand(20), RNG.rand(20), markersize = 0.03)
     end
 
     @cell "Marker sizes" ["2d", scatter] begin
-        scatter(rand(20), rand(20), markersize = rand(20)./20, color = to_colormap(:Spectral, 20))
+        scatter(RNG.rand(20), RNG.rand(20), markersize = RNG.rand(20)./20, color = to_colormap(:Spectral, 20))
     end
 
 
@@ -201,8 +201,8 @@
         end
         n = 100^2 #number of points to generate
         r = ones(n);
-        θ = acos.(1 .- 2 .* rand(n))
-        φ = 2π * rand(n)
+        θ = acos.(1 .- 2 .* RNG.rand(n))
+        φ = 2π * RNG.rand(n)
         pts = SphericalToCartesian(r,θ,φ)
         arrows(pts, (normalize.(pts) .* 0.1f0), arrowsize = 0.02, linecolor = :green, arrowcolor = :darkblue)
     end
@@ -214,7 +214,7 @@
         x = [cospi(φ)*sinpi(θ) for θ in θ, φ in φ]
         y = [sinpi(φ)*sinpi(θ) for θ in θ, φ in φ]
         z = [cospi(θ) for θ in θ, φ in φ]
-        rand([-1f0, 1f0], 3)
+        RNG.rand([-1f0, 1f0], 3)
         pts = vec(Point3f0.(x, y, z))
         surface(x, y, z, color = AbstractPlotting.logo(), transparency = true)
     end
@@ -265,7 +265,7 @@
         connectivity = [faces[i][j] for i = 1:length(faces), j = 1:3]
         mesh(
             coordinates, connectivity,
-            color = rand(length(vertices))
+            color = RNG.rand(length(vertices))
         )
     end
 
@@ -332,7 +332,7 @@
         lengthsC = sqrt.(sum((pts[edges[:,1], :] .- pts[edges[:, 2], :]) .^ 2, dims = 2))
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         sizesC = [Vec3f0(1) for i = 1:ne]
-        colorsp = [RGBA{Float32}(rand(), rand(), rand(), 1.0) for i = 1:np]
+        colorsp = [RGBA{Float32}(RNG.rand(), RNG.rand(), RNG.rand(), 1.0) for i = 1:np]
         colorsC = [(colorsp[edges[i, 1]] .+ colorsp[edges[i, 2]]) / 2.0 for i = 1:ne]
         sizesC = [Vec3f0(radius, radius, lengthsC[i]) for i = 1:ne]
         Qlist = zeros(ne, 4)
@@ -366,7 +366,7 @@
     @cell "Connected Sphere" [lines, views, scatter, axis] begin
         large_sphere = Sphere(Point3f0(0), 1f0)
         positions = decompose(Point3f0, large_sphere)
-        linepos = view(positions, rand(1:length(positions), 1000))
+        linepos = view(positions, RNG.rand(1:length(positions), 1000))
         scene = lines(linepos, linewidth = 0.1, color = :black, transparency = true)
         scatter!(
             scene, positions, markersize = 0.05,
@@ -378,8 +378,8 @@
     @cell "image scatter" [image, scatter] begin
         using LinearAlgebra
         scatter(
-            1:10, 1:10, rand(10, 10) .* 10,
-            rotations = normalize.(rand(Quaternionf0, 10*10)),
+            1:10, 1:10, RNG.rand(10, 10) .* 10,
+            rotations = normalize.(RNG.rand(Quaternionf0, 10*10)),
             markersize = 1,
             # can also be an array of images for each point
             # need to be the same size for best performance, though
@@ -434,9 +434,9 @@
         scatter!(
             scene,
             map(i-> (randn(Point3f0) .- 0.5) .* 10, 1:stars),
-            glowwidth = 1, glowcolor = (:white, 0.1), color = rand(stars),
+            glowwidth = 1, glowcolor = (:white, 0.1), color = RNG.rand(stars),
             colormap = [(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)],
-            markersize = rand(range(0.0001, stop = 0.05, length = 100), stars),
+            markersize = RNG.rand(range(0.0001, stop = 0.05, length = 100), stars),
             show_axis = false, transparency = true
         )
         update_cam!(scene, FRect3D(Vec3f0(-5), Vec3f0(10)))

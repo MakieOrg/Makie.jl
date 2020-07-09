@@ -23,8 +23,8 @@ function Base.show(io::IO, q::Quaternion)
     print(io, q[4], pm(q[1]), "im", pm(q[2]), "jm", pm(q[3]), "km")
 end
 
-Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
-Random.rand(mt::MersenneTwister, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
+Random.rand(mt::AbstractRNG, ::Random.SamplerType{Quaternion}) = rand(mt, Quaternion{Float64})
+Random.rand(mt::AbstractRNG, ::Random.SamplerType{Quaternion{T}}) where T = Quaternion(rand(mt, T), rand(mt, T), rand(mt, T), 1.0)
 
 Quaternion{T}(x1, x2, x3, s) where T = Quaternion{T}((x1, x2, x3, s))
 Base.convert(T::Type{<: Quaternion}, x::NTuple{4, Any}) = T(x)

@@ -1,10 +1,10 @@
 @block SimonDanisch [layout] begin
 
     @cell "Layouting" [scatter, lines, surface, heatmap, vbox] begin
-        p1 = scatter(rand(10), markersize = 1)
-        p2 = lines(rand(10), rand(10))
-        p3 = surface(0..1, 0..1, rand(100, 100))
-        p4 = heatmap(rand(100, 100))
+        p1 = scatter(RNG.rand(10), markersize = 1)
+        p2 = lines(RNG.rand(10), RNG.rand(10))
+        p3 = surface(0..1, 0..1, RNG.rand(100, 100))
+        p4 = heatmap(RNG.rand(100, 100))
         x = 0:0.1:10
         p5 = lines(0:0.1:10, sin.(x))
         pscene = vbox(

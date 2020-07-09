@@ -24,12 +24,12 @@
         scene = Scene(resolution = (500, 500))
         x = map([:dot, :dash, :dashdot], [2, 3, 4]) do ls, lw
             linesegments!(
-                range(1, stop = 5, length = 100), rand(100), rand(100),
+                range(1, stop = 5, length = 100), RNG.rand(100), RNG.rand(100),
                 linestyle = ls, linewidth = lw,
-                color = rand(RGBAf0)
+                color = RNG.rand(RGBAf0)
             )[end]
         end
-        x = [x..., scatter!(range(1, stop=5, length=100), rand(100), rand(100))[end]]
+        x = [x..., scatter!(range(1, stop=5, length=100), RNG.rand(100), RNG.rand(100))[end]]
         center!(scene)
         ls = AbstractPlotting.legend(x, ["attribute $i" for i in 1:4], camera = campixel!, raw = true)
         l = ls[end]
