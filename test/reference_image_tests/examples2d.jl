@@ -137,7 +137,7 @@
     @cell "Hbox" [lines, scatter, hbox] begin
         t = range(-122277.9, stop=-14798.0, length=29542)
         x = -42 .- randn(length(t))
-        sc1 = scatter(t, x, color=:black, markersize=sqrt(length(t)/20))
+        sc1 = scatter(t, x, color=:black, markersize=1.0)
         sc2 = lines(t[1:end-1], diff(x), color = :blue)
         hbox(sc2, sc1)
     end

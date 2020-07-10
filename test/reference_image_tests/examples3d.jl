@@ -445,8 +445,8 @@
     end
 
     @cell "Unicode Marker" [scatter, axis, marker] begin
-        scene = Scene(@resolution)
-        scatter!(scene, Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross])
+        scatter(Point3f0[(1,0,0), (0,1,0), (0,0,1)], marker = [:x, :circle, :cross],
+                markersize=100)
     end
 
     @cell "Merged color Mesh" [mesh, color] begin

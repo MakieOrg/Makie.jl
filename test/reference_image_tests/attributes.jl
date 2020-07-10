@@ -54,8 +54,8 @@
 
     @cell "visible" [scatter, visible, "2d"] begin
         vbox(
-            scatter(randn(20), color = to_colormap(:deep, 20), markersize = 1, visible = true),
-            scatter(randn(20), color = to_colormap(:deep, 20), markersize = 1, visible = false)
+            scatter(randn(20), color = to_colormap(:deep, 20), markersize = 10, visible = true),
+            scatter(randn(20), color = to_colormap(:deep, 20), markersize = 10, visible = false)
         )
     end
 end
