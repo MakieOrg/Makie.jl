@@ -124,13 +124,32 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
     return x
 end
 
+_indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
+
 function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
     d = Dict()
-    for p in pairs(attr.attributes)
-        d[p.first] = to_value(p.second)
-    end
-    show(IOContext(io, :limit => false), MIME"text/plain"(), d)
+    print(io, """Attributes with $(length(attr)) $(length(attr) != 1 ? "entries" : "entry")""")
 
+    if length(attr) < 1
+        return
+    end
+
+    print(io, ":")
+
+    ks = sort(collect(keys(attr)), by = lowercase ∘ String)
+    maxlength = maximum(length ∘ String, ks)
+
+    for k in ks
+        print(io, "\n  ")
+        print(io, k)
+        print(io, " => ")
+        v = to_value(attr[k])
+        if v isa Attributes
+            print(io, _indent_attrs(repr(v), 2))
+        else
+            print(io, to_value(attr[k]))
+        end
+    end
 end
 
 Base.show(io::IO, attr::Attributes) = show(io, MIME"text/plain"(), attr)
