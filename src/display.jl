@@ -137,43 +137,32 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
             end
         end
     end
-    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
-    println(io, "events:")
-    for field in fieldnames(Events)
-        println(io, "    ", field, ": ", to_value(getfield(scene.events, field)))
-    end
-    println(io, "plots:")
-    for plot in scene.plots
-        println(io, "   *", typeof(plot))
-    end
-    print(io, "subscenes:")
-    for subscene in scene.children
-        print(io, "\n   *scene($(size(subscene, 1))px, $(size(subscene, 2))px)")
-    end
+    
+    print(io, scene)
     return
 end
 
 function Base.show(io::IO, plot::Combined)
-    println(io, typeof(plot))
-    println(io, "plots:")
-    for p in plot.plots
-        println(io, "   *", typeof(p))
-    end
-    print(io, "attributes:")
-    for (k, v) in theme(plot)
-        print(io, "\n  $k : $(typeof(to_value(v)))")
-    end
+    print(io, typeof(plot))
 end
 
 function Base.show(io::IO, plot::Atomic)
-    println(io, typeof(plot))
-    print(io, "attributes:")
-    for (k, v) in theme(plot)
-        print(io, "\n  $k : $(typeof(to_value(v)))")
+    print(io, typeof(plot))
+end
+
+function Base.show(io::IO, scene::Scene)
+    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
+    println(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots)):")
+    for (i, plot) in enumerate(scene.plots)
+        println(io, "    $(i == length(scene.plots) ? '└' : '├') ", plot)
+    end
+    println(io, "  $(length(scene.children)) Child Scene$(_plural_s(scene.children)):")
+    for (i, subscene) in enumerate(scene.children)
+        println(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
     end
 end
 
-
+_plural_s(x) = length(x) > 1 ? "s" : ""
 
 """
     Stepper(scene, path; format = :jpg)
