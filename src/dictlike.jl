@@ -127,6 +127,9 @@ end
 _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
 
 function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
+
+    io = IOContext(io, :compact => true)
+    
     d = Dict()
     print(io, """Attributes with $(length(attr)) $(length(attr) != 1 ? "entries" : "entry")""")
 
