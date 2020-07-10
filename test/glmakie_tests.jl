@@ -16,10 +16,6 @@ examples = MakieGallery.record_examples(test_record_path);
 #
 # # Download test images manually, so we can specify the folder
 # # TODO, refactor makiegallery
-path = MakieGallery.download_reference("v0.6.1")
+path = MakieGallery.download_reference("v0.6.2")
 
 MakieGallery.run_comparison(test_record_path, tested_diff_path, joinpath(dirname(path), "test_recordings"))
-MakieGallery.gallery_from_recordings(test_record_path, joinpath(test_record_path, "index.html"))
-
-
-linesegments(FRect2D(0, 0, 1, 1))
