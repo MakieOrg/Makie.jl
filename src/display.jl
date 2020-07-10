@@ -152,13 +152,25 @@ end
 
 function Base.show(io::IO, scene::Scene)
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
-    println(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots)):")
-    for (i, plot) in enumerate(scene.plots)
-        println(io, "    $(i == length(scene.plots) ? '└' : '├') ", plot)
+
+    print(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots))")
+
+    if length(scene.plots) > 0
+        print(io, ":")
+        for (i, plot) in enumerate(scene.plots)
+            print(io, "\n")
+            print(io, "    $(i == length(scene.plots) ? '└' : '├') ", plot)
+        end
     end
-    println(io, "  $(length(scene.children)) Child Scene$(_plural_s(scene.children)):")
-    for (i, subscene) in enumerate(scene.children)
-        println(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
+
+    print(io, "\n  $(length(scene.children)) Child Scene$(_plural_s(scene.children))")
+    
+    if length(scene.children) > 0
+        print(io, ":")
+        for (i, subscene) in enumerate(scene.children)
+            print(io, "\n")
+            print(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
+        end
     end
 end
 
