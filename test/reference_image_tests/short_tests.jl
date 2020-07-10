@@ -64,9 +64,10 @@
     @cell begin
         angles = range(0, stop = 2pi, length = 20)
         pos = Point2f0.(sin.(angles), cos.(angles))
-        scatter(pos, rotations = -angles , marker = '▲', scale_plot = false)
-        scatter!(pos, markersize = 0.02, color = :red, scale_plot = false)
+        scatter(pos, markersize = 0.2, markerspace=SceneSpace, rotations = -angles , marker = '▲', scale_plot = false)
+        scatter!(pos, markersize = 5, color = :red, scale_plot = false)
     end
+    
     @cell heatmap(RNG.rand(50, 50), colormap = :RdBu, alpha = 0.2)
 
     @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth = 20)
