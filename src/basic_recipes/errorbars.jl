@@ -3,7 +3,8 @@
         whiskerwidth = 10,
         color = :black,
         linewidth = 1,
-        direction = :y
+        direction = :y,
+        visible = theme(scene, :visible)
     )
 end
 
@@ -29,7 +30,7 @@ f_if(condition, f, arg) = condition ? f(arg) : arg
 
 function _plot_errorbars!(plot, xys, low, high)
 
-    @extract plot (whiskerwidth, color, linewidth, direction)
+    @extract plot (whiskerwidth, color, linewidth, direction, visible)
 
     is_in_y_direction = lift(direction) do dir
         if dir == :y
@@ -65,8 +66,8 @@ function _plot_errorbars!(plot, xys, low, high)
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
 
-    linesegments!(plot, linesegpairs, color = color, linewidth = linewidth)
-    linesegments!(plot, whiskers, color = color, linewidth = linewidth)
+    linesegments!(plot, linesegpairs, color = color, linewidth = linewidth, visible = visible)
+    linesegments!(plot, whiskers, color = color, linewidth = linewidth, visible = visible)
     plot
 end
 
