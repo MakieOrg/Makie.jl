@@ -162,7 +162,7 @@ function Base.show(io::IO, scene::Scene)
     end
 end
 
-_plural_s(x) = length(x) > 1 ? "s" : ""
+_plural_s(x) = length(x) != 1 ? "s" : ""
 
 """
     Stepper(scene, path; format = :jpg)
