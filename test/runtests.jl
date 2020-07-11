@@ -11,11 +11,7 @@ abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "t
 abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
 # Add GLMakie specific tests
 push!(abstractplotting_tests, joinpath(@__DIR__, "glmakie_tests.jl"))
-
 database = MakieGallery.load_database(abstractplotting_tests)
-filter!(database) do x
-    x.title == "Sampler type"
-end
 
 examples = MakieGallery.record_examples(test_record_path)
 @test length(examples) == length(database)
