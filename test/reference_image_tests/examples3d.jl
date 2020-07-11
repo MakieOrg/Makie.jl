@@ -320,7 +320,7 @@
         positions = decompose(Point3f0, large_sphere, 30)
         np = length(positions)
         pts = [positions[k][l] for k = 1:length(positions), l = 1:3]
-        pts = vcat(pts, 1.1 .* pts + randn(size(pts)) / perturbfactor) # light position influence ?
+        pts = vcat(pts, 1.1 .* pts + RNG.randn(size(pts)) / perturbfactor) # light position influence ?
         edges = hcat(collect(1:np), collect(1:np) .+ np)
         ne = size(edges, 1); np = size(pts, 1)
         cylinder = Cylinder(Point3f0(0), Point3f0(0, 0, 1.0), 1f0)
@@ -433,7 +433,7 @@
         scene = Scene(backgroundcolor = :black)
         scatter!(
             scene,
-            map(i-> (randn(Point3f0) .- 0.5) .* 10, 1:stars),
+            map(i-> (RNG.randn(Point3f0) .- 0.5) .* 10, 1:stars),
             glowwidth = 1, glowcolor = (:white, 0.1), color = RNG.rand(stars),
             colormap = [(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)],
             markersize = RNG.rand(range(0.0001, stop = 0.05, length = 100), stars),
@@ -586,7 +586,7 @@ end
 
         function addparticle!(particles, colors, nparticles)
             nparticles[] = nparticles[] + 1
-            particles[][nparticles[]] = normalize(randn(Point3f0))
+            particles[][nparticles[]] = normalize(RNG.randn(Point3f0))
             colors[][nparticles[]] = to_color(:green)
             particles[] = particles[]
             colors[] = colors[]

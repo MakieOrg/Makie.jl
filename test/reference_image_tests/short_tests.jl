@@ -81,12 +81,12 @@
 
     @cell contour(RNG.rand(10, 100))
     @cell contour(RNG.rand(100, 10))
-    @cell contour(randn(100, 90), levels = 3)
+    @cell contour(RNG.randn(100, 90), levels = 3)
 
-    @cell contour(randn(100, 90), levels = [0.1, 0.5, 0.8])
-    @cell contour(randn(100, 90), levels = [0.1, 0.5, 0.8], color = :black)
-    @cell contour(randn(33, 30), levels = [0.1, 0.5, 0.9], color = [:black, :green, (:blue, 0.4)], linewidth = 2)
-    @cell contour(randn(33, 30), levels = [0.1, 0.5, 0.9], colormap = :Spectral)
+    @cell contour(RNG.randn(100, 90), levels = [0.1, 0.5, 0.8])
+    @cell contour(RNG.randn(100, 90), levels = [0.1, 0.5, 0.8], color = :black)
+    @cell contour(RNG.randn(33, 30), levels = [0.1, 0.5, 0.9], color = [:black, :green, (:blue, 0.4)], linewidth = 2)
+    @cell contour(RNG.randn(33, 30), levels = [0.1, 0.5, 0.9], colormap = :Spectral)
     @cell contour(
         RNG.rand(33, 30) .* 6 .- 3, levels = [-2.5, 0.4, 0.5, 0.6, 2.5],
         colormap = [(:black, 0.2), :red, :blue, :green, (:black, 0.2)],

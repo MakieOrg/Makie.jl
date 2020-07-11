@@ -20,7 +20,7 @@
     end
 
     @cell "glowcolor, glowwidth" [scatter, glowcolor, glowwidth, "2d"] begin
-        scatter(randn(10),color=:blue, glowcolor = :orange, glowwidth = 10)
+        scatter(RNG.randn(10),color=:blue, glowcolor = :orange, glowwidth = 10)
     end
 
     @cell "isorange, isovalue" [volume, algorithm, isorange, isovalue] begin
@@ -54,8 +54,8 @@
 
     @cell "visible" [scatter, visible, "2d"] begin
         vbox(
-            scatter(randn(20), color = to_colormap(:deep, 20), markersize = 10, visible = true),
-            scatter(randn(20), color = to_colormap(:deep, 20), markersize = 10, visible = false)
+            scatter(RNG.randn(20), color = to_colormap(:deep, 20), markersize = 10, visible = true),
+            scatter(RNG.randn(20), color = to_colormap(:deep, 20), markersize = 10, visible = false)
         )
     end
 end
