@@ -1,8 +1,8 @@
 @block SimonDanisch ["2d"] begin
 
     @cell "Test heatmap + image overlap" [image, heatmap, transparency] begin
-        heatmap(rand(32, 32))
-        image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), rand(32,32)))
+        heatmap(RNG.rand(32, 32))
+        image!(map(x->RGBAf0(x,0.5, 0.5, 0.8), RNG.rand(32,32)))
     end
 
     @cell "poly and colormap" [poly, colormap, colorrang] begin
@@ -17,7 +17,7 @@
     end
     @cell "quiver" [quiver, arrows, vectorfield, gradient] begin
         x = range(-2, stop = 2, length = 21)
-        arrows(x, x, rand(21, 21), rand(21, 21), arrowsize = 0.05)
+        arrows(x, x, RNG.rand(21, 21), RNG.rand(21, 21), arrowsize = 0.05)
     end
     @cell "Arrows on hemisphere" [arrows, quiver, mesh] begin
         using GeometryBasics
@@ -30,7 +30,7 @@
     @cell "image" [image] begin
         vbox(
             image(AbstractPlotting.logo(), scale_plot = false),
-            image(rand(100, 500), scale_plot = false),
+            image(RNG.rand(100, 500), scale_plot = false),
         )
     end
     @cell "FEM polygon 2D" [fem, poly] begin
@@ -98,10 +98,10 @@
         )
     end
     @cell "Subscenes" [image, scatter, subscene] begin
-        img = rand(RGBAf0, 100, 100)
+        img = RNG.rand(RGBAf0, 100, 100)
         scene = image(img, show_axis = false)
         subscene = Scene(scene, IRect(100, 100, 300, 300))
-        scatter!(subscene, rand(100) * 200, rand(100) * 200, markersize = 4)
+        scatter!(subscene, RNG.rand(100) * 200, RNG.rand(100) * 200, markersize = 4)
         scene
     end
 
@@ -136,8 +136,8 @@
     end
     @cell "Hbox" [lines, scatter, hbox] begin
         t = range(-122277.9, stop=-14798.0, length=29542)
-        x = -42 .- randn(length(t))
-        sc1 = scatter(t, x, color=:black, markersize=sqrt(length(t)/20))
+        x = -42 .- RNG.randn(length(t))
+        sc1 = scatter(t, x, color=:black, markersize=1.0)
         sc2 = lines(t[1:end-1], diff(x), color = :blue)
         hbox(sc2, sc1)
     end
@@ -150,7 +150,7 @@
     end
     @cell "contour" [contour] begin
         y = range(-0.997669, stop = 0.997669, length = 23)
-        contour(range(-0.99, stop = 0.99, length = 23), y, rand(23, 23), levels = 10)
+        contour(range(-0.99, stop = 0.99, length = 23), y, RNG.rand(23, 23), levels = 10)
     end
 
     @cell "Text Annotation" [text, align, annotation] begin
@@ -187,7 +187,7 @@
         using Statistics
         n, m = 100, 101
         t = range(0, 1, length=m)
-        X = cumsum(randn(n, m), dims = 2)
+        X = cumsum(RNG.randn(n, m), dims = 2)
         X = X .- X[:, 1]
         μ = vec(mean(X, dims=1)) # mean
         lines(t, μ)              # plot mean line
@@ -213,7 +213,7 @@ end
 @block AnshulSinghvi ["colors"] begin
 
     @cell "Line changing colour" [colors, lines, animation] begin
-        scene = lines(rand(10); linewidth=10)
+        scene = lines(RNG.rand(10); linewidth=10)
 
         record(scene, @replace_with_a_path(mp4), 1:255; framerate = 60) do i
                scene.plots[2][:color] = RGBf0(i/255, (255 - i)/255, 0) # animate scene
@@ -280,43 +280,63 @@ end
 
 @block JuliusKrumbiegel ["2d"] begin
     @cell "Errorbars x y low high" [errorbars] begin
-        using Random
-        Random.seed!(2)
-
         x = 1:10
         y = sin.(x)
         scene = scatter(x, y)
-        errorbars!(scene, x, y, rand(10) .+ 0.5, rand(10) .+ 0.5)
-        errorbars!(scene, x, y, rand(10) .* 0.3 .+ 0.1, rand(10) .* 0.3 .+ 0.1,
+        errorbars!(scene, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
+        errorbars!(scene, x, y, RNG.rand(10) .* 0.3 .+ 0.1, RNG.rand(10) .* 0.3 .+ 0.1,
             color = :red, direction = :x)
         scene
     end
 
     @cell "Errorbars xy low high" [errorbars] begin
-        using Random
-        Random.seed!(2)
-
         x = 1:10
         y = sin.(x)
         xy = Point2f0.(x, y)
         scene = scatter(xy)
-        errorbars!(scene, xy, rand(10) .+ 0.5, rand(10) .+ 0.5)
-        errorbars!(scene, xy, rand(10) .* 0.3 .+ 0.1, rand(10) .* 0.3 .+ 0.1,
+        errorbars!(scene, xy, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
+        errorbars!(scene, xy, RNG.rand(10) .* 0.3 .+ 0.1, RNG.rand(10) .* 0.3 .+ 0.1,
             color = :red, direction = :x)
         scene
     end
 
     @cell "Errorbars xy error" [errorbars] begin
-        using Random
-        Random.seed!(2)
-
         x = 1:10
         y = sin.(x)
         xy = Point2f0.(x, y)
         scene = scatter(xy)
-        errorbars!(scene, xy, rand(10) .+ 0.5)
-        errorbars!(scene, xy, rand(10) .* 0.3 .+ 0.1,
+        errorbars!(scene, xy, RNG.rand(10) .+ 0.5)
+        errorbars!(scene, xy, RNG.rand(10) .* 0.3 .+ 0.1,
             color = :red, direction = :x)
+        scene
+    end
+
+    @cell "Simple pie chart" [pie] begin
+        using AbstractPlotting.MakieLayout
+        scene, layout = layoutscene(resolution = (800, 800))
+        ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
+
+        pie!(ax, 1:5, color = 1:5)
+
+        scene
+    end
+
+    @cell "Hollow pie chart" [pie] begin
+        using AbstractPlotting.MakieLayout
+        scene, layout = layoutscene(resolution = (800, 800))
+        ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
+
+        pie!(ax, 1:5, color = 1:5, radius = 2, inner_radius = 1)
+
+        scene
+    end
+
+    @cell "Open pie chart" [pie] begin
+        using AbstractPlotting.MakieLayout
+        scene, layout = layoutscene(resolution = (800, 800))
+        ax = layout[1, 1] = LAxis(scene, autolimitaspect = 1)
+
+        pie!(ax, 0.1:0.1:1.0, normalize = false)
         scene
     end
 end

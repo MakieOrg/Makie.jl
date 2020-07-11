@@ -42,7 +42,7 @@ using MakieGallery: @substep
         @substep
         scatter(1:4; marker="☼◒◑◐")
         @substep
-        scatter(1:4; marker=rand(RGBf0, 10, 10), markersize=20px)
+        scatter(1:4; marker=RNG.rand(RGBf0, 10, 10), markersize=20px)
         # TODO rotation with markersize=px
         @substep
         scatter(1:4; marker='▲', markersize=0.3, rotations=LinRange(0, pi, 4))
@@ -52,18 +52,18 @@ using MakieGallery: @substep
         meshscatter(1:4; color=1:4)
 
         @substep
-        meshscatter(1:4; color=rand(RGBAf0, 4))
+        meshscatter(1:4; color=RNG.rand(RGBAf0, 4))
         @substep
-        meshscatter(1:4; color=rand(RGBf0, 4))
+        meshscatter(1:4; color=RNG.rand(RGBf0, 4))
         @substep
         meshscatter(1:4; color=:red)
         @substep
-        meshscatter(rand(Point3f0, 10); color=rand(RGBf0, 10))
+        meshscatter(RNG.rand(Point3f0, 10); color=RNG.rand(RGBf0, 10))
         @substep
-        meshscatter(rand(Point3f0, 10); marker=Pyramid(Point3f0(0), 1f0, 1f0))
+        meshscatter(RNG.rand(Point3f0, 10); marker=Pyramid(Point3f0(0), 1f0, 1f0))
 
         ## Barplot
-        barplot(sort(rand(10)); color=rand(10))
+        barplot(sort(RNG.rand(10)); color=RNG.rand(10))
         @substep
         barplot(1:3; color=[:red, :green, :blue])
         @substep
@@ -78,7 +78,7 @@ using MakieGallery: @substep
         @substep
         lines(line_positions; color=1:9)
         @substep
-        lines(line_positions; color=rand(RGBf0, 9), linewidth=4)
+        lines(line_positions; color=RNG.rand(RGBf0, 9), linewidth=4)
 
         ## Linesegments
         @substep
@@ -90,21 +90,21 @@ using MakieGallery: @substep
         @substep
         linesegments(1:4; color=1:4)
         @substep
-        linesegments(1:4; color=rand(RGBf0, 4), linewidth=4)
+        linesegments(1:4; color=RNG.rand(RGBf0, 4), linewidth=4)
 
         ## Surface
         @substep
         surface(args_2d...)
         @substep
-        surface(args_2d...; color=rand(size(data_2d)...))
+        surface(args_2d...; color=RNG.rand(size(data_2d)...))
         @substep
-        surface(args_2d...; color=rand(RGBf0, size(data_2d)...))
+        surface(args_2d...; color=RNG.rand(RGBf0, size(data_2d)...))
         @substep
         surface(args_2d...; colormap=:magma, colorrange=(-3.0, 4.0))
         @substep
         surface(args_2d...; shading=false); wireframe!(args_2d..., linewidth=0.5)
         @substep
-        surface(1:30, 1:31, rand(30, 31))
+        surface(1:30, 1:31, RNG.rand(30, 31))
         @substep
         n = 20
         θ = [0;(0.5:n-0.5)/n;1]
@@ -119,24 +119,24 @@ using MakieGallery: @substep
 
         ## Image like!
         @substep
-        image(rand(10, 10))
+        image(RNG.rand(10, 10))
         @substep
-        heatmap(rand(10, 10))
+        heatmap(RNG.rand(10, 10))
 
         ## Volumes
         @substep
-        volume(rand(4, 4, 4), isovalue=0.5, isorange=0.01, algorithm=:iso)
+        volume(RNG.rand(4, 4, 4), isovalue=0.5, isorange=0.01, algorithm=:iso)
         @substep
-        volume(rand(4, 4, 4), algorithm=:mip)
+        volume(RNG.rand(4, 4, 4), algorithm=:mip)
         @substep
-        volume(rand(4, 4, 4), algorithm=:absorption)
+        volume(RNG.rand(4, 4, 4), algorithm=:absorption)
         @substep
-        volume(rand(4, 4, 4), algorithm=Int32(5))
+        volume(RNG.rand(4, 4, 4), algorithm=Int32(5))
 
         @substep
-        volume(rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)
+        volume(RNG.rand(RGBAf0, 4, 4, 4), algorithm=:absorptionrgba)
         @substep
-        contour(rand(4, 4, 4))
+        contour(RNG.rand(4, 4, 4))
 
         ## Meshes
 
@@ -190,8 +190,8 @@ using MakieGallery: @substep
         # Scaling
         scene = Scene(transform_func=(identity, log10))
         linesegments!(1:4, color=:black, linewidth=20, transparency=true)
-        scatter!(1:4, color=rand(RGBf0, 4), markersize=20px)
-        lines!(1:4, color=rand(RGBf0, 4))
+        scatter!(1:4, color=RNG.rand(RGBf0, 4), markersize=20px)
+        lines!(1:4, color=RNG.rand(RGBf0, 4))
         @substep
 
         # Views
@@ -207,9 +207,9 @@ using MakieGallery: @substep
         @substep
 
         # Categorical
-        barplot(["hi", "ima", "string"], rand(3))
+        barplot(["hi", "ima", "string"], RNG.rand(3))
         @substep
-        heatmap(["a", "b", "c"], ["α", "β", "γ"], rand(3, 3))
+        heatmap(["a", "b", "c"], ["α", "β", "γ"], RNG.rand(3, 3))
 
     end
 end

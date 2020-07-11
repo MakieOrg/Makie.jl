@@ -20,7 +20,7 @@
             sim = to_value(p[1]) # first argument is the SimulationResult
             # when advance changes, get new positions from the simulation
             mpos = lift(p[:advance]) do i
-                sim.grid .+ rand(Point3f0, length(sim.grid)) .* 0.01f0
+                sim.grid .+ RNG.rand(Point3f0, length(sim.grid)) .* 0.01f0
             end
             # size shouldn't change, so we might as well get the value instead of signal
             pos = to_value(mpos)
