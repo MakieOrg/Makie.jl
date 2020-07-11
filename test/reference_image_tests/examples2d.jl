@@ -136,7 +136,7 @@
     end
     @cell "Hbox" [lines, scatter, hbox] begin
         t = range(-122277.9, stop=-14798.0, length=29542)
-        x = -42 .- randn(length(t))
+        x = -42 .- RNG.randn(length(t))
         sc1 = scatter(t, x, color=:black, markersize=1.0)
         sc2 = lines(t[1:end-1], diff(x), color = :blue)
         hbox(sc2, sc1)
@@ -187,7 +187,7 @@
         using Statistics
         n, m = 100, 101
         t = range(0, 1, length=m)
-        X = cumsum(randn(n, m), dims = 2)
+        X = cumsum(RNG.randn(n, m), dims = 2)
         X = X .- X[:, 1]
         μ = vec(mean(X, dims=1)) # mean
         lines(t, μ)              # plot mean line
