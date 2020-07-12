@@ -338,7 +338,7 @@ function remove_element(::Nothing)
 end
 
 function delete_scene!(s::Scene)
-    for p in s.plots
+    for p in copy(s.plots)
         delete!(s, p)
     end
     deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
