@@ -9,10 +9,10 @@ topleft(bbox::Rect2D) = Point(left(bbox), top(bbox))
 bottomright(bbox::Rect2D) = Point(right(bbox), bottom(bbox))
 topright(bbox::Rect2D) = Point(right(bbox), top(bbox))
 
-topline(bbox::FRect2D) = (topleft(bbox), topright(bbox))
-bottomline(bbox::FRect2D) = (bottomleft(bbox), bottomright(bbox))
-leftline(bbox::FRect2D) = (bottomleft(bbox), topleft(bbox))
-rightline(bbox::FRect2D) = (bottomright(bbox), topright(bbox))
+topline(bbox::Rect2D) = (topleft(bbox), topright(bbox))
+bottomline(bbox::Rect2D) = (bottomleft(bbox), bottomright(bbox))
+leftline(bbox::Rect2D) = (bottomleft(bbox), topleft(bbox))
+rightline(bbox::Rect2D) = (bottomright(bbox), topright(bbox))
 
 function shrinkbymargin(rect, margin)
     return IRect(minimum(rect) .+ margin, (widths(rect) .- 2 .* margin))
@@ -30,12 +30,12 @@ end
 xlimits(r::Rect) = limits(r, 1)
 ylimits(r::Rect) = limits(r, 2)
 
-function enlarge(bbox::FRect2D, l, r, b, t)
+function enlarge(bbox::Rect2D, l, r, b, t)
     BBox(left(bbox) - l, right(bbox) + r, bottom(bbox) - b, top(bbox) + t)
 end
 
-function center(bbox::FRect2D)
-    Point2f0((right(bbox) + left(bbox)) / 2, (top(bbox) + bottom(bbox)) / 2)
+function center(bbox::Rect2D)
+    Point2((right(bbox) + left(bbox)) / 2, (top(bbox) + bottom(bbox)) / 2)
 end
 
 """
