@@ -14,6 +14,7 @@ import Animations
 import PlotUtils
 using GridLayoutBase
 import Showoff
+using Colors
 
 const FPS = Node(30)
 const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
