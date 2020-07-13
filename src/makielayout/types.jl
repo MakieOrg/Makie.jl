@@ -145,3 +145,12 @@ struct LScene <: AbstractPlotting.AbstractScene
     attributes::Attributes
     layoutobservables::MakieLayout.LayoutObservables
 end
+
+mutable struct LTextbox <: LObject
+    scene::Scene
+    attributes::Attributes
+    layoutobservables::GridLayoutBase.LayoutObservables
+    decorations::Dict{Symbol, Any}
+    cursorindex::Node{Int}
+    cursoranimtask
+end
