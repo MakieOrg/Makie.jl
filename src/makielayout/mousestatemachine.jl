@@ -27,7 +27,7 @@ mousestates = (:MouseOut, :MouseEnter, :MouseOver,
     :MouseLeftDragStop, :MouseRightDragStop, :MouseMiddleDragStop,
     :MouseLeftClick, :MouseRightClick, :MouseMiddleClick,
     :MouseLeftDoubleclick, :MouseRightDoubleclick, :MouseMiddleDoubleclick,
-    :MouseUpOutside
+    :MouseUpOutside, :MouseDownOutside
     )
 
 for statetype in mousestates
