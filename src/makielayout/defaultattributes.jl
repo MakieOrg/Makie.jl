@@ -806,7 +806,7 @@ function default_attributes(::Type{LTextbox}, scene)
         cornerradius = 8
         "Corner segments of one rounded corner."
         cornersegments = 20
-        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool."
+        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool. If the validator is a type T (for example Float64), validation will be `tryparse(string, T)`."
         validator = str -> true
         "Restricts the allowed unicode input via is_allowed(char, restriction)."
         restriction = nothing
