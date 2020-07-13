@@ -746,3 +746,82 @@ $(let
 end)
 """
 LScene
+
+
+
+
+function default_attributes(::Type{LTextbox}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        "The height setting of the textbox."
+        height = Auto()
+        "The width setting of the textbox."
+        width = Auto()
+        "Controls if the parent layout can adjust to this element's width."
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height."
+        tellheight = true
+        "The horizontal alignment of the textbox in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the textbox in its suggested bounding box."
+        valign = :center
+        "The alignment of the textbox in its suggested bounding box."
+        alignmode = Inside()
+        "A placeholder text that is displayed when the saved string is nothing."
+        placeholder = "Click to edit..."
+        "The currently saved string."
+        content = nothing
+        "The currently displayed string (for internal use)."
+        displayed_string = nothing
+        "Text size."
+        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "Text color."
+        textcolor = :black
+        "Text color for the placeholder."
+        textcolor_placeholder = RGBf0(0.5, 0.5, 0.5)
+        "Font family."
+        font = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "Color of the box."
+        boxcolor = :transparent
+        "Color of the box when focused."
+        boxcolor_focused = :transparent
+        "Color of the box when focused."
+        boxcolor_focused_invalid = RGBAf0(1, 0, 0, 0.3)
+        "Color of the box when hovered."
+        boxcolor_hover = :transparent
+        "Color of the box border."
+        bordercolor = RGBf0(0.80, 0.80, 0.80)
+        "Color of the box border when hovered."
+        bordercolor_hover = COLOR_ACCENT_DIMMED[]
+        "Color of the box border when focused."
+        bordercolor_focused = COLOR_ACCENT[]
+        "Color of the box border when focused and invalid."
+        bordercolor_focused_invalid = RGBf0(1, 0, 0)
+        "Width of the box border."
+        borderwidth = 2f0
+        "Padding of the text against the box."
+        textpadding = (10, 10, 10, 10)
+        "If the textbox is focused and receives text input."
+        focused = false
+        "Corner radius of text box."
+        cornerradius = 8
+        "Corner segments of one rounded corner."
+        cornersegments = 20
+        "Validator that is called with validate_textbox(string, validator) to determine if the current string is valid. Can by default be a RegEx that needs to match the complete string, or a function taking a string as input and returning a Bool."
+        validator = str -> true
+        "Restricts the allowed unicode input via is_allowed(char, restriction)."
+        restriction = nothing
+        "The color of the cursor."
+        cursorcolor = :transparent
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
+end
+
+@doc """
+    LTextbox(parent::Scene; bbox = nothing, kwargs...)
+LTextbox has the following attributes:
+$(let
+    _, docs, defaults = default_attributes(LTextbox, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+LTextbox
