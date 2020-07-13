@@ -20,27 +20,30 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     );
 }
 
-
-
-vec4 get_color(vec3 color, vec2 uv){
+vec4 get_color(vec3 color, vec2 uv, bool colorrange, bool colormap){
     return vec4(color, 1.0); // we must prohibit uv from getting into dead variable removal
 }
 
-vec4 get_color(vec4 color, vec2 uv){
+vec4 get_color(vec4 color, vec2 uv, bool colorrange, bool colormap){
     return color; // we must prohibit uv from getting into dead variable removal
 }
 
-vec4 get_color(bool color, vec2 uv){
+vec4 get_color(bool color, vec2 uv, bool colorrange, bool colormap){
     return frag_color;  // color not in uniform
 }
 
-vec4 get_color(sampler2D color, vec2 uv){
+vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     return texture(color, uv);
 }
 
+vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
+    float value = texture(color, uv).x;
+    float normed = clamp((value - colorrange.x) / (colorrange.y - colorrange.x), 0.0, 1.0);
+    return texture(colormap, vec2(value, 0.0));
+}
 
 void main() {
-    vec4 real_color = get_color(uniform_color, frag_uv);
+    vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
     vec3 shaded_color = real_color.xyz;
     if(get_shading()){
         shaded_color = blinnphong(frag_normal, frag_position, frag_lightdir, real_color.xyz);

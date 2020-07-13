@@ -26,6 +26,9 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         end
     end
 
+    get!(uniforms, :colorrange, false)
+    get!(uniforms, :colormap, false)
+
     program = Program(
         WebGL(),
         lasset("mesh.vert"),
@@ -37,9 +40,13 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
     three_geom = wgl_convert(mscene, jsctx, program)
     update_model!(three_geom, plot)
     three_geom.name = string(objectid(plot))
+
+    map(plot.visible) do visible
+        three_geom.visible = visible
+    end
+
     jsscene.add(three_geom)
 end
-
 
 function limits_to_uvmesh(plot)
     px, py = plot[1], plot[2]
@@ -119,17 +126,32 @@ end
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
-    colored = lift(
-        (args...)-> array2color(args...)',
-        image, plot.colormap, get(plot, :colorrange, nothing)
-    )
     color = Sampler(
-        colored,
+        map(x-> x', image),
         minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
     )
     mesh = limits_to_uvmesh(plot)
+    colormap = if haskey(plot, :colormap)
+        lift(x->AbstractPlotting.el32convert(to_colormap(x)), plot.colormap)
+    else
+        false
+    end
+    colorrange = if haskey(plot, :colorrange)
+        lift(Vec2f0, plot.colorrange)
+    else
+        false
+    end
+    colorrange = if haskey(plot, :colorrange)
+        lift(Vec2f0, plot.colorrange)
+    else
+        false
+    end
+    @show colorrange[]
+    get(plot, :colorrange, Observable(false))
     draw_mesh(jsctx, jsscene, mscene, mesh, "heatmap", plot;
         uniform_color = color,
+        colorrange = colorrange,
+        colormap = Sampler(colormap),
         color = Vec4f0(0),
         normals = Vec3f0(0),
         shading = false,
@@ -140,7 +162,6 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
         lightposition = plot.lightposition
     )
 end
-
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
@@ -197,6 +218,9 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     three_geom.matrix.set(model2[]'...)
     on(model2) do model
         three_geom.matrix.set((model')...)
+    end
+    map(plot.visible) do visible
+        three_geom.visible = visible
     end
     three_geom.material.side = jsctx.BackSide
     jsscene.add(three_geom)

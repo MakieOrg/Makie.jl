@@ -58,9 +58,6 @@ function JSInstanceBuffer(three, vector::AbstractVector{T}) where T
     jsbuff = three.THREE.new.InstancedBufferAttribute(js_f32, tlength(T))
     jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
-    # if vector isa Buffer
-    #     ShaderAbstractions.connect!(vector, buffer)
-    # end
     return buffer
 end
 
@@ -69,9 +66,6 @@ function JSBuffer(three, vector::AbstractVector{T}) where T
     jsbuff = three.new.Float32BufferAttribute(flat, tlength(T))
     jsbuff.setUsage(three.DynamicDrawUsage)
     buffer = JSBuffer{T}(three, jsbuff, length(vector))
-    # if vector isa Buffer
-    #     ShaderAbstractions.connect!(vector, buffer)
-    # end
     return buffer
 end
 
@@ -88,10 +82,10 @@ jl2js(THREE, val::Vec3f0) = THREE.new.Vector3(val...)
 jl2js(THREE, val::Vec2f0) = THREE.new.Vector2(val...)
 
 function jl2js(jsctx, val::RGBA)
-    return jsctx.THREE.new.Vector4(red(val), green(val), blue(val), alpha(val))
+    return jsctx.new.Vector4(red(val), green(val), blue(val), alpha(val))
 end
 function jl2js(jsctx, val::RGB)
-    return jsctx.THREE.new.Vector3(red(val), green(val), blue(val))
+    return jsctx.new.Vector3(red(val), green(val), blue(val))
 end
 
 function jl2js(jsctx, color::Sampler{T, 1}) where T

@@ -267,6 +267,9 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
     resize_pogram(jsctx, program, mesh)
+    map(plot.visible) do visible
+        mesh.visible = visible
+    end
     mesh.name = string(objectid(plot))
     debug_shader("meshscatter", program.program)
     jsscene.add(mesh)
@@ -277,6 +280,9 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
     debug_shader("text", program.program)
     mesh = wgl_convert(scene, jsctx, program)
     resize_pogram(jsctx, program, mesh)
+    map(plot.visible) do visible
+        mesh.visible = visible
+    end
     mesh.name = string(objectid(plot))
     update_model!(mesh, plot)
     jsscene.add(mesh)
@@ -286,6 +292,9 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
     program = create_shader(scene, plot)
     mesh = wgl_convert(scene, jsctx, program)
     resize_pogram(jsctx, program, mesh)
+    map(plot.visible) do visible
+        mesh.visible = visible
+    end
     debug_shader("scatter", program.program)
     mesh.name = string(objectid(plot))
     update_model!(mesh, plot)
@@ -297,6 +306,17 @@ function resize_pogram(jsctx, program::InstancedProgram, mesh)
     real_size = Ref(length(program.per_instance))
     buffers = [v for (k, v) in pairs(program.per_instance)]
     resize = Observable(Set{Symbol}())
+    update_buffer = Observable(["name", [], 0])
+    onjs(jsctx, update_buffer, js"""function (val){
+        const name = val[0];
+        const flat = val[1];
+        const len = val[2];
+        const geometry = $(mesh).geometry
+        const jsb = geometry.attributes[name]
+        jsb.set(flat, 0)
+        jsb.needsUpdate = true
+        geometry.instanceCount = len
+    }""")
     for (name, buffer) in pairs(program.per_instance)
         if buffer isa Buffer
             on(ShaderAbstractions.updater(buffer).update) do (f, args)
@@ -306,13 +326,7 @@ function resize_pogram(jsctx, program::InstancedProgram, mesh)
                     flat = flatten_buffer(new_array)
                     len = length(new_array)
                     if real_size[] >= length(new_array)
-                        evaljs(jsctx, js"""
-                            const geometry = $(mesh).geometry
-                            const jsb = geometry.attributes[$name]
-                            jsb.set($(flat), 0)
-                            jsb.needsUpdate = true
-                            geometry.instanceCount = $(len)
-                        """)
+                        update_buffer[] = [name, flat, len]
                     else
                         push!(resize[], name)
                         if (length(resize[]) == length(buffers)) || all(buffers) do buff
@@ -342,6 +356,9 @@ function resize_pogram(jsctx, program::InstancedProgram, mesh)
                 js_buff = JSInstanceBuffer(jsctx, buff)
                 js_vbo.setAttribute(name, js_buff)
             end
+            js_vbo.boundingSphere = jsctx.new.Sphere()
+            # don't use intersection / culling
+            js_vbo.boundingSphere.radius = 10000000000000f0
             mesh.geometry = js_vbo
             mesh.needsUpdate = true
         end
@@ -353,6 +370,17 @@ function resize_pogram(jsctx, program::Program, mesh)
     real_size = Ref(length(program.vertexarray))
     buffers = [v for (k, v) in pairs(program.vertexarray)]
     resize = Observable(Set{Symbol}())
+    update_buffer = Observable(["name", [], 0])
+    onjs(jsctx, update_buffer, js"""function (val){
+        const name = val[0];
+        const flat = val[1];
+        const len = val[2];
+        const geometry = $(mesh).geometry
+        const jsb = geometry.attributes[name]
+        jsb.set(flat, 0)
+        jsb.needsUpdate = true
+        geometry.instanceCount = len
+    }""")
     for (name, buffer) in pairs(program.vertexarray)
         if buffer isa Buffer
             on(ShaderAbstractions.updater(buffer).update) do (f, args)
@@ -362,13 +390,7 @@ function resize_pogram(jsctx, program::Program, mesh)
                     flat = flatten_buffer(new_array)
                     len = length(new_array)
                     if real_size[] >= length(new_array)
-                        evaljs(jsctx, js"""
-                            const geometry = $(mesh).geometry
-                            const jsb = geometry.attributes[$name]
-                            jsb.set($(flat), 0)
-                            jsb.needsUpdate = true
-                            geometry.instanceCount = $(len)
-                        """)
+                        update_buffer[] = [name, flat, len]
                     else
                         push!(resize[], name)
                         if length(resize[]) == length(buffers)
@@ -391,6 +413,9 @@ function resize_pogram(jsctx, program::Program, mesh)
             indices = GeometryBasics.faces(program.vertexarray)
             indices = reinterpret(UInt32, indices)
             js_vbo.setIndex(indices)
+            js_vbo.boundingSphere = jsctx.new.Sphere()
+            # don't use intersection / culling
+            js_vbo.boundingSphere.radius = 10000000000000f0
             mesh.geometry = js_vbo
             mesh.needsUpdate = true
         end

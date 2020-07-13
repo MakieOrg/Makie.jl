@@ -71,6 +71,9 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::LineSegments)
     update_model!(mesh, plot)
     debug_shader("linesegments", program.program)
     mesh.name = string(objectid(plot))
+    map(plot.visible) do visible
+        mesh.visible = visible
+    end
     jsscene.add(mesh)
 end
 
@@ -79,6 +82,9 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Lines)
     positions = plot[1]
     colors_converted = lift(x-> to_color(x), color)
     mesh = jslines!(jsctx, jsscene, plot, positions, colors_converted, linewidth, model)
+    map(plot.visible) do visible
+        mesh.visible = visible
+    end
     return mesh
 end
 

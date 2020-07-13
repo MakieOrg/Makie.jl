@@ -95,6 +95,8 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     instance = GeometryBasics.Mesh(
         GeometryBasics.meta(positions; attributes...), faces
     )
+    get!(uniforms, :colorrange, true)
+    get!(uniforms, :colormap, true)
     return Program(
         WebGL(),
         lasset("mesh.vert"),
@@ -111,6 +113,9 @@ function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Mesh)
     debug_shader("mesh", program)
     mesh.name = "Mesh"
     update_model!(mesh, plot)
+    map(plot.visible) do visible
+        mesh.visible = visible
+    end
     jsscene.add(mesh)
     return mesh
 end
