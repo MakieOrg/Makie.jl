@@ -1,6 +1,6 @@
 
 function vsynced_renderloop(screen)
-    while isopen(screen)
+    while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
         pollevents(screen) # GLFW poll
         screen.render_tick[] = nothing
         if WINDOW_CONFIG.pause_rendering[]
@@ -16,7 +16,7 @@ end
 
 function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
     time_per_frame = 1.0 / framerate
-    while isopen(screen)
+    while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
         t = time_ns()
         pollevents(screen) # GLFW poll
         screen.render_tick[] = nothing
@@ -61,9 +61,9 @@ const WINDOW_CONFIG = (
     pause_rendering = Ref(false),
     focus_on_show = Ref(false),
     decorated = Ref(true),
-    title = Ref("Makie")
+    title = Ref("Makie"),
+    exit_renderloop = Ref(false),
 )
-
 
 """
     set_window_config!(;
