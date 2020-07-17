@@ -212,15 +212,13 @@ function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth, marker_o
 
     # Cairo.scale(ctx, scale...)
     Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
-    Cairo.fill(ctx)
-
+    Cairo.fill_preserve(ctx)
 
     sc = to_color(strokecolor)
-    if strokewidth > 0.0
-        Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
-        Cairo.set_line_width(ctx, Float64(strokewidth))
-        Cairo.stroke(ctx)
-    end
+
+    Cairo.set_source_rgba(ctx, rgbatuple(sc)...)
+    Cairo.set_line_width(ctx, Float64(strokewidth))
+    Cairo.stroke(ctx)
 end
 
 function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
