@@ -16,7 +16,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
 AbstractPlotting = "0.11"
-Cairo = "1"
+Cairo = "1.0.4"
 Colors = "0.9, 0.10, 0.11, 0.12"
 FFTW = "1"
 FileIO = "1.1"
