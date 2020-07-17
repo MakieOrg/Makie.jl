@@ -1,5 +1,6 @@
 {{GLSL_VERSION}}
 
+// occlusion.w is the occlusion value
 uniform sampler2D occlusion;
 uniform sampler2D color_texture;
 uniform usampler2D ids;
@@ -26,7 +27,7 @@ void main(void)
               // shine effect.
               uvec2 id = texture(ids, frag_uv + offset).xy;
               if (id0 == id) {
-                  blurred_occlusion += texture(occlusion, frag_uv + offset).r;
+                  blurred_occlusion += texture(occlusion, frag_uv + offset).w;
                   weight += 1;
               }
           }

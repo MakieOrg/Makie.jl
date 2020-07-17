@@ -15,7 +15,8 @@ uniform float radius;
 
 
 in vec2 frag_uv;
-out float o_occlusion;
+// occlusion.xyz is a normal vector, occlusion.w the occlusion value
+out vec4 o_occlusion;
 
 
 void main(void)
@@ -83,8 +84,8 @@ void main(void)
             occlusion += (sample_depth >= sample_view_offset.z + view_pos.z + bias ? 1.0 : 0.0) * range_check;
         }
         occlusion = 1.0 - (occlusion / {{N_samples}});
-        o_occlusion = occlusion;
+        o_occlusion.w = occlusion;
     } else {
-        o_occlusion = 1.0;
+        o_occlusion.w = 1.0;
     }
 }
