@@ -146,7 +146,6 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
     else
         false
     end
-    @show colorrange[]
     get(plot, :colorrange, Observable(false))
     draw_mesh(jsctx, jsscene, mscene, mesh, "heatmap", plot;
         uniform_color = color,

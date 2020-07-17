@@ -36,10 +36,12 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, bool colormap){
     return texture(color, uv);
 }
 
+float _normalize(float val, float from, float to){return (val-from) / (to - from);}
+
 vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
     float value = texture(color, uv).x;
-    float normed = clamp((value - colorrange.x) / (colorrange.y - colorrange.x), 0.0, 1.0);
-    return texture(colormap, vec2(value, 0.0));
+    float normed = _normalize(value, colorrange.x, colorrange.y);
+    return texture(colormap, vec2(normed, 0.0));
 }
 
 void main() {

@@ -92,6 +92,9 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
 
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
+    # on(mesh_signal) do m
+    #     @show vertexbuffer(m)[1]
+    # end
     instance = GeometryBasics.Mesh(
         GeometryBasics.meta(positions; attributes...), faces
     )
