@@ -10,10 +10,11 @@ mkpath(format_save_path)
 savepath(uid, fmt) = joinpath(format_save_path, "$uid.$fmt")
 
 @testset "Saving formats" begin
-    for fmt in ("png", "pdf", "jpeg", "svg")
-        for example in database
+    for example in database
+        scene = MakieGallery.eval_example(example)
+        for fmt in ("png", "pdf", "svg")
             @test try
-                save(savepath(example.unique_name, fmt), MakieGallery.eval_example(example))
+                save(savepath(example.unique_name, fmt), scene)
                 true
             catch e
                 @warn "Saving $(example.unique_name) in format `$fmt` failed!" exception=(e, Base.catch_backtrace())
