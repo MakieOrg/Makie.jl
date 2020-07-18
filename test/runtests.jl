@@ -20,6 +20,7 @@ ignored_titles = Set((
     "subscenes",       # need to implement gaussian blurring
     "fem mesh 2d",     # the colormap is different somehow
     "fem polygon 2d",  # the colormap is different somehow
+    "the famous iris example", # errors due to dependencies
 ))
 
 filter!(database) do entry
