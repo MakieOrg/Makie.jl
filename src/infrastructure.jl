@@ -285,18 +285,6 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/pn
     return screen
 end
 
-function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
-    # TODO: depend on OpenJPEG or JPEGTurbo to do in-memory JPEG conversion
-    # Not sure how much it matters, though, since no one uses JPEG
-    screen = nothing
-
-    open(display_path("png"), "w") do fio
-        ioc = IOContext(fio, :full_fidelity => true, :px_per_unit => get(io, :px_per_unit, 1.0))
-        screen = AbstractPlotting.backend_show(x, ioc, MIME("image/png"), scene)
-    end
-    FileIO.save(FileIO.Stream(format"JPEG", io),  FileIO.load(display_path("png")))
-    return screen
-end
 
 ########################################
 #    Fast colorbuffer for recording    #
