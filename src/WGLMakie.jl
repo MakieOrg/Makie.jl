@@ -143,7 +143,6 @@ function add_scene!(three, scene::Scene)
     evaljs(three, js"""
         function render_camera(scene, camera){
             $(renderer).autoClear = scene.clearscene;
-            var bg = scene.backgroundcolor;
             var area = scene.pixelarea;
             if(area){
                 var x = area[0];
@@ -164,11 +163,24 @@ function add_scene!(three, scene::Scene)
         function render_scene(scene){
             var camera = scene.getObjectByName("camera");
             if(camera){
+                const old_visibilities = scene.children.map(child=>{
+                    // Set all subscenes to invisible, so we don't render them here
+                    const vis = child.visible
+                    if (child.type == "Scene"){
+                        child.visible = false
+                    }
+                    return vis
+                })
                 render_camera(scene, camera);
+                scene.children.map((child, idx)=>{
+                    child.visible = old_visibilities[idx]
+                })
             }
             for(var i = 0; i < scene.children.length; i++){
                 var child = scene.children[i];
-                render_scene(child);
+                if (child.type == "Scene"){
+                    render_scene(child);
+                }
             }
         }
         function render_all(){
