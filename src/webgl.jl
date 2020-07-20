@@ -99,6 +99,13 @@ function jl2js(jsctx, color::Sampler{T, 1}) where T
     tex.wrapS = three_repeat(jsctx, color.repeat[1])
     tex.anisotropy = color.anisotropic
     tex.needsUpdate = true
+    on(ShaderAbstractions.updater(color).update) do (f, args)
+        if args[2] isa Colon && f == setindex!
+            newdata = args[1]
+            data.set(to_js_buffer(jsctx, newdata))
+            tex.needsUpdate = true
+        end
+    end
     return tex
 end
 
@@ -373,5 +380,128 @@ function update_model!(geom, plot)
     geom.matrix.set(plot.model[]'...)
     on(plot.model) do model
         geom.matrix.set((model')...)
+    end
+end
+
+
+function resize_pogram(jsctx, program::InstancedProgram, mesh)
+    real_size = Ref(length(program.per_instance))
+    buffers = [v for (k, v) in pairs(program.per_instance)]
+    resize = Observable(Set{Symbol}())
+    update_buffer = Observable(["name", [], 0])
+    onjs(jsctx, update_buffer, js"""function (val){
+        const name = val[0];
+        const flat = deserialize_js(val[1]);
+        const len = val[2];
+        const geometry = $(mesh).geometry
+        const jsb = geometry.attributes[name]
+        jsb.set(flat, 0)
+        jsb.needsUpdate = true
+        geometry.instanceCount = len
+    }""")
+    for (name, buffer) in pairs(program.per_instance)
+        if buffer isa Buffer
+            on(ShaderAbstractions.updater(buffer).update) do (f, args)
+                # update to replace the whole buffer!
+                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                    new_array = args[1]
+                    flat = flatten_buffer(new_array)
+                    len = length(new_array)
+                    if real_size[] >= length(new_array)
+                        update_buffer[] = [name, flat, len]
+                    else
+                        push!(resize[], name)
+                        if (length(resize[]) == length(buffers)) || all(buffers) do buff
+                                    length(new_array) == length(buff)
+                                end
+                            real_size[] = length(buffer)
+                            resize[] = resize[]
+                            empty!(resize[])
+                        end
+                    end
+                end
+            end
+        end
+    end
+    on(resize) do new_data
+        JSServe.fuse(jsctx) do
+            js_vbo = jsctx.new.InstancedBufferGeometry()
+            for (name, buff) in pairs(program.program.vertexarray)
+                js_buff = JSBuffer(jsctx, buff)
+                js_vbo.setAttribute(name, js_buff)
+            end
+            indices = GeometryBasics.faces(program.program.vertexarray)
+            indices = reinterpret(UInt32, indices)
+            js_vbo.setIndex(indices)
+            js_vbo.instanceCount = length(program.per_instance)
+            for (name, buff) in pairs(program.per_instance)
+                js_buff = JSInstanceBuffer(jsctx, buff)
+                js_vbo.setAttribute(name, js_buff)
+            end
+            js_vbo.boundingSphere = jsctx.new.Sphere()
+            # don't use intersection / culling
+            js_vbo.boundingSphere.radius = 10000000000000f0
+            mesh.geometry = js_vbo
+            mesh.needsUpdate = true
+        end
+    end
+end
+
+
+function resize_pogram(jsctx, program::Program, mesh)
+    real_size = Ref(length(program.vertexarray))
+    buffers = [v for (k, v) in pairs(program.vertexarray)]
+    resize = Observable(Set{Symbol}())
+    update_buffer = Observable(["name", [], 0])
+    onjs(jsctx, update_buffer, js"""function (val){
+        const name = val[0];
+        const flat = deserialize_js(val[1]);
+        const len = val[2];
+        const geometry = $(mesh).geometry
+        const jsb = geometry.attributes[name]
+        jsb.set(flat, 0)
+        jsb.needsUpdate = true
+        geometry.instanceCount = len
+        geometry.needsUpdate = true
+
+    }""")
+    for (name, buffer) in pairs(program.vertexarray)
+        if buffer isa Buffer
+            on(ShaderAbstractions.updater(buffer).update) do (f, args)
+                # update to replace the whole buffer!
+                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                    new_array = args[1]
+                    flat = flatten_buffer(new_array)
+                    len = length(new_array)
+                    if real_size[] >= length(new_array)
+                        update_buffer[] = [name, flat, len]
+                    else
+                        push!(resize[], name)
+                        if length(resize[]) == length(buffers)
+                            real_size[] = length(buffer)
+                            resize[] = resize[]
+                            empty!(resize[])
+                        end
+                    end
+                end
+            end
+        end
+    end
+    on(resize) do new_data
+        JSServe.fuse(jsctx) do
+            js_vbo = jsctx.new.BufferGeometry()
+            for (name, buff) in pairs(program.vertexarray)
+                js_buff = JSBuffer(jsctx, buff)
+                js_vbo.setAttribute(name, js_buff)
+            end
+            indices = GeometryBasics.faces(program.vertexarray)
+            indices = reinterpret(UInt32, indices)
+            js_vbo.setIndex(indices)
+            js_vbo.boundingSphere = jsctx.new.Sphere()
+            # don't use intersection / culling
+            js_vbo.boundingSphere.radius = 10000000000000f0
+            mesh.geometry = js_vbo
+            mesh.needsUpdate = true
+        end
     end
 end
