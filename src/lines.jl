@@ -150,7 +150,6 @@ function jslines!(THREE, scene, plot, positions_nan, colors, linewidth, model, t
         var indices = deserialize_js(segments);
         var geometry = $(geometry);
         geometry.setIndex(indices);
-        // position_buffer.needsUpdate = true;
     }""")
 
     # ThreeJS does culling by calculating the boundingsphere
