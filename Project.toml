@@ -35,6 +35,7 @@ SignedDistanceFields = "73760f76-fbc4-59ce-8f25-708e95d2df96"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 UnicodeFun = "1cfade01-22cf-5700-b092-accc4b62d6e1"
 

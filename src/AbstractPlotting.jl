@@ -10,6 +10,7 @@ using Serialization # serialize events
 using StructArrays
 using GeometryBasics: widths, positive_widths, VecTypes
 using StaticArrays
+using StatsBase
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
@@ -82,6 +83,10 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/legend.jl")
 include("basic_recipes/title.jl")
+# statistical recipes
+include("stats/conversions.jl")
+include("stats/crossbar.jl")
+include("stats/boxplot.jl")
 
 # Interactiveness
 include("interaction/events.jl")
