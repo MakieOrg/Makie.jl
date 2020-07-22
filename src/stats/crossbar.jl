@@ -1,5 +1,5 @@
 #=
-Taken from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
+S. Axen implementation from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi.
 =#
