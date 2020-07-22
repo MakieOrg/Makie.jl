@@ -1,3 +1,4 @@
+using StatsBase: Histogram
 using AbstractPlotting, StatsBase
 import Distributions
 using KernelDensity
@@ -6,6 +7,51 @@ using Random: seed!
 using GeometryBasics: FRect2D
 
 seed!(0)
+
+@testset "histogram" begin
+    v = randn(1000)
+    h = fit(Histogram, v)
+    p = plot(h)
+
+    plt = p[end]
+    @test plt isa BarPlot
+    x = h.edges[1]
+    @test plt[1][] ≈ Point{2, Float32}.(x[1:end-1] .+ step(x)/2, h.weights)
+
+    v = (randn(1000), randn(1000))
+    h = fit(Histogram, v, nbins = 30)
+    p = plot(h)
+    plt = p[end]
+    @test plt isa Heatmap
+    x = h.edges[1]
+    y = h.edges[2]
+    @test plt[1][] ≈ x[1:end-1] .+ step(x)/2
+    @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
+    @test plt[3][] ≈ h.weights
+
+    p = surface(h)
+    plt = p[end]
+    @test plt isa Surface
+    x = h.edges[1]
+    y = h.edges[2]
+    @test plt[1][] ≈ x[1:end-1] .+ step(x)/2
+    @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
+    @test plt[3][] ≈ h.weights
+
+    v = (randn(1000), randn(1000), randn(1000))
+    edges = ntuple(_ -> -3:0.3:3, 3)
+    h = fit(Histogram, v, edges)
+    p = plot(h)
+    plt = p[end]
+    @test plt isa Volume
+    x = h.edges[1]
+    y = h.edges[2]
+    z = h.edges[3]
+    @test plt[1][] ≈ x[1:end-1] .+ step(x)/2
+    @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
+    @test plt[3][] ≈ z[1:end-1] .+ step(z)/2
+    @test plt[4][] == h.weights
+end
 
 @testset "density" begin
     v = randn(1000)
