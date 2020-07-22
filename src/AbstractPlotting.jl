@@ -10,7 +10,7 @@ using Serialization # serialize events
 using StructArrays
 using GeometryBasics: widths, positive_widths, VecTypes
 using StaticArrays
-import StatsBase, Distributions
+import StatsBase, Distributions, KernelDensity
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
@@ -85,9 +85,11 @@ include("basic_recipes/legend.jl")
 include("basic_recipes/title.jl")
 # statistical recipes
 include("stats/conversions.jl")
+include("stats/density.jl")
+include("stats/distributions.jl")
 include("stats/crossbar.jl")
 include("stats/boxplot.jl")
-include("stats/distributions.jl")
+include("stats/violin.jl")
 
 # Interactiveness
 include("interaction/events.jl")
