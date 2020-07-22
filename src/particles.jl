@@ -62,9 +62,9 @@ function create_shader(scene::Scene, plot::MeshScatter)
         uniform_dict[:uv] = Vec2f0(0)
     end
 
-    for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
-        uniform_dict[key] = getfield(scene.camera, key)
-    end
+    # for key in (:view, :projection, :resolution, :eyeposition, :projectionview)
+    #     uniform_dict[key] = getfield(scene.camera, key)
+    # end
 
     return InstancedProgram(
         WebGL(),
@@ -75,7 +75,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
         ; uniform_dict...
     )
 end
-
 
 @enum Shape CIRCLE RECTANGLE ROUNDED_RECTANGLE DISTANCEFIELD TRIANGLE
 
@@ -182,11 +181,10 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:offset] = plot[1]
     attributes[:billboard] = map(rot-> isa(rot, Billboard), plot.rotations)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
+    attributes[:model] = plot.model
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
 end
-
-
 
 function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
                     font, align, rot, model, j, l) where T <: VecTypes
@@ -250,6 +248,7 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
     end
 
     return scatter_shader(scene, Dict(
+        :model => plot.model,
         :shape_type => Observable(Cint(3)),
         :color => color,
         :rotations => rotation,
@@ -261,42 +260,4 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
         :billboard => Observable(false),
         :pixelspace => getfield(scene.camera, :pixel_space)
     ))
-end
-
-function draw_js(jsctx, jsscene, scene::Scene, plot::MeshScatter)
-    program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsctx, program)
-    resize_pogram(jsctx, program, mesh)
-    map(plot.visible) do visible
-        mesh.visible = visible
-    end
-    mesh.name = string(objectid(plot))
-    debug_shader("meshscatter", program.program)
-    jsscene.add(mesh)
-end
-
-function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Text)
-    program = create_shader(scene, plot)
-    debug_shader("text", program.program)
-    mesh = wgl_convert(scene, jsctx, program)
-    resize_pogram(jsctx, program, mesh)
-    map(plot.visible) do visible
-        mesh.visible = visible
-    end
-    mesh.name = string(objectid(plot))
-    update_model!(mesh, plot)
-    jsscene.add(mesh)
-end
-
-function draw_js(jsctx, jsscene, scene::Scene, plot::Scatter)
-    program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsctx, program)
-    resize_pogram(jsctx, program, mesh)
-    map(plot.visible) do visible
-        mesh.visible = visible
-    end
-    debug_shader("scatter", program.program)
-    mesh.name = string(objectid(plot))
-    update_model!(mesh, plot)
-    jsscene.add(mesh)
 end

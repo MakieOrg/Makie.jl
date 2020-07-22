@@ -1,9 +1,7 @@
 
-
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
 get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
-
 
 function surface_normals(x, y, z)
     vec(map(CartesianIndices(z)) do i
@@ -17,8 +15,9 @@ function surface_normals(x, y, z)
     end)
 end
 
-function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
+function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
+
     if haskey(uniforms, :lightposition)
         eyepos = getfield(mscene.camera, :eyeposition)
         uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos, typ=Vec3f0) do pos, eyepos
@@ -26,26 +25,23 @@ function draw_mesh(jsctx, jsscene, mscene::Scene, mesh, name, plot; uniforms...)
         end
     end
 
+    colormap = if haskey(plot, :colormap)
+        uniforms[:colormap] = Sampler(lift(x->AbstractPlotting.el32convert(to_colormap(x)), plot.colormap))
+    end
+    colorrange = if haskey(plot, :colorrange)
+        uniforms[:colorrange] = lift(Vec2f0, plot.colorrange)
+    end
     get!(uniforms, :colorrange, false)
     get!(uniforms, :colormap, false)
+    get!(uniforms, :model, plot.model)
 
-    program = Program(
+    return Program(
         WebGL(),
         lasset("mesh.vert"),
         lasset("mesh.frag"),
         mesh;
         uniforms...
     )
-
-    three_geom = wgl_convert(mscene, jsctx, program)
-    update_model!(three_geom, plot)
-    three_geom.name = string(objectid(plot))
-
-    map(plot.visible) do visible
-        three_geom.visible = visible
-    end
-
-    jsscene.add(three_geom)
 end
 
 function limits_to_uvmesh(plot)
@@ -71,7 +67,7 @@ function limits_to_uvmesh(plot)
     return GeometryBasics.Mesh(vertices, faces)
 end
 
-function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
+function create_shader(mscene::Scene, plot::Surface)
     # TODO OWN OPTIMIZED SHADER ... Or at least optimize this a bit more ...
     px, py, pz = plot[1], plot[2], plot[3]
 
@@ -99,10 +95,10 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
         pz
     end
 
-    color = Sampler(lift(
-        (args...)-> (array2color(args...)'),
-        pcolor, plot.colormap, plot.colorrange
-    ))
+    color = Sampler(
+        map(x-> x', pcolor),
+        minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
+    )
 
     normals = Buffer(lift(surface_normals, px, py, pz))
 
@@ -112,7 +108,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
 
     mesh = GeometryBasics.Mesh(vertices, faces)
 
-    draw_mesh(jsctx, jsscene, mscene, mesh, "surface", plot;
+    return draw_mesh(mscene, mesh, plot;
         uniform_color = color,
         color = Vec4f0(0),
         shading = plot.shading,
@@ -124,33 +120,16 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Surface)
     )
 end
 
-function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
+function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
     image = plot[3]
     color = Sampler(
         map(x-> x', image),
         minfilter = to_value(get(plot, :interpolate, false)) ? :linear : :nearest
     )
     mesh = limits_to_uvmesh(plot)
-    colormap = if haskey(plot, :colormap)
-        lift(x->AbstractPlotting.el32convert(to_colormap(x)), plot.colormap)
-    else
-        false
-    end
-    colorrange = if haskey(plot, :colorrange)
-        lift(Vec2f0, plot.colorrange)
-    else
-        false
-    end
-    colorrange = if haskey(plot, :colorrange)
-        lift(Vec2f0, plot.colorrange)
-    else
-        false
-    end
-    get(plot, :colorrange, Observable(false))
-    draw_mesh(jsctx, jsscene, mscene, mesh, "heatmap", plot;
+
+    return draw_mesh(mscene, mesh, plot;
         uniform_color = color,
-        colorrange = colorrange,
-        colormap = Sampler(colormap),
         color = Vec4f0(0),
         normals = Vec3f0(0),
         shading = false,
@@ -162,7 +141,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Union{Heatmap, Image})
     )
 end
 
-function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
+function create_shader(mscene::Scene, plot::Volume)
     x, y, z, vol = plot[1], plot[2], plot[3], plot[4]
     box = GeometryBasics.mesh(FRect3D(Vec3f0(0), Vec3f0(1)))
     cam = cameracontrols(mscene)
@@ -178,6 +157,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
         )
         return convert(Mat4f0, m) * m2
     end
+
     modelinv = lift(inv, model2)
     algorithm = lift(x-> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
 
@@ -186,8 +166,7 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
     lightposition = lift(plot.lightposition, eyepos, typ=Vec3f0) do pos, eyepos
         ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
     end
-
-    program = Program(
+    return Program(
         WebGL(),
         lasset("volume.vert"),
         lasset("volume.frag"),
@@ -208,19 +187,6 @@ function draw_js(jsctx, jsscene, mscene::Scene, plot::Volume)
         specular = plot.specular,
         shininess = plot.shininess,
         lightposition = lightposition,
+        model = model2
     )
-
-    debug_shader("volume", program)
-
-    three_geom = wgl_convert(mscene, jsctx, program)
-    three_geom.matrixAutoUpdate = false
-    three_geom.matrix.set(model2[]'...)
-    on(model2) do model
-        three_geom.matrix.set((model')...)
-    end
-    map(plot.visible) do visible
-        three_geom.visible = visible
-    end
-    three_geom.material.side = jsctx.BackSide
-    jsscene.add(three_geom)
 end

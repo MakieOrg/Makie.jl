@@ -100,6 +100,7 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     )
     get!(uniforms, :colorrange, true)
     get!(uniforms, :colormap, true)
+    get!(uniforms, :model, plot.model)
     return Program(
         WebGL(),
         lasset("mesh.vert"),
@@ -107,18 +108,4 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
         instance;
         uniforms...
     )
-end
-
-function draw_js(jsctx, jsscene, scene::Scene, plot::AbstractPlotting.Mesh)
-    program = create_shader(scene, plot)
-    mesh = wgl_convert(scene, jsctx, program)
-    resize_pogram(jsctx, program, mesh)
-    debug_shader("mesh", program)
-    mesh.name = "Mesh"
-    update_model!(mesh, plot)
-    map(plot.visible) do visible
-        mesh.visible = visible
-    end
-    jsscene.add(mesh)
-    return mesh
 end

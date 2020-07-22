@@ -1,5 +1,4 @@
 
-
 function AbstractPlotting.convert_attribute(x, ::Nothing, key1, key2)
     convert_attribute(x, key1, key2)
 end
@@ -20,7 +19,7 @@ function topoint(x::AbstractArray{<: Tuple{P, P}}) where P <: Point
     topoint(reinterpret(P, x))
 end
 
-function create_shader(scene::Scene, plot::LineSegments)
+function create_shader(scene::Scene, plot::Union{Lines, LineSegments})
     # Potentially per instance attributes
     positions = lift(topoint, plot[1])
     startr = lift(p-> 1:2:(length(p)-1), positions)
@@ -50,6 +49,8 @@ function create_shader(scene::Scene, plot::LineSegments)
     end
 
     uniforms[:resolution] = scene.camera.resolution
+    uniforms[:model] = plot.model
+    
     instance = GeometryBasics.Mesh(
         meta(Point2f0[(0, -1), (0, 1), (1, -1), (1, 1)], uv=Vec2f0[(0,0), (0,0), (0,0), (0,0)]),
         GLTriangleFace[(1, 2, 3), (2, 4, 3)]
@@ -62,19 +63,6 @@ function create_shader(scene::Scene, plot::LineSegments)
         VertexArray(; per_instance...)
         ; uniforms...
     )
-end
-
-function draw_js(jsctx, jsscene, mscene::Scene, plot::LineSegments)
-    program = create_shader(mscene, plot)
-    mesh = wgl_convert(mscene, jsctx, program)
-    resize_pogram(jsctx, program, mesh)
-    update_model!(mesh, plot)
-    debug_shader("linesegments", program.program)
-    mesh.name = string(objectid(plot))
-    map(plot.visible) do visible
-        mesh.visible = visible
-    end
-    jsscene.add(mesh)
 end
 
 function draw_js(jsctx, jsscene, mscene::Scene, plot::Lines)

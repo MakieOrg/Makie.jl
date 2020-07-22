@@ -1,5 +1,5 @@
-uniform mat4 projectionMatrix;
-uniform mat4 modelViewMatrix;
+uniform mat4 projection;
+uniform mat4 view;
 
 #define AA_THICKNESS 2.0
 
@@ -14,7 +14,7 @@ out vec4 frag_color;
 
 void main()
 {
-    mat4 pvm = projectionMatrix * modelViewMatrix;
+    mat4 pvm = projection * view * get_model();
     vec4 point1_clip = pvm * vec4(tovec3(get_segment_start()), 1);
     vec4 point2_clip = pvm * vec4(tovec3(get_segment_end()), 1);
     vec2 point1_screen = screen_space(point1_clip);

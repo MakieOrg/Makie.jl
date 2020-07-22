@@ -13,13 +13,16 @@ serialize_three(val::Vec4f0) = Float32[val...]
 serialize_three(val::Quaternion) = Float32[val.data...]
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
-serialize_three(val::Mat4f0) = Float32[val...]
+serialize_three(val::Mat4f0) = vec(val)
+
+function serialize_three(observable::Observable)
+    return Dict(:type => "Observable",:id=> observable.id, :value => serialize_three(observable[]))
+end
 
 function serialize_three(color::Sampler{T, N}) where {T, N}
-    data = serialize_three(jsctx, color.data)
     tex = Dict(
         :type => "Sampler",
-        :data => data,
+        :data => serialize_three(color.data),
         :size => [size(color.data)...],
         :three_format => three_format(T),
         :three_type => three_type(eltype(T)),
@@ -38,45 +41,14 @@ function serialize_three(color::Sampler{T, N}) where {T, N}
     return tex
 end
 
-function serialize_three(dict::Dict)
+function serialize_uniforms(dict::Dict)
     result = Dict{Symbol, Any}()
     for (k, v) in dict
-        result[k] = Dict(:value => serialize_three(to_value(v)))
+        result[k] = serialize_three(to_value(v))
     end
     return result
 end
 
-function connect_uniforms(mesh, dict::Dict)
-    for (k, v) in dict
-        # Sampler + Buffers won't come through as Observables,
-        # Since they update themselves
-        # atm we also allow other values to be non Observables
-        v isa Observable || continue
-        if v isa Sampler
-            flat_data = Observable([])
-            on(ShaderAbstractions.updater(color).update) do (f, args)
-                if args[2] isa Colon && f == setindex!
-                    newdata = args[1]
-                    flat_data[] = serialize_three(newdata)
-                    tex.needsUpdate = true
-                end
-            end
-            onjs(mesh, flat_data, js"""function (data){
-                const tex = $(mesh).material.uniforms[$(k)]
-                tex.array.set(three_deserialize(data))
-                tex.needsUpdate = true
-            }""")
-        else
-            serialized = lift(serialize_three, v)
-            onjs(mesh, serialized, js"""function (val){
-                const prop = $(mesh).material.uniforms[$(k)]
-                prop.value = deserialize_three(val)
-                prop.needsUpdate = true
-            }""")
-        end
-    end
-    return result
-end
 
 three_format(::Type{<: Real}) = "RedFormat"
 three_format(::Type{<: RGB}) = "RGBFormat"
@@ -184,17 +156,19 @@ function lift_convert(key, value, plot)
 end
 
 function Base.pairs(mesh::GeometryBasics.Mesh)
-    return GeometryBasics.attributes(mesh)
+    return (kv for kv in GeometryBasics.attributes(mesh))
 end
 
 function GeometryBasics.faces(x::VertexArray)
     return GeometryBasics.faces(getfield(x, :data))
 end
 
-serialize_buffer_attribute(buffer::AbstractVector{T}) where {T} = Dict(
-    :flat => flatten_buffer(buffer)
-    :type_length => tlength(T)
-)
+function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
+    return Dict(
+        :flat => serialize_three(buffer),
+        :type_length => tlength(T)
+    )
+end
 
 function serialize_named_buffer(buffer)
     return Dict(map(pairs(buffer)) do (name, buff)
@@ -202,156 +176,121 @@ function serialize_named_buffer(buffer)
     end)
 end
 
-function serialize_program(THREE, ip::InstancedProgram)
-    program = serialize_program(ip.program)
+function register_geometry_updates(update_buffer::Observable, named_buffers)
+    for (name, buffer) in pairs(named_buffers)
+        if buffer isa Buffer
+            on(ShaderAbstractions.updater(buffer).update) do (f, args)
+                # update to replace the whole buffer!
+                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
+                    new_array = args[1]
+                    flat = flatten_buffer(new_array)
+                    update_buffer[] = [name, flat, length(new_array)]
+                end
+            end
+        end
+    end
+    return update_buffer
+end
+
+function register_geometry_updates(update_buffer::Observable, program::Program)
+    return register_geometry_updates(update_buffer, program.vertexarray)
+end
+
+function register_geometry_updates(update_buffer::Observable, program::InstancedProgram)
+    return register_geometry_updates(update_buffer, program.per_instance)
+end
+
+function uniform_updater(uniforms::Dict)
+    updater = Observable(Any[:none, []])
+    for (name, value) in uniforms
+        @show value isa Sampler
+        if value isa Sampler
+            on(ShaderAbstractions.updater(value).update) do (f, args)
+                if args[2] isa Colon && f == setindex!
+                    @show name
+                    updater[] = [name, serialize_three(args[1])]
+                end
+            end
+        else
+            value isa Observable || continue
+            on(value) do value
+                updater[] = [name, serialize_three(value)]
+            end
+        end
+    end
+    return updater
+end
+
+function serialize_three(ip::InstancedProgram)
+    program = serialize_three(ip.program)
     program[:instance_attributes] = serialize_named_buffer(ip.per_instance)
+    register_geometry_updates(program[:attribute_updater], ip)
     return program
 end
 
-function serialize_program(THREE, program::Program)
+function serialize_three(program::Program)
     indices = GeometryBasics.faces(program.vertexarray)
     indices = reinterpret(UInt32, indices)
-    uniforms = serialize_three(program.uniforms)
+    uniforms = serialize_uniforms(program.uniforms)
+    attribute_updater = Observable(["", [], 0])
+    register_geometry_updates(attribute_updater, program)
     return Dict(
         :vertexarrays => serialize_named_buffer(program.vertexarray),
         :faces => indices,
         :uniforms => uniforms,
         :vertex_source => program.vertex_source,
         :fragment_source => program.fragment_source,
+        :uniform_updater => uniform_updater(program.uniforms),
+        :attribute_updater => attribute_updater,
     )
 end
 
-function debug_shader(name, program)
-    dir = joinpath(@__DIR__, "..", "debug")
-    isdir(dir) || mkdir(dir)
-    write(joinpath(dir, "$(name).frag"), program.fragment_source)
-    write(joinpath(dir, "$(name).vert"), program.vertex_source)
+function serialize_scene(scene::Scene, serialized_scenes=[])
+    serialized = Dict(
+        :pixelarea => lift(area-> [minimum(area)..., widths(area)...], pixelarea(scene)),
+        :backgroundcolor => lift(c-> "#" * hex(Colors.color(to_color(c))), scene.backgroundcolor),
+        :clearscene => scene.clear,
+        :camera => serialize_camera(scene),
+        :plots => serialize_plots(scene, scene.plots),
+        :visible => scene.visible,
+    )
+    push!(serialized_scenes, serialized)
+    foreach(child-> serialize_scene(child, serialized_scenes), scene.children)
+    return serialized_scenes
 end
 
-function update_model!(geom, plot)
-    geom.matrixAutoUpdate = false
-    geom.matrix.set(plot.model[]'...)
-    on(plot.model) do model
-        geom.matrix.set((model')...)
+function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where T<:AbstractPlot
+    for plot in plots
+        # if no plots inserted, this truely is an atomic
+        if isempty(plot.plots)
+            push!(result, serialize_three(scene, plot))
+        else
+            serialize_plots(scene, plot.plots, result)
+        end
     end
+    return result
 end
 
-function resize_pogram(jsctx, program::InstancedProgram, mesh)
-    real_size = Ref(length(program.per_instance))
-    buffers = [v for (k, v) in pairs(program.per_instance)]
-    resize = Observable(Set{Symbol}())
-    update_buffer = Observable(["name", [], 0])
-    onjs(jsctx, update_buffer, js"""function (val){
-        const name = val[0];
-        const flat = deserialize_js(val[1]);
-        const len = val[2];
-        const geometry = $(mesh).geometry
-        const jsb = geometry.attributes[name]
-        jsb.set(flat, 0)
-        jsb.needsUpdate = true
-        geometry.instanceCount = len
-    }""")
-    for (name, buffer) in pairs(program.per_instance)
-        if buffer isa Buffer
-            on(ShaderAbstractions.updater(buffer).update) do (f, args)
-                # update to replace the whole buffer!
-                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
-                    new_array = args[1]
-                    flat = flatten_buffer(new_array)
-                    len = length(new_array)
-                    if real_size[] >= length(new_array)
-                        update_buffer[] = [name, flat, len]
-                    else
-                        push!(resize[], name)
-                        if (length(resize[]) == length(buffers)) || all(buffers) do buff
-                                    length(new_array) == length(buff)
-                                end
-                            real_size[] = length(buffer)
-                            resize[] = resize[]
-                            empty!(resize[])
-                        end
-                    end
-                end
-            end
-        end
-    end
-    on(resize) do new_data
-        JSServe.fuse(jsctx) do
-            js_vbo = jsctx.new.InstancedBufferGeometry()
-            for (name, buff) in pairs(program.program.vertexarray)
-                js_buff = JSBuffer(jsctx, buff)
-                js_vbo.setAttribute(name, js_buff)
-            end
-            indices = GeometryBasics.faces(program.program.vertexarray)
-            indices = reinterpret(UInt32, indices)
-            js_vbo.setIndex(indices)
-            js_vbo.instanceCount = length(program.per_instance)
-            for (name, buff) in pairs(program.per_instance)
-                js_buff = JSInstanceBuffer(jsctx, buff)
-                js_vbo.setAttribute(name, js_buff)
-            end
-            js_vbo.boundingSphere = jsctx.new.Sphere()
-            # don't use intersection / culling
-            js_vbo.boundingSphere.radius = 10000000000000f0
-            mesh.geometry = js_vbo
-            mesh.needsUpdate = true
-        end
-    end
+function serialize_three(scene::Scene, plot::AbstractPlot)
+    program = create_shader(scene, plot)
+    mesh = serialize_three(program)
+    mesh[:name] = string(objectid(plot))
+    mesh[:visible] = plot.visible
+    return mesh
 end
 
-function resize_pogram(jsctx, program::Program, mesh)
-    real_size = Ref(length(program.vertexarray))
-    buffers = [v for (k, v) in pairs(program.vertexarray)]
-    resize = Observable(Set{Symbol}())
-    update_buffer = Observable(["name", [], 0])
-    onjs(jsctx, update_buffer, js"""function (val){
-        const name = val[0];
-        const flat = deserialize_js(val[1]);
-        const len = val[2];
-        const geometry = $(mesh).geometry
-        const jsb = geometry.attributes[name]
-        jsb.set(flat, 0)
-        jsb.needsUpdate = true
-        geometry.instanceCount = len
-        geometry.needsUpdate = true
-    }""")
-    for (name, buffer) in pairs(program.vertexarray)
-        if buffer isa Buffer
-            on(ShaderAbstractions.updater(buffer).update) do (f, args)
-                # update to replace the whole buffer!
-                if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
-                    new_array = args[1]
-                    flat = flatten_buffer(new_array)
-                    len = length(new_array)
-                    if real_size[] >= length(new_array)
-                        update_buffer[] = [name, flat, len]
-                    else
-                        push!(resize[], name)
-                        if length(resize[]) == length(buffers)
-                            real_size[] = length(buffer)
-                            resize[] = resize[]
-                            empty!(resize[])
-                        end
-                    end
-                end
-            end
-        end
-    end
-    on(resize) do new_data
-        JSServe.fuse(jsctx) do
-            js_vbo = jsctx.new.BufferGeometry()
-            for (name, buff) in pairs(program.vertexarray)
-                js_buff = JSBuffer(jsctx, buff)
-                js_vbo.setAttribute(name, js_buff)
-            end
-            indices = GeometryBasics.faces(program.vertexarray)
-            indices = reinterpret(UInt32, indices)
-            js_vbo.setIndex(indices)
-            js_vbo.boundingSphere = jsctx.new.Sphere()
-            # don't use intersection / culling
-            js_vbo.boundingSphere.radius = 10000000000000f0
-            mesh.geometry = js_vbo
-            mesh.needsUpdate = true
-        end
+function serialize_three(scene::Scene, plot::Scatter)
+    program = create_shader(scene, plot)
+    mesh = serialize_three(program)
+    mesh[:name] = string(objectid(plot))
+    mesh[:visible] = plot.visible
+    return mesh
+end
+
+function serialize_camera(scene::Scene)
+    cam = scene.camera
+    return lift(cam.view, cam.projection, cam.projectionview) do prjs...
+        projections = [serialize_three.(prjs)...]
+        return projections
     end
 end

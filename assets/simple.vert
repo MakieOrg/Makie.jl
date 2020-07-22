@@ -1,6 +1,6 @@
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
+uniform mat4 projection;
+uniform mat4 view;
+
 uniform float atlas_tex_dim;
 
 out vec4 frag_color;
@@ -56,15 +56,15 @@ void main(){
     vec2 bbox_signed_radius = 0.5 * get_markersize(); // note; components may be negative.
     vec2 sprite_bbox_centre = get_marker_offset() + bbox_signed_radius;
 
-    mat4 pview = projectionMatrix * viewMatrix;
+    mat4 pview = projection * view;
     // Compute transform for the offset vectors from the central point
-    mat4 trans = get_transform_marker() ? modelMatrix : mat4(1.0);
-    mat4 billtrans = get_use_pixel_marker() ? pixelspace : projectionMatrix;
+    mat4 trans = get_transform_marker() ? model : mat4(1.0);
+    mat4 billtrans = get_use_pixel_marker() ? pixelspace : projection;
     trans = (get_billboard() ? billtrans : pview * qmat(get_rotations())) * trans;
 
     // Compute centre of billboard in clipping coordinates
     vec4 sprite_center = trans * vec4(sprite_bbox_centre, 0, 0);
-    vec4 data_point = pview * modelMatrix * vec4(tovec3(get_offset()), 1);
+    vec4 data_point = pview * model * vec4(tovec3(get_offset()), 1);
     vec4 vclip = data_point + sprite_center;
 
     // Extra buffering is required around sprites which are antialiased so that
