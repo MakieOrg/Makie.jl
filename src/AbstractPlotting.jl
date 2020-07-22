@@ -85,6 +85,7 @@ include("basic_recipes/legend.jl")
 include("basic_recipes/title.jl")
 # statistical recipes
 include("stats/conversions.jl")
+include("stats/histogram.jl")
 include("stats/density.jl")
 include("stats/distributions.jl")
 include("stats/crossbar.jl")
