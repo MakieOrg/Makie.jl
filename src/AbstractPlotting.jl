@@ -71,7 +71,6 @@ include("camera/camera3d.jl")
 
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
-include("basic_recipes/multiple.jl")
 include("basic_recipes/errorbars.jl")
 include("basic_recipes/pie.jl")
 # layouting of plots
@@ -188,7 +187,7 @@ export (..), GLNormalUVMesh
 export widths, decompose
 
 # building blocks for series recipes
-export PlotList, PlotSpec
+export PlotSpec
 
 export plot!, plot
 
