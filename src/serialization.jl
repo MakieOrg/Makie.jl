@@ -2,6 +2,26 @@ using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
 using Colors: N0f8
+AbstractPlotting.plotkey(::Nothing) = :scatter
+
+function lift_convert(key, value, plot)
+    val = lift(value) do value
+         wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
+     end
+     if key == :colormap && val[] isa AbstractArray
+         return ShaderAbstractions.Sampler(val)
+     else
+         val
+     end
+end
+
+function Base.pairs(mesh::GeometryBasics.Mesh)
+    return (kv for kv in GeometryBasics.attributes(mesh))
+end
+
+function GeometryBasics.faces(x::VertexArray)
+    return GeometryBasics.faces(getfield(x, :data))
+end
 
 tlength(T) = length(T)
 tlength(::Type{<: Real}) = 1
@@ -19,10 +39,18 @@ function serialize_three(observable::Observable)
     return Dict(:type => "Observable",:id=> observable.id, :value => serialize_three(observable[]))
 end
 
+# Make sure we preserve pointer identity for uploaded textures, so
+# we can actually find duplicated before uploading
+const SAVE_POINTER_IDENTITY_FOR_TEXTURES = IdDict()
+serialize_texture_data(x) = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
+    serialize_three(x)
+end
+
+
 function serialize_three(color::Sampler{T, N}) where {T, N}
     tex = Dict(
         :type => "Sampler",
-        :data => serialize_three(color.data),
+        :data => serialize_texture_data(color.data),
         :size => [size(color.data)...],
         :three_format => three_format(T),
         :three_type => three_type(eltype(T)),
@@ -48,7 +76,6 @@ function serialize_uniforms(dict::Dict)
     end
     return result
 end
-
 
 three_format(::Type{<: Real}) = "RedFormat"
 three_format(::Type{<: RGB}) = "RGBFormat"
@@ -142,26 +169,6 @@ function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
     return ShaderAbstractions.Sampler(value)
 end
 
-AbstractPlotting.plotkey(::Nothing) = :scatter
-
-function lift_convert(key, value, plot)
-    val = lift(value) do value
-         wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
-     end
-     if key == :colormap && val[] isa AbstractArray
-         return ShaderAbstractions.Sampler(val)
-     else
-         val
-     end
-end
-
-function Base.pairs(mesh::GeometryBasics.Mesh)
-    return (kv for kv in GeometryBasics.attributes(mesh))
-end
-
-function GeometryBasics.faces(x::VertexArray)
-    return GeometryBasics.faces(getfield(x, :data))
-end
 
 function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
     return Dict(
@@ -184,7 +191,7 @@ function register_geometry_updates(update_buffer::Observable, named_buffers)
                 if f === (setindex!) && args[1] isa AbstractArray && args[2] isa Colon
                     new_array = args[1]
                     flat = flatten_buffer(new_array)
-                    update_buffer[] = [name, flat, length(new_array)]
+                    update_buffer[] = [name, serialize_three(flat), length(new_array)]
                 end
             end
         end
@@ -203,11 +210,9 @@ end
 function uniform_updater(uniforms::Dict)
     updater = Observable(Any[:none, []])
     for (name, value) in uniforms
-        @show value isa Sampler
         if value isa Sampler
             on(ShaderAbstractions.updater(value).update) do (f, args)
                 if args[2] isa Colon && f == setindex!
-                    @show name
                     updater[] = [name, serialize_three(args[1])]
                 end
             end
@@ -274,7 +279,7 @@ end
 function serialize_three(scene::Scene, plot::AbstractPlot)
     program = create_shader(scene, plot)
     mesh = serialize_three(program)
-    mesh[:name] = string(objectid(plot))
+    mesh[:name] = string(AbstractPlotting.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
     return mesh
 end
@@ -284,6 +289,7 @@ function serialize_three(scene::Scene, plot::Scatter)
     mesh = serialize_three(program)
     mesh[:name] = string(objectid(plot))
     mesh[:visible] = plot.visible
+    mesh[:name] = string(AbstractPlotting.plotkey(plot))
     return mesh
 end
 
@@ -293,4 +299,51 @@ function serialize_camera(scene::Scene)
         projections = [serialize_three.(prjs)...]
         return projections
     end
+end
+
+
+function recurse_object(f, object::AbstractDict)
+    # we only search for duplicates in objects, not keys
+    # if you put big objects in keys - well so be it :D
+    return Dict((k => f(v) for (k, v) in object))
+end
+
+function recurse_object(f, object::Union{Tuple, AbstractVector, Pair})
+    return map(f, object)
+end
+
+const BasicTypes = Union{Array{<:Number}, Number, Bool}
+
+recurse_object(f, x::BasicTypes) = x
+recurse_object(f, x::String) = x
+
+_replace_dublicates(object::BasicTypes, objects=IdDict(), duplicates=[]) = object
+
+function _replace_dublicates(object, objects=IdDict(), duplicates=[])
+    if object isa String && length(object) < 30
+        return object
+    end
+    if object isa StaticArray
+        return object
+    end
+    if haskey(objects, object)
+        idx = objects[object]
+        if idx === nothing
+            push!(duplicates, object)
+            idx = length(duplicates)
+            objects[object] = idx
+        end
+        return Dict(:type=>"Reference", :index=>idx)
+    else
+        objects[object] = nothing
+        # we only search for duplicates in objects, not keys
+        # if you put big objects in keys - well so be it :D
+        return recurse_object(x-> _replace_dublicates(x, objects, duplicates), object)
+    end
+end
+
+function replace_dublicates(object)
+    duplicates = []
+    result = _replace_dublicates(object, IdDict(), duplicates)
+    return [result, duplicates]
 end

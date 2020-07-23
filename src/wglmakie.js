@@ -1,5 +1,8 @@
 const WGLMakie = function (){
-    function create_texture(data){
+
+    const cached_textures = {}
+
+    function _create_texture(data) {
         const buffer = deserialize_three(data.data)
         if (data.size.length == 3){
             const tex = new THREE.DataTexture3D(
@@ -14,6 +17,19 @@ const WGLMakie = function (){
                 THREE[data.three_format], THREE[data.three_type]
             )
         }
+    }
+    function create_texture(data){
+        if (data.type == "Reference") {
+            let tex = cached_textures[data.id]
+            if (tex == undefined) {
+                tex = _create_texture(data)
+            }
+            cached_textures[data.id] = tex
+            return tex
+        } else {
+            return _create_texture(data)
+        }
+
     }
 
     function convert_texture(data){
@@ -32,6 +48,18 @@ const WGLMakie = function (){
         return tex
     }
 
+    const typed_array_names = [
+        "Uint8Array",
+        "Int32Array",
+        "Uint32Array",
+        "Float32Array"]
+
+    let serialized_references = undefined
+
+    function set_duplicate_references(refs){
+        serialized_references = refs;
+    }
+
     function deserialize_three(data){
         if (typeof data === "number"){
             return data
@@ -39,25 +67,22 @@ const WGLMakie = function (){
         if (typeof data === "boolean"){
             return data
         }
-        if (typeof data === "string"){
-            // since we don't use strings together with deserialize_three, this must be
-            // a three global!
-            return THREE[data]
-        }
-        if (data.isMatrix4) {
+        if (typed_array_names.includes(data.constructor.name)) {
             return data
         }
         if (data.type !== undefined) {
+            if (data.type == "Reference"){
+                if (serialized_references == undefined){
+                    throw "No duplicate references defined"
+                } else if (serialized_references.length < data.index) {
+                    throw "Inconsistent reference found!"
+                }
+                return deserialize_three(serialized_references[data.index - 1])
+            }
             if (data.type == "Sampler"){
                 return convert_texture(data)
             }
-            const array_types = [
-                "Uint8Array",
-                "Int32Array",
-                "Uint32Array",
-                "Float32Array"]
-
-            if (array_types.includes(data.type)) {
+            if (typed_array_names.includes(data.type)) {
                 return new window[data.type](data.data)
             }
         }
@@ -76,14 +101,14 @@ const WGLMakie = function (){
                 mat.fromArray(data)
                 return mat
             }
+            return data
         }
-        // Ok, WHAT ON EARTH IS THIS?!!? WHAT HAVE WE DONE?
-        throw `Object isn't a recognized three data type: ${JSON.stringify(data)}`
+        return data // we just leave data we dont know alone!
     }
 
     function BufferAttribute(buffer) {
         const buff = deserialize_three(buffer.flat)
-        const jsbuff = new THREE.Float32BufferAttribute(buff, buffer.type_length);
+        const jsbuff = new THREE.BufferAttribute(buff, buffer.type_length);
         jsbuff.setUsage(THREE.DynamicDrawUsage);
         return jsbuff
     }
@@ -109,18 +134,30 @@ const WGLMakie = function (){
     }
 
     function attach_instanced_geometry(buffer_geometry, instance_attributes) {
-        let count = 0;
         for(const name in instance_attributes) {
-            count += 1;
             const buffer = InstanceBufferAttribute(instance_attributes[name]);
             buffer_geometry.setAttribute(name, buffer);
         }
     }
 
-    function recreate_instanced_geometry(mesh, vertexarrays, faces, instance_attributes) {
+    function recreate_instanced_geometry(mesh) {
         const buffer_geometry = new THREE.InstancedBufferGeometry();
+        const vertexarrays = {}
+        const instance_attributes = {}
+        const faces = [...mesh.geometry.index.array]
+        Object.keys(mesh.geometry.attributes).forEach(name=>{
+            const buffer = mesh.geometry.attributes[name]
+            // really dont know why copying an array is considered rocket science in JS
+            const copy = buffer.to_update ? buffer.to_update : buffer.array.map(x=> x)
+            if (buffer.isInstancedBufferAttribute) {
+                instance_attributes[name] = {flat: copy, type_length: buffer.itemSize}
+            } else {
+                vertexarrays[name] = {flat: copy, type_length: buffer.itemSize}
+            }
+        })
         attach_geometry(buffer_geometry, vertexarrays, faces)
-        attach_instanced_geometry(buffer_geometry, instance_attributes);
+        attach_instanced_geometry(buffer_geometry, instance_attributes)
+        mesh.geometry.dispose()
         mesh.geometry = buffer_geometry;
         mesh.needsUpdate = true;
     }
@@ -144,7 +181,14 @@ const WGLMakie = function (){
     function deserialize_uniforms(data) {
         const result = {}
         for (const name in data) {
-            result[name] = {value: deserialize_three(data[name])}
+            const value = data[name]
+            // this is already a uniform - happens when we attach additional
+            // uniforms like the camera matrices in a later stage!
+            if (value.constructor.name == "Uniform"){
+                result[name] = value
+            } else {
+                result[name] = new THREE.Uniform(deserialize_three(value))
+            }
         }
         return result
     }
@@ -153,8 +197,8 @@ const WGLMakie = function (){
         const is_volume = 'volumedata' in program.uniforms
         return new THREE.RawShaderMaterial({
             uniforms: deserialize_uniforms(program.uniforms),
-            vertexShader: program.vertex_source,
-            fragmentShader: program.fragment_source,
+            vertexShader: deserialize_three(program.vertex_source),
+            fragmentShader: deserialize_three(program.fragment_source),
             side: is_volume ? THREE.BackSide : THREE.DoubleSide,
             transparent: true,
             // depthTest: true,
@@ -174,7 +218,6 @@ const WGLMakie = function (){
         attach_geometry(buffer_geometry, program.vertexarrays, program.faces)
         attach_instanced_geometry(buffer_geometry, program.instance_attributes);
         const material = create_material(program)
-
         return new THREE.Mesh(buffer_geometry, material);
     }
 
@@ -185,6 +228,7 @@ const WGLMakie = function (){
         } else {
             mesh = create_mesh(data)
         }
+        mesh.name = data.name
         mesh.frustumCulled = false
         mesh.matrixAutoUpdate = false
         const update_visible = (v) => (mesh.visible = v)
@@ -202,17 +246,17 @@ const WGLMakie = function (){
         scene.backgroundcolor = data.backgroundcolor
         scene.clearscene = data.clearscene
 
-        cam = {
-            view: new THREE.Matrix4(),
-            projection: new THREE.Matrix4(),
-            projectionview: new THREE.Matrix4(),
+        const cam = {
+            view: new THREE.Uniform(new THREE.Matrix4()),
+            projection: new THREE.Uniform(new THREE.Matrix4()),
+            projectionview: new THREE.Uniform(new THREE.Matrix4()),
         }
 
         function update_cam(camera){
             const [view, projection, projectionview] = camera
-            cam.view.fromArray(view)
-            cam.projection.fromArray(projection)
-            cam.projectionview.fromArray(projectionview)
+            cam.view.value.fromArray(view)
+            cam.projection.value.fromArray(projection)
+            cam.projectionview.value.fromArray(projectionview)
         }
 
         update_cam(get_observable(data.camera))
@@ -239,17 +283,83 @@ const WGLMakie = function (){
                 uniform.value.needsUpdate = true
             } else {
                 uniform.value = deserialized
-                uniform.needsUpdate = true
             }
         })
     }
-
+    function first(x){
+        return x[Object.keys(x)[0]]
+    }
     function connect_attributes(mesh, updater){
-        const attributes = mesh.geometry.attributes;
+        const instance_buffers = {}
+        const geometry_buffers = {}
+        let first_instance_buffer;
+        const real_instance_length = [0]
+        let first_geometry_buffer;
+        const real_geometry_length = [0]
+
+        function re_assign_buffers() {
+            const attributes = mesh.geometry.attributes;
+            const buffers = Object.values(attributes)
+            Object.keys(attributes).forEach(name=>{
+                const buffer = attributes[name]
+                if (buffer.isInstancedBufferAttribute){
+                    instance_buffers[name] = buffer
+                } else {
+                    geometry_buffers[name] = buffer
+                }
+            })
+            first_instance_buffer = first(instance_buffers)
+            // not all meshes have instances!
+            if (first_instance_buffer){
+                real_instance_length[0] = first_instance_buffer.array.length
+            }
+            first_geometry_buffer = first(geometry_buffers)
+            real_geometry_length[0] = first_geometry_buffer.array.length
+        }
+
+        re_assign_buffers()
+
         on_update(updater, ([name, array, length]) => {
-            const buffer = attributes[name]
-            buffer.set(deserialize_js(array))
-            buffer.needsUpdate = true
+            const new_values = deserialize_three(deserialize_js(array))
+            const buffer = mesh.geometry.attributes[name]
+            let buffers;
+            let first_buffer;
+            let real_length;
+            let is_instance = false;
+            // First, we need to figure out if this is an instance / geometry buffer
+            if (name in instance_buffers) {
+                buffers = instance_buffers
+                first_buffer = first_instance_buffer
+                real_length = real_instance_length
+                is_instance = true
+            } else {
+                buffers = geometry_buffers
+                first_buffer = first_geometry_buffer
+                real_length = real_geometry_length
+            }
+            if(new_values.length <= real_length[0]){
+                // this is simple - we can just update the values
+                buffer.set(new_values)
+                buffer.needsUpdate = true
+                if (is_instance){
+                    mesh.geometry.instanceCount = new_values.length / buffer.itemSize
+                }
+            } else {
+                // resizing is a bit more complex
+                // first we directly overwrite the array - this
+                // won't have any effect, but like this we can collect the
+                // newly sized arrays untill all of them have the same length
+                buffer.to_update = new_values
+                if (Object.values(buffers).every(x=> x.to_update && ((x.to_update.length / x.itemSize) == length))){
+                    if (is_instance) {
+                        recreate_instanced_geometry(mesh)
+                        // we just replaced geometry & all buffers, so we need to update thise
+                        re_assign_buffers()
+                        mesh.geometry.instanceCount = new_values.length / buffer.itemSize
+                    }
+                } else {
+                }
+            }
         })
     }
 
@@ -376,6 +486,7 @@ const WGLMakie = function (){
         threejs_module,
         start_renderloop,
         deserialize_three,
-        render_scenes
+        render_scenes,
+        set_duplicate_references
     }
 }()

@@ -31,8 +31,10 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     colorrange = if haskey(plot, :colorrange)
         uniforms[:colorrange] = lift(Vec2f0, plot.colorrange)
     end
-    get!(uniforms, :colorrange, false)
+
     get!(uniforms, :colormap, false)
+    get!(uniforms, :colorrange, false)
+    get!(uniforms, :color, false)
     get!(uniforms, :model, plot.model)
 
     return Program(
@@ -136,6 +138,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap, Image})
         ambient = plot.ambient,
         diffuse = plot.diffuse,
         specular = plot.specular,
+        colorrange = haskey(plot, :colorrange) ? plot.colorrange : false,
         shininess = plot.shininess,
         lightposition = plot.lightposition
     )
