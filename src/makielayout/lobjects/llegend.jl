@@ -358,7 +358,7 @@ function legendelements(plot::Scatter)
         strokecolor = plot.strokecolor)]
 end
 
-function legendelements(plot::Poly)
+function legendelements(plot::Union{Poly, Violin, BoxPlot, CrossBar})
     LegendElement[PolyElement(color = plot.color, strokecolor = plot.strokecolor)]
 end
 
