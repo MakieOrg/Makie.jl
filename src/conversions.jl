@@ -285,6 +285,13 @@ function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}
 end
 
 """
+Takes an input `LineString` and decomposes it to points.
+"""
+function convert_arguments(PB::PointBased, linestring::LineString)
+    return convert_arguments(PB, linestring.points.parent.data)
+end
+
+"""
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
 Takes an `AbstractMatrix`, converts the dimesions `n` and `m` into `ClosedInterval`,
