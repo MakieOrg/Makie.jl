@@ -34,16 +34,36 @@ serialize_three(val::Quaternion) = Float32[val.data...]
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
 serialize_three(val::Mat4f0) = vec(val)
-
 function serialize_three(observable::Observable)
     return Dict(:type => "Observable",:id=> observable.id, :value => serialize_three(observable[]))
+end
+function serialize_three(array::AbstractArray)
+    return serialize_three(flatten_buffer(array))
+end
+function serialize_three(array::Vector{UInt8})
+    return Dict(:type => "Uint8Array", :data => array)
+end
+function serialize_three(array::Vector{Int32})
+    return Dict(:type => "Int32Array", :data => array)
+end
+function serialize_three(array::Vector{UInt32})
+    return Dict(:type => "Uint32Array", :data => array)
+end
+function serialize_three(array::Vector{Float32})
+    return Dict(:type => "Float32Array", :data => array)
 end
 
 # Make sure we preserve pointer identity for uploaded textures, so
 # we can actually find duplicated before uploading
 const SAVE_POINTER_IDENTITY_FOR_TEXTURES = IdDict()
-serialize_texture_data(x) = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
-    serialize_three(x)
+function serialize_texture_data(x)
+    buffer = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
+        serialize_three(x)
+    end
+    # Since we copy the data, and the data in x might have changed
+    # we still need to copy the new data!
+    buffer[:data] .= flatten_buffer(x)
+    return buffer
 end
 
 
@@ -126,25 +146,7 @@ function flatten_buffer(array::AbstractArray{T}) where T <: N0f8
     return flatten_buffer(reinterpret(UInt8, array))
 end
 
-function serialize_three(array::AbstractArray)
-    return serialize_three(flatten_buffer(array))
-end
 
-function serialize_three(array::Vector{UInt8})
-    return Dict(:type => "Uint8Array", :data => array)
-end
-
-function serialize_three(array::Vector{Int32})
-    return Dict(:type => "Int32Array", :data => array)
-end
-
-function serialize_three(array::Vector{UInt32})
-    return Dict(:type => "Uint32Array", :data => array)
-end
-
-function serialize_three(array::Vector{Float32})
-    return Dict(:type => "Float32Array", :data => array)
-end
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 
@@ -316,6 +318,7 @@ const BasicTypes = Union{Array{<:Number}, Number, Bool}
 
 recurse_object(f, x::BasicTypes) = x
 recurse_object(f, x::String) = x
+recurse_object(f, x) = x
 
 _replace_dublicates(object::BasicTypes, objects=IdDict(), duplicates=[]) = object
 

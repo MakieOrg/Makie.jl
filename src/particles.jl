@@ -148,7 +148,7 @@ function scatter_shader(scene::Scene, attributes)
 
     handle_color!(uniform_dict, per_instance)
 
-    instance = VertexArray(uv_mesh(Rect2D(-0.5f0, -0.5f0, 1f0, 1f0)))
+    instance = uv_mesh(Rect2D(-0.5f0, -0.5f0, 1f0, 1f0))
 
     for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
         uniform_dict[key] = getfield(scene.camera, key)
@@ -246,7 +246,6 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Text)
     color = lift(plot[1], plot.color) do str, color
         return to_color(color)
     end
-
     return scatter_shader(scene, Dict(
         :model => plot.model,
         :shape_type => Observable(Cint(3)),

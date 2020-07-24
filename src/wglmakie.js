@@ -311,10 +311,10 @@ const WGLMakie = function (){
             first_instance_buffer = first(instance_buffers)
             // not all meshes have instances!
             if (first_instance_buffer){
-                real_instance_length[0] = first_instance_buffer.array.length
+                real_instance_length[0] = first_instance_buffer.count
             }
             first_geometry_buffer = first(geometry_buffers)
-            real_geometry_length[0] = first_geometry_buffer.array.length
+            real_geometry_length[0] = first_geometry_buffer.count
         }
 
         re_assign_buffers()
@@ -337,12 +337,12 @@ const WGLMakie = function (){
                 first_buffer = first_geometry_buffer
                 real_length = real_geometry_length
             }
-            if(new_values.length <= real_length[0]){
+            if(length <= real_length[0]){
                 // this is simple - we can just update the values
                 buffer.set(new_values)
                 buffer.needsUpdate = true
                 if (is_instance){
-                    mesh.geometry.instanceCount = new_values.length / buffer.itemSize
+                    mesh.geometry.instanceCount = length
                 }
             } else {
                 // resizing is a bit more complex

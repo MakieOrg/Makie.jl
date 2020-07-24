@@ -72,8 +72,8 @@ function three_display(session::Session, scene::Scene)
 
     serialized = serialize_scene(scene)
 
-    # smaller_serialized = replace_dublicates(serialized)
-    smaller_serialized = [serialized, []]
+    smaller_serialized = replace_dublicates(serialized)
+    # smaller_serialized = [serialized, []]
     JSServe.register_resource!(session, smaller_serialized[1])
     width, height = size(scene)
     canvas = DOM.um("canvas", width = width, height = height)
