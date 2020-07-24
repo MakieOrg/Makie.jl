@@ -3,7 +3,7 @@ using FreeTypeAbstraction: iter_or_array
 
 mutable struct TextureAtlas
     rectangle_packer::RectanglePacker
-    mapping::Dict{Tuple{Char, NativeFont}, Int} # styled glyph to index in sprite_attributes
+    mapping::Dict{Tuple{Char, String}, Int} # styled glyph to index in sprite_attributes
     index::Int
     data::Matrix{Float16}
     # rectangles we rendered our glyphs into in normalized uv coordinates
@@ -37,7 +37,7 @@ end
 function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     return TextureAtlas(
         RectanglePacker(Rect2D(0, 0, initial_size...)),
-        Dict{Any, Int}(),
+        Dict{Tuple{Char, String}, Int}(),
         1,
         zeros(Float16, initial_size...),
         Vec4f0[],
@@ -61,7 +61,7 @@ begin
 
     function defaultfont()
         if isempty(_default_font)
-            push!(_default_font, NativeFont(assetpath("fonts", "DejaVuSans.ttf")))
+            push!(_default_font, to_font("Dejavu Sans"))
         end
         _default_font[]
     end
@@ -83,7 +83,13 @@ begin
     end
 
     function load_ascii_chars!(atlas)
-        for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
+        # for c in '\u0000':'\u00ff' #make sure all ascii is mapped linearly
+        #     insert_glyph!(atlas, c, defaultfont())
+        # end
+        for c in '0':'9' #make sure all ascii is mapped linearly
+            insert_glyph!(atlas, c, defaultfont())
+        end
+        for c in 'A':'Z' #make sure all ascii is mapped linearly
             insert_glyph!(atlas, c, defaultfont())
         end
     end
@@ -186,7 +192,7 @@ function glyph_boundingbox(c::Char, font::NativeFont, pixelsize)
 end
 
 function insert_glyph!(atlas::TextureAtlas, glyph::Char, font::NativeFont)
-    return get!(atlas.mapping, (glyph, font)) do
+    return get!(atlas.mapping, (glyph, FreeTypeAbstraction.fontname(font))) do
         downsample = 5 # render font 5x larger, and then downsample back to desired pixelsize
         pad = 8 # padd rendered font by 6 pixel in each direction
         uv_pixel = render(atlas, glyph, font, downsample, pad)
