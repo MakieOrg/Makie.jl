@@ -10,6 +10,9 @@ vec2 screen_space(vec4 position)
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
 
+vec4 tovec4(vec3 v){return vec4(v, 1.0);}
+vec4 tovec4(vec4 v){return v;}
+
 out vec4 frag_color;
 
 void main()
@@ -24,11 +27,11 @@ void main()
     vec4 anchor; float thickness;
     if(position.x == 0.0){
         anchor = point1_clip;
-        frag_color = get_color_start();
+        frag_color = tovec4(get_color_start());
         thickness = get_linewidth_start();
     }else{
         anchor = point2_clip;
-        frag_color = get_color_end();
+        frag_color = tovec4(get_color_end());
         thickness = get_linewidth_end();
     }
     normal *= ((thickness + AA_THICKNESS) / 2.0) / get_resolution();

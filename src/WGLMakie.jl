@@ -56,7 +56,6 @@ include("meshes.jl")
 include("imagelike.jl")
 include("display.jl")
 
-
 function activate!()
     b = WGLBackend()
     AbstractPlotting.register_backend!(b)
