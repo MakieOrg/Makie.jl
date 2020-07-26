@@ -287,3 +287,27 @@ function peaks(n=49)
     y = LinRange(-3, 3, n)
     3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y.+1).^2) .- 10*(x'/5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1/3 * exp.(-(x'.+1).^2 .- y.^2)
 end
+
+
+
+get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
+get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
+get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
+
+"""
+    surface_normals(x, y, z)
+Normals for a surface defined on the grid xy
+"""
+function surface_normals(x, y, z)
+    function normal(i)
+        i1, imax = CartesianIndex(1, 1), CartesianIndex(size(z))
+        ci(x, y) = min(max(i + CartesianIndex(x, y), i1), imax)
+        of = (ci(-1, -1), ci(1, -1), ci(-1, 1), ci(1, 1))
+        function offsets(off)
+            s = size(z)
+            return Vec3f0(get_dim(x, off, 1, s), get_dim(y, off, 2, s), z[off])
+        end
+        return normalize(mapreduce(offsets, +, init=Vec3f0(0), of))
+    end
+    return vec(map(normal, CartesianIndices(z)))
+end
