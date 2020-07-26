@@ -1,7 +1,6 @@
 using AbstractPlotting
 using MakieGallery
 using Test
-using GLMakie
 using StaticArrays, GeometryBasics
 using Observables
 using GeometryBasics: Pyramid
@@ -43,10 +42,5 @@ end
     end
 end
 
-if GLMakie.WORKING_OPENGL
-    # full MakieGallery comparisons here
-    include("glmakie_tests.jl")
-else
-    # run software only tests...
-    include("no_backend_tests.jl")
-end
+# run software only tests...
+include("no_backend_tests.jl")

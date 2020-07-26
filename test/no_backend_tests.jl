@@ -1,8 +1,10 @@
-database = MakieGallery.load_test_database()
-
 @test AbstractPlotting.current_backend[] isa Missing # should we change this, so e.g. CairoMakie works?
 
 @info "Starting minimal software tests"
+
+example_dir = joinpath(@__DIR__, "reference_image_tests")
+
+database = MakieGallery.load_database(joinpath.(example_dir, readdir(example_dir)))
 
 filter!(database) do example
     !("record" in example.tags)
