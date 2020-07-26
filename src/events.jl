@@ -1,8 +1,9 @@
 macro handle(accessor, body)
     obj, field = accessor.args
     key = string(field.value)
-    efield = esc(field.value); obj = esc(obj)
-    quote
+    efield = esc(field.value)
+    obj = esc(obj)
+    return quote
         if haskey($(obj), $(key))
             $(efield) = $(obj)[$(key)]
             $(esc(body))
@@ -28,7 +29,7 @@ function code_to_keyboard(code::String)
     button = replace(button, r"(.*)left" => s"left_\1")
     button = replace(button, r"(.*)right" => s"right_\1")
     sym = Symbol(button)
-    if isdefined(Keyboard, sym)
+    return if isdefined(Keyboard, sym)
         return getfield(Keyboard, sym)
     elseif sym == :backquote
         return Keyboard.grave_accent
@@ -56,14 +57,16 @@ function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
                 e.mouseposition[] = (x, size(scene)[2] - y)
             end
             @handle msg.mousedown begin
-                set = e.mousebuttons[]; empty!(set)
+                set = e.mousebuttons[]
+                empty!(set)
                 mousedown & 1 != 0 && push!(set, Mouse.left)
                 mousedown & 2 != 0 && push!(set, Mouse.right)
                 mousedown & 4 != 0 && push!(set, Mouse.middle)
                 e.mousebuttons[] = set
             end
             @handle msg.mouseup begin
-                set = e.mousebuttons[]; empty!(set)
+                set = e.mousebuttons[]
+                empty!(set)
                 mouseup & 1 != 0 && push!(set, Mouse.left)
                 mouseup & 2 != 0 && push!(set, Mouse.right)
                 mouseup & 4 != 0 && push!(set, Mouse.middle)
@@ -91,20 +94,13 @@ function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
                 end
                 e.keyboardbuttons[] = set
             end
+            return
         end
         return
     end
+    return
 end
 
-
-function AbstractPlotting.pick(
-        scene::Scene, THREE::ThreeDisplay, xy::Vec{2, Float64}
-    )
-    @warn "Picking not supported yet by WGLMakie"
-    # raycaster = THREE.new.Raycaster();
-    # xy_device_coordinates = ((xy ./ Vec(size(scene))) .* 2.0) .- 1.0
-    # js, camera = to_jsscene(THREE, scene)
-    # raycaster.setFromCamera(xy_device_coordinates, camera);
-    # intersectedObjects = raycaster.intersectObjects(js.children);
-    # return jlvalue(intersectedObjects)
+function AbstractPlotting.pick(scene::Scene, THREE::ThreeDisplay, xy::Vec{2,Float64})
+    return @warn "Picking not supported yet by WGLMakie"
 end

@@ -4,14 +4,15 @@ function JSServe.jsrender(session::Session, scene::Scene)
     return canvas
 end
 
-const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html", MIME"application/prs.juno.plotpane+html")
+const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html",
+                   MIME"application/prs.juno.plotpane+html")
 for M in WEB_MIMES
     @eval begin
         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
             three = nothing
             inline_display = JSServe.with_session() do session, request
                 three, canvas = three_display(session, scene)
-                canvas
+                return canvas
             end
             Base.show(io, m, inline_display)
             return three
@@ -20,11 +21,12 @@ for M in WEB_MIMES
 end
 
 function scene2image(scene::Scene)
-    three = nothing; session = nothing
+    three = nothing
+    session = nothing
     inline_display = JSServe.with_session() do s, request
         session = s
         three, canvas = three_display(s, scene)
-        canvas
+        return canvas
     end
     electron_display = display(inline_display)
     task = @async wait(session.js_fully_loaded)
@@ -41,23 +43,26 @@ function scene2image(scene::Scene)
     return ImageTransformations.imresize(img_device_scale, reverse(size(scene)))
 end
 
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/png", scene::Scene)
+function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/png",
+                                       scene::Scene)
     img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
+    return FileIO.save(FileIO.Stream(FileIO.format"PNG", io), img)
 end
 
-function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
+function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::MIME"image/jpeg",
+                                       scene::Scene)
     img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"JPEG", io), img)
+    return FileIO.save(FileIO.Stream(FileIO.format"JPEG", io), img)
 end
 
-function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where T <: MIME
+function AbstractPlotting.backend_showable(::WGLBackend, ::T, scene::Scene) where {T<:MIME}
     return T in WEB_MIMES
 end
 
 function session2image(sessionlike)
     s = JSServe.session(sessionlike)
-    picture_base64 = JSServe.evaljs_value(s, js"document.querySelector('canvas').toDataURL()")
+    to_data = js"document.querySelector('canvas').toDataURL()"
+    picture_base64 = JSServe.evaljs_value(s, to_data)
     picture_base64 = replace(picture_base64, "data:image/png;base64," => "")
     bytes = JSServe.Base64.base64decode(picture_base64)
     return ImageMagick.load_(bytes)
@@ -71,13 +76,12 @@ function three_display(session::Session, scene::Scene)
     update!(scene)
 
     serialized = serialize_scene(scene)
-
     smaller_serialized = replace_dublicates(serialized)
     # smaller_serialized = [serialized, []]
     JSServe.register_resource!(session, smaller_serialized[1])
     width, height = size(scene)
-    canvas = DOM.um("canvas", width = width, height = height)
-    comm = Observable(Dict{String, Any}())
+    canvas = DOM.um("canvas", width=width, height=height)
+    comm = Observable(Dict{String,Any}())
     scene_data = Observable(smaller_serialized)
     context = JSObject(session, :context)
 
@@ -119,7 +123,7 @@ function three_display(session::Session, scene::Scene)
     WGLMakie.mousedrag(scene, nothing)
     scene_data[] = scene_data[]
 
-    canvas_width = lift(x-> [round.(Int, widths(x))...], pixelarea(scene))
+    canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
     onjs(session, canvas_width, js"""function update_size(canvas_width){
         const context = $(context);
         const w_h = deserialize_js(canvas_width);
@@ -131,5 +135,18 @@ function three_display(session::Session, scene::Scene)
     connect_scene_events!(session, scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(context)
+    push!(scene.current_screens, three)
     return three, canvas
+end
+
+
+function AbstractPlotting.backend_display(::WGLBackend, scene::Scene)
+    three = nothing
+    inline_display = JSServe.with_session() do s, request
+        session = s
+        three, canvas = three_display(s, scene)
+        return canvas
+    end
+    electron_display = display(inline_display)
+    return three
 end

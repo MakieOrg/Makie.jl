@@ -6,13 +6,13 @@ AbstractPlotting.plotkey(::Nothing) = :scatter
 
 function lift_convert(key, value, plot)
     val = lift(value) do value
-         wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
-     end
-     if key == :colormap && val[] isa AbstractArray
-         return ShaderAbstractions.Sampler(val)
-     else
-         val
-     end
+        return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
+    end
+    return if key == :colormap && val[] isa AbstractArray
+        return ShaderAbstractions.Sampler(val)
+    else
+        val
+    end
 end
 
 function Base.pairs(mesh::GeometryBasics.Mesh)
@@ -24,7 +24,7 @@ function GeometryBasics.faces(x::VertexArray)
 end
 
 tlength(T) = length(T)
-tlength(::Type{<: Real}) = 1
+tlength(::Type{<:Real}) = 1
 
 serialize_three(val::Number) = val
 serialize_three(val::Vec2f0) = Float32[val...]
@@ -35,7 +35,8 @@ serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
 serialize_three(val::Mat4f0) = vec(val)
 function serialize_three(observable::Observable)
-    return Dict(:type => "Observable",:id=> observable.id, :value => serialize_three(observable[]))
+    return Dict(:type => "Observable", :id => observable.id,
+                :value => serialize_three(observable[]))
 end
 function serialize_three(array::AbstractArray)
     return serialize_three(flatten_buffer(array))
@@ -58,7 +59,7 @@ end
 const SAVE_POINTER_IDENTITY_FOR_TEXTURES = IdDict()
 function serialize_texture_data(x)
     buffer = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
-        serialize_three(x)
+        return serialize_three(x)
     end
     # Since we copy the data, and the data in x might have changed
     # we still need to copy the new data!
@@ -66,20 +67,13 @@ function serialize_texture_data(x)
     return buffer
 end
 
-
-function serialize_three(color::Sampler{T, N}) where {T, N}
-    tex = Dict(
-        :type => "Sampler",
-        :data => serialize_texture_data(color.data),
-        :size => [size(color.data)...],
-        :three_format => three_format(T),
-        :three_type => three_type(eltype(T)),
-
-        :minFilter => three_filter(color.minfilter),
-        :magFilter => three_filter(color.magfilter),
-        :wrapS => three_repeat(color.repeat[1]),
-        :anisotropy => color.anisotropic,
-    )
+function serialize_three(color::Sampler{T,N}) where {T,N}
+    tex = Dict(:type => "Sampler", :data => serialize_texture_data(color.data),
+               :size => [size(color.data)...], :three_format => three_format(T),
+               :three_type => three_type(eltype(T)),
+               :minFilter => three_filter(color.minfilter),
+               :magFilter => three_filter(color.magfilter),
+               :wrapS => three_repeat(color.repeat[1]), :anisotropy => color.anisotropic)
     if N > 1
         tex[:wrapT] = three_repeat(color.repeat[2])
     end
@@ -90,16 +84,16 @@ function serialize_three(color::Sampler{T, N}) where {T, N}
 end
 
 function serialize_uniforms(dict::Dict)
-    result = Dict{Symbol, Any}()
+    result = Dict{Symbol,Any}()
     for (k, v) in dict
         result[k] = serialize_three(to_value(v))
     end
     return result
 end
 
-three_format(::Type{<: Real}) = "RedFormat"
-three_format(::Type{<: RGB}) = "RGBFormat"
-three_format(::Type{<: RGBA}) = "RGBAFormat"
+three_format(::Type{<:Real}) = "RedFormat"
+three_format(::Type{<:RGB}) = "RGBFormat"
+three_format(::Type{<:RGBA}) = "RGBAFormat"
 
 three_type(::Type{Float16}) = "FloatType"
 three_type(::Type{Float32}) = "FloatType"
@@ -107,13 +101,13 @@ three_type(::Type{N0f8}) = "UnsignedByteType"
 
 function three_filter(sym)
     sym == :linear && return "LinearFilter"
-    sym == :nearest && return "NearestFilter"
+    return sym == :nearest && return "NearestFilter"
 end
 
 function three_repeat(s::Symbol)
     s == :clamp_to_edge && return "ClampToEdgeWrapping"
     s == :mirrored_repeat && return "MirroredRepeatWrapping"
-    s == :repeat && return "RepeatWrapping"
+    return s == :repeat && return "RepeatWrapping"
 end
 
 """
@@ -122,31 +116,29 @@ Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
 """
-function flatten_buffer(array::AbstractArray{T}) where T
+function flatten_buffer(array::AbstractArray{T}) where {T}
     return flatten_buffer(reinterpret(eltype(T), array))
 end
 
-function flatten_buffer(array::AbstractArray{<:AbstractFloat}) where T
+function flatten_buffer(array::AbstractArray{<:AbstractFloat}) where {T}
     return convert(Vector{Float32}, vec(array))
 end
 
-function flatten_buffer(array::AbstractArray{<:Integer}) where T
+function flatten_buffer(array::AbstractArray{<:Integer}) where {T}
     return convert(Vector{Int32}, vec(array))
 end
 
-function flatten_buffer(array::AbstractArray{<:Unsigned}) where T
+function flatten_buffer(array::AbstractArray{<:Unsigned}) where {T}
     return convert(Vector{UInt32}, vec(array))
 end
 
-function flatten_buffer(array::AbstractArray{T}) where T <: UInt8
+function flatten_buffer(array::AbstractArray{T}) where {T<:UInt8}
     return convert(Vector{T}, vec(array))
 end
 
-function flatten_buffer(array::AbstractArray{T}) where T <: N0f8
+function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
     return flatten_buffer(reinterpret(UInt8, array))
 end
-
-
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
 
@@ -155,12 +147,18 @@ isscalar(x::AbstractArray) = false
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 
-ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext, t::Type{<: AbstractPlotting.Quaternion}) = "vec4"
-ShaderAbstractions.convert_uniform(context::ShaderAbstractions.AbstractContext, t::Quaternion) = convert(Quaternion, t)
+function ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext,
+                                        t::Type{<:AbstractPlotting.Quaternion})
+    return "vec4"
+end
+function ShaderAbstractions.convert_uniform(context::ShaderAbstractions.AbstractContext,
+                                            t::Quaternion)
+    return convert(Quaternion, t)
+end
 
 function wgl_convert(value, key1, key2)
     val = AbstractPlotting.convert_attribute(value, key1, key2)
-    if val isa AbstractArray{<: Float64}
+    return if val isa AbstractArray{<:Float64}
         return AbstractPlotting.el32convert(val)
     else
         return val
@@ -171,18 +169,14 @@ function wgl_convert(value::AbstractMatrix, ::key"colormap", key2)
     return ShaderAbstractions.Sampler(value)
 end
 
-
 function serialize_buffer_attribute(buffer::AbstractVector{T}) where {T}
-    return Dict(
-        :flat => serialize_three(buffer),
-        :type_length => tlength(T)
-    )
+    return Dict(:flat => serialize_three(buffer), :type_length => tlength(T))
 end
 
 function serialize_named_buffer(buffer)
     return Dict(map(pairs(buffer)) do (name, buff)
-        name => serialize_buffer_attribute(buff)
-    end)
+                    return name => serialize_buffer_attribute(buff)
+                end)
 end
 
 function register_geometry_updates(update_buffer::Observable, named_buffers)
@@ -195,6 +189,7 @@ function register_geometry_updates(update_buffer::Observable, named_buffers)
                     flat = flatten_buffer(new_array)
                     update_buffer[] = [name, serialize_three(flat), length(new_array)]
                 end
+                return
             end
         end
     end
@@ -217,11 +212,13 @@ function uniform_updater(uniforms::Dict)
                 if args[2] isa Colon && f == setindex!
                     updater[] = [name, serialize_three(args[1])]
                 end
+                return
             end
         else
             value isa Observable || continue
             on(value) do value
                 updater[] = [name, serialize_three(value)]
+                return
             end
         end
     end
@@ -241,32 +238,28 @@ function serialize_three(program::Program)
     uniforms = serialize_uniforms(program.uniforms)
     attribute_updater = Observable(["", [], 0])
     register_geometry_updates(attribute_updater, program)
-    return Dict(
-        :vertexarrays => serialize_named_buffer(program.vertexarray),
-        :faces => indices,
-        :uniforms => uniforms,
-        :vertex_source => program.vertex_source,
-        :fragment_source => program.fragment_source,
-        :uniform_updater => uniform_updater(program.uniforms),
-        :attribute_updater => attribute_updater,
-    )
+    return Dict(:vertexarrays => serialize_named_buffer(program.vertexarray),
+                :faces => indices, :uniforms => uniforms,
+                :vertex_source => program.vertex_source,
+                :fragment_source => program.fragment_source,
+                :uniform_updater => uniform_updater(program.uniforms),
+                :attribute_updater => attribute_updater)
 end
 
 function serialize_scene(scene::Scene, serialized_scenes=[])
-    serialized = Dict(
-        :pixelarea => lift(area-> [minimum(area)..., widths(area)...], pixelarea(scene)),
-        :backgroundcolor => lift(c-> "#" * hex(Colors.color(to_color(c))), scene.backgroundcolor),
-        :clearscene => scene.clear,
-        :camera => serialize_camera(scene),
-        :plots => serialize_plots(scene, scene.plots),
-        :visible => scene.visible,
-    )
+    hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
+    serialized = Dict(:pixelarea => lift(area -> [minimum(area)..., widths(area)...],
+                                         pixelarea(scene)),
+                      :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
+                      :clearscene => scene.clear, :camera => serialize_camera(scene),
+                      :plots => serialize_plots(scene, scene.plots),
+                      :visible => scene.visible)
     push!(serialized_scenes, serialized)
-    foreach(child-> serialize_scene(child, serialized_scenes), scene.children)
+    foreach(child -> serialize_scene(child, serialized_scenes), scene.children)
     return serialized_scenes
 end
 
-function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where T<:AbstractPlot
+function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:AbstractPlot}
     for plot in plots
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
@@ -303,18 +296,17 @@ function serialize_camera(scene::Scene)
     end
 end
 
-
 function recurse_object(f, object::AbstractDict)
     # we only search for duplicates in objects, not keys
     # if you put big objects in keys - well so be it :D
     return Dict((k => f(v) for (k, v) in object))
 end
 
-function recurse_object(f, object::Union{Tuple, AbstractVector, Pair})
+function recurse_object(f, object::Union{Tuple,AbstractVector,Pair})
     return map(f, object)
 end
 
-const BasicTypes = Union{Array{<:Number}, Number, Bool}
+const BasicTypes = Union{Array{<:Number},Number,Bool}
 
 recurse_object(f, x::BasicTypes) = x
 recurse_object(f, x::String) = x
@@ -329,19 +321,19 @@ function _replace_dublicates(object, objects=IdDict(), duplicates=[])
     if object isa StaticArray
         return object
     end
-    if haskey(objects, object)
+    return if haskey(objects, object)
         idx = objects[object]
         if idx === nothing
             push!(duplicates, object)
             idx = length(duplicates)
             objects[object] = idx
         end
-        return Dict(:type=>"Reference", :index=>idx)
+        return Dict(:type => "Reference", :index => idx)
     else
         objects[object] = nothing
         # we only search for duplicates in objects, not keys
         # if you put big objects in keys - well so be it :D
-        return recurse_object(x-> _replace_dublicates(x, objects, duplicates), object)
+        return recurse_object(x -> _replace_dublicates(x, objects, duplicates), object)
     end
 end
 

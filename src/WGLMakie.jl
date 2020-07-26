@@ -4,7 +4,7 @@ using Hyperscript
 using JSServe, Observables, AbstractPlotting
 using Colors, GeometryBasics
 using ShaderAbstractions, LinearAlgebra
-import GeometryBasics
+using GeometryBasics: GeometryBasics
 
 using JSServe: Application, Session, evaljs, linkjs
 using JSServe: @js_str, onjs, Button, TextField, Slider, JSString, Dependency, with_session
@@ -15,7 +15,7 @@ using ShaderAbstractions: InstancedProgram
 import AbstractPlotting.FileIO
 using StaticArrays
 using GeometryBasics: decompose_uv
-import ImageMagick
+using ImageMagick: ImageMagick
 
 using FreeTypeAbstraction
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
@@ -26,12 +26,16 @@ using ImageTransformations
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: AbstractPlotting.AbstractBackend end
 
-const THREE = JSServe.Dependency(:THREE, ["https://cdn.jsdelivr.net/gh/mrdoob/three.js/build/three.js"])
+const THREE = JSServe.Dependency(:THREE,
+                                 ["https://cdn.jsdelivr.net/gh/mrdoob/three.js/build/three.js"])
 const WGL = JSServe.Dependency(:WGLMakie, [joinpath(@__DIR__, "wglmakie.js")])
 
 struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     context::JSObject
 end
+JSServe.session(td::ThreeDisplay) = JSServe.session(td.context)
+
+
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
     js_scene = serialize_three(scene, plot)
     td.context.add_plot(js_scene)
@@ -61,12 +65,12 @@ function activate!()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
     AbstractPlotting.current_backend[] = b
-    AbstractPlotting.inline!(true) # can't display any different atm
+    return AbstractPlotting.inline!(true) # can't display any different atm
 end
 
 function __init__()
     # Activate WGLMakie as backend!
-    activate!()
+    return activate!()
 end
 
 end # module
