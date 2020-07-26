@@ -16,7 +16,7 @@ exclude_tests = Set(Symbol.([
     "orthographic_camera", #HM!?
     "hbox_1",# pixel size marker wrong size?!
     "electrostatic_repulsion", # quite a bit brigher..weird
-    "errorbars_x_y_low_high",
+    "errorbars_x_y_low_high", # something weird with image compare
     "errorbars_xy_error",
     "errorbars_xy_low_high",
 ]))
