@@ -4,9 +4,8 @@ out vec3 frag_position;
 out vec4 frag_color;
 out vec3 frag_lightdir;
 
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
+uniform mat4 projection;
+uniform mat4 view;
 
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
@@ -20,7 +19,7 @@ void main(){
     vec3 vertex_position = tovec3(get_position());
     vec3 lightpos = get_lightposition();
     frag_normal = get_normals();
-    vec4 position_world = modelMatrix * vec4(vertex_position, 1);
+    vec4 position_world = model * vec4(vertex_position, 1);
     frag_lightdir = normalize(lightpos - position_world.xyz);
     // direction to camera
     frag_position = -position_world.xyz;
@@ -29,5 +28,5 @@ void main(){
     frag_color = tovec4(get_color());
 
     // screen space coordinates of the position
-    gl_Position = projectionMatrix * viewMatrix * position_world;
+    gl_Position = projection * view * position_world;
 }

@@ -6,84 +6,27 @@ using WGLMakie, AbstractPlotting, JSServe, Test
 using MakieGallery
 
 
-tests_wgl_makie = Set(Symbol.([
-    "cube_lattice",
-    "twisty_cube_thing",
-    "arc_1",
-    "arrows_3d",
-    "available_markers",
-    "barplot_1",
-    "colored_mesh",
-    "colored_triangle",
-    "colored_triangle_1",
-    "customize_axes",
-    "errorbar",
-    "fem_mesh_2d",
-    "fem_mesh_3d",
-    "fem_polygon_2d",
-    # how did fluctuation_3d ever work?
-    # "fluctuation_3d",
-    "heatmap_1",
-    "image_1",
-    "image_on_geometry__earth_",
-    "image_on_geometry__moon_",
-    "image_on_surface_sphere",
-    "linesegments___colors",
-    "line_function",
-    "load_mesh",
-    "marker_offset",
-    "marker_sizes",
-    "marker_sizes___marker_colors",
-    "merged_color_mesh",
-    "meshscatter_function",
-    "normals_of_a_cat",
-    "polygons",
-    "poly_and_colormap",
-    "scatter_1",
-    "scatter_colormap",
-    "simple_meshscatter",
-    "sphere_mesh",
-    "stepper_demo",
-    "test_10",
-    "test_11",
-    "test_12",
-    "test_13",
-    "test_14",
-    "test_15",
-    "test_16",
-    "test_18",
-    "test_19",
-    "test_20",
-    "test_21",
-    "test_22",
-    "test_3",
-    "test_31",
-    "test_4",
-    "test_8",
-    "test_9",
-    "test_heatmap___image_overlap",
-    "textured_mesh",
-    "text_annotation",
-    "tutorial_adding_to_a_scene",
-    "tutorial_adjusting_scene_limits",
-    "tutorial_barplot",
-    "tutorial_basic_theming",
-    "tutorial_heatmap",
-    "tutorial_linesegments",
-    "tutorial_markersize",
-    "tutorial_plot_transformation",
-    "tutorial_simple_line",
-    "tutorial_simple_scatter",
-    "tutorial_title",
-    "unicode_marker",
-    "viridis_meshscatter",
-    "viridis_scatter",
-    "wireframe_of_a_mesh",
+exclude_tests = Set(Symbol.([
+    "streamplot_animation",
+    "transforming_lines",
+    "image_scatter",
+    "test_38",
+    "line_gif",
+    "stars", # glow missing
+    "orthographic_camera", #HM!?
+    "hbox_1",# pixel size marker wrong size?!
+    "electrostatic_repulsion", # quite a bit brigher..weird
+    "errorbars_x_y_low_high", # something weird with image compare
+    "errorbars_xy_error",
+    "errorbars_xy_low_high",
 ]))
 
-database = MakieGallery.load_database()
+abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "reference_image_tests")
+abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
+database = MakieGallery.load_database(abstractplotting_tests)
+
 filter!(database) do entry
-    entry.unique_name in tests_wgl_makie
+    return !(entry.unique_name in exclude_tests)
 end
 
 tested_diff_path = joinpath(@__DIR__, "tested_different")
@@ -98,4 +41,7 @@ for path in (tested_diff_path, test_record_path)
     end
 end
 examples = MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff = 0.091)
+path = MakieGallery.download_reference("v0.6.3")
+MakieGallery.run_comparison(test_record_path, tested_diff_path,
+                            joinpath(dirname(path), "test_recordings"),
+                            maxdiff=0.091)

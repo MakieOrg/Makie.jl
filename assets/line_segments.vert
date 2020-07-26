@@ -1,5 +1,5 @@
-uniform mat4 projectionMatrix;
-uniform mat4 modelViewMatrix;
+uniform mat4 projection;
+uniform mat4 view;
 
 #define AA_THICKNESS 2.0
 
@@ -10,11 +10,14 @@ vec2 screen_space(vec4 position)
 vec3 tovec3(vec2 v){return vec3(v, 0.0);}
 vec3 tovec3(vec3 v){return v;}
 
+vec4 tovec4(vec3 v){return vec4(v, 1.0);}
+vec4 tovec4(vec4 v){return v;}
+
 out vec4 frag_color;
 
 void main()
 {
-    mat4 pvm = projectionMatrix * modelViewMatrix;
+    mat4 pvm = projection * view * get_model();
     vec4 point1_clip = pvm * vec4(tovec3(get_segment_start()), 1);
     vec4 point2_clip = pvm * vec4(tovec3(get_segment_end()), 1);
     vec2 point1_screen = screen_space(point1_clip);
@@ -24,11 +27,11 @@ void main()
     vec4 anchor; float thickness;
     if(position.x == 0.0){
         anchor = point1_clip;
-        frag_color = get_color_start();
+        frag_color = tovec4(get_color_start());
         thickness = get_linewidth_start();
     }else{
         anchor = point2_clip;
-        frag_color = get_color_end();
+        frag_color = tovec4(get_color_end());
         thickness = get_linewidth_end();
     }
     normal *= ((thickness + AA_THICKNESS) / 2.0) / get_resolution();

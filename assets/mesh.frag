@@ -43,6 +43,9 @@ vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
     float normed = _normalize(value, colorrange.x, colorrange.y);
     return texture(colormap, vec2(normed, 0.0));
 }
+vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
+    return texture(color, uv);
+}
 
 void main() {
     vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);

@@ -1,8 +1,8 @@
 precision mediump float;
 
-uniform mat4 projectionMatrix;
-uniform mat4 viewMatrix;
-uniform mat4 modelMatrix;
+uniform mat4 projection;
+uniform mat4 view;
+
 
 out vec3 frag_normal;
 out vec3 frag_position;
@@ -34,12 +34,12 @@ void main(){
     vec3 N = get_normals();
     rotate(get_rotations(), vertex_position, N);
     vertex_position = to_vec3(get_offset()) + vertex_position;
-    vec4 position_world = modelMatrix * vec4(vertex_position, 1);
+    vec4 position_world = model * vec4(vertex_position, 1);
     frag_normal = N;
     frag_lightdir = normalize(lightpos - position_world.xyz);
     frag_color = to_vec4(get_color());
     // direction to camera
     frag_position = -position_world.xyz;
     // screen space coordinates of the position
-    gl_Position = projectionMatrix * viewMatrix * position_world;
+    gl_Position = projection * view * position_world;
 }
