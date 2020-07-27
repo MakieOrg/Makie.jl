@@ -79,16 +79,8 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
 
     uniforms[:shading] = plot.shading
 
-    for key in (:ambient, :diffuse, :specular, :shininess, :lightposition)
+    for key in (:ambient, :diffuse, :specular, :shininess)
         uniforms[key] = plot[key]
-    end
-
-    if haskey(uniforms, :lightposition)
-        eyepos = getfield(scene.camera, :eyeposition)
-        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos,
-                                        typ=Vec3f0) do pos, eyepos
-            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
-        end
     end
 
     faces = facebuffer(mesh_signal)
@@ -97,5 +89,6 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     get!(uniforms, :colorrange, true)
     get!(uniforms, :colormap, true)
     get!(uniforms, :model, plot.model)
+    get!(uniforms, :lightposition, Vec3f0(1))
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
 end
