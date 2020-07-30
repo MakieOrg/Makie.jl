@@ -1,4 +1,109 @@
 const WGLMakie = function (){
+    // Taken from https://andreasrohner.at/posts/Web%20Development/JavaScript/Simple-orbital-camera-controls-for-THREE-js/
+    function attach_3d_camera(domElement, camera_matrices, cam3d){
+        if (cam3d === undefined) {
+            // we just support 3d cameras atm
+            return
+        }
+        const w = camera_matrices.resolution.value.x
+        const h = camera_matrices.resolution.value.y
+        const camera = new THREE.PerspectiveCamera(
+            cam3d.fov,
+            w/h,
+            cam3d.near, cam3d.far);
+
+        const center = new THREE.Vector3(...cam3d.lookat);
+        camera.up = new THREE.Vector3(...cam3d.upvector);
+        camera.position.set(...cam3d.eyeposition)
+        camera.lookAt(center);
+
+        function update(){
+            camera.updateProjectionMatrix()
+            camera.updateWorldMatrix()
+            camera_matrices.view.value = camera.matrixWorldInverse
+            camera_matrices.projection.value = camera.projectionMatrix
+            camera_matrices.eyeposition.value = camera.position
+        }
+
+        function addMouseHandler(domObject, drag, zoomIn, zoomOut) {
+            let startDragX = null
+            let startDragY = null
+            function mouseWheelHandler(e) {
+                e = window.event || e;
+                const delta = Math.max(-1, Math.min(1, (e.wheelDelta || -e.detail)));
+                if (delta < 0 && zoomOut) {
+                    zoomOut(delta);
+                } else if (zoomIn) {
+                    zoomIn(delta);
+                }
+
+                e.preventDefault();
+            }
+            function mouseDownHandler(e) {
+                startDragX = e.clientX;
+                startDragY = e.clientY;
+
+                e.preventDefault();
+            }
+            function mouseMoveHandler(e) {
+                if (startDragX === null || startDragY === null)
+                    return;
+
+                if (drag)
+                    drag(e.clientX - startDragX, e.clientY - startDragY);
+
+                startDragX = e.clientX;
+                startDragY = e.clientY;
+                e.preventDefault();
+            }
+            function mouseUpHandler(e) {
+                mouseMoveHandler.call(this, e);
+                startDragX = null;
+                startDragY = null;
+                e.preventDefault();
+            }
+            domObject.addEventListener("wheel", mouseWheelHandler);
+            domObject.addEventListener("mousedown", mouseDownHandler);
+            domObject.addEventListener("mousemove", mouseMoveHandler);
+            domObject.addEventListener("mouseup", mouseUpHandler);
+        }
+
+        function drag(deltaX, deltaY) {
+            const radPerPixel = (Math.PI / 450)
+            const deltaPhi = radPerPixel * deltaX
+            const deltaTheta = radPerPixel * deltaY
+            const pos = camera.position.sub(center)
+            const radius = pos.length()
+            let theta = Math.acos(pos.z / radius)
+            let phi = Math.atan2(pos.y, pos.x)
+
+            // Subtract deltaTheta and deltaPhi
+            theta = Math.min(Math.max(theta - deltaTheta, 0), Math.PI);
+            phi -= deltaPhi;
+
+            // Turn back into Cartesian coordinates
+            pos.x = radius * Math.sin(theta) * Math.cos(phi);
+            pos.y = radius * Math.sin(theta) * Math.sin(phi);
+            pos.z = radius * Math.cos(theta);
+
+            camera.position.add(center);
+            camera.lookAt(center);
+            update()
+        }
+
+        function zoomIn() {
+            camera.position.sub(center).multiplyScalar(0.9).add(center);
+            update()
+        }
+
+        function zoomOut() {
+            camera.position.sub(center).multiplyScalar(1.1).add(center);
+            update()
+        }
+
+        addMouseHandler(domElement, drag, zoomIn, zoomOut);
+    }
+
 
     const cached_textures = {}
 
@@ -250,23 +355,34 @@ const WGLMakie = function (){
             view: new THREE.Uniform(new THREE.Matrix4()),
             projection: new THREE.Uniform(new THREE.Matrix4()),
             projectionview: new THREE.Uniform(new THREE.Matrix4()),
+            resolution: new THREE.Uniform(new THREE.Vector2()),
+            eyeposition: new THREE.Uniform(new THREE.Vector3())
         }
 
         function update_cam(camera){
-            const [view, projection, projectionview] = camera
+            const [view, projection, projectionview, resolution, eyepos] = camera
             cam.view.value.fromArray(view)
             cam.projection.value.fromArray(projection)
             cam.projectionview.value.fromArray(projectionview)
+            cam.resolution.value.fromArray(deserialize_js(resolution))
+            cam.eyeposition.value.fromArray(deserialize_js(eyepos))
         }
 
         update_cam(get_observable(data.camera))
-        on_update(data.camera, update_cam)
+
+        if (data.cam3d_state){
+            attach_3d_camera(window.renderer.domElement, cam, data.cam3d_state)
+        } else {
+            on_update(data.camera, update_cam)
+        }
 
         data.plots.forEach(plot => {
             // fill in the camera uniforms, that we don't sent in serialization per plot
             plot.uniforms.view = cam.view
             plot.uniforms.projection = cam.projection
             plot.uniforms.projectionview = cam.projectionview
+            plot.uniforms.resolution = cam.resolution
+            plot.uniforms.eyeposition = cam.eyeposition
             const p = deserialize_plot(plot)
             scene.add(p)
         })
@@ -478,6 +594,7 @@ const WGLMakie = function (){
         }
         document.addEventListener("contextmenu", contextmenu);
         document.addEventListener("focusout", contextmenu);
+        window.renderer = renderer
         return renderer
     }
 

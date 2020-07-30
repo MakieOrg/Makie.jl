@@ -248,11 +248,20 @@ end
 
 function serialize_scene(scene::Scene, serialized_scenes=[])
     hexcolor(c) = "#" * hex(Colors.color(to_color(c)))
-    serialized = Dict(:pixelarea => lift(area -> [minimum(area)..., widths(area)...],
-                                         pixelarea(scene)),
+    pixel_area = lift(area -> [minimum(area)..., widths(area)...], pixelarea(scene))
+    cam_controls = cameracontrols(scene)
+    cam3d_state = if cam_controls isa Camera3D
+        fields = (:lookat, :upvector, :eyeposition, :fov, :near, :far)
+        Dict((f => serialize_three(getfield(cam_controls, f)[]) for f in fields))
+    else
+        nothing
+    end
+    serialized = Dict(:pixelarea => pixel_area,
                       :backgroundcolor => lift(hexcolor, scene.backgroundcolor),
-                      :clearscene => scene.clear, :camera => serialize_camera(scene),
+                      :clearscene => scene.clear,
+                      :camera => serialize_camera(scene),
                       :plots => serialize_plots(scene, scene.plots),
+                      :cam3d_state => cam3d_state,
                       :visible => scene.visible)
     push!(serialized_scenes, serialized)
     foreach(child -> serialize_scene(child, serialized_scenes), scene.children)
@@ -276,23 +285,33 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh = serialize_three(program)
     mesh[:name] = string(AbstractPlotting.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
-    return mesh
-end
-
-function serialize_three(scene::Scene, plot::Scatter)
-    program = create_shader(scene, plot)
-    mesh = serialize_three(program)
-    mesh[:name] = string(objectid(plot))
-    mesh[:visible] = plot.visible
-    mesh[:name] = string(AbstractPlotting.plotkey(plot))
+    uniforms = mesh[:uniforms]
+    delete!(uniforms, :lightposition)
+    if haskey(plot, :lightposition)
+        eyepos = scene.camera.eyeposition
+        lightpos = lift(plot.lightposition, eyepos,
+                                        typ=Vec3f0) do pos, eyepos
+            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
+        end
+        uniforms[:lightposition] = serialize_three(lightpos[])
+        updater = mesh[:uniform_updater]
+        on(lightpos) do value
+            updater[] = [:lightposition, serialize_three(value)]
+            return
+        end
+    end
     return mesh
 end
 
 function serialize_camera(scene::Scene)
     cam = scene.camera
-    return lift(cam.view, cam.projection, cam.projectionview) do prjs...
-        projections = [serialize_three.(prjs)...]
-        return projections
+    return lift(cam.view, cam.projection, cam.resolution) do v, p, res
+        # projectionview updates with projection & view
+        pv = cam.projectionview[]
+        # same goes for eyeposition, since an eyepos change will trigger
+        # a view matrix change!
+        ep = cam.eyeposition[]
+        return [serialize_three.((v, p, pv, res, ep))...]
     end
 end
 
@@ -306,7 +325,7 @@ function recurse_object(f, object::Union{Tuple,AbstractVector,Pair})
     return map(f, object)
 end
 
-const BasicTypes = Union{Array{<:Number},Number,Bool}
+const BasicTypes = Union{Array{<:Number},Number,Bool, Nothing}
 
 recurse_object(f, x::BasicTypes) = x
 recurse_object(f, x::String) = x

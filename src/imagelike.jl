@@ -4,14 +4,6 @@ using AbstractPlotting: el32convert, surface_normals, get_dim
 function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     uniforms = Dict(uniforms)
 
-    if haskey(uniforms, :lightposition)
-        eyepos = getfield(mscene.camera, :eyeposition)
-        uniforms[:lightposition] = lift(uniforms[:lightposition], eyepos,
-                                        typ=Vec3f0) do pos, eyepos
-            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
-        end
-    end
-
     colormap = if haskey(plot, :colormap)
         cmap = lift(el32convert ∘ to_colormap, plot.colormap)
         uniforms[:colormap] = Sampler(cmap)
@@ -72,7 +64,7 @@ function create_shader(mscene::Scene, plot::Surface)
     return draw_mesh(mscene, mesh, plot; uniform_color=color, color=Vec4f0(0),
                      shading=plot.shading, ambient=plot.ambient, diffuse=plot.diffuse,
                      specular=plot.specular, shininess=plot.shininess,
-                     lightposition=plot.lightposition)
+                     lightposition=Vec3f0(1))
 end
 
 function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
@@ -85,7 +77,7 @@ function create_shader(mscene::Scene, plot::Union{Heatmap,Image})
                      normals=Vec3f0(0), shading=false, ambient=plot.ambient,
                      diffuse=plot.diffuse, specular=plot.specular,
                      colorrange=haskey(plot, :colorrange) ? plot.colorrange : false,
-                     shininess=plot.shininess, lightposition=plot.lightposition)
+                     shininess=plot.shininess, lightposition=Vec3f0(1))
 end
 
 function create_shader(mscene::Scene, plot::Volume)
@@ -103,11 +95,6 @@ function create_shader(mscene::Scene, plot::Volume)
     modelinv = lift(inv, model2)
     algorithm = lift(x -> Cuint(convert_attribute(x, key"algorithm"())), plot.algorithm)
 
-    eyepos = getfield(mscene.camera, :eyeposition)
-
-    lightposition = lift(plot.lightposition, eyepos, typ=Vec3f0) do pos, eyepos
-        return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
-    end
     return Program(WebGL(), lasset("volume.vert"), lasset("volume.frag"), box,
                    volumedata=Sampler(lift(AbstractPlotting.el32convert, vol)),
                    modelinv=modelinv, colormap=Sampler(lift(to_colormap, plot.colormap)),
@@ -115,7 +102,10 @@ function create_shader(mscene::Scene, plot::Volume)
                    isovalue=lift(Float32, plot.isovalue),
                    isorange=lift(Float32, plot.isorange),
                    absorption=lift(Float32, get(plot, :absorption, Observable(1f0))),
-                   algorithm=algorithm, eyeposition=eyepos, ambient=plot.ambient,
+                   algorithm=algorithm, ambient=plot.ambient,
                    diffuse=plot.diffuse, specular=plot.specular, shininess=plot.shininess,
-                   lightposition=lightposition, model=model2)
+                   model=model2,
+                   # these get filled in later by serialization, but we need them
+                   # as dummy values here, so that the correct uniforms are emitted
+                   lightposition=Vec3f0(1), eyeposition=Vec3f0(1))
 end

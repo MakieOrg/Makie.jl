@@ -24,7 +24,7 @@ end
 
 const IGNORE_KEYS = Set([:shading, :overdraw, :rotation, :distancefield, :markerspace,
                          :fxaa, :visible, :transformation, :alpha, :linewidth,
-                         :transparency, :marker])
+                         :transparency, :marker, :lightposition])
 
 function create_shader(scene::Scene, plot::MeshScatter)
     # Potentially per instance attributes
@@ -46,14 +46,6 @@ function create_shader(scene::Scene, plot::MeshScatter)
     for (k, v) in uniforms
         k in IGNORE_KEYS && continue
         uniform_dict[k] = lift_convert(k, v, plot)
-    end
-
-    if haskey(uniform_dict, :lightposition)
-        eyepos = getfield(scene.camera, :eyeposition)
-        uniform_dict[:lightposition] = lift(uniform_dict[:lightposition], eyepos,
-                                            typ=Vec3f0) do pos, eyepos
-            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
-        end
     end
 
     handle_color!(uniform_dict, per_instance)
@@ -142,18 +134,7 @@ function scatter_shader(scene::Scene, attributes)
 
     instance = uv_mesh(Rect2D(-0.5f0, -0.5f0, 1f0, 1f0))
 
-    for key in (:resolution,)#(:view, :projection, :resolution, :eyeposition, :projectionview)
-        uniform_dict[key] = getfield(scene.camera, key)
-    end
-
-    if haskey(uniform_dict, :lightposition)
-        eyepos = getfield(scene.camera, :eyeposition)
-        uniform_dict[:lightposition] = lift(uniform_dict[:lightposition], eyepos,
-                                            typ=Vec3f0) do pos, eyepos
-            return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
-        end
-    end
-
+    uniform_dict[:resolution] = scene.camera.resolution
     return InstancedProgram(WebGL(), lasset("simple.vert"), lasset("sprites.frag"),
                             instance, VertexArray(; per_instance...); uniform_dict...)
 end
