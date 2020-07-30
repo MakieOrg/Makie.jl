@@ -5,9 +5,11 @@ const WGLMakie = function (){
             // we just support 3d cameras atm
             return
         }
+        const w = camera_matrices.resolution.value.x
+        const h = camera_matrices.resolution.value.y
         const camera = new THREE.PerspectiveCamera(
             cam3d.fov,
-            domElement.width/domElement.height,
+            w/h,
             cam3d.near, cam3d.far);
 
         const center = new THREE.Vector3(...cam3d.lookat);
