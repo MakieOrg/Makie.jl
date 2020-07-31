@@ -6,18 +6,13 @@ version = "0.11.0"
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
 FileIO = "5789e2e9-d7fb-5bc7-8068-2c6fae9b9549"
 GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
-ImageMagick = "6218d12a-5da1-5696-b52f-db25d2ecc6d1"
-MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
-StatsMakie = "65254759-4cff-5aa5-8326-61ce017a8c70"
 
 [compat]
-AbstractPlotting = "0.11"
+AbstractPlotting = "0.12"
 FileIO = "1.1"
 GLMakie = "0.1"
-ImageMagick = "0.7, 1"
-MakieGallery = "0.2"
+MakieGallery = "0.2.14"
 MeshIO = "0.4"
-StatsMakie = "0.2.0"
 julia = "1"
 
 [extras]
