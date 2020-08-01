@@ -4,7 +4,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         Attributes(kwargs),
         default_attributes(LTextbox, parent).attributes)
 
-    @extract attrs (halign, valign, textsize, content, placeholder,
+    @extract attrs (halign, valign, textsize, stored_string, placeholder,
         textcolor, textcolor_placeholder, displayed_string,
         boxcolor, boxcolor_focused_invalid, boxcolor_focused, boxcolor_hover,
         bordercolor, textpadding, bordercolor_focused, bordercolor_hover, focused,
@@ -33,7 +33,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     roundedrectpoints = lift(roundedrectvertices, scenearea, cornerradius, cornersegments)
 
-    displayed_string[] = isnothing(content[]) ? placeholder[] : content[]
+    displayed_string[] = isnothing(stored_string[]) ? placeholder[] : stored_string[]
 
     displayed_is_valid = lift(displayed_string, validator) do str, validator
         valid::Bool = validate_textbox(str, validator)
@@ -70,7 +70,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     displayed_chars = @lift([c for c in $displayed_string])
 
-    realtextcolor = lift(textcolor, textcolor_placeholder, focused, content, typ = Any) do tc, tcph, foc, cont
+    realtextcolor = lift(textcolor, textcolor_placeholder, focused, stored_string, typ = Any) do tc, tcph, foc, cont
         if !foc && isnothing(cont)
             tcph
         else
@@ -120,7 +120,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
     onmouseleftclick(mousestate) do state
         focus!(ltextbox)
 
-        if isnothing(content[])
+        if isnothing(stored_string[])
             # there isn't text to select yet, only placeholder
             return
         end
@@ -193,16 +193,16 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
     function submit()
         if displayed_is_valid[]
             defocus!(ltextbox)
-            content[] = displayed_string[]
+            stored_string[] = displayed_string[]
         end
     end
 
     function abort()
         cursorindex[] = 0
-        if isnothing(content[])
+        if isnothing(stored_string[])
             displayed_string[] = placeholder[]
         else
-            displayed_string[] = content[]
+            displayed_string[] = stored_string[]
         end
         defocus!(ltextbox)
     end
@@ -287,10 +287,10 @@ end
 
 """
     reset!(tb::LTextbox)
-Resets the content of the given `LTextbox` to `nothing` without triggering listeners, and resets the `LTextbox` to the `placeholder` text.
+Resets the stored_string of the given `LTextbox` to `nothing` without triggering listeners, and resets the `LTextbox` to the `placeholder` text.
 """
 function reset!(tb::LTextbox)
-    tb.content.val = nothing
+    tb.stored_string.val = nothing
     tb.displayed_string = tb.placeholder[]
     defocus!(tb)
     nothing
@@ -298,7 +298,7 @@ end
 
 """
     set!(tb::LTextbox, string::String)
-Sets the content of the given `LTextbox` to `string`, triggering listeners of `tb.content`.
+Sets the stored_string of the given `LTextbox` to `string`, triggering listeners of `tb.stored_string`.
 """
 function set!(tb::LTextbox, string::String)
     if !validate_textbox(string, tb.validator[])
@@ -306,7 +306,7 @@ function set!(tb::LTextbox, string::String)
     end
 
     tb.displayed_string = string
-    tb.content = string
+    tb.stored_string = string
     nothing
 end
 
@@ -316,7 +316,7 @@ Focuses an `LTextbox` and makes it ready to receive keyboard input.
 """
 function focus!(tb::LTextbox)
     if !tb.focused[]
-        if isnothing(tb.content[])
+        if isnothing(tb.stored_string[])
             tb.cursorindex[] = 1
             tb.displayed_string = " "
         end

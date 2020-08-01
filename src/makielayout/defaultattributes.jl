@@ -768,8 +768,8 @@ function default_attributes(::Type{LTextbox}, scene)
         alignmode = Inside()
         "A placeholder text that is displayed when the saved string is nothing."
         placeholder = "Click to edit..."
-        "The currently saved string."
-        content = nothing
+        "The currently stored string."
+        stored_string = nothing
         "The currently displayed string (for internal use)."
         displayed_string = nothing
         "Text size."
