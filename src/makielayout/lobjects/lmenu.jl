@@ -230,16 +230,6 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     mousestates = [addmousestate!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
 
     for (i, (mousestate, r, t)) in enumerate(zip(mousestates, allrects, alltexts))
-        onmouseleftclick(mousestate) do state
-            if is_open[]
-                # first item is already selected
-                if i > 1
-                    i_selected[] = i - 1
-                end
-            end
-            is_open[] = !is_open[]
-        end
-
         onmouseover(mousestate) do state
             r.color = cell_color_hover[]
         end
@@ -255,6 +245,13 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
         onmouseleftdown(mousestate) do state
             r.color = cell_color_active[]
+            if is_open[]
+                # first item is already selected
+                if i > 1
+                    i_selected[] = i - 1
+                end
+            end
+            is_open[] = !is_open[]
         end
     end
 
