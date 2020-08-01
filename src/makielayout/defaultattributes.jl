@@ -772,6 +772,10 @@ function default_attributes(::Type{LTextbox}, scene)
         stored_string = nothing
         "The currently displayed string (for internal use)."
         displayed_string = nothing
+        "Controls if the displayed text is reset to the stored text when defocusing the textbox without submitting."
+        reset_on_defocus = false
+        "Controls if the textbox is defocused when a string is submitted."
+        defocus_on_submit = true
         "Text size."
         textsize = lift_parent_attribute(scene, :fontsize, 20f0)
         "Text color."
