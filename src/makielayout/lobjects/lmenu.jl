@@ -167,6 +167,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         marker = @lift($is_open ? '▴' : '▾'),
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
+        strokecolor = :transparent,
         raw = true)[end]
     translate!(dropdown_arrow, 0, 0, 1)
 
