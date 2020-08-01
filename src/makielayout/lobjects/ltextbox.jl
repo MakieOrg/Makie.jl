@@ -35,14 +35,14 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     displayed_string[] = isnothing(content[]) ? placeholder[] : content[]
 
-    content_is_valid = lift(displayed_string, validator) do str, validator
+    displayed_is_valid = lift(displayed_string, validator) do str, validator
         valid::Bool = validate_textbox(str, validator)
     end
 
     hovering = Node(false)
 
     realbordercolor = lift(bordercolor, bordercolor_focused,
-        bordercolor_focused_invalid, bordercolor_hover, focused, content_is_valid, hovering,
+        bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering,
         typ = Any) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         if focused
@@ -53,7 +53,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
     end
 
     realboxcolor = lift(boxcolor, boxcolor_focused,
-        boxcolor_focused_invalid, boxcolor_hover, focused, content_is_valid, hovering,
+        boxcolor_focused_invalid, boxcolor_hover, focused, displayed_is_valid, hovering,
         typ = Any) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         if focused
@@ -191,7 +191,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
 
     function submit()
-        if content_is_valid[]
+        if displayed_is_valid[]
             defocus!(ltextbox)
             content[] = displayed_string[]
         end
