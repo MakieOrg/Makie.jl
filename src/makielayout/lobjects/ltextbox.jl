@@ -10,7 +10,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         bordercolor, textpadding, bordercolor_focused, bordercolor_hover, focused,
         bordercolor_focused_invalid,
         borderwidth, cornerradius, cornersegments, boxcolor_focused,
-        validator, restriction, cursorcolor)
+        validator, restriction, cursorcolor, reset_on_defocus, defocus_on_submit)
 
     decorations = Dict{Symbol, Any}()
 
@@ -70,11 +70,14 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     displayed_chars = @lift([c for c in $displayed_string])
 
-    realtextcolor = lift(textcolor, textcolor_placeholder, focused, stored_string, typ = Any) do tc, tcph, foc, cont
-        if !foc && isnothing(cont)
-            tcph
-        else
+    realtextcolor = lift(textcolor, textcolor_placeholder, focused, stored_string, displayed_string, typ = Any) do tc, tcph, foc, cont, disp
+        # the textbox has normal text color if it's focused
+        # if it's defocused, the displayed text has to match the stored text in order
+        # to be normal colored
+        if foc || cont == disp
             tc
+        else
+            tcph
         end
     end
 
@@ -117,12 +120,11 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     mousestate = addmousestate!(scene)
 
-    onmouseleftclick(mousestate) do state
+    onmouseleftdown(mousestate) do state
         focus!(ltextbox)
 
-        if isnothing(stored_string[])
-            # there isn't text to select yet, only placeholder
-            return
+        if displayed_string[] == placeholder[]
+            displayed_string[] = " "
         end
 
         pos = state.pos
@@ -146,7 +148,10 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
     end
 
     onmousedownoutside(mousestate) do state
-        abort()
+        if reset_on_defocus[]
+            reset_to_stored()
+        end
+        defocus!(ltextbox)
     end
 
     function insertchar!(c, index)
@@ -192,19 +197,17 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     function submit()
         if displayed_is_valid[]
-            defocus!(ltextbox)
             stored_string[] = displayed_string[]
         end
     end
 
-    function abort()
+    function reset_to_stored()
         cursorindex[] = 0
         if isnothing(stored_string[])
             displayed_string[] = placeholder[]
         else
             displayed_string[] = stored_string[]
         end
-        defocus!(ltextbox)
     end
 
     function cursor_forward()
@@ -228,8 +231,14 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
                 removechar!(cursorindex[] + 1)
             elseif key == Keyboard.enter
                 submit()
+                if defocus_on_submit[]
+                    defocus!(ltextbox)
+                end
             elseif key == Keyboard.escape
-                abort()
+                if reset_on_defocus[]
+                    reset_to_stored()
+                end
+                defocus!(ltextbox)
             elseif key == Keyboard.right
                 cursor_forward()
             elseif key == Keyboard.left
@@ -316,10 +325,6 @@ Focuses an `LTextbox` and makes it ready to receive keyboard input.
 """
 function focus!(tb::LTextbox)
     if !tb.focused[]
-        if isnothing(tb.stored_string[])
-            tb.cursorindex[] = 1
-            tb.displayed_string = " "
-        end
         tb.focused = true
 
         cursoranim = Animations.Loop(
@@ -346,6 +351,11 @@ end
 Defocuses an `LTextbox` so it doesn't receive keyboard input.
 """
 function defocus!(tb::LTextbox)
+
+    if tb.displayed_string[] in (" ", "")
+        tb.displayed_string[] = tb.placeholder[]
+    end
+
     if !isnothing(tb.cursoranimtask)
         Animations.stop(tb.cursoranimtask)
         tb.cursoranimtask = nothing
