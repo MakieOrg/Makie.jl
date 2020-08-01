@@ -979,8 +979,7 @@ f must return a Point2.
 
 Example:
 ```julia
-using Makie
-v(x::Point2{T}) = Point2f0(x[2], 4*x[1])
+v(x::Point2{T}) where T = Point2f0(x[2], 4*x[1])
 streamplot(v, -2..2, -2..2)
 ```
 ## Attributes
