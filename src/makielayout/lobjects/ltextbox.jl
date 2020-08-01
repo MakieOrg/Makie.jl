@@ -66,6 +66,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
     box = poly!(parent, roundedrectpoints, strokewidth = borderwidth,
         strokecolor = realbordercolor,
         color = realboxcolor, raw = true)[end]
+    decorations[:box] = box
 
     displayed_chars = @lift([c for c in $displayed_string])
 
