@@ -128,6 +128,14 @@ function addmousestate!(scene, elements...)
                     x => error("No recognized mouse button $x")
                 end
                 mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+
+                event = @match mouse_downed_button[] begin
+                    Mouse.left => MouseLeftDrag()
+                    Mouse.right => MouseRightDrag()
+                    Mouse.middle => MouseMiddleDrag()
+                    x => error("No recognized mouse button $x")
+                end
+                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
             end
         else
             if mouse_inside
