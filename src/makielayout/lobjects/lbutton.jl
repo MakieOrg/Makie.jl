@@ -73,6 +73,11 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
         lcolor[] = labelcolor[]
     end
 
+    onmouseleftup(mousestate) do state
+        bcolor[] = buttoncolor_hover[]
+        lcolor[] = labelcolor_hover[]
+    end
+
     onmouseleftdown(mousestate) do state
         bcolor[] = buttoncolor_active[]
         lcolor[] = labelcolor_active[]
