@@ -119,6 +119,7 @@ function addmousestate!(scene, elements...)
         # mouse moved while just having been pressed down
         elseif last_mousestate[] == Mouse.down
             # mouse must have been downed inside
+            # that means a drag started
             if mouse_downed_inside[]
                 drag_ongoing[] = true
                 event = @match mouse_downed_button[] begin
@@ -165,6 +166,8 @@ function addmousestate!(scene, elements...)
 
         pressed_buttons = events(scene).mousebuttons[]
 
+        # we only need to handle mousedown and mouseup
+        # pressed and not pressed are redundant events with mouse position changes
         if mousedrag == Mouse.down
             if length(pressed_buttons) == 1
                 button = only(pressed_buttons)
