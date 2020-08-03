@@ -2,7 +2,7 @@
 
 // SSAO
 uniform sampler2D position_buffer;
-uniform sampler2D normal_buffer;
+uniform sampler2D normal_occlusion_buffer;
 uniform sampler2D noise;
 uniform vec3 kernel[{{N_samples}}];
 uniform vec2 noise_scale;
@@ -15,13 +15,14 @@ uniform float radius;
 
 
 in vec2 frag_uv;
-out float o_occlusion;
+// occlusion.xyz is a normal vector, occlusion.w the occlusion value
+out vec4 o_normal_occlusion;
 
 
 void main(void)
 {
     vec3 view_pos = texture(position_buffer, frag_uv).xyz;
-    vec3 normal  = texture(normal_buffer, frag_uv).xyz;
+    vec3 normal  = texture(normal_occlusion_buffer, frag_uv).xyz;
 
     // The normal buffer gets cleared every frame. (also position, color etc)
     // If normal == vec3(1) then there is no geometry at this fragment.
@@ -83,8 +84,8 @@ void main(void)
             occlusion += (sample_depth >= sample_view_offset.z + view_pos.z + bias ? 1.0 : 0.0) * range_check;
         }
         occlusion = 1.0 - (occlusion / {{N_samples}});
-        o_occlusion = occlusion;
+        o_normal_occlusion.w = occlusion;
     } else {
-        o_occlusion = 1.0;
+        o_normal_occlusion.w = 1.0;
     }
 }

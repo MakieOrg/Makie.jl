@@ -35,9 +35,9 @@ mutable struct GLFramebuffer
     objectid::Texture{Vec{2, GLushort}, 2}
     depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
     position::Texture{Vec4f0, 2}
-    normal::Texture{Vec3f0, 2}
+    # NOTE: temporary fix for https://github.com/JuliaPlots/Makie.jl/issues/614
+    normal_occlusion::Texture{Vec4f0, 2}
     ssao_noise::Texture{Vec2f0, 2}
-    occlusion::Texture{Float32, 2}
 
     color_luma::Texture{RGBA{N0f8}, 2}
 
@@ -57,7 +57,8 @@ to the screen and while at it, it can do some postprocessing (not doing it right
 E.g fxaa anti aliasing, color correction etc.
 """
 function postprocess(
-        color, position, normal, ssao_noise, occlusion, objectid, color_luma,
+        color, position, normal_occlusion, ssao_noise,
+        objectid, color_luma,
         framebuffer_size
     )
 
@@ -81,7 +82,7 @@ function postprocess(
     )
     data1 = Dict{Symbol, Any}(
         :position_buffer => position,
-        :normal_buffer => normal,
+        :normal_occlusion_buffer => normal_occlusion,
         :kernel => kernel,
         :noise => ssao_noise,
         :noise_scale => map(s -> Vec2f0(s ./ 4.0), framebuffer_size),
@@ -99,7 +100,7 @@ function postprocess(
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :occlusion => occlusion,
+        :normal_occlusion => normal_occlusion,
         :color_texture => color,
         :ids => objectid,
         :inv_texel_size => map(t -> Vec2f0(1f0/t[1], 1f0/t[2]), framebuffer_size),
@@ -161,8 +162,8 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     position_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    normal_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    occlusion = Texture(Float32, fb_size, minfilter=:nearest, x_repeat=:clamp_to_edge)
+    # NOTE: temporary fix for https://github.com/JuliaPlots/Makie.jl/issues/614
+    normal_occlusion_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 
     depth_buffer = Texture(
         Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
@@ -179,8 +180,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     attach_framebuffer(color_buffer, GL_COLOR_ATTACHMENT0)
     attach_framebuffer(objectid_buffer, GL_COLOR_ATTACHMENT1)
     attach_framebuffer(position_buffer, GL_COLOR_ATTACHMENT2)
-    attach_framebuffer(normal_buffer, GL_COLOR_ATTACHMENT3)
-    attach_framebuffer(occlusion, GL_COLOR_ATTACHMENT4)
+    attach_framebuffer(normal_occlusion_buffer, GL_COLOR_ATTACHMENT3)
     attach_framebuffer(depth_buffer, GL_DEPTH_ATTACHMENT)
     attach_framebuffer(depth_buffer, GL_STENCIL_ATTACHMENT)
 
@@ -201,7 +201,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     fb_size_node = Node(fb_size)
 
     p = postprocess(
-        color_buffer, position_buffer, normal_buffer, ssao_noise, occlusion,
+        color_buffer, position_buffer, normal_occlusion_buffer, ssao_noise, #occlusion,
         objectid_buffer, color_luma,
         fb_size_node
     )
@@ -210,7 +210,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
         fb_size_node,
         (render_framebuffer, color_luma_framebuffer),
         color_buffer, objectid_buffer, depth_buffer,
-        position_buffer, normal_buffer, ssao_noise, occlusion,
+        position_buffer, normal_occlusion_buffer, ssao_noise,# occlusion,
         color_luma,
         p
     )
@@ -223,8 +223,7 @@ function Base.resize!(fb::GLFramebuffer, window_size)
         resize_nocopy!(fb.objectid, ws)
         resize_nocopy!(fb.depth, ws)
         resize_nocopy!(fb.position, ws)
-        resize_nocopy!(fb.normal, ws)
-        resize_nocopy!(fb.occlusion, ws)
+        resize_nocopy!(fb.normal_occlusion, ws)
         resize_nocopy!(fb.color_luma, ws)
         fb.resolution[] = ws
     end

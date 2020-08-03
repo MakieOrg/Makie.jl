@@ -148,10 +148,11 @@ function render_frame(screen::Screen; resize_buffers=true)
 
 
     # SSAO - calculate occlusion
-    glDrawBuffer(GL_COLOR_ATTACHMENT4)  # occlusion buffer
+    # glDrawBuffer(GL_COLOR_ATTACHMENT4)  # occlusion buffer
+    glDrawBuffer(GL_COLOR_ATTACHMENT3)  # occlusion buffer
     glViewport(0, 0, w, h)
-    glClearColor(1, 1, 1, 1)            # 1 means no darkening
-    glClear(GL_COLOR_BUFFER_BIT)
+    # glClearColor(1, 1, 1, 1)            # 1 means no darkening
+    # glClear(GL_COLOR_BUFFER_BIT)
 
     for (screenid, scene) in screen.screens
         # update uniforms
