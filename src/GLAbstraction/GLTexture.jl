@@ -65,7 +65,6 @@ function set_packing_alignment(a) # at some point we should specialize to array/
     glPixelStorei(GL_UNPACK_SKIP_ROWS, 0)
 end
 
-
 function Texture(
         data::Ptr{T}, dims::NTuple{NDim, Int};
         internalformat::GLenum = default_internalcolorformat(T),
@@ -322,8 +321,6 @@ end
 
 gpu_data(t::TextureBuffer{T}) where {T} = gpu_data(t.buffer)
 gpu_getindex(t::TextureBuffer{T}, i::UnitRange{Int64}) where {T} = t.buffer[i]
-
-
 
 similar(t::Texture{T, NDim}, newdims::Int...) where {T, NDim} = similar(t, newdims)
 function similar(t::TextureBuffer{T}, newdims::NTuple{1, Int}) where T

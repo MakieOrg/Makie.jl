@@ -151,6 +151,17 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     nothing
 end
 
+function reinterpret_depth(data::Matrix{GLAbstraction.DepthStencil_24_8})
+    return map(data) do depth_stencil
+        d = depth_stencil.data
+        return reinterpret(Float32, UInt8[d[1], d[2], d[3], 0])[1]
+    end
+end
+
+function depthbuffer(screen::Screen)
+    depth = GLAbstraction.gpu_data(screen.framebuffer.depth)
+    return reinterpret_depth(depth)
+end
 
 function AbstractPlotting.colorbuffer(screen::Screen)
     if isopen(screen)

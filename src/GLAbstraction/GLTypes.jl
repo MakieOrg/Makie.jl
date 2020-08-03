@@ -145,7 +145,10 @@ julia2glenum(x::Type{GLfloat})  = GL_FLOAT
 julia2glenum(x::Type{GLdouble}) = GL_DOUBLE
 julia2glenum(x::Type{Float16})  = GL_HALF_FLOAT
 
-struct DepthStencil_24_8 <: Real end
+struct DepthStencil_24_8 <: Real
+    data::NTuple{4, UInt8}
+end
+
 Base.eltype(::Type{<: DepthStencil_24_8}) = DepthStencil_24_8
 julia2glenum(x::Type{DepthStencil_24_8}) = GL_UNSIGNED_INT_24_8
 
