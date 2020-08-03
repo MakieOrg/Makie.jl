@@ -257,7 +257,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     end
 
     # close the menu if the user clicks somewhere else
-    onmouseupoutside(addmousestate!(scene)) do state
+    onmousedownoutside(addmousestate!(scene)) do state
         if is_open[]
             is_open[] = !is_open[]
         end
