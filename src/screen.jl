@@ -151,12 +151,6 @@ function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) wher
     nothing
 end
 
-function reinterpret_depth(data::Matrix{GLAbstraction.DepthStencil_24_8})
-    return map(data) do depth_stencil
-        d = depth_stencil.data
-        return reinterpret(Float32, UInt8[d[1], d[2], d[3], 0])[1]
-    end
-end
 """
 depthbuffer(screen::Screen)
 Gets the depth buffer of screen.
@@ -171,8 +165,14 @@ heatmap(depth_color, colormap=:grays, show_axis=false)
 ```
 """
 function depthbuffer(screen::Screen)
-    depth = GLAbstraction.gpu_data(screen.framebuffer.depth)
-    return reinterpret_depth(depth)
+    render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    source = screen.framebuffer.depth
+    depth = Matrix{Float32}(undef, size(source))
+    GLAbstraction.bind(source)
+    GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
+    GLAbstraction.bind(source, 0)
+    return depth
 end
 
 function AbstractPlotting.colorbuffer(screen::Screen)
