@@ -157,7 +157,19 @@ function reinterpret_depth(data::Matrix{GLAbstraction.DepthStencil_24_8})
         return reinterpret(Float32, UInt8[d[1], d[2], d[3], 0])[1]
     end
 end
-
+"""
+depthbuffer(screen::Screen)
+Gets the depth buffer of screen.
+Usage:
+```
+using AbstractPlotting, GLMakie
+x = scatter(1:4)
+screen = display(x)
+depth_color = GLMakie.depthbuffer(screen)
+# Look at result:
+heatmap(depth_color, colormap=:grays, show_axis=false)
+```
+"""
 function depthbuffer(screen::Screen)
     depth = GLAbstraction.gpu_data(screen.framebuffer.depth)
     return reinterpret_depth(depth)

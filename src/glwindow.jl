@@ -35,7 +35,6 @@ mutable struct GLFramebuffer
     objectid::Texture{Vec{2, GLushort}, 2}
     depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
     position::Texture{Vec4f0, 2}
-    # NOTE: temporary fix for https://github.com/JuliaPlots/Makie.jl/issues/614
     normal_occlusion::Texture{Vec4f0, 2}
     ssao_noise::Texture{Vec2f0, 2}
 
@@ -162,7 +161,6 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     position_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    # NOTE: temporary fix for https://github.com/JuliaPlots/Makie.jl/issues/614
     normal_occlusion_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 
     depth_buffer = Texture(
