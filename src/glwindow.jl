@@ -161,7 +161,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     position_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    normal_buffer = Texture(Vec3f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
+    normal_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     occlusion = Texture(Float32, fb_size, minfilter=:nearest, x_repeat=:clamp_to_edge)
 
     depth_buffer = Texture(
