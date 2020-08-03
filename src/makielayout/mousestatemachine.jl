@@ -27,7 +27,7 @@ mousestates = (:MouseOut, :MouseEnter, :MouseOver,
     :MouseLeftDragStop, :MouseRightDragStop, :MouseMiddleDragStop,
     :MouseLeftClick, :MouseRightClick, :MouseMiddleClick,
     :MouseLeftDoubleclick, :MouseRightDoubleclick, :MouseMiddleDoubleclick,
-    :MouseUpOutside, :MouseDownOutside
+    :MouseDownOutside
     )
 
 for statetype in mousestates
@@ -184,7 +184,7 @@ function addmousestate!(scene, elements...)
                     mouse_downed_inside[] = true
                 else
                     mouse_downed_inside[] = false
-                    # mousestate[] = MouseDownedOutside()
+                    mousestate[] = MouseState(MouseDownOutside(), t, pos, tprev[], prev[])
                 end
             end
         elseif mousedrag == Mouse.up
