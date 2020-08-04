@@ -92,9 +92,30 @@ end
 ########################################
 
 function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    AbstractPlotting.@get_attribute attributes (colormap, colorrange)
-    imui32 = to_uint32_color.(AbstractPlotting.interpolated_getindex.(Ref(colormap), img, (colorrange,)))
+    AbstractPlotting.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+    
+    u_nan_color = to_uint32_color(nan_color)
+    u_lowclip = isnothing(lowclip) ? lowclip : to_uint32_color(lowclip)
+    u_highclip = isnothing(highclip) ? highclip : to_uint32_color(highclip)
+
+    imui32 = [get_pixel_color(v, colormap, colorrange, u_nan_color, u_lowclip, u_highclip)
+        for v in img]
+
     to_cairo_image(imui32, attributes)
+end
+
+function get_pixel_color(x, colormap, colorrange, nan_color, lowclip, highclip)
+    vmin, vmax = colorrange
+
+    if isnan(x) || isinf(x)
+        nan_color
+    elseif x < vmin && !isnothing(lowclip)
+        lowclip
+    elseif x > vmax && !isnothing(highclip)
+        highclip
+    else
+        to_uint32_color(AbstractPlotting.interpolated_getindex(colormap, x, colorrange))
+    end
 end
 
 function to_cairo_image(img::AbstractMatrix{<: Colorant}, attributes)
