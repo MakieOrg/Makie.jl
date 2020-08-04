@@ -1,8 +1,8 @@
 """
-    `poly(vertices, indices; kwargs...)`
-    `poly(points; kwargs...)`
-    `poly(shape; kwargs...)`
-    `poly(mesh; kwargs...)`
+    poly(vertices, indices; kwargs...)
+    poly(points; kwargs...)
+    poly(shape; kwargs...)
+    poly(mesh; kwargs...)
 
 Plots a polygon based on the arguments given.
 When vertices and indices are given, it functions similarly to `mesh`.
@@ -161,10 +161,10 @@ end
 
 
 """
-    `arrows(points, directions; kwargs...)`
-    `arrows(x, y, u, v)`
-    `arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)`
-    `arrows(x, y, z, u, v, w)`
+    arrows(points, directions; kwargs...)
+    arrows(x, y, u, v)
+    arrows(x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
+    arrows(x, y, z, u, v, w)
 
 Plots arrows at the specified points with the specified components.
 `u` and `v` are interpreted as vector components (`u` being the x
@@ -239,7 +239,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
 end
 
 """
-    `wireframe(x, y, z)`, `wireframe(positions)`, or `wireframe(mesh)`
+    wireframe(x, y, z)
+    wireframe(positions)
+    wireframe(mesh)
 
 Draws a wireframe, either interpreted as a surface or as a mesh.
 
@@ -369,7 +371,7 @@ end
 
 
 """
-    `annotations(strings::Vector{String}, positions::Vector{Point})`
+    annotations(strings::Vector{String}, positions::Vector{Point})
 
 Plots an array of texts at each position in `positions`.
 
@@ -618,6 +620,7 @@ export fill_between!
 
 """
     contour(x, y, z)
+
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
 
 ## Attributes
@@ -640,6 +643,7 @@ end
 
 """
     contour3d(x, y, z)
+
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.
 
@@ -972,8 +976,8 @@ function AbstractPlotting.plot!(plot::TimeSeries)
 end
 
 """
-    streamplot(f::function, xinterval, yinterval;
-        kwargs...)
+    streamplot(f::function, xinterval, yinterval; kwargs...)
+
 f must either accept `f(::Point)` or `f(x::Number, y::Number)`.
 f must return a Point2.
 
@@ -1149,6 +1153,7 @@ end
 
 """
     spy(x::Range, y::Range, z::AbstractSparseArray)
+
 Visualizes big sparse matrices.
 Usage:
 ```julia
