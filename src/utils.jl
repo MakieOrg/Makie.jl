@@ -102,21 +102,9 @@ function to_cairo_image(img::AbstractMatrix{<: Colorant}, attributes)
 end
 
 function to_cairo_image(img::Matrix{UInt32}, attributes)
-    # In Cairo, the y-axis is expected to go from the top
-    # to the bottom of the image, whereas in Makie we
-    # expect it to go from the bottom to the top.
-    # Therefore, we flip the y-axis here, to conform
-    # to Cairo's notion of the image direction.
-
-    # In addition, we are iterating over the y-axis first,
-    # such that the "first" axis of the image is what used to
-    # be the rows, instead of the columns.
-    # This conforms to the row-major matrix interface which
-    # Cairo expects.
-
-    # To achieve all of this, it is sufficient to physically
-    # rotate the matrix left by 90 degrees.
-    return Cairo.CairoARGBSurface(rotl90(img))
+    # we need to convert from column-major to row-major storage,
+    # therefore we permute x and y
+    return Cairo.CairoARGBSurface(permutedims(img))
 end
 
 
