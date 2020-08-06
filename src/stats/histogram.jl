@@ -7,6 +7,13 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
     to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
+# recipes export by default, but histogram clashes and breaks e.g. StatsMakie and StatsBase
+module HistogramNoExport
+
+using ..AbstractPlotting
+using AbstractPlotting: @recipe, ATTRIBUTES
+import StatsBase
+
 """
     histogram(values; bins = 15, normalization = :none)
 
@@ -68,9 +75,13 @@ function AbstractPlotting.plot!(plot::Histogram)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w
-        bp[1].val = points[]
+        setindex!(bp[1], points[], notify = _ -> false)
         bp.width = w
     end
 
     plot
 end
+
+end
+
+using .HistogramNoExport
