@@ -285,13 +285,31 @@ function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}
 end
 
 """
+
+    convert_arguments(PB, LineString)
+
 Takes an input `LineString` and decomposes it to points.
 """
 function convert_arguments(PB::PointBased, linestring::LineString)
-    return convert_arguments(PB, linestring.points.parent.data)
+    return convert_arguments(PB, decompose(Point, linestring))
 end
 
 """
+
+    convert_arguments(PB, Union{Array{<:LineString}, MultiLineString})
+
+Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
+"""
+function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString}) 
+    arr = convert_arguments(PB, linestring[1])[1]
+    for ls in 2:length(linestring)
+        push!(arr, Point2f0(NaN))
+        append!(arr, convert_arguments(PB, linestring[ls])[1]) 
+    end
+    return (arr,)
+end
+
+""" 
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
 Takes an `AbstractMatrix`, converts the dimesions `n` and `m` into `ClosedInterval`,
@@ -589,10 +607,10 @@ function convert_attribute(p::Palette{N}, ::key"color") where {N}
     p.colors[p.i[]]
 end
 
-convert_attribute(c::Colorant, ::key"color") = convert(RGBAf0, c)
+convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
 function convert_attribute(c::String, ::key"color")
-    return parse(RGBAf0, c)
+    return parse(RGBA{Float32}, c)
 end
 
 # Do we really need all colors to be RGBAf0?!
