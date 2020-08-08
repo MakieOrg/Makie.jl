@@ -176,7 +176,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     end
 
     onmouseout(scenestate) do state
-        # bcolor[] = color_inactive[]
+        bcolor[] = buttoncolor_inactive[]
         linecolors[] = [color_active_dimmed[], color_inactive[]]
         button.strokecolor = color_active_dimmed[]
     end

@@ -1,7 +1,6 @@
 using AbstractPlotting
 using MakieGallery
 using Test
-using GLMakie
 using StaticArrays, GeometryBasics
 using Observables
 using GeometryBasics: Pyramid
@@ -23,6 +22,7 @@ using MeshIO, FileIO, AbstractPlotting.MakieLayout
     to = gl2[1, 4] = LToggle(scene)
     te = layout[0, :] = LText(scene, "A super title")
     me = layout[end+1, :] = LMenu(scene, options = ["one", "two", "three"])
+    tb = layout[end+1, :] = LTextbox(scene)
     @test true
 end
 
@@ -43,10 +43,5 @@ end
     end
 end
 
-if GLMakie.WORKING_OPENGL
-    # full MakieGallery comparisons here
-    include("glmakie_tests.jl")
-else
-    # run software only tests...
-    include("no_backend_tests.jl")
-end
+# run software only tests...
+include("no_backend_tests.jl")

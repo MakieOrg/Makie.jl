@@ -589,10 +589,10 @@ function convert_attribute(p::Palette{N}, ::key"color") where {N}
     p.colors[p.i[]]
 end
 
-convert_attribute(c::Colorant, ::key"color") = convert(RGBA{Float32}, c)
+convert_attribute(c::Colorant, ::key"color") = convert(RGBAf0, c)
 convert_attribute(c::Symbol, k::key"color") = convert_attribute(string(c), k)
 function convert_attribute(c::String, ::key"color")
-    return parse(RGBA{Float32}, c)
+    return parse(RGBAf0, c)
 end
 
 # Do we really need all colors to be RGBAf0?!
