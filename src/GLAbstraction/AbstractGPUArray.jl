@@ -36,13 +36,19 @@ function to_range(index)
         error("Indexing only defined for integers or ranges. Found: $val")
     end
 end
+
 setindex!(A::GPUArray{T, N}, value::Union{T, Array{T, N}}) where {T, N} = (A[1] = value)
+
+function setindex!(A::GPUArray{T, N}, value, indices::Vararg{<: Integer, N}) where {T, N}
+    v = Array{T, N}(undef, ntuple(i-> 1, N))
+    v[1] = convert(T, value)
+    setindex!(A, v, (:).(indices, indices)...)
+end
 
 function setindex!(A::GPUArray{T, N}, value, indexes...) where {T, N}
     ranges = to_range(Base.to_indices(A, indexes))
     v = isa(value, T) ? [value] : convert(Array{T,N}, value)
     setindex!(A, v, ranges...)
-    nothing
 end
 
 setindex!(A::GPUArray{T, 2}, value::Vector{T}, i::Integer, range::UnitRange) where {T} =
@@ -64,6 +70,8 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
             resize!(A, length(value))
         elseif isa(A, Texture)
             resize_nocopy!(A, size(value))
+        elseif isa(A, TextureBuffer)
+            gpu_resize!(A, size(value))
         else
             error("Dynamic resizing not implemented for $(typeof(A))")
         end
@@ -72,6 +80,7 @@ function update!(A::GPUArray{T, N}, value::AbstractArray{T, N}) where {T, N}
     A[dims...] = value
     nothing
 end
+update!(A::GPUArray, value::ShaderAbstractions.Sampler) = update!(A, value.data)
 
 function getindex(A::GPUArray{T, N}, i::Int) where {T, N}
     checkbounds(A, i)

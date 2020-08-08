@@ -47,19 +47,11 @@ function ssao_postprocessor(framebuffer)
     end
     if !haskey(framebuffer.buffers, :normal)
         glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-        normal_buffer = Texture(
-            Vec3f0, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
+        normal_occlusion_buffer = Texture(
+            Vec4f0, size(framebuffer), minfilter = :nearest, x_repeat = :clamp_to_edge
         )
-        attach_framebuffer(normal_buffer, GL_COLOR_ATTACHMENT3)
-        push!(framebuffer.buffers, :normal => normal_buffer)
-    end
-    if !haskey(framebuffer.buffers, :occlusion)
-        glBindFramebuffer(GL_FRAMEBUFFER, framebuffer.id[1])
-        occlusion_buffer = Texture(
-            Float32, size(framebuffer), minfilter=:nearest, x_repeat=:clamp_to_edge
-        )
-        attach_framebuffer(occlusion_buffer, GL_COLOR_ATTACHMENT4)
-        push!(framebuffer.buffers, :occlusion => occlusion_buffer)
+        attach_framebuffer(normal_occlusion_buffer, GL_COLOR_ATTACHMENT3)
+        push!(framebuffer.buffers, :normal_occlusion => normal_occlusion_buffer)
     end
 
     # Add buffers written in primary render (before postprocessing)
@@ -92,7 +84,7 @@ function ssao_postprocessor(framebuffer)
     )
     data1 = Dict{Symbol, Any}(
         :position_buffer => framebuffer.buffers[:position],
-        :normal_buffer => framebuffer.buffers[:normal],
+        :normal_occlusion_buffer => framebuffer.buffers[:normal_occlusion],
         :kernel => kernel,
         :noise => Texture(
             [normalize(Vec2f0(2.0rand(2) .- 1.0)) for _ in 1:4, __ in 1:4],
@@ -113,7 +105,7 @@ function ssao_postprocessor(framebuffer)
         loadshader("postprocessing/SSAO_blur.frag")
     )
     data2 = Dict{Symbol, Any}(
-        :occlusion => framebuffer.buffers[:occlusion],
+        :normal_occlusion => framebuffer.buffers[:normal_occlusion],
         :color_texture => framebuffer.buffers[:color],
         :ids => framebuffer.buffers[:objectid],
         :inv_texel_size => lift(rcpframe, framebuffer.resolution),
@@ -130,10 +122,10 @@ function ssao_postprocessor(framebuffer)
 
         # Setup rendering
         # SSAO - calculate occlusion
-        glDrawBuffer(GL_COLOR_ATTACHMENT4)  # occlusion buffer
+        glDrawBuffer(GL_COLOR_ATTACHMENT3)  # occlusion buffer
         glViewport(0, 0, w, h)
-        glClearColor(1, 1, 1, 1)            # 1 means no darkening
-        glClear(GL_COLOR_BUFFER_BIT)
+        # glClearColor(1, 1, 1, 1)            # 1 means no darkening
+        # glClear(GL_COLOR_BUFFER_BIT)
 
         for (screenid, scene) in screen.screens
             # update uniforms

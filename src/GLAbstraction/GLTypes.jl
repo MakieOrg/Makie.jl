@@ -145,7 +145,10 @@ julia2glenum(x::Type{GLfloat})  = GL_FLOAT
 julia2glenum(x::Type{GLdouble}) = GL_DOUBLE
 julia2glenum(x::Type{Float16})  = GL_HALF_FLOAT
 
-struct DepthStencil_24_8 <: Real end
+struct DepthStencil_24_8 <: Real
+    data::NTuple{4, UInt8}
+end
+
 Base.eltype(::Type{<: DepthStencil_24_8}) = DepthStencil_24_8
 julia2glenum(x::Type{DepthStencil_24_8}) = GL_UNSIGNED_INT_24_8
 
@@ -203,10 +206,21 @@ function GLVertexArray(bufferdict::Dict, program::GLProgram)
             attribute = string(name)
             len == -1 && (len = length(buffer))
             # TODO: use glVertexAttribDivisor to allow multiples of the longest buffer
-            len != length(buffer) && error(
-              "buffer $attribute has not the same length as the other buffers.
-              Has: $(length(buffer)). Should have: $len"
-            )
+            if len != length(buffer)
+                # We don't know which buffer has the wrong size, so list all of them
+                bufferlengths = ""
+                for (name, buffer) in bufferdict
+                    if isa(buffer, GLBuffer) && buffer.buffertype == GL_ELEMENT_ARRAY_BUFFER
+                    elseif Symbol(name) == :indices
+                    else
+                        bufferlengths *= "\n\t$name has length $(length(buffer))"
+                    end
+                end
+                error(
+                    "Buffer $attribute does not have the same length as the other buffers." *
+                    bufferlengths
+                )
+            end
             bind(buffer)
             attribLocation = get_attribute_location(program.id, attribute)
             (attribLocation == -1) && continue

@@ -1,29 +1,86 @@
-function renderloop(screen::Screen; framerate = 1/30, prerender = () -> nothing)
-    # Somehow errors get sometimes ignored, so we at least print them here
-    try
-        while isopen(screen)
-            t = time()
-            GLFW.PollEvents() # GLFW poll
-            screen.render_tick[] = nothing
-            prerender()
+
+function vsynced_renderloop(screen)
+    while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
+        pollevents(screen) # GLFW poll
+        screen.render_tick[] = nothing
+        if WINDOW_CONFIG.pause_rendering[]
+            sleep(0.1)
+        else
             make_context_current(screen)
             render_frame(screen)
             GLFW.SwapBuffers(to_native(screen))
-            diff = framerate - (time() - t)
-            if diff > 0
+            yield()
+        end
+    end
+end
+
+function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
+    time_per_frame = 1.0 / framerate
+    while isopen(screen) && !WINDOW_CONFIG.exit_renderloop[]
+        t = time_ns()
+        pollevents(screen) # GLFW poll
+        screen.render_tick[] = nothing
+        if WINDOW_CONFIG.pause_rendering[]
+            sleep(0.1)
+        else
+            make_context_current(screen)
+            render_frame(screen)
+            GLFW.SwapBuffers(to_native(screen))
+            t_elapsed = (time_ns() - t) / 1e9
+            diff = time_per_frame - t_elapsed
+            if diff > 0.0
                 sleep(diff)
-            else # if we don't sleep, we need to yield explicitely
+            else # if we don't sleep, we still need to yield explicitely to other tasks
                 yield()
             end
         end
+    end
+end
+
+function renderloop(screen; framerate=WINDOW_CONFIG.framerate[])
+    try
+        if WINDOW_CONFIG.vsync[]
+            GLFW.SwapInterval(1)
+            vsynced_renderloop(screen)
+        else
+            GLFW.SwapInterval(0)
+            fps_renderloop(screen, framerate)
+        end
     catch e
-        ce = CapturedException(e, Base.catch_backtrace())
-        @error "Error in renderloop!" exception=ce
         rethrow(e)
     finally
         destroy!(screen)
     end
-    return
+end
+
+const WINDOW_CONFIG = (renderloop = Ref{Function}(renderloop),
+    vsync = Ref(false),
+    framerate = Ref(30.0),
+    float = Ref(false),
+    pause_rendering = Ref(false),
+    focus_on_show = Ref(false),
+    decorated = Ref(true),
+    title = Ref("Makie"),
+    exit_renderloop = Ref(false),)
+
+"""
+    set_window_config!(;
+        renderloop = renderloop,
+        vsync = true,
+        framerate = 30.0,
+        float = false,
+        pause_rendering = false,
+        focus_on_show = false,
+        decorated = true,
+        title = "Makie"
+    )
+Updates the screen configuration, will only go into effect after closing the current
+window and opening a new one!
+"""
+function set_window_config!(; kw...)
+    for (key, value) in kw
+        getfield(WINDOW_CONFIG, key)[] = value
+    end
 end
 
 function setup!(screen)
@@ -76,7 +133,7 @@ function render_frame(screen::Screen; resize_buffers=true)
     glStencilOp(GL_KEEP, GL_KEEP, GL_REPLACE)
     glStencilMask(0xff)
     glClearStencil(0)
-    glClearColor(0,0,0,0)
+    glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
     setup!(screen)
 
@@ -125,7 +182,7 @@ function id2scene(screen, id1)
     return false, nothing
 end
 
-function GLAbstraction.render(screen::Screen, fxaa::Bool, ssao::Bool=false)
+function GLAbstraction.render(screen::GLScreen, fxaa::Bool, ssao::Bool=false)
     # Somehow errors in here get ignored silently!?
     try
         # sort by overdraw, so that overdrawing objects get drawn last!
@@ -154,7 +211,7 @@ function GLAbstraction.render(screen::Screen, fxaa::Bool, ssao::Bool=false)
             end
         end
     catch e
-        @error "Error while rendering!" exception=e
+        @error "Error while rendering!" exception = e
         rethrow(e)
     end
     return

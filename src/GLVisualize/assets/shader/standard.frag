@@ -32,6 +32,24 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_range){
     return texture(color, value);
 }
 
+uniform bool fetch_pixel;
+uniform vec2 uv_scale;
+
+vec4 get_pattern_color(sampler1D color) {
+    int size = textureSize(color, 0);
+    vec2 pos = gl_FragCoord.xy * uv_scale;
+    int idx = int(mod(pos.x, size));
+    return texelFetch(color, idx, 0);
+}
+
+vec4 get_pattern_color(sampler2D color){
+    ivec2 size = textureSize(color, 0);
+    vec2 pos = gl_FragCoord.xy * uv_scale;
+    return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
+}
+// Needs to exist for opengl to be happy
+vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
+
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float diff_coeff = max(dot(L, N), 0.0);
 
@@ -51,7 +69,13 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
 void write2framebuffer(vec4 color, uvec2 id);
 
 void main(){
-    vec4 color = get_color(image, o_uv, color_range);
+    vec4 color;
+    // Should this be a mustache replace?
+    if (fetch_pixel){
+        color = get_pattern_color(image);
+    }else{
+        color = get_color(image, o_uv, color_range);
+    }
     {{light_calc}}
     write2framebuffer(color, o_id);
 }

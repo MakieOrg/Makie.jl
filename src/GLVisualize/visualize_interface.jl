@@ -174,7 +174,7 @@ function get_buffers()
     if enable_SSAO[]
         """
         layout(location=2) out vec4 fragment_position;
-        layout(location=3) out vec3 fragment_normal;
+        layout(location=3) out vec3 fragment_normal_occlusion;
         """
     else
         ""
@@ -185,7 +185,7 @@ function get_buffer_writes()
     if enable_SSAO[]
         """
         fragment_position = o_view_pos;
-        fragment_normal = o_normal;
+        fragment_normal_occlusion.xyz = o_normal;
         """
     else
         ""

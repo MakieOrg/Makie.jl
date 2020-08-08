@@ -1,25 +1,18 @@
 using MakieGallery, AbstractPlotting, GLMakie, Test
 
-using MakieGallery: @block, @cell
-
-database = MakieGallery.load_test_database()
 tested_diff_path = joinpath(@__DIR__, "tested_different")
 test_record_path = joinpath(@__DIR__, "test_recordings")
 isdir(tested_diff_path) && rm(tested_diff_path, force = true, recursive = true)
 mkpath(tested_diff_path)
 isdir(test_record_path) && rm(test_record_path, force = true, recursive = true)
 mkpath(test_record_path)
+
+abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "reference_image_tests")
+abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
+# Add GLMakie specific tests
+push!(abstractplotting_tests, joinpath(@__DIR__, "glmakie_tests.jl"))
+database = MakieGallery.load_database(abstractplotting_tests)
+
 examples = MakieGallery.record_examples(test_record_path)
 @test length(examples) == length(database)
 MakieGallery.run_comparison(test_record_path, tested_diff_path)
-
-empty!(database) # remove other examples
-include("glmakie_tests.jl") # include GLMakie specific tests
-# THese examples download additional data - don't want to deal with that!
-for path in (tested_diff_path, test_record_path)
-    rm(path, force = true, recursive = true)
-    mkpath(path)
-end
-
-examples = MakieGallery.record_examples(test_record_path)
-MakieGallery.run_comparison(test_record_path, tested_diff_path, maxdiff=0.00001)
