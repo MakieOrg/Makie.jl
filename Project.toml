@@ -1,7 +1,7 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.12.4"
+version = "0.12.6"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -52,7 +52,6 @@ FixedPointNumbers = "0.6, 0.7, 0.8"
 Formatting = "0.4"
 FreeType = "3.0"
 FreeTypeAbstraction = "0.8"
-GLMakie = "0.1.5"
 GeometryBasics = "0.2.6"
 GridLayoutBase = "0.3"
 ImageIO = "0.2, 0.3"
@@ -70,11 +69,9 @@ UnicodeFun = "0.4"
 julia = "1.0"
 
 [extras]
-GLFW = "f7f18e0c-5ee9-5ccd-a5bf-e8befd85ed98"
-GLMakie = "e9467ef8-e4e7-5192-8a1a-b1aee30e663a"
 MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
 MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "MeshIO", "GLMakie", "MakieGallery", "GLFW"]
+test = ["Test", "MeshIO", "MakieGallery"]

@@ -44,7 +44,7 @@ function default_attributes(::Type{LMenu}, scene)
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
-        textsize = 20
+        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"
@@ -167,6 +167,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         marker = @lift($is_open ? '▴' : '▾'),
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
+        strokecolor = :transparent,
         raw = true)[end]
     translate!(dropdown_arrow, 0, 0, 1)
 
@@ -230,16 +231,6 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     mousestates = [addmousestate!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
 
     for (i, (mousestate, r, t)) in enumerate(zip(mousestates, allrects, alltexts))
-        onmouseleftclick(mousestate) do state
-            if is_open[]
-                # first item is already selected
-                if i > 1
-                    i_selected[] = i - 1
-                end
-            end
-            is_open[] = !is_open[]
-        end
-
         onmouseover(mousestate) do state
             r.color = cell_color_hover[]
         end
@@ -255,11 +246,18 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
         onmouseleftdown(mousestate) do state
             r.color = cell_color_active[]
+            if is_open[]
+                # first item is already selected
+                if i > 1
+                    i_selected[] = i - 1
+                end
+            end
+            is_open[] = !is_open[]
         end
     end
 
     # close the menu if the user clicks somewhere else
-    onmouseupoutside(addmousestate!(scene)) do state
+    onmousedownoutside(addmousestate!(scene)) do state
         if is_open[]
             is_open[] = !is_open[]
         end

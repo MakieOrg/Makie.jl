@@ -14,6 +14,7 @@ import Animations
 import PlotUtils
 using GridLayoutBase
 import Showoff
+using Colors
 
 const FPS = Node(30)
 const COLOR_ACCENT = Ref(RGBf0(((79, 122, 214) ./ 255)...))
@@ -60,6 +61,7 @@ include("lobjects/llegend.jl")
 include("lobjects/lobject.jl")
 include("lobjects/lscene.jl")
 include("lobjects/lmenu.jl")
+include("lobjects/ltextbox.jl")
 
 export LAxis
 export LSlider
@@ -72,6 +74,7 @@ export LLegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export LMenu
+export LTextbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!
