@@ -63,8 +63,8 @@ function window_position(window::GLFW.Window)
     xy = GLFW.GetWindowPos(window)
     (xy.x, xy.y)
 end
-window_area(scene::Scene, screen) = window_area(scene, to_native(screen))
-function window_area(scene::Scene, window::GLFW.Window)
+function window_area(scene::Scene, screen::Screen)
+    window = to_native(screen)
     event = scene.events.window_area
     dpievent = scene.events.window_dpi
     
@@ -80,7 +80,7 @@ function window_area(scene::Scene, window::GLFW.Window)
         # if minimum(rect) != Vec(x, y) 
         #     event[] = IRect(x, y, framebuffer_size(window))
         # end
-        w, h = GLFW.GetWindowSize(window)
+        w, h = GLFW.GetFramebufferSize(window)
         if Vec(w, h) != widths(rect)
             monitor = GLFW.GetPrimaryMonitor()
             props = MonitorProperties(monitor)
