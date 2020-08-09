@@ -326,6 +326,21 @@ function convert_arguments(PB::PointBased, pol::Polygon)
     end 
 end
 
+"""
+
+    convert_arguments(PB, Union{Array{<:Polygon}, MultiPolygon})
+
+Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
+"""
+function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon}) 
+    arr = convert_arguments(PB, mp[1])[1]
+    for p in 2:length(mp)
+        push!(arr, Point2f0(NaN))
+        append!(arr, convert_arguments(PB, mp[p])[1]) 
+    end
+    return (arr,)
+end
+
 """ 
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
