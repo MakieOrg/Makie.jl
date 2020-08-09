@@ -309,6 +309,23 @@ function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}
     return (arr,)
 end
 
+"""
+
+    convert_arguments(PB, Polygon)
+
+Takes an input `Polygon` and decomposes it to points.
+"""
+function convert_arguments(PB::PointBased, pol::Polygon)
+    if isempty(pol.interiors)
+        return convert_arguments(PB, pol.exterior)
+    else
+        arr = convert_arguments(PB, pol.exterior)[1]
+        push!(arr, Point2f0(NaN))
+        append!(arr, convert_arguments(PB, pol.interiors)[1])
+        return (arr,)
+    end 
+end
+
 """ 
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
