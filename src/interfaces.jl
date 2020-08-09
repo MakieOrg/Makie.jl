@@ -498,6 +498,7 @@ plottype(::AbstractString) = Text
 plottype(::LineString) = Lines
 plottype(::Array{<:LineString}) = Lines
 plottype(::MultiLineString) = Lines
+plottype(::Polygon) = Poly
 
 """
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
