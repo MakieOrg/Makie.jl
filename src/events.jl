@@ -67,14 +67,20 @@ window_area(scene::Scene, screen) = window_area(scene, to_native(screen))
 function window_area(scene::Scene, window::GLFW.Window)
     event = scene.events.window_area
     dpievent = scene.events.window_dpi
-    @csafe function windowposition(window, x::Cint, y::Cint)
+    
+    disconnect!(window, window_area)
+    monitor = GLFW.GetPrimaryMonitor()
+    props = MonitorProperties(monitor)
+    dpievent[] = minimum(props.dpi)
+    
+    on(screen.render_tick) do _
         rect = event[]
-        if minimum(rect) != Vec(x, y)
-            event[] = IRect(x, y, framebuffer_size(window))
-        end
-    end
-    @csafe function windowsize(window, w::Cint, h::Cint)
-        rect = event[]
+        # TODO put back window position, but right now it makes more trouble than it helps#
+        # x, y = GLFW.GetWindowPos(window)
+        # if minimum(rect) != Vec(x, y) 
+        #     event[] = IRect(x, y, framebuffer_size(window))
+        # end
+        w, h = GLFW.GetWindowSize(window)
         if Vec(w, h) != widths(rect)
             monitor = GLFW.GetPrimaryMonitor()
             props = MonitorProperties(monitor)
@@ -84,13 +90,6 @@ function window_area(scene::Scene, window::GLFW.Window)
             event[] = IRect(minimum(rect), w, h)
         end
     end
-    disconnect!(window, window_area)
-    monitor = GLFW.GetPrimaryMonitor()
-    props = MonitorProperties(monitor)
-    dpievent[] = minimum(props.dpi)
-    GLFW.SetFramebufferSizeCallback(window, windowsize)
-    # TODO put back window position, but right now it makes more trouble than it helps#
-    # GLFW.SetWindowPosCallback(window, windowposition)
     return
 end
 
