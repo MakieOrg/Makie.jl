@@ -21,7 +21,6 @@ using Pkg
 pkg"rm WGLMakie"
 ```
 
-Warning - this package is **in development** and **may break often**. 
 
 # Usage
 
