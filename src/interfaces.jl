@@ -472,8 +472,7 @@ end
 """
     `plottype(plot_args...)`
 
-The default plot type for any argument is `lines`.
-Any custom argument combination that has only one meaningful way to be plotted should overload this.
+Any custom argument combination that has a preferred way to be plotted should overload this.
 e.g.:
 ```example
     # make plot(rand(5, 5, 5)) plot as a volume
@@ -490,8 +489,8 @@ plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
 
 ## specialized definitions for types
-plottype(::RealVector, ::RealVector) = Lines
-plottype(::RealVector) = Lines
+plottype(::AbstractVector, ::AbstractVector) = Scatter
+plottype(::AbstractVector) = Scatter
 plottype(::AbstractMatrix{<: Real}) = Heatmap
 plottype(::Array{<: AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
