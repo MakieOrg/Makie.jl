@@ -45,3 +45,6 @@ end
 
 # run software only tests...
 include("no_backend_tests.jl")
+
+# test statistical recipes
+include("statistical_tests.jl")

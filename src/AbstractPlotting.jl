@@ -10,6 +10,8 @@ using Serialization # serialize events
 using StructArrays
 using GeometryBasics: widths, positive_widths, VecTypes
 using StaticArrays
+import StatsBase, Distributions, KernelDensity
+using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
 # Text related packages
 using FreeType, FreeTypeAbstraction, UnicodeFun
 using LinearAlgebra, Statistics
@@ -69,7 +71,6 @@ include("camera/camera3d.jl")
 
 # some default recipes
 include("basic_recipes/basic_recipes.jl")
-include("basic_recipes/multiple.jl")
 include("basic_recipes/errorbars.jl")
 include("basic_recipes/pie.jl")
 # layouting of plots
@@ -82,6 +83,14 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/axis.jl")
 include("basic_recipes/legend.jl")
 include("basic_recipes/title.jl")
+# statistical recipes
+include("stats/conversions.jl")
+include("stats/histogram.jl")
+include("stats/density.jl")
+include("stats/distributions.jl")
+include("stats/crossbar.jl")
+include("stats/boxplot.jl")
+include("stats/violin.jl")
 
 # Interactiveness
 include("interaction/events.jl")
@@ -181,7 +190,7 @@ export (..), GLNormalUVMesh
 export widths, decompose
 
 # building blocks for series recipes
-export PlotList, PlotSpec
+export PlotSpec
 
 export plot!, plot
 
