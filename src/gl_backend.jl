@@ -45,7 +45,7 @@ function get_texture!(atlas)
 end
 
 # TODO
-const enable_SSAO = Ref(true)
+const enable_SSAO = Ref(false)
 const enable_FXAA = Ref(true)
 
 include("GLVisualize/GLVisualize.jl")
