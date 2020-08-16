@@ -222,14 +222,14 @@ function LineAxis(parent::Scene; kwargs...)
 
         if !trimspine
             if horizontal
-                y = position + (flipped ? 1f0 : -1f0) * 0.5f0 * sw
-                p1 = Point2f0(extents[1] - sw, y)
-                p2 = Point2(extents[2] + sw, y)
+                y = position
+                p1 = Point2f0(extents[1] - 0.5sw, y)
+                p2 = Point2f0(extents[2] + 0.5sw, y)
                 [p1, p2]
             else
-                x = position + (flipped ? 1f0 : -1f0) * 0.5f0 * sw
-                p1 = Point2f0(x, extents[1] - sw)
-                p2 = Point2f0(x, extents[2] + sw)
+                x = position
+                p1 = Point2f0(x, extents[1] - 0.5sw)
+                p2 = Point2f0(x, extents[2] + 0.5sw)
                 [p1, p2]
             end
         else
