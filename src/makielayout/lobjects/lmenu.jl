@@ -129,7 +129,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
 
     scenearea = lift(layoutobservables.computedbbox, sceneheight, direction) do bbox, h, d
-        IRect2D(BBox(
+        round_to_IRect2D(BBox(
             left(bbox),
             right(bbox),
             d == :down ? top(bbox) - h : bottom(bbox),

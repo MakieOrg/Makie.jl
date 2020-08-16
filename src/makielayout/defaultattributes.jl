@@ -372,7 +372,7 @@ function default_attributes(::Type{LRect}, scene)
         "The extra space added to the sides of the rectangle boundingbox."
         padding = (0f0, 0f0, 0f0, 0f0)
         "The line width of the rectangle's border."
-        strokewidth = 2f0
+        strokewidth = 1f0
         "Controls if the border of the rectangle is visible."
         strokevisible = true
         "The color of the border."
