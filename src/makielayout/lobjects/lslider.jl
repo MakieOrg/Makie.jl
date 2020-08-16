@@ -27,7 +27,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     end
 
     subarea = lift(layoutobservables.computedbbox) do bbox
-        IRect2D(bbox)
+        round_to_IRect2D(bbox)
     end
 
     # the slider gets its own subscene so a click doesn't have to hit the line
@@ -135,14 +135,12 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
             dif[2] / (height(sliderbox[]) - 2pad)
         end
         if fraction != 0.0f0
-            @async begin
-                newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
-                displayed_sliderfraction[] = newfraction
+            newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
+            displayed_sliderfraction[] = newfraction
 
-                newindex = closest_fractionindex(sliderrange[], newfraction)
-                if selected_index[] != newindex
-                    selected_index[] = newindex
-                end
+            newindex = closest_fractionindex(sliderrange[], newfraction)
+            if selected_index[] != newindex
+                selected_index[] = newindex
             end
         end
     end
