@@ -494,11 +494,14 @@ plottype(::AbstractVector) = Scatter
 plottype(::AbstractMatrix{<: Real}) = Heatmap
 plottype(::Array{<: AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
+
 plottype(::LineString) = Lines
-plottype(::Array{<:LineString}) = Lines
+plottype(::AbstractVector{<:LineString}) = Lines
 plottype(::MultiLineString) = Lines
-plottype(::Polygon) = Lines
-plottype(::Array{<:Polygon}) = Lines
+
+plottype(::Polygon) = Poly
+plottype(::GeometryBasics.AbstractPolygon) = Poly
+plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
 plottype(::MultiPolygon) = Lines
 
 """

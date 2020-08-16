@@ -300,11 +300,11 @@ end
 
 Takes an input `Array{LineString}` or a `MultiLineString` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString}) 
-    arr = convert_arguments(PB, linestring[1])[1]
+function convert_arguments(PB::PointBased, linestring::Union{Array{<:LineString}, MultiLineString})
+    arr = copy(convert_arguments(PB, linestring[1])[1])
     for ls in 2:length(linestring)
         push!(arr, Point2f0(NaN))
-        append!(arr, convert_arguments(PB, linestring[ls])[1]) 
+        append!(arr, convert_arguments(PB, linestring[ls])[1])
     end
     return (arr,)
 end
@@ -319,11 +319,11 @@ function convert_arguments(PB::PointBased, pol::Polygon)
     if isempty(pol.interiors)
         return convert_arguments(PB, pol.exterior)
     else
-        arr = convert_arguments(PB, pol.exterior)[1]
+        arr = copy(convert_arguments(PB, pol.exterior)[1])
         push!(arr, Point2f0(NaN))
         append!(arr, convert_arguments(PB, pol.interiors)[1])
         return (arr,)
-    end 
+    end
 end
 
 """
@@ -332,16 +332,16 @@ end
 
 Takes an input `Array{Polygon}` or a `MultiPolygon` and decomposes it to points.
 """
-function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon}) 
-    arr = convert_arguments(PB, mp[1])[1]
+function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPolygon})
+    arr = copy(convert_arguments(PB, mp[1])[1])
     for p in 2:length(mp)
         push!(arr, Point2f0(NaN))
-        append!(arr, convert_arguments(PB, mp[p])[1]) 
+        append!(arr, convert_arguments(PB, mp[p])[1])
     end
     return (arr,)
 end
 
-""" 
+"""
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, Matrix}
 
 Takes an `AbstractMatrix`, converts the dimesions `n` and `m` into `ClosedInterval`,
@@ -373,6 +373,7 @@ end
 
 struct VolumeLike end
 conversion_trait(::Type{<: Volume}) = VolumeLike()
+
 """
     convert_arguments(P, Matrix)::Tuple{ClosedInterval, ClosedInterval, ClosedInterval, Matrix}
 
@@ -420,9 +421,6 @@ function convert_arguments(::VolumeLike, x::AbstractVector, y::AbstractVector, z
     return (x, y, z, el32convert.(f.(_x, _y, _z)))
 end
 
-
-
-
 """
     convert_arguments(Mesh, x, y, z)::GLNormalMesh
 
@@ -464,35 +462,23 @@ end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        meshes::AbstractVector{<: AbstractMesh}
+        meshes::AbstractVector{<: Union{AbstractMesh, AbstractPolygon}}
     )
     return (meshes,)
 end
 
 function convert_arguments(
         MT::Type{<:Mesh},
-        xyz::AbstractVector{<: AbstractPoint}
+        xyz::Union{AbstractPolygon, AbstractVector{<: AbstractPoint{2}}}
     )
-    faces = connect(UInt32(0):UInt32(length(xyz)-1), GLTriangleFace)
-    # TODO support faceview natively
-    return convert_arguments(MT, xyz, collect(faces))
+    return convert_arguments(MT, triangle_mesh(xyz))
 end
 
-# # ambigious case
-# function convert_arguments(
-#         MT::Type{<:Mesh},
-#         xyz::AbstractVector{<: VecTypes{N, T}}
-#     ) where {T, N}
-#     faces = reinterpret(GLTriangleFace, UInt32[0:(length(xyz)-1);])
-#     convert_arguments(MT, xyz, faces)
-# end
 function convert_arguments(MT::Type{<:Mesh}, geom::GeometryPrimitive)
     # we convert to UV mesh as default, because otherwise the uv informations get lost
     # - we can still drop them, but we can't add them later on
     return (GeometryBasics.uv_normal_mesh(geom),)
 end
-
-
 
 """
     convert_arguments(Mesh, x, y, z, indices)::GLNormalMesh
@@ -547,6 +533,7 @@ function to_vertices(verts::AbstractMatrix{<: Number})
         error("You are using a matrix for vertices which uses neither dimension to encode the dimension of the space. Please have either size(verts, 1/2) in the range of 2-3. Found: $(size(verts))")
     end
 end
+
 function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
     reinterpret(Point{size(verts, 1), T}, elconvert(T, vec(verts)), (size(verts, 2),))
 end
