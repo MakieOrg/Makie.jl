@@ -169,28 +169,28 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
         if xaxpos == :top
-            y = bottom(r) - 0.5f0 * sw
-            p1 = Point2(left(r) - sw, y)
-            p2 = Point2(right(r) + sw, y)
+            y = bottom(r)
+            p1 = Point2(left(r) - 0.5sw, y)
+            p2 = Point2(right(r) + 0.5sw, y)
             [p1, p2]
         else
-            y = top(r) + 0.5f0 * sw
-            p1 = Point2(left(r) - sw, y)
-            p2 = Point2(right(r) + sw, y)
+            y = top(r)
+            p1 = Point2(left(r) - 0.5sw, y)
+            p2 = Point2(right(r) + 0.5sw, y)
             [p1, p2]
         end
     end
 
     yoppositelinepoints = lift(scene.px_area, spinewidth, yaxisposition) do r, sw, yaxpos
         if yaxpos == :right
-            x = left(r) - 0.5f0 * sw
-            p1 = Point2(x, bottom(r) - sw)
-            p2 = Point2(x, top(r) + sw)
+            x = left(r)
+            p1 = Point2(x, bottom(r) - 0.5sw)
+            p2 = Point2(x, top(r) + 0.5sw)
             [p1, p2]
         else
-            x = right(r) + 0.5f0 * sw
-            p1 = Point2(x, bottom(r) - sw)
-            p2 = Point2(x, top(r) + sw)
+            x = right(r)
+            p1 = Point2(x, bottom(r) - 0.5sw)
+            p2 = Point2(x, top(r) + 0.5sw)
             [p1, p2]
         end
     end
@@ -255,10 +255,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         left, right, bottom, top = 0f0, 0f0, 0f0, 0f0
 
         if xaxisposition == :bottom
-            topspinevisible && (top = spinewidth)
             bottom = xaxisprotrusion
         else
-            bottomspinevisible && (bottom = spinewidth)
             top = xaxisprotrusion
         end
 
@@ -270,10 +268,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         top += titlespace
 
         if yaxisposition == :left
-            rightspinevisible && (right = spinewidth)
             left = yaxisprotrusion
         else
-            leftspinevisible && (left = spinewidth)
             right = yaxisprotrusion
         end
 

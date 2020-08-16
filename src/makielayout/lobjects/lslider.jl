@@ -27,7 +27,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     end
 
     subarea = lift(layoutobservables.computedbbox) do bbox
-        IRect2D(bbox)
+        round_to_IRect2D(bbox)
     end
 
     # the slider gets its own subscene so a click doesn't have to hit the line

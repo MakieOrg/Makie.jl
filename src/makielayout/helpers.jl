@@ -3,7 +3,12 @@ Shorthand for `isnothing(optional) ? fallback : optional`
 """
 @inline ifnothing(optional, fallback) = isnothing(optional) ? fallback : optional
 
-IRect2D(r::Rect{2}) = Rect{2, Int}(round.(Int, r.origin), round.(Int, r.widths))
+function round_to_IRect2D(r::Rect{2})
+    newori = round.(Int, minimum(r))
+    othercorner = round.(Int, maximum(r))
+    newwidth = othercorner .- newori
+    Rect{2, Int}(newori, newwidth)
+end
 
 function sceneareanode!(finalbbox, limits, aspect)
 
@@ -45,7 +50,7 @@ function sceneareanode!(finalbbox, limits, aspect)
         newbbox = BBox(l, l + mw, b, b + mh)
 
         # only update scene if pixel positions change
-        new_scenearea = IRect2D(newbbox)
+        new_scenearea = round_to_IRect2D(newbbox)
         if new_scenearea != scenearea[]
             scenearea[] = new_scenearea
         end
@@ -174,30 +179,30 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     rightspinecolor, bottomspinecolor)
 
     bottomline = lift(rect, spinewidth) do r, sw
-        y = bottom(r) - 0.5f0 * sw
-        p1 = Point2(left(r) - sw, y)
-        p2 = Point2(right(r) + sw, y)
+        y = bottom(r)
+        p1 = Point2(left(r) - 0.5sw, y)
+        p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
     leftline = lift(rect, spinewidth) do r, sw
-        x = left(r) - 0.5f0 * sw
-        p1 = Point2(x, bottom(r) - sw)
-        p2 = Point2(x, top(r) + sw)
+        x = left(r)
+        p1 = Point2(x, bottom(r) - 0.5sw)
+        p2 = Point2(x, top(r) + 0.5sw)
         [p1, p2]
     end
 
     topline = lift(rect, spinewidth) do r, sw
-        y = top(r) + 0.5f0 * sw
-        p1 = Point2(left(r) - sw, y)
-        p2 = Point2(right(r) + sw, y)
+        y = top(r)
+        p1 = Point2(left(r) - 0.5sw, y)
+        p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
     rightline = lift(rect, spinewidth) do r, sw
-        x = right(r) + 0.5f0 * sw
-        p1 = Point2(x, bottom(r) - sw)
-        p2 = Point2(x, top(r) + sw)
+        x = right(r)
+        p1 = Point2(x, bottom(r) - 0.5sw)
+        p2 = Point2(x, top(r) + 0.5sw)
         [p1, p2]
     end
 
