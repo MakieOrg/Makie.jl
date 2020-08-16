@@ -255,10 +255,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         left, right, bottom, top = 0f0, 0f0, 0f0, 0f0
 
         if xaxisposition == :bottom
-            topspinevisible && (top = spinewidth)
             bottom = xaxisprotrusion
         else
-            bottomspinevisible && (bottom = spinewidth)
             top = xaxisprotrusion
         end
 
@@ -270,10 +268,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         top += titlespace
 
         if yaxisposition == :left
-            rightspinevisible && (right = spinewidth)
             left = yaxisprotrusion
         else
-            leftspinevisible && (left = spinewidth)
             right = yaxisprotrusion
         end
 

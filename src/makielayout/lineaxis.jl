@@ -244,9 +244,8 @@ function LineAxis(parent::Scene; kwargs...)
         color = spinecolor, raw = true)[end]
 
 
-    protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, spinewidth,
-            spinevisible, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
-            label, labelvisible, labelpadding, labelsize, tickalign, spinewidth, spinevisible, tickspace, ticklabelsvisible,
+    protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
+            label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible,
             actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont
 
         position, extents, horizontal = pos_extents_horizontal[]
@@ -258,11 +257,10 @@ function LineAxis(parent::Scene; kwargs...)
         end
 
         labelspace = (labelvisible && !iswhitespace(label)) ? real_labelsize + labelpadding : 0f0
-        spinespace = spinevisible ? spinewidth : 0f0
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
         ticklabelgap = ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0
 
-        together = spinespace + tickspace + ticklabelgap + labelspace
+        together = tickspace + ticklabelgap + labelspace
     end
 
     # trigger whole pipeline once to fill tickpositions and tickstrings
