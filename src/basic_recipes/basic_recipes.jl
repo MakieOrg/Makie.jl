@@ -38,12 +38,11 @@ $(ATTRIBUTES)
     )
 end
 
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractMesh}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rect}}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractPolygon}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractPolygon) = (v,)
+const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
+convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
+
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 
@@ -64,6 +63,10 @@ end
 poly_convert(geometries) = triangle_mesh.(geometries)
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
 poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
+function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
+    return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
+end
+
 poly_convert(polygon::Polygon) = triangle_mesh(polygon)
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
@@ -71,22 +74,20 @@ function poly_convert(polygon::AbstractVector{<: VecTypes})
 end
 
 function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
-    polys = Vector{Point2f0}[]
-    for poly in polygons
+    return map(polygons) do poly
         s = GeometryBasics.split_intersections(poly)
-        append!(polys, s)
+        merge(triangle_mesh.(Polygon.(s)))
     end
-    return triangle_mesh.(polys)
 end
 
-to_line_segments(polygon::Polygon) = convert_arguments(PointBased(), polygon)[1]
+to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
 
-function to_line_segments(meshes)
+function to_line_segments(meshes::AbstractVector)
     line = Point2f0[]
     for (i, mesh) in enumerate(meshes)
-        points = convert_arguments(PointBased(), mesh)[1]
+        points = to_line_segments(mesh)
         append!(line, points)
-        push!(line, points[1])
+        # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
             push!(line, Point2f0(NaN))
@@ -100,8 +101,6 @@ function to_line_segments(polygon::AbstractVector{<: VecTypes})
     push!(result, polygon[1])
     return result
 end
-
-const PolyElements = Union{Polygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
 function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
