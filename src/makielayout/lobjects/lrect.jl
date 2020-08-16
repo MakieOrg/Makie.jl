@@ -14,7 +14,9 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
         vis ? col : RGBAf0(0, 0, 0, 0)
     end
 
-    r = poly!(parent, layoutobservables.computedbbox, color = color, visible = visible, raw = true,
+    ibbox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
+
+    r = poly!(parent, ibbox, color = color, visible = visible, raw = true,
         strokecolor = strokecolor_with_visibility, strokewidth = strokewidth)[end]
 
     # trigger bbox

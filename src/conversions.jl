@@ -443,7 +443,7 @@ function convert_arguments(
         MT::Type{<:Mesh},
         xyz::AbstractVector
     )
-    faces = connect(UInt32(0):UInt32(length(xyz)-1), GLTriangleFace)
+    faces = connect(UInt32.(0:length(xyz)-1), GLTriangleFace)
     # TODO support faceview natively
     return convert_arguments(MT, xyz, collect(faces))
 end

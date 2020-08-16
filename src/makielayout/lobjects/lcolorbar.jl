@@ -31,7 +31,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     layoutobservables = LayoutObservables(LColorbar, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
-    framebox = layoutobservables.computedbbox
+    framebox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
 
     colorlinepoints = lift(framebox, nsteps) do fb, nsteps
         fbw = fb.widths[1]
