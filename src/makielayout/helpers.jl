@@ -174,30 +174,30 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     rightspinecolor, bottomspinecolor)
 
     bottomline = lift(rect, spinewidth) do r, sw
-        y = bottom(r) - 0.5f0 * sw
-        p1 = Point2(left(r) - sw, y)
-        p2 = Point2(right(r) + sw, y)
+        y = bottom(r)
+        p1 = Point2(left(r) - 0.5sw, y)
+        p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
     leftline = lift(rect, spinewidth) do r, sw
-        x = left(r) - 0.5f0 * sw
-        p1 = Point2(x, bottom(r) - sw)
-        p2 = Point2(x, top(r) + sw)
+        x = left(r)
+        p1 = Point2(x, bottom(r) - 0.5sw)
+        p2 = Point2(x, top(r) + 0.5sw)
         [p1, p2]
     end
 
     topline = lift(rect, spinewidth) do r, sw
-        y = top(r) + 0.5f0 * sw
-        p1 = Point2(left(r) - sw, y)
-        p2 = Point2(right(r) + sw, y)
+        y = top(r)
+        p1 = Point2(left(r) - 0.5sw, y)
+        p2 = Point2(right(r) + 0.5sw, y)
         [p1, p2]
     end
 
     rightline = lift(rect, spinewidth) do r, sw
-        x = right(r) + 0.5f0 * sw
-        p1 = Point2(x, bottom(r) - sw)
-        p2 = Point2(x, top(r) + sw)
+        x = right(r)
+        p1 = Point2(x, bottom(r) - 0.5sw)
+        p2 = Point2(x, top(r) + 0.5sw)
         [p1, p2]
     end
 
