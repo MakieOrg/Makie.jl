@@ -37,10 +37,13 @@ $(ATTRIBUTES)
         transparency = false,
     )
 end
+
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractMesh}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
 convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rect}}) = (v,)
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractPolygon}) = (v,)
+convert_arguments(::Type{<: Poly}, v::AbstractPolygon) = (v,)
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 
@@ -60,6 +63,8 @@ end
 # Poly conversion
 poly_convert(geometries) = triangle_mesh.(geometries)
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
+poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
+poly_convert(polygon::Polygon) = triangle_mesh(polygon)
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
     return poly_convert([convert_arguments(Scatter, polygon)[1]])
@@ -73,6 +78,8 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
     end
     return triangle_mesh.(polys)
 end
+
+to_line_segments(polygon::Polygon) = convert_arguments(PointBased(), polygon)[1]
 
 function to_line_segments(meshes)
     line = Point2f0[]
@@ -94,9 +101,9 @@ function to_line_segments(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-const PolyElements = Union{Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+const PolyElements = Union{Polygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
 
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
+function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
     meshes = lift(poly_convert, geometries)
     mesh!(plot, meshes;
@@ -118,7 +125,7 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
     )
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMesh
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa)
@@ -144,16 +151,15 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
                 append!(real_colors[], Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))
             end
             real_colors[] = real_colors[]
+            if P <: AbstractPolygon
+                meshes = triangle_mesh.(meshes)
+            end
             return merge(meshes)
         end
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            if meshes isa AbstractVector{<: AbstractPoint}
-                return triangle_mesh(meshes)
-            else
-                return merge(GeometryBasics.mesh.(meshes))
-            end
+            return merge(GeometryBasics.mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)
