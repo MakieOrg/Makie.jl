@@ -668,11 +668,11 @@ function default_attributes(::Type{LLegend}, scene)
         "The default marker size used for MarkerElements."
         markersize = 12
         "The default marker stroke width used for MarkerElements."
-        markerstrokewidth = 2
+        markerstrokewidth = 1
         "The default poly points used for PolyElements in normalized coordinates relative to each label patch."
         polypoints = [Point2f0(0, 0), Point2f0(1, 0), Point2f0(1, 1), Point2f0(0, 1)]
         "The default poly stroke width used for PolyElements."
-        polystrokewidth = 2
+        polystrokewidth = 1
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
