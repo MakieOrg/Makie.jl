@@ -234,7 +234,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         arrowplot,
         lift(x-> last.(x), headstart),
         marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
-        color = arrowcolor, rotations = directions
+        color = arrowcolor, rotations = directions,  strokewidth = 0.0,
     )
 end
 
