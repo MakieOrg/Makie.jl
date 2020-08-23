@@ -369,8 +369,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     # graphics backends, but it's not directly visible from screen.surface what type we have
 
     if interp
-        # TODO: use Gaussian blurring
-        interp_flag = Cairo.FILTER_BEST
+        # FILTER_BEST doesn't work reliably with png backend, GAUSSIAN is not implemented
+        interp_flag = Cairo.FILTER_BILINEAR
         
         s = to_cairo_image(image, primitive)
         Cairo.rectangle(ctx, xy..., w, h)
