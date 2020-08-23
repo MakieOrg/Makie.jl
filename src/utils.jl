@@ -92,29 +92,30 @@ end
 ########################################
 
 function to_cairo_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
-    AbstractPlotting.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
-    
-    u_nan_color = to_uint32_color(nan_color)
-    u_lowclip = isnothing(lowclip) ? lowclip : to_uint32_color(lowclip)
-    u_highclip = isnothing(highclip) ? highclip : to_uint32_color(highclip)
-
-    imui32 = [get_pixel_color(v, colormap, colorrange, u_nan_color, u_lowclip, u_highclip)
-        for v in img]
-
-    to_cairo_image(imui32, attributes)
+    to_cairo_image(to_rgba_image(img, attributes), attributes)
 end
 
-function get_pixel_color(x, colormap, colorrange, nan_color, lowclip, highclip)
+function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
+    AbstractPlotting.@get_attribute attributes (colormap, colorrange, nan_color, lowclip, highclip)
+
+    nan_color = AbstractPlotting.to_color(nan_color)
+    lowclip = isnothing(lowclip) ? lowclip : AbstractPlotting.to_color(lowclip)
+    highclip = isnothing(highclip) ? highclip : AbstractPlotting.to_color(highclip)
+
+    [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
+end
+
+function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
 
-    if isnan(x) || isinf(x)
-        nan_color
-    elseif x < vmin && !isnothing(lowclip)
-        lowclip
-    elseif x > vmax && !isnothing(highclip)
-        highclip
+    if isnan(pixel) || isinf(pixel)
+        RGBAf0(nan_color)
+    elseif pixel < vmin && !isnothing(lowclip)
+        RGBAf0(lowclip)
+    elseif pixel > vmax && !isnothing(highclip)
+        RGBAf0(highclip)
     else
-        to_uint32_color(AbstractPlotting.interpolated_getindex(colormap, x, colorrange))
+        RGBAf0(AbstractPlotting.interpolated_getindex(colormap, pixel, colorrange))
     end
 end
 

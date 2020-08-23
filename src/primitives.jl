@@ -364,21 +364,66 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
 
     w, h = xymax .- xy
     interp = to_value(get(primitive, :interpolate, true))
-    # TODO: use Gaussian blurring
-    interp = interp ? Cairo.FILTER_BEST : Cairo.FILTER_NEAREST
-    
-    s = to_cairo_image(image, primitive)
-    Cairo.rectangle(ctx, xy..., w, h)
-    Cairo.save(ctx)
-    Cairo.translate(ctx, xy...)
-    Cairo.scale(ctx, w / s.width, h / s.height)
-    Cairo.set_source_surface(ctx, s, 0, 0)
-    p = Cairo.get_source(ctx)
-    # Set filter doesn't work!?
-    Cairo.pattern_set_filter(p, interp)
-    Cairo.fill(ctx)
-    Cairo.restore(ctx)
+
+    # theoretically, we could restrict the non-interpolation vector graphics hack to actual vector
+    # graphics backends, but it's not directly visible from screen.surface what type we have
+
+    if interp
+        # TODO: use Gaussian blurring
+        interp_flag = Cairo.FILTER_BEST
+        
+        s = to_cairo_image(image, primitive)
+        Cairo.rectangle(ctx, xy..., w, h)
+        Cairo.save(ctx)
+        Cairo.translate(ctx, xy...)
+        Cairo.scale(ctx, w / s.width, h / s.height)
+        Cairo.set_source_surface(ctx, s, 0, 0)
+        p = Cairo.get_source(ctx)
+        # Set filter doesn't work!?
+        Cairo.pattern_set_filter(p, interp_flag)
+        Cairo.fill(ctx)
+        Cairo.restore(ctx)
+
+    else
+        colors = to_rgba_image(image, primitive)
+
+        cellw = w / size(image, 1)
+        cellh = h / size(image, 2)
+
+        ni, nj = size(image)
+        @inbounds for i in 1:ni, j in 1:nj
+            ori = xy + Point2f0((i-1) * cellw, (j-1) * cellh)
+
+            # there are usually white lines between directly adjacent rectangles
+            # in vector graphics because of anti-aliasing
+
+            # if we let each cell stick out (bulge) a little bit (half a point) under its neighbors
+            # those lines disappear
+
+            # we heuristically only do this if the adjacent cells are fully opaque
+            # and if we're not in the last row / column so the overall heatmap doesn't get bigger
+
+            # this should be the most common case by far, though
+
+            xbulge = if i < ni && alpha(colors[i+1, j]) == 1
+                0.5
+            else
+                0.0
+            end
+            ybulge = if j < nj && alpha(colors[i, j+1]) == 1
+                0.5
+            else
+                0.0
+            end
+
+            # we add the bulge in the direction of cellw / cellh in case the axes are reversed
+            Cairo.rectangle(ctx, ori..., cellw + sign(cellw) * xbulge, cellh + sign(cellh) * ybulge)
+            Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
+            Cairo.fill(ctx)
+        end
+    end
 end
+
 
 ################################################################################
 #                                     Mesh                                     #
