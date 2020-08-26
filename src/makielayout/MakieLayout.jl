@@ -105,5 +105,6 @@ export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
 export grid!, hbox!, vbox!
 export swap!
 export ncols, nrows
+export contents
 
 end # module
