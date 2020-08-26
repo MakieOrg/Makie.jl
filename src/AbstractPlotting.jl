@@ -134,7 +134,7 @@ export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
 export to_ndim, Reverse
 
 # Transformations
-export translated, translate!, transform!, scale!, rotate!, grid, Accum, Absolute
+export translated, translate!, scale!, rotate!, grid, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, scene_limits
 export hbox, vbox
 
