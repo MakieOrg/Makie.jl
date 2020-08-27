@@ -112,6 +112,7 @@ function has_juno_plotpane()
 end
 
 isijulia() = isdefined(Main, :IJulia) && isdefined(Main.IJulia, :clear_output)
+isvscode() = isdefined(Main, :VSCodeServer)
 
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
@@ -121,7 +122,9 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
         try `]build GLMakie` and watch out for any warnings.
         """
     end
-    if !use_display[] && !isempty(available_backends)
+    if !use_display[] && isvscode()
+        # do nothing
+    elseif !use_display[] && !isempty(available_backends)
         plotpane = has_juno_plotpane()
         if plotpane !== nothing && !plotpane
             # we want to display as inline!, we are in Juno, but the plotpane is disabled
