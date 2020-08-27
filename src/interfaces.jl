@@ -495,6 +495,15 @@ plottype(::AbstractMatrix{<: Real}) = Heatmap
 plottype(::Array{<: AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
 
+plottype(::LineString) = Lines
+plottype(::AbstractVector{<:LineString}) = Lines
+plottype(::MultiLineString) = Lines
+
+plottype(::Polygon) = Poly
+plottype(::GeometryBasics.AbstractPolygon) = Poly
+plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
+plottype(::MultiPolygon) = Lines
+
 """
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})
 

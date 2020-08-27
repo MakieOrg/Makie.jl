@@ -37,10 +37,12 @@ $(ATTRIBUTES)
         transparency = false,
     )
 end
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractMesh}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: VecTypes}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: AbstractVector{<: VecTypes}}) = (v,)
-convert_arguments(::Type{<: Poly}, v::AbstractVector{<: Union{Circle, Rect}}) = (v,)
+
+const PolyElements = Union{Polygon, MultiPolygon, Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
+
+convert_arguments(::Type{<: Poly}, v::AbstractVector{<: PolyElements}) = (v,)
+convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
+
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
 
@@ -60,26 +62,32 @@ end
 # Poly conversion
 poly_convert(geometries) = triangle_mesh.(geometries)
 poly_convert(meshes::AbstractVector{<:AbstractMesh}) = meshes
+poly_convert(polys::AbstractVector{<:Polygon}) = triangle_mesh.(polys)
+function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
+    return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
+end
+
+poly_convert(polygon::Polygon) = triangle_mesh(polygon)
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
     return poly_convert([convert_arguments(Scatter, polygon)[1]])
 end
 
 function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
-    polys = Vector{Point2f0}[]
-    for poly in polygons
+    return map(polygons) do poly
         s = GeometryBasics.split_intersections(poly)
-        append!(polys, s)
+        merge(triangle_mesh.(Polygon.(s)))
     end
-    return triangle_mesh.(polys)
 end
 
-function to_line_segments(meshes)
+to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
+
+function to_line_segments(meshes::AbstractVector)
     line = Point2f0[]
     for (i, mesh) in enumerate(meshes)
-        points = convert_arguments(PointBased(), mesh)[1]
+        points = to_line_segments(mesh)
         append!(line, points)
-        push!(line, points[1])
+        # push!(line, points[1])
         # dont need to separate the last line segment
         if i != length(meshes)
             push!(line, Point2f0(NaN))
@@ -94,9 +102,7 @@ function to_line_segments(polygon::AbstractVector{<: VecTypes})
     return result
 end
 
-const PolyElements = Union{Circle, Rect, AbstractMesh, VecTypes, AbstractVector{<:VecTypes}}
-
-function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
+function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyElements}}}})
     geometries = plot[1]
     meshes = lift(poly_convert, geometries)
     mesh!(plot, meshes;
@@ -118,7 +124,7 @@ function plot!(plot::Poly{<: Tuple{<: AbstractVector{<: PolyElements}}})
     )
 end
 
-function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMesh
+function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
     color_node = plot.color
     attributes = Attributes(visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa)
@@ -144,16 +150,15 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: AbstractMe
                 append!(real_colors[], Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))
             end
             real_colors[] = real_colors[]
+            if P <: AbstractPolygon
+                meshes = triangle_mesh.(meshes)
+            end
             return merge(meshes)
         end
     else
         attributes[:color] = color_node
         lift(meshes) do meshes
-            if meshes isa AbstractVector{<: AbstractPoint}
-                return triangle_mesh(meshes)
-            else
-                return merge(GeometryBasics.mesh.(meshes))
-            end
+            return merge(GeometryBasics.mesh.(meshes))
         end
     end
     mesh!(plot, attributes, bigmesh)
