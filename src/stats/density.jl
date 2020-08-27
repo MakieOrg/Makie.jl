@@ -17,7 +17,7 @@ end
 
 function trim_density(k::KernelDensity.UnivariateKDE, xlims)
     range = searchrange(k.x, xlims)
-    UnivariateKDE(k.x[range], k.density[range])
+    KernelDensity.UnivariateKDE(k.x[range], k.density[range])
 end
 
 function density(x; trim = false)
