@@ -130,14 +130,12 @@ function ssao_postprocessor(framebuffer)
         for (screenid, scene) in screen.screens
             # update uniforms
             SSAO = scene.SSAO
-            # if SSAO.enable[]
-                data1[:projection][] = scene.camera.projection[]
-                data1[:bias][] = Float32(to_value(get(SSAO, :bias, 0.025)))
-                data1[:radius][] = Float32(to_value(get(SSAO, :radius, 0.5)))
-                # use stencil to select one scene
-                glStencilFunc(GL_EQUAL, screenid, 0xff)
-                GLAbstraction.render(pass1)
-            # end
+            data1[:projection][] = scene.camera.projection[]
+            data1[:bias][] = Float32(to_value(get(SSAO, :bias, 0.025)))
+            data1[:radius][] = Float32(to_value(get(SSAO, :radius, 0.5)))
+            # use stencil to select one scene
+            glStencilFunc(GL_EQUAL, screenid, 0xff)
+            GLAbstraction.render(pass1)
         end
 
         # SSAO - blur occlusion and apply to color
@@ -145,13 +143,10 @@ function ssao_postprocessor(framebuffer)
         for (screenid, scene) in screen.screens
             # update uniforms
             SSAO = scene.attributes.SSAO
-            # if SSAO.enable[]
-                data2[:blur_range][] = Int32(to_value(get(SSAO, :blur, 2)))
-
-                # use stencil to select one scene
-                glStencilFunc(GL_EQUAL, screenid, 0xff)
-                GLAbstraction.render(pass2)
-            # end
+            data2[:blur_range][] = Int32(to_value(get(SSAO, :blur, 2)))
+            # use stencil to select one scene
+            glStencilFunc(GL_EQUAL, screenid, 0xff)
+            GLAbstraction.render(pass2)
         end
         glDisable(GL_STENCIL_TEST)
     end
