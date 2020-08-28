@@ -85,6 +85,11 @@ vec3 _scale(vec3 scale, Nothing scale_x, Nothing scale_y, Nothing scale_z, int i
 {{color_map_type}}  color_map;
 {{intensity_type}}  intensity;
 {{color_norm_type}} color_norm;
+{{vertex_color_type}} vertex_color;
+vec4 to_color(Nothing c){return vec4(1, 1, 1, 1);}
+vec4 to_color(vec3 c){return vec4(c, 1);}
+vec4 to_color(vec4 c){return c;}
+
 // constant color!
 vec4 _color(vec4 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
 vec4 _color(vec3 color, Nothing intensity, Nothing color_map, Nothing color_norm, int index, int len);
@@ -138,6 +143,7 @@ void main(){
     vec3 pos;
     {{position_calc}}
     o_color    = _color(color, intensity, color_map, color_norm, index, len);
+    o_color = o_color * to_color(vertex_color);
     o_uv = get_uv(texturecoordinates);
     rotate(rotation, index, V, N);
     render(model * vec4(pos + V, 1), N, view, projection, lightposition);

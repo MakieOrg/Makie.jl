@@ -78,7 +78,8 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         end
         if !haskey(gl_attributes, :normalmatrix)
             robj[:normalmatrix] = map(robj[:view], robj[:model]) do v, m
-                Mat3f0(transpose(inv(v[1:3, 1:3] * m[1:3, 1:3])))
+                i = SOneTo(3)
+                return transpose(inv(v[i, i] * m[i, i]))
             end
         end
         !haskey(gl_attributes, :ssao) && (robj[:ssao] = Node(false))
