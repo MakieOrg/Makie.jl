@@ -433,3 +433,54 @@ function labelslider!(scene, label, range; format = string,
     layout = hbox!(label, slider, valuelabel; layoutkw...)
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
+
+
+
+
+function _hvlines!(ax::LAxis, ::Val{DIR}, datavals, axmins, axmaxs; attributes...) where DIR
+
+    datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
+
+    linesegs = lift(ax.limits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
+            datavals, axmins, axmaxs
+
+        xlims = (minimum(lims)[DIR], maximum(lims)[DIR])
+        xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
+        segs = broadcast(datavals, axmins, axmaxs) do dataval, axmin, axmax
+            if DIR == 1
+                (Point2f0(xfrac(axmin), dataval), Point2f0(xfrac(axmax), dataval))
+            elseif DIR == 2
+                (Point2f0(dataval, xfrac(axmin)), Point2f0(dataval, xfrac(axmax)))
+            else
+                error("DIR must be 1 or 2")
+            end
+        end
+        # handle case that none of the inputs is an array, but we need an array for linesegments!
+        if segs isa Tuple
+            segs = [segs]
+        end
+        segs
+    end
+
+    linesegments!(ax, linesegs; xautolimits = DIR == 2, yautolimits = DIR == 1, attributes...)
+end
+
+"""
+    hlines!(ax::LAxis, ys, xmins = 0.0, xmaxs = 1.0; attrs...)
+
+Create horizontal lines across `ax` at `ys` in data coordinates and `xmins` to `xmaxs`
+in axis coordinates (0 to 1). All three of these can have single or multiple values because
+they are broadcast to calculate the final line segments.
+"""
+hlines!(ax::LAxis, ys, xmins = 0.0, xmaxs = 1.0; attrs...) =
+    _hvlines!(ax, Val(1), ys, xmins, xmaxs; attrs...)
+
+"""
+    vlines!(ax::LAxis, xs, ymins = 0.0, ymaxs = 1.0; attrs...)
+
+Create vertical lines across `ax` at `xs` in data coordinates and `ymins` to `ymaxs`
+in axis coordinates (0 to 1). All three of these can have single or multiple values because
+they are broadcast to calculate the final line segments.
+"""
+vlines!(ax::LAxis, xs, ymins = 0.0, ymaxs = 1.0; attrs...) = 
+    _hvlines!(ax, Val(2), xs, ymins, ymaxs; attrs...)
