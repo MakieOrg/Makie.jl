@@ -436,23 +436,24 @@ end
 
 
 
-
-function _hvlines!(ax::LAxis, ::Val{DIR}, datavals, axmins, axmaxs; attributes...) where DIR
+# helper function to create either h or vlines depending on `direction`
+# this works only with LAxes because it needs to react to limit changes
+function hvlines!(ax::LAxis, direction::Int, datavals, axmins, axmaxs; attributes...)
 
     datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
 
     linesegs = lift(ax.limits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
             datavals, axmins, axmaxs
 
-        xlims = (minimum(lims)[DIR], maximum(lims)[DIR])
+        xlims = (minimum(lims)[direction], maximum(lims)[direction])
         xfrac(f) = xlims[1] + f * (xlims[2] - xlims[1])
         segs = broadcast(datavals, axmins, axmaxs) do dataval, axmin, axmax
-            if DIR == 1
+            if direction == 1
                 (Point2f0(xfrac(axmin), dataval), Point2f0(xfrac(axmax), dataval))
-            elseif DIR == 2
+            elseif direction == 2
                 (Point2f0(dataval, xfrac(axmin)), Point2f0(dataval, xfrac(axmax)))
             else
-                error("DIR must be 1 or 2")
+                error("direction must be 1 or 2")
             end
         end
         # handle case that none of the inputs is an array, but we need an array for linesegments!
@@ -473,7 +474,7 @@ in axis coordinates (0 to 1). All three of these can have single or multiple val
 they are broadcast to calculate the final line segments.
 """
 hlines!(ax::LAxis, ys, xmins = 0.0, xmaxs = 1.0; attrs...) =
-    _hvlines!(ax, Val(1), ys, xmins, xmaxs; attrs...)
+    hvlines!(ax, 1, ys, xmins, xmaxs; attrs...)
 
 """
     vlines!(ax::LAxis, xs, ymins = 0.0, ymaxs = 1.0; attrs...)
@@ -483,4 +484,4 @@ in axis coordinates (0 to 1). All three of these can have single or multiple val
 they are broadcast to calculate the final line segments.
 """
 vlines!(ax::LAxis, xs, ymins = 0.0, ymaxs = 1.0; attrs...) = 
-    _hvlines!(ax, Val(2), xs, ymins, ymaxs; attrs...)
+    hvlines!(ax, 2, xs, ymins, ymaxs; attrs...)
