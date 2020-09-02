@@ -35,7 +35,7 @@ nothing_or_vec(x::Array) = vec(x)
 
 function normal_calc(x::Bool)
     if x
-        "getnormal(position_z, linear_index(dims, index1D));"
+        "getnormal(position, position_x, position_y, position_z, o_uv);"
         # "getnormal_fast(position_z, ind2sub(dims, index1D));"
     else
         "vec3(0, 0, 1);"
