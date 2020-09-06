@@ -328,8 +328,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         cairoface = set_ft_font(ctx, f)
 
-        mat = scale_matrix(scale...)
-        set_font_matrix(ctx, mat)
+        if scale[1] != 0.0 && scale[2] != 0.0
+            mat = scale_matrix(scale...)
+            set_font_matrix(ctx, mat)
+        else
+            @warn "Font scale zero ($scale)!"
+        end
 
         # TODO this only works in 2d
         Cairo.rotate(ctx, to_2d_rotation(r))
@@ -531,7 +535,6 @@ function draw_mesh3D(
         p = p_0_to_1 .* res
         Vec3f0(p[1], p[2], clip[3])
     end
-    @info extrema(ts)
     # Approximate zorder
     zorder = sortperm(fs, by = f -> average_z(ts, f))
 
