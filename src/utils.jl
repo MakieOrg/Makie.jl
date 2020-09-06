@@ -172,11 +172,11 @@ function per_face_colors(color, colormap, colorrange, vertices, faces, uv)
             cvec = AbstractPlotting.interpolated_getindex.((colormap,), color, (colorrange,))
             return FaceIterator(cvec, faces)
         elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
+            wsize = reverse(size(color))
+            wh = wsize .- 1
             cvec = map(uv) do uv
-                wsize = reverse(size(color))
-                wh = wsize .- 1
-                x, y = round.(Int, Tuple(uv) .* wh) .+ 1
-                return color[size(color, 1) - (y - 1), x]
+                x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+                return color[end - (y - 1), x]
             end
             # TODO This is wrong and doesn't actually interpolate
             # Inside the triangle sampling the color image

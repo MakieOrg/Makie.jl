@@ -429,27 +429,79 @@ end
 #                                     Mesh                                     #
 ################################################################################
 
+function average_z(positions, face)
+    vs = positions[face]
+    sum(v -> v[3], vs) / length(vs)
+end
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
-    @get_attribute(primitive, (color,))
+    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
 
     ctx = screen.context
     model = primitive.model[]
+    view = scene.camera.view[]
+    projection = scene.camera.projection[]
     mesh = primitive[1][]
-    vs = coordinates(mesh); fs = faces(mesh)
-    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
-    pattern = Cairo.CairoPatternMesh()
+    vs = map(coordinates(mesh)) do v
+        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, v, 0f0), 1f0)
+        cam_pos = view * model * p4d
+        cam_pos / cam_pos[4]
+    end
 
-    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
-    for (f, (c1, c2, c3)) in zip(fs, cols)
-        t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
+    fs = faces(mesh)
+    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
+    
+    if length(first(coordinates(mesh))) == 3
+        normalmatrix = get(
+            scene.attributes, :normalmatrix, let 
+                i = SOneTo(3)
+                transpose(inv(view[i, i] * model[i, i]))
+            end
+        )
+        ns = map(n -> normalmatrix * n, normals(mesh))
+        cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+        if lightposition == :eyeposition
+            lightposition = scene.camera_controls[].eyeposition[]
+        end
+        lightpos = view * to_ndim(Vec4f0, lightposition, 1.0)
+        lightpos = (lightpos ./ lightpos[4])[Vec(1, 2, 3)]
+        draw_mesh3D(
+            ctx, vs, fs, ns, cols, 
+            shading, lightpos, ambient, diffuse, 
+            projection, scene.resolution[]
+        )
+    else
+        cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+        draw_mesh2D(ctx, vs, fs, cols, projection, scene.resolution[])
+    end
+
+    return nothing
+end
+
+function draw_mesh2D(ctx, vs, fs, cols, projection, res)
+    pattern = Cairo.CairoPatternMesh()
+    for k in eachindex(fs)
+        f = fs[k]
+        c1, c2, c3 = cols[k]
+        t1, t2, t3 = map(vs) do v
+            clip = projection * v
+            @inbounds begin
+                p = (clip ./ clip[4])[Vec(1, 2)]
+                p_yflip = Vec2f0(p[1], -p[2])
+                p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+            end
+            p = p_0_to_1 .* res
+            Vec3f0(p[1], p[2], clip[3])
+        end
+        
         Cairo.mesh_pattern_begin_patch(pattern)
 
-        Cairo.mesh_pattern_move_to(pattern, t1...)
-        Cairo.mesh_pattern_line_to(pattern, t2...)
-        Cairo.mesh_pattern_line_to(pattern, t3...)
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
 
         mesh_pattern_set_corner_color(pattern, 0, c1)
         mesh_pattern_set_corner_color(pattern, 1, c2)
@@ -462,3 +514,111 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     Cairo.paint(ctx)
     return nothing
 end
+
+function draw_mesh3D(
+        ctx, vs, fs, ns, cols, 
+        shading, lightposition, ambient, diffuse, 
+        projection, res
+    )
+    # Camera to screen space
+    ts = map(vs) do v
+        clip = projection * v
+        @inbounds begin
+            p = (clip ./ clip[4])[Vec(1, 2)]
+            p_yflip = Vec2f0(p[1], -p[2])
+            p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+        end
+        p = p_0_to_1 .* res
+        Vec3f0(p[1], p[2], clip[3])
+    end
+    @info extrema(ts)
+    # Approximate zorder
+    zorder = sortperm(fs, by = f -> average_z(ts, f))
+
+    # Face culling
+    # This doesn't work because it's resolution dependent :(
+    # zbuffer = fill(typemin(Float32), Int64.(scene.camera.resolution[])...)
+    # visible_faces = Int64[]
+    # for i in zorder
+    #     if isvisible!(zbuffer, ts[fs[i]])
+    #         push!(visible_faces, i)
+    #     end
+    # end
+
+    pattern = Cairo.CairoPatternMesh()
+    for k in reverse(zorder)
+        f = fs[k]
+        t1, t2, t3 = ts[f]
+        # c1, c2, c3 = cols[k]
+
+        # Skip specular (it won't work well since it's not linear)
+        c1, c2, c3 = if shading
+            map(ns[f], vs[f], cols[k]) do N, v, c
+                L = normalize(lightposition .- v[Vec(1, 2, 3)])
+                diff_coeff = max(dot(L, N), 0.0)
+                Vec3f0(red(c), green(c), blue(c))
+                c = RGBA(c)
+                new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f0(c.r, c.g, c.b)
+                RGBA(new_c..., c.alpha)
+            end
+        else
+            cols[k]
+        end
+
+        Cairo.mesh_pattern_begin_patch(pattern)
+
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
+
+        mesh_pattern_set_corner_color(pattern, 0, c1)
+        mesh_pattern_set_corner_color(pattern, 1, c2)
+        mesh_pattern_set_corner_color(pattern, 2, c3)
+
+        Cairo.mesh_pattern_end_patch(pattern)
+    end
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    return nothing
+end
+
+
+
+# For face culling, resolution messes this up
+# function barycentric(pts, P) 
+#     u = cross(
+#         Vec3f0(pts[3][1] - pts[1][1], pts[2][1] - pts[1][1], pts[1][1] - P[1]), 
+#         Vec3f0(pts[3][2] - pts[1][2], pts[2][2] - pts[1][2], pts[1][2] - P[2])
+#     )
+#     abs(u[2]) < 1 && return Vec3f0(-1,1,1)
+#     return Vec3f0(1 - (u[1] + u[2]) / u[3] , u[2] / u[3] , u[1] / u[3] )
+# end
+
+ 
+# function isvisible!(zbuffer, pts) 
+#     @assert length(pts) == 3
+#     bboxmin = Float32[size(zbuffer)...]
+#     bboxmax = Float32[1, 1] 
+#     clamp   = Float32[size(zbuffer)...]
+#     for i in 1:3 
+#         for j in 1:2 
+#             bboxmin[j] = max(1f0,      min(bboxmin[j], pts[i][j]))
+#             bboxmax[j] = min(clamp[j], max(bboxmax[j], pts[i][j]))
+#         end
+#     end
+#     changed = false
+#     for x in vcat(bboxmin[1]:bboxmax[1], bboxmax[1])
+#         for y in vcat(bboxmin[2]:bboxmax[2], bboxmax[2])
+#             bc_screen = barycentric(pts, Vec2f0(x, y))
+#             (bc_screen[1]<0 || bc_screen[2]<0 || bc_screen[3]<0) && continue
+#             z = pts[1][3] + pts[2][3] + pts[3][3] + sum(bc_screen)
+#             i = trunc(Int64, x)+1; j = trunc(Int64, y)+1
+#             if zbuffer[i, j] < z
+#                 changed = true
+#                 zbuffer[i, j] = z
+#             end
+#         end 
+#     end
+#     changed
+# end
