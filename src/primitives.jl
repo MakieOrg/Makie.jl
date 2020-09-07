@@ -316,6 +316,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
             font, align, rotation, model, justification, lineheight
         )
     end
+
+    w, h = scene.camera.resolution[]
+    viewport = 0.038 * Mat2f0(0.4w, 0, 0, 0.5h)
+    # viewport = Mat2f0(0.5w, 0, 0, 0.5h)
+
     stridx = 1
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
@@ -328,15 +333,25 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         cairoface = set_ft_font(ctx, f)
 
-        if scale[1] != 0.0 && scale[2] != 0.0
+        if scale[1] > 0.0 && scale[2] > 0.0
             mat = scale_matrix(scale...)
             set_font_matrix(ctx, mat)
+            Cairo.rotate(ctx, to_2d_rotation(r))
         else
-            @warn "Font scale zero ($scale)!"
+            # This sort of works ¯\_(ツ)_/¯
+            # Somewhat similar to normalmatrix in GLMakie
+            cpv = viewport * transpose(inv(
+                (scene.camera.projectionview[] * 
+                AbstractPlotting.rotationmatrix4(r))[Vec(1,2), Vec(1,2)]
+            ))
+            mat = Cairo.CairoMatrix(
+                cpv[1, 1], cpv[1, 2],
+                cpv[2, 1], cpv[2, 2],
+                # this helps seperate text from the z axis (in the default view)
+                0.5(cpv[1, 2] + cpv[2, 1]), 0.0
+            )
+            set_font_matrix(ctx, mat)
         end
-
-        # TODO this only works in 2d
-        Cairo.rotate(ctx, to_2d_rotation(r))
 
         if !(char in ('\r', '\n'))
             Cairo.show_text(ctx, string(char))
