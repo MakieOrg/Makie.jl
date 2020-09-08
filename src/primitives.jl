@@ -317,10 +317,6 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         )
     end
 
-    w, h = scene.camera.resolution[]
-    viewport = 0.038 * Mat2f0(0.4w, 0, 0, 0.5h)
-    # viewport = Mat2f0(0.5w, 0, 0, 0.5h)
-
     stridx = 1
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
@@ -340,9 +336,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         else
             # This sort of works ¯\_(ツ)_/¯
             # Somewhat similar to normalmatrix in GLMakie
-            cpv = viewport * transpose(inv(
-                (scene.camera.projectionview[] * 
-                AbstractPlotting.rotationmatrix4(r))[Vec(1,2), Vec(1,2)]
+            w, h = scene.camera.resolution[]
+            j = SOneTo(3)
+            cpv = 0.01(w + h) * transpose(inv(
+                (scene.camera.projectionview[][j,j] * 
+                AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
             ))
             mat = Cairo.CairoMatrix(
                 cpv[1, 1], cpv[1, 2],
