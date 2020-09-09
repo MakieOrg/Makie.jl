@@ -260,25 +260,70 @@ bool isinbounds(vec2 uv)
     return (uv.x <= 1.0 && uv.y <= 1.0 && uv.x >= 0.0 && uv.y >= 0.0);
 }
 
-vec3 getnormal(sampler2D zvalues, vec2 uv)
-{
-    float weps = 1.0/textureSize(zvalues,0).x;
-    float heps = 1.0/textureSize(zvalues,0).y;
+
+// Overload for surface(Matrix, Matrix, Matrix)
+vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, vec2 uv){
+    // The +1e-6 fixes precision errors at the edge
+    float du = 1.0 / textureSize(zs,0).x + 1e-6;
+    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
+
+    vec3 s0, s1, s2, s3, s4;
+    vec2 off1 = uv + vec2(-du, 0); 
+    vec2 off2 = uv + vec2(0, dv); 
+    vec2 off3 = uv + vec2(du, 0); 
+    vec2 off4 = uv + vec2(0, -dv); 
+    s0 = vec3(texture(xs,   uv).x, texture(ys,   uv).x,   texture(zs, uv).x);
+    s1 = vec3(texture(xs, off1).x, texture(ys, off1).x, texture(zs, off1).x); 
+    s2 = vec3(texture(xs, off2).x, texture(ys, off2).x, texture(zs, off2).x); 
+    s3 = vec3(texture(xs, off3).x, texture(ys, off3).x, texture(zs, off3).x); 
+    s4 = vec3(texture(xs, off4).x, texture(ys, off4).x, texture(zs, off4).x); 
 
     vec3 result = vec3(0);
 
-    vec3 s0 = vec3(uv, texture(zvalues, uv).x);
+    if(isinbounds(off1) && isinbounds(off2))
+    {
+        result += cross(s2-s0, s1-s0);
+    }
+    if(isinbounds(off2) && isinbounds(off3))
+    {
+        result += cross(s3-s0, s2-s0);
+    }
+    if(isinbounds(off3) && isinbounds(off4))
+    {
+        result += cross(s4-s0, s3-s0);
+    }
+    if(isinbounds(off4) && isinbounds(off1))
+    {
+        result += cross(s1-s0, s4-s0);
+    }
+    return normalize(result); // normal should be zero, but needs to be here, because the dead-code elimanation of GLSL is overly enthusiastic
+}
 
-    vec2 off1 = uv + vec2(-weps,0);
-    vec2 off2 = uv + vec2(0, heps);
-    vec2 off3 = uv + vec2(weps, 0);
-    vec2 off4 = uv + vec2(0,-heps);
-    vec3 s1, s2, s3, s4;
+vec2 grid_pos(Grid2D position, vec2 uv){
+    return vec2(
+        ((1-uv[0]) * position.start[0] + uv[0] * position.stop[0]), 
+        ((1-uv[1]) * position.start[1] + uv[1] * position.stop[1])
+    );
+}
 
-    s1 = vec3((off1), texture(zvalues, off1).x);
-    s2 = vec3((off2), texture(zvalues, off2).x);
-    s3 = vec3((off3), texture(zvalues, off3).x);
-    s4 = vec3((off4), texture(zvalues, off4).x);
+// Overload for surface(range, range, Matrix)
+vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, vec2 uv){
+    // The +1e-6 fixes precision errors at the edge
+    float du = 1.0 / textureSize(zs,0).x + 1e-6;
+    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
+
+    vec3 s0, s1, s2, s3, s4;
+    vec2 off1 = uv + vec2(-du, 0); 
+    vec2 off2 = uv + vec2(0, dv); 
+    vec2 off3 = uv + vec2(du, 0); 
+    vec2 off4 = uv + vec2(0, -dv); 
+    s0 = vec3(grid_pos(pos,   uv).xy, texture(zs,   uv).x);
+    s1 = vec3(grid_pos(pos, off1).xy, texture(zs, off1).x); 
+    s2 = vec3(grid_pos(pos, off2).xy, texture(zs, off2).x); 
+    s3 = vec3(grid_pos(pos, off3).xy, texture(zs, off3).x); 
+    s4 = vec3(grid_pos(pos, off4).xy, texture(zs, off4).x); 
+
+    vec3 result = vec3(0);
 
     if(isinbounds(off1) && isinbounds(off2))
     {
