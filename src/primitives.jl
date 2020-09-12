@@ -548,24 +548,17 @@ function draw_mesh3D(
         p = p_0_to_1 .* res
         Vec3f0(p[1], p[2], clip[3])
     end
+    
     # Approximate zorder
     zorder = sortperm(fs, by = f -> average_z(ts, f))
-
+    
     # Face culling
-    # This doesn't work because it's resolution dependent :(
-    # zbuffer = fill(typemin(Float32), Int64.(scene.camera.resolution[])...)
-    # visible_faces = Int64[]
-    # for i in zorder
-    #     if isvisible!(zbuffer, ts[fs[i]])
-    #         push!(visible_faces, i)
-    #     end
-    # end
+    zorder = filter(i -> any(last.(ns[fs[i]]) .> 0), zorder)
 
     pattern = Cairo.CairoPatternMesh()
     for k in reverse(zorder)
         f = fs[k]
         t1, t2, t3 = ts[f]
-        # c1, c2, c3 = cols[k]
 
         # Skip specular (it won't work well since it's not linear)
         c1, c2, c3 = if shading
@@ -598,43 +591,3 @@ function draw_mesh3D(
     Cairo.paint(ctx)
     return nothing
 end
-
-
-
-# For face culling, resolution messes this up
-# function barycentric(pts, P) 
-#     u = cross(
-#         Vec3f0(pts[3][1] - pts[1][1], pts[2][1] - pts[1][1], pts[1][1] - P[1]), 
-#         Vec3f0(pts[3][2] - pts[1][2], pts[2][2] - pts[1][2], pts[1][2] - P[2])
-#     )
-#     abs(u[2]) < 1 && return Vec3f0(-1,1,1)
-#     return Vec3f0(1 - (u[1] + u[2]) / u[3] , u[2] / u[3] , u[1] / u[3] )
-# end
-
- 
-# function isvisible!(zbuffer, pts) 
-#     @assert length(pts) == 3
-#     bboxmin = Float32[size(zbuffer)...]
-#     bboxmax = Float32[1, 1] 
-#     clamp   = Float32[size(zbuffer)...]
-#     for i in 1:3 
-#         for j in 1:2 
-#             bboxmin[j] = max(1f0,      min(bboxmin[j], pts[i][j]))
-#             bboxmax[j] = min(clamp[j], max(bboxmax[j], pts[i][j]))
-#         end
-#     end
-#     changed = false
-#     for x in vcat(bboxmin[1]:bboxmax[1], bboxmax[1])
-#         for y in vcat(bboxmin[2]:bboxmax[2], bboxmax[2])
-#             bc_screen = barycentric(pts, Vec2f0(x, y))
-#             (bc_screen[1]<0 || bc_screen[2]<0 || bc_screen[3]<0) && continue
-#             z = pts[1][3] + pts[2][3] + pts[3][3] + sum(bc_screen)
-#             i = trunc(Int64, x)+1; j = trunc(Int64, y)+1
-#             if zbuffer[i, j] < z
-#                 changed = true
-#                 zbuffer[i, j] = z
-#             end
-#         end 
-#     end
-#     changed
-# end
