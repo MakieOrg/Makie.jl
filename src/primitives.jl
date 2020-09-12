@@ -520,8 +520,7 @@ function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0
     vs = map(coordinates(mesh)) do v
         p4d = to_ndim(Vec4f0, scale * to_ndim(Vec3f0, v, 0f0), 1f0) .+ 
               to_ndim(Vec4f0, pos, 0f0)
-        cam_pos = view * model * p4d
-        cam_pos / cam_pos[4]
+        view * model * p4d
     end
     fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing  
@@ -532,12 +531,11 @@ function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0
     if lightposition == :eyeposition
         lightposition = scene.camera_controls[].eyeposition[]
     end
-    lightpos = view * to_ndim(Vec4f0, lightposition, 1.0)
-    lightpos = (lightpos ./ lightpos[4])[Vec(1, 2, 3)]
+    lightpos = (view * to_ndim(Vec4f0, lightposition, 1.0))[Vec(1, 2, 3)]
 
     # Camera to screen space
     ts = map(vs) do v
-        clip = projection * v
+        clip = projection * v 
         @inbounds begin
             p = (clip ./ clip[4])[Vec(1, 2)]
             p_yflip = Vec2f0(p[1], -p[2])
@@ -561,7 +559,7 @@ function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0
         # light calculation
         c1, c2, c3 = if shading
             map(ns[f], vs[f], cols[k]) do N, v, c
-                L = normalize(lightposition .- v[Vec(1, 2, 3)])
+                L = normalize(lightpos .- v[Vec(1,2,3)])
                 diff_coeff = max(dot(L, N), 0.0)
                 c = RGBA(c)
                 new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f0(c.r, c.g, c.b)
