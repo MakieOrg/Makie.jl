@@ -317,6 +317,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         )
     end
 
+    is3D = scene.camera_controls[] isa Camera3D
+
     stridx = 1
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
@@ -329,7 +331,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         cairoface = set_ft_font(ctx, f)
 
-        if scale[1] > 0.0 && scale[2] > 0.0
+        if !is3D
             mat = scale_matrix(scale...)
             set_font_matrix(ctx, mat)
             Cairo.rotate(ctx, to_2d_rotation(r))
@@ -446,79 +448,37 @@ end
 #                                     Mesh                                     #
 ################################################################################
 
-function average_z(positions, face)
-    vs = positions[face]
-    sum(v -> v[3], vs) / length(vs)
-end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
-    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse))
+    if scene.camera_controls[] isa Camera2D
+        draw_mesh2D(scene, screen, primitive)
+    else
+        draw_mesh3D(scene, screen, primitive)
+    end
+    return nothing
+end
+
+function draw_mesh2D(scene, screen, primitive)
+    @get_attribute(primitive, (color,))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
 
     ctx = screen.context
     model = primitive.model[]
-    view = scene.camera.view[]
-    projection = scene.camera.projection[]
     mesh = primitive[1][]
-    vs = map(coordinates(mesh)) do v
-        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, v, 0f0), 1f0)
-        cam_pos = view * model * p4d
-        cam_pos / cam_pos[4]
-    end
-
-    fs = faces(mesh)
+    vs = coordinates(mesh); fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
-    
-    if length(first(coordinates(mesh))) == 3
-        normalmatrix = get(
-            scene.attributes, :normalmatrix, let 
-                i = SOneTo(3)
-                transpose(inv(view[i, i] * model[i, i]))
-            end
-        )
-        ns = map(n -> normalmatrix * n, normals(mesh))
-        cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
-        if lightposition == :eyeposition
-            lightposition = scene.camera_controls[].eyeposition[]
-        end
-        lightpos = view * to_ndim(Vec4f0, lightposition, 1.0)
-        lightpos = (lightpos ./ lightpos[4])[Vec(1, 2, 3)]
-        draw_mesh3D(
-            ctx, vs, fs, ns, cols, 
-            shading, lightpos, ambient, diffuse, 
-            projection, scene.resolution[]
-        )
-    else
-        cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
-        draw_mesh2D(ctx, vs, fs, cols, projection, scene.resolution[])
-    end
-
-    return nothing
-end
-
-function draw_mesh2D(ctx, vs, fs, cols, projection, res)
     pattern = Cairo.CairoPatternMesh()
-    for k in eachindex(fs)
-        f = fs[k]
-        c1, c2, c3 = cols[k]
-        t1, t2, t3 = map(vs) do v
-            clip = projection * v
-            @inbounds begin
-                p = (clip ./ clip[4])[Vec(1, 2)]
-                p_yflip = Vec2f0(p[1], -p[2])
-                p_0_to_1 = (p_yflip .+ 1f0) / 2f0
-            end
-            p = p_0_to_1 .* res
-            Vec3f0(p[1], p[2], clip[3])
-        end
-        
+
+    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+    for (f, (c1, c2, c3)) in zip(fs, cols)
+        t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
 
-        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
-        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
-        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
+        Cairo.mesh_pattern_move_to(pattern, t1...)
+        Cairo.mesh_pattern_line_to(pattern, t2...)
+        Cairo.mesh_pattern_line_to(pattern, t3...)
 
         mesh_pattern_set_corner_color(pattern, 0, c1)
         mesh_pattern_set_corner_color(pattern, 1, c2)
@@ -532,11 +492,49 @@ function draw_mesh2D(ctx, vs, fs, cols, projection, res)
     return nothing
 end
 
-function draw_mesh3D(
-        ctx, vs, fs, ns, cols, 
-        shading, lightposition, ambient, diffuse, 
-        projection, res
+function average_z(positions, face)
+    vs = positions[face]
+    sum(v -> v[3], vs) / length(vs)
+end
+
+function draw_mesh3D(scene, screen, primitive)
+    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse))
+
+    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
+    colorrange = get(primitive, :colorrange, nothing) |> to_value
+
+    ctx = screen.context
+
+    model = primitive.model[]
+    view = scene.camera.view[]
+    projection = scene.camera.projection[]
+    normalmatrix = get(
+        scene.attributes, :normalmatrix, let 
+            i = SOneTo(3)
+            transpose(inv(view[i, i] * model[i, i]))
+        end
     )
+    
+    # Mesh data
+    mesh = primitive[1][]
+    # to view/camera space
+    vs = map(coordinates(mesh)) do v
+        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, v, 0f0), 1f0)
+        cam_pos = view * model * p4d
+        cam_pos / cam_pos[4]
+    end
+    fs = faces(mesh)
+    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing  
+    ns = map(n -> normalmatrix * n, normals(mesh))
+    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+
+    # Liight math happens in view/camera space
+    if lightposition == :eyeposition
+        lightposition = scene.camera_controls[].eyeposition[]
+    end
+    lightpos = view * to_ndim(Vec4f0, lightposition, 1.0)
+    lightpos = (lightpos ./ lightpos[4])[Vec(1, 2, 3)]
+
     # Camera to screen space
     ts = map(vs) do v
         clip = projection * v
@@ -545,7 +543,7 @@ function draw_mesh3D(
             p_yflip = Vec2f0(p[1], -p[2])
             p_0_to_1 = (p_yflip .+ 1f0) / 2f0
         end
-        p = p_0_to_1 .* res
+        p = p_0_to_1 .* scene.camera.resolution[]
         Vec3f0(p[1], p[2], clip[3])
     end
     
@@ -560,12 +558,11 @@ function draw_mesh3D(
         f = fs[k]
         t1, t2, t3 = ts[f]
 
-        # Skip specular (it won't work well since it's not linear)
+        # light calculation
         c1, c2, c3 = if shading
             map(ns[f], vs[f], cols[k]) do N, v, c
                 L = normalize(lightposition .- v[Vec(1, 2, 3)])
                 diff_coeff = max(dot(L, N), 0.0)
-                Vec3f0(red(c), green(c), blue(c))
                 c = RGBA(c)
                 new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f0(c.r, c.g, c.b)
                 RGBA(new_c..., c.alpha)
