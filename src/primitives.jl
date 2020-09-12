@@ -497,7 +497,7 @@ function average_z(positions, face)
     sum(v -> v[3], vs) / length(vs)
 end
 
-function draw_mesh3D(scene, screen, primitive)
+function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][])
     @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
@@ -516,8 +516,7 @@ function draw_mesh3D(scene, screen, primitive)
     )
     
     # Mesh data
-    mesh = primitive[1][]
-    # to view/camera space
+    # transform to view/camera space
     vs = map(coordinates(mesh)) do v
         p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, v, 0f0), 1f0)
         cam_pos = view * model * p4d
@@ -587,4 +586,36 @@ function draw_mesh3D(scene, screen, primitive)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
     return nothing
+end
+
+
+################################################################################
+#                                   Surface                                    #
+################################################################################
+
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Surface)
+    # Pretend the surface plot is a mesh plot and plot that instead
+    mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+    primitive[:color][] = primitive[3][][:]
+    draw_mesh3D(scene, screen, primitive, mesh)
+    return nothing
+end
+
+function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
+    ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
+    idxs = LinearIndices(size(zs))
+    faces = [
+        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1]) 
+        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
+    ]
+    normal_mesh(ps, faces)
+end
+function surface2mesh(xs::Matrix, ys::Matrix, zs::Matrix)
+    ps = [Point3f0(xs[i, j], ys[i, j], zs[i, j]) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
+    idxs = LinearIndices(size(zs))
+    faces = [
+        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1]) 
+        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
+    ]
+    normal_mesh(ps, faces)
 end
