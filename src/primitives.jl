@@ -340,7 +340,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
             # Somewhat similar to normalmatrix in GLMakie
             w, h = scene.camera.resolution[]
             j = SOneTo(3)
-            cpv = 0.01(w + h) * transpose(inv(
+            cpv = 0.005(w + h) * transpose(inv(
                 (scene.camera.projectionview[][j,j] * 
                 AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
             ))
@@ -348,7 +348,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
                 cpv[1, 1], cpv[1, 2],
                 cpv[2, 1], cpv[2, 2],
                 # this helps seperate text from the z axis (in the default view)
-                0.5(cpv[1, 2] + cpv[2, 1]), 0.0
+                (cpv[1, 2] + cpv[2, 1]), 0.0
             )
             set_font_matrix(ctx, mat)
         end
