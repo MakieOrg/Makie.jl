@@ -497,7 +497,7 @@ function average_z(positions, face)
     sum(v -> v[3], vs) / length(vs)
 end
 
-function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][])
+function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0(0), scale=1f0)
     @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
@@ -518,7 +518,8 @@ function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][])
     # Mesh data
     # transform to view/camera space
     vs = map(coordinates(mesh)) do v
-        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, v, 0f0), 1f0)
+        p4d = to_ndim(Vec4f0, scale * to_ndim(Vec3f0, v, 0f0), 1f0) .+ 
+              to_ndim(Vec4f0, pos, 0f0)
         cam_pos = view * model * p4d
         cam_pos / cam_pos[4]
     end
@@ -618,4 +619,35 @@ function surface2mesh(xs::Matrix, ys::Matrix, zs::Matrix)
         for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
     ]
     normal_mesh(ps, faces)
+end
+    
+
+################################################################################
+#                                 MeshScatter                                  #
+################################################################################
+
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.MeshScatter)
+    m = normal_mesh(primitive[:marker][])
+    pos = primitive[1][]
+    # For correct z-ordering we need to be in view/camera or screen space
+    model = primitive[:model][]
+    view = scene.camera.view[]
+    sort!(pos, by = p -> begin
+        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0f0), 1f0)
+        cam_pos = view * model * p4d
+        cam_pos[3] / cam_pos[4]
+    end, rev=false)
+
+    colors = primitive[:color][]
+
+    for i in eachindex(pos)
+        p = pos[i]
+        if colors isa Vector
+            primitive[:color][] = colors[i]
+        end
+        draw_mesh3D(scene, screen, primitive, m, p, primitive[:markersize][])
+    end
+
+    primitive[:color][] = colors
+    return nothing
 end
