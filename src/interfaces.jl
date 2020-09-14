@@ -305,6 +305,7 @@ function calculated_attributes!(::Type{<: Surface}, plot)
     end
     color_and_colormap!(plot, colors)
 end
+
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
@@ -341,11 +342,11 @@ function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
         end
     end
 end
+
 const atomic_function_symbols = (
     :text, :meshscatter, :scatter, :mesh, :linesegments,
     :lines, :surface, :volume, :heatmap, :image
 )
-
 
 const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
