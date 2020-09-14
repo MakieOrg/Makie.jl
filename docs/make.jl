@@ -345,7 +345,7 @@ function Documenter.documenter_key(::Gitlab)
 end
 
 deploydocs(
-    repo = "github.com/JuliaPlots/MakieGallery.jl",
+    repo = "github.com/JuliaPlots/MakieDocumentation",
     deploy_config = Gitlab(),
     push_preview = false
 )
