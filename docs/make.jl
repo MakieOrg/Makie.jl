@@ -13,6 +13,7 @@ using Documenter, Markdown, Pkg, Random, FileIO
 ##############################
 
 using MakieGallery, AbstractPlotting
+makiegallerydir = pkgdir(MakieGallery)
 
 import AbstractPlotting: to_string
 
@@ -88,7 +89,7 @@ end
 
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
 @info("Generating attributes page")
-include("../src/plot_attr_desc.jl")
+include(joinpath(makiegallerydir, "src/plot_attr_desc.jl"))
 path = joinpath(srcpath, "plot-attributes.md")
 srcdocpath = joinpath(srcpath, "src-plot-attributes.md")
 open(path, "w") do io
@@ -109,8 +110,8 @@ end
 @info("Generating axis page")
 path = joinpath(srcpath, "axis.md")
 srcdocpath = joinpath(srcpath, "src-axis.md")
-include("../src/Axis2D_attr_desc.jl")
-include("../src/Axis3D_attr_desc.jl")
+include(joinpath(makiegallerydir, "src/Axis2D_attr_desc.jl"))
+include(joinpath(makiegallerydir, "src/Axis3D_attr_desc.jl"))
 
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
