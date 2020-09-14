@@ -101,6 +101,7 @@ include("interaction/interactive_api.jl")
 include("documentation/documentation.jl")
 include("display.jl")
 
+include("test_database/database.jl")
 
 # help functions and supporting functions
 export help, help_attributes, help_arguments
@@ -220,7 +221,7 @@ function __init__()
     pushdisplay(PlotDisplay())
     cfg_path = joinpath(homedir(), ".config", "makie", "theme.jl")
     if isfile(cfg_path)
-        @warn "The global configuration file is no longer supported."*
+        @warn "The global configuration file is no longer supported." *
         "Please include the file manually with `include(\"$cfg_path\")` before plotting."
     end
 end
