@@ -22,7 +22,7 @@ $(TYPEDFIELDS)
 """
 struct Events
     """
-    The area of the window in pixels, as an [`IRect2D`](@ref).
+    The area of the window in pixels, as an [`Rect2D`](@ref).
     """
     window_area::Node{IRect2D}
     """
@@ -42,7 +42,7 @@ struct Events
     """
     mousebuttons::Node{Set{Mouse.Button}}
     """
-    The position of the mouse as a [`Point2`](@ref).
+    The position of the mouse as a `NTuple{2, Float64}`.
     Updates whenever the mouse moves.
     """
     mouseposition::Node{NTuple{2, Float64}}
@@ -89,8 +89,6 @@ function Events()
     )
 end
 
-"""
-"""
 mutable struct Camera
     pixel_space::Node{Mat4f0}
     view::Node{Mat4f0}
