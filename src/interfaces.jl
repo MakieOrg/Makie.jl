@@ -305,6 +305,7 @@ function calculated_attributes!(::Type{<: Surface}, plot)
     end
     color_and_colormap!(plot, colors)
 end
+
 function calculated_attributes!(::Type{<: MeshScatter}, plot)
     color_and_colormap!(plot)
 end
@@ -341,11 +342,11 @@ function calculated_attributes!(::Type{<: Union{Lines, LineSegments}}, plot)
         end
     end
 end
+
 const atomic_function_symbols = (
     :text, :meshscatter, :scatter, :mesh, :linesegments,
     :lines, :surface, :volume, :heatmap, :image
 )
-
 
 const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
@@ -494,6 +495,15 @@ plottype(::AbstractVector) = Scatter
 plottype(::AbstractMatrix{<: Real}) = Heatmap
 plottype(::Array{<: AbstractFloat, 3}) = Volume
 plottype(::AbstractString) = Text
+
+plottype(::LineString) = Lines
+plottype(::AbstractVector{<:LineString}) = Lines
+plottype(::MultiLineString) = Lines
+
+plottype(::Polygon) = Poly
+plottype(::GeometryBasics.AbstractPolygon) = Poly
+plottype(::AbstractVector{<:GeometryBasics.AbstractPolygon}) = Poly
+plottype(::MultiPolygon) = Lines
 
 """
     plottype(P1::Type{<: Combined{T1}}, P2::Type{<: Combined{T2}})

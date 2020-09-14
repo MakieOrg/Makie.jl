@@ -111,7 +111,7 @@ macro get_attribute(scene, args)
     extract_expr(get_attribute, scene, args)
 end
 
-@inline getindex_value(x::Union{Dict, Attributes, AbstractPlot}, key::Symbol) = to_value(x[key])
+@inline getindex_value(x::Union{Dict,Attributes,AbstractPlot}, key::Symbol) = to_value(x[key])
 @inline getindex_value(x, key::Symbol) = to_value(getfield(x, key))
 
 """
@@ -149,7 +149,7 @@ function broadcast_foreach(f, args...)
     lengths = bs_length.(args)
     maxlen = maximum(lengths)
     # all non scalars should have same length
-    if any(x-> !(x in (0, 1, maxlen)), lengths)
+    if any(x -> !(x in (0, 1, maxlen)), lengths)
         error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
     end
     for i in 1:maxlen
@@ -179,18 +179,18 @@ function same_length_array(arr, value::Vector)
 end
 same_length_array(arr, value, key) = same_length_array(arr, convert_attribute(value, key))
 
-function to_ndim(T::Type{<: VecTypes{N, ET}}, vec::VecTypes{N2}, fillval) where {N, ET, N2}
+function to_ndim(T::Type{<: VecTypes{N,ET}}, vec::VecTypes{N2}, fillval) where {N,ET,N2}
     T(ntuple(Val(N)) do i
         i > N2 && return ET(fillval)
         @inbounds return vec[i]
     end)
 end
 
-dim3(x) = ntuple(i-> x, Val(3))
-dim3(x::NTuple{3, Any}) = x
+dim3(x) = ntuple(i -> x, Val(3))
+dim3(x::NTuple{3,Any}) = x
 
-dim2(x) = ntuple(i-> x, Val(2))
-dim2(x::NTuple{2, Any}) = x
+dim2(x) = ntuple(i -> x, Val(2))
+dim2(x::NTuple{2,Any}) = x
 
 lerp(a::T, b::T, val::AbstractFloat) where {T} = (a .+ (val * (b .- a)))
 
@@ -228,8 +228,6 @@ function to_vector(x::ClosedInterval, len, T)
 end
 
 
-
-
 """
 Returns (N1, N2) with `N1 x N2 == n`. N2 might become 1
 """
@@ -252,7 +250,7 @@ function close2square(n::Real)
         # Set union ensures that duplicate candidates are removed
         candidates = union(candidates, f .* candidates)
         # throw out candidates which are larger than amax
-        filter!(x-> x <= amax, candidates)
+        filter!(x -> x <= amax, candidates)
     end
     # Take the largest factor in the list d
     (candidates[end], div(n, candidates[end]))
@@ -267,7 +265,7 @@ x[0.5] # returns color at half point of colormap
 """
 struct ColorSampler{Data <: AbstractArray}
     colormap::Data
-    color_range::Tuple{Float64, Float64}
+    color_range::Tuple{Float64,Float64}
 end
 
 function Base.getindex(cs::ColorSampler, value::Number)
@@ -285,7 +283,7 @@ Return a nonlinear function on a grid.  Useful for test cases.
 function peaks(n=49)
     x = LinRange(-3, 3, n)
     y = LinRange(-3, 3, n)
-    3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y.+1).^2) .- 10*(x'/5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1/3 * exp.(-(x'.+1).^2 .- y.^2)
+    3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y .+ 1).^2) .- 10 * (x' / 5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1 / 3 * exp.(-(x' .+ 1).^2 .- y.^2)
 end
 
 
@@ -310,4 +308,25 @@ function surface_normals(x, y, z)
         return normalize(mapreduce(offsets, +, init=Vec3f0(0), of))
     end
     return vec(map(normal, CartesianIndices(z)))
+end
+
+
+function attribute_names(PlotType)
+    # TODO, have all plot types store their attribute names
+    return keys(default_theme(nothing, PlotType))
+end
+
+"""
+    attributes_from(PlotType, plot)
+
+Gets the attributes from plot, that are valid for PlotType
+"""
+function attributes_from(PlotType, plot)
+    result = Attributes()
+    for key in attribute_names(attributes)
+        if haskey(plot, key)
+            result[key] = plot[key]
+        end
+    end
+    return result
 end
