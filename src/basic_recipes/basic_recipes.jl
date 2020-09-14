@@ -45,8 +45,9 @@ convert_arguments(::Type{<: Poly}, v::Union{Polygon, MultiPolygon}) = (v,)
 
 convert_arguments(::Type{<: Poly}, args...) = ([convert_arguments(Scatter, args...)[1]],)
 convert_arguments(::Type{<: Poly}, vertices::AbstractArray, indices::AbstractArray) = convert_arguments(Mesh, vertices, indices)
+convert_arguments(::Type{<: Poly}, m::GeometryBasics.Mesh) = (m,)
 
-function plot!(plot::Poly{<: Tuple{Union{AbstractMesh, GeometryPrimitive}}})
+function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}}})
     mesh!(
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
@@ -67,6 +68,8 @@ function poly_convert(multipolygons::AbstractVector{<:MultiPolygon})
     return [merge(triangle_mesh.(multipoly.polygons)) for multipoly in multipolygons]
 end
 
+poly_convert(mesh::GeometryBasics.Mesh) = mesh
+
 poly_convert(polygon::Polygon) = triangle_mesh(polygon)
 
 function poly_convert(polygon::AbstractVector{<: VecTypes})
@@ -81,6 +84,7 @@ function poly_convert(polygons::AbstractVector{<: AbstractVector{<: VecTypes}})
 end
 
 to_line_segments(polygon) = convert_arguments(PointBased(), polygon)[1]
+to_line_segments(polygon::GeometryBasics.Mesh) = convert_arguments(PointBased(), polygon)[1]
 
 function to_line_segments(meshes::AbstractVector)
     line = Point2f0[]
@@ -557,11 +561,11 @@ $(ATTRIBUTES)
     merge(default_theme(scene, Scatter), default_theme(scene, Lines))
 end
 
-function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
-    plot!(p, Lines, Attributes(p), p[1:N]...)
-    plot!(p, Scatter, Attributes(p), p[1:N]...)
-end
 
+function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
+    plot!(p, Lines, attributes_from(Lines, p), p[1:N]...)
+    plot!(p, Scatter, attributes_from(Scatter, p), p[1:N]...)
+end
 
 """
     band(x, ylower, yupper; kwargs...)
