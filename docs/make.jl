@@ -217,6 +217,7 @@ makedocs(
             "Tutorial" => "makielayout/tutorial.md",
             "GridLayout" => "makielayout/grids.md",
             "LAxis" => "makielayout/laxis.md",
+            "Special Plots" => "makielayout/special_plots.md",
             "LLegend" => "makielayout/llegend.md",
             "Layoutables Examples" => "makielayout/layoutables_examples.md",
             "Theming Layoutables" => "makielayout/theming.md",
@@ -347,5 +348,5 @@ end
 deploydocs(
     repo = "github.com/JuliaPlots/MakieDocumentation",
     deploy_config = Gitlab(),
-    push_preview = false
+    push_preview = true
 )
