@@ -348,5 +348,5 @@ end
 deploydocs(
     repo = "github.com/JuliaPlots/MakieDocumentation",
     deploy_config = Gitlab(),
-    push_preview = false
+    push_preview = true
 )
