@@ -12,7 +12,7 @@ a certain percentage of the axis, not the data. There are two functions `hlines!
 which work with `LAxis` instances.
 
 The positional argument gives one or many locations in data coordinates, while
-the keyword arguments `xmins` and `xmaxs` (for hlines) or `ymins` and `ymaxs` (for vlines)
+the keyword arguments `xmin` and `xmax` (for hlines) or `ymin` and `ymax` (for vlines)
 specify the extent along the axis. These values can also be a single number or an iterable.
 
 ```@example
@@ -26,7 +26,7 @@ lines!(ax1, 0..4pi, sin)
 vlines!(ax1, [pi, 2pi, 3pi], color = :red)
 
 ax2 = layout[1, 2] = LAxis(scene, title = "hlines")
-hlines!(ax2, [1, 2, 3, 4], xmaxs = [0.25, 0.5, 0.75, 1], color = :blue)
+hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 
 scene
 save("example_vlines.svg", scene); nothing # hide
