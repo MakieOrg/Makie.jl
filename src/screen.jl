@@ -426,7 +426,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     x, y =  xy .+ 1 .- Vec2f0(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][2] < 0xffff)
+        if (d < min_dist) && (sid[i, j][2] < 0x3f800000)
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
         end
