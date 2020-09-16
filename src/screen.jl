@@ -466,6 +466,7 @@ function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     sid = zeros(SelectionID{UInt16}, widths(rect)...)
     if x > 0 && y > 0 && x <= w && y <= h
         glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
+        sid = filter(x -> x.id < 0xffff,sid)
         return map(unique(vec(SelectionID{Int}.(sid)))) do sid
             (screen.cache2plot[sid.id], sid.index)
         end
