@@ -456,12 +456,14 @@ end
 
 function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     window_size = widths(screen)
-    buff = screen.framebuffer.objectid
-    sid = zeros(SelectionID{UInt16}, widths(rect)...)
+    fb = screen.framebuffer
+    buff = fb.objectid
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = minimum(rect)
     rw, rh = widths(rect)
     w, h = window_size
+    sid = zeros(SelectionID{UInt16}, widths(rect)...)
     if x > 0 && y > 0 && x <= w && y <= h
         glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
         return map(unique(vec(SelectionID{Int}.(sid)))) do sid
