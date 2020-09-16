@@ -467,21 +467,21 @@ function hvlines!(ax::LAxis, direction::Int, datavals, axmins, axmaxs; attribute
 end
 
 """
-    hlines!(ax::LAxis, ys, xmins = 0.0, xmaxs = 1.0; attrs...)
+    hlines!(ax::LAxis, ys; xmin = 0.0, xmax = 1.0, attrs...)
 
-Create horizontal lines across `ax` at `ys` in data coordinates and `xmins` to `xmaxs`
+Create horizontal lines across `ax` at `ys` in data coordinates and `xmin` to `xmax`
 in axis coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-hlines!(ax::LAxis, ys, xmins = 0.0, xmaxs = 1.0; attrs...) =
-    hvlines!(ax, 1, ys, xmins, xmaxs; attrs...)
+hlines!(ax::LAxis, ys; xmin = 0.0, xmax = 1.0, attrs...) =
+    hvlines!(ax, 1, ys, xmin, xmax; attrs...)
 
 """
-    vlines!(ax::LAxis, xs, ymins = 0.0, ymaxs = 1.0; attrs...)
+    vlines!(ax::LAxis, xs; ymin = 0.0, ymax = 1.0, attrs...)
 
-Create vertical lines across `ax` at `xs` in data coordinates and `ymins` to `ymaxs`
+Create vertical lines across `ax` at `xs` in data coordinates and `ymin` to `ymax`
 in axis coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-vlines!(ax::LAxis, xs, ymins = 0.0, ymaxs = 1.0; attrs...) = 
-    hvlines!(ax, 2, xs, ymins, ymaxs; attrs...)
+vlines!(ax::LAxis, xs; ymin = 0.0, ymax = 1.0, attrs...) = 
+    hvlines!(ax, 2, xs, ymin, ymax; attrs...)
