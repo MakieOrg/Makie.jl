@@ -463,7 +463,7 @@ function hvlines!(ax::LAxis, direction::Int, datavals, axmins, axmaxs; attribute
         segs
     end
 
-    linesegments!(ax, linesegs; xautolimits = DIR == 2, yautolimits = DIR == 1, attributes...)
+    linesegments!(ax, linesegs; xautolimits = direction == 2, yautolimits = direction == 1, attributes...)
 end
 
 """
