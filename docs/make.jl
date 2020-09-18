@@ -193,7 +193,7 @@ makedocs(
     sitename = "Makie.jl",
     expandfirst = [
         "plotting_functions.md",
-    ]
+    ],
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
