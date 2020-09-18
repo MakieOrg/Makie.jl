@@ -2,6 +2,26 @@
 
 On this page, the basic plotting functions are listed together with examples of their usage and available attributes.
 
+## `arrows`
+
+```@docs
+arrows
+```
+
+### Examples
+
+```@example
+using Makie
+Makie.AbstractPlotting.inline!(true) # hide
+
+xs = LinRange(1, 10, 20)
+ys = LinRange(1, 15, 20)
+us = [cos(x) for x in xs, y in ys]
+vs = [sin(y) for x in xs, y in ys]
+
+arrows(xs, ys, us, vs, arrowsize = 0.2, lengthscale = 0.3)
+```
+
 ## `band`
 
 ```@docs
@@ -258,6 +278,9 @@ volume
 ### Examples
 
 ```@example
+using Makie
+Makie.AbstractPlotting.inline!(true) # hide
+
 r = LinRange(-1, 1, 100)
 cube = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]
 cube_with_holes = cube .* (cube .> 1.4)
