@@ -54,35 +54,6 @@ end
 #                      Automatic Markdown page generation                      #
 ################################################################################
 
-########################################
-#     Plotting functions overview      #
-########################################
-
-@info("Generating functions overview")
-path = joinpath(srcpath, "functions-overview.md")
-srcdocpath = joinpath(srcpath, "src-functions.md")
-
-plotting_functions = (
-    AbstractPlotting.atomic_functions..., contour, arrows,
-    barplot, poly, band, slider, vbox, hbox
-)
-
-open(path, "w") do io
-    !ispath(srcdocpath) && error("source document doesn't exist!")
-    println(io, "# Plotting functions overview")
-    src = read(srcdocpath, String)
-    println(io, src, "\n")
-    for func in plotting_functions
-        fname = to_string(func)
-        println(io, "## `$fname`\n")
-        println(io, "```@docs")
-        println(io, "$fname")
-        println(io, "```\n")
-        # add previews of all tags related to function
-        println(io, "\n")
-    end
-end
-
 
 ########################################
 #       Plot attributes overview       #
