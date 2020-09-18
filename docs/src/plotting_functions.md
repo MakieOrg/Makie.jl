@@ -2,6 +2,26 @@
 
 On this page, the basic plotting functions are listed together with examples of their usage and available attributes.
 
+## `contour`
+
+```@docs
+contour
+```
+
+### Examples
+
+```@example
+using Makie
+Makie.AbstractPlotting.inline!(true) # hide
+
+xs = LinRange(0, 10, 100)
+ys = LinRange(0, 20, 100)
+zs = [cos(x) * sin(y) for x in xs, y in ys]
+
+contour(xs, ys, zs)
+```
+
+
 ## `lines`
 
 ```@docs
