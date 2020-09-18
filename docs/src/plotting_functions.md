@@ -161,6 +161,32 @@ linesegments!(scene, xs, ys .- 3, linewidth = 5, color = LinRange(1, 5, length(x
 ```
 
 
+## `mesh`
+
+```@docs
+mesh
+```
+
+```@example
+using Makie
+Makie.AbstractPlotting.inline!(true) # hide
+
+vertices = [
+    0.0 0.0;
+    1.0 0.0;
+    1.0 1.0;
+    0.0 1.0;
+]
+
+faces = [
+    1 2 3;
+    3 4 1;
+]
+
+colors = [:red, :green, :blue, :orange]
+
+scene = mesh(vertices, faces, color = colors, shading = false)
+```
 
 ## `meshscatter`
 
