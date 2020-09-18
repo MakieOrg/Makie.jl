@@ -453,6 +453,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     if scene.camera_controls[] isa Camera2D
         draw_mesh2D(scene, screen, primitive)
     else
+        if !haskey(primitive, :faceculling)
+            primitive[:faceculling] = Node(true)
+        end
         draw_mesh3D(scene, screen, primitive)
     end
     return nothing
@@ -497,8 +500,12 @@ function average_z(positions, face)
     sum(v -> v[3], vs) / length(vs)
 end
 
-function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0(0), scale=1f0)
-    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse))
+function draw_mesh3D(
+        scene, screen, primitive;
+        mesh = primitive[1][], pos = Vec4f0(0), scale = 1f0
+    )
+    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse, 
+        specular, shininess, faceculling))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
@@ -549,7 +556,9 @@ function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0
     zorder = sortperm(fs, by = f -> average_z(ts, f))
     
     # Face culling
-    zorder = filter(i -> any(last.(ns[fs[i]]) .> 0), zorder)
+    if faceculling
+        zorder = filter(i -> any(last.(ns[fs[i]]) .> -1e-6), zorder)
+    end
 
     pattern = Cairo.CairoPatternMesh()
     for k in reverse(zorder)
@@ -561,8 +570,11 @@ function draw_mesh3D(scene, screen, primitive, mesh = primitive[1][], pos=Vec4f0
             map(ns[f], vs[f], cols[k]) do N, v, c
                 L = normalize(lightpos .- v[Vec(1,2,3)])
                 diff_coeff = max(dot(L, N), 0.0)
+                H = normalize(L + normalize(-v[SOneTo(3)]))
+                spec_coeff = max(dot(H, N), 0.0)^shininess
                 c = RGBA(c)
-                new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f0(c.r, c.g, c.b)
+                new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f0(c.r, c.g, c.b) .+
+                        specular * spec_coeff
                 RGBA(new_c..., c.alpha)
             end
         else
@@ -592,11 +604,15 @@ end
 #                                   Surface                                    #
 ################################################################################
 
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Surface)
     # Pretend the surface plot is a mesh plot and plot that instead
     mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     primitive[:color][] = primitive[3][][:]
-    draw_mesh3D(scene, screen, primitive, mesh)
+    if !haskey(primitive, :faceculling)
+        primitive[:faceculling] = Node(false)
+    end
+    draw_mesh3D(scene, screen, primitive, mesh=mesh)
     return nothing
 end
 
@@ -624,6 +640,7 @@ end
 #                                 MeshScatter                                  #
 ################################################################################
 
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.MeshScatter)
     m = normal_mesh(primitive[:marker][])
     pos = primitive[1][]
@@ -637,6 +654,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     end, rev=false)
 
     colors = primitive[:color][]
+    if !haskey(primitive, :faceculling)
+        primitive[:faceculling] = Node(true)
+    end
 
     for i in eachindex(pos)
         p = pos[i]
