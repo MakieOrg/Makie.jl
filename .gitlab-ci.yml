@@ -34,4 +34,5 @@ docs:
 
   only:
     - master # trigger docs on master branch changes
+    - tags
     - external_pull_requests # trigger docs on PRs (only internal, not from forks)
