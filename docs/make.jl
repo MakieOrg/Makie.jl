@@ -31,7 +31,6 @@ using MakieGallery: print_table
 #                                    Setup                                     #
 ################################################################################
 
-cd(@__DIR__)
 database = MakieGallery.load_database()
 
 pathroot  = normpath(@__DIR__, "..")
