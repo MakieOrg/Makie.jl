@@ -13,6 +13,8 @@ using Documenter, Markdown, Pkg, Random, FileIO
 ##############################
 
 using MakieGallery, AbstractPlotting
+AbstractPlotting.inline!(true)
+
 makiegallerydir = dirname(dirname(pathof(Base.moduleroot(MakieGallery))))
 
 import AbstractPlotting: to_string
