@@ -233,4 +233,6 @@ text!(scene, "AbstractPlotting", position = Point2f0(300, 500),
     color = :red, textsize = 30, align = (:right, :center), show_axis = false)
 text!(scene, "AbstractPlotting\nMakie", position = Point2f0(300, 400),
     color = :blue, textsize = 30, align = (:center, :top), show_axis = false)
+text!(scene, "AbstractPlotting\nMakie", position = Point2f0(400, 400),
+    color = :green, textsize = 30, align = (:center, :center), rotation = -pi/4, show_axis = false)
 ```
