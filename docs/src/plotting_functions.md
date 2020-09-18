@@ -12,6 +12,7 @@ band
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
 ys_low = -0.2 .* sin.(xs) .- 0.25
@@ -31,6 +32,7 @@ barplot
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
@@ -49,6 +51,7 @@ contour
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -67,6 +70,7 @@ heatmap
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -85,9 +89,10 @@ image
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 using FileIO
 
-img = rotr90(load("../assets/cow.png"))
+img = rotr90(load("assets/cow.png"))
 
 image(img)
 ```
@@ -103,6 +108,7 @@ lines
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = 0:0.01:10
 ys = 0.5 .* sin.(xs)
@@ -123,6 +129,7 @@ linesegments
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
 ys = sin.(xs)
@@ -145,6 +152,7 @@ meshscatter
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = cos.(1:0.5:20)
 ys = sin.(1:0.5:20)
@@ -164,6 +172,7 @@ poly
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 p1 = Point2f0(0, 0)
 p2 = Point2f0(2, 0)
@@ -184,6 +193,7 @@ scatter
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 20)
 ys = 0.5 .* sin.(xs)
@@ -206,6 +216,7 @@ surface
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -224,6 +235,7 @@ text
 
 ```@example
 using Makie
+Makie.AbstractPlotting.inline!(true) # hide
 
 scene = Scene(camera = campixel!, show_axis = false)
 
