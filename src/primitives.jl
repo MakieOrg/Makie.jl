@@ -664,7 +664,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
         R = AbstractPlotting.rotationmatrix4(to_rotation(rotations))
         primitive[:model][] = model * R
     end
-    
+    scales = primitive[:markersize][]
+
     for i in eachindex(pos)
         p = pos[i]
         if colors isa Vector
@@ -674,9 +675,11 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
             R = AbstractPlotting.rotationmatrix4(to_rotation(rotations[i]))
             primitive[:model][] = model * R
         end
+        scale = scales isa Vector ? scales[i] : scales
+
         draw_mesh3D(
             scene, screen, primitive, 
-            mesh = m, pos = p, scale = primitive[:markersize][]
+            mesh = m, pos = p, scale = scale
         )
     end
 
