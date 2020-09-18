@@ -454,7 +454,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
-            primitive[:faceculling] = Node(true)
+            primitive[:faceculling] = Node(1e-6)
         end
         draw_mesh3D(scene, screen, primitive)
     end
@@ -525,9 +525,8 @@ function draw_mesh3D(
     # Mesh data
     # transform to view/camera space
     vs = map(coordinates(mesh)) do v
-        p4d = to_ndim(Vec4f0, scale * to_ndim(Vec3f0, v, 0f0), 1f0) .+ 
-              to_ndim(Vec4f0, pos, 0f0)
-        view * model * p4d
+        p4d = to_ndim(Vec4f0, scale * to_ndim(Vec3f0, v, 0f0), 1f0)
+        view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end
     fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing  
@@ -556,9 +555,7 @@ function draw_mesh3D(
     zorder = sortperm(fs, by = f -> average_z(ts, f))
     
     # Face culling
-    if faceculling
-        zorder = filter(i -> any(last.(ns[fs[i]]) .> -1e-6), zorder)
-    end
+    zorder = filter(i -> any(last.(ns[fs[i]]) .> faceculling), zorder)
 
     pattern = Cairo.CairoPatternMesh()
     for k in reverse(zorder)
@@ -580,6 +577,11 @@ function draw_mesh3D(
         else
             cols[k]
         end
+        # debug normal coloring
+        # n1, n2, n3 = Vec3f0(0.5) .+ 0.5ns[f]
+        # c1 = RGB(n1...)
+        # c2 = RGB(n2...)
+        # c3 = RGB(n3...)
 
         Cairo.mesh_pattern_begin_patch(pattern)
 
@@ -610,7 +612,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
     primitive[:color][] = primitive[3][][:]
     if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Node(false)
+        primitive[:faceculling] = Node(-0.1)
     end
     draw_mesh3D(scene, screen, primitive, mesh=mesh)
     return nothing
@@ -645,7 +647,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     m = normal_mesh(primitive[:marker][])
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
-    model = primitive[:model][]
+    model = copy(primitive[:model][])
     view = scene.camera.view[]
     sort!(pos, by = p -> begin
         p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0f0), 1f0)
@@ -655,17 +657,31 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
 
     colors = primitive[:color][]
     if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Node(true)
+        primitive[:faceculling] = Node(-0.1)
     end
-
+    rotations = primitive[:rotations][]
+    if !(rotations isa Vector)
+        R = AbstractPlotting.rotationmatrix4(to_rotation(rotations))
+        primitive[:model][] = model * R
+    end
+    
     for i in eachindex(pos)
         p = pos[i]
         if colors isa Vector
             primitive[:color][] = colors[i]
         end
-        draw_mesh3D(scene, screen, primitive, m, p, primitive[:markersize][])
+        if rotations isa Vector
+            R = AbstractPlotting.rotationmatrix4(to_rotation(rotations[i]))
+            primitive[:model][] = model * R
+        end
+        draw_mesh3D(
+            scene, screen, primitive, 
+            mesh = m, pos = p, scale = primitive[:markersize][]
+        )
     end
 
+    # Restore adjusted attributes
     primitive[:color][] = colors
+    primitive[:model][] = model
     return nothing
 end
