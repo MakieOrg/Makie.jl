@@ -162,8 +162,17 @@ Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-function per_face_colors(color, colormap, colorrange, vertices, faces, uv)
-    if color isa Colorant
+function per_face_colors(color, colormap, colorrange, matcap, vertices, faces, normals, uv)
+    if matcap !== nothing
+        wsize = reverse(size(matcap))
+        wh = wsize .- 1
+        cvec = map(normals) do n
+            muv = 0.5n[Vec(1,2)] .+ Vec2f0(0.5)
+            x, y = clamp.(round.(Int, Tuple(muv) .* wh) .+ 1, 1, wh)
+            return matcap[end - (y - 1), x]
+        end
+        return FaceIterator(cvec, faces)
+    elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
     elseif color isa AbstractArray
         if color isa AbstractVector{<: Colorant}

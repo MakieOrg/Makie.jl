@@ -509,6 +509,7 @@ function draw_mesh3D(
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
+    matcap = get(primitive, :matcap, nothing) |> to_value
 
     ctx = screen.context
 
@@ -531,7 +532,7 @@ function draw_mesh3D(
     fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing  
     ns = map(n -> normalmatrix * n, normals(mesh))
-    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+    cols = per_face_colors(color, colormap, colorrange, matcap, vs, fs, ns, uv)
 
     # Liight math happens in view/camera space
     if lightposition == :eyeposition
