@@ -18,11 +18,10 @@ function unique_name!(name, unique_names=UNIQUE_DATABASE_NAMES)
     funcname
 end
 
-
 function cell_expr(name, code)
     unique_title = unique_name!(title)
     return quote
-        closure = () -> $(code)
+        closure = () -> $(esc(code))
         push!(AbstractPlotting.DATABASE, $(title) => closure)
     end
 end

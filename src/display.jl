@@ -59,6 +59,7 @@ function Base.showable(mime::MIME{M}, scene::Scene) where M
     use_display[] && return false
     backend_showable(current_backend[], mime, scene)
 end
+
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
     use_display[] && return false
@@ -188,18 +189,25 @@ Each "step" is saved as a separate file in the folder
 pointed to by `path`, and the format is customizable by
 `format`, which can be any output type your backend supports.
 """
-mutable struct Stepper
+mutable struct FolderStepper
     scene::Scene
     folder::String
     format::Symbol
     step::Int
 end
 
-Stepper(scene::Scene, path::String, step::Int; format=:png) = Stepper(scene, path, format, step)
+mutable struct RamStepper
+    scene::Scene
+    images::Vector{Matrix{RGBf0}}
+    format::Symbol
+end
+
+Stepper(scene::Scene, path::String, step::Int; format=:png) = FolderStepper(scene, path, format, step)
+Stepper(scene::Scene; format=:png) = RamStepper(scene, Matrix{RGBf0}[], format)
 
 function Stepper(scene::Scene, path::String; format = :png)
     ispath(path) || mkpath(path)
-    Stepper(scene, path, format, 1)
+    FolderStepper(scene, path, format, 1)
 end
 
 """
@@ -208,10 +216,22 @@ end
 steps through a `Makie.Stepper` and outputs a file with filename `filename-step.jpg`.
 This is useful for generating progressive plot examples.
 """
-function step!(s::Stepper)
+function step!(s::FolderStepper)
     FileIO.save(joinpath(s.folder, basename(s.folder) * "-$(s.step).$(s.format)"), s.scene)
     s.step += 1
     return s
+end
+
+function step!(s::RamStepper)
+    img = convert(Matrix{RGBf0}, colorbuffer(display(s.scene)))
+    push!(s.images, img)
+    return s
+end
+
+function FileIO.save(dir::String, s::RamStepper)
+    for (i, img) in enumerate(s.images)
+        FileIO.save(joinpath(dir, "step-$i.$(s.format)"), img)
+    end
 end
 
 format2mime(::Type{FileIO.format"PNG"})  = MIME("image/png")
@@ -226,7 +246,6 @@ format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 
 filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
-
 
 """
     FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 1.0, px_per_unit = 1.0)
@@ -346,7 +365,6 @@ function Base.display(d::PlotDisplay, re::RecordEvents)
     display(d, re.scene)
 end
 
-
 struct VideoStream
     io
     process
@@ -405,10 +423,7 @@ function colorbuffer(scene::Scene)
                 before trying to render a Scene.
                 """)
         else
-            error("""
-                The Scene needs an active screen before a colorbuffer can be rendered from it.
-                Ensure that it has one via `display(scene)`.
-                """)
+            return colorbuffer(display(scene))
         end
     end
     return colorbuffer(screen)
@@ -556,12 +571,22 @@ end
 ```
 """
 function record(func, scene, path; framerate::Int = 24, compression = 20)
-    io = VideoStream(scene; framerate = framerate)
-    func(io)
+    io = Record(func, scene; framerate = framerate)
     save(path, io; framerate = framerate, compression = compression)
 end
 
+function Record(func, scene; framerate=24)
+    io = VideoStream(scene; framerate = framerate)
+    func(io)
+    return io
+end
+
 function record(func, scene, path, iter; framerate::Int = 24, compression = 20, sleep = true)
+    io = Record(func, scene, iter; framerate=framerate, sleep=sleep)
+    save(path, io, framerate = framerate, compression = compression)
+end
+
+function Record(func, scene, iter; framerate::Int = 24, sleep = true)
     io = VideoStream(scene; framerate = framerate)
     for i in iter
         t1 = time()
@@ -575,10 +600,7 @@ function record(func, scene, path, iter; framerate::Int = 24, compression = 20, 
             yield()
         end
     end
-    save(path, io, framerate = framerate, compression = compression)
 end
-
-
 
 function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
     mktempdir() do dir
