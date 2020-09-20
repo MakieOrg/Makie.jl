@@ -176,7 +176,6 @@ end
     pos = (500, 500)
     posis = Point2f0[]
     for r in range(0, stop=2pi, length=20)
-        global pos, posis
         p = pos .+ (sin(r) * 100.0, cos(r) * 100)
         push!(posis, p)
         t = text!(
@@ -272,7 +271,7 @@ end
     step!(st)
 
     for (i, rot) in enumerate(LinRange(0, π / 2, N))
-        rotate!(sc.plots[i + 1], rot)
+        AbstractPlotting.rotate!(sc.plots[i + 1], rot)
         arc!(sc,
             Point2f0(0),
             (8 - i),

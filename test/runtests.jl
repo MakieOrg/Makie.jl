@@ -1,11 +1,10 @@
 using AbstractPlotting
-using MakieGallery
 using Test
 using StaticArrays, GeometryBasics
 using Observables
 using GeometryBasics: Pyramid
 using PlotUtils
-using MeshIO, FileIO, AbstractPlotting.MakieLayout
+using FileIO, AbstractPlotting.MakieLayout
 
 # Minimal sanity checks for MakieLayout
 @testset "Layoutables constructors" begin

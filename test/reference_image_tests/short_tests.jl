@@ -11,7 +11,6 @@
     linesegments!(boundingbox(scene))
     offset = 0
     for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
-        global offset
         t = text!(
             "boundingbox",
             align=(a_lign, b_lign),
