@@ -116,10 +116,10 @@ end
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
     end
-    r = range(-2, stop=2, length=N)
+    xrange = range(-2, stop=2, length=N)
     surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = r, y = r]
     surface(
-        r, r, surf_func(10),
+        xrange, xrange, surf_func(10),
         color=RNG.rand(RGBAf0, 124, 124)
     )
 end
@@ -167,7 +167,7 @@ end
 
 @cell "3D Contour with 2D contour slices" begin
     function test(x, y, z)
-        xy =
+        xy = [x, y, z]
         ((xy') * Matrix(I, 3, 3) * xy) / 20
     end
     x = range(-2pi, stop=2pi, length=100)
@@ -339,7 +339,7 @@ end
             Point3f0(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
             1f0
         )
-        Q = rotation(ct)
+        Q = GeometryBasics.rotation(ct)
         r = 0.5 * sqrt(1 .+ Q[1, 1] .+ Q[2, 2] .+ Q[3, 3]); Qlist[k, 4] = r
         Qlist[k, 1] = (Q[3, 2] .- Q[2, 3]) / (4 .* r)
         Qlist[k, 2] = (Q[1, 3] .- Q[3, 1]) / (4 .* r)
@@ -397,12 +397,12 @@ end
         r == 0.0 ? 1f0 : (sin(r) / r)
     end
 
-    r = range(-2, stop=2, length=50)
-    surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = r, y = r]
+    xrange = range(-2, stop=2, length=50)
+    surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     z = surf_func(20)
-    surf = surface!(scene, r, r, z)[end]
+    surf = surface!(scene, xrange, xrange, z)[end]
 
-    wf = wireframe!(scene, r, r, lift(x -> x .+ 1.0, surf[3]),
+    wf = wireframe!(scene, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
     Record(scene, range(5, stop=40, length=3)) do i
@@ -468,12 +468,11 @@ end
     scene = Scene()
     scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
     p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)[end]
-    lineplots =
-    translate!(p, 0, 0, 0)
+    lineplots = [p]
+    AbstractPlotting.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     # display(scene) # would be needed without the record
     Record(scene, 1:3) do i
-        global lineplots, scene
         if length(lineplots) < 20
             p = lines!(
                 scene,

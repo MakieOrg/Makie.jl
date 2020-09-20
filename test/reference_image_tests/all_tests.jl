@@ -1,4 +1,5 @@
 using AbstractPlotting: @cell
+using MeshIO
 module RNG
 
 using StableRNGs
@@ -23,7 +24,7 @@ end
 end
 
 using .RNG
-empty!(AbstractPlotting.DATABASE)
+
 using AbstractPlotting: Record, Stepper
 
 module MakieGallery
@@ -35,26 +36,31 @@ using .MakieGallery
 
 function load_database()
     empty!(AbstractPlotting.DATABASE)
-    include("examples2d.jl")
-    include("attributes.jl")
-    include("documentation.jl")
-    include("examples2d.jl")
+    # include("examples2d.jl")
+    # include("attributes.jl")
+    # include("documentation.jl")
+    # include("examples2d.jl")
     include("examples3d.jl")
     include("layouting.jl")
     include("short_tests.jl")
     return AbstractPlotting.DATABASE
+end
 
-db = AbstractPlotting.DATABASE
+db = load_database()
 
 function run_tests()
-    evaled = 0
+    evaled = 1
     for (n, func) in db
-        try
-            func() |> display
-            evaled += 1
-        catch e
-            @show "Error" exception=e
-        end
+        # try
+        @show evaled
+        func() |> display
+        evaled += 1
+        # catch e
+        #     @show "Error" exception=e
+        # end
     end
     return evaled
 end
+
+
+run_tests()
