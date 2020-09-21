@@ -49,7 +49,7 @@ The Makie ecosystem spans several core and extension packages.
 There are three backends:
 
 | Package | Description |
-| --- | --- |
+| :-- | :-- |
 | [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl) | Default Makie backend. GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows. |
 | [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
 | [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) | WebGL-based interactive 2D and 3D plotting that runs within browsers.
@@ -60,7 +60,7 @@ There are three backends:
 Here is a selection of peripheral packages which offer additional features:
 
 | Package | Description |
-| --- | --- |
+| :-- | :-- |
 | [`AlgebraOfGraphics.jl`](https://github.com/JuliaPlots/AlgebraOfGraphics.jl/) | Grammar-of-graphics style plotting, inspired by ggplot2. |
 | [`GeoMakie.jl`](https://github.com/JuliaPlots/GeoMakie.jl) | Geographic plotting utilities. |
 
