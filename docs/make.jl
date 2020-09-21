@@ -296,12 +296,15 @@ function Documenter.deploy_folder(cfg::Gitlab;
     println(io, "Detected build type: ", build_type)
 
     if build_type == :release
-        tag_ok = occursin(Base.VERSION_REGEX, cfg.commit_tag)
+        tag_nobuild = Documenter.version_tag_strip_build(cfg.commit_tag)
+        ## If a tag exist it should be a valid VersionNumber
+        tag_ok = tag_nobuild !== nothing
+
         println(io, "- $(marker(tag_ok)) ENV[\"CI_COMMIT_TAG\"] contains a valid VersionNumber")
         all_ok &= tag_ok
 
         is_preview = false
-        subfolder = cfg.commit_tag
+        subfolder = tag_nobuild
         deploy_branch = branch
         deploy_repo = repo
         
