@@ -129,7 +129,6 @@ macro recipe(theme_func, Tsym::Symbol, args::Symbol...)
     expr = quote
         $(funcname)() = not_implemented_for($funcname)
         const $(PlotType){$(esc(:ArgType))} = Combined{$funcname, $(esc(:ArgType))}
-        Base.show(io::IO, ::Type{<: $PlotType}) = print(io, $(string(Tsym)), "{...}")
         $(default_plot_signatures(funcname, funcname!, PlotType))
         AbstractPlotting.default_theme(scene, ::Type{<: $PlotType}) = $(esc(theme_func))(scene)
         export $PlotType, $funcname, $funcname!
