@@ -66,6 +66,11 @@ function activate!(use_display = true)
     AbstractPlotting.inline!(!use_display)
 end
 
+if Base.VERSION >= v"1.4.2"
+    include("precompile.jl")
+    _precompile_()
+end
+
 function __init__()
     if WORKING_OPENGL
         activate!()
