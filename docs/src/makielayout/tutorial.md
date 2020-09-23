@@ -29,6 +29,7 @@ outer_padding = 30
 scene, layout = layoutscene(outer_padding, resolution = (1200, 700),
     backgroundcolor = RGBf0(0.98, 0.98, 0.98))
 
+scene
 save("step_001.svg", scene) # hide
 nothing # hide
 ```
@@ -50,6 +51,7 @@ like they could result from an experimental trial.
 ```@example tutorial
 ax1 = layout[1, 1] = LAxis(scene, title = "Pre Treatment")
 
+scene
 save("step_002.svg", scene) # hide
 nothing # hide
 ```
@@ -68,6 +70,7 @@ line1 = lines!(ax1, 5..15, x -> x, color = :red, linewidth = 2)
 scat1 = scatter!(ax1, data1,
     color = (:red, 0.3), markersize = 15px, marker = '■')
 
+scene
 save("step_003.svg", scene) # hide
 nothing # hide
 ```
@@ -89,6 +92,7 @@ next to the one we have, in row 1 and column 2.
 ```@example tutorial
 ax2 = layout[1, 2] = LAxis(scene, title = "Post Treatment")
 
+scene
 save("step_004.svg", scene) # hide
 nothing # hide
 ```
@@ -113,6 +117,7 @@ scat2 = scatter!(ax2, data2,
     color = (:blue, 0.3), markersize = 15px, marker = '▲')
 
 
+scene
 save("step_005.svg", scene) # hide
 nothing # hide
 ```
@@ -128,6 +133,7 @@ synchronized.
 ```@example tutorial
 linkaxes!(ax1, ax2)
 
+scene
 save("step_006.svg", scene) # hide
 nothing # hide
 ```
@@ -141,6 +147,7 @@ now that the y-axis is gone, the two LAxes grow to fill the gap.
 ```@example tutorial
 hideydecorations!(ax2, grid = false)
 
+scene
 save("step_007.svg", scene) # hide
 nothing # hide
 ```
@@ -155,6 +162,7 @@ ax1.xlabel = "Weight [kg]"
 ax2.xlabel = "Weight [kg]"
 ax1.ylabel = "Maximum Velocity [m/sec]"
 
+scene
 save("step_007_2.svg", scene) # hide
 nothing # hide
 ```
@@ -173,6 +181,7 @@ leg = layout[1, end+1] = LLegend(scene,
     [line1, scat1, line2, scat2],
     ["f(x) = x", "Data", "f(x) = -x + 26", "Data"])
 
+scene
 save("step_008.svg", scene) # hide
 nothing # hide
 ```
@@ -195,6 +204,7 @@ We want it in the second row, and spanning the first two columns.
 ```@example tutorial
 layout[2, 1:2] = leg
 
+scene
 save("step_009.svg", scene) # hide
 nothing # hide
 ```
@@ -215,6 +225,7 @@ We can remove empty cells in a layout by calling `trim!` on it:
 ```@example tutorial
 trim!(layout)
 
+scene
 save("step_010.svg", scene) # hide
 nothing # hide
 ```
@@ -232,6 +243,7 @@ this behavior. So we set the `tellheight` attribute to `true`.
 ```@example tutorial
 leg.tellheight = true
 
+scene
 save("step_011.svg", scene) # hide
 nothing # hide
 ```
@@ -244,6 +256,7 @@ use of space is to change the legend's orientation to `:horizontal`.
 ```@example tutorial
 leg.orientation = :horizontal
 
+scene
 save("step_012.svg", scene) # hide
 nothing # hide
 ```
@@ -263,6 +276,7 @@ hm_axes = layout[1:2, 3] = [LAxis(scene, title = t) for t in ["Cell Assembly Pre
 
 heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 
+scene
 save("step_013.svg", scene) # hide
 nothing # hide
 ```
@@ -296,6 +310,7 @@ layout[1:2, 3] = hm_sublayout
 # a vector of content
 hm_sublayout[:v] = hm_axes
 
+scene
 save("step_014.svg", scene) # hide
 nothing # hide
 ```
@@ -312,6 +327,7 @@ good in our case. We can set the autolimit margins to zero using `tightlimits!`.
 tightlimits!.(hm_axes)
 hidedecorations!.(hm_axes)
 
+scene
 save("step_015.svg", scene) # hide
 nothing # hide
 ```
@@ -341,6 +357,7 @@ end
 
 cbar = hm_sublayout[:, 2] = LColorbar(scene, heatmaps[1], label = "Activity [spikes/sec]")
 
+scene
 save("step_016.svg", scene) # hide
 nothing # hide
 ```
@@ -354,6 +371,7 @@ sublayout. Let's give it a fixed width of 30 units.
 ```@example tutorial
 cbar.width = 30
 
+scene
 save("step_017.svg", scene) # hide
 nothing # hide
 ```
@@ -373,6 +391,7 @@ If you only specify a number like `30`, it is interpreted as `Fixed(30)`.
 ```@example tutorial
 cbar.height = Relative(2/3)
 
+scene
 save("step_18.svg", scene) # hide
 nothing # hide
 ```
@@ -386,6 +405,7 @@ We can set the `ticks` attribute to any iterable of numbers that we want.
 ```@example tutorial
 cbar.ticks = 1:0.5:3
 
+scene
 save("step_18b.svg", scene) # hide
 nothing # hide
 ```
@@ -413,6 +433,7 @@ to reflect the new GridLayout size.
 supertitle = layout[0, :] = LText(scene, "Plotting with MakieLayout",
     textsize = 30, font = "Noto Sans Bold", color = (:black, 0.25))
 
+scene
 save("step_19.svg", scene) # hide
 nothing # hide
 ```
@@ -453,6 +474,7 @@ label_a = layout[2, 1, TopLeft()] = LText(scene, "A", textsize = 35,
 label_b = layout[2, 3, TopLeft()] = LText(scene, "B", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
 
+scene
 save("step_20.svg", scene) # hide
 nothing # hide
 ```
@@ -470,6 +492,7 @@ is (left, right, bottom, top).
 label_a.padding = (0, 6, 16, 0)
 label_b.padding = (0, 6, 16, 0)
 
+scene
 save("step_21.svg", scene) # hide
 nothing # hide
 ```
@@ -494,6 +517,7 @@ because the left two axes will grow to fill the remaining space.
 
 colsize!(hm_sublayout, 1, Aspect(1, 1))
 
+scene
 save("step_22.svg", scene) # hide
 nothing # hide
 ```
