@@ -117,7 +117,7 @@ end
         r == 0.0 ? 1f0 : (sin(r) / r)
     end
     xrange = range(-2, stop=2, length=N)
-    surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = r, y = r]
+    surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     surface(
         xrange, xrange, surf_func(10),
         color=RNG.rand(RGBAf0, 124, 124)
