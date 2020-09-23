@@ -51,7 +51,6 @@ end
     mesh(Sphere(Point3f0(0), 1f0), color=:orange, shading=false)
 end
 
-
 @cell "visible" begin
     vbox(
         scatter(RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=true),
