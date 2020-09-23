@@ -176,7 +176,6 @@ end
     pos = (500, 500)
     posis = Point2f0[]
     for r in range(0, stop=2pi, length=20)
-        global pos, posis
         p = pos .+ (sin(r) * 100.0, cos(r) * 100)
         push!(posis, p)
         t = text!(
@@ -203,7 +202,7 @@ end
     band!(t, μ + σ, μ - σ)   # plot stddev band
 end
 
-@cell "Streamplot animation" ["streamplot", "animation"] begin
+@cell "Streamplot animation" begin
     v(x::Point2{T}, t) where T = Point2{T}(one(T) * x[2] * t, 4 * x[1])
     sf = Node(Base.Fix2(v, 0e0))
     title_str = Node("t = 0.00")
@@ -211,7 +210,7 @@ end
                     linewidth=2, padding=(0, 0),
                     arrow_size=0.09, colormap=:magma)
     sc = title(sp, title_str)
-    record(sc, @replace_with_a_path(mp4), LinRange(0, 20, 5)) do i
+    Record(sc, LinRange(0, 20, 5)) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
     end
@@ -221,33 +220,39 @@ end
 @cell "Line changing colour" begin
     scene = lines(RNG.rand(10); linewidth=10)
 
-    record(scene, @replace_with_a_path(mp4), 1:255; framerate=60) do i
+    Record(scene, 1:255; framerate=60) do i
         scene.plots[2][:color] = RGBf0(i / 255, (255 - i) / 255, 0) # animate scene
     end
 end
 
+let 
+    struct FitzhughNagumo2
+    end
+    (()-> FitzhughNagumo2())()
+end
 
-@cell "streamplot" begin
+let 
     struct FitzhughNagumo{T}
         ϵ::T
         s::T
         γ::T
         β::T
     end
-
-    P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
-    f(x, P::FitzhughNagumo) = Point2f0(
-        (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
-        P.γ * x[1] - x[2] + P.β
-    )
-    f(x) = f(x, P)
-    streamplot(f, -1.5..1.5, -1.5..1.5, colormap=:magma)
+    @cell "streamplot" begin
+        P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
+        f(x, P::FitzhughNagumo) = Point2f0(
+            (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
+            P.γ * x[1] - x[2] + P.β
+        )
+        f(x) = f(x, P)
+        streamplot(f, -1.5..1.5, -1.5..1.5, colormap=:magma)
+    end
 end
 
 @cell "Transforming lines" begin
     N = 7 # number of colours in default palette
     sc = Scene()
-    st = Stepper(sc, @replace_with_a_path)
+    st = Stepper(sc)
 
     xs = 0:9        # data
     ys = zeros(10)
@@ -266,7 +271,7 @@ end
     step!(st)
 
     for (i, rot) in enumerate(LinRange(0, π / 2, N))
-        rotate!(sc.plots[i + 1], rot)
+        AbstractPlotting.rotate!(sc.plots[i + 1], rot)
         arc!(sc,
             Point2f0(0),
             (8 - i),

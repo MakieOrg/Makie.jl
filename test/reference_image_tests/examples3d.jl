@@ -2,7 +2,7 @@ using LinearAlgebra
 using FileIO, Colors, GeometryBasics
 
 @cell "Image on Geometry (Moon)" begin
-    using moon = load(MakieGallery.assetpath("moon.png"))
+    moon = load(MakieGallery.assetpath("moon.png"))
     scene = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
     update_cam!(scene, Vec3f0(-2, 2, 2), Vec3f0(0))
     scene.center = false # prevent to recenter on display
@@ -10,7 +10,6 @@ using FileIO, Colors, GeometryBasics
 end
 
 @cell "Image on Geometry (Earth)" begin
-    
     earth = load(MakieGallery.assetpath("earth.png"))
     m = uv_mesh(Tesselation(Sphere(Point3f0(0), 1f0), 60))
     mesh(m, color=earth, shading=false)
@@ -117,15 +116,15 @@ end
         r = sqrt(x^2 + y^2)
         r == 0.0 ? 1f0 : (sin(r) / r)
     end
-    r = range(-2, stop=2, length=N)
+    xrange = range(-2, stop=2, length=N)
     surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = r, y = r]
     surface(
-        r, r, surf_func(10),
+        xrange, xrange, surf_func(10),
         color=RNG.rand(RGBAf0, 124, 124)
     )
 end
 
-@cell "Line Function" ["2d", lines] begin
+@cell "Line Function" begin
     scene = Scene()
     x = range(0, stop=3pi)
     lines!(scene, x, sin.(x))
@@ -140,11 +139,11 @@ end
     meshscatter(positions, color=colS, markersize=sizesS)
 end
 
-@cell "scatter" ["2d", scatter] begin
+@cell "scatter" begin
     scatter(RNG.rand(20), RNG.rand(20), markersize=0.03)
 end
 
-@cell "Marker sizes" ["2d", scatter] begin
+@cell "Marker sizes" begin
     scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) ./ 20, color=to_colormap(:Spectral, 20))
 end
 
@@ -161,14 +160,14 @@ end
         map((a, b) -> (a, b), pos1, pos2)
     end
     linesegments!(scene, lines, linestyle=:dot, limits=limits)
-    record(scene, @replace_with_a_path(mp4), 1:2) do i
+    Record(scene, 1:2) do i
         t[] = Base.time()
     end
 end
 
 @cell "3D Contour with 2D contour slices" begin
     function test(x, y, z)
-        xy =
+        xy = [x, y, z]
         ((xy') * Matrix(I, 3, 3) * xy) / 20
     end
     x = range(-2pi, stop=2pi, length=100)
@@ -184,7 +183,7 @@ end
     scene
 end
 
-@cell "Contour3d" [contour3d] begin
+@cell "Contour3d" begin
     function xy_data(x, y)
         r = sqrt(x * x + y * y)
         r == 0.0 ? 1f0 : (sin(r) / r)
@@ -194,7 +193,7 @@ end
 end
 
 
-@cell "Arrows 3D" [arrows, "3d"] begin
+@cell "Arrows 3D" begin
     function SphericalToCartesian(r::T, θ::T, ϕ::T) where T <: AbstractArray
         x = @.r * sin(θ) * cos(ϕ)
         y = @.r * sin(θ) * sin(ϕ)
@@ -242,7 +241,7 @@ end
     )
 end
 
-@cell "surface + contour3d" [surface, contour3d, subscene, vbox] begin
+@cell "surface + contour3d" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
@@ -340,7 +339,7 @@ end
             Point3f0(pts[edges[k, 2], 1], pts[edges[k, 2], 2], pts[edges[k, 2], 3]),
             1f0
         )
-        Q = rotation(ct)
+        Q = GeometryBasics.rotation(ct)
         r = 0.5 * sqrt(1 .+ Q[1, 1] .+ Q[2, 2] .+ Q[3, 3]); Qlist[k, 4] = r
         Qlist[k, 1] = (Q[3, 2] .- Q[2, 3]) / (4 .* r)
         Qlist[k, 2] = (Q[1, 3] .- Q[3, 1]) / (4 .* r)
@@ -398,15 +397,15 @@ end
         r == 0.0 ? 1f0 : (sin(r) / r)
     end
 
-    r = range(-2, stop=2, length=50)
-    surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = r, y = r]
+    xrange = range(-2, stop=2, length=50)
+    surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     z = surf_func(20)
-    surf = surface!(scene, r, r, z)[end]
+    surf = surface!(scene, xrange, xrange, z)[end]
 
-    wf = wireframe!(scene, r, r, lift(x -> x .+ 1.0, surf[3]),
+    wf = wireframe!(scene, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
     )
-    record(scene, @replace_with_a_path(mp4), range(5, stop=40, length=3)) do i
+    Record(scene, range(5, stop=40, length=3)) do i
         surf[3] = surf_func(i)
     end
 end
@@ -425,7 +424,7 @@ end
     mesh(Sphere(Point3f0(0), 1f0), color=:blue)
 end
 
-@cell "Stars" [scatter, glow, update_cam!, camera] begin
+@cell "Stars" begin
     stars = 100_000
     scene = Scene(backgroundcolor=:black)
     scatter!(
@@ -469,12 +468,11 @@ end
     scene = Scene()
     scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
     p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)[end]
-    lineplots =
-    translate!(p, 0, 0, 0)
+    lineplots = [p]
+    AbstractPlotting.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
     # display(scene) # would be needed without the record
-    path = record(scene, "test.gif", 1:3) do i
-        global lineplots, scene
+    Record(scene, 1:3) do i
         if length(lineplots) < 20
             p = lines!(
                 scene,
@@ -495,7 +493,6 @@ end
             translate!(lp, 0, 0, z + 0.1)
         end
     end
-    path
 end
 
 @cell "Surface + wireframe + contour" begin
@@ -510,7 +507,7 @@ end
     center!(scene) # center the Scene on the display
 end
 
-@cell "Streamplot 3D" begin
+let 
     struct FitzhughNagumo{T}
         ϵ::T
         s::T
@@ -518,18 +515,19 @@ end
         β::T
     end
 
-    P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
-    f(x, P::FitzhughNagumo) = Point3f0(
-        (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
-        P.γ * x[2] - x[2] + P.β,
-        P.γ * x[1] - x[3] - P.β,
-    )
-    f(x) = f(x, P)
-    streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap=:magma, gridsize=(10, 10), arrow_size=0.06)
+    @cell "Streamplot 3D" begin
+        P = FitzhughNagumo(0.1, 0.0, 1.5, 0.8)
+        f(x, P::FitzhughNagumo) = Point3f0(
+            (x[1] - x[2] - x[1]^3 + P.s) / P.ϵ,
+            P.γ * x[2] - x[2] + P.β,
+            P.γ * x[1] - x[3] - P.β,
+        )
+        f(x) = f(x, P)
+        streamplot(f, -1.5..1.5, -1.5..1.5, -1.5..1.5, colormap=:magma, gridsize=(10, 10), arrow_size=0.06)
+    end
 end
 
-
-@cell "Volume on black background" ["3d", volume] begin
+@cell "Volume on black background" begin
     r = LinRange(-3, 3, 100);  # our value range
 
     ρ(x, y, z) = exp(-(abs(x))) # function (charge density)

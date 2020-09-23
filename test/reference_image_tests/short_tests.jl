@@ -11,7 +11,6 @@
     linesegments!(boundingbox(scene))
     offset = 0
     for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
-        global offset
         t = text!(
             "boundingbox",
             align=(a_lign, b_lign),
@@ -114,7 +113,6 @@ end
 
 
 @cell begin
-    using GeometryBasics
     s1 = uv_mesh(Sphere(Point3f0(0), 1f0))
     mesh(uv_mesh(Sphere(Point3f0(0), 1f0)), color=RNG.rand(50, 50))
     # ugh, bug In GeometryTypes for UVs of non unit spheres.
