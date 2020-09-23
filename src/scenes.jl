@@ -511,29 +511,33 @@ it will not update the limits. Call update_limits!(scene, automatic) for that.
 """
 update_limits!(scene::Scene) = update_limits!(scene, scene.limits[])
 
-function update_limits!(scene::Scene, limits::Automatic, padding = scene.padding[])
+function update_limits!(scene::Scene, limits::Automatic, padding::Vec3f0 = scene.padding[])
     # for when scene is empty
     dlimits = data_limits(scene)
     dlimits === nothing && return #nothing to limit if there isn't anything
     tlims = (minimum(dlimits), maximum(dlimits))
-    if !all(x-> all(isfinite, x), tlims)
-        @warn "limits of scene contain non finite values: $(tlims[1]) .. $(tlims[2])"
-        mini = map(x-> ifelse(isfinite(x), x, 0.0), tlims[1])
-        maxi = Vec3f0(ntuple(3) do i
-            x = tlims[2][i]
-            ifelse(isfinite(x), x, tlims[1][i] + 1f0)
-        end)
+    let avec = tlims[1], bvec = tlims[2]
+        if !all(x-> all(isfinite, x), (avec, bvec))
+            @warn "limits of scene contain non finite values: $(avec) .. $(bvec)"
+            mini = map(x-> ifelse(isfinite(x), x, zero(x)), avec)
+            maxi = Vec3f0(ntuple(3) do i
+                x = bvec[i]
+                ifelse(isfinite(x), x, avec[i] + oneunit(avec[i]))
+            end)
+        end
         tlims = (mini, maxi)
     end
-    new_widths = Vec3f0(ntuple(3) do i
-        a = tlims[1][i]; b = tlims[2][i]
-        w = b - a
-        # check for widths == 0.0... 3rd dimension is allowed to be 0 though.
-        # TODO maybe we should allow any one dimension to be 0, and then use the other 2 as 2D
-        with0 = (i != 3) && (w ≈ 0.0)
-        with0 && @warn "Founds 0 width in scene limits: $(tlims[1]) .. $(tlims[2])"
-        ifelse(with0, 1f0, w)
-    end)
+    let avec = tlims[1], bvec = tlims[2]
+        new_widths = Vec3f0(ntuple(3) do i
+            a = avec[i]; b = bvec[i]
+            w = b - a
+            # check for widths == 0.0... 3rd dimension is allowed to be 0 though.
+            # TODO maybe we should allow any one dimension to be 0, and then use the other 2 as 2D
+            with0 = (i != 3) && (w ≈ 0.0)
+            with0 && @warn "Founds 0 width in scene limits: $(avec) .. $(bvec)"
+            ifelse(with0, 1f0, w)
+        end)
+    end
     update_limits!(scene, FRect3D(tlims[1], new_widths), padding)
 end
 
@@ -550,7 +554,7 @@ and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and
 Such a `Rect` can be constructed using the `FRect` or `FRect3D` functions that are exported by
 `AbstractPlotting.jl`.  See their documentation for more information.
 """
-function update_limits!(scene::Scene, new_limits::Rect, padding = scene.padding[])
+function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0 = scene.padding[])
     lims = FRect3D(new_limits)
     lim_w = widths(lims)
     # use the smallest widths for scaling, to have a consistently wide padding for all sides
