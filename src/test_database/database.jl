@@ -19,10 +19,10 @@ function unique_name!(name, unique_names=UNIQUE_DATABASE_NAMES)
 end
 
 function cell_expr(name, code)
-    unique_title = unique_name!(title)
+    unique_title = unique_name!(name)
     return quote
         closure = () -> $(esc(code))
-        push!(AbstractPlotting.DATABASE, $(title) => closure)
+        push!(AbstractPlotting.DATABASE, $(string(unique_title)) => closure)
     end
 end
 
@@ -72,4 +72,22 @@ function record_examples(
             @warn "Error thrown when evaluating $(unique_name)" exception = CapturedException(e, Base.catch_backtrace())
         end
     end
+end
+
+
+"""
+    save_result(path, object)
+
+Helper, to more easily save all kind of results from the test database
+"""
+function save_result(path::String, scene::Scene)
+    FileIO.save(path * ".png", scene)
+end
+
+function save_result(path::String, stream::VideoStream)
+    FileIO.save(path * ".mp4", stream)
+end
+
+function save_result(path::String, object)
+    FileIO.save(path, object)
 end

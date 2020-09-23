@@ -600,11 +600,12 @@ function Record(func, scene, iter; framerate::Int = 24, sleep = true)
             yield()
         end
     end
+    return io
 end
 
-function Base.show(io::IO, mime::MIME"text/html", vs::VideoStream)
+function Base.show(io::IO, ::MIME"text/html", vs::VideoStream)
     mktempdir() do dir
-        path = finish(vs, joinpath(dir, "video.mp4"))
+        path = save(vs, joinpath(dir, "video.mp4"))
         print(
             io,
             """<video autoplay controls><source src="data:video/x-m4v;base64,""",

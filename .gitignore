@@ -13,5 +13,6 @@ phases.0001_print.jpg
 Manifest.toml
 test/test_recordings
 test/tested_different
+test/reference_image_tests/test_output
 
 \.DS_Store
