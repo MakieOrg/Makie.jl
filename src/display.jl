@@ -223,7 +223,7 @@ function step!(s::FolderStepper)
 end
 
 function step!(s::RamStepper)
-    img = convert(Matrix{RGBf0}, colorbuffer(display(s.scene)))
+    img = convert(Matrix{RGBf0}, colorbuffer(s.scene))
     push!(s.images, img)
     return s
 end
@@ -423,7 +423,7 @@ function colorbuffer(scene::Scene)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(display(scene))
+            return colorbuffer(backend_display(current_backend[], scene))
         end
     end
     return colorbuffer(screen)
