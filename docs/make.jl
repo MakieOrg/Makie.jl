@@ -13,6 +13,8 @@ using Documenter, Markdown, Pkg, Random, FileIO
 ##############################
 
 using MakieGallery, AbstractPlotting
+AbstractPlotting.inline!(true)
+
 makiegallerydir = dirname(dirname(pathof(Base.moduleroot(MakieGallery))))
 
 import AbstractPlotting: to_string
@@ -29,7 +31,6 @@ using MakieGallery: print_table
 #                                    Setup                                     #
 ################################################################################
 
-cd(@__DIR__)
 database = MakieGallery.load_database()
 
 pathroot  = normpath(@__DIR__, "..")
@@ -52,35 +53,6 @@ end
 ################################################################################
 #                      Automatic Markdown page generation                      #
 ################################################################################
-
-########################################
-#     Plotting functions overview      #
-########################################
-
-@info("Generating functions overview")
-path = joinpath(srcpath, "functions-overview.md")
-srcdocpath = joinpath(srcpath, "src-functions.md")
-
-plotting_functions = (
-    AbstractPlotting.atomic_functions..., contour, arrows,
-    barplot, poly, band, slider, vbox, hbox
-)
-
-open(path, "w") do io
-    !ispath(srcdocpath) && error("source document doesn't exist!")
-    println(io, "# Plotting functions overview")
-    src = read(srcdocpath, String)
-    println(io, src, "\n")
-    for func in plotting_functions
-        fname = to_string(func)
-        println(io, "## `$fname`\n")
-        println(io, "```@docs")
-        println(io, "$fname")
-        println(io, "```\n")
-        # add previews of all tags related to function
-        println(io, "\n")
-    end
-end
 
 
 ########################################
@@ -170,10 +142,6 @@ end
 
 MakieGallery.generate_colorschemes_markdown(; GENDIR = genpath)
 
-########################################
-#              Type trees              #
-########################################
-
 ################################################################################
 #                 Building HTML documentation with Documenter                  #
 ################################################################################
@@ -190,13 +158,16 @@ makedocs(
         ],
     ),
     sitename = "Makie.jl",
+    expandfirst = [
+        "plotting_functions.md",
+    ],
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
             "basic-tutorial.md",
             "animation.md",
             "interaction.md",
-            "functions-overview.md",
+            "plotting_functions.md",
         ],
         "Documentation" => [
             "scenes.md",
@@ -217,6 +188,7 @@ makedocs(
             "Tutorial" => "makielayout/tutorial.md",
             "GridLayout" => "makielayout/grids.md",
             "LAxis" => "makielayout/laxis.md",
+            "Special Plots" => "makielayout/special_plots.md",
             "LLegend" => "makielayout/llegend.md",
             "Layoutables Examples" => "makielayout/layoutables_examples.md",
             "Theming Layoutables" => "makielayout/theming.md",
@@ -295,12 +267,15 @@ function Documenter.deploy_folder(cfg::Gitlab;
     println(io, "Detected build type: ", build_type)
 
     if build_type == :release
-        tag_ok = occursin(Base.VERSION_REGEX, cfg.commit_tag)
+        tag_nobuild = Documenter.version_tag_strip_build(cfg.commit_tag)
+        ## If a tag exist it should be a valid VersionNumber
+        tag_ok = tag_nobuild !== nothing
+
         println(io, "- $(marker(tag_ok)) ENV[\"CI_COMMIT_TAG\"] contains a valid VersionNumber")
         all_ok &= tag_ok
 
         is_preview = false
-        subfolder = cfg.commit_tag
+        subfolder = tag_nobuild
         deploy_branch = branch
         deploy_repo = repo
         
@@ -347,5 +322,5 @@ end
 deploydocs(
     repo = "github.com/JuliaPlots/MakieDocumentation",
     deploy_config = Gitlab(),
-    push_preview = false
+    push_preview = true
 )

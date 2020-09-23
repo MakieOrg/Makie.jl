@@ -86,6 +86,7 @@ export set_close_to!
 export xaxis_bottom!, xaxis_top!, yaxis_left!, yaxis_right!
 export labelslider!
 export addmousestate!
+export hlines!, vlines!
 
 
 # from GridLayoutBase
