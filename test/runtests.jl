@@ -40,6 +40,12 @@ end
         scene[Axis].ticks.title_gap = 4
         @test scene[Axis].ticks.title_gap[] == 4
         @test scene[Axis].tickmarks.length[] == (1, 1)
+
+        scene = scatter([22.0, 28.0])
+        AbstractPlotting.update_limits!(scene)
+        lim = scene.data_limits[]
+        @test lim.origin[1] <= 1 && lim.widths[1] >= 1 && lim.origin[1]+lim.widths[1] >= 2
+        @test lim.origin[2] <= 22 && lim.widths[2] >= 6 && lim.origin[2]+lim.widths[2] >= 28
     end
 end
 
