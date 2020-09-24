@@ -1,5 +1,17 @@
 @testset "shorthands" begin
 
+    @testset "xlims!" begin
+        # test xlims of empty scene throws sane error
+        scene = Scene()
+        @test_throws ArgumentError xlims!(scene, (0,1))
+        @test_throws ArgumentError ylims!(scene, (0,1))
+        @test_throws ArgumentError zlims!(scene, (0,1))
+        lines!(scene, rand(3), rand(3), rand(3))
+        xlims!(scene, (0,1))
+        ylims!(scene, (0,1))
+        zlims!(scene, (0,1))
+    end
+
     scene2d = scatter(1:10, 1:10);
     scene = scatter(1:10, 1:10, 1:10);
     axis = scene[Axis]
