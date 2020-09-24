@@ -524,9 +524,10 @@ function update_limits!(scene::Scene, limits::Automatic, padding::Vec3f0 = scene
                 x = bvec[i]
                 ifelse(isfinite(x), x, avec[i] + oneunit(avec[i]))
             end)
+            tlims = (mini, maxi)
         end
-        tlims = (mini, maxi)
     end
+    local new_widths
     let avec = tlims[1], bvec = tlims[2]
         new_widths = Vec3f0(ntuple(3) do i
             a = avec[i]; b = bvec[i]
