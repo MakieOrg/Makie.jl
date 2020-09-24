@@ -52,11 +52,29 @@ zlabel!(zlabel::AbstractString) = zlabel!(current_scene(), zlabel)
 ################################################################################
 """
     setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
-    
+
 Sets the limits of the scene for dim=1.
 """
 function setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
     ol = scene_limits(scene)             # get the Scene's limits as values
+    if ol === nothing
+        msg = """
+        Setting limits of empty scene is currently not supported.
+        A possible workaround is to replace code like:
+        ```julia
+        scene = Scene(...)
+        ylims!(scene, ...)
+        plot!(scene, ...)
+        ```
+        by code like:
+        ```julia
+        scene = Scene(...)
+        plot!(scene, ...)
+        ylims!(scene, ...)
+        ```
+        """
+        throw(ArgumentError(msg))
+    end
     o_origin = minimum(ol)                         # get the original origin
     o_widths = widths(ol)                         # get the original widths
     n_widths = convert(Vector, o_widths)         # convert to mutable form
