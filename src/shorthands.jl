@@ -72,6 +72,11 @@ function setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
         plot!(scene, ...)
         ylims!(scene, ...)
         ```
+        or code like:
+        ```julia
+        scene = Scene(limits=FRect2D(0,0,5, 5))
+        plot!(scene, ...)
+        ```
         """
         throw(ArgumentError(msg))
     end
