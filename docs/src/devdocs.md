@@ -27,4 +27,4 @@ Check out [this project](https://github.com/orgs/JuliaPlots/projects/1) for plan
 
 ### Adding Cameras
 
-If you're planning to add a new camera type, you will also have to edit the [`apply_camera!`](@ref) function, to accept your camera type.
+If you're planning to add a new camera type, you will also have to edit the `apply_camera!` function, to accept your camera type.

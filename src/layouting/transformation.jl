@@ -134,8 +134,7 @@ rotate!(::Type{T}, scene::Transformable, axis_rot...) where T = rotate!(T, scene
     rotate!(scene::Transformable, axis_rot::AbstractFloat)
     rotate!(scene::Transformable, axis_rot...)
 
-Apply an absolute rotation to the Scene.  Rotations are all internally converted to
-[`Quaternion`](@ref)s.
+Apply an absolute rotation to the Scene. Rotations are all internally converted to `Quaternion`s.
 """
 rotate!(scene::Transformable, axis_rot...) = rotate!(Absolute, scene, axis_rot)
 rotate!(scene::Transformable, axis_rot::Quaternion) = rotate!(Absolute, scene, axis_rot)
