@@ -21,7 +21,7 @@ mutable struct Scene <: AbstractScene
     "Whether the scene should be cleared."
     clear::Bool
 
-    "The [`Camera`](@ref) associated with the Scene."
+    "The `Camera` associated with the Scene."
     camera::Camera
 
     "The controls for the camera of the Scene."
