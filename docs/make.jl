@@ -150,7 +150,7 @@ MakieGallery.generate_colorschemes_markdown(; GENDIR = genpath)
 
 makedocs(
     doctest = false, clean = true,
-    repo = "https://github.com/JuliaPlots/AbstractPlotting.jl/",
+    repo = "https://github.com/JuliaPlots/AbstractPlotting.jl/blob/{commit}{path}#{line}",
     format = Documenter.HTML(
         prettyurls = false,
         assets = [
