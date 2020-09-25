@@ -29,7 +29,7 @@ The value of the `x` can be changed by setting the empty index, i.e.:
 x[] = 3.34;
 ```
 
-Notice that you can access the value of a `Node` by indexing it with nothing, i.e. `x[]`. However, we recommend to use the function [`to_value`](@ref) to get the value of a `Node`, because `to_value` is a general function that works with all types instead of only `Node`s. E.g.:
+Notice that you can access the value of a `Node` by indexing it with nothing, i.e. `x[]`. However, we recommend to use the function `to_value` to get the value of a `Node`, because `to_value` is a general function that works with all types instead of only `Node`s. E.g.:
 ```@example 1
 to_value(x)
 ```
