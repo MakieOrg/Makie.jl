@@ -103,42 +103,15 @@ function backend_showable(backend, m::MIME, scene::Scene)
     hasmethod(backend_show, Tuple{typeof(backend), IO, typeof(m), typeof(scene)})
 end
 
-function has_juno_plotpane()
-    if isdefined(Main, :Atom)
-        return Main.Atom.PlotPaneEnabled[]
-    else
-        return nothing
-    end
-end
-
-isijulia() = isdefined(Main, :IJulia) && isdefined(Main.IJulia, :clear_output)
-isvscode() = isdefined(Main, :VSCodeServer)
 
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
     if isempty(available_backends)
-        @warn """Printing Scene as text. You see this because you haven't loaded any backend (GLMakie, CairoMakie, WGLMakie),
-        or you loaded GLMakie, but it didn't build correctly. In the latter case,
-        try `]build GLMakie` and watch out for any warnings.
+        @warn """
+        Printing Scene as text because no backend is available (GLMakie, CairoMakie, WGLMakie).
+        Maybe you imported GLMakie but it didn't build correctly.
+        In that case, try `]build GLMakie` and watch out for any warnings.
         """
-    end
-    if !use_display[] && isvscode()
-        # do nothing
-    elseif !use_display[] && !isempty(available_backends)
-        plotpane = has_juno_plotpane()
-        if plotpane !== nothing && !plotpane
-            # we want to display as inline!, we are in Juno, but the plotpane is disabled
-            @warn """Showing scene as inline with Plotpane disabled. This happens because `AbstractPlotting.inline!(true)` is set,
-            while `Atom.PlotPaneEnabled[]` is false. Either enable the plotpane, or set inline to false!"""
-        else
-            if plotpane === nothing && !isijulia()
-                @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
-                This needs to be false to show a plot in a window when in the REPL."""
-            elseif plotpane === nothing || !plotpane
-                 @warn """Showing scene as text. This happens because `AbstractPlotting.inline!(true)` is set.
-                This needs to be false to show a plot in a window when in the REPL."""
-            end
-        end
     end
     
     print(io, scene)
@@ -151,6 +124,14 @@ end
 
 function Base.show(io::IO, plot::Atomic)
     print(io, typeof(plot))
+end
+
+function has_juno_plotpane()
+    if isdefined(Main, :Atom)
+        return Main.Atom.PlotPaneEnabled[]
+    else
+        return nothing
+    end
 end
 
 function Base.show(io::IO, scene::Scene)
@@ -173,6 +154,19 @@ function Base.show(io::IO, scene::Scene)
         for (i, subscene) in enumerate(scene.children)
             print(io, "\n")
             print(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
+        end
+    end
+
+    plotpane_disabled = has_juno_plotpane() == false
+
+    if !use_display[]
+        if plotpane_disabled
+            print(io,
+                """\n\n`AbstractPlotting.inline!(true)` is set, while `Atom.PlotPaneEnabled[]` is false.
+                Either enable the plot pane, or set inline to false."""
+            )
+        else
+            print(io, "\n\nTo show the scene in a window, try setting `AbstractPlotting.inline!(false)`.")
         end
     end
 end
