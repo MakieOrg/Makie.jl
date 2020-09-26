@@ -74,7 +74,7 @@ We use the convenient `@lift` macro which denotes that the `lift`ed expression d
 ```@example 1
 time = Node(0.0)
 
-xs = LinRange(0, 7, 200)
+xs = LinRange(0, 7, 40)
 
 ys_1 = @lift(sin.(xs .- $time))
 ys_2 = @lift(cos.(xs .- $time) .+ 3)
@@ -114,9 +114,9 @@ so that the number of x and y values can not go out of sync.
 ```@example 1
 points = Node(Point2f0[(0, 0)])
 
-scene = scatter(points, color = :blue, markersize = 15)
+scene = scatter(points, limits = FRect(0, 0, 30, 30))
 
-frames = 1:30
+frames = 2:30
 
 record(scene, "append_animation.mp4", frames; framerate = 30) do frame
     new_point = Point2f0(frame, frame)
