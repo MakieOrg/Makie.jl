@@ -22,7 +22,7 @@ $(TYPEDFIELDS)
 """
 struct Events
     """
-    The area of the window in pixels, as an [`Rect2D`](@ref).
+    The area of the window in pixels, as a `Rect2D`.
     """
     window_area::Node{IRect2D}
     """
@@ -47,7 +47,7 @@ struct Events
     """
     mouseposition::Node{NTuple{2, Float64}}
     """
-The state of the mouse drag, represented by an enumerator of [`DragEnum`](@ref).
+The state of the mouse drag, represented by an enumerator of `DragEnum`.
     """
     mousedrag::Node{Mouse.DragEnum}
     """
