@@ -1,3 +1,14 @@
+"""
+    errorbars(xs, ys, low, high; kwargs...)
+    errorbars(points, low, high; kwargs...)
+    errorbars(points, lowhigh; kwargs...)
+
+Plots errorbars at the given points, extending down (left) by `low` and up 
+(right) by `high`.
+
+## Attributes
+$(ATTRIBUTES)
+"""
 @recipe(Errorbars) do scene
     Theme(
         whiskerwidth = 10,
