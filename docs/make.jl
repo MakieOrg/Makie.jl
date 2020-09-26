@@ -63,7 +63,7 @@ end
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
 @info("Generating attributes page")
 include(joinpath(makiegallerydir, "src/plot_attr_desc.jl"))
-path = joinpath(srcpath, "plot-attributes.md")
+path = joinpath(genpath, "plot-attributes.md")
 srcdocpath = joinpath(srcgenpath, "src-plot-attributes.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
@@ -81,7 +81,7 @@ end
 
 # automatically generate an overview of the axis attributes, using a source md file
 @info("Generating axis page")
-path = joinpath(srcpath, "axis.md")
+path = joinpath(genpath, "axis.md")
 srcdocpath = joinpath(srcgenpath, "src-axis.md")
 include(joinpath(makiegallerydir, "src/Axis2D_attr_desc.jl"))
 include(joinpath(makiegallerydir, "src/Axis3D_attr_desc.jl"))
@@ -120,7 +120,7 @@ end
 
 # automatically generate an overview of the function signatures, using a source md file
 @info("Generating signatures page")
-path = joinpath(srcpath, "signatures.md")
+path = joinpath(genpath, "signatures.md")
 srcdocpath = joinpath(srcgenpath, "src-signatures.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
@@ -178,10 +178,10 @@ makedocs(
         ],
         "Documentation" => [
             "scenes.md",
-            "axis.md",
+            "generated/axis.md",
             "convenience.md",
-            "signatures.md",
-            "plot-attributes.md",
+            "generated/signatures.md",
+            "generated/plot-attributes.md",
             "generated/colors.md",
             "lighting.md",
             "theming.md",
