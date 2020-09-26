@@ -1,3 +1,11 @@
+"""
+    pie(fractions; kwargs...)
+
+Creates a pie chart with the given `fractions`.
+
+## Attributes
+$(ATTRIBUTES)
+"""
 @recipe(Pie, values) do scene
     Theme(
         normalize = true,
