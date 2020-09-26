@@ -603,7 +603,7 @@ to3tuple(x) = ntuple(i-> x, Val(3))
 
 function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
     # make sure we extend all args to 3D
-    ranges, labels = ranges_labels
+    ranges, ticklabels = ranges_labels
     args3d = to3tuple.(args)
     (
         showaxis, showticks, showgrid,
@@ -615,12 +615,9 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
 
     N = 3
     start!(textbuffer); start!(linebuffer)
-    ranges_ticks = Pair.(ranges, labels)
     mini, maxi = first.(limits), last.(limits)
 
-    ranges = map(i-> [mini[i]; first(ranges_ticks[i])], 1:3)
-    ticklabels = map(x-> [""; last(x)], ranges_ticks)
-    origin = Point{N, Float32}(min.(mini, getindex.(ranges, 2)))
+    origin = Point{N, Float32}(min.(mini, first.(ranges)))
     limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
     ttextsize = (%) .* ttextsize
@@ -681,7 +678,7 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
                 j = mod1(_j, N)
                 dir = unit(Point{N, Float32}, j)
                 range = ranges[j]
-                for tick in drop(range, 1)
+                for tick in range
                     offset = Float32(tick - origin[j]) * dir
                     append!(
                         linebuffer, [origin .+ offset, stop .+ offset],
