@@ -1,5 +1,12 @@
 # I don't want to use map anymore, it's so ambigious, especially to newcomers.
 # TODO should this become it's own function?
+"""
+    lift(f, o1::Observables.AbstractObservable, rest...; init = f(to_value(o1), to_value.(rest)...), typ = typeof(init))
+
+Create a new `Observable` by applying `f` to all observables in `o1` and `rest...`.
+By default, the initial value `init` is determined by the first function evaluation.
+You can also set `typ` to control the parametric type of the Observable irrespective of the `init` value.
+"""
 function lift(
         f, o1::Observables.AbstractObservable, rest...;
         init = f(to_value(o1), to_value.(rest)...), typ = typeof(init),

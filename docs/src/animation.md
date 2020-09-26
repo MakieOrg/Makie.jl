@@ -115,7 +115,7 @@ end
 ## Appending data to a plot
 
 If you're planning to append to a plot, like a `lines` or `scatter` plot (basically, anything that's point-based),
-you will want to pass an `Observable` Array of [`Point`](@ref)s to the plotting function, instead of passing `x`, `y`
+you will want to pass an `Observable` Array of `Point`s to the plotting function, instead of passing `x`, `y`
 (and `z`) as separate Arrays.
 This will mean that you won't run into dimension mismatch issues (since Observables are synchronously updated).
 
@@ -203,4 +203,4 @@ end
 ```
 ![](out5.mp4)
 
-You can see yet more complicated examples in the [Example Gallery](index.html)!
+You can see yet more complicated examples in the [Example Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html)!
