@@ -164,7 +164,7 @@ And here is our result, as we expect the sine function moves sideways.
 
 ![phase_animation](phase_animation.mp4)
 
-For more information, see the [Animation](@ref) and the [Interaction](@ref) sections.
+For more information, see the [Animations](@ref) and the [Interaction](@ref) sections.
 
 ## Summary
 

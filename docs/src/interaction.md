@@ -9,7 +9,7 @@ Interaction, animations and more are done using `Node`s and event triggers.
 In this page we overview how the `Node`s pipeline works, how event-triggering works, and we give an introduction to the existing "atomic" functions for interaction.
 Examples that use interaction can be found in the Examples/`interaction` page (see [Example Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html) as well).
 
-Have a peek at [Animation](@ref) for some more information once you're done with this.
+Have a peek at [Animations](@ref) for some more information once you're done with this.
 
 ## `Node` interaction pipeline
 ### The `Node` structure
