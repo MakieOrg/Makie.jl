@@ -2,10 +2,8 @@
 
 `Makie` has support for you to color your plots however you want to. You can manipulate the color of a plot by using the `color` keyword, and change the colormap by using the `colormap` keyword.
 
-## Colors
-
-For line plots, you can provide a single color or symbol that will color the entire line;
-or, you can provide an array of values that map to colors using a colormap.
+For line plots, you can provide a single color or symbol that will color the entire line,
+or you can provide an array of values that map to colors using a colormap.
 
 Any color symbol supported by [Colors.jl](https://github.com/JuliaGraphics/Colors.jl) is supported, check out their page on [named colors](https://juliagraphics.github.io/Colors.jl/latest/namedcolors.html) to see what you can get away with! You can also pass RGB or RGBA values.
 
