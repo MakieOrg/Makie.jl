@@ -102,7 +102,7 @@ scale!(t::Transformable, s) = (scale(t)[] = to_ndim(Vec3f0, Float32.(s), 1))
     scale!(t::Transformable, xyz)
     scale!(t::Transformable, xyz...)
 
-Scale the given [`Transformable`](@ref) (a Scene or Plot) to the given arguments.
+Scale the given `Transformable` (a Scene or Plot) to the given arguments.
 Can take `x, y` or `x, y, z`.
 This is an absolute scaling, and there is no option to perform relative scaling.
 """
