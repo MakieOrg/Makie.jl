@@ -36,6 +36,7 @@ database = MakieGallery.load_database()
 pathroot  = normpath(@__DIR__, "..")
 docspath  = joinpath(pathroot, "docs")
 srcpath   = joinpath(docspath, "src")
+srcgenpath   = joinpath(docspath, "src_generation")
 buildpath = joinpath(docspath, "build")
 genpath   = joinpath(srcpath, "generated")
 
@@ -62,8 +63,8 @@ end
 # automatically generate an overview of the plot attributes (keyword arguments), using a source md file
 @info("Generating attributes page")
 include(joinpath(makiegallerydir, "src/plot_attr_desc.jl"))
-path = joinpath(srcpath, "plot-attributes.md")
-srcdocpath = joinpath(srcpath, "src-plot-attributes.md")
+path = joinpath(genpath, "plot-attributes.md")
+srcdocpath = joinpath(srcgenpath, "src-plot-attributes.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
     println(io, "# Plot attributes")
@@ -80,8 +81,8 @@ end
 
 # automatically generate an overview of the axis attributes, using a source md file
 @info("Generating axis page")
-path = joinpath(srcpath, "axis.md")
-srcdocpath = joinpath(srcpath, "src-axis.md")
+path = joinpath(genpath, "axis.md")
+srcdocpath = joinpath(srcgenpath, "src-axis.md")
 include(joinpath(makiegallerydir, "src/Axis2D_attr_desc.jl"))
 include(joinpath(makiegallerydir, "src/Axis3D_attr_desc.jl"))
 
@@ -119,8 +120,8 @@ end
 
 # automatically generate an overview of the function signatures, using a source md file
 @info("Generating signatures page")
-path = joinpath(srcpath, "signatures.md")
-srcdocpath = joinpath(srcpath, "src-signatures.md")
+path = joinpath(genpath, "signatures.md")
+srcdocpath = joinpath(srcgenpath, "src-signatures.md")
 open(path, "w") do io
     !ispath(srcdocpath) && error("source document doesn't exist!")
     println(io, "# Plot function signatures")
@@ -140,7 +141,12 @@ end
 
 @info "Generating colormap reference"
 
-MakieGallery.generate_colorschemes_markdown(; GENDIR = genpath)
+include(joinpath(srcgenpath, "colormap_generation.jl"))
+
+generate_colorschemes_markdown(
+    joinpath(srcgenpath, "src-colors.md"),
+    joinpath(genpath, "colors.md")
+)
 
 ################################################################################
 #                 Building HTML documentation with Documenter                  #
@@ -150,6 +156,7 @@ MakieGallery.generate_colorschemes_markdown(; GENDIR = genpath)
 
 makedocs(
     doctest = false, clean = true,
+    repo = "https://github.com/JuliaPlots/AbstractPlotting.jl/blob/{commit}{path}#{line}",
     format = Documenter.HTML(
         prettyurls = false,
         assets = [
@@ -171,10 +178,10 @@ makedocs(
         ],
         "Documentation" => [
             "scenes.md",
-            "axis.md",
+            "generated/axis.md",
             "convenience.md",
-            "signatures.md",
-            "plot-attributes.md",
+            "generated/signatures.md",
+            "generated/plot-attributes.md",
             "generated/colors.md",
             "lighting.md",
             "theming.md",

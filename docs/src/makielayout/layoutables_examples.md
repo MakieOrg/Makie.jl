@@ -9,7 +9,7 @@ A simple slider without a label. You can create a label using an `LText` object,
 for example. You need to specify a range that constrains the slider's possible values.
 You can then lift the `value` observable to make interactive plots.
 
-To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`labelslider!`](@ref).
+To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref).
 
 ```@example
 using AbstractPlotting
@@ -30,7 +30,7 @@ save("example_lslider.svg", scene); nothing # hide
 
 ![example lslider](example_lslider.svg)
 
-If you want to programmatically move the slider, use the function [`set_close_to!`](@ref).
+If you want to programmatically move the slider, use the function [`AbstractPlotting.MakieLayout.set_close_to!`](@ref).
 Don't manipulate the `value` attribute directly, as there is no guarantee that
 this value exists in the range underlying the slider, and the slider's displayed value would
 not change anyway by changing the slider's output.

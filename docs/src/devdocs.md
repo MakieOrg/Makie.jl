@@ -25,6 +25,6 @@ I'm slowly removing problematic constructs from the dependencies and try to get 
 
 Check out [this project](https://github.com/orgs/JuliaPlots/projects/1) for planned features and additions to Makie, as well as backlogged documentation issues.
 
-### Cameras
+### Adding Cameras
 
-If you're planning to add a new camera type, you will also have to edit the [`apply_camera!`](@ref) function, to accept your camera type.
+If you're planning to add a new camera type, you will also have to edit the `apply_camera!` function, to accept your camera type.
