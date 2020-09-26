@@ -5,7 +5,7 @@
 `func(args...; kw_args...)`
 
 where `func` are the atomics function, e.g. `lines`, `scatter`, `surface`, etc.
-For a list of the available atomics functions, see [Plotting functions](@ref).
+For a list of the available atomics functions, see [Plotting Functions](@ref).
 
 
 ### Create a new plot as a subscene of the specified `scene` object
