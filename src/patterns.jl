@@ -2,8 +2,8 @@
     AbstractPattern{T} <: AbstractArray{T, 2}
 
 `AbstractPatterns` are image-like array types which can be used to color
-plottable objects. There are currently two subtypes: [`LinePattern`](@ref) and
-[`ImagePattern`](@ref). Any abstract pattern must implement the `to_image(pat)`
+plottable objects. There are currently two subtypes: `LinePattern` and
+`ImagePattern`. Any abstract pattern must implement the `to_image(pat)`
 function, which must return a `Matrix{<: AbstractRGB}`.
 """
 abstract type AbstractPattern{T} <: AbstractArray{T, 2} end
