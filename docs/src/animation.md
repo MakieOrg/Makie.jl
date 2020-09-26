@@ -116,7 +116,7 @@ points = Node(Point2f0[(0, 0)])
 
 scene = scatter(points, limits = FRect(0, 0, 30, 30))
 
-frames = 2:30
+frames = 1:30
 
 record(scene, "append_animation.mp4", frames; framerate = 30) do frame
     new_point = Point2f0(frame, frame)
