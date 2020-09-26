@@ -2,16 +2,10 @@
 build
 
 # Generated pages
-axis.md
 examples-database.md
 examples-for-tags.md
 functions-autogen.md
 examples-*.md
-functions-overview.md
-plot-attributes.md
-signatures.md
-typetrees.md
-src/typetrees.md
 atomics_examples/
 src/generated
 
