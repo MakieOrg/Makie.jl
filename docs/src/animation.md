@@ -203,4 +203,4 @@ end
 ```
 ![](out5.mp4)
 
-You can see yet more complicated examples in the [Example Gallery](index.html)!
+You can see yet more complicated examples in the [Example Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html)!
