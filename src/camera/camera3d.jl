@@ -62,7 +62,7 @@ the plot's axis.
 function cam3d_turntable!(scene; kw_args...)
     cam_attributes = merged_get!(:cam3d, scene, Attributes(kw_args)) do
         Attributes(
-            rotationspeed = 0.3,
+            rotationspeed = 0.01,
             translationspeed = 1.0,
             eyeposition = Vec3f0(3),
             lookat = Vec3f0(0),
