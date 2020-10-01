@@ -146,8 +146,20 @@ vec4 volume(vec3 front, vec3 dir)
     return vec4(Lo, 1-T);
 }
 
+vec4 additivergba(vec3 front, vec3 dir)
+{
+    vec3 pos = front;
+    vec4 integrated_color = vec4(0., 0., 0., 0.);
+    int i = 0;
+    for (i; i < num_samples ; ++i) {
+        vec4 density = texture(volumedata, pos);
+        integrated_color = 1.0 - (1.0 - integrated_color) * (1.0 - density);
+        pos += dir;
+    }
+    return integrated_color;
+}
 
-vec4 volumergba(vec3 front, vec3 dir)
+vec4 absorptionrgba(vec3 front, vec3 dir)
 {
     vec3  pos = front;
     float T = 1.0;
@@ -296,6 +308,8 @@ void main()
     vec3 step_in_dir = (back_position - start) / num_samples;
 
     float steps = 0.1;
+    // the algorithm numbers correspond to the order in the
+    // RaymarchAlgorithm enum defined in AbstractPlotting types.jl 
     if(algorithm == 0)
         color = isosurface(start, step_in_dir);
     else if(algorithm == 1)
@@ -303,8 +317,10 @@ void main()
     else if(algorithm == 2)
         color = mip(start, step_in_dir);
     else if(algorithm == 3)
-        color = volumergba(start, step_in_dir);
+        color = absorptionrgba(start, step_in_dir);
     else if(algorithm == 4)
+        color = additivergba(start, step_in_dir);
+    else if(algorithm == 5)
         color = volumeindexedrgba(start, step_in_dir);
     else
         color = contours(start, step_in_dir);
