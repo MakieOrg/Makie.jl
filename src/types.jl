@@ -4,11 +4,12 @@ abstract type AbstractCamera end
 struct EmptyCamera <: AbstractCamera end
 
 @enum RaymarchAlgorithm begin
-    IsoValue
-    Absorption
-    MaximumIntensityProjection
-    AbsorptionRGBA
-    IndexedAbsorptionRGBA
+    IsoValue # 0
+    Absorption # 1
+    MaximumIntensityProjection # 2
+    AbsorptionRGBA # 3
+    AdditiveRGBA # 4
+    IndexedAbsorptionRGBA # 5
 end
 
 include("interaction/iodevices.jl")
