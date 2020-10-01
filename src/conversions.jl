@@ -897,7 +897,7 @@ end
 """
     to_volume_algorithm(b, x)
 
-Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `IndexedAbsorptionRGBA`
+Enum values: `IsoValue` `Absorption` `MaximumIntensityProjection` `AbsorptionRGBA` `AdditiveRGBA` `IndexedAbsorptionRGBA`
 """
 function convert_attribute(value, ::key"algorithm")
     if isa(value, RaymarchAlgorithm)
@@ -921,6 +921,7 @@ function convert_attribute(value::Union{Symbol, String}, k::key"algorithm")
         :mip => MaximumIntensityProjection,
         :absorptionrgba => AbsorptionRGBA,
         :indexedabsorption => IndexedAbsorptionRGBA,
+        :additive => AdditiveRGBA,
     )
     convert_attribute(get(vals, Symbol(value)) do
         error("$value is not a valid volume algorithm. It must be one of $(keys(vals))")
