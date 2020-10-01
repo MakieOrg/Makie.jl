@@ -97,14 +97,14 @@ ys = 0.5 .* sin.(xs)
 points = Point2f0.(xs, ys .- 1)
 points_2 = Point2f0.(xs, ys .- 2)
 
-lowerror = 0.1
-higherrors = LinRange(0.1, 0.5, length(xs)
-lowhigherrors = fill(0.3, length(xs)
+lowerrors = fill(0.1, length(xs))
+higherrors = LinRange(0.1, 0.5, length(xs))
+lowhigherrors = fill(0.2, length(xs))
 
 
-scene = errorbars(xs, ys, lowerror, higherrors)
-errorbars!(scene, points, lowerror, higherrors, color = 1:length(xs))
-errorbars!(scene, points_2, lowhigherrors, whiskerwidth = 5)
+scene = errorbars(xs, ys, lowerrors, higherrors)
+errorbars!(scene, points, lowerrors, higherrors, color = :red)
+errorbars!(scene, points_2, lowhigherrors, whiskerwidth = 3, direction = :x)
 ```
 
 ## `heatmap`
