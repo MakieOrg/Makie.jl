@@ -1,10 +1,13 @@
 """
     errorbars(xs, ys, low, high; kwargs...)
+    errorbars(xs, ys, lowhigh; kwargs...)
     errorbars(points, low, high; kwargs...)
     errorbars(points, lowhigh; kwargs...)
 
-Plots errorbars at the given points, extending down (left) by `low` and up 
-(right) by `high`.
+Plots errorbars at the given points, extending down `low` and up by `high`.
+Forms with `lowhigh` use the same error margin downwards and upwards.
+The direction of the bars can be changed to horizontal by setting the `direction` attribute
+to `:x`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -31,6 +34,13 @@ end
 function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Point2}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
     xys, low, high = plot[1:3]
     lowhigh = @lift(Point2f0.($low, $high))
+    _plot_errorbars!(plot, xys, lowhigh)
+end
+
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
+    xs, ys, same_lowhigh = plot[1:3]
+    xys = @lift(Point2f0.($xs, $ys))
+    lowhigh = @lift(Point2f0.($same_lowhigh, $same_lowhigh))
     _plot_errorbars!(plot, xys, lowhigh)
 end
 
@@ -80,8 +90,27 @@ function _plot_errorbars!(plot, xys, lowhigh)
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
 
+    whiskercolors = lift(color, typ = Any) do color
+        # we have twice as many linesegments for whiskers as we have errorbars, so we
+        # need to duplicate colors if a vector of colors is given
+        if color isa AbstractVector
+            repeat(color, inner = 2)
+        else
+            color
+        end
+    end
+
+    whiskerlinewidths = lift(linewidth, typ = Any) do linewidth
+        # same for linewidth
+        if linewidth isa AbstractVector
+            repeat(linewidth, inner = 2)
+        else
+            linewidth
+        end
+    end
+
     linesegments!(plot, linesegpairs, color = color, linewidth = linewidth, visible = visible)
-    linesegments!(plot, whiskers, color = color, linewidth = linewidth, visible = visible)
+    linesegments!(plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, visible = visible)
     plot
 end
 
