@@ -102,9 +102,14 @@ higherrors = LinRange(0.1, 0.5, length(xs))
 lowhigherrors = fill(0.2, length(xs))
 
 
-scene = errorbars(xs, ys, lowerrors, higherrors)
-errorbars!(scene, points, lowerrors, higherrors, color = :red)
+scene = errorbars(xs, ys, lowerrors, higherrors, color = :red)
+errorbars!(scene, points, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
 errorbars!(scene, points_2, lowhigherrors, whiskerwidth = 3, direction = :x)
+
+# plot position scatters so low and high errors can be discriminated
+scatter!(scene, xs, ys, markersize = 3, color = :black)
+scatter!(scene, points, markersize = 3, color = :black)
+scatter!(scene, points_2, markersize = 3, color = :black)
 ```
 
 ## `heatmap`
