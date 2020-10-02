@@ -80,6 +80,38 @@ zs = [cos(x) * sin(y) for x in xs, y in ys]
 contour(xs, ys, zs)
 ```
 
+## `errorbars`
+
+```@docs
+errorbars
+```
+
+### Examples
+
+```@example
+using Makie
+Makie.AbstractPlotting.inline!(true) # hide
+
+xs = 0:0.5:10
+ys = 0.5 .* sin.(xs)
+points = Point2f0.(xs, ys .- 1)
+points_2 = Point2f0.(xs, ys .- 2)
+
+lowerrors = fill(0.1, length(xs))
+higherrors = LinRange(0.1, 0.5, length(xs))
+lowhigherrors = fill(0.2, length(xs))
+
+
+scene = errorbars(xs, ys, lowerrors, higherrors, color = :red)
+errorbars!(scene, points, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
+errorbars!(scene, points_2, lowhigherrors, whiskerwidth = 3, direction = :x)
+
+# plot position scatters so low and high errors can be discriminated
+scatter!(scene, xs, ys, markersize = 3, color = :black)
+scatter!(scene, points, markersize = 3, color = :black)
+scatter!(scene, points_2, markersize = 3, color = :black)
+```
+
 ## `heatmap`
 
 ```@docs
