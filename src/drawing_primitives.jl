@@ -112,6 +112,7 @@ function handle_view(array::Node{T}, attributes) where T <: SubArray
     A = lift(parent, array)
     indices = lift(index1D, array)
     attributes[:indices] = indices
+    @show A indices
     return A
 end
 

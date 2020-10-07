@@ -26,7 +26,7 @@ function render(list::Vector{RenderObject{Pre}}) where Pre
             end
             glBindVertexArray(vertexarray.id)
         end
-        for (key,value) in program.uniformloc
+        for (key, value) in program.uniformloc
             if haskey(renderobject.uniforms, key)
                 if length(value) == 1
                     gluniform(value[1], renderobject.uniforms[key])
@@ -54,7 +54,7 @@ It uses dictionaries and doesn't care about OpenGL call optimizations.
 So rewriting this function could get us a lot of performance for scenes with
 a lot of objects.
 """
-function render(renderobject::RenderObject, vertexarray = renderobject.vertexarray)
+function render(renderobject::RenderObject, vertexarray=renderobject.vertexarray)
     if Bool(to_value(renderobject.uniforms[:visible]))
         renderobject.prerenderfunction()
         program = vertexarray.program
@@ -84,20 +84,26 @@ end
 Renders a vertexarray, which consists of the usual buffers plus a vector of
 unitranges which defines the segments of the buffers to be rendered
 """
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: VecOrSignal{UnitRange{Int}}
+function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: VecOrSignal{UnitRange{Int}}
     for elem in to_value(vao.indices)
-        glDrawArrays(mode, max(first(elem)-1, 0), length(elem)+1)
+        glDrawArrays(mode, max(first(elem) - 1, 0), length(elem) + 1)
     end
-     return nothing
-end
-
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
-    r = to_value(vao.indices)
-    glDrawArrays(mode, max(first(r)-1, 0), length(r)+1)
     return nothing
 end
 
-function render(vao::GLVertexArray{T}, mode::GLenum = GL_TRIANGLES) where T <: TOrSignal{Int}
+function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{UnitRange{Int}}
+    r = to_value(vao.indices)  
+    offset = first(r) - 1 # 1 based -> 0 based
+    ndraw = length(r)
+    nverts = length(vao)
+    if (offset < 0 || offset + ndraw > nverts)
+        error("Bounds error for drawrange. Offset $(offset) and length $(ndraw) aren't a valid range for vertexarray with length $(nverts)")
+    end
+    glDrawArrays(mode, offset, ndraw)
+    return nothing
+end
+
+function render(vao::GLVertexArray{T}, mode::GLenum=GL_TRIANGLES) where T <: TOrSignal{Int}
     r = to_value(vao.indices)
     glDrawArrays(mode, 0, r)
     return nothing
@@ -106,7 +112,7 @@ end
 """
 Renders a vertex array which supplies an indexbuffer
 """
-function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T<:Union{Integer, AbstractFace}
+function render(vao::GLVertexArray{GLBuffer{T}}, mode::GLenum=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
     glDrawElements(
         mode,
         length(vao.indices) * cardinality(vao.indices),
@@ -131,8 +137,8 @@ renderinstanced(vao::GLVertexArray, a, primitive=GL_TRIANGLES) = renderinstanced
 """
 Renders `amount` instances of an indexed geometry
 """
-function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T<:Union{Integer, AbstractFace}
-    glDrawElementsInstanced(primitive, length(vao.indices)*cardinality(vao.indices), julia2glenum(T), C_NULL, amount)
+function renderinstanced(vao::GLVertexArray{GLBuffer{T}}, amount::Integer, primitive=GL_TRIANGLES) where T <: Union{Integer,AbstractFace}
+    glDrawElementsInstanced(primitive, length(vao.indices) * cardinality(vao.indices), julia2glenum(T), C_NULL, amount)
     return
 end
 
@@ -143,7 +149,7 @@ function renderinstanced(vao::GLVertexArray, amount::Integer, primitive=GL_TRIAN
     glDrawElementsInstanced(primitive, length(vao), GL_UNSIGNED_INT, C_NULL, amount)
     return
 end
-#handle all uniform objects
+# handle all uniform objects
 
 ##############################################################################################
 #  Generic render functions
