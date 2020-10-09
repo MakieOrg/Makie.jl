@@ -1,4 +1,5 @@
 
+# surface(::Matrix, ::Matrix, ::Matrix)
 function _default(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, s::Style{:surface}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         position_x = main[1] => (Texture, "x position, must be an `Matrix{Float}`")
@@ -9,6 +10,18 @@ function _default(main::Tuple{MatTypes{T}, MatTypes{T}, MatTypes{T}}, s::Style{:
     surface(position_z, s, data)
 end
 
+# surface(Vector or Range, Vector or Range, ::Matrix)
+function _default(main::Tuple{VectorTypes{T}, VectorTypes{T}, MatTypes{T}}, s::Style{:surface}, data::Dict) where T <: AbstractFloat
+    @gen_defaults! data begin
+        position_x = main[1] => (Texture, "x position, must be an `Matrix{Float}`")
+        position_y = main[2] => (Texture, "y position, must be an `Matrix{Float}`")
+        position_z = main[3] => (Texture, "z position, must be an `Matrix{Float}`")
+        scale = Vec3f0(0) => "scale must be 0, for a surfacemesh"
+    end
+    surface(position_z, s, data)
+end
+
+# surface(::Matrix)
 function _default(main::MatTypes{T}, s::Style{:surface}, data::Dict) where T <: AbstractFloat
     @gen_defaults! data begin
         ranges = ((-1f0, 1f0), (-1f0,1f0)) => "x, and y position given as `(start, endvalue)` or any `Range`"
@@ -17,8 +30,9 @@ function _default(main::MatTypes{T}, s::Style{:surface}, data::Dict) where T <: 
     _default((Grid(to_value(main), to_value(ranges)), main), s, data)
 end
 
+# surface(::Matrix)
 function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) where {G <: Grid{2}, T <: AbstractFloat}
-    xrange = main[1].dims[1];yrange = main[1].dims[2]
+    xrange = main[1].dims[1]; yrange = main[1].dims[2]
     xscale = (maximum(xrange) - minimum(xrange)) / (length(xrange)-1)
     yscale = (maximum(yrange) - minimum(yrange)) / (length(yrange)-1)
     @gen_defaults! data begin
@@ -29,6 +43,10 @@ function _default(main::Tuple{G, MatTypes{T}}, s::Style{:surface}, data::Dict) w
     end
     surface(position_z, s, data)
 end
+
+# TODO
+# methods that distinguish Range and Vector inputs
+
 _extrema(x::FRect3D) = Vec2f0(minimum(x)[3], maximum(x)[3])
 nothing_or_vec(x) = x
 nothing_or_vec(x::Array) = vec(x)
@@ -123,17 +141,6 @@ function grid_pos(grid::Grid{3})
 end
 
 
-function _position_calc(
-        grid::Grid{2}, position_z::MatTypes{T}, target::Type{Texture}
-    ) where T<:AbstractFloat
-    """
-    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
-    ivec2 index2D = ind2sub(dims, index1D);
-    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
-    float height = texture(position_z, index01).x;
-    pos = vec3($(grid_pos(grid)), height);
-    """
-end
 
 function _position_calc(
         position_x::MatTypes{T}, position_y::MatTypes{T}, position_z::MatTypes{T}, target::Type{Texture}
@@ -151,20 +158,27 @@ function _position_calc(
 end
 
 function _position_calc(
-        position_x::VectorTypes{T}, position_y::T, position_z::T, target::Type{TextureBuffer}
-    ) where T <: AbstractFloat
-    "pos = vec3(texelFetch(position_x, index).x, position_y, position_z);"
+        position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::MatTypes{T}, 
+        target::Type{Texture}
+    ) where T<:AbstractFloat
+    """
+    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
+    ivec2 index2D = ind2sub(dims, index1D);
+    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    pos = vec3(
+        texelFetch(position_x, index2D.x, 0).x,
+        texelFetch(position_y, index2D.y, 0).x,
+        texelFetch(position_z, index2D, 0).x
+    );
+    """
 end
-function _position_calc(
-        position_x::VectorTypes{T}, position_y::T, position_z::T, target::Type{GLBuffer}
-    ) where T <: AbstractFloat
-    "pos = vec3(position_x, position_y, position_z);"
-end
+
 function _position_calc(
         position_xyz::VectorTypes{T}, target::Type{TextureBuffer}
     ) where T <: StaticVector
     "pos = texelFetch(position, index).xyz;"
 end
+
 function _position_calc(
         position_xyz::VectorTypes{T}, target::Type{GLBuffer}
     ) where T <: StaticVector
@@ -173,10 +187,80 @@ function _position_calc(
     needs_comma = len != 3 ? ", " : ""
     "pos = vec3(position $needs_comma $filler);"
 end
+
+function _position_calc(
+        grid::Grid{2}, position_z::MatTypes{T}, target::Type{Texture}
+    ) where T<:AbstractFloat
+    """
+    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
+    ivec2 index2D = ind2sub(dims, index1D);
+    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    float height = texture(position_z, index01).x;
+    pos = vec3($(grid_pos(grid)), height);
+    """
+end
+
+
+
+################################################################################
+### Unused?
+################################################################################
+
+
+
+function _position_calc(
+        grid::Grid{1}, position_y::VectorTypes{T}, position_z::MatTypes{T}, 
+        target::Type{Texture}
+    ) where T<:AbstractFloat
+    @info "_position_calc Grid{1} Vector Mat -> Texture"
+    """
+    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
+    ivec2 index2D = ind2sub(dims, index1D);
+    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    pos = vec3(
+        $(grid_pos(grid)),
+        texelFetch(position_y, index2D.y, 0).x,
+        texelFetch(position_z, index2D, 0).x
+    );
+    """
+end
+
+function _position_calc(
+        position_x::VectorTypes{T}, grid::Grid{1}, position_z::MatTypes{T}, 
+        target::Type{Texture}
+    ) where T<:AbstractFloat
+    @info "_position_calc Vector Grid{1} Mat -> Texture"
+    """
+    int index1D = index + offseti.x + offseti.y * dims.x + (index/(dims.x-1));
+    ivec2 index2D = ind2sub(dims, index1D);
+    vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
+    pos = vec3(
+        texelFetch(position_x, index2D.x, 0).x,
+        $(grid_pos(grid)),
+        texelFetch(position_z, index2D, 0).x
+    );
+    """
+end
+
+function _position_calc(
+        position_x::VectorTypes{T}, position_y::T, position_z::T, target::Type{TextureBuffer}
+    ) where T <: AbstractFloat
+    @info "_position_calc Vector T T -> Texture"
+    "pos = vec3(texelFetch(position_x, index).x, position_y, position_z);"
+end
+function _position_calc(
+        position_x::VectorTypes{T}, position_y::T, position_z::T, target::Type{GLBuffer}
+    ) where T <: AbstractFloat
+    @info "_position_calc Vector T T -> GLBuffer"
+    "pos = vec3(position_x, position_y, position_z);"
+end
+
+
 function _position_calc(
         position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::VectorTypes{T},
         target::Type{TextureBuffer}
     ) where T<:AbstractFloat
+    @info "_position_calc Vector, Vector, Vector -> Texture"
     "pos = vec3(
         texelFetch(position_x, index).x,
         texelFetch(position_y, index).x,
@@ -187,6 +271,7 @@ function _position_calc(
         position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::VectorTypes{T},
         target::Type{GLBuffer}
     ) where T<:AbstractFloat
+    @info "_position_calc Vector, Vector, Vector -> GLBuffer"
     "pos = vec3(
         position_x,
         position_y,
@@ -196,6 +281,7 @@ end
 function _position_calc(
         position::Grid{1}, target
     )
+    @info "_position_calc Grid{1}"
     "
     pos = vec3($(grid_pos(position)), 0, 0);
     "
@@ -203,6 +289,7 @@ end
 function _position_calc(
         position::Grid{2}, target
     )
+    @info "_position_calc Grid{2}"
     "
     ivec2 index2D = ind2sub(position.dims, index);
     pos = vec3($(grid_pos(position)), 0);
@@ -211,6 +298,7 @@ end
 function _position_calc(
         position::Grid{2}, ::VectorTypes{T}, target::Type{GLBuffer}
     ) where T
+    @info "_position_calc Grid{2}, Vector -> GLBuffer"
     "
     ivec2 index2D = ind2sub(position.dims, index);
     pos = vec3($(grid_pos(position)), position_z);
@@ -219,6 +307,7 @@ end
 function _position_calc(
         position::Grid{3}, target
     )
+    @info "_position_calc Grid{3}"
     "
     ivec3 index2D = ind2sub(position.dims, index);
     pos = $(grid_pos(position));

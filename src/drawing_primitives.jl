@@ -435,11 +435,20 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         gl_attributes[:image] = img
         args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
-        if all(v-> to_value(v) isa AbstractMatrix, args)
+        # assuming args[3] is always a AbstractMatrix
+        types = map(v -> typeof(to_value(v)), args[1:2]) 
+
+        if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
             args = map(args) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
+        # Ranges are actually cast to vectors beforehand, so this never executes
+        # elseif all(T -> T <: AbstractRange, types)
+        #     gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
+        #     z_data = Texture(el32convert(args[3]); minfilter=:nearest)
+        #     return visualize(z_data, Style(:surface), gl_attributes)
+        # TODO: one Vector + one Range
         else
             gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
             z_data = Texture(el32convert(args[3]); minfilter=:nearest)

@@ -1,6 +1,12 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
+struct Grid1D{
+    int lendiv;
+    float start;
+    float stop;
+    int dims;
+};
 struct Grid2D{
     ivec2 lendiv;
     vec2 start;
@@ -66,6 +72,9 @@ vec4 linear_texture(sampler2D tex, int index, vec2 offset);
 // vec3 getnormal_fast(sampler2D zvalues, ivec2 uv);
 vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, vec2 uv);
+vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv);
+vec3 getnormal(Nothing pos, sampler1D xs, Grid1D ys, sampler2D zs, vec2 uv);
+vec3 getnormal(Nothing pos, Grid1D xs, sampler1D ys, sampler2D zs, vec2 uv);
 
 uniform bool wireframe;
 uniform uint objectid;
