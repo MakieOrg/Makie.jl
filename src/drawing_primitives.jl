@@ -433,25 +433,32 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         end
 
         gl_attributes[:image] = img
-        args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
-        # assuming args[3] is always a AbstractMatrix
-        types = map(v -> typeof(to_value(v)), args[1:2]) 
+        
+        @assert to_value(x[3]) isa AbstractMatrix
+        types = map(v -> typeof(to_value(v)), x[1:2])
 
         if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
-            args = map(args) do arg
+            args = map(x[1:3]) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
         # Ranges are actually cast to vectors beforehand, so this never executes
-        # elseif all(T -> T <: AbstractRange, types)
-        #     gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-        #     z_data = Texture(el32convert(args[3]); minfilter=:nearest)
-        #     return visualize(z_data, Style(:surface), gl_attributes)
-        # TODO: one Vector + one Range
+        # Untested
+        #   - may need additional _default and _position_calc methods
+        #   - may also need changes in util.vert/surface.vert
+        # elseif any(T -> T <: AbstractRange, types)
+        #     args = map(x[1:3]) do arg
+        #         if arg isa AbstractRange
+        #             Grid(arg)
+        #         else
+        #             Texture(el32convert(arg); minfilter=:nearest)
+        #         end
+        #     end
+        #     return visualize(args, Style(:surface), gl_attributes)
         else
-            gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-            z_data = Texture(el32convert(args[3]); minfilter=:nearest)
+            gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
+            z_data = Texture(el32convert(x[3]); minfilter=:nearest)
             return visualize(z_data, Style(:surface), gl_attributes)
         end
     end

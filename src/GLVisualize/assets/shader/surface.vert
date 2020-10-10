@@ -1,12 +1,12 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
-struct Grid1D{
-    int lendiv;
-    float start;
-    float stop;
-    int dims;
-};
+// struct Grid1D{
+//     int lendiv;
+//     float start;
+//     float stop;
+//     int dims;
+// };
 struct Grid2D{
     ivec2 lendiv;
     vec2 start;
@@ -66,6 +66,7 @@ uniform mat4 view, model, projection;
 // See util.vert for implementations
 void render(vec4 position_world, vec3 normal, mat4 view, mat4 projection, vec3 lightposition);
 ivec2 ind2sub(ivec2 dim, int linearindex);
+vec2 grid_pos(Grid2D pos, vec2 uv);
 vec2 linear_index(ivec2 dims, int index);
 vec2 linear_index(ivec2 dims, int index, vec2 offset);
 vec4 linear_texture(sampler2D tex, int index, vec2 offset);
@@ -73,8 +74,9 @@ vec4 linear_texture(sampler2D tex, int index, vec2 offset);
 vec3 getnormal(Grid2D pos, Nothing xs, Nothing ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler2D xs, sampler2D ys, sampler2D zs, vec2 uv);
 vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv);
-vec3 getnormal(Nothing pos, sampler1D xs, Grid1D ys, sampler2D zs, vec2 uv);
-vec3 getnormal(Nothing pos, Grid1D xs, sampler1D ys, sampler2D zs, vec2 uv);
+// Unused
+// vec3 getnormal(Nothing pos, sampler1D xs, Grid1D ys, sampler2D zs, vec2 uv);
+// vec3 getnormal(Nothing pos, Grid1D xs, sampler1D ys, sampler2D zs, vec2 uv);
 
 uniform bool wireframe;
 uniform uint objectid;
