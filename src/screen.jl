@@ -426,7 +426,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     x, y =  xy .+ 1 .- Vec2f0(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][2] < 0xffff)
+        if (d < min_dist) && (sid[i, j][2] < 0x3f800000)
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
         end
@@ -466,7 +466,7 @@ function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     sid = zeros(SelectionID{UInt16}, widths(rect)...)
     if x > 0 && y > 0 && x <= w && y <= h
         glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
-        sid = filter(x -> x.id < 0xffff,sid)
+        sid = filter(x -> x.id < 0x3f800000,sid)
         return map(unique(vec(SelectionID{Int}.(sid)))) do sid
             (screen.cache2plot[sid.id], sid.index)
         end
