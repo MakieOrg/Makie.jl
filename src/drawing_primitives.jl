@@ -165,10 +165,10 @@ function handle_intensities!(attributes)
     end
 end
 
-function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
+function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
-    if isempty(x.plots) # if no plots inserted, this truely is an atomic
+    if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
@@ -179,7 +179,7 @@ function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
+function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
@@ -209,7 +209,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
+function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -221,7 +221,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
+function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegments))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
