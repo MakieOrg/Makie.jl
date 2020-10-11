@@ -97,6 +97,7 @@ function meshparticle(p, s, data)
             nothing
         end => to_meshcolor
         vertex_color = Vec4f0(1)
+        matcap = nothing => Texture
         fetch_pixel = false
         uv_scale = Vec2f0(1)
 

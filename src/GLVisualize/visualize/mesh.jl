@@ -6,6 +6,7 @@ function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GeometryB
         vertex_color = Vec4f0(0)
         texturecoordinates = Vec2f0(0)
         image = nothing => Texture
+        matcap = nothing => Texture
         fetch_pixel = false
         uv_scale = Vec2f0(1)
         shader = GLVisualizeShader(
