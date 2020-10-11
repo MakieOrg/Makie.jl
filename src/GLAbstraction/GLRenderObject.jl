@@ -1,7 +1,7 @@
 function RenderObject(
         data::Dict{Symbol}, program, pre,
-        bbs = Node(FRect3D(Vec3f0(0),Vec3f0(1))),
-        main = nothing
+        bbs=Node(FRect3D(Vec3f0(0), Vec3f0(1))),
+        main=nothing
     )
     RenderObject(convert(Dict{Symbol,Any}, data), program, pre, bbs, main)
 end
@@ -73,14 +73,14 @@ end
 export EmptyPrerender
 export prerendertype
 
-function instanced_renderobject(data, program, bb = Node(FRect3D(Vec3f0(0), Vec3f0(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
+function instanced_renderobject(data, program, bb=Node(FRect3D(Vec3f0(0), Vec3f0(1))), primitive::GLenum=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrenderInstanced(main, robj.vertexarray, primitive)
     robj
 end
 
-function std_renderobject(data, program, bb = Node(FRect3D(Vec3f0(0), Vec3f0(1))), primitive=GL_TRIANGLES, main=nothing)
+function std_renderobject(data, program, bb=Node(FRect3D(Vec3f0(0), Vec3f0(1))), primitive=GL_TRIANGLES, main=nothing)
     pre = StandardPrerender()
     robj = RenderObject(convert(Dict{Symbol,Any}, data), program, pre, nothing, bb, main)
     robj.postrenderfunction = StandardPostrender(robj.vertexarray, primitive)
@@ -90,18 +90,3 @@ end
 prerendertype(::Type{RenderObject{Pre}}) where {Pre} = Pre
 prerendertype(::RenderObject{Pre}) where {Pre} = Pre
 
-"""
-Copy function for a RenderObject. We only copy the uniform dict
-"""
-function Base.copy(robj::RenderObject{Pre}) where Pre
-    uniforms = Dict{Symbol, Any}([(k,v) for (k,v) in robj.uniforms])
-    robj = RenderObject{Pre}(
-        robj.main,
-        uniforms,
-        robj.vertexarray,
-        robj.prerenderfunction,
-        robj.postrenderfunction,
-        robj.boundingbox,
-    )
-    Context(robj)
-end

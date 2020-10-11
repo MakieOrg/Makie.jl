@@ -32,7 +32,7 @@ mutable struct GLFramebuffer
     id::NTuple{2, GLuint}
 
     color::Texture{RGBA{N0f8}, 2}
-    objectid::Texture{Vec{2, GLushort}, 2}
+    objectid::Texture{Vec{2, GLuint}, 2}
     depth::Texture{GLAbstraction.DepthStencil_24_8, 2}
     position::Texture{Vec4f0, 2}
     normal_occlusion::Texture{Vec4f0, 2}
@@ -159,7 +159,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
 
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
+    objectid_buffer = Texture(Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     position_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
     normal_occlusion_buffer = Texture(Vec4f0, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 

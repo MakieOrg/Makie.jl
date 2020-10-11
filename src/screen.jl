@@ -391,7 +391,7 @@ end
 
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
-    sid = Base.RefValue{SelectionID{UInt16}}()
+    sid = Base.RefValue{SelectionID{UInt32}}()
     window_size = widths(screen)
     fb = screen.framebuffer
     buff = fb.objectid
@@ -418,7 +418,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    sid = Matrix{SelectionID{UInt16}}(undef, dx, dy)
+    sid = Matrix{SelectionID{UInt32}}(undef, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sid)
 
     min_dist = range^2 # squared distance
@@ -463,7 +463,7 @@ function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     x, y = minimum(rect)
     rw, rh = widths(rect)
     w, h = window_size
-    sid = zeros(SelectionID{UInt16}, widths(rect)...)
+    sid = zeros(SelectionID{UInt32}, widths(rect)...)
     if x > 0 && y > 0 && x <= w && y <= h
         glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
         sid = filter(x -> x.id < 0x3f800000,sid)

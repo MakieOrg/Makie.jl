@@ -66,7 +66,7 @@ const WINDOW_CONFIG = (renderloop = Ref{Function}(renderloop),
 """
     set_window_config!(;
         renderloop = renderloop,
-        vsync = true,
+        vsync = false,
         framerate = 30.0,
         float = false,
         pause_rendering = false,
