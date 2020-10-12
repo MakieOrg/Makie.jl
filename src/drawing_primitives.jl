@@ -443,19 +443,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
-        # Ranges are actually cast to vectors beforehand, so this never executes
-        # Untested
-        #   - may need additional _default and _position_calc methods
-        #   - may also need changes in util.vert/surface.vert
-        # elseif any(T -> T <: AbstractRange, types)
-        #     args = map(x[1:3]) do arg
-        #         if arg isa AbstractRange
-        #             Grid(arg)
-        #         else
-        #             Texture(el32convert(arg); minfilter=:nearest)
-        #         end
-        #     end
-        #     return visualize(args, Style(:surface), gl_attributes)
         else
             gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
             z_data = Texture(el32convert(x[3]); minfilter=:nearest)

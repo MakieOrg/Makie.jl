@@ -22,13 +22,6 @@ struct Grid3D{
     ivec3 dims;
 };
 
-/*
-// Currently unused. Would be needed for getnormal (see below)
-float grid_pos(Grid1D position, float u){
-    return (1-u) * position.start + u * position.stop;
-}
-*/
-
 vec2 grid_pos(Grid2D position, vec2 uv){
     return vec2(
         (1-uv[0]) * position.start[0] + uv[0] * position.stop[0], 
@@ -376,52 +369,3 @@ vec3 getnormal(Nothing pos, sampler1D xs, sampler1D ys, sampler2D zs, vec2 uv){
 
     return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
 }
-
-
-/*
-// These methods are currently unused - requires changes of 
-// AbstractPlotting.convert_arguments(::SurfaceLike, ...)
-// and additional _default() methods in GLMakie
-
-// Overload for surface(range, Vector, Matrix)
-vec3 getnormal(Nothing pos, Grid1D xs, sampler1D ys, sampler2D zs, vec2 uv){
-    // The +1e-6 fixes precision errors at the edge
-    float du = 1.0 / textureSize(zs,0).x + 1e-6;
-    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
-
-    vec3 s0, s1, s2, s3, s4;
-    vec2 off1 = uv + vec2(-du, 0); 
-    vec2 off2 = uv + vec2(0, dv); 
-    vec2 off3 = uv + vec2(du, 0); 
-    vec2 off4 = uv + vec2(0, -dv); 
-    
-    s0 = vec3(grid_pos(xs,   uv.x), texture(ys,   uv.y).x, texture(zs,   uv).x);
-    s1 = vec3(grid_pos(xs, off1.x), texture(ys, off1.y).x, texture(zs, off1).x); 
-    s2 = vec3(grid_pos(xs, off2.x), texture(ys, off2.y).x, texture(zs, off2).x); 
-    s3 = vec3(grid_pos(xs, off3.x), texture(ys, off3.y).x, texture(zs, off3).x); 
-    s4 = vec3(grid_pos(xs, off4.x), texture(ys, off4.y).x, texture(zs, off4).x); 
-
-    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
-}
-
-// Overload for surface(Vector, Grid1D, Matrix)
-vec3 getnormal(Nothing pos, sampler1D xs, Grid1D ys, sampler2D zs, vec2 uv){
-    // The +1e-6 fixes precision errors at the edge
-    float du = 1.0 / textureSize(zs,0).x + 1e-6;
-    float dv = 1.0 / textureSize(zs,0).y + 1e-6;
-
-    vec3 s0, s1, s2, s3, s4;
-    vec2 off1 = uv + vec2(-du, 0); 
-    vec2 off2 = uv + vec2(0, dv); 
-    vec2 off3 = uv + vec2(du, 0); 
-    vec2 off4 = uv + vec2(0, -dv); 
-    
-    s0 = vec3(texture(xs,   uv.x).x, grid_pos(ys,   uv.y), texture(zs,   uv).x);
-    s1 = vec3(texture(xs, off1.x).x, grid_pos(ys, off1.y), texture(zs, off1).x); 
-    s2 = vec3(texture(xs, off2.x).x, grid_pos(ys, off2.y), texture(zs, off2).x); 
-    s3 = vec3(texture(xs, off3.x).x, grid_pos(ys, off3.y), texture(zs, off3).x); 
-    s4 = vec3(texture(xs, off4.x).x, grid_pos(ys, off4.y), texture(zs, off4).x); 
-
-    return normal_from_points(s0, s1, s2, s3, s4, uv, off1, off2, off3, off4);
-}
-*/
