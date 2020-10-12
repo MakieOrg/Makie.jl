@@ -91,6 +91,7 @@
         using Makie,GLMakie
         using AbstractPlotting:project,transformationmatrix
         using StaticArrays
+        using GeometryBasics
 
         # this function should probably be included in AbstractPlotting
         function AbstractPlotting.project(scene::Scene,point::T) where T<:StaticVector
@@ -105,7 +106,10 @@
         display(scene)
         
         # test for pick a single data point (with idx > 65535)
-        plot,idx = pick(scene,project(scene,Point((100000.,100000.))))
+        idx = 0
+        while idx == 0
+            plot,idx = pick(scene,project(scene,Point((100000.,100000.))))
+        end
         @assert idx == 100000
         
         # test for pick a rectangle of data points (also with some indices > 65535)
