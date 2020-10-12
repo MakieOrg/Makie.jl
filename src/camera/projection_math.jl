@@ -307,6 +307,16 @@ function to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
+function project(scene::Scene,point::T) where T<:StaticVector
+    cam = scene.camera
+    project(
+        cam.projection[] * 
+        cam.view[] * 
+        transformationmatrix(scene)[],
+        Vec2(scene.resolution[]), point
+    )
+end
+
 function project(matrix::Mat4f0, p::T, dim4 = 1.0) where T <: VecTypes
     p = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0.0), dim4)
     p = matrix * p
