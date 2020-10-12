@@ -31,7 +31,7 @@ mutable struct Scene <: AbstractScene
     The limits of the data plotted in this scene.
     Can't be set by user and is only used to store calculated data bounds.
     """
-    data_limits::Node{Union{Nothing, FRect3D}}
+    data_limits::Node{Union{Nothing,FRect3D}}
 
     "The [`Transformation`](@ref) of the Scene."
     transformation::Transformation
@@ -72,7 +72,7 @@ function Scene(
         attributes::Attributes, # the actual attribute values of a scene
         children::Vector{Scene},
         current_screens::Vector{AbstractScreen},
-        parent = nothing,
+        parent=nothing,
     )
 
     # indicates whether we can start updating the plot
@@ -81,7 +81,7 @@ function Scene(
 
     scene = Scene(
         parent, events, px_area, clear, camera, camera_controls,
-        Node{Union{Nothing, FRect3D}}(scene_limits),
+        Node{Union{Nothing,FRect3D}}(scene_limits),
         transformation, plots, theme, attributes,
         children, current_screens, updated
     )
@@ -106,7 +106,7 @@ function Scene(
 end
 
 
-function Scene(;clear = true, transform_func=identity, scene_attributes...)
+function Scene(;clear=true, transform_func=identity, scene_attributes...)
     events = Events()
     theme = current_default_theme(; scene_attributes...)
     attributes = copy(theme)
@@ -114,7 +114,7 @@ function Scene(;clear = true, transform_func=identity, scene_attributes...)
         IRect(0, 0, res)
     end
     on(events.window_area) do w_area
-        if !any(x-> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
+        if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
             px_area[] = w_area
         end
     end
@@ -140,14 +140,14 @@ end
 
 function Scene(
         scene::Scene;
-        events = scene.events,
-        px_area = scene.px_area,
-        clear = false,
-        cam = scene.camera,
-        camera_controls = scene.camera_controls,
-        transformation = Transformation(scene),
-        theme = copy(theme(scene)),
-        current_screens = scene.current_screens,
+        events=scene.events,
+        px_area=scene.px_area,
+        clear=false,
+        cam=scene.camera,
+        camera_controls=scene.camera_controls,
+        transformation=Transformation(scene),
+        theme=copy(theme(scene)),
+        current_screens=scene.current_screens,
         kw_args...
     )
     child = Scene(
@@ -220,7 +220,7 @@ parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
 
 Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
 Base.size(x::Scene, i) = size(x)[i]
-function Base.resize!(scene::Scene, xy::Tuple{Number, Number})
+function Base.resize!(scene::Scene, xy::Tuple{Number,Number})
     resize!(scene, IRect(0, 0, xy))
 end
 Base.resize!(scene::Scene, x::Number, y::Number) = resize!(scene, (x, y))
@@ -263,7 +263,7 @@ function update!(p::Scene)
 end
 
 # Just indexing into a scene gets you plot 1, plot 2 etc
-Base.iterate(scene::Scene, idx = 1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
+Base.iterate(scene::Scene, idx=1) = idx <= length(scene) ? (scene[idx], idx + 1) : nothing
 Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
@@ -280,11 +280,11 @@ end
 Creates a subscene with a pixel camera
 """
 function cam2d(scene::Scene)
-    return child(scene, clear = false, camera = cam2d!)
+    return child(scene, clear=false, camera=cam2d!)
 end
 
 function campixel(scene::Scene)
-    return child(scene, clear = false, camera = campixel!)
+    return child(scene, clear=false, camera=campixel!)
 end
 
 function getindex(scene::Scene, ::Type{Axis})
@@ -304,7 +304,7 @@ end
 
 function argument_names(::Type{<: AbstractPlot}, num_args::Integer)
     # this is called in the indexing function, so let's be a bit efficient
-    ntuple(i-> Symbol("arg$i"), num_args)
+    ntuple(i -> Symbol("arg$i"), num_args)
 end
 
 function Base.empty!(scene::Scene)
@@ -360,7 +360,7 @@ end
 
 function Base.delete!(scene::Scene, plot::AbstractPlot)
     len = length(scene.plots)
-    filter!(x-> x !== plot, scene.plots)
+    filter!(x -> x !== plot, scene.plots)
     if length(scene.plots) == len
         error("$(typeof(plot)) not in scene!")
     end
@@ -434,7 +434,7 @@ end
 Fetches all plots sharing the same camera
 """
 plots_from_camera(scene::Scene) = plots_from_camera(scene, scene.camera)
-function plots_from_camera(scene::Scene, camera::Camera, list = AbstractPlot[])
+function plots_from_camera(scene::Scene, camera::Camera, list=AbstractPlot[])
     append!(list, scene.plots)
     for child in scene.children
         child.camera == camera && !child.raw[] && plots_from_camera(child, camera, list)
@@ -445,7 +445,7 @@ end
 """
 Flattens all the combined plots and returns a Vector of Atomic plots
 """
-function flatten_combined(plots::Vector, flat = AbstractPlot[])
+function flatten_combined(plots::Vector, flat=AbstractPlot[])
     for elem in plots
         if (elem isa Combined)
             flatten_combined(elem.plots, flat)
@@ -461,7 +461,7 @@ function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
     end
-    foreach(s-> insertplots!(screen, s), scene.children)
+    foreach(s -> insertplots!(screen, s), scene.children)
 end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
 
@@ -479,7 +479,7 @@ function scale_scene!(scene::Scene)
     return scene
 end
 
-function center!(scene::Scene, padding = 0.01)
+function center!(scene::Scene, padding=0.01)
     bb = boundingbox(scene)
     bb = transformationmatrix(scene)[] * bb
     w = widths(bb)
@@ -511,15 +511,19 @@ it will not update the limits. Call update_limits!(scene, automatic) for that.
 """
 update_limits!(scene::Scene) = update_limits!(scene, scene.limits[])
 
-function update_limits!(scene::Scene, limits::Automatic, padding::Vec3f0 = scene.padding[])
+function update_limits!(scene::Scene, limits, padding)
+    update_limits!(scene, limits, to_ndim(Vec3f0, padding, 0.0))
+end
+
+function update_limits!(scene::Scene, ::Automatic, padding::Vec3f0=scene.padding[])
     # for when scene is empty
     dlimits = data_limits(scene)
-    dlimits === nothing && return #nothing to limit if there isn't anything
+    dlimits === nothing && return # nothing to limit if there isn't anything
     tlims = (minimum(dlimits), maximum(dlimits))
     let avec = tlims[1], bvec = tlims[2]
-        if !all(x-> all(isfinite, x), (avec, bvec))
+        if !all(x -> all(isfinite, x), (avec, bvec))
             @warn "limits of scene contain non finite values: $(avec) .. $(bvec)"
-            mini = map(x-> ifelse(isfinite(x), x, zero(x)), avec)
+            mini = map(x -> ifelse(isfinite(x), x, zero(x)), avec)
             maxi = Vec3f0(ntuple(3) do i
                 x = bvec[i]
                 ifelse(isfinite(x), x, avec[i] + oneunit(avec[i]))
@@ -555,7 +559,7 @@ and in three dimensions as a vector of the width (x-axis), breadth (y-axis), and
 Such a `Rect` can be constructed using the `FRect` or `FRect3D` functions that are exported by
 `AbstractPlotting.jl`.  See their documentation for more information.
 """
-function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0 = scene.padding[])
+function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.padding[])
     lims = FRect3D(new_limits)
     lim_w = widths(lims)
     # use the smallest widths for scaling, to have a consistently wide padding for all sides
