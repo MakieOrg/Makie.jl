@@ -69,35 +69,6 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     lt
 end
 
-defaultlayout(lt::LText) = ProtrusionLayout(lt)
-
-function align_to_bbox!(lt::LText, bbox)
-    lt.layoutobservables.suggestedbbox[] = bbox
-end
-
-reportedsizenode(lt::LText) = lt.layoutobservables.reportedsize
-protrusionnode(lt::LText) = lt.layoutobservables.protrusions
-
-
-function Base.getproperty(lt::LText, s::Symbol)
-    if s in fieldnames(LText)
-        getfield(lt, s)
-    else
-        lt.attributes[s]
-    end
-end
-
-function Base.setproperty!(lt::LText, s::Symbol, value)
-    if s in fieldnames(LText)
-        setfield!(lt, s, value)
-    else
-        lt.attributes[s][] = value
-    end
-end
-
-function Base.propertynames(lt::LText)
-    [fieldnames(LText)..., keys(lt.attributes)...]
-end
 
 function Base.delete!(lt::LText)
     GridLayoutBase.disconnect_layoutobservables!(lt.layoutobservables.gridcontent)

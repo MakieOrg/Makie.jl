@@ -8,8 +8,6 @@ function AbstractPlotting.plot!(
     plot
 end
 
-protrusionnode(ls::LScene) = ls.layoutobservables.protrusions
-reportedsizenode(ls::LScene) = ls.layoutobservables.reportedsize
 
 function LScene(parent::Scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
