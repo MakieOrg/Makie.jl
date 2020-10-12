@@ -58,17 +58,12 @@ if WORKING_OPENGL
     include("gl_backend.jl")
 end
 
-function activate!(use_display = true)
+function activate!(use_display=true)
     b = GLBackend()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.High)
     AbstractPlotting.current_backend[] = b
     AbstractPlotting.inline!(!use_display)
-end
-
-if Base.VERSION >= v"1.4.2"
-    include("precompile.jl")
-    _precompile_()
 end
 
 function __init__()
