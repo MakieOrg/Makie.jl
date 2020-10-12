@@ -1,3 +1,17 @@
+"""
+    errorbars(xs, ys, low, high; kwargs...)
+    errorbars(xs, ys, lowhigh; kwargs...)
+    errorbars(points, low, high; kwargs...)
+    errorbars(points, lowhigh; kwargs...)
+
+Plots errorbars at the given points, extending down `low` and up by `high`.
+Forms with `lowhigh` use the same error margin downwards and upwards.
+The direction of the bars can be changed to horizontal by setting the `direction` attribute
+to `:x`.
+
+## Attributes
+$(ATTRIBUTES)
+"""
 @recipe(Errorbars) do scene
     Theme(
         whiskerwidth = 10,
@@ -9,26 +23,36 @@
 end
 
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:Any, <:Any, <:Any, <:Any}
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
 
     xs, ys, low, high = plot[1:4]
-    xys = lift((x, y) -> Point2.(x, y), xs, ys)
-    _plot_errorbars!(plot, xys, low, high)
+    lowhigh = @lift(Point2f0.($low, $high))
+    xys = lift((x, y) -> Point2f0.(x, y), xs, ys)
+    _plot_errorbars!(plot, xys, lowhigh)
 end
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:Any, <:Any, <:Any}
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Point2}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
     xys, low, high = plot[1:3]
-    _plot_errorbars!(plot, xys, low, high)
+    lowhigh = @lift(Point2f0.($low, $high))
+    _plot_errorbars!(plot, xys, lowhigh)
 end
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:Any, <:Any}
-    xys, lowhigh = plot[1:2]
-    _plot_errorbars!(plot, xys, lowhigh, lowhigh)
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
+    xs, ys, same_lowhigh = plot[1:3]
+    xys = @lift(Point2f0.($xs, $ys))
+    lowhigh = @lift(Point2f0.($same_lowhigh, $same_lowhigh))
+    _plot_errorbars!(plot, xys, lowhigh)
+end
+
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Point2}, <:AbstractVector{<:Real}}
+    xys, same_lowhigh = plot[1:2]
+    lowhigh = @lift(Point2f0.($same_lowhigh, $same_lowhigh))
+    _plot_errorbars!(plot, xys, lowhigh)
 end
 
 f_if(condition, f, arg) = condition ? f(arg) : arg
 
-function _plot_errorbars!(plot, xys, low, high)
+function _plot_errorbars!(plot, xys, lowhigh)
 
     @extract plot (whiskerwidth, color, linewidth, direction, visible)
 
@@ -42,14 +66,14 @@ function _plot_errorbars!(plot, xys, low, high)
         end
     end
 
-    linesegpairs = lift(xys, low, high, is_in_y_direction) do xys, low, high, is_in_y_direction
+    linesegpairs = lift(xys, lowhigh, is_in_y_direction) do xys, lowhigh, is_in_y_direction
 
-        [(xy .+ f_if(is_in_y_direction, reverse, Point2f0(-lo, 0)),
-          xy .+ f_if(is_in_y_direction, reverse, Point2f0( hi, 0)),)
-                for (xy, lo, hi) in zip(xys, low, high)]
+        [(xy .+ f_if(is_in_y_direction, reverse, Point2f0(-lohi[1], 0)),
+          xy .+ f_if(is_in_y_direction, reverse, Point2f0( lohi[2], 0)),)
+                for (xy, lohi) in zip(xys, lowhigh)]
     end
 
-    scene = plot.parent
+    scene = parent_scene(plot)
 
     whiskers = lift(linesegpairs, scene.camera.projectionview,
         scene.camera.pixel_space, whiskerwidth) do pairs, _, _, whiskerwidth
@@ -66,8 +90,27 @@ function _plot_errorbars!(plot, xys, low, high)
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
 
+    whiskercolors = lift(color, typ = Any) do color
+        # we have twice as many linesegments for whiskers as we have errorbars, so we
+        # need to duplicate colors if a vector of colors is given
+        if color isa AbstractVector
+            repeat(color, inner = 2)
+        else
+            color
+        end
+    end
+
+    whiskerlinewidths = lift(linewidth, typ = Any) do linewidth
+        # same for linewidth
+        if linewidth isa AbstractVector
+            repeat(linewidth, inner = 2)
+        else
+            linewidth
+        end
+    end
+
     linesegments!(plot, linesegpairs, color = color, linewidth = linewidth, visible = visible)
-    linesegments!(plot, whiskers, color = color, linewidth = linewidth, visible = visible)
+    linesegments!(plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, visible = visible)
     plot
 end
 

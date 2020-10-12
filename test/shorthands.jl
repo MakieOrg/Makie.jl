@@ -1,19 +1,34 @@
 @testset "shorthands" begin
 
+    @testset "xlims!" begin
+        # test xlims of empty scene throws sane error
+        scene = Scene()
+        @test_throws ArgumentError xlims!(scene, (0,1))
+        @test_throws ArgumentError ylims!(scene, (0,1))
+        @test_throws ArgumentError zlims!(scene, (0,1))
+        lines!(scene, rand(3), rand(3), rand(3))
+        xlims!(scene, (0,1))
+        ylims!(scene, (0,1))
+        zlims!(scene, (0,1))
+    end
+
+    # update! is called when a scene is displayed and may cause ticks to change
     scene2d = scatter(1:10, 1:10);
+    update!(scene2d)
     scene = scatter(1:10, 1:10, 1:10);
+    update!(scene)
     axis = scene[Axis]
 
     @testset "tick labels" begin
 
-        @test xticklabels(scene) == ["2", "4", "6", "8", "10"]
-        @test yticklabels(scene) ==  ["0.0", "2.5", "5.0", "7.5", "10.0"]
-        @test zticklabels(scene) == ["2", "4", "6", "8", "10"]
+        @test xticklabels(scene) == ["0.0", "2.5", "5.0", "7.5", "10.0"]
+        @test yticklabels(scene) == ["0.0", "2.5", "5.0", "7.5", "10.0"]
+        @test zticklabels(scene) == ["0.0", "2.5", "5.0", "7.5", "10.0"]
         @test_throws AssertionError("The Scene does not have a z-axis!") zticklabels(scene2d)
 
-        @test xtickrange(scene) == [2.0, 4.0, 6.0, 8.0, 10.0]
+        @test xtickrange(scene) == [0.0, 2.5, 5.0, 7.5, 10.0]
         @test ytickrange(scene) == [0.0, 2.5, 5.0, 7.5, 10.0]
-        @test ztickrange(scene) == [2.0, 4.0, 6.0, 8.0, 10.0]
+        @test ztickrange(scene) == [0.0, 2.5, 5.0, 7.5, 10.0]
         @test_throws AssertionError("The Scene does not have a z-axis!") ztickrange(scene2d)
 
         xticks!(scene, xticklabels=["a", "b", "c", "d", "e"])

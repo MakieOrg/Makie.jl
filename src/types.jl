@@ -4,11 +4,12 @@ abstract type AbstractCamera end
 struct EmptyCamera <: AbstractCamera end
 
 @enum RaymarchAlgorithm begin
-    IsoValue
-    Absorption
-    MaximumIntensityProjection
-    AbsorptionRGBA
-    IndexedAbsorptionRGBA
+    IsoValue # 0
+    Absorption # 1
+    MaximumIntensityProjection # 2
+    AbsorptionRGBA # 3
+    AdditiveRGBA # 4
+    IndexedAbsorptionRGBA # 5
 end
 
 include("interaction/iodevices.jl")
@@ -22,7 +23,7 @@ $(TYPEDFIELDS)
 """
 struct Events
     """
-    The area of the window in pixels, as an [`Rect2D`](@ref).
+    The area of the window in pixels, as a `Rect2D`.
     """
     window_area::Node{IRect2D}
     """
@@ -47,7 +48,7 @@ struct Events
     """
     mouseposition::Node{NTuple{2, Float64}}
     """
-The state of the mouse drag, represented by an enumerator of [`DragEnum`](@ref).
+The state of the mouse drag, represented by an enumerator of `DragEnum`.
     """
     mousedrag::Node{Mouse.DragEnum}
     """
