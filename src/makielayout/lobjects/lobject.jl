@@ -1,33 +1,33 @@
-const Layoutable = Union{LAxis, LObject, GridLayout}
+# LAxis and LScene currently have to be AbstractScenes because they need to work with
+# the plotting pipeline, so they are not LObjects and manually get added here
+const Layoutable = Union{LAxis, LScene, LObject}
 
-defaultlayout(layoutable::Layoutable) = ProtrusionLayout(layoutable)
+# almost like in AbstractPlotting
+# make fields type inferrable
+# just access attributes directly instead of via indexing detour
 
-function align_to_bbox!(layoutable::Layoutable, bbox)
-    layoutable.layoutobservables.suggestedbbox[] = bbox
-end
+@generated hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
 
-reportedsizenode(layoutable::Layoutable) = layoutable.layoutobservables.reportedsize
-protrusionnode(layoutable::Layoutable) = layoutable.layoutobservables.protrusions
-
-
-function Base.getproperty(layoutable::T, s::Symbol) where T <: Layoutable
-    if s in fieldnames(T)
-        getfield(layoutable, s)
+@inline function Base.getproperty(x::T, key::Symbol) where T <: Layoutable
+    if hasfield(x, Val(key))
+        getfield(x, key)
     else
-        layoutable.attributes[s]
+        x.attributes[key]
     end
 end
 
-function Base.setproperty!(layoutable::T, s::Symbol, value) where T <: Layoutable
-    if s in fieldnames(T)
-        setfield!(layoutable, s, value)
+@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Layoutable
+    if hasfield(x, Val(key))
+        setfield!(x, key, value)
     else
-        layoutable.attributes[s][] = value
+        x.attributes[key][] = value
     end
 end
 
+# propertynames should list fields and attributes
 function Base.propertynames(layoutable::T) where T <: Layoutable
     [fieldnames(T)..., keys(layoutable.attributes)...]
 end
 
+# treat all layoutables as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Layoutable) = Ref(l)
