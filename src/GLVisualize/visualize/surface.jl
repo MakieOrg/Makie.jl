@@ -48,12 +48,13 @@ _extrema(x::FRect3D) = Vec2f0(minimum(x)[3], maximum(x)[3])
 nothing_or_vec(x) = x
 nothing_or_vec(x::Array) = vec(x)
 
-function normal_calc(x::Bool)
+function normal_calc(x::Bool, invert_normals::Bool = false)
+    i = invert_normals ? "-" : ""
     if x
-        "getnormal(position, position_x, position_y, position_z, o_uv);"
+        "$(i)getnormal(position, position_x, position_y, position_z, o_uv);"
         # "getnormal_fast(position_z, ind2sub(dims, index1D));"
     else
-        "vec3(0, 0, 1);"
+        "vec3(0, 0, $(i)1);"
     end
 end
 
@@ -93,6 +94,7 @@ function surface(main, s::Style{:surface}, data::Dict)
         distancefield = nothing => Texture
         shading = true
         normal = shading
+        invert_normals = false
     end
     @gen_defaults! data begin
         color = nothing => Texture
@@ -107,7 +109,7 @@ function surface(main, s::Style{:surface}, data::Dict)
             to_value(wireframe) ? "distance_shape.frag" : "standard.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
-                "normal_calc" => normal_calc(normal),
+                "normal_calc" => normal_calc(normal, to_value(invert_normals)),
                 "light_calc" => light_calc(shading),
             )
         )
