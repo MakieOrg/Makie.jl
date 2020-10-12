@@ -133,7 +133,7 @@ $(ATTRIBUTES)
             textsize = (6.0, 6.0, 6.0),
             align = axisnames_align3d,
             font = lift(dim3, theme(scene, :font)),
-            gap = 1
+            gap = 3
         ),
 
         ticks = Attributes(
@@ -145,7 +145,7 @@ $(ATTRIBUTES)
             rotation = tickrotations3d,
             textsize = (tsize, tsize, tsize),
             align = tickalign3d,
-            gap = 1,
+            gap = 3,
             font = lift(dim3, theme(scene, :font)),
         ),
 
@@ -603,7 +603,7 @@ to3tuple(x) = ntuple(i-> x, Val(3))
 
 function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
     # make sure we extend all args to 3D
-    ranges, labels = ranges_labels
+    ranges, ticklabels = ranges_labels
     args3d = to3tuple.(args)
     (
         showaxis, showticks, showgrid,
@@ -615,13 +615,10 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
 
     N = 3
     start!(textbuffer); start!(linebuffer)
-    ranges_ticks = Pair.(ranges, labels)
     mini, maxi = first.(limits), last.(limits)
 
-    ranges = map(i-> [mini[i]; first(ranges_ticks[i]); maxi[i]], 1:3)
-    ticklabels = map(x-> [""; last(x); ""], ranges_ticks)
-    origin = Point{N, Float32}(mini)
-    limit_widths = maxi .- mini
+    origin = Point{N, Float32}(min.(mini, first.(ranges)))
+    limit_widths = max.(last.(ranges), maxi) .- origin
     % = minimum(limit_widths) / 100 # percentage
     ttextsize = (%) .* ttextsize
     axisnames_size = (%) .* axisnames_size
@@ -630,7 +627,7 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
     tgap = (%) .* tgap
     for i = 1:N
         axis_vec = unit(Point{N, Float32}, i)
-        width = _widths(ranges[i])
+        width = Float32(limit_widths[i])
         stop = origin .+ (width .* axis_vec)
         if showaxis[i]
             append!(linebuffer, [origin, stop], color = axiscolors[i], linewidth = 1.5f0)
@@ -641,17 +638,17 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
             tickdir = unit(Point{N, Float32}, j)
             tickdir, offset2 = if i != 2
                 tickdir = unit(Vec{N, Float32}, j)
-                tickdir, Float32(_widths(ranges[j]) + tgap[i]) * tickdir
+                tickdir, Float32(limit_widths[j] + tgap[i]) * tickdir
             else
                 tickdir = unit(Vec{N, Float32}, 1)
-                tickdir, Float32(_widths(ranges[1]) + tgap[i]) * tickdir
+                tickdir, Float32(limit_widths[1] + tgap[i]) * tickdir
             end
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
                 if length(labels) >= j
                     str = labels[j]
                     if !isempty(str)
-                        startpos = (origin .+ ((Float32(tick - range[1]) * axis_vec)) .+ offset2)
+                        startpos = (origin .+ ((Float32(tick - origin[i]) * axis_vec)) .+ offset2)
                         push!(
                             textbuffer, str, startpos,
                             color = ttextcolor[i], rotation = trotation[i],
@@ -681,8 +678,8 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
                 j = mod1(_j, N)
                 dir = unit(Point{N, Float32}, j)
                 range = ranges[j]
-                for tick in drop(range, 1)
-                    offset = Float32(tick - range[1]) * dir
+                for tick in range
+                    offset = Float32(tick - origin[j]) * dir
                     append!(
                         linebuffer, [origin .+ offset, stop .+ offset],
                         color = c, linewidth = thickness

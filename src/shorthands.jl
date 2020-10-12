@@ -52,11 +52,34 @@ zlabel!(zlabel::AbstractString) = zlabel!(current_scene(), zlabel)
 ################################################################################
 """
     setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
-    
+
 Sets the limits of the scene for dim=1.
 """
 function setlims!(scene::Scene, min_max::NTuple{2, Real}, dim=1)
     ol = scene_limits(scene)             # get the Scene's limits as values
+    if ol === nothing
+        msg = """
+        Setting limits of empty scene is currently not supported.
+        A possible workaround is to replace code like:
+        ```julia
+        scene = Scene(...)
+        ylims!(scene, ...)
+        plot!(scene, ...)
+        ```
+        by code like:
+        ```julia
+        scene = Scene(...)
+        plot!(scene, ...)
+        ylims!(scene, ...)
+        ```
+        or code like:
+        ```julia
+        scene = Scene(limits=FRect2D(0,0,5, 5))
+        plot!(scene, ...)
+        ```
+        """
+        throw(ArgumentError(msg))
+    end
     o_origin = minimum(ol)                         # get the original origin
     o_widths = widths(ol)                         # get the original widths
     n_widths = convert(Vector, o_widths)         # convert to mutable form
@@ -124,21 +147,21 @@ end
 """
     xticklabels(scene)
 
-Returns the all the x-axis tick labels. See also [`ticklabels`](@ref).
+Returns the all the x-axis tick labels. See also `ticklabels`.
 """
 xticklabels(scene) = ticklabels(scene)[1]
 
 """
     yticklabels(scene)
 
-Returns the all the y-axis tick labels. See also [`ticklabels`](@ref).
+Returns the all the y-axis tick labels. See also `ticklabels`.
 """
 yticklabels(scene) = ticklabels(scene)[2]
 
 """
     zticklabels(scene)
 
-Returns the all the z-axis tick labels. See also [`ticklabels`](@ref).
+Returns the all the z-axis tick labels. See also `ticklabels`.
 """
 function zticklabels(scene)
     @assert !is2d(scene)  "The Scene does not have a z-axis!"
@@ -159,21 +182,21 @@ end
 """
     xtickrange(scene)
 
-Returns the tick range along the x-axis. See also [`tickranges`](@ref).
+Returns the tick range along the x-axis. See also `tickranges`.
 """
 xtickrange(scene) = tickranges(scene)[1]
 
 """
     ytickrange(scene)
 
-Returns the tick range along the y-axis. See also [`tickranges`](@ref).
+Returns the tick range along the y-axis. See also `tickranges`.
 """
 ytickrange(scene) = tickranges(scene)[2]
 
 """
     ztickrange(scene)
 
-Returns the tick range along the z-axis. See also [`tickranges`](@ref).
+Returns the tick range along the z-axis. See also `tickranges`.
 """
 function ztickrange(scene)
     @assert !is2d(scene)  "The Scene does not have a z-axis!"
@@ -200,7 +223,7 @@ end
 """
     xticks!([scene,]; xtickranges=xtickrange(scene), xticklabels=xticklabel(scene))
 
-Set the tick labels and range along the x-axes. See also [`ticks!`](@ref).
+Set the tick labels and range along the x-axes. See also `ticks!`.
 """
 function xticks!(scene=current_scene(); xtickrange=xtickrange(scene), xticklabels=xticklabels(scene))
     ticks!(scene, tickranges=(xtickrange, tickranges(scene)[2:end]...), ticklabels=(xticklabels, ticklabels(scene)[2:end]...))
@@ -210,7 +233,7 @@ end
 """
     yticks!([scene,]; ytickranges=ytickrange(scene), yticklabels=yticklabel(scene))
 
-Set the tick labels and range along all the y-axis. See also [`ticks!`](@ref).
+Set the tick labels and range along all the y-axis. See also `ticks!`.
 """
 function yticks!(scene=current_scene(); ytickrange=ytickrange(scene), yticklabels=yticklabels(scene))
     r = tickranges(scene)
@@ -226,7 +249,7 @@ end
 """
     zticks!([scene,]; ztickranges=ztickrange(scene), zticklabels=zticklabel(scene))
 
-Set the tick labels and range along all z-axis. See also [`ticks!`](@ref).
+Set the tick labels and range along all z-axis. See also `ticks!`.
 """
 function zticks!(scene=current_scene(); ztickrange=ztickrange(scene), zticklabels=zticklabels(scene))
     @assert !is2d(scene)  "The Scene does not have a z-axis!"
@@ -251,21 +274,21 @@ end
 """
     xtickrotation(scene)
 
-Returns the rotation of tick labels along the x-axis. See also [`tickrotations`](@ref)
+Returns the rotation of tick labels along the x-axis. See also `tickrotations`
 """
 xtickrotation(scene) = first(tickrotations(scene))
 
 """
     ytickrotation(scene)
 
-Returns the rotation of tick labels along the y-axis. See also [`tickrotations`](@ref)
+Returns the rotation of tick labels along the y-axis. See also `tickrotations`
 """
 ytickrotation(scene) = tickrotations(scene)[2]
 
 """
     ztickrotation(scene)
 
-Returns the rotation of tick labels along the z-axis. See also [`tickrotations`](@ref)
+Returns the rotation of tick labels along the z-axis. See also `tickrotations`
 """
 function ztickrotation(scene)
     @assert !is2d(scene)  "The Scene does not have a z-axis!"
@@ -287,7 +310,7 @@ end
 """
     xtickrotation!([scene,] xangle)
 
-Set the rotation of tick labels along the x-axis. See also [`tickrotations!`](@ref).
+Set the rotation of tick labels along the x-axis. See also `tickrotations!`.
 """
 function xtickrotation!(scene::Scene, xangle)
     tickrotations!(scene, (xangle, tickrotations(scene)[2:end]...))
@@ -298,7 +321,7 @@ xtickrotation!(xangle) = xtickrotation!(current_scene(), xangle)
 """
     ytickrotation!([scene,] yangle)
 
-Set the rotation of tick labels along the y-axis. See also [`tickrotations!`](@ref).
+Set the rotation of tick labels along the y-axis. See also `tickrotations!`.
 """
 function ytickrotation!(scene::Scene, yangle)
     if is2d(scene)
@@ -312,7 +335,7 @@ ytickrotation!(yangle) = ytickrotation!(current_scene(), yangle)
 """
     ztickrotation!([scene,] zangle)
 
-Set the rotation of tick labels along the z-axis. See also [`tickrotations!`](@ref).
+Set the rotation of tick labels along the z-axis. See also `tickrotations!`.
 """
 function ztickrotation!(scene::Scene, zangle)
     @assert !is2d(scene)  "The Scene does not have a z-axis!"

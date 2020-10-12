@@ -9,7 +9,7 @@ Interaction, animations and more are done using `Node`s and event triggers.
 In this page we overview how the `Node`s pipeline works, how event-triggering works, and we give an introduction to the existing "atomic" functions for interaction.
 Examples that use interaction can be found in the Examples/`interaction` page (see [Example Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html) as well).
 
-Have a peek at [Animation](@ref) for some more information once you're done with this.
+Have a peek at [Animations](@ref) for some more information once you're done with this.
 
 ## `Node` interaction pipeline
 ### The `Node` structure
@@ -29,7 +29,7 @@ The value of the `x` can be changed by setting the empty index, i.e.:
 x[] = 3.34;
 ```
 
-Notice that you can access the value of a `Node` by indexing it with nothing, i.e. `x[]`. However, we recommend to use the function [`to_value`](@ref) to get the value of a `Node`, because `to_value` is a general function that works with all types instead of only `Node`s. E.g.:
+Notice that you can access the value of a `Node` by indexing it with nothing, i.e. `x[]`. However, we recommend to use the function `to_value` to get the value of a `Node`, because `to_value` is a general function that works with all types instead of only `Node`s. E.g.:
 ```@example 1
 to_value(x)
 ```

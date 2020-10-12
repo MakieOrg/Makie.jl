@@ -87,6 +87,7 @@ Plots a volume. Available algorithms are:
 * `:absorption` => Absorption
 * `:mip` => MaximumIntensityProjection
 * `:absorptionrgba` => AbsorptionRGBA
+* `:additive` => AdditiveRGBA
 * `:indexedabsorption` => IndexedAbsorptionRGBA
 
 ## Attributes
