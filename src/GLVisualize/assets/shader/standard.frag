@@ -35,7 +35,7 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, Nothing matcap){
 
 vec4 matcap_color(sampler2D matcap){
     vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
-    return texture2D(matcap, vec2(1.0-muv.y, muv.x));
+    return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
 vec4 get_color(Nothing image, vec2 uv, Nothing color_range, sampler2D matcap){
     return matcap_color(matcap);
