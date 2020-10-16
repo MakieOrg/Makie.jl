@@ -202,7 +202,8 @@ $(ATTRIBUTES)
         linestyle = nothing,
         scale = Vec3f0(1),
         normalize = false,
-        lengthscale = 1.0f0
+        lengthscale = 1.0f0,
+        colormap = :viridis
     )
     # connect arrow + linecolor by default
     get!(theme, :arrowcolor, theme[:linecolor])
@@ -227,7 +228,7 @@ end
 convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Vec3f0.(u, v, w))
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
-    @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor)
+    @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor, colormap)
     headstart = lift(points, directions, lengthscale) do points, directions, s
         map(points, directions) do p1, dir
             dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
@@ -237,13 +238,13 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     linesegments!(
         arrowplot, headstart,
         color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
-        linestyle = arrowplot[:linestyle],
+        linestyle = arrowplot[:linestyle], colormap = colormap,
     )
     scatterfun(N)(
         arrowplot,
         lift(x-> last.(x), headstart),
         marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
-        color = arrowcolor, rotations = directions,  strokewidth = 0.0,
+        color = arrowcolor, rotations = directions,  strokewidth = 0.0, colormap = colormap,
     )
 end
 
