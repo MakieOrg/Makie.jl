@@ -721,6 +721,12 @@ function add_zoom!(ax::LAxis)
 
         return
     end
+
+    # Also support rubber band selection
+    rect = select_rectangle(scene)
+    on(rect) do r
+        tlimits[] = r
+    end
 end
 
 """
