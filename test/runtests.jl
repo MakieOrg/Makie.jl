@@ -26,6 +26,8 @@ using MeshIO, FileIO, AbstractPlotting.MakieLayout
     @test true
 end
 
+include("zoom_pan.jl")
+
 @testset "Minimal AbstractPlotting tests" begin
 
     include("conversions.jl")

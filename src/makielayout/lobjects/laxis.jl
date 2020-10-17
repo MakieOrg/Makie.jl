@@ -438,7 +438,7 @@ end
 
 Set the target limits of `la` to an automatically determined rectangle, that depends
 on the data limits of all plot objects in the axis, as well as the autolimit margins
-for x and y axis. 
+for x and y axis.
 """
 function autolimits!(la::LAxis)
 
@@ -681,7 +681,10 @@ function add_zoom!(ax::LAxis)
             pa = pixelarea(scene)[]
 
             # don't let z go negative
-            z = max(0.1f0, 1f0 + (zoom * zoomspeed))
+            z = max(0.1f0, 1f0 - (abs(zoom) * zoomspeed))
+            if zoom > 0
+                z = 1/z   # sets the old to be a fraction of the new. This ensures zoom in & then out returns to original position.
+            end
 
             mp_axscene = Vec4f0((e.mouseposition[] .- pa.origin)..., 0, 1)
 
