@@ -62,9 +62,9 @@ end
         lock[] = false
         # Simulate pressing the keys
         key = getproperty(ax, zoomkey)[]
-        buttons = getfield(e, AbstractPlotting.button_key(key))[]
-        @test isempty(buttons)
-        push!(buttons, key)
+        keypresses = getfield(e, AbstractPlotting.button_key(key))[]
+        @test isempty(keypresses)
+        push!(keypresses, key)
         e.scroll[] = (0.0, -1.0)
         newlim = ax.limits[]
         @test newlim.widths[idx] == lim.widths[idx]
@@ -77,6 +77,18 @@ end
         @test all(abs.(newlim.origin - lim.origin) .< 1e-7*lim.widths)
     end
 
+    # Rubber band selection
+    ax, axbox, lim, e = cleanaxes()
+    e.mouseposition[] = Tuple(axbox.origin)
+    e.mousebuttons[] = Set([Mouse.left])
+    e.mousedrag[] = Mouse.down
+    e.mouseposition[] = Tuple(axbox.origin + axbox.widths ./ Vec2(2, 3))
+    e.mousedrag[] = Mouse.pressed
+    e.mousebuttons[] = Set{typeof(Mouse.left)}()
+    e.mousedrag[] = Mouse.up
+    newlim = ax.limits[]
+    @test newlim.origin == lim.origin
+    @test newlim.widths ≈ lim.widths ./ Vec2(2, 3)
 
 end
 
