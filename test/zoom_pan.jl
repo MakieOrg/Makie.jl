@@ -78,7 +78,14 @@ end
     end
 
     # Rubber band selection
-    ax, axbox, lim, e = cleanaxes()
+    # ax, axbox, lim, e = cleanaxes()
+    scene, layout = layoutscene()
+    ax = layout[1, 1] = LAxis(scene)
+    plot!(ax, [10, 15, 20])
+    axbox = pixelarea(ax.scene)[]
+    lim = ax.limits[]
+    e = events(ax.scene)
+
     e.mouseposition[] = Tuple(axbox.origin)
     e.mousebuttons[] = Set([Mouse.left])
     e.mousedrag[] = Mouse.down
@@ -87,8 +94,19 @@ end
     e.mousebuttons[] = Set{typeof(Mouse.left)}()
     e.mousedrag[] = Mouse.up
     newlim = ax.limits[]
-    @test newlim.origin == lim.origin
+    @test newlim.origin ≈ lim.origin
     @test newlim.widths ≈ lim.widths ./ Vec2(2, 3)
-
+    # Ctrl-click to restore
+    key = AbstractPlotting.Keyboard.left_control
+    keypresses = e.keyboardbuttons[]
+    @test isempty(keypresses)
+    push!(keypresses, key)
+    buttons = e.mousebuttons[]
+    @test isempty(buttons)
+    e.mousebuttons[] = Set([Mouse.left])
+    empty!(e.mousebuttons[])
+    empty!(keypresses)
+    newlim = ax.limits[]
+    @test all(lim.origin .>= newlim.origin) && all(lim.origin+lim.widths .<= newlim.origin+newlim.widths)
 end
 
