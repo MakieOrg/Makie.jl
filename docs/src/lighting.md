@@ -13,7 +13,7 @@ You can find more information on how these were implemented [here](https://learn
 
 ## SSAO
 
-GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.com/Advanced-Lighting/SSAO), which is an algorithm to more accurately simulate the scattering of light. There are a couple of controllable attributes nested within the `SSAO` toplevel attribute:
+GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.com/Advanced-Lighting/SSAO), which is an algorithm to more accurately simulate the scattering of light. There are a couple of controllable scene attributes nested within the `SSAO` toplevel attribute:
 
 - `radius` sets the range of SSAO. You may want to scale this up or
   down depending on the limits of your coordinate system
@@ -25,6 +25,10 @@ GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.c
   blurring. Small `blur` will be faster, sharper and more patterned.
   Large `blur` will be slower and smoother. Typically `blur = 2` is
   a good compromise.
+
+## Matcap
+
+A matcap (material capture) is a texture which is applied based on the normals of a given mesh. They typically include complex materials and lighting and offer a cheap way to apply those to any mesh. You may pass a matcap via the `matcap` attribute of a `mesh`, `meshscatter` or `surface` plot. Setting `shading = false` is suggested. You can find a lot matcaps [here](https://github.com/nidorx/matcaps). 
 
 ## Examples
 
@@ -123,4 +127,13 @@ meshscatter!(scene2, sphere_pos, marker=sphere, color=sphere_colors, ssao=false)
 
 scene = Scene(resolution=(900, 500))
 hbox(vbox(s1, s2, s3), vbox(scene1, scene2), parent=scene)
+```
+
+```@example 1
+using FileIO
+# or FileIO.load(GLMakie.assetpath("cat.obj"))
+catmesh = FileIO.load(MakieGallery.assetpath("cat.obj"))
+gold = FileIO.load(download("https://raw.githubusercontent.com/nidorx/matcaps/master/1024/E6BF3C_5A4719_977726_FCFC82.png"))
+
+mesh(catmesh, matcap=gold, shading=false)
 ```
