@@ -78,7 +78,6 @@ end
     end
 
     # Rubber band selection
-    # ax, axbox, lim, e = cleanaxes()
     scene, layout = layoutscene()
     ax = layout[1, 1] = LAxis(scene)
     plot!(ax, [10, 15, 20])
@@ -110,3 +109,20 @@ end
     @test all(lim.origin .>= newlim.origin) && all(lim.origin+lim.widths .<= newlim.origin+newlim.widths)
 end
 
+@testset "pan LAxis" begin
+    ax, axbox, lim, e = cleanaxes()
+    e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
+    e.scroll[] = (0.0, -1.0)
+    newlim = ax.limits[]
+    e.mouseposition[] = Tuple(axbox.origin)
+    panbtn = ax.panbutton[]
+    e.mousebuttons[] = Set([panbtn])
+    e.mousedrag[] = Mouse.down
+    e.mouseposition[] = Tuple(axbox.origin + axbox.widths/10)
+    e.mousedrag[] = Mouse.pressed
+    e.mousebuttons[] = Set{typeof(panbtn)}()
+    e.mousedrag[] = Mouse.up
+    panlim = ax.limits[]
+    @test panlim.widths == newlim.widths
+    @test (5/4)*panlim.origin ≈ -newlim.origin
+end
