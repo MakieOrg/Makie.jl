@@ -23,7 +23,7 @@ function LLegend(
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LLegend, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{LLegend}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
