@@ -215,9 +215,10 @@ function translate_cam!(scene::Scene, cam::Camera3D, _translation::VecTypes)
 end
 
 """
-    zoom!(scene, point, zoom_step)
+    zoom!(scene, point, zoom_step, shift_lookat::Bool)
 
-Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`.
+Zooms the camera of `scene` in towards `point` by a factor of `zoom_step`. A positive
+`zoom_step` zooms in while a negative `zoom_step` zooms out.
 """
 function zoom!(scene, point, zoom_step, shift_lookat::Bool)
     cam = cameracontrols(scene)
