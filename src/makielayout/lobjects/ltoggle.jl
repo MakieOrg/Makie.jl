@@ -9,7 +9,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LToggle, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{LToggle}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     markersize = lift(layoutobservables.computedbbox) do bbox
@@ -90,33 +90,4 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     end
 
     LToggle(parent, layoutobservables, attrs, decorations)
-end
-
-defaultlayout(lt::LToggle) = ProtrusionLayout(lt)
-
-reportedsizenode(lt::LToggle) = lt.layoutobservables.reportedsize
-protrusionnode(lt::LToggle) = lt.layoutobservables.protrusions
-
-function align_to_bbox!(lt::LToggle, bbox)
-    lt.layoutobservables.suggestedbbox[] = bbox
-end
-
-function Base.getproperty(lt::LToggle, s::Symbol)
-    if s in fieldnames(LToggle)
-        getfield(lt, s)
-    else
-        lt.attributes[s]
-    end
-end
-
-function Base.setproperty!(lt::LToggle, s::Symbol, value)
-    if s in fieldnames(LToggle)
-        setfield!(lt, s, value)
-    else
-        lt.attributes[s][] = value
-    end
-end
-
-function Base.propertynames(lt::LToggle)
-    [fieldnames(LToggle)..., keys(lt.attributes)...]
 end
