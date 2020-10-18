@@ -37,7 +37,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
-    layoutobservables = LayoutObservables(LAxis, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
+    layoutobservables = LayoutObservables{LAxis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     limits = Node(FRect(0, 0, 100, 100))
