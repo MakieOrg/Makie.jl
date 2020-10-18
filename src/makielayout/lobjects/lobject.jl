@@ -31,3 +31,8 @@ end
 
 # treat all layoutables as scalars when broadcasting
 Base.Broadcast.broadcastable(l::Layoutable) = Ref(l)
+
+
+function Base.show(io::IO, ::T) where T <: LObject
+    print(io, "$T()")
+end
