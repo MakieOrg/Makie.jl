@@ -34,7 +34,7 @@ function LineAxis(parent::Scene; kwargs...)
     )[end]
     decorations[:ticklines] = ticklines
 
-    ticklabelannosnode = Node{Vector{Tuple{String, Point2f0}}}([("temp", Point2f0(0, 0))])
+    ticklabelannosnode = Node(Tuple{String, Point2f0}[])
     ticklabels = annotations!(
         parent,
         ticklabelannosnode,
@@ -54,6 +54,11 @@ function LineAxis(parent::Scene; kwargs...)
                 # width
                 ticklabelsvisible[] ? width(FRect2D(boundingbox(ticklabels))) : 0f0
         end
+        # in case there is no string in the annotations and the boundingbox comes back all NaN
+        if !isfinite(maxwidth)
+            maxwidth = zero(maxwidth)
+        end
+        maxwidth
     end
 
     attrs[:actual_ticklabelspace] = 0f0
@@ -250,15 +255,18 @@ function LineAxis(parent::Scene; kwargs...)
 
         position, extents, horizontal = pos_extents_horizontal[]
 
-        real_labelsize = if iswhitespace(label)
+        label_is_empty = iswhitespace(label) || isempty(label)
+        real_labelsize = if label_is_empty
             0f0
         else
             horizontal ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
         end
 
-        labelspace = (labelvisible && !iswhitespace(label)) ? real_labelsize + labelpadding : 0f0
+        labelspace = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
-        ticklabelgap = ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0
+        tickspace = (ticksvisible && !isempty(ticklabelannosnode[])) ? tickspace : 0f0
+
+        ticklabelgap = (ticklabelsvisible && actual_ticklabelspace > 0) ? actual_ticklabelspace + ticklabelpad : 0f0
 
         together = tickspace + ticklabelgap + labelspace
     end

@@ -75,6 +75,8 @@ end
 
 function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halign, valign, lineheight_factor, justification)
 
+    isempty(str) && return Vec2f0[]
+
     char_font_scale = collect(zip([c for c in str], font_per_char, fontscale_px))
 
     linebreak_indices = (i for (i, c) in enumerate(str) if c == '\n')
@@ -108,8 +110,11 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
 
     # make lineheight a multiple of the largest lineheight in each line
     lineheights = map(cfs_groups) do group
+        # guard from empty reduction
+        isempty(group) && return 0f0
+        
         maximum(group) do (char, font, scale)
-            font.height / font.units_per_EM * lineheight_factor * scale
+            Float32(font.height / font.units_per_EM * lineheight_factor * scale)
         end
     end
 

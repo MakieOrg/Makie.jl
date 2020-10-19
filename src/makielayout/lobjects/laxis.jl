@@ -260,7 +260,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             top = xaxisprotrusion
         end
 
-        titlespace = if !titlevisible || iswhitespace(title)
+        titlespace = if !titlevisible || iswhitespace(title) || isempty(title)
             0f0
         else
             boundingbox(titlet).widths[2] + titlegap
@@ -369,19 +369,26 @@ function getlimits(la::LAxis, dim)
         filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
     elseif dim == 2
         filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
+    else
+        error("Dimension $dim not allowed. Only 1 or 2.")
     end
 
-    lim = if length(plots_with_autolimits) > 0
-        bbox = FRect2D(AbstractPlotting.data_limits(plots_with_autolimits[1]))
-        templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
-        for p in plots_with_autolimits[2:end]
-            bbox = FRect2D(AbstractPlotting.data_limits(p))
-            templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
-        end
-        templim
-    else
-        nothing
+    visible_plots = filter(
+        p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
+        plots_with_autolimits)
+
+    bboxes = [FRect2D(AbstractPlotting.data_limits(p)) for p in visible_plots]
+    finite_bboxes = filter(isfinite, bboxes)
+
+    isempty(finite_bboxes) && return nothing
+
+    templim = (finite_bboxes[1].origin[dim], finite_bboxes[1].origin[dim] + finite_bboxes[1].widths[dim])
+
+    for bb in finite_bboxes[2:end]
+        templim = limitunion(templim, (bb.origin[dim], bb.origin[dim] + bb.widths[dim]))
     end
+
+    templim
 end
 
 getxlimits(la::LAxis) = getlimits(la, 1)
