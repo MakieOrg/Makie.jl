@@ -263,7 +263,9 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         titlespace = if !titlevisible || iswhitespace(title)
             0f0
         else
-            boundingbox(titlet).widths[2] + titlegap
+            ts = boundingbox(titlet).widths[2] + titlegap
+            # guard against empty title string
+            isfinite(ts) ? ts : 0f0
         end
         top += titlespace
 
