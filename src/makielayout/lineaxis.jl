@@ -255,13 +255,14 @@ function LineAxis(parent::Scene; kwargs...)
 
         position, extents, horizontal = pos_extents_horizontal[]
 
-        real_labelsize = if iswhitespace(label)
+        label_is_empty = iswhitespace(label) || isempty(label)
+        real_labelsize = if label_is_empty
             0f0
         else
             horizontal ? boundingbox(labeltext).widths[2] : boundingbox(labeltext).widths[1]
         end
 
-        labelspace = (labelvisible && !iswhitespace(label)) ? real_labelsize + labelpadding : 0f0
+        labelspace = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
         ticklabelgap = ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0
 
