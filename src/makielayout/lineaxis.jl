@@ -264,7 +264,9 @@ function LineAxis(parent::Scene; kwargs...)
 
         labelspace = (labelvisible && !label_is_empty) ? real_labelsize + labelpadding : 0f0
         # tickspace = ticksvisible ? max(0f0, xticksize * (1f0 - xtickalign)) : 0f0
-        ticklabelgap = ticklabelsvisible ? actual_ticklabelspace + ticklabelpad : 0f0
+        tickspace = (ticksvisible && !isempty(ticklabelannosnode[])) ? tickspace : 0f0
+
+        ticklabelgap = (ticklabelsvisible && actual_ticklabelspace > 0) ? actual_ticklabelspace + ticklabelpad : 0f0
 
         together = tickspace + ticklabelgap + labelspace
     end
