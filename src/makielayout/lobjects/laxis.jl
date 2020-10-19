@@ -260,12 +260,10 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             top = xaxisprotrusion
         end
 
-        titlespace = if !titlevisible || iswhitespace(title)
+        titlespace = if !titlevisible || iswhitespace(title) || isempty(title)
             0f0
         else
-            ts = boundingbox(titlet).widths[2] + titlegap
-            # guard against empty title string
-            isfinite(ts) ? ts : 0f0
+            boundingbox(titlet).widths[2] + titlegap
         end
         top += titlespace
 
