@@ -54,6 +54,11 @@ function LineAxis(parent::Scene; kwargs...)
                 # width
                 ticklabelsvisible[] ? width(FRect2D(boundingbox(ticklabels))) : 0f0
         end
+        # in case there is no string in the annotations and the boundingbox comes back all NaN
+        if !isfinite(maxwidth)
+            maxwidth = zero(maxwidth)
+        end
+        maxwidth
     end
 
     attrs[:actual_ticklabelspace] = 0f0
