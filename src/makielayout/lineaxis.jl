@@ -34,7 +34,7 @@ function LineAxis(parent::Scene; kwargs...)
     )[end]
     decorations[:ticklines] = ticklines
 
-    ticklabelannosnode = Node{Vector{Tuple{String, Point2f0}}}([("temp", Point2f0(0, 0))])
+    ticklabelannosnode = Node(Tuple{String, Point2f0}[])
     ticklabels = annotations!(
         parent,
         ticklabelannosnode,
