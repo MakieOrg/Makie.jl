@@ -1,4 +1,5 @@
 using GeometryBasics
+using AbstractPlotting: Axis
 
 @cell "Axis theming" begin
     scene = Scene()

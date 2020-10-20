@@ -2,7 +2,7 @@ using LinearAlgebra
 using FileIO, Colors, GeometryBasics
 
 @cell "Image on Geometry (Moon)" begin
-    moon = load(MakieGallery.assetpath("moon.png"))
+    moon = loadasset("moon.png")
     scene = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
     update_cam!(scene, Vec3f0(-2, 2, 2), Vec3f0(0))
     scene.center = false # prevent to recenter on display
@@ -10,7 +10,7 @@ using FileIO, Colors, GeometryBasics
 end
 
 @cell "Image on Geometry (Earth)" begin
-    earth = load(MakieGallery.assetpath("earth.png"))
+    earth = loadasset("earth.png")
     m = uv_mesh(Tesselation(Sphere(Point3f0(0), 1f0), 60))
     mesh(m, color=earth, shading=false)
 end
@@ -54,12 +54,12 @@ end
 end
 
 @cell "Textured Mesh" begin
-    catmesh = MakieGallery.loadasset("cat.obj")
-    mesh(catmesh, color=MakieGallery.loadasset("diffusemap.png"))
+    catmesh = loadasset("cat.obj")
+    mesh(catmesh, color=loadasset("diffusemap.png"))
 end
 
 @cell "Load Mesh" begin
-    mesh(MakieGallery.loadasset("cat.obj"))
+    mesh(loadasset("cat.obj"))
 end
 
 @cell "Colored Mesh" begin
@@ -76,7 +76,7 @@ end
 end
 
 @cell "Wireframe of a Mesh" begin
-    wireframe(MakieGallery.loadasset("cat.obj"))
+    wireframe(loadasset("cat.obj"))
 end
 
 @cell "Wireframe of Sphere" begin
@@ -257,7 +257,7 @@ end
 end
 
 @cell "FEM mesh 3D" begin
-    cat = MakieGallery.loadasset("cat.obj")
+    cat = loadasset("cat.obj")
     vertices = decompose(Point3f0, cat)
     faces = decompose(TriangleFace{Int}, cat)
     coordinates = [vertices[i][j] for i = 1:length(vertices), j = 1:3]
@@ -411,7 +411,7 @@ end
 end
 
 @cell "Normals of a Cat" begin
-    x = MakieGallery.loadasset("cat.obj")
+    x = loadasset("cat.obj")
     mesh(x, color=:black)
     pos = map(decompose(Point3f0, x), GeometryBasics.normals(x)) do p, n
         p => p .+ (normalize(n) .* 0.05f0)

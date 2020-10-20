@@ -117,8 +117,6 @@ include("interaction/interactive_api.jl")
 include("documentation/documentation.jl")
 include("display.jl")
 
-include("test_database/database.jl")
-
 # help functions and supporting functions
 export help, help_attributes, help_arguments
 
@@ -202,8 +200,6 @@ export Vec4f0, Vec3f0, Vec2f0, Point4f0, Point3f0, Point2f0
 export Vec, Vec2, Vec3, Vec4, Point, Point2, Point3, Point4
 export (..), GLNormalUVMesh
 
-
-
 export widths, decompose
 
 # building blocks for series recipes
@@ -220,7 +216,6 @@ export save
 export cgrad, available_gradients, showgradients
 
 export Pattern
-
 
 # default icon for Makie
 function icon()

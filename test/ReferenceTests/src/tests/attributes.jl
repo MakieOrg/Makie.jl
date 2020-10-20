@@ -1,6 +1,3 @@
-using AbstractPlotting
-using AbstractPlotting: @cell
-
 @cell "align" begin
     scene = scatter(RNG.rand(10), color=:red)
     text!(scene, "adding text", textsize=0.6, align=(:center, :center))

@@ -28,7 +28,7 @@ end
 # NOTE: `save_media` is the function you want to overload
 # if you want to create a Gallery with custom types.
 # Simply overloading the function should do the trick
-# and MakieGallery will take care of the rest.
+# and ReferenceTests will take care of the rest.
 
 function save_media(entry, x::Scene, path::String)
     path = joinpath(path, "image.png")

@@ -1,8 +1,3 @@
-
-# The version in Images.jl throws an error... whyyyyy!?
-# Also Images has so many dependencies, I try to get rid of it, especially on 0.7
-using ImageFiltering, FixedPointNumbers, Colors, ColorTypes
-
 """
 `m = maxfinite(A)` calculates the maximum value in `A`, ignoring any values that are not finite (Inf or NaN).
 """
@@ -13,6 +8,7 @@ function maxfinite(A::AbstractArray{T}) where T
     end
     ret
 end
+
 function maxfinite(f, A::AbstractArray)
     ret = sentinel_max(typeof(f(first(A))))
     for a in A
