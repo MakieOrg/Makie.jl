@@ -95,7 +95,9 @@ function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
 end
 
 function data_limits(x::Volume)
-    xyz_boundingbox(transform_func(x), to_value.((x[1], x[2], x[3]))...)
+    _to_interval(r) = ((lo, hi) = extrema(r); lo..hi)
+    axes = (x[1], x[2], x[3])
+    xyz_boundingbox(transform_func(x), _to_interval.(to_value.(axes))...)
 end
 
 function text_limits(x::VecTypes)
