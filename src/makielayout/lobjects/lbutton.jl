@@ -11,7 +11,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LButton, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{LButton}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point2f0(0, 0))

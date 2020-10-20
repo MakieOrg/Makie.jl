@@ -120,7 +120,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LMenu, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{LMenu}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 

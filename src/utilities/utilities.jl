@@ -148,10 +148,16 @@ Like broadcast but for foreach. Doesn't care about shape and treats Tuples && St
 function broadcast_foreach(f, args...)
     lengths = bs_length.(args)
     maxlen = maximum(lengths)
+
     # all non scalars should have same length
     if any(x -> !(x in (0, 1, maxlen)), lengths)
         error("All non scalars need same length, Found lengths for each argument: $lengths, $(typeof.(args))")
     end
+
+    # skip if there's a zero length element (like an empty annotations collection, etc)
+    # this differs from standard broadcasting logic in which all non-scalar shapes have to match
+    0 in lengths && return
+
     for i in 1:maxlen
         f(bs_getindex.(args, i)...)
     end

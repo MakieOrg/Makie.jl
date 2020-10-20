@@ -14,11 +14,11 @@ end
 function default_attributes(::Type{LAxis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The xlabel string."
-        xlabel = " "
+        xlabel = ""
         "The ylabel string."
-        ylabel = " "
+        ylabel = ""
         "The axis title string."
-        title = " "
+        title = ""
         "The font family of the title."
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The title's font size."
@@ -218,7 +218,7 @@ LAxis
 function default_attributes(::Type{LColorbar}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The color bar label string."
-        label = " "
+        label = ""
         "The label color."
         labelcolor = RGBf0(0, 0, 0)
         "The label font family."

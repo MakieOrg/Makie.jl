@@ -146,15 +146,15 @@ rectangle has area > 0.
 
 The `kwargs...` are propagated into `lines!` which plots the selected rectangle.
 """
-function select_rectangle(scene; kwargs...)
+function select_rectangle(scene; strokewidth = 3.0, kwargs...)
     key = Mouse.left
     waspressed = Node(false)
     rect = Node(FRect(0, 0, 1, 1)) # plotted rectangle
     rect_ret = Node(FRect(0, 0, 1, 1)) # returned rectangle
 
     # Create an initially hidden rectangle
-    plotted_rect = lines!(
-        scene, rect, raw = true, visible = false, color = RGBAf0(0.1, 0.1, 0.8, 0.5), kwargs...,
+    plotted_rect = poly!(
+        scene, rect, raw = true, visible = false, color = RGBAf0(0, 0, 0, 0), strokecolor = RGBAf0(0.1, 0.1, 0.8, 0.5), strokewidth = strokewidth, kwargs...,
     )[end] # Why do I have to do [end] ?
 
     on(events(scene).mousedrag) do drag
