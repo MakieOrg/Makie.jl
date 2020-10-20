@@ -7,6 +7,14 @@ using GeometryBasics: Pyramid
 using PlotUtils
 using MeshIO, FileIO, AbstractPlotting.MakieLayout
 
+@testset "#659 Volume errors if data is not a cube" begin
+    vol = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
+    lims = AbstractPlotting.data_limits(vol[1])
+    lo, hi = extrema(lims)
+    @test all(lo .<= 1)
+    @test all(hi .>= (8,8,10))
+end
+
 # Minimal sanity checks for MakieLayout
 @testset "Layoutables constructors" begin
     scene, layout = layoutscene()
