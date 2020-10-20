@@ -1,7 +1,6 @@
 using AbstractPlotting
 using AbstractPlotting.MakieLayout
 using Observables
-using Test
 
 function cleanaxes()
     scene, layout = layoutscene()

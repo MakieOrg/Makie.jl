@@ -3,8 +3,6 @@ using AbstractPlotting:
     convert_arguments, 
     conversion_trait
 
-using IntervalSets
-
 @testset "Conversions" begin
 
     # NoConversion

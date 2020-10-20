@@ -1,6 +1,6 @@
+authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-authors = ["Simon Danisch", "Julius Krumbiegel"]
 version = "0.12.17"
 
 [deps]
@@ -62,7 +62,6 @@ GridLayoutBase = "0.4.1"
 ImageIO = "0.2, 0.3"
 IntervalSets = "0.3, 0.4, 0.5"
 KernelDensity = "0.5, 0.6"
-MakieGallery = "0.2.13"
 Match = "1.1"
 Observables = "0.3.1"
 Packing = "0.4"
@@ -73,12 +72,4 @@ StaticArrays = "0.12"
 StatsBase = "0.31, 0.32, 0.33"
 StructArrays = "0.3.0, 0.4"
 UnicodeFun = "0.4"
-julia = "1.0"
-
-[extras]
-MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
-MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[targets]
-test = ["Test", "MeshIO", "MakieGallery"]
+julia = "1.3"
