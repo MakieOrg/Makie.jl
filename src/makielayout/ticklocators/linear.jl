@@ -74,6 +74,10 @@ A cheaper function that tries to come up with usable tick locations for a given 
 """
 function locateticks(vmin, vmax, n_ideal::Int, _integer::Bool = false, _min_n_ticks::Int = 2)
 
+    @assert isfinite(vmin)
+    @assert isfinite(vmax)
+    @assert vmin != vmax
+
     _steps = (1.0, 1.5, 2.0, 2.5, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0)
     _extended_steps = _staircase(_steps)
 

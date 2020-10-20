@@ -1,7 +1,7 @@
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
 authors = ["Simon Danisch", "Julius Krumbiegel"]
-version = "0.12.14"
+version = "0.12.17"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -58,7 +58,7 @@ Formatting = "0.4"
 FreeType = "3.0"
 FreeTypeAbstraction = "0.8"
 GeometryBasics = "0.3"
-GridLayoutBase = "0.3.7"
+GridLayoutBase = "0.4.1"
 ImageIO = "0.2, 0.3"
 IntervalSets = "0.3, 0.4, 0.5"
 KernelDensity = "0.5, 0.6"

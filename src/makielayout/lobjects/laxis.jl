@@ -37,7 +37,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
-    layoutobservables = LayoutObservables(LAxis, attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
+    layoutobservables = LayoutObservables{LAxis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     limits = Node(FRect(0, 0, 100, 100))
@@ -260,7 +260,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
             top = xaxisprotrusion
         end
 
-        titlespace = if !titlevisible || iswhitespace(title)
+        titlespace = if !titlevisible || iswhitespace(title) || isempty(title)
             0f0
         else
             boundingbox(titlet).widths[2] + titlegap
@@ -369,19 +369,26 @@ function getlimits(la::LAxis, dim)
         filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
     elseif dim == 2
         filter(p -> !haskey(p.attributes, :yautolimits) || p.attributes.yautolimits[], la.scene.plots)
+    else
+        error("Dimension $dim not allowed. Only 1 or 2.")
     end
 
-    lim = if length(plots_with_autolimits) > 0
-        bbox = FRect2D(AbstractPlotting.data_limits(plots_with_autolimits[1]))
-        templim = (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim])
-        for p in plots_with_autolimits[2:end]
-            bbox = FRect2D(AbstractPlotting.data_limits(p))
-            templim = limitunion(templim, (bbox.origin[dim], bbox.origin[dim] + bbox.widths[dim]))
-        end
-        templim
-    else
-        nothing
+    visible_plots = filter(
+        p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
+        plots_with_autolimits)
+
+    bboxes = [FRect2D(AbstractPlotting.data_limits(p)) for p in visible_plots]
+    finite_bboxes = filter(isfinite, bboxes)
+
+    isempty(finite_bboxes) && return nothing
+
+    templim = (finite_bboxes[1].origin[dim], finite_bboxes[1].origin[dim] + finite_bboxes[1].widths[dim])
+
+    for bb in finite_bboxes[2:end]
+        templim = limitunion(templim, (bb.origin[dim], bb.origin[dim] + bb.widths[dim]))
     end
+
+    templim
 end
 
 getxlimits(la::LAxis) = getlimits(la, 1)
@@ -438,7 +445,7 @@ end
 
 Set the target limits of `la` to an automatically determined rectangle, that depends
 on the data limits of all plot objects in the axis, as well as the autolimit margins
-for x and y axis. 
+for x and y axis.
 """
 function autolimits!(la::LAxis)
 
@@ -681,7 +688,10 @@ function add_zoom!(ax::LAxis)
             pa = pixelarea(scene)[]
 
             # don't let z go negative
-            z = max(0.1f0, 1f0 + (zoom * zoomspeed))
+            z = max(0.1f0, 1f0 - (abs(zoom) * zoomspeed))
+            if zoom > 0
+                z = 1/z   # sets the old to be a fraction of the new. This ensures zoom in & then out returns to original position.
+            end
 
             mp_axscene = Vec4f0((e.mouseposition[] .- pa.origin)..., 0, 1)
 
@@ -717,6 +727,12 @@ function add_zoom!(ax::LAxis)
         end
 
         return
+    end
+
+    # Also support rubber band selection
+    rect = select_rectangle(scene)
+    on(rect) do r
+        tlimits[] = r
     end
 end
 

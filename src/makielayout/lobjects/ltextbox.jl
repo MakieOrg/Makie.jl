@@ -14,7 +14,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables(LTextbox, attrs.width, attrs.height,
+    layoutobservables = LayoutObservables{LTextbox}(attrs.width, attrs.height,
         attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
