@@ -184,7 +184,7 @@ Sometimes the only way to fix this situation, is to mutate the content of one ob
 
 ```julia
 xs.val = 1:11 # mutate without triggering listeners
-ys[] = rand(12) # trigger listeners of ys (in this case the same as xs)
+ys[] = rand(11) # trigger listeners of ys (in this case the same as xs)
 ```
 
 Use this technique sparingly, as it increases the complexity of your code and can make reasoning about it more difficult.
