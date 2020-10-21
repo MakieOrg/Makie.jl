@@ -1,28 +1,4 @@
 
-function run_tests()
-    db = load_database()
-    recording_dir = joinpath(@__DIR__, "..", "recorded")
-    rm(recording_dir, recursive=true, force=true)
-    mkdir(recording_dir)
-    AbstractPlotting.inline!(true)
-    no_backend = AbstractPlotting.current_backend[] === missing
-    for (source_location, entry) in db
-        AbstractPlotting.set_theme!()
-        # we currently can't record anything without a backend!
-        if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
-            continue
-        end
-        result = Base.invokelatest(entry.func)
-        # only save if we have a backend for saving
-        if !no_backend
-            save_result(joinpath(recording_dir, entry.title), result)
-        end
-        @info("Tested: $(entry.title)")
-        @test true
-    end
-    return
-end
-
 function extract_frames(video, frame_folder)
     path = joinpath(frame_folder, "frames%04d.png")
     FFMPEG.ffmpeg_exe(`-loglevel quiet -i $video -y $path`)
@@ -37,7 +13,7 @@ function compare_media(a, b; sigma=[1,1], eps=0.02)
             @warn "images don't have the same size, difference will be Inf"
             return Inf
         end
-        return test_approx_eq_sigma_eps(imga, imgb, sigma, eps)
+        return Images.test_approx_eq_sigma_eps(imga, imgb, sigma, Inf)
     elseif ext in (".mp4", ".gif")
         mktempdir() do folder
             afolder = joinpath(folder, "a")
@@ -62,21 +38,23 @@ function compare_media(a, b; sigma=[1,1], eps=0.02)
     end
 end
 
-function compare(test_dir, reference_dir; missing_refimages=String[], scores=Dict{String,Float64}())
-    for test_path in readdir(test_dir, join=true)
+function compare(test_files::Vector{String}, reference_dir::String; missing_refimages=String[], scores=Dict{String,Float64}())
+    for test_path in test_files
         ref_path = joinpath(reference_dir, basename(test_path))
         if isdir(test_path)
             if !isdir(ref_path)
                 push!(missing_refimages, test_path)
             else
-                compare(test_path, ref_path; missing_refimages=missing_refimages, scores=scores)
+                compare(readdir(test_path, join=true), ref_path; missing_refimages=missing_refimages, scores=scores)
             end
         elseif isfile(test_path)
             if !isfile(ref_path)
                 push!(missing_refimages, test_path)
             else
                 diff = compare_media(test_path, ref_path)
-                scores[replace(ref_path, reference_dir => "")] = diff
+                name = replace(ref_path, reference_dir => "")[2:end]
+                @info(@sprintf "%1.4f == %s\n" diff name)
+                scores[name] = diff
             end
         end
     end
@@ -84,3 +62,46 @@ function compare(test_dir, reference_dir; missing_refimages=String[], scores=Dic
 end
 
 # missing_imgs, scores = compare(recording_dir, joinpath(@__DIR__, "refimages"))
+
+function reference_tests(recorded; ref_images = ReferenceTests.download_refimages(), difference=0.03)
+    @testset "Reference Image Tests" begin
+        missing_files, scores = ReferenceTests.compare(readdir(recorded, join=true), ref_images)
+        @testset "$name" for (name, score) in scores
+            @test score < difference
+        end
+    end
+end
+
+function record_tests(db=load_database(); recording_dir=joinpath(@__DIR__, "..", "recorded"))
+    recorded_files = String[]
+    @testset "Record tests" begin
+        rm(recording_dir, recursive=true, force=true)
+        mkdir(recording_dir)
+        AbstractPlotting.inline!(true)
+        no_backend = AbstractPlotting.current_backend[] === missing
+        for (source_location, entry) in db
+            AbstractPlotting.set_theme!()
+            # we currently can't record anything without a backend!
+            if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
+                continue
+            end
+            RNG.seed_rng!()
+            result = Base.invokelatest(entry.func)
+            # only save if we have a backend for saving
+            uname = unique_name(entry)
+            if !no_backend
+                save_result(joinpath(recording_dir, uname), result)
+            end
+            push!(recorded_files, uname)
+            @info("Tested: $(nice_title(entry))")
+            @test true
+        end
+    end
+    return recorded_files, recording_dir
+end
+
+function run_tests(db=load_database(); ref_images = ReferenceTests.download_refimages(), 
+                    recording_dir=joinpath(@__DIR__, "..", "recorded"), difference=0.03)
+    files, dir = record_tests(db, recording_dir=recording_dir)
+    reference_tests(recording_dir, ref_images=ref_images, difference=difference)
+end

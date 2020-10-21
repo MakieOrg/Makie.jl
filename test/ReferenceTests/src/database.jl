@@ -21,6 +21,18 @@ function Entry(title, source_location, code, func)
     return Entry(title, source_location, code, func, used_functions)
 end
 
+function unique_name(entry::Entry)
+    loc = entry.source_location
+    filename = splitext(basename(string(loc.file)))[1]
+    sep = isempty(entry.title) ? "" : "-"
+    return string(filename, ":", loc.line, sep, entry.title)
+end
+
+function nice_title(entry::Entry)
+    isempty(entry.title) || return entry.title
+    return unique_name(entry)
+end
+
 const DATABASE = Dict{String, Entry}()
 
 function cell_expr(name, code, source)
@@ -42,7 +54,7 @@ macro cell(name, code)
 end
 
 macro cell(code)
-    return cell_expr("no name", code, __source__)
+    return cell_expr("", code, __source__)
 end
 
 """
