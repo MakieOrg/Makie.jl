@@ -1,8 +1,10 @@
-# Interaction
+# Observables & Interaction
 
 Interaction and animations in Makie are handled using [`Observables.jl`](https://juliagizmos.github.io/Observables.jl/stable/).
-An `Observable`, or `Node` in Makie, is a container object whose stored value you can update interactively.
-You can create functions that are executed whenever certain observables change.
+`Observable`s are called `Node`s in Makie for historical reasons and the two terms are used interchangeably.
+An `Observable` is a container object whose stored value you can update interactively.
+You can create functions that are executed whenever an observable changes.
+You can also create observables whose values are updated whenever other observables change.
 This way you can easily build dynamic and interactive visualizations.
 
 On this page you will learn how the `Node`s pipeline and the event-based interaction system work.
@@ -151,6 +153,42 @@ container = (x = Node(1), y = Node(2))
 @lift($(container.x) + $(container.y))
 ```
 
+## Problems With Synchronous Updates
+
+One very common problem with a pipeline based on multiple observables is that you can only change observables one by one.
+Theoretically, each observable change triggers its listeners immediately.
+If a function depends on two or more observables, changing one right after the other would trigger it multiple times, which is often not what you want.
+
+Here's an example:
+
+```julia
+xs = Node(1:10)
+ys = Node(rand(10))
+
+zs = @lift($xs .+ $ys)
+```
+
+```julia
+xs[] = 2:11
+ys[] = rand(10)
+```
+
+We just triggered `zs` twice, even though we really only intended one data update.
+But this double triggering is only part of the problem.
+
+Both `xs` and `ys` in this example had length 10, so they could still be added without a problem.
+If we want to append values to xs and ys, the moment we change the length of one of them, the function underlying `zs` will error because of a shape mismatch.
+Sometimes the only way to fix this situation, is to mutate the content of one observable without triggering its listeners, then triggering the second one.
+
+```julia
+xs.val = 1:11 # mutate without triggering listeners
+ys[] = rand(12)
+```
+
+Use this technique sparingly, as it increases the complexity of your code and can make reasoning about it more difficult.
+It also only works if you can still trigger all listeners correctly.
+For example, if another observable listened only to `xs`, we wouldn't have updated it correctly in the above workaround.
+Often, you can avoid length change problems by using arrays of containers like `Point2f0` or `Vec3f0` instead of synchronizing two or three observables of single element vectors manually.
 
 ## Mouse Interaction
 
