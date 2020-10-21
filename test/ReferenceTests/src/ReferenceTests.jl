@@ -9,8 +9,16 @@ using MacroTools
 using AbstractPlotting
 using AbstractPlotting: Record, Stepper
 using AbstractPlotting.MakieLayout
+using AbstractPlotting.FFMPEG
+using Printf
+using ghr_jll
+using Tar
+using Downloads
+using Pkg.TOML
 
-assetpath(files...) = normpath(joinpath(@__DIR__, "..", "assets", files...))
+
+basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
+assetpath(files...) = basedir("assets", files...)
 loadasset(files...) = FileIO.load(assetpath(files...))
 
 # The version in Images.jl throws an error... whyyyyy!?
@@ -20,5 +28,6 @@ using Images, FixedPointNumbers, Colors, ColorTypes
 include("database.jl")
 include("stable_rng.jl")
 include("runtests.jl")
+include("image_download.jl")
 
 end

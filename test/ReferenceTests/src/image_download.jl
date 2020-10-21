@@ -1,28 +1,39 @@
 
-using ghr_jll
-using Tar
-using Downloads
-
 function upload_release(user, repo, token, tag, path)
     ghr() do ghr_path
-        run(`$ghr_path -delete -u $(user) -r $(repo) -t $(token) $(tag) $(path)`)
+        run(`$ghr_path -replace -u $(user) -r $(repo) -t $(token) $(tag) $(path)`)
     end
 end
 
-function create_new_refimage_release(path, tag="v0.7.0")
+# Well, to be more precise, last non patch
+function last_major_version()
+    path = basedir("..", "..", "Project.toml")
+    version = VersionNumber(TOML.parse(String(read(path)))["version"])
+    return "v" * string(VersionNumber(version.major, version.minor))
+end
+
+function upload_reference_images(path=basedir("recorded"), tag=last_major_version())
     mktempdir() do dir
         tarfile = joinpath(dir, "refimages.tar")
         Tar.create(path, tarfile)
-        upload_release("JuliaPlots", "MakieReferenceImages", ENV["GITHUB_TOKEN"], tag, tarfile)
+        upload_release("JuliaPlots", "AbstractPlotting.jl", ENV["GITHUB_TOKEN"], tag, tarfile)
     end
 end
 
-create_new_refimage_release(recording_dir)
+function download_refimages(tag=last_major_version())
+    url = "https://github.com/JuliaPlots/AbstractPlotting.jl/releases/download/$(tag)/refimages.tar"
+    images_tar = basedir("refimages.tar")
+    images = basedir("refimages")
+    isfile(images_tar) && rm(images_tar)
+    isdir(images) && rm(images, recursive=true, force=true)
+    Downloads.download(url, images_tar)
+    Tar.extract(images_tar, images)
+    return images
+end
 
-url = "https://github.com/JuliaPlots/MakieReferenceImages/releases/download/v0.7.0/refimages.tar"
 
-Downloads.download(url, joinpath(@__DIR__, "refimages.tar"))
+# rm(joinpath(@__DIR__, "refimages"), force=true, recursive=true)
 
-rm(joinpath(@__DIR__, "refimages"), force=true, recursive=true)
+# 
+# using Pkg.TOML
 
-Tar.extract(joinpath(@__DIR__, "refimages.tar"), joinpath(@__DIR__, "refimages"))
