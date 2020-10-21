@@ -220,6 +220,15 @@ on(scene.events.keyboardbuttons) do button
 end
 ```
 
+## Interactive Widgets
+
+Makie has a couple of useful interactive widgets.
+Default Makie has the `slider`, `button` and `textslider` functions.
+
+MakieLayout has more complex versions of these that can be placed into layouts and allow you to build flexible GUIs.
+Examples are [LSlider](@ref), [LButton](@ref) and [LMenu](@ref).
+
+
 ## Recording Animations with Interactions
 
 You can record a `Scene` while you're interacting with it.
