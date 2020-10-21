@@ -159,7 +159,7 @@ One very common problem with a pipeline based on multiple observables is that yo
 Theoretically, each observable change triggers its listeners immediately.
 If a function depends on two or more observables, changing one right after the other would trigger it multiple times, which is often not what you want.
 
-Here's an example:
+Here's an example where we define two nodes and lift a third one from them:
 
 ```julia
 xs = Node(1:10)
@@ -167,6 +167,8 @@ ys = Node(rand(10))
 
 zs = @lift($xs .+ $ys)
 ```
+
+Now let's update both `xs` and `ys`:
 
 ```julia
 xs[] = 2:11
@@ -182,7 +184,7 @@ Sometimes the only way to fix this situation, is to mutate the content of one ob
 
 ```julia
 xs.val = 1:11 # mutate without triggering listeners
-ys[] = rand(12)
+ys[] = rand(12) # trigger listeners of ys (in this case the same as xs)
 ```
 
 Use this technique sparingly, as it increases the complexity of your code and can make reasoning about it more difficult.
