@@ -2,7 +2,7 @@
 
 With `Makie.jl` it is easy to create animated plots.
 Animations work by making changes to data or plot attribute Observables and recording the changing scene frame by frame.
-You can find out more about the Observables workflow on the [Interaction](@ref) page.
+You can find out more about the Observables workflow on the [Observables & Interaction](@ref) page.
 
 
 ## A Simple Example
@@ -140,7 +140,7 @@ end
 ```
 
 If you want to animate a plot while interacting with it, check out the `async_latest` function,
-and the [Interaction](@ref) section.
+and the [Observables & Interaction](@ref) section.
 
 
 ## More Animation Examples
