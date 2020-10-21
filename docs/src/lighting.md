@@ -28,11 +28,12 @@ GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.c
 
 ## Matcap
 
-A matcap (material capture) is a texture which is applied based on the normals of a given mesh. They typically include complex materials and lighting and offer a cheap way to apply those to any mesh. You may pass a matcap via the `matcap` attribute of a `mesh`, `meshscatter` or `surface` plot. Setting `shading = false` is suggested. You can find a lot matcaps [here](https://github.com/nidorx/matcaps). 
+A matcap (material capture) is a texture which is applied based on the normals of a given mesh. They typically include complex materials and lighting and offer a cheap way to apply those to any mesh. You may pass a matcap via the `matcap` attribute of a `mesh`, `meshscatter` or `surface` plot. Setting `shading = false` is suggested. You can find a lot matcaps [here](https://github.com/nidorx/matcaps).
 
 ## Examples
 
 ```@example 1
+using Makie
 xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
@@ -43,9 +44,9 @@ surface(
     # Light comes from (0, 0, 15), i.e the sphere
     lightposition = Vec3f0(0, 0, 15),
     # base light of the plot only illuminates red colors
-    ambient = Vec3f0(0.3, 0, 0),    
+    ambient = Vec3f0(0.3, 0, 0),
     # light from source (sphere) illuminates yellow colors
-    diffuse = Vec3f0(0.4, 0.4, 0),  
+    diffuse = Vec3f0(0.4, 0.4, 0),
     # reflections illuminate blue colors
     specular = Vec3f0(0, 0, 1.0),
     # Reflections are sharp
@@ -68,9 +69,8 @@ meshscatter!(positions, marker=box, markersize=1, color=:lightblue, ssao=true)
 ```
 
 ```@example 1
-using FileIO
-# or FileIO.load(GLMakie.assetpath("cat.obj"))
-catmesh = FileIO.load(MakieGallery.assetpath("cat.obj"))
+using FileIO, GLMakie
+catmesh = FileIO.load(GLMakie.assetpath("cat.obj"))
 gold = FileIO.load(download("https://raw.githubusercontent.com/nidorx/matcaps/master/1024/E6BF3C_5A4719_977726_FCFC82.png"))
 
 mesh(catmesh, matcap=gold, shading=false)
