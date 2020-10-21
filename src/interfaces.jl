@@ -124,6 +124,7 @@ $(ATTRIBUTES)
         fxaa = true,
         lowclip = nothing,
         highclip = nothing,
+        invert_normals = false
     )
 end
 
