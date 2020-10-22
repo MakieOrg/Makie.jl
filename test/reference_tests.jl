@@ -1,4 +1,4 @@
-Pkg.develop(path=joinpath(@__DIR__, "ReferenceTests"))
+Pkg.develop(Pkg.PackageSpec(path=joinpath(@__DIR__, "ReferenceTests")))
 
 using ReferenceTests
 

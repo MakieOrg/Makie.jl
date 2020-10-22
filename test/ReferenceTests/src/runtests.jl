@@ -45,7 +45,7 @@ function compare(test_files::Vector{String}, reference_dir::String; missing_refi
             if !isdir(ref_path)
                 push!(missing_refimages, test_path)
             else
-                compare(readdir(test_path, join=true), ref_path; missing_refimages=missing_refimages, scores=scores)
+                compare(joinpath.(test_path, readdir(test_path)), ref_path; missing_refimages=missing_refimages, scores=scores)
             end
         elseif isfile(test_path)
             if !isfile(ref_path)
@@ -65,7 +65,7 @@ end
 
 function reference_tests(recorded; ref_images = ReferenceTests.download_refimages(), difference=0.03)
     @testset "Reference Image Tests" begin
-        missing_files, scores = ReferenceTests.compare(readdir(recorded, join=true), ref_images)
+        missing_files, scores = ReferenceTests.compare(joinpath.(recorded, readdir(recorded)), ref_images)
         @testset "$name" for (name, score) in scores
             @test score < difference
         end
