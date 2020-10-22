@@ -1,6 +1,6 @@
+authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-authors = ["Simon Danisch", "Julius Krumbiegel"]
 version = "0.12.18"
 
 [deps]
@@ -35,6 +35,7 @@ Serialization = "9e88b42a-f829-5b0c-bbe9-9e923198166b"
 Showoff = "992d4aef-0814-514b-bc4d-f2e9a6c4116f"
 SignedDistanceFields = "73760f76-fbc4-59ce-8f25-708e95d2df96"
 SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
+StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
@@ -61,7 +62,6 @@ GridLayoutBase = "0.4.1"
 ImageIO = "0.2, 0.3"
 IntervalSets = "0.3, 0.4, 0.5"
 KernelDensity = "0.5, 0.6"
-MakieGallery = "0.2.13"
 Match = "1.1"
 Observables = "0.3.1"
 Packing = "0.4"
@@ -72,12 +72,4 @@ StaticArrays = "0.12"
 StatsBase = "0.31, 0.32, 0.33"
 StructArrays = "0.3.0, 0.4"
 UnicodeFun = "0.4"
-julia = "1.0"
-
-[extras]
-MakieGallery = "dbd62bd0-c9f5-5087-a2e1-f5c4bb0cec90"
-MeshIO = "7269a6da-0436-5bbc-96c2-40638cbb6118"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-
-[targets]
-test = ["Test", "MeshIO", "MakieGallery"]
+julia = "1.3"
