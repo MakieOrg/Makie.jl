@@ -1,7 +1,8 @@
-Pkg.develop(path="./ReferenceTests")
+Pkg.develop(path=joinpath(@__DIR__, "ReferenceTests"))
+
 using ReferenceTests
 
-ReferenceTests.run_tests()
+ReferenceTests.record_tests()
 # needs GITHUB_TOKEN to be set:
 # ReferenceTests.upload_reference_images()
 # Needs a backend to actually have something recoreded:
