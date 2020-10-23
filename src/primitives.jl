@@ -318,6 +318,9 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
             font, align, rotation, model, justification, lineheight
         )
     end
+
+    is3D = scene.camera_controls[] isa Camera3D
+
     stridx = 1
     broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
         Cairo.save(ctx)
@@ -330,11 +333,27 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         cairoface = set_ft_font(ctx, f)
 
-        mat = scale_matrix(scale...)
-        set_font_matrix(ctx, mat)
-
-        # TODO this only works in 2d
-        Cairo.rotate(ctx, to_2d_rotation(r))
+        if !is3D
+            mat = scale_matrix(scale...)
+            set_font_matrix(ctx, mat)
+            Cairo.rotate(ctx, to_2d_rotation(r))
+        else
+            # This sort of works ¯\_(ツ)_/¯
+            # Somewhat similar to normalmatrix in GLMakie
+            w, h = scene.camera.resolution[]
+            j = SOneTo(3)
+            cpv = 0.005(w + h) * transpose(inv(
+                (scene.camera.projectionview[][j,j] * 
+                AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
+            ))
+            mat = Cairo.CairoMatrix(
+                cpv[1, 1], cpv[1, 2],
+                cpv[2, 1], cpv[2, 2],
+                # this helps seperate text from the z axis (in the default view)
+                (cpv[1, 2] + cpv[2, 1]), 0.0
+            )
+            set_font_matrix(ctx, mat)
+        end
 
         if !(char in ('\r', '\n'))
             Cairo.show_text(ctx, string(char))
@@ -431,7 +450,20 @@ end
 #                                     Mesh                                     #
 ################################################################################
 
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
+    if scene.camera_controls[] isa Camera2D
+        draw_mesh2D(scene, screen, primitive)
+    else
+        if !haskey(primitive, :faceculling)
+            primitive[:faceculling] = Node(1e-6)
+        end
+        draw_mesh3D(scene, screen, primitive)
+    end
+    return nothing
+end
+
+function draw_mesh2D(scene, screen, primitive)
     @get_attribute(primitive, (color,))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
@@ -462,5 +494,200 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     Cairo.set_source(ctx, pattern)
     Cairo.close_path(ctx)
     Cairo.paint(ctx)
+    return nothing
+end
+
+function average_z(positions, face)
+    vs = positions[face]
+    sum(v -> v[3], vs) / length(vs)
+end
+
+function draw_mesh3D(
+        scene, screen, primitive;
+        mesh = primitive[1][], pos = Vec4f0(0), scale = 1f0
+    )
+    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse, 
+        specular, shininess, faceculling))
+
+    colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
+    colorrange = get(primitive, :colorrange, nothing) |> to_value
+    matcap = get(primitive, :matcap, nothing) |> to_value
+
+    ctx = screen.context
+
+    model = primitive.model[]
+    view = scene.camera.view[]
+    projection = scene.camera.projection[]
+    normalmatrix = get(
+        scene.attributes, :normalmatrix, let 
+            i = SOneTo(3)
+            transpose(inv(view[i, i] * model[i, i]))
+        end
+    )
+    
+    # Mesh data
+    # transform to view/camera space
+    vs = map(coordinates(mesh)) do v
+        p4d = to_ndim(Vec4f0, scale * to_ndim(Vec3f0, v, 0f0), 1f0)
+        view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
+    end
+    fs = faces(mesh)
+    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing  
+    ns = map(n -> normalmatrix * n, normals(mesh))
+    cols = per_face_colors(color, colormap, colorrange, matcap, vs, fs, ns, uv)
+
+    # Liight math happens in view/camera space
+    if lightposition == :eyeposition
+        lightposition = scene.camera_controls[].eyeposition[]
+    end
+    lightpos = (view * to_ndim(Vec4f0, lightposition, 1.0))[Vec(1, 2, 3)]
+
+    # Camera to screen space
+    ts = map(vs) do v
+        clip = projection * v 
+        @inbounds begin
+            p = (clip ./ clip[4])[Vec(1, 2)]
+            p_yflip = Vec2f0(p[1], -p[2])
+            p_0_to_1 = (p_yflip .+ 1f0) / 2f0
+        end
+        p = p_0_to_1 .* scene.camera.resolution[]
+        Vec3f0(p[1], p[2], clip[3])
+    end
+    
+    # Approximate zorder
+    zorder = sortperm(fs, by = f -> average_z(ts, f))
+    
+    # Face culling
+    zorder = filter(i -> any(last.(ns[fs[i]]) .> faceculling), zorder)
+
+    pattern = Cairo.CairoPatternMesh()
+    for k in reverse(zorder)
+        f = fs[k]
+        t1, t2, t3 = ts[f]
+
+        # light calculation
+        c1, c2, c3 = if shading
+            map(ns[f], vs[f], cols[k]) do N, v, c
+                L = normalize(lightpos .- v[Vec(1,2,3)])
+                diff_coeff = max(dot(L, N), 0.0)
+                H = normalize(L + normalize(-v[SOneTo(3)]))
+                spec_coeff = max(dot(H, N), 0.0)^shininess
+                c = RGBA(c)
+                new_c = (ambient .+ diff_coeff .* diffuse) .* Vec3f0(c.r, c.g, c.b) .+
+                        specular * spec_coeff
+                RGBA(new_c..., c.alpha)
+            end
+        else
+            cols[k]
+        end
+        # debug normal coloring
+        # n1, n2, n3 = Vec3f0(0.5) .+ 0.5ns[f]
+        # c1 = RGB(n1...)
+        # c2 = RGB(n2...)
+        # c3 = RGB(n3...)
+
+        Cairo.mesh_pattern_begin_patch(pattern)
+
+        Cairo.mesh_pattern_move_to(pattern, t1[1], t1[2])
+        Cairo.mesh_pattern_line_to(pattern, t2[1], t2[2])
+        Cairo.mesh_pattern_line_to(pattern, t3[1], t3[2])
+
+        mesh_pattern_set_corner_color(pattern, 0, c1)
+        mesh_pattern_set_corner_color(pattern, 1, c2)
+        mesh_pattern_set_corner_color(pattern, 2, c3)
+
+        Cairo.mesh_pattern_end_patch(pattern)
+    end
+    Cairo.set_source(ctx, pattern)
+    Cairo.close_path(ctx)
+    Cairo.paint(ctx)
+    return nothing
+end
+
+
+################################################################################
+#                                   Surface                                    #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Surface)
+    # Pretend the surface plot is a mesh plot and plot that instead
+    mesh = surface2mesh(primitive[1][], primitive[2][], primitive[3][])
+    primitive[:color][] = primitive[3][][:]
+    if !haskey(primitive, :faceculling)
+        primitive[:faceculling] = Node(-0.1)
+    end
+    draw_mesh3D(scene, screen, primitive, mesh=mesh)
+    return nothing
+end
+
+function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
+    ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
+    idxs = LinearIndices(size(zs))
+    faces = [
+        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1]) 
+        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
+    ]
+    normal_mesh(ps, faces)
+end
+function surface2mesh(xs::Matrix, ys::Matrix, zs::Matrix)
+    ps = [Point3f0(xs[i, j], ys[i, j], zs[i, j]) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
+    idxs = LinearIndices(size(zs))
+    faces = [
+        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1]) 
+        for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
+    ]
+    normal_mesh(ps, faces)
+end
+    
+
+################################################################################
+#                                 MeshScatter                                  #
+################################################################################
+
+
+function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.MeshScatter)
+    m = normal_mesh(primitive[:marker][])
+    pos = primitive[1][]
+    # For correct z-ordering we need to be in view/camera or screen space
+    model = copy(primitive[:model][])
+    view = scene.camera.view[]
+    sort!(pos, by = p -> begin
+        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0f0), 1f0)
+        cam_pos = view * model * p4d
+        cam_pos[3] / cam_pos[4]
+    end, rev=false)
+
+    colors = primitive[:color][]
+    if !haskey(primitive, :faceculling)
+        primitive[:faceculling] = Node(-0.1)
+    end
+    rotations = primitive[:rotations][]
+    if !(rotations isa Vector)
+        R = AbstractPlotting.rotationmatrix4(to_rotation(rotations))
+        primitive[:model][] = model * R
+    end
+    scales = primitive[:markersize][]
+
+    for i in eachindex(pos)
+        p = pos[i]
+        if colors isa Vector
+            primitive[:color][] = colors[i]
+        end
+        if rotations isa Vector
+            R = AbstractPlotting.rotationmatrix4(to_rotation(rotations[i]))
+            primitive[:model][] = model * R
+        end
+        scale = scales isa Vector ? scales[i] : scales
+
+        draw_mesh3D(
+            scene, screen, primitive, 
+            mesh = m, pos = p, scale = scale
+        )
+    end
+
+    # Restore adjusted attributes
+    primitive[:color][] = colors
+    primitive[:model][] = model
     return nothing
 end

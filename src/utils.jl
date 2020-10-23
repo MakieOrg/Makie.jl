@@ -162,8 +162,17 @@ Base.getindex(fi::FaceIterator{:PerFace}, i::Integer) = fi.data[i]
 Base.getindex(fi::FaceIterator{:PerVert}, i::Integer) = fi.data[fi.faces[i]]
 Base.getindex(fi::FaceIterator{:Const}, i::Integer) = ntuple(i-> fi.data, 3)
 
-function per_face_colors(color, colormap, colorrange, vertices, faces, uv)
-    if color isa Colorant
+function per_face_colors(color, colormap, colorrange, matcap, vertices, faces, normals, uv)
+    if matcap !== nothing
+        wsize = reverse(size(matcap))
+        wh = wsize .- 1
+        cvec = map(normals) do n
+            muv = 0.5n[Vec(1,2)] .+ Vec2f0(0.5)
+            x, y = clamp.(round.(Int, Tuple(muv) .* wh) .+ 1, 1, wh)
+            return matcap[end - (y - 1), x]
+        end
+        return FaceIterator(cvec, faces)
+    elseif color isa Colorant
         return FaceIterator{:Const}(color, faces)
     elseif color isa AbstractArray
         if color isa AbstractVector{<: Colorant}
@@ -172,11 +181,11 @@ function per_face_colors(color, colormap, colorrange, vertices, faces, uv)
             cvec = AbstractPlotting.interpolated_getindex.((colormap,), color, (colorrange,))
             return FaceIterator(cvec, faces)
         elseif color isa AbstractMatrix{<: Colorant} && uv !== nothing
+            wsize = reverse(size(color))
+            wh = wsize .- 1
             cvec = map(uv) do uv
-                wsize = reverse(size(color))
-                wh = wsize .- 1
-                x, y = round.(Int, Tuple(uv) .* wh) .+ 1
-                return color[size(color, 1) - (y - 1), x]
+                x, y = clamp.(round.(Int, Tuple(uv) .* wh) .+ 1, 1, wh)
+                return color[end - (y - 1), x]
             end
             # TODO This is wrong and doesn't actually interpolate
             # Inside the triangle sampling the color image
