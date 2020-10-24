@@ -476,7 +476,7 @@ function draw_mesh2D(scene, screen, primitive)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
 
-    cols = per_face_colors(color, colormap, colorrange, vs, fs, uv)
+    cols = per_face_colors(color, colormap, colorrange, nothing, vs, fs, nothing, uv)
     for (f, (c1, c2, c3)) in zip(fs, cols)
         t1, t2, t3 =  project_position.(scene, vs[f], (model,)) #triangle points
         Cairo.mesh_pattern_begin_patch(pattern)
