@@ -80,7 +80,7 @@ function record_tests(db=load_database(); recording_dir=joinpath(@__DIR__, "..",
         AbstractPlotting.inline!(true)
         no_backend = AbstractPlotting.current_backend[] === missing
         for (source_location, entry) in db
-            AbstractPlotting.set_theme!()
+            AbstractPlotting.set_theme!(resolution=(500, 500))
             # we currently can't record anything without a backend!
             if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
                 continue
