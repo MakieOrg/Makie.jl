@@ -19,6 +19,7 @@ using LinearAlgebra
 
 for name in names(AbstractPlotting)
     @eval import AbstractPlotting: $(name)
+    @eval export $(name)
 end
 
 struct GLBackend <: AbstractPlotting.AbstractBackend
