@@ -20,7 +20,6 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
 
-      - name: Add package versions
       - name: Run tests
         uses: julia-actions/julia-runtest@master
 
