@@ -248,7 +248,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     centering_offset = [1, -1] .* (-origin(inkbb_scaled) .- 0.5 .* widths(inkbb_scaled))
     # this is the origin where we actually have to place the glyph so it can be centered
     charorigin = pos .+ Vec2f0(marker_offset[1], -marker_offset[2])
-
+    old_matrix = get_font_matrix(ctx)
     set_font_matrix(ctx, scale_matrix(scale...))
 
     # First, we translate to the point where the
@@ -271,7 +271,8 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
-
+    
+    set_font_matrix(ctx, old_matrix)
     Cairo.restore(ctx)
 
 end
@@ -332,6 +333,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         Cairo.move_to(ctx, pos[1], pos[2])
         Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
         cairoface = set_ft_font(ctx, f)
+        old_matrix = get_font_matrix(ctx)
 
         if !is3D
             mat = scale_matrix(scale...)
@@ -360,7 +362,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
         end
 
         cairo_font_face_destroy(cairoface)
-
+        set_font_matrix(ctx, old_matrix)
         Cairo.restore(ctx)
     end
     nothing
@@ -468,7 +470,6 @@ function draw_mesh2D(scene, screen, primitive)
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
-
     ctx = screen.context
     model = primitive.model[]
     mesh = primitive[1][]

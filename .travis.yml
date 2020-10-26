@@ -10,7 +10,4 @@ git:
   depth: 99999999
 cache:
   directories:
-  - $HOME/.julia/artifacts
-after_success:
-  # push coverage results to Codecov
-  - julia -e 'cd(Pkg.dir("CairoMakie")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
+    - $HOME/.julia/
