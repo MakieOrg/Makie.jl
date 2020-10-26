@@ -43,9 +43,9 @@ function __init__()
 end
 
 include("geometrybasics_extension.jl")
+include("mousestatemachine.jl")
 include("types.jl")
 include("helpers.jl")
-include("mousestatemachine.jl")
 include("ticklocators/linear.jl")
 include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")

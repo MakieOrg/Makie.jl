@@ -46,6 +46,8 @@ mutable struct LineAxis
     ticklabels::Node{Vector{String}}
 end
 
+abstract type AbstractInteraction end
+
 abstract type LObject end
 
 mutable struct LAxis <: AbstractPlotting.AbstractScene
@@ -58,6 +60,8 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     attributes::Attributes
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
+    mousestate::Observable{MouseState}
+    interactions::Vector{AbstractInteraction}
 end
 
 mutable struct LColorbar <: LObject
