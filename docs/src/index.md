@@ -50,5 +50,5 @@ CairoMakie.activate!() # only if a different backend is active already
 ## Getting Help
 
 1) Use the REPL `?` help mode
-1) Join the `#makie` channel in the [Julia Slack group](https://slackinvite.julialang.org).
+1) Join the `#makie` channel in the [Julia Slack group](https://julialang.org/slack/).
 1) Open an issue in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl) repository.
