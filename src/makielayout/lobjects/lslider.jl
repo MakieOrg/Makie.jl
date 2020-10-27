@@ -117,18 +117,18 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     decorations[:button] = button
 
 
-    scenestate = addmouseevents!(subscene)
+    mouseevents = addmouseevents!(subscene)
 
-    onmouseleftup(scenestate) do state
+    onmouseleftup(mouseevents) do event
         bcolor[] = buttoncolor_inactive[]
     end
 
-    onmouseleftdrag(scenestate) do state
+    onmouseleftdrag(mouseevents) do event
 
         pad = buttonradius[] + buttonstrokewidth[]
 
         dragging[] = true
-        dif = state.pos - state.prev
+        dif = event.px - event.prev_px
         fraction = if horizontal[]
             dif[1] / (width(sliderbox[]) - 2pad)
         else
@@ -145,35 +145,35 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    onmouseleftdragstop(scenestate) do state
+    onmouseleftdragstop(mouseevents) do event
         dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
     end
 
-    onmouseleftdown(scenestate) do state
+    onmouseleftdown(mouseevents) do event
 
         bcolor[] = color_active[]
 
         pad = buttonradius[] + buttonstrokewidth[]
 
-        pos = state.pos
+        pos = event.px
         dim = horizontal[] ? 1 : 2
         frac = (pos[dim] - endpoints[][1][dim] - pad) / (endpoints[][2][dim] - endpoints[][1][dim] - 2pad)
         selected_index[] = closest_fractionindex(sliderrange[], frac)
     end
 
-    onmouseleftdoubleclick(scenestate) do state
+    onmouseleftdoubleclick(mouseevents) do event
         selected_index[] = closest_index(sliderrange[], startvalue[])
     end
 
-    onmouseenter(scenestate) do state
+    onmouseenter(mouseevents) do event
         # bcolor[] = color_active[]
         linecolors[] = [color_active[], color_inactive[]]
         button.strokecolor = color_active[]
     end
 
-    onmouseout(scenestate) do state
+    onmouseout(mouseevents) do event
         bcolor[] = buttoncolor_inactive[]
         linecolors[] = [color_active_dimmed[], color_inactive[]]
         button.strokecolor = color_active_dimmed[]
