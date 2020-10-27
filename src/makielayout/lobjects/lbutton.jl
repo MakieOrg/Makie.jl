@@ -61,24 +61,24 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
 
 
-    mousestate = addmouseevents!(scene, button, labeltext)
+    mouseevents = addmouseevents!(scene, button, labeltext)
 
-    onmouseover(mousestate) do state
+    onmouseover(mouseevents) do state
         bcolor[] = buttoncolor_hover[]
         lcolor[] = labelcolor_hover[]
     end
 
-    onmouseout(mousestate) do state
+    onmouseout(mouseevents) do state
         bcolor[] = buttoncolor[]
         lcolor[] = labelcolor[]
     end
 
-    onmouseleftup(mousestate) do state
+    onmouseleftup(mouseevents) do state
         bcolor[] = buttoncolor_hover[]
         lcolor[] = labelcolor_hover[]
     end
 
-    onmouseleftdown(mousestate) do state
+    onmouseleftdown(mouseevents) do state
         bcolor[] = buttoncolor_active[]
         lcolor[] = labelcolor_active[]
         clicks[] = clicks[] + 1
