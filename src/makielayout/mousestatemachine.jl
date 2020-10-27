@@ -1,47 +1,68 @@
-abstract type AbstractMouseState end
+module MouseEventTypes
+    @enum MouseEventType begin
+        out
+        enter
+        over
+        leftdown
+        rightdown
+        middledown
+        leftup
+        rightup
+        middleup
+        leftdragstart
+        rightdragstart
+        middledragstart
+        leftdrag
+        rightdrag
+        middledrag
+        leftdragstop
+        rightdragstop
+        middledragstop
+        leftclick
+        rightclick
+        middleclick
+        leftdoubleclick
+        rightdoubleclick
+        middledoubleclick
+        downoutside
+    end
+    export MouseEventType
+end
+
+using .MouseEventTypes
 
 """
-    MouseState{T<:AbstractMouseState}
+    MouseEvent
 
 Describes a mouse state change.
 Fields:
-- `typ`: Symbol describing the mouse state
+- `type`: MouseEventType
 - `t`: Time of the event
 - `pos`: Mouse position
 - `tprev`: Time of previous event
 - `prev`: Previous mouse position
 """
-struct MouseState{T<:AbstractMouseState}
-    typ::T
+struct MouseEvent
+    type::MouseEventType
     t::Float64
     pos::Point2f0
     tprev::Float64
     prev::Point2f0
 end
 
-mousestates = (:MouseOut, :MouseEnter, :MouseOver,
-    :MouseLeftDown, :MouseRightDown, :MouseMiddleDown,
-    :MouseLeftUp, :MouseRightUp, :MouseMiddleUp,
-    :MouseLeftDragStart, :MouseRightDragStart, :MouseMiddleDragStart,
-    :MouseLeftDrag, :MouseRightDrag, :MouseMiddleDrag,
-    :MouseLeftDragStop, :MouseRightDragStop, :MouseMiddleDragStop,
-    :MouseLeftClick, :MouseRightClick, :MouseMiddleClick,
-    :MouseLeftDoubleclick, :MouseRightDoubleclick, :MouseMiddleDoubleclick,
-    :MouseDownOutside
-    )
 
-for statetype in mousestates
-    onfunctionname = Symbol("on" * lowercase(String(statetype)))
+
+for eventtype in instances(MouseEventType)
+    onfunctionname = Symbol("onmouse" * String(Symbol(eventtype)))
     @eval begin
-        struct $statetype <: AbstractMouseState end
 
         """
-        Executes the function f whenever the `Node{MouseState}` statenode transitions
-        to `$($statetype)`.
+        Executes the function f whenever the `Node{MouseEvent}` statenode transitions
+        to `$($eventtype)`.
         """
-        function $onfunctionname(f, statenode::Node{MouseState})
+        function $onfunctionname(f, statenode::Node{MouseEvent})
             on(statenode) do state
-                if state.typ isa $statetype
+                if state.type === $eventtype
                     f(state)
                 end
             end
@@ -51,14 +72,10 @@ for statetype in mousestates
 end
 
 
-function Base.show(io::IO, ms::MouseState{T}) where T
-    print(io, "$T(t: $(ms.t), pos: $(ms.pos[1]), $(ms.pos[2]), tprev: $(ms.tprev), prev: $(ms.prev[1]), $(ms.prev[2]))")
-end
-
 """
-    addmousestate!(scene, elements...)
+    addmouseevents!(scene, elements...)
 
-Returns an `Observable{MouseState}` which is triggered by all mouse
+Returns an `Observable{MouseEvent}` which is triggered by all mouse
 interactions with the `scene` and optionally restricted to all given
 plot objects in `elements`.
 
@@ -67,25 +84,25 @@ To react to mouse events, use the onmouse... handlers.
 Example:
 
 ```
-mousestate = addmousestate!(scene, scatterplot)
+mouseevents = addmouseevents!(scene, scatterplot)
 
-onmouseleftclick(mousestate) do state
-    # do something with the mousestate
+onmouseleftclick(mouseevents) do event
+    # do something with the mouseevent
 end
 ```
 """
-function addmousestate!(scene, elements...)
+function addmouseevents!(scene, elements...)
 
     Mouse = AbstractPlotting.Mouse
     dblclick_max_interval = 0.2    
 
-    mousestate = Node{MouseState}(MouseState(MouseOut(), 0.0, Point2f0(0, 0), 0.0, Point2f0(0, 0)))
+    mouseevent = Node{MouseEvent}(MouseEvent(MouseEventTypes.out, 0.0, Point2f0(0, 0), 0.0, Point2f0(0, 0)))
 
     is_mouse_over_relevant_area() = isempty(elements) ? AbstractPlotting.is_mouseinside(scene) : mouseover(scene, elements...)
 
 
     # initialize state variables
-    last_mousestate = Ref{Mouse.DragEnum}(events(scene).mousedrag[])
+    last_mouseevent = Ref{Mouse.DragEnum}(events(scene).mousedrag[])
     prev = Ref(mouseposition(AbstractPlotting.rootparent(scene)))
     mouse_downed_inside = Ref(false)
     mouse_downed_button = Ref{Optional{Mouse.Button}}(nothing)
@@ -105,49 +122,49 @@ function addmousestate!(scene, elements...)
         mouse_inside = is_mouse_over_relevant_area()
 
         # movement while mouse is pressed
-        if last_mousestate[] == Mouse.pressed
+        if last_mouseevent[] == Mouse.pressed
             # must have been a registered drag (otherwise could have come from outside)
             if drag_ongoing[]
                 event = @match mouse_downed_button[] begin
-                    Mouse.left => MouseLeftDrag()
-                    Mouse.right => MouseRightDrag()
-                    Mouse.middle => MouseMiddleDrag()
+                    Mouse.left => MouseEventTypes.leftdrag
+                    Mouse.right => MouseEventTypes.rightdrag
+                    Mouse.middle => MouseEventTypes.middledrag
                     x => error("No recognized mouse button $x")
                 end
-                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
             end
         # mouse moved while just having been pressed down
-        elseif last_mousestate[] == Mouse.down
+        elseif last_mouseevent[] == Mouse.down
             # mouse must have been downed inside
             # that means a drag started
             if mouse_downed_inside[]
                 drag_ongoing[] = true
                 event = @match mouse_downed_button[] begin
-                    Mouse.left => MouseLeftDragStart()
-                    Mouse.right => MouseRightDragStart()
-                    Mouse.middle => MouseMiddleDragStart()
+                    Mouse.left => MouseEventTypes.leftdragstart
+                    Mouse.right => MouseEventTypes.rightdragstart
+                    Mouse.middle => MouseEventTypes.middledragstart
                     x => error("No recognized mouse button $x")
                 end
-                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
 
                 event = @match mouse_downed_button[] begin
-                    Mouse.left => MouseLeftDrag()
-                    Mouse.right => MouseRightDrag()
-                    Mouse.middle => MouseMiddleDrag()
+                    Mouse.left => MouseEventTypes.leftdrag
+                    Mouse.right => MouseEventTypes.rightdrag
+                    Mouse.middle => MouseEventTypes.middledrag
                     x => error("No recognized mouse button $x")
                 end
-                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
             end
         else
             if mouse_inside
                 if mouse_was_inside[]
-                    mousestate[] = MouseState(MouseOver(), t, pos, tprev[], prev[])
+                    mouseevent[] = MouseEvent(MouseEventTypes.over, t, pos, tprev[], prev[])
                 else
-                    mousestate[] = MouseState(MouseEnter(), t, pos, tprev[], prev[])
+                    mouseevent[] = MouseEvent(MouseEventTypes.enter, t, pos, tprev[], prev[])
                 end
             else
                 if mouse_was_inside[]
-                    mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
+                    mouseevent[] = MouseEvent(MouseEventTypes.out, t, pos, tprev[], prev[])
                 end
             end
         end
@@ -175,16 +192,16 @@ function addmousestate!(scene, elements...)
 
                 if mouse_was_inside[]
                     event = @match mouse_downed_button[] begin
-                        Mouse.left => MouseLeftDown()
-                        Mouse.right => MouseRightDown()
-                        Mouse.middle => MouseMiddleDown()
+                        Mouse.left => MouseEventTypes.leftdown
+                        Mouse.right => MouseEventTypes.rightdown
+                        Mouse.middle => MouseEventTypes.middledown
                         x => error("No recognized mouse button $x")
                     end
-                    mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                    mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
                     mouse_downed_inside[] = true
                 else
                     mouse_downed_inside[] = false
-                    mousestate[] = MouseState(MouseDownOutside(), t, pos, tprev[], prev[])
+                    mouseevent[] = MouseEvent(MouseEventTypes.downoutside, t, pos, tprev[], prev[])
                 end
             end
         elseif mousedrag == Mouse.up
@@ -199,27 +216,27 @@ function addmousestate!(scene, elements...)
 
                 if drag_ongoing[]
                     event = @match mouse_downed_button[] begin
-                        Mouse.left => MouseLeftDragStop()
-                        Mouse.right => MouseRightDragStop()
-                        Mouse.middle => MouseMiddleDragStop()
+                        Mouse.left => MouseEventTypes.leftdragstop
+                        Mouse.right => MouseEventTypes.rightdragstop
+                        Mouse.middle => MouseEventTypes.middledragstop
                         x => error("No recognized mouse button $x")
                     end
-                    mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                    mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
                     drag_ongoing[] = false
 
                     if mouse_was_inside[]
                         # up after drag done over element
                         event = @match mouse_downed_button[] begin
-                            Mouse.left => MouseLeftUp()
-                            Mouse.right => MouseRightUp()
-                            Mouse.middle => MouseMiddleUp()
+                            Mouse.left => MouseEventTypes.leftup
+                            Mouse.right => MouseEventTypes.rightup
+                            Mouse.middle => MouseEventTypes.middleup
                             x => error("No recognized mouse button $x")
                         end
 
-                        mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                        mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
                     else
                         # mouse could be not over elements after drag is over
-                        mousestate[] = MouseState(MouseOut(), t, pos, tprev[], prev[])
+                        mouseevent[] = MouseEvent(MouseEventTypes.out, t, pos, tprev[], prev[])
                     end
                 else
                     if mouse_was_inside[]
@@ -232,21 +249,21 @@ function addmousestate!(scene, elements...)
                                     mouse_downed_button[] == b_last_click[]
 
                                 event = @match mouse_downed_button[] begin
-                                    Mouse.left => MouseLeftDoubleclick()
-                                    Mouse.right => MouseRightDoubleclick()
-                                    Mouse.middle => MouseMiddleDoubleclick()
+                                    Mouse.left => MouseEventTypes.leftdoubleclick
+                                    Mouse.right => MouseEventTypes.rightdoubleclick
+                                    Mouse.middle => MouseEventTypes.middledoubleclick
                                     x => error("No recognized mouse button $x")
                                 end
-                                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                                mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
                                 last_click_was_double[] = true
                             else
                                 event = @match mouse_downed_button[] begin
-                                    Mouse.left => MouseLeftClick()
-                                    Mouse.right => MouseRightClick()
-                                    Mouse.middle => MouseMiddleClick()
+                                    Mouse.left => MouseEventTypes.leftclick
+                                    Mouse.right => MouseEventTypes.rightclick
+                                    Mouse.middle => MouseEventTypes.middleclick
                                     x => error("No recognized mouse button $x")
                                 end
-                                mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                                mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
                                 last_click_was_double[] = false
                             end
                             # save what type the last downed button was
@@ -256,13 +273,13 @@ function addmousestate!(scene, elements...)
 
                         # up after click
                         event = @match mouse_downed_button[] begin
-                            Mouse.left => MouseLeftUp()
-                            Mouse.right => MouseRightUp()
-                            Mouse.middle => MouseMiddleUp()
+                            Mouse.left => MouseEventTypes.leftup
+                            Mouse.right => MouseEventTypes.rightup
+                            Mouse.middle => MouseEventTypes.middleup
                             x => error("No recognized mouse button $x")
                         end
 
-                        mousestate[] = MouseState(event, t, pos, tprev[], prev[])
+                        mouseevent[] = MouseEvent(event, t, pos, tprev[], prev[])
                     end
                 end
 
@@ -271,9 +288,9 @@ function addmousestate!(scene, elements...)
         end
             
 
-        last_mousestate[] = mousedrag
+        last_mouseevent[] = mousedrag
         tprev[] = t
     end
 
-    mousestate
+    mouseevent
 end

@@ -61,7 +61,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
 
 
-    mousestate = addmousestate!(scene, button, labeltext)
+    mousestate = addmouseevents!(scene, button, labeltext)
 
     onmouseover(mousestate) do state
         bcolor[] = buttoncolor_hover[]

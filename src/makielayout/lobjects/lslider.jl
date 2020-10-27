@@ -105,7 +105,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     linesegs = linesegments!(subscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
     decorations[:linesegments] = linesegs
 
-    linestate = addmousestate!(subscene, linesegs)
+    linestate = addmouseevents!(subscene, linesegs)
 
     bsize = @lift($buttonradius * 2f0)
 
@@ -117,7 +117,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     decorations[:button] = button
 
 
-    scenestate = addmousestate!(subscene)
+    scenestate = addmouseevents!(subscene)
 
     onmouseleftup(scenestate) do state
         bcolor[] = buttoncolor_inactive[]

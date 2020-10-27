@@ -228,7 +228,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     rowgap!(contentgrid, 0)
 
-    mousestates = [addmousestate!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
+    mousestates = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
 
     for (i, (mousestate, r, t)) in enumerate(zip(mousestates, allrects, alltexts))
         onmouseover(mousestate) do state
@@ -257,7 +257,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmousestate!(scene)) do state
+    onmousedownoutside(addmouseevents!(scene)) do state
         if is_open[]
             is_open[] = !is_open[]
         end

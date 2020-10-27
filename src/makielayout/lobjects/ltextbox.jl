@@ -118,7 +118,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    mousestate = addmousestate!(scene)
+    mousestate = addmouseevents!(scene)
 
     onmouseleftdown(mousestate) do state
         focus!(ltextbox)
