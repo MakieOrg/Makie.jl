@@ -48,6 +48,11 @@ end
 
 abstract type AbstractInteraction end
 
+struct ScrollEvent
+    x::Float32
+    y::Float32
+end
+
 abstract type LObject end
 
 mutable struct LAxis <: AbstractPlotting.AbstractScene
@@ -61,6 +66,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
     mouseevents::Observable{MouseEvent}
+    scrollevents::Observable{ScrollEvent}
     interactions::Vector{AbstractInteraction}
 end
 
