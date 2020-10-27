@@ -17,6 +17,7 @@ $(ATTRIBUTES)
         strokecolor = :white,
         width = automatic,
         direction = :y,
+        visible = theme(scene, :visible),
     )
 end
 
@@ -58,6 +59,6 @@ function AbstractPlotting.plot!(p::BarPlot)
 
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
-        strokewidth = p.strokewidth, strokecolor = p.strokecolor
+        strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible
     )
 end
