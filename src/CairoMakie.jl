@@ -21,6 +21,12 @@ const OneOrVec{T} = Union{
     NTuple{N2, T} where N2,
 }
 
+# re-export AbstractPlotting
+for name in names(AbstractPlotting)
+    @eval import AbstractPlotting: $(name)
+    @eval export $(name)
+end
+
 include("infrastructure.jl")
 include("utils.jl")
 include("fonts.jl")

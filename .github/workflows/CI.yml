@@ -7,7 +7,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: [1.4]
+        julia-version: [1.5]
         julia-arch: [x64]
         os: [ubuntu-latest, macOS-latest]
       fail-fast: false
@@ -19,9 +19,6 @@ jobs:
         uses: julia-actions/setup-julia@latest
         with:
           version: ${{ matrix.julia-version }}
-
-      - name: Add package versions
-        run: julia --project=. -e 'using Pkg; pkg"add MakieGallery#master"'
 
       - name: Run tests
         uses: julia-actions/julia-runtest@master
