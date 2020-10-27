@@ -48,6 +48,30 @@ end
 
 abstract type AbstractInteraction end
 
+struct LimitReset <: AbstractInteraction end
+
+mutable struct RectangleZoom <: AbstractInteraction
+    from::Union{Nothing, Point2f0}
+    to::Union{Nothing, Point2f0}
+    rectnode::Observable{FRect2D}
+    poly::Union{Poly, Nothing}
+end
+
+struct ScrollZoom <: AbstractInteraction
+    speed::Float32
+    reset_timer::Ref{Any}
+    prev_xticklabelspace::Ref{Any}
+    prev_yticklabelspace::Ref{Any}
+    reset_delay::Float32
+end
+
+struct DragPan <: AbstractInteraction
+    reset_timer::Ref{Any}
+    prev_xticklabelspace::Ref{Any}
+    prev_yticklabelspace::Ref{Any}
+    reset_delay::Float32
+end
+
 struct ScrollEvent
     x::Float32
     y::Float32
