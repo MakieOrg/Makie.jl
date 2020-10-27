@@ -302,15 +302,15 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    interactions = AbstractInteraction[]
+    interactions = Dict{Symbol, AbstractInteraction}()
 
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
         layoutobservables, attrs, block_limit_linking, decorations,
-        mouseevents, scrollevents,interactions)
+        mouseevents, scrollevents, interactions)
 
 
     function process_event(event)
-        for i in la.interactions
+        for i in values(la.interactions)
             process_interaction(i, event, la)
         end
     end
@@ -318,18 +318,21 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     on(process_event, mouseevents)
     on(process_event, scrollevents)
 
-    push!(la.interactions, RectangleZoom(nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
-    push!(la.interactions, LimitReset())
-    push!(la.interactions, ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
-    push!(la.interactions, DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    register_interaction!(la,
+        :rectanglezoom,
+        RectangleZoom(nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
 
-    # # add action that resets limits on ctrl + click
-    # add_reset_limits!(la)
-    # # add action that allows zooming using mouse scrolling
-    # add_zoom!(la)
-    # # add action that allows panning using a mouse button
-    # add_pan!(la)
+    register_interaction!(la,
+        :limitreset,
+        LimitReset())
 
+    register_interaction!(la,
+        :scrollzoom,
+        ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+        
+    register_interaction!(la,
+        :dragpan,
+        DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
 
     # compute limits that adhere to the limit aspect ratio whenever the targeted
     # limits or the scene size change, because both influence the displayed ratio
@@ -341,12 +344,37 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 end
 
 #######################################
+
+function register_interaction!(ax::LAxis, name::Symbol, interaction::AbstractInteraction)
+    haskey(ax.interactions, name) && error("Interaction $name already exists.")
+    registration_setup!(ax, interaction)
+    push!(ax.interactions, name => interaction)
+    return interaction
+end
+
+function deregister_interaction!(ax::LAxis, name::Symbol)
+    !haskey(ax.interactions, name) && error("Interaction $name does not exist.")
+    interaction = ax.interactions[name]
+
+    deregistration_cleanup!(ax, interaction)
+    pop!(ax.interactions, name)
+    return interaction
+end
+
+function registration_setup!(ax, interaction)
+    # do nothing in the default case
+end
+
+function deregistration_cleanup!(ax, interaction)
+    # do nothing in the default case
+end
+
 function process_interaction(@nospecialize args...)
     # do nothing in the default case
 end
 
 
-function process_interaction(r::RectangleZoom, event::MouseEvent, ax)
+function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
 
     if event.type === MouseEventTypes.leftdragstart
         r.from = event.prev_data
@@ -382,7 +410,7 @@ function positivize(r::FRect2D)
 end
 
 
-function process_interaction(l::LimitReset, event::MouseEvent, ax)
+function process_interaction(l::LimitReset, event::MouseEvent, ax::LAxis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -394,7 +422,7 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax)
 end
 
 
-function process_interaction(s::ScrollZoom, event::ScrollEvent, ax)
+function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::LAxis)
     # use vertical zoom
     zoom = event.y
 
@@ -777,139 +805,6 @@ function linkyaxes!(a::LAxis, others...)
     autolimits!(a)
 end
 
-function add_pan!(ax::LAxis)
-
-    tlimits = ax.targetlimits
-    xpanlock = ax.xpanlock
-    ypanlock = ax.ypanlock
-    xpankey = ax.xpankey
-    ypankey = ax.ypankey
-    panbutton = ax.panbutton
-
-    scene = ax.scene
-
-    reset_timer = Ref{Any}(nothing)
-    prev_xticklabelspace = Ref{Any}(0)
-    prev_yticklabelspace = Ref{Any}(0)
-
-    startpos = Base.RefValue((0.0, 0.0))
-    e = events(scene)
-    on(
-        camera(scene),
-        # Node.((scene, cam, startpos))...,
-        Node.((scene, startpos))...,
-        e.mousedrag
-    ) do scene, startpos, dragging
-        mp = e.mouseposition[]
-        if ispressed(scene, panbutton[]) && is_mouseinside(scene)
-            window_area = pixelarea(scene)[]
-            if dragging == Mouse.down
-                startpos[] = mp
-            elseif dragging == Mouse.pressed && ispressed(scene, panbutton[])
-                diff = startpos[] .- mp
-                startpos[] = mp
-                pxa = scene.px_area[]
-                diff_fraction = Vec2f0(diff) ./ Vec2f0(widths(pxa))
-
-                diff_limits = diff_fraction .* widths(tlimits[])
-
-                # correct for reversals
-                reversals = (ax.xreversed[], ax.yreversed[])
-
-                diff_limits = diff_limits .* (-2 .* reversals .+ 1)
-
-                xori, yori = Vec2f0(tlimits[].origin) .+ Vec2f0(diff_limits)
-
-                if xpanlock[] || ispressed(scene, ypankey[])
-                    xori = tlimits[].origin[1]
-                end
-
-                if ypanlock[] || ispressed(scene, xpankey[])
-                    yori = tlimits[].origin[2]
-                end
-
-                timed_ticklabelspace_reset(ax, reset_timer, prev_xticklabelspace, prev_yticklabelspace, 0.1)
-
-                tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
-            end
-        end
-        return
-    end
-end
-
-function add_zoom!(ax::LAxis)
-
-    tlimits = ax.targetlimits
-    xzoomlock = ax.xzoomlock
-    yzoomlock = ax.yzoomlock
-    xzoomkey = ax.xzoomkey
-    yzoomkey = ax.yzoomkey
-
-    scene = ax.scene
-
-    e = events(scene)
-    cam = camera(scene)
-
-    reset_timer = Ref{Any}(nothing)
-    prev_xticklabelspace = Ref{Any}(0)
-    prev_yticklabelspace = Ref{Any}(0)
-
-    on(cam, e.scroll) do x
-        # @extractvalue cam (zoomspeed, zoombutton, area)
-        zoomspeed = 0.10f0
-        zoombutton = nothing
-        zoom = Float32(x[2])
-        if zoom != 0 && ispressed(scene, zoombutton) && AbstractPlotting.is_mouseinside(scene)
-            pa = pixelarea(scene)[]
-
-            # don't let z go negative
-            z = max(0.1f0, 1f0 - (abs(zoom) * zoomspeed))
-            if zoom > 0
-                z = 1/z   # sets the old to be a fraction of the new. This ensures zoom in & then out returns to original position.
-            end
-
-            mp_axscene = Vec4f0((e.mouseposition[] .- pa.origin)..., 0, 1)
-
-            # first to normal -1..1 space
-            mp_axfraction =  (cam.pixel_space[] * mp_axscene)[1:2] .*
-                # now to 1..-1 if an axis is reversed to correct zoom point
-                (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
-                # now to 0..1
-                0.5 .+ 0.5
-
-            xorigin = tlimits[].origin[1]
-            yorigin = tlimits[].origin[2]
-
-            xwidth = tlimits[].widths[1]
-            ywidth = tlimits[].widths[2]
-
-            newxwidth = xzoomlock[] ? xwidth : xwidth * z
-            newywidth = yzoomlock[] ? ywidth : ywidth * z
-
-            newxorigin = xzoomlock[] ? xorigin : xorigin + mp_axfraction[1] * (xwidth - newxwidth)
-            newyorigin = yzoomlock[] ? yorigin : yorigin + mp_axfraction[2] * (ywidth - newywidth)
-
-            timed_ticklabelspace_reset(ax, reset_timer, prev_xticklabelspace, prev_yticklabelspace, 0.1)
-
-            tlimits[] = if AbstractPlotting.ispressed(scene, xzoomkey[])
-                FRect(newxorigin, yorigin, newxwidth, ywidth)
-            elseif AbstractPlotting.ispressed(scene, yzoomkey[])
-                FRect(xorigin, newyorigin, xwidth, newywidth)
-            else
-                FRect(newxorigin, newyorigin, newxwidth, newywidth)
-            end
-
-        end
-
-        return
-    end
-
-    # Also support rubber band selection
-    rect = select_rectangle(scene)
-    on(rect) do r
-        tlimits[] = r
-    end
-end
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
