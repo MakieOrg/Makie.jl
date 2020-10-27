@@ -310,8 +310,8 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
 
     function process_event(event)
-        for i in values(la.interactions)
-            process_interaction(i, event, la)
+        for (active, interaction) in values(la.interactions)
+            active && process_interaction(interaction, event, la)
         end
     end
 
@@ -329,7 +329,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     register_interaction!(la,
         :scrollzoom,
         ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
-        
+
     register_interaction!(la,
         :dragpan,
         DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
@@ -348,13 +348,13 @@ end
 function register_interaction!(ax::LAxis, name::Symbol, interaction::AbstractInteraction)
     haskey(ax.interactions, name) && error("Interaction $name already exists.")
     registration_setup!(ax, interaction)
-    push!(ax.interactions, name => interaction)
+    push!(ax.interactions, name => (true, interaction))
     return interaction
 end
 
 function deregister_interaction!(ax::LAxis, name::Symbol)
     !haskey(ax.interactions, name) && error("Interaction $name does not exist.")
-    interaction = ax.interactions[name]
+    _, interaction = ax.interactions[name]
 
     deregistration_cleanup!(ax, interaction)
     pop!(ax.interactions, name)
@@ -367,6 +367,18 @@ end
 
 function deregistration_cleanup!(ax, interaction)
     # do nothing in the default case
+end
+
+function activate_interaction!(ax, name::Symbol)
+    !haskey(ax.interactions, name) && error("Interaction $name does not exist.")
+    ax.interactions[name] = (true, ax.interactions[name][2])
+    return nothing
+end
+
+function deactivate_interaction!(ax, name::Symbol)
+    !haskey(ax.interactions, name) && error("Interaction $name does not exist.")
+    ax.interactions[name] = (false, ax.interactions[name][2])
+    return nothing
 end
 
 function process_interaction(@nospecialize args...)

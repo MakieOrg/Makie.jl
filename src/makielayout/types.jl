@@ -91,7 +91,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     decorations::Dict{Symbol, Any}
     mouseevents::Observable{MouseEvent}
     scrollevents::Observable{ScrollEvent}
-    interactions::Dict{Symbol, AbstractInteraction}
+    interactions::Dict{Symbol, Tuple{Bool, AbstractInteraction}}
 end
 
 mutable struct LColorbar <: LObject
