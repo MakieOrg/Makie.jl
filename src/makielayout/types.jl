@@ -60,7 +60,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     attributes::Attributes
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
-    mousestate::Observable{MouseState}
+    mouseevents::Observable{MouseEvent}
     interactions::Vector{AbstractInteraction}
 end
 

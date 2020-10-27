@@ -294,17 +294,17 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     # layout
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    mousestate = addmousestate!(scene)
+    mouseevents = addmouseevents!(scene)
 
     interactions = AbstractInteraction[]
 
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
-        layoutobservables, attrs, block_limit_linking, decorations, mousestate, interactions)
+        layoutobservables, attrs, block_limit_linking, decorations, mouseevents, interactions)
 
 
-    on(mousestate) do state
+    on(mouseevents) do event
         for i in la.interactions
-            process_interaction(i, state, la)
+            process_interaction(i, event, la)
         end
     end
 
@@ -346,38 +346,39 @@ function add_rectanglezoom!(ax)
     nothing
 end
 
-function process_interaction(r::RectangleZoom, mousestate::MouseState{MouseLeftDragStart}, ax)
-    r.from = mousestate.prev
-    r.to = mousestate.pos
-    r.rectnode[] = FRect2D(r.from, r.to .- r.from)
-    r.poly = poly!(ax.scene, r.rectnode, color = (:blue, 0.1), strokewidth = 1, strokecolor = (:blue, 0.5))[end]
-    nothing
+function process_interaction(r::RectangleZoom, event::MouseEvent, ax)
+
+    if event.type === MouseEventTypes.leftdragstart
+        r.from = event.prev
+        r.to = event.pos
+        r.rectnode[] = FRect2D(r.from, r.to .- r.from)
+        r.poly = poly!(ax.scene, r.rectnode, color = (:blue, 0.1), strokewidth = 1, strokecolor = (:blue, 0.5))[end]
+
+    elseif event.type === MouseEventTypes.leftdrag
+        r.to = event.pos
+        r.rectnode[] = FRect2D(r.from, r.to .- r.from)
+
+    elseif event.type === MouseEventTypes.leftdragstop
+        newlims = positivize(r.rectnode[])
+        if !(0 in widths(newlims))
+            ax.targetlimits[] = newlims
+        end
+
+        if !isnothing(r.poly)
+            delete!(ax.scene, r.poly)
+            r.poly = nothing
+        end
+    end
+
+    return nothing
 end
 
-function process_interaction(r::RectangleZoom, mousestate::MouseState{MouseLeftDrag}, ax)
-    r.to = mousestate.pos
-    r.rectnode[] = FRect2D(r.from, r.to .- r.from)
-    nothing
-end
 
 function positivize(r::FRect2D)
     negwidths = r.widths .< 0
     newori = ifelse.(negwidths, r.origin .+ r.widths, r.origin)
     newwidths = ifelse.(negwidths, -r.widths, r.widths)
     FRect2D(newori, newwidths)
-end
-
-function process_interaction(r::RectangleZoom, mousestate::MouseState{MouseLeftDragStop}, ax)
-    newlims = positivize(r.rectnode[])
-    if !(0 in widths(newlims))
-        ax.targetlimits[] = newlims
-    end
-
-    if !isnothing(r.poly)
-        delete!(ax.scene, r.poly)
-        r.poly = nothing
-    end
-    nothing
 end
 
 
@@ -387,14 +388,18 @@ struct LimitReset <: AbstractInteraction end
 function add_limit_reset!(ax)
     reset = LimitReset()
     push!(ax.interactions, reset)
-    nothing
+    return nothing
 end
 
-function process_interaction(l::LimitReset, mousestate::MouseState{MouseLeftClick}, ax)
-    if ispressed(ax.scene, Keyboard.left_control)
-        autolimits!(ax)
+function process_interaction(l::LimitReset, event::MouseEvent, ax)
+
+    if event.type === MouseEventTypes.leftclick
+        if ispressed(ax.scene, Keyboard.left_control)
+            autolimits!(ax)
+        end
     end
-    nothing
+
+    return nothing
 end
 
 #######################################
