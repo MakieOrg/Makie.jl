@@ -318,10 +318,10 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     on(process_event, mouseevents)
     on(process_event, scrollevents)
 
-
-    add_limit_reset!(la)
-    add_rectanglezoom!(la)
-    add_scrollzoom!(la)
+    push!(la.interactions, RectangleZoom(nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
+    push!(la.interactions, LimitReset())
+    push!(la.interactions, ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
+    push!(la.interactions, DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
 
     # # add action that resets limits on ctrl + click
     # add_reset_limits!(la)
@@ -345,29 +345,17 @@ function process_interaction(@nospecialize args...)
     # do nothing in the default case
 end
 
-mutable struct RectangleZoom <: AbstractInteraction
-    from::Union{Nothing, Point2f0}
-    to::Union{Nothing, Point2f0}
-    rectnode::Observable{FRect2D}
-    poly::Union{Poly, Nothing}
-end
-
-function add_rectanglezoom!(ax)
-    zoom = RectangleZoom(nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing)
-    push!(ax.interactions, zoom)
-    nothing
-end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax)
 
     if event.type === MouseEventTypes.leftdragstart
-        r.from = event.prev
-        r.to = event.pos
+        r.from = event.prev_data
+        r.to = event.data
         r.rectnode[] = FRect2D(r.from, r.to .- r.from)
         r.poly = poly!(ax.scene, r.rectnode, color = (:blue, 0.1), strokewidth = 1, strokecolor = (:blue, 0.5))[end]
 
     elseif event.type === MouseEventTypes.leftdrag
-        r.to = event.pos
+        r.to = event.data
         r.rectnode[] = FRect2D(r.from, r.to .- r.from)
 
     elseif event.type === MouseEventTypes.leftdragstop
@@ -394,15 +382,6 @@ function positivize(r::FRect2D)
 end
 
 
-
-struct LimitReset <: AbstractInteraction end
-
-function add_limit_reset!(ax)
-    reset = LimitReset()
-    push!(ax.interactions, reset)
-    return nothing
-end
-
 function process_interaction(l::LimitReset, event::MouseEvent, ax)
 
     if event.type === MouseEventTypes.leftclick
@@ -414,20 +393,6 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax)
     return nothing
 end
 
-
-struct ScrollZoom <: AbstractInteraction
-    speed::Float32
-    reset_timer::Ref{Any}
-    prev_xticklabelspace::Ref{Any}
-    prev_yticklabelspace::Ref{Any}
-    reset_delay::Float32
-end
-
-function add_scrollzoom!(ax)
-    sz = ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2)
-    push!(ax.interactions, sz)
-    return nothing
-end
 
 function process_interaction(s::ScrollZoom, event::ScrollEvent, ax)
     # use vertical zoom
@@ -484,6 +449,41 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax)
         end
 
     end
+end
+
+function process_interaction(dp::DragPan, event::MouseEvent, ax)
+
+    if event.type !== MouseEventTypes.rightdrag
+        return nothing
+    end
+
+    tlimits = ax.targetlimits
+    xpanlock = ax.xpanlock
+    ypanlock = ax.ypanlock
+    xpankey = ax.xpankey
+    ypankey = ax.ypankey
+    panbutton = ax.panbutton
+
+    scene = ax.scene
+
+    movement = AbstractPlotting.to_world(ax.scene, event.px) .-
+               AbstractPlotting.to_world(ax.scene, event.prev_px)
+
+    xori, yori = Vec2f0(tlimits[].origin) .- movement
+
+    if xpanlock[] || ispressed(scene, ypankey[])
+        xori = tlimits[].origin[1]
+    end
+
+    if ypanlock[] || ispressed(scene, xpankey[])
+        yori = tlimits[].origin[2]
+    end
+
+    timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
+
+    tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
+           
+    return nothing
 end
 
 #######################################
