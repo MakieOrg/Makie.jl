@@ -228,14 +228,14 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     rowgap!(contentgrid, 0)
 
-    mousestates = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
+    mouseevents_vector = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
 
-    for (i, (mousestate, r, t)) in enumerate(zip(mousestates, allrects, alltexts))
-        onmouseover(mousestate) do state
+    for (i, (mouseevents, r, t)) in enumerate(zip(mouseevents_vector, allrects, alltexts))
+        onmouseover(mouseevents) do events
             r.color = cell_color_hover[]
         end
 
-        onmouseout(mousestate) do state
+        onmouseout(mouseevents) do events
             if i == 1
                 r.color = selection_cell_color_inactive[]
             else
@@ -244,7 +244,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
             end
         end
 
-        onmouseleftdown(mousestate) do state
+        onmouseleftdown(mouseevents) do events
             r.color = cell_color_active[]
             if is_open[]
                 # first item is already selected
@@ -257,7 +257,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmouseevents!(scene)) do state
+    onmousedownoutside(addmouseevents!(scene)) do events
         if is_open[]
             is_open[] = !is_open[]
         end
