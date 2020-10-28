@@ -433,7 +433,7 @@ function default_attributes(::Type{LButton}, scene)
         "The color of the button border."
         strokecolor = :transparent
         "The color of the button."
-        buttoncolor = RGBf0(0.9, 0.9, 0.9)
+        buttoncolor = RGBf0(0.94, 0.94, 0.94)
         "The color of the label."
         labelcolor = :black
         "The color of the label when the mouse hovers over the button."
