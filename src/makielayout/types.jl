@@ -46,18 +46,16 @@ mutable struct LineAxis
     ticklabels::Node{Vector{String}}
 end
 
-abstract type AbstractInteraction end
+struct LimitReset end
 
-struct LimitReset <: AbstractInteraction end
-
-mutable struct RectangleZoom <: AbstractInteraction
+mutable struct RectangleZoom
     from::Union{Nothing, Point2f0}
     to::Union{Nothing, Point2f0}
     rectnode::Observable{FRect2D}
     poly::Union{Poly, Nothing}
 end
 
-struct ScrollZoom <: AbstractInteraction
+struct ScrollZoom
     speed::Float32
     reset_timer::Ref{Any}
     prev_xticklabelspace::Ref{Any}
@@ -65,7 +63,7 @@ struct ScrollZoom <: AbstractInteraction
     reset_delay::Float32
 end
 
-struct DragPan <: AbstractInteraction
+struct DragPan
     reset_timer::Ref{Any}
     prev_xticklabelspace::Ref{Any}
     prev_yticklabelspace::Ref{Any}
@@ -91,7 +89,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     decorations::Dict{Symbol, Any}
     mouseevents::Observable{MouseEvent}
     scrollevents::Observable{ScrollEvent}
-    interactions::Dict{Symbol, Tuple{Bool, AbstractInteraction}}
+    interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
 
 mutable struct LColorbar <: LObject
