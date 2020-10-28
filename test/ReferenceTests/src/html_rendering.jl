@@ -16,7 +16,7 @@ end
 
 function tourl(path)
     if Sys.iswindows()
-        # THere might be a nicer way?
+        # There might be a nicer way?
         # Anyways, this seems to be needed on windows
         if !startswith(path, "http")
             path = "file:///" * replace(path, "\\" => "/")
