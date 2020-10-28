@@ -85,7 +85,8 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     buttonpoint = lift(sliderbox, horizontal, displayed_sliderfraction, buttonradius,
             buttonstrokewidth) do bb, horizontal, sf, brad, bstw
 
-        pad = brad + bstw
+        # pad = brad #+ bstw
+        pad = 0f0
 
         if horizontal
             [Point2f0(left(bb) + pad + (width(bb) - 2pad) * sf, bottom(bb) + height(bb) / 2)]
@@ -102,22 +103,23 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         [ca, ci]
     end
 
-    linesegs = linesegments!(subscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+    bsize = @lift($buttonradius * 2f0)
+
+    linesegs = linesegments!(subscene, linepoints, color = linecolors, linewidth = bsize, raw = true)[end]
     decorations[:linesegments] = linesegs
 
     linestate = addmouseevents!(subscene, linesegs)
 
-    bsize = @lift($buttonradius * 2f0)
 
     bcolor = Node{Any}(buttoncolor_inactive[])
 
 
-    button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor, marker = '⚫',
-        strokewidth = buttonstrokewidth, strokecolor = color_active_dimmed, raw = true)[end]
+    button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor, marker = FRect2D(0, 0, 1, 1),
+        strokewidth = 0, strokecolor = color_active_dimmed, raw = true, visible = false)[end]
     decorations[:button] = button
 
 
-    mouseevents = addmouseevents!(subscene)
+    mouseevents = addmouseevents!(subscene, linesegs)
 
     onmouseleftup(mouseevents) do event
         bcolor[] = buttoncolor_inactive[]
@@ -125,14 +127,12 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     onmouseleftdrag(mouseevents) do event
 
-        pad = buttonradius[] + buttonstrokewidth[]
-
         dragging[] = true
         dif = event.px - event.prev_px
         fraction = if horizontal[]
-            dif[1] / (width(sliderbox[]) - 2pad)
+            dif[1] / width(sliderbox[])
         else
-            dif[2] / (height(sliderbox[]) - 2pad)
+            dif[2] / height(sliderbox[])
         end
         if fraction != 0.0f0
             newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
@@ -153,13 +153,11 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     onmouseleftdown(mouseevents) do event
 
-        bcolor[] = color_active[]
-
-        pad = buttonradius[] + buttonstrokewidth[]
+        # bcolor[] = color_active[]
 
         pos = event.px
         dim = horizontal[] ? 1 : 2
-        frac = (pos[dim] - endpoints[][1][dim] - pad) / (endpoints[][2][dim] - endpoints[][1][dim] - 2pad)
+        frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
     end
 

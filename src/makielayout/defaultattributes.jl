@@ -522,9 +522,9 @@ function default_attributes(::Type{LSlider}, scene)
         "The color of the slider when the mouse clicks and drags the slider."
         color_active = COLOR_ACCENT[]
         "The color of the slider when it is not interacted with."
-        color_inactive = RGBf0(0.9, 0.9, 0.9)
+        color_inactive = RGBf0(0.94, 0.94, 0.94)
         "The color of the button when it is not interacted with."
-        buttoncolor_inactive = RGBf0(1, 1, 1)
+        buttoncolor_inactive = RGBf0(0.3, 0.3, 0.3)
         "Controls if the slider has a horizontal orientation or not."
         horizontal = true
         "The line width of the slider button's border."
