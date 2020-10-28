@@ -16,7 +16,7 @@ examples = MakieGallery.record_examples(test_record_path)
 MakieGallery.run_comparison(test_record_path, tested_diff_path)
 
 empty!(database) # remove other examples
-# THese examples download additional data - don't want to deal with that!
+# These examples download additional data - don't want to deal with that!
 for path in (tested_diff_path, test_record_path)
     rm(path, force = true, recursive = true)
     mkpath(path)
