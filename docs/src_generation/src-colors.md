@@ -9,7 +9,7 @@ Any color symbol supported by [Colors.jl](https://github.com/JuliaGraphics/Color
 
 ## Colormaps
 
-Colormaps are mappings of values to colors. You can supply the coloring values using the `color` keyword argument, and the colormap will automatically be adjusted to fit those values. THe default colormap is `viridis`, which looks like this:
+Colormaps are mappings of values to colors. You can supply the coloring values using the `color` keyword argument, and the colormap will automatically be adjusted to fit those values. The default colormap is `viridis`, which looks like this:
 
 ![Viridis colormap](../assets/viridis.png)
 
