@@ -495,8 +495,6 @@ end
 
 function default_attributes(::Type{LSlider}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
-        "The line width of the main slider line."
-        linewidth = 4f0
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center
         "The vertical alignment of the slider in its suggested bounding box."
@@ -504,15 +502,13 @@ function default_attributes(::Type{LSlider}, scene)
         "The width setting of the slider."
         width = nothing
         "The height setting of the slider."
-        height = Auto()
+        height = 15
         "The range of values that the slider can pick from."
         range = 0:10
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
-        "The radius of the slider button."
-        buttonradius = 9f0
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = 0
         "The current value of the slider."
@@ -523,12 +519,8 @@ function default_attributes(::Type{LSlider}, scene)
         color_active = COLOR_ACCENT[]
         "The color of the slider when it is not interacted with."
         color_inactive = RGBf0(0.94, 0.94, 0.94)
-        "The color of the button when it is not interacted with."
-        buttoncolor_inactive = RGBf0(0.3, 0.3, 0.3)
         "Controls if the slider has a horizontal orientation or not."
         horizontal = true
-        "The line width of the slider button's border."
-        buttonstrokewidth = 4f0
         "The align mode of the slider in its parent GridLayout."
         alignmode = Inside()
     end
