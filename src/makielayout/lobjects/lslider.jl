@@ -102,9 +102,9 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         dragging[] = true
         dif = event.px - event.prev_px
         fraction = if horizontal[]
-            dif[1] / width(sliderbox[])
+            dif[1] / (endpoints[][2][1] - endpoints[][1][1])
         else
-            dif[2] / height(sliderbox[])
+            dif[2] / (endpoints[][2][2] - endpoints[][1][2])
         end
         if fraction != 0.0f0
             newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
