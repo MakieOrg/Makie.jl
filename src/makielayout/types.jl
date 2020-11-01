@@ -49,6 +49,9 @@ end
 struct LimitReset end
 
 mutable struct RectangleZoom
+    active::Bool
+    restrict_x::Bool
+    restrict_y::Bool
     from::Union{Nothing, Point2f0}
     to::Union{Nothing, Point2f0}
     rectnode::Observable{FRect2D}
@@ -75,6 +78,10 @@ struct ScrollEvent
     y::Float32
 end
 
+struct KeysEvent
+    keys::Set{AbstractPlotting.Keyboard.Button}
+end
+
 abstract type LObject end
 
 mutable struct LAxis <: AbstractPlotting.AbstractScene
@@ -89,6 +96,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     decorations::Dict{Symbol, Any}
     mouseevents::Observable{MouseEvent}
     scrollevents::Observable{ScrollEvent}
+    keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
 

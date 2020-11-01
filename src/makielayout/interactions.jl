@@ -85,20 +85,36 @@ end
 #                            LAxis interactions                            #
 ############################################################################
 
+function _chosen_limits(rz, ax)
+
+    r = positivize(FRect2D(rz.from, rz.to .- rz.from))
+    lims = ax.limits[]
+    # restrict to y change
+    if rz.restrict_x
+        r = FRect2D(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2]) 
+    end
+    # restrict to x change
+    if rz.restrict_y
+        r = FRect2D(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2]) 
+    end
+    return r
+end
+
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
 
     if event.type === MouseEventTypes.leftdragstart
         r.from = event.prev_data
         r.to = event.data
-        r.rectnode[] = FRect2D(r.from, r.to .- r.from)
+        r.rectnode[] = _chosen_limits(r, ax)
         r.poly = poly!(ax.scene, r.rectnode, color = (:blue, 0.1), strokewidth = 1, strokecolor = (:blue, 0.5))[end]
+        r.active = true
 
     elseif event.type === MouseEventTypes.leftdrag
         r.to = event.data
-        r.rectnode[] = FRect2D(r.from, r.to .- r.from)
+        r.rectnode[] = _chosen_limits(r, ax)
 
     elseif event.type === MouseEventTypes.leftdragstop
-        newlims = positivize(r.rectnode[])
+        newlims = r.rectnode[]
         if !(0 in widths(newlims))
             ax.targetlimits[] = newlims
         end
@@ -107,8 +123,18 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
             delete!(ax.scene, r.poly)
             r.poly = nothing
         end
+        r.active = false
     end
 
+    return nothing
+end
+
+function process_interaction(r::RectangleZoom, event::KeysEvent, ax::LAxis)
+    r.restrict_y = Keyboard.x in event.keys
+    r.restrict_x = Keyboard.y in event.keys
+    r.active || return
+
+    r.rectnode[] = _chosen_limits(r, ax)
     return nothing
 end
 
