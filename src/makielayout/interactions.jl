@@ -108,11 +108,11 @@ function _chosen_limits(rz, ax)
     r = positivize(FRect2D(rz.from, rz.to .- rz.from))
     lims = ax.limits[]
     # restrict to y change
-    if rz.restrict_x
+    if rz.restrict_x || !ax.rectzoom_affect_x[]
         r = FRect2D(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2]) 
     end
     # restrict to x change
-    if rz.restrict_y
+    if rz.restrict_y || !ax.rectzoom_affect_y[]
         r = FRect2D(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2]) 
     end
     return r
