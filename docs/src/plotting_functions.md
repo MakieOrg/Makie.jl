@@ -11,8 +11,9 @@ arrows
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(1, 10, 20)
 ys = LinRange(1, 15, 20)
@@ -31,8 +32,9 @@ band
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
 ys_low = -0.2 .* sin.(xs) .- 0.25
@@ -51,8 +53,9 @@ barplot
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
@@ -70,8 +73,9 @@ contour
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -89,8 +93,9 @@ errorbars
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = 0:0.5:10
 ys = 0.5 .* sin.(xs)
@@ -121,8 +126,9 @@ heatmap
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -140,8 +146,9 @@ image
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 using FileIO
 
 img = rotr90(load("assets/cow.png"))
@@ -159,8 +166,9 @@ lines
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = 0:0.01:10
 ys = 0.5 .* sin.(xs)
@@ -180,8 +188,9 @@ linesegments
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
 ys = sin.(xs)
@@ -200,8 +209,9 @@ mesh
 ```
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 vertices = [
     0.0 0.0;
@@ -229,8 +239,9 @@ meshscatter
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = cos.(1:0.5:20)
 ys = sin.(1:0.5:20)
@@ -249,8 +260,9 @@ poly
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 p1 = Point2f0(0, 0)
 p2 = Point2f0(2, 0)
@@ -270,8 +282,9 @@ scatter
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 20)
 ys = 0.5 .* sin.(xs)
@@ -293,8 +306,9 @@ surface
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 15, 100)
@@ -312,8 +326,9 @@ text
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 scene = Scene(camera = campixel!, show_axis = false, resolution = (600, 600))
 
@@ -336,8 +351,9 @@ volume
 ### Examples
 
 ```@example
-using Makie
-Makie.AbstractPlotting.inline!(true) # hide
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
 
 r = LinRange(-1, 1, 100)
 cube = [(x.^2 + y.^2 + z.^2) for x = r, y = r, z = r]

@@ -33,7 +33,8 @@ A matcap (material capture) is a texture which is applied based on the normals o
 ## Examples
 
 ```@example 1
-using Makie
+using GLMakie
+using AbstractPlotting
 xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]
