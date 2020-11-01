@@ -21,6 +21,24 @@ function register_interaction!(parent, name::Symbol, interaction)
 end
 
 """
+    register_interaction!(interaction::Function, parent, name::Symbol)
+
+Register `interaction` with `parent` under the name `name`.
+The parent will call `process_interaction(interaction, event, parent)`
+whenever suitable events happen.
+This form with the first `Function` argument is especially intended for `do` syntax.
+
+The interaction can be removed with `deregister_interaction!` or temporarily
+toggled with `activate_interaction!` / `deactivate_interaction!`.
+"""
+function register_interaction!(interaction::Function, parent, name::Symbol)
+    haskey(interactions(parent), name) && error("Interaction $name already exists.")
+    registration_setup!(parent, interaction)
+    push!(interactions(parent), name => (true, interaction))
+    return interaction
+end
+
+"""
     deregister_interaction!(parent, name::Symbol)
 
 Deregister the interaction named `name` registered in `parent`.
