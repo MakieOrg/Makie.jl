@@ -569,7 +569,7 @@ function default_attributes(::Type{LToggle}, scene)
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
-        toggleduration = 0.2
+        toggleduration = 0.15
         "The border width as a fraction of the toggle height "
         rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
