@@ -124,7 +124,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
         r.from = event.prev_data
         r.to = event.data
         r.rectnode[] = _chosen_limits(r, ax)
-        r.poly = poly!(ax.scene, r.rectnode, color = (:blue, 0.1), strokewidth = 1, strokecolor = (:blue, 0.5))[end]
+        r.poly = poly!(ax.scene, r.rectnode, color = (COLOR_ACCENT[], 0.1), strokewidth = 2, strokecolor = COLOR_ACCENT[])[end]
         r.active = true
 
     elseif event.type === MouseEventTypes.leftdrag
