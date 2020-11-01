@@ -43,19 +43,11 @@ end
 A matrix of Intensities will result in a contourf kind of plot
 """
 function gl_heatmap(main::MatTypes{T}, data::Dict) where T <: AbstractFloat
-    main_v = to_value(main)
-    @gen_defaults! data begin
-        ranges = (0:size(main_v, 1), 0:size(main_v, 2))
-    end
-    prim = const_lift(data[:ranges]) do ranges
-        x, y, xw, yh = minimum(ranges[1]), minimum(ranges[2]), maximum(ranges[1]), maximum(ranges[2])
-        return FRect2D(x, y, xw-x, yh-y)
-    end
-    delete!(data, :ranges)
     @gen_defaults! data begin
         intensity = main => Texture
         color_map = default(Vector{RGBA{N0f8}},s) => Texture
-        primitive = prim => to_uvmesh
+        primitive = Rect2D(0f0,0f0,1f0,1f0) => native_triangle_mesh
+        instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the heatmap"
         nan_color = RGBAf0(1, 0, 0, 1)
         highclip = RGBAf0(0, 0, 0, 0)
         lowclip = RGBAf0(0, 0, 0, 0)
