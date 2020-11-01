@@ -296,17 +296,23 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     mouseevents = addmouseevents!(scene)
     scrollevents = Node(ScrollEvent(0, 0))
+    keysevents = Node(KeysEvent(Set()))
+
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
         end
     end
 
+    on(scene.events.keyboardbuttons) do buttons
+        keysevents[] = KeysEvent(buttons)
+    end
+
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
         layoutobservables, attrs, block_limit_linking, decorations,
-        mouseevents, scrollevents, interactions)
+        mouseevents, scrollevents, keysevents, interactions)
 
 
     function process_event(event)
@@ -317,10 +323,11 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     on(process_event, mouseevents)
     on(process_event, scrollevents)
+    on(process_event, keysevents)
 
     register_interaction!(la,
         :rectanglezoom,
-        RectangleZoom(nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
+        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
 
     register_interaction!(la,
         :limitreset,
