@@ -2,13 +2,10 @@
 
 ## Testing
 
-The main repo to test is MakieGallery; all other test scripts are based off MakieGallery.  
+The main repo to test is AbstractPlotting/test/ReferenceTests; all backends use this to do integration tests with AbstractPlotting.  
 There are several environment variables which govern the behaviour of the test suite.
-- `MAKIEGALLERY_MINIMAL` to control whether only short tests or all examples are run
-- `MAKIEGALLERY_FAST` to control whether the time-consuming examples run or not
 
 ## Logistical issues
-
 
 ### Precompilation
 
@@ -19,7 +16,7 @@ So far it seems that all kind of globals are not save for static compilation and
 I'm slowly removing problematic constructs from the dependencies and try to get static compilation as quick as possible.
 
 !!! note "The state of static compilability in Makie"
-    Currently, `Makie` is statically compilable.
+Currently, `Makie` is statically compilable.
 
 ### TODOs / Up for grabs
 

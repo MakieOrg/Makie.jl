@@ -23,7 +23,7 @@ These are great for showing off progressive changes in plots, such as demonstrat
 You can initialize a `Stepper` by doing:
 
 ```julia
-st = Stepper(scene, @replace_with_a_path)
+st = Stepper(scene)
 ```
 
 and save the scene content & increment the stepper by using:
@@ -40,7 +40,7 @@ function stepper_demo()
     colors = AbstractPlotting.ColorBrewer.palette("Set1", length(steps))
     lines!(scene, Rect(0,0,500,500), linewidth = 0.0001)
     # initialize the stepper and give it an output destination
-    st = Stepper(scene, @replace_with_a_path)
+    st = Stepper(scene)
 
     for i = 1:length(steps)
         text!(

@@ -270,7 +270,6 @@ function get_attribute(dict::ObservableAttributes, key::Symbol)
     return convert_attribute(get_value(dict, key), Key{key}())
 end
 
-
 """
     get_attribute(dict::ObservableAttributes, key::Key)
 Gets the attribute at `key` as a converted signal
