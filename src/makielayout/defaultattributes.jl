@@ -546,28 +546,28 @@ function default_attributes(::Type{LToggle}, scene)
         "The width of the toggle."
         width = 60
         "The height of the toggle."
-        height = 30
+        height = 28
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The number of poly segments in each rounded corner."
-        cornersegments = 10
+        cornersegments = 15
         # strokewidth = 2f0
         # strokecolor = :transparent
         "The color of the border when the toggle is inactive."
-        framecolor_inactive = RGBf0(0.9, 0.9, 0.9)
-        "The color of the border when the toggle is active."
-        framecolor_active = COLOR_ACCENT[]
+        framecolor_inactive = RGBf0(0.94, 0.94, 0.94)
+        "The color of the border when the toggle is hovered."
+        framecolor_active = COLOR_ACCENT_DIMMED[]
         # buttoncolor = RGBf0(0.2, 0.2, 0.2)
         "The color of the toggle button."
-        buttoncolor = RGBf0(1, 1, 1)
+        buttoncolor = COLOR_ACCENT[]
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
         toggleduration = 0.2
         "The border width as a fraction of the toggle height "
-        rimfraction = 0.25
+        rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
     end
