@@ -21,14 +21,17 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     endpoints = lift(sliderbox, horizontal) do bb, horizontal
 
+        h = height(bb)
+        w = width(bb)
+
         if horizontal
-            y = bottom(bb) + height(bb) / 2
-            [Point2f0(left(bb), y),
-            Point2f0(right(bb), y)]
+            y = bottom(bb) + h / 2
+            [Point2f0(left(bb) + h/2, y),
+             Point2f0(right(bb) - h/2, y)]
         else
-            x = left(bb) + width(bb) / 2
-            [Point2f0(x, bottom(bb)),
-            Point2f0(x, top(bb))]
+            x = left(bb) + w / 2
+            [Point2f0(x, bottom(bb) + w/2),
+             Point2f0(x, top(bb) + h/2)]
         end
     end
 
@@ -65,13 +68,8 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], startvalue[])
 
-    middlepoint = lift(sliderbox, horizontal, displayed_sliderfraction) do bb, horizontal, sf
-
-        if horizontal
-            Point2f0(left(bb) + width(bb) * sf, bottom(bb) + height(bb) / 2)
-        else
-            Point2f0(left(bb) + 0.5f0 * width(bb), bottom(bb) + height(bb) * sf)
-        end
+    middlepoint = lift(endpoints, displayed_sliderfraction) do ep, sf
+        Point2f0(ep[1] .+ sf .* (ep[2] .- ep[1]))
     end
 
     linepoints = lift(endpoints, middlepoint) do eps, middle
@@ -86,10 +84,18 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         hori ? height(sbox) : width(sbox)
     end
 
+    endbuttons = scatter!(parent, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
+    decorations[:endbuttons] = endbuttons
+
     linesegs = linesegments!(parent, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
     decorations[:linesegments] = linesegs
 
-    mouseevents = addmouseevents!(parent, linesegs)
+    button_magnification = Node(1.0)
+    buttonsize = @lift($linewidth * $button_magnification)
+    button = scatter!(parent, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)[end]
+    decorations[:button] = button
+
+    mouseevents = addmouseevents!(parent, linesegs, button)
 
     onmouseleftdrag(mouseevents) do event
 
@@ -115,6 +121,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
+        linecolors[] = [color_active_dimmed[], color_inactive[]]
     end
 
     onmouseleftdown(mouseevents) do event
@@ -123,6 +130,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         dim = horizontal[] ? 1 : 2
         frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
+        # linecolors[] = [color_active[], color_inactive[]]
     end
 
     onmouseleftdoubleclick(mouseevents) do event
@@ -130,10 +138,11 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     end
 
     onmouseenter(mouseevents) do event
-        linecolors[] = [color_active[], color_inactive[]]
+        button_magnification[] = 1.25
     end
 
     onmouseout(mouseevents) do event
+        button_magnification[] = 1.0
         linecolors[] = [color_active_dimmed[], color_inactive[]]
     end
 
