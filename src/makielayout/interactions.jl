@@ -1,6 +1,18 @@
 # overloadable for other types that might want to offer similar interactions
+function interactions end
+
 interactions(ax::LAxis) = ax.interactions
 
+"""
+    register_interaction!(parent, name::Symbol, interaction)
+
+Register `interaction` with `parent` under the name `name`.
+The parent will call `process_interaction(interaction, event, parent)`
+whenever suitable events happen.
+
+The interaction can be removed with `deregister_interaction!` or temporarily
+toggled with `activate_interaction!` / `deactivate_interaction!`.
+"""
 function register_interaction!(parent, name::Symbol, interaction)
     haskey(interactions(parent), name) && error("Interaction $name already exists.")
     registration_setup!(parent, interaction)
@@ -8,6 +20,11 @@ function register_interaction!(parent, name::Symbol, interaction)
     return interaction
 end
 
+"""
+    deregister_interaction!(parent, name::Symbol)
+
+Deregister the interaction named `name` registered in `parent`.
+"""
 function deregister_interaction!(parent, name::Symbol)
     !haskey(interactions(parent), name) && error("Interaction $name does not exist.")
     _, interaction = interactions(parent)[name]
@@ -25,17 +42,29 @@ function deregistration_cleanup!(parent, interaction)
     # do nothing in the default case
 end
 
+"""
+    activate_interaction!(parent, name::Symbol)
+
+Activate the interaction named `name` registered in `parent`.
+"""
 function activate_interaction!(parent, name::Symbol)
     !haskey(interactions(parent), name) && error("Interaction $name does not exist.")
     interactions(parent)[name] = (true, interactions(parent)[name][2])
     return nothing
 end
 
+"""
+    deactivate_interaction!(parent, name::Symbol)
+
+Deactivate the interaction named `name` registered in `parent`.
+It can be reactivated with `activate_interaction!`.
+"""
 function deactivate_interaction!(parent, name::Symbol)
     !haskey(interactions(parent), name) && error("Interaction $name does not exist.")
     interactions(parent)[name] = (false, interactions(parent)[name][2])
     return nothing
 end
+
 
 function process_interaction(@nospecialize args...)
     # do nothing in the default case
@@ -53,7 +82,7 @@ end
 
 
 ############################################################################
-# LAxis interactions
+#                            LAxis interactions                            #
 ############################################################################
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
