@@ -16,7 +16,7 @@ A `Node` is an object that allows its value to be updated interactively.
 Let's start by creating one:
 
 ```@example 1
-using Makie, AbstractPlotting
+using GLMakie, AbstractPlotting
 
 x = Node(0.0)
 ```

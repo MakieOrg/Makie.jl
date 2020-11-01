@@ -14,8 +14,9 @@ Otherwise, an interactive window will open when you return a `Scene`.
 
 
 ```@example 1
-using Makie
-Makie.AbstractPlotting.inline!(true)
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true)
 nothing # hide
 ```
 

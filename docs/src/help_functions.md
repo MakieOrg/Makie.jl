@@ -8,7 +8,7 @@ help
 
 Example usage:
 ```@example
-using Makie # hide
+using AbstractPlotting # hide
 help(scatter; extended = true)
 ```
 
@@ -21,7 +21,7 @@ help_arguments
 
 Example usage:
 ```@example
-using Makie # hide
+using AbstractPlotting # hide
 help_arguments(stdout, scatter)
 ```
 
@@ -33,7 +33,7 @@ help_attributes
 
 Example usage:
 ```@example
-using Makie # hide
+using AbstractPlotting # hide
 help_attributes(stdout, Scatter; extended = true)
 ```
 

@@ -18,7 +18,7 @@ over the course of the animation.
 As a start, here is how you can change the color of a line plot:
 
 ```@example 1
-using Makie, AbstractPlotting
+using GLMakie, AbstractPlotting
 using AbstractPlotting.Colors
 
 # create the scene
