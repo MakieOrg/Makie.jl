@@ -110,9 +110,9 @@ function default_attributes(::Type{LAxis}, scene)
         "Locks interactive zooming in the y direction."
         yzoomlock = false
         "Controls if rectangle zooming affects the x dimension."
-        rectzoom_affect_x = true
+        xrectzoom = true
         "Controls if rectangle zooming affects the y dimension."
-        rectzoom_affect_y = true
+        yrectzoom = true
         "The width of the axis spines."
         spinewidth = 1f0
         "Controls if the x grid lines are visible."

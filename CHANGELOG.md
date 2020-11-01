@@ -4,6 +4,7 @@
 
 - Added interactions model to LAxis. Interactions can be added with `register_interaction!` and removed with `deregister_interaction!`, as well as activated or deactivated temporarily with `activate_interaction!` and `deactivate_interaction!`.
 - Added `labelslidergrid!`, a function to create an internally aligned grid of sliders with labels and value-labels.
+- LAxis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
 
 ## Improvements
 
