@@ -320,8 +320,26 @@ end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:position_x] = Texture(el32convert(x[1]); minfilter=:nearest)
-        gl_attributes[:position_y] = Texture(el32convert(x[2]); minfilter=:nearest)
+        gl_attributes[:position_x] = if to_value(x[1]) isa Vector
+            map(x -> Texture(el32convert(x); minfilter=:nearest), x[1])
+        else
+            map(x[1]) do _x
+                min, max = to_range(_x)
+                N = size(to_value(x[3]), 1)
+                a = collect(range(min, max, length=N))
+                Texture(el32convert(a); minfilter=:nearest)
+            end
+        end
+        gl_attributes[:position_y] = if to_value(x[2]) isa Vector
+            map(x -> Texture(el32convert(x); minfilter=:nearest), x[2])
+        else
+            map(x[2]) do _x
+                min, max = to_range(_x)
+                N = size(to_value(x[3]), 2)
+                a = collect(range(min, max, length=N))
+                Texture(el32convert(a); minfilter=:nearest)
+            end
+        end
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         if !(to_value(x[3]) isa ShaderAbstractions.Sampler)
