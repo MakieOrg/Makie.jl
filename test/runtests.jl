@@ -1,11 +1,19 @@
-using AbstractPlotting
-using MakieGallery
+using Pkg
 using Test
 using StaticArrays, GeometryBasics
 using Observables
 using GeometryBasics: Pyramid
 using PlotUtils
 using MeshIO, FileIO, AbstractPlotting.MakieLayout
+using StaticArrays
+using AbstractPlotting
+using AbstractPlotting.Observables
+using AbstractPlotting.GeometryBasics
+using AbstractPlotting.GeometryBasics: Pyramid
+using AbstractPlotting.PlotUtils
+using AbstractPlotting.FileIO
+using AbstractPlotting.MakieLayout
+using AbstractPlotting.IntervalSets
 
 @testset "#659 Volume errors if data is not a cube" begin
     vol = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
@@ -64,3 +72,6 @@ include("no_backend_tests.jl")
 
 # test statistical recipes
 include("statistical_tests.jl")
+
+include("reference_tests.jl")
+include("unit_tests/runtests.jl")

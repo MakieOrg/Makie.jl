@@ -1,17 +1,18 @@
-@block SimonDanisch [recipe] begin
+import AbstractPlotting: Plot, default_theme, plot!, to_value
 
-    @cell "Type recipe for molecule simulation" [meshscatter, linesegments, molecules] begin
-        import AbstractPlotting: Plot, default_theme, plot!, to_value
+let 
+    struct Simulation
+        grid::Vector{Point3f0}
+    end
+        
+    @cell "Type recipe for molecule simulation" begin
 
-        struct Simulation
-            grid::Vector{Point3f0}
-        end
         # Probably worth having a macro for this!
         function default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
             Theme(
-                advance = 0,
-                molecule_sizes = [0.08, 0.04, 0.04],
-                molecule_colors = [:maroon, :deepskyblue2, :deepskyblue2]
+                advance=0,
+                molecule_sizes=[0.08, 0.04, 0.04],
+                molecule_colors=[:maroon, :deepskyblue2, :deepskyblue2]
             )
         end
 
@@ -26,15 +27,15 @@
             pos = to_value(mpos)
             N = length(pos)
             sizes = lift(p[:molecule_sizes]) do s
-                repeat(s, outer = N ÷ 3)
+                repeat(s, outer=N ÷ 3)
             end
             sizes = lift(p[:molecule_sizes]) do s
-                repeat(s, outer = N ÷ 3)
+                repeat(s, outer=N ÷ 3)
             end
             colors = lift(p[:molecule_colors]) do c
-                repeat(c, outer = N ÷ 3)
+                repeat(c, outer=N ÷ 3)
             end
-            scene = meshscatter!(p, mpos, markersize = sizes, color = colors)
+            scene = meshscatter!(p, mpos, markersize=sizes, color=colors)
             indices = Int[]
             for i in 1:3:N
                 push!(indices, i, i + 1, i, i + 2)
@@ -42,12 +43,12 @@
             meshplot = p.plots[end] # meshplot is the last plot we added to p
             # meshplot[1] -> the positions (first argument) converted to points, so
             # we don't do the conversion 2 times for linesegments!
-            linesegments!(p, lift(x-> view(x, indices), meshplot[1]))
+            linesegments!(p, lift(x -> view(x, indices), meshplot[1]))
         end
 
         # To write out a video of the whole simulation
         n = 5
-        r = range(-1, stop = 1, length = n)
+        r = range(-1, stop=1, length=n)
         grid = Point3f0.(r, reshape(r, (1, n, 1)), reshape(r, (1, 1, n)))
         molecules = map(1:(n^3) * 3) do i
             i3 = ((i - 1) ÷ 3) + 1
@@ -58,7 +59,7 @@
         end
         result = Simulation(molecules)
         scene = plot(result)
-        record(scene, @replace_with_a_path(mp4), 1:3) do i
+        Record(scene, 1:3) do i
             scene[end][:advance] = i
         end
     end
