@@ -130,7 +130,7 @@ end
 Here is a complete example of creating a custom type and a recipe for it.
 
 ```@example
-using Makie
+using GLMakie
 using AbstractPlotting
 import AbstractPlotting: Plot, default_theme, plot!, to_value
 

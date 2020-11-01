@@ -1,4 +1,4 @@
-using Documenter, Markdown, Pkg, Random, FileIO, GLMakie, Makie
+using Documenter, Markdown, Pkg, Random, FileIO, GLMakie
 using AbstractPlotting
 AbstractPlotting.inline!(true)
 
