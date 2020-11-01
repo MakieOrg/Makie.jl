@@ -51,7 +51,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
         ms * (1 - rf)
     end
 
-    button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, raw = true)[end]
+    button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)[end]
     decorations[:button] = button
 
     buttonstate = addmouseevents!(parent, button, frame)
