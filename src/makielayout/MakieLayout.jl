@@ -88,6 +88,7 @@ export xaxis_bottom!, xaxis_top!, yaxis_left!, yaxis_right!
 export labelslider!
 export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
+export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
 export hlines!, vlines!
 
 
