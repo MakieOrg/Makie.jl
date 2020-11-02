@@ -1,4 +1,4 @@
-# master
+# 13.3
 
 ## New features
 
@@ -6,7 +6,7 @@
 - Added `labelslidergrid!`, a function to create an internally aligned grid of sliders with labels and value-labels.
 - LAxis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
 
-## Improvements
+## Improvements & Backend Changes
 
 - Cleaned up LSlider style and implementation, LSlider doesn't react while below other objects anymore
 - MakieLayout Mouse event types are now enum instances for less compilation
