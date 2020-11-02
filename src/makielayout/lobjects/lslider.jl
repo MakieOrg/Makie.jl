@@ -7,7 +7,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (
-        halign, valign, horizontal,
+        halign, valign, horizontal, linewidth,
         startvalue, value, color_active, color_active_dimmed, color_inactive
     )
 
@@ -16,6 +16,14 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
     layoutobservables = LayoutObservables{LSlider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
+
+    onany(linewidth, horizontal) do lw, horizontal
+        if horizontal
+            layoutobservables.autosize[] = (nothing, Float32(lw))
+        else
+            layoutobservables.autosize[] = (Float32(lw), nothing)
+        end
+    end
 
     sliderbox = lift(identity, layoutobservables.computedbbox)
 
@@ -31,7 +39,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         else
             x = left(bb) + w / 2
             [Point2f0(x, bottom(bb) + w/2),
-             Point2f0(x, top(bb) + h/2)]
+             Point2f0(x, top(bb) - w/2)]
         end
     end
 
@@ -78,10 +86,6 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
 
     linecolors = lift(color_active_dimmed, color_inactive) do ca, ci
         [ca, ci]
-    end
-
-    linewidth = lift(horizontal, sliderbox) do hori, sbox
-        hori ? height(sbox) : width(sbox)
     end
 
     endbuttons = scatter!(parent, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
@@ -146,8 +150,8 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         linecolors[] = [color_active_dimmed[], color_inactive[]]
     end
 
-    # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
+    # trigger autosize through linewidth for first layout
+    linewidth[] = linewidth[]
 
     LSlider(parent, layoutobservables, attrs, decorations)
 end

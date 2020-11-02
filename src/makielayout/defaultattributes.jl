@@ -504,9 +504,9 @@ function default_attributes(::Type{LSlider}, scene)
         "The vertical alignment of the slider in its suggested bounding box."
         valign = :center
         "The width setting of the slider."
-        width = nothing
+        width = Auto()
         "The height setting of the slider."
-        height = 15
+        height = Auto()
         "The range of values that the slider can pick from."
         range = 0:10
         "Controls if the parent layout can adjust to this element's width"
@@ -517,6 +517,8 @@ function default_attributes(::Type{LSlider}, scene)
         startvalue = 0
         "The current value of the slider."
         value = 0
+        "The width of the slider line"
+        linewidth = 15
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
