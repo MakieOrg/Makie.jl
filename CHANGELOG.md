@@ -1,3 +1,10 @@
+# 13.4
+
+## Bugfixes
+
+- Removed shadowing of Base.hasfield in MakieLayout
+- Forwarded layout kwargs in `labelslidergrid!` correctly
+
 # 13.3
 
 ## New features
@@ -12,6 +19,3 @@
 - MakieLayout Mouse event types are now enum instances for less compilation
 - MakieLayout Mouse events store position in both data and pixel coordinates
 - Aligned colors of LMenu, LSlider, LButton etc better
-
-## Bugfixes
-
