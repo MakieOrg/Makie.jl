@@ -339,25 +339,109 @@ nothing # hide
 
 ## Axis interaction
 
-You can zoom in an axis by scrolling and pan by right-clicking and dragging. The
-limits can be reset using `ctrl + click`. Alternatively, you can just call
-`autolimits!` on the axis.
+An LAxis has a couple of predefined interactions enabled.
 
-For some axes you might want to limit
-zooming and panning to one dimension or disable it completely. This can be
-achieved using the attributes `xpanlock`, `ypanlock`, `xzoomlock` and `yzoomlock`.
+### Scroll Zoom
+
+You can zoom in an axis by scrolling in and out.
+If you press x or y while scrolling, the zoom movement is restricted to that dimension.
+These keys can be changed with the attributes `xzoomkey` and `yzoomkey`.
+You can also restrict the zoom dimensions all the time by setting the axis attributes `xzoomlock` or `yzoomlock` to `true`.
+
+### Drag Pan
+
+You can pan around the axis by right-clicking and dragging.
+If you press x or y while panning, the pan movement is restricted to that dimension.
+These keys can be changed with the attributes `xpankey` and `ypankey`.
+You can also restrict the pan dimensions all the time by setting the axis attributes `xpanlock` or `ypanlock` to `true`.
+
+### Limit Reset
+
+You can reset the limits with `ctrl + leftclick`. Alternatively, you can call
+`autolimits!` on the axis to achieve the same effect programmatically.
+
+### Rectangle Selection Zoom
+
+Left-click and drag zooms into the selected rectangular area.
+If you press x or y while panning, only the respective dimension is affected.
+You can also restrict the selection zoom dimensions all the time by setting the axis attributes `xrectzoom` or `yrectzoom` to `true`.
+
+### Custom Interactions
+
+The interaction system is an additional abstraction upon Makie's low-level event system to make it easier to quickly create your own interaction patterns.
+
+
+#### Registering and deregistering interactions
+
+To register a new interaction, call `register_interaction!(ax, name::Symbol, interaction)`.
+The `interaction` argument can be of any type.
+
+To remove an existing interaction completely, call `deregister_interaction!(ax, name::Symbol)`.
+You can check which interactions are currently active by calling `interactions(ax)`.
+
+#### Activating and deactivating interactions
+
+Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
+You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
+
+#### `Function` Interaction 
+If `interaction` is a `Function`, it should accept two arguments, which correspond to an event and the axis.
+This function will then be called whenever the axis generates an event.
+
+Here's an example of such a function. Note that we use the special dispatch signature for Functions that allows to use the `do`-syntax:
 
 ```julia
-# an LAxis that can only be zoomed and panned horizontally, for example for
-# temporal signals like audio
-ax = LAxis(scene, ypanlock = true, yzoomlock = true)
+register_interaction!(ax, :my_interaction) do event::MouseEvent, axis
+    if event.type === MouseEventTypes.leftclick
+        println("You clicked on the axis!")
+    end
+end
 ```
 
-You can also interactively limit zoom and pan directions by pressing and holding
-a button during zooming or panning. By default those buttons are `x` and `y`,
-respectively, but you can change them with the attributes `xpankey`, `ypankey`,
-`xzoomkey` and `yzoomkey`. Buttons can be found in `AbstractPlotting.Keyboard`,
-for example the `x` button is accessed as `AbstractPlotting.Keyboard.x`.
+As you can see, it's possible to restrict the type parameter of the event argument.
+Choices are one of `MouseEvent`, `KeysEvent` or `ScrollEvent` if you only want to handle a specific class.
+Your function can also have multiple methods dealing with each type.
+
+#### Custom Object Interaction
+
+The function option is most suitable for interactions that don't involve much state.
+A more verbose but flexible option is available.
+For this, you define a new type which typically holds all the state variables you're interested in.
+
+Whenever the axis generates an event, it calls `process_interaction(interaction, event, axis)` on all 
+stored interactions.
+By defining `process_interaction` for specific types of interaction and event, you can create more complex interaction patterns.
+
+Here's an example with simple state handling where we allow left clicks while l is pressed, and right clicks while r is pressed:
+
+```julia
+mutable struct MyInteraction
+    allow_left_click::Bool
+    allow_right_click::Bool
+end
+
+function MakieLayout.process_interaction(interaction::MyInteraction, event::MouseEvent, axis)
+    if interaction.use_left_click && event.type === MouseEventTypes.leftclick
+        println("Left click in correct mode")
+    end
+    if interaction.allow_right_click && event.type === MouseEventTypes.rightclick
+        println("Right click in correct mode")
+    end
+end
+
+function MakieLayout.process_interaction(interaction::MyInteraction, event::KeysEvent, axis)
+    interaction.allow_left_click = Keyboard.l in event.keys
+    interaction.allow_right_click = Keyboard.r in event.keys
+end
+
+register_interaction!(ax, :left_and_right, MyInteraction(false, false))
+```
+
+#### Setup and Cleanup
+
+Some interactions might have more complex state involving plot objects that need to be setup or removed.
+For those purposes, you can overload the methods `registration_setup!(parent, interaction)` and `deregistration_cleanup!(parent, interaction)` which are called during registration and deregistration, respectively.
+
 
 ```@eval
 using GLMakie
