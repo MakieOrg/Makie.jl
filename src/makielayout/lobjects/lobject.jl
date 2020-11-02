@@ -6,7 +6,7 @@ const Layoutable = Union{LAxis, LScene, LObject}
 # make fields type inferrable
 # just access attributes directly instead of via indexing detour
 
-@generated hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
+@generated Base.hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
 
 @inline function Base.getproperty(x::T, key::Symbol) where T <: Layoutable
     if hasfield(x, Val(key))
