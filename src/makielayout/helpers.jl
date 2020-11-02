@@ -473,7 +473,7 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
     labels = map(x -> x.label, elements)
     valuelabels = map(x -> x.valuelabel, elements)
     
-    layout = grid!(hcat(labels, sliders, valuelabels))
+    layout = grid!(hcat(labels, sliders, valuelabels); layoutkw...)
     
     (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
