@@ -46,6 +46,42 @@ mutable struct LineAxis
     ticklabels::Node{Vector{String}}
 end
 
+struct LimitReset end
+
+mutable struct RectangleZoom
+    active::Bool
+    restrict_x::Bool
+    restrict_y::Bool
+    from::Union{Nothing, Point2f0}
+    to::Union{Nothing, Point2f0}
+    rectnode::Observable{FRect2D}
+    poly::Union{Poly, Nothing}
+end
+
+struct ScrollZoom
+    speed::Float32
+    reset_timer::Ref{Any}
+    prev_xticklabelspace::Ref{Any}
+    prev_yticklabelspace::Ref{Any}
+    reset_delay::Float32
+end
+
+struct DragPan
+    reset_timer::Ref{Any}
+    prev_xticklabelspace::Ref{Any}
+    prev_yticklabelspace::Ref{Any}
+    reset_delay::Float32
+end
+
+struct ScrollEvent
+    x::Float32
+    y::Float32
+end
+
+struct KeysEvent
+    keys::Set{AbstractPlotting.Keyboard.Button}
+end
+
 abstract type LObject end
 
 mutable struct LAxis <: AbstractPlotting.AbstractScene
@@ -58,6 +94,10 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     attributes::Attributes
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
+    mouseevents::Observable{MouseEvent}
+    scrollevents::Observable{ScrollEvent}
+    keysevents::Observable{KeysEvent}
+    interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
 
 mutable struct LColorbar <: LObject
@@ -83,7 +123,6 @@ end
 
 struct LSlider <: LObject
     parent::Scene
-    scene::Scene
     layoutobservables::LayoutObservables
     attributes::Attributes
     decorations::Dict{Symbol, Any}

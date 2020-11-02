@@ -7,9 +7,8 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (
-        halign, valign, linewidth, buttonradius, horizontal,
-        startvalue, value, color_active, color_active_dimmed, color_inactive,
-        buttonstrokewidth, buttoncolor_inactive
+        halign, valign, horizontal, linewidth,
+        startvalue, value, color_active, color_active_dimmed, color_inactive
     )
 
     sliderrange = attrs.range
@@ -18,34 +17,29 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     layoutobservables = LayoutObservables{LSlider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
-    onany(buttonradius, horizontal, buttonstrokewidth) do br, hori, bstrw
-        layoutobservables.autosize[] = if hori
-            (nothing, 2 * (br + bstrw))
+    onany(linewidth, horizontal) do lw, horizontal
+        if horizontal
+            layoutobservables.autosize[] = (nothing, Float32(lw))
         else
-            (2 * (br + bstrw), nothing)
+            layoutobservables.autosize[] = (Float32(lw), nothing)
         end
     end
 
-    subarea = lift(layoutobservables.computedbbox) do bbox
-        round_to_IRect2D(bbox)
-    end
-
-    # the slider gets its own subscene so a click doesn't have to hit the line
-    # perfectly but can be registered in the whole area that the slider scene has
-    subscene = Scene(parent, subarea, camera=campixel!)
-
-    sliderbox = lift(bb -> Rect{2, Float32}(zeros(eltype(bb.origin), 2), bb.widths), layoutobservables.computedbbox)
+    sliderbox = lift(identity, layoutobservables.computedbbox)
 
     endpoints = lift(sliderbox, horizontal) do bb, horizontal
 
+        h = height(bb)
+        w = width(bb)
+
         if horizontal
-            y = bottom(bb) + height(bb) / 2
-            [Point2f0(left(bb), y),
-            Point2f0(right(bb), y)]
+            y = bottom(bb) + h / 2
+            [Point2f0(left(bb) + h/2, y),
+             Point2f0(right(bb) - h/2, y)]
         else
-            x = left(bb) + width(bb) / 2
-            [Point2f0(x, bottom(bb)),
-            Point2f0(x, top(bb))]
+            x = left(bb) + w / 2
+            [Point2f0(x, bottom(bb) + w/2),
+             Point2f0(x, top(bb) - w/2)]
         end
     end
 
@@ -82,57 +76,39 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     # initialize slider value with closest from range
     selected_index[] = closest_index(sliderrange[], startvalue[])
 
-    buttonpoint = lift(sliderbox, horizontal, displayed_sliderfraction, buttonradius,
-            buttonstrokewidth) do bb, horizontal, sf, brad, bstw
-
-        pad = brad + bstw
-
-        if horizontal
-            [Point2f0(left(bb) + pad + (width(bb) - 2pad) * sf, bottom(bb) + height(bb) / 2)]
-        else
-            [Point2f0(left(bb) + 0.5f0 * width(bb), bottom(bb) + pad + (height(bb) - 2pad) * sf)]
-        end
+    middlepoint = lift(endpoints, displayed_sliderfraction) do ep, sf
+        Point2f0(ep[1] .+ sf .* (ep[2] .- ep[1]))
     end
 
-    linepoints = lift(endpoints, buttonpoint) do eps, bp
-        [eps[1], bp[1], bp[1], eps[2]]
+    linepoints = lift(endpoints, middlepoint) do eps, middle
+        [eps[1], middle, middle, eps[2]]
     end
 
     linecolors = lift(color_active_dimmed, color_inactive) do ca, ci
         [ca, ci]
     end
 
-    linesegs = linesegments!(subscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+    endbuttons = scatter!(parent, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
+    decorations[:endbuttons] = endbuttons
+
+    linesegs = linesegments!(parent, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
     decorations[:linesegments] = linesegs
 
-    linestate = addmousestate!(subscene, linesegs)
-
-    bsize = @lift($buttonradius * 2f0)
-
-    bcolor = Node{Any}(buttoncolor_inactive[])
-
-
-    button = scatter!(subscene, buttonpoint, markersize = bsize, color = bcolor, marker = '⚫',
-        strokewidth = buttonstrokewidth, strokecolor = color_active_dimmed, raw = true)[end]
+    button_magnification = Node(1.0)
+    buttonsize = @lift($linewidth * $button_magnification)
+    button = scatter!(parent, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)[end]
     decorations[:button] = button
 
+    mouseevents = addmouseevents!(parent, linesegs, button)
 
-    scenestate = addmousestate!(subscene)
-
-    onmouseleftup(scenestate) do state
-        bcolor[] = buttoncolor_inactive[]
-    end
-
-    onmouseleftdrag(scenestate) do state
-
-        pad = buttonradius[] + buttonstrokewidth[]
+    onmouseleftdrag(mouseevents) do event
 
         dragging[] = true
-        dif = state.pos - state.prev
+        dif = event.px - event.prev_px
         fraction = if horizontal[]
-            dif[1] / (width(sliderbox[]) - 2pad)
+            dif[1] / (endpoints[][2][1] - endpoints[][1][1])
         else
-            dif[2] / (height(sliderbox[]) - 2pad)
+            dif[2] / (endpoints[][2][2] - endpoints[][1][2])
         end
         if fraction != 0.0f0
             newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
@@ -145,55 +121,39 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    onmouseleftdragstop(scenestate) do state
+    onmouseleftdragstop(mouseevents) do event
         dragging[] = false
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
+        linecolors[] = [color_active_dimmed[], color_inactive[]]
     end
 
-    onmouseleftdown(scenestate) do state
+    onmouseleftdown(mouseevents) do event
 
-        bcolor[] = color_active[]
-
-        pad = buttonradius[] + buttonstrokewidth[]
-
-        pos = state.pos
+        pos = event.px
         dim = horizontal[] ? 1 : 2
-        frac = (pos[dim] - endpoints[][1][dim] - pad) / (endpoints[][2][dim] - endpoints[][1][dim] - 2pad)
+        frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
+        # linecolors[] = [color_active[], color_inactive[]]
     end
 
-    onmouseleftdoubleclick(scenestate) do state
+    onmouseleftdoubleclick(mouseevents) do event
         selected_index[] = closest_index(sliderrange[], startvalue[])
     end
 
-    onmouseenter(scenestate) do state
-        # bcolor[] = color_active[]
-        linecolors[] = [color_active[], color_inactive[]]
-        button.strokecolor = color_active[]
+    onmouseenter(mouseevents) do event
+        button_magnification[] = 1.25
     end
 
-    onmouseout(scenestate) do state
-        bcolor[] = buttoncolor_inactive[]
+    onmouseout(mouseevents) do event
+        button_magnification[] = 1.0
         linecolors[] = [color_active_dimmed[], color_inactive[]]
-        button.strokecolor = color_active_dimmed[]
     end
 
-    onany(buttonradius, horizontal) do br, horizontal
-        protrusions[] = if horizontal
-            GridLayoutBase.RectSides{Float32}(br, br, 0, 0)
-        else
-            GridLayoutBase.RectSides{Float32}(0, 0, br, br)
-        end
-    end
+    # trigger autosize through linewidth for first layout
+    linewidth[] = linewidth[]
 
-    # trigger protrusions using one observable
-    buttonradius[] = buttonradius[]
-
-    # trigger bbox
-    layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
-
-    LSlider(parent, subscene, layoutobservables, attrs, decorations)
+    LSlider(parent, layoutobservables, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)

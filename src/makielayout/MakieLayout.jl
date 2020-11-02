@@ -43,13 +43,14 @@ function __init__()
 end
 
 include("geometrybasics_extension.jl")
+include("mousestatemachine.jl")
 include("types.jl")
 include("helpers.jl")
-include("mousestatemachine.jl")
 include("ticklocators/linear.jl")
 include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
+include("interactions.jl")
 include("lobjects/laxis.jl")
 include("lobjects/lcolorbar.jl")
 include("lobjects/ltext.jl")
@@ -84,8 +85,10 @@ export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spa
 export layoutscene
 export set_close_to!
 export xaxis_bottom!, xaxis_top!, yaxis_left!, yaxis_right!
-export labelslider!
-export addmousestate!
+export labelslider!, labelslidergrid!
+export addmouseevents!
+export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
+export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
 export hlines!, vlines!
 
 
