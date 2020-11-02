@@ -19,6 +19,8 @@ function _default(main::MatTypes{T}, ::Style, data::Dict) where T <: Colorant
     delete!(data, :ranges)
     @gen_defaults! data begin
         image = main => (Texture, "image, can be a Texture or Array of colors")
+        position_x = nothing => Texture
+        position_y = nothing => Texture
         primitive = const_lift(ranges) do r
             x, y = minimum(r[1]), minimum(r[2])
             xmax, ymax = maximum(r[1]), maximum(r[2])
