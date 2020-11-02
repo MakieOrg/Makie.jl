@@ -109,6 +109,10 @@ function default_attributes(::Type{LAxis}, scene)
         xzoomlock = false
         "Locks interactive zooming in the y direction."
         yzoomlock = false
+        "Controls if rectangle zooming affects the x dimension."
+        xrectzoom = true
+        "Controls if rectangle zooming affects the y dimension."
+        yrectzoom = true
         "The width of the axis spines."
         spinewidth = 1f0
         "Controls if the x grid lines are visible."
@@ -433,7 +437,7 @@ function default_attributes(::Type{LButton}, scene)
         "The color of the button border."
         strokecolor = :transparent
         "The color of the button."
-        buttoncolor = RGBf0(0.9, 0.9, 0.9)
+        buttoncolor = RGBf0(0.94, 0.94, 0.94)
         "The color of the label."
         labelcolor = :black
         "The color of the label when the mouse hovers over the button."
@@ -495,14 +499,12 @@ end
 
 function default_attributes(::Type{LSlider}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
-        "The line width of the main slider line."
-        linewidth = 4f0
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center
         "The vertical alignment of the slider in its suggested bounding box."
         valign = :center
         "The width setting of the slider."
-        width = nothing
+        width = Auto()
         "The height setting of the slider."
         height = Auto()
         "The range of values that the slider can pick from."
@@ -511,24 +513,20 @@ function default_attributes(::Type{LSlider}, scene)
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
-        "The radius of the slider button."
-        buttonradius = 9f0
         "The start value of the slider or the value that is closest in the slider range."
         startvalue = 0
         "The current value of the slider."
         value = 0
+        "The width of the slider line"
+        linewidth = 15
         "The color of the slider when the mouse hovers over it."
         color_active_dimmed = COLOR_ACCENT_DIMMED[]
         "The color of the slider when the mouse clicks and drags the slider."
         color_active = COLOR_ACCENT[]
         "The color of the slider when it is not interacted with."
-        color_inactive = RGBf0(0.9, 0.9, 0.9)
-        "The color of the button when it is not interacted with."
-        buttoncolor_inactive = RGBf0(1, 1, 1)
+        color_inactive = RGBf0(0.94, 0.94, 0.94)
         "Controls if the slider has a horizontal orientation or not."
         horizontal = true
-        "The line width of the slider button's border."
-        buttonstrokewidth = 4f0
         "The align mode of the slider in its parent GridLayout."
         alignmode = Inside()
     end
@@ -554,28 +552,28 @@ function default_attributes(::Type{LToggle}, scene)
         "The width of the toggle."
         width = 60
         "The height of the toggle."
-        height = 30
+        height = 28
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
         tellheight = true
         "The number of poly segments in each rounded corner."
-        cornersegments = 10
+        cornersegments = 15
         # strokewidth = 2f0
         # strokecolor = :transparent
         "The color of the border when the toggle is inactive."
-        framecolor_inactive = RGBf0(0.9, 0.9, 0.9)
-        "The color of the border when the toggle is active."
-        framecolor_active = COLOR_ACCENT[]
+        framecolor_inactive = RGBf0(0.94, 0.94, 0.94)
+        "The color of the border when the toggle is hovered."
+        framecolor_active = COLOR_ACCENT_DIMMED[]
         # buttoncolor = RGBf0(0.2, 0.2, 0.2)
         "The color of the toggle button."
-        buttoncolor = RGBf0(1, 1, 1)
+        buttoncolor = COLOR_ACCENT[]
         "Indicates if the toggle is active or not."
         active = false
         "The duration of the toggle animation."
-        toggleduration = 0.2
+        toggleduration = 0.15
         "The border width as a fraction of the toggle height "
-        rimfraction = 0.25
+        rimfraction = 0.33
         "The align mode of the toggle in its parent GridLayout."
         alignmode = Inside()
     end

@@ -47,14 +47,15 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    buttonsize = lift(markersize, rimfraction) do ms, rf
-        ms * (1 - rf)
+    buttonfactor = Node(1.0)
+    buttonsize = lift(markersize, rimfraction, buttonfactor) do ms, rf, bf
+        ms * (1 - rf) * bf
     end
 
-    button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, raw = true)[end]
+    button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)[end]
     decorations[:button] = button
 
-    buttonstate = addmousestate!(parent, button, frame)
+    buttonstate = addmouseevents!(parent, button, frame)
 
     onmouseleftclick(buttonstate) do state
         if animating[]
@@ -87,6 +88,14 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
             end
             sleep(1/FPS[])
         end
+    end
+
+    onmouseover(buttonstate) do state
+        buttonfactor[] = 1.15
+    end
+
+    onmouseout(buttonstate) do state
+        buttonfactor[] = 1.0
     end
 
     LToggle(parent, layoutobservables, attrs, decorations)
