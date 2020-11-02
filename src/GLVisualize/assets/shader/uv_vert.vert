@@ -15,6 +15,9 @@ uniform uint objectid;
 
 out vec2       o_uv;
 flat out uvec2 o_objectid;
+out vec4 o_view_pos;
+out vec3 o_normal;
+
 
 vec4 _position(vec3 p){return vec4(p,1);}
 vec4 _position(vec2 p){return vec4(p,0,1);}
@@ -54,11 +57,8 @@ void render_tile(Nothing position_x, Nothing position_y){
 	gl_Position = projection * view * model * _position(vertices);
 }
 
-out vec4 o_view_pos;
-out vec3 o_normal;
 
-void main()
-{
+void main(){
 	o_view_pos = vec4(0);
 	o_normal = vec3(0);
 	render_tile(position_x, position_y);
