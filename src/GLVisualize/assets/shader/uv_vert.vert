@@ -38,11 +38,11 @@ void render_tile(sampler1D position_x, sampler1D position_y){
     ivec2 index2D = ind2sub(dims, index1D);
     vec2 index01 = vec2(index2D) / (vec2(dims)-1.0);
 
-	o_uv = index01;
+	o_uv = vec2(index01.x, 1.0 - index01.y);
 	o_objectid = uvec2(objectid, index1D+1);
 
 	float x = texelFetch(position_x, index2D.x, 0).x;
-	float y = texelFetch(position_y, dims.y - index2D.y, 0).x;
+	float y = texelFetch(position_y, index2D.y, 0).x;
 
 	gl_Position = projection * view * model * vec4(x, y, 0, 1);
 }
