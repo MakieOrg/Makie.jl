@@ -1,3 +1,9 @@
+# Master
+
+## Improvements & Implementation Changes
+
+- LToggle reacts on mousedown not click to be more snappy
+
 # 13.4
 
 ## Bugfixes
@@ -13,7 +19,7 @@
 - Added `labelslidergrid!`, a function to create an internally aligned grid of sliders with labels and value-labels.
 - LAxis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
 
-## Improvements & Backend Changes
+## Improvements & Implementation Changes
 
 - Cleaned up LSlider style and implementation, LSlider doesn't react while below other objects anymore
 - MakieLayout Mouse event types are now enum instances for less compilation
