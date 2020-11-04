@@ -93,7 +93,7 @@ contourf
 ```@example
 using GLMakie
 using AbstractPlotting
-Makie.AbstractPlotting.inline!(true) # hide
+AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
 ys = LinRange(0, 10, 100)
