@@ -11,6 +11,7 @@ $(ATTRIBUTES)
     Theme(
         levels = 10,
         colormap = :viridis,
+        colorrange = automatic,
     )
 end
 
@@ -26,7 +27,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
     xs, ys, zs = c[1:3]
 
     levels = lift(zs, c.levels) do zs, levels
-        _get_isoband_levels(levels, extrema(zs)...)
+        _get_isoband_levels(levels, extrema_nan(zs)...)
     end
 
 
@@ -40,9 +41,11 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
 
         # TODO: this is ugly
         polys = Vector{typeof(Polygon(rand(Point2f0, 3), [rand(Point2f0, 3)]))}()
-        colors = Int[]
+        colors = Float32[]
 
-        foreach(enumerate(isos)) do (i, group)
+        levelcenters = (highs .+ lows) ./ 2
+
+        foreach(zip(levelcenters, isos)) do (center, group)
 
             points = Point2f0.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
@@ -55,19 +58,26 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
                 poly = GeometryBasics.Polygon(outline, holes)
 
                 push!(polys, poly)
-                # use index as color. what about unequal levels, how should that be reflected in the color
-                push!(colors, i)
+                # use contour level center value as color
+                push!(colors, center)
             end
 
         end
 
-        GeometryBasics.MultiPolygon(polys), colors
+        polys, colors
     end
 
-    mesh!(c, @lift($poly_and_colors[1]),
-        shading = false,
+    polys = @lift($poly_and_colors[1])
+    colors = @lift($poly_and_colors[2])
+
+    poly!(c,
+        polys,
         colormap = c.colormap,
-        color = @lift($poly_and_colors[2]))
+        colorrange = c.colorrange,
+        strokewidth = 0,
+        strokecolor = :transparent,
+        color = colors)
+
     c
 end
 
