@@ -1,5 +1,9 @@
 # Master
 
+## New features
+
+- Added filled contour `contourf` plot function using Isoband in the backend
+
 ## Improvements & Implementation Changes
 
 - LToggle reacts on mousedown not click to be more snappy
