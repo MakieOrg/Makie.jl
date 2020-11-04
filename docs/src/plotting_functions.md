@@ -84,6 +84,25 @@ zs = [cos(x) * sin(y) for x in xs, y in ys]
 contour(xs, ys, zs)
 ```
 
+## `contourf`
+
+```@docs
+contourf
+```
+
+```@example
+using GLMakie
+using AbstractPlotting
+Makie.AbstractPlotting.inline!(true) # hide
+
+xs = LinRange(0, 10, 100)
+ys = LinRange(0, 10, 100)
+zs = [cos(x) * sin(y) for x in xs, y in ys]
+
+contourf(xs, ys, zs, levels = 10)
+```
+
+
 ## `errorbars`
 
 ```@docs

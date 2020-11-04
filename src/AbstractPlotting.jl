@@ -8,7 +8,7 @@ using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
 using Serialization # serialize events
 using StructArrays
-using GeometryBasics: widths, positive_widths, VecTypes
+using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon
 using StaticArrays
 import StatsBase, Distributions, KernelDensity
 using Distributions: Distribution, VariateForm, Discrete, QQPair, pdf, quantile, qqbuild
@@ -18,6 +18,8 @@ using LinearAlgebra, Statistics
 import ImageIO, FileIO, SparseArrays
 import FileIO: save
 using Printf: @sprintf
+import Isoband
+import PolygonOps
 
 # Imports from Base which we don't want to have to qualify
 using Base: RefValue
@@ -79,6 +81,7 @@ include("basic_recipes/band.jl")
 include("basic_recipes/barplot.jl")
 include("basic_recipes/buffers.jl")
 include("basic_recipes/contours.jl")
+include("basic_recipes/contourf.jl")
 include("basic_recipes/errorbars.jl")
 include("basic_recipes/legend.jl")
 include("basic_recipes/pie.jl")
