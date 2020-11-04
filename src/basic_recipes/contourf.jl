@@ -4,6 +4,12 @@
 Plots a filled contour of the height information in `zs` at horizontal grid positions `xs`
 and vertical grid positions `ys`.
 
+The attribute `levels` can be either
+- an `Int` that produces n equally wide levels
+- an `AbstractVector{<:Real}` that lists consecutive levels
+- an `AbstractVector{<:Tuple{Real, Real}}` that lists levels as (low, high) tuples
+- a  `Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}` that lists levels as a tuple of lows and highs
+
 ## Attributes
 $(ATTRIBUTES)
 """
@@ -16,11 +22,21 @@ $(ATTRIBUTES)
 end
 
 function _get_isoband_levels(levels::Int, mi, ma)
-    Float32.(LinRange(mi, ma, levels+1))
+    edges = Float32.(LinRange(mi, ma, levels+1))
+    (edges[1:end-1], edges[2:end])
 end
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
-    Float32.(levels)
+    edges = Float32.(levels)
+    (edges[1:end-1], edges[2:end])
+end
+
+function _get_isoband_levels(levels::AbstractVector{<:Tuple{Real, Real}}, mi, ma)
+    (Float32.(first.(levels)), Float32.(last.(levels)))
+end
+
+function _get_isoband_levels(levels::Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}, mi, ma)
+    (Float32.(levels[1]), Float32.(levels[2]))
 end
 
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
@@ -32,7 +48,8 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
 
 
     poly_and_colors = lift(xs, ys, zs, levels) do xs, ys, zs, levels
-        lows, highs = levels[1:end-1], levels[2:end]
+        @assert levels isa Tuple
+        lows, highs = levels
         isos = Isoband.isobands(xs, ys, zs, lows, highs)
 
         allvertices = Point2f0[]
