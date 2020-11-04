@@ -1,4 +1,4 @@
-# 13.5
+# 0.13.5
 
 ## New features
 
@@ -8,14 +8,14 @@
 
 - LToggle reacts on mousedown not click to be more snappy
 
-# 13.4
+# 0.13.4
 
 ## Bugfixes
 
 - Removed shadowing of Base.hasfield in MakieLayout
 - Forwarded layout kwargs in `labelslidergrid!` correctly
 
-# 13.3
+# 0.13.3
 
 ## New features
 
