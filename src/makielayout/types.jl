@@ -55,7 +55,7 @@ mutable struct RectangleZoom
     from::Union{Nothing, Point2f0}
     to::Union{Nothing, Point2f0}
     rectnode::Observable{FRect2D}
-    poly::Union{Poly, Nothing}
+    plots::Vector{AbstractPlot}
 end
 
 struct ScrollZoom
