@@ -15,6 +15,7 @@ using ghr_jll
 using Tar
 using Downloads
 using Pkg.TOML
+using Statistics
 
 
 basedir(files...) = normpath(joinpath(@__DIR__, "..", files...))
@@ -29,5 +30,6 @@ include("database.jl")
 include("stable_rng.jl")
 include("runtests.jl")
 include("image_download.jl")
+include("html_rendering.jl")
 
 end
