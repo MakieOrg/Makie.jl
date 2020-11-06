@@ -91,6 +91,10 @@ function ispressed(buttons::Set{T}, button::T) where T <: Union{Keyboard.Button,
     return button in buttons
 end
 
+function ispressed(buttons::Set{T}, button::Set{T}) where T <: Union{Keyboard.Button, Mouse.Button}
+    return issubset(button, buttons)
+end
+
 """
     ispressed(scene, button)
 
