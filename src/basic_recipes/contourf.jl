@@ -46,8 +46,14 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
         _get_isoband_levels(levels, extrema_nan(zs)...)
     end
 
+    PolyType = typeof(Polygon(Point2f0[], [Point2f0[]]))
 
-    poly_and_colors = lift(xs, ys, zs, levels) do xs, ys, zs, levels
+    polys = Observable(PolyType[])
+    colors = Observable(Float32[])
+
+    function calculate_polys(xs, ys, zs, levels)
+        empty!(polys[])
+        empty!(colors[])
         @assert levels isa Tuple
         lows, highs = levels
         isos = Isoband.isobands(xs, ys, zs, lows, highs)
@@ -55,47 +61,33 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
         allvertices = Point2f0[]
         allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
         allids = Int[]
-
-        # TODO: this is ugly
-        polys = Vector{typeof(Polygon(rand(Point2f0, 3), [rand(Point2f0, 3)]))}()
-        colors = Float32[]
-
         levelcenters = (highs .+ lows) ./ 2
-
-        foreach(zip(levelcenters, isos)) do (center, group)
-
+        for (center, group) in zip(levelcenters, isos)
             points = Point2f0.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
-
             for polygroup in polygroups
-
                 outline = polygroup[1]
                 holes = polygroup[2:end]
-
-                poly = GeometryBasics.Polygon(outline, holes)
-
-                push!(polys, poly)
+                push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
-                push!(colors, center)
+                push!(colors[], center)
             end
-
         end
-
-        polys, colors
+        polys[] = polys[]
+        return
     end
 
-    polys = @lift($poly_and_colors[1])
-    colors = @lift($poly_and_colors[2])
+    onany(calculate_polys, xs, ys, zs, levels)
+    # onany doesn't get called without a push, so we call
+    # it on a first run!
+    calculate_polys(xs[], ys[], zs[], levels[])
 
-    poly!(c,
+    mesh!(c,
         polys,
         colormap = c.colormap,
         colorrange = c.colorrange,
-        strokewidth = 0,
-        strokecolor = :transparent,
-        color = colors)
-
-    c
+        color = colors,
+        shading=false)
 end
 
 """
@@ -166,7 +158,7 @@ function _group_polys(points, ids)
                 to_keep[ii] = false
             end
         end
-    
+
         unclassified_polyindices = unclassified_polyindices[to_keep]
         containment_matrix = containment_matrix[to_keep, to_keep]
     end
