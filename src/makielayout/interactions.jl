@@ -119,7 +119,7 @@ function _chosen_limits(rz, ax)
 end
 
 function _selection_vertices(outer, inner)
-    _clamp(p, plow, phigh,) = Point2f0(clamp(p[1], plow[1], phigh[1]), clamp(p[1], plow[1], phigh[1]))
+    _clamp(p, plow, phigh) = Point2f0(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
 
     outer = positivize(outer)
     inner = positivize(inner)
@@ -129,10 +129,10 @@ function _selection_vertices(outer, inner)
     otl = topleft(outer)
     otr = topright(outer)
 
-    ibl = clamp(bottomleft(inner), obl, otr)
-    ibr = clamp(bottomright(inner), obl, otr)
-    itl = clamp(topleft(inner), obl, otr)
-    itr = clamp(topright(inner), obl, otr)
+    ibl = _clamp(bottomleft(inner), obl, otr)
+    ibr = _clamp(bottomright(inner), obl, otr)
+    itl = _clamp(topleft(inner), obl, otr)
+    itr = _clamp(topright(inner), obl, otr)
 
     vertices = [obl, obr, otr, otl, ibl, ibr, itr, itl]
 end
@@ -146,9 +146,9 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
 
         selection_vertices = lift(_selection_vertices, ax.limits, r.rectnode)
 
-        faces = [1 2 5; 5 6 2; 2 3 6; 6 7 3; 3 4 7; 7 8 4; 4 1 8; 8 5 1]
+        faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
 
-        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.3), shading = false, strokewidth = 0)[end]
+        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.3), shading = false)[end]
         wf = wireframe!(ax.scene, r.rectnode, color = COLOR_ACCENT[], linewidth = 2)[end]
         translate!(mesh, 0, 0, 100)
         translate!(wf, 0, 0, 110)
