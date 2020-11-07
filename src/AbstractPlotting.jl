@@ -6,6 +6,7 @@ using Observables, GeometryBasics, IntervalSets, PlotUtils
 using ColorBrewer, ColorTypes, Colors, ColorSchemes
 using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
+using PaddedViews
 using Serialization # serialize events
 using StructArrays
 using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon

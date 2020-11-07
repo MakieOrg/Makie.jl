@@ -114,7 +114,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
         In that case, try `]build GLMakie` and watch out for any warnings.
         """
     end
-    
+
     print(io, scene)
     return
 end
@@ -149,7 +149,7 @@ function Base.show(io::IO, scene::Scene)
     end
 
     print(io, "\n  $(length(scene.children)) Child Scene$(_plural_s(scene.children))")
-    
+
     if length(scene.children) > 0
         print(io, ":")
         for (i, subscene) in enumerate(scene.children)
@@ -396,7 +396,7 @@ end
 
 
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x)
+function colorbuffer(x; kwargs...)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
@@ -407,8 +407,10 @@ end
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors.  The return type is backend-dependent, but will be some form of RGB
 or RGBA.
+
+- `ffmpeg_format` : Returns a more efficient ffmpeg format buffer (dims permuted, and one reversed)
 """
-function colorbuffer(scene::Scene)
+function colorbuffer(scene::Scene; kwargs...)
     screen = getscreen(scene)
     if isnothing(screen)
         if ismissing(current_backend[])
@@ -417,10 +419,10 @@ function colorbuffer(scene::Scene)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(current_backend[], scene))
+            return colorbuffer(backend_display(current_backend[], scene); kwargs...)
         end
     end
-    return colorbuffer(screen)
+    return colorbuffer(screen; kwargs...)
 end
 
 """
@@ -430,16 +432,15 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    frame = colorbuffer(io.screen)
-    _xdim, _ydim = size(frame)
-    xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
-    ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    frame_out = fill(RGB{N0f8}(1, 1, 1), ydim, xdim)
-    for x in 1:_xdim, y in 1:_ydim
-        c = frame[(_xdim + 1) - x, y]
-        frame_out[y, x] = RGB{N0f8}(c)
+    frame = colorbuffer(io.screen, ffmpeg_format = true)
+    _ydim, _xdim = size(frame)
+    if isodd(_xdim) || isodd(_ydim)
+        xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
+        ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
+        write(io.io, PaddedView(0, frame, (xdim, ydim)))
+    else
+        write(io.io, frame)
     end
-    write(io.io, frame_out)
     return
 end
 
