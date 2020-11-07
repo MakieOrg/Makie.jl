@@ -401,8 +401,8 @@ function colorbuffer(x; kwargs...)
 end
 
 """
-    colorbuffer(scene)
-    colorbuffer(screen)
+    colorbuffer(scene; ffmpeg_format = false)
+    colorbuffer(screen; ffmpeg_format = false)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors.  The return type is backend-dependent, but will be some form of RGB
@@ -410,7 +410,7 @@ or RGBA.
 
 - `ffmpeg_format` : Returns a more efficient ffmpeg format buffer (dims permuted, and one reversed)
 """
-function colorbuffer(scene::Scene; kwargs...)
+function colorbuffer(scene::Scene; ffmpeg_format = false)
     screen = getscreen(scene)
     if isnothing(screen)
         if ismissing(current_backend[])
@@ -419,10 +419,10 @@ function colorbuffer(scene::Scene; kwargs...)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(current_backend[], scene); kwargs...)
+            return colorbuffer(backend_display(current_backend[], scene); ffmpeg_format = ffmpeg_format)
         end
     end
-    return colorbuffer(screen; kwargs...)
+    return colorbuffer(screen; ffmpeg_format = ffmpeg_format)
 end
 
 """
