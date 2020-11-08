@@ -47,6 +47,12 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Poi
     Cairo.stroke(screen.context)
 end
 
+function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{<:Vector{<:Point2}})
+    for points in points_list
+        draw_poly(scene, screen, poly, points)
+    end
+end
+
 
 draw_poly(scene::Scene, screen::CairoScreen, poly, rect::Rect2D) = draw_poly(scene, screen, poly, [rect])
 
