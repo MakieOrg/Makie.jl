@@ -454,7 +454,7 @@ end
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.Mesh)
-    if scene.camera_controls[] isa Camera2D
+    if scene.camera_controls[] isa Union{Camera2D, AbstractPlotting.PixelCamera}
         draw_mesh2D(scene, screen, primitive)
     else
         if !haskey(primitive, :faceculling)
