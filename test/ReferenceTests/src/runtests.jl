@@ -69,6 +69,7 @@ function reference_tests(recorded; ref_images = ReferenceTests.download_refimage
         @testset "$name" for (name, score) in scores
             @test score < difference
         end
+        return recorded, ref_images, scores
     end
 end
 
@@ -100,7 +101,7 @@ function record_tests(db=load_database(); recording_dir=joinpath(@__DIR__, "..",
     return recorded_files, recording_dir
 end
 
-function run_tests(db=load_database(); ref_images = ReferenceTests.download_refimages(), 
+function run_tests(db=load_database(); ref_images = ReferenceTests.download_refimages(),
                     recording_dir=joinpath(@__DIR__, "..", "recorded"), difference=0.03)
     files, dir = record_tests(db, recording_dir=recording_dir)
     reference_tests(recording_dir, ref_images=ref_images, difference=difference)

@@ -225,13 +225,13 @@ end
     end
 end
 
-let 
+let
     struct FitzhughNagumo2
     end
     (()-> FitzhughNagumo2())()
 end
 
-let 
+let
     struct FitzhughNagumo{T}
         ϵ::T
         s::T
@@ -342,4 +342,9 @@ end
 
     pie!(ax, 0.1:0.1:1.0, normalize=false)
     scene
+end
+
+@cell "intersecting polygon" begin
+    x = LinRange(0, 2pi, 100)
+    poly(Point2f0.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
 end
