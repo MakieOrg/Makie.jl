@@ -1,6 +1,6 @@
-authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
+authors = ["Simon Danisch", "Julius Krumbiegel"]
 version = "0.13.5"
 
 [deps]
