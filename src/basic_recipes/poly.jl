@@ -138,8 +138,6 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
 
     bigmesh = if color_node[] isa AbstractVector && length(color_node[]) == length(meshes[])
         # One color per mesh
-        real_colors = Observable(RGBAf0[])
-        attributes[:color] = real_colors
         lift(meshes, color_node, attributes.colormap, attributes.colorrange) do meshes, colors, cmap, crange
             # Color are reals, so we need to transform it to colors first
             single_colors = if colors isa AbstractVector{<:Number}
@@ -147,17 +145,16 @@ function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{Abst
             else
                 to_color.(colors)
             end
-            empty!(real_colors[])
-
+            real_colors = RGBAf0[]
             # Map one single color per mesh to each vertex
             for (mesh, color) in zip(meshes, single_colors)
-                append!(real_colors[], Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))
+                append!(real_colors, Iterators.repeated(RGBAf0(color), length(coordinates(mesh))))
             end
-            real_colors[] = real_colors[]
+            # real_colors[] = real_colors[]
             if P <: AbstractPolygon
                 meshes = triangle_mesh.(meshes)
             end
-            return merge(meshes)
+            return pointmeta(merge(meshes), color=real_colors)
         end
     else
         attributes[:color] = color_node

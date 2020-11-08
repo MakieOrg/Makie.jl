@@ -1,15 +1,38 @@
 """
 Embedds all produced media in one big html file
 """
-function generate_preview(media_root, path=joinpath(@__DIR__, "preview.html"))
+function generate_preview(path=joinpath(@__DIR__, "preview.html"); media_root=basedir("recorded"))
     open(path, "w") do io
-        for folder in readdir(media_root)
-            media = joinpath(media_root, folder, "media")
-            if !isfile(media) && ispath(media)
+        for file in readdir(media_root)
+            media = joinpath(media_root, file)
+            println(io, "<h1> $file </h1>")
+            if isdir(media)
                 medias = joinpath.(media, readdir(media))
-                println(io, "<h1> $folder </h1>")
                 embed_media(io, medias)
+            else
+                embed_media(io, media)
             end
+        end
+    end
+end
+
+function generate_test_summary(path, recorded_root, refimages_root, scores)
+    open(path, "w") do io
+        scores_sorted = sort!(collect(scores), by=last, rev=true)
+        for (filename, score) in scores_sorted
+            media_ref = joinpath(refimages_root, filename)
+            media_recorded = joinpath(recorded_root, filename)
+            println(io, "<h1> $filename : $(round(score, digits=4)) [reference] - [recorded] </h1>")
+            println(io, """
+            <div style="display: flex">
+                <div>
+                    $(embed_media(media_ref))
+                </div>
+                <div>
+                    $(embed_media(media_recorded))
+                </div>
+            </div>
+            """)
         end
     end
 end
@@ -23,63 +46,6 @@ function tourl(path)
         end
     end
     return repr(path)
-end
-
-# NOTE: `save_media` is the function you want to overload
-# if you want to create a Gallery with custom types.
-# Simply overloading the function should do the trick
-# and ReferenceTests will take care of the rest.
-
-function save_media(entry, x::Scene, path::String)
-    path = joinpath(path, "image.png")
-    save(FileIO.File(DataFormat{:PNG}, path), x) # work around FileIO bug for now
-    [path]
-end
-
-function save_media(entry, x::String, path::String)
-    out = joinpath(path, basename(x))
-    if out != x
-        mv(x, out, force = true)
-    end
-    [out]
-end
-
-function save_media(entry, x::AbstractPlotting.Stepper, path::String)
-    # return a list of all file names
-    images = filter(x-> endswith(x, ".png"), readdir(x.folder))
-    return map(images) do img
-        p = joinpath(x.folder, img)
-        out = joinpath(path, basename(p))
-        mv(p, out, force = true)
-        out
-    end
-end
-
-function save_media(entry, results::AbstractVector, path::String)
-    paths = String[]
-    for (i, res) in enumerate(results)
-        # Only save supported results
-        if res isa Union{Scene, String}
-            img = joinpath(path, "image$i.png")
-            save(FileIO.File(DataFormat{:PNG}, img), res) # work around FileIO
-            push!(paths, img)
-        end
-    end
-    paths
-end
-
-function save_media(example, events::RecordEvents, path::String)
-    # the path is fixed at record time to be stored relative to the example
-    epath = event_path(example, "")
-    isfile(epath) || error("Can't find events for example: $(example.unique_name). Please run `record_example_events()`")
-    # the current path of RecordEvents is where we now actually want to store the video
-    video_path = joinpath(path, "video.mp4")
-    record(events.scene, video_path) do io
-        replay_events(events.scene, epath) do
-            recordframe!(io)
-        end
-    end
-    return [video_path]
 end
 
 """
@@ -126,13 +92,13 @@ function embed_media(path::String, alt = "")
     end
 end
 
+embed_media(io::IO, path) = println(io, embed_media(path))
 
 """
 Embeds a vector of media files as HTML
 """
 function embed_media(io::IO, paths::AbstractVector{<: AbstractString}, caption = "")
-    for (i, path) in enumerate(paths)
-        occursin("thumb", path) && continue
+    for path in paths
         println(io, """
         <div style="display:inline-block">
             <p style="display:inline-block; text-align: center">
