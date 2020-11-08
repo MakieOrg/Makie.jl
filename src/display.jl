@@ -3,6 +3,8 @@ struct PlotDisplay <: AbstractDisplay end
 abstract type AbstractBackend end
 function backend_display end
 
+@enum ImageStorageFormat JuliaNative GLNative
+
 """
 Currently available displays by backend
 """
@@ -396,21 +398,30 @@ end
 
 
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x; kwargs...)
+function colorbuffer(x)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
+function colorbuffer(x, format::ImageStorageFormat)
+    if format == GLNative
+        @warn("requested format ignored")
+    end
+    return colorbuffer(x)
+end
+
 """
-    colorbuffer(scene; ffmpeg_format = false)
-    colorbuffer(screen; ffmpeg_format = false)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
 Colors.  The return type is backend-dependent, but will be some form of RGB
 or RGBA.
 
-- `ffmpeg_format` : Returns a more efficient ffmpeg format buffer (dims permuted, and one reversed)
+- `format = JuliaNative` : the format of all julia images
+- `format = GLNative` : Returns a more efficient format buffer (dims permuted, and one reversed) for GLMakie
+    which can be directly used in FFMPEG without conversion
 """
-function colorbuffer(scene::Scene; ffmpeg_format = false)
+function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
     screen = getscreen(scene)
     if isnothing(screen)
         if ismissing(current_backend[])
@@ -419,10 +430,10 @@ function colorbuffer(scene::Scene; ffmpeg_format = false)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(current_backend[], scene); ffmpeg_format = ffmpeg_format)
+            return colorbuffer(backend_display(current_backend[], scene), format)
         end
     end
-    return colorbuffer(screen; ffmpeg_format = ffmpeg_format)
+    return colorbuffer(screen, format)
 end
 
 """
@@ -432,7 +443,7 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    frame = colorbuffer(io.screen, ffmpeg_format = true)
+    frame = colorbuffer(io.screen, GLNative)
     _ydim, _xdim = size(frame)
     if isodd(_xdim) || isodd(_ydim)
         xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
@@ -490,7 +501,6 @@ function save(path::String, io::VideoStream;
     rm(io.path)
     return path
 end
-
 
 """
     record(func, scene, path; framerate = 24, compression = 20)
