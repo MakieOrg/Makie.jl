@@ -159,7 +159,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function AbstractPlotting.colorbuffer(screen::Screen; ffmpeg_format = false)
+function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.ImageStorageFormat = AbstractPlotting.JuliaNative)
     if isopen(screen)
         ctex = screen.framebuffer.color
         # polling may change window size, when its bigger than monitor!
@@ -172,9 +172,9 @@ function AbstractPlotting.colorbuffer(screen::Screen; ffmpeg_format = false)
             screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
         end
         fast_color_data!(screen.framecache, ctex)
-        if ffmpeg_format
+        if format == AbstractPlotting.GLNative
             return screen.framecache
-        else
+        elseif format == AbstractPlotting.JuliaNative
             reverse!(screen.framecache, dims = 2)
             return PermutedDimsArray(screen.framecache, (2,1))
         end
