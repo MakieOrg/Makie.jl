@@ -390,23 +390,26 @@ function VideoStream(
     screen = backend_display(current_backend[], scene)
     push_screen!(scene, screen)
     _xdim, _ydim = size(scene)
-    xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
-    ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
+    xdim = iseven(_xdim) ? _xdim : _xdim + 1
+    ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
-
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x)
+function colorbuffer(x::Any)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
-function colorbuffer(x, format::ImageStorageFormat)
+function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative) # less specific for overloading by backends
+    buf = colorbuffer(screen)
     if format == GLNative
-        @warn("requested format ignored")
+        @warn("Inefficient re-conversion back to GLNative buffer format. Update GLNative to support direct buffer access")
+        reverse!(buf, dims = 1)
+        return PermutedDimsArray(buf, (2,1))
+    elseif format == JuliaNative
+        return buf
     end
-    return colorbuffer(x)
 end
 
 """
@@ -414,12 +417,12 @@ end
     colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
-Colors.  The return type is backend-dependent, but will be some form of RGB
+Colors. The return type is backend-dependent, but will be some form of RGB
 or RGBA.
 
-- `format = JuliaNative` : the format of all julia images
-- `format = GLNative` : Returns a more efficient format buffer (dims permuted, and one reversed) for GLMakie
-    which can be directly used in FFMPEG without conversion
+- `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
+- `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
+                        used in FFMPEG without conversion
 """
 function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
     screen = getscreen(scene)
@@ -446,8 +449,8 @@ function recordframe!(io::VideoStream)
     frame = colorbuffer(io.screen, GLNative)
     _ydim, _xdim = size(frame)
     if isodd(_xdim) || isodd(_ydim)
-        xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
-        ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
+        xdim = iseven(_xdim) ? _xdim : _xdim + 1
+        ydim = iseven(_ydim) ? _ydim : _ydim + 1
         write(io.io, PaddedView(0, frame, (xdim, ydim)))
     else
         write(io.io, frame)
