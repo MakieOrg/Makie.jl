@@ -327,7 +327,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     register_interaction!(la,
         :rectanglezoom,
-        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
+        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), []))
 
     register_interaction!(la,
         :limitreset,
