@@ -39,7 +39,7 @@ function _get_isoband_levels(levels::Tuple{<:AbstractVector{<:Real},<:AbstractVe
     (Float32.(levels[1]), Float32.(levels[2]))
 end
 
-function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
+function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
     levels = lift(zs, c.levels) do zs, levels
