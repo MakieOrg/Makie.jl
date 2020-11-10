@@ -56,7 +56,9 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{Any, Any, Any}})
         empty!(colors[])
         @assert levels isa Tuple
         lows, highs = levels
-        isos = Isoband.isobands(xs, ys, zs, lows, highs)
+
+        # zs needs to be transposed to match rest of abstractplotting
+        isos = Isoband.isobands(xs, ys, zs', lows, highs)
 
         allvertices = Point2f0[]
         allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
