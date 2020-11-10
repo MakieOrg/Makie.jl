@@ -118,13 +118,44 @@ function _chosen_limits(rz, ax)
     return r
 end
 
+function _selection_vertices(outer, inner)
+    _clamp(p, plow, phigh) = Point2f0(clamp(p[1], plow[1], phigh[1]), clamp(p[2], plow[2], phigh[2]))
+
+    outer = positivize(outer)
+    inner = positivize(inner)
+
+    obl = bottomleft(outer)
+    obr = bottomright(outer)
+    otl = topleft(outer)
+    otr = topright(outer)
+
+    ibl = _clamp(bottomleft(inner), obl, otr)
+    ibr = _clamp(bottomright(inner), obl, otr)
+    itl = _clamp(topleft(inner), obl, otr)
+    itr = _clamp(topright(inner), obl, otr)
+
+    vertices = [obl, obr, otr, otl, ibl, ibr, itr, itl]
+end
+
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
 
     if event.type === MouseEventTypes.leftdragstart
         r.from = event.prev_data
         r.to = event.data
         r.rectnode[] = _chosen_limits(r, ax)
-        r.poly = poly!(ax.scene, r.rectnode, color = (COLOR_ACCENT[], 0.1), strokewidth = 2, strokecolor = COLOR_ACCENT[])[end]
+
+        selection_vertices = lift(_selection_vertices, ax.limits, r.rectnode)
+
+        # manually specify correct faces for a rectangle with a rectangle hole inside
+        faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
+
+        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.33), shading = false,
+            fxaa = false)[end] # fxaa false seems necessary for correct transparency
+        wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)[end]
+        # translate forward so selection mesh and frame are never behind data
+        translate!(mesh, 0, 0, 100)
+        translate!(wf, 0, 0, 110)
+        r.plots = [mesh, wf]
         r.active = true
 
     elseif event.type === MouseEventTypes.leftdrag
@@ -137,10 +168,12 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
             ax.targetlimits[] = newlims
         end
 
-        if !isnothing(r.poly)
-            delete!(ax.scene, r.poly)
-            r.poly = nothing
+        while !isempty(r.plots)
+            delete!(ax.scene, r.plots[1])
+            deleteat!(r.plots, 1)
         end
+        # remove any possible links in plotting functions
+        empty!(r.rectnode.listeners)
         r.active = false
     end
 
