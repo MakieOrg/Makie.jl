@@ -146,10 +146,13 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
 
         selection_vertices = lift(_selection_vertices, ax.limits, r.rectnode)
 
+        # manually specify correct faces for a rectangle with a rectangle hole inside
         faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
 
-        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.3), shading = false)[end]
-        wf = wireframe!(ax.scene, r.rectnode, color = COLOR_ACCENT[], linewidth = 2)[end]
+        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.33), shading = false,
+            fxaa = false)[end] # fxaa false seems necessary for correct transparency
+        wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)[end]
+        # translate forward so selection mesh and frame are never behind data
         translate!(mesh, 0, 0, 100)
         translate!(wf, 0, 0, 110)
         r.plots = [mesh, wf]
