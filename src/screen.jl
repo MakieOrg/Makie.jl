@@ -175,7 +175,19 @@ function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.I
         if format == AbstractPlotting.GLNative
             return screen.framecache
         elseif format == AbstractPlotting.JuliaNative
-            reverse!(screen.framecache, dims = 2)
+            @static if VERSION < v"1.6"
+                bufc = copy(screen.framecache)
+                ind1, ind2 = axes(buf)
+                n = first(ind2) + last(ind2)
+                for i in ind1
+                    @simd for j in ind2
+                        @inbounds bufc[i, n-j] = screen.framecache[i, j]
+                    end
+                end
+                screen.framecache = bufc
+            else
+                reverse!(screen.framecache, dims = 2)
+            end
             return PermutedDimsArray(screen.framecache, (2,1))
         end
     else
