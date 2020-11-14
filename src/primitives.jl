@@ -271,7 +271,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
 
     # if we use set_ft_font we should destroy the pointer it returns
     cairo_font_face_destroy(cairoface)
-    
+
     set_font_matrix(ctx, old_matrix)
     Cairo.restore(ctx)
 
@@ -345,7 +345,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
             w, h = scene.camera.resolution[]
             j = SOneTo(3)
             cpv = 0.005(w + h) * transpose(inv(
-                (scene.camera.projectionview[][j,j] * 
+                (scene.camera.projectionview[][j,j] *
                 AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
             ))
             mat = Cairo.CairoMatrix(
@@ -394,7 +394,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     if interp
         # FILTER_BEST doesn't work reliably with png backend, GAUSSIAN is not implemented
         interp_flag = Cairo.FILTER_BILINEAR
-        
+
         s = to_cairo_image(image, primitive)
         Cairo.rectangle(ctx, xy..., w, h)
         Cairo.save(ctx)
@@ -473,6 +473,9 @@ function draw_mesh2D(scene, screen, primitive)
     ctx = screen.context
     model = primitive.model[]
     mesh = primitive[1][]
+    # Priorize colors of the mesh if present
+    # This is a hack, which needs cleaning up in the Mesh plot type!
+    color = hasproperty(mesh, :color) ? mesh.color : color
     vs = coordinates(mesh); fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
@@ -507,12 +510,14 @@ function draw_mesh3D(
         scene, screen, primitive;
         mesh = primitive[1][], pos = Vec4f0(0), scale = 1f0
     )
-    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse, 
+    @get_attribute(primitive, (color, shading, lightposition, ambient, diffuse,
         specular, shininess, faceculling))
 
     colormap = get(primitive, :colormap, nothing) |> to_value |> to_colormap
     colorrange = get(primitive, :colorrange, nothing) |> to_value
     matcap = get(primitive, :matcap, nothing) |> to_value
+    # Priorize colors of the mesh if present
+    color = hasproperty(mesh, :color) ? mesh.color : color
 
     ctx = screen.context
 
@@ -520,12 +525,12 @@ function draw_mesh3D(
     view = scene.camera.view[]
     projection = scene.camera.projection[]
     normalmatrix = get(
-        scene.attributes, :normalmatrix, let 
+        scene.attributes, :normalmatrix, let
             i = SOneTo(3)
             transpose(inv(view[i, i] * model[i, i]))
         end
     )
-    
+
     # Mesh data
     # transform to view/camera space
     vs = map(coordinates(mesh)) do v
@@ -533,7 +538,7 @@ function draw_mesh3D(
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end
     fs = faces(mesh)
-    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing  
+    uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     ns = map(n -> normalmatrix * n, normals(mesh))
     cols = per_face_colors(color, colormap, colorrange, matcap, vs, fs, ns, uv)
 
@@ -545,7 +550,7 @@ function draw_mesh3D(
 
     # Camera to screen space
     ts = map(vs) do v
-        clip = projection * v 
+        clip = projection * v
         @inbounds begin
             p = (clip ./ clip[4])[Vec(1, 2)]
             p_yflip = Vec2f0(p[1], -p[2])
@@ -554,10 +559,10 @@ function draw_mesh3D(
         p = p_0_to_1 .* scene.camera.resolution[]
         Vec3f0(p[1], p[2], clip[3])
     end
-    
+
     # Approximate zorder
     zorder = sortperm(fs, by = f -> average_z(ts, f))
-    
+
     # Face culling
     zorder = filter(i -> any(last.(ns[fs[i]]) .> faceculling), zorder)
 
@@ -626,7 +631,7 @@ function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
     ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
     idxs = LinearIndices(size(zs))
     faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1]) 
+        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
         for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
     ]
     normal_mesh(ps, faces)
@@ -635,12 +640,12 @@ function surface2mesh(xs::Matrix, ys::Matrix, zs::Matrix)
     ps = [Point3f0(xs[i, j], ys[i, j], zs[i, j]) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
     idxs = LinearIndices(size(zs))
     faces = [
-        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1]) 
+        QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
         for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
     ]
     normal_mesh(ps, faces)
 end
-    
+
 
 ################################################################################
 #                                 MeshScatter                                  #
@@ -682,7 +687,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
         scale = scales isa Vector ? scales[i] : scales
 
         draw_mesh3D(
-            scene, screen, primitive, 
+            scene, screen, primitive,
             mesh = m, pos = p, scale = scale
         )
     end
