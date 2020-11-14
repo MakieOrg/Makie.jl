@@ -1,3 +1,15 @@
+# 0.13.6
+
+## Bugfixes
+
+- Orientation of contourf matrix flipped for same direction as heatmap etc.
+- Contourf polys can change dynamically
+
+## Improvements & Implementation Changes
+
+- Selection rectangle dims outer area via transparent mesh
+- Heatmap, image, contourf and plots implementing special trait automatically cause tight limits for LAxis
+
 # 0.13.5
 
 ## New features
