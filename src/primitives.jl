@@ -473,8 +473,9 @@ function draw_mesh2D(scene, screen, primitive)
     ctx = screen.context
     model = primitive.model[]
     mesh = primitive[1][]
-    color = hasproperty(mesh, :color) ? mesh.color : color
     # Priorize colors of the mesh if present
+    # This is a hack, which needs cleaning up in the Mesh plot type!
+    color = hasproperty(mesh, :color) ? mesh.color : color
     vs = coordinates(mesh); fs = faces(mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
