@@ -406,19 +406,20 @@ function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative) # le
     if format == GLNative
         @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
         @static if VERSION < v"1.6"
-            bufc = copy(buf)
+            d1, d2 = size(buf)
+            bufc = Array{eltype(buf)}(undef, d2, d1) #permuted
             ind1, ind2 = axes(buf)
             n = first(ind1) + last(ind1)
             for i in ind1
                 @simd for j in ind2
-                    @inbounds bufc[n-i, j] = buf[i, j]
+                    @inbounds bufc[j, n-i] = buf[i, j]
                 end
             end
-            buf = bufc
+            return bufc
         else
             reverse!(buf, dims = 1)
+            return collect(PermutedDimsArray(buf, (2,1)))
         end
-        return collect(PermutedDimsArray(buf, (2,1)))
     elseif format == JuliaNative
         return buf
     end
