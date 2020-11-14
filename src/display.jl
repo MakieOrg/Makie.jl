@@ -404,9 +404,9 @@ end
 function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative) # less specific for overloading by backends
     buf = colorbuffer(screen)
     if format == GLNative
-        @warn("Inefficient re-conversion back to GLNative buffer format. Update GLNative to support direct buffer access")
+        @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
         reverse!(buf, dims = 1)
-        return PermutedDimsArray(buf, (2,1))
+        return collect(PermutedDimsArray(buf, (2,1)))
     elseif format == JuliaNative
         return buf
     end
