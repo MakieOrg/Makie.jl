@@ -397,7 +397,7 @@ function VideoStream(
 end
 
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x::Any)
+function colorbuffer(x::AbstractScreen)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
@@ -405,7 +405,19 @@ function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative) # le
     buf = colorbuffer(screen)
     if format == GLNative
         @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
-        reverse!(buf, dims = 1)
+        @static if VERSION < v"1.6"
+            bufc = copy(buf)
+            ind1, ind2 = axes(buf)
+            n = first(ind1) + last(ind1)
+            for i in ind1
+                @simd for j in ind2
+                    @inbounds bufc[n-i, j] = buf[i, j]
+                end
+            end
+            buf = bufc
+        else
+            reverse!(buf, dims = 1)
+        end
         return collect(PermutedDimsArray(buf, (2,1)))
     elseif format == JuliaNative
         return buf
