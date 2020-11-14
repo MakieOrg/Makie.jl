@@ -318,13 +318,9 @@ nothing # hide
 
 We don't care about the axis decorations, as it's often the case with image plots.
 The function `hidedecorations!` hides both x and y decorations at once.
-Also, the default autolimits are computed with a small margin, which doesn't look
-good in our case. We can set the autolimit margins to zero using `tightlimits!`.
-
 
 ```@example tutorial
 
-tightlimits!.(hm_axes)
 hidedecorations!.(hm_axes)
 
 scene

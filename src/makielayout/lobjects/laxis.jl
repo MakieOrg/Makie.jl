@@ -327,7 +327,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     register_interaction!(la,
         :rectanglezoom,
-        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), nothing))
+        RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), []))
 
     register_interaction!(la,
         :limitreset,
@@ -358,9 +358,16 @@ function AbstractPlotting.plot!(
 
     plot = AbstractPlotting.plot!(la.scene, P, attributes, args...; kw_attributes...)[end]
 
+    # some area-like plots basically always look better if they cover the whole plot area.
+    # adjust the limit margins in those cases automatically.
+    has_tight_limit_trait(P) && tightlimits!(la)
+
     autolimits!(la)
     plot
 end
+
+has_tight_limit_trait(@nospecialize any) = false
+has_tight_limit_trait(::Type{<:Union{Heatmap, Image, Contourf}}) = true
 
 function bboxunion(bb1, bb2)
 
