@@ -127,7 +127,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
             displayed_string[] = " "
         end
 
-        pos = state.pos
+        pos = state.data
         closest_charindex = argmin(
             [sum((pos .- center(bb)).^2) for bb in displayed_charbbs[]]
         )
