@@ -126,11 +126,17 @@ function addmouseevents!(scene, elements...)
         data = mouseposition(scene)
         px = AbstractPlotting.mouseposition_px(scene)
         mouse_inside = is_mouse_over_relevant_area()
+            
+        # last_mouseevent can only be up or down
 
-        # movement while mouse is pressed
-        if last_mouseevent[] == Mouse.pressed
-            # must have been a registered drag (otherwise could have come from outside)
+        # mouse moved while being pressed
+        # this can mean a new drag started, or a drag continues if it is ongoing.
+        # it can also mean that a drag that started outside and isn't related to this
+        # object is going across it and should be ignored here
+        if last_mouseevent[] == Mouse.down
+
             if drag_ongoing[]
+                # continue the drag
                 event = @match mouse_downed_button[] begin
                     Mouse.left => MouseEventTypes.leftdrag
                     Mouse.right => MouseEventTypes.rightdrag
@@ -138,28 +144,27 @@ function addmouseevents!(scene, elements...)
                     x => error("No recognized mouse button $x")
                 end
                 mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
-            end
-        # mouse moved while just having been pressed down
-        elseif last_mouseevent[] == Mouse.down
-            # mouse must have been downed inside
-            # that means a drag started
-            if mouse_downed_inside[]
-                drag_ongoing[] = true
-                event = @match mouse_downed_button[] begin
-                    Mouse.left => MouseEventTypes.leftdragstart
-                    Mouse.right => MouseEventTypes.rightdragstart
-                    Mouse.middle => MouseEventTypes.middledragstart
-                    x => error("No recognized mouse button $x")
-                end
-                mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+            else
+                # mouse was downed inside but no drag is ongoing
+                # that means a drag started
+                if mouse_downed_inside[]
+                    drag_ongoing[] = true
+                    event = @match mouse_downed_button[] begin
+                        Mouse.left => MouseEventTypes.leftdragstart
+                        Mouse.right => MouseEventTypes.rightdragstart
+                        Mouse.middle => MouseEventTypes.middledragstart
+                        x => error("No recognized mouse button $x")
+                    end
+                    mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
 
-                event = @match mouse_downed_button[] begin
-                    Mouse.left => MouseEventTypes.leftdrag
-                    Mouse.right => MouseEventTypes.rightdrag
-                    Mouse.middle => MouseEventTypes.middledrag
-                    x => error("No recognized mouse button $x")
+                    event = @match mouse_downed_button[] begin
+                        Mouse.left => MouseEventTypes.leftdrag
+                        Mouse.right => MouseEventTypes.rightdrag
+                        Mouse.middle => MouseEventTypes.middledrag
+                        x => error("No recognized mouse button $x")
+                    end
+                    mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                 end
-                mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
             end
         else
             if mouse_inside
@@ -193,6 +198,10 @@ function addmouseevents!(scene, elements...)
 
         # we only need to handle mousedown and mouseup
         # pressed and not pressed are redundant events with mouse position changes
+        mousedrag ∉ (Mouse.down, Mouse.up) && return
+        
+        # mouse went down, this can either happen inside or outside the objects of interest
+        # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
         if mousedrag == Mouse.down
             if length(pressed_buttons) == 1
                 button = only(pressed_buttons)
