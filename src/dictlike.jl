@@ -60,10 +60,11 @@ function Base.copy(attributes::Attributes)
     result = Attributes()
     for (k, v) in attributes
         # We need to create a new Signal to have a real copy
-        result[k] = copy(v)
+        result[k] = Observable{Any}(to_value(v))
     end
     return result
 end
+
 Base.filter(f, x::Attributes) = Attributes(filter(f, attributes(x)))
 Base.empty!(x::Attributes) = (empty!(attributes(x)); x)
 Base.length(x::Attributes) = length(attributes(x))
@@ -129,7 +130,7 @@ _indent_attrs(s, n) = join(split(s, '\n'), "\n" * " "^n)
 function Base.show(io::IO,::MIME"text/plain", attr::Attributes)
 
     io = IOContext(io, :compact => true)
-    
+
     d = Dict()
     print(io, """Attributes with $(length(attr)) $(length(attr) != 1 ? "entries" : "entry")""")
 
