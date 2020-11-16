@@ -14,7 +14,7 @@ mutable struct Screen <: GLScreen
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
-    framecache::Tuple{Matrix{RGB{N0f8}}, Matrix{RGB{N0f8}}}
+    framecache::Matrix{RGB{N0f8}}
     displayed_scene::Union{Scene, Nothing}
     render_tick::Node{Nothing}
     function Screen(
@@ -31,7 +31,7 @@ mutable struct Screen <: GLScreen
         obj = new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, cache, cache2plot,
-            (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s))),
+            Matrix{RGB{N0f8}}(undef, s),
             nothing, Node(nothing)
         )
     end
@@ -127,22 +127,6 @@ function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     return
 end
 
-function to_jl_layout!(A, B)
-    ind1, ind2 = axes(A)
-    n = first(ind2) + last(ind2)
-    for i in ind1
-        @simd for j in ind2
-            @inbounds c = A[i, j]
-            c = mapc(c) do channel
-                x = clamp(channel, 0.0, 1.0)
-                return ifelse(isfinite(x), x, 0.0)
-            end
-            @inbounds B[n-j, i] = c
-        end
-    end
-    return B
-end
-
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
     GLAbstraction.bind(source)
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
@@ -175,7 +159,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function AbstractPlotting.colorbuffer(screen::Screen)
+function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.ImageStorageFormat = AbstractPlotting.JuliaNative)
     if isopen(screen)
         ctex = screen.framebuffer.color
         # polling may change window size, when its bigger than monitor!
@@ -184,13 +168,28 @@ function AbstractPlotting.colorbuffer(screen::Screen)
         # keep current buffer size to allows larger-than-window renders
         render_frame(screen, resize_buffers=false) # let it render
         glFinish() # block until opengl is done rendering
-        if size(ctex) != size(screen.framecache[1])
-            s = size(ctex)
-            screen.framecache = (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s)))
+        if size(ctex) != size(screen.framecache)
+            screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
         end
-        fast_color_data!(screen.framecache[1], ctex)
-        to_jl_layout!(screen.framecache...)
-        return screen.framecache[2]
+        fast_color_data!(screen.framecache, ctex)
+        if format == AbstractPlotting.GLNative
+            return screen.framecache
+        elseif format == AbstractPlotting.JuliaNative
+            @static if VERSION < v"1.6"
+                bufc = copy(screen.framecache)
+                ind1, ind2 = axes(bufc)
+                n = first(ind2) + last(ind2)
+                for i in ind1
+                    @simd for j in ind2
+                        @inbounds bufc[i, n-j] = screen.framecache[i, j]
+                    end
+                end
+                screen.framecache = bufc
+            else
+                reverse!(screen.framecache, dims = 2)
+            end
+            return PermutedDimsArray(screen.framecache, (2,1))
+        end
     else
         error("Screen not open!")
     end
