@@ -73,7 +73,7 @@ function reference_tests(recorded; ref_images = ReferenceTests.download_refimage
     end
 end
 
-function record_tests(db=load_database(); recording_dir=joinpath(@__DIR__, "..", "recorded"))
+function record_tests(db=load_database(); recording_dir=basedir("recorded"))
     recorded_files = String[]
     @testset "Record tests" begin
         rm(recording_dir, recursive=true, force=true)
