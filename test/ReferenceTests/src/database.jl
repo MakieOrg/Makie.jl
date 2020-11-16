@@ -24,8 +24,8 @@ end
 function unique_name(entry::Entry)
     loc = entry.source_location
     filename = splitext(basename(string(loc.file)))[1]
-    sep = isempty(entry.title) ? "" : "-"
-    return string(filename, ":", loc.line, sep, entry.title)
+    sep = isempty(entry.title) ? "" : "_"
+    return replace(string(filename, "_", loc.line, sep, entry.title), " " => "")
 end
 
 function nice_title(entry::Entry)
@@ -81,8 +81,6 @@ function load_database()
     include(joinpath(@__DIR__, "tests/examples2d.jl"))
     include(joinpath(@__DIR__, "tests/examples3d.jl"))
     include(joinpath(@__DIR__, "tests/layouting.jl"))
-    # ReferenceTests.include(joinpath(@__DIR__, "tests/recipes.jl"))
     include(joinpath(@__DIR__, "tests/short_tests.jl"))
     return DATABASE
 end
-
