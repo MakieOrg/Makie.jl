@@ -3,6 +3,8 @@ struct PlotDisplay <: AbstractDisplay end
 abstract type AbstractBackend end
 function backend_display end
 
+@enum ImageStorageFormat JuliaNative GLNative
+
 """
 Currently available displays by backend
 """
@@ -114,7 +116,7 @@ function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
         In that case, try `]build GLMakie` and watch out for any warnings.
         """
     end
-    
+
     print(io, scene)
     return
 end
@@ -149,7 +151,7 @@ function Base.show(io::IO, scene::Scene)
     end
 
     print(io, "\n  $(length(scene.children)) Child Scene$(_plural_s(scene.children))")
-    
+
     if length(scene.children) > 0
         print(io, ":")
         for (i, subscene) in enumerate(scene.children)
@@ -388,27 +390,54 @@ function VideoStream(
     screen = backend_display(current_backend[], scene)
     push_screen!(scene, screen)
     _xdim, _ydim = size(scene)
-    xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
-    ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
+    xdim = iseven(_xdim) ? _xdim : _xdim + 1
+    ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     VideoStream(process.in, process, screen, abspath(path))
 end
 
-
 # This has to be overloaded by the backend for its screen type.
-function colorbuffer(x)
+function colorbuffer(x::AbstractScreen)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
+function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative) # less specific for overloading by backends
+    buf = colorbuffer(screen)
+    if format == GLNative
+        @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
+        @static if VERSION < v"1.6"
+            d1, d2 = size(buf)
+            bufc = Array{eltype(buf)}(undef, d2, d1) #permuted
+            ind1, ind2 = axes(buf)
+            n = first(ind1) + last(ind1)
+            for i in ind1
+                @simd for j in ind2
+                    @inbounds bufc[j, n-i] = buf[i, j]
+                end
+            end
+            return bufc
+        else
+            reverse!(buf, dims = 1)
+            return collect(PermutedDimsArray(buf, (2,1)))
+        end
+    elseif format == JuliaNative
+        return buf
+    end
+end
+
 """
-    colorbuffer(scene)
-    colorbuffer(screen)
+    colorbuffer(scene, format::ImageStorageFormat = JuliaNative)
+    colorbuffer(screen, format::ImageStorageFormat = JuliaNative)
 
 Returns the content of the given scene or screen rasterised to a Matrix of
-Colors.  The return type is backend-dependent, but will be some form of RGB
+Colors. The return type is backend-dependent, but will be some form of RGB
 or RGBA.
+
+- `format = JuliaNative` : Returns a buffer in the format of standard julia images (dims permuted and one reversed)
+- `format = GLNative` : Returns a more efficient format buffer for GLMakie which can be directly
+                        used in FFMPEG without conversion
 """
-function colorbuffer(scene::Scene)
+function colorbuffer(scene::Scene, format::ImageStorageFormat = JuliaNative)
     screen = getscreen(scene)
     if isnothing(screen)
         if ismissing(current_backend[])
@@ -417,10 +446,10 @@ function colorbuffer(scene::Scene)
                 before trying to render a Scene.
                 """)
         else
-            return colorbuffer(backend_display(current_backend[], scene))
+            return colorbuffer(backend_display(current_backend[], scene), format)
         end
     end
-    return colorbuffer(screen)
+    return colorbuffer(screen, format)
 end
 
 """
@@ -430,16 +459,15 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    frame = colorbuffer(io.screen)
-    _xdim, _ydim = size(frame)
-    xdim = _xdim % 2 == 0 ? _xdim : _xdim + 1
-    ydim = _ydim % 2 == 0 ? _ydim : _ydim + 1
-    frame_out = fill(RGB{N0f8}(1, 1, 1), ydim, xdim)
-    for x in 1:_xdim, y in 1:_ydim
-        c = frame[(_xdim + 1) - x, y]
-        frame_out[y, x] = RGB{N0f8}(c)
+    frame = colorbuffer(io.screen, GLNative)
+    _ydim, _xdim = size(frame)
+    if isodd(_xdim) || isodd(_ydim)
+        xdim = iseven(_xdim) ? _xdim : _xdim + 1
+        ydim = iseven(_ydim) ? _ydim : _ydim + 1
+        write(io.io, PaddedView(0, frame, (xdim, ydim)))
+    else
+        write(io.io, frame)
     end
-    write(io.io, frame_out)
     return
 end
 
@@ -489,7 +517,6 @@ function save(path::String, io::VideoStream;
     rm(io.path)
     return path
 end
-
 
 """
     record(func, scene, path; framerate = 24, compression = 20)
