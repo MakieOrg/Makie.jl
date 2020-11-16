@@ -177,7 +177,7 @@ function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.I
         elseif format == AbstractPlotting.JuliaNative
             @static if VERSION < v"1.6"
                 bufc = copy(screen.framecache)
-                ind1, ind2 = axes(buf)
+                ind1, ind2 = axes(bufc)
                 n = first(ind2) + last(ind2)
                 for i in ind1
                     @simd for j in ind2
