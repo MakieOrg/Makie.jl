@@ -60,7 +60,20 @@ function Base.copy(attributes::Attributes)
     result = Attributes()
     for (k, v) in attributes
         # We need to create a new Signal to have a real copy
-        result[k] = Observable{Any}(to_value(v))
+        result[k] = copy(v)
+    end
+    return result
+end
+
+function Base.deepcopy(obs::Observable)
+    return Observable{Any}(to_value(obs))
+end
+
+function Base.deepcopy(attributes::Attributes)
+    result = Attributes()
+    for (k, v) in attributes
+        # We need to create a new Signal to have a real copy
+        result[k] = deepcopy(v)
     end
     return result
 end
