@@ -26,7 +26,7 @@ function download_refimages(tag=last_major_version())
     images = basedir("refimages")
     isfile(images_tar) && rm(images_tar)
     isdir(images) && rm(images, recursive=true, force=true)
-    Downloads.download(url, images_tar)
+    Base.download(url, images_tar)
     Tar.extract(images_tar, images)
     return images
 end
@@ -34,6 +34,5 @@ end
 
 # rm(joinpath(@__DIR__, "refimages"), force=true, recursive=true)
 
-# 
+#
 # using Pkg.TOML
-
