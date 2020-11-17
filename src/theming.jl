@@ -105,7 +105,7 @@ const minimal_default = Attributes(
     ),
 )
 
-const _current_default_theme = copy(minimal_default)
+const _current_default_theme = deepcopy(minimal_default)
 
 function current_default_theme(; kw_args...)
     return merge!(Attributes(kw_args), _current_default_theme)
