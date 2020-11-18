@@ -72,8 +72,12 @@ button_key(x::Set{T}) where {T} = button_key(T)
 button_key(x::T) where {T} = button_key(T)
 
 """
-returns true if `button` is pressed in scene[:mousebuttons or :keyboardbuttons]
-You can use nothing, to indicate it should always return true
+    ispressed(scene, buttons)
+
+
+Returns true if all `buttons` are pressed in the given `scene`. `buttons` can be
+a `Vector` or `Tuple` of `Keyboard` buttons (e.g. `Keyboard.a`), `Mouse` buttons
+(e.g. `Mouse.left`) and `nothing`.
 """
 function ispressed(scene::SceneLike, button::Union{Vector, Tuple})
     all(x-> ispressed(scene, x), button)
@@ -83,13 +87,21 @@ end
 # So you can use void whenever you don't care what is pressed
 ispressed(scene::SceneLike, ::Nothing) = true
 
-function ispressed(buttons::Set{T}, button) where T <: Union{Keyboard.Button, Mouse.Button}
-    if isa(button, Set)
-        return buttons == button
-    else
-        return length(buttons) == 1 && first(buttons) == button
-    end
+function ispressed(buttons::Set{T}, button::T) where T <: Union{Keyboard.Button, Mouse.Button}
+    return button in buttons
 end
+
+function ispressed(buttons::Set{T}, button::Set{T}) where T <: Union{Keyboard.Button, Mouse.Button}
+    return issubset(button, buttons)
+end
+
+"""
+    ispressed(scene, button)
+
+Returns true if `button` is pressed in the given `scene`. The `button` can be
+a `Keyboard` button (e.g. `Keyboard.a`), a `Mouse` button (e.g. `Mouse.left`)
+or `nothing`. In the latter case `true` is always returned.
+"""
 function ispressed(scene::SceneLike, button)
     buttons = getfield(events(scene), button_key(button))[]
     ispressed(buttons, button)
