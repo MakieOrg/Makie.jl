@@ -306,5 +306,5 @@ function AbstractPlotting.colorbuffer(screen::CairoScreen)
     cairo_draw(scr, scene)
 
     # x and y are flipped - return the transpose
-    return transpose(img)
+    return permutedims(img)
 end
