@@ -499,27 +499,29 @@ function save(path::String, io::VideoStream;
     close(io.process)
     wait(io.process)
     p, typ = splitext(path)
-    mktempdir() do dir
-        out = joinpath("out$(typ)")
-        if typ == ".mkv"
-            cp(io.path, path, force=true)
-        elseif typ == ".mp4"
-            ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
-        elseif typ == ".webm"
-            ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
-        elseif typ == ".gif"
-            filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
-            palette_path = dirname(io.path)
-            pname = joinpath(palette_path, "palette.bmp")
-            isfile(pname) && rm(pname, force = true)
-            ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
-            ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
-            rm(pname, force = true)
-        else
-            rm(io.path)
-            error("Video type $typ not known")
+    if typ == ".mkv"
+        cp(io.path, path, force=true)
+    else
+        mktempdir() do dir
+            out = joinpath(dir, "out$(typ)")
+            if typ == ".mp4"
+                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+            elseif typ == ".webm"
+                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
+            elseif typ == ".gif"
+                filters = "fps=$framerate,scale=iw:ih:flags=lanczos"
+                palette_path = dirname(io.path)
+                pname = joinpath(palette_path, "palette.bmp")
+                isfile(pname) && rm(pname, force = true)
+                ffmpeg_exe(`-loglevel quiet -i $(io.path) -vf "$filters,palettegen" -y $pname`)
+                ffmpeg_exe(`-loglevel quiet -i $(io.path) -i $pname -lavfi "$filters [x]; [x][1:v] paletteuse" -y $out`)
+                rm(pname, force = true)
+            else
+                rm(io.path)
+                error("Video type $typ not known")
+            end
+            cp(out, path, force=true)
         end
-        cp(out, path, force=true)
     end
     rm(io.path)
     return path
