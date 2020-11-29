@@ -94,7 +94,7 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     attributes::Attributes
     block_limit_linking::Node{Bool}
     decorations::Dict{Symbol, Any}
-    mouseevents::Observable{MouseEvent}
+    mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
