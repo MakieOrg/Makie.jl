@@ -22,7 +22,7 @@ function default_attributes(::Type{LMenu}, scene)
         "The alignment of the menu in its suggested bounding box."
         alignmode = Inside()
         "Index of selected item"
-        i_selected = 1
+        i_selected = 0
         "Selected item value"
         selection = nothing
         "Is the menu showing the available options"
@@ -51,6 +51,8 @@ function default_attributes(::Type{LMenu}, scene)
         textcolor = :black
         "The opening direction of the menu (:up or :down)"
         direction = :down
+        "The default message prompting a selection when i == 0"
+        prompt = "Select..."
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -116,7 +118,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
         cell_color_inactive_even, cell_color_inactive_odd, dropdown_arrow_color,
         options, dropdown_arrow_size, textsize, selection, cell_color_active,
-        textpadding, selection_cell_color_inactive, textcolor, direction)
+        textpadding, selection_cell_color_inactive, textcolor, direction, prompt)
 
     decorations = Dict{Symbol, Any}()
 
@@ -144,24 +146,114 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     selectionrect = LRect(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
-    selectiontext = LText(scene, "Select...", tellwidth = false, halign = :left,
+    
+
+    optionstrings = Ref{Vector{String}}(optionlabel.(options[]))
+
+    selected_text = lift(prompt, i_selected) do prompt, i_selected
+        if i_selected == 0
+            prompt
+        else
+            optionstrings[][i_selected]
+        end
+    end
+
+
+    selectiontext = LText(scene, selected_text, tellwidth = false, halign = :left,
         padding = textpadding, textsize = textsize, color = textcolor)
 
 
-    rects = [LRect(scene, width = nothing, height = nothing,
-        color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[], strokewidth = 0) for i in 1:length(options[])]
+    rects = Ref{Vector{LRect}}([])
+    texts = Ref{Vector{LText}}([])
+    allrects = Ref{Vector{LRect}}([])
+    alltexts = Ref{Vector{LText}}([])
+    mouseeventhandles = Ref{Vector{MouseEventHandle}}([])
 
-    strings = optionlabel.(options[])
+    function reassemble()
+        foreach(delete!, rects[])
+        foreach(delete!, texts[])
+        # remove all mouse actions previously connected to rects / texts
+        foreach(clear!, mouseeventhandles[])
 
-    texts = [LText(scene, s, halign = :left, tellwidth = false,
-        textsize = textsize, color = textcolor,
-        padding = textpadding) for s in strings]
+        trim!(contentgrid)
 
+        rects[] = [LRect(scene, width = nothing, height = nothing,
+            color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[],
+            strokewidth = 0)
+            for i in 1:length(options[])]
 
-    allrects = [selectionrect; rects]
-    alltexts = [selectiontext; texts]
+        texts[] = [LText(scene, s, halign = :left, tellwidth = false,
+            textsize = textsize, color = textcolor,
+            padding = textpadding)
+            for s in optionstrings[]]
+    
+        allrects[] = [selectionrect; rects[]]
+        alltexts[] = [selectiontext; texts[]]
 
+        contentgrid[1:length(allrects[]), 1] = allrects[]
+        contentgrid[1:length(alltexts[]), 1] = alltexts[]
 
+        rowgap!(contentgrid, 0)
+
+        mouseeventhandles[] = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects[], alltexts[])]
+
+        # create mouse events for each menu entry rect / text combo
+        for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles[], allrects[], alltexts[]))
+            onmouseover(mouseeventhandle) do _
+                    r.color = cell_color_hover[]
+            end
+
+            onmouseout(mouseeventhandle) do _
+                if i == 1
+                    r.color = selection_cell_color_inactive[]
+                else
+                    i_option = i - 1
+                    r.color = iseven(i_option) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
+                end
+            end
+
+            onmouseleftdown(mouseeventhandle) do _
+                r.color = cell_color_active[]
+                if is_open[]
+                    # first item is already selected
+                    if i > 1
+                        i_selected[] = i - 1
+                    end
+                end
+                is_open[] = !is_open[]
+            end
+        end
+
+        nothing
+    end
+
+    on(options) do options
+
+        # update string ref before reassembly
+        optionstrings[] = optionlabel.(options)
+
+        reassemble()
+
+        new_i = 0 # default to nothing selected
+        # if there is a current selection, check if it still exists in the new options
+        if i_selected[] > 0
+            for (i, o) in enumerate(options)
+                # if one of the new options is equivalent to the old options, we choose it for continuity
+                if selection[] == optionvalue(o) && selected_text[] == optionlabel(o)
+                    new_i = i
+                    break
+                end
+            end
+        end
+
+        # trigger eventual selection actions
+        i_selected[] = new_i
+    end
+
+    # reassemble for the first time
+    reassemble()
+
+    
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
         marker = @lift($is_open ? '▴' : '▾'),
@@ -174,7 +266,11 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     onany(i_selected, is_open, contentgrid.layoutobservables.autosize) do i, open, gridautosize
 
-        h = texts[i].layoutobservables.autosize[][2]
+        h = if i == 0
+            selectiontext.layoutobservables.autosize[][2]
+        else
+            texts[][i].layoutobservables.autosize[][2]
+        end
         layoutobservables.autosize[] = (nothing, h)
         autosize = layoutobservables.autosize[]
 
@@ -187,7 +283,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
             translate!(scene, 0, 0, 10)
 
         else
-            sceneheight[] = texts[1].layoutobservables.autosize[][2]
+            sceneheight[] = texts[][1].layoutobservables.autosize[][2]
 
             # back to normal z
             translate!(scene, 0, 0, 0)
@@ -195,64 +291,39 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    contentgrid[:v] = allrects
-    contentgrid[:v] = alltexts
 
     on(direction) do d
         if d == :down
-            contentgrid[:v] = allrects
-            contentgrid[:v] = alltexts
+            contentgrid[:v] = allrects[]
+            contentgrid[:v] = alltexts[]
         elseif d == :up
-            contentgrid[:v] = reverse(allrects)
-            contentgrid[:v] = reverse(alltexts)
+            contentgrid[:v] = reverse(allrects[])
+            contentgrid[:v] = reverse(alltexts[])
         else
             error("Invalid direction $d. Possible values are :up and :down.")
         end
     end
 
-    on(i_selected) do i
-        h = selectiontext.layoutobservables.autosize[][2]
-        layoutobservables.autosize[] = (nothing, h)
-    end
 
     # trigger size without triggering selection
     i_selected[] = i_selected[]
     is_open[] = is_open[]
 
     on(i_selected) do i
-        # collect in case options is a zip or other generator without indexing
-        selectiontext.text = strings[i]
-        option = collect(options[])[i]
-        selection[] = optionvalue(option)
-    end
+        if i == 0
+            selection[] = nothing
+        else
+            # collect in case options is a zip or other generator without indexing
+            option = collect(options[])[i]
 
-    rowgap!(contentgrid, 0)
-
-    mouseevents_vector = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects, alltexts)]
-
-    for (i, (mouseevents, r, t)) in enumerate(zip(mouseevents_vector, allrects, alltexts))
-        onmouseover(mouseevents) do events
-            r.color = cell_color_hover[]
-        end
-
-        onmouseout(mouseevents) do events
-            if i == 1
-                r.color = selection_cell_color_inactive[]
-            else
-                i_option = i - 1
-                r.color = iseven(i_option) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
+            # only update the selection value if the new value is actually different
+            # this is because i_selected can also be changed when the options themselves
+            # are mutated, and there could still be the same option in the list
+            # just at a different place, so that should not trigger a selection
+            newvalue = optionvalue(option)
+            if selection[] != newvalue
+                selection[] = newvalue
             end
-        end
-
-        onmouseleftdown(mouseevents) do events
-            r.color = cell_color_active[]
-            if is_open[]
-                # first item is already selected
-                if i > 1
-                    i_selected[] = i - 1
-                end
-            end
-            is_open[] = !is_open[]
         end
     end
 
