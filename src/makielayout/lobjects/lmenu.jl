@@ -197,6 +197,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
         mouseeventhandles[] = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects[], alltexts[])]
 
+        # create mouse events for each menu entry rect / text combo
         for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles[], allrects[], alltexts[]))
             onmouseover(mouseeventhandle) do _
                     r.color = cell_color_hover[]
@@ -245,16 +246,14 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
             end
         end
 
-
-
-        # but this does
+        # trigger eventual selection actions
         i_selected[] = new_i
     end
 
     # reassemble for the first time
     reassemble()
 
-
+    
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
         marker = @lift($is_open ? '▴' : '▾'),
@@ -305,10 +304,6 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    on(i_selected) do i
-        h = selectiontext.layoutobservables.autosize[][2]
-        layoutobservables.autosize[] = (nothing, h)
-    end
 
     # trigger size without triggering selection
     i_selected[] = i_selected[]
