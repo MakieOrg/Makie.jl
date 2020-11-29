@@ -60,11 +60,11 @@ struct MouseEventHandle
 end
 
 """
-    disable!(handle::MouseEventHandle)
+    clear!(handle::MouseEventHandle)
 
 Cut observable connections to the scene and remove any listeners to the mouse events.
 """
-function disable!(handle::MouseEventHandle)
+function clear!(handle::MouseEventHandle)
     foreach(Observables.off, handle.observerfuncs)
     empty!(obs.observerfuncs)
     empty!(handle.obs.listeners)
