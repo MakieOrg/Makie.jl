@@ -8,10 +8,12 @@ if Sys.iswindows()
         end
     end
 elseif Sys.isapple()
+    const _CoreGraphics = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
     function _primary_resolution()
-        s = read(pipeline(`system_profiler SPDisplaysDataType`, `grep Resolution`)) |> String
-        sarr = split(s)
-        return parse.(Int, (sarr[2], sarr[4]))
+        dispid = ccall((:CGMainDisplayID, _CoreGraphics), UInt32,())
+        height = ccall((:CGDisplayPixelsHigh,_CoreGraphics), Int, (UInt32,), dispid)
+        width = ccall((:CGDisplayPixelsWide,_CoreGraphics), Int, (UInt32,), dispid)
+        return (width, height)
     end
 # elseif Sys.islinux()
 #     function _primary_resolution()
