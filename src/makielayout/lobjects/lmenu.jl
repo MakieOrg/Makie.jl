@@ -62,11 +62,10 @@ end
 
 Create a drop-down menu with multiple selectable options. You can pass options
 with the keyword argument `options`. Options are given as an iterable of elements.
-For each element, the option label in the menu is determined with `optionstring(element)`
+For each element, the option label in the menu is determined with `optionlabel(element)`
 and the option value with `optionvalue(element)`. These functions can be
-overloaded for custom types. The default is that elements which are `AbstractStrings`
-are both label and value, and all other elements are expected to have two entries,
-where the first is the label and the second is the value.
+overloaded for custom types. The default is that tuples of two elements are expected to be label and value,
+where `string(label)` is used as the label, while for all other objects, label = `string(object)` and value = object.
 
 When an item is selected in the menu, the menu's `selection` attribute is set to
 `optionvalue(selected_element)`.
@@ -341,18 +340,18 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 end
 
 
-function optionlabel(option::AbstractString)
+function optionlabel(option)
     string(option)
 end
 
-function optionlabel(option)
+function optionlabel(option::Tuple{Any, Any})
     string(option[1])
 end
 
-function optionvalue(option::AbstractString)
+function optionvalue(option)
     option
 end
 
-function optionvalue(option)
+function optionvalue(option::Tuple{Any, Any})
     option[2]
 end
