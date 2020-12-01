@@ -8,7 +8,7 @@ if Sys.iswindows()
         end
     end
 elseif Sys.isapple()
-    const _CoreGraphics = "/System/Library/Frameworks/CoreGraphics.framework/CoreGraphics"
+    const _CoreGraphics = "CoreGraphics.framework/CoreGraphics"
     function _primary_resolution()
         dispid = ccall((:CGMainDisplayID, _CoreGraphics), UInt32,())
         height = ccall((:CGDisplayPixelsHigh,_CoreGraphics), Int, (UInt32,), dispid)
