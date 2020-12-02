@@ -1,11 +1,7 @@
 """
-    errorbars(xs, ys, low, high; kwargs...)
-    errorbars(xs, ys, lowhigh; kwargs...)
-    errorbars(points, low, high; kwargs...)
-    errorbars(points, lowhigh; kwargs...)
+    errorbars(xs, low, high; kwargs...)
 
-Plots errorbars at the given points, extending down `low` and up by `high`.
-Forms with `lowhigh` use the same error margin downwards and upwards.
+Plots errorbars at the given x coordinates, extending down by `low` and up by `high`.
 The direction of the bars can be changed to horizontal by setting the `direction` attribute
 to `:x`.
 
@@ -23,37 +19,12 @@ $(ATTRIBUTES)
 end
 
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
 
-    xs, ys, low, high = plot[1:4]
-    lowhigh = @lift(Point2f0.($low, $high))
-    xys = lift((x, y) -> Point2f0.(x, y), xs, ys)
-    _plot_errorbars!(plot, xys, lowhigh)
-end
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{Any, Any, Any}
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Point2}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
-    xys, low, high = plot[1:3]
-    lowhigh = @lift(Point2f0.($low, $high))
-    _plot_errorbars!(plot, xys, lowhigh)
-end
+    f_if(condition, f, arg) = condition ? f(arg) : arg
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractVector{<:Real}}
-    xs, ys, same_lowhigh = plot[1:3]
-    xys = @lift(Point2f0.($xs, $ys))
-    lowhigh = @lift(Point2f0.($same_lowhigh, $same_lowhigh))
-    _plot_errorbars!(plot, xys, lowhigh)
-end
-
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{<:AbstractVector{<:Point2}, <:AbstractVector{<:Real}}
-    xys, same_lowhigh = plot[1:2]
-    lowhigh = @lift(Point2f0.($same_lowhigh, $same_lowhigh))
-    _plot_errorbars!(plot, xys, lowhigh)
-end
-
-f_if(condition, f, arg) = condition ? f(arg) : arg
-
-function _plot_errorbars!(plot, xys, lowhigh)
-
+    xs, low, high = plot[1:3]
     @extract plot (whiskerwidth, color, linewidth, direction, visible)
 
     is_in_y_direction = lift(direction) do dir
@@ -66,11 +37,13 @@ function _plot_errorbars!(plot, xys, lowhigh)
         end
     end
 
-    linesegpairs = lift(xys, lowhigh, is_in_y_direction) do xys, lowhigh, is_in_y_direction
+    linesegpairs = lift(xs, low, high, is_in_y_direction) do x, l, h, in_y
 
-        [(xy .+ f_if(is_in_y_direction, reverse, Point2f0(-lohi[1], 0)),
-          xy .+ f_if(is_in_y_direction, reverse, Point2f0( lohi[2], 0)),)
-                for (xy, lohi) in zip(xys, lowhigh)]
+        broadcast(x, l, h) do xx, ll, hh
+            in_y ?
+                (Point2f0(xx, ll), Point2f0(xx, hh)) :
+                (Point2f0(ll, xx), Point2f0(hh, xx))
+        end
     end
 
     scene = parent_scene(plot)
