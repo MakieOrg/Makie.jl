@@ -1,9 +1,13 @@
 """
     errorbars(xs, low, high; kwargs...)
+    errorbars(xs_low_high; kwargs...)
 
 Plots errorbars at the given x coordinates, extending down by `low` and up by `high`.
+Using the one-argument version with a vector of triplets is more convenient if
+you plan to change the number of errorbars dynamically.
+
 The direction of the bars can be changed to horizontal by setting the `direction` attribute
-to `:x`.
+to `:horizontal`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -13,33 +17,40 @@ $(ATTRIBUTES)
         whiskerwidth = 10,
         color = :black,
         linewidth = 1,
-        direction = :y,
+        direction = :vertical,
         visible = theme(scene, :visible)
     )
 end
 
 
+function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, lower, upper)
+    triplets = broadcast(x, lower, upper) do x, l, u
+        (x, l, u)
+    end
+    (triplets,)
+end
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{Any, Any, Any}
+function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{Any}
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    xs, low, high = plot[1:3]
+    xs_lows_highs = plot[1]
+
     @extract plot (whiskerwidth, color, linewidth, direction, visible)
 
     is_in_y_direction = lift(direction) do dir
-        if dir == :y
+        if dir == :vertical
             true
-        elseif dir == :x
+        elseif dir == :horizontal
             false
         else
-            error("Invalid direction $dir. Options are :x and :y.")
+            error("Invalid direction $dir. Options are :horizontal and :vertical.")
         end
     end
 
-    linesegpairs = lift(xs, low, high, is_in_y_direction) do x, l, h, in_y
+    linesegpairs = lift(xs_lows_highs, is_in_y_direction) do xlh, in_y
 
-        broadcast(x, l, h) do xx, ll, hh
+        map(xlh) do (xx, ll, hh)
             in_y ?
                 (Point2f0(xx, ll), Point2f0(xx, hh)) :
                 (Point2f0(ll, xx), Point2f0(hh, xx))
@@ -113,4 +124,10 @@ function screen_to_scene(p::T, scene) where T <: Point
     p1m1 = scene.camera.pixel_space[] * p4
     projected = inv(scene.camera.projectionview[]) * p1m1
     T(projected[1:2]...)
+end
+
+
+# ignore whiskers when determining data limits
+function data_limits(eb::Errorbars)
+    data_limits(eb.plots[1])
 end
