@@ -117,23 +117,23 @@ using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = 0:0.5:10
-ys = 0.5 .* sin.(xs)
-points = Point2f0.(xs, ys .- 1)
-points_2 = Point2f0.(xs, ys .- 2)
+ys1 = 0.5 .* sin.(xs)
+ys2 = ys1 .- 1
+ys3 = ys1 .- 2
 
 lowerrors = fill(0.1, length(xs))
 higherrors = LinRange(0.1, 0.5, length(xs))
 lowhigherrors = fill(0.2, length(xs))
 
 
-scene = errorbars(xs, ys, lowerrors, higherrors, color = :red)
-errorbars!(scene, points, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
-errorbars!(scene, points_2, lowhigherrors, whiskerwidth = 3, direction = :x)
+scene = errorbars(xs, ys1 .- lowerrors, ys1 .+ higherrors, color = :red)
+errorbars!(scene, xs, ys2 .- lowerrors, ys2 .+ higherrors, color = LinRange(0, 1, length(xs)))
+errorbars!(scene, ys3, xs .- lowerrors, xs .+ higherrors, whiskerwidth = 3, direction = :horizontal)
 
 # plot position scatters so low and high errors can be discriminated
-scatter!(scene, xs, ys, markersize = 3, color = :black)
-scatter!(scene, points, markersize = 3, color = :black)
-scatter!(scene, points_2, markersize = 3, color = :black)
+scatter!(scene, xs, ys1, markersize = 3, color = :black)
+scatter!(scene, xs, ys2, markersize = 3, color = :black)
+scatter!(scene, xs, ys3, markersize = 3, color = :black)
 ```
 
 ## `heatmap`

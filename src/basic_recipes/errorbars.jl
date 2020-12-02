@@ -1,13 +1,12 @@
 """
-    errorbars(xs, low, high; kwargs...)
-    errorbars(xs_low_high; kwargs...)
+    errorbars(pos, low, high; kwargs...)
+    errorbars(pos_low_high; kwargs...)
 
-Plots errorbars at the given x coordinates, extending down by `low` and up by `high`.
+Plots errorbars at the given positions in one dimension, extending from `low` to `high` in the other dimension.
 Using the one-argument version with a vector of triplets is more convenient if
 you plan to change the number of errorbars dynamically.
 
-The direction of the bars can be changed to horizontal by setting the `direction` attribute
-to `:horizontal`.
+The direction of the bars can be set to either `:horizontal` or `:vertical`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -23,9 +22,9 @@ $(ATTRIBUTES)
 end
 
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, lower, upper)
-    triplets = broadcast(x, lower, upper) do x, l, u
-        (x, l, u)
+function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, pos, lower, upper)
+    triplets = broadcast(pos, lower, upper) do p, l, u
+        (p, l, u)
     end
     (triplets,)
 end
@@ -34,7 +33,7 @@ function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{Any}
 
     f_if(condition, f, arg) = condition ? f(arg) : arg
 
-    xs_lows_highs = plot[1]
+    pos_lows_highs = plot[1]
 
     @extract plot (whiskerwidth, color, linewidth, direction, visible)
 
@@ -48,12 +47,12 @@ function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{Any}
         end
     end
 
-    linesegpairs = lift(xs_lows_highs, is_in_y_direction) do xlh, in_y
+    linesegpairs = lift(pos_lows_highs, is_in_y_direction) do plh, in_y
 
-        map(xlh) do (xx, ll, hh)
+        map(plh) do (p, ll, hh)
             in_y ?
-                (Point2f0(xx, ll), Point2f0(xx, hh)) :
-                (Point2f0(ll, xx), Point2f0(hh, xx))
+                (Point2f0(p, ll), Point2f0(p, hh)) :
+                (Point2f0(ll, p), Point2f0(hh, p))
         end
     end
 
