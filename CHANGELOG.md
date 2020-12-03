@@ -6,7 +6,11 @@
 
 ## Improvements & Implementation Changes
 
-- `errorbars` accepts a different, wider range of arguments and its input data can now be changed dynamically without erroring
+- `errorbars` accepts a different, wider range of arguments and its input data can now be changed dynamically without erroring (technically breaking, even if only in a minor way)
+
+## Bugfixes
+
+- `errorbars` and `rangebars` data limits ignore whiskers now, which before sometimes messed up autolimits
 
 # 0.13.11
 
