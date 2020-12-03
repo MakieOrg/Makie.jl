@@ -305,8 +305,8 @@ AbstractPlotting.inline!(true) # hide
 
 vals = -1:0.1:1
 
-lows = zeros(length(xs))
-highs = LinRange(0.1, 0.4, length(xs))
+lows = zeros(length(vals))
+highs = LinRange(0.1, 0.4, length(vals))
 
 
 scene = rangebars(vals, lows, highs, color = :red)
