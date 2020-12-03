@@ -1,3 +1,32 @@
+# 0.14.0
+
+## New features
+ 
+- `rangebars` is added as an alternative to `errorbars` with absolute high/low values instead of relative deltas
+
+## Improvements & Implementation Changes
+
+- `errorbars` accepts a different, wider range of arguments and its input data can now be changed dynamically without erroring
+
+# 0.13.11
+
+## Improvements & Implementation Changes
+
+- LMenu optionvalue and optionlabel default to string representation for non 2-tuple argument
+
+# 0.13.10
+
+## Improvements & Implementation Changes
+
+- Compat with StaticArrays 1.0
+
+# 0.13.09
+
+## Improvements & Implementation Changes
+
+- addmouseevents! return value is now a MouseEventHandle and can be disconnected fully via `clear!`
+- LMenu options can be changed on the fly
+
 # 0.13.6
 
 ## Bugfixes
