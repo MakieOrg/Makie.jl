@@ -123,12 +123,13 @@ ys3 = ys1 .- 2
 
 lowerrors = fill(0.1, length(xs))
 higherrors = LinRange(0.1, 0.5, length(xs))
-lowhigherrors = fill(0.2, length(xs))
+
+triplets = map(tuple, xs, ys2 .- lowerrors, ys2 .+ higherrors)
 
 
 scene = errorbars(xs, ys1 .- lowerrors, ys1 .+ higherrors, color = :red)
-errorbars!(scene, xs, ys2 .- lowerrors, ys2 .+ higherrors, color = LinRange(0, 1, length(xs)))
-errorbars!(scene, ys3, xs .- lowerrors, xs .+ higherrors, whiskerwidth = 3, direction = :horizontal)
+errorbars!(scene, triplets, color = LinRange(0, 1, length(triplets)))
+errorbars!(scene, ys3, xs .- lowerrors, xs .+ higherrors, whiskerwidth = 3, direction = :x)
 
 # plot position scatters so low and high errors can be discriminated
 scatter!(scene, xs, ys1, markersize = 3, color = :black)
