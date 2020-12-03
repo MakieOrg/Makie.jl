@@ -10,9 +10,9 @@
     errorbars(xy_error_both; kwargs...)
     errorbars(xy_error_low_high; kwargs...)
 
-Plots errorbars centered at xy positions, extending by `delta` in the given `direction`.
+Plots errorbars at xy positions, extending by errors in the given `direction`.
 
-If you want to plot intervals from low to high values instead of absolute errors, use `rangebars`.
+If you want to plot intervals from low to high values instead of relative errors, use `rangebars`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -36,7 +36,7 @@ end
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the other dimension
 given the chosen `direction`.
 
-If you want to plot absolute errors, use `errorbars`.
+If you want to plot errors extending from a reference value, use `errorbars`.
 
 ## Attributes
 $(ATTRIBUTES)
