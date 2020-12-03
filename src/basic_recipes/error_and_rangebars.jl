@@ -36,7 +36,7 @@ end
 Plots rangebars at `val` in one dimension, extending from `low` to `high` in the other dimension
 given the chosen `direction`.
 
-If you want to plot errors extending from a reference value, use `errorbars`.
+If you want to plot errors relative to a reference value, use `errorbars`.
 
 ## Attributes
 $(ATTRIBUTES)
