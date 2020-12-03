@@ -6,7 +6,7 @@ Plots errorbars at the given positions in one dimension, extending from `low` to
 Using the one-argument version with a vector of triplets is more convenient if
 you plan to change the number of errorbars dynamically.
 
-The direction of the bars can be set to either `:horizontal` or `:vertical`.
+The `direction` attribute can be set to either `:x` or `:y`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -16,7 +16,7 @@ $(ATTRIBUTES)
         whiskerwidth = 10,
         color = :black,
         linewidth = 1,
-        direction = :vertical,
+        direction = :y,
         visible = theme(scene, :visible)
     )
 end
@@ -38,12 +38,12 @@ function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{Any}
     @extract plot (whiskerwidth, color, linewidth, direction, visible)
 
     is_in_y_direction = lift(direction) do dir
-        if dir == :vertical
+        if dir == :y
             true
-        elseif dir == :horizontal
+        elseif dir == :x
             false
         else
-            error("Invalid direction $dir. Options are :horizontal and :vertical.")
+            error("Invalid direction $dir. Options are :x and :y.")
         end
     end
 
