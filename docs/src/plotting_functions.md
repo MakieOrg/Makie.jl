@@ -310,7 +310,7 @@ highs = LinRange(0.1, 0.4, length(xs))
 
 
 scene = rangebars(vals, lows, highs, color = :red)
-rangebars!(scene, vals, lows, highs, color = LinRange(0, 1, length(xs)),
+rangebars!(scene, vals, lows, highs, color = LinRange(0, 1, length(vals)),
     whiskerwidth = 3, direction = :x)
 ```
 
