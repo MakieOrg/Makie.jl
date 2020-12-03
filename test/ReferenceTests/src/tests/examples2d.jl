@@ -286,27 +286,26 @@ end
     step!(st)
 end
 
-@cell "Errorbars x low high" begin
+@cell "Errorbars x y low high" begin
     x = 1:10
     y = sin.(x)
     scene = scatter(x, y)
-    errorbars!(scene, x, y .- (RNG.rand(10) .+ 0.5), y .+ RNG.rand(10) .+ 0.5)
-    errorbars!(scene, y, x .- (RNG.rand(10) .* 0.3 .+ 0.1), x .+ RNG.rand(10) .* 0.3 .+ 0.1,
-        color=:red, direction=:x)
+    errorbars!(scene, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
+    errorbars!(scene, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5, color = :red, direction = :x)
     scene
 end
 
-@cell "Errorbars xlowhigh" begin
-    x = 1:10
-    y = sin.(x)
-    scene = scatter(x, y)
-    triplets_1 = map(tuple, x, y .- (RNG.rand(10) .+ 0.5), y .+ RNG.rand(10) .+ 0.5)
-    triplets_2 = map(tuple, y, x .- (RNG.rand(10) .* 0.3 .+ 0.1), x .+ RNG.rand(10) .* 0.3 .+ 0.1)
-    errorbars!(scene, triplets_1)
-    errorbars!(scene, triplets_2,
-        color=:red, direction=:x)
-    scene
+@cell "Rangebars x y low high" begin
+    vals = -1:0.1:1
+
+    lows = zeros(length(xs))
+    highs = LinRange(0.1, 0.4, length(xs))
+
+    scene = rangebars(vals, lows, highs, color = :red)
+    rangebars!(scene, vals, lows, highs, color = LinRange(0, 1, length(xs)),
+        whiskerwidth = 3, direction = :x)
 end
+
 
 @cell "Simple pie chart" begin
     scene, layout = layoutscene(resolution=(800, 800))

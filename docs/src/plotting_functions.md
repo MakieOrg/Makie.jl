@@ -122,14 +122,12 @@ ys2 = ys1 .- 1
 ys3 = ys1 .- 2
 
 lowerrors = fill(0.1, length(xs))
-higherrors = LinRange(0.1, 0.5, length(xs))
-
-triplets = map(tuple, xs, ys2 .- lowerrors, ys2 .+ higherrors)
+higherrors = LinRange(0.1, 0.4, length(xs))
 
 
-scene = errorbars(xs, ys1 .- lowerrors, ys1 .+ higherrors, color = :red)
-errorbars!(scene, triplets, color = LinRange(0, 1, length(triplets)))
-errorbars!(scene, ys3, xs .- lowerrors, xs .+ higherrors, whiskerwidth = 3, direction = :x)
+scene = errorbars(xs, ys1, higherrors, color = :red) # same low and high error
+errorbars!(scene, xs, ys2, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
+errorbars!(scene, xs, ys3, lowerrors, higherrors, whiskerwidth = 3, direction = :x)
 
 # plot position scatters so low and high errors can be discriminated
 scatter!(scene, xs, ys1, markersize = 3, color = :black)
@@ -292,6 +290,29 @@ p4 = Point2f0(1, 1)
 poly([p1, p2, p3, p4], color = :red, strokecolor = :black, strokewidth = 1)
 ```
 
+## `rangebars`
+
+```@docs
+rangebars
+```
+
+### Examples
+
+```@example
+using GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true) # hide
+
+vals = -1:0.1:1
+
+lows = zeros(length(xs))
+highs = LinRange(0.1, 0.4, length(xs))
+
+
+scene = rangebars(vals, lows, highs, color = :red)
+rangebars!(scene, vals, lows, highs, color = LinRange(0, 1, length(xs)),
+    whiskerwidth = 3, direction = :x)
+```
 
 ## `scatter`
 
