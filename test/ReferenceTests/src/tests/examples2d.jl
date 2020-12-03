@@ -286,34 +286,24 @@ end
     step!(st)
 end
 
-@cell "Errorbars x y low high" begin
+@cell "Errorbars x low high" begin
     x = 1:10
     y = sin.(x)
     scene = scatter(x, y)
-    errorbars!(scene, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
-    errorbars!(scene, x, y, RNG.rand(10) .* 0.3 .+ 0.1, RNG.rand(10) .* 0.3 .+ 0.1,
+    errorbars!(scene, x, y .- (RNG.rand(10) .+ 0.5), y .+ RNG.rand(10) .+ 0.5)
+    errorbars!(scene, y, x .- (RNG.rand(10) .* 0.3 .+ 0.1), x .+ RNG.rand(10) .* 0.3 .+ 0.1,
         color=:red, direction=:x)
     scene
 end
 
-@cell "Errorbars xy low high" begin
+@cell "Errorbars xlowhigh" begin
     x = 1:10
     y = sin.(x)
-    xy = Point2f0.(x, y)
-    scene = scatter(xy)
-    errorbars!(scene, xy, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
-    errorbars!(scene, xy, RNG.rand(10) .* 0.3 .+ 0.1, RNG.rand(10) .* 0.3 .+ 0.1,
-        color=:red, direction=:x)
-    scene
-end
-
-@cell "Errorbars xy error" begin
-    x = 1:10
-    y = sin.(x)
-    xy = Point2f0.(x, y)
-    scene = scatter(xy)
-    errorbars!(scene, xy, RNG.rand(10) .+ 0.5)
-    errorbars!(scene, xy, RNG.rand(10) .* 0.3 .+ 0.1,
+    scene = scatter(x, y)
+    triplets_1 = map(tuple, x, y .- (RNG.rand(10) .+ 0.5), y .+ RNG.rand(10) .+ 0.5)
+    triplets_2 = map(tuple, y, x .- (RNG.rand(10) .* 0.3 .+ 0.1), x .+ RNG.rand(10) .* 0.3 .+ 0.1)
+    errorbars!(scene, triplets_1)
+    errorbars!(scene, triplets_2,
         color=:red, direction=:x)
     scene
 end
