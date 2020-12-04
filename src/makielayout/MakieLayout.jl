@@ -106,7 +106,13 @@ export gridnest!
 export AxisAspect, DataAspect
 export colsize!, rowsize!, colgap!, rowgap!
 export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
-export grid!, hbox!, vbox!
+
+
+export grid!
+# connect hbox! and vbox!, they'll be used for anything that's not AbstractPlots
+AbstractPlotting.hbox!(args...; kwargs...) = GridLayoutBase.hbox!(args...; kwargs...)
+AbstractPlotting.vbox!(args...; kwargs...) = GridLayoutBase.vbox!(args...; kwargs...)
+
 export swap!
 export ncols, nrows
 export contents
