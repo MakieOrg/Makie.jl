@@ -5,7 +5,7 @@ CairoMakie.activate!()
 
 # MakieLayout Tutorial
 
-In this tutorial, we will see some of the capabilities of MakieLayout.jl while
+In this tutorial, we will see some of the capabilities of MakieLayout while
 building a complex figure step by step. This is the final result we will create:
 
 ![step_22](step_22.svg)
@@ -14,15 +14,15 @@ All right, let's get started!
 
 ## Scene and Layout
 
-First, we import the necessary packages and then create the main scene and layout.
+First, we import CairoMakie, which brings in AbstractPlotting and MakieLayout as well.
+Then we create the main scene and layout.
 The function `layoutscene` is a convenience function that creates a `Scene`
 which has a `GridLayout` attached to it that always fills the whole scene area.
 You can pass the outer padding of the top layout as the first argument.
 
 ```@example tutorial
-using AbstractPlotting.MakieLayout
+using CairoMakie
 using Random # hide
-using AbstractPlotting
 Random.seed!(2) # hide
 
 outer_padding = 30
