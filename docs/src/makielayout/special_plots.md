@@ -16,8 +16,7 @@ the keyword arguments `xmin` and `xmax` (for hlines) or `ymin` and `ymax` (for v
 specify the extent along the axis. These values can also be a single number or an iterable.
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 ax1 = layout[1, 1] = LAxis(scene, title = "vlines")

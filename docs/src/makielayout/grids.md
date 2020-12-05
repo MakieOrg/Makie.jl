@@ -13,8 +13,7 @@ There are four different types of sizes you can give rows and columns.
 This only really makes sense if there is variable width content in the column or row, that can shrink or expand to meet this size. You will probably not need `Fixed` sizes very often.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -38,8 +37,7 @@ This is useful, e.g., if you want a column to span 50% of the available width, n
 In this case, you would use `Relative(1/2)`. The available width is the width of the GridLayout minus the space taken by row or column gaps including protrusions.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -80,8 +78,7 @@ The first column will get `1 / (1 + 2) * 300 == 100` units, while the second col
 
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -106,8 +103,7 @@ This size is also a little bit trickier to understand. The syntax is `Aspect(ref
 Aspect sized columns or rows are very useful when you want to constrain the aspect ratio of a grid cell. For example, a plot that is always supposed to be square. Enforcing the aspect *on the layout level is better* than setting `axis.aspect = AxisAspect(1)` in most cases, because it ensures an *intact layout* where all grid cell borders are aligned visually. An `LAxis` with `aspect = AxisAspect(1)` on the other hand simply shrinks so it remains square, but this will break alignment with other grid content.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -141,8 +137,7 @@ are aligned to the grid's bounding box, excluding the outer protrusions. This wa
 plots in nested grids are nicely aligned along their spines.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(30, resolution = (1200, 900))
 
@@ -170,8 +165,7 @@ You can see that the normal axis looks the same as the one placed inside the
 grid with Inside alignment, and they are both effectively aligned exactly the same.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 1200))
 
@@ -201,8 +195,7 @@ them with the range syntax and colons for the full width or height. You can
 also use end to specify the last row or column.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(4, 4, resolution = (1200, 1200))
 
@@ -225,8 +218,7 @@ This is very useful if you want to iteratively build a layout, or add super or
 side titles.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 1200))
 
@@ -257,8 +249,7 @@ will remove those for you.
 Here we start with two axes:
 
 ```@example trimming
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
