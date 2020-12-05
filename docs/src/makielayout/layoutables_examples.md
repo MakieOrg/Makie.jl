@@ -185,7 +185,7 @@ funcs = [sqrt, x->x^2, sin, cos]
 
 menu2 = LMenu(scene, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
 
-layout[1, 1] = vbox!(
+layout[1, 1] = vgrid!(
     LText(scene, "Colormap", width = nothing),
     menu,
     LText(scene, "Function", width = nothing),
