@@ -110,7 +110,11 @@ export AxisAspect, DataAspect
 export colsize!, rowsize!, colgap!, rowgap!
 export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
 
-export grid!, hbox!, vbox!
+# hbox and vbox shadow AbstractPlotting functions
+const hgrid! = GridLayoutBase.hbox!
+const vgrid! = GridLayoutBase.vbox!
+
+export grid!, hgrid!, vgrid!
 
 export swap!
 export ncols, nrows
