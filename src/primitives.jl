@@ -306,65 +306,126 @@ end
 #                                     Text                                     #
 ################################################################################
 
+function p3_to_p2(p::Point3{T}) where T
+    if p[3] == 0 || isnan(p[3])
+        Point2{T}(p[1:2]...)
+    else
+        error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
+    end  
+end
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, align, rotation, model, justification, lineheight))
+    @get_attribute(primitive, (textsize, color, font, rotation, model, space))
     txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
-    N = length(txt)
-    atlas = AbstractPlotting.get_texture_atlas()
-    if position isa Union{StaticArrays.StaticArray, Tuple{Real, Real}, GeometryBasics.Point} # one position to place text
-        position = AbstractPlotting.layout_text(
-            txt, position, textsize,
-            font, align, rotation, model, justification, lineheight
-        )
+    # use cached glyph info
+    glyphlayouts = primitive._glyphlayout[]
+
+    draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font, rotation, model,  space)
+
+    nothing
+end
+
+function draw_string(scene, ctx, strings::AbstractArray, positions::AbstractArray, glyphlayouts, textsize, color, font, rotation, model::SMatrix, space)
+
+    # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
+    broadcast_foreach(strings, positions, glyphlayouts, textsize, color, font, rotation,
+        Ref(model), space) do str, pos, glayout, ts, c, f, ro, mo, sp
+
+        draw_string(scene, ctx, str, pos, glayout, ts, c, f, ro, mo, sp)
     end
+end
+
+function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space)
+
+    @show str
+    @show glyphlayout
+
+    glyphoffsets = glyphlayout.origins
 
     is3D = scene.camera_controls[] isa Camera3D
 
-    stridx = 1
-    broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
+
+    # stridx = 1
+    # broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
+    #     Cairo.save(ctx)
+    #     char = txt[stridx]
+
+    #     stridx = nextind(txt, stridx)
+    #     pos = project_position(scene, p, Mat4f0(I))
+    #     scale = project_scale(scene, ts, Mat4f0(I))
+    #     Cairo.move_to(ctx, pos[1], pos[2])
+    #     Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
+    #     cairoface = set_ft_font(ctx, f)
+        # old_matrix = get_font_matrix(ctx)
+
+    # calculate the glyph positions and text size relative to screen space
+    if space == :data
+        # in data space, the glyph offsets are just added to the string positions
+        # and then projected
+        glyphpositions = [project_position(
+            scene,
+            to_ndim(Point3f0, position, 0) .+ goffset,
+            Mat4f0(I)) for goffset in glyphoffsets]
+        # and the scale is projected
+        scale = project_scale(scene, textsize, Mat4f0(I))
+    elseif space == :screen
+        # in screen space, the glyph offsets are added after projecting
+        # the string position into screen space
+        glyphpositions = [project_position(scene, position, Mat4f0(I)) .+ p3_to_p2(goffset) .* (1, -1) for goffset in glyphoffsets] # flip for Cairo
+        # and the scale is just taken as is
+        scale = length(textsize) == 2 ? textsize : SVector(textsize, textsize)
+    end
+
+    Cairo.save(ctx)
+    cairoface = set_ft_font(ctx, font)
+    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    old_matrix = get_font_matrix(ctx)
+    set_font_matrix(ctx, scale_matrix(scale...))
+
+    for (gpos, char) in zip(glyphpositions, str)
+        char in ('\r', '\n') && continue
+
         Cairo.save(ctx)
-        char = txt[stridx]
+        Cairo.move_to(ctx, gpos...)
+        # TODO this only works in 2d
+        Cairo.rotate(ctx, to_2d_rotation(rotation))
 
-        stridx = nextind(txt, stridx)
-        pos = project_position(scene, p, Mat4f0(I))
-        scale = project_scale(scene, ts, Mat4f0(I))
-        Cairo.move_to(ctx, pos[1], pos[2])
-        Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-        cairoface = set_ft_font(ctx, f)
-        old_matrix = get_font_matrix(ctx)
-
-        if !is3D
-            mat = scale_matrix(scale...)
-            set_font_matrix(ctx, mat)
-            Cairo.rotate(ctx, to_2d_rotation(r))
-        else
-            # This sort of works ¯\_(ツ)_/¯
-            # Somewhat similar to normalmatrix in GLMakie
-            w, h = scene.camera.resolution[]
-            j = SOneTo(3)
-            cpv = 0.005(w + h) * transpose(inv(
-                (scene.camera.projectionview[][j,j] *
-                AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
-            ))
-            mat = Cairo.CairoMatrix(
-                cpv[1, 1], cpv[1, 2],
-                cpv[2, 1], cpv[2, 2],
-                # this helps seperate text from the z axis (in the default view)
-                (cpv[1, 2] + cpv[2, 1]), 0.0
-            )
-            set_font_matrix(ctx, mat)
-        end
-
-        if !(char in ('\r', '\n'))
-            Cairo.show_text(ctx, string(char))
-        end
-
-        cairo_font_face_destroy(cairoface)
-        set_font_matrix(ctx, old_matrix)
+        Cairo.show_text(ctx, string(char))
         Cairo.restore(ctx)
     end
+
+        # if !is3D
+        #     mat = scale_matrix(scale...)
+        #     set_font_matrix(ctx, mat)
+        #     Cairo.rotate(ctx, to_2d_rotation(r))
+        # else
+        #     # This sort of works ¯\_(ツ)_/¯
+        #     # Somewhat similar to normalmatrix in GLMakie
+        #     w, h = scene.camera.resolution[]
+        #     j = SOneTo(3)
+        #     cpv = 0.005(w + h) * transpose(inv(
+        #         (scene.camera.projectionview[][j,j] *
+        #         AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
+        #     ))
+        #     mat = Cairo.CairoMatrix(
+        #         cpv[1, 1], cpv[1, 2],
+        #         cpv[2, 1], cpv[2, 2],
+        #         # this helps seperate text from the z axis (in the default view)
+        #         (cpv[1, 2] + cpv[2, 1]), 0.0
+        #     )
+        #     set_font_matrix(ctx, mat)
+        # end
+
+        # if !(char in ('\r', '\n'))
+        #     Cairo.show_text(ctx, string(char))
+        # end
+
+    cairo_font_face_destroy(cairoface)
+    set_font_matrix(ctx, old_matrix)
+    Cairo.restore(ctx)
+
     nothing
 end
 
