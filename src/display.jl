@@ -462,7 +462,7 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
-    frame = colorbuffer(io.screen, GLNative)
+    frame = convert(Matrix{RGB{N0f8}}, colorbuffer(io.screen, GLNative))
     _ydim, _xdim = size(frame)
     if isodd(_xdim) || isodd(_ydim)
         xdim = iseven(_xdim) ? _xdim : _xdim + 1
