@@ -1,3 +1,4 @@
+using ImageMagick
 using Documenter, Markdown, Pkg, Random, FileIO, GLMakie
 using AbstractPlotting
 AbstractPlotting.inline!(true)
@@ -467,7 +468,7 @@ function Documenter.deploy_folder(cfg::Gitlab;
         subfolder = tag_nobuild
         deploy_branch = branch
         deploy_repo = repo
-        
+
     elseif build_type == :preview
         pr_number = tryparse(Int, cfg.pull_request_iid)
         pr_ok = pr_number !== nothing

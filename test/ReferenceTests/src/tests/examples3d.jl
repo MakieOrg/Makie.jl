@@ -437,6 +437,7 @@ end
     )
     update_cam!(scene, FRect3D(Vec3f0(-5), Vec3f0(10)))
     scene.center = false
+    scene
 end
 
 @cell "Unicode Marker" begin
