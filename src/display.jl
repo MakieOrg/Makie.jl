@@ -467,7 +467,9 @@ function recordframe!(io::VideoStream)
     if isodd(_xdim) || isodd(_ydim)
         xdim = iseven(_xdim) ? _xdim : _xdim + 1
         ydim = iseven(_ydim) ? _ydim : _ydim + 1
-        write(io.io, PaddedView(0, frame, (xdim, ydim)))
+        padded = fill(zero(eltype(frame)), (xdim, ydim))
+        padded[1:_xdim, 1:_ydim] = frame
+        write(io.io, padded)
     else
         write(io.io, frame)
     end
