@@ -367,13 +367,13 @@ function legendelements(plot::Band)
     LegendElement[PolyElement(color = plot.color, strokecolor = :transparent)]
 end
 
-function legendelements(plot::T) where T
-    error("""
-        There is no `legendelements` method defined for plot type $T. This means
-        that you can't automatically generate a legend entry for this plot type.
-        You can overload this method for your plot type that returns a `LegendElement`
-        vector, or manually construct a legend entry from those elements.
-    """)
+# if there is no specific overload available, we go through the child plots and just stack
+# those together as a simple fallback
+function legendelements(plot)::Vector{LegendElement}
+    if isempty(plot.plots)
+        error("No child plot elements found in plot of type $(typeof(plot)) but also no `legendelements` method defined.")
+    end
+    reduce(vcat, [legendelements(childplot) for childplot in plot.plots])
 end
 
 function Base.getproperty(legendelement::T, s::Symbol) where T <: LegendElement
