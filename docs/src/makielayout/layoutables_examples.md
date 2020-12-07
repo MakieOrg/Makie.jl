@@ -174,8 +174,12 @@ save("example_ltoggle.svg", scene); nothing # hide
 ## LMenu
 
 A dropdown menu with `options`, where each element's label is determined with `optionlabel(element)`
-and the value with `optionvalue(element)`. The attribute `selection` is set
-to the option value of an element when it is selected.
+and the value with `optionvalue(element)`. The default behavior is to treat a 2-element tuple
+as `(label, value)` and any other object as `value`, where `label = string(value)`.
+
+The attribute `selection` is set to `optionvalue(element)` when the element's entry is selected.
+
+
 
 ```@example
 using AbstractPlotting

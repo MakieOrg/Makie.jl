@@ -221,7 +221,7 @@ function ticks!(scene=current_scene(); tickranges=tickranges(scene), ticklabels=
 end
 
 """
-    xticks!([scene,]; xtickranges=xtickrange(scene), xticklabels=xticklabel(scene))
+    xticks!([scene,]; xtickrange=xtickrange(scene), xticklabels=xticklabel(scene))
 
 Set the tick labels and range along the x-axes. See also `ticks!`.
 """
@@ -231,7 +231,7 @@ function xticks!(scene=current_scene(); xtickrange=xtickrange(scene), xticklabel
 end
 
 """
-    yticks!([scene,]; ytickranges=ytickrange(scene), yticklabels=yticklabel(scene))
+    yticks!([scene,]; ytickrange=ytickrange(scene), yticklabels=yticklabel(scene))
 
 Set the tick labels and range along all the y-axis. See also `ticks!`.
 """
