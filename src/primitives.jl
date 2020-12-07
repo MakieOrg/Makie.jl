@@ -339,9 +339,6 @@ end
 
 function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space)
 
-    @show str
-    @show glyphlayout
-
     glyphoffsets = glyphlayout.origins
 
     is3D = scene.camera_controls[] isa Camera3D
