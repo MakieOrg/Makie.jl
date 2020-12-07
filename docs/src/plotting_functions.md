@@ -12,7 +12,6 @@ arrows
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(1, 10, 20)
@@ -33,7 +32,6 @@ band
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
@@ -54,7 +52,6 @@ barplot
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
@@ -74,7 +71,6 @@ contour
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
@@ -92,7 +88,6 @@ contourf
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
@@ -113,7 +108,6 @@ errorbars
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = 0:0.5:10
@@ -145,7 +139,6 @@ heatmap
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
@@ -165,7 +158,6 @@ image
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 using FileIO
 
@@ -185,7 +177,6 @@ lines
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = 0:0.01:10
@@ -207,7 +198,6 @@ linesegments
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = 1:0.2:10
@@ -228,7 +218,6 @@ mesh
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 vertices = [
@@ -258,7 +247,6 @@ meshscatter
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = cos.(1:0.5:20)
@@ -279,7 +267,6 @@ poly
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 p1 = Point2f0(0, 0)
@@ -300,7 +287,6 @@ rangebars
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 vals = -1:0.1:1
@@ -324,7 +310,6 @@ scatter
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 20)
@@ -348,7 +333,6 @@ surface
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 xs = LinRange(0, 10, 100)
@@ -368,7 +352,6 @@ text
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 scene = Scene(camera = campixel!, show_axis = false, resolution = (600, 600))
@@ -393,7 +376,6 @@ volume
 
 ```@example
 using GLMakie
-using AbstractPlotting
 AbstractPlotting.inline!(true) # hide
 
 r = LinRange(-1, 1, 100)

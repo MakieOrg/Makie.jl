@@ -6,27 +6,28 @@
 
 ## Installation and Import
 
+Add one or more of the Makie backend packages [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl) (OpenGL), [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) (Cairo), or [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) (WebGL).
+
+
 ```julia
-]add Makie
-using Makie
+]add GLMakie
+using GLMakie
 ```
 
-`Makie.jl` bundles `AbstractPlotting.jl` and the `GLMakie.jl` backend.
-If you want to use a different backend like `CairoMakie`, add and import `AbstractPlotting` as well:
+If you want to switch to a different backend in a running session, call that backend's `activate!` function.
 
 ```julia
-]add AbstractPlotting, CairoMakie
-using AbstractPlotting
+]add CairoMakie
 using CairoMakie
-
-CairoMakie.activate!() # only if a different backend is active already
+# if, for example, GLMakie is activated already
+CairoMakie.activate!()
 ```
 
 ## First Steps
 
 - Learn the basics of plotting with Makie in the [Tutorial](@ref)
 - Check out how to make more complex plots and layouts in the [MakieLayout Tutorial](@ref)
-- See example plots in the [gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html).
+- See example plots in the [Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html).
 
 
 ## Makie Ecosystem
