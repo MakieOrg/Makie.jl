@@ -39,16 +39,6 @@ struct SceneSpace{T} <: Unit{T}
 end
 
 """
-Unit is relative to bounding frame.
-E.g. if the area is IRect(0, 0, 100, 100)
-Point(0.5rel, 0.5rel) == Point(50, 50)
-"""
-struct Relative{T <: Number} <: Unit{T}
-    value::T
-end
-const rel = Relative(1)
-
-"""
 https://en.wikipedia.org/wiki/Device-independent_pixel
 A device-independent pixel (also: density-independent pixel, dip, dp) is a
 physical unit of measurement based on a coordinate system held by a
@@ -104,18 +94,6 @@ end
 function Base.convert(::Type{<: Millimeter}, scene::Scene, x::SceneSpace)
     pixel = convert(Pixel, scene, x)
     Millimeter(number(pixel_per_mm(scene) / pixel))
-end
-
-function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Relative{T}) where T
-    rel = maximum(widths(scene_limits(scene)[])) .* number(x)
-    SceneSpace(rel)
-end
-
-function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::Point{2, Relative{T}}) where T
-    idx = Vec(1, 2)
-    lims = scene_limits(scene)
-    rel = widths(lims)[idx] .* number.(x)
-    SceneSpace(origin(lims)[idx] .+ rel)
 end
 
 function Base.convert(::Type{<: SceneSpace}, scene::Scene, x::DIP)

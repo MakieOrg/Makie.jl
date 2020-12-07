@@ -8,7 +8,6 @@ using FileIO
 using MacroTools
 using AbstractPlotting
 using AbstractPlotting: Record, Stepper
-using AbstractPlotting.MakieLayout
 using AbstractPlotting.FFMPEG
 using Printf
 using ghr_jll
