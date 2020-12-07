@@ -294,7 +294,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
     # layout
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    mouseevents = addmouseevents!(scene)
+    mouseeventhandle = addmouseevents!(scene)
     scrollevents = Node(ScrollEvent(0, 0))
     keysevents = Node(KeysEvent(Set()))
 
@@ -312,7 +312,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
         layoutobservables, attrs, block_limit_linking, decorations,
-        mouseevents, scrollevents, keysevents, interactions)
+        mouseeventhandle, scrollevents, keysevents, interactions)
 
 
     function process_event(event)
@@ -321,7 +321,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    on(process_event, mouseevents)
+    on(process_event, mouseeventhandle.obs)
     on(process_event, scrollevents)
     on(process_event, keysevents)
 

@@ -601,7 +601,7 @@ to3tuple(x::Tuple{Any, Any}) = (x[1], x[2], x[2])
 to3tuple(x::Tuple{Any, Any, Any}) = x
 to3tuple(x) = ntuple(i-> x, Val(3))
 
-function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
+function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args...)
     # make sure we extend all args to 3D
     ranges, ticklabels = ranges_labels
     args3d = to3tuple.(args)
@@ -623,8 +623,12 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
     ttextsize = (%) .* ttextsize
     axisnames_size = (%) .* axisnames_size
 
-    titlegap = (%) .* titlegap
-    tgap = (%) .* tgap
+    # index of the direction in which ticks and labels are drawn
+    offset_indices = [ifelse(i != 2, mod1(i + 1, N), 1) for i in 1:N]
+    # These need the real limits, not (%), to be scale-aware
+    titlegap = 0.01limit_widths[offset_indices] .* titlegap
+    tgap = 0.01limit_widths[offset_indices] .* tgap
+
     for i = 1:N
         axis_vec = unit(Point{N, Float32}, i)
         width = Float32(limit_widths[i])
@@ -634,15 +638,9 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
         end
         if showticks[i]
             range = ranges[i]
-            j = mod1(i + 1, N)
-            tickdir = unit(Point{N, Float32}, j)
-            tickdir, offset2 = if i != 2
-                tickdir = unit(Vec{N, Float32}, j)
-                tickdir, Float32(limit_widths[j] + tgap[i]) * tickdir
-            else
-                tickdir = unit(Vec{N, Float32}, 1)
-                tickdir, Float32(limit_widths[1] + tgap[i]) * tickdir
-            end
+            j = offset_indices[i]
+            tickdir = unit(Vec{N, Float32}, j)
+            offset2 = Float32(limit_widths[j] + tgap[i]) * tickdir
             for (j, tick) in enumerate(range)
                 labels = ticklabels[i]
                 if length(labels) >= j
@@ -659,7 +657,8 @@ function draw_axis3d(textbuffer, linebuffer, limits, ranges_labels, args...)
             end
             if !isempty(axisnames[i])
                 tick_widths = if length(ticklabels[i]) >= 3
-                    widths(text_bb(ticklabels[i][end-1], to_font(tfont[i]), ttextsize[i]))[1]
+                    w = widths(text_bb(ticklabels[i][end-1], to_font(tfont[i]), ttextsize[i]))[1]
+                    w / scale[j]
                 else
                     0f0
                 end
@@ -710,7 +709,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
     )
     map_once(
         draw_axis3d,
-        Node(textbuffer), Node(linebuffer),
+        Node(textbuffer), Node(linebuffer), scale(scene),
         axis[1], axis.ticks.ranges_labels, args...
     )
     push!(scene, axis)

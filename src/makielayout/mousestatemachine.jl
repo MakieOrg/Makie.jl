@@ -54,6 +54,22 @@ struct MouseEvent
     prev_px::Point2f0
 end
 
+struct MouseEventHandle
+    obs::Observable{MouseEvent}
+    observerfuncs::Vector{<:Observables.ObserverFunction}
+end
+
+"""
+    clear!(handle::MouseEventHandle)
+
+Cut observable connections to the scene and remove any listeners to the mouse events.
+"""
+function clear!(handle::MouseEventHandle)
+    foreach(Observables.off, handle.observerfuncs)
+    empty!(handle.observerfuncs)
+    empty!(handle.obs.listeners)
+    nothing
+end
 
 
 for eventtype in instances(MouseEventType)
@@ -61,13 +77,13 @@ for eventtype in instances(MouseEventType)
     @eval begin
 
         """
-        Executes the function f whenever the `Node{MouseEvent}` statenode transitions
-        to `$($eventtype)`.
+        Executes the function f whenever the `MouseEventHandle`'s observable is set to
+        a MouseEvent with `event.type === $($eventtype)`.
         """
-        function $onfunctionname(f, statenode::Node{MouseEvent})
-            on(statenode) do state
-                if state.type === $eventtype
-                    f(state)
+        function $onfunctionname(f, mev::MouseEventHandle)
+            on(mev.obs) do event
+                if event.type === $eventtype
+                    f(event)
                 end
             end
         end
@@ -79,7 +95,7 @@ end
 """
     addmouseevents!(scene, elements...)
 
-Returns an `Observable{MouseEvent}` which is triggered by all mouse
+Returns a `MouseEventHandle` with an observable inside which is triggered by all mouse
 interactions with the `scene` and optionally restricted to all given
 plot objects in `elements`.
 
@@ -120,7 +136,7 @@ function addmouseevents!(scene, elements...)
 
 
     # react to mouse position changes
-    on(events(scene).mouseposition) do mp
+    mousepos_observerfunc = on(events(scene).mouseposition) do mp
 
         t = time()
         data = mouseposition(scene)
@@ -188,7 +204,7 @@ function addmouseevents!(scene, elements...)
 
 
     # react to mouse button changes
-    on(events(scene).mousedrag) do mousedrag
+    mousedrag_observerfunc = on(events(scene).mousedrag) do mousedrag
         
         t = time()
         data = prev_data[]
@@ -309,5 +325,5 @@ function addmouseevents!(scene, elements...)
         prev_t[] = t
     end
 
-    mouseevent
+    MouseEventHandle(mouseevent, [mousepos_observerfunc, mousedrag_observerfunc])
 end
