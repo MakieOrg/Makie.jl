@@ -23,8 +23,7 @@ set_theme!(
 Here is an example of theming `LAxis` and `LColorbar`:
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 set_theme!(
     LAxis = (topspinevisible = false, rightspinevisible = false,

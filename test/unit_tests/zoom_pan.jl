@@ -1,5 +1,4 @@
 using AbstractPlotting
-using AbstractPlotting.MakieLayout
 using Observables
 
 function cleanaxes()

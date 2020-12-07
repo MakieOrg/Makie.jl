@@ -9,8 +9,7 @@ The `LAxis` is a 2D axis that works well with automatic layouts.
 Here's how you create one 
 
 ```@example laxis
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -54,8 +53,7 @@ the values you set with these functions will probably not be exactly what you ge
 but they will be changed to fit the chosen ratio.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -108,8 +106,7 @@ AbstractPlotting.MakieLayout.get_ticklabels
 Here are a couple of examples that show off different settings for ticks and formats.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -147,8 +144,7 @@ You can hide all axis elements manually, by setting their specific visibility at
 To hide spines, you can use `hidespines!`.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -184,8 +180,7 @@ it necessarily has to break the layout a little bit.
 
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 using FileIO
 using Random # hide
 Random.seed!(1) # hide
@@ -239,8 +234,7 @@ You can see the different ways to get a plot with an unstretched circle, using
 different ways of setting aspect ratios, in the following example.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 using Animations
 
 
@@ -307,8 +301,7 @@ axes which it updates when it is changed itself. You can link x and y dimensions
 separately.
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 

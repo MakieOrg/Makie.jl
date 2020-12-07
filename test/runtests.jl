@@ -12,7 +12,6 @@ using AbstractPlotting.GeometryBasics
 using AbstractPlotting.GeometryBasics: Pyramid
 using AbstractPlotting.PlotUtils
 using AbstractPlotting.FileIO
-using AbstractPlotting.MakieLayout
 using AbstractPlotting.IntervalSets
 
 @testset "#659 Volume errors if data is not a cube" begin
