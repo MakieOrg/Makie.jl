@@ -10,8 +10,7 @@ for example. You need to specify a range that constrains the slider's possible v
 You can then lift the `value` observable to make interactive plots.
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -31,8 +30,7 @@ save("example_lslider.svg", scene); nothing # hide
 To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`AbstractPlotting.MakieLayout.labelslidergrid!`](@ref).
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 scene, layout = layoutscene(resolution = (1200, 900))
 
 ax = layout[1, 1] = LAxis(scene)
@@ -66,8 +64,7 @@ This is just normal text, except it's also layoutable. A text's size is known,
 so rows and columns in a GridLayout can shrink to the appropriate width or height.
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -85,8 +82,7 @@ save("example_ltext.svg", scene); nothing # hide
 ## LButton
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -109,8 +105,7 @@ A simple rectangle poly that is layoutable. This can be useful to make boxes for
 facet plots or when a rectangular placeholder is needed.
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 using ColorSchemes
 
 scene, layout = layoutscene(resolution = (1200, 900))
@@ -134,8 +129,7 @@ Currently, it can be necessary to pass a couple of attributes explicitly to make
 are not inherited from the main scene (which has a pixel camera and no axis, e.g.).
 
 ```julia
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -152,8 +146,7 @@ A toggle with an attribute `active` that can either be true or false, to enable
 or disable properties of an interactive plot.
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -182,8 +175,7 @@ The attribute `selection` is set to `optionvalue(element)` when the element's en
 
 
 ```@example
-using AbstractPlotting
-using AbstractPlotting.MakieLayout
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
@@ -193,7 +185,7 @@ funcs = [sqrt, x->x^2, sin, cos]
 
 menu2 = LMenu(scene, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
 
-layout[1, 1] = vbox!(
+layout[1, 1] = vgrid!(
     LText(scene, "Colormap", width = nothing),
     menu,
     LText(scene, "Function", width = nothing),

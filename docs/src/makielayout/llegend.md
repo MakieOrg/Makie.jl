@@ -6,9 +6,7 @@ CairoMakie.activate!()
 ## Creating a legend
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
-using AbstractPlotting: px
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
@@ -17,7 +15,7 @@ ax = layout[1, 1] = LAxis(scene)
 xs = 0:0.5:10
 ys = sin.(xs)
 lin = lines!(ax, xs, ys, color = :blue)
-sca = scatter!(ax, xs, ys, color = :red, markersize = 15px)
+sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
 
 leg = LLegend(scene, [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
 layout[1, 2] = leg
@@ -34,9 +32,7 @@ You can control the number of banks with the `nbanks` attribute. Banks are colum
 when in vertical mode, and rows when in horizontal mode.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
-using AbstractPlotting: px
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
@@ -65,8 +61,7 @@ variables. You can use the margin keyword to keep the legend from touching the a
 spines.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
+using CairoMakie
 
 haligns = [:left, :right, :center]
 valigns = [:top, :bottom, :center]
@@ -110,15 +105,13 @@ arrangement for `MarkerElement`s or poly shape for `PolyElement`s. You can check
 the list using this function:
 
 ```@example
-using AbstractPlotting.MakieLayout
+using AbstractPlotting
 MakieLayout.attributenames(LegendEntry)
 ```
 
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
-using AbstractPlotting: px
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
@@ -164,9 +157,7 @@ if you place the legend below or above the axis.
 
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
-using AbstractPlotting: px
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
@@ -175,7 +166,7 @@ ax = layout[1, 1] = LAxis(scene)
 xs = 0:0.5:10
 ys = sin.(xs)
 lin = lines!(ax, xs, ys, color = :blue)
-sca = scatter!(ax, xs, ys, color = :red, markersize = 15px)
+sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
 
 leg = LLegend(scene, [lin, sca, lin], ["a line", "some dots", "line again"])
 layout[1, 2] = leg
@@ -201,9 +192,7 @@ You can shift the position of the titles relative to each group with the
 `titleposition` attribute, either `:left` or `:top`.
 
 ```@example
-using AbstractPlotting.MakieLayout
-using AbstractPlotting
-using AbstractPlotting: px
+using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
@@ -213,11 +202,11 @@ markersizes = [5, 10, 15, 20]
 colors = [:red, :green, :blue, :orange]
 
 for ms in markersizes, color in colors
-    scatter!(ax, randn(5, 2), markersize = ms * px, color = color)
+    scatter!(ax, randn(5, 2), markersize = ms, color = color)
 end
 
 group_size = [MarkerElement(marker = :circle, color = :black, strokecolor = :transparent,
-    markersize = ms * px) for ms in markersizes]
+    markersize = ms) for ms in markersizes]
 
 group_color = [PolyElement(color = color, strokecolor = :transparent)
     for color in colors]

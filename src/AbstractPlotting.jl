@@ -242,6 +242,11 @@ function __init__()
 end
 
 include("makielayout/MakieLayout.jl")
+# re-export MakieLayout
+for name in names(MakieLayout)
+    @eval import .MakieLayout: $(name)
+    @eval export $(name)
+end
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")

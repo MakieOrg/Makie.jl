@@ -1,24 +1,26 @@
 # Tutorial
 
-Here is a quick tutorial to get you started. We assume you have [Julia](https://julialang.org/) and `Makie.jl` installed already.
+Here is a quick tutorial to get you started. We assume you have [Julia](https://julialang.org/) and `GLMakie.jl` (or one of the other backends) installed already.
 
-First, we import Makie, which might take a little bit of time because there is a lot to precompile.
-For this tutorial, we also call `inline!(true)` so plots appear inline after each example.
-Otherwise, an interactive window will open when you return a `Scene`.
-
-!!! note
-    `Scene`s will only display by default in global scope.
-    To make a Scene display when it's defined in a local scope,
-    like a function or a module, you can call `display(scene)`,
-    which will automatically display it in the best available display.  
-
+First, we import GLMakie, which might take a little bit of time because there is a lot to precompile. Just sit tight!
 
 ```@example 1
 using GLMakie
-using AbstractPlotting
+nothing # hide
+```
+
+For this tutorial, we also call `AbstractPlotting.inline!(true)` so plots appear inline after each example.
+Otherwise, an interactive window will open when you return a `Scene`.
+
+```@example 1
 AbstractPlotting.inline!(true)
 nothing # hide
 ```
+
+!!! note
+    A `Scene` is usually displayed whenever it is returned in global scope (e.g. in the REPL).
+    To display a Scene from within a local scope,
+    like from within a function, you can directly call `display(scene)`.  
 
 ## Creating a `Scene`
 
