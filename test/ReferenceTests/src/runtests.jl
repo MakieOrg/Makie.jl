@@ -13,7 +13,8 @@ function compare_media(a, b; sigma=[1,1], eps=0.02)
             @warn "images don't have the same size, difference will be Inf"
             return Inf
         end
-        return Images.test_approx_eq_sigma_eps(imga, imgb, sigma, Inf)
+        conv(x) = convert(Matrix{RGBf0}, x)
+        return Images.test_approx_eq_sigma_eps(conv(imga), conv(imgb), sigma, Inf)
     elseif ext in (".mp4", ".gif")
         mktempdir() do folder
             afolder = joinpath(folder, "a")
@@ -81,21 +82,28 @@ function record_tests(db=load_database(); recording_dir=basedir("recorded"))
         AbstractPlotting.inline!(true)
         no_backend = AbstractPlotting.current_backend[] === missing
         for (source_location, entry) in db
-            AbstractPlotting.set_theme!(resolution=(500, 500))
-            # we currently can't record anything without a backend!
-            if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
-                continue
+            try
+                AbstractPlotting.set_theme!(resolution=(500, 500))
+                # we currently can't record anything without a backend!
+                if no_backend && ((:Record in entry.used_functions) || (:Stepper in entry.used_functions))
+                    continue
+                end
+                RNG.seed_rng!()
+                result = Base.invokelatest(entry.func)
+                # only save if we have a backend for saving
+                uname = unique_name(entry)
+                if !no_backend
+                    save_result(joinpath(recording_dir, uname), result)
+                end
+                push!(recorded_files, uname)
+                @info("Tested: $(nice_title(entry))")
+                @test true
+            catch e
+                @info("Test: $(nice_title(entry)) didn't pass")
+                @test false
+                Base.showerror(stderr, e)
+                Base.show_backtrace(stderr, Base.catch_backtrace())
             end
-            RNG.seed_rng!()
-            result = Base.invokelatest(entry.func)
-            # only save if we have a backend for saving
-            uname = unique_name(entry)
-            if !no_backend
-                save_result(joinpath(recording_dir, uname), result)
-            end
-            push!(recorded_files, uname)
-            @info("Tested: $(nice_title(entry))")
-            @test true
         end
     end
     return recorded_files, recording_dir
