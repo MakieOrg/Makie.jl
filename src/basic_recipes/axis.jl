@@ -117,7 +117,9 @@ $(ATTRIBUTES)
     tick_color = RGBAf0(0.5, 0.5, 0.5, 0.6)
     grid_color = RGBAf0(0.5, 0.5, 0.5, 0.4)
     grid_thickness = 1
+    axis_linewidth = 1.5
     gridthickness = ntuple(x-> 1f0, Val(3))
+    axislinewidth = ntuple(x->1.5f0, Val(3))
     tsize = 5 # in percent
     Attributes(
         visible = true,
@@ -152,6 +154,7 @@ $(ATTRIBUTES)
         frame = Attributes(
             linecolor = (grid_color, grid_color, grid_color),
             linewidth = (grid_thickness, grid_thickness, grid_thickness),
+            axislinewidth = (axis_linewidth, axis_linewidth, axis_linewidth),
             axiscolor = (:black, :black, :black),
         )
     )
@@ -609,7 +612,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
         showaxis, showticks, showgrid,
         axisnames, axisnames_color, axisnames_size, axisrotation, axisalign,
         axisnames_font, titlegap,
-        gridcolors, gridthickness, axiscolors,
+        gridcolors, gridthickness, axislinewidth, axiscolors,
         ttextcolor, trotation, ttextsize, talign, tfont, tgap
     ) = args3d # splat to names
 
@@ -634,7 +637,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
         width = Float32(limit_widths[i])
         stop = origin .+ (width .* axis_vec)
         if showaxis[i]
-            append!(linebuffer, [origin, stop], color = axiscolors[i], linewidth = 1.5f0)
+            append!(linebuffer, [origin, stop], color = axiscolors[i], linewidth = axislinewidth[i])
         end
         if showticks[i]
             range = ranges[i]
@@ -701,7 +704,7 @@ function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))
     titlevals = getindex.(tstyle, (:axisnames, :textcolor, :textsize, :rotation, :align, :font, :gap))
-    framevals = getindex.(frame, (:linecolor, :linewidth, :axiscolor))
+    framevals = getindex.(frame, (:linecolor, :linewidth, :axislinewidth, :axiscolor))
     tvals = getindex.(ticks, (:textcolor, :rotation, :textsize, :align, :font, :gap))
     args = (
         getindex.(axis, (:showaxis, :showticks, :showgrid))...,
