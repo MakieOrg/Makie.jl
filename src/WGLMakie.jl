@@ -68,9 +68,26 @@ function activate!()
     return AbstractPlotting.inline!(true) # can't display any different atm
 end
 
+function get_html_display()
+    for display in Base.Multimedia.displays
+        # Ugh, why would textdisplay say it supports HTML??
+        display isa TextDisplay && continue
+        displayable(display, MIME"text/html"()) && return display
+    end
+    return nothing
+end
+
 function __init__()
     # Activate WGLMakie as backend!
-    return activate!()
+    activate!()
+    if get_html_display() === nothing
+        push!(Base.Multimedia.displays, BrowserDisplay())
+    end
+end
+
+for name in names(AbstractPlotting)
+    @eval import AbstractPlotting: $(name)
+    @eval export $(name)
 end
 
 end # module

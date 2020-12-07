@@ -5,7 +5,7 @@ function JSServe.jsrender(session::Session, scene::Scene)
 end
 
 const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html",
-                   MIME"application/prs.juno.plotpane+html")
+                   MIME"application/prs.juno.plotpane+html", MIME"juliavscode/html")
 for M in WEB_MIMES
     @eval begin
         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
@@ -138,7 +138,6 @@ function three_display(session::Session, scene::Scene)
     push!(scene.current_screens, three)
     return three, canvas
 end
-
 
 function AbstractPlotting.backend_display(::WGLBackend, scene::Scene)
     three = nothing
