@@ -1,4 +1,4 @@
-const DEFAULT_RESOLUTION = Ref((800, 600))
+const DEFAULT_RESOLUTION = Ref((1920, 1080))
 
 if Sys.iswindows()
     function primary_resolution()
@@ -17,7 +17,7 @@ elseif Sys.isapple()
     end
 else
     # TODO implement linux
-    primary_resolution() = DEFAULT_RESOLUTION[] # everyone should have at least a hd monitor :D
+    primary_resolution() = DEFAULT_RESOLUTION[]
 end
 
 """
