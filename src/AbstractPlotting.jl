@@ -245,6 +245,8 @@ for name in names(MakieLayout)
     @eval export $(name)
 end
 
+include("figures.jl")
+
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")
     _precompile_()
