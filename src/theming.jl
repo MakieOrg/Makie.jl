@@ -1,7 +1,7 @@
+const DEFAULT_RESOLUTION = Ref((800, 600))
+
 if Sys.iswindows()
-    function _primary_resolution()
-        # ccall((:GetSystemMetricsForDpi, :user32), Cint, (Cint, Cuint), 0, ccall((:GetDpiForSystem, :user32), Cuint, ()))
-        # ccall((:GetSystemMetrics, :user32), Cint, (Cint,), 17)
+    function primary_resolution()
         dc = ccall((:GetDC, :user32), Ptr{Cvoid}, (Ptr{Cvoid},), C_NULL)
         ntuple(2) do i
             Int(ccall((:GetDeviceCaps, :gdi32), Cint, (Ptr{Cvoid}, Cint), dc, (2 - i) + 117))
@@ -9,40 +9,22 @@ if Sys.iswindows()
     end
 elseif Sys.isapple()
     const _CoreGraphics = "CoreGraphics.framework/CoreGraphics"
-    function _primary_resolution()
+    function primary_resolution()
         dispid = ccall((:CGMainDisplayID, _CoreGraphics), UInt32,())
         height = ccall((:CGDisplayPixelsHigh,_CoreGraphics), Int, (UInt32,), dispid)
         width = ccall((:CGDisplayPixelsWide,_CoreGraphics), Int, (UInt32,), dispid)
         return (width, height)
     end
-# elseif Sys.islinux()
-#     function _primary_resolution()
-#         s = read(pipeline(`xrandr`)) |> String
-#         sp = split(s, '\n')
-#         s1 = sp[4]
-#     end
 else
     # TODO implement linux
-    _primary_resolution() = (1920, 1080) # everyone should have at least a hd monitor :D
+    primary_resolution() = DEFAULT_RESOLUTION[] # everyone should have at least a hd monitor :D
 end
 
 """
 Returns the resolution of the primary monitor.
 If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
 """
-function primary_resolution()
-    # Since this is pretty low level and os specific + we can't test on all possible
-    # computers, I assume we'll have bugs here. Let's not sweat about it too much,
-    # we just use primary_resolution to have a good estimate for a default window resolution
-    # if this fails, only thing happening will be a too small/big window when the user doesn't give any resolution.
-    try
-        _primary_resolution()
-    catch e
-        @warn("Could not retrieve primary monitor resolution. A default resolution of (1920, 1080) is assumed!
-        Error: $(sprint(io->showerror(io, e))).")
-        (1920, 1080)
-    end
-end
+function primary_resolution end
 
 """
 Returns a reasonable resolution for the main monitor.
