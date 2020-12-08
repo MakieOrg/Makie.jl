@@ -151,7 +151,7 @@ function AbstractPlotting.colorbuffer(screen::ThreeDisplay)
     return session2image(screen)
 end
 
-function AbstractPlotting.colorbuffer(screen::WebDisplay)
+function get_three(screen::WebDisplay)
     # WebDisplay is not guaranteed to get displayed in the browser, so we wait a while
     # to see if anything gets displayed!
     tstart = time()
@@ -165,10 +165,20 @@ function AbstractPlotting.colorbuffer(screen::WebDisplay)
                 if session.init_error[] !== nothing
                     throw(session.init_error[])
                 end
-                return session2image(three)
+                return three
             end
             sleep(0.01)
         end
     end
-    return
+    return nothing
+end
+
+function AbstractPlotting.colorbuffer(screen::WebDisplay)
+    return session2image(get_three(screen))
+end
+
+function Base.insert!(td::WebDisplay, scene::Scene, plot::AbstractPlot)
+    disp = get_three(td)
+    disp === nothing && error("Plot needs to be displayed to insert additional plots")
+    insert!(disp, scene, plot)
 end
