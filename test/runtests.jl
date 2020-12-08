@@ -12,7 +12,7 @@ Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
-ReferenceTests.record_tests(database; recording_dir=recorded)
+ReferenceTests.record_tests(recording_dir=recorded)
 ReferenceTests.reference_tests(recorded)
 # needs GITHUB_TOKEN to be defined
 # ReferenceTests.upload_reference_images()
