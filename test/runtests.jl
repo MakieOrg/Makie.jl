@@ -6,7 +6,9 @@ using ImageMagick, FileIO
 using WGLMakie, AbstractPlotting, JSServe, Test
 using Pkg
 
-display(scatter(rand(10)))
+@which AbstractPlotting.primary_resolution()
+AbstractPlotting.minimal_default.resolution[] = (600, 400)
+display(scatter(rand(10), resolution=(600, 400)))
 
 path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
@@ -26,5 +28,4 @@ filter!(database) do (name, entry)
 end
 files, recorded = ReferenceTests.record_tests(database)
 recorded = ReferenceTests.basedir("recorded")
-ReferenceTests.reference_tests(recorded; difference=0.4)
-Base.summarysize(AbstractPlotting._current_default_theme) / 10^6
+ReferenceTests.reference_tests(recorded; difference=0.04)

@@ -21,8 +21,6 @@ using FreeTypeAbstraction
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
-using ImageTransformations
-
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: AbstractPlotting.AbstractBackend end
 
@@ -34,7 +32,6 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     context::JSObject
 end
 JSServe.session(td::ThreeDisplay) = JSServe.session(td.context)
-
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
     js_scene = serialize_three(scene, plot)
@@ -65,23 +62,17 @@ function activate!()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
     AbstractPlotting.current_backend[] = b
-    return AbstractPlotting.inline!(true) # can't display any different atm
-end
-
-function get_html_display()
-    for display in Base.Multimedia.displays
-        # Ugh, why would textdisplay say it supports HTML??
-        display isa TextDisplay && continue
-        displayable(display, MIME"text/html"()) && return display
-    end
-    return nothing
+    display_in_browser = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    AbstractPlotting.inline!(!display_in_browser)
+    return
 end
 
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    if get_html_display() === nothing
-        push!(Base.Multimedia.displays, BrowserDisplay())
+    # The reasonable_solution is a terrible default for the web!
+    if AbstractPlotting.minimal_default.resolution[] == AbstractPlotting.reasonable_resolution()
+        AbstractPlotting.minimal_default.resolution[] = (600, 400)
     end
 end
 
