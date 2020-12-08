@@ -430,10 +430,10 @@ end
     scatter!(
         scene,
         map(i -> (RNG.randn(Point3f0) .- 0.5) .* 10, 1:stars),
-        glowwidth=1, glowcolor=(:white, 0.1), color=RNG.rand(stars),
-        colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)],
-        markersize=RNG.rand(range(0.0001, stop=0.05, length=100), stars),
-        show_axis=false, transparency=true
+        color=RNG.rand(stars),
+        colormap=[(:white, 0.4), (:blue, 0.4), (:yellow, 0.4)], strokewidth=0,
+        markersize=RNG.rand(range(10, stop=100, length=100), stars),
+        show_axis=false
     )
     update_cam!(scene, FRect3D(Vec3f0(-5), Vec3f0(10)))
     scene.center = false
@@ -507,7 +507,7 @@ end
     center!(scene) # center the Scene on the display
 end
 
-let 
+let
     struct FitzhughNagumo{T}
         ϵ::T
         s::T

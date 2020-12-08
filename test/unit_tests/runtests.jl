@@ -1,5 +1,11 @@
 @testset "Unit tests" begin
-
+    @testset "#659 Volume errors if data is not a cube" begin
+        vol = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
+        lims = AbstractPlotting.data_limits(vol[1])
+        lo, hi = extrema(lims)
+        @test all(lo .<= 1)
+        @test all(hi .>= (8,8,10))
+    end
     # Minimal sanity checks for MakieLayout
     @testset "Layoutables constructors" begin
         scene, layout = layoutscene()
@@ -32,11 +38,10 @@
         @test lim.origin[1] <= 1 && lim.widths[1] >= 1 && lim.origin[1]+lim.widths[1] >= 2
         @test lim.origin[2] <= 22 && lim.widths[2] >= 6 && lim.origin[2]+lim.widths[2] >= 28
     end
-    
+
     include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
     include("shorthands.jl")
     include("liftmacro.jl")
-
 end

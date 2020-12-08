@@ -41,7 +41,6 @@ value_convert(x::NamedTuple) = Attributes(x)
 node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => convert(Node{Any}, value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
-
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
 Attributes(pairs::Pair...) = Attributes(Dict{Symbol, Node}(node_pairs(pairs)))
 Attributes(pairs::AbstractVector) = Attributes(Dict{Symbol, Node}(node_pairs.(pairs)))

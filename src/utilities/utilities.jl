@@ -292,8 +292,6 @@ function peaks(n=49)
     3 * (1 .- x').^2 .* exp.(-(x'.^2) .- (y .+ 1).^2) .- 10 * (x' / 5 .- x'.^3 .- y.^5) .* exp.(-x'.^2 .- y.^2) .- 1 / 3 * exp.(-(x' .+ 1).^2 .- y.^2)
 end
 
-
-
 get_dim(x, ind, dim, size) = get_dim(LinRange(extrema(x)..., size[dim]), ind, dim, size)
 get_dim(x::AbstractVector, ind, dim, size) = x[Tuple(ind)[dim]]
 get_dim(x::AbstractMatrix, ind, dim, size) = x[ind]
