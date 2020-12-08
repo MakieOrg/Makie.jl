@@ -39,6 +39,8 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - uses: julia-actions/julia-buildpkg@v1
+        env:
+          DISPLAY: :0
       - uses: openrndr/setup-opengl@v1.1
       - run: xvfb-run julia --project=@. -e 'ENV["DISPLAY"]=":0"; using Pkg; Pkg.test(coverage=true)'
       - uses: julia-actions/julia-processcoverage@v1
