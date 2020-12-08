@@ -195,6 +195,7 @@ function _default(
     end
     sprites(p, s, data)
 end
+
 function _default(
         p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: AbstractFloat, P <: Point}
@@ -312,6 +313,7 @@ function sprites(p, s, data)
             "sprites.vert", "distance_shape.frag",
             view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, GLBuffer))
         )
+        scale_primitive = true
         gl_primitive = GL_POINTS
     end
     # Exception for intensity, to make it possible to handle intensity with a

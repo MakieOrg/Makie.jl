@@ -47,9 +47,6 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, sampler2D matcap){
     return matcap_color(matcap);
 }
 
-
-
-
 uniform bool fetch_pixel;
 uniform vec2 uv_scale;
 
