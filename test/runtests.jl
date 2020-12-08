@@ -2,11 +2,11 @@ using ElectronDisplay
 ElectronDisplay.CONFIG.showable = showable
 ElectronDisplay.CONFIG.single_window = true
 ElectronDisplay.CONFIG.focus = false
-using ImageMagick
+using ImageMagick, FileIO
 using WGLMakie, AbstractPlotting, JSServe, Test
 using Pkg
-display(scatter(1:4))
 
+display(scatter(rand(10)))
 
 path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
