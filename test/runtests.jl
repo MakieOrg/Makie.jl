@@ -1,5 +1,12 @@
 using Pkg
 using GLMakie, Test
+using GLMakie.FileIO
+using ImageMagick
+# ImageIO seems broken on 1.6 ... and there doesn't
+# seem to be a clean way anymore to force not to use a loader library?
+filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
+filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
+
 path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
