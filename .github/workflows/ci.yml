@@ -23,11 +23,12 @@ jobs:
           - x64
     steps:
       - uses: actions/checkout@v2
-      - uses: GabrielBB/xvfb-action@v1
       - uses: julia-actions/setup-julia@v1
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
+      - uses: GabrielBB/xvfb-action@v1
+        run: julia --project=. -e "using Pkg; Pkg.test()"
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
