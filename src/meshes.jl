@@ -49,7 +49,13 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     else
         color_signal = converted_attribute(plot, :color)
         color = color_signal[]
+        mesh_color = color_signal[]
         uniforms[:uniform_color] = Observable(false) # this is the default
+
+        if color isa Colorant && haskey(data, :color)
+            color_signal = get_attribute(mesh_signal, :color)
+            color = color_signal[]
+        end
 
         if color isa AbstractArray
             c_converted = if color isa AbstractArray{<:Colorant}

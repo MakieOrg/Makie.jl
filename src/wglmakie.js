@@ -514,12 +514,10 @@ const WGLMakie = function (){
             powerPreference: "high-performance",
             devicePixelRatio: 1
         });
-        var ratio = window.devicePixelRatio || 1;
-        var corrected_width = width / ratio;
-        var corrected_height = height / ratio;
+
         renderer.setClearColor("#ffffff");
-        renderer.setPixelRatio(ratio);
-        renderer.setSize(corrected_width, corrected_height);
+        renderer.setPixelRatio(1);
+
         function mousemove(event){
             var rect = canvas.getBoundingClientRect();
             var x = event.clientX - rect.left;
