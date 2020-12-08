@@ -10,8 +10,9 @@ filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
 path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
 using ReferenceTests
-files, recorded = ReferenceTests.record_tests()
-recorded = ReferenceTests.basedir("recorded")
+recorded = joinpath(@__DIR__, "recorded")
+rm(recorded; force=true, recursive=true); mkdir(recorded)
+ReferenceTests.record_tests(database; recording_dir=recorded)
 ReferenceTests.reference_tests(recorded)
 # needs GITHUB_TOKEN to be defined
 # ReferenceTests.upload_reference_images()
