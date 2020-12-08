@@ -86,8 +86,10 @@ function __init__()
 end
 
 for name in names(AbstractPlotting)
-    @eval import AbstractPlotting: $(name)
-    @eval export $(name)
+    if name !== :Button && name !== :Slider
+        @eval import AbstractPlotting: $(name)
+        @eval export $(name)
+    end
 end
 
 end # module

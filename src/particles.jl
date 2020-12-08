@@ -6,12 +6,13 @@ function handle_color!(uniform_dict, instance_dict)
     else
         nothing, uniform_dict
     end
-    return if color isa Colorant ||
+    if color isa Colorant ||
               color isa AbstractVector{<:Colorant} ||
               color === nothing
         delete!(uniform_dict, :colormap)
     elseif color isa AbstractArray{<:Real}
         udict[:color] = lift(x -> convert(Vector{Float32}, x), udict[:color])
+        # udict[:color] = lift(x -> convert(Vector{Float32}, x), udict[:color])
         uniform_dict[:color_getter] = """
             vec4 get_color(){
                 vec2 norm = get_colorrange();
@@ -87,12 +88,13 @@ function scatter_shader(scene::Scene, attributes)
     per_instance = filter(attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
+
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, nothing))
     end
 
     uniforms = filter(attributes) do (k, v)
-        return (!haskey(per_instance, k)) && isscalar(v[])
+        return !haskey(per_instance, k)
     end
 
     for (k, v) in uniforms
@@ -129,7 +131,6 @@ function scatter_shader(scene::Scene, attributes)
     uniform_dict[:use_pixel_marker] = map(space) do space
         return space == Pixel
     end
-
     handle_color!(uniform_dict, per_instance)
 
     instance = uv_mesh(Rect2D(-0.5f0, -0.5f0, 1f0, 1f0))
@@ -151,6 +152,7 @@ function create_shader(scene::Scene, plot::Scatter)
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
+    attributes[:markerspace] = plot.markerspace
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
 end

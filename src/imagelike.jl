@@ -17,7 +17,10 @@ function draw_mesh(mscene::Scene, mesh, plot; uniforms...)
     get!(uniforms, :colorrange, false)
     get!(uniforms, :color, false)
     get!(uniforms, :model, plot.model)
-
+    uniforms[:normalmatrix] = map(mscene.camera.view, plot.model) do v, m
+        i = SOneTo(3)
+        return transpose(inv(v[i, i] * m[i, i]))
+    end
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), mesh; uniforms...)
 end
 

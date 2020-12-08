@@ -2,46 +2,29 @@ using ElectronDisplay
 ElectronDisplay.CONFIG.showable = showable
 ElectronDisplay.CONFIG.single_window = true
 ElectronDisplay.CONFIG.focus = false
+using ImageMagick
 using WGLMakie, AbstractPlotting, JSServe, Test
-using MakieGallery
+using Pkg
+display(scatter(1:4))
 
 
-exclude_tests = Set(Symbol.([
-    "streamplot_animation",
-    "transforming_lines",
-    "image_scatter",
-    "test_38",
-    "line_gif",
-    "stars", # glow missing
-    "orthographic_camera", #HM!?
-    "hbox_1",# pixel size marker wrong size?!
-    "electrostatic_repulsion", # quite a bit brigher..weird
-    "errorbars_x_y_low_high", # something weird with image compare
-    "errorbars_xy_error",
-    "errorbars_xy_low_high",
-]))
+path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+using ReferenceTests
 
-abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "reference_image_tests")
-abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
-database = MakieGallery.load_database(abstractplotting_tests)
+excludes = Set([
+    "Streamplot animation",
+    "Transforming lines",
+    "image scatter",
+    "Stars"
+])
 
-filter!(database) do entry
-    return !(entry.unique_name in exclude_tests)
+database = ReferenceTests.load_database()
+filter!(database) do (name, entry)
+    !(entry.title in excludes) &&
+    !(:Record in entry.used_functions)
 end
-
-tested_diff_path = joinpath(@__DIR__, "tested_different")
-test_record_path = joinpath(@__DIR__, "test_recordings")
-for path in (tested_diff_path, test_record_path)
-    try
-        if isdir(path)
-            rm(path, force=true, recursive=true)
-        end
-        mkpath(path)
-    catch e
-    end
-end
-examples = MakieGallery.record_examples(test_record_path)
-path = MakieGallery.download_reference("v0.6.3")
-MakieGallery.run_comparison(test_record_path, tested_diff_path,
-                            joinpath(dirname(path), "test_recordings"),
-                            maxdiff=0.091)
+files, recorded = ReferenceTests.record_tests(database)
+recorded = ReferenceTests.basedir("recorded")
+ReferenceTests.reference_tests(recorded; difference=0.4)
+Base.summarysize(AbstractPlotting._current_default_theme) / 10^6
