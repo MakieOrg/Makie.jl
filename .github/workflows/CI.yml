@@ -1,37 +1,33 @@
 name: CI
-
-on: [push]
-
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+    tags: '*'
 jobs:
   test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
-      matrix:
-        julia-version: [1.5]
-        julia-arch: [x64]
-        os: [ubuntu-latest, macOS-latest]
       fail-fast: false
-
+      matrix:
+        version:
+          - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
+          - 'nightly'
+        os: [ubuntu-latest, windows-latest, macOS-latest]
+        arch:
+          - x64
     steps:
-      - uses: actions/checkout@v1.0.0
-
-      - name: Set up Julia
-        uses: julia-actions/setup-julia@latest
+      - name: Checkout
+        uses: actions/checkout@v2
+      - uses: julia-actions/setup-julia@v1
         with:
-          version: ${{ matrix.julia-version }}
-
-      - name: Run tests
-        uses: julia-actions/julia-runtest@master
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v1.0.0
-        with:
-          name: Recordings
-          path: ./test
-        if: always()
-
-      - name: Cache artifacts
-        uses: actions/cache@v1
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts
         with:
@@ -41,4 +37,9 @@ jobs:
             ${{ runner.os }}-test-${{ env.cache-name }}-
             ${{ runner.os }}-test-
             ${{ runner.os }}-
-        if: always()
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+      - uses: julia-actions/julia-processcoverage@v1
+      - uses: codecov/codecov-action@v1
+        with:
+          file: lcov.info
