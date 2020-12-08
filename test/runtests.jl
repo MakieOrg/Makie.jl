@@ -24,6 +24,7 @@ excludes = Set([
     "Transforming lines",
     "image scatter",
     "Line GIF",
+    "surface + contour3d",
     # Hm weird, looks like some internal JSServe error missing an Observable:
     "Errorbars x y low high",
     "Rangebars x y low high",
@@ -50,6 +51,4 @@ end
 recorded = joinpath(@__DIR__, "recorded")
 rm(recorded; force=true, recursive=true); mkdir(recorded)
 ReferenceTests.record_tests(database; recording_dir=recorded)
-ReferenceTests.reference_tests(recorded; difference=0.04)
-recorded, ref_images, scores = ReferenceTests.reference_tests(recorded; difference=0.05)
-ReferenceTests.generate_test_summary("preview.html", recorded, ref_images, scores)
+ReferenceTests.reference_tests(recorded; difference=0.06)
