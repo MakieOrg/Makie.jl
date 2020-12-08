@@ -16,25 +16,24 @@ current_figure() = _current_figure[]
 current_figure!(fig) = (_current_figure = fig)
 
 function Figure(; kwargs...)
-    scene, layout = layoutscene()
+    scene, layout = layoutscene(; kwargs...)
     Figure(
         scene,
         layout,
         [],
-        Attributes(kwargs)
+        Attributes()
     )
 end
 
 export Figure
 
-function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attrs)
-    scene_attributes = extract_scene_attributes!(attributes)
-    fig = Figure(; scene_attributes...)
-    ax = LAxis(fig.scene)
+function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
+    # scene_attributes = extract_scene_attributes!(attributes)
+    fig = Figure(; figure...)
+    ax = LAxis(fig.scene; axis...)
     fig.layout[1, 1] = ax
     push!(fig.content, ax)
-    p = plot!(ax, P, attributes, args...)
+    p = plot!(ax, P, Attributes(kw_attributes), args...)
     (figure = fig, axis = ax, plot = p)
 end
 
@@ -58,11 +57,11 @@ Base.display(fig::Figure) = display(fig.scene)
 Base.display(nt::NamedTuple{(:figure, :axis, :plot), <:Tuple{Figure, Any, Any}}) = display(nt.figure)
 
 
-function plot(P::PlotFunc, fp::Figureposition, args...; kwargs...)
+function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
 
     @assert isempty(contents(fp.gp, exact = true))
 
-    ax = fp.gp[] = LAxis(fp.fig.scene)
+    ax = fp.gp[] = LAxis(fp.fig.scene; axis...)
     p = plot!(P, ax, args...; kwargs...)
     (axis = ax, plot = p)
 end
