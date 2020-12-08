@@ -37,6 +37,20 @@ function generate_test_summary(path, recorded_root, refimages_root, scores)
     end
 end
 
+function generate_test_summary(path, recorded_root)
+    open(path, "w") do io
+        for filename in readdir(recorded_root)
+            media_recorded = joinpath(recorded_root, filename)
+            println(io, "<h1> $filename </h1>")
+            println(io, """
+                <div>
+                    $(embed_media(media_recorded))
+                </div>
+            """)
+        end
+    end
+end
+
 function tourl(path)
     if Sys.iswindows()
         # There might be a nicer way?
@@ -87,6 +101,8 @@ function embed_media(path::String, alt = "")
         return embed_image(path, alt)
     elseif ext == ".mp4"
         return embed_video(path, alt)
+    elseif isdir(path)
+        return sprint(io-> embed_media(io, readdir(path)))
     else
         error("Unknown media extension: $ext with path: $path")
     end

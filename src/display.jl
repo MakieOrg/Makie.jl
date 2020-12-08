@@ -395,8 +395,8 @@ function VideoStream(
     _xdim, _ydim = size(scene)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$_ffmpeg_path -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
-    VideoStream(process.in, process, screen, abspath(path))
+    process = @ffmpeg_env open(`$_ffmpeg_path -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    return VideoStream(process.in, process, screen, abspath(path))
 end
 
 # This has to be overloaded by the backend for its screen type.
@@ -404,27 +404,34 @@ function colorbuffer(x::AbstractScreen)
     error("colorbuffer not implemented for screen $(typeof(x))")
 end
 
-function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative) # less specific for overloading by backends
-    buf = colorbuffer(screen)
-    if format == GLNative
-        @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
-        @static if VERSION < v"1.6"
-            d1, d2 = size(buf)
-            bufc = Array{eltype(buf)}(undef, d2, d1) #permuted
-            ind1, ind2 = axes(buf)
-            n = first(ind1) + last(ind1)
-            for i in ind1
-                @simd for j in ind2
-                    @inbounds bufc[j, n-i] = buf[i, j]
-                end
+function jl_to_gl_format(image)
+    @static if VERSION < v"1.6"
+        d1, d2 = size(image)
+        bufc = Array{eltype(image)}(undef, d2, d1) #permuted
+        ind1, ind2 = axes(image)
+        n = first(ind1) + last(ind1)
+        for i in ind1
+            @simd for j in ind2
+                @inbounds bufc[j, n-i] = image[i, j]
             end
-            return bufc
-        else
-            reverse!(buf, dims = 1)
-            return collect(PermutedDimsArray(buf, (2,1)))
         end
+        return bufc
+    else
+        reverse!(image; dims=1)
+        return collect(PermutedDimsArray(image, (2, 1)))
+    end
+end
+
+# less specific for overloading by backends
+function colorbuffer(screen::Any, format::ImageStorageFormat = JuliaNative)
+    image = colorbuffer(screen)
+    if format == GLNative
+        if string(typeof(screen)) == "GLMakie.Screen"
+            @warn "Inefficient re-conversion back to GLNative buffer format. Update GLMakie to support direct buffer access" maxlog=1
+        end
+        return jl_to_gl_format(image)
     elseif format == JuliaNative
-        return buf
+        return image
     end
 end
 
@@ -461,16 +468,16 @@ end
 Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
-    #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     frame = convert(Matrix{RGB{N0f8}}, colorbuffer(io.screen, GLNative))
     _ydim, _xdim = size(frame)
     if isodd(_xdim) || isodd(_ydim)
         xdim = iseven(_xdim) ? _xdim : _xdim + 1
         ydim = iseven(_ydim) ? _ydim : _ydim + 1
-        write(io.io, PaddedView(0, frame, (xdim, ydim)))
-    else
-        write(io.io, frame)
+        padded = fill(zero(eltype(frame)), (xdim, ydim))
+        padded[1:_xdim, 1:_ydim] = frame
+        frame = padded
     end
+    write(io.io, frame)
     return
 end
 
@@ -611,24 +618,19 @@ function Record(func, scene; framerate=24)
     return io
 end
 
-function record(func, scene, path, iter; framerate::Int = 24, compression = 20, sleep = true)
-    io = Record(func, scene, iter; framerate=framerate, sleep=sleep)
+function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
+    io = Record(func, scene, iter; framerate=framerate)
     save(path, io, framerate = framerate, compression = compression)
 end
 
-function Record(func, scene, iter; framerate::Int = 24, sleep = true)
-    io = VideoStream(scene; framerate = framerate)
+function Record(func, scene, iter; framerate::Int = 24)
+    io = VideoStream(scene; framerate=framerate)
     for i in iter
         t1 = time()
         func(i)
         recordframe!(io)
         @debug "Recording" progress=i/length(iter)
-        diff = (1/framerate) - (time() - t1)
-        if sleep && diff > 0.0
-            Base.sleep(diff)
-        else
-            yield()
-        end
+        yield()
     end
     return io
 end

@@ -239,7 +239,7 @@ function getscreen(scene::Scene)
         return getscreen(parent(scene)) # screen could be in parent
     end
     # TODO, when would we actually want to get a specific screen?
-    return first(scene.current_screens)
+    return last(scene.current_screens)
 end
 
 getscreen(scene::SceneLike) = getscreen(rootparent(scene))
@@ -338,6 +338,7 @@ theme(x::AbstractPlot, key) = x.attributes[key]
 theme(::Nothing, key::Symbol) = current_default_theme()[key]
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
+
 function Base.push!(scene::Scene, plot::AbstractPlot)
     push!(scene.plots, plot)
     plot isa Combined || (plot.parent[] = scene)
@@ -354,7 +355,7 @@ function Base.push!(scene::Scene, plot::AbstractPlot)
     end
 end
 
-function Base.delete!(screen::AbstractScreen, scene::Scene, plot::AbstractPlot)
+function Base.delete!(screen::AbstractScreen, ::Scene, ::AbstractPlot)
     @warn "Deleting plots not implemented for backend: $(typeof(screen))"
 end
 

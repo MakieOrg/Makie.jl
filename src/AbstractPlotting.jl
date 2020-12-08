@@ -6,7 +6,6 @@ using Observables, GeometryBasics, IntervalSets, PlotUtils
 using ColorBrewer, ColorTypes, Colors, ColorSchemes
 using FixedPointNumbers, Packing, SignedDistanceFields
 using Markdown, DocStringExtensions # documentation
-using PaddedViews
 using Serialization # serialize events
 using StructArrays
 using GeometryBasics: widths, positive_widths, VecTypes, AbstractPolygon
@@ -90,7 +89,6 @@ include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/spy.jl")
-include("basic_recipes/streamlines.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/title.jl")
