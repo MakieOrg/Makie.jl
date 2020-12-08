@@ -2,6 +2,7 @@
 
 The Cairo Backend for Makie
 
+![CI](https://github.com/JuliaPlots/CairoMakie.jl/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/JuliaPlots/CairoMakie.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/CairoMakie.jl)
 
 ## Usage
