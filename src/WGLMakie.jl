@@ -21,8 +21,6 @@ using FreeTypeAbstraction
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 
-using ImageTransformations
-
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: AbstractPlotting.AbstractBackend end
 
@@ -34,7 +32,6 @@ struct ThreeDisplay <: AbstractPlotting.AbstractScreen
     context::JSObject
 end
 JSServe.session(td::ThreeDisplay) = JSServe.session(td.context)
-
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
     js_scene = serialize_three(scene, plot)
@@ -65,12 +62,25 @@ function activate!()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.Low)
     AbstractPlotting.current_backend[] = b
-    return AbstractPlotting.inline!(true) # can't display any different atm
+    display_in_browser = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    AbstractPlotting.inline!(!display_in_browser)
+    return
 end
 
 function __init__()
     # Activate WGLMakie as backend!
-    return activate!()
+    activate!()
+    # The reasonable_solution is a terrible default for the web!
+    if AbstractPlotting.minimal_default.resolution[] == AbstractPlotting.reasonable_resolution()
+        AbstractPlotting.minimal_default.resolution[] = (600, 400)
+    end
+end
+
+for name in names(AbstractPlotting)
+    if name !== :Button && name !== :Slider
+        @eval import AbstractPlotting: $(name)
+        @eval export $(name)
+    end
 end
 
 end # module

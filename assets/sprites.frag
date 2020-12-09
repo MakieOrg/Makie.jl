@@ -23,7 +23,6 @@ float aastep(float threshold1, float threshold2, float dist) {
            smoothstep(threshold2-ANTIALIAS_RADIUS, threshold2+ANTIALIAS_RADIUS, dist);
 }
 
-
 // Procedural signed distance functions on the uv coordinate patch [0,1]x[0,1]
 // Note that for antialiasing to work properly these should be *scale preserving*
 // (If you must rescale uv, make sure to put the scale factor back in later.)
@@ -65,7 +64,6 @@ float scaled_distancefield(sampler2D distancefield, vec2 uv){
 float scaled_distancefield(bool distancefield, vec2 uv){
     return 0.0;
 }
-
 
 void main() {
     int shape = get_shape_type();

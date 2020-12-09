@@ -43,13 +43,19 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     if haskey(data, :attributes) && data[:attributes] isa AbstractVector
         attr = get_attribute(mesh_signal, :attributes)
         attr_id = get_attribute(mesh_signal, :attribute_id)
-        color = lift((c, id) -> c[Int.(id) .+ 1]attr, attr_id)
+        color = lift((c, id) -> c[Int.(id) .+ 1], attr_id)
         attributes[:color] = Buffer(color)
         uniforms[:uniform_color] = false
     else
         color_signal = converted_attribute(plot, :color)
         color = color_signal[]
+        mesh_color = color_signal[]
         uniforms[:uniform_color] = Observable(false) # this is the default
+
+        if color isa Colorant && haskey(data, :color)
+            color_signal = get_attribute(mesh_signal, :color)
+            color = color_signal[]
+        end
 
         if color isa AbstractArray
             c_converted = if color isa AbstractArray{<:Colorant}
@@ -86,9 +92,16 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     faces = facebuffer(mesh_signal)
     positions = vertexbuffer(mesh_signal)
     instance = GeometryBasics.Mesh(GeometryBasics.meta(positions; attributes...), faces)
+
     get!(uniforms, :colorrange, true)
     get!(uniforms, :colormap, true)
     get!(uniforms, :model, plot.model)
     get!(uniforms, :lightposition, Vec3f0(1))
+
+    uniforms[:normalmatrix] = map(scene.camera.view, plot.model) do v, m
+        i = SOneTo(3)
+        return transpose(inv(v[i, i] * m[i, i]))
+    end
+
     return Program(WebGL(), lasset("mesh.vert"), lasset("mesh.frag"), instance; uniforms...)
 end

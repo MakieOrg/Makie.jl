@@ -505,27 +505,18 @@ const WGLMakie = function (){
     }
 
     function threejs_module(canvas, comm, width, height){
-
         var context = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
-
         if(!context){
             context = canvas.getContext("webgl", {preserveDrawingBuffer: true});
         }
-
         var renderer = new THREE.WebGLRenderer({
             antialias: true, canvas: canvas, context: context,
-            powerPreference: "high-performance"
+            powerPreference: "high-performance",
+            devicePixelRatio: 1
         });
 
-        var ratio = window.devicePixelRatio || 1;
-        // var corrected_width = $width / ratio;
-        // var corrected_height = $height / ratio;
-        // canvas.style.width = corrected_width;
-        // canvas.style.height = corrected_height;
-
-        renderer.setSize(width, height);
         renderer.setClearColor("#ffffff");
-        renderer.setPixelRatio(ratio);
+        renderer.setPixelRatio(1);
 
         function mousemove(event){
             var rect = canvas.getBoundingClientRect();

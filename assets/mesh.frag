@@ -1,8 +1,9 @@
 in vec2 frag_uv;
 in vec4 frag_color;
-in vec3 frag_normal;
-in vec3 frag_position;
-in vec3 frag_lightdir;
+
+in vec3 o_normal;
+in vec3 o_camdir;
+in vec3 o_lightdir;
 
 vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float diff_coeff = max(dot(L, N), 0.0);
@@ -43,6 +44,7 @@ vec4 get_color(sampler2D color, vec2 uv, vec2 colorrange, sampler2D colormap){
     float normed = _normalize(value, colorrange.x, colorrange.y);
     return texture(colormap, vec2(normed, 0.0));
 }
+
 vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
     return texture(color, uv);
 }
@@ -50,10 +52,11 @@ vec4 get_color(sampler2D color, vec2 uv, bool colorrange, sampler2D colormap){
 void main() {
     vec4 real_color = get_color(uniform_color, frag_uv, get_colorrange(), colormap);
     vec3 shaded_color = real_color.xyz;
-    if(get_shading()){
-        shaded_color = blinnphong(frag_normal, frag_position, frag_lightdir, real_color.xyz);
-        shaded_color = shaded_color + blinnphong(frag_normal, frag_position, -frag_lightdir, real_color.xyz);
-    }
 
+    if(get_shading()){
+        vec3 L = normalize(o_lightdir);
+        vec3 N = normalize(o_normal);
+        shaded_color = blinnphong(N, o_camdir, L, real_color.rgb);
+    }
     fragment_color = vec4(shaded_color, real_color.a);
 }

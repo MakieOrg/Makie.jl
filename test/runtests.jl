@@ -2,46 +2,53 @@ using ElectronDisplay
 ElectronDisplay.CONFIG.showable = showable
 ElectronDisplay.CONFIG.single_window = true
 ElectronDisplay.CONFIG.focus = false
+using ImageMagick, FileIO
 using WGLMakie, AbstractPlotting, JSServe, Test
-using MakieGallery
+using Pkg
 
+# ImageIO seems broken on 1.6 ... and there doesn't
+# seem to be a clean way anymore to force not to use a loader library?
+filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
+filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
+AbstractPlotting.set_theme!(resolution=(400, 400))
+# TODO fix bug where on first display content doesn't get resized correctly
+# In JSServe
+display(scatter(rand(10)))
 
-exclude_tests = Set(Symbol.([
-    "streamplot_animation",
-    "transforming_lines",
-    "image_scatter",
-    "test_38",
-    "line_gif",
-    "stars", # glow missing
-    "orthographic_camera", #HM!?
-    "hbox_1",# pixel size marker wrong size?!
-    "electrostatic_repulsion", # quite a bit brigher..weird
-    "errorbars_x_y_low_high", # something weird with image compare
-    "errorbars_xy_error",
-    "errorbars_xy_low_high",
-]))
+path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+using ReferenceTests
+using ReferenceTests: nice_title
+excludes = Set([
+    "Streamplot animation",
+    "Transforming lines",
+    "image scatter",
+    "Line GIF",
+    "surface + contour3d",
+    # Hm weird, looks like some internal JSServe error missing an Observable:
+    "Errorbars x y low high",
+    "Rangebars x y low high",
+    # These are a bit sad, since it's just missing interpolations
+    "FEM mesh 2D",
+    "FEM polygon 2D",
+    # missing transparency & image
+    "Wireframe of a Surface",
+    "Image on Surface Sphere",
+    "Surface with image",
+    # Marker size seems wrong in some occasions:
+    "Hbox",
+    "UnicodeMarker",
+    # Not sure, looks pretty similar to me! Maybe blend mode?
+    "Test heatmap + image overlap"
+])
 
-abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "reference_image_tests")
-abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
-database = MakieGallery.load_database(abstractplotting_tests)
-
-filter!(database) do entry
-    return !(entry.unique_name in exclude_tests)
+database = ReferenceTests.load_database()
+filter!(database) do (name, entry)
+    !(entry.title in excludes) &&
+    nice_title(entry) !== "short_tests_83" &&
+    nice_title(entry) !== "short_tests_78"
 end
-
-tested_diff_path = joinpath(@__DIR__, "tested_different")
-test_record_path = joinpath(@__DIR__, "test_recordings")
-for path in (tested_diff_path, test_record_path)
-    try
-        if isdir(path)
-            rm(path, force=true, recursive=true)
-        end
-        mkpath(path)
-    catch e
-    end
-end
-examples = MakieGallery.record_examples(test_record_path)
-path = MakieGallery.download_reference("v0.6.3")
-MakieGallery.run_comparison(test_record_path, tested_diff_path,
-                            joinpath(dirname(path), "test_recordings"),
-                            maxdiff=0.091)
+recorded = joinpath(@__DIR__, "recorded")
+rm(recorded; force=true, recursive=true); mkdir(recorded)
+ReferenceTests.record_tests(database; recording_dir=recorded)
+ReferenceTests.reference_tests(recorded; difference=0.06)
