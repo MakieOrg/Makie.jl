@@ -76,3 +76,58 @@ function plot!(P::PlotFunc, fp::Figureposition, args...; kwargs...)
     plot!(P, ax, args...; kwargs...)
 
 end
+
+struct FigureSubposition{T}
+    parent::T
+    rows
+    cols
+    side::MakieLayout.GridLayoutBase.Side
+end
+
+function Base.getindex(parent::Union{Figureposition,FigureSubposition},
+        rows, cols, side = MakieLayout.GridLayoutBase.Inner())
+    FigureSubposition(parent, rows, cols, side)
+end
+
+function Base.setindex!(parent::Union{Figureposition,FigureSubposition}, obj,
+    rows, cols, side = MakieLayout.GridLayoutBase.Inner())
+
+    layout = find_or_make_layout!(parent)
+    figure = get_figure(parent)
+    layout[rows, cols, side] = obj
+    push!(figure.content, obj)
+end
+
+function find_or_make_layout!(fp::Figureposition)
+    c = contents(fp.gp, exact = true)
+    layouts = filter(x -> x isa GridLayout, c)
+    if isempty(layouts)
+        return fp.gp[] = GridLayout()
+    elseif length(layouts) == 1
+        return only(layouts)
+    else
+        error("Found more than zero or one GridLayouts at $(fp.gp)")
+    end
+end
+
+function find_or_make_layout!(layout::GridLayout, fsp::FigureSubposition)
+    gp = layout[fsp.rows, fsp.cols, fsp.side]
+    c = contents(gp, exact = true)
+    layouts = filter(x -> x isa GridLayout, c)
+    if isempty(layouts)
+        return gp[] = GridLayout()
+    elseif length(layouts) == 1
+        return only(layouts)
+    else
+        error("Found more than zero or one GridLayouts at $(gp)")
+    end
+end
+
+function find_or_make_layout!(fsp::FigureSubposition)
+    layout = find_or_make_layout!(fsp.parent)
+    find_or_make_layout!(layout, fsp)
+end
+
+
+get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
+get_figure(fp::Figureposition) = fp.fig
