@@ -238,6 +238,9 @@ function __init__()
     end
 end
 
+import GridLayoutBase
+include("figures.jl")
+
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout
 for name in names(MakieLayout)
@@ -245,7 +248,7 @@ for name in names(MakieLayout)
     @eval export $(name)
 end
 
-include("figures.jl")
+include("figureplotting.jl")
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")

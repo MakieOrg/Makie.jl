@@ -85,7 +85,7 @@ end
 abstract type LObject end
 
 mutable struct LAxis <: AbstractPlotting.AbstractScene
-    parent::Scene
+    figure::Figure
     scene::Scene
     xaxislinks::Vector{LAxis}
     yaxislinks::Vector{LAxis}
