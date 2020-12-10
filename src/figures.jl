@@ -98,6 +98,7 @@ function Base.setindex!(parent::Union{Figureposition,FigureSubposition}, obj,
     push!(figure.content, obj)
 end
 
+
 function find_or_make_layout!(fp::Figureposition)
     c = contents(fp.gp, exact = true)
     layouts = filter(x -> x isa GridLayout, c)
@@ -131,3 +132,30 @@ end
 
 get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
 get_figure(fp::Figureposition) = fp.fig
+
+
+
+
+function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs...)
+
+    # layout = find_or_make_layout!(fsp.parent)
+    ax = fsp.parent[fsp.rows, fsp.cols, fsp.side] = LAxis(get_figure(fsp).scene; axis...)
+    p = plot!(P, ax, args...; kwargs...)
+    (axis = ax, plot = p)
+end
+
+function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
+
+    # TODO: if ax doesn't exist, layouts should also not be made
+    layout = find_or_make_layout!(fsp.parent)
+
+    gp = layout[fsp.rows, fsp.cols, fsp.side]
+
+    c = contents(gp, exact = true)
+    if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
+        error("There is not just one axis at $(gp).")
+    end
+    ax = only(c)
+    plot!(P, ax, args...; kwargs...)
+
+end
