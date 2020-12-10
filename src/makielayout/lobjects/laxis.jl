@@ -5,7 +5,9 @@ Creates an `LAxis` object in the parent `Scene` which consists of a child scene
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
-function LAxis(parent::Scene; bbox = nothing, kwargs...)
+function LAxis(figure::Figure; bbox = nothing, kwargs...)
+
+    parent = figure.scene
 
     default_attrs = default_attributes(LAxis, parent).attributes
     theme_attrs = subtheme(parent, :LAxis)
@@ -310,7 +312,7 @@ function LAxis(parent::Scene; bbox = nothing, kwargs...)
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    la = LAxis(parent, scene, xaxislinks, yaxislinks, limits,
+    la = LAxis(figure, scene, xaxislinks, yaxislinks, limits,
         layoutobservables, attrs, block_limit_linking, decorations,
         mouseeventhandle, scrollevents, keysevents, interactions)
 

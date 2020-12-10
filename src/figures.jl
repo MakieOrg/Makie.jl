@@ -1,6 +1,6 @@
 struct Figure
 	scene::Scene
-	layout::GridLayout
+	layout::GridLayoutBase.GridLayout
 	content::Vector
     attributes::Attributes
     
@@ -27,26 +27,16 @@ end
 
 export Figure
 
-function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
-    # scene_attributes = extract_scene_attributes!(attributes)
-    fig = Figure(; figure...)
-    ax = LAxis(fig.scene; axis...)
-    fig.layout[1, 1] = ax
-    push!(fig.content, ax)
-    p = plot!(ax, P, Attributes(kw_attributes), args...)
-    (figure = fig, axis = ax, plot = p)
-end
-
 struct Figureposition
     fig::Figure
-    gp::MakieLayout.GridLayoutBase.GridPosition
+    gp::GridLayoutBase.GridPosition
 end
 
-function Base.getindex(fig::Figure, rows, cols, side = MakieLayout.GridLayoutBase.Inner())
+function Base.getindex(fig::Figure, rows, cols, side = GridLayoutBase.Inner())
     Figureposition(fig, fig.layout[rows, cols, side])
 end
 
-function Base.setindex!(fig::Figure, obj, rows, cols, side = MakieLayout.GridLayoutBase.Inner())
+function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side] = obj
     push!(fig.content, obj)
 end
@@ -57,40 +47,20 @@ Base.display(fig::Figure) = display(fig.scene)
 Base.display(nt::NamedTuple{(:figure, :axis, :plot), <:Tuple{Figure, Any, Any}}) = display(nt.figure)
 
 
-function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
-
-    @assert isempty(contents(fp.gp, exact = true))
-
-    ax = fp.gp[] = LAxis(fp.fig.scene; axis...)
-    p = plot!(P, ax, args...; kwargs...)
-    (axis = ax, plot = p)
-end
-
-function plot!(P::PlotFunc, fp::Figureposition, args...; kwargs...)
-
-    c = contents(fp.gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
-        error("There is not just one axis at $(fp.gp).")
-    end
-    ax = only(c)
-    plot!(P, ax, args...; kwargs...)
-
-end
-
 struct FigureSubposition{T}
     parent::T
     rows
     cols
-    side::MakieLayout.GridLayoutBase.Side
+    side::GridLayoutBase.Side
 end
 
 function Base.getindex(parent::Union{Figureposition,FigureSubposition},
-        rows, cols, side = MakieLayout.GridLayoutBase.Inner())
+        rows, cols, side = GridLayoutBase.Inner())
     FigureSubposition(parent, rows, cols, side)
 end
 
 function Base.setindex!(parent::Union{Figureposition,FigureSubposition}, obj,
-    rows, cols, side = MakieLayout.GridLayoutBase.Inner())
+    rows, cols, side = GridLayoutBase.Inner())
 
     layout = find_or_make_layout!(parent)
     figure = get_figure(parent)
@@ -101,9 +71,9 @@ end
 
 function find_or_make_layout!(fp::Figureposition)
     c = contents(fp.gp, exact = true)
-    layouts = filter(x -> x isa GridLayout, c)
+    layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
     if isempty(layouts)
-        return fp.gp[] = GridLayout()
+        return fp.gp[] = GridLayoutBase.GridLayout()
     elseif length(layouts) == 1
         return only(layouts)
     else
@@ -111,12 +81,12 @@ function find_or_make_layout!(fp::Figureposition)
     end
 end
 
-function find_or_make_layout!(layout::GridLayout, fsp::FigureSubposition)
+function find_or_make_layout!(layout::GridLayoutBase.GridLayout, fsp::FigureSubposition)
     gp = layout[fsp.rows, fsp.cols, fsp.side]
     c = contents(gp, exact = true)
-    layouts = filter(x -> x isa GridLayout, c)
+    layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
     if isempty(layouts)
-        return gp[] = GridLayout()
+        return gp[] = GridLayoutBase.GridLayout()
     elseif length(layouts) == 1
         return only(layouts)
     else
@@ -133,29 +103,3 @@ end
 get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
 get_figure(fp::Figureposition) = fp.fig
 
-
-
-
-function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs...)
-
-    # layout = find_or_make_layout!(fsp.parent)
-    ax = fsp.parent[fsp.rows, fsp.cols, fsp.side] = LAxis(get_figure(fsp).scene; axis...)
-    p = plot!(P, ax, args...; kwargs...)
-    (axis = ax, plot = p)
-end
-
-function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
-
-    # TODO: if ax doesn't exist, layouts should also not be made
-    layout = find_or_make_layout!(fsp.parent)
-
-    gp = layout[fsp.rows, fsp.cols, fsp.side]
-
-    c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
-        error("There is not just one axis at $(gp).")
-    end
-    ax = only(c)
-    plot!(P, ax, args...; kwargs...)
-
-end
