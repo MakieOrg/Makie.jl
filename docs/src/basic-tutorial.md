@@ -13,6 +13,7 @@ For this tutorial, we also call `AbstractPlotting.inline!(true)` so plots appear
 Otherwise, an interactive window will open when you return a `Scene`.
 
 ```@example 1
+using AbstractPlotting
 AbstractPlotting.inline!(true)
 nothing # hide
 ```
