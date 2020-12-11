@@ -92,7 +92,7 @@ const minimal_default = Attributes(
 const _current_default_theme = deepcopy(minimal_default)
 
 function current_default_theme(; kw_args...)
-    return merge!(Attributes(kw_args), _current_default_theme)
+    return merge!(Attributes(kw_args), deepcopy(_current_default_theme))
 end
 
 function set_theme!(new_theme::Attributes)
