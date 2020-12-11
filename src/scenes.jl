@@ -109,7 +109,7 @@ end
 function Scene(;clear=true, transform_func=identity, scene_attributes...)
     events = Events()
     theme = current_default_theme(; scene_attributes...)
-    attributes = copy(theme)
+    attributes = deepcopy(theme)
     px_area = lift(attributes.resolution) do res
         IRect(0, 0, res)
     end
@@ -333,9 +333,9 @@ end
 # Since we can use Combined like a scene in some circumstances, we define this alias
 theme(x::SceneLike, args...) = theme(x.parent, args...)
 theme(x::Scene) = x.theme
-theme(x::Scene, key) = x.theme[key]
-theme(x::AbstractPlot, key) = x.attributes[key]
-theme(::Nothing, key::Symbol) = current_default_theme()[key]
+theme(x::Scene, key) = deepcopy(x.theme[key])
+theme(x::AbstractPlot, key) = deepcopy(x.attributes[key])
+theme(::Nothing, key::Symbol) = deepcopy(current_default_theme()[key])
 
 Base.push!(scene::Combined, subscene) = nothing # Combined plots add themselves uppon creation
 
