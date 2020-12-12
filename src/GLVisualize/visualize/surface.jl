@@ -64,7 +64,8 @@ function light_calc(x::Bool)
         vec3 L      = normalize(o_lightdir);
         vec3 N      = normalize(o_normal);
         vec3 light1 = blinnphong(N, o_camdir, L, color.rgb);
-        color       = vec4(light1, color.a); // + light2 * 0.4
+        color       = vec4(light1, color.a) + 
+            backlight * vec4(blinnphong(N, o_camdir, -L, color.rgb), color.a);
         """
     else
         ""
@@ -95,6 +96,7 @@ function surface(main, s::Style{:surface}, data::Dict)
         shading = true
         normal = shading
         invert_normals = false
+        backlight = 0f0
     end
     @gen_defaults! data begin
         color = nothing => Texture

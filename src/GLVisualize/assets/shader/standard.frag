@@ -8,6 +8,7 @@ uniform vec3 ambient;
 uniform vec3 diffuse;
 uniform vec3 specular;
 uniform float shininess;
+uniform float backlight;
 
 in vec3 o_normal;
 in vec3 o_lightdir;

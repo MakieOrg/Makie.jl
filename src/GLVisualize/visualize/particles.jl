@@ -103,6 +103,7 @@ function meshparticle(p, s, data)
 
         instances = const_lift(length, position)
         shading = true
+        backlight = 0f0
         shader = GLVisualizeShader(
             "util.vert", "particles.vert", "fragment_output.frag", "standard.frag",
             view = Dict(
