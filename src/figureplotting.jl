@@ -1,7 +1,16 @@
 function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
-    ax = LAxis(fig; axis...)
+
+    proxyscene = Scene()
+    plot!(proxyscene, P, Attributes(kw_attributes), args...)
+
+    if is2d(proxyscene)
+        ax = LAxis(fig; axis...)
+    else
+        ax = LScene(fig.scene; scenekw = (camera = cam3d!, show_axis = true))
+    end
+
     fig.layout[1, 1] = ax
     push!(fig.content, ax)
     p = plot!(ax, P, Attributes(kw_attributes), args...)
@@ -12,7 +21,16 @@ function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
 
     @assert isempty(contents(fp.gp, exact = true))
 
-    ax = fp.gp[] = LAxis(fp.fig; axis...)
+    proxyscene = Scene()
+    plot!(proxyscene, P, Attributes(kwargs), args...)
+
+    if is2d(proxyscene)
+        ax = LAxis(fp.fig; axis...)
+    else
+        ax = LScene(fp.fig.scene; scenekw = (camera = cam3d!, show_axis = true))
+    end
+
+    fp.gp[] = ax
     p = plot!(P, ax, args...; kwargs...)
     (axis = ax, plot = p)
 end
@@ -30,8 +48,19 @@ end
 
 function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs...)
 
+    fig = get_figure(fsp)
+
+    proxyscene = Scene()
+    plot!(proxyscene, P, Attributes(kwargs), args...)
+
+    if is2d(proxyscene)
+        ax = LAxis(fig; axis...)
+    else
+        ax = LScene(fig.scene; scenekw = (camera = cam3d!, show_axis = true))
+    end
+
     # layout = find_or_make_layout!(fsp.parent)
-    ax = fsp.parent[fsp.rows, fsp.cols, fsp.side] = LAxis(get_figure(fsp); axis...)
+    fsp.parent[fsp.rows, fsp.cols, fsp.side] = ax
     p = plot!(P, ax, args...; kwargs...)
     (axis = ax, plot = p)
 end
