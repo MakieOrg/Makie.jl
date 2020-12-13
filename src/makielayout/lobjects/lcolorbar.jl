@@ -1,6 +1,6 @@
-function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
+function LColorbar(figure::Figure, plot::AbstractPlot; kwargs...)
 
-    LColorbar(parent;
+    LColorbar(figure;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
@@ -8,7 +8,8 @@ function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 
 end
 
-function LColorbar(parent::Scene; bbox = nothing, kwargs...)
+function LColorbar(figure::Figure; bbox = nothing, kwargs...)
+    parent = figure.scene
     attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent).attributes)
 
     default_attrs = default_attributes(LColorbar, parent).attributes
@@ -141,7 +142,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LColorbar(parent, layoutobservables, attrs, decorations)
+    LColorbar(figure, layoutobservables, attrs, decorations)
 end
 
 function tight_ticklabel_spacing!(lc::LColorbar)
