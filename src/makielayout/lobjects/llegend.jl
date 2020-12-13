@@ -1,7 +1,9 @@
 function LLegend(
-        parent::Scene,
+        figure::Figure,
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
+
+    parent = figure.scene
 
     default_attrs = default_attributes(LLegend, parent).attributes
     theme_attrs = subtheme(parent, :LLegend)
@@ -28,20 +30,22 @@ function LLegend(
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
-    scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    # layout = 
+
+    # scene = Scene(parent, scenearea, raw = true, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift(
-        BBox($margin[1], width($scenearea) - $margin[2],
-             $margin[3], height($scenearea)- $margin[4]))
+        BBox(left($scenearea) + $margin[1], left($scenearea) + width($scenearea) - $margin[2],
+            bottom($scenearea) + $margin[3], bottom($scenearea) + height($scenearea)- $margin[4]))
 
-    frame = poly!(scene,
+    frame = poly!(parent,
         @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
         strokecolor = framecolor, raw = true)[end]
 
     # the grid containing all content
-    grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
+    grid = GridLayout(bbox = scenearea, alignmode = Outside(padding[]...))
 
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
@@ -162,7 +166,7 @@ function LLegend(
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
         # above a 3d plot, but for now this hack is ok.
-        translate!(scene, (0, 0, 10))
+        # translate!(scene, (0, 0, 10))
     end
 
     onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
@@ -188,7 +192,7 @@ function LLegend(
         for eplotgroup in entryplots
             for eplots in eplotgroup
                 # each entry can have a vector of patch plots
-                delete!.(scene, eplots)
+                delete!.(parent, eplots)
             end
         end
         empty!(entryplots)
@@ -203,7 +207,7 @@ function LLegend(
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, LText(scene, text = title, font = titlefont,
+                push!(titletexts, LText(figure, text = title, font = titlefont,
                     textsize = titlesize, halign = titlehalign, valign = titlevalign))
             end
 
@@ -215,13 +219,13 @@ function LLegend(
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                push!(etexts, LText(scene,
+                push!(etexts, LText(figure,
                     text = e.label, textsize = e.labelsize, font = e.labelfont,
                     color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
                     ))
 
                 # create the patch rectangle
-                rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                rect = LRect(figure, color = e.patchcolor, strokecolor = e.patchstrokecolor,
                     strokewidth = e.patchstrokewidth,
                     width = lift(x -> x[1], e.patchsize),
                     height = lift(x -> x[2], e.patchsize))
@@ -231,7 +235,7 @@ function LLegend(
                 symbolplots = AbstractPlot[]
                 for element in e.elements
                     append!(symbolplots,
-                        legendelement_plots!(scene, element,
+                        legendelement_plots!(parent, element,
                             rect.layoutobservables.computedbbox, e.attributes))
                 end
 
@@ -248,7 +252,7 @@ function LLegend(
     # trigger suggestedbbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    leg = LLegend(scene, entry_groups, layoutobservables, attrs, decorations)
+    leg = LLegend(figure, layoutobservables, attrs, decorations, entry_groups)
     # trigger first relayout
     entry_groups[] = entry_groups[]
     leg
