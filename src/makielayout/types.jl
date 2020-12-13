@@ -100,47 +100,59 @@ mutable struct LAxis <: AbstractPlotting.AbstractScene
     interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
 
-mutable struct LColorbar <: LObject
-    parent::Scene
-    layoutobservables::LayoutObservables
-    attributes::Attributes
-    decorations::Dict{Symbol, Any}
-end
+# mutable struct LColorbar <: LObject
+#     parent::Scene
+#     layoutobservables::LayoutObservables
+#     attributes::Attributes
+#     decorations::Dict{Symbol, Any}
+# end
 
-mutable struct LText <: LObject
-    parent::Scene
-    layoutobservables::LayoutObservables
-    textobject::AbstractPlotting.Text
-    attributes::Attributes
-end
+@Layoutable LColorbar
 
-mutable struct LRect <: LObject
-    parent::Scene
-    layoutobservables::LayoutObservables
-    rect::AbstractPlotting.Poly
-    attributes::Attributes
-end
+@Layoutable LText
 
-struct LSlider <: LObject
-    parent::Scene
-    layoutobservables::LayoutObservables
-    attributes::Attributes
-    decorations::Dict{Symbol, Any}
-end
+# mutable struct LText <: LObject
+#     parent::Scene
+#     layoutobservables::LayoutObservables
+#     textobject::AbstractPlotting.Text
+#     attributes::Attributes
+# end
 
-struct LButton <: LObject
-    parent::Scene
-    layoutobservables::LayoutObservables
-    attributes::Attributes
-    decorations::Dict{Symbol, Any}
-end
+@Layoutable LRect
 
-struct LToggle <: LObject
-    parent::Scene
-    layoutobservables::LayoutObservables
-    attributes::Attributes
-    decorations::Dict{Symbol, Any}
-end
+# mutable struct LRect <: LObject
+#     parent::Scene
+#     layoutobservables::LayoutObservables
+#     rect::AbstractPlotting.Poly
+#     attributes::Attributes
+# end
+
+@Layoutable LSlider
+
+# struct LSlider <: LObject
+#     parent::Scene
+#     layoutobservables::LayoutObservables
+#     attributes::Attributes
+#     decorations::Dict{Symbol, Any}
+# end
+
+@Layoutable LButton
+
+# struct LButton <: LObject
+#     parent::Scene
+#     layoutobservables::LayoutObservables
+#     attributes::Attributes
+#     decorations::Dict{Symbol, Any}
+# end
+
+@Layoutable LToggle
+
+# struct LToggle <: LObject
+#     parent::Scene
+#     layoutobservables::LayoutObservables
+#     attributes::Attributes
+#     decorations::Dict{Symbol, Any}
+# end
 
 abstract type LegendElement end
 
@@ -163,13 +175,17 @@ end
 
 const EntryGroup = Tuple{Optional{String}, Vector{LegendEntry}}
 
-struct LLegend <: LObject
-    scene::Scene
+@Layoutable LLegend begin
     entrygroups::Node{Vector{EntryGroup}}
-    layoutobservables::LayoutObservables
-    attributes::Attributes
-    decorations::Dict{Symbol, Any}
 end
+
+# struct LLegend <: LObject
+#     scene::Scene
+#     entrygroups::Node{Vector{EntryGroup}}
+#     layoutobservables::LayoutObservables
+#     attributes::Attributes
+#     decorations::Dict{Symbol, Any}
+# end
 
 struct LScene <: AbstractPlotting.AbstractScene
     scene::Scene
@@ -177,11 +193,16 @@ struct LScene <: AbstractPlotting.AbstractScene
     layoutobservables::MakieLayout.LayoutObservables
 end
 
-mutable struct LTextbox <: LObject
-    scene::Scene
-    attributes::Attributes
-    layoutobservables::GridLayoutBase.LayoutObservables
-    decorations::Dict{Symbol, Any}
+@Layoutable LTextbox begin
     cursorindex::Node{Int}
     cursoranimtask
 end
+
+# mutable struct LTextbox <: LObject
+#     scene::Scene
+#     attributes::Attributes
+#     layoutobservables::GridLayoutBase.LayoutObservables
+#     decorations::Dict{Symbol, Any}
+#     cursorindex::Node{Int}
+#     cursoranimtask
+# end
