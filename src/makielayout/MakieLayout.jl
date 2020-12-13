@@ -42,6 +42,7 @@ function __init__()
     end
 end
 
+include("lobjectmacro.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
 include("types.jl")

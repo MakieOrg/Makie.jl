@@ -1,9 +1,10 @@
-function LText(parent::Scene, text; kwargs...)
-    LText(parent; text = text, kwargs...)
+function LText(figure::Figure, text; kwargs...)
+    LText(figure; text = text, kwargs...)
 end
 
-function LText(parent::Scene; bbox = nothing, kwargs...)
+function LText(figure::Figure; bbox = nothing, kwargs...)
 
+    parent = figure.scene
     default_attrs = default_attributes(LText, parent).attributes
     theme_attrs = subtheme(parent, :LText)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
@@ -64,7 +65,7 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    lt = LText(parent, layoutobservables, t, attrs)
+    lt = LText(figure, layoutobservables, attrs, Dict(:text => t))
 
     lt
 end
