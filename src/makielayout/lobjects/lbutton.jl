@@ -1,4 +1,6 @@
-function LButton(scene::Scene; bbox = nothing, kwargs...)
+function LButton(figure::Figure; bbox = nothing, kwargs...)
+
+    scene = figure.scene
 
     default_attrs = default_attributes(LButton, scene).attributes
     theme_attrs = subtheme(scene, :LButton)
@@ -88,5 +90,5 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LButton(scene, layoutobservables, attrs, decorations)
+    LButton(figure, layoutobservables, attrs, decorations)
 end
