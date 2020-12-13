@@ -14,9 +14,7 @@ end
 macro try_callbacks(expr)
     if expr.head in (:function,:(=)) && expr.args[1].head == :call
         func_sig, func_body = expr.args
-        expr.args[1] = esc(expr.args[1])
-        expr.args[2] = _try_callbacks(expr.args[2])
-        expr
+        Expr(expr.head, esc(func_sig), _try_callbacks(func_body)) 
     else
         _try_callbacks(expr)
     end
