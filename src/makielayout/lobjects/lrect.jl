@@ -1,4 +1,6 @@
-function LRect(parent::Scene; bbox = nothing, kwargs...)
+function LRect(figure::Figure; bbox = nothing, kwargs...)
+
+    parent = figure.scene
 
     default_attrs = default_attributes(LRect, parent).attributes
     theme_attrs = subtheme(parent, :LRect)
@@ -19,10 +21,12 @@ function LRect(parent::Scene; bbox = nothing, kwargs...)
     r = poly!(parent, ibbox, color = color, visible = visible, raw = true,
         strokecolor = strokecolor_with_visibility, strokewidth = strokewidth)[end]
 
+    elements = Dict(:rect => r)
+
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LRect(parent, layoutobservables, r, attrs)
+    LRect(figure, layoutobservables, attrs, elements)
 end
 
 
