@@ -154,6 +154,15 @@ end
 #     decorations::Dict{Symbol, Any}
 # end
 
+@Layoutable LMenu
+
+# struct LMenu <: LObject
+#     scene::Scene
+#     attributes::Attributes
+#     layoutobservables::GridLayoutBase.LayoutObservables
+#     decorations::Dict{Symbol, Any}
+# end
+
 abstract type LegendElement end
 
 struct LineElement <: LegendElement
