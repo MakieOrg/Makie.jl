@@ -30,22 +30,20 @@ function LLegend(
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
-    # layout = 
-
-    # scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift(
-        BBox(left($scenearea) + $margin[1], left($scenearea) + width($scenearea) - $margin[2],
-            bottom($scenearea) + $margin[3], bottom($scenearea) + height($scenearea)- $margin[4]))
+        BBox($margin[1], width($scenearea) - $margin[2],
+             $margin[3], height($scenearea) - $margin[4]))
 
-    frame = poly!(topscene,
+    frame = poly!(scene,
         @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
         strokecolor = framecolor, raw = true)[end]
 
     # the grid containing all content
-    grid = GridLayout(bbox = scenearea, alignmode = Outside(padding[]...))
+    grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
 
     # while the entries are being manipulated through code, this Ref value is set to
     # true so the GridLayout doesn't update itself to save time
@@ -192,7 +190,7 @@ function LLegend(
         for eplotgroup in entryplots
             for eplots in eplotgroup
                 # each entry can have a vector of patch plots
-                delete!.(topscene, eplots)
+                delete!.(scene, eplots)
             end
         end
         empty!(entryplots)
@@ -207,7 +205,7 @@ function LLegend(
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, LText(fig_or_scene, text = title, font = titlefont,
+                push!(titletexts, LText(scene, text = title, font = titlefont,
                     textsize = titlesize, halign = titlehalign, valign = titlevalign))
             end
 
@@ -219,13 +217,13 @@ function LLegend(
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                push!(etexts, LText(fig_or_scene,
+                push!(etexts, LText(scene,
                     text = e.label, textsize = e.labelsize, font = e.labelfont,
                     color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
                     ))
 
                 # create the patch rectangle
-                rect = LRect(fig_or_scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
                     strokewidth = e.patchstrokewidth,
                     width = lift(x -> x[1], e.patchsize),
                     height = lift(x -> x[2], e.patchsize))
@@ -235,7 +233,7 @@ function LLegend(
                 symbolplots = AbstractPlot[]
                 for element in e.elements
                     append!(symbolplots,
-                        legendelement_plots!(topscene, element,
+                        legendelement_plots!(scene, element,
                             rect.layoutobservables.computedbbox, e.attributes))
                 end
 
