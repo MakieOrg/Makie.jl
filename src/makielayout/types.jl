@@ -96,84 +96,20 @@ abstract type LObject end
     interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
 
-# mutable struct LAxis <: AbstractPlotting.AbstractScene
-#     figure::Figure
-#     scene::Scene
-#     xaxislinks::Vector{LAxis}
-#     yaxislinks::Vector{LAxis}
-#     limits::Node{FRect2D}
-#     layoutobservables::LayoutObservables
-#     attributes::Attributes
-#     block_limit_linking::Node{Bool}
-#     decorations::Dict{Symbol, Any}
-#     mouseeventhandle::MouseEventHandle
-#     scrollevents::Observable{ScrollEvent}
-#     keysevents::Observable{KeysEvent}
-#     interactions::Dict{Symbol, Tuple{Bool, Any}}
-# end
-
-# mutable struct LColorbar <: LObject
-#     parent::Scene
-#     layoutobservables::LayoutObservables
-#     attributes::Attributes
-#     decorations::Dict{Symbol, Any}
-# end
-
 @Layoutable LColorbar
 
 @Layoutable LText
 
-# mutable struct LText <: LObject
-#     parent::Scene
-#     layoutobservables::LayoutObservables
-#     textobject::AbstractPlotting.Text
-#     attributes::Attributes
-# end
-
 @Layoutable LRect
-
-# mutable struct LRect <: LObject
-#     parent::Scene
-#     layoutobservables::LayoutObservables
-#     rect::AbstractPlotting.Poly
-#     attributes::Attributes
-# end
 
 @Layoutable LSlider
 
-# struct LSlider <: LObject
-#     parent::Scene
-#     layoutobservables::LayoutObservables
-#     attributes::Attributes
-#     decorations::Dict{Symbol, Any}
-# end
-
 @Layoutable LButton
-
-# struct LButton <: LObject
-#     parent::Scene
-#     layoutobservables::LayoutObservables
-#     attributes::Attributes
-#     decorations::Dict{Symbol, Any}
-# end
 
 @Layoutable LToggle
 
-# struct LToggle <: LObject
-#     parent::Scene
-#     layoutobservables::LayoutObservables
-#     attributes::Attributes
-#     decorations::Dict{Symbol, Any}
-# end
-
 @Layoutable LMenu
 
-# struct LMenu <: LObject
-#     scene::Scene
-#     attributes::Attributes
-#     layoutobservables::GridLayoutBase.LayoutObservables
-#     decorations::Dict{Symbol, Any}
-# end
 
 abstract type LegendElement end
 
@@ -200,34 +136,11 @@ const EntryGroup = Tuple{Optional{String}, Vector{LegendEntry}}
     entrygroups::Node{Vector{EntryGroup}}
 end
 
-# struct LLegend <: LObject
-#     scene::Scene
-#     entrygroups::Node{Vector{EntryGroup}}
-#     layoutobservables::LayoutObservables
-#     attributes::Attributes
-#     decorations::Dict{Symbol, Any}
-# end
-
 @Layoutable LScene begin
     scene::Scene
 end
-
-# struct LScene <: AbstractPlotting.AbstractScene
-#     scene::Scene
-#     attributes::Attributes
-#     layoutobservables::MakieLayout.LayoutObservables
-# end
 
 @Layoutable LTextbox begin
     cursorindex::Node{Int}
     cursoranimtask
 end
-
-# mutable struct LTextbox <: LObject
-#     scene::Scene
-#     attributes::Attributes
-#     layoutobservables::GridLayoutBase.LayoutObservables
-#     decorations::Dict{Symbol, Any}
-#     cursorindex::Node{Int}
-#     cursoranimtask
-# end
