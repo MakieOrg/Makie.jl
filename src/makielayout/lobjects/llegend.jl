@@ -1,9 +1,9 @@
 function LLegend(
-        figure::Figure,
+        fig_or_scene,
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
-    parent = figure.scene
+    parent = get_scene(fig_or_scene)
 
     default_attrs = default_attributes(LLegend, parent).attributes
     theme_attrs = subtheme(parent, :LLegend)
@@ -207,7 +207,7 @@ function LLegend(
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, LText(figure, text = title, font = titlefont,
+                push!(titletexts, LText(fig_or_scene, text = title, font = titlefont,
                     textsize = titlesize, halign = titlehalign, valign = titlevalign))
             end
 
@@ -219,13 +219,13 @@ function LLegend(
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                push!(etexts, LText(figure,
+                push!(etexts, LText(fig_or_scene,
                     text = e.label, textsize = e.labelsize, font = e.labelfont,
                     color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
                     ))
 
                 # create the patch rectangle
-                rect = LRect(figure, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                rect = LRect(fig_or_scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
                     strokewidth = e.patchstrokewidth,
                     width = lift(x -> x[1], e.patchsize),
                     height = lift(x -> x[2], e.patchsize))
@@ -252,7 +252,7 @@ function LLegend(
     # trigger suggestedbbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    leg = LLegend(figure, layoutobservables, attrs, decorations, entry_groups)
+    leg = LLegend(fig_or_scene, layoutobservables, attrs, decorations, entry_groups)
     # trigger first relayout
     entry_groups[] = entry_groups[]
     leg

@@ -1,8 +1,10 @@
+abstract type Layoutable end
+
 macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
 
    structdef = quote
-        mutable struct $name
-            parent::Union{Figure, Scene}
+        mutable struct $name <: Layoutable
+            parent::Union{Figure, Scene, Nothing}
             layoutobservables::LayoutObservables
             attributes::Attributes
             elements::Dict{Symbol, Any}
@@ -17,16 +19,8 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     # linenumbernode block, struct block, fields block
     append!(structdef.args[2].args[3].args, fields.args)
     
-    quote
-        $structdef
-
-        function _parentscene(x::$name)
-            if x.parent isa Figure
-                x.parent.scene
-            else
-                x.parent
-            end
-        end
-    end
+    structdef
 end
 
+get_scene(f::Figure) = f.scene
+get_scene(s::Scene) = s

@@ -1,6 +1,6 @@
 # LAxis and LScene currently have to be AbstractScenes because they need to work with
 # the plotting pipeline, so they are not LObjects and manually get added here
-const Layoutable = Union{LAxis, LScene, LObject}
+# const Layoutable = Union{LAxis, LScene, LObject}
 
 # almost like in AbstractPlotting
 # make fields type inferrable

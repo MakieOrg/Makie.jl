@@ -1,4 +1,4 @@
-function LButton(figure::Figure; bbox = nothing, kwargs...)
+function LButton(fig_or_scene; bbox = nothing, kwargs...)
 
     scene = figure.scene
 
@@ -90,5 +90,5 @@ function LButton(figure::Figure; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LButton(figure, layoutobservables, attrs, decorations)
+    LButton(fig_or_scene, layoutobservables, attrs, decorations)
 end

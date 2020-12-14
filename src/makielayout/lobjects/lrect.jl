@@ -1,6 +1,6 @@
-function LRect(figure::Figure; bbox = nothing, kwargs...)
+function LRect(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = figure.scene
+    parent = get_scene(fig_or_scene)
 
     default_attrs = default_attributes(LRect, parent).attributes
     theme_attrs = subtheme(parent, :LRect)
@@ -26,7 +26,7 @@ function LRect(figure::Figure; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LRect(figure, layoutobservables, attrs, elements)
+    LRect(fig_or_scene, layoutobservables, attrs, elements)
 end
 
 
