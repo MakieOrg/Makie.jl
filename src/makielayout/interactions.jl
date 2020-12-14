@@ -155,7 +155,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
         # translate forward so selection mesh and frame are never behind data
         translate!(mesh, 0, 0, 100)
         translate!(wf, 0, 0, 110)
-        r.plots = [mesh, wf]
+        append!(r.plots, [mesh, wf])
         r.active = true
 
     elseif event.type === MouseEventTypes.leftdrag
