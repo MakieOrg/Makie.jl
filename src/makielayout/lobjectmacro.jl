@@ -27,7 +27,8 @@ Get the scene which layoutables need from their parent to plot stuff into
 """
 get_topscene(f::Figure) = f.scene
 function get_topscene(s::Scene)
-    if !scene.camera_controls[] isa PixelCamera
+    if !(s.camera_controls[] isa AbstractPlotting.PixelCamera)
         error("Can only use scenes with PixelCamera as topscene")
     end
+    s
 end
