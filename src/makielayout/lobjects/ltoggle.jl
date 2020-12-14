@@ -1,9 +1,9 @@
 function LToggle(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = get_scene(fig_or_scene)
+    topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LToggle, parent).attributes
-    theme_attrs = subtheme(parent, :LToggle)
+    default_attrs = default_attributes(LToggle, topscene).attributes
+    theme_attrs = subtheme(topscene, :LToggle)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, cornersegments, framecolor_inactive,
@@ -36,7 +36,7 @@ function LToggle(fig_or_scene; bbox = nothing, kwargs...)
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
-    frame = poly!(parent, buttonvertices, color = framecolor, raw = true)[end]
+    frame = poly!(topscene, buttonvertices, color = framecolor, raw = true)[end]
     decorations[:frame] = frame
 
     animating = Node(false)
@@ -54,10 +54,10 @@ function LToggle(fig_or_scene; bbox = nothing, kwargs...)
         ms * (1 - rf) * bf
     end
 
-    button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)[end]
+    button = scatter!(topscene, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)[end]
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(parent, button, frame)
+    mouseevents = addmouseevents!(topscene, button, frame)
 
     onmouseleftdown(mouseevents) do event
         if animating[]

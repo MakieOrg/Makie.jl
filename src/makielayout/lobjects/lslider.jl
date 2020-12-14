@@ -1,9 +1,9 @@
 function LSlider(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = get_scene(fig_or_scene)
+    topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LSlider, parent).attributes
-    theme_attrs = subtheme(parent, :LSlider)
+    default_attrs = default_attributes(LSlider, topscene).attributes
+    theme_attrs = subtheme(topscene, :LSlider)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     decorations = Dict{Symbol, Any}()
@@ -90,18 +90,18 @@ function LSlider(fig_or_scene; bbox = nothing, kwargs...)
         [ca, ci]
     end
 
-    endbuttons = scatter!(parent, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
+    endbuttons = scatter!(topscene, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(parent, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+    linesegs = linesegments!(topscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
     decorations[:linesegments] = linesegs
 
     button_magnification = Node(1.0)
     buttonsize = @lift($linewidth * $button_magnification)
-    button = scatter!(parent, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)[end]
+    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)[end]
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(parent, linesegs, button)
+    mouseevents = addmouseevents!(topscene, linesegs, button)
 
     onmouseleftdrag(mouseevents) do event
 

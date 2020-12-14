@@ -108,10 +108,12 @@ end)
 LMenu
 
 
-function LMenu(parent::Scene; bbox = nothing, kwargs...)
+function LMenu(fig_or_scene::Scene; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LMenu, parent).attributes
-    theme_attrs = subtheme(parent, :LMenu)
+    topscene = get_topscene(fig_or_scene)
+
+    default_attrs = default_attributes(LMenu, topscene).attributes
+    theme_attrs = subtheme(topscene, :LMenu)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
@@ -137,7 +139,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
             d == :down ? top(bbox) : bottom(bbox) + h))
     end
 
-    scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     contentgrid = GridLayout(
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),

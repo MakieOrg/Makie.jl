@@ -4,9 +4,9 @@ end
 
 function LText(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = get_scene(fig_or_scene)
-    default_attrs = default_attributes(LText, parent).attributes
-    theme_attrs = subtheme(parent, :LText)
+    topscene = get_topscene(fig_or_scene)
+    default_attrs = default_attributes(LText, topscene).attributes
+    theme_attrs = subtheme(topscene, :LText)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
@@ -27,7 +27,7 @@ function LText(fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    t = text!(parent, text, position = textpos, textsize = textsize, font = font, color = color,
+    t = text!(topscene, text, position = textpos, textsize = textsize, font = font, color = color,
         visible = visible, align = alignnode, rotation = rotation, raw = true)[end]
 
     textbb = Ref(BBox(0, 1, 0, 1))
@@ -81,5 +81,5 @@ function Base.delete!(lt::LText)
     empty!(lt.layoutobservables.protrusions.listeners)
 
     # remove the plot object from the scene
-    delete!(lt.parent, lt.textobject)
+    delete!(lt.topscene, lt.textobject)
 end

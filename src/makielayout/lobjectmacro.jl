@@ -22,5 +22,12 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     structdef
 end
 
-get_scene(f::Figure) = f.scene
-get_scene(s::Scene) = s
+"""
+Get the scene which layoutables need from their parent to plot stuff into
+"""
+get_topscene(f::Figure) = f.scene
+function get_topscene(s::Scene)
+    if !scene.camera_controls[] isa PixelCamera
+        error("Can only use scenes with PixelCamera as topscene")
+    end
+end

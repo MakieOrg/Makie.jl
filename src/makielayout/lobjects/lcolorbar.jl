@@ -9,11 +9,11 @@ function LColorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 end
 
 function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
-    parent = get_scene(fig_or_scene)
-    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent).attributes)
+    topscene = get_topscene(fig_or_scene)
+    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, topscene).attributes)
 
-    default_attrs = default_attributes(LColorbar, parent).attributes
-    theme_attrs = subtheme(parent, :LColorbar)
+    default_attrs = default_attributes(LColorbar, topscene).attributes
+    theme_attrs = subtheme(topscene, :LColorbar)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -71,11 +71,11 @@ function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    hm = heatmap!(parent, xrange, yrange, colorcells, colormap = colormap, raw = true)[end]
+    hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)[end]
     decorations[:heatmap] = hm
 
     ab, al, ar, at = axislines!(
-        parent, framebox, spinewidth, topspinevisible, rightspinevisible,
+        topscene, framebox, spinewidth, topspinevisible, rightspinevisible,
         leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
         rightspinecolor, bottomspinecolor)
     decorations[:topspine] = at
@@ -102,7 +102,7 @@ function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
 
     end
 
-    axis = LineAxis(parent, endpoints = axispoints, flipped = flipaxisposition,
+    axis = LineAxis(topscene, endpoints = axispoints, flipped = flipaxisposition,
         limits = limits, ticklabelalign = ticklabelalign, label = label,
         labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
         labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks, tickformat = tickformat,

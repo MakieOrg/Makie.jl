@@ -1,9 +1,9 @@
 function LRect(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = get_scene(fig_or_scene)
+    topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LRect, parent).attributes
-    theme_attrs = subtheme(parent, :LRect)
+    default_attrs = default_attributes(LRect, topscene).attributes
+    theme_attrs = subtheme(topscene, :LRect)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
@@ -18,7 +18,7 @@ function LRect(fig_or_scene; bbox = nothing, kwargs...)
 
     ibbox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
 
-    r = poly!(parent, ibbox, color = color, visible = visible, raw = true,
+    r = poly!(topscene, ibbox, color = color, visible = visible, raw = true,
         strokecolor = strokecolor_with_visibility, strokewidth = strokewidth)[end]
 
     elements = Dict(:rect => r)
@@ -40,5 +40,5 @@ function Base.delete!(lr::LRect)
     empty!(lr.layoutobservables.protrusions.listeners)
 
     # remove the plot object from the scene
-    delete!(lr.parent, lr.rect)
+    delete!(lr.topscene, lr.rect)
 end
