@@ -27,7 +27,7 @@ function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
     scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     cursorindex = Node(0)
-    ltextbox = LTextbox(scene, attrs, layoutobservables, decorations, cursorindex, nothing)
+    ltextbox = LTextbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
 
 
 
@@ -88,7 +88,7 @@ function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
         textsize = textsize, padding = textpadding)
 
     displayed_charbbs = lift(t.layoutobservables.reportedsize) do sz
-        charbbs(t.textobject)
+        charbbs(t.elements[:text])
     end
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs

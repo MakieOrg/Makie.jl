@@ -81,5 +81,5 @@ function Base.delete!(lt::LText)
     empty!(lt.layoutobservables.protrusions.listeners)
 
     # remove the plot object from the scene
-    delete!(lt.topscene, lt.textobject)
+    delete!(lt.topscene, lt.elements[:text])
 end
