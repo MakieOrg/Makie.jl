@@ -2,6 +2,11 @@ using CairoMakie
 CairoMakie.activate!(type = "png")
 
 ##
+using GLMakie
+GLMakie.activate!()
+set_window_config!(float = true)
+
+##
 
 fig, ax, bars = errorbars(1:10, 1:10, 1:10, color = 1:10, colormap = :viridis,
     figure = (resolution = (800, 600), font = "Helvetica Light"))
@@ -33,15 +38,19 @@ fig = Figure()
 
 ##
 fig = Figure(resolution = (900, 900))
-scatter(fig[1, 1], randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
-lines(fig[1, 2], 0..3, sin ∘ exp, axis = (;title = "Exponential Sine"))
+ax, sc = scatter(fig[1, 1][1, 1], randn(100, 2), axis = (;title = "Random Dots", xlabel = "Time"))
+sc2 = scatter!(ax, randn(100, 2) .+ 2, color = :red)
+fig[1, 1][1, 2] = LLegend(fig, [sc, sc2], ["Scatter", "Other"])
+lines(fig[2, 1:2][1, 3][1, 1], 0..3, sin ∘ exp, axis = (;title = "Exponential Sine"))
 heatmap(fig[2, 1:2][1, 1], randn(30, 30))
 heatmap(fig[2, 1:2][1, 2], randn(30, 30), colormap = :grays)
 lines!(fig[2, 1:2][1, 2], cumsum(rand(30)), color = :red, linewidth = 10)
-fig[2, 1:2][1, 3][1, 1] = LAxis(fig)
-fig[2, 1:2][2, :] = LColorbar(fig.scene, vertical = false,
+ls = fig[1, 2] = LScene(fig, scenekw = (camera = cam3d!, raw = false, show_axis = true))
+surface!(ls, collect(1.0:20), collect(1.0:20), randn(20, 20))
+fig[2, 1:2][2, :] = LColorbar(fig, vertical = false,
     height = 20, ticklabelalign = (:center, :top), flipaxisposition = false)
-fig[0, :] = LText(fig.scene, "Figure Demo")
+fig[3, :] = LMenu(fig, options = ["A", "B", "C"])
+fig[0, :] = LText(fig, "Figure Demo")
 fig
 
 ##

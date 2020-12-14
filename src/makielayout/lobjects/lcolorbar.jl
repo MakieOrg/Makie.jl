@@ -146,5 +146,5 @@ function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
 end
 
 function tight_ticklabel_spacing!(lc::LColorbar)
-    tight_ticklabel_spacing!(lc.decorations[:axis])
+    tight_ticklabel_spacing!(lc.elements[:axis])
 end
