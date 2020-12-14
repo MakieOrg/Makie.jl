@@ -108,7 +108,7 @@ end)
 LMenu
 
 
-function LMenu(fig_or_scene::Scene; bbox = nothing, kwargs...)
+function LMenu(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
@@ -196,7 +196,7 @@ function LMenu(fig_or_scene::Scene; bbox = nothing, kwargs...)
 
         rowgap!(contentgrid, 0)
 
-        mouseeventhandles[] = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects[], alltexts[])]
+        mouseeventhandles[] = [addmouseevents!(scene, r.elements[:rect], t.elements[:text]) for (r, t) in zip(allrects[], alltexts[])]
 
         # create mouse events for each menu entry rect / text combo
         for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles[], allrects[], alltexts[]))
@@ -338,7 +338,7 @@ function LMenu(fig_or_scene::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LMenu(scene, attrs, layoutobservables, decorations)
+    LMenu(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
 
