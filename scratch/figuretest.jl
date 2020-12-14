@@ -45,14 +45,17 @@ lines(fig[2, 1:2][1, 3][1, 1], 0..3, sin ∘ exp, axis = (;title = "Exponential 
 heatmap(fig[2, 1:2][1, 1], randn(30, 30))
 heatmap(fig[2, 1:2][1, 2], randn(30, 30), colormap = :grays)
 lines!(fig[2, 1:2][1, 2], cumsum(rand(30)), color = :red, linewidth = 10)
-ls = fig[1, 2] = LScene(fig, scenekw = (camera = cam3d!, raw = false, show_axis = true))
+ls = fig[1, 2] = LScene(fig, scenekw = (camera = cam3d!, raw = false, show_axis = true, clear = true))
 surface!(ls, collect(1.0:20), collect(1.0:20), randn(20, 20))
 fig[2, 1:2][2, :] = LColorbar(fig, vertical = false,
     height = 20, ticklabelalign = (:center, :top), flipaxisposition = false)
 fig[3, :] = LMenu(fig, options = ["A", "B", "C"], direction = :up)
 fig[0, :] = LText(fig, "Figure Demo")
+fig[5, :] = LTextbox(fig)
 fig
 
 
+##
 
 
+fig, ax, sc = scatter(randn(100, 2), axis = (aspect = 1,))
