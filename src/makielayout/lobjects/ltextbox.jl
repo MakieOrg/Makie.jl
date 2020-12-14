@@ -1,8 +1,10 @@
-function LTextbox(parent::Scene; bbox = nothing, kwargs...)
+function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
+
+    topscene = get_topscene(fig_or_scene)
 
     attrs = merge!(
         Attributes(kwargs),
-        default_attributes(LTextbox, parent).attributes)
+        default_attributes(LTextbox, topscene).attributes)
 
     @extract attrs (halign, valign, textsize, stored_string, placeholder,
         textcolor, textcolor_placeholder, displayed_string,
@@ -22,7 +24,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
-    scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     cursorindex = Node(0)
     ltextbox = LTextbox(scene, attrs, layoutobservables, decorations, cursorindex, nothing)
@@ -63,7 +65,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    box = poly!(parent, roundedrectpoints, strokewidth = borderwidth,
+    box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
         strokecolor = realbordercolor,
         color = realboxcolor, raw = true)[end]
     decorations[:box] = box

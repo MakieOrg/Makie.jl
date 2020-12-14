@@ -1,16 +1,16 @@
 """
-    LAxis(parent::Scene; bbox = nothing, kwargs...)
+    LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
-Creates an `LAxis` object in the parent `Scene` which consists of a child scene
+Creates an `LAxis` object in the parent `fig_or_scene` which consists of a child scene
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
 function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = get_scene(fig_or_scene)
+    topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LAxis, parent).attributes
-    theme_attrs = subtheme(parent, :LAxis)
+    default_attrs = default_attributes(LAxis, topscene).attributes
+    theme_attrs = subtheme(topscene, :LAxis)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -46,9 +46,9 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
     scenearea = sceneareanode!(layoutobservables.computedbbox, limits, aspect)
 
-    scene = Scene(parent, scenearea, raw = true)
+    scene = Scene(topscene, scenearea, raw = true)
 
-    background = poly!(parent, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)[end]
+    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)[end]
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -61,7 +61,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
     xgridnode = Node(Point2f0[])
     xgridlines = linesegments!(
-        parent, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
+        topscene, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle,
     )[end]
     # put gridlines behind the zero plane so they don't overlay plots
@@ -70,7 +70,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
     ygridnode = Node(Point2f0[])
     ygridlines = linesegments!(
-        parent, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
+        topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
         color = ygridcolor, linestyle = ygridstyle,
     )[end]
     # put gridlines behind the zero plane so they don't overlay plots
@@ -148,7 +148,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
         yflip ? lc : rc
     end
 
-    xaxis = LineAxis(parent, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
+    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
@@ -159,7 +159,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
         reversed = xreversed, tickwidth = xtickwidth)
     decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(parent, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
+    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
@@ -197,10 +197,10 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    xoppositeline = lines!(parent, xoppositelinepoints, linewidth = spinewidth,
+    xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor)[end]
     decorations[:xoppositeline] = xoppositeline
-    yoppositeline = lines!(parent, yoppositelinepoints, linewidth = spinewidth,
+    yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor)[end]
     decorations[:yoppositeline] = yoppositeline
 
@@ -241,7 +241,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
     end
 
     titlet = text!(
-        parent, title,
+        topscene, title,
         position = titlepos,
         visible = titlevisible,
         textsize = titlesize,

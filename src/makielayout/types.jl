@@ -208,11 +208,15 @@ end
 #     decorations::Dict{Symbol, Any}
 # end
 
-struct LScene <: AbstractPlotting.AbstractScene
+@Layoutable LScene begin
     scene::Scene
-    attributes::Attributes
-    layoutobservables::MakieLayout.LayoutObservables
 end
+
+# struct LScene <: AbstractPlotting.AbstractScene
+#     scene::Scene
+#     attributes::Attributes
+#     layoutobservables::MakieLayout.LayoutObservables
+# end
 
 @Layoutable LTextbox begin
     cursorindex::Node{Int}

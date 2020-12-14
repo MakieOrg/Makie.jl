@@ -3,10 +3,10 @@ function LLegend(
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
-    parent = get_scene(fig_or_scene)
+    topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LLegend, parent).attributes
-    theme_attrs = subtheme(parent, :LLegend)
+    default_attrs = default_attributes(LLegend, topscene).attributes
+    theme_attrs = subtheme(topscene, :LLegend)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -32,14 +32,14 @@ function LLegend(
 
     # layout = 
 
-    # scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    # scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift(
         BBox(left($scenearea) + $margin[1], left($scenearea) + width($scenearea) - $margin[2],
             bottom($scenearea) + $margin[3], bottom($scenearea) + height($scenearea)- $margin[4]))
 
-    frame = poly!(parent,
+    frame = poly!(topscene,
         @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
         strokecolor = framecolor, raw = true)[end]
@@ -192,7 +192,7 @@ function LLegend(
         for eplotgroup in entryplots
             for eplots in eplotgroup
                 # each entry can have a vector of patch plots
-                delete!.(parent, eplots)
+                delete!.(topscene, eplots)
             end
         end
         empty!(entryplots)
@@ -235,7 +235,7 @@ function LLegend(
                 symbolplots = AbstractPlot[]
                 for element in e.elements
                     append!(symbolplots,
-                        legendelement_plots!(parent, element,
+                        legendelement_plots!(topscene, element,
                             rect.layoutobservables.computedbbox, e.attributes))
                 end
 
