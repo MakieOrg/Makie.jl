@@ -543,21 +543,21 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 # In this section, the plotting functions have P as the first argument
 # These are called from type recipes
 
-# non-mutating, without positional attributes
+# # non-mutating, without positional attributes
 
-function plot(P::PlotFunc, args...; kw_attributes...)
-    attributes = Attributes(kw_attributes)
-    plot(P, attributes, args...)
-end
+# function plot(P::PlotFunc, args...; kw_attributes...)
+#     attributes = Attributes(kw_attributes)
+#     plot(P, attributes, args...)
+# end
 
-# with positional attributes
+# # with positional attributes
 
-function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attrs)
-    scene_attributes = extract_scene_attributes!(attributes)
-    scene = Scene(; scene_attributes...)
-    plot!(scene, P, attributes, args...)
-end
+# function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
+#     attributes = merge!(Attributes(kw_attributes), attrs)
+#     scene_attributes = extract_scene_attributes!(attributes)
+#     scene = Scene(; scene_attributes...)
+#     plot!(scene, P, attributes, args...)
+# end
 
 # mutating, without positional attributes
 
