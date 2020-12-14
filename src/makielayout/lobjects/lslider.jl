@@ -1,6 +1,6 @@
-function LSlider(figure::Figure; bbox = nothing, kwargs...)
+function LSlider(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = figure.scene
+    parent = get_scene(fig_or_scene)
 
     default_attrs = default_attributes(LSlider, parent).attributes
     theme_attrs = subtheme(parent, :LSlider)
@@ -155,7 +155,7 @@ function LSlider(figure::Figure; bbox = nothing, kwargs...)
     # trigger autosize through linewidth for first layout
     linewidth[] = linewidth[]
 
-    LSlider(figure, layoutobservables, attrs, decorations)
+    LSlider(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)

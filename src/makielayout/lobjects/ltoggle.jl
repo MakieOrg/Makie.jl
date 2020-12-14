@@ -1,6 +1,6 @@
-function LToggle(figure::Figure; bbox = nothing, kwargs...)
+function LToggle(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = figure.scene
+    parent = get_scene(fig_or_scene)
 
     default_attrs = default_attributes(LToggle, parent).attributes
     theme_attrs = subtheme(parent, :LToggle)
@@ -100,5 +100,5 @@ function LToggle(figure::Figure; bbox = nothing, kwargs...)
         buttonfactor[] = 1.0
     end
 
-    LToggle(figure, layoutobservables, attrs, decorations)
+    LToggle(fig_or_scene, layoutobservables, attrs, decorations)
 end

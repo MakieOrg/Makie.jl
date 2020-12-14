@@ -5,9 +5,9 @@ Creates an `LAxis` object in the parent `Scene` which consists of a child scene
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
-function LAxis(figure::Figure; bbox = nothing, kwargs...)
+function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
-    parent = figure.scene
+    parent = get_scene(fig_or_scene)
 
     default_attrs = default_attributes(LAxis, parent).attributes
     theme_attrs = subtheme(parent, :LAxis)
@@ -312,8 +312,8 @@ function LAxis(figure::Figure; bbox = nothing, kwargs...)
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    la = LAxis(figure, scene, xaxislinks, yaxislinks, limits,
-        layoutobservables, attrs, block_limit_linking, decorations,
+    la = LAxis(fig_or_scene, layoutobservables, attrs, decorations, scene,
+        xaxislinks, yaxislinks, limits, block_limit_linking,
         mouseeventhandle, scrollevents, keysevents, interactions)
 
 
@@ -366,6 +366,11 @@ function AbstractPlotting.plot!(
 
     autolimits!(la)
     plot
+end
+
+function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ax::LAxis, args...; kw_attributes...)
+    attributes = AbstractPlotting.Attributes(kw_attributes)
+    AbstractPlotting.plot!(ax, P, attributes, args...)
 end
 
 has_tight_limit_trait(@nospecialize any) = false

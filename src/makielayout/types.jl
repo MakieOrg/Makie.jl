@@ -84,21 +84,33 @@ end
 
 abstract type LObject end
 
-mutable struct LAxis <: AbstractPlotting.AbstractScene
-    figure::Figure
+@Layoutable LAxis begin
     scene::Scene
     xaxislinks::Vector{LAxis}
     yaxislinks::Vector{LAxis}
     limits::Node{FRect2D}
-    layoutobservables::LayoutObservables
-    attributes::Attributes
     block_limit_linking::Node{Bool}
-    decorations::Dict{Symbol, Any}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}
     interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
+
+# mutable struct LAxis <: AbstractPlotting.AbstractScene
+#     figure::Figure
+#     scene::Scene
+#     xaxislinks::Vector{LAxis}
+#     yaxislinks::Vector{LAxis}
+#     limits::Node{FRect2D}
+#     layoutobservables::LayoutObservables
+#     attributes::Attributes
+#     block_limit_linking::Node{Bool}
+#     decorations::Dict{Symbol, Any}
+#     mouseeventhandle::MouseEventHandle
+#     scrollevents::Observable{ScrollEvent}
+#     keysevents::Observable{KeysEvent}
+#     interactions::Dict{Symbol, Tuple{Bool, Any}}
+# end
 
 # mutable struct LColorbar <: LObject
 #     parent::Scene
