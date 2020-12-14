@@ -315,7 +315,7 @@ function docvarstring(docdict, defaultdict)
 end
 
 function Base.delete!(lobject::Union{LObject, LAxis})
-    for (_, d) in lobject.decorations
+    for (_, d) in lobject.elements
         remove_element(d)
     end
 

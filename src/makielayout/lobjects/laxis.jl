@@ -669,8 +669,8 @@ function timed_ticklabelspace_reset(ax::LAxis, reset_timer::Ref,
         prev_xticklabelspace[] = ax.xticklabelspace[]
         prev_yticklabelspace[] = ax.yticklabelspace[]
 
-        ax.xticklabelspace = ax.decorations[:xaxis].attributes.actual_ticklabelspace[]
-        ax.yticklabelspace = ax.decorations[:yaxis].attributes.actual_ticklabelspace[]
+        ax.xticklabelspace = ax.elements[:xaxis].attributes.actual_ticklabelspace[]
+        ax.yticklabelspace = ax.elements[:yaxis].attributes.actual_ticklabelspace[]
     end
 
     reset_timer[] = Timer(threshold_sec) do t
@@ -766,11 +766,11 @@ end
 
 
 function tight_yticklabel_spacing!(la::LAxis)
-    tight_ticklabel_spacing!(la.decorations[:yaxis])
+    tight_ticklabel_spacing!(la.elements[:yaxis])
 end
 
 function tight_xticklabel_spacing!(la::LAxis)
-    tight_ticklabel_spacing!(la.decorations[:xaxis])
+    tight_ticklabel_spacing!(la.elements[:xaxis])
 end
 
 function tight_ticklabel_spacing!(la::LAxis)

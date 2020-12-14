@@ -289,7 +289,7 @@ function tight_ticklabel_spacing!(la::LineAxis)
         error("endpoints not on a horizontal or vertical line")
     end
 
-    tls = la.decorations[:ticklabels]
+    tls = la.elements[:ticklabels]
     maxwidth = if horizontal
             # height
             tls.visible[] ? height(FRect2D(boundingbox(tls))) : 0f0
@@ -306,7 +306,7 @@ end
 
 
 function Base.delete!(la::LineAxis)
-    for (_, d) in la.decorations
+    for (_, d) in la.elements
         if d isa AbstractPlot
             delete!(d.parent, d)
         else
