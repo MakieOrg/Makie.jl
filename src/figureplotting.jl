@@ -8,7 +8,7 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     if is2d(proxyscene)
         ax = LAxis(fig; axis...)
     else
-        ax = LScene(fig.scene; scenekw = (camera = cam3d!, show_axis = true))
+        ax = LScene(fig.scene; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
 
     fig.layout[1, 1] = ax
@@ -27,7 +27,7 @@ function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
     if is2d(proxyscene)
         ax = LAxis(fp.fig; axis...)
     else
-        ax = LScene(fp.fig.scene; scenekw = (camera = cam3d!, show_axis = true))
+        ax = LScene(fp.fig.scene; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
 
     fp.gp[] = ax
@@ -56,7 +56,7 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs..
     if is2d(proxyscene)
         ax = LAxis(fig; axis...)
     else
-        ax = LScene(fig.scene; scenekw = (camera = cam3d!, show_axis = true))
+        ax = LScene(fig.scene; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
 
     # layout = find_or_make_layout!(fsp.parent)
