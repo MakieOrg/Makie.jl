@@ -49,13 +49,10 @@ ls = fig[1, 2] = LScene(fig, scenekw = (camera = cam3d!, raw = false, show_axis 
 surface!(ls, collect(1.0:20), collect(1.0:20), randn(20, 20))
 fig[2, 1:2][2, :] = LColorbar(fig, vertical = false,
     height = 20, ticklabelalign = (:center, :top), flipaxisposition = false)
-fig[3, :] = LMenu(fig, options = ["A", "B", "C"])
+fig[3, :] = LMenu(fig, options = ["A", "B", "C"], direction = :up)
 fig[0, :] = LText(fig, "Figure Demo")
 fig
 
-##
-fig, _ = surface(collect(1.0:10), collect(1.0:10), (x, y) -> cos(x) * sin(y))
-lines(fig[1, 2], 0..30, sin, axis = (xticks = LinearTicks(3),))
-fig
+
 
 
