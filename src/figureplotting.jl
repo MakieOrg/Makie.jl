@@ -1,3 +1,18 @@
+struct FigureAxisPlot
+    figure::Figure
+    axis
+    plot::AbstractPlot
+end
+
+struct AxisPlot
+    axis
+    plot::AbstractPlot
+end
+
+Base.display(fap::FigureAxisPlot) = display(fap.figure)
+Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
+Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
+
 function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
@@ -14,7 +29,8 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     fig.layout[1, 1] = ax
     push!(fig.content, ax)
     p = plot!(ax, P, Attributes(kw_attributes), args...)
-    (figure = fig, axis = ax, plot = p)
+
+    FigureAxisPlot(fig, ax, p)
 end
 
 function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
@@ -32,7 +48,8 @@ function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
 
     fp.gp[] = ax
     p = plot!(P, ax, args...; kwargs...)
-    (axis = ax, plot = p)
+
+    AxisPlot(ax, p)
 end
 
 function plot!(P::PlotFunc, fp::Figureposition, args...; kwargs...)
@@ -62,7 +79,8 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs..
     # layout = find_or_make_layout!(fsp.parent)
     fsp.parent[fsp.rows, fsp.cols, fsp.side] = ax
     p = plot!(P, ax, args...; kwargs...)
-    (axis = ax, plot = p)
+
+    AxisPlot(ax, p)
 end
 
 function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
