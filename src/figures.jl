@@ -1,3 +1,30 @@
+#=
+Figures are supposed to fill the gap that Scenes in combination with Layoutables leave.
+A scene is supposed to be a generic canvas on which plot objects can be placed and drawn.
+Layoutables always require one specific type of scene, with a PixelCamera, in order to draw
+their visual components there.
+Figures also have layouts, which scenes do not have.
+This is because every figure needs a layout, while not every scene does.
+Figures keep track of the Layoutables that are created inside them, which scenes don't.
+
+The idea is there are three types of plotting commands.
+They can return either:
+    - a FigureAxisPlot (figure, axis and plot)
+    - an AxisPlot (axis and plot)
+    - or an AbstractPlot (only plot)
+
+This is needed so that users can without much boilerplate create the necessary structures and access them accordingly.
+
+A normal plotting command creates a FigureAxisPlot, which can be splatted into figure, axis and plot. It displays like a figure, so that simple plots show up immediately.
+
+A non-mutating plotting command that references a Figureposition or a FigureSubposition creates an axis at that position and returns an AxisPlot, which can be splatted into axis and plot.
+
+All mutating plotting commands return AbstractPlots.
+They can either reference a Figureposition or a FigureSubposition, in which case it is looked up
+if an axis is placed at that position (if not it errors) or it can reference an axis directly to plot into.
+=#
+
+
 struct Figure
 	scene::Scene
 	layout::GridLayoutBase.GridLayout
