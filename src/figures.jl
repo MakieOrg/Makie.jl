@@ -44,7 +44,6 @@ end
 Base.show(io::IO, fig::Figure) = print(io, "Figure ($(length(fig.content)) elements)")
 
 Base.display(fig::Figure) = display(fig.scene)
-Base.display(nt::NamedTuple{(:figure, :axis, :plot), <:Tuple{Figure, Any, Any}}) = display(nt.figure)
 
 
 struct FigureSubposition{T}
