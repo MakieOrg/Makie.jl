@@ -377,7 +377,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
         elseif to_value(color) isa AbstractPlotting.AbstractPattern
-            img = lift(x -> el32convert(AbstractPlotting.to_image(meshplot)), color)
+            img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
             gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
             haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
         elseif to_value(color) isa AbstractMatrix{<:Colorant}
