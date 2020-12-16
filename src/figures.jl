@@ -54,6 +54,8 @@ end
 
 export Figure
 
+# the Figureposition is used to plot into a specific part of a figure and create
+# an axis there, like `scatter(fig[1, 2], ...)`
 struct Figureposition
     fig::Figure
     gp::GridLayoutBase.GridPosition
@@ -68,11 +70,16 @@ function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inne
     push!(fig.content, obj)
 end
 
-Base.show(io::IO, fig::Figure) = print(io, "Figure ($(length(fig.content)) elements)")
+Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
+Base.lastindex(f::Figureposition, i) = lastindex(f.fig, i)
 
+# for now just redirect figure display/show to the internal scene
+Base.show(io::IO, fig::Figure) = show(io, fig.scene)
 Base.display(fig::Figure) = display(fig.scene)
 
-
+# a FigureSubposition is just a deeper nested position in a figure's layout, and it doesn't
+# necessarily have to refer to an existing layout either, because those can be created
+# when it becomes necessary
 struct FigureSubposition{T}
     parent::T
     rows
@@ -80,6 +87,10 @@ struct FigureSubposition{T}
     side::GridLayoutBase.Side
 end
 
+# fp[1, 2] creates a FigureSubposition, a nested version of FigurePosition
+# currently, because at the time of creation there is not necessarily a gridlayout
+# at all nested locations, the end+1 syntax doesn't work, because it's not known how many
+# rows/cols the nested grid has if it doesn't exist yet
 function Base.getindex(parent::Union{Figureposition,FigureSubposition},
         rows, cols, side = GridLayoutBase.Inner())
     FigureSubposition(parent, rows, cols, side)
@@ -95,6 +106,10 @@ function Base.setindex!(parent::Union{Figureposition,FigureSubposition}, obj,
 end
 
 
+# to power a simple syntax for plotting into nested grids like
+# `scatter(fig[1, 1][2, 3], ...)` we need to either find the only gridlayout that
+# sits at that position, or we create all the ones that are missing along the way
+# as a convenience, so that users don't have to manually create gridlayouts all that often
 function find_or_make_layout!(fp::Figureposition)
     c = contents(fp.gp, exact = true)
     layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
