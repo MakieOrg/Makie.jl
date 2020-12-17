@@ -33,7 +33,7 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     FigureAxisPlot(fig, ax, p)
 end
 
-function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
+function plot(P::PlotFunc, fp::FigurePosition, args...; axis = (;), kwargs...)
 
     @assert isempty(contents(fp.gp, exact = true))
 
@@ -52,7 +52,7 @@ function plot(P::PlotFunc, fp::Figureposition, args...; axis = (;), kwargs...)
     AxisPlot(ax, p)
 end
 
-function plot!(P::PlotFunc, fp::Figureposition, args...; kwargs...)
+function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
 
     c = contents(fp.gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
