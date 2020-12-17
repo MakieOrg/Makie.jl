@@ -1,10 +1,3 @@
-# struct LMenu <: LObject
-#     scene::Scene
-#     attributes::Attributes
-#     layoutobservables::GridLayoutBase.LayoutObservables
-#     decorations::Dict{Symbol, Any}
-# end
-
 function default_attributes(::Type{LMenu}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the menu."
