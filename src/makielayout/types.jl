@@ -40,7 +40,7 @@ mutable struct LineAxis
     parent::Scene
     protrusion::Node{Float32}
     attributes::Attributes
-    decorations::Dict{Symbol, Any}
+    elements::Dict{Symbol, Any}
     tickpositions::Node{Vector{Point2f0}}
     tickvalues::Node{Vector{Float32}}
     ticklabels::Node{Vector{String}}

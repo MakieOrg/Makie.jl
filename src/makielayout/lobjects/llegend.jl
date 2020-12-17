@@ -37,7 +37,7 @@ function LLegend(
         BBox($margin[1], width($scenearea) - $margin[2],
              $margin[3], height($scenearea) - $margin[4]))
 
-    frame = poly!(scene,
+    decorations[:frame] = poly!(scene,
         @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
         strokecolor = framecolor, raw = true)[end]
