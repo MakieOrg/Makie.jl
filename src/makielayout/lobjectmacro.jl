@@ -88,16 +88,16 @@ function Base.delete!(layoutable::Layoutable)
     GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(layoutable))
 
     on_delete(layoutable)
-    delete!(layoutable.parent, layoutable)
+    delete_from_parent!(layoutable.parent, layoutable)
 
     nothing
 end
 
 # do nothing for scene and nothing
-function Base.delete!(parent, layoutable::Layoutable)
+function delete_from_parent!(parent, layoutable::Layoutable)
 end
 
-function Base.delete!(figure::Figure, layoutable::Layoutable)
+function delete_from_parent!(figure::Figure, layoutable::Layoutable)
     filter!(x -> x !== layoutable, figure.content)
     nothing
 end
