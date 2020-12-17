@@ -82,8 +82,6 @@ struct KeysEvent
     keys::Set{AbstractPlotting.Keyboard.Button}
 end
 
-abstract type LObject end
-
 @Layoutable LAxis begin
     scene::Scene
     xaxislinks::Vector{LAxis}
