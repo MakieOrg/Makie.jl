@@ -17,10 +17,10 @@ This is needed so that users can without much boilerplate create the necessary s
 
 A normal plotting command creates a FigureAxisPlot, which can be splatted into figure, axis and plot. It displays like a figure, so that simple plots show up immediately.
 
-A non-mutating plotting command that references a Figureposition or a FigureSubposition creates an axis at that position and returns an AxisPlot, which can be splatted into axis and plot.
+A non-mutating plotting command that references a FigurePosition or a FigureSubposition creates an axis at that position and returns an AxisPlot, which can be splatted into axis and plot.
 
 All mutating plotting commands return AbstractPlots.
-They can either reference a Figureposition or a FigureSubposition, in which case it is looked up
+They can either reference a FigurePosition or a FigureSubposition, in which case it is looked up
 if an axis is placed at that position (if not it errors) or it can reference an axis directly to plot into.
 =#
 
@@ -54,15 +54,15 @@ end
 
 export Figure
 
-# the Figureposition is used to plot into a specific part of a figure and create
+# the FigurePosition is used to plot into a specific part of a figure and create
 # an axis there, like `scatter(fig[1, 2], ...)`
-struct Figureposition
+struct FigurePosition
     fig::Figure
     gp::GridLayoutBase.GridPosition
 end
 
 function Base.getindex(fig::Figure, rows, cols, side = GridLayoutBase.Inner())
-    Figureposition(fig, fig.layout[rows, cols, side])
+    FigurePosition(fig, fig.layout[rows, cols, side])
 end
 
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
@@ -74,7 +74,7 @@ function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inne
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
-Base.lastindex(f::Figureposition, i) = lastindex(f.fig, i)
+Base.lastindex(f::FigurePosition, i) = lastindex(f.fig, i)
 
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
@@ -94,12 +94,12 @@ end
 # currently, because at the time of creation there is not necessarily a gridlayout
 # at all nested locations, the end+1 syntax doesn't work, because it's not known how many
 # rows/cols the nested grid has if it doesn't exist yet
-function Base.getindex(parent::Union{Figureposition,FigureSubposition},
+function Base.getindex(parent::Union{FigurePosition,FigureSubposition},
         rows, cols, side = GridLayoutBase.Inner())
     FigureSubposition(parent, rows, cols, side)
 end
 
-function Base.setindex!(parent::Union{Figureposition,FigureSubposition}, obj,
+function Base.setindex!(parent::Union{FigurePosition,FigureSubposition}, obj,
     rows, cols, side = GridLayoutBase.Inner())
 
     layout = find_or_make_layout!(parent)
@@ -116,7 +116,7 @@ end
 # `scatter(fig[1, 1][2, 3], ...)` we need to either find the only gridlayout that
 # sits at that position, or we create all the ones that are missing along the way
 # as a convenience, so that users don't have to manually create gridlayouts all that often
-function find_or_make_layout!(fp::Figureposition)
+function find_or_make_layout!(fp::FigurePosition)
     c = contents(fp.gp, exact = true)
     layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
     if isempty(layouts)
@@ -148,5 +148,5 @@ end
 
 
 get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
-get_figure(fp::Figureposition) = fp.fig
+get_figure(fp::FigurePosition) = fp.fig
 
