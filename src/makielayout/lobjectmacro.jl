@@ -32,3 +32,103 @@ function get_topscene(s::Scene)
     end
     s
 end
+
+
+# almost like in AbstractPlotting
+# make fields type inferrable
+# just access attributes directly instead of via indexing detour
+
+@generated Base.hasfield(x::T, ::Val{key}) where {T<:Layoutable, key} = :($(key in fieldnames(T)))
+
+@inline function Base.getproperty(x::T, key::Symbol) where T <: Layoutable
+    if hasfield(x, Val(key))
+        getfield(x, key)
+    else
+        x.attributes[key]
+    end
+end
+
+@inline function Base.setproperty!(x::T, key::Symbol, value) where T <: Layoutable
+    if hasfield(x, Val(key))
+        setfield!(x, key, value)
+    else
+        x.attributes[key][] = value
+    end
+end
+
+# propertynames should list fields and attributes
+function Base.propertynames(layoutable::T) where T <: Layoutable
+    [fieldnames(T)..., keys(layoutable.attributes)...]
+end
+
+# treat all layoutables as scalars when broadcasting
+Base.Broadcast.broadcastable(l::Layoutable) = Ref(l)
+
+
+function Base.show(io::IO, ::T) where T <: Layoutable
+    print(io, "$T()")
+end
+
+
+
+function Base.delete!(layoutable::Layoutable)
+    for (key, d) in layoutable.elements
+        try
+            remove_element(d)
+        catch e
+            @info "Failed to remove element $key of $(typeof(layoutable))."
+            rethrow(e)
+        end
+    end
+
+    if hasfield(typeof(layoutable), :scene)
+        delete_scene!(layoutable.scene)
+    end
+
+    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(layoutable))
+
+    on_delete(layoutable)
+    delete!(layoutable.parent, layoutable)
+
+    nothing
+end
+
+# do nothing for scene and nothing
+function Base.delete!(parent, layoutable::Layoutable)
+end
+
+function Base.delete!(figure::Figure, layoutable::Layoutable)
+    filter!(x -> x !== layoutable, figure.content)
+    nothing
+end
+
+"""
+Overload to execute cleanup actions for specific layoutables that go beyond
+deleting elements and removing from gridlayout
+"""
+function on_delete(layoutable)
+end
+
+function remove_element(x)
+    delete!(x)
+end
+
+function remove_element(x::AbstractPlot)
+    delete!(x.parent, x)
+end
+
+function remove_element(xs::AbstractArray)
+    foreach(remove_element, xs)
+end
+
+function remove_element(::Nothing)
+end
+
+function delete_scene!(s::Scene)
+    for p in copy(s.plots)
+        delete!(s, p)
+    end
+    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
+    nothing
+end
+

@@ -314,42 +314,6 @@ function docvarstring(docdict, defaultdict)
     String(take!(buffer))
 end
 
-function Base.delete!(lobject::Union{LObject, LAxis})
-    for (_, d) in lobject.elements
-        remove_element(d)
-    end
-
-    if hasfield(typeof(lobject), :scene)
-        delete_scene!(lobject.scene)
-    end
-
-    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(lobject))
-    nothing
-end
-
-function remove_element(x::Union{LObject, LAxis, LineAxis})
-    delete!(x)
-end
-
-function remove_element(x::AbstractPlot)
-    delete!(x.parent, x)
-end
-
-function remove_element(xs::AbstractArray)
-    foreach(remove_element, xs)
-end
-
-function remove_element(::Nothing)
-end
-
-function delete_scene!(s::Scene)
-    for p in copy(s.plots)
-        delete!(s, p)
-    end
-    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
-    nothing
-end
-
 
 function subtheme(scene, key::Symbol)
     sub = haskey(theme(scene), key) ? theme(scene, key) : Attributes()

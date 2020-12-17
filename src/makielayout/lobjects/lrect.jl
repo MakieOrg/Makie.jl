@@ -28,17 +28,3 @@ function LRect(fig_or_scene; bbox = nothing, kwargs...)
 
     LRect(fig_or_scene, layoutobservables, attrs, elements)
 end
-
-
-function Base.delete!(lr::LRect)
-    GridLayoutBase.disconnect_layoutobservables!(lr.layoutobservables.gridcontent)
-    GridLayoutBase.remove_from_gridlayout!(lr.layoutobservables.gridcontent)
-    empty!(lr.layoutobservables.suggestedbbox.listeners)
-    empty!(lr.layoutobservables.computedbbox.listeners)
-    empty!(lr.layoutobservables.reportedsize.listeners)
-    empty!(lr.layoutobservables.autosize.listeners)
-    empty!(lr.layoutobservables.protrusions.listeners)
-
-    # remove the plot object from the scene
-    delete!(lr.topscene, lr.rect)
-end

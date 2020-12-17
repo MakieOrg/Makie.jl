@@ -67,7 +67,10 @@ end
 
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side] = obj
-    push!(fig.content, obj)
+    if !(obj in fig.content)
+        push!(fig.content, obj)
+    end
+    obj
 end
 
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
@@ -102,7 +105,10 @@ function Base.setindex!(parent::Union{Figureposition,FigureSubposition}, obj,
     layout = find_or_make_layout!(parent)
     figure = get_figure(parent)
     layout[rows, cols, side] = obj
-    push!(figure.content, obj)
+    if !(obj in figure.content)
+        push!(figure.content, obj)
+    end
+    obj
 end
 
 

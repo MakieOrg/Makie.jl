@@ -70,16 +70,3 @@ function LText(fig_or_scene; bbox = nothing, kwargs...)
     lt
 end
 
-
-function Base.delete!(lt::LText)
-    GridLayoutBase.disconnect_layoutobservables!(lt.layoutobservables.gridcontent)
-    GridLayoutBase.remove_from_gridlayout!(lt.layoutobservables.gridcontent)
-    empty!(lt.layoutobservables.suggestedbbox.listeners)
-    empty!(lt.layoutobservables.computedbbox.listeners)
-    empty!(lt.layoutobservables.reportedsize.listeners)
-    empty!(lt.layoutobservables.autosize.listeners)
-    empty!(lt.layoutobservables.protrusions.listeners)
-
-    # remove the plot object from the scene
-    delete!(lt.topscene, lt.elements[:text])
-end
