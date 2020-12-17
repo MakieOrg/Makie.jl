@@ -26,8 +26,7 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
         ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
 
-    fig.layout[1, 1] = ax
-    push!(fig.content, ax)
+    fig[1, 1] = ax
     p = plot!(ax, P, Attributes(kw_attributes), args...)
 
     FigureAxisPlot(fig, ax, p)
@@ -56,7 +55,7 @@ function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
 
     c = contents(fp.gp, exact = true)
     if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
-        error("There is not just one axis at $(fp.gp).")
+        error("There needs to be a single axis at $(fp.gp.span), $(fp.gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = only(c)
     plot!(P, ax, args...; kwargs...)
