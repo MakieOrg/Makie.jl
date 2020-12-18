@@ -748,7 +748,7 @@ LScene
 
 
 
-function default_attributes(::Type{LTextbox}, scene)
+function default_attributes(::Type{Textbox}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -819,11 +819,11 @@ function default_attributes(::Type{LTextbox}, scene)
 end
 
 @doc """
-    LTextbox(parent::Scene; bbox = nothing, kwargs...)
-LTextbox has the following attributes:
+    Textbox(parent::Scene; bbox = nothing, kwargs...)
+Textbox has the following attributes:
 $(let
-    _, docs, defaults = default_attributes(LTextbox, nothing)
+    _, docs, defaults = default_attributes(Textbox, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LTextbox
+Textbox

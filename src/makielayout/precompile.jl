@@ -9,7 +9,7 @@ function _precompile_()
     @assert precompile(LMenu, (Scene,))
     @assert precompile(LButton, (Scene,))
     @assert precompile(LSlider, (Scene,))
-    @assert precompile(LTextbox, (Scene,))
+    @assert precompile(Textbox, (Scene,))
 
     @assert precompile(layoutscene, ())  # doesn't fully precompile
     @assert precompile(get_ticklabels, (AbstractPlotting.Automatic, AbstractPlotting.Automatic, Vector{Float64}))

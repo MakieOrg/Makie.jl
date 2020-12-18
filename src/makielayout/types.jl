@@ -138,7 +138,7 @@ end
     scene::Scene
 end
 
-@Layoutable LTextbox begin
+@Layoutable Textbox begin
     cursorindex::Node{Int}
     cursoranimtask
 end
