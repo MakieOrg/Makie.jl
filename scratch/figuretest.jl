@@ -46,7 +46,7 @@ heatmap(fig[2, 1:2][1, 2], randn(30, 30), colormap = :grays)
 lines!(fig[2, 1:2][1, 2], cumsum(rand(30)), color = :red, linewidth = 10)
 ls = fig[1, 2] = LScene(fig, scenekw = (camera = cam3d!, raw = false, show_axis = true, clear = true))
 surface!(ls, collect(1.0:40), collect(1.0:40), (x, y) -> cos(x) * sin(y))
-fig[2, 1:2][2, :] = LColorbar(fig, vertical = false,
+fig[2, 1:2][2, :] = Colorbar(fig, vertical = false,
     height = 20, ticklabelalign = (:center, :top), flipaxisposition = false)
 fig[3, :] = Menu(fig, options = ["A", "B", "C"], direction = :up)
 lt = fig[0, :] = Label(fig, "Figure Demo")

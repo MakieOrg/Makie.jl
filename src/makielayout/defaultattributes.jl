@@ -219,7 +219,7 @@ end)
 """
 Axis
 
-function default_attributes(::Type{LColorbar}, scene)
+function default_attributes(::Type{Colorbar}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The color bar label string."
         label = ""
@@ -310,14 +310,14 @@ function default_attributes(::Type{LColorbar}, scene)
 end
 
 @doc """
-LColorbar has the following attributes:
+Colorbar has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LColorbar, nothing)
+    _, docs, defaults = default_attributes(Colorbar, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LColorbar
+Colorbar
 
 function default_attributes(::Type{Label}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin

@@ -94,7 +94,7 @@ end
     interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
 
-@Layoutable LColorbar
+@Layoutable Colorbar
 
 @Layoutable Label
 
