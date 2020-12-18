@@ -23,7 +23,7 @@ function LineAxis(parent::Scene; kwargs...)
             position = endpoints[1][1]
             return (position, extents, horizontal)
         else
-            error("Axis endpoints $(endpoints[1]) and $(endpoints[2]) are neither on a horizontal nor vertical line")
+            error("OldAxis endpoints $(endpoints[1]) and $(endpoints[2]) are neither on a horizontal nor vertical line")
         end
     end
 

@@ -269,7 +269,7 @@ end
 end
 
 
-@cell "Axis + Surface" begin
+@cell "OldAxis + Surface" begin
     vx = -1:0.01:1
     vy = -1:0.01:1
 
@@ -279,7 +279,7 @@ end
     surface!(scene, vx, vy, f, axis=(frame = (linewidth = 2.0,),))
     psurf = scene[end] # the surface we last plotted to scene
     # One can also directly get the axis object and manipulate it
-    axis = scene[Axis] # get axis
+    axis = scene[OldAxis] # get axis
 
     # You can access nested attributes likes this:
     axis[:names, :axisnames] = ("\\bf{ℜ}[u]", "\\bf{𝕴}[u]", " OK\n\\bf{δ}\n γ")
@@ -543,7 +543,7 @@ end
         algorithm=:mip  # maximum-intensity-projection
     )
 
-    scene[Axis].names.textcolor = :gray # let axis labels be seen on dark background
+    scene[OldAxis].names.textcolor = :gray # let axis labels be seen on dark background
 
     scene # show scene
 end

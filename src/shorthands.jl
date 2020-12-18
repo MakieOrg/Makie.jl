@@ -5,9 +5,9 @@ Set the x-axis label for the given Scene.
 Defaults to using the current Scene.
 """
 function xlabel!(scene, xlabel::AbstractString)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
-    scene[Axis][:names][:axisnames][] = (xlabel, scene[Axis][:names][:axisnames][][2:end]...)
+    scene[OldAxis][:names][:axisnames][] = (xlabel, scene[OldAxis][:names][:axisnames][][2:end]...)
     nothing
 end
 xlabel!(xlabel::AbstractString) = xlabel!(current_scene(), xlabel)
@@ -19,12 +19,12 @@ Set the y-axis label for the given Scene.
 Defaults to using the current Scene.
 """
 function ylabel!(scene, ylabel::AbstractString)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     if axis isa Axis2D
-        scene[Axis][:names][:axisnames][] = (scene[Axis][:names][:axisnames][][1], ylabel)
+        scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], ylabel)
     elseif axis isa Axis3D
-        scene[Axis][:names][:axisnames][] = (scene[Axis][:names][:axisnames][][1], ylabel, scene[Axis][:names][:axisnames][][3])
+        scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], ylabel, scene[OldAxis][:names][:axisnames][][3])
     else
         @error("Unknown axis type $(typeof(axis)).")
     end
@@ -41,10 +41,10 @@ Defaults to using the current Scene.
     The Scene must have an Axis3D.  If not, then this function will error.
 """
 function zlabel!(scene, zlabel::AbstractString)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     @assert axis isa Axis3D "The scene does not have a z-axis"
-    scene[Axis][:names][:axisnames][] = (scene[Axis][:names][:axisnames][][1], scene[Axis][:names][:axisnames][][2], zlabel)
+    scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], scene[OldAxis][:names][:axisnames][][2], zlabel)
     return
 end
 zlabel!(zlabel::AbstractString) = zlabel!(current_scene(), zlabel)
@@ -139,7 +139,7 @@ zlims!(lims::Real...) = zlims!(current_scene(), lims)
 Returns the all the axis tick labels.
 """
 function ticklabels(scene)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     return axis.ticks.ranges_labels[][2]
 end
@@ -174,9 +174,9 @@ end
 Returns the tick ranges along all axes.
 """
 function tickranges(scene)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
-    scene[Axis].ticks.ranges_labels[][1]
+    scene[OldAxis].ticks.ranges_labels[][1]
 end
 
 """
@@ -210,7 +210,7 @@ Set the tick labels and ranges along all axes. The respective labels and ranges
 along each axis must be of the same length.
 """
 function ticks!(scene=current_scene(); tickranges=tickranges(scene), ticklabels=ticklabels(scene))
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     # Have to set `ranges_labels` first so that any changes in the length of these
     # is reflected there first.
@@ -266,7 +266,7 @@ end
 Returns the rotation of all tick labels.
 """
 function tickrotations(scene)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
     return axis.ticks.rotation[]
 end
@@ -301,9 +301,9 @@ end
 Set the rotation of all tick labels.
 """
 function tickrotations!(scene::Scene, angles)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
-    scene[Axis].ticks.rotation[] = angles
+    scene[OldAxis].ticks.rotation[] = angles
     return nothing
 end
 

@@ -292,7 +292,7 @@ Base.length(scene::Scene) = length(scene.plots)
 Base.lastindex(scene::Scene) = length(scene.plots)
 getindex(scene::Scene, idx::Integer) = scene.plots[idx]
 GeometryBasics.widths(scene::Scene) = widths(to_value(pixelarea(scene)))
-struct Axis end
+struct OldAxis end
 
 zero_origin(area) = IRect(0, 0, widths(area))
 
@@ -311,7 +311,7 @@ function campixel(scene::Scene)
     return child(scene, clear=false, camera=campixel!)
 end
 
-function getindex(scene::Scene, ::Type{Axis})
+function getindex(scene::Scene, ::Type{OldAxis})
     for plot in scene
         isaxis(plot) && return plot
     end

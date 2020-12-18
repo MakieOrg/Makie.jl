@@ -93,7 +93,7 @@ end
 """
     $(SIGNATURES)
 
-Plots a 3-dimensional Axis.
+Plots a 3-dimensional OldAxis.
 
 ## Attributes
 $(ATTRIBUTES)

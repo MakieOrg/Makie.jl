@@ -261,7 +261,7 @@ open(path, "w") do io
 end
 
 ########################################
-#       Axis attributes overview       #
+#       OldAxis attributes overview       #
 ########################################
 
 # automatically generate an overview of the axis attributes, using a source md file

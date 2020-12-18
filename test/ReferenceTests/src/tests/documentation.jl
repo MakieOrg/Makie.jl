@@ -1,11 +1,11 @@
 using GeometryBasics
-using AbstractPlotting: Axis
+using AbstractPlotting: OldAxis
 
-@cell "Axis theming" begin
+@cell "OldAxis theming" begin
     scene = Scene()
     points = decompose(Point2f0, Circle(Point2f0(10), 10f0), 9)
     lines!(scene, points, linewidth=8, color=:black)
-    axis = scene[Axis] # get axis
+    axis = scene[OldAxis] # get axis
     axis[:frame][:linewidth] = 5
     axis[:grid][:linewidth] = (1, 5)
     axis[:grid][:linecolor] = ((:red, 0.3), (:blue, 0.5))
