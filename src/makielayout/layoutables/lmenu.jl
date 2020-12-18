@@ -1,4 +1,4 @@
-function default_attributes(::Type{LMenu}, scene)
+function default_attributes(::Type{Menu}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the menu."
         height = Auto()
@@ -51,7 +51,7 @@ function default_attributes(::Type{LMenu}, scene)
 end
 
 @doc """
-    LMenu(parent::Scene; bbox = nothing, kwargs...)
+    Menu(parent::Scene; bbox = nothing, kwargs...)
 
 Create a drop-down menu with multiple selectable options. You can pass options
 with the keyword argument `options`. Options are given as an iterable of elements.
@@ -71,7 +71,7 @@ direction to `direction = :up`.
 Menu with string entries:
 
 ```julia
-menu1 = LMenu(scene, options = ["first", "second", "third"])
+menu1 = Menu(scene, options = ["first", "second", "third"])
 ```
 
 Menu with two-element entries, label and function:
@@ -80,7 +80,7 @@ Menu with two-element entries, label and function:
 funcs = [sin, cos, tan]
 labels = ["Sine", "Cosine", "Tangens"]
 
-menu2 = LMenu(scene, options = zip(labels, funcs))
+menu2 = Menu(scene, options = zip(labels, funcs))
 ```
 
 Lifting on the selection value:
@@ -91,22 +91,22 @@ on(menu2.selection) do func
 end
 ```
 
-LMenu has the following attributes:
+Menu has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LMenu, nothing)
+    _, docs, defaults = default_attributes(Menu, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LMenu
+Menu
 
 
-function LMenu(fig_or_scene; bbox = nothing, kwargs...)
+function Menu(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LMenu, topscene).attributes
-    theme_attrs = subtheme(topscene, :LMenu)
+    default_attrs = default_attributes(Menu, topscene).attributes
+    theme_attrs = subtheme(topscene, :Menu)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
@@ -116,7 +116,7 @@ function LMenu(fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LMenu}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Menu}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 
@@ -331,7 +331,7 @@ function LMenu(fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LMenu(fig_or_scene, layoutobservables, attrs, decorations)
+    Menu(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
 

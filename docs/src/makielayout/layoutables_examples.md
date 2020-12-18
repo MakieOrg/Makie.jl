@@ -164,7 +164,7 @@ save("example_ltoggle.svg", scene); nothing # hide
 ![example ltoggle](example_ltoggle.svg)
 
 
-## LMenu
+## Menu
 
 A dropdown menu with `options`, where each element's label is determined with `optionlabel(element)`
 and the value with `optionvalue(element)`. The default behavior is to treat a 2-element tuple
@@ -179,11 +179,11 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-menu = LMenu(scene, options = ["viridis", "heat", "blues"])
+menu = Menu(scene, options = ["viridis", "heat", "blues"])
 
 funcs = [sqrt, x->x^2, sin, cos]
 
-menu2 = LMenu(scene, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
+menu2 = Menu(scene, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
 
 layout[1, 1] = vgrid!(
     Label(scene, "Colormap", width = nothing),

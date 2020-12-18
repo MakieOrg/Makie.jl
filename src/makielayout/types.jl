@@ -106,7 +106,7 @@ end
 
 @Layoutable LToggle
 
-@Layoutable LMenu
+@Layoutable Menu
 
 
 abstract type LegendElement end
