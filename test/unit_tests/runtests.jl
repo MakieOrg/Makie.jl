@@ -16,7 +16,7 @@
         sl = gl2[1, 2] = LSlider(scene)
 
         scat = scatter!(ax, rand(10))
-        le = gl2[1, 3] = LLegend(scene, [scat], ["scatter"])
+        le = gl2[1, 3] = Legend(scene, [scat], ["scatter"])
 
         to = gl2[1, 4] = LToggle(scene)
         te = layout[0, :] = Label(scene, "A super title")

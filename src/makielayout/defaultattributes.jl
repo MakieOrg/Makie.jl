@@ -591,7 +591,7 @@ end)
 LToggle
 
 
-function default_attributes(::Type{LLegend}, scene)
+function default_attributes(::Type{Legend}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the legend in its suggested bounding box."
         halign = :center
@@ -688,14 +688,14 @@ function default_attributes(::Type{LLegend}, scene)
 end
 
 @doc """
-LLegend has the following attributes:
+Legend has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LLegend, nothing)
+    _, docs, defaults = default_attributes(Legend, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LLegend
+Legend
 
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
