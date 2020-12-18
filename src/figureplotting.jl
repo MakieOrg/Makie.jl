@@ -32,6 +32,15 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     FigureAxisPlot(fig, ax, p)
 end
 
+# without scenelike, use current axis of current figure
+
+function plot!(P::PlotFunc, args...; kw_attributes...)
+    ax = current_axis(current_figure())
+    isnothing(ax) && error("There is no current axis to plot into.")
+    plot!(P, ax, args...; kw_attributes...)
+end
+
+
 function plot(P::PlotFunc, fp::FigurePosition, args...; axis = (;), kwargs...)
 
     @assert isempty(contents(fp.gp, exact = true))

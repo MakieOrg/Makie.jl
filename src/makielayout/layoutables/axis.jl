@@ -316,6 +316,12 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
         xaxislinks, yaxislinks, limits, block_limit_linking,
         mouseeventhandle, scrollevents, keysevents, interactions)
 
+    # register as current axis
+    # TODO: is this a good place for that? probably not
+    if fig_or_scene isa Figure
+        AbstractPlotting.current_axis!(fig_or_scene, la)
+    end
+
 
     function process_event(event)
         for (active, interaction) in values(la.interactions)

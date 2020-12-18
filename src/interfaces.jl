@@ -566,12 +566,6 @@ function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
     plot!(scene, P, attributes, args...)
 end
 
-# without scenelike, use current scene
-
-function plot!(P::PlotFunc, args...; kw_attributes...)
-    plot!(P, current_scene(), args...; kw_attributes...)
-end
-
 # with positional attributes
 
 function plot!(P::PlotFunc, scene::SceneLike, attrs::Attributes, args...; kw_attributes...)
