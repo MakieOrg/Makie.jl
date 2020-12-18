@@ -1,7 +1,7 @@
 # overloadable for other types that might want to offer similar interactions
 function interactions end
 
-interactions(ax::LAxis) = ax.interactions
+interactions(ax::Axis) = ax.interactions
 
 """
     register_interaction!(parent, name::Symbol, interaction)
@@ -100,7 +100,7 @@ end
 
 
 ############################################################################
-#                            LAxis interactions                            #
+#                            Axis interactions                            #
 ############################################################################
 
 function _chosen_limits(rz, ax)
@@ -137,7 +137,7 @@ function _selection_vertices(outer, inner)
     vertices = [obl, obr, otr, otl, ibl, ibr, itr, itl]
 end
 
-function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
+function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftdragstart
         r.from = event.prev_data
@@ -180,7 +180,7 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::LAxis)
     return nothing
 end
 
-function process_interaction(r::RectangleZoom, event::KeysEvent, ax::LAxis)
+function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     r.restrict_y = Keyboard.x in event.keys
     r.restrict_x = Keyboard.y in event.keys
     r.active || return
@@ -198,7 +198,7 @@ function positivize(r::FRect2D)
 end
 
 
-function process_interaction(l::LimitReset, event::MouseEvent, ax::LAxis)
+function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
@@ -210,7 +210,7 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax::LAxis)
 end
 
 
-function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::LAxis)
+function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     # use vertical zoom
     zoom = event.y
 

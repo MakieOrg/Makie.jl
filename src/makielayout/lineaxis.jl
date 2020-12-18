@@ -318,7 +318,7 @@ end
 """
     get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax)
 
-Calls the default tick finding algorithm, which could depend on the current LAxis
+Calls the default tick finding algorithm, which could depend on the current Axis
 state.
 """
 get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax) = get_tickvalues(LinearTicks(5), vmin, vmax)

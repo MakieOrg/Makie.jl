@@ -82,10 +82,10 @@ struct KeysEvent
     keys::Set{AbstractPlotting.Keyboard.Button}
 end
 
-@Layoutable LAxis begin
+@Layoutable Axis begin
     scene::Scene
-    xaxislinks::Vector{LAxis}
-    yaxislinks::Vector{LAxis}
+    xaxislinks::Vector{Axis}
+    yaxislinks::Vector{Axis}
     limits::Node{FRect2D}
     block_limit_linking::Node{Bool}
     mouseeventhandle::MouseEventHandle

@@ -11,7 +11,7 @@ function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
 end
 
 
-function default_attributes(::Type{LAxis}, scene)
+function default_attributes(::Type{Axis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The xlabel string."
         xlabel = ""
@@ -210,14 +210,14 @@ function default_attributes(::Type{LAxis}, scene)
 end
 
 @doc """
-LAxis has the following attributes:
+Axis has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LAxis, nothing)
+    _, docs, defaults = default_attributes(Axis, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LAxis
+Axis
 
 function default_attributes(::Type{LColorbar}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin

@@ -6,7 +6,7 @@ CairoMakie.activate!()
 ## Theming
 
 Every layoutable object can be themed by adding attributes under a key with
-the same name as the layoutable (LAxis, LColorbar, etc.).
+the same name as the layoutable (Axis, LColorbar, etc.).
 
 Also, you can set default column and row gaps, as well as the font family and size
 used by almost all layoutables by default:
@@ -20,20 +20,20 @@ set_theme!(
 )
 ```
 
-Here is an example of theming `LAxis` and `LColorbar`:
+Here is an example of theming `Axis` and `LColorbar`:
 
 ```@example
 using CairoMakie
 
 set_theme!(
-    LAxis = (topspinevisible = false, rightspinevisible = false,
+    Axis = (topspinevisible = false, rightspinevisible = false,
         xgridcolor = :blue, ygridcolor = :red),
     LColorbar = (width = 20, height = Relative(0.5))
 )
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 cb = layout[1, 2] = LColorbar(scene)
 
 set_theme!(Theme()) # hide

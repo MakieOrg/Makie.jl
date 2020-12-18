@@ -10,7 +10,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.5:10
 ys = sin.(xs)
@@ -36,7 +36,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.1:10
 lins = [lines!(ax, xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:1]
@@ -68,7 +68,7 @@ valigns = [:top, :bottom, :center]
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.1:10
 lins = [lines!(ax, xs, sin.(xs .* i), color = color)
@@ -115,7 +115,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 
 elem_1 = [LineElement(color = :red, linestyle = nothing),
@@ -161,7 +161,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.5:10
 ys = sin.(xs)
@@ -196,7 +196,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 markersizes = [5, 10, 15, 20]
 colors = [:red, :green, :blue, :orange]

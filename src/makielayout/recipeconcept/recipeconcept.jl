@@ -9,7 +9,7 @@ function defaultaxis(T::Type, args...)
     error("No default axis type defined for plot type $T.")
 end
 
-defaultaxis(T::Type{Lines}, args...) = LAxis
+defaultaxis(T::Type{Lines}, args...) = Axis
 
 struct CreatesLayout end
 struct CreatesNoLayout end
@@ -59,7 +59,7 @@ end
 Recipes that don't create a layout, mutating into axis.
 Returns created plot object.
 """
-function myplot!(::CreatesNoLayout, T::Type, ax::LAxis, args...; kwargs...)
+function myplot!(::CreatesNoLayout, T::Type, ax::Axis, args...; kwargs...)
     plotobj = plot!(ax, T, args...)
     plotobj
 end
@@ -104,9 +104,9 @@ function create_axes_and_layout(scene, type::T, args...) where T
 end
 
 function create_axes_and_layout(scene, ::MarginDensityScatter, args...; xlabel = " ", ylabel = " ")
-    mainax = LAxis(scene, xlabel = xlabel, ylabel = ylabel)
-    topax = LAxis(scene; xlabelvisible = false, xticklabelsvisible = false, xticksvisible = false)
-    rightax = LAxis(scene; ylabelvisible = false, yticklabelsvisible = false, yticksvisible = false)
+    mainax = Axis(scene, xlabel = xlabel, ylabel = ylabel)
+    topax = Axis(scene; xlabelvisible = false, xticklabelsvisible = false, xticksvisible = false)
+    rightax = Axis(scene; ylabelvisible = false, yticklabelsvisible = false, yticksvisible = false)
 
     linkxaxes!(mainax, topax)
     linkyaxes!(mainax, rightax)

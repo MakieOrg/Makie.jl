@@ -41,7 +41,7 @@
 ## Improvements & Implementation Changes
 
 - Selection rectangle dims outer area via transparent mesh
-- Heatmap, image, contourf and plots implementing special trait automatically cause tight limits for LAxis
+- Heatmap, image, contourf and plots implementing special trait automatically cause tight limits for Axis
 
 # 0.13.5
 
@@ -64,9 +64,9 @@
 
 ## New features
 
-- Added interactions model to LAxis. Interactions can be added with `register_interaction!` and removed with `deregister_interaction!`, as well as activated or deactivated temporarily with `activate_interaction!` and `deactivate_interaction!`.
+- Added interactions model to Axis. Interactions can be added with `register_interaction!` and removed with `deregister_interaction!`, as well as activated or deactivated temporarily with `activate_interaction!` and `deactivate_interaction!`.
 - Added `labelslidergrid!`, a function to create an internally aligned grid of sliders with labels and value-labels.
-- LAxis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
+- Axis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
 
 ## Improvements & Implementation Changes
 

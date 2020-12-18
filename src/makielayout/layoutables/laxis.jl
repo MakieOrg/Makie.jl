@@ -1,16 +1,16 @@
 """
-    LAxis(fig_or_scene; bbox = nothing, kwargs...)
+    Axis(fig_or_scene; bbox = nothing, kwargs...)
 
-Creates an `LAxis` object in the parent `fig_or_scene` which consists of a child scene
+Creates an `Axis` object in the parent `fig_or_scene` which consists of a child scene
 with orthographic projection for 2D plots and axis decorations that live in the
 parent.
 """
-function LAxis(fig_or_scene; bbox = nothing, kwargs...)
+function Axis(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LAxis, topscene).attributes
-    theme_attrs = subtheme(topscene, :LAxis)
+    default_attrs = default_attributes(Axis, topscene).attributes
+    theme_attrs = subtheme(topscene, :Axis)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -39,7 +39,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0,0,0,0))
-    layoutobservables = LayoutObservables{LAxis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
+    layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
     limits = Node(FRect(0, 0, 100, 100))
@@ -54,8 +54,8 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
     block_limit_linking = Node(false)
 
-    xaxislinks = LAxis[]
-    yaxislinks = LAxis[]
+    xaxislinks = Axis[]
+    yaxislinks = Axis[]
 
     campixel!(scene)
 
@@ -312,7 +312,7 @@ function LAxis(fig_or_scene; bbox = nothing, kwargs...)
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    la = LAxis(fig_or_scene, layoutobservables, attrs, decorations, scene,
+    la = Axis(fig_or_scene, layoutobservables, attrs, decorations, scene,
         xaxislinks, yaxislinks, limits, block_limit_linking,
         mouseeventhandle, scrollevents, keysevents, interactions)
 
@@ -354,7 +354,7 @@ end
 
 
 function AbstractPlotting.plot!(
-        la::LAxis, P::AbstractPlotting.PlotFunc,
+        la::Axis, P::AbstractPlotting.PlotFunc,
         attributes::AbstractPlotting.Attributes, args...;
         kw_attributes...)
 
@@ -368,7 +368,7 @@ function AbstractPlotting.plot!(
     plot
 end
 
-function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ax::LAxis, args...; kw_attributes...)
+function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ax::Axis, args...; kw_attributes...)
     attributes = AbstractPlotting.Attributes(kw_attributes)
     AbstractPlotting.plot!(ax, P, attributes, args...)
 end
@@ -414,7 +414,7 @@ function expandlimits(lims, marginleft, marginright)
     lims
 end
 
-function getlimits(la::LAxis, dim)
+function getlimits(la::Axis, dim)
 
     plots_with_autolimits = if dim == 1
         filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
@@ -442,8 +442,8 @@ function getlimits(la::LAxis, dim)
     templim
 end
 
-getxlimits(la::LAxis) = getlimits(la, 1)
-getylimits(la::LAxis) = getlimits(la, 2)
+getxlimits(la::Axis) = getlimits(la, 1)
+getylimits(la::Axis) = getlimits(la, 2)
 
 function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
 
@@ -492,13 +492,13 @@ function update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlim
 end
 
 """
-    autolimits!(la::LAxis)
+    autolimits!(la::Axis)
 
 Set the target limits of `la` to an automatically determined rectangle, that depends
 on the data limits of all plot objects in the axis, as well as the autolimit margins
 for x and y axis.
 """
-function autolimits!(la::LAxis)
+function autolimits!(la::Axis)
 
     xlims = getxlimits(la)
     for link in la.xaxislinks
@@ -545,11 +545,11 @@ function autolimits!(la::LAxis)
 end
 
 """
-    linkaxes!(a::LAxis, others...)
+    linkaxes!(a::Axis, others...)
 
-Link both x and y axes of all given `LAxis` so that they stay synchronized.
+Link both x and y axes of all given `Axis` so that they stay synchronized.
 """
-function linkaxes!(a::LAxis, others...)
+function linkaxes!(a::Axis, others...)
     linkxaxes!(a, others...)
     linkyaxes!(a, others...)
 end
@@ -604,12 +604,12 @@ function adjustlimits!(la)
 end
 
 """
-    linkxaxes!(a::LAxis, others...)
+    linkxaxes!(a::Axis, others...)
 
-Link the x axes of all given `LAxis` so that they stay synchronized.
+Link the x axes of all given `Axis` so that they stay synchronized.
 """
-function linkxaxes!(a::LAxis, others...)
-    axes = LAxis[a; others...]
+function linkxaxes!(a::Axis, others...)
+    axes = Axis[a; others...]
 
     for i in 1:length(axes)-1
         for j in i+1:length(axes)
@@ -629,12 +629,12 @@ function linkxaxes!(a::LAxis, others...)
 end
 
 """
-    linkyaxes!(a::LAxis, others...)
+    linkyaxes!(a::Axis, others...)
 
-Link the y axes of all given `LAxis` so that they stay synchronized.
+Link the y axes of all given `Axis` so that they stay synchronized.
 """
-function linkyaxes!(a::LAxis, others...)
-    axes = LAxis[a; others...]
+function linkyaxes!(a::Axis, others...)
+    axes = Axis[a; others...]
 
     for i in 1:length(axes)-1
         for j in i+1:length(axes)
@@ -660,7 +660,7 @@ value. If that value is AbstractPlotting.automatic, the reset will trigger new
 protrusions for the axis and the layout will adjust. This is so the layout doesn't
 immediately readjust during interaction, which would let the whole layout jitter around.
 """
-function timed_ticklabelspace_reset(ax::LAxis, reset_timer::Ref,
+function timed_ticklabelspace_reset(ax::Axis, reset_timer::Ref,
         prev_xticklabelspace::Ref, prev_yticklabelspace::Ref, threshold_sec::Real)
 
     if !isnothing(reset_timer[])
@@ -682,7 +682,7 @@ function timed_ticklabelspace_reset(ax::LAxis, reset_timer::Ref,
 
 end
 
-function add_reset_limits!(la::LAxis)
+function add_reset_limits!(la::Axis)
     scene = la.scene
     e = events(scene)
     cam = camera(scene)
@@ -697,11 +697,11 @@ function add_reset_limits!(la::LAxis)
 end
 
 """
-    hidexdecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+    hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
 
 Hide decorations of the x-axis: label, ticklabels, ticks and grid.
 """
-function hidexdecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
     if label
         la.xlabelvisible = false
     end
@@ -717,11 +717,11 @@ function hidexdecorations!(la::LAxis; label = true, ticklabels = true, ticks = t
 end
 
 """
-    hideydecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+    hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
 
 Hide decorations of the y-axis: label, ticklabels, ticks and grid.
 """
-function hideydecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
     if label
         la.ylabelvisible = false
     end
@@ -737,22 +737,22 @@ function hideydecorations!(la::LAxis; label = true, ticklabels = true, ticks = t
 end
 
 """
-    hidedecorations!(la::LAxis)
+    hidedecorations!(la::Axis)
 
 Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
 """
-function hidedecorations!(la::LAxis; label = true, ticklabels = true, ticks = true, grid = true)
+function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
     hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid)
     hideydecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid)
 end
 
 """
-    hidespines!(la::LAxis, spines::Symbol... = (:l, :r, :b, :t)...)
+    hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
 
 Hide all specified axis spines. Hides all spines by default, otherwise choose
 with the symbols :l, :r, :b and :t.
 """
-function hidespines!(la::LAxis, spines::Symbol... = (:l, :r, :b, :t)...)
+function hidespines!(la::Axis, spines::Symbol... = (:l, :r, :b, :t)...)
     for s in spines
         @match s begin
             :l => (la.leftspinevisible = false)
@@ -765,35 +765,35 @@ function hidespines!(la::LAxis, spines::Symbol... = (:l, :r, :b, :t)...)
 end
 
 
-function tight_yticklabel_spacing!(la::LAxis)
+function tight_yticklabel_spacing!(la::Axis)
     tight_ticklabel_spacing!(la.elements[:yaxis])
 end
 
-function tight_xticklabel_spacing!(la::LAxis)
+function tight_xticklabel_spacing!(la::Axis)
     tight_ticklabel_spacing!(la.elements[:xaxis])
 end
 
-function tight_ticklabel_spacing!(la::LAxis)
+function tight_ticklabel_spacing!(la::Axis)
     tight_xticklabel_spacing!(la)
     tight_yticklabel_spacing!(la)
 end
 
-function Base.show(io::IO, ::MIME"text/plain", ax::LAxis)
+function Base.show(io::IO, ::MIME"text/plain", ax::Axis)
     nplots = length(ax.scene.plots)
-    println(io, "LAxis with $nplots plots:")
+    println(io, "Axis with $nplots plots:")
 
     for (i, p) in enumerate(ax.scene.plots)
         println(io, (i == nplots ? " ┗━ " : " ┣━ ") * string(typeof(p)))
     end
 end
 
-function Base.show(io::IO, ax::LAxis)
+function Base.show(io::IO, ax::Axis)
     nplots = length(ax.scene.plots)
-    print(io, "LAxis ($nplots plots)")
+    print(io, "Axis ($nplots plots)")
 end
 
 
-function AbstractPlotting.xlims!(ax::LAxis, xlims)
+function AbstractPlotting.xlims!(ax::Axis, xlims)
     if xlims[1] == xlims[2]
         error("Can't set x limits to the same value $(xlims[1]).")
     elseif xlims[1] > xlims[2]
@@ -809,9 +809,9 @@ function AbstractPlotting.xlims!(ax::LAxis, xlims)
     nothing
 end
 
-AbstractPlotting.xlims!(ax::LAxis, x1, x2) = xlims!(ax, (x1, x2))
+AbstractPlotting.xlims!(ax::Axis, x1, x2) = xlims!(ax, (x1, x2))
 
-function AbstractPlotting.ylims!(ax::LAxis, ylims)
+function AbstractPlotting.ylims!(ax::Axis, ylims)
     if ylims[1] == ylims[2]
         error("Can't set y limits to the same value $(ylims[1]).")
     elseif ylims[1] > ylims[2]
@@ -827,37 +827,37 @@ function AbstractPlotting.ylims!(ax::LAxis, ylims)
     nothing
 end
 
-AbstractPlotting.ylims!(ax::LAxis, y1, y2) = ylims!(ax, (y1, y2))
+AbstractPlotting.ylims!(ax::Axis, y1, y2) = ylims!(ax, (y1, y2))
 
 """
-    limits!(ax::LAxis, xlims, ylims)
+    limits!(ax::Axis, xlims, ylims)
 
 Set the axis limits to `xlims` and `ylims`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
-function limits!(ax::LAxis, xlims, ylims)
+function limits!(ax::Axis, xlims, ylims)
     xlims!(ax, xlims)
     ylims!(ax, ylims)
 end
 
 """
-    limits!(ax::LAxis, x1, x2, y1, y2)
+    limits!(ax::Axis, x1, x2, y1, y2)
 
 Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
-function limits!(ax::LAxis, x1, x2, y1, y2)
+function limits!(ax::Axis, x1, x2, y1, y2)
     xlims!(ax, x1, x2)
     ylims!(ax, y1, y2)
 end
 
 """
-    limits!(ax::LAxis, rect::Rect2D)
+    limits!(ax::Axis, rect::Rect2D)
 
 Set the axis limits to `rect`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
-function limits!(ax::LAxis, rect::Rect2D)
+function limits!(ax::Axis, rect::Rect2D)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
     xlims!(ax, xmin, xmax)

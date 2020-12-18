@@ -3,14 +3,14 @@ using Observables
 
 function cleanaxes()
     scene, layout = layoutscene()
-    ax = layout[1, 1] = LAxis(scene)
+    ax = layout[1, 1] = Axis(scene)
     axbox = pixelarea(ax.scene)[]
     lim = ax.limits[]
     e = events(ax.scene)
     return ax, axbox, lim, e
 end
 
-@testset "zoom LAxis" begin
+@testset "zoom Axis" begin
     ax, axbox, lim, e = cleanaxes()
     # Put the mouse in the center
     e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
@@ -77,7 +77,7 @@ end
 
     # Rubber band selection
     scene, layout = layoutscene()
-    ax = layout[1, 1] = LAxis(scene)
+    ax = layout[1, 1] = Axis(scene)
     plot!(ax, [10, 15, 20])
     axbox = pixelarea(ax.scene)[]
     lim = ax.limits[]
@@ -107,7 +107,7 @@ end
     @test all(lim.origin .>= newlim.origin) && all(lim.origin+lim.widths .<= newlim.origin+newlim.widths)
 end
 
-@testset "pan LAxis" begin
+@testset "pan Axis" begin
     ax, axbox, lim, e = cleanaxes()
     e.mouseposition[] = Tuple(axbox.origin + axbox.widths/2)
     e.scroll[] = (0.0, -1.0)
