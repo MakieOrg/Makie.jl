@@ -31,7 +31,7 @@ end
     end
     x = [x..., scatter!(range(1, stop=5, length=100), RNG.rand(100), RNG.rand(100))[end]]
     center!(scene)
-    ls = AbstractPlotting.legend(x, ["attribute $i" for i in 1:4], camera=campixel!, raw=true)
+    ls = AbstractPlotting.oldlegend(x, ["attribute $i" for i in 1:4], camera=campixel!, raw=true)
     l = ls[end]
     l[:strokecolor] = RGBAf0(0.8, 0.8, 0.8)
     l[:gap] = 15

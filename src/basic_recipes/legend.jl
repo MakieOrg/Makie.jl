@@ -1,5 +1,5 @@
 """
-    `legend(plots, labels; kwargs...)`
+    `oldlegend(plots, labels; kwargs...)`
 
 Plots a legend for the given plots with the given labels.
 `plots` may be a single Plot or a list of Plots.
