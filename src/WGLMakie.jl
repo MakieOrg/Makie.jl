@@ -25,28 +25,8 @@ struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: AbstractPlotting.AbstractBackend end
 
 const THREE = JSServe.Dependency(:THREE,
-                                 ["https://cdn.jsdelivr.net/gh/mrdoob/three.js/build/three.js"])
+                                 ["https://unpkg.com/three@0.123.0/build/three.min.js"])
 const WGL = JSServe.Dependency(:WGLMakie, [joinpath(@__DIR__, "wglmakie.js")])
-
-struct ThreeDisplay <: AbstractPlotting.AbstractScreen
-    context::JSObject
-end
-JSServe.session(td::ThreeDisplay) = JSServe.session(td.context)
-
-function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    js_scene = serialize_three(scene, plot)
-    td.context.add_plot(js_scene)
-    return
-end
-
-"""
-    get_plot(td::ThreeDisplay, plot::AbstractPlot)
-
-Gets the ThreeJS object representing the plot object.
-"""
-function get_plot(td::ThreeDisplay, plot::AbstractPlot)
-    return td.context.get_plot(string(objectid(plot)))
-end
 
 include("serialization.jl")
 include("events.jl")
@@ -55,6 +35,7 @@ include("particles.jl")
 include("lines.jl")
 include("meshes.jl")
 include("imagelike.jl")
+include("three_plot.jl")
 include("display.jl")
 
 function activate!()

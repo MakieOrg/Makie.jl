@@ -104,7 +104,6 @@ const WGLMakie = function (){
         addMouseHandler(domElement, drag, zoomIn, zoomOut);
     }
 
-
     const cached_textures = {}
 
     function _create_texture(data) {
