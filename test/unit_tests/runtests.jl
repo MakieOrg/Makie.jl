@@ -21,7 +21,7 @@
         to = gl2[1, 4] = LToggle(scene)
         te = layout[0, :] = Label(scene, "A super title")
         me = layout[end + 1, :] = LMenu(scene, options=["one", "two", "three"])
-        tb = layout[end + 1, :] = LTextbox(scene)
+        tb = layout[end + 1, :] = Textbox(scene)
         @test true
     end
 

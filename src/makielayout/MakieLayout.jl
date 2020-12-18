@@ -75,7 +75,7 @@ export LLegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export LMenu
-export LTextbox
+export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!

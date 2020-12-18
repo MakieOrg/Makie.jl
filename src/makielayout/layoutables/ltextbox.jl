@@ -1,10 +1,10 @@
-function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
+function Textbox(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
     attrs = merge!(
         Attributes(kwargs),
-        default_attributes(LTextbox, topscene).attributes)
+        default_attributes(Textbox, topscene).attributes)
 
     @extract attrs (halign, valign, textsize, stored_string, placeholder,
         textcolor, textcolor_placeholder, displayed_string,
@@ -16,7 +16,7 @@ function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LTextbox}(attrs.width, attrs.height,
+    layoutobservables = LayoutObservables{Textbox}(attrs.width, attrs.height,
         attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
@@ -27,7 +27,7 @@ function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
     scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     cursorindex = Node(0)
-    ltextbox = LTextbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
+    ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
 
 
 
@@ -297,10 +297,10 @@ function is_allowed(char, restriction::Function)
 end
 
 """
-    reset!(tb::LTextbox)
-Resets the stored_string of the given `LTextbox` to `nothing` without triggering listeners, and resets the `LTextbox` to the `placeholder` text.
+    reset!(tb::Textbox)
+Resets the stored_string of the given `Textbox` to `nothing` without triggering listeners, and resets the `Textbox` to the `placeholder` text.
 """
-function reset!(tb::LTextbox)
+function reset!(tb::Textbox)
     tb.stored_string.val = nothing
     tb.displayed_string = tb.placeholder[]
     defocus!(tb)
@@ -308,10 +308,10 @@ function reset!(tb::LTextbox)
 end
 
 """
-    set!(tb::LTextbox, string::String)
-Sets the stored_string of the given `LTextbox` to `string`, triggering listeners of `tb.stored_string`.
+    set!(tb::Textbox, string::String)
+Sets the stored_string of the given `Textbox` to `string`, triggering listeners of `tb.stored_string`.
 """
-function set!(tb::LTextbox, string::String)
+function set!(tb::Textbox, string::String)
     if !validate_textbox(string, tb.validator[])
         error("Invalid string \"$(string)\" for textbox.")
     end
@@ -322,10 +322,10 @@ function set!(tb::LTextbox, string::String)
 end
 
 """
-    focus!(tb::LTextbox)
-Focuses an `LTextbox` and makes it ready to receive keyboard input.
+    focus!(tb::Textbox)
+Focuses an `Textbox` and makes it ready to receive keyboard input.
 """
-function focus!(tb::LTextbox)
+function focus!(tb::Textbox)
     if !tb.focused[]
         tb.focused = true
 
@@ -349,10 +349,10 @@ function focus!(tb::LTextbox)
 end
 
 """
-    defocus!(tb::LTextbox)
-Defocuses an `LTextbox` so it doesn't receive keyboard input.
+    defocus!(tb::Textbox)
+Defocuses an `Textbox` so it doesn't receive keyboard input.
 """
-function defocus!(tb::LTextbox)
+function defocus!(tb::Textbox)
 
     if tb.displayed_string[] in (" ", "")
         tb.displayed_string[] = tb.placeholder[]
