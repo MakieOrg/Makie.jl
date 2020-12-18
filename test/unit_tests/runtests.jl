@@ -27,10 +27,10 @@
 
     @testset "basic functionality" begin
         scene = scatter(rand(4))
-        @test scene[Axis].ticks.title_gap[] == 3
-        scene[Axis].ticks.title_gap = 4
-        @test scene[Axis].ticks.title_gap[] == 4
-        @test scene[Axis].tickmarks.length[] == (1, 1)
+        @test scene[OldAxis].ticks.title_gap[] == 3
+        scene[OldAxis].ticks.title_gap = 4
+        @test scene[OldAxis].ticks.title_gap[] == 4
+        @test scene[OldAxis].tickmarks.length[] == (1, 1)
 
         scene = scatter([22.0, 28.0])
         AbstractPlotting.update_limits!(scene)

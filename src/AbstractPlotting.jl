@@ -124,7 +124,7 @@ export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, AbstractScreen
-export AbstractPlot, Combined, Atomic, Axis
+export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!

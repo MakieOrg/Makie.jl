@@ -787,7 +787,7 @@ function add_axis!(scene::Scene, attributes = Attributes())
         error("Unrecogniced `axis_type` attribute type: $(typeof(scene[:axis_type][])). Use automatic, axis2d! or axis3d!")
     end
 
-    if show_axis && scene[Axis] === nothing
+    if show_axis && scene[OldAxis] === nothing
         axis_attributes = Attributes()
         for key in (:axis, :axis2d, :axis3d)
             if haskey(scene, key) && !isempty(scene[key])

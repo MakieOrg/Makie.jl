@@ -17,7 +17,7 @@
     update!(scene2d)
     scene = scatter(1:10, 1:10, 1:10);
     update!(scene)
-    axis = scene[Axis]
+    axis = scene[OldAxis]
 
     @testset "tick labels" begin
 
