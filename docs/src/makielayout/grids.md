@@ -61,7 +61,7 @@ The `Auto` size is a bit more complex to understand. It has two parameters, the 
 A column or row that is sized `Auto(true)` tries to fit its own size to its content.
 
 When a `GridLayout` is solved, it looks at the content in each row or column and checks if it reports a fixed size.
-Many objects can report their own width or height because their content has a specific size, such as `LText`.
+Many objects can report their own width or height because their content has a specific size, such as `Label`.
 Other objects are often used with a user-set width or height, for example `LColorbar(scene, width = 30)`.
 In this case, the `GridLayout` can also see that the colorbar has a width of 30 units and fit the column width to that value.
 Objects like `Axis` on the other hand are usually not set to a specific size.
@@ -228,11 +228,11 @@ for i in 1:3
     layout[end+1, :] = Axis(scene)
 end
 
-layout[0, :] = LText(scene, text="Super Title", textsize=50)
-layout[end+1, :] = LText(scene, text="Sub Title", textsize=50)
-layout[2:end-1, 0] = LText(scene, text="Left Text", textsize=50,
+layout[0, :] = Label(scene, text="Super Title", textsize=50)
+layout[end+1, :] = Label(scene, text="Sub Title", textsize=50)
+layout[2:end-1, 0] = Label(scene, text="Left Text", textsize=50,
     rotation=pi/2)
-layout[2:end-1, end+1] = LText(scene, text="Right Text", textsize=50,
+layout[2:end-1, end+1] = Label(scene, text="Right Text", textsize=50,
     rotation=-pi/2)
 
 save("example_indexing_outside_grid.svg", scene); nothing # hide

@@ -49,7 +49,7 @@ surface!(ls, collect(1.0:40), collect(1.0:40), (x, y) -> cos(x) * sin(y))
 fig[2, 1:2][2, :] = LColorbar(fig, vertical = false,
     height = 20, ticklabelalign = (:center, :top), flipaxisposition = false)
 fig[3, :] = LMenu(fig, options = ["A", "B", "C"], direction = :up)
-lt = fig[0, :] = LText(fig, "Figure Demo")
+lt = fig[0, :] = Label(fig, "Figure Demo")
 fig[5, :] = LTextbox(fig)
 fig
 

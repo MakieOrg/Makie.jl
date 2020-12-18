@@ -66,8 +66,8 @@ function LLegend(
     end
 
     # these arrays store all the plot objects that the legend entries need
-    titletexts = Optional{LText}[]
-    entrytexts = [LText[]]
+    titletexts = Optional{Label}[]
+    entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
     entryrects = [LRect[]]
 
@@ -205,7 +205,7 @@ function LLegend(
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, LText(scene, text = title, font = titlefont,
+                push!(titletexts, Label(scene, text = title, font = titlefont,
                     textsize = titlesize, halign = titlehalign, valign = titlevalign))
             end
 
@@ -217,7 +217,7 @@ function LLegend(
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                push!(etexts, LText(scene,
+                push!(etexts, Label(scene,
                     text = e.label, textsize = e.labelsize, font = e.labelfont,
                     color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
                     ))

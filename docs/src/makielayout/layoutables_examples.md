@@ -5,7 +5,7 @@ CairoMakie.activate!()
 
 ## LSlider
 
-A simple slider without a label. You can create a label using an `LText` object,
+A simple slider without a label. You can create a label using an `Label` object,
 for example. You need to specify a range that constrains the slider's possible values.
 You can then lift the `value` observable to make interactive plots.
 
@@ -58,7 +58,7 @@ Don't manipulate the `value` attribute directly, as there is no guarantee that
 this value exists in the range underlying the slider, and the slider's displayed value would
 not change anyway by changing the slider's output.
 
-## LText
+## Label
 
 This is just normal text, except it's also layoutable. A text's size is known,
 so rows and columns in a GridLayout can shrink to the appropriate width or height.
@@ -70,9 +70,9 @@ scene, layout = layoutscene(resolution = (1200, 900))
 
 axs = layout[1:2, 1:3] = [Axis(scene) for _ in 1:6]
 
-supertitle = layout[0, :] = LText(scene, "Six plots", textsize = 30)
+supertitle = layout[0, :] = Label(scene, "Six plots", textsize = 30)
 
-sideinfo = layout[2:3, 0] = LText(scene, "This text goes vertically", rotation = pi/2)
+sideinfo = layout[2:3, 0] = Label(scene, "This text goes vertically", rotation = pi/2)
 
 save("example_ltext.svg", scene); nothing # hide
 ```
@@ -153,7 +153,7 @@ scene, layout = layoutscene(resolution = (1200, 900))
 ax = layout[1, 1] = Axis(scene)
 
 toggles = [LToggle(scene, active = ac) for ac in [true, false]]
-labels = [LText(scene, lift(x -> x ? "active" : "inactive", t.active))
+labels = [Label(scene, lift(x -> x ? "active" : "inactive", t.active))
     for t in toggles]
 
 layout[1, 2] = grid!(hcat(toggles, labels), tellheight = false)
@@ -186,9 +186,9 @@ funcs = [sqrt, x->x^2, sin, cos]
 menu2 = LMenu(scene, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
 
 layout[1, 1] = vgrid!(
-    LText(scene, "Colormap", width = nothing),
+    Label(scene, "Colormap", width = nothing),
     menu,
-    LText(scene, "Function", width = nothing),
+    Label(scene, "Function", width = nothing),
     menu2;
     tellheight = false, width = 200)
 

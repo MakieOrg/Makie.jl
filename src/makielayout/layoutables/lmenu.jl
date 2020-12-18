@@ -153,14 +153,14 @@ function LMenu(fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    selectiontext = LText(scene, selected_text, tellwidth = false, halign = :left,
+    selectiontext = Label(scene, selected_text, tellwidth = false, halign = :left,
         padding = textpadding, textsize = textsize, color = textcolor)
 
 
     rects = Ref{Vector{LRect}}([])
-    texts = Ref{Vector{LText}}([])
+    texts = Ref{Vector{Label}}([])
     allrects = Ref{Vector{LRect}}([])
-    alltexts = Ref{Vector{LText}}([])
+    alltexts = Ref{Vector{Label}}([])
     mouseeventhandles = Ref{Vector{MouseEventHandle}}([])
 
     function reassemble()
@@ -176,7 +176,7 @@ function LMenu(fig_or_scene; bbox = nothing, kwargs...)
             strokewidth = 0)
             for i in 1:length(options[])]
 
-        texts[] = [LText(scene, s, halign = :left, tellwidth = false,
+        texts[] = [Label(scene, s, halign = :left, tellwidth = false,
             textsize = textsize, color = textcolor,
             padding = textpadding)
             for s in optionstrings[]]

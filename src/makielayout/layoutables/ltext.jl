@@ -1,18 +1,18 @@
-function LText(fig_or_scene, text; kwargs...)
-    LText(fig_or_scene; text = text, kwargs...)
+function Label(fig_or_scene, text; kwargs...)
+    Label(fig_or_scene; text = text, kwargs...)
 end
 
-function LText(fig_or_scene; bbox = nothing, kwargs...)
+function Label(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
-    default_attrs = default_attributes(LText, topscene).attributes
-    theme_attrs = subtheme(topscene, :LText)
+    default_attrs = default_attributes(Label, topscene).attributes
+    theme_attrs = subtheme(topscene, :Label)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
 
-    layoutobservables = LayoutObservables{LText}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Label}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point3f0(0, 0, 0))
@@ -65,7 +65,7 @@ function LText(fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    lt = LText(fig_or_scene, layoutobservables, attrs, Dict(:text => t))
+    lt = Label(fig_or_scene, layoutobservables, attrs, Dict(:text => t))
 
     lt
 end

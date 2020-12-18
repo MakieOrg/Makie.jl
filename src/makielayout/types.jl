@@ -96,7 +96,7 @@ end
 
 @Layoutable LColorbar
 
-@Layoutable LText
+@Layoutable Label
 
 @Layoutable LRect
 
