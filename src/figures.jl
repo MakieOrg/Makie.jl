@@ -30,6 +30,7 @@ struct Figure
 	layout::GridLayoutBase.GridLayout
 	content::Vector
     attributes::Attributes
+    current_axis::Ref{Any}
     
     function Figure(args...)
         f = new(args...)
@@ -40,7 +41,10 @@ end
 
 const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
 current_figure() = _current_figure[]
-current_figure!(fig) = (_current_figure = fig)
+current_figure!(fig) = (_current_figure[] = fig)
+
+current_axis(fig::Figure) = fig.current_axis[]
+current_axis!(fig::Figure, ax) = (fig.current_axis[] = ax)
 
 function Figure(; kwargs...)
     scene, layout = layoutscene(; kwargs...)
@@ -48,7 +52,8 @@ function Figure(; kwargs...)
         scene,
         layout,
         [],
-        Attributes()
+        Attributes(),
+        Ref(nothing)
     )
 end
 

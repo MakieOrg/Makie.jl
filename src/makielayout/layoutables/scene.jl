@@ -27,5 +27,13 @@ function LScene(fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
     scene = Scene(topscene, lift(round_to_IRect2D, layoutobservables.computedbbox); scenekw...)
 
-    LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
+    ls = LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
+
+    # register as current axis
+    # TODO: is this a good place for that? probably not
+    if fig_or_scene isa Figure
+        AbstractPlotting.current_axis!(fig_or_scene, ls)
+    end
+
+    ls
 end
