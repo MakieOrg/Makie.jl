@@ -70,7 +70,7 @@ export LButton
 export Colorbar
 export Label
 export LRect
-export LToggle
+export Toggle
 export Legend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene

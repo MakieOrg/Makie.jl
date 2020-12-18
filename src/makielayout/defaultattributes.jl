@@ -543,7 +543,7 @@ end)
 """
 LSlider
 
-function default_attributes(::Type{LToggle}, scene)
+function default_attributes(::Type{Toggle}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
         halign = :center
@@ -581,14 +581,14 @@ function default_attributes(::Type{LToggle}, scene)
 end
 
 @doc """
-LToggle has the following attributes:
+Toggle has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LToggle, nothing)
+    _, docs, defaults = default_attributes(Toggle, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LToggle
+Toggle
 
 
 function default_attributes(::Type{Legend}, scene)

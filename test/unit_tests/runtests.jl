@@ -18,7 +18,7 @@
         scat = scatter!(ax, rand(10))
         le = gl2[1, 3] = Legend(scene, [scat], ["scatter"])
 
-        to = gl2[1, 4] = LToggle(scene)
+        to = gl2[1, 4] = Toggle(scene)
         te = layout[0, :] = Label(scene, "A super title")
         me = layout[end + 1, :] = Menu(scene, options=["one", "two", "three"])
         tb = layout[end + 1, :] = Textbox(scene)

@@ -1,9 +1,9 @@
-function LToggle(fig_or_scene; bbox = nothing, kwargs...)
+function Toggle(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LToggle, topscene).attributes
-    theme_attrs = subtheme(topscene, :LToggle)
+    default_attrs = default_attributes(Toggle, topscene).attributes
+    theme_attrs = subtheme(topscene, :Toggle)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, cornersegments, framecolor_inactive,
@@ -11,7 +11,7 @@ function LToggle(fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LToggle}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Toggle}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     markersize = lift(layoutobservables.computedbbox) do bbox
@@ -100,5 +100,5 @@ function LToggle(fig_or_scene; bbox = nothing, kwargs...)
         buttonfactor[] = 1.0
     end
 
-    LToggle(fig_or_scene, layoutobservables, attrs, decorations)
+    Toggle(fig_or_scene, layoutobservables, attrs, decorations)
 end
