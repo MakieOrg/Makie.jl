@@ -171,13 +171,13 @@ nothing # hide
 ## Adding a Legend
 
 Let's add a legend to our plot that describes elements from both axes. We use
-LLegend for that. LLegend is a relatively complex object and there are many
+Legend for that. Legend is a relatively complex object and there are many
 ways to create it, but here we'll keep it simple. We place the legend on the
 right again, in row 1 and column 3. Instead of specifying column three, we can
 also say `end+1`.
 
 ```@example tutorial
-leg = layout[1, end+1] = LLegend(scene,
+leg = layout[1, end+1] = Legend(scene,
     [line1, scat1, line2, scat2],
     ["f(x) = x", "Data", "f(x) = -x + 26", "Data"])
 
@@ -335,7 +335,7 @@ nothing # hide
 Now, we also want to add a color bar for the two heatmaps. Right now, their colors
 are independently scaled from each other. We choose a scale that makes sense for
 both of them (in our case, we know data ranges only from 1 to 3) and assign that
-to both heatmaps. Then we create an `LColorbar` object with one of the heatmaps.
+to both heatmaps. Then we create an `Colorbar` object with one of the heatmaps.
 This way, the color bar copies color range and color map from that heatmap.
 
 We want to place the color bar to the right of the heatmaps, spanning the full
@@ -351,7 +351,7 @@ for hm in heatmaps
     hm.colorrange = (1, 3)
 end
 
-cbar = hm_sublayout[:, 2] = LColorbar(scene, heatmaps[1], label = "Activity [spikes/sec]")
+cbar = hm_sublayout[:, 2] = Colorbar(scene, heatmaps[1], label = "Activity [spikes/sec]")
 
 scene
 save("step_016.svg", scene) # hide
@@ -375,7 +375,7 @@ nothing # hide
 
 
 Much better! Note that you can usually set all attributes during creation of an object
-(`LColorbar(scene, width = 30)`) or after the fact, like in this example.
+(`Colorbar(scene, width = 30)`) or after the fact, like in this example.
 
 Objects can also have a width or height relative to the space given to them by their
 parent `GridLayout`. If we feel that the colorbar is a bit too tall, we can shrink it

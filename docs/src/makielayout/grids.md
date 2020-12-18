@@ -43,7 +43,7 @@ scene, layout = layoutscene(resolution = (1200, 900))
 
 layout[1, 1] = Axis(scene, title = "My column has size Relative(2/3)")
 layout[1, 2] = Axis(scene, title = "My column has size Auto()")
-layout[1, 3] = LColorbar(scene, width = 30)
+layout[1, 3] = Colorbar(scene, width = 30)
 
 colsize!(layout, 1, Relative(2/3))
 
@@ -62,7 +62,7 @@ A column or row that is sized `Auto(true)` tries to fit its own size to its cont
 
 When a `GridLayout` is solved, it looks at the content in each row or column and checks if it reports a fixed size.
 Many objects can report their own width or height because their content has a specific size, such as `Label`.
-Other objects are often used with a user-set width or height, for example `LColorbar(scene, width = 30)`.
+Other objects are often used with a user-set width or height, for example `Colorbar(scene, width = 30)`.
 In this case, the `GridLayout` can also see that the colorbar has a width of 30 units and fit the column width to that value.
 Objects like `Axis` on the other hand are usually not set to a specific size.
 
