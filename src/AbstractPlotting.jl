@@ -185,7 +185,7 @@ export disconnect!, must_update, force_update!, update!, update_limits!
 export textslider
 
 # gui
-export slider, button, playbutton
+export oldslider, oldbutton, playbutton
 export move!
 
 # Raymarching algorithms
