@@ -7,7 +7,7 @@ Plots a legend for the given plots with the given labels.
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Legend, plots, labels) do scene
+@recipe(OldLegend, plots, labels) do scene
     Attributes(
         outer_area = IRect(0, 0, 1, 1),
         backgroundcolor = :white,
@@ -119,9 +119,9 @@ end
 outerbox(x::AbstractPlot) = outerbox(x.parent)
 outerbox(x::Scene) = pixelarea(x)
 
-convert_argument(::Type{<:Legend}, plots::AbstractVector, labels::AbstractVector{<: AbstractString}) = (plots, labels)
+convert_argument(::Type{<:OldLegend}, plots::AbstractVector, labels::AbstractVector{<: AbstractString}) = (plots, labels)
 
-function plot!(plot::Legend)
+function plot!(plot::OldLegend)
     @extract plot (plots, labels)
     isempty(plots[]) && return
     N = length(plots[])
