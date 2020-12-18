@@ -65,7 +65,7 @@ include("layoutables/lmenu.jl")
 include("layoutables/ltextbox.jl")
 
 export Axis
-export LSlider
+export Slider
 export LButton
 export Colorbar
 export Label

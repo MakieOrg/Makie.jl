@@ -70,7 +70,7 @@
 
 ## Improvements & Implementation Changes
 
-- Cleaned up LSlider style and implementation, LSlider doesn't react while below other objects anymore
+- Cleaned up Slider style and implementation, Slider doesn't react while below other objects anymore
 - MakieLayout Mouse event types are now enum instances for less compilation
 - MakieLayout Mouse events store position in both data and pixel coordinates
-- Aligned colors of Menu, LSlider, LButton etc better
+- Aligned colors of Menu, Slider, LButton etc better

@@ -8,7 +8,7 @@ function _precompile_()
     @assert precompile(LineAxis, (Scene,))
     @assert precompile(Menu, (Scene,))
     @assert precompile(LButton, (Scene,))
-    @assert precompile(LSlider, (Scene,))
+    @assert precompile(Slider, (Scene,))
     @assert precompile(Textbox, (Scene,))
 
     @assert precompile(layoutscene, ())  # doesn't fully precompile

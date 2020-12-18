@@ -3,7 +3,7 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
-## LSlider
+## Slider
 
 A simple slider without a label. You can create a label using an `Label` object,
 for example. You need to specify a range that constrains the slider's possible values.
@@ -15,11 +15,11 @@ using CairoMakie
 scene, layout = layoutscene(resolution = (1200, 900))
 
 ax = layout[1, 1] = Axis(scene)
-sl1 = layout[2, 1] = LSlider(scene, range = 0:0.01:10, startvalue = 3)
-sl2 = layout[3, 1] = LSlider(scene, range = 0:0.01:10, startvalue = 5)
-sl3 = layout[4, 1] = LSlider(scene, range = 0:0.01:10, startvalue = 7)
+sl1 = layout[2, 1] = Slider(scene, range = 0:0.01:10, startvalue = 3)
+sl2 = layout[3, 1] = Slider(scene, range = 0:0.01:10, startvalue = 5)
+sl3 = layout[4, 1] = Slider(scene, range = 0:0.01:10, startvalue = 7)
 
-sl4 = layout[:, 2] = LSlider(scene, range = 0:0.01:10, horizontal = false,
+sl4 = layout[:, 2] = Slider(scene, range = 0:0.01:10, horizontal = false,
     tellwidth = true, height = nothing, width = Auto())
 
 save("example_lslider.svg", scene); nothing # hide
