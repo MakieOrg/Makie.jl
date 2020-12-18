@@ -379,7 +379,7 @@ makedocs(
             "GridLayout" => "makielayout/grids.md",
             "Axis" => "makielayout/laxis.md",
             "Special Plots" => "makielayout/special_plots.md",
-            "LLegend" => "makielayout/llegend.md",
+            "Legend" => "makielayout/llegend.md",
             "Layoutables Examples" => "makielayout/layoutables_examples.md",
             "Theming Layoutables" => "makielayout/theming.md",
             "How Layouting Works" => "makielayout/layouting.md",

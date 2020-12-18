@@ -1,12 +1,12 @@
-function LLegend(
+function Legend(
         fig_or_scene,
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LLegend, topscene).attributes
-    theme_attrs = subtheme(topscene, :LLegend)
+    default_attrs = default_attributes(Legend, topscene).attributes
+    theme_attrs = subtheme(topscene, :Legend)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -25,7 +25,7 @@ function LLegend(
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LLegend}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
@@ -250,7 +250,7 @@ function LLegend(
     # trigger suggestedbbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    leg = LLegend(fig_or_scene, layoutobservables, attrs, decorations, entry_groups)
+    leg = Legend(fig_or_scene, layoutobservables, attrs, decorations, entry_groups)
     # trigger first relayout
     entry_groups[] = entry_groups[]
     leg
@@ -401,7 +401,7 @@ end
 
 
 """
-    LLegend(
+    Legend(
         scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
@@ -413,7 +413,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function LLegend(scene,
+function Legend(scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
         title::Optional{String} = nothing;
@@ -425,13 +425,13 @@ function LLegend(scene,
 
     entries = [LegendEntry(label, content) for (content, label) in zip(contents, labels)]
     entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
-    legend = LLegend(scene, entrygroups; kwargs...)
+    legend = Legend(scene, entrygroups; kwargs...)
 end
 
 
 
 """
-    LLegend(
+    Legend(
         scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
@@ -446,7 +446,7 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function LLegend(scene,
+function Legend(scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{String}};
@@ -460,5 +460,5 @@ function LLegend(scene,
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
 
     entrygroups = Node{Vector{EntryGroup}}([(t, en) for (t, en) in zip(titles, entries)])
-    legend = LLegend(scene, entrygroups; kwargs...)
+    legend = Legend(scene, entrygroups; kwargs...)
 end

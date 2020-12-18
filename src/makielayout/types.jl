@@ -130,7 +130,7 @@ end
 
 const EntryGroup = Tuple{Optional{String}, Vector{LegendEntry}}
 
-@Layoutable LLegend begin
+@Layoutable Legend begin
     entrygroups::Node{Vector{EntryGroup}}
 end
 

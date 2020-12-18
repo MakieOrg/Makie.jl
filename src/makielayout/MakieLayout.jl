@@ -71,7 +71,7 @@ export Colorbar
 export Label
 export LRect
 export LToggle
-export LLegend
+export Legend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export Menu
