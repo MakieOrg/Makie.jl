@@ -132,7 +132,7 @@ function data_limits(plots::Vector)
         plot_idx = iterate(plots, idx)
         # axis shouldn't be part of the data limit
         isaxis(plot) && continue
-        isa(plot, Legend) && continue
+        isa(plot, OldLegend) && continue
         bb2 = data_limits(plot)::FRect3D
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue
