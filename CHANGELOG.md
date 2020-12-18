@@ -16,7 +16,7 @@
 
 ## Improvements & Implementation Changes
 
-- LMenu optionvalue and optionlabel default to string representation for non 2-tuple argument
+- Menu optionvalue and optionlabel default to string representation for non 2-tuple argument
 
 # 0.13.10
 
@@ -29,7 +29,7 @@
 ## Improvements & Implementation Changes
 
 - addmouseevents! return value is now a MouseEventHandle and can be disconnected fully via `clear!`
-- LMenu options can be changed on the fly
+- Menu options can be changed on the fly
 
 # 0.13.6
 
@@ -73,4 +73,4 @@
 - Cleaned up LSlider style and implementation, LSlider doesn't react while below other objects anymore
 - MakieLayout Mouse event types are now enum instances for less compilation
 - MakieLayout Mouse events store position in both data and pixel coordinates
-- Aligned colors of LMenu, LSlider, LButton etc better
+- Aligned colors of Menu, LSlider, LButton etc better
