@@ -182,7 +182,7 @@ function move!(x::OldSlider, idx::Integer)
 end
 
 """
-    button(text)
+    oldbutton(text)
 
 Creates a button which can be clicked.
 On click, the button increments its `clicks` field by one.
@@ -190,7 +190,7 @@ On click, the button increments its `clicks` field by one.
 For example:
 
 ```julia
-scene = button("click me please")
+scene = oldbutton("click me please")
 lift(scene[end].clicks) do clicks
     # your function here
 end
@@ -199,7 +199,7 @@ end
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Button) do scene
+@recipe(OldButton) do scene
     Attributes(
         dimensions = (40, 40),
         backgroundcolor = (:white, 0.4),
@@ -215,8 +215,8 @@ $(ATTRIBUTES)
     )
 end
 
-function button!(func::Function, scene::Scene, txt; camera = campixel!, kw_args...)
-    b = button!(scene, txt; raw = true, camera = camera, kw_args...)[end]
+function oldbutton!(func::Function, scene::Scene, txt; camera = campixel!, kw_args...)
+    b = oldbutton!(scene, txt; raw = true, camera = camera, kw_args...)[end]
     on(b[:clicks]) do clicks
         func(clicks)
         return
@@ -225,7 +225,7 @@ function button!(func::Function, scene::Scene, txt; camera = campixel!, kw_args.
 end
 
 
-function plot!(splot::Button)
+function plot!(splot::OldButton)
     @extract(splot, (
         backgroundcolor, strokecolor, strokewidth,
         dimensions, textcolor, clicks, textsize, position,
@@ -271,7 +271,7 @@ function plot!(splot::Button)
 end
 
 function playbutton(f, scene, range, rate = (1/30))
-    b = button!(scene, "▶", raw = true)[end]
+    b = oldbutton!(scene, "▶", raw = true)[end]
     isplaying = Ref(false)
     play_idx = Ref(1)
     on(b[:clicks]) do x
@@ -384,7 +384,7 @@ function popup(parent, position, width)
         raw = true, camera = campixel!, clear = true
     )
     initialized = Ref(false)
-    but = button!(header, "x", strokewidth = 1.0, position=(1,1), dimensions=(26, 26)) do click
+    but = oldbutton!(header, "x", strokewidth = 1.0, position=(1,1), dimensions=(26, 26)) do click
         vis[] = !vis[]
         return
     end
