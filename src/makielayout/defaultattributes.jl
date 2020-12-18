@@ -363,7 +363,7 @@ end)
 """
 Label
 
-function default_attributes(::Type{LRect}, scene)
+function default_attributes(::Type{Box}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "Controls if the rectangle is visible."
         visible = true
@@ -396,14 +396,14 @@ function default_attributes(::Type{LRect}, scene)
 end
 
 @doc """
-LRect has the following attributes:
+Box has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LRect, nothing)
+    _, docs, defaults = default_attributes(Box, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LRect
+Box
 
 
 function default_attributes(::Type{Button}, scene)

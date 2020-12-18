@@ -99,7 +99,7 @@ save("example_lbutton.svg", scene); nothing # hide
 ![example lbutton](example_lbutton.svg)
 
 
-## LRect
+## Box
 
 A simple rectangle poly that is layoutable. This can be useful to make boxes for
 facet plots or when a rectangular placeholder is needed.
@@ -110,7 +110,7 @@ using ColorSchemes
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-rects = layout[1:4, 1:6] = [LRect(scene, color = c) for c in get.(Ref(ColorSchemes.rainbow), (0:23) ./ 23)]
+rects = layout[1:4, 1:6] = [Box(scene, color = c) for c in get.(Ref(ColorSchemes.rainbow), (0:23) ./ 23)]
 
 save("example_lrect.svg", scene); nothing # hide
 ```

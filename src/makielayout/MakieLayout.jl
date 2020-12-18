@@ -57,7 +57,7 @@ include("layoutables/colorbar.jl")
 include("layoutables/label.jl")
 include("layoutables/slider.jl")
 include("layoutables/button.jl")
-include("layoutables/rect.jl")
+include("layoutables/box.jl")
 include("layoutables/toggle.jl")
 include("layoutables/legend.jl")
 include("layoutables/scene.jl")
@@ -69,7 +69,7 @@ export Slider
 export Button
 export Colorbar
 export Label
-export LRect
+export Box
 export Toggle
 export Legend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement

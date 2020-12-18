@@ -282,7 +282,7 @@ colsize!(layout, 1, Aspect(1, 1))
 axs[2].aspect = 1
 axs[4].autolimitaspect = 1
 
-rects = layout[1:2, 1:2] = [LRect(scene, color = (:black, 0.05),
+rects = layout[1:2, 1:2] = [Box(scene, color = (:black, 0.05),
     strokecolor = :transparent) for _ in 1:4]
 
 record(container_scene, "example_circle_aspect_ratios.mp4", 0:1/30:9; framerate=30) do ti

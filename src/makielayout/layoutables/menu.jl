@@ -138,7 +138,7 @@ function Menu(fig_or_scene; bbox = nothing, kwargs...)
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
         valign = @lift($direction == :down ? :top : :bottom))
 
-    selectionrect = LRect(scene, width = nothing, height = nothing,
+    selectionrect = Box(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
     
 
@@ -157,9 +157,9 @@ function Menu(fig_or_scene; bbox = nothing, kwargs...)
         padding = textpadding, textsize = textsize, color = textcolor)
 
 
-    rects = Ref{Vector{LRect}}([])
+    rects = Ref{Vector{Box}}([])
     texts = Ref{Vector{Label}}([])
-    allrects = Ref{Vector{LRect}}([])
+    allrects = Ref{Vector{Box}}([])
     alltexts = Ref{Vector{Label}}([])
     mouseeventhandles = Ref{Vector{MouseEventHandle}}([])
 
@@ -171,7 +171,7 @@ function Menu(fig_or_scene; bbox = nothing, kwargs...)
 
         trim!(contentgrid)
 
-        rects[] = [LRect(scene, width = nothing, height = nothing,
+        rects[] = [Box(scene, width = nothing, height = nothing,
             color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[],
             strokewidth = 0)
             for i in 1:length(options[])]
