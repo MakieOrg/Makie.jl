@@ -497,7 +497,7 @@ function default_attributes(::Type{LineAxis})
     )
 end
 
-function default_attributes(::Type{LSlider}, scene)
+function default_attributes(::Type{Slider}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center
@@ -534,14 +534,14 @@ function default_attributes(::Type{LSlider}, scene)
 end
 
 @doc """
-LSlider has the following attributes:
+Slider has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LSlider, nothing)
+    _, docs, defaults = default_attributes(Slider, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LSlider
+Slider
 
 function default_attributes(::Type{Toggle}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin

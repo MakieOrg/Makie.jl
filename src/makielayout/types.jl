@@ -100,7 +100,7 @@ end
 
 @Layoutable LRect
 
-@Layoutable LSlider
+@Layoutable Slider
 
 @Layoutable LButton
 
