@@ -392,8 +392,8 @@ layout[1, 1] = ls.layout
 function labelslider!(scene, label, range; format = string,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
     slider = LSlider(scene; range = range, sliderkw...)
-    label = LText(scene, label; labelkw...)
-    valuelabel = LText(scene, lift(format, slider.value); valuekw...)
+    label = Label(scene, label; labelkw...)
+    valuelabel = Label(scene, lift(format, slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
@@ -428,8 +428,8 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
 
     elements = broadcast(labels, ranges, formats) do label, range, format
         slider = LSlider(scene; range = range, sliderkw...)
-        label = LText(scene, label; halign = :left, labelkw...)
-        valuelabel = LText(scene, lift(format, slider.value); halign = :right, valuekw...)
+        label = Label(scene, label; halign = :left, labelkw...)
+        valuelabel = Label(scene, lift(format, slider.value); halign = :right, valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 

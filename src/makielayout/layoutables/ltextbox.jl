@@ -83,7 +83,7 @@ function LTextbox(fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    t = LText(scene, text = displayed_string, bbox = bbox, halign = :left, valign = :top,
+    t = Label(scene, text = displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
         textsize = textsize, padding = textpadding)
 

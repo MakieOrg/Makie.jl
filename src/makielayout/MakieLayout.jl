@@ -68,7 +68,7 @@ export Axis
 export LSlider
 export LButton
 export LColorbar
-export LText
+export Label
 export LRect
 export LToggle
 export LLegend

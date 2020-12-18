@@ -46,8 +46,8 @@ scene, layout = layoutscene(resolution = (1200, 1200))
 
 layout[1, 1] = Axis(scene, title = "Shrunk")
 layout[2, 1] = Axis(scene, title = "Expanded")
-layout[1, 2] = LText(scene, "tellheight = true", tellheight = true)
-layout[2, 2] = LText(scene, "tellheight = false", tellheight = false)
+layout[1, 2] = Label(scene, "tellheight = true", tellheight = true)
+layout[2, 2] = Label(scene, "tellheight = false", tellheight = false)
 
 save("faq_shrunk_row.svg", scene); nothing # hide
 ```

@@ -319,7 +319,7 @@ end)
 """
 LColorbar
 
-function default_attributes(::Type{LText}, scene)
+function default_attributes(::Type{Label}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The displayed text string."
         text = "Text"
@@ -354,14 +354,14 @@ function default_attributes(::Type{LText}, scene)
 end
 
 @doc """
-LText has the following attributes:
+Label has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LText, nothing)
+    _, docs, defaults = default_attributes(Label, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LText
+Label
 
 function default_attributes(::Type{LRect}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin

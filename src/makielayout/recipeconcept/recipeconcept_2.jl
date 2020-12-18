@@ -269,16 +269,16 @@ myplot(FacetPlot, infra, Lines,
 
 for c in 1:infra.layout.ncols
     infra.layout[1, c, Top()] = LRect(scene, color = Gray(0.8))
-    infra.layout[1, c, Top()] = LText(scene, "Column $c", padding = (0, 0, 10, 10))
+    infra.layout[1, c, Top()] = Label(scene, "Column $c", padding = (0, 0, 10, 10))
 end
 
 for r in 1:infra.layout.nrows
     infra.layout[r, end, Right()] = LRect(scene, color = Gray(0.8))
-    infra.layout[r, end, Right()] = LText(scene, "Row $r", rotation = -pi/2, padding = (10, 10, 0, 0))
+    infra.layout[r, end, Right()] = Label(scene, "Row $r", rotation = -pi/2, padding = (10, 10, 0, 0))
 end
 
 layout[0, :] = LRect(scene, color = Gray(0.7))
-layout[1, :] = LText(scene, "Columns", padding = (0, 0, 10, 10))
+layout[1, :] = Label(scene, "Columns", padding = (0, 0, 10, 10))
 layout.content[end].content.tellwidth = false
 
 foreach(Axis, layout) do ax; tight_ticklabel_spacing!(ax); end

@@ -412,7 +412,7 @@ nothing # hide
 
 Now the plot could use a title! While other plotting packages sometimes have
 functions like `supertitle`, they often don't work quite right or force you to
-make manual adjustments. In MakieLayout, the `LText` object is much more flexible
+make manual adjustments. In MakieLayout, the `Label` object is much more flexible
 as it allows you to place text anywhere you want. We therefore create our super
 title not with a dedicated function but as a simple part of the whole layout.
 
@@ -426,7 +426,7 @@ to reflect the new GridLayout size.
 
 
 ```@example tutorial
-supertitle = layout[0, :] = LText(scene, "Plotting with MakieLayout",
+supertitle = layout[0, :] = Label(scene, "Plotting with MakieLayout",
     textsize = 30, font = "Noto Sans Bold", color = (:black, 0.25))
 
 scene
@@ -465,9 +465,9 @@ choice. (Remember that our previously first row is now the second row, due to th
 super title.)
 
 ```@example tutorial
-label_a = layout[2, 1, TopLeft()] = LText(scene, "A", textsize = 35,
+label_a = layout[2, 1, TopLeft()] = Label(scene, "A", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
-label_b = layout[2, 3, TopLeft()] = LText(scene, "B", textsize = 35,
+label_b = layout[2, 3, TopLeft()] = Label(scene, "B", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
 
 scene
