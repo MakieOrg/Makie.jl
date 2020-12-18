@@ -1,9 +1,9 @@
-function LButton(fig_or_scene; bbox = nothing, kwargs...)
+function Button(fig_or_scene; bbox = nothing, kwargs...)
 
     scene = figure.scene
 
-    default_attrs = default_attributes(LButton, scene).attributes
-    theme_attrs = subtheme(scene, :LButton)
+    default_attrs = default_attributes(Button, scene).attributes
+    theme_attrs = subtheme(scene, :Button)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
@@ -13,7 +13,7 @@ function LButton(fig_or_scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LButton}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Button}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point2f0(0, 0))
@@ -90,5 +90,5 @@ function LButton(fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LButton(fig_or_scene, layoutobservables, attrs, decorations)
+    Button(fig_or_scene, layoutobservables, attrs, decorations)
 end

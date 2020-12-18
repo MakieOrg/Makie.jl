@@ -79,7 +79,7 @@ save("example_ltext.svg", scene); nothing # hide
 
 ![example ltext](example_ltext.svg)
 
-## LButton
+## Button
 
 ```@example
 using CairoMakie
@@ -89,7 +89,7 @@ scene, layout = layoutscene(resolution = (1200, 900))
 layout[1, 1] = Axis(scene)
 layout[2, 1] = buttongrid = GridLayout(tellwidth = false)
 
-buttongrid[1, 1:5] = [LButton(scene, label = "Button $i") for i in 1:5]
+buttongrid[1, 1:5] = [Button(scene, label = "Button $i") for i in 1:5]
 
 scene
 

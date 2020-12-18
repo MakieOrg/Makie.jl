@@ -102,7 +102,7 @@ end
 
 @Layoutable Slider
 
-@Layoutable LButton
+@Layoutable Button
 
 @Layoutable Toggle
 

@@ -406,7 +406,7 @@ end)
 LRect
 
 
-function default_attributes(::Type{LButton}, scene)
+function default_attributes(::Type{Button}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the button in its suggested boundingbox"
         halign = :center
@@ -457,14 +457,14 @@ function default_attributes(::Type{LButton}, scene)
 end
 
 @doc """
-LButton has the following attributes:
+Button has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LButton, nothing)
+    _, docs, defaults = default_attributes(Button, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LButton
+Button
 
 function default_attributes(::Type{LineAxis})
     Attributes(

@@ -7,7 +7,7 @@ function _precompile_()
     # @assert precompile(Core.kwfunc(Type), (NamedTuple{(:title,), Tuple{String}}, Type{Axis}, Scene))
     @assert precompile(LineAxis, (Scene,))
     @assert precompile(Menu, (Scene,))
-    @assert precompile(LButton, (Scene,))
+    @assert precompile(Button, (Scene,))
     @assert precompile(Slider, (Scene,))
     @assert precompile(Textbox, (Scene,))
 
