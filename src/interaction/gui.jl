@@ -30,13 +30,13 @@ julia> -5:5 .|> exp .|> sig_printer
 sig_printer(v::Real) = @sprintf "%0.2e" v
 
 """
-    slider(range; kwargs...)
+    oldslider(range; kwargs...)
 
 Creates a slider which slides through the selected range; sliders are discrete.
-The Slider's value can be accessed through its `value` field.  For example:
+The OldSlider's value can be accessed through its `value` field.  For example:
 
 ```julia
-scene = slider(1:10)
+scene = oldslider(1:10)
 lift(scene[end].value) do val
     # your function here
 end
@@ -45,7 +45,7 @@ end
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Slider, range) do scene
+@recipe(OldSlider, range) do scene
     Attributes(
         value = 0,
         start = automatic,
@@ -69,7 +69,7 @@ $(ATTRIBUTES)
     )
 end
 
-convert_arguments(::Type{<: Slider}, x::AbstractRange) = (x,)
+convert_arguments(::Type{<: OldSlider}, x::AbstractRange) = (x,)
 
 function range_label_bb(tplot, printer_func, range)
     bb = boundingbox(tplot, printer_func(first(range)))
@@ -89,7 +89,7 @@ function find_closest(iter, val)
     error("$val isn't contained in $iter")
 end
 
-function plot!(slider::Slider)
+function plot!(slider::OldSlider)
     @extract(slider, (
         backgroundcolor, strokecolor, strokewidth, slidercolor, buttonstroke,
         buttonstrokecolor, buttonsize, buttoncolor, valueprinter, textspace,
@@ -168,11 +168,11 @@ function dragslider(slider, button)
 end
 
 """
-    move!(slider::Slider, idx::Integer)
+    move!(slider::OldSlider, idx::Integer)
 
 Moves the slider to the position of slider.range[idx].
 """
-function move!(x::Slider, idx::Integer)
+function move!(x::OldSlider, idx::Integer)
     r = x[1][]
     len = x.sliderlength[] - x.buttonsize[] - x.textspace[]
     x.value = r[idx]
@@ -321,7 +321,7 @@ function textslider(
     )[end]
 
     xp = widths(boundingbox(t))
-    s = slider!(
+    s = oldslider!(
         scene, range, position = Point2f0(xp[1] + buttonsize/2, (xp[2] / 2)), raw = true,
         sliderheight = sliderheight,
         start = start, textcolor = textcolor, kwargs...
