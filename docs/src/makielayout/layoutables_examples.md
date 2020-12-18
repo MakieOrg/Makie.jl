@@ -140,7 +140,7 @@ scatter!(lscene, randn(100, 3))
 ```
 
 
-## LToggle
+## Toggle
 
 A toggle with an attribute `active` that can either be true or false, to enable
 or disable properties of an interactive plot.
@@ -152,7 +152,7 @@ scene, layout = layoutscene(resolution = (1200, 900))
 
 ax = layout[1, 1] = Axis(scene)
 
-toggles = [LToggle(scene, active = ac) for ac in [true, false]]
+toggles = [Toggle(scene, active = ac) for ac in [true, false]]
 labels = [Label(scene, lift(x -> x ? "active" : "inactive", t.active))
     for t in toggles]
 
@@ -199,7 +199,7 @@ func = Node{Any}(funcs[1])
 ys = @lift($func.(0:0.3:10))
 scat = scatter!(ax, ys, markersize = 10px, color = ys)
 
-cb = layout[1, 3] = LColorbar(scene, scat, width = 30)
+cb = layout[1, 3] = Colorbar(scene, scat, width = 30)
 
 on(menu.selection) do s
     scat.colormap = s
