@@ -108,7 +108,7 @@ using CairoMakie
 scene, layout = layoutscene(resolution = (1200, 900))
 
 layout[1, 1] = Axis(scene, title = "I'm square and aligned")
-layout[1, 2] = LRect(scene, color = (:blue, 0.1), strokecolor = :transparent)
+layout[1, 2] = Box(scene, color = (:blue, 0.1), strokecolor = :transparent)
 layout[1, 2] = Axis(scene, aspect = AxisAspect(1),
     title = "I'm square but break the layout.\nMy actual cell is the blue rect.")
 layout[2, 1] = Axis(scene)
@@ -181,7 +181,7 @@ subgl_1[1, 1] = Axis(scene, title="Inside")
 subgl_2[1, 1] = Axis(scene, title="Outside")
 subgl_3[1, 1] = Axis(scene, title="Outside(50)")
 
-layout[1:3, 2] = [LRect(scene, color = :transparent, strokecolor = :red) for i in 1:3]
+layout[1:3, 2] = [Box(scene, color = :transparent, strokecolor = :red) for i in 1:3]
 
 save("example_grid_alignment.svg", scene); nothing # hide
 ```

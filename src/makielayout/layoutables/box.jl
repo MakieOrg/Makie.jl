@@ -1,15 +1,15 @@
-function LRect(fig_or_scene; bbox = nothing, kwargs...)
+function Box(fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 
-    default_attrs = default_attributes(LRect, topscene).attributes
-    theme_attrs = subtheme(topscene, :LRect)
+    default_attrs = default_attributes(Box, topscene).attributes
+    theme_attrs = subtheme(topscene, :Box)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (color, visible, valign, halign, padding, strokewidth,
         strokevisible, strokecolor)
 
-    layoutobservables = LayoutObservables{LRect}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Box}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     strokecolor_with_visibility = lift(strokecolor, strokevisible) do col, vis
@@ -26,5 +26,5 @@ function LRect(fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LRect(fig_or_scene, layoutobservables, attrs, elements)
+    Box(fig_or_scene, layoutobservables, attrs, elements)
 end

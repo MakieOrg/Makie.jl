@@ -98,7 +98,7 @@ end
 
 @Layoutable Label
 
-@Layoutable LRect
+@Layoutable Box
 
 @Layoutable Slider
 

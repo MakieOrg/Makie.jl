@@ -69,7 +69,7 @@ function Legend(
     titletexts = Optional{Label}[]
     entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
-    entryrects = [LRect[]]
+    entryrects = [Box[]]
 
     decorations[:titletexts] = titletexts
     decorations[:entrytexts] = entrytexts
@@ -223,7 +223,7 @@ function Legend(
                     ))
 
                 # create the patch rectangle
-                rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                rect = Box(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
                     strokewidth = e.patchstrokewidth,
                     width = lift(x -> x[1], e.patchsize),
                     height = lift(x -> x[2], e.patchsize))
