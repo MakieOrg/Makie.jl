@@ -39,7 +39,7 @@ main area will be in the scene.
 
 Some elements can compute their own size, depending on their settings. `LText`,
 for example, can compute the bounding box of its text. If an object has no specific
-content, like an `LAxis`, the auto-determined width or height will be `nothing`.
+content, like an `Axis`, the auto-determined width or height will be `nothing`.
 
 ### Computed width and height
 
@@ -51,7 +51,7 @@ you don't want a column to shrink to the size of an `LText`, for example.
 ### Protrusions
 
 These are four values that tell the `GridLayout` how much gap space is needed by
-the element outside of the main element area. With an `LAxis` that would be the
+the element outside of the main element area. With an `Axis` that would be the
 title at the top, y axis at the left side and x axis at the bottom in standard
 configuration.
 

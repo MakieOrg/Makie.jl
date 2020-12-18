@@ -35,10 +35,10 @@ nothing # hide
 ```
 ![step_001](step_001.svg)
 
-## First LAxis
+## First Axis
 
 The scene is completely empty, I have made the background light gray so it's easier
-to see. Now we add an LAxis. This is an axis or subplot type that MakieLayout defines
+to see. Now we add an Axis. This is an axis or subplot type that MakieLayout defines
 which knows how to behave in a layout (which the Makie version doesn't).
 
 We create the axis and place it into the layout in one go. You place objects in
@@ -49,7 +49,7 @@ We call the axis title "Pre Treatment" because we're going to plot some made up 
 like they could result from an experimental trial.
 
 ```@example tutorial
-ax1 = layout[1, 1] = LAxis(scene, title = "Pre Treatment")
+ax1 = layout[1, 1] = Axis(scene, title = "Pre Treatment")
 
 scene
 save("step_002.svg", scene) # hide
@@ -57,10 +57,10 @@ nothing # hide
 ```
 ![step_002](step_002.svg)
 
-## Plotting into an LAxis
+## Plotting into an Axis
 
 We can plot into the axis with the ! versions of Makie's plotting functions.
-Contrary to Makie, these calls return the plot objects, not the Scene or LAxis,
+Contrary to Makie, these calls return the plot objects, not the Scene or Axis,
 so it's easier to save them.
 
 ```@example tutorial
@@ -80,7 +80,7 @@ nothing # hide
 
 This looks nice already, but we want another axis with a second dataset, to
 the right of the one we have. Currently our layout has one row and one cell, and
-only one LAxis inside of it:
+only one Axis inside of it:
 
 ```@example tutorial
 layout
@@ -90,7 +90,7 @@ We can extend the grid by indexing into new grid cells. Let's place a new axis
 next to the one we have, in row 1 and column 2.
 
 ```@example tutorial
-ax2 = layout[1, 2] = LAxis(scene, title = "Post Treatment")
+ax2 = layout[1, 2] = Axis(scene, title = "Post Treatment")
 
 scene
 save("step_004.svg", scene) # hide
@@ -155,7 +155,7 @@ nothing # hide
 
 
 Even though our plots are entirely made up, we should follow best practice and label
-the axes. We can do this with the `xlabel` and `ylabel` attributes of the `LAxis`.
+the axes. We can do this with the `xlabel` and `ylabel` attributes of the `Axis`.
 
 ```@example tutorial
 ax1.xlabel = "Weight [kg]"
@@ -272,7 +272,7 @@ versions of layout assignment syntax for convenience. Here, we create and assign
 two axes at once. The number of cells and objects has to match to do this.
 
 ```@example tutorial
-hm_axes = layout[1:2, 3] = [LAxis(scene, title = t) for t in ["Cell Assembly Pre", "Cell Assembly Post"]]
+hm_axes = layout[1:2, 3] = [Axis(scene, title = t) for t in ["Cell Assembly Pre", "Cell Assembly Post"]]
 
 heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 

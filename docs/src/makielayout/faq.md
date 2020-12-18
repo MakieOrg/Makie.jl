@@ -16,9 +16,9 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 1200))
 
-ax1 = LAxis(scene, title = "Squashed")
-ax2 = layout[1, 1] = LAxis(scene, title = "Placed in Layout")
-ax3 = LAxis(scene, bbox = BBox(400, 800, 400, 800),
+ax1 = Axis(scene, title = "Squashed")
+ax2 = layout[1, 1] = Axis(scene, title = "Placed in Layout")
+ax3 = Axis(scene, bbox = BBox(400, 800, 400, 800),
   title = "Placed at BBox(400, 800, 400, 800)")
 
 save("faq_squashed_element.svg", scene); nothing # hide
@@ -44,8 +44,8 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 1200))
 
-layout[1, 1] = LAxis(scene, title = "Shrunk")
-layout[2, 1] = LAxis(scene, title = "Expanded")
+layout[1, 1] = Axis(scene, title = "Shrunk")
+layout[2, 1] = Axis(scene, title = "Expanded")
 layout[1, 2] = LText(scene, "tellheight = true", tellheight = true)
 layout[2, 2] = LText(scene, "tellheight = false", tellheight = false)
 

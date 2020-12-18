@@ -3,9 +3,9 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
-## Creating an LAxis
+## Creating an Axis
 
-The `LAxis` is a 2D axis that works well with automatic layouts.
+The `Axis` is a 2D axis that works well with automatic layouts.
 Here's how you create one 
 
 ```@example laxis
@@ -13,7 +13,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-ax = layout[1, 1] = LAxis(scene, xlabel = "x label", ylabel = "y label",
+ax = layout[1, 1] = Axis(scene, xlabel = "x label", ylabel = "y label",
     title = "Title")
 
 save("basic_axis.svg", scene) # hide
@@ -22,9 +22,9 @@ nothing # hide
 
 ![basic axis](basic_axis.svg)
 
-## Plotting Into an LAxis
+## Plotting Into an Axis
 
-You can use all the normal mutating 2D plotting functions with an `LAxis`.
+You can use all the normal mutating 2D plotting functions with an `Axis`.
 The only difference is, that they return the created plot object and not
 the axis (like Makie's base functions return the `Scene`). This is so
 that it is more convenient to save and manipulate the plot objects.
@@ -57,7 +57,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-axes = layout[] = [LAxis(scene) for i in 1:2, j in 1:3]
+axes = layout[] = [Axis(scene) for i in 1:2, j in 1:3]
 
 xs = LinRange(0, 2pi, 50)
 for (i, ax) in enumerate(axes)
@@ -110,7 +110,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-axes = layout[] = [LAxis(scene) for i in 1:2, j in 1:2]
+axes = layout[] = [Axis(scene) for i in 1:2, j in 1:2]
 
 xs = LinRange(0, 2pi, 50)
 for (i, ax) in enumerate(axes)
@@ -148,8 +148,8 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-ax1 = layout[1, 1] = LAxis(scene, title = "Axis 1")
-ax2 = layout[1, 2] = LAxis(scene, title = "Axis 2")
+ax1 = layout[1, 1] = Axis(scene, title = "Axis 1")
+ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
 
 hidespines!(ax1)
 hidespines!(ax2, :t, :r) # only top and right
@@ -187,7 +187,7 @@ Random.seed!(1) # hide
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-axes = [LAxis(scene) for i in 1:2, j in 1:3]
+axes = [Axis(scene) for i in 1:2, j in 1:3]
 tightlimits!.(axes)
 layout[1:2, 1:3] = axes
 
@@ -269,7 +269,7 @@ outer_layout = GridLayout(scene, alignmode = Outside(30))
 layout = outer_layout[1, 1] = GridLayout()
 
 titles = ["aspect enforced\nvia layout", "axis aspect\nset directly", "no aspect enforced", "data aspect conforms\nto axis size"]
-axs = layout[1:2, 1:2] = [LAxis(scene, title = t) for t in titles]
+axs = layout[1:2, 1:2] = [Axis(scene, title = t) for t in titles]
 
 for a in axs
     lines!(a, Circle(Point2f0(0, 0), 100f0))
@@ -305,7 +305,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-layout[1, 1:3] = axs = [LAxis(scene) for i in 1:3]
+layout[1, 1:3] = axs = [Axis(scene) for i in 1:3]
 linkxaxes!(axs[1:2]...)
 linkyaxes!(axs[2:3]...)
 
@@ -332,7 +332,7 @@ nothing # hide
 
 ## Axis interaction
 
-An LAxis has a couple of predefined interactions enabled.
+An Axis has a couple of predefined interactions enabled.
 
 ### Scroll Zoom
 

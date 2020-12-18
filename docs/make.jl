@@ -377,7 +377,7 @@ makedocs(
         "MakieLayout" => [
             "Tutorial" => "makielayout/tutorial.md",
             "GridLayout" => "makielayout/grids.md",
-            "LAxis" => "makielayout/laxis.md",
+            "Axis" => "makielayout/laxis.md",
             "Special Plots" => "makielayout/special_plots.md",
             "LLegend" => "makielayout/llegend.md",
             "Layoutables Examples" => "makielayout/layoutables_examples.md",

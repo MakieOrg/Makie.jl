@@ -14,7 +14,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 sl1 = layout[2, 1] = LSlider(scene, range = 0:0.01:10, startvalue = 3)
 sl2 = layout[3, 1] = LSlider(scene, range = 0:0.01:10, startvalue = 5)
 sl3 = layout[4, 1] = LSlider(scene, range = 0:0.01:10, startvalue = 7)
@@ -33,7 +33,7 @@ To create a horizontal layout containing a label, a slider, and a value label, u
 using CairoMakie
 scene, layout = layoutscene(resolution = (1200, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 lsgrid = labelslidergrid!(scene,
     ["Voltage", "Current", "Resistance"],
@@ -68,7 +68,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-axs = layout[1:2, 1:3] = [LAxis(scene) for _ in 1:6]
+axs = layout[1:2, 1:3] = [Axis(scene) for _ in 1:6]
 
 supertitle = layout[0, :] = LText(scene, "Six plots", textsize = 30)
 
@@ -86,7 +86,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-layout[1, 1] = LAxis(scene)
+layout[1, 1] = Axis(scene)
 layout[2, 1] = buttongrid = GridLayout(tellwidth = false)
 
 buttongrid[1, 1:5] = [LButton(scene, label = "Button $i") for i in 1:5]
@@ -150,7 +150,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1200, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 toggles = [LToggle(scene, active = ac) for ac in [true, false]]
 labels = [LText(scene, lift(x -> x ? "active" : "inactive", t.active))
@@ -192,7 +192,7 @@ layout[1, 1] = vgrid!(
     menu2;
     tellheight = false, width = 200)
 
-ax = layout[1, 2] = LAxis(scene)
+ax = layout[1, 2] = Axis(scene)
 
 func = Node{Any}(funcs[1])
 

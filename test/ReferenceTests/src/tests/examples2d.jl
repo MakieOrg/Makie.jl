@@ -309,7 +309,7 @@ end
 
 @cell "Simple pie chart" begin
     scene, layout = layoutscene(resolution=(800, 800))
-    ax = layout[1, 1] = LAxis(scene, autolimitaspect=1)
+    ax = layout[1, 1] = Axis(scene, autolimitaspect=1)
 
     pie!(ax, 1:5, color=1:5)
 
@@ -318,7 +318,7 @@ end
 
 @cell "Hollow pie chart" begin
     scene, layout = layoutscene(resolution=(800, 800))
-    ax = layout[1, 1] = LAxis(scene, autolimitaspect=1)
+    ax = layout[1, 1] = Axis(scene, autolimitaspect=1)
 
     pie!(ax, 1:5, color=1:5, radius=2, inner_radius=1)
 
@@ -327,7 +327,7 @@ end
 
 @cell "Open pie chart" begin
     scene, layout = layoutscene(resolution=(800, 800))
-    ax = layout[1, 1] = LAxis(scene, autolimitaspect=1)
+    ax = layout[1, 1] = Axis(scene, autolimitaspect=1)
 
     pie!(ax, 0.1:0.1:1.0, normalize=false)
     scene

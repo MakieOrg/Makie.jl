@@ -21,7 +21,7 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     plot!(proxyscene, P, Attributes(kw_attributes), args...)
 
     if is2d(proxyscene)
-        ax = LAxis(fig; axis...)
+        ax = Axis(fig; axis...)
     else
         ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
@@ -40,7 +40,7 @@ function plot(P::PlotFunc, fp::FigurePosition, args...; axis = (;), kwargs...)
     plot!(proxyscene, P, Attributes(kwargs), args...)
 
     if is2d(proxyscene)
-        ax = LAxis(fp.fig; axis...)
+        ax = Axis(fp.fig; axis...)
     else
         ax = LScene(fp.fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
@@ -54,7 +54,7 @@ end
 function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
 
     c = contents(fp.gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
+    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There needs to be a single axis at $(fp.gp.span), $(fp.gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
     ax = only(c)
@@ -70,7 +70,7 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs..
     plot!(proxyscene, P, Attributes(kwargs), args...)
 
     if is2d(proxyscene)
-        ax = LAxis(fig; axis...)
+        ax = Axis(fig; axis...)
     else
         ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
@@ -90,7 +90,7 @@ function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
     gp = layout[fsp.rows, fsp.cols, fsp.side]
 
     c = contents(gp, exact = true)
-    if !(length(c) == 1 && c[1] isa Union{LAxis, LScene})
+    if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There is not just one axis at $(gp).")
     end
     ax = only(c)

@@ -95,7 +95,7 @@ function create_infrastructure(::Type{SingleAxis}, scene::Scene, args...; kwargs
     layoutkw = pop!(dkwargs, :layout, NamedTuple())
 
     layout = GridLayout(;layoutkw...)
-    axis = layout[1, 1] = LAxis(scene; axiskw...)
+    axis = layout[1, 1] = Axis(scene; axiskw...)
     Infrastructure((axis = axis, layout = layout))
 end
 
@@ -141,9 +141,9 @@ function create_infrastructure(::Type{MarginDensityScatter}, scene::Scene, args.
 
     dkwargs = Dict(kwargs)
 
-    mainax = LAxis(scene, xlabel = get(dkwargs, :xlabel, " "), ylabel = get(dkwargs, :ylabel, " "))
-    topax = LAxis(scene; xlabelvisible = false, xticklabelsvisible = false, xticksvisible = false)
-    rightax = LAxis(scene; ylabelvisible = false, yticklabelsvisible = false, yticksvisible = false)
+    mainax = Axis(scene, xlabel = get(dkwargs, :xlabel, " "), ylabel = get(dkwargs, :ylabel, " "))
+    topax = Axis(scene; xlabelvisible = false, xticklabelsvisible = false, xticksvisible = false)
+    rightax = Axis(scene; ylabelvisible = false, yticklabelsvisible = false, yticksvisible = false)
 
     linkxaxes!(mainax, topax)
     linkyaxes!(mainax, rightax)
@@ -221,7 +221,7 @@ function create_infrastructure(::Type{FacetPlot}, scene::Scene, plottype, rows, 
 
     layout = GridLayout(; layoutkw...)
 
-    axs = [LAxis(scene; axiskw...) for x in CartesianIndices((nrows, ncols))]
+    axs = [Axis(scene; axiskw...) for x in CartesianIndices((nrows, ncols))]
 
     layout[] = axs
 
@@ -281,4 +281,4 @@ layout[0, :] = LRect(scene, color = Gray(0.7))
 layout[1, :] = LText(scene, "Columns", padding = (0, 0, 10, 10))
 layout.content[end].content.tellwidth = false
 
-foreach(LAxis, layout) do ax; tight_ticklabel_spacing!(ax); end
+foreach(Axis, layout) do ax; tight_ticklabel_spacing!(ax); end
