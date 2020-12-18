@@ -27,7 +27,7 @@ to correctly build their visualization and update parameters if they wish. These
 - The top-level Scene in which all other content is placed
 - The layout tree in form of the top GridLayout, or even every single used GridLayout
 - Larger content elements of the top-level Scene such as other Scenes or SceneLikes
-(Axis is a SceneLike) or elements such as Label, LColorbar, LLegend, etc.
+(Axis is a SceneLike) or elements such as Label, Colorbar, LLegend, etc.
 - Plots that have been added to Scenes or Axis instances
 
 ## Plotting without a scene, layout or axis

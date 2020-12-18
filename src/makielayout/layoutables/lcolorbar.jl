@@ -1,6 +1,6 @@
-function LColorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
-    LColorbar(fig_or_scene;
+    Colorbar(fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
@@ -8,12 +8,12 @@ function LColorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
 end
 
-function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
+function Colorbar(fig_or_scene; bbox = nothing, kwargs...)
     topscene = get_topscene(fig_or_scene)
-    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, topscene).attributes)
+    attrs = merge!(Attributes(kwargs), default_attributes(Colorbar, topscene).attributes)
 
-    default_attrs = default_attributes(LColorbar, topscene).attributes
-    theme_attrs = subtheme(topscene, :LColorbar)
+    default_attrs = default_attributes(Colorbar, topscene).attributes
+    theme_attrs = subtheme(topscene, :Colorbar)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -29,7 +29,7 @@ function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables{LColorbar}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Colorbar}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     framebox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
@@ -142,9 +142,9 @@ function LColorbar(fig_or_scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LColorbar(fig_or_scene, layoutobservables, attrs, decorations)
+    Colorbar(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
-function tight_ticklabel_spacing!(lc::LColorbar)
+function tight_ticklabel_spacing!(lc::Colorbar)
     tight_ticklabel_spacing!(lc.elements[:axis])
 end

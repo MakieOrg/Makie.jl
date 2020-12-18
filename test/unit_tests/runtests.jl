@@ -10,7 +10,7 @@
     @testset "Layoutables constructors" begin
         scene, layout = layoutscene()
         ax = layout[1, 1] = Axis(scene)
-        cb = layout[1, 2] = LColorbar(scene)
+        cb = layout[1, 2] = Colorbar(scene)
         gl2 = layout[2, :] = MakieLayout.GridLayout()
         bu = gl2[1, 1] = LButton(scene)
         sl = gl2[1, 2] = LSlider(scene)
