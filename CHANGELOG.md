@@ -51,7 +51,7 @@
 
 ## Improvements & Implementation Changes
 
-- LToggle reacts on mousedown not click to be more snappy
+- Toggle reacts on mousedown not click to be more snappy
 
 # 0.13.4
 

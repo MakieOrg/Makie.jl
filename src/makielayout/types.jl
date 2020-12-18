@@ -104,7 +104,7 @@ end
 
 @Layoutable LButton
 
-@Layoutable LToggle
+@Layoutable Toggle
 
 @Layoutable Menu
 
