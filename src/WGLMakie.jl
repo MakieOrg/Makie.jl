@@ -51,10 +51,10 @@ function __init__()
     # Activate WGLMakie as backend!
     activate!()
     browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    AbstractPlotting.inline!(!browser_display)
+    AbstractPlotting.inline!(browser_display)
     # The reasonable_solution is a terrible default for the web!
     if AbstractPlotting.minimal_default.resolution[] == AbstractPlotting.reasonable_resolution()
-        AbstractPlotting.minimal_default.resolution[] = (600, 400)
+        set_theme!(resolution=(600, 400))
     end
 end
 

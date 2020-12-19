@@ -504,14 +504,15 @@ const WGLMakie = function (){
     }
 
     function threejs_module(canvas, comm, width, height){
+
         const context = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
         if(!context){
             context = canvas.getContext("webgl", {preserveDrawingBuffer: true});
         }
+
         const renderer = new THREE.WebGLRenderer({
             antialias: true, canvas: canvas, context: context,
             powerPreference: "high-performance",
-            devicePixelRatio: 1
         });
 
         renderer.setClearColor("#ffffff");
@@ -526,7 +527,6 @@ const WGLMakie = function (){
             })
             return false
         }
-
         canvas.addEventListener("mousemove", mousemove);
 
         function mousedown(event){
@@ -535,7 +535,6 @@ const WGLMakie = function (){
             })
             return false;
         }
-
         canvas.addEventListener("mousedown", mousedown);
 
         function mouseup(event){
