@@ -13,7 +13,7 @@ using FreeTypeAbstraction
 using StaticArrays
 
 using JSServe: Session, evaljs, linkjs, onload
-using JSServe: @js_str, onjs, Dependency, with_session
+using JSServe: @js_str, onjs, Dependency, App
 using JSServe.DOM
 
 using ShaderAbstractions: VertexArray, Buffer, Sampler, AbstractSampler
@@ -50,8 +50,8 @@ end
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
-    display_in_browser = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    AbstractPlotting.inline!(!display_in_browser)
+    browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
+    AbstractPlotting.inline!(!browser_display)
     # The reasonable_solution is a terrible default for the web!
     if AbstractPlotting.minimal_default.resolution[] == AbstractPlotting.reasonable_resolution()
         AbstractPlotting.minimal_default.resolution[] = (600, 400)

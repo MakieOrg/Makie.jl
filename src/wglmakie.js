@@ -473,7 +473,6 @@ const WGLMakie = function (){
                         re_assign_buffers()
                         mesh.geometry.instanceCount = new_values.length / buffer.itemSize
                     }
-                } else {
                 }
             }
         })

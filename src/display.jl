@@ -10,7 +10,7 @@ for M in WEB_MIMES
     @eval begin
         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
             three = nothing
-            inline_display = JSServe.with_session() do session, request
+            inline_display = App() do session::Session
                 three, canvas = three_display(session, scene)
                 return canvas
             end
@@ -21,21 +21,25 @@ for M in WEB_MIMES
 end
 
 function scene2image(scene::Scene)
+    if !JSServe.has_html_display()
+        error("""
+        There is no Display that can show HTML.
+        If in the REPL and you have a browser,
+        you can always run `JSServe.browser_display()` to show plots in the browser
+        """)
+    end
     three = nothing
     session = nothing
-    inline_display = JSServe.with_session() do s, request
+    app = App() do s::Session
         session = s
         three, canvas = three_display(s, scene)
         return canvas
     end
-    electron_display = display(inline_display)
-    task = @async wait(session.js_fully_loaded)
-    tstart = time()
-    # Jeez... Base.Event was a nice idea for waiting on
-    # js to be ready, but if anything fails, it becomes unkillable -.-
-    while !istaskdone(task)
-        sleep(0.01)
-        (time() - tstart > 30) && error("JS Session not ready after 30s waiting")
+    # display in current
+    display(app)
+    done = Base.timedwait(()->isready(session.js_fully_loaded), 30.0)
+    if done == :timed_out
+        error("JS Session not ready after 30s waiting, possibly errored while displaying")
     end
     return AbstractPlotting.colorbuffer(three)
 end
@@ -62,13 +66,14 @@ struct WebDisplay <: AbstractPlotting.AbstractScreen
 end
 
 function AbstractPlotting.backend_display(::WGLBackend, scene::Scene)
+    # Reference to three object which gets set once we serve this to a browser
     three_ref = Base.RefValue{Any}(nothing)
-    inline_display = JSServe.with_session() do s, request
+    app = App() do s, request
         three, canvas = three_display(s, scene)
         three_ref[] = three
         return canvas
     end
-    actual_display = display(inline_display)
+    actual_display = display(app)
     return WebDisplay(three_ref, actual_display)
 end
 
