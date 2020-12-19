@@ -291,7 +291,8 @@ const WGLMakie = function (){
             if (value.constructor.name == "Uniform"){
                 result[name] = value
             } else {
-                result[name] = new THREE.Uniform(deserialize_three(value))
+                const ser = deserialize_three(value);
+                result[name] = new THREE.Uniform(ser);
             }
         }
         return result
@@ -504,11 +505,11 @@ const WGLMakie = function (){
     }
 
     function threejs_module(canvas, comm, width, height){
-        var context = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
+        const context = canvas.getContext("webgl2", {preserveDrawingBuffer: true});
         if(!context){
             context = canvas.getContext("webgl", {preserveDrawingBuffer: true});
         }
-        var renderer = new THREE.WebGLRenderer({
+        const renderer = new THREE.WebGLRenderer({
             antialias: true, canvas: canvas, context: context,
             powerPreference: "high-performance",
             devicePixelRatio: 1

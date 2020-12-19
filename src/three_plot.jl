@@ -42,7 +42,6 @@ function three_display(session::Session, scene::Scene)
         const three_scenes = scenes.map($(WGL).deserialize_scene)
         const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
         $(WGL).start_renderloop(renderer, three_scenes, cam)
-
         function get_plot(plot_uuid) {
             for (const idx in three_scenes) {
                 const plot = three_scenes[idx].getObjectByName(plot_uuid)
@@ -74,10 +73,7 @@ function three_display(session::Session, scene::Scene)
 
     connect_scene_events!(session, scene, comm)
     mousedrag(scene, nothing)
-
     get_plot(scene, plot) = js_call(session, :get_plot, plot_uuid)
-
     three = ThreeDisplay((; get_plot))
-    push!(scene.current_screens, three)
     return three, canvas
 end

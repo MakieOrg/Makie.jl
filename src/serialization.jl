@@ -2,16 +2,17 @@ using Colors
 using ShaderAbstractions: InstancedProgram, Program
 using AbstractPlotting: Key, plotkey
 using Colors: N0f8
+
 AbstractPlotting.plotkey(::Nothing) = :scatter
 
 function lift_convert(key, value, plot)
     val = lift(value) do value
         return wgl_convert(value, Key{key}(), Key{plotkey(plot)}())
     end
-    return if key == :colormap && val[] isa AbstractArray
+    if key == :colormap && val[] isa AbstractArray
         return ShaderAbstractions.Sampler(val)
     else
-        val
+        return val
     end
 end
 
@@ -34,10 +35,12 @@ serialize_three(val::Quaternion) = Float32[val.data...]
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
 serialize_three(val::Mat4f0) = vec(val)
+
 function serialize_three(observable::Observable)
     return Dict(:type => "Observable", :id => observable.id,
                 :value => serialize_three(observable[]))
 end
+
 function serialize_three(array::AbstractArray)
     return serialize_three(flatten_buffer(array))
 end
