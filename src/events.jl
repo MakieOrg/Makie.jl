@@ -1,21 +1,23 @@
-
-"""
-Throwing an error in a c callback seems to lead to undefined behaviour
-"""
-macro csafe(func)
-    func_body = func.args[2]
-    safe_body = quote
+function _try_callbacks(expr)
+    quote
         try
-            $func_body
+            $(esc(expr))
         catch e
-            println(stderr, "Error in c callback: ")
-            Base.showerror(stderr, e)
-            # TODO is it fine to call catch_backtrace here?
-            Base.show_backtrace(stderr, Base.catch_backtrace())
+            println(stderr, "Error in callback:")
+            # TODO is it fine to call catch_backtrace inside C call?
+            Base.showerror(stderr, e, Base.catch_backtrace())
+            println(stderr)
         end
     end
-    func.args[2] = safe_body
-    return esc(func)
+end
+
+macro try_callbacks(expr)
+    if expr.head in (:function,:(=)) && expr.args[1].head == :call
+        func_sig, func_body = expr.args
+        Expr(expr.head, esc(func_sig), _try_callbacks(func_body)) 
+    else
+        _try_callbacks(expr)
+    end
 end
 
 function addbuttons(scene::Scene, name, button, action, ::Type{ButtonEnum}) where ButtonEnum
@@ -45,9 +47,9 @@ returns `Node{Bool}`
 window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
-    @csafe(function windowclose(win)
-        event[] = false
-    end)
+    function windowclose(win)
+        @try_callbacks event[] = false
+    end
     disconnect!(window, window_open)
     event[] = isopen(window)
     GLFW.SetWindowCloseCallback(window, windowclose)
@@ -67,13 +69,13 @@ window_area(scene::Scene, screen) = window_area(scene, to_native(screen))
 function window_area(scene::Scene, window::GLFW.Window)
     event = scene.events.window_area
     dpievent = scene.events.window_dpi
-    @csafe function windowposition(window, x::Cint, y::Cint)
+    @try_callbacks function windowposition(window, x::Cint, y::Cint)
         rect = event[]
         if minimum(rect) != Vec(x, y)
             event[] = IRect(x, y, framebuffer_size(window))
         end
     end
-    @csafe function windowsize(window, w::Cint, h::Cint)
+    @try_callbacks function windowsize(window, w::Cint, h::Cint)
         rect = event[]
         if Vec(w, h) != widths(rect)
             monitor = GLFW.GetPrimaryMonitor()
@@ -108,7 +110,7 @@ returns `Node{NTuple{4, Int}}`
 mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
 function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebuttons
-    @csafe function mousebuttons(window, button, action, mods)
+    @try_callbacks function mousebuttons(window, button, action, mods)
         addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
     end
     disconnect!(window, mouse_buttons)
@@ -120,7 +122,7 @@ end
 keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(screen))
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
-    @csafe function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
+    @try_callbacks function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
     end
     disconnect!(window, keyboard_buttons)
@@ -139,7 +141,7 @@ returns `Node{Vector{String}}`, which are absolute file paths
 dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
-    @csafe function droppedfiles(window, files)
+    @try_callbacks function droppedfiles(window, files)
         event[] = String.(files)
     end
     disconnect!(window, dropped_files)
@@ -160,7 +162,7 @@ containing the pressed char. Is empty, if no key is pressed.
 unicode_input(scene::Scene, screen) = unicode_input(scene, to_native(screen))
 function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
-    @csafe function unicodeinput(window, c::Char)
+    @try_callbacks function unicodeinput(window, c::Char)
         vals = event[]
         push!(vals, c)
         event[] = vals
@@ -214,7 +216,7 @@ function mouse_position(scene::Scene, screen::Screen)
         x, y = GLFW.GetCursorPos(window)
         pos = correct_mouse(window, x, y)
         if pos != scene.events.mouseposition[]
-            scene.events.mouseposition[] = pos
+            @try_callbacks scene.events.mouseposition[] = pos
         end
         nothing
     end
@@ -234,7 +236,7 @@ which is an x and y offset.
 scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
 function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
-    @csafe function scrollcb(window, w::Cdouble, h::Cdouble)
+    @try_callbacks function scrollcb(window, w::Cdouble, h::Cdouble)
         event[] = (w, h)
         event[] = (0.0, 0.0)
     end
@@ -254,7 +256,7 @@ which is true whenever the window has focus.
 hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
-    @csafe function hasfocuscb(window, focus::Bool)
+    @try_callbacks function hasfocuscb(window, focus::Bool)
         event[] = focus
     end
     disconnect!(window, hasfocus)
@@ -275,7 +277,7 @@ which is true whenever the cursor enters the window.
 entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
-    @csafe function enteredwindowcb(window, entered::Bool)
+    @try_callbacks function enteredwindowcb(window, entered::Bool)
         event[] = entered
     end
     disconnect!(window, entered_window)
