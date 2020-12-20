@@ -5,7 +5,7 @@ using GLMakie.ShaderAbstractions
 using GLMakie.ShaderAbstractions: Sampler
 
 # A test case for wide lines and mitering at joints
-@cell "Miter Joints for line rendering" [lines] begin
+@cell "Miter Joints for line rendering" begin
     scene = Scene()
 
     r = 4
@@ -26,7 +26,7 @@ using GLMakie.ShaderAbstractions: Sampler
     scene
 end
 
-@cell "Sampler type" [Sampler] begin
+@cell "Sampler type" begin
 
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
@@ -42,7 +42,7 @@ end
     st
 end
 # Test for resizing of TextureBuffer
-@cell "Dynamically adjusting number of particles in a meshscatter" [meshscatter] begin
+@cell "Dynamically adjusting number of particles in a meshscatter" begin
 
     pos = Node(rand(Point3f0, 2))
     rot = Node(rand(Vec3f0, 2))
@@ -69,7 +69,7 @@ end
     end
 end
 
-@cell "Explicit frame rendering" [opengl, render_frame, meshscatter] begin
+@cell "Explicit frame rendering" begin
 
     set_window_config!(renderloop=(screen) -> nothing)
     function update_loop(m, buff, screen)
