@@ -28,6 +28,7 @@ theme:
 # Backend.activate!() will use the following defaults:
 CairoMakie:
   resolution: [500, 500]
+  # options: "svg", "png", "pdf", "eps"
   type: png
 
 GLMakie:
