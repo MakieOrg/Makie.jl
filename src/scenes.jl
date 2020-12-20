@@ -58,6 +58,31 @@ mutable struct Scene <: AbstractScene
     updated::Node{Bool}
 end
 
+_plural_s(x) = length(x) != 1 ? "s" : ""
+
+function Base.show(io::IO, scene::Scene)
+    error("ol")
+    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
+    print(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots))")
+
+    if length(scene.plots) > 0
+        print(io, ":")
+        for (i, plot) in enumerate(scene.plots)
+            print(io, "\n")
+            print(io, "    $(i == length(scene.plots) ? '└' : '├') ", plot)
+        end
+    end
+
+    print(io, "\n  $(length(scene.children)) Child Scene$(_plural_s(scene.children))")
+
+    if length(scene.children) > 0
+        print(io, ":")
+        for (i, subscene) in enumerate(scene.children)
+            print(io, "\n")
+            print(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
+        end
+    end
+end
 
 function Scene(
         events::Events,

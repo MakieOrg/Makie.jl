@@ -133,6 +133,10 @@ struct Combined{Typ, T} <: ScenePlot{Typ}
     plots::Vector{AbstractPlot}
 end
 
+function Base.show(io::IO, plot::Combined)
+    print(io, typeof(plot))
+end
+
 parent(x::AbstractPlot) = x.parent
 
 function func2string(func::F) where F <: Function
