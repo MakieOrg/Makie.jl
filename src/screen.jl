@@ -14,7 +14,7 @@ mutable struct Screen <: GLScreen
     renderlist::Vector{Tuple{ZIndex, ScreenID, RenderObject}}
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
-    framecache::Tuple{Matrix{RGB{N0f8}}, Matrix{RGB{N0f8}}}
+    framecache::Matrix{RGB{N0f8}}
     displayed_scene::Union{Scene, Nothing}
     render_tick::Node{Nothing}
     function Screen(
@@ -31,7 +31,7 @@ mutable struct Screen <: GLScreen
         obj = new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, cache, cache2plot,
-            (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s))),
+            Matrix{RGB{N0f8}}(undef, s),
             nothing, Node(nothing)
         )
     end
@@ -127,22 +127,6 @@ function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     return
 end
 
-function to_jl_layout!(A, B)
-    ind1, ind2 = axes(A)
-    n = first(ind2) + last(ind2)
-    for i in ind1
-        @simd for j in ind2
-            @inbounds c = A[i, j]
-            c = mapc(c) do channel
-                x = clamp(channel, 0.0, 1.0)
-                return ifelse(isfinite(x), x, 0.0)
-            end
-            @inbounds B[n-j, i] = c
-        end
-    end
-    return B
-end
-
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
     GLAbstraction.bind(source)
     glPixelStorei(GL_PACK_ALIGNMENT, 1)
@@ -175,7 +159,7 @@ function depthbuffer(screen::Screen)
     return depth
 end
 
-function AbstractPlotting.colorbuffer(screen::Screen)
+function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.ImageStorageFormat = AbstractPlotting.JuliaNative)
     if isopen(screen)
         ctex = screen.framebuffer.color
         # polling may change window size, when its bigger than monitor!
@@ -184,13 +168,28 @@ function AbstractPlotting.colorbuffer(screen::Screen)
         # keep current buffer size to allows larger-than-window renders
         render_frame(screen, resize_buffers=false) # let it render
         glFinish() # block until opengl is done rendering
-        if size(ctex) != size(screen.framecache[1])
-            s = size(ctex)
-            screen.framecache = (Matrix{RGB{N0f8}}(undef, s), Matrix{RGB{N0f8}}(undef, reverse(s)))
+        if size(ctex) != size(screen.framecache)
+            screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
         end
-        fast_color_data!(screen.framecache[1], ctex)
-        to_jl_layout!(screen.framecache...)
-        return screen.framecache[2]
+        fast_color_data!(screen.framecache, ctex)
+        if format == AbstractPlotting.GLNative
+            return screen.framecache
+        elseif format == AbstractPlotting.JuliaNative
+            @static if VERSION < v"1.6"
+                bufc = copy(screen.framecache)
+                ind1, ind2 = axes(bufc)
+                n = first(ind2) + last(ind2)
+                for i in ind1
+                    @simd for j in ind2
+                        @inbounds bufc[i, n-j] = screen.framecache[i, j]
+                    end
+                end
+                screen.framecache = bufc
+            else
+                reverse!(screen.framecache, dims = 2)
+            end
+            return PermutedDimsArray(screen.framecache, (2,1))
+        end
     else
         error("Screen not open!")
     end
@@ -391,7 +390,7 @@ end
 
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
-    sid = Base.RefValue{SelectionID{UInt16}}()
+    sid = Base.RefValue{SelectionID{UInt32}}()
     window_size = widths(screen)
     fb = screen.framebuffer
     buff = fb.objectid
@@ -418,7 +417,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
-    sid = Matrix{SelectionID{UInt16}}(undef, dx, dy)
+    sid = Matrix{SelectionID{UInt32}}(undef, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sid)
 
     min_dist = range^2 # squared distance
@@ -426,7 +425,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     x, y =  xy .+ 1 .- Vec2f0(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][2] < 0xffff)
+        if (d < min_dist) && (sid[i, j][2] < 0x3f800000)
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
         end
@@ -456,14 +455,17 @@ end
 
 function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     window_size = widths(screen)
-    buff = screen.framebuffer.objectid
-    sid = zeros(SelectionID{UInt16}, widths(rect)...)
+    fb = screen.framebuffer
+    buff = fb.objectid
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
     x, y = minimum(rect)
     rw, rh = widths(rect)
     w, h = window_size
+    sid = zeros(SelectionID{UInt32}, widths(rect)...)
     if x > 0 && y > 0 && x <= w && y <= h
         glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
+        sid = filter(x -> x.id < 0x3f800000,sid)
         return map(unique(vec(SelectionID{Int}.(sid)))) do sid
             (screen.cache2plot[sid.id], sid.index)
         end

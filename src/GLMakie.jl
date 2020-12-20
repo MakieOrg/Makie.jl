@@ -19,6 +19,7 @@ using LinearAlgebra
 
 for name in names(AbstractPlotting)
     @eval import AbstractPlotting: $(name)
+    @eval export $(name)
 end
 
 struct GLBackend <: AbstractPlotting.AbstractBackend
@@ -58,7 +59,7 @@ if WORKING_OPENGL
     include("gl_backend.jl")
 end
 
-function activate!(use_display = true)
+function activate!(use_display=true)
     b = GLBackend()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.High)

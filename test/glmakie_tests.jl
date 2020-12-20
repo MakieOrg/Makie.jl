@@ -87,5 +87,44 @@
         scene
     end
 
+    @cell "Pick a plot element or plot elements inside a rectangle" [pick] begin
+        using Makie,GLMakie
+        using AbstractPlotting:project,transformationmatrix
+        using StaticArrays
+        using GeometryBasics
+
+        # this function should probably be included in AbstractPlotting
+        function AbstractPlotting.project(scene::Scene,point::T) where T<:StaticVector
+            cam = scene.camera
+            project(cam.projection[]*cam.view[]*transformationmatrix(scene)[] , Vec2(scene.resolution[]), point)
+        end
+        
+        N = 100000
+        scene = scatter(1:N,1:N)
+        xlims!((99990,100000))
+        ylims!((99990,100000))
+        display(scene)
+        
+        # test for pick a single data point (with idx > 65535)
+        idx = 0
+        while idx == 0
+            plot,idx = pick(scene,project(scene,Point((100000.,100000.))))
+        end
+        @assert idx == 100000
+        
+        # test for pick a rectangle of data points (also with some indices > 65535)
+        rect = FRect2D(99990.5,99990.5,8,8)
+        origin_px = project(scene,Point(origin(rect)))
+        tip_px    = project(scene,Point(origin(rect) .+ widths(rect)))
+        rect_px = IRect2D(round.(origin_px), round.(tip_px .- origin_px))
+        plot_idx = pick(AbstractPlotting.getscreen(scene),rect_px) #! there is no pick(::Scene,::IRect2D)
+        
+        # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
+        @assert all([typeof(pi[1]) <: Union{LineSegments,Scatter} for pi in plot_idx])
+        # scatter points should have indices equal to those in 99991:99998
+        scatter_plot_idx = filter(pi -> typeof(pi[1]) <: Scatter, plot_idx)
+        @assert Set([pi[2] for pi in scatter_plot_idx]) == Set(99991:99998)
+    end
+
 
 end

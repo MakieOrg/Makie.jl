@@ -1,18 +1,21 @@
-using MakieGallery, AbstractPlotting, GLMakie, Test
+using Pkg
+using GLMakie, Test
+using GLMakie.FileIO
+using ImageMagick
+# ImageIO seems broken on 1.6 ... and there doesn't
+# seem to be a clean way anymore to force not to use a loader library?
+filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
+filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
 
-tested_diff_path = joinpath(@__DIR__, "tested_different")
-test_record_path = joinpath(@__DIR__, "test_recordings")
-isdir(tested_diff_path) && rm(tested_diff_path, force = true, recursive = true)
-mkpath(tested_diff_path)
-isdir(test_record_path) && rm(test_record_path, force = true, recursive = true)
-mkpath(test_record_path)
-
-abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "reference_image_tests")
-abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
-# Add GLMakie specific tests
-push!(abstractplotting_tests, joinpath(@__DIR__, "glmakie_tests.jl"))
-database = MakieGallery.load_database(abstractplotting_tests)
-
-examples = MakieGallery.record_examples(test_record_path)
-@test length(examples) == length(database)
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
+path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+using ReferenceTests
+recorded = joinpath(@__DIR__, "recorded")
+rm(recorded; force=true, recursive=true); mkdir(recorded)
+ReferenceTests.record_tests(recording_dir=recorded)
+ReferenceTests.reference_tests(recorded)
+# needs GITHUB_TOKEN to be defined
+# ReferenceTests.upload_reference_images()
+# Run the below, to generate a html to view all differences:
+# recorded, ref_images, scores = ReferenceTests.reference_tests(recorded)
+# ReferenceTests.generate_test_summary("preview.html", recorded, ref_images, scores)
