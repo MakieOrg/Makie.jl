@@ -1,3 +1,4 @@
+import AbstractPlotting: disconnect!
 
 """
 Throwing an error in a c callback seems to lead to undefined behaviour
@@ -46,6 +47,7 @@ window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     @csafe(function windowclose(win)
+        @info("CLOOOSING")
         event[] = false
     end)
     disconnect!(window, window_open)
@@ -53,7 +55,6 @@ function window_open(scene::Scene, window::GLFW.Window)
     GLFW.SetWindowCloseCallback(window, windowclose)
 end
 
-import AbstractPlotting: disconnect!
 
 function disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
@@ -63,6 +64,7 @@ function window_position(window::GLFW.Window)
     xy = GLFW.GetWindowPos(window)
     (xy.x, xy.y)
 end
+
 window_area(scene::Scene, screen) = window_area(scene, to_native(screen))
 function window_area(scene::Scene, window::GLFW.Window)
     event = scene.events.window_area
@@ -149,7 +151,6 @@ end
 function disconnect!(window::GLFW.Window, ::typeof(dropped_files))
     GLFW.SetDropCallback(window, nothing)
 end
-
 
 """
 Registers a callback for keyboard unicode input.

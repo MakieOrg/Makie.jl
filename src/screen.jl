@@ -16,6 +16,7 @@ mutable struct Screen <: GLScreen
     cache2plot::Dict{UInt16, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
     render_tick::Node{Nothing}
+    window_open::Observable{Bool}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLFramebuffer,
@@ -30,7 +31,8 @@ mutable struct Screen <: GLScreen
         obj = new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, cache, cache2plot,
-            Matrix{RGB{N0f8}}(undef, s), Node(nothing)
+            Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
+            Observable(true)
         )
     end
 end
@@ -66,7 +68,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     end
 end
 
-function Base.empty!(screen::GLScreen)
+function Base.empty!(screen::Screen)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)
@@ -74,10 +76,13 @@ end
 
 function destroy!(screen::Screen)
     empty!(screen)
+    screen.window_open[] = false
     empty!(screen.cache)
     empty!(screen.cache2plot)
     destroy!(screen.glscreen)
 end
+
+Base.close(screen::Screen) = destroy!(screen)
 
 function resize_native!(window::GLFW.Window, resolution...)
     if isopen(window)
@@ -201,7 +206,6 @@ end
 
 to_native(x::Screen) = x.glscreen
 
-
 """
 OpenGL shares all data containers between shared contexts, but not vertexarrays -.-
 So to share a robjs between a context, we need to rewrap the vertexarray into a new one for that
@@ -232,13 +236,6 @@ function global_gl_screen()
 end
 
 """
-Julia 1.0.3 doesn't have I:J, so we copy the implementation from 1.1 under a new name:
-"""
-function irange(I::CartesianIndex{N}, J::CartesianIndex{N}) where N
-    CartesianIndices(map((i,j) -> i:j, Tuple(I), Tuple(J)))
-end
-
-"""
 Loads the makie loading icon and embedds it in an image the size of resolution
 """
 function get_loading_image(resolution)
@@ -252,7 +249,7 @@ function get_loading_image(resolution)
     start = CartesianIndex(max.(center .- center_icon, 1))
     I1 = CartesianIndex(1, 1)
     stop = min(start + CartesianIndex(size(icon)) - I1, CartesianIndex(resolution))
-    for idx in irange(start, stop)
+    for idx in start:stop
         gray = icon[idx - start + I1]
         img[idx] = RGBA{N0f8}(gray, gray, gray, 1.0)
     end
