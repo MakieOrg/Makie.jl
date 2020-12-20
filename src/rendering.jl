@@ -52,7 +52,6 @@ function renderloop(screen; framerate=WINDOW_CONFIG.framerate[])
         destroy!(screen)
     end
 end
-
 const WINDOW_CONFIG = (renderloop = Ref{Function}(renderloop),
     vsync = Ref(false),
     framerate = Ref(30.0),
