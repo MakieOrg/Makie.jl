@@ -1,180 +1,118 @@
-struct PlotDisplay <: AbstractDisplay end
-
 abstract type AbstractBackend end
 function backend_display end
 
 @enum ImageStorageFormat JuliaNative GLNative
 
 """
-Currently available displays by backend
+Current backend
 """
-const available_backends = AbstractBackend[]
 const current_backend = Ref{Union{Missing,AbstractBackend}}(missing)
 const use_display = Ref{Bool}(true)
 
 function inline!(inline = true)
     use_display[] = !inline
+    return
 end
 
 function register_backend!(backend::AbstractBackend)
-    if !(backend in available_backends)
-        push!(available_backends, backend)
-    end
-    # only set as the current backend if it's the only one
-    if(length(available_backends) == 1)
-        current_backend[] = backend
-    end
-    nothing
+    current_backend[] = backend
+    return
 end
 
 function push_screen!(scene::Scene, display::AbstractDisplay)
     push!(scene.current_screens, display)
-    on(events(scene).window_open) do is_open
+    deregister = nothing
+    deregister = on(events(scene).window_open) do is_open
         # when screen closes, it should set the scene isopen event to false
         # so that's when we can remove the display
         if !is_open
             filter!(x-> x !== display, scene.current_screens)
+            deregister !== nothing && off(deregister)
         end
     end
+    return
 end
 
-function Base.display(d::PlotDisplay, scene::Scene)
-    # set update to true, without triggering an event
-    # this just indicates, that now we may update on e.g. resize
-    use_display[] || throw(MethodError(display, (d, scene)))
-    try
+function backend_display(::Missing, ::Scene)
+    error("""
+    No backend available (GLMakie, CairoMakie, WGLMakie)!
+    Maybe you imported GLMakie but it didn't build correctly.
+    In that case, try `]build GLMakie` and watch out for any warnings.
+    If that's not the case, make sure to explicitely import any of the mentioned backends.
+    """)
+end
+
+function Base.display(scene::Scene)
+
+    if !use_display[]
+        return Core.invoke(display, Tuple{Any}, scene)
+    else
+        # set update to true, without triggering an event
+        # this just indicates, that now we may update on e.g. resize
         update!(scene)
         screen = backend_display(current_backend[], scene)
         push_screen!(scene, screen)
         return screen
-    catch ex
-        if ex isa MethodError && ex.f in (backend_display, backend_show)
-            throw(MethodError(display, (d, scene)))
-        else
-            rethrow()
-        end
     end
 end
 
 function Base.showable(mime::MIME{M}, scene::Scene) where M
-    # If we use a display, we are not able to show via mimes!
-    use_display[] && return false
     backend_showable(current_backend[], mime, scene)
 end
 
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
-    use_display[] && return false
     backend_showable(current_backend[], mime, scene)
 end
 
-# have to be explicit with mimetypes to avoid ambiguity
-
-function backend_show end
-
-for M in (MIME"text/plain", MIME)
-    @eval function Base.show(io::IO, m::$M, scene::Scene)
-        # set update to true, without triggering an event
-        # this just indicates, that now we may update on e.g. resize
-        update!(scene)
-
-        # Here, we deal with the Juno plotsize.
-        # Since SVGs are in units of pt, which is 1/72 in,
-        # and pixels (which Juno reports its plotsize as)
-        # are 1/96 in, we need to rescale the scene,
-        # whose units are in pt, into the expected size in px.
-        # This means we have to scale by a factor of 72/96.
-        res = get(io, :juno_plotsize, nothing)
-        if !isnothing(res)
-            if m isa MIME"image/svg+xml"
-                res = round.(Int, res .* 0.75)
-            end
-            resize!(scene, res...)
-        end
-
-        ioc = IOContext(io, :full_fidelity => true, :pt_per_unit => get(io, :pt_per_unit, 1.0), :px_per_unit => get(io, :px_per_unit, 1.0))
-
-        screen = backend_show(current_backend[], ioc, m, scene)
-
-        # E.g. text/plain doesn't have a display
-        screen isa AbstractScreen && push_screen!(scene, screen)
-        return screen
-    end
+function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
+    hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
 end
-
-function backend_showable(backend, m::MIME, scene::Scene)
-    hasmethod(backend_show, Tuple{typeof(backend), IO, typeof(m), typeof(scene)})
-end
-
 
 # fallback show when no backend is selected
 function backend_show(backend, io::IO, ::MIME"text/plain", scene::Scene)
-    if isempty(available_backends)
+    if backend isa Missing
         @warn """
         Printing Scene as text because no backend is available (GLMakie, CairoMakie, WGLMakie).
         Maybe you imported GLMakie but it didn't build correctly.
         In that case, try `]build GLMakie` and watch out for any warnings.
         """
     end
-
     print(io, scene)
     return
 end
 
-function Base.show(io::IO, plot::Combined)
-    print(io, typeof(plot))
+function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
+    show(io, scene)
 end
 
-function Base.show(io::IO, plot::Atomic)
-    print(io, typeof(plot))
-end
+function Base.show(io::IO, m::MIME, scene::Scene)
+    # set update to true, without triggering an event
+    # this just indicates, that now we may update on e.g. resize
+    update!(scene)
 
-function has_juno_plotpane()
-    if isdefined(Main, :Atom)
-        return Main.Atom.PlotPaneEnabled[]
-    else
-        return nothing
-    end
-end
-
-function Base.show(io::IO, scene::Scene)
-    println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
-
-    print(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots))")
-
-    if length(scene.plots) > 0
-        print(io, ":")
-        for (i, plot) in enumerate(scene.plots)
-            print(io, "\n")
-            print(io, "    $(i == length(scene.plots) ? '└' : '├') ", plot)
+    # Here, we deal with the Juno plotsize.
+    # Since SVGs are in units of pt, which is 1/72 in,
+    # and pixels (which Juno reports its plotsize as)
+    # are 1/96 in, we need to rescale the scene,
+    # whose units are in pt, into the expected size in px.
+    # This means we have to scale by a factor of 72/96.
+    res = get(io, :juno_plotsize, nothing)
+    if !isnothing(res)
+        if m isa MIME"image/svg+xml"
+            res = round.(Int, res .* 0.75)
         end
+        resize!(scene, res...)
     end
-
-    print(io, "\n  $(length(scene.children)) Child Scene$(_plural_s(scene.children))")
-
-    if length(scene.children) > 0
-        print(io, ":")
-        for (i, subscene) in enumerate(scene.children)
-            print(io, "\n")
-            print(io,"    $(i == length(scene.children) ? '└' : '├') Scene ($(size(subscene, 1))px, $(size(subscene, 2))px)")
-        end
-    end
-
-    plotpane_disabled = has_juno_plotpane() == false
-
-    if !use_display[]
-        if plotpane_disabled
-            print(io,
-                """\n\n`AbstractPlotting.inline!(true)` is set, while `Atom.PlotPaneEnabled[]` is false.
-                Either enable the plot pane, or set inline to false."""
-            )
-        else
-            print(io, "\n\nTo show the scene in a window, try setting `AbstractPlotting.inline!(false)`.")
-        end
-    end
+    ioc = IOContext(io,
+        :full_fidelity => true,
+        :pt_per_unit => get(io, :pt_per_unit, 1.0),
+        :px_per_unit => get(io, :px_per_unit, 1.0)
+    )
+    screen = backend_show(current_backend[], ioc, m, scene)
+    push_screen!(scene, screen)
+    return screen
 end
-
-_plural_s(x) = length(x) != 1 ? "s" : ""
 
 """
     Stepper(scene, path; format = :jpg)
@@ -275,8 +213,7 @@ function FileIO.save(
         px_per_unit = 1.0,
     )
 
-    resolution !== size(scene) && resize!(scene, resolution)
-
+    resolution != size(scene) && resize!(scene, resolution)
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
     # But otherwise we could get a filetype :UNKNOWN from a corrupt existing file
@@ -287,14 +224,13 @@ function FileIO.save(
     # query the filetype only from the file extension
     F = filetype(FileIO.query(filename))
 
-    kwarg_pairs = pairs((full_fidelity = true, pt_per_unit = pt_per_unit,
-        px_per_unit = px_per_unit))
-
     open(filename, "w") do s
-        show(
-            IOContext(s, kwarg_pairs...),
-            format2mime(F),
-            scene)
+        iocontext = IOContext(s,
+            :full_fidelity => true,
+            :pt_per_unit => pt_per_unit,
+            :px_per_unit => px_per_unit
+        )
+        show(iocontext, format2mime(F), scene)
     end
 end
 
@@ -360,9 +296,7 @@ struct RecordEvents
     path::String
 end
 
-function Base.display(d::PlotDisplay, re::RecordEvents)
-    display(d, re.scene)
-end
+Base.display(re::RecordEvents) = display(re.scene)
 
 struct VideoStream
     io
@@ -370,11 +304,6 @@ struct VideoStream
     screen
     path::String
 end
-
-# This is compat between FFMPEG versions 0.2 and 0.3,
-# where 0.3 uses artifacts but 0.2 does not.
-# Because of this, we need to check which variable will give FFMPEG's path.
-const _ffmpeg_path = isdefined(FFMPEG, :ffmpeg_path) ? FFMPEG.ffmpeg_path : FFMPEG.ffmpeg
 
 """
     VideoStream(scene::Scene, framerate = 24)
@@ -395,7 +324,7 @@ function VideoStream(
     _xdim, _ydim = size(scene)
     xdim = iseven(_xdim) ? _xdim : _xdim + 1
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
-    process = @ffmpeg_env open(`$_ffmpeg_path -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
+    process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     return VideoStream(process.in, process, screen, abspath(path))
 end
 
