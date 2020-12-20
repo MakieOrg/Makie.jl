@@ -3,6 +3,10 @@ using GLMakie.GLFW
 using GLMakie.ModernGL
 using GLMakie.ShaderAbstractions
 using GLMakie.ShaderAbstractions: Sampler
+using GLMakie.StaticArrays
+using GLMakie.GeometryBasics
+using AbstractPlotting: project
+using GeometryBasics: origin
 
 # A test case for wide lines and mitering at joints
 @cell "Miter Joints for line rendering" begin
@@ -70,7 +74,6 @@ end
 end
 
 @cell "Explicit frame rendering" begin
-
     set_window_config!(renderloop=(screen) -> nothing)
     function update_loop(m, buff, screen)
         for i = 1:20
