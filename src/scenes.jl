@@ -61,7 +61,6 @@ end
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
 function Base.show(io::IO, scene::Scene)
-    error("ol")
     println(io, "Scene ($(size(scene, 1))px, $(size(scene, 2))px):")
     print(io, "  $(length(scene.plots)) Plot$(_plural_s(scene.plots))")
 
