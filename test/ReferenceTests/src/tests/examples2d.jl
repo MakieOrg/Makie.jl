@@ -219,9 +219,9 @@ end
 
 @cell "Line changing colour" begin
     scene = lines(RNG.rand(10); linewidth=10)
-
-    Record(scene, 1:255; framerate=60) do i
-        scene.plots[2][:color] = RGBf0(i / 255, (255 - i) / 255, 0) # animate scene
+    N = 20
+    Record(scene, 1:N; framerate=20) do i
+        scene.plots[2][:color] = RGBf0(i / N, (N - i) / N, 0) # animate scene
     end
 end
 

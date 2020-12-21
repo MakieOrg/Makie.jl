@@ -30,6 +30,8 @@ CairoMakie:
   resolution: [500, 500]
   # options: "svg", "png", "pdf", "eps"
   type: png
+  # Only inline display in plotpane/IJulia/Pluto is supported right now
+  display: inline
 
 GLMakie:
   resolution: [600, 600]
@@ -42,9 +44,12 @@ GLMakie:
   focus_on_show: false
   decorated: true
   title: Makie
+  # Default opens a window
+  display: window
 
 WGLMakie:
   listen_port: 9284
   listen_url: 127.0.0.1
   # options: browserdisplay, electron, plotpane
+  # automatic: depends on the IDE
   display: automatic
