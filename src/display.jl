@@ -19,6 +19,11 @@ function register_backend!(backend::AbstractBackend)
     return
 end
 
+function push_screen!(scene::Scene, display)
+    # Ok lets leave a warning here until we fix CairoMakie!
+    @debug("Backend doesn't return screen from show methods. This needs fixing!")
+end
+
 function push_screen!(scene::Scene, display::AbstractDisplay)
     push!(scene.current_screens, display)
     deregister = nothing
