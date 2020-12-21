@@ -307,11 +307,11 @@ function to_world(
         to_world(zeros(Point{N, T}), prj_view_inv, cam_res)
 end
 
-function project(scene::Scene,point::T) where T<:StaticVector
+function project(scene::Scene, point::T) where T<:StaticVector
     cam = scene.camera
     project(
-        cam.projection[] * 
-        cam.view[] * 
+        cam.projection[] *
+        cam.view[] *
         transformationmatrix(scene)[],
         Vec2(scene.resolution[]), point
     )
@@ -329,5 +329,5 @@ function project(proj_view::Mat4f0, resolution::Vec2, point::Point)
     clip = proj_view * p4d
     p = (clip / clip[4])[Vec(1, 2)]
     p = Vec2f0(p[1], p[2])
-    ((((p + 1f0) / 2f0) .* (resolution - 1f0)) + 1f0)
+    return (((p .+ 1f0) / 2f0) .* (resolution .- 1f0)) .+ 1f0
 end
