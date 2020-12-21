@@ -12,27 +12,21 @@ function last_major_version()
     return "v" * string(VersionNumber(version.major, version.minor))
 end
 
-function upload_reference_images(path=basedir("recorded"), tag=last_major_version())
+function upload_reference_images(path=basedir("recorded"), tag=last_major_version(); name="refimages")
     mktempdir() do dir
-        tarfile = joinpath(dir, "refimages.tar")
+        tarfile = joinpath(dir, "$(name).tar")
         Tar.create(path, tarfile)
         upload_release("JuliaPlots", "AbstractPlotting.jl", ENV["GITHUB_TOKEN"], tag, tarfile)
     end
 end
 
-function download_refimages(tag=last_major_version())
-    url = "https://github.com/JuliaPlots/AbstractPlotting.jl/releases/download/$(tag)/refimages.tar"
-    images_tar = basedir("refimages.tar")
-    images = basedir("refimages")
+function download_refimages(tag=last_major_version(); name="refimages")
+    url = "https://github.com/JuliaPlots/AbstractPlotting.jl/releases/download/$(tag)/$(name).tar"
+    images_tar = basedir("$(name).tar")
+    images = basedir(name)
     isfile(images_tar) && rm(images_tar)
     isdir(images) && rm(images, recursive=true, force=true)
     Base.download(url, images_tar)
     Tar.extract(images_tar, images)
     return images
 end
-
-
-# rm(joinpath(@__DIR__, "refimages"), force=true, recursive=true)
-
-#
-# using Pkg.TOML
