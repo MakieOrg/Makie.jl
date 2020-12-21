@@ -1,6 +1,5 @@
-
-function _try_callbacks(expr)
-    quote
+macro print_error(expr)
+    return quote
         try
             $(esc(expr))
         catch e
@@ -9,15 +8,6 @@ function _try_callbacks(expr)
             Base.showerror(stderr, e, Base.catch_backtrace())
             println(stderr)
         end
-    end
-end
-
-macro try_callbacks(expr)
-    if expr.head in (:function,:(=)) && expr.args[1].head == :call
-        func_sig, func_body = expr.args
-        Expr(expr.head, esc(func_sig), _try_callbacks(func_body))
-    else
-        _try_callbacks(expr)
     end
 end
 
@@ -49,7 +39,7 @@ window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
-        @try_callbacks event[] = false
+        @print_error event[] = false
     end
     disconnect!(window, window_open)
     event[] = isopen(window)
@@ -110,8 +100,8 @@ returns `Node{NTuple{4, Int}}`
 mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
 function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebuttons
-    @try_callbacks function mousebuttons(window, button, action, mods)
-        addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
+    function mousebuttons(window, button, action, mods)
+        @print_error addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
     end
     disconnect!(window, mouse_buttons)
     GLFW.SetMouseButtonCallback(window, mousebuttons)
@@ -122,8 +112,8 @@ end
 keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(screen))
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
-    @try_callbacks function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
-        addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
+    function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
+        @print_error addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
     end
     disconnect!(window, keyboard_buttons)
     GLFW.SetKeyCallback(window, keyoardbuttons)
@@ -141,8 +131,8 @@ returns `Node{Vector{String}}`, which are absolute file paths
 dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
-    @try_callbacks function droppedfiles(window, files)
-        event[] = String.(files)
+    function droppedfiles(window, files)
+        @print_error event[] = String.(files)
     end
     disconnect!(window, dropped_files)
     event[] = String[]
@@ -161,12 +151,14 @@ containing the pressed char. Is empty, if no key is pressed.
 unicode_input(scene::Scene, screen) = unicode_input(scene, to_native(screen))
 function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
-    @try_callbacks function unicodeinput(window, c::Char)
-        vals = event[]
-        push!(vals, c)
-        event[] = vals
-        empty!(vals)
-        event[] = vals
+    function unicodeinput(window, c::Char)
+        @print_error begin
+            vals = event[]
+            push!(vals, c)
+            event[] = vals
+            empty!(vals)
+            event[] = vals
+        end
     end
     disconnect!(window, unicode_input)
     x = Char[]; sizehint!(x, 1)
@@ -210,16 +202,17 @@ which is not in scene coordinates, with the upper left window corner being 0
 """
 function mouse_position(scene::Scene, screen::Screen)
     window = to_native(screen)
+    e = events(scene)
     on(screen.render_tick) do _
-        !scene.events.hasfocus[] && return nothing
+        !e.hasfocus[] && return
         x, y = GLFW.GetCursorPos(window)
         pos = correct_mouse(window, x, y)
-        if pos != scene.events.mouseposition[]
-            @try_callbacks scene.events.mouseposition[] = pos
+        if pos != e.mouseposition[]
+            e.mouseposition[] = pos
         end
-        nothing
+        return
     end
-    nothing
+    return
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_position))
     nothing
@@ -235,9 +228,11 @@ which is an x and y offset.
 scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
 function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
-    @try_callbacks function scrollcb(window, w::Cdouble, h::Cdouble)
-        event[] = (w, h)
-        event[] = (0.0, 0.0)
+    function scrollcb(window, w::Cdouble, h::Cdouble)
+        @print_error begin
+            event[] = (w, h)
+            event[] = (0.0, 0.0)
+        end
     end
     disconnect!(window, scroll)
     GLFW.SetScrollCallback(window, scrollcb)
@@ -255,8 +250,8 @@ which is true whenever the window has focus.
 hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
-    @try_callbacks function hasfocuscb(window, focus::Bool)
-        event[] = focus
+    function hasfocuscb(window, focus::Bool)
+        @print_error event[] = focus
     end
     disconnect!(window, hasfocus)
     GLFW.SetWindowFocusCallback(window, hasfocuscb)
@@ -276,8 +271,8 @@ which is true whenever the cursor enters the window.
 entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
-    @try_callbacks function enteredwindowcb(window, entered::Bool)
-        event[] = entered
+    function enteredwindowcb(window, entered::Bool)
+        @print_error event[] = entered
     end
     disconnect!(window, entered_window)
     GLFW.SetCursorEnterCallback(window, enteredwindowcb)

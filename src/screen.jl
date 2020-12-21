@@ -153,38 +153,37 @@ function depthbuffer(screen::Screen)
 end
 
 function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.ImageStorageFormat = AbstractPlotting.JuliaNative)
-    if isopen(screen)
-        ctex = screen.framebuffer.color
-        # polling may change window size, when its bigger than monitor!
-        # we still need to poll though, to get all the newest events!
-        # GLFW.PollEvents()
-        # keep current buffer size to allows larger-than-window renders
-        render_frame(screen, resize_buffers=false) # let it render
-        glFinish() # block until opengl is done rendering
-        if size(ctex) != size(screen.framecache)
-            screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
-        end
-        fast_color_data!(screen.framecache, ctex)
-        if format == AbstractPlotting.GLNative
-            return screen.framecache
-        elseif format == AbstractPlotting.JuliaNative
-            @static if VERSION < v"1.6"
-                bufc = copy(screen.framecache)
-                ind1, ind2 = axes(bufc)
-                n = first(ind2) + last(ind2)
-                for i in ind1
-                    @simd for j in ind2
-                        @inbounds bufc[i, n-j] = screen.framecache[i, j]
-                    end
-                end
-                screen.framecache = bufc
-            else
-                reverse!(screen.framecache, dims = 2)
-            end
-            return PermutedDimsArray(screen.framecache, (2,1))
-        end
-    else
+    if !isopen(screen)
         error("Screen not open!")
+    end
+    ctex = screen.framebuffer.color
+    # polling may change window size, when its bigger than monitor!
+    # we still need to poll though, to get all the newest events!
+    # GLFW.PollEvents()
+    # keep current buffer size to allows larger-than-window renders
+    render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    if size(ctex) != size(screen.framecache)
+        screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
+    end
+    fast_color_data!(screen.framecache, ctex)
+    if format == AbstractPlotting.GLNative
+        return screen.framecache
+    elseif format == AbstractPlotting.JuliaNative
+        @static if VERSION < v"1.6"
+            bufc = copy(screen.framecache)
+            ind1, ind2 = axes(bufc)
+            n = first(ind2) + last(ind2)
+            for i in ind1
+                @simd for j in ind2
+                    @inbounds bufc[i, n-j] = screen.framecache[i, j]
+                end
+            end
+            screen.framecache = bufc
+        else
+            reverse!(screen.framecache, dims = 2)
+        end
+        return PermutedDimsArray(screen.framecache, (2,1))
     end
 end
 

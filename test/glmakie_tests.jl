@@ -1,12 +1,10 @@
-using AbstractPlotting: Record
+using GLMakie.AbstractPlotting: Record
 using GLMakie.GLFW
 using GLMakie.ModernGL
 using GLMakie.ShaderAbstractions
 using GLMakie.ShaderAbstractions: Sampler
 using GLMakie.StaticArrays
 using GLMakie.GeometryBasics
-using AbstractPlotting: project
-using GeometryBasics: origin
 
 # A test case for wide lines and mitering at joints
 @cell "Miter Joints for line rendering" begin
@@ -31,7 +29,6 @@ using GeometryBasics: origin
 end
 
 @cell "Sampler type" begin
-
     # Directly access texture parameters:
     x = Sampler(fill(to_color(:yellow), 100, 100), minfilter=:nearest)
     scene = image(x, show_axis=false)

@@ -38,6 +38,7 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
 end
 
 function renderloop(screen; framerate=WINDOW_CONFIG.framerate[])
+    isopen(screen) || error("Screen most be open to run renderloop!")
     try
         if WINDOW_CONFIG.vsync[]
             GLFW.SwapInterval(1)
@@ -54,6 +55,7 @@ function renderloop(screen; framerate=WINDOW_CONFIG.framerate[])
         destroy!(screen)
     end
 end
+
 const WINDOW_CONFIG = (renderloop = Ref{Function}(renderloop),
     vsync = Ref(false),
     framerate = Ref(30.0),
