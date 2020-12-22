@@ -15,8 +15,8 @@ mutable struct Screen <: GLScreen
     cache::Dict{UInt64, RenderObject}
     cache2plot::Dict{UInt16, AbstractPlot}
     framecache::Matrix{RGB{N0f8}}
-    displayed_scene::Union{Scene, Nothing}
     render_tick::Node{Nothing}
+    window_open::Observable{Bool}
     function Screen(
             glscreen::GLFW.Window,
             framebuffer::GLFramebuffer,
@@ -31,8 +31,8 @@ mutable struct Screen <: GLScreen
         obj = new(
             glscreen, framebuffer, rendertask, screen2scene,
             screens, renderlist, cache, cache2plot,
-            Matrix{RGB{N0f8}}(undef, s),
-            nothing, Node(nothing)
+            Matrix{RGB{N0f8}}(undef, s), Observable(nothing),
+            Observable(true)
         )
     end
 end
@@ -68,7 +68,7 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
     end
 end
 
-function Base.empty!(screen::GLScreen)
+function Base.empty!(screen::Screen)
     empty!(screen.renderlist)
     empty!(screen.screen2scene)
     empty!(screen.screens)
@@ -76,12 +76,15 @@ end
 
 function destroy!(screen::Screen)
     empty!(screen)
+    screen.window_open[] = false
     empty!(screen.cache)
     empty!(screen.cache2plot)
     destroy!(screen.glscreen)
 end
 
-function Base.resize!(window::GLFW.Window, resolution...)
+Base.close(screen::Screen) = destroy!(screen)
+
+function resize_native!(window::GLFW.Window, resolution...)
     if isopen(window)
         oldsize = windowsize(window)
         retina_scale = retina_scaling_factor(window)
@@ -112,19 +115,9 @@ end
 
 function Base.resize!(screen::Screen, w, h)
     nw = to_native(screen)
-    resize!(nw, w, h)
+    resize_native!(nw, w, h)
     fb = screen.framebuffer
     resize!(fb, (w, h))
-end
-
-function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
-    empty!(screen)
-    register_callbacks(scene, screen)
-    pollevents(screen)
-    insertplots!(screen, scene)
-    pollevents(screen)
-    screen.displayed_scene = scene
-    return
 end
 
 function fast_color_data!(dest::Array{RGB{N0f8}, 2}, source::Texture{T, 2}) where T
@@ -160,38 +153,37 @@ function depthbuffer(screen::Screen)
 end
 
 function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.ImageStorageFormat = AbstractPlotting.JuliaNative)
-    if isopen(screen)
-        ctex = screen.framebuffer.color
-        # polling may change window size, when its bigger than monitor!
-        # we still need to poll though, to get all the newest events!
-        # GLFW.PollEvents()
-        # keep current buffer size to allows larger-than-window renders
-        render_frame(screen, resize_buffers=false) # let it render
-        glFinish() # block until opengl is done rendering
-        if size(ctex) != size(screen.framecache)
-            screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
-        end
-        fast_color_data!(screen.framecache, ctex)
-        if format == AbstractPlotting.GLNative
-            return screen.framecache
-        elseif format == AbstractPlotting.JuliaNative
-            @static if VERSION < v"1.6"
-                bufc = copy(screen.framecache)
-                ind1, ind2 = axes(bufc)
-                n = first(ind2) + last(ind2)
-                for i in ind1
-                    @simd for j in ind2
-                        @inbounds bufc[i, n-j] = screen.framecache[i, j]
-                    end
-                end
-                screen.framecache = bufc
-            else
-                reverse!(screen.framecache, dims = 2)
-            end
-            return PermutedDimsArray(screen.framecache, (2,1))
-        end
-    else
+    if !isopen(screen)
         error("Screen not open!")
+    end
+    ctex = screen.framebuffer.color
+    # polling may change window size, when its bigger than monitor!
+    # we still need to poll though, to get all the newest events!
+    # GLFW.PollEvents()
+    # keep current buffer size to allows larger-than-window renders
+    render_frame(screen, resize_buffers=false) # let it render
+    glFinish() # block until opengl is done rendering
+    if size(ctex) != size(screen.framecache)
+        screen.framecache = Matrix{RGB{N0f8}}(undef, size(ctex))
+    end
+    fast_color_data!(screen.framecache, ctex)
+    if format == AbstractPlotting.GLNative
+        return screen.framecache
+    elseif format == AbstractPlotting.JuliaNative
+        @static if VERSION < v"1.6"
+            bufc = copy(screen.framecache)
+            ind1, ind2 = axes(bufc)
+            n = first(ind2) + last(ind2)
+            for i in ind1
+                @simd for j in ind2
+                    @inbounds bufc[i, n-j] = screen.framecache[i, j]
+                end
+            end
+            screen.framecache = bufc
+        else
+            reverse!(screen.framecache, dims = 2)
+        end
+        return PermutedDimsArray(screen.framecache, (2,1))
     end
 end
 
@@ -200,7 +192,7 @@ Base.isopen(x::Screen) = isopen(x.glscreen)
 function Base.push!(screen::GLScreen, scene::Scene, robj)
     # filter out gc'ed elements
     filter!(screen.screen2scene) do (k, v)
-        k.value != nothing
+        k.value !== nothing
     end
     screenid = get!(screen.screen2scene, WeakRef(scene)) do
         id = length(screen.screens) + 1
@@ -212,7 +204,6 @@ function Base.push!(screen::GLScreen, scene::Scene, robj)
 end
 
 to_native(x::Screen) = x.glscreen
-
 
 """
 OpenGL shares all data containers between shared contexts, but not vertexarrays -.-
@@ -231,12 +222,16 @@ function rewrap(robj::RenderObject{Pre}) where Pre
 end
 
 const GLOBAL_GL_SCREEN = Ref{Screen}()
+const gl_screens = GLFW.Window[]
 
-"""
-Julia 1.0.3 doesn't have I:J, so we copy the implementation from 1.1 under a new name:
-"""
-function irange(I::CartesianIndex{N}, J::CartesianIndex{N}) where N
-    CartesianIndices(map((i,j) -> i:j, Tuple(I), Tuple(J)))
+function global_gl_screen()
+    screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
+        GLOBAL_GL_SCREEN[]
+    else
+        GLOBAL_GL_SCREEN[] = Screen()
+        GLOBAL_GL_SCREEN[]
+    end
+    return screen
 end
 
 """
@@ -253,7 +248,7 @@ function get_loading_image(resolution)
     start = CartesianIndex(max.(center .- center_icon, 1))
     I1 = CartesianIndex(1, 1)
     stop = min(start + CartesianIndex(size(icon)) - I1, CartesianIndex(resolution))
-    for idx in irange(start, stop)
+    for idx in start:stop
         gray = icon[idx - start + I1]
         img[idx] = RGBA{N0f8}(gray, gray, gray, 1.0)
     end
@@ -278,10 +273,8 @@ function display_loading_image(screen::Screen)
     else
         error("loading_image needs to be Matrix{RGBA{N0f8}} with size(loading_image) == resolution")
     end
-
 end
 
-const gl_screens = GLFW.Window[]
 
 function Screen(;
         resolution = (10, 10), visible = false, title = WINDOW_CONFIG.title[],
@@ -328,7 +321,7 @@ function Screen(;
     GLAbstraction.empty_shader_cache!()
     push!(gl_screens, window)
 
-    resize!(window, resolution...)
+    resize_native!(window, resolution...)
     fb = GLFramebuffer(resolution)
 
     screen = Screen(
@@ -345,22 +338,13 @@ function Screen(;
         render_frame(screen)
         GLFW.SwapBuffers(window)
     end)
+
     screen.rendertask[] = @async((WINDOW_CONFIG.renderloop[])(screen))
     # display window if visible!
     if visible
         GLFW.ShowWindow(window)
     else
         GLFW.HideWindow(window)
-    end
-    return screen
-end
-
-function global_gl_screen()
-    screen = if isassigned(GLOBAL_GL_SCREEN) && isopen(GLOBAL_GL_SCREEN[])
-        GLOBAL_GL_SCREEN[]
-    else
-        GLOBAL_GL_SCREEN[] = Screen()
-        GLOBAL_GL_SCREEN[]
     end
     return screen
 end
@@ -442,6 +426,7 @@ function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Floa
         return (nothing, 0)
     end
 end
+
 function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64}, range::Float64)
     sid = pick_native(screen, xy, range)
     if haskey(screen.cache2plot, sid.id)
@@ -451,7 +436,6 @@ function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Floa
         return (nothing, 0)
     end
 end
-
 
 function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
     window_size = widths(screen)

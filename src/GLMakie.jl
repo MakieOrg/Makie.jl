@@ -39,7 +39,6 @@ function loadasset(folders...; kw_args...)
     load(path; kw_args...)
 end
 
-export assetpath, loadasset
 
 const deps_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 
@@ -71,10 +70,11 @@ function __init__()
     if WORKING_OPENGL
         activate!()
     else
-        @warn("Loaded OpenGL Backend, but OpenGL isn't working")
+        error("Loaded OpenGL Backend, but OpenGL isn't working")
     end
 end
 
 export set_window_config!
+export assetpath, loadasset
 
 end
