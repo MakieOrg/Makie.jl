@@ -77,4 +77,9 @@ end
 export set_window_config!
 export assetpath, loadasset
 
+if Base.VERSION >= v"1.4.2"
+    include("precompile.jl")
+    _precompile_()
+end
+
 end
