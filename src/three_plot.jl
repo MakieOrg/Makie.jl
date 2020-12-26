@@ -20,11 +20,14 @@ function get_plot(td::ThreeDisplay, plot::AbstractPlot)
 end
 
 function three_display(session::Session, scene::Scene)
-    update!(scene)
-
     serialized = serialize_scene(scene)
     smaller_serialized = replace_dublicates(serialized)
     JSServe.register_resource!(session, smaller_serialized[1])
+
+    session.on_close() do closed
+        closed && (scene.window_open[] = false)
+    end
+
     width, height = size(scene)
 
     canvas = DOM.um("canvas", width=width, height=height)
