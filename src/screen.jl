@@ -84,7 +84,7 @@ end
 
 Base.close(screen::Screen) = destroy!(screen)
 
-function resize_native!(window::GLFW.Window, resolution...)
+function resize_native!(window::GLFW.Window, resolution...; wait_for_resize=true)
     if isopen(window)
         oldsize = windowsize(window)
         retina_scale = retina_scaling_factor(window)
@@ -93,6 +93,8 @@ function resize_native!(window::GLFW.Window, resolution...)
             return
         end
         GLFW.SetWindowSize(window, round(Int, w), round(Int, h))
+        # We don't wait for the window to be resized
+        wait_for_resize || return
         # There is a problem, that window size update seems to take an arbitrary
         # amount of time - GLFW.WaitEvents() / a single GLFW.PollEvent()
         # doesn't help, so we try it a couple of times, to make sure
@@ -108,7 +110,7 @@ function resize_native!(window::GLFW.Window, resolution...)
             # There is a bug here, were without `sleep` it doesn't update the size
             # Not sure who's fault it is, but PollEvents/yield both dont work - only sleep!
             GLFW.PollEvents()
-            sleep(0.001)
+            sleep(0.0001)
         end
     end
 end
@@ -321,7 +323,7 @@ function Screen(;
     GLAbstraction.empty_shader_cache!()
     push!(gl_screens, window)
 
-    resize_native!(window, resolution...)
+    resize_native!(window, resolution...; wait_for_resize=false)
     fb = GLFramebuffer(resolution)
 
     screen = Screen(

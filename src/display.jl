@@ -9,8 +9,9 @@ function AbstractPlotting.backend_display(screen::Screen, scene::Scene)
     empty!(screen)
     # So, the GLFW window events are not guarantee to fire
     # when we close a window, so we ensure this here!
+    window_open = events(scene).window_open
     on(screen.window_open) do open
-        events(scene).window_open[] = open
+        window_open[] = open
     end
     register_callbacks(scene, screen)
     pollevents(screen)
