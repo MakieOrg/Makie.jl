@@ -156,8 +156,8 @@ function boundingbox(
     )
     atlas = get_texture_atlas()
     N = length(text)
-    ctext_state = iterate(text)
-    ctext_state === nothing && return FRect3D()
+    ctext_state1 = iterate(text)
+    ctext_state1 === nothing && return FRect3D()
 
     # call the layouting algorithm to find out where all the glyphs end up
     # this is kind of a doubling, maybe it could be avoided if at creation all
@@ -167,34 +167,38 @@ function boundingbox(
             rotation, model, justification, lineheight)
     end
 
-    bbox = nothing
+    bbox = Ref(FRect3D())            # use ref to avoid julia#15276
+    ctext_state = Ref{Union{Nothing,typeof(ctext_state1)}}(ctext_state1)
 
-    broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
-        c, text_state = ctext_state
-        ctext_state = iterate(text, text_state)
+    let position = position
+        broadcast_foreach(1:N, rotation, font, textsize) do i, rotation, font, scale
+            c, text_state = ctext_state[]::typeof(ctext_state1)
+            ctext_state[] = iterate(text, text_state)
 
-        if !(c in ('\r', '\n'))
-            bb_unitspace = if use_vertical_dimensions_from_font
-                height_insensitive_boundingbox(
-                    FreeTypeAbstraction.get_extent(font, c), font)
-            else
-                inkboundingbox(FreeTypeAbstraction.get_extent(font, c))
-            end
+            if !(c in ('\r', '\n'))
+                bb_unitspace = if use_vertical_dimensions_from_font
+                    height_insensitive_boundingbox(
+                        FreeTypeAbstraction.get_extent(font, c), font)
+                else
+                    inkboundingbox(FreeTypeAbstraction.get_extent(font, c))
+                end
 
-            scaled_bb = bb_unitspace * scale
+                scaled_bb = bb_unitspace * scale
 
-            # TODO this only works in 2d
-            rot_2d_radians = quaternion_to_2d_angle(rotation)
-            rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
+                # TODO this only works in 2d
+                rot_2d_radians = quaternion_to_2d_angle(rotation)
+                rotated_bb = rotatedrect(scaled_bb, rot_2d_radians)
 
-            # bb = rectdiv(bb, 1.5)
-            shifted_bb = FRect3D(rotated_bb) + position[i]
-            if isnothing(bbox)
-                bbox = shifted_bb
-            else
-                bbox = union(bbox, shifted_bb)
+                # bb = rectdiv(bb, 1.5)
+                shifted_bb = FRect3D(rotated_bb) + position[i]
+                bboxc = bbox[]
+                if isempty(bboxc)
+                    bbox[] = shifted_bb
+                else
+                    bbox[] = union(bboxc, shifted_bb)
+                end
             end
         end
     end
-    return bbox
+    return bbox[]
 end
