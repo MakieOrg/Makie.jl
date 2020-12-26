@@ -38,7 +38,11 @@ end
 
 value_convert(x::NamedTuple) = Attributes(x)
 
-node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => convert(Node{Any}, value_convert(pair[2])))
+# Version of `convert(Node{Any}, obj)` that doesn't require runtime dispatch
+node_any(@nospecialize(obj)) = isa(obj, Node{Any}) ? obj :
+                               isa(obj, Node) ? convert(Node{Any}, obj) : Node{Any}(obj)
+
+node_pairs(pair::Union{Pair, Tuple{Any, Any}}) = (pair[1] => node_any(value_convert(pair[2])))
 node_pairs(pairs) = (node_pairs(pair) for pair in pairs)
 
 Attributes(; kw_args...) = Attributes(Dict{Symbol, Node}(node_pairs(kw_args)))
@@ -119,7 +123,7 @@ function setindex!(x::Attributes, value, key::Symbol)
     if haskey(x, key)
         x.attributes[key][] = value
     else
-        x.attributes[key] = convert(Node{Any}, value)
+        x.attributes[key] = node_any(value)
     end
 end
 
@@ -129,10 +133,10 @@ function setindex!(x::Attributes, value::Node, key::Symbol)
         # You can do this manually like this:
         # lift(val-> attributes[$key] = val, node::$(typeof(value)))
         # ")
-        return x.attributes[key] = convert(Node{Any}, value)
+        return x.attributes[key] = node_any(value)
     else
         #TODO make this error. Attributes should be sort of immutable
-        return x.attributes[key] = convert(Node{Any}, value)
+        return x.attributes[key] = node_any(value)
     end
     return x
 end
