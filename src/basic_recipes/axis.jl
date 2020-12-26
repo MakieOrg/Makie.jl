@@ -575,13 +575,14 @@ function plot!(scene::SceneLike, ::Type{<: Axis2D}, attributes::Attributes, args
         LinesegmentBuffer(cplot, Point{2}; transparency=true,
                           linestyle=lift(last, cplot[:tickmarks, :linestyle]))
     ))
+    liftdim2(arg) = lift(dim2, arg)
     map_once(
         draw_axis2d,
         Node(textbuffer),
         frame_linebuffer, grid_linebuffer,tickmarks_linebuffer,
         transformationmatrix(scene),
         cplot.padding, cplot[1], cplot.ticks.ranges_labels,
-        lift.((dim2,), (cplot.showgrid, cplot.showticks, cplot.showtickmarks))...,
+        liftdim2(cplot.showgrid), liftdim2(cplot.showticks), liftdim2(cplot.showtickmarks),
         g_args..., t_args..., tm_args..., f_args..., ti_args...
     )
     push!(scene, cplot)

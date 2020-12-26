@@ -451,13 +451,14 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
 
     # Transformation is a field of the plot type, but can be given as an attribute
     trans = get(plot_attributes, :transformation, automatic)
-    transformation = if to_value(trans) == automatic
+    transval = to_value(trans)
+    transformation = if transval === automatic
         Transformation(scene)
-    elseif isa(to_value(trans), Transformation)
-        to_value(trans)
+    elseif isa(transval, Transformation)
+        transval
     else
         t = Transformation(scene)
-        transform!(t, to_value(trans))
+        transform!(t, transval)
         t
     end
     replace_automatic!(plot_attributes, :model) do
