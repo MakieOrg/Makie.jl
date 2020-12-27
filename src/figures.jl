@@ -57,7 +57,7 @@ function Figure(; kwargs...)
     )
 end
 
-export Figure
+export Figure, current_axis, current_figure, current_axis!, current_figure!
 
 # the FigurePosition is used to plot into a specific part of a figure and create
 # an axis there, like `scatter(fig[1, 2], ...)`
