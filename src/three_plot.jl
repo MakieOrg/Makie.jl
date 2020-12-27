@@ -13,12 +13,7 @@ function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
     return
 end
 
-function Base.delete!(td::WebDisplay, scene::Scene, plot::AbstractPlot)
-    delete!(get_three(td), scene, plot)
-end
-
 function Base.delete!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    println("HELLOO")
     uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
     WGL.delete_plots(td.session, js_uuid(scene), uuids)
     return

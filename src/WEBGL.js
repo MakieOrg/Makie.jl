@@ -1,3 +1,4 @@
+// Taken from THREEJS documentation
 const WEBGL = {
     isWebGLAvailable: function () {
         try {

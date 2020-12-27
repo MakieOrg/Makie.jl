@@ -77,6 +77,10 @@ function AbstractPlotting.backend_display(::WGLBackend, scene::Scene)
     return WebDisplay(three_ref, actual_display)
 end
 
+function Base.delete!(td::WebDisplay, scene::Scene, plot::AbstractPlot)
+    delete!(get_three(td), scene, plot)
+end
+
 function session2image(sessionlike)
     s = JSServe.session(sessionlike)
     to_data = js"document.querySelector('canvas').toDataURL()"
