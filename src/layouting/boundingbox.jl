@@ -192,7 +192,7 @@ function boundingbox(
                 # bb = rectdiv(bb, 1.5)
                 shifted_bb = FRect3D(rotated_bb) + position[i]
                 bboxc = bbox[]
-                if isempty(bboxc)
+                if !isfinite(bboxc)
                     bbox[] = shifted_bb
                 else
                     bbox[] = union(bboxc, shifted_bb)
