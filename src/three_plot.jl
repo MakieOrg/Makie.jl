@@ -24,7 +24,7 @@ function three_display(session::Session, scene::Scene)
     smaller_serialized = replace_dublicates(serialized)
     JSServe.register_resource!(session, smaller_serialized[1])
 
-    session.on_close() do closed
+    on(session.on_close) do closed
         closed && (scene.window_open[] = false)
     end
 
