@@ -11,9 +11,6 @@ using Pkg
 filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
 filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
 AbstractPlotting.set_theme!(resolution=(400, 400))
-# TODO fix bug where on first display content doesn't get resized correctly
-# In JSServe
-display(scatter(rand(10)))
 
 path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path = path))
