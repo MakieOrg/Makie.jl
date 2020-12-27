@@ -94,11 +94,10 @@ function AbstractPlotting.colorbuffer(screen::ThreeDisplay)
     return session2image(screen)
 end
 
-function get_three(screen::WebDisplay)
+function get_three(screen::WebDisplay; timeout = 30)
     # WebDisplay is not guaranteed to get displayed in the browser, so we wait a while
     # to see if anything gets displayed!
     tstart = time()
-    timeout = 30
     while time() - tstart < timeout
         if screen.three[] !== nothing
             three = screen.three[]
@@ -110,8 +109,8 @@ function get_three(screen::WebDisplay)
                 end
                 return three
             end
-            sleep(0.01)
         end
+        yield()
     end
     return nothing
 end
