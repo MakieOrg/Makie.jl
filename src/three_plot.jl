@@ -1,31 +1,46 @@
 struct ThreeDisplay <: AbstractPlotting.AbstractScreen
-    context
+    session::JSServe.Session
 end
 
-JSServe.session(td::ThreeDisplay) = JSServe.session(td.context)
+JSServe.session(td::ThreeDisplay) = td.session
+
+# We use objectid to find objects on the js side
+js_uuid(object) = string(objectid(object))
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    js_scene = serialize_three(scene, plot)
-    td.context.add_plot(js_scene)
+    plot_data = serialize_three(scene, plot)
+    WGL.insert_plot(td.session, js_uuid(scene), plot_data)
+    return
+end
+
+function Base.delete!(td::WebDisplay, scene::Scene, plot::AbstractPlot)
+    delete!(get_three(td), scene, plot)
+end
+
+function Base.delete!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
+    println("HELLOO")
+    uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
+    WGL.delete_plots(td.session, js_uuid(scene), uuids)
     return
 end
 
 """
-    get_plot(td::ThreeDisplay, plot::AbstractPlot)
+    find_plots(td::ThreeDisplay, plot::AbstractPlot)
 
 Gets the ThreeJS object representing the plot object.
 """
-function get_plot(td::ThreeDisplay, plot::AbstractPlot)
-    return td.context.get_plot(string(objectid(plot)))
+function find_plots(td::ThreeDisplay, plot::AbstractPlot)
+    uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
+    return WGL.find_plots(td, uuids)
 end
 
 function three_display(session::Session, scene::Scene)
+    empty_serialization_cache!()
     serialized = serialize_scene(scene)
-    smaller_serialized = replace_dublicates(serialized)
-    JSServe.register_resource!(session, smaller_serialized[1])
-
+    JSServe.register_resource!(session, serialized)
+    window_open = scene.events.window_open
     on(session.on_close) do closed
-        closed && (scene.window_open[] = false)
+        closed && (window_open[] = false)
     end
 
     width, height = size(scene)
@@ -33,50 +48,44 @@ function three_display(session::Session, scene::Scene)
     canvas = DOM.um("canvas", width=width, height=height)
 
     comm = Observable(Dict{String,Any}())
-    scene_data = Observable(smaller_serialized)
+    scene_data = Observable(serialized)
 
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 
+    scene_id = objectid(scene)
+
     setup = js"""
-    function setup([scenes, duplicates]){
+    function setup(scenes){
         const canvas = $(canvas)
-        const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
-        $(WGL).set_duplicate_references(duplicates)
-        const three_scenes = scenes.map($(WGL).deserialize_scene)
-        const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
-        $(WGL).start_renderloop(renderer, three_scenes, cam)
-        function get_plot(plot_uuid) {
-            for (const idx in three_scenes) {
-                const plot = three_scenes[idx].getObjectByName(plot_uuid)
-                if (plot) {
-                    return plot
-                }
-            }
-            return undefined;
-        }
+        if ( $(WEBGL).isWebGLAvailable() ) {
+            const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
+            const three_scenes = scenes.map($(WGL).deserialize_scene)
 
-        function add_plot(plot) {
-            const mesh = $(WGL).deserialize_plot(plot);
-        }
+            on_update($(window_open), open=>{
+                $(WGL).delete_scene($(scene_id))
+            })
 
-        on_update($canvas_width, canvas_width => {
-            const w_h = deserialize_js(canvas_width);
-            renderer.setSize(w_h[0], w_h[1]);
-            canvas.style.width = w_h[0];
-            canvas.style.height = w_h[1];
-        })
+            const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
+            $(WGL).start_renderloop(renderer, three_scenes, cam)
+            on_update($canvas_width, canvas_width => {
+                const w_h = deserialize_js(canvas_width);
+                renderer.setSize(w_h[0], w_h[1]);
+                canvas.style.width = w_h[0];
+                canvas.style.height = w_h[1];
+            })
+        } else {
+            const warning = $(WEBGL).getWebGLErrorMessage();
+            canvas.appendChild(warning);
+        }
     }
     """
 
     JSServe.onjs(session, scene_data, setup)
-
     WGLMakie.connect_scene_events!(session, scene, comm)
     WGLMakie.mousedrag(scene, nothing)
     scene_data[] = scene_data[]
-
     connect_scene_events!(session, scene, comm)
     mousedrag(scene, nothing)
-    get_plot(scene, plot) = js_call(session, :get_plot, plot_uuid)
-    three = ThreeDisplay((; get_plot))
+    three = ThreeDisplay(session)
     return three, canvas
 end

@@ -57,9 +57,16 @@ function serialize_three(array::Vector{Float32})
     return Dict(:type => "Float32Array", :data => array)
 end
 
+
+
 # Make sure we preserve pointer identity for uploaded textures, so
 # we can actually find duplicated before uploading
 const SAVE_POINTER_IDENTITY_FOR_TEXTURES = IdDict()
+
+function empty_serialization_cache!()
+    empty!(SAVE_POINTER_IDENTITY_FOR_TEXTURES)
+end
+
 function serialize_texture_data(x)
     buffer = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
         return serialize_three(x)
@@ -265,9 +272,12 @@ function serialize_scene(scene::Scene, serialized_scenes=[])
                       :camera => serialize_camera(scene),
                       :plots => serialize_plots(scene, scene.plots),
                       :cam3d_state => cam3d_state,
-                      :visible => scene.visible)
+                      :visible => scene.visible,
+                      :uuid => js_uuid(scene))
+
     push!(serialized_scenes, serialized)
     foreach(child -> serialize_scene(child, serialized_scenes), scene.children)
+
     return serialized_scenes
 end
 
@@ -275,7 +285,9 @@ function serialize_plots(scene::Scene, plots::Vector{T}, result=[]) where {T<:Ab
     for plot in plots
         # if no plots inserted, this truely is an atomic
         if isempty(plot.plots)
-            push!(result, serialize_three(scene, plot))
+            plot_data = serialize_three(scene, plot)
+            plot_data[:uuid] = js_uuid(plot)
+            push!(result, plot_data)
         else
             serialize_plots(scene, plot.plots, result)
         end
@@ -288,6 +300,7 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh = serialize_three(program)
     mesh[:name] = string(AbstractPlotting.plotkey(plot)) * "-" * string(objectid(plot))
     mesh[:visible] = plot.visible
+    mesh[:uuid] = js_uuid(plot)
     uniforms = mesh[:uniforms]
     delete!(uniforms, :lightposition)
     if haskey(plot, :lightposition)
@@ -316,51 +329,4 @@ function serialize_camera(scene::Scene)
         ep = cam.eyeposition[]
         return [serialize_three.((v, p, pv, res, ep))...]
     end
-end
-
-function recurse_object(f, object::AbstractDict)
-    # we only search for duplicates in objects, not keys
-    # if you put big objects in keys - well so be it :D
-    return Dict((k => f(v) for (k, v) in object))
-end
-
-function recurse_object(f, object::Union{Tuple,AbstractVector,Pair})
-    return map(f, object)
-end
-
-const BasicTypes = Union{Array{<:Number},Number,Bool, Nothing}
-
-recurse_object(f, x::BasicTypes) = x
-recurse_object(f, x::String) = x
-recurse_object(f, x) = x
-
-_replace_dublicates(object::BasicTypes, objects=IdDict(), duplicates=[]) = object
-
-function _replace_dublicates(object, objects=IdDict(), duplicates=[])
-    if object isa String && length(object) < 30
-        return object
-    end
-    if object isa StaticArray
-        return object
-    end
-    return if haskey(objects, object)
-        idx = objects[object]
-        if idx === nothing
-            push!(duplicates, object)
-            idx = length(duplicates)
-            objects[object] = idx
-        end
-        return Dict(:type => "Reference", :index => idx)
-    else
-        objects[object] = nothing
-        # we only search for duplicates in objects, not keys
-        # if you put big objects in keys - well so be it :D
-        return recurse_object(x -> _replace_dublicates(x, objects, duplicates), object)
-    end
-end
-
-function replace_dublicates(object)
-    duplicates = []
-    result = _replace_dublicates(object, IdDict(), duplicates)
-    return [result, duplicates]
 end
