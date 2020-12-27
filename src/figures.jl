@@ -84,6 +84,9 @@ Base.lastindex(f::FigurePosition, i) = lastindex(f.fig, i)
 # for now just redirect figure display/show to the internal scene
 Base.show(io::IO, fig::Figure) = show(io, fig.scene)
 Base.display(fig::Figure) = display(fig.scene)
+Base.show(io::IO, ::MIME"text/plain", fig::Figure) = print(io, "Figure()")
+# Base.show(io::IO, ::MIME"image/svg+xml", fig::Figure) = show(io, MIME"image/svg+xml"(), fig.scene)
+Base.show(io::IO, ::MIME"image/png", fig::Figure) = show(io, MIME"image/png"(), fig.scene)
 
 # a FigureSubposition is just a deeper nested position in a figure's layout, and it doesn't
 # necessarily have to refer to an existing layout either, because those can be created
