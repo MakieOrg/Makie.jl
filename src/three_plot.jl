@@ -30,7 +30,6 @@ function find_plots(td::ThreeDisplay, plot::AbstractPlot)
 end
 
 function three_display(session::Session, scene::Scene)
-    empty_serialization_cache!()
     serialized = serialize_scene(scene)
     JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open

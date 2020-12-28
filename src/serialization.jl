@@ -57,28 +57,8 @@ function serialize_three(array::Vector{Float32})
     return Dict(:type => "Float32Array", :data => array)
 end
 
-
-
-# Make sure we preserve pointer identity for uploaded textures, so
-# we can actually find duplicated before uploading
-const SAVE_POINTER_IDENTITY_FOR_TEXTURES = IdDict()
-
-function empty_serialization_cache!()
-    empty!(SAVE_POINTER_IDENTITY_FOR_TEXTURES)
-end
-
-function serialize_texture_data(x)
-    buffer = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
-        return serialize_three(x)
-    end
-    # Since we copy the data, and the data in x might have changed
-    # we still need to copy the new data!
-    buffer[:data] .= flatten_buffer(x)
-    return buffer
-end
-
 function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", :data => serialize_texture_data(color.data),
+    tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
                :size => [size(color.data)...], :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
