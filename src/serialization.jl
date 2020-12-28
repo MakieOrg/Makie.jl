@@ -28,10 +28,10 @@ tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
 
 serialize_three(val::Number) = val
-serialize_three(val::Vec2f0) = Float32[val...]
-serialize_three(val::Vec3f0) = Float32[val...]
-serialize_three(val::Vec4f0) = Float32[val...]
-serialize_three(val::Quaternion) = Float32[val.data...]
+serialize_three(val::Vec2f0) = convert(Vector{Float32}, val)
+serialize_three(val::Vec3f0) = convert(Vector{Float32}, val)
+serialize_three(val::Vec4f0) = convert(Vector{Float32}, val)
+serialize_three(val::Quaternion) = convert(Vector{Float32}, collect(val.data))
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
 serialize_three(val::Mat4f0) = vec(val)
@@ -137,11 +137,11 @@ isscalar(x::AbstractArray) = false
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 
-function ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext,
-                                        t::Type{<:AbstractPlotting.Quaternion})
+function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
+                                        ::Type{<:AbstractPlotting.Quaternion})
     return "vec4"
 end
-function ShaderAbstractions.convert_uniform(context::ShaderAbstractions.AbstractContext,
+function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext,
                                             t::Quaternion)
     return convert(Quaternion, t)
 end

@@ -1,5 +1,6 @@
 
 function JSServe.jsrender(session::Session, scene::Scene)
+    AbstractPlotting.update!(scene)
     three, canvas = WGLMakie.three_display(session, scene)
     return canvas
 end
