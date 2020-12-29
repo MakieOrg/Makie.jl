@@ -1,14 +1,13 @@
 using ImageMagick
+using Documenter, Markdown, Pkg, Random, FileIO, GLMakie
+using AbstractPlotting
+AbstractPlotting.inline!(true)
+import AbstractPlotting: to_string
+
 # ImageIO seems broken on 1.6 ... and there doesn't
 # seem to be a clean way anymore to force not to use a loader library?
 filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
 filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
-
-using Documenter, Markdown, Pkg, Random, FileIO, GLMakie
-using AbstractPlotting
-AbstractPlotting.inline!(true)
-
-import AbstractPlotting: to_string
 
 """
     print_table(io::IO, dict::Dict)
