@@ -21,9 +21,7 @@ Defaults to using the current Scene.
 function ylabel!(scene, ylabel::AbstractString)
     axis = scene[OldAxis]
     @assert !isnothing(axis) "The Scene does not have an axis!"
-    if axis isa Axis2D
-        scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], ylabel)
-    elseif axis isa Axis3D
+    if axis isa Axis3D
         scene[OldAxis][:names][:axisnames][] = (scene[OldAxis][:names][:axisnames][][1], ylabel, scene[OldAxis][:names][:axisnames][][3])
     else
         @error("Unknown axis type $(typeof(axis)).")
@@ -121,9 +119,9 @@ Set the z-limits for the given Scene (defaults to current Scene).
 """
 zlims!(scene::Scene, lims::NTuple{2, Real}) = setlims!(scene, lims, 3)
 
-xlims!(scene::Scene, lims::Real...) = xlims!(current_scene(), lims)
-ylims!(scene::Scene, lims::Real...) = ylims!(current_scene(), lims)
-zlims!(scene::Scene, lims::Real...) = zlims!(current_scene(), lims)
+xlims!(scene::Scene, lims::Real...) = xlims!(scene, lims)
+ylims!(scene::Scene, lims::Real...) = ylims!(scene, lims)
+zlims!(scene::Scene, lims::Real...) = zlims!(scene, lims)
 
 xlims!(lims::NTuple{2, Real}) = xlims!(current_scene(), lims)
 ylims!(lims::NTuple{2, Real}) = ylims!(current_scene(), lims)
