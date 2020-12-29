@@ -1,8 +1,6 @@
-struct FigureAxisPlot
-    figure::Figure
-    axis
-    plot::AbstractPlot
-end
+
+
+get_scene(fig::FigureAxisPlot) = get_scene(fig.figure)
 
 struct AxisPlot
     axis

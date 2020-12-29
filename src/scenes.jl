@@ -58,6 +58,8 @@ mutable struct Scene <: AbstractScene
     updated::Node{Bool}
 end
 
+get_scene(scene::Scene) = scene
+
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
 function Base.show(io::IO, scene::Scene)
