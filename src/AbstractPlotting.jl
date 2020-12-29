@@ -58,6 +58,29 @@ include("patterns.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
+
+struct Figure
+    scene::Scene
+    layout::GridLayoutBase.GridLayout
+    content::Vector
+    attributes::Attributes
+    current_axis::Ref{Any}
+
+    function Figure(args...)
+        f = new(args...)
+        current_figure!(f)
+        f
+    end
+end
+
+struct FigureAxisPlot
+    figure::Figure
+    axis
+    plot::AbstractPlot
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
 include("theming.jl")
 include("recipes.jl")
 include("interfaces.jl")

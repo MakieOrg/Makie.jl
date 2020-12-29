@@ -46,6 +46,7 @@ function cell_expr(name, code, source)
             closure
         )
         ReferenceTests.DATABASE[$key] = entry
+        # display(closure())
     end
 end
 

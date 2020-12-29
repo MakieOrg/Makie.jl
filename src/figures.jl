@@ -24,20 +24,7 @@ They can either reference a FigurePosition or a FigureSubposition, in which case
 if an axis is placed at that position (if not it errors) or it can reference an axis directly to plot into.
 =#
 
-
-struct Figure
-	scene::Scene
-	layout::GridLayoutBase.GridLayout
-	content::Vector
-    attributes::Attributes
-    current_axis::Ref{Any}
-    
-    function Figure(args...)
-        f = new(args...)
-        current_figure!(f)
-        f
-    end
-end
+get_scene(fig::Figure) = fig.scene
 
 const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
 current_figure() = _current_figure[]
@@ -157,4 +144,3 @@ end
 
 get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
 get_figure(fp::FigurePosition) = fp.fig
-
