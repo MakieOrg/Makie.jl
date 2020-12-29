@@ -155,7 +155,7 @@ function help_attributes(io::IO, func::Function; extended = false)
     help_attributes(io, to_type(func); extended = extended)
 end
 
-function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Union{Axis2D, Axis3D}
+function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Axis3D
     if extended
         println(io, "OldAxis attributes and their defaults for `$Typ` are: \n")
     else
