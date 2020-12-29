@@ -45,5 +45,5 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-      - run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=docs --color=yes docs/make.jl
+        run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=docs --color=yes docs/make.jl
   
