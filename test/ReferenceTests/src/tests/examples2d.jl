@@ -150,19 +150,20 @@ end
 
 @cell "Text rotation" begin
     fig = Figure()
+    ax = fig[1, 1] = Axis(fig)
     pos = (500, 500)
     posis = Point2f0[]
     for r in range(0, stop=2pi, length=20)
         p = pos .+ (sin(r) * 100.0, cos(r) * 100)
         push!(posis, p)
-        text!("test",
+        text!(ax, "test",
             position=p,
             textsize=50,
             rotation=1.5pi - r,
             align=(:center, :center)
         )
     end
-    scatter!(posis, markersize=10)
+    scatter!(ax, posis, markersize=10)
     fig
 end
 
@@ -298,4 +299,12 @@ end
 @cell "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f0.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
+end
+
+
+@cell "Line Function" begin
+    x = range(0, stop=3pi)
+    fig, ax, lineplot = lines(x, sin.(x))
+    lines!(ax, x, cos.(x), color=:blue)
+    fig
 end

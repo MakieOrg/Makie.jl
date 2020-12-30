@@ -1,6 +1,6 @@
-function Button(fig_or_scene; bbox = nothing, kwargs...)
+function Button(fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
-    scene = figure.scene
+    scene = get_scene(fig_or_scene)
 
     default_attrs = default_attributes(Button, scene).attributes
     theme_attrs = subtheme(scene, :Button)

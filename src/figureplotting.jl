@@ -31,7 +31,6 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
 
     fig[1, 1] = ax
     p = plot!(ax, P, Attributes(kw_attributes), args...)
-
     FigureAxisPlot(fig, ax, p)
 end
 
@@ -42,7 +41,6 @@ function plot!(P::PlotFunc, args...; kw_attributes...)
     isnothing(ax) && error("There is no current axis to plot into.")
     plot!(P, ax, args...; kw_attributes...)
 end
-
 
 function plot(P::PlotFunc, fp::FigurePosition, args...; axis = (;), kwargs...)
 
@@ -59,7 +57,6 @@ function plot(P::PlotFunc, fp::FigurePosition, args...; axis = (;), kwargs...)
 
     fp.gp[] = ax
     p = plot!(P, ax, args...; kwargs...)
-
     AxisPlot(ax, p)
 end
 
@@ -71,7 +68,6 @@ function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
     end
     ax = only(c)
     plot!(P, ax, args...; kwargs...)
-
 end
 
 function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs...)
@@ -90,7 +86,6 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs..
     # layout = find_or_make_layout!(fsp.parent)
     fsp.parent[fsp.rows, fsp.cols, fsp.side] = ax
     p = plot!(P, ax, args...; kwargs...)
-
     AxisPlot(ax, p)
 end
 

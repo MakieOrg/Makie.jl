@@ -698,7 +698,12 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
             sl === automatic && return dl
             return sl
         end
-        axis3d!(scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
+        if !any(x-> x isa Axis3D, scene.plots)
+            axis3d!(scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
+            # move axis to pos 1
+            sort!(scene.plots, by=x-> !(x isa Axis3D))
+        end
+
     end
 
     if !scene.raw[] || scene[:camera][] !== automatic

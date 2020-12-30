@@ -1,7 +1,7 @@
 @testset "Unit tests" begin
     @testset "#659 Volume errors if data is not a cube" begin
-        vol = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
-        lims = AbstractPlotting.data_limits(vol[1])
+        fig, ax, vplot = volume(1:8, 1:8, 1:10, rand(8, 8, 10))
+        lims = AbstractPlotting.data_limits(vplot)
         lo, hi = extrema(lims)
         @test all(lo .<= 1)
         @test all(hi .>= (8,8,10))
@@ -25,23 +25,8 @@
         @test true
     end
 
-    @testset "basic functionality" begin
-        scene = scatter(rand(4))
-        @test scene[OldAxis].ticks.title_gap[] == 3
-        scene[OldAxis].ticks.title_gap = 4
-        @test scene[OldAxis].ticks.title_gap[] == 4
-        @test scene[OldAxis].tickmarks.length[] == (1, 1)
-
-        scene = scatter([22.0, 28.0])
-        AbstractPlotting.update_limits!(scene)
-        lim = scene.data_limits[]
-        @test lim.origin[1] <= 1 && lim.widths[1] >= 1 && lim.origin[1]+lim.widths[1] >= 2
-        @test lim.origin[2] <= 22 && lim.widths[2] >= 6 && lim.origin[2]+lim.widths[2] >= 28
-    end
-
     include("conversions.jl")
     include("quaternions.jl")
     include("projection_math.jl")
-    include("shorthands.jl")
     include("liftmacro.jl")
 end

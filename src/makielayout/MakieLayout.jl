@@ -5,7 +5,7 @@ using ..AbstractPlotting: Rect2D
 import ..AbstractPlotting: IRect2D
 using ..AbstractPlotting.Keyboard
 using ..AbstractPlotting.Mouse
-using ..AbstractPlotting: ispressed, is_mouseinside
+using ..AbstractPlotting: ispressed, is_mouseinside, get_scene, FigureLike
 using Observables: onany
 import Observables
 import Formatting
