@@ -77,8 +77,6 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
 
-
-
     onany(limits, xreversed, yreversed) do lims, xrev, yrev
 
         nearclip = -10_000f0
