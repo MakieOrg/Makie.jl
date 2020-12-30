@@ -402,6 +402,11 @@ makedocs(
 #                           Deploying documentation                            #
 ################################################################################
 
+# for github actions, documenter checks that GITHUB_REPOSITORY matches the repo
+# keyword, but since we want to push to a different repo, we need to override the
+# env variable, which is JuliaPlots/AbstractPlotting.jl by default
+ENV["GITHUB_REPOSITORY"] = "JuliaPlots/MakieDocumentation"
+
 deploydocs(
     repo = "github.com/JuliaPlots/MakieDocumentation",
     push_preview = true
