@@ -1,12 +1,14 @@
 using LinearAlgebra
 using FileIO, Colors, GeometryBasics
+using ReferenceTests: loadasset, RNG
+using AbstractPlotting: Record
 
 @cell "Image on Geometry (Moon)" begin
     moon = loadasset("moon.png")
-    scene = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
-    update_cam!(scene, Vec3f0(-2, 2, 2), Vec3f0(0))
-    scene.center = false # prevent to recenter on display
-    scene
+    fig, ax, meshplot = mesh(Sphere(Point3f0(0), 1f0), color=moon, shading=false, show_axis=false, center=false)
+    update_cam!(ax.scene, Vec3f0(-2, 2, 2), Vec3f0(0))
+    ax.scene.center = false # prevent to recenter on display
+    fig
 end
 
 @cell "Image on Geometry (Earth)" begin
@@ -30,7 +32,8 @@ end
     ]
 
     meshes = map(colormesh, rectangles)
-    scene = mesh(merge(meshes))
+    fig, ax, meshplot = mesh(merge(meshes))
+    scene = ax.scene
     center!(scene)
     cam = cameracontrols(scene)
     dir = widths(scene_limits(scene)) ./ 2.
@@ -46,7 +49,7 @@ end
     update_cam!(scene, cam)
     # stop scene display from centering, which would overwrite the camera paramter we just set
     scene.center = false
-    scene
+    fig
 end
 
 @cell "Volume Function" begin
@@ -124,13 +127,6 @@ end
     )
 end
 
-@cell "Line Function" begin
-    scene = Scene()
-    x = range(0, stop=3pi)
-    lines!(scene, x, sin.(x))
-    lines!(scene, x, cos.(x), color=:blue)
-end
-
 @cell "Meshscatter Function" begin
     large_sphere = Sphere(Point3f0(0), 1f0)
     positions = decompose(Point3f0, large_sphere)
@@ -140,27 +136,27 @@ end
 end
 
 @cell "scatter" begin
-    scatter(RNG.rand(20), RNG.rand(20), markersize=0.03)
+    scatter(RNG.rand(20), RNG.rand(20), markersize=10)
 end
 
 @cell "Marker sizes" begin
-    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) ./ 20, color=to_colormap(:Spectral, 20))
+    scatter(RNG.rand(20), RNG.rand(20), markersize=RNG.rand(20) .* 20, color=to_colormap(:Spectral, 20))
 end
 
 @cell "Record Video" begin
-    scene = Scene()
-
     f(t, v, s) = (sin(v + t) * s, cos(v + t) * s, (cos(v + t) + sin(v)) * s)
     t = Node(Base.time()) # create a life signal
     limits = FRect3D(Vec3f0(-1.5, -1.5, -3), Vec3f0(3, 3, 6))
-    p1 = meshscatter!(scene, lift(t -> f.(t, range(0, stop=2pi, length=50), 1), t), markersize=0.05)[end]
-    p2 = meshscatter!(scene, lift(t -> f.(t * 2.0, range(0, stop=2pi, length=50), 1.5), t), markersize=0.05)[end]
+    fig, ax, p1 = meshscatter(lift(t -> f.(t, range(0, stop=2pi, length=50), 1), t), markersize=0.05)
+    p2 = meshscatter!(ax, lift(t -> f.(t * 2.0, range(0, stop=2pi, length=50), 1.5), t), markersize=0.05)
 
-    lines = lift(p1[1], p2[1]) do pos1, pos2
-        map((a, b) -> (a, b), pos1, pos2)
+    linepoints = lift(p1[1], p2[1]) do pos1, pos2
+        map((a, b) -> (a => b), pos1, pos2)
     end
-    linesegments!(scene, lines, linestyle=:dot, limits=limits)
-    Record(scene, 1:2) do i
+
+    linesegments!(ax, linepoints, linestyle=:dot, limits=limits)
+
+    Record(fig, 1:2) do i
         t[] = Base.time()
     end
 end
@@ -171,16 +167,16 @@ end
         ((xy') * Matrix(I, 3, 3) * xy) / 20
     end
     x = range(-2pi, stop=2pi, length=100)
-    scene = Scene()
     # c[4] == fourth argument of the above plotting command
-    c = contour!(scene, x, x, x, test, levels=6, alpha=0.3, transparency=true)[end]
-    xm, ym, zm = minimum(scene_limits(scene))
-    contour!(scene, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
-    heatmap!(scene, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
-    contour!(scene, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
+    fig, ax, c = contour(x, x, x, test, levels=6, alpha=0.3, transparency=true)
+
+    xm, ym, zm = minimum(scene_limits(ax.scene))
+    contour!(ax, x, x, map(v -> v[1, :, :], c[4]), transformation=(:xy, zm), linewidth=2)
+    heatmap!(ax, x, x, map(v -> v[:, 1, :], c[4]), transformation=(:xz, ym))
+    contour!(ax, x, x, map(v -> v[:, :, 1], c[4]), fillrange=true, transformation=(:yz, xm))
     # reorder plots for transparency
-    scene.plots[:] = scene.plots[[1, 3, 4, 5, 2]]
-    scene
+    ax.scene.plots[:] = ax.scene.plots[[1, 3, 4, 5, 2]]
+    fig
 end
 
 @cell "Contour3d" begin
@@ -239,6 +235,7 @@ end
         pts, ∇ˢF,
         arrowsize=0.03, linecolor=(:white, 0.6), linewidth=3
     )
+    current_figure()
 end
 
 @cell "surface + contour3d" begin
@@ -246,14 +243,12 @@ end
     vy = -1:0.01:1
 
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
-
-    p1 = surface(vx, vy, f)
-    p2 = contour3d(vx, vy, (x, y) -> f(x, y), levels=15, linewidth=3)
-
-    scene = vbox(p1, p2)
-    text!(campixel(p1), "surface", position=widths(p1) .* Vec(0.5, 1), align=(:center, :top), raw=true)
-    text!(campixel(p2), "contour3d", position=widths(p2) .* Vec(0.5, 1), align=(:center, :top), raw=true)
-    scene
+    fig = Figure()
+    ax1 = fig[1, 1] = Axis(fig, title = "surface")
+    ax2 = fig[1, 2] = Axis(fig, title = "contour3d")
+    surface!(ax1, vx, vy, f)
+    contour3d!(ax2, vx, vy, (x, y) -> f(x, y), levels=15, linewidth=3)
+    fig
 end
 
 @cell "FEM mesh 3D" begin
@@ -348,29 +343,29 @@ end
 
     rotationsC = [Vec4f0(Qlist[i, 1], Qlist[i, 2], Qlist[i, 3], Qlist[i, 4]) for i = 1:ne]
     # plot
-    scene = meshscatter(
+    fig, ax, meshplot = meshscatter(
         pG[edges[:, 1]],
         color=colorsC, marker=meshC,
         markersize=sizesC,  rotations=rotationsC,
     )
     meshscatter!(
-        scene, pG,
+        ax, pG,
         color=colorsp, marker=meshS, markersize=radius,
     )
-    scene
+    fig
 end
 
 @cell "Connected Sphere" begin
     large_sphere = Sphere(Point3f0(0), 1f0)
     positions = decompose(Point3f0, large_sphere)
     linepos = view(positions, RNG.rand(1:length(positions), 1000))
-    scene = lines(linepos, linewidth=0.1, color=:black, transparency=true)
+    fig, ax, lineplot = lines(linepos, linewidth=0.1, color=:black, transparency=true)
     scatter!(
-        scene, positions, markersize=0.05,
+        ax, positions, markersize=50,
         strokewidth=2, strokecolor=:white,
         color=RGBAf0(0.9, 0.2, 0.4, 0.5)
     )
-    scene
+    fig
 end
 
 @cell "image scatter" begin
@@ -416,8 +411,8 @@ end
     pos = map(decompose(Point3f0, x), GeometryBasics.normals(x)) do p, n
         p => p .+ (normalize(n) .* 0.05f0)
     end
-
     linesegments!(pos, color=:blue)
+    current_figure()
 end
 
 @cell "Sphere Mesh" begin
@@ -500,11 +495,12 @@ end
     x = range(-2, stop=2, length=N)
     y = x
     z = (-x .* exp.(-x.^2 .- (y').^2)) .* 4
-    scene = surface(x, y, z)
-    xm, ym, zm = minimum(scene_limits(scene))
-    contour!(scene, x, y, z, levels=15, linewidth=2, transformation=(:xy, zm))
-    wireframe!(scene, x, y, z, overdraw=true, transparency=true, color=(:black, 0.1))
-    center!(scene) # center the Scene on the display
+    fig, ax, surfaceplot = surface(x, y, z)
+    xm, ym, zm = minimum(scene_limits(ax.scene))
+    contour!(ax, x, y, z, levels=15, linewidth=2, transformation=(:xy, zm))
+    wireframe!(ax, x, y, z, overdraw=true, transparency=true, color=(:black, 0.1))
+    center!(ax.scene) # center the Scene on the display
+    fig
 end
 
 let

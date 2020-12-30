@@ -7,7 +7,7 @@ using MeshIO
 using FileIO
 using MacroTools
 using AbstractPlotting
-using AbstractPlotting: Record, Stepper
+using AbstractPlotting: Record, Stepper, Axis
 using AbstractPlotting.FFMPEG
 using Printf
 using ghr_jll
