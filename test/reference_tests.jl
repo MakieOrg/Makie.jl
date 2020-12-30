@@ -1,6 +1,7 @@
 Pkg.develop(Pkg.PackageSpec(path=joinpath(@__DIR__, "ReferenceTests")))
 
 using ReferenceTests
+using ReferenceTests: @cell
 
 ReferenceTests.record_tests()
 # needs GITHUB_TOKEN to be set:

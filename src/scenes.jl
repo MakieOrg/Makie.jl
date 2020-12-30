@@ -58,6 +58,8 @@ mutable struct Scene <: AbstractScene
     updated::Node{Bool}
 end
 
+get_scene(scene::Scene) = scene
+
 _plural_s(x) = length(x) != 1 ? "s" : ""
 
 function Base.show(io::IO, scene::Scene)
@@ -114,7 +116,6 @@ function Scene(
         if update && !(scene.camera_controls[] isa PixelCamera)
             if !scene.raw[]
                 scene.update_limits[] && update_limits!(scene)
-                scene.scale_plot[] && scale_scene!(scene)
                 scene.center[] && center!(scene)
             end
         end
@@ -240,7 +241,6 @@ function root(scene::Scene)
     scene
 end
 parent_or_self(scene::Scene) = isroot(scene) ? scene : parent(scene)
-
 
 Base.size(x::Scene) = pixelarea(x) |> to_value |> widths |> Tuple
 Base.size(x::Scene, i) = size(x)[i]
@@ -481,7 +481,6 @@ function flatten_combined(plots::Vector, flat=AbstractPlot[])
     flat
 end
 
-
 function insertplots!(screen::AbstractDisplay, scene::Scene)
     for elem in scene.plots
         insert!(screen, scene, elem)
@@ -489,20 +488,6 @@ function insertplots!(screen::AbstractDisplay, scene::Scene)
     foreach(s -> insertplots!(screen, s), scene.children)
 end
 update_cam!(scene::Scene, bb::AbstractCamera, rect) = nothing
-
-function scale_scene!(scene::Scene)
-    if is2d(scene) !== nothing && is2d(scene)
-        area = pixelarea(scene)[]
-        lims = scene_limits(scene)
-        # not really sure how to scale 3D scenes in a reasonable way
-        mini, maxi = minimum(lims), maximum(lims)
-        l = ((mini[1], maxi[1]), (mini[2], maxi[2]))
-        xyzfit = fit_ratio(area, l)
-        s = to_ndim(Vec3f0, xyzfit, 1f0)
-        scale!(scene, s)
-    end
-    return scene
-end
 
 function center!(scene::Scene, padding=0.01)
     bb = boundingbox(scene)

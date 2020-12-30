@@ -72,7 +72,6 @@ const minimal_default = Attributes(
     center = true,
     update_limits = true,
     axis = Attributes(),
-    axis2d = Attributes(),
     axis3d = Attributes(),
     legend = Attributes(),
     axis_type = automatic,

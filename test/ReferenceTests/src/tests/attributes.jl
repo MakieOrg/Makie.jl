@@ -1,6 +1,7 @@
 @cell "align" begin
-    scene = scatter(RNG.rand(10), color=:red)
-    text!(scene, "adding text", textsize=0.6, align=(:center, :center))
+    fig, ax, sc = scatter(RNG.rand(10), color=:red)
+    text!(ax, "adding text", textsize=0.6, align=(:center, :center))
+    fig
 end
 
 @cell "fillrange" begin
@@ -11,9 +12,9 @@ end
 end
 
 @cell "font" begin
-    scene = Scene()
-    scatter!(scene, RNG.rand(10), color=:red)
-    text!(scene, "adding text", textsize=0.6, align=(:center, :center), font="Blackchancery")
+    fig, ax, sc = scatter(RNG.rand(10), color=:red)
+    text!(ax, "adding text", textsize=0.6, align=(:center, :center), font="Blackchancery")
+    fig
 end
 
 @cell "glowcolor, glowwidth" begin
@@ -35,9 +36,9 @@ end
 
 
 @cell "position" begin
-    scene = Scene()
-    scatter!(scene, RNG.rand(10), color=:red)
-    text!(scene, "adding text", textsize=0.6, position=(5.0, 1.1))
+    fig, ax, sc = scatter(RNG.rand(10), color=:red)
+    text!(ax, "adding text", textsize=0.6, position=(5.0, 1.1))
+    fig
 end
 
 @cell "rotation" begin
@@ -49,8 +50,8 @@ end
 end
 
 @cell "visible" begin
-    vbox(
-        scatter(RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=true),
-        scatter(RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=false)
-    )
+    fig = Figure()
+    scatter(fig[1, 1], RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=true)
+    scatter(fig[1, 2], RNG.randn(20), color=to_colormap(:deep, 20), markersize=10, visible=false)
+    fig
 end
