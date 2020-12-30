@@ -2,7 +2,10 @@
 ![logo](assets/misc/logo.png)
 
 
-Build status: [![][gitlab-img]][gitlab-url]
+Build status:
+![CI](https://github.com/JuliaPlots/AbstractPlotting.jl/workflows/CI/badge.svg)
+![Docs](https://github.com/JuliaPlots/AbstractPlotting.jl/workflows/Docs/badge.svg)
+
 
 An abstract plotting library part of the 
 <a href = "https://www.github.com/JuliaPlots/Makie.jl"><img src="https://raw.githubusercontent.com/JuliaPlots/Makie.jl/master/assets/logo.png" alt="Makie.jl" height="20" align = "top"></a> ecosystem.
