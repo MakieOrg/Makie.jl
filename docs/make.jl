@@ -1,9 +1,20 @@
 using ImageMagick
-using Documenter, Markdown, Pkg, Random, FileIO, GLMakie
+using FileIO
+using Documenter
+using Highlights
+using Markdown
+using Random
+using GLMakie
 using AbstractPlotting
 AbstractPlotting.inline!(true)
 import AbstractPlotting: to_string
 
+# Pause renderloop for slow software rendering.
+# This way, we only render if we actualy save e.g. an image
+GLMakie.set_window_config!(;
+    framerate = 15.0,
+    pause_rendering = true
+)
 # ImageIO seems broken on 1.6 ... and there doesn't
 # seem to be a clean way anymore to force not to use a loader library?
 filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
@@ -83,7 +94,6 @@ mkpath(genpath)
 ################################################################################
 
 @info("Writing highlighting stylesheet")
-using Highlights
 
 open(joinpath(srcpath, "assets", "syntaxtheme.css"), "w") do io
     Highlights.stylesheet(io, MIME("text/css"), Highlights.Themes.DefaultTheme)
