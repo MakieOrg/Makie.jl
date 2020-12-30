@@ -20,6 +20,7 @@ import FileIO: save
 using Printf: @sprintf
 import Isoband
 import PolygonOps
+import GridLayoutBase
 
 # Imports from Base which we don't want to have to qualify
 using Base: RefValue
@@ -260,7 +261,6 @@ function __init__()
     end
 end
 
-import GridLayoutBase
 include("figures.jl")
 
 include("makielayout/MakieLayout.jl")
