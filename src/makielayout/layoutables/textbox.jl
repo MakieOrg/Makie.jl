@@ -350,7 +350,7 @@ end
 
 """
     defocus!(tb::Textbox)
-Defocuses an `Textbox` so it doesn't receive keyboard input.
+Defocuses a `Textbox` so it doesn't receive keyboard input.
 """
 function defocus!(tb::Textbox)
 

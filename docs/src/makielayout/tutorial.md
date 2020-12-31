@@ -335,7 +335,7 @@ nothing # hide
 Now, we also want to add a color bar for the two heatmaps. Right now, their colors
 are independently scaled from each other. We choose a scale that makes sense for
 both of them (in our case, we know data ranges only from 1 to 3) and assign that
-to both heatmaps. Then we create an `Colorbar` object with one of the heatmaps.
+to both heatmaps. Then we create a `Colorbar` object with one of the heatmaps.
 This way, the color bar copies color range and color map from that heatmap.
 
 We want to place the color bar to the right of the heatmaps, spanning the full
