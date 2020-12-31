@@ -46,7 +46,7 @@ content, like an `Axis`, the auto-determined width or height will be `nothing`.
 The computed width and height is the size that the element reports to a `GridLayout`
 that it is a content element of. This can be different from the auto-size if the
 object doesn't want its parent layout to know its auto-size. This is useful if
-you don't want a column to shrink to the size of an `Label`, for example.
+you don't want a column to shrink to the size of a `Label`, for example.
 
 ### Protrusions
 
