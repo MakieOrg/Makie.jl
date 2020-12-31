@@ -5,7 +5,7 @@ CairoMakie.activate!()
 
 ## Slider
 
-A simple slider without a label. You can create a label using an `Label` object,
+A simple slider without a label. You can create a label using a `Label` object,
 for example. You need to specify a range that constrains the slider's possible values.
 You can then lift the `value` observable to make interactive plots.
 
