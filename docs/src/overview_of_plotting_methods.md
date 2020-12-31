@@ -42,6 +42,11 @@ scatter!(scene, args...) -> ::Scatter
 In the background, each `Figure` has a `GridLayout` from GridLayoutBase.jl, which takes care of layouting plot elements nicely.
 For convenience, you can index into a figure multiple times to refer to nested grid positions, which makes it easy to quickly assemble complex layouts.
 
+### With Non-Mutating Plotting Functions
+
+Using the non-mutating plotting functions with figure positions creates new axes at the given locations.
+If a GridLayout along the nesting levels doesn't exist, yet, it is created automatically for convenience.
+
 ```@example
 using GLMakie
 
@@ -64,6 +69,40 @@ ax, hm = heatmap(fig[2, 1:3], randn(30, 10))
 
 # across all rows, new column after the last one
 fig[:, end+1] = Colorbar(fig, hm, width = 30)
+
+fig
+```
+
+### With Mutating Plotting Functions
+
+Mutating plotting functions work a bit differently with figure positions.
+First, it is checked if one - and only one - axis exists already at the given position.
+If that's the case, that axis is plotted into.
+If it's not the case, the function will error.
+
+```@example
+using GLMakie
+
+fig = Figure()
+
+lines(fig[1, 1], 1.0..10, sin, color = :blue)
+# this works because the previous command created an axis at fig[1, 1]
+lines!(fig[1, 1], 1.0..10, cos, color = :red)
+
+# the following line wouldn't work yet because no axis exists at fig[1, 2]
+# lines!(fig[1, 2], 1.0..10, sin, color = :green)
+
+fig[1, 2] = Axis(fig)
+# now it works
+lines!(fig[1, 2], 1.0..10, sin, color = :green)
+
+# also works with nested grids
+fig[2, 1:2][1, 3] = Axis(fig)
+lines!(fig[2, 1:2][1, 3], 1.0..10, cos, color = :orange)
+
+# but often it's more convenient to save an axis to reuse it
+ax, _ = lines(fig[2, 1:2][1, 1:2], 1.0..10, sin, color = :black)
+lines!(ax, 1.0..10, cos, color = :yellow)
 
 fig
 ```
