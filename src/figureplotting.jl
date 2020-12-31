@@ -21,7 +21,7 @@ function plot(P::PlotFunc, args...; axis = (;), figure = (;), kw_attributes...)
     fig = Figure(; figure...)
 
     proxyscene = Scene()
-    plot!(proxyscene, P, Attributes(kw_attributes), args...; raw = true, show_axis = false)
+    plot!(proxyscene, P, Attributes(kw_attributes), args...; show_axis = false)
 
     if is2d(proxyscene)
         ax = Axis(fig; axis...)
