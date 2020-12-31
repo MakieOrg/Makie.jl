@@ -17,7 +17,7 @@ nothing # hide
     To display a Figure from within a local scope,
     like from within a function, you can directly call `display(figure)`.  
 
-## A first plot
+## A First Plot
 
 Let's begin by plotting some points using the `scatter` function.
 
