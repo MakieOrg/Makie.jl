@@ -405,7 +405,9 @@ makedocs(
             "devdocs.md",
             "AbstractPlotting Reference" => "abstractplotting_api.md",
         ],
-    ]
+    ],
+    strict = true, # experimental kwarg, so that the docs fail if there are any errors encountered
+    # this way the docs serve better as another test case, because nobody looks at warnings
 )
 
 ################################################################################
