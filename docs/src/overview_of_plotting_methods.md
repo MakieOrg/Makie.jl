@@ -60,7 +60,7 @@ lines(fig[1, 3][1, 1], cumsum(randn(10000)), color = :blue)
 lines(fig[1, 3][2, 1], cumsum(randn(10000)), color = :red)
 
 # second row, first to third column
-hm = heatmap(fig[2, 1:3], randn(30, 10))
+ax, hm = heatmap(fig[2, 1:3], randn(30, 10))
 
 # across all rows, new column after the last one
 fig[:, end+1] = Colorbar(fig, hm, width = 30)
