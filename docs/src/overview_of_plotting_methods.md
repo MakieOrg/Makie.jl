@@ -24,6 +24,28 @@ It can be destructured at assignment like `fig, ax, plotobj = scatter(args...)`.
 `AxisPlot` is a collection of a new axis and plot.
 It has no special display overload but can also be destructured like `ax, plotobj = scatter(figureposition, args...)`.
 
+### Special Keyword Arguments
+
+Methods that create an `AxisPlot` accept a special-cased `axis` keyword, where you can pass a dict-like object containing keyword arguments that should be passed to the created axis.
+Methods that create a `FigureAxisPlot` additionally accept a special cased `figure` keyword, where you can pass a dict-like object containing keyword arguments that should be passed to the created figure.
+
+Here are two examples with the scatter function:
+
+```@example
+using GLMakie
+
+# FigureAxisPlot
+fig, ax, p = scatter(randn(100, 2),
+    figure = (resolution = (800, 600),),
+    axis = (xlabel = "X", ylabel = "Y"))
+
+# AxisPlot
+lines(fig[1, 2], cumsum(randn(1000)),
+    axis = (xlabel = "Time", ylabel = "Stock Value"))
+
+fig
+```
+
 ## Mutating
 
 The mutating methods always just return a plot object.
