@@ -140,4 +140,5 @@ function AbstractPlotting.register_in_figure!(fig::Figure, @nospecialize layouta
     if !(layoutable in fig.content)
         push!(fig.content, layoutable)
     end
+    nothing
 end
