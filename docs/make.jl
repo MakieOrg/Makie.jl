@@ -366,6 +366,7 @@ makedocs(
             "output.md",
             "backends.md",
             "troubleshooting.md"
+            "API Reference AbstractPlotting" => "abstractplotting_api.md",
         ],
         "MakieLayout" => [
             "Tutorial" => "makielayout/tutorial.md",
@@ -378,11 +379,6 @@ makedocs(
             "How Layouting Works" => "makielayout/layouting.md",
             "Frequently Asked Questions" => "makielayout/faq.md",
             "API Reference" => "makielayout/reference.md",
-        ],
-        "Developer Documentation" => [
-            "why-makie.md",
-            "devdocs.md",
-            "AbstractPlotting Reference" => "abstractplotting_api.md",
         ],
     ]
 )
