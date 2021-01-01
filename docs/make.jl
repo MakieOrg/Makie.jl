@@ -365,7 +365,7 @@ makedocs(
             "recipes.md",
             "output.md",
             "backends.md",
-            "troubleshooting.md"
+            "troubleshooting.md",
             "API Reference AbstractPlotting" => "abstractplotting_api.md",
         ],
         "MakieLayout" => [
