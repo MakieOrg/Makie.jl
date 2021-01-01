@@ -59,7 +59,7 @@ function Figure(; kwargs...)
         layout,
         [],
         Attributes(),
-        Ref(nothing)
+        Ref{Any}(nothing)
     )
 end
 
