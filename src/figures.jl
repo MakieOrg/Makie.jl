@@ -30,8 +30,21 @@ const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
 current_figure() = _current_figure[]
 current_figure!(fig) = (_current_figure[] = fig)
 
+current_axis() = current_axis(current_figure())
 current_axis(fig::Figure) = fig.current_axis[]
 current_axis!(fig::Figure, ax) = (fig.current_axis[] = ax)
+function current_axis!(ax)
+    fig = ax.parent
+    if !(fig isa Figure)
+        error("Axis parent is not a figure but a $(typeof(ax.parent)). Only axes in figures can have current_axis! called on them.")
+    end
+
+    current_axis!(fig, ax)
+    # if the current axis is in a different figure, we switch to that as well
+    # so that current_axis and current_figure are not out of sync
+    current_figure!(fig)
+    ax
+end
 
 function Figure(; kwargs...)
     scene, layout = layoutscene(; kwargs...)
