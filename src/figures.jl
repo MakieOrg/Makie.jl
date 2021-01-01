@@ -125,6 +125,24 @@ function Base.setindex!(parent::Union{FigurePosition,FigureSubposition}, obj,
     obj
 end
 
+function Base.setindex!(parent::FigurePosition, obj)
+    parent.gp[] = obj
+    figure = get_figure(parent)
+    if !(obj in figure.content)
+        push!(figure.content, obj)
+    end
+    obj
+end
+
+function Base.setindex!(parent::FigureSubposition, obj)
+    layout = find_or_make_layout!(parent.parent)
+    figure = get_figure(parent)
+    layout[parent.rows, parent.cols, parent.side] = obj
+    if !(obj in figure.content)
+        push!(figure.content, obj)
+    end
+    obj
+end
 
 # to power a simple syntax for plotting into nested grids like
 # `scatter(fig[1, 1][2, 3], ...)` we need to either find the only gridlayout that
