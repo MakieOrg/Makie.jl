@@ -39,6 +39,9 @@ function current_axis!(fig::Figure, ax)
     fig.current_axis[] = ax
     ax
 end
+function current_axis!(fig::Figure, ::Nothing)
+    fig.current_axis[] = nothing
+end
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)

@@ -89,6 +89,7 @@ function Base.delete!(layoutable::Layoutable)
 
     on_delete(layoutable)
     delete_from_parent!(layoutable.parent, layoutable)
+    layoutable.parent = nothing
 
     nothing
 end
@@ -99,6 +100,9 @@ end
 
 function delete_from_parent!(figure::Figure, layoutable::Layoutable)
     filter!(x -> x !== layoutable, figure.content)
+    if current_axis(figure) === layoutable
+        current_axis!(figure, nothing)
+    end
     nothing
 end
 

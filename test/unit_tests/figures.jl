@@ -63,3 +63,14 @@ end
     @test current_axis() === ax2
     @test current_figure() === fig
 end
+
+@testset "Deleting from figures" begin
+    fig = Figure()
+    ax = fig[1, 1] = Axis(fig)
+    @test current_axis() === ax
+    @test ax in fig.content
+    delete!(ax)
+    @test !(ax in fig.content)
+    @test ax.parent === nothing
+    @test current_axis() === nothing
+end
