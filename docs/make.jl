@@ -312,27 +312,6 @@ open(path, "w") do io
 end
 
 ########################################
-#     Function signatures overview     #
-########################################
-
-# automatically generate an overview of the function signatures, using a source md file
-@info("Generating signatures page")
-path = joinpath(genpath, "signatures.md")
-srcdocpath = joinpath(srcgenpath, "src-signatures.md")
-open(path, "w") do io
-    !ispath(srcdocpath) && error("source document doesn't exist!")
-    println(io, "# Plot function signatures")
-    src = read(srcdocpath, String)
-    println(io, src)
-    print(io, "\n")
-    println(io, "```@docs")
-    println(io, "convert_arguments")
-    println(io, "```\n")
-
-    println(io, "See [Plot attributes](@ref) for the available plot attributes.")
-end
-
-########################################
 #          Colormap reference          #
 ########################################
 
@@ -378,7 +357,6 @@ makedocs(
             "scenes.md",
             "generated/axis.md",
             "convenience.md",
-            "generated/signatures.md",
             "generated/plot-attributes.md",
             "generated/colors.md",
             "lighting.md",
