@@ -55,7 +55,7 @@ function plot(P::PlotFunc, fp::FigurePosition, args...; axis = (;), kwargs...)
         ax = LScene(fp.fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
 
-    fp.gp[] = ax
+    fp[] = ax
     p = plot!(P, ax, args...; kwargs...)
     AxisPlot(ax, p)
 end
