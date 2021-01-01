@@ -1,4 +1,4 @@
-# Overview Of Plotting Methods
+# Plot Method Signatures
 
 Makie offers a simple but powerful set of methods for each plotting function, which allow you to easily create and manipulate the most common aspects of a figure.
 

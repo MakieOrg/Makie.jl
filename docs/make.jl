@@ -348,7 +348,7 @@ makedocs(
         "Home" => "index.md",
         "Basics" => [
             "basic-tutorial.md",
-            "overview_of_plotting_methods.md",
+            "plot_method_signatures.md",
             "animation.md",
             "interaction.md",
             "plotting_functions.md",
