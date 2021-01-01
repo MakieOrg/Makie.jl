@@ -132,3 +132,12 @@ function delete_scene!(s::Scene)
     nothing
 end
 
+
+function AbstractPlotting.register_in_figure!(fig::Figure, @nospecialize layoutable::Layoutable)
+    if layoutable.parent !== fig
+        error("Can't register a layoutable with a different parent in a figure.")
+    end
+    if !(layoutable in fig.content)
+        push!(fig.content, layoutable)
+    end
+end
