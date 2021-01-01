@@ -13,8 +13,8 @@ We use `Scatter` as our example, but the principles apply to every plot type.
 The non-mutating methods create and return something in addition to the plot object, either a figure with an axis in default position, or an axis at a given figure position.
 
 ```julia
-scatter(args...) -> ::FigureAxisPlot
-scatter(figureposition, args...) -> ::AxisPlot
+scatter(args...; kwargs...) -> ::FigureAxisPlot
+scatter(figureposition, args...; kwargs...) -> ::AxisPlot
 ```
 
 `FigureAxisPlot` is just a collection of the new figure, axis and plot.
@@ -28,6 +28,8 @@ It has no special display overload but can also be destructured like `ax, plotob
 
 Methods that create an `AxisPlot` accept a special-cased `axis` keyword, where you can pass a dict-like object containing keyword arguments that should be passed to the created axis.
 Methods that create a `FigureAxisPlot` additionally accept a special cased `figure` keyword, where you can pass a dict-like object containing keyword arguments that should be passed to the created figure.
+
+All other keyword arguments are passed as attributes to the plotting function.
 
 Here are two examples with the scatter function (take care to create single-argument NamedTuples correctly, for example with a trailing comma):
 
@@ -54,17 +56,19 @@ The mutating methods always just return a plot object.
 If no figure is passed, the `current_figure()` is used, if no axis or scene is given, the `current_axis()` is used.
 
 ```julia
-scatter!(args...) -> ::Scatter
-scatter!(figure, args...) -> ::Scatter
-scatter!(figureposition, args...) -> ::Scatter
-scatter!(axis, args...) -> ::Scatter
-scatter!(scene, args...) -> ::Scatter
+scatter!(args...; kwargs...) -> ::Scatter
+scatter!(figure, args...; kwargs...) -> ::Scatter
+scatter!(figureposition, args...; kwargs...) -> ::Scatter
+scatter!(axis, args...; kwargs...) -> ::Scatter
+scatter!(scene, args...; kwargs...) -> ::Scatter
 ```
 
 ## FigurePositions
 
 In the background, each `Figure` has a `GridLayout` from GridLayoutBase.jl, which takes care of layouting plot elements nicely.
 For convenience, you can index into a figure multiple times to refer to nested grid positions, which makes it easy to quickly assemble complex layouts.
+
+For example, `fig[1, 2]` creates a `FigurePosition` referring to row 1 and column 2, while `fig[1, 2][3, 1:2]` creates a `FigureSubposition` that refers to row 3 and columns 1 to 2 in a nested GridLayout which is located at row 1 and column 2.
 
 ### With Non-Mutating Plotting Functions
 
