@@ -12,7 +12,7 @@ end
 
 @testset "FigureAxisPlot" begin
     fap = scatter(rand(100, 2))
-    @test fap isa FigureAxisPlot
+    @test fap isa AbstractPlotting.FigureAxisPlot
     fig, ax, p = scatter(rand(100, 2))
     @test fig isa Figure
     @test ax isa Axis
@@ -30,9 +30,9 @@ end
     @test current_figure() === fig
 
     figurepos = fig[1, 1]
-    @test figurepos isa FigurePosition
+    @test figurepos isa AbstractPlotting.FigurePosition
     ap = scatter(figurepos, rand(100, 2))
-    @test ap isa AxisPlot
+    @test ap isa AbstractPlotting.AxisPlot
     @test current_axis() === ap.axis
 
     ax2, p2 = scatter(fig[1, 2], rand(100, 2))

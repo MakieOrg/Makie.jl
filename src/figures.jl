@@ -32,7 +32,13 @@ current_figure!(fig) = (_current_figure[] = fig)
 
 current_axis() = current_axis(current_figure())
 current_axis(fig::Figure) = fig.current_axis[]
-current_axis!(fig::Figure, ax) = (fig.current_axis[] = ax)
+function current_axis!(fig::Figure, ax)
+    if ax.parent !== fig
+        error("This axis' parent is not the given figure")
+    end
+    fig.current_axis[] = ax
+    ax
+end
 function current_axis!(ax)
     fig = ax.parent
     if !(fig isa Figure)
