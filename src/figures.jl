@@ -78,9 +78,7 @@ end
 
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side] = obj
-    if !(obj in fig.content)
-        push!(fig.content, obj)
-    end
+    register_in_figure!(fig, obj)
     obj
 end
 
@@ -119,18 +117,14 @@ function Base.setindex!(parent::Union{FigurePosition,FigureSubposition}, obj,
     layout = find_or_make_layout!(parent)
     figure = get_figure(parent)
     layout[rows, cols, side] = obj
-    if !(obj in figure.content)
-        push!(figure.content, obj)
-    end
+    register_in_figure!(figure, obj)
     obj
 end
 
 function Base.setindex!(parent::FigurePosition, obj)
     parent.gp[] = obj
     figure = get_figure(parent)
-    if !(obj in figure.content)
-        push!(figure.content, obj)
-    end
+    register_in_figure!(figure, obj)
     obj
 end
 
@@ -138,10 +132,21 @@ function Base.setindex!(parent::FigureSubposition, obj)
     layout = find_or_make_layout!(parent.parent)
     figure = get_figure(parent)
     layout[parent.rows, parent.cols, parent.side] = obj
-    if !(obj in figure.content)
-        push!(figure.content, obj)
-    end
+    register_in_figure!(figure, obj)
     obj
+end
+
+function register_in_figure!(fig::Figure, gridlayout::GridLayoutBase.GridLayout)
+    # do nothing, gridlayouts don't need to be specifically added to the content list
+end
+
+function register_in_figure!(fig::Figure, layoutable::MakieLayout.Layoutable)
+    if layoutable.parent !== fig
+        error("Can't register a layoutable with a different parent in a figure.")
+    end
+    if !(layoutable in fig.content)
+        push!(fig.content, layoutable)
+    end
 end
 
 # to power a simple syntax for plotting into nested grids like
