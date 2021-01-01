@@ -380,7 +380,9 @@ makedocs(
             "Frequently Asked Questions" => "makielayout/faq.md",
             "API Reference" => "makielayout/reference.md",
         ],
-    ]
+    ],
+    strict = true, # experimental kwarg, so that the docs fail if there are any errors encountered
+    # this way the docs serve better as another test case, because nobody looks at warnings
 )
 
 ################################################################################
