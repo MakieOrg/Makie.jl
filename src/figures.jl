@@ -140,15 +140,6 @@ function register_in_figure!(fig::Figure, gridlayout::GridLayoutBase.GridLayout)
     # do nothing, gridlayouts don't need to be specifically added to the content list
 end
 
-function register_in_figure!(fig::Figure, layoutable::AbstractPlotting.MakieLayout.Layoutable)
-    if layoutable.parent !== fig
-        error("Can't register a layoutable with a different parent in a figure.")
-    end
-    if !(layoutable in fig.content)
-        push!(fig.content, layoutable)
-    end
-end
-
 # to power a simple syntax for plotting into nested grids like
 # `scatter(fig[1, 1][2, 3], ...)` we need to either find the only gridlayout that
 # sits at that position, or we create all the ones that are missing along the way
