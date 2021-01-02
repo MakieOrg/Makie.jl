@@ -271,8 +271,7 @@ end
     f(x, y) = (sin(x * 10) + cos(y * 10)) / 4
     scene = Scene(resolution=(500, 500))
     # One way to style the axis is to pass a nested dictionary / named tuple to it.
-    surface!(scene, vx, vy, f, axis=(frame = (linewidth = 2.0,),))
-    psurf = scene[end] # the surface we last plotted to scene
+    psurf = surface!(scene, vx, vy, f, axis=(frame = (linewidth = 2.0,),))
     # One can also directly get the axis object and manipulate it
     axis = scene[OldAxis] # get axis
 
@@ -395,7 +394,7 @@ end
     xrange = range(-2, stop=2, length=50)
     surf_func(i) = [Float32(xy_data(x * i, y * i)) for x = xrange, y = xrange]
     z = surf_func(20)
-    surf = surface!(scene, xrange, xrange, z)[end]
+    surf = surface!(scene, xrange, xrange, z)
 
     wf = wireframe!(scene, xrange, xrange, lift(x -> x .+ 1.0, surf[3]),
         linewidth=2f0, color=lift(x -> to_colormap(x)[5], surf[:colormap])
@@ -462,7 +461,7 @@ end
     us = range(0, stop=1, length=100)
     scene = Scene()
     scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
-    p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)[end]
+    p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)
     lineplots = [p]
     AbstractPlotting.translate!(p, 0, 0, 0)
     colors = to_colormap(:RdYlBu)
@@ -474,7 +473,7 @@ end
                 us, sin.(us .+ time()), zeros(100),
                 color=colors[length(lineplots)],
                 linewidth=3
-            )[end]
+            )
             pushfirst!(lineplots, p)
             translate!(p, 0, 0, 0)
         else

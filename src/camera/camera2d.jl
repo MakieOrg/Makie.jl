@@ -183,7 +183,7 @@ function selection_rect!(scene, cam, key)
         color = (:black, 0.4),
         visible = false,
         raw = true
-    ).plots[end]
+    )
     waspressed = RefValue(false)
     dragged_rect = on(camera(scene), events(scene).mousedrag, key) do drag, key
         if ispressed(scene, key) && is_mouseinside(scene)

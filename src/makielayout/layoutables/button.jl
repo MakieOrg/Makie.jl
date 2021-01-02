@@ -38,7 +38,7 @@ function Button(fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
     bcolor = Node{Any}(buttoncolor[])
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
-        color = bcolor, raw = true)[end]
+        color = bcolor, raw = true)
     decorations[:button] = button
 
 
@@ -46,7 +46,7 @@ function Button(fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
     lcolor = Node{Any}(labelcolor[])
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
-        color = lcolor, align = (:center, :center), raw = true)[end]
+        color = lcolor, align = (:center, :center), raw = true)
 
     decorations[:label] = labeltext
 

@@ -36,7 +36,7 @@ function Toggle(fig_or_scene; bbox = nothing, kwargs...)
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
-    frame = poly!(topscene, buttonvertices, color = framecolor, raw = true)[end]
+    frame = poly!(topscene, buttonvertices, color = framecolor, raw = true)
     decorations[:frame] = frame
 
     animating = Node(false)
@@ -54,7 +54,7 @@ function Toggle(fig_or_scene; bbox = nothing, kwargs...)
         ms * (1 - rf) * bf
     end
 
-    button = scatter!(topscene, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)[end]
+    button = scatter!(topscene, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)
     decorations[:button] = button
 
     mouseevents = addmouseevents!(topscene, button, frame)
