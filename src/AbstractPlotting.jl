@@ -135,7 +135,6 @@ include("stats/violin.jl")
 
 # Interactiveness
 include("interaction/events.jl")
-include("interaction/gui.jl")
 include("interaction/interactive_api.jl")
 
 # documentation and help functions
@@ -208,7 +207,6 @@ export disconnect!, must_update, force_update!, update!, update_limits!
 export textslider
 
 # gui
-export oldslider, oldbutton, playbutton
 export move!
 
 # Raymarching algorithms
