@@ -28,7 +28,7 @@ function Label(fig_or_scene; bbox = nothing, kwargs...)
     end
 
     t = text!(topscene, text, position = textpos, textsize = textsize, font = font, color = color,
-        visible = visible, align = alignnode, rotation = rotation, raw = true)[end]
+        visible = visible, align = alignnode, rotation = rotation, raw = true)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 

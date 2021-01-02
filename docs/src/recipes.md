@@ -190,7 +190,7 @@ molecules = map(1:(n^3) * 3) do i
 end
 result = Simulation(molecules)
 scene = Scene()
-plotobject = plot!(scene, result)[end]
+plotobject = plot!(scene, result)
 N = 100
 record(scene, "molecules_simulation.mp4", 1:N) do i
     plotobject.advance = i

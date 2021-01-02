@@ -31,7 +31,7 @@ function LineAxis(parent::Scene; kwargs...)
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor,
         show_axis = false, visible = ticksvisible
-    )[end]
+    )
     decorations[:ticklines] = ticklines
 
     ticklabelannosnode = Node(Tuple{String, Point2f0}[])
@@ -44,7 +44,7 @@ function LineAxis(parent::Scene; kwargs...)
         font = ticklabelfont,
         color = ticklabelcolor,
         show_axis = false,
-        visible = ticklabelsvisible)[end]
+        visible = ticklabelsvisible)
 
     ticklabel_ideal_space = lift(ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible, typ=Float32) do args...
         maxwidth = if pos_extents_horizontal[][3]
@@ -138,7 +138,7 @@ function LineAxis(parent::Scene; kwargs...)
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
-    )[end]
+    )
 
     decorations[:labeltext] = labeltext
 
@@ -246,7 +246,7 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true)[end]
+        color = spinecolor, raw = true)
 
 
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,

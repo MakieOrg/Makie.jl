@@ -11,7 +11,7 @@ function LinesegmentBuffer(
     linesegments!(
         scene, Point{N, Float32}[]; color = color,
         linewidth = linewidth, raw = raw, kw_args...
-    ).plots[end]
+    )
 end
 
 function append!(lsb::LineSegments, positions::Vector{Point{N, Float32}}; color = :black, linewidth = 1.0) where N
@@ -61,7 +61,7 @@ function TextBuffer(
         align = align,
         raw = raw,
         kw_args...
-    ).plots[end]
+    )
 end
 
 function start!(tb::Annotations)

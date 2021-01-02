@@ -48,7 +48,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
 
     scene = Scene(topscene, scenearea, raw = true)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)[end]
+    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -63,7 +63,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
     xgridlines = linesegments!(
         topscene, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
         color = xgridcolor, linestyle = xgridstyle,
-    )[end]
+    )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
     decorations[:xgridlines] = xgridlines
@@ -72,7 +72,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
     ygridlines = linesegments!(
         topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
         color = ygridcolor, linestyle = ygridstyle,
-    )[end]
+    )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
@@ -196,10 +196,10 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
     end
 
     xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = spinewidth,
-        visible = xoppositespinevisible, color = xoppositespinecolor)[end]
+        visible = xoppositespinevisible, color = xoppositespinecolor)
     decorations[:xoppositeline] = xoppositeline
     yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = spinewidth,
-        visible = yoppositespinevisible, color = yoppositespinecolor)[end]
+        visible = yoppositespinevisible, color = yoppositespinecolor)
     decorations[:yoppositeline] = yoppositeline
 
     on(xaxis.tickpositions) do tickpos
@@ -245,7 +245,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
         textsize = titlesize,
         align = titlealignnode,
         font = titlefont,
-        show_axis=false)[end]
+        show_axis=false)
     decorations[:title] = titlet
 
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,
@@ -362,7 +362,7 @@ function AbstractPlotting.plot!(
         attributes::AbstractPlotting.Attributes, args...;
         kw_attributes...)
 
-    plot = AbstractPlotting.plot!(la.scene, P, attributes, args...; kw_attributes...)[end]
+    plot = AbstractPlotting.plot!(la.scene, P, attributes, args...; kw_attributes...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
