@@ -710,7 +710,7 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
         # if no camera controls yet, setup camera
         setup_camera!(scene)
     end
-    return scene
+    return plot_object
 end
 
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
@@ -719,7 +719,7 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
-    scene
+    plot_object
 end
 
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
@@ -728,7 +728,7 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTup
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
-    scene
+    plot_object
 end
 
 function apply_camera!(scene::Scene, cam_func)

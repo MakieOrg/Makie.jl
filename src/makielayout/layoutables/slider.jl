@@ -90,15 +90,15 @@ function Slider(fig_or_scene; bbox = nothing, kwargs...)
         [ca, ci]
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
+    endbuttons = scatter!(topscene, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+    linesegs = linesegments!(topscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)
     decorations[:linesegments] = linesegs
 
     button_magnification = Node(1.0)
     buttonsize = @lift($linewidth * $button_magnification)
-    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)[end]
+    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)
     decorations[:button] = button
 
     mouseevents = addmouseevents!(topscene, linesegs, button)

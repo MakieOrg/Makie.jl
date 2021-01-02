@@ -71,7 +71,7 @@ function Colorbar(fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)[end]
+    hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
     decorations[:heatmap] = hm
 
     ab, al, ar, at = axislines!(

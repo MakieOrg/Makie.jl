@@ -228,7 +228,8 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     ) = args3d # splat to names
 
     N = 3
-    start!(textbuffer); start!(linebuffer)
+    start!(textbuffer)
+    start!(linebuffer)
     mini, maxi = first.(limits), last.(limits)
 
     origin = Point{N, Float32}(min.(mini, first.(ranges)))

@@ -106,7 +106,7 @@ function plot!(slider::OldSlider)
         textsize = textsize,
         align = (:right, :center), color = textcolor,
         position = lift((w, h, p)-> p .+ Point2f0(w, h/2), sliderlength, sliderheight, p2f0)
-    ).plots[end]
+    )
     lbb = lift(range_label_bb, Node(lplot), valueprinter, range)
     bg_rect = lift(sliderlength, sliderheight, lbb, p2f0) do w, h, bb, p
         FRect(p, w + 10 + widths(bb)[1], h)
@@ -125,7 +125,7 @@ function plot!(slider::OldSlider)
         slider, lift(x-> x[1:1], line),
         markersize = buttonsize, color = buttoncolor,
         strokewidth = buttonstroke, strokecolor = buttonstrokecolor
-    ).plots[end]
+    )
     dragslider(slider, button)
     move!(slider, find_closest(range[], startval))
     return slider
@@ -216,7 +216,7 @@ $(ATTRIBUTES)
 end
 
 function oldbutton!(func::Function, scene::Scene, txt; camera = campixel!, kw_args...)
-    b = oldbutton!(scene, txt; raw = true, camera = camera, kw_args...)[end]
+    b = oldbutton!(scene, txt; raw = true, camera = camera, kw_args...)
     on(b[:clicks]) do clicks
         func(clicks)
         return
@@ -244,7 +244,7 @@ function plot!(splot::OldButton)
         color = textcolor,
         textsize = textsize, position = textpos,
         align = (:center, :center)
-    ).plots[end]
+    )
 
     wh = widths(boundingbox(lplot))[1:2]
     # position and dimensions
@@ -271,7 +271,7 @@ function plot!(splot::OldButton)
 end
 
 function playbutton(f, scene, range, rate = (1/30))
-    b = oldbutton!(scene, "▶", raw = true)[end]
+    b = oldbutton!(scene, "▶", raw = true)
     isplaying = Ref(false)
     play_idx = Ref(1)
     on(b[:clicks]) do x
@@ -318,14 +318,14 @@ function textslider(
     t = text!(
         scene, "$label:", raw = true, position = textpos, align = textalign,
         color = textcolor, kwargs...
-    )[end]
+    )
 
     xp = widths(boundingbox(t))
     s = oldslider!(
         scene, range, position = Point2f0(xp[1] + buttonsize/2, (xp[2] / 2)), raw = true,
         sliderheight = sliderheight,
         start = start, textcolor = textcolor, kwargs...
-    )[end]
+    )
     scene, s[:value]
 end
 
@@ -342,7 +342,7 @@ function sample_color(f, ui, colormesh, v)
         markersize = 15, color = (:white, 0.2), strokecolor = :white,
         strokewidth = 6, visible = lift(identity, theme(ui, :visible)), raw = true,
         overdraw = true
-    )[end]
+    )
     onany(mpos, ui.events.mousebuttons) do mp, mb
         bb = FRect2D(boundingbox(colormesh))
         mp = Point2f0(mp) .- minimum(pixelarea(sub)[])
@@ -414,14 +414,14 @@ function colorswatch(scene = Scene(camera = campixel!)) # TODO convert to Recipe
         [(0, 0), (S + 30, 0), (S + 30, S - 15), (0, S - 15)],
         [1, 2, 3, 3, 4, 1],
         color = colors, raw = true, shading = false
-    )[end]
+    )
     color = Node(RGBAf0(0,0,0,1))
     sample_color(sub_ui, colormesh, hsv_hue) do c
         color[] = c
     end
     hbox!(sub_ui.plots)
     rect = IRect(0, 0, 50, 50)
-    swatch = poly!(scene, rect, color = color, raw = true, visible = true)[end]
+    swatch = poly!(scene, rect, color = color, raw = true, visible = true)
     pop.open[] = false
     on(scene.events.mousebuttons) do mb
         if ispressed(mb, Mouse.left)
