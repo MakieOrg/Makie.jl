@@ -155,7 +155,7 @@ function select_rectangle(scene; strokewidth = 3.0, kwargs...)
     # Create an initially hidden rectangle
     plotted_rect = poly!(
         scene, rect, raw = true, visible = false, color = RGBAf0(0, 0, 0, 0), strokecolor = RGBAf0(0.1, 0.1, 0.8, 0.5), strokewidth = strokewidth, kwargs...,
-    )[end] # Why do I have to do [end] ?
+    )
 
     on(events(scene).mousedrag) do drag
         if ispressed(scene, key) && is_mouseinside(scene)
@@ -207,7 +207,7 @@ function select_line(scene; kwargs...)
     plotted_line = lines!(
         scene, line; visible = false, color = RGBAf0(0.1, 0.1, 0.8, 0.5),
         linewidth = 4, kwargs...,
-    )[end]
+    )
 
     on(events(scene).mousedrag) do drag
         if ispressed(scene, key) && is_mouseinside(scene)
@@ -259,7 +259,7 @@ function select_point(scene; kwargs...)
     plotted_point = scatter!(
         scene, point; visible = false, marker = pmarker, markersize = 20px,
         color = RGBAf0(0.1, 0.1, 0.8, 0.5), kwargs...,
-    )[end]
+    )
 
     on(events(scene).mousedrag) do drag
         if ispressed(scene, key) && is_mouseinside(scene)

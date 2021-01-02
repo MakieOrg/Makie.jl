@@ -254,7 +254,7 @@ function Menu(fig_or_scene; bbox = nothing, kwargs...)
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         strokecolor = :transparent,
-        raw = true)[end]
+        raw = true)
     translate!(dropdown_arrow, 0, 0, 1)
 
 

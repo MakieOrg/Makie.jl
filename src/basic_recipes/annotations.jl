@@ -35,7 +35,7 @@ function plot!(plot::Annotations)
         align = Vec2f0(0), model = Mat4f0(I),
         position = combinedpos, color = colors, visible = plot.visible,
         textsize = textsize, font = fonts, rotation = rotations
-    ).plots[end]
+    )
 
     onany(sargs...) do model, pfonts, text_pos, args...
         io = IOBuffer();

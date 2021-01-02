@@ -67,7 +67,7 @@ function Textbox(fig_or_scene; bbox = nothing, kwargs...)
 
     box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
         strokecolor = realbordercolor,
-        color = realboxcolor, raw = true)[end]
+        color = realboxcolor, raw = true)
     decorations[:box] = box
 
     displayed_chars = @lift([c for c in $displayed_string])
@@ -106,7 +106,7 @@ function Textbox(fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = cursorcolor, linewidth = 2)[end]
+    cursor = linesegments!(scene, cursorpoints, color = cursorcolor, linewidth = 2)
 
     cursoranimtask = nothing
 

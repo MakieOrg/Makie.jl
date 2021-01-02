@@ -3,7 +3,7 @@ function AbstractPlotting.plot!(
         attributes::AbstractPlotting.Attributes, args...;
         kw_attributes...)
 
-    plot = AbstractPlotting.plot!(lscene.scene, P, attributes, args...; kw_attributes...)[end]
+    plot = AbstractPlotting.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
 
     plot
 end

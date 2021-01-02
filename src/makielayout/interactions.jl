@@ -150,8 +150,8 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
 
         mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.33), shading = false,
-            fxaa = false)[end] # fxaa false seems necessary for correct transparency
-        wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)[end]
+            fxaa = false) # fxaa false seems necessary for correct transparency
+        wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)
         # translate forward so selection mesh and frame are never behind data
         translate!(mesh, 0, 0, 100)
         translate!(wf, 0, 0, 110)
