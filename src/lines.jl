@@ -1,4 +1,3 @@
-
 topoint(x::AbstractVector{Point{N,Float32}}) where {N} = x
 
 # GRRR STUPID SubArray, with eltype different from getindex(x, 1)

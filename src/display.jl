@@ -38,7 +38,7 @@ function scene2image(scene::Scene)
     end
     # display in current
     display(app)
-    done = Base.timedwait(()->isready(session.js_fully_loaded), 30.0)
+    done = Base.timedwait(()-> isready(session.js_fully_loaded), 30.0)
     if done == :timed_out
         error("JS Session not ready after 30s waiting, possibly errored while displaying")
     end

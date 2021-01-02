@@ -42,6 +42,8 @@ function three_display(session::Session, scene::Scene)
     canvas = DOM.um("canvas", width=width, height=height)
 
     comm = Observable(Dict{String,Any}())
+    push!(session, comm)
+
     scene_data = Observable(serialized)
 
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
@@ -55,13 +57,13 @@ function three_display(session::Session, scene::Scene)
             const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
             const three_scenes = scenes.map($(WGL).deserialize_scene)
 
-            on_update($(window_open), open=>{
+            JSServe.on_update($(window_open), open=>{
                 $(WGL).delete_scene($(scene_id))
             })
 
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
-            on_update($canvas_width, canvas_width => {
+            JSServe.on_update($canvas_width, canvas_width => {
                 const w_h = deserialize_js(canvas_width);
                 renderer.setSize(w_h[0], w_h[1]);
                 canvas.style.width = w_h[0];
@@ -74,11 +76,10 @@ function three_display(session::Session, scene::Scene)
     }
     """
 
-    JSServe.onjs(session, scene_data, setup)
-    WGLMakie.connect_scene_events!(session, scene, comm)
-    WGLMakie.mousedrag(scene, nothing)
+    onjs(session, scene_data, setup)
+    mousedrag(scene, nothing)
     scene_data[] = scene_data[]
-    connect_scene_events!(session, scene, comm)
+    connect_scene_events!(scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(session)
     return three, canvas

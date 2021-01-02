@@ -12,7 +12,7 @@ using ImageMagick
 using FreeTypeAbstraction
 using StaticArrays
 
-using JSServe: Session, evaljs, linkjs, onload
+using JSServe: Session
 using JSServe: @js_str, onjs, Dependency, App
 using JSServe.DOM
 

@@ -48,9 +48,10 @@ function code_to_keyboard(code::String)
     end
 end
 
-function connect_scene_events!(session::Session, scene::Scene, comm::Observable)
+function connect_scene_events!(scene::Scene, comm::Observable)
     e = events(scene)
     on(comm) do msg
+        @show msg
         @handle msg.mouseposition begin
             x, y = Float64.((mouseposition...,))
             e.mouseposition[] = (x, size(scene)[2] - y)
