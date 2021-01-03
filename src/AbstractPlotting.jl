@@ -253,6 +253,7 @@ function __init__()
 end
 
 include("figures.jl")
+export content
 
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout

@@ -83,7 +83,6 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = (;), kwargs..
         ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
     end
 
-    # layout = find_or_make_layout!(fsp.parent)
     fsp.parent[fsp.rows, fsp.cols, fsp.side] = ax
     p = plot!(P, ax, args...; kwargs...)
     AxisPlot(ax, p)
@@ -91,8 +90,7 @@ end
 
 function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
 
-    # TODO: if ax doesn't exist, layouts should also not be made
-    layout = find_or_make_layout!(fsp.parent)
+    layout = get_layout_at!(fsp.parent, createmissing = false)
 
     gp = layout[fsp.rows, fsp.cols, fsp.side]
 
