@@ -1,3 +1,5 @@
+using AbstractPlotting: process!
+
 macro print_error(expr)
     return quote
         try
@@ -39,7 +41,10 @@ window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
-        @print_error event[] = false
+        @print_error begin
+            process!(scene, WindowOpenEvent(false))
+            event[] = false
+        end
     end
     disconnect!(window, window_open)
     event[] = isopen(window)
@@ -79,6 +84,8 @@ function window_area(scene::Scene, screen::Screen)
             props = MonitorProperties(monitor)
             # dpi of a monitor should be the same in x y direction.
             # if not, minimum seems to be a fair default
+            process!(scene, WindowDPIEvent(minimum(props.dpi)))
+            process!(scene, WindowResizeEvent(IRect(minimum(rect), w, h)))
             dpievent[] = minimum(props.dpi)
             event[] = IRect(minimum(rect), w, h)
         end
@@ -101,7 +108,10 @@ mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
 function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebuttons
     function mousebuttons(window, button, action, mods)
-        @print_error addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
+        @print_error begin
+            process!(scene, MouseButtonEvent(Mouse.Button(Int(button)), ButtonState(Int(action))))
+            addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
+        end
     end
     disconnect!(window, mouse_buttons)
     GLFW.SetMouseButtonCallback(window, mousebuttons)
@@ -113,7 +123,10 @@ keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(scree
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
     function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
-        @print_error addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
+        @print_error begin
+            process!(scene, KeyEvent(Keyboard.Button(Int(button)), ButtonState(Int(action)))) 
+            addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
+        end
     end
     disconnect!(window, keyboard_buttons)
     GLFW.SetKeyCallback(window, keyoardbuttons)
@@ -132,7 +145,10 @@ dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
     function droppedfiles(window, files)
-        @print_error event[] = String.(files)
+        @print_error begin
+            process!(scene, DroppedFilesEvent(String.(files))) 
+            event[] = String.(files)
+        end
     end
     disconnect!(window, dropped_files)
     event[] = String[]
@@ -153,6 +169,7 @@ function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
     function unicodeinput(window, c::Char)
         @print_error begin
+            process!(scene, UnicodeInputEvent(c))
             vals = event[]
             push!(vals, c)
             event[] = vals
@@ -212,11 +229,17 @@ function mouse_position(scene::Scene, screen::Screen)
         end
         return
     end
+    # ^ this could happen in AbstractPlotting too
+    # TODO yay or nay?
+    GLFW.SetCursorPosCallback(
+        to_native(screen), 
+        (_, x, y) -> process!(scene, MouseMovedEvent(Vec2f0(x, y)))
+    )
     return
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_position))
+    GLFW.SetCursorPosCallback(window, nothing)
     nothing
-    #GLFW.SetCursorPosCallback(window, nothing)
 end
 
 """
@@ -230,6 +253,7 @@ function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
     function scrollcb(window, w::Cdouble, h::Cdouble)
         @print_error begin
+            process!(scene, MouseScrolledEvent(Vec2f0(w, h)))
             event[] = (w, h)
             event[] = (0.0, 0.0)
         end
@@ -251,6 +275,7 @@ hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
     function hasfocuscb(window, focus::Bool)
+        process!(scene, WindowFocusEvent(focus))
         @print_error event[] = focus
     end
     disconnect!(window, hasfocus)
@@ -272,6 +297,7 @@ entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
     function enteredwindowcb(window, entered::Bool)
+        process!(scene, WindowEnteredEvent(entered))
         @print_error event[] = entered
     end
     disconnect!(window, entered_window)
