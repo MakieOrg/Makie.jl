@@ -1,19 +1,19 @@
-# Axis
+# OldAxis
 
 The axis is just a scene object, making it easy to manipulate and share between plots.
-Axis objects also contains the mapping you want to apply to the data and can interactively be changed.
-An Axis object can be created from any boundingbox and inserted into any plot.
+OldAxis objects also contains the mapping you want to apply to the data and can interactively be changed.
+An OldAxis object can be created from any boundingbox and inserted into any plot.
 
 There are two types of axes: `Axis2D` and `Axis3D`.
 
-## Interacting with the Axis
+## Interacting with the OldAxis
 
 One can quite easily interact with the attributes of the axis like with any other plot.
 
 You can access the axis of a `scene` by doing
 
 ```
-axis = scene[Axis]
+axis = scene[OldAxis]
 ```
 
 The axis attributes are nested, and there are different attributes depending on whether it is an `Axis2D` or `Axis3D` object.

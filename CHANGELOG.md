@@ -16,7 +16,7 @@
 
 ## Improvements & Implementation Changes
 
-- LMenu optionvalue and optionlabel default to string representation for non 2-tuple argument
+- Menu optionvalue and optionlabel default to string representation for non 2-tuple argument
 
 # 0.13.10
 
@@ -29,7 +29,7 @@
 ## Improvements & Implementation Changes
 
 - addmouseevents! return value is now a MouseEventHandle and can be disconnected fully via `clear!`
-- LMenu options can be changed on the fly
+- Menu options can be changed on the fly
 
 # 0.13.6
 
@@ -41,7 +41,7 @@
 ## Improvements & Implementation Changes
 
 - Selection rectangle dims outer area via transparent mesh
-- Heatmap, image, contourf and plots implementing special trait automatically cause tight limits for LAxis
+- Heatmap, image, contourf and plots implementing special trait automatically cause tight limits for Axis
 
 # 0.13.5
 
@@ -51,7 +51,7 @@
 
 ## Improvements & Implementation Changes
 
-- LToggle reacts on mousedown not click to be more snappy
+- Toggle reacts on mousedown not click to be more snappy
 
 # 0.13.4
 
@@ -64,13 +64,13 @@
 
 ## New features
 
-- Added interactions model to LAxis. Interactions can be added with `register_interaction!` and removed with `deregister_interaction!`, as well as activated or deactivated temporarily with `activate_interaction!` and `deactivate_interaction!`.
+- Added interactions model to Axis. Interactions can be added with `register_interaction!` and removed with `deregister_interaction!`, as well as activated or deactivated temporarily with `activate_interaction!` and `deactivate_interaction!`.
 - Added `labelslidergrid!`, a function to create an internally aligned grid of sliders with labels and value-labels.
-- LAxis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
+- Axis has attributes `xrectzoom` and `yrectzoom` that control if the rectangle zoom changes the respective dimension or not.
 
 ## Improvements & Implementation Changes
 
-- Cleaned up LSlider style and implementation, LSlider doesn't react while below other objects anymore
+- Cleaned up Slider style and implementation, Slider doesn't react while below other objects anymore
 - MakieLayout Mouse event types are now enum instances for less compilation
 - MakieLayout Mouse events store position in both data and pixel coordinates
-- Aligned colors of LMenu, LSlider, LButton etc better
+- Aligned colors of Menu, Slider, LButton etc better

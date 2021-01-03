@@ -45,6 +45,6 @@ function plot!(sub::Series)
     labels = get(sub, :labels) do
         map(i-> "y $i", 1:size(A[], 2))
     end
-    legend!(sub, copy(sub.plots), labels)
+    oldlegend!(sub, copy(sub.plots), labels)
     sub
 end

@@ -1,7 +1,9 @@
-function LSlider(parent::Scene; bbox = nothing, kwargs...)
+function Slider(fig_or_scene; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LSlider, parent).attributes
-    theme_attrs = subtheme(parent, :LSlider)
+    topscene = get_topscene(fig_or_scene)
+
+    default_attrs = default_attributes(Slider, topscene).attributes
+    theme_attrs = subtheme(topscene, :Slider)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     decorations = Dict{Symbol, Any}()
@@ -14,7 +16,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     sliderrange = attrs.range
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables{LSlider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Slider}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     onany(linewidth, horizontal) do lw, horizontal
@@ -88,18 +90,18 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
         [ca, ci]
     end
 
-    endbuttons = scatter!(parent, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)[end]
+    endbuttons = scatter!(topscene, endpoints, color = linecolors, markersize = linewidth, strokewidth = 0, raw = true)
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(parent, linepoints, color = linecolors, linewidth = linewidth, raw = true)[end]
+    linesegs = linesegments!(topscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)
     decorations[:linesegments] = linesegs
 
     button_magnification = Node(1.0)
     buttonsize = @lift($linewidth * $button_magnification)
-    button = scatter!(parent, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)[end]
+    button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(parent, linesegs, button)
+    mouseevents = addmouseevents!(topscene, linesegs, button)
 
     onmouseleftdrag(mouseevents) do event
 
@@ -153,7 +155,7 @@ function LSlider(parent::Scene; bbox = nothing, kwargs...)
     # trigger autosize through linewidth for first layout
     linewidth[] = linewidth[]
 
-    LSlider(parent, layoutobservables, attrs, decorations)
+    Slider(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
 function valueindex(sliderrange, value)

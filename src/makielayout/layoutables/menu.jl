@@ -1,11 +1,4 @@
-struct LMenu <: LObject
-    scene::Scene
-    attributes::Attributes
-    layoutobservables::GridLayoutBase.LayoutObservables
-    decorations::Dict{Symbol, Any}
-end
-
-function default_attributes(::Type{LMenu}, scene)
+function default_attributes(::Type{Menu}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the menu."
         height = Auto()
@@ -58,7 +51,7 @@ function default_attributes(::Type{LMenu}, scene)
 end
 
 @doc """
-    LMenu(parent::Scene; bbox = nothing, kwargs...)
+    Menu(parent::Scene; bbox = nothing, kwargs...)
 
 Create a drop-down menu with multiple selectable options. You can pass options
 with the keyword argument `options`. Options are given as an iterable of elements.
@@ -78,7 +71,7 @@ direction to `direction = :up`.
 Menu with string entries:
 
 ```julia
-menu1 = LMenu(scene, options = ["first", "second", "third"])
+menu1 = Menu(scene, options = ["first", "second", "third"])
 ```
 
 Menu with two-element entries, label and function:
@@ -87,7 +80,7 @@ Menu with two-element entries, label and function:
 funcs = [sin, cos, tan]
 labels = ["Sine", "Cosine", "Tangens"]
 
-menu2 = LMenu(scene, options = zip(labels, funcs))
+menu2 = Menu(scene, options = zip(labels, funcs))
 ```
 
 Lifting on the selection value:
@@ -98,20 +91,22 @@ on(menu2.selection) do func
 end
 ```
 
-LMenu has the following attributes:
+Menu has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LMenu, nothing)
+    _, docs, defaults = default_attributes(Menu, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LMenu
+Menu
 
 
-function LMenu(parent::Scene; bbox = nothing, kwargs...)
+function Menu(fig_or_scene; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LMenu, parent).attributes
-    theme_attrs = subtheme(parent, :LMenu)
+    topscene = get_topscene(fig_or_scene)
+
+    default_attrs = default_attributes(Menu, topscene).attributes
+    theme_attrs = subtheme(topscene, :Menu)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, i_selected, is_open, cell_color_hover,
@@ -121,7 +116,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LMenu}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Menu}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
     halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
 
@@ -137,13 +132,13 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
             d == :down ? top(bbox) : bottom(bbox) + h))
     end
 
-    scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     contentgrid = GridLayout(
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
         valign = @lift($direction == :down ? :top : :bottom))
 
-    selectionrect = LRect(scene, width = nothing, height = nothing,
+    selectionrect = Box(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
     
 
@@ -158,14 +153,14 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     end
 
 
-    selectiontext = LText(scene, selected_text, tellwidth = false, halign = :left,
+    selectiontext = Label(scene, selected_text, tellwidth = false, halign = :left,
         padding = textpadding, textsize = textsize, color = textcolor)
 
 
-    rects = Ref{Vector{LRect}}([])
-    texts = Ref{Vector{LText}}([])
-    allrects = Ref{Vector{LRect}}([])
-    alltexts = Ref{Vector{LText}}([])
+    rects = Ref{Vector{Box}}([])
+    texts = Ref{Vector{Label}}([])
+    allrects = Ref{Vector{Box}}([])
+    alltexts = Ref{Vector{Label}}([])
     mouseeventhandles = Ref{Vector{MouseEventHandle}}([])
 
     function reassemble()
@@ -176,12 +171,12 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
         trim!(contentgrid)
 
-        rects[] = [LRect(scene, width = nothing, height = nothing,
+        rects[] = [Box(scene, width = nothing, height = nothing,
             color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[],
             strokewidth = 0)
             for i in 1:length(options[])]
 
-        texts[] = [LText(scene, s, halign = :left, tellwidth = false,
+        texts[] = [Label(scene, s, halign = :left, tellwidth = false,
             textsize = textsize, color = textcolor,
             padding = textpadding)
             for s in optionstrings[]]
@@ -194,7 +189,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
 
         rowgap!(contentgrid, 0)
 
-        mouseeventhandles[] = [addmouseevents!(scene, r.rect, t.textobject) for (r, t) in zip(allrects[], alltexts[])]
+        mouseeventhandles[] = [addmouseevents!(scene, r.elements[:rect], t.elements[:text]) for (r, t) in zip(allrects[], alltexts[])]
 
         # create mouse events for each menu entry rect / text combo
         for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles[], allrects[], alltexts[]))
@@ -259,7 +254,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         strokecolor = :transparent,
-        raw = true)[end]
+        raw = true)
     translate!(dropdown_arrow, 0, 0, 1)
 
 
@@ -336,7 +331,7 @@ function LMenu(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LMenu(scene, attrs, layoutobservables, decorations)
+    Menu(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
 

@@ -5,7 +5,7 @@ using ..AbstractPlotting: Rect2D
 import ..AbstractPlotting: IRect2D
 using ..AbstractPlotting.Keyboard
 using ..AbstractPlotting.Mouse
-using ..AbstractPlotting: ispressed, is_mouseinside
+using ..AbstractPlotting: ispressed, is_mouseinside, get_scene, FigureLike
 using Observables: onany
 import Observables
 import Formatting
@@ -42,6 +42,7 @@ function __init__()
     end
 end
 
+include("layoutables.jl")
 include("geometrybasics_extension.jl")
 include("mousestatemachine.jl")
 include("types.jl")
@@ -51,31 +52,30 @@ include("ticklocators/wilkinson.jl")
 include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
-include("lobjects/laxis.jl")
-include("lobjects/lcolorbar.jl")
-include("lobjects/ltext.jl")
-include("lobjects/lslider.jl")
-include("lobjects/lbutton.jl")
-include("lobjects/lrect.jl")
-include("lobjects/ltoggle.jl")
-include("lobjects/llegend.jl")
-include("lobjects/lobject.jl")
-include("lobjects/lscene.jl")
-include("lobjects/lmenu.jl")
-include("lobjects/ltextbox.jl")
+include("layoutables/axis.jl")
+include("layoutables/colorbar.jl")
+include("layoutables/label.jl")
+include("layoutables/slider.jl")
+include("layoutables/button.jl")
+include("layoutables/box.jl")
+include("layoutables/toggle.jl")
+include("layoutables/legend.jl")
+include("layoutables/scene.jl")
+include("layoutables/menu.jl")
+include("layoutables/textbox.jl")
 
-export LAxis
-export LSlider
-export LButton
-export LColorbar
-export LText
-export LRect
-export LToggle
-export LLegend
+export Axis
+export Slider
+export Button
+export Colorbar
+export Label
+export Box
+export Toggle
+export Legend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
-export LMenu
-export LTextbox
+export Menu
+export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!

@@ -1,7 +1,9 @@
-function LToggle(parent::Scene; bbox = nothing, kwargs...)
+function Toggle(fig_or_scene; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LToggle, parent).attributes
-    theme_attrs = subtheme(parent, :LToggle)
+    topscene = get_topscene(fig_or_scene)
+
+    default_attrs = default_attributes(Toggle, topscene).attributes
+    theme_attrs = subtheme(topscene, :Toggle)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (halign, valign, cornersegments, framecolor_inactive,
@@ -9,7 +11,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LToggle}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Toggle}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     markersize = lift(layoutobservables.computedbbox) do bbox
@@ -34,7 +36,7 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
     framecolor = Node{Any}(active[] ? framecolor_active[] : framecolor_inactive[])
-    frame = poly!(parent, buttonvertices, color = framecolor, raw = true)[end]
+    frame = poly!(topscene, buttonvertices, color = framecolor, raw = true)
     decorations[:frame] = frame
 
     animating = Node(false)
@@ -52,10 +54,10 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
         ms * (1 - rf) * bf
     end
 
-    button = scatter!(parent, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)[end]
+    button = scatter!(topscene, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(parent, button, frame)
+    mouseevents = addmouseevents!(topscene, button, frame)
 
     onmouseleftdown(mouseevents) do event
         if animating[]
@@ -98,5 +100,5 @@ function LToggle(parent::Scene; bbox = nothing, kwargs...)
         buttonfactor[] = 1.0
     end
 
-    LToggle(parent, layoutobservables, attrs, decorations)
+    Toggle(fig_or_scene, layoutobservables, attrs, decorations)
 end

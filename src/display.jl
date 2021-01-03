@@ -141,12 +141,12 @@ mutable struct RamStepper
     format::Symbol
 end
 
-Stepper(scene::Scene, path::String, step::Int; format=:png) = FolderStepper(scene, path, format, step)
-Stepper(scene::Scene; format=:png) = RamStepper(scene, Matrix{RGBf0}[], format)
+Stepper(scene::FigureLike, path::String, step::Int; format=:png) = FolderStepper(get_scene(scene), path, format, step)
+Stepper(scene::FigureLike; format=:png) = RamStepper(get_scene(scene), Matrix{RGBf0}[], format)
 
-function Stepper(scene::Scene, path::String; format = :png)
+function Stepper(scene::FigureLike, path::String; format = :png)
     ispath(path) || mkpath(path)
-    FolderStepper(scene, path, format, 1)
+    FolderStepper(get_scene(scene), path, format, 1)
 end
 
 """
@@ -212,12 +212,12 @@ Save a `Scene` with the specified filename and format.
 - `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
-        f::FileIO.File, scene::Scene;
-        resolution = size(scene),
+        f::FileIO.File, fig::FigureLike;
+        resolution = size(get_scene(fig)),
         pt_per_unit = 1.0,
         px_per_unit = 1.0,
     )
-
+    scene = get_scene(fig)
     resolution != size(scene) && resize!(scene, resolution)
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
@@ -331,6 +331,13 @@ function VideoStream(
     ydim = iseven(_ydim) ? _ydim : _ydim + 1
     process = @ffmpeg_env open(`$(FFMPEG.ffmpeg) -framerate $(framerate) -loglevel quiet -f rawvideo -pixel_format rgb24 -r $framerate -s:v $(xdim)x$(ydim) -i pipe:0 -vf vflip -y $path`, "w")
     return VideoStream(process.in, process, screen, abspath(path))
+end
+
+function VideoStream(fig::FigureAxisPlot; kw...)
+    VideoStream(fig.figure; kw...)
+end
+function VideoStream(fig::Figure; kw...)
+    VideoStream(fig.scene; kw...)
 end
 
 # This has to be overloaded by the backend for its screen type.

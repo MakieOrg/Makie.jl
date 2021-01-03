@@ -275,7 +275,7 @@ open(path, "w") do io
 end
 
 ########################################
-#       Axis attributes overview       #
+#       OldAxis attributes overview       #
 ########################################
 
 # automatically generate an overview of the axis attributes, using a source md file
@@ -309,27 +309,6 @@ open(path, "w") do io
         println(io)
     end
 
-end
-
-########################################
-#     Function signatures overview     #
-########################################
-
-# automatically generate an overview of the function signatures, using a source md file
-@info("Generating signatures page")
-path = joinpath(genpath, "signatures.md")
-srcdocpath = joinpath(srcgenpath, "src-signatures.md")
-open(path, "w") do io
-    !ispath(srcdocpath) && error("source document doesn't exist!")
-    println(io, "# Plot function signatures")
-    src = read(srcdocpath, String)
-    println(io, src)
-    print(io, "\n")
-    println(io, "```@docs")
-    println(io, "convert_arguments")
-    println(io, "```\n")
-
-    println(io, "See [Plot attributes](@ref) for the available plot attributes.")
 end
 
 ########################################
@@ -369,6 +348,7 @@ makedocs(
         "Home" => "index.md",
         "Basics" => [
             "basic-tutorial.md",
+            "plot_method_signatures.md",
             "animation.md",
             "interaction.md",
             "plotting_functions.md",
@@ -377,7 +357,6 @@ makedocs(
             "scenes.md",
             "generated/axis.md",
             "convenience.md",
-            "generated/signatures.md",
             "generated/plot-attributes.md",
             "generated/colors.md",
             "lighting.md",
@@ -386,24 +365,20 @@ makedocs(
             "recipes.md",
             "output.md",
             "backends.md",
-            "troubleshooting.md"
+            "troubleshooting.md",
+            "API Reference AbstractPlotting" => "abstractplotting_api.md",
         ],
         "MakieLayout" => [
             "Tutorial" => "makielayout/tutorial.md",
             "GridLayout" => "makielayout/grids.md",
-            "LAxis" => "makielayout/laxis.md",
+            "Axis" => "makielayout/laxis.md",
             "Special Plots" => "makielayout/special_plots.md",
-            "LLegend" => "makielayout/llegend.md",
+            "Legend" => "makielayout/llegend.md",
             "Layoutables Examples" => "makielayout/layoutables_examples.md",
             "Theming Layoutables" => "makielayout/theming.md",
             "How Layouting Works" => "makielayout/layouting.md",
             "Frequently Asked Questions" => "makielayout/faq.md",
             "API Reference" => "makielayout/reference.md",
-        ],
-        "Developer Documentation" => [
-            "why-makie.md",
-            "devdocs.md",
-            "AbstractPlotting Reference" => "abstractplotting_api.md",
         ],
     ],
     strict = true, # experimental kwarg, so that the docs fail if there are any errors encountered

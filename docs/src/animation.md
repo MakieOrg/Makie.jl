@@ -21,16 +21,14 @@ As a start, here is how you can change the color of a line plot:
 using GLMakie, AbstractPlotting
 using AbstractPlotting.Colors
 
-# create the scene
-scene = lines(0..10, sin; linewidth=10)
-lineplot = scene[end]
+figure, ax, lineplot = lines(0..10, sin; linewidth=10)
 
 # animation settings
 n_frames = 30
 framerate = 30
 hue_iterator = LinRange(0, 360, n_frames)
 
-record(scene, "color_animation.mp4", hue_iterator; framerate = framerate) do hue
+record(figure, "color_animation.mp4", hue_iterator; framerate = framerate) do hue
     lineplot.color = HSV(hue, 1, 0.75)
 end
 nothing # hide
@@ -45,7 +43,7 @@ function change_function(hue)
     lineplot.color = HSV(hue, 1, 0.75)
 end
 
-record(change_function, scene, "color_animation.mp4", hue_iterator; framerate = framerate)
+record(change_function, figure, "color_animation.mp4", hue_iterator; framerate = framerate)
 ```
 
 
@@ -79,12 +77,12 @@ xs = LinRange(0, 7, 40)
 ys_1 = @lift(sin.(xs .- $time))
 ys_2 = @lift(cos.(xs .- $time) .+ 3)
 
-scene = lines(xs, ys_1, color = :blue, linewidth = 4)
-scatter!(scene, xs, ys_2, color = :red, markersize = 15)
+figure, _ = lines(xs, ys_1, color = :blue, linewidth = 4)
+scatter!(xs, ys_2, color = :red, markersize = 15)
 
 timestamps = 0:1/30:2
 
-record(scene, "time_animation.mp4", timestamps; framerate = 30) do t
+record(figure, "time_animation.mp4", timestamps; framerate = 30) do t
     time[] = t
 end
 nothing # hide
@@ -114,11 +112,14 @@ so that the number of x and y values can not go out of sync.
 ```@example 1
 points = Node(Point2f0[(0, 0)])
 
-scene = scatter(points, limits = FRect(0, 0, 30, 30))
+figure = Figure()
+ax = figure[1, 1] = Axis(figure)
+scatter!(ax, points)
+limits!(ax, 0, 30, 0, 30)
 
 frames = 1:30
 
-record(scene, "append_animation.mp4", frames; framerate = 30) do frame
+record(figure, "append_animation.mp4", frames; framerate = 30) do frame
     new_point = Point2f0(frame, frame)
     points[] = push!(points[], new_point)
 end

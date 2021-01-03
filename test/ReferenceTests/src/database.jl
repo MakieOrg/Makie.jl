@@ -46,6 +46,7 @@ function cell_expr(name, code, source)
             closure
         )
         ReferenceTests.DATABASE[$key] = entry
+        # display(closure())
     end
 end
 
@@ -62,7 +63,7 @@ end
 
 Helper, to more easily save all kind of results from the test database
 """
-function save_result(path::String, scene::Scene)
+function save_result(path::String, scene::AbstractPlotting.FigureLike)
     FileIO.save(path * ".png", scene)
 end
 
@@ -77,10 +78,8 @@ end
 function load_database()
     empty!(DATABASE)
     include(joinpath(@__DIR__, "tests/attributes.jl"))
-    include(joinpath(@__DIR__, "tests/documentation.jl"))
     include(joinpath(@__DIR__, "tests/examples2d.jl"))
     include(joinpath(@__DIR__, "tests/examples3d.jl"))
-    include(joinpath(@__DIR__, "tests/layouting.jl"))
     include(joinpath(@__DIR__, "tests/short_tests.jl"))
     return DATABASE
 end

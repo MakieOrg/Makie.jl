@@ -10,14 +10,14 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.5:10
 ys = sin.(xs)
 lin = lines!(ax, xs, ys, color = :blue)
 sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
 
-leg = LLegend(scene, [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
+leg = Legend(scene, [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
 layout[1, 2] = leg
 
 save("example_legend.svg", scene); nothing # hide
@@ -36,12 +36,12 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.1:10
 lins = [lines!(ax, xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:1]
 
-leg = LLegend(scene, lins, string.(1:length(lins)), nbanks = 3)
+leg = Legend(scene, lins, string.(1:length(lins)), nbanks = 3)
 layout[1, 2] = leg
 
 
@@ -68,13 +68,13 @@ valigns = [:top, :bottom, :center]
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.1:10
 lins = [lines!(ax, xs, sin.(xs .* i), color = color)
     for (i, color) in zip(1:3, [:red, :blue, :green])]
 
-legends = [LLegend(
+legends = [Legend(
         scene, lins, ["Line $i" for i in 1:3],
         "$ha & $va",
         tellheight = false,
@@ -115,7 +115,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 
 elem_1 = [LineElement(color = :red, linestyle = nothing),
@@ -135,7 +135,7 @@ elem_5 = PolyElement(color = :green, strokecolor = :black,
         polypoints = Point2f0[(0, 0), (1, 0), (0, 1)])
 
 
-leg = layout[1, 2] = LLegend(scene,
+leg = layout[1, 2] = Legend(scene,
     [elem_1, elem_2, elem_3, elem_4, elem_5],
     ["Line & Marker", "Poly & Line", "Line", "Marker", "Poly"],
     patchsize = (35, 35))
@@ -161,17 +161,17 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 xs = 0:0.5:10
 ys = sin.(xs)
 lin = lines!(ax, xs, ys, color = :blue)
 sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
 
-leg = LLegend(scene, [lin, sca, lin], ["a line", "some dots", "line again"])
+leg = Legend(scene, [lin, sca, lin], ["a line", "some dots", "line again"])
 layout[1, 2] = leg
 
-leg_horizontal = LLegend(scene, [lin, sca, lin], ["a line", "some dots", "line again"],
+leg_horizontal = Legend(scene, [lin, sca, lin], ["a line", "some dots", "line again"],
     orientation = :horizontal, tellwidth = false, tellheight = true)
 layout[2, 1] = leg_horizontal
 
@@ -196,7 +196,7 @@ using CairoMakie
 
 scene, layout = layoutscene(resolution = (1400, 900))
 
-ax = layout[1, 1] = LAxis(scene)
+ax = layout[1, 1] = Axis(scene)
 
 markersizes = [5, 10, 15, 20]
 colors = [:red, :green, :blue, :orange]
@@ -211,7 +211,7 @@ group_size = [MarkerElement(marker = :circle, color = :black, strokecolor = :tra
 group_color = [PolyElement(color = color, strokecolor = :transparent)
     for color in colors]
 
-legends = [LLegend(scene,
+legends = [Legend(scene,
     [group_size, group_color],
     [string.(markersizes), string.(colors)],
     ["Size", "Color"]) for _ in 1:6]

@@ -20,6 +20,7 @@ import FileIO: save
 using Printf: @sprintf
 import Isoband
 import PolygonOps
+import GridLayoutBase
 
 # Imports from Base which we don't want to have to qualify
 using Base: RefValue
@@ -58,6 +59,29 @@ include("patterns.jl")
 
 # Basic scene/plot/recipe interfaces + types
 include("scenes.jl")
+
+struct Figure
+    scene::Scene
+    layout::GridLayoutBase.GridLayout
+    content::Vector
+    attributes::Attributes
+    current_axis::Ref{Any}
+
+    function Figure(args...)
+        f = new(args...)
+        current_figure!(f)
+        f
+    end
+end
+
+struct FigureAxisPlot
+    figure::Figure
+    axis
+    plot::AbstractPlot
+end
+
+const FigureLike = Union{Scene, Figure, FigureAxisPlot}
+
 include("theming.jl")
 include("recipes.jl")
 include("interfaces.jl")
@@ -83,7 +107,6 @@ include("basic_recipes/buffers.jl")
 include("basic_recipes/contours.jl")
 include("basic_recipes/contourf.jl")
 include("basic_recipes/error_and_rangebars.jl")
-include("basic_recipes/legend.jl")
 include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
@@ -112,7 +135,6 @@ include("stats/violin.jl")
 
 # Interactiveness
 include("interaction/events.jl")
-include("interaction/gui.jl")
 include("interaction/interactive_api.jl")
 
 # documentation and help functions
@@ -124,7 +146,7 @@ export help, help_attributes, help_arguments
 
 # Abstract/Concrete scene + plot types
 export AbstractScene, SceneLike, Scene, AbstractScreen
-export AbstractPlot, Combined, Atomic, Axis
+export AbstractPlot, Combined, Atomic, OldAxis
 
 # Theming, working with Plots
 export Attributes, Theme, attributes, default_theme, theme, set_theme!
@@ -151,9 +173,8 @@ export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
 export to_ndim, Reverse
 
 # Transformations
-export translated, translate!, scale!, rotate!, grid, Accum, Absolute
+export translated, translate!, scale!, rotate!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, scene_limits
-export hbox, vbox
 
 # Spaces for widths and markers
 const PixelSpace = Pixel
@@ -180,13 +201,6 @@ export dropped_files
 export hasfocus
 export entered_window
 export disconnect!, must_update, force_update!, update!, update_limits!
-
-# currently special-cased functions (`textslider`) for example
-export textslider
-
-# gui
-export slider, button, playbutton
-export move!
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
@@ -238,12 +252,17 @@ function __init__()
     end
 end
 
+include("figures.jl")
+export content
+
 include("makielayout/MakieLayout.jl")
 # re-export MakieLayout
 for name in names(MakieLayout)
     @eval import .MakieLayout: $(name)
     @eval export $(name)
 end
+
+include("figureplotting.jl")
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")

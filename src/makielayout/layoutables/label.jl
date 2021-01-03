@@ -1,17 +1,18 @@
-function LText(parent::Scene, text; kwargs...)
-    LText(parent; text = text, kwargs...)
+function Label(fig_or_scene, text; kwargs...)
+    Label(fig_or_scene; text = text, kwargs...)
 end
 
-function LText(parent::Scene; bbox = nothing, kwargs...)
+function Label(fig_or_scene; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LText, parent).attributes
-    theme_attrs = subtheme(parent, :LText)
+    topscene = get_topscene(fig_or_scene)
+    default_attrs = default_attributes(Label, topscene).attributes
+    theme_attrs = subtheme(topscene, :Label)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (text, textsize, font, color, visible, halign, valign,
         rotation, padding)
 
-    layoutobservables = LayoutObservables{LText}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Label}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point3f0(0, 0, 0))
@@ -26,8 +27,8 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    t = text!(parent, text, position = textpos, textsize = textsize, font = font, color = color,
-        visible = visible, align = alignnode, rotation = rotation, raw = true)[end]
+    t = text!(topscene, text, position = textpos, textsize = textsize, font = font, color = color,
+        visible = visible, align = alignnode, rotation = rotation, raw = true)
 
     textbb = Ref(BBox(0, 1, 0, 1))
 
@@ -64,21 +65,8 @@ function LText(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    lt = LText(parent, layoutobservables, t, attrs)
+    lt = Label(fig_or_scene, layoutobservables, attrs, Dict(:text => t))
 
     lt
 end
 
-
-function Base.delete!(lt::LText)
-    GridLayoutBase.disconnect_layoutobservables!(lt.layoutobservables.gridcontent)
-    GridLayoutBase.remove_from_gridlayout!(lt.layoutobservables.gridcontent)
-    empty!(lt.layoutobservables.suggestedbbox.listeners)
-    empty!(lt.layoutobservables.computedbbox.listeners)
-    empty!(lt.layoutobservables.reportedsize.listeners)
-    empty!(lt.layoutobservables.autosize.listeners)
-    empty!(lt.layoutobservables.protrusions.listeners)
-
-    # remove the plot object from the scene
-    delete!(lt.parent, lt.textobject)
-end

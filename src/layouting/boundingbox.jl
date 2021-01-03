@@ -42,8 +42,8 @@ end
 
 boundingbox(scene::Scene) = raw_boundingbox(scene)
 function raw_boundingbox(scene::Scene)
-    if scene[Axis] !== nothing
-        return raw_boundingbox(scene[Axis])
+    if scene[OldAxis] !== nothing
+        return raw_boundingbox(scene[OldAxis])
     elseif scene.limits[] !== automatic
         return scene_limits(scene)
     elseif cameracontrols(scene) == EmptyCamera()

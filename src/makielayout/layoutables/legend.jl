@@ -1,10 +1,12 @@
-function LLegend(
-        parent::Scene,
+function Legend(
+        fig_or_scene,
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LLegend, parent).attributes
-    theme_attrs = subtheme(parent, :LLegend)
+    topscene = get_topscene(fig_or_scene)
+
+    default_attrs = default_attributes(Legend, topscene).attributes
+    theme_attrs = subtheme(topscene, :Legend)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -23,22 +25,22 @@ function LLegend(
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LLegend}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Legend}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
-    scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     # the rectangle in which the legend is drawn when margins are removed
     legendrect = @lift(
         BBox($margin[1], width($scenearea) - $margin[2],
-             $margin[3], height($scenearea)- $margin[4]))
+             $margin[3], height($scenearea) - $margin[4]))
 
-    frame = poly!(scene,
+    decorations[:frame] = poly!(scene,
         @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
-        strokecolor = framecolor, raw = true)[end]
+        strokecolor = framecolor, raw = true)
 
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
@@ -64,10 +66,10 @@ function LLegend(
     end
 
     # these arrays store all the plot objects that the legend entries need
-    titletexts = Optional{LText}[]
-    entrytexts = [LText[]]
+    titletexts = Optional{Label}[]
+    entrytexts = [Label[]]
     entryplots = [[AbstractPlot[]]]
-    entryrects = [LRect[]]
+    entryrects = [Box[]]
 
     decorations[:titletexts] = titletexts
     decorations[:entrytexts] = entrytexts
@@ -162,7 +164,7 @@ function LLegend(
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
         # above a 3d plot, but for now this hack is ok.
-        translate!(scene, (0, 0, 10))
+        # translate!(scene, (0, 0, 10))
     end
 
     onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
@@ -203,7 +205,7 @@ function LLegend(
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, LText(scene, text = title, font = titlefont,
+                push!(titletexts, Label(scene, text = title, font = titlefont,
                     textsize = titlesize, halign = titlehalign, valign = titlevalign))
             end
 
@@ -215,13 +217,13 @@ function LLegend(
                 merge!(e.attributes, preset_attrs)
 
                 # create the label
-                push!(etexts, LText(scene,
+                push!(etexts, Label(scene,
                     text = e.label, textsize = e.labelsize, font = e.labelfont,
                     color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
                     ))
 
                 # create the patch rectangle
-                rect = LRect(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
+                rect = Box(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
                     strokewidth = e.patchstrokewidth,
                     width = lift(x -> x[1], e.patchsize),
                     height = lift(x -> x[2], e.patchsize))
@@ -248,7 +250,7 @@ function LLegend(
     # trigger suggestedbbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    leg = LLegend(scene, entry_groups, layoutobservables, attrs, decorations)
+    leg = Legend(fig_or_scene, layoutobservables, attrs, decorations, entry_groups)
     # trigger first relayout
     entry_groups[] = entry_groups[]
     leg
@@ -264,7 +266,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Node{FRect2D}
     scat = scatter!(scene, points, color = attrs.color, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.strokecolor, raw = true)[end]
+        strokecolor = attrs.strokecolor, raw = true)
     [scat]
 end
 
@@ -276,7 +278,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Node{FRect2D}, 
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.color,
         linestyle = attrs.linestyle,
-        raw = true)[end]
+        raw = true)
     [lin]
 end
 
@@ -288,7 +290,7 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Node{FRect2D}, 
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
         strokecolor = attrs.strokecolor,
-        raw = true)[end]
+        raw = true)
     [pol]
 end
 
@@ -399,7 +401,7 @@ end
 
 
 """
-    LLegend(
+    Legend(
         scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
@@ -411,7 +413,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function LLegend(scene,
+function Legend(scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
         title::Optional{String} = nothing;
@@ -423,13 +425,13 @@ function LLegend(scene,
 
     entries = [LegendEntry(label, content) for (content, label) in zip(contents, labels)]
     entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
-    legend = LLegend(scene, entrygroups; kwargs...)
+    legend = Legend(scene, entrygroups; kwargs...)
 end
 
 
 
 """
-    LLegend(
+    Legend(
         scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
@@ -444,7 +446,7 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function LLegend(scene,
+function Legend(scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{String}};
@@ -458,5 +460,5 @@ function LLegend(scene,
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
 
     entrygroups = Node{Vector{EntryGroup}}([(t, en) for (t, en) in zip(titles, entries)])
-    legend = LLegend(scene, entrygroups; kwargs...)
+    legend = Legend(scene, entrygroups; kwargs...)
 end

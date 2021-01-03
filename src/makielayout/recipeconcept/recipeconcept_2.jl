@@ -95,7 +95,7 @@ function create_infrastructure(::Type{SingleAxis}, scene::Scene, args...; kwargs
     layoutkw = pop!(dkwargs, :layout, NamedTuple())
 
     layout = GridLayout(;layoutkw...)
-    axis = layout[1, 1] = LAxis(scene; axiskw...)
+    axis = layout[1, 1] = Axis(scene; axiskw...)
     Infrastructure((axis = axis, layout = layout))
 end
 
@@ -141,9 +141,9 @@ function create_infrastructure(::Type{MarginDensityScatter}, scene::Scene, args.
 
     dkwargs = Dict(kwargs)
 
-    mainax = LAxis(scene, xlabel = get(dkwargs, :xlabel, " "), ylabel = get(dkwargs, :ylabel, " "))
-    topax = LAxis(scene; xlabelvisible = false, xticklabelsvisible = false, xticksvisible = false)
-    rightax = LAxis(scene; ylabelvisible = false, yticklabelsvisible = false, yticksvisible = false)
+    mainax = Axis(scene, xlabel = get(dkwargs, :xlabel, " "), ylabel = get(dkwargs, :ylabel, " "))
+    topax = Axis(scene; xlabelvisible = false, xticklabelsvisible = false, xticksvisible = false)
+    rightax = Axis(scene; ylabelvisible = false, yticklabelsvisible = false, yticksvisible = false)
 
     linkxaxes!(mainax, topax)
     linkyaxes!(mainax, rightax)
@@ -221,7 +221,7 @@ function create_infrastructure(::Type{FacetPlot}, scene::Scene, plottype, rows, 
 
     layout = GridLayout(; layoutkw...)
 
-    axs = [LAxis(scene; axiskw...) for x in CartesianIndices((nrows, ncols))]
+    axs = [Axis(scene; axiskw...) for x in CartesianIndices((nrows, ncols))]
 
     layout[] = axs
 
@@ -268,17 +268,17 @@ myplot(FacetPlot, infra, Lines,
     rand(1:3, 1000), rand(1:4, 1000), randn(1000), randn(1000); color = :red)
 
 for c in 1:infra.layout.ncols
-    infra.layout[1, c, Top()] = LRect(scene, color = Gray(0.8))
-    infra.layout[1, c, Top()] = LText(scene, "Column $c", padding = (0, 0, 10, 10))
+    infra.layout[1, c, Top()] = Box(scene, color = Gray(0.8))
+    infra.layout[1, c, Top()] = Label(scene, "Column $c", padding = (0, 0, 10, 10))
 end
 
 for r in 1:infra.layout.nrows
-    infra.layout[r, end, Right()] = LRect(scene, color = Gray(0.8))
-    infra.layout[r, end, Right()] = LText(scene, "Row $r", rotation = -pi/2, padding = (10, 10, 0, 0))
+    infra.layout[r, end, Right()] = Box(scene, color = Gray(0.8))
+    infra.layout[r, end, Right()] = Label(scene, "Row $r", rotation = -pi/2, padding = (10, 10, 0, 0))
 end
 
-layout[0, :] = LRect(scene, color = Gray(0.7))
-layout[1, :] = LText(scene, "Columns", padding = (0, 0, 10, 10))
+layout[0, :] = Box(scene, color = Gray(0.7))
+layout[1, :] = Label(scene, "Columns", padding = (0, 0, 10, 10))
 layout.content[end].content.tellwidth = false
 
-foreach(LAxis, layout) do ax; tight_ticklabel_spacing!(ax); end
+foreach(Axis, layout) do ax; tight_ticklabel_spacing!(ax); end
