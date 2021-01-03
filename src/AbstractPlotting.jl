@@ -173,9 +173,8 @@ export to_color, to_colormap, to_rotation, to_font, to_align, to_textsize
 export to_ndim, Reverse
 
 # Transformations
-export translated, translate!, scale!, rotate!, grid, Accum, Absolute
+export translated, translate!, scale!, rotate!, Accum, Absolute
 export boundingbox, insertplots!, center!, translation, scene_limits
-export hbox, vbox
 
 # Spaces for widths and markers
 const PixelSpace = Pixel
@@ -202,12 +201,6 @@ export dropped_files
 export hasfocus
 export entered_window
 export disconnect!, must_update, force_update!, update!, update_limits!
-
-# currently special-cased functions (`textslider`) for example
-export textslider
-
-# gui
-export move!
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA
