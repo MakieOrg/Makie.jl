@@ -24,8 +24,4 @@ scale!(object, (1f0, 2f0, 3f0)) # 3d
 rotate!(object, axis::Vec, amount_degree)
 
 translate!(object, amount) # for amount it's the same as with scale!
-
-# boundingbox can be any rect type, e.g. a 3D or 2D HyperRectangle
-# with the effect of exactly fitting `object` into `boundingbox`
-move!(object, boundingbox)
 ```
