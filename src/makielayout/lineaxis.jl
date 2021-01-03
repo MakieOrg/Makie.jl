@@ -23,7 +23,7 @@ function LineAxis(parent::Scene; kwargs...)
             position = endpoints[1][1]
             return (position, extents, horizontal)
         else
-            error("Axis endpoints $(endpoints[1]) and $(endpoints[2]) are neither on a horizontal nor vertical line")
+            error("OldAxis endpoints $(endpoints[1]) and $(endpoints[2]) are neither on a horizontal nor vertical line")
         end
     end
 
@@ -31,7 +31,7 @@ function LineAxis(parent::Scene; kwargs...)
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor,
         show_axis = false, visible = ticksvisible
-    )[end]
+    )
     decorations[:ticklines] = ticklines
 
     ticklabelannosnode = Node(Tuple{String, Point2f0}[])
@@ -44,7 +44,7 @@ function LineAxis(parent::Scene; kwargs...)
         font = ticklabelfont,
         color = ticklabelcolor,
         show_axis = false,
-        visible = ticklabelsvisible)[end]
+        visible = ticklabelsvisible)
 
     ticklabel_ideal_space = lift(ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible, typ=Float32) do args...
         maxwidth = if pos_extents_horizontal[][3]
@@ -138,7 +138,7 @@ function LineAxis(parent::Scene; kwargs...)
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
-    )[end]
+    )
 
     decorations[:labeltext] = labeltext
 
@@ -246,7 +246,7 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true)[end]
+        color = spinecolor, raw = true)
 
 
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,
@@ -289,7 +289,7 @@ function tight_ticklabel_spacing!(la::LineAxis)
         error("endpoints not on a horizontal or vertical line")
     end
 
-    tls = la.decorations[:ticklabels]
+    tls = la.elements[:ticklabels]
     maxwidth = if horizontal
             # height
             tls.visible[] ? height(FRect2D(boundingbox(tls))) : 0f0
@@ -306,7 +306,7 @@ end
 
 
 function Base.delete!(la::LineAxis)
-    for (_, d) in la.decorations
+    for (_, d) in la.elements
         if d isa AbstractPlot
             delete!(d.parent, d)
         else
@@ -318,7 +318,7 @@ end
 """
     get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax)
 
-Calls the default tick finding algorithm, which could depend on the current LAxis
+Calls the default tick finding algorithm, which could depend on the current Axis
 state.
 """
 get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax) = get_tickvalues(LinearTicks(5), vmin, vmax)

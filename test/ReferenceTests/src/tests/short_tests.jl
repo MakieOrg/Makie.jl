@@ -1,4 +1,4 @@
-@cell arc(Point2f0(0, 0), 1, 0, pi)
+@cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth=20)
 
 @cell begin
     scene = Scene(raw=true, camera=campixel!)
@@ -8,14 +8,14 @@
         position=(50, 50)
     )
     scale!(scene, Vec3f0(4, 1, 1))
-    linesegments!(boundingbox(scene))
+    linesegments!(scene, boundingbox(scene))
     offset = 0
     for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
-        t = text!(
+        t = text!(scene,
             "boundingbox",
             align=(a_lign, b_lign),
             position=(50, 100 + offset)
-        )[end]
+        )
         linesegments!(boundingbox(t))
         offset += 50
     end
@@ -28,52 +28,31 @@ end
 
 @cell begin
     scene = poly([Rect(0, 0, 20, 20)])
-    scatter!(Rect(0, 0, 20, 20), color=:red, markersize=2)
+    scatter!(Rect(0, 0, 20, 20), color=:red, markersize=20)
+    current_figure()
 end
-
-@cell scatter(RNG.rand(10), color=RNG.rand(10), colormap=:Spectral)
 
 @cell begin
     lines(Rect(0, 0, 1, 1), linewidth=4, scale_plot=false)
-    scatter!([Point2f0(0.5, 0.5)], markersize=1, marker='I', scale_plot=false)
+    scatter!([Point2f0(0.5, 0.5)], markersize=1, markerspace=SceneSpace, marker='I', scale_plot=false)
+    current_figure()
 end
 
 @cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(10), linewidth=10)
 @cell lines(RNG.rand(10), RNG.rand(10), color=RNG.rand(RGBAf0, 10), linewidth=10)
-@cell scatter(0..1, RNG.rand(10), markersize=RNG.rand(10) .* 0.1)
+@cell scatter(0..1, RNG.rand(10), markersize=RNG.rand(10) .* 20)
 @cell scatter(LinRange(0, 1, 10), RNG.rand(10))
 @cell scatter(RNG.rand(10), LinRange(0, 1, 10))
-
-
-@cell begin
-    scene = Scene()
-    cam2d!(scene)
-    axis2d!(
-        scene, IRect(Vec2f0(0), Vec2f0(1)),
-        ticks=(ranges = ([0.1, 0.2, 0.9], [0.1, 0.2, 0.9]),
-            labels = (["😸", "♡", "𝕴"], ["β ÷ δ", "22", "≙"])), raw=true
-    )
-    center!(scene)
-    scene
-end
 
 @cell begin
     angles = range(0, stop=2pi, length=20)
     pos = Point2f0.(sin.(angles), cos.(angles))
-    scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', scale_plot=false)
-    scatter!(pos, markersize=5, color=:red, scale_plot=false)
+    scatter(pos, markersize=0.2, markerspace=SceneSpace, rotations=-angles, marker='▲', axis=(;aspect = DataAspect()))
+    scatter!(pos, markersize=10, color=:red, axis=(;aspect = DataAspect()))
+    current_figure()
 end
 
 @cell heatmap(RNG.rand(50, 50), colormap=:RdBu, alpha=0.2)
-
-@cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth=20)
-
-# themes
-@cell scatter(Theme(color=:green), RNG.rand(10), RNG.rand(10), markersize=0.1)
-@cell scatter!(Scene(), Theme(color=:green), RNG.rand(10), RNG.rand(10), markersize=0.01)
-@cell scatter!(Scene(), Theme(color=:green), RNG.rand(10), RNG.rand(10))
-@cell scatter(Theme(color=:green), RNG.rand(10), RNG.rand(10))
-@cell scatter(Theme(color=:green), RNG.rand(10), RNG.rand(10), markersize=0.05)
 
 @cell contour(RNG.rand(10, 100))
 @cell contour(RNG.rand(100, 10))
@@ -101,10 +80,10 @@ end
 
 @cell begin
     r = range(-3pi, stop=3pi, length=100)
-    s = volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, show_axis=false)
-    v2 = volume!(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, show_axis=false)[end]
+    fig, ax, vplot = volume(r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:iso, isorange=0.1f0, show_axis=false)
+    v2 = volume!(ax, r, r, r, (x, y, z) -> cos(x) + sin(y) + cos(z), algorithm=:mip, show_axis=false)
     translate!(v2, Vec3f0(6pi, 0, 0))
-    s
+    fig
 end
 
 
@@ -119,10 +98,11 @@ end
     s2 = uv_mesh(Sphere(Point3f0(0), 1f0))
     s2.position .= s2.position .+ (Point3f0(0, 2, 0),)
     mesh!(s2, color=RNG.rand(RGBAf0, 50, 50))
+    current_figure()
 end
 
-@cell begin
-    # Unequal x and y sizes in surface
+@cell "Unequal x and y sizes in surface" begin
+    #
     NL = 30
     NR = 31
     function xy_data(x, y)
@@ -141,8 +121,7 @@ end
     )
 end
 
-@cell begin
-    # Matrices of data in surfaces
+@cell "Matrices of data in surfaces" begin
     NL = 30
     NR = 31
     function xy_data(x, y)
@@ -160,4 +139,3 @@ end
         colormap=:Spectral
     )
 end
-

@@ -1,7 +1,9 @@
-function LButton(scene::Scene; bbox = nothing, kwargs...)
+function Button(fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
-    default_attrs = default_attributes(LButton, scene).attributes
-    theme_attrs = subtheme(scene, :LButton)
+    scene = get_scene(fig_or_scene)
+
+    default_attrs = default_attributes(Button, scene).attributes
+    theme_attrs = subtheme(scene, :Button)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (padding, textsize, label, font, halign, valign, cornerradius,
@@ -11,7 +13,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LButton}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Button}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
     textpos = Node(Point2f0(0, 0))
@@ -36,7 +38,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     bcolor = Node{Any}(buttoncolor[])
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
-        color = bcolor, raw = true)[end]
+        color = bcolor, raw = true)
     decorations[:button] = button
 
 
@@ -44,7 +46,7 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
 
     lcolor = Node{Any}(labelcolor[])
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
-        color = lcolor, align = (:center, :center), raw = true)[end]
+        color = lcolor, align = (:center, :center), raw = true)
 
     decorations[:label] = labeltext
 
@@ -88,5 +90,5 @@ function LButton(scene::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LButton(scene, layoutobservables, attrs, decorations)
+    Button(fig_or_scene, layoutobservables, attrs, decorations)
 end

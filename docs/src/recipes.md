@@ -137,8 +137,9 @@ import AbstractPlotting: Plot, default_theme, plot!, to_value
 struct Simulation
     grid::Vector{Point3f0}
 end
+
 # Probably worth having a macro for this!
-function default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
+function AbstractPlotting.default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
     Theme(
         advance = 0,
         molecule_sizes = [0.08, 0.04, 0.04],
@@ -150,7 +151,7 @@ end
 function AbstractPlotting.plot!(p::Plot(Simulation))
     sim = to_value(p[1]) # first argument is the SimulationResult
     # when advance changes, get new positions from the simulation
-    mpos = lift(p[:advance]) do i
+    mpos = lift(p.advance) do i
         sim.grid .+ rand(Point3f0, length(sim.grid)) .* 0.01f0
     end
     # size shouldn't change, so we might as well get the value instead of signal
@@ -188,10 +189,11 @@ molecules = map(1:(n^3) * 3) do i
     i % 3 == 0 && return grid[i3] + Point3f0(-xy, xy, z)
 end
 result = Simulation(molecules)
-scene = plot(result)
+scene = Scene()
+plotobject = plot!(scene, result)
 N = 100
 record(scene, "molecules_simulation.mp4", 1:N) do i
-    scene[end][:advance] = i
+    plotobject.advance = i
 end
 
 nothing # hide

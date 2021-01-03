@@ -11,17 +11,15 @@ seed!(0)
 @testset "histogram" begin
     v = randn(1000)
     h = fit(Histogram, v)
-    p = plot(h)
+    fig, ax, plt = plot(h)
 
-    plt = p[end]
     @test plt isa BarPlot
     x = h.edges[1]
     @test plt[1][] ≈ Point{2, Float32}.(x[1:end-1] .+ step(x)/2, h.weights)
 
     v = (randn(1000), randn(1000))
     h = fit(Histogram, v, nbins = 30)
-    p = plot(h)
-    plt = p[end]
+    fig, ax, plt = plot(h)
     @test plt isa Heatmap
     x = h.edges[1]
     y = h.edges[2]
@@ -29,8 +27,7 @@ seed!(0)
     @test plt[2][] ≈ y[1:end-1] .+ step(y)/2
     @test plt[3][] ≈ h.weights
 
-    p = surface(h)
-    plt = p[end]
+    fig, ax, plt = surface(h)
     @test plt isa Surface
     x = h.edges[1]
     y = h.edges[2]
@@ -41,8 +38,7 @@ seed!(0)
     v = (randn(1000), randn(1000), randn(1000))
     edges = ntuple(_ -> -3:0.3:3, 3)
     h = fit(Histogram, v, edges)
-    p = plot(h)
-    plt = p[end]
+    fig, ax, plt = plot(h)
     @test plt isa Volume
     x = h.edges[1]
     y = h.edges[2]
@@ -56,27 +52,27 @@ end
 @testset "density" begin
     v = randn(1000)
     d = kde(v)
-    p1 = plot(d)
-    @test p1[end] isa Lines
-    p2 = lines(d.x, d.density)
-    @test p1[end][1][] == p2[end][1][]
+    fig, ax, p1 = plot(d)
+    @test p1 isa Lines
+    fig, ax, p2 = lines(d.x, d.density)
+    @test p1[1][] == p2[1][]
 
     x = randn(1000)
     y = randn(1000)
     d = kde((x, y))
-    p1 = plot(d)
-    @test p1[end] isa Heatmap
-    p2 = heatmap(d.x, d.y, d.density)
-    @test p1[end][1][] == p2[end][1][]
-    @test p1[end][2][] == p2[end][2][]
-    @test p1[end][3][] == p2[end][3][]
+    fig, ax, p1 = plot(d)
+    @test p1 isa Heatmap
+    fig, ax, p2 = heatmap(d.x, d.y, d.density)
+    @test p1[1][] == p2[1][]
+    @test p1[2][] == p2[2][]
+    @test p1[3][] == p2[3][]
     
-    p1 = surface(d)
-    @test p1[end] isa Surface
-    p2 = surface(d.x, d.y, d.density)
-    @test p1[end][1][] == p2[end][1][]
-    @test p1[end][2][] == p2[end][2][]
-    @test p1[end][3][] == p2[end][3][]
+    fig, ax, p1 = surface(d)
+    @test p1 isa Surface
+    fig, ax, p2 = surface(d.x, d.y, d.density)
+    @test p1[1][] == p2[1][]
+    @test p1[2][] == p2[2][]
+    @test p1[3][] == p2[3][]
 end
 
 @testset "distribution" begin
@@ -84,8 +80,7 @@ end
     rg = AbstractPlotting.support(d)
     @test minimum(rg) ≈ -3.7190164854556866
     @test maximum(rg) ≈ 3.719016485455714
-    p = plot(d)
-    plt = p[end]
+    fix, ax, plt = plot(d)
     @test plt isa Lines
     @test !AbstractPlotting.isdiscrete(d)
     @test first(plt[1][][1]) ≈ minimum(rg) rtol = 1f-6
@@ -98,9 +93,9 @@ end
     d = Distributions.Poisson()
     rg = AbstractPlotting.support(d)
     @test rg == 0:6
-    p = plot(d)
-    @test p[end] isa ScatterLines
-    plt = p[end].plots[1]
+    fig, ax, p = plot(d)
+    @test p isa ScatterLines
+    plt = p.plots[1]
     @test AbstractPlotting.isdiscrete(d)
 
     @test first.(plt[1][]) == 0:6
@@ -110,36 +105,36 @@ end
 @testset "qqplot" begin
     v = randn(1000)
     q = Distributions.qqbuild(fit(Distributions.Normal, v), v)
-    p = qqnorm(v)
+    fig, ax, p = qqnorm(v)
 
-    @test length(p[end].plots) == 2
-    plt = p[end].plots[1]
+    @test length(p.plots) == 2
+    plt = p.plots[1]
     @test plt isa Scatter
     @test first.(plt[1][]) ≈ q.qx rtol = 1e-6
     @test last.(plt[1][]) ≈ q.qy rtol = 1e-6
 
-    plt = p[end].plots[2]
+    plt = p.plots[2]
     @test plt isa LineSegments
     @test first.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1e-6
     @test last.(plt[1][]) ≈ [extrema(q.qx)...] rtol = 1e-6
 
-    p = qqnorm(v, qqline = nothing)
-    @test length(p[end].plots) == 1
-    plt = p[end].plots[1]
+    fig, ax, p = qqnorm(v, qqline = nothing)
+    @test length(p.plots) == 1
+    plt = p.plots[1]
     @test plt isa Scatter
     @test first.(plt[1][]) ≈ q.qx rtol = 1e-6
     @test last.(plt[1][]) ≈ q.qy rtol = 1e-6
 
-    p = qqnorm(v, qqline = :fit)
-    plt = p[end].plots[2]
+    fig, ax, p = qqnorm(v, qqline = :fit)
+    plt = p.plots[2]
     itc, slp = hcat(fill!(similar(q.qx), 1), q.qx) \ q.qy
     xs = [extrema(q.qx)...]
     ys = slp .* xs .+ itc
     @test first.(plt[1][]) ≈ xs rtol = 1e-6
     @test last.(plt[1][]) ≈ ys rtol = 1e-6
 
-    p = qqnorm(v, qqline = :quantile)
-    plt = p[end].plots[2]
+    fig, ax, p = qqnorm(v, qqline = :quantile)
+    plt = p.plots[2]
     xs = [extrema(q.qx)...]
     quantx, quanty = quantile(q.qx, [0.25, 0.75]), quantile(q.qy, [0.25, 0.75])
     slp = diff(quanty) ./ diff(quantx)
@@ -149,29 +144,29 @@ end
 end
 
 @testset "crossbar" begin
-    p = crossbar(1, 3, 2, 4)
-    @test p.plots[end] isa CrossBar
-    @test p.plots[end].plots[1] isa Poly
-    @test p.plots[end].plots[1][1][] == [FRect2D(Float32[0.6, 2.0], Float32[0.8, 2.0]),]
-    @test p.plots[end].plots[2] isa LineSegments
-    @test p.plots[end].plots[2][1][] == Point{2,Float32}[Float32[0.6, 3.0], Float32[1.4, 3.0]]
+    fig, ax, p = crossbar(1, 3, 2, 4)
+    @test p isa CrossBar
+    @test p.plots[1] isa Poly
+    @test p.plots[1][1][] == [FRect2D(Float32[0.6, 2.0], Float32[0.8, 2.0]),]
+    @test p.plots[2] isa LineSegments
+    @test p.plots[2][1][] == Point{2,Float32}[Float32[0.6, 3.0], Float32[1.4, 3.0]]
 
-    p = crossbar(1, 3, 2, 4; show_notch = true, notchmin = 2.5, notchmax = 3.5);
-    @test p.plots[end] isa CrossBar
-    @test p.plots[end].plots[1] isa Poly
-    @test p.plots[end].plots[1][1][][1] isa AbstractPlotting.AbstractMesh
+    fig, ax, p = crossbar(1, 3, 2, 4; show_notch = true, notchmin = 2.5, notchmax = 3.5);
+    @test p isa CrossBar
+    @test p.plots[1] isa Poly
+    @test p.plots[1][1][][1] isa AbstractPlotting.AbstractMesh
     poly = Point{2,Float32}[[0.6, 2.0], [1.4, 2.0], [1.4, 2.5], [1.2, 3.0], [1.4, 3.5],
                             [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5]]
-    @test map(Point2f0, p.plots[end].plots[1][1][][1].position) == poly
-    @test p.plots[end].plots[2] isa LineSegments
-    @test p.plots[end].plots[2][1][] == Point{2,Float32}[Float32[0.8, 3.0], Float32[1.2, 3.0]]
+    @test map(Point2f0, p.plots[1][1][][1].position) == poly
+    @test p.plots[2] isa LineSegments
+    @test p.plots[2][1][] == Point{2,Float32}[Float32[0.8, 3.0], Float32[1.2, 3.0]]
 end
 
 @testset "boxplot" begin
     a = repeat(1:5, inner = 20)
     b = 1:100
-    p = boxplot(a, b)
-    plts = p[end].plots
+    fig, ax, p = boxplot(a, b)
+    plts = p.plots
     @test length(plts) == 3
     @test plts[1] isa Scatter
     @test isempty(plts[1][1][])
@@ -179,8 +174,8 @@ end
     # test categorical
     a = repeat(["a", "b", "c", "d", "e"], inner = 20)
     b = 1:100
-    p = boxplot(a, b; whiskerwidth = 1.0)
-    plts = p[end].plots
+    fig, ax, p = boxplot(a, b; whiskerwidth = 1.0)
+    plts = p.plots
     @test length(plts) == 3
     @test plts[1] isa Scatter
     @test isempty(plts[1][1][])
@@ -212,8 +207,8 @@ end
     @test plts[3].plots[1][1][] == poly
 
     #notch
-    p = boxplot(a, b, show_notch=true)
-    plts = p[end].plots
+    fig, ax, p = boxplot(a, b, show_notch=true)
+    plts = p.plots
 
     @test length(plts) == 3
 
@@ -250,21 +245,21 @@ end
 @testset "violin" begin
     x = repeat(1:4, 250)
     y = x .+ randn.()
-    p = violin(x, y, side = :left, color = :blue)
-    @test p[end] isa Violin
-    @test p[end].plots[1] isa Poly
-    @test p[end].plots[1][:color][] == :blue
-    @test p[end].plots[2] isa LineSegments
-    @test p[end].plots[2][:color][] == :white
-    @test p[end].plots[2][:visible][] == :false
+    fig, ax, p = violin(x, y, side = :left, color = :blue)
+    @test p isa Violin
+    @test p.plots[1] isa Poly
+    @test p.plots[1][:color][] == :blue
+    @test p.plots[2] isa LineSegments
+    @test p.plots[2][:color][] == :white
+    @test p.plots[2][:visible][] == :false
 
     # test categorical
     x = repeat(["a", "b", "c", "d"], 250)
-    p = violin(x, y, side = :left, color = :blue)
-    @test p[end] isa Violin
-    @test p[end].plots[1] isa Poly
-    @test p[end].plots[1][:color][] == :blue
-    @test p[end].plots[2] isa LineSegments
-    @test p[end].plots[2][:color][] == :white
-    @test p[end].plots[2][:visible][] == :false
+    fig2, ax2, p2 = violin(x, y, side = :left, color = :blue)
+    @test p2 isa Violin
+    @test p2.plots[1] isa Poly
+    @test p2.plots[1][:color][] == :blue
+    @test p2.plots[2] isa LineSegments
+    @test p2.plots[2][:color][] == :white
+    @test p2.plots[2][:visible][] == :false
 end

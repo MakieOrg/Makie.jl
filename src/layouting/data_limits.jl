@@ -132,7 +132,6 @@ function data_limits(plots::Vector)
         plot_idx = iterate(plots, idx)
         # axis shouldn't be part of the data limit
         isaxis(plot) && continue
-        isa(plot, Legend) && continue
         bb2 = data_limits(plot)::FRect3D
         isfinite(bb) || (bb = bb2)
         isfinite(bb2) || continue
@@ -142,4 +141,6 @@ function data_limits(plots::Vector)
 end
 
 data_limits(s::Scene) = data_limits(plots_from_camera(s))
+data_limits(s::Figure) = data_limits(s.scene)
+data_limits(s::FigureAxisPlot) = data_limits(s.figure)
 data_limits(plot::Combined) = data_limits(plot.plots)

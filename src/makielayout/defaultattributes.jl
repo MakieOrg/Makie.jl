@@ -11,7 +11,7 @@ function lift_parent_attribute(::Nothing, attr::Symbol, default_value)
 end
 
 
-function default_attributes(::Type{LAxis}, scene)
+function default_attributes(::Type{Axis}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The xlabel string."
         xlabel = ""
@@ -210,16 +210,16 @@ function default_attributes(::Type{LAxis}, scene)
 end
 
 @doc """
-LAxis has the following attributes:
+Axis has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LAxis, nothing)
+    _, docs, defaults = default_attributes(Axis, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LAxis
+Axis
 
-function default_attributes(::Type{LColorbar}, scene)
+function default_attributes(::Type{Colorbar}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The color bar label string."
         label = ""
@@ -310,16 +310,16 @@ function default_attributes(::Type{LColorbar}, scene)
 end
 
 @doc """
-LColorbar has the following attributes:
+Colorbar has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LColorbar, nothing)
+    _, docs, defaults = default_attributes(Colorbar, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LColorbar
+Colorbar
 
-function default_attributes(::Type{LText}, scene)
+function default_attributes(::Type{Label}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The displayed text string."
         text = "Text"
@@ -354,16 +354,16 @@ function default_attributes(::Type{LText}, scene)
 end
 
 @doc """
-LText has the following attributes:
+Label has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LText, nothing)
+    _, docs, defaults = default_attributes(Label, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LText
+Label
 
-function default_attributes(::Type{LRect}, scene)
+function default_attributes(::Type{Box}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "Controls if the rectangle is visible."
         visible = true
@@ -396,17 +396,17 @@ function default_attributes(::Type{LRect}, scene)
 end
 
 @doc """
-LRect has the following attributes:
+Box has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LRect, nothing)
+    _, docs, defaults = default_attributes(Box, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LRect
+Box
 
 
-function default_attributes(::Type{LButton}, scene)
+function default_attributes(::Type{Button}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the button in its suggested boundingbox"
         halign = :center
@@ -457,14 +457,14 @@ function default_attributes(::Type{LButton}, scene)
 end
 
 @doc """
-LButton has the following attributes:
+Button has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LButton, nothing)
+    _, docs, defaults = default_attributes(Button, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LButton
+Button
 
 function default_attributes(::Type{LineAxis})
     Attributes(
@@ -497,7 +497,7 @@ function default_attributes(::Type{LineAxis})
     )
 end
 
-function default_attributes(::Type{LSlider}, scene)
+function default_attributes(::Type{Slider}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the slider in its suggested bounding box."
         halign = :center
@@ -534,16 +534,16 @@ function default_attributes(::Type{LSlider}, scene)
 end
 
 @doc """
-LSlider has the following attributes:
+Slider has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LSlider, nothing)
+    _, docs, defaults = default_attributes(Slider, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LSlider
+Slider
 
-function default_attributes(::Type{LToggle}, scene)
+function default_attributes(::Type{Toggle}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the toggle in its suggested bounding box."
         halign = :center
@@ -581,17 +581,17 @@ function default_attributes(::Type{LToggle}, scene)
 end
 
 @doc """
-LToggle has the following attributes:
+Toggle has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LToggle, nothing)
+    _, docs, defaults = default_attributes(Toggle, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LToggle
+Toggle
 
 
-function default_attributes(::Type{LLegend}, scene)
+function default_attributes(::Type{Legend}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The horizontal alignment of the legend in its suggested bounding box."
         halign = :center
@@ -688,14 +688,14 @@ function default_attributes(::Type{LLegend}, scene)
 end
 
 @doc """
-LLegend has the following attributes:
+Legend has the following attributes:
 
 $(let
-    _, docs, defaults = default_attributes(LLegend, nothing)
+    _, docs, defaults = default_attributes(Legend, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LLegend
+Legend
 
 function attributenames(::Type{LegendEntry})
     (:label, :labelsize, :labelfont, :labelcolor, :labelhalign, :labelvalign,
@@ -748,7 +748,7 @@ LScene
 
 
 
-function default_attributes(::Type{LTextbox}, scene)
+function default_attributes(::Type{Textbox}, scene)
     attrs, docdict, defaultdict = @documented_attributes begin
         "The height setting of the textbox."
         height = Auto()
@@ -819,11 +819,11 @@ function default_attributes(::Type{LTextbox}, scene)
 end
 
 @doc """
-    LTextbox(parent::Scene; bbox = nothing, kwargs...)
-LTextbox has the following attributes:
+    Textbox(parent::Scene; bbox = nothing, kwargs...)
+Textbox has the following attributes:
 $(let
-    _, docs, defaults = default_attributes(LTextbox, nothing)
+    _, docs, defaults = default_attributes(Textbox, nothing)
     docvarstring(docs, defaults)
 end)
 """
-LTextbox
+Textbox

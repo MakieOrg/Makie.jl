@@ -38,8 +38,9 @@ xs = 1:0.2:10
 ys_low = -0.2 .* sin.(xs) .- 0.25
 ys_high = 0.2 .* sin.(xs) .+ 0.25
 
-scene = band(xs, ys_low, ys_high)
-band!(scene, xs, ys_low .- 1, ys_high .-1, color = :red)
+band(xs, ys_low, ys_high)
+band!(xs, ys_low .- 1, ys_high .-1, color = :red)
+current_figure()
 ```
 
 ## `barplot`
@@ -57,8 +58,9 @@ AbstractPlotting.inline!(true) # hide
 xs = 1:0.2:10
 ys = 0.5 .* sin.(xs)
 
-scene = barplot(xs, ys, color = :red, strokecolor = :black, strokewidth = 1)
-barplot!(scene, xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
+barplot(xs, ys, color = :red, strokecolor = :black, strokewidth = 1)
+barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
+current_figure()
 ```
 
 ## `contour`
@@ -119,14 +121,15 @@ lowerrors = fill(0.1, length(xs))
 higherrors = LinRange(0.1, 0.4, length(xs))
 
 
-scene = errorbars(xs, ys1, higherrors, color = :red) # same low and high error
-errorbars!(scene, xs, ys2, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
-errorbars!(scene, xs, ys3, lowerrors, higherrors, whiskerwidth = 3, direction = :x)
+errorbars(xs, ys1, higherrors, color = :red) # same low and high error
+errorbars!(xs, ys2, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
+errorbars!(xs, ys3, lowerrors, higherrors, whiskerwidth = 3, direction = :x)
 
 # plot position scatters so low and high errors can be discriminated
-scatter!(scene, xs, ys1, markersize = 3, color = :black)
-scatter!(scene, xs, ys2, markersize = 3, color = :black)
-scatter!(scene, xs, ys3, markersize = 3, color = :black)
+scatter!(xs, ys1, markersize = 3, color = :black)
+scatter!(xs, ys2, markersize = 3, color = :black)
+scatter!(xs, ys3, markersize = 3, color = :black)
+current_figure()
 ```
 
 ## `heatmap`
@@ -182,10 +185,11 @@ AbstractPlotting.inline!(true) # hide
 xs = 0:0.01:10
 ys = 0.5 .* sin.(xs)
 
-scene = lines(xs, ys)
-lines!(scene, xs, ys .- 1, linewidth = 5)
-lines!(scene, xs, ys .- 2, linewidth = 5, color = ys)
-lines!(scene, xs, ys .- 3, linestyle = :dash)
+lines(xs, ys)
+lines!(xs, ys .- 1, linewidth = 5)
+lines!(xs, ys .- 2, linewidth = 5, color = ys)
+lines!(xs, ys .- 3, linestyle = :dash)
+current_figure()
 ```
 
 ## `linesegments`
@@ -203,10 +207,11 @@ AbstractPlotting.inline!(true) # hide
 xs = 1:0.2:10
 ys = sin.(xs)
 
-scene = linesegments(xs, ys)
-linesegments!(scene, xs, ys .- 1, linewidth = 5)
-linesegments!(scene, xs, ys .- 2, linewidth = LinRange(1, 10, length(xs)))
-linesegments!(scene, xs, ys .- 3, linewidth = 5, color = LinRange(1, 5, length(xs)))
+linesegments(xs, ys)
+linesegments!(xs, ys .- 1, linewidth = 5)
+linesegments!(xs, ys .- 2, linewidth = LinRange(1, 10, length(xs)))
+linesegments!(xs, ys .- 3, linewidth = 5, color = LinRange(1, 5, length(xs)))
+current_figure()
 ```
 
 
@@ -295,9 +300,10 @@ lows = zeros(length(vals))
 highs = LinRange(0.1, 0.4, length(vals))
 
 
-scene = rangebars(vals, lows, highs, color = :red)
-rangebars!(scene, vals, lows, highs, color = LinRange(0, 1, length(vals)),
+rangebars(vals, lows, highs, color = :red)
+rangebars!(vals, lows, highs, color = LinRange(0, 1, length(vals)),
     whiskerwidth = 3, direction = :x)
+current_figure()
 ```
 
 ## `scatter`
@@ -315,11 +321,11 @@ AbstractPlotting.inline!(true) # hide
 xs = LinRange(0, 10, 20)
 ys = 0.5 .* sin.(xs)
 
-scene = scatter(xs, ys, color = :red)
-scatter!(scene, xs, ys .- 1, color = xs)
-scatter!(scene, xs, ys .- 2, markersize = LinRange(5, 30, 20))
-scatter!(scene, xs, ys .- 3, marker = 'a':'t', strokewidth = 0, color = :black)
-scene
+scatter(xs, ys, color = :red)
+scatter!(xs, ys .- 1, color = xs)
+scatter!(xs, ys .- 2, markersize = LinRange(5, 30, 20))
+scatter!(xs, ys .- 3, marker = 'a':'t', strokewidth = 0, color = :black)
+current_figure()
 ```
 
 

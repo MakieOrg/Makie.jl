@@ -543,33 +543,27 @@ const PlotFunc = Union{Type{Any}, Type{<: AbstractPlot}}
 # In this section, the plotting functions have P as the first argument
 # These are called from type recipes
 
-# non-mutating, without positional attributes
+# # non-mutating, without positional attributes
 
-function plot(P::PlotFunc, args...; kw_attributes...)
-    attributes = Attributes(kw_attributes)
-    plot(P, attributes, args...)
-end
+# function plot(P::PlotFunc, args...; kw_attributes...)
+#     attributes = Attributes(kw_attributes)
+#     plot(P, attributes, args...)
+# end
 
-# with positional attributes
+# # with positional attributes
 
-function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
-    attributes = merge!(Attributes(kw_attributes), attrs)
-    scene_attributes = extract_scene_attributes!(attributes)
-    scene = Scene(; scene_attributes...)
-    plot!(scene, P, attributes, args...)
-end
+# function plot(P::PlotFunc, attrs::Attributes, args...; kw_attributes...)
+#     attributes = merge!(Attributes(kw_attributes), attrs)
+#     scene_attributes = extract_scene_attributes!(attributes)
+#     scene = Scene(; scene_attributes...)
+#     plot!(scene, P, attributes, args...)
+# end
 
 # mutating, without positional attributes
 
 function plot!(P::PlotFunc, scene::SceneLike, args...; kw_attributes...)
     attributes = Attributes(kw_attributes)
     plot!(scene, P, attributes, args...)
-end
-
-# without scenelike, use current scene
-
-function plot!(P::PlotFunc, args...; kw_attributes...)
-    plot!(P, current_scene(), args...; kw_attributes...)
 end
 
 # with positional attributes
@@ -589,7 +583,6 @@ eval(default_plot_signatures(:plot, :plot!, :Any))
 # plots to scene
 
 plotfunc(::Combined{F}) where F = F
-
 
 """
 Main plotting signatures that plot/plot! route to if no Plot Type is given
@@ -700,23 +693,25 @@ function plot!(scene::SceneLike, P::PlotFunc, attributes::Attributes, input::NTu
     plot!(plot_object)
 
     push!(scene, plot_object)
+    if !scene.raw[] && scene.show_axis[]
+        lims = lift(scene.limits, scene.data_limits) do sl, dl
+            sl === automatic && return dl
+            return sl
+        end
+        if !any(x-> x isa Axis3D, scene.plots)
+            axis3d!(scene, Attributes(), lims, ticks = (ranges = automatic, labels = automatic))
+            # move axis to pos 1
+            sort!(scene.plots, by=x-> !(x isa Axis3D))
+        end
+
+    end
 
     if !scene.raw[] || scene[:camera][] !== automatic
         # if no camera controls yet, setup camera
         setup_camera!(scene)
     end
-    if !scene.raw[]
-        add_axis!(scene, scene.attributes)
-    end
-    # ! ∘ isaxis --> (x)-> !isaxis(x)
-    # move axis to front, so that scene[end] gives back the last plot and not the axis!
-    if !isempty(scene.plots) && isaxis(last(scene.plots))
-        axis = pop!(scene.plots)
-        pushfirst!(scene.plots, axis)
-    end
-    scene
+    return plot_object
 end
-
 
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
@@ -724,15 +719,16 @@ function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, args...)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
-    scene
+    plot_object
 end
+
 function plot!(scene::Combined, P::PlotFunc, attributes::Attributes, input::NTuple{N,Node}, args::Node) where {N}
     # create "empty" plot type - empty meaning containing no plots, just attributes + arguments
     plot_object = P(scene, attributes, input, args)
     # call user defined recipe overload to fill the plot type
     plot!(plot_object)
     push!(scene.plots, plot_object)
-    scene
+    plot_object
 end
 
 function apply_camera!(scene::Scene, cam_func)
@@ -742,9 +738,6 @@ function apply_camera!(scene::Scene, cam_func)
         error("Unrecognized `camera` attribute type: $(typeof(cam_func)). Use automatic, cam2d! or cam3d!, campixel!, cam3d_cad!")
     end
 end
-
-
-
 
 function setup_camera!(scene::Scene)
     theme_cam = scene[:camera][]
@@ -760,63 +753,6 @@ function setup_camera!(scene::Scene)
         end
     else
         apply_camera!(scene, theme_cam)
-    end
-    scene
-end
-
-function find_in_plots(scene::Scene, key::Symbol)
-    # TODO findfirst is a bit flaky... maybe merge multiple ranges + tick labels?!
-    idx = findfirst(scene.plots) do plot
-        !isaxis(plot) && haskey(plot, key) && plot[key][] !== automatic
-    end
-    if idx !== nothing
-        scene.plots[idx][key]
-    else
-        automatic
-    end
-end
-
-function add_axis!(scene::Scene, attributes = Attributes())
-    show_axis = scene.show_axis[]
-    show_axis isa Bool || error("show_axis needs to be a bool")
-    axistype = if scene.axis_type[] == automatic
-        is2d(scene) ? axis2d! : axis3d!
-    elseif scene.axis_type[] in (axis2d!, axis3d!)
-        scene.axis_type[]
-    else
-        error("Unrecogniced `axis_type` attribute type: $(typeof(scene[:axis_type][])). Use automatic, axis2d! or axis3d!")
-    end
-
-    if show_axis && scene[Axis] === nothing
-        axis_attributes = Attributes()
-        for key in (:axis, :axis2d, :axis3d)
-            if haskey(scene, key) && !isempty(scene[key])
-                axis_attributes = scene[key]
-                break
-            end
-        end
-        ranges = get(attributes, :tickranges) do
-            find_in_plots(scene, :tickranges)
-        end
-        labels = get(attributes, :ticklabels) do
-            find_in_plots(scene, :ticklabels)
-        end
-        lims = lift(scene.limits, scene.data_limits) do sl, dl
-            sl === automatic && return dl
-            return sl
-        end
-        axistype(
-            scene, axis_attributes, lims,
-            ticks = (ranges = ranges, labels = labels)
-        )
-    end
-    scene
-end
-
-function add_labels!(scene::Scene)
-    if plot_attributes.show_legend[] && haskey(p.attributes, :colormap)
-        legend_attributes = plot_attributes[:legend][]
-        colorlegend(scene, p.attributes[:colormap], p.attributes[:colorrange], legend_attributes)
     end
     scene
 end

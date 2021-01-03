@@ -4,17 +4,18 @@ using Statistics
 @cell "Test heatmap + image overlap" begin
     heatmap(RNG.rand(32, 32))
     image!(map(x -> RGBAf0(x, 0.5, 0.5, 0.8), RNG.rand(32, 32)))
+    current_figure()
 end
 
 @cell "poly and colormap" begin
     # example by @Paulms from JuliaPlots/Makie.jl#310
     points = Point2f0[[0.0, 0.0], [0.1, 0.0], [0.1, 0.1], [0.0, 0.1]]
     colors = [0.0 ,0.0, 0.5, 0.0]
-    scene = poly(points, color=colors, colorrange=(0.0, 1.0))
+    fig, ax, polyplot = poly(points, color=colors, colorrange=(0.0, 1.0))
     points = Point2f0[[0.1, 0.1], [0.2, 0.1], [0.2, 0.2], [0.1, 0.2]]
     colors = [0.5,0.5,1.0,0.3]
-    poly!(scene, points, color=colors, colorrange=(0.0, 1.0))
-    scene
+    poly!(ax, points, color=colors, colorrange=(0.0, 1.0))
+    fig
 end
 
 @cell "quiver" begin
@@ -24,17 +25,18 @@ end
 
 @cell "Arrows on hemisphere" begin
     s = Sphere(Point3f0(0), 0.9f0)
-    scene = mesh(s, transparency=true, alpha=0.05)
+    fig, ax, meshplot = mesh(s, transparency=true, alpha=0.05)
     pos = decompose(Point3f0, s)
     dirs = decompose_normals(s)
-    arrows!(scene, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
+    arrows!(ax, pos, dirs, arrowcolor=:red, arrowsize=0.1, linecolor=:red)
+    fig
 end
 
 @cell "image" begin
-    vbox(
-        image(AbstractPlotting.logo(), scale_plot=false),
-        image(RNG.rand(100, 500), scale_plot=false),
-    )
+    fig = Figure()
+    image(fig[1,1], AbstractPlotting.logo(), axis = (; aspect = DataAspect()))
+    image(fig[1, 2], RNG.rand(100, 500), axis = (; aspect = DataAspect()))
+    fig
 end
 
 @cell "FEM polygon 2D" begin
@@ -86,8 +88,9 @@ end
         5 8 9;
     ]
     color = [0.0, 0.0, 0.0, 0.0, -0.375, 0.0, 0.0, 0.0, 0.0]
-    scene = mesh(coordinates, connectivity, color=color, shading=false)
-    wireframe!(scene[end][1], color=(:black, 0.6), linewidth=3)
+    fig, ax, meshplot = mesh(coordinates, connectivity, color=color, shading=false)
+    wireframe!(ax, meshplot[1], color=(:black, 0.6), linewidth=3)
+    fig
 end
 
 @cell "colored triangle" begin
@@ -105,60 +108,34 @@ end
     )
 end
 
-@cell "Subscenes" begin
-    img = RNG.rand(RGBAf0, 100, 100)
-    scene = image(img, show_axis=false)
-    subscene = Scene(scene, IRect(100, 100, 300, 300))
-    scatter!(subscene, RNG.rand(100) * 200, RNG.rand(100) * 200, markersize=4)
-    scene
-end
+# @cell "Subscenes" begin
+#     img = RNG.rand(RGBAf0, 100, 100)
+#     scene = image(img, show_axis=false)
+#     subscene = Scene(scene, IRect(100, 100, 300, 300))
+#     scatter!(subscene, RNG.rand(100) * 200, RNG.rand(100) * 200, markersize=4)
+#     scene
+# end
 
 @cell "scale_plot" begin
     t = range(0, stop=1, length=500) # time steps
     θ = (6π) .* t    # angles
     x =  # x coords of spiral
     y =  # y coords of spiral
-    p1 = lines(t .* cos.(θ), t .* sin.(θ);
-        color=t, colormap=:algae, linewidth=8,
-        scale_plot=false)
+    lines(t .* cos.(θ), t .* sin.(θ);
+        color=t, colormap=:algae, linewidth=8, axis = (; aspect = DataAspect()))
 end
 
 @cell "Polygons" begin
-    scene = Scene(resolution=(500, 500))
     points = decompose(Point2f0, Circle(Point2f0(50), 50f0))
-    pol = poly!(scene, points, color=:gray, strokewidth=10, strokecolor=:red)
+    fig, ax, pol = poly(points, color=:gray, strokewidth=10, strokecolor=:red)
     # Optimized forms
-    poly!(scene, [Circle(Point2f0(50 + 300), 50f0)], color=:gray, strokewidth=10, strokecolor=:red)
-    poly!(scene, [Circle(Point2f0(50 + i, 50 + i), 10f0) for i = 1:100:400], color=:red)
-    poly!(scene, [FRect2D(50 + i, 50 + i, 20, 20) for i = 1:100:400], strokewidth=2, strokecolor=:green)
-    linesegments!(scene,
+    poly!(ax, [Circle(Point2f0(50 + 300), 50f0)], color=:gray, strokewidth=10, strokecolor=:red)
+    poly!(ax, [Circle(Point2f0(50 + i, 50 + i), 10f0) for i = 1:100:400], color=:red)
+    poly!(ax, [FRect2D(50 + i, 50 + i, 20, 20) for i = 1:100:400], strokewidth=2, strokecolor=:green)
+    linesegments!(ax,
         [Point2f0(50 + i, 50 + i) => Point2f0(i + 70, i + 70) for i = 1:100:400], linewidth=8, color=:purple
     )
-end
-
-@cell "Contour Function" begin
-    r = range(-10, stop=10, length=512)
-    z = ((x, y) -> sin(x) + cos(y)).(r, r')
-    contour(r, r, z, levels=5, colormap=:viridis, linewidth=3)
-end
-
-@cell "Hbox" begin
-    t = range(-122277.9, stop=-14798.0, length=29542)
-    x = -42 .- RNG.randn(length(t))
-    sc1 = scatter(t, x, color=:black, markersize=1.0)
-    sc2 = lines(t[1:end - 1], diff(x), color=:blue)
-    hbox(sc2, sc1)
-end
-
-@cell "Customize Axes" begin
-    x = LinRange(0, 3pi, 200); y = sin.(x)
-    lin = lines(x, y, padding=(0.0, 0.0), axis=(names = (axisnames = ("", ""),),
-        grid = (linewidth = (0, 0),),))
-end
-
-@cell "contour" begin
-    y = range(-0.997669, stop=0.997669, length=23)
-    contour(range(-0.99, stop=0.99, length=23), y, RNG.rand(23, 23), levels=10)
+    fig
 end
 
 @cell "Text Annotation" begin
@@ -172,21 +149,22 @@ end
 end
 
 @cell "Text rotation" begin
-    scene = Scene()
+    fig = Figure()
+    ax = fig[1, 1] = Axis(fig)
     pos = (500, 500)
     posis = Point2f0[]
     for r in range(0, stop=2pi, length=20)
         p = pos .+ (sin(r) * 100.0, cos(r) * 100)
         push!(posis, p)
-        t = text!(
-            scene, "test",
+        text!(ax, "test",
             position=p,
             textsize=50,
             rotation=1.5pi - r,
             align=(:center, :center)
         )
     end
-    scatter!(scene, posis, markersize=10)
+    scatter!(ax, posis, markersize=10)
+    fig
 end
 
 @cell "Standard deviation band" begin
@@ -200,6 +178,7 @@ end
     lines(t, μ)              # plot mean line
     σ = vec(std(X, dims=1))  # stddev
     band!(t, μ + σ, μ - σ)   # plot stddev band
+    current_figure()
 end
 
 @cell "Streamplot animation" begin
@@ -208,9 +187,8 @@ end
     title_str = Node("t = 0.00")
     sp = streamplot(sf, -2..2, -2..2;
                     linewidth=2, padding=(0, 0),
-                    arrow_size=0.09, colormap=:magma)
-    sc = title(sp, title_str)
-    Record(sc, LinRange(0, 20, 5)) do i
+                    arrow_size=0.09, colormap=:magma, axis=(;title=title_str))
+    Record(sp, LinRange(0, 20, 5)) do i
         sf[] = Base.Fix2(v, i)
         title_str[] = "t = $(round(i; sigdigits=2))"
     end
@@ -218,17 +196,11 @@ end
 
 
 @cell "Line changing colour" begin
-    scene = lines(RNG.rand(10); linewidth=10)
+    fig, ax, lineplot = lines(RNG.rand(10); linewidth=10)
     N = 20
-    Record(scene, 1:N; framerate=20) do i
-        scene.plots[2][:color] = RGBf0(i / N, (N - i) / N, 0) # animate scene
+    Record(fig, 1:N; framerate=20) do i
+        lineplot.color = RGBf0(i / N, (N - i) / N, 0) # animate scene
     end
-end
-
-let
-    struct FitzhughNagumo2
-    end
-    (()-> FitzhughNagumo2())()
 end
 
 let
@@ -251,48 +223,49 @@ end
 
 @cell "Transforming lines" begin
     N = 7 # number of colours in default palette
-    sc = Scene()
-    st = Stepper(sc)
+    fig = Figure()
+    ax = Axis(fig)
+    fig[1,1] = ax
+    st = Stepper(fig)
 
     xs = 0:9        # data
     ys = zeros(10)
-
-    for i in 1:N    # plot lines
-        lines!(sc,
+    colors = AbstractPlotting.default_palettes.color[]
+    plots = map(1:N) do i # plot lines
+        lines!(ax,
             xs, ys;
-            color=AbstractPlotting.default_palettes.color[][i],
+            color=colors[i],
             limits=FRect((0, 0), (10, 10)),
             linewidth=5
         ) # plot lines with colors
     end
-
-    center!(sc)
-
+    fig
     step!(st)
 
     for (i, rot) in enumerate(LinRange(0, π / 2, N))
-        AbstractPlotting.rotate!(sc.plots[i + 1], rot)
-        arc!(sc,
+        AbstractPlotting.rotate!(plots[i], rot)
+        arc!(ax,
             Point2f0(0),
             (8 - i),
             pi / 2,
             (pi / 2 - rot);
-            color=sc.plots[i + 1].color,
+            color=plots[i].color,
             linewidth=5,
             linestyle=:dash
         )
     end
 
     step!(st)
+    fig
 end
 
 @cell "Errorbars x y low high" begin
     x = 1:10
     y = sin.(x)
-    scene = scatter(x, y)
-    errorbars!(scene, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
-    errorbars!(scene, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5, color = :red, direction = :x)
-    scene
+    fig, ax, scatterplot = scatter(x, y)
+    errorbars!(ax, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5)
+    errorbars!(ax, x, y, RNG.rand(10) .+ 0.5, RNG.rand(10) .+ 0.5, color = :red, direction = :x)
+    fig
 end
 
 @cell "Rangebars x y low high" begin
@@ -301,39 +274,37 @@ end
     lows = zeros(length(vals))
     highs = LinRange(0.1, 0.4, length(vals))
 
-    scene = rangebars(vals, lows, highs, color = :red)
-    rangebars!(scene, vals, lows, highs, color = LinRange(0, 1, length(vals)),
+    fig, ax, rbars = rangebars(vals, lows, highs, color = :red)
+    rangebars!(ax, vals, lows, highs, color = LinRange(0, 1, length(vals)),
         whiskerwidth = 3, direction = :x)
+    fig
 end
 
 
 @cell "Simple pie chart" begin
-    scene, layout = layoutscene(resolution=(800, 800))
-    ax = layout[1, 1] = LAxis(scene, autolimitaspect=1)
-
+    fig = Figure(resolution=(800, 800))
+    ax = fig[1, 1] = Axis(fig, autolimitaspect=1)
     pie!(ax, 1:5, color=1:5)
-
-    scene
+    fig
 end
 
 @cell "Hollow pie chart" begin
-    scene, layout = layoutscene(resolution=(800, 800))
-    ax = layout[1, 1] = LAxis(scene, autolimitaspect=1)
-
-    pie!(ax, 1:5, color=1:5, radius=2, inner_radius=1)
-
-    scene
+    pie(1:5, color=1:5, radius=2, inner_radius=1, axis=(;autolimitaspect=1))
 end
 
 @cell "Open pie chart" begin
-    scene, layout = layoutscene(resolution=(800, 800))
-    ax = layout[1, 1] = LAxis(scene, autolimitaspect=1)
-
-    pie!(ax, 0.1:0.1:1.0, normalize=false)
-    scene
+    pie(0.1:0.1:1.0, normalize=false, axis=(;autolimitaspect=1))
 end
 
 @cell "intersecting polygon" begin
     x = LinRange(0, 2pi, 100)
     poly(Point2f0.(zip(sin.(x), sin.(2x))), color = :white, strokecolor = :blue, strokewidth = 10)
+end
+
+
+@cell "Line Function" begin
+    x = range(0, stop=3pi)
+    fig, ax, lineplot = lines(x, sin.(x))
+    lines!(ax, x, cos.(x), color=:blue)
+    fig
 end

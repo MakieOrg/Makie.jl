@@ -35,10 +35,10 @@ nothing # hide
 ```
 ![step_001](step_001.svg)
 
-## First LAxis
+## First Axis
 
 The scene is completely empty, I have made the background light gray so it's easier
-to see. Now we add an LAxis. This is an axis or subplot type that MakieLayout defines
+to see. Now we add an Axis. This is an axis or subplot type that MakieLayout defines
 which knows how to behave in a layout (which the Makie version doesn't).
 
 We create the axis and place it into the layout in one go. You place objects in
@@ -49,7 +49,7 @@ We call the axis title "Pre Treatment" because we're going to plot some made up 
 like they could result from an experimental trial.
 
 ```@example tutorial
-ax1 = layout[1, 1] = LAxis(scene, title = "Pre Treatment")
+ax1 = layout[1, 1] = Axis(scene, title = "Pre Treatment")
 
 scene
 save("step_002.svg", scene) # hide
@@ -57,10 +57,10 @@ nothing # hide
 ```
 ![step_002](step_002.svg)
 
-## Plotting into an LAxis
+## Plotting into an Axis
 
 We can plot into the axis with the ! versions of Makie's plotting functions.
-Contrary to Makie, these calls return the plot objects, not the Scene or LAxis,
+Contrary to Makie, these calls return the plot objects, not the Scene or Axis,
 so it's easier to save them.
 
 ```@example tutorial
@@ -80,7 +80,7 @@ nothing # hide
 
 This looks nice already, but we want another axis with a second dataset, to
 the right of the one we have. Currently our layout has one row and one cell, and
-only one LAxis inside of it:
+only one Axis inside of it:
 
 ```@example tutorial
 layout
@@ -90,7 +90,7 @@ We can extend the grid by indexing into new grid cells. Let's place a new axis
 next to the one we have, in row 1 and column 2.
 
 ```@example tutorial
-ax2 = layout[1, 2] = LAxis(scene, title = "Post Treatment")
+ax2 = layout[1, 2] = Axis(scene, title = "Post Treatment")
 
 scene
 save("step_004.svg", scene) # hide
@@ -155,7 +155,7 @@ nothing # hide
 
 
 Even though our plots are entirely made up, we should follow best practice and label
-the axes. We can do this with the `xlabel` and `ylabel` attributes of the `LAxis`.
+the axes. We can do this with the `xlabel` and `ylabel` attributes of the `Axis`.
 
 ```@example tutorial
 ax1.xlabel = "Weight [kg]"
@@ -171,13 +171,13 @@ nothing # hide
 ## Adding a Legend
 
 Let's add a legend to our plot that describes elements from both axes. We use
-LLegend for that. LLegend is a relatively complex object and there are many
+Legend for that. Legend is a relatively complex object and there are many
 ways to create it, but here we'll keep it simple. We place the legend on the
 right again, in row 1 and column 3. Instead of specifying column three, we can
 also say `end+1`.
 
 ```@example tutorial
-leg = layout[1, end+1] = LLegend(scene,
+leg = layout[1, end+1] = Legend(scene,
     [line1, scat1, line2, scat2],
     ["f(x) = x", "Data", "f(x) = -x + 26", "Data"])
 
@@ -272,7 +272,7 @@ versions of layout assignment syntax for convenience. Here, we create and assign
 two axes at once. The number of cells and objects has to match to do this.
 
 ```@example tutorial
-hm_axes = layout[1:2, 3] = [LAxis(scene, title = t) for t in ["Cell Assembly Pre", "Cell Assembly Post"]]
+hm_axes = layout[1:2, 3] = [Axis(scene, title = t) for t in ["Cell Assembly Pre", "Cell Assembly Post"]]
 
 heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 
@@ -335,7 +335,7 @@ nothing # hide
 Now, we also want to add a color bar for the two heatmaps. Right now, their colors
 are independently scaled from each other. We choose a scale that makes sense for
 both of them (in our case, we know data ranges only from 1 to 3) and assign that
-to both heatmaps. Then we create an `LColorbar` object with one of the heatmaps.
+to both heatmaps. Then we create a `Colorbar` object with one of the heatmaps.
 This way, the color bar copies color range and color map from that heatmap.
 
 We want to place the color bar to the right of the heatmaps, spanning the full
@@ -351,7 +351,7 @@ for hm in heatmaps
     hm.colorrange = (1, 3)
 end
 
-cbar = hm_sublayout[:, 2] = LColorbar(scene, heatmaps[1], label = "Activity [spikes/sec]")
+cbar = hm_sublayout[:, 2] = Colorbar(scene, heatmaps[1], label = "Activity [spikes/sec]")
 
 scene
 save("step_016.svg", scene) # hide
@@ -375,7 +375,7 @@ nothing # hide
 
 
 Much better! Note that you can usually set all attributes during creation of an object
-(`LColorbar(scene, width = 30)`) or after the fact, like in this example.
+(`Colorbar(scene, width = 30)`) or after the fact, like in this example.
 
 Objects can also have a width or height relative to the space given to them by their
 parent `GridLayout`. If we feel that the colorbar is a bit too tall, we can shrink it
@@ -412,7 +412,7 @@ nothing # hide
 
 Now the plot could use a title! While other plotting packages sometimes have
 functions like `supertitle`, they often don't work quite right or force you to
-make manual adjustments. In MakieLayout, the `LText` object is much more flexible
+make manual adjustments. In MakieLayout, the `Label` object is much more flexible
 as it allows you to place text anywhere you want. We therefore create our super
 title not with a dedicated function but as a simple part of the whole layout.
 
@@ -426,7 +426,7 @@ to reflect the new GridLayout size.
 
 
 ```@example tutorial
-supertitle = layout[0, :] = LText(scene, "Plotting with MakieLayout",
+supertitle = layout[0, :] = Label(scene, "Plotting with MakieLayout",
     textsize = 30, font = "Noto Sans Bold", color = (:black, 0.25))
 
 scene
@@ -465,9 +465,9 @@ choice. (Remember that our previously first row is now the second row, due to th
 super title.)
 
 ```@example tutorial
-label_a = layout[2, 1, TopLeft()] = LText(scene, "A", textsize = 35,
+label_a = layout[2, 1, TopLeft()] = Label(scene, "A", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
-label_b = layout[2, 3, TopLeft()] = LText(scene, "B", textsize = 35,
+label_b = layout[2, 3, TopLeft()] = Label(scene, "B", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
 
 scene

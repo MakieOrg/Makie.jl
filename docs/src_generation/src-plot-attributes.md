@@ -9,7 +9,7 @@ To view a plot's attributes and their values, you can call `plot.attributes` to 
 or `plot.attributes.attributes` to get a Dict of the attribute keys and their values.
 
 ```@example plot_attributes
-p = scatter(rand(10), rand(10))[end]; # use `[end]` to access the plot
-p.attributes
-p.attributes.attributes
+fig, ax, plotobject = scatter(rand(10), rand(10))
+plotobject.attributes
+plotobject.attributes.attributes
 ```

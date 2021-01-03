@@ -101,18 +101,18 @@ function roundedrectvertices(rect, cornerradius, cornersegments)
 end
 
 """
-    tightlimits!(la::LAxis)
+    tightlimits!(la::Axis)
 
 Sets the autolimit margins to zero on all sides.
 """
-function tightlimits!(la::LAxis)
+function tightlimits!(la::Axis)
     la.xautolimitmargin = (0, 0)
     la.yautolimitmargin = (0, 0)
     autolimits!(la)
 end
 
 """
-    tightlimits!(la::LAxis, sides::Union{Left, Right, Bottom, Top}...)
+    tightlimits!(la::Axis, sides::Union{Left, Right, Bottom, Top}...)
 
 Sets the autolimit margins to zero on all given sides.
 
@@ -122,28 +122,28 @@ Example:
 tightlimits!(laxis, Bottom())
 ```
 """
-function tightlimits!(la::LAxis, sides::Union{Left, Right, Bottom, Top}...)
+function tightlimits!(la::Axis, sides::Union{Left, Right, Bottom, Top}...)
     for s in sides
         tightlimits!(la, s)
     end
 end
 
-function tightlimits!(la::LAxis, ::Left)
+function tightlimits!(la::Axis, ::Left)
     la.xautolimitmargin = Base.setindex(la.xautolimitmargin[], 0.0, 1)
     autolimits!(la)
 end
 
-function tightlimits!(la::LAxis, ::Right)
+function tightlimits!(la::Axis, ::Right)
     la.xautolimitmargin = Base.setindex(la.xautolimitmargin[], 0.0, 2)
     autolimits!(la)
 end
 
-function tightlimits!(la::LAxis, ::Bottom)
+function tightlimits!(la::Axis, ::Bottom)
     la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 1)
     autolimits!(la)
 end
 
-function tightlimits!(la::LAxis, ::Top)
+function tightlimits!(la::Axis, ::Top)
     la.yautolimitmargin = Base.setindex(la.yautolimitmargin[], 0.0, 2)
     autolimits!(la)
 end
@@ -207,13 +207,13 @@ function axislines!(scene, rect, spinewidth, topspinevisible, rightspinevisible,
     end
 
     (lines!(scene, bottomline, linewidth = spinewidth, show_axis = false,
-        visible = bottomspinevisible, color = bottomspinecolor)[end],
+        visible = bottomspinevisible, color = bottomspinecolor),
     lines!(scene, leftline, linewidth = spinewidth, show_axis = false,
-        visible = leftspinevisible, color = leftspinecolor)[end],
+        visible = leftspinevisible, color = leftspinecolor),
     lines!(scene, rightline, linewidth = spinewidth, show_axis = false,
-        visible = rightspinevisible, color = rightspinecolor)[end],
+        visible = rightspinevisible, color = rightspinecolor),
     lines!(scene, topline, linewidth = spinewidth, show_axis = false,
-        visible = topspinevisible, color = topspinecolor)[end])
+        visible = topspinevisible, color = topspinecolor))
 end
 
 
@@ -314,42 +314,6 @@ function docvarstring(docdict, defaultdict)
     String(take!(buffer))
 end
 
-function Base.delete!(lobject::Union{LObject, LAxis})
-    for (_, d) in lobject.decorations
-        remove_element(d)
-    end
-
-    if hasfield(typeof(lobject), :scene)
-        delete_scene!(lobject.scene)
-    end
-
-    GridLayoutBase.remove_from_gridlayout!(GridLayoutBase.gridcontent(lobject))
-    nothing
-end
-
-function remove_element(x::Union{LObject, LAxis, LineAxis})
-    delete!(x)
-end
-
-function remove_element(x::AbstractPlot)
-    delete!(x.parent, x)
-end
-
-function remove_element(xs::AbstractArray)
-    foreach(remove_element, xs)
-end
-
-function remove_element(::Nothing)
-end
-
-function delete_scene!(s::Scene)
-    for p in copy(s.plots)
-        delete!(s, p)
-    end
-    deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
-    nothing
-end
-
 
 function subtheme(scene, key::Symbol)
     sub = haskey(theme(scene), key) ? theme(scene, key) : Attributes()
@@ -360,44 +324,44 @@ function subtheme(scene, key::Symbol)
 end
 
 """
-    xaxis_top!(la::LAxis)
+    xaxis_top!(la::Axis)
 
 Move the x-axis to the top, while correctly aligning the tick labels at the bottom.
 """
-function xaxis_top!(la::LAxis)
+function xaxis_top!(la::Axis)
     la.xaxisposition = :top
     la.xticklabelalign = (la.xticklabelalign[][1], :bottom)
     nothing
 end
 
 """
-    xaxis_bottom!(la::LAxis)
+    xaxis_bottom!(la::Axis)
 
 Move the x-axis to the bottom, while correctly aligning the tick labels at the top.
 """
-function xaxis_bottom!(la::LAxis)
+function xaxis_bottom!(la::Axis)
     la.xaxisposition = :bottom
     la.xticklabelalign = (la.xticklabelalign[][1], :top)
     nothing
 end
 
 """
-    yaxis_left!(la::LAxis)
+    yaxis_left!(la::Axis)
 
 Move the y-axis to the left, while correctly aligning the tick labels at the right.
 """
-function yaxis_left!(la::LAxis)
+function yaxis_left!(la::Axis)
     la.yaxisposition = :left
     la.yticklabelalign = (:right, la.yticklabelalign[][2])
     nothing
 end
 
 """
-    yaxis_right!(la::LAxis)
+    yaxis_right!(la::Axis)
 
 Move the y-axis to the right, while correctly aligning the tick labels at the left.
 """
-function yaxis_right!(la::LAxis)
+function yaxis_right!(la::Axis)
     la.yaxisposition = :right
     la.yticklabelalign = (:left, la.yticklabelalign[][2])
     nothing
@@ -427,9 +391,9 @@ layout[1, 1] = ls.layout
 """
 function labelslider!(scene, label, range; format = string,
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
-    slider = LSlider(scene; range = range, sliderkw...)
-    label = LText(scene, label; labelkw...)
-    valuelabel = LText(scene, lift(format, slider.value); valuekw...)
+    slider = Slider(scene; range = range, sliderkw...)
+    label = Label(scene, label; labelkw...)
+    valuelabel = Label(scene, lift(format, slider.value); valuekw...)
     layout = hbox!(label, slider, valuelabel; layoutkw...)
     (slider = slider, label = label, valuelabel = valuelabel, layout = layout)
 end
@@ -463,9 +427,9 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
         sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)
 
     elements = broadcast(labels, ranges, formats) do label, range, format
-        slider = LSlider(scene; range = range, sliderkw...)
-        label = LText(scene, label; halign = :left, labelkw...)
-        valuelabel = LText(scene, lift(format, slider.value); halign = :right, valuekw...)
+        slider = Slider(scene; range = range, sliderkw...)
+        label = Label(scene, label; halign = :left, labelkw...)
+        valuelabel = Label(scene, lift(format, slider.value); halign = :right, valuekw...)
         (; slider = slider, label = label, valuelabel = valuelabel)
     end
 
@@ -482,7 +446,7 @@ end
 
 # helper function to create either h or vlines depending on `direction`
 # this works only with LAxes because it needs to react to limit changes
-function hvlines!(ax::LAxis, direction::Int, datavals, axmins, axmaxs; attributes...)
+function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes...)
 
     datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
 
@@ -511,21 +475,21 @@ function hvlines!(ax::LAxis, direction::Int, datavals, axmins, axmaxs; attribute
 end
 
 """
-    hlines!(ax::LAxis, ys; xmin = 0.0, xmax = 1.0, attrs...)
+    hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...)
 
 Create horizontal lines across `ax` at `ys` in data coordinates and `xmin` to `xmax`
 in axis coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-hlines!(ax::LAxis, ys; xmin = 0.0, xmax = 1.0, attrs...) =
+hlines!(ax::Axis, ys; xmin = 0.0, xmax = 1.0, attrs...) =
     hvlines!(ax, 1, ys, xmin, xmax; attrs...)
 
 """
-    vlines!(ax::LAxis, xs; ymin = 0.0, ymax = 1.0, attrs...)
+    vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...)
 
 Create vertical lines across `ax` at `xs` in data coordinates and `ymin` to `ymax`
 in axis coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-vlines!(ax::LAxis, xs; ymin = 0.0, ymax = 1.0, attrs...) = 
+vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...) = 
     hvlines!(ax, 2, xs, ymin, ymax; attrs...)

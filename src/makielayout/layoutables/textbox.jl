@@ -1,8 +1,10 @@
-function LTextbox(parent::Scene; bbox = nothing, kwargs...)
+function Textbox(fig_or_scene; bbox = nothing, kwargs...)
+
+    topscene = get_topscene(fig_or_scene)
 
     attrs = merge!(
         Attributes(kwargs),
-        default_attributes(LTextbox, parent).attributes)
+        default_attributes(Textbox, topscene).attributes)
 
     @extract attrs (halign, valign, textsize, stored_string, placeholder,
         textcolor, textcolor_placeholder, displayed_string,
@@ -14,7 +16,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
 
     decorations = Dict{Symbol, Any}()
 
-    layoutobservables = LayoutObservables{LTextbox}(attrs.width, attrs.height,
+    layoutobservables = LayoutObservables{Textbox}(attrs.width, attrs.height,
         attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox)
 
@@ -22,10 +24,10 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         Rect(round.(Int, bb.origin), round.(Int, bb.widths))
     end
 
-    scene = Scene(parent, scenearea, raw = true, camera = campixel!)
+    scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
 
     cursorindex = Node(0)
-    ltextbox = LTextbox(scene, attrs, layoutobservables, decorations, cursorindex, nothing)
+    ltextbox = Textbox(fig_or_scene, layoutobservables, attrs, decorations, cursorindex, nothing)
 
 
 
@@ -63,9 +65,9 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    box = poly!(parent, roundedrectpoints, strokewidth = borderwidth,
+    box = poly!(topscene, roundedrectpoints, strokewidth = borderwidth,
         strokecolor = realbordercolor,
-        color = realboxcolor, raw = true)[end]
+        color = realboxcolor, raw = true)
     decorations[:box] = box
 
     displayed_chars = @lift([c for c in $displayed_string])
@@ -81,12 +83,12 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    t = LText(scene, text = displayed_string, bbox = bbox, halign = :left, valign = :top,
+    t = Label(scene, text = displayed_string, bbox = bbox, halign = :left, valign = :top,
         width = Auto(true), height = Auto(true), color = realtextcolor,
         textsize = textsize, padding = textpadding)
 
     displayed_charbbs = lift(t.layoutobservables.reportedsize) do sz
-        charbbs(t.textobject)
+        charbbs(t.elements[:text])
     end
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
@@ -104,7 +106,7 @@ function LTextbox(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    cursor = linesegments!(scene, cursorpoints, color = cursorcolor, linewidth = 2)[end]
+    cursor = linesegments!(scene, cursorpoints, color = cursorcolor, linewidth = 2)
 
     cursoranimtask = nothing
 
@@ -295,10 +297,10 @@ function is_allowed(char, restriction::Function)
 end
 
 """
-    reset!(tb::LTextbox)
-Resets the stored_string of the given `LTextbox` to `nothing` without triggering listeners, and resets the `LTextbox` to the `placeholder` text.
+    reset!(tb::Textbox)
+Resets the stored_string of the given `Textbox` to `nothing` without triggering listeners, and resets the `Textbox` to the `placeholder` text.
 """
-function reset!(tb::LTextbox)
+function reset!(tb::Textbox)
     tb.stored_string.val = nothing
     tb.displayed_string = tb.placeholder[]
     defocus!(tb)
@@ -306,10 +308,10 @@ function reset!(tb::LTextbox)
 end
 
 """
-    set!(tb::LTextbox, string::String)
-Sets the stored_string of the given `LTextbox` to `string`, triggering listeners of `tb.stored_string`.
+    set!(tb::Textbox, string::String)
+Sets the stored_string of the given `Textbox` to `string`, triggering listeners of `tb.stored_string`.
 """
-function set!(tb::LTextbox, string::String)
+function set!(tb::Textbox, string::String)
     if !validate_textbox(string, tb.validator[])
         error("Invalid string \"$(string)\" for textbox.")
     end
@@ -320,10 +322,10 @@ function set!(tb::LTextbox, string::String)
 end
 
 """
-    focus!(tb::LTextbox)
-Focuses an `LTextbox` and makes it ready to receive keyboard input.
+    focus!(tb::Textbox)
+Focuses an `Textbox` and makes it ready to receive keyboard input.
 """
-function focus!(tb::LTextbox)
+function focus!(tb::Textbox)
     if !tb.focused[]
         tb.focused = true
 
@@ -347,10 +349,10 @@ function focus!(tb::LTextbox)
 end
 
 """
-    defocus!(tb::LTextbox)
-Defocuses an `LTextbox` so it doesn't receive keyboard input.
+    defocus!(tb::Textbox)
+Defocuses a `Textbox` so it doesn't receive keyboard input.
 """
-function defocus!(tb::LTextbox)
+function defocus!(tb::Textbox)
 
     if tb.displayed_string[] in (" ", "")
         tb.displayed_string[] = tb.placeholder[]

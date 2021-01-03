@@ -1,6 +1,6 @@
-function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
+function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
-    LColorbar(parent;
+    Colorbar(fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
@@ -8,11 +8,12 @@ function LColorbar(parent::Scene, plot::AbstractPlot; kwargs...)
 
 end
 
-function LColorbar(parent::Scene; bbox = nothing, kwargs...)
-    attrs = merge!(Attributes(kwargs), default_attributes(LColorbar, parent).attributes)
+function Colorbar(fig_or_scene; bbox = nothing, kwargs...)
+    topscene = get_topscene(fig_or_scene)
+    attrs = merge!(Attributes(kwargs), default_attributes(Colorbar, topscene).attributes)
 
-    default_attrs = default_attributes(LColorbar, parent).attributes
-    theme_attrs = subtheme(parent, :LColorbar)
+    default_attrs = default_attributes(Colorbar, topscene).attributes
+    theme_attrs = subtheme(topscene, :Colorbar)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
@@ -28,7 +29,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     protrusions = Node(GridLayoutBase.RectSides{Float32}(0, 0, 0, 0))
-    layoutobservables = LayoutObservables{LColorbar}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
+    layoutobservables = LayoutObservables{Colorbar}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         halign, valign, attrs.alignmode; suggestedbbox = bbox, protrusions = protrusions)
 
     framebox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
@@ -70,11 +71,11 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
         end
     end
 
-    hm = heatmap!(parent, xrange, yrange, colorcells, colormap = colormap, raw = true)[end]
+    hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
     decorations[:heatmap] = hm
 
     ab, al, ar, at = axislines!(
-        parent, framebox, spinewidth, topspinevisible, rightspinevisible,
+        topscene, framebox, spinewidth, topspinevisible, rightspinevisible,
         leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
         rightspinecolor, bottomspinecolor)
     decorations[:topspine] = at
@@ -101,7 +102,7 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
 
     end
 
-    axis = LineAxis(parent, endpoints = axispoints, flipped = flipaxisposition,
+    axis = LineAxis(topscene, endpoints = axispoints, flipped = flipaxisposition,
         limits = limits, ticklabelalign = ticklabelalign, label = label,
         labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
         labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks, tickformat = tickformat,
@@ -141,9 +142,9 @@ function LColorbar(parent::Scene; bbox = nothing, kwargs...)
     # trigger bbox
     layoutobservables.suggestedbbox[] = layoutobservables.suggestedbbox[]
 
-    LColorbar(parent, layoutobservables, attrs, decorations)
+    Colorbar(fig_or_scene, layoutobservables, attrs, decorations)
 end
 
-function tight_ticklabel_spacing!(lc::LColorbar)
-    tight_ticklabel_spacing!(lc.decorations[:axis])
+function tight_ticklabel_spacing!(lc::Colorbar)
+    tight_ticklabel_spacing!(lc.elements[:axis])
 end

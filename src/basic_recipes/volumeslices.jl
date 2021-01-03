@@ -32,7 +32,7 @@ function plot!(vs::VolumeSlices)
         plane, r = plane_r
         idx = Node(1)
         vs[plane] = idx
-        hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[]))).plots[end]
+        hmap = heatmap!(vs, hattributes, x, y, zeros(length(x[]), length(y[])))
         on(idx) do i
             transform!(hmap, (plane, r[][i]))
             indices = ntuple(Val(3)) do j

@@ -27,16 +27,16 @@ to correctly build their visualization and update parameters if they wish. These
 - The top-level Scene in which all other content is placed
 - The layout tree in form of the top GridLayout, or even every single used GridLayout
 - Larger content elements of the top-level Scene such as other Scenes or SceneLikes
-(LAxis is a SceneLike) or elements such as LText, LColorbar, LLegend, etc.
-- Plots that have been added to Scenes or LAxis instances
+(Axis is a SceneLike) or elements such as Label, Colorbar, Legend, etc.
+- Plots that have been added to Scenes or Axis instances
 
 ## Plotting without a scene, layout or axis
 
 The user will not always want to specify all parameters needed for a single correctly
 plotted element. For example, a Scene should be generated when creating a Scatter
-plot, if there is no Scene given as a mutated argument. In the same way, an LAxis
+plot, if there is no Scene given as a mutated argument. In the same way, an Axis
 could be needed if none exists yet, which would be placed in the Scene. And for
-the LAxis to be placed correctly, a layout will be needed, too. Of course, the Scatter
+the Axis to be placed correctly, a layout will be needed, too. Of course, the Scatter
 object itself should also be accessible as a result of the function call.
 Therefore, a simple Scatter plot can result in four (or even more?) objects being created.
 
