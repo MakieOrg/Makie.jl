@@ -39,8 +39,8 @@ function three_display(session::Session, scene::Scene)
 
     width, height = size(scene)
 
-    canvas = DOM.um("canvas", width=width, height=height)
-
+    canvas = DOM.um("canvas", width=width, height=height, tabindex="0")
+    wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
     push!(session, comm)
 
@@ -49,29 +49,33 @@ function three_display(session::Session, scene::Scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 
     scene_id = objectid(scene)
-
+    @show scene_id
     setup = js"""
     function setup(scenes){
         const canvas = $(canvas)
-        if ( $(WEBGL).isWebGLAvailable() ) {
-            const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
-            const three_scenes = scenes.map($(WGL).deserialize_scene)
 
+        const scene_id = $(scene_id)
+        const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
+        if ( renderer ) {
+            const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
             JSServe.on_update($(window_open), open=>{
-                $(WGL).delete_scene($(scene_id))
+                if (!open) {
+                    $(WGL).delete_scene($(scene_id))
+                }
             })
 
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
-            JSServe.on_update($canvas_width, canvas_width => {
-                const w_h = deserialize_js(canvas_width);
+            JSServe.on_update($canvas_width, w_h => {
+                console.log(scene_id, w_h)
                 renderer.setSize(w_h[0], w_h[1]);
                 canvas.style.width = w_h[0];
                 canvas.style.height = w_h[1];
             })
         } else {
             const warning = $(WEBGL).getWebGLErrorMessage();
-            canvas.appendChild(warning);
+            $(wrapper).removeChild(canvas)
+            $(wrapper).appendChild(warning)
         }
     }
     """
@@ -82,5 +86,5 @@ function three_display(session::Session, scene::Scene)
     connect_scene_events!(scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(session)
-    return three, canvas
+    return three, wrapper
 end

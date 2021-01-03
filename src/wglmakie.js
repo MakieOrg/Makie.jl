@@ -399,7 +399,7 @@ const WGLMakie = (function () {
         return mesh;
     }
 
-    function deserialize_scene(data) {
+    function deserialize_scene(data, canvas) {
         scene = new THREE.Scene();
         add_scene(data.uuid, scene)
         scene.frustumCulled = false;
@@ -435,7 +435,7 @@ const WGLMakie = (function () {
         update_cam(JSServe.get_observable(data.camera));
 
         if (data.cam3d_state) {
-            attach_3d_camera(window.renderer.domElement, cam, data.cam3d_state);
+            attach_3d_camera(canvas, cam, data.cam3d_state);
         } else {
             JSServe.on_update(data.camera, update_cam);
         }
@@ -448,7 +448,11 @@ const WGLMakie = (function () {
 
     function connect_uniforms(mesh, updater) {
         JSServe.on_update(updater, ([name, data]) => {
-            console.log(name)
+            // this is the initial value, which shouldn't end up getting updated -
+            // TODO, figure out why this gets pushed!!
+            if (name === "none"){
+                return
+            }
             const uniform = mesh.material.uniforms[name];
             const deserialized = deserialize_three(JSServe.deserialize_js(data));
 
@@ -496,49 +500,52 @@ const WGLMakie = (function () {
         re_assign_buffers();
 
         JSServe.on_update(updater, ([name, array, length]) => {
-            const new_values = deserialize_three(JSServe.deserialize_js(array));
-            const buffer = mesh.geometry.attributes[name];
-            let buffers;
-            let first_buffer;
-            let real_length;
-            let is_instance = false;
-            // First, we need to figure out if this is an instance / geometry buffer
-            if (name in instance_buffers) {
-                buffers = instance_buffers;
-                first_buffer = first_instance_buffer;
-                real_length = real_instance_length;
-                is_instance = true;
-            } else {
-                buffers = geometry_buffers;
-                first_buffer = first_geometry_buffer;
-                real_length = real_geometry_length;
-            }
-            if (length <= real_length[0]) {
-                // this is simple - we can just update the values
-                buffer.set(new_values);
-                buffer.needsUpdate = true;
-                if (is_instance) {
-                    mesh.geometry.instanceCount = length;
+            // TODO, why are these called with the initial values!?
+            if (length > 0) {
+                const new_values = deserialize_three(JSServe.deserialize_js(array));
+                const buffer = mesh.geometry.attributes[name];
+                let buffers;
+                let first_buffer;
+                let real_length;
+                let is_instance = false;
+                // First, we need to figure out if this is an instance / geometry buffer
+                if (name in instance_buffers) {
+                    buffers = instance_buffers;
+                    first_buffer = first_instance_buffer;
+                    real_length = real_instance_length;
+                    is_instance = true;
+                } else {
+                    buffers = geometry_buffers;
+                    first_buffer = first_geometry_buffer;
+                    real_length = real_geometry_length;
                 }
-            } else {
-                // resizing is a bit more complex
-                // first we directly overwrite the array - this
-                // won't have any effect, but like this we can collect the
-                // newly sized arrays untill all of them have the same length
-                buffer.to_update = new_values;
-                if (
-                    Object.values(buffers).every(
-                        (x) =>
-                            x.to_update &&
-                            x.to_update.length / x.itemSize == length
-                    )
-                ) {
+                if (length <= real_length[0]) {
+                    // this is simple - we can just update the values
+                    buffer.set(new_values);
+                    buffer.needsUpdate = true;
                     if (is_instance) {
-                        recreate_instanced_geometry(mesh);
-                        // we just replaced geometry & all buffers, so we need to update thise
-                        re_assign_buffers();
-                        mesh.geometry.instanceCount =
-                            new_values.length / buffer.itemSize;
+                        mesh.geometry.instanceCount = length;
+                    }
+                } else {
+                    // resizing is a bit more complex
+                    // first we directly overwrite the array - this
+                    // won't have any effect, but like this we can collect the
+                    // newly sized arrays untill all of them have the same length
+                    buffer.to_update = new_values;
+                    if (
+                        Object.values(buffers).every(
+                            (x) =>
+                                x.to_update &&
+                                x.to_update.length / x.itemSize == length
+                        )
+                    ) {
+                        if (is_instance) {
+                            recreate_instanced_geometry(mesh);
+                            // we just replaced geometry & all buffers, so we need to update thise
+                            re_assign_buffers();
+                            mesh.geometry.instanceCount =
+                                new_values.length / buffer.itemSize;
+                        }
                     }
                 }
             }
@@ -566,6 +573,13 @@ const WGLMakie = (function () {
 
     function start_renderloop(renderer, three_scenes, cam) {
         function renderloop() {
+            const canvas = renderer.domElement
+            if (!document.body.contains(canvas)){
+                renderer.resetGLState()
+                renderer.dispose()
+                return
+            }
+
             render_scenes(renderer, three_scenes, cam);
             window.requestAnimationFrame(renderloop);
         }
@@ -573,15 +587,20 @@ const WGLMakie = (function () {
     }
 
     function threejs_module(canvas, comm, width, height) {
-        const context = canvas.getContext("webgl2", {
+        let context = canvas.getContext("webgl2", {
             preserveDrawingBuffer: true,
         });
         if (!context) {
+            console.warn("WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)")
             context = canvas.getContext("webgl", {
                 preserveDrawingBuffer: true,
             });
         }
-
+        if (!context) {
+            // Sigh, safari or something
+            // we return nothing which will be handled by caller
+            return
+        }
         const renderer = new THREE.WebGLRenderer({
             antialias: true,
             canvas: canvas,
@@ -601,6 +620,7 @@ const WGLMakie = (function () {
             });
             return false;
         }
+
         canvas.addEventListener("mousemove", mousemove);
 
         function mousedown(event) {
@@ -635,7 +655,8 @@ const WGLMakie = (function () {
             });
             return false;
         }
-        document.addEventListener("keydown", keydown);
+
+        canvas.addEventListener("keydown", keydown);
 
         function keyup(event) {
             JSServe.update_obs(comm, {
@@ -644,7 +665,7 @@ const WGLMakie = (function () {
             return false;
         }
 
-        document.addEventListener("keyup", keyup);
+        canvas.addEventListener("keyup", keyup);
         // This is a pretty ugly work around......
         // so on keydown, we add the key to the currently pressed keys set
         // if we open the contextmenu before releasing the key, we'll never
@@ -658,9 +679,9 @@ const WGLMakie = (function () {
             return false;
         }
 
-        document.addEventListener("contextmenu", contextmenu);
-        document.addEventListener("focusout", contextmenu);
-        window.renderer = renderer;
+        canvas.addEventListener("contextmenu", contextmenu);
+        canvas.addEventListener("focusout", contextmenu);
+
         return renderer;
     }
 
