@@ -74,3 +74,39 @@ end
     @test ax.parent === nothing
     @test current_axis() === nothing
 end
+
+@testset "Getting figure content" begin
+    fig = Figure()
+    ax = fig[1, 1] = Axis(fig)
+    @test contents(fig[1, 1], exact = true) == [ax]
+    @test contents(fig[1, 1], exact = false) == [ax]
+    @test contents(fig[1:2, 1:2], exact = true) == []
+    @test contents(fig[1:2, 1:2], exact = false) == [ax]
+
+    @test content(fig[1, 1]) == ax
+    @test_throws ErrorException content(fig[2, 2])
+    @test_throws ErrorException content(fig[1:2, 1:2])
+
+    label = fig[1, 1] = Label(fig)
+    @test contents(fig[1, 1], exact = true) == [ax, label]
+    @test contents(fig[1, 1], exact = false) == [ax, label]
+    @test contents(fig[1:2, 1:2], exact = true) == []
+    @test contents(fig[1:2, 1:2], exact = false) == [ax, label]
+
+    @test_throws ErrorException content(fig[1, 1])
+
+    ax2 = fig[1, 2][1, 1] = Axis(fig)
+    @test contents(fig[1, 2][1, 1], exact = true) == [ax2]
+    @test contents(fig[1, 2][1, 1], exact = false) == [ax2]
+    @test contents(fig[1, 2][1:2, 1:2], exact = true) == []
+    @test contents(fig[1, 2][1:2, 1:2], exact = false) == [ax2]
+    @test_throws ErrorException contents(fig[1:2, 1:2][1, 1])
+
+    label2 = fig[1, 2][1, 1] = Label(fig)
+    @test contents(fig[1, 2][1, 1], exact = true) == [ax2, label2]
+    @test contents(fig[1, 2][1, 1], exact = false) == [ax2, label2]
+    @test contents(fig[1, 2][1:2, 1:2], exact = true) == []
+    @test contents(fig[1, 2][1:2, 1:2], exact = false) == [ax2, label2]
+
+    @test_throws ErrorException content(fig[1, 2][1, 1])
+end
