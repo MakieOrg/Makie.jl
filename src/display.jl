@@ -403,7 +403,7 @@ Adds a video frame to the VideoStream `io`.
 """
 function recordframe!(io::VideoStream)
     frame = convert(Matrix{RGB{N0f8}}, colorbuffer(io.screen, GLNative))
-    _ydim, _xdim = size(frame)
+    _xdim, _ydim = size(frame)
     if isodd(_xdim) || isodd(_ydim)
         xdim = iseven(_xdim) ? _xdim : _xdim + 1
         ydim = iseven(_ydim) ? _ydim : _ydim + 1
