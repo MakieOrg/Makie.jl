@@ -313,7 +313,7 @@ function project(scene::Scene, point::T) where T<:StaticVector
         cam.projection[] *
         cam.view[] *
         transformationmatrix(scene)[],
-        Vec2(scene.resolution[]), point
+        Vec2f0(widths(pixelarea(scene)[])), point
     )
 end
 
