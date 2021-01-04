@@ -87,5 +87,5 @@ end
     buff = rand(Point3f0, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     set_window_config!(renderloop=GLMakie.renderloop)
-    scene
+    fig
 end
