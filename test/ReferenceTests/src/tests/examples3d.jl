@@ -460,7 +460,7 @@ end
 @cell "Line GIF" begin
     us = range(0, stop=1, length=100)
     scene = Scene()
-    scene = linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
+    linesegments!(scene, FRect3D(Vec3f0(0, -1, 0), Vec3f0(1, 2, 2)))
     p = lines!(scene, us, sin.(us .+ time()), zeros(100), linewidth=3, transparency=true)
     lineplots = [p]
     AbstractPlotting.translate!(p, 0, 0, 0)
