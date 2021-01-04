@@ -82,9 +82,8 @@ end
             glFinish()
         end
     end
-    scene = meshscatter(rand(Point3f0, 10^4) .* 20f0)
-    screen = AbstractPlotting.backend_display(GLMakie.GLBackend(), scene)
-    meshplot = scene[end]
+    fig, ax, meshplot = meshscatter(rand(Point3f0, 10^4) .* 20f0)
+    screen = AbstractPlotting.backend_display(GLMakie.GLBackend(), fig.scene)
     buff = rand(Point3f0, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     set_window_config!(renderloop=GLMakie.renderloop)
