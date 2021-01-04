@@ -27,7 +27,6 @@ ReferenceTests.reference_tests(recorded)
 # recorded, ref_images, scores = ReferenceTests.reference_tests(recorded)
 # ReferenceTests.generate_test_summary("preview.html", recorded, ref_images, scores)
 
-
 # Run the GLMakie specific backend reference tests
 empty!(ReferenceTests.DATABASE)
 include("glmakie_tests.jl")
@@ -36,7 +35,6 @@ rm(recorded_glmakie; force=true, recursive=true); mkdir(recorded_glmakie)
 ReferenceTests.record_tests(ReferenceTests.DATABASE, recording_dir=recorded_glmakie)
 ref_images = ReferenceTests.download_refimages(; name="glmakie_refimages")
 ReferenceTests.reference_tests(recorded_glmakie; ref_images=ref_images, difference=0.01)
-
 # needs GITHUB_TOKEN to be defined
 # First look at the generated refimages, to make sure they look ok:
 #ReferenceTests.generate_test_summary("index.html", recorded)
