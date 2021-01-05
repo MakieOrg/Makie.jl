@@ -81,7 +81,6 @@ end
 
 function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inner())
     fig.layout[rows, cols, side] = obj
-    register_in_figure!(fig, obj)
     obj
 end
 
@@ -116,32 +115,22 @@ end
 
 function Base.setindex!(parent::Union{FigurePosition,FigureSubposition}, obj,
     rows, cols, side = GridLayoutBase.Inner())
-
     layout = get_layout_at!(parent, createmissing = true)
-    figure = get_figure(parent)
     layout[rows, cols, side] = obj
-    register_in_figure!(figure, obj)
     obj
 end
 
 function Base.setindex!(parent::FigurePosition, obj)
     parent.gp[] = obj
-    figure = get_figure(parent)
-    register_in_figure!(figure, obj)
     obj
 end
 
 function Base.setindex!(parent::FigureSubposition, obj)
     layout = get_layout_at!(parent.parent, createmissing = true)
-    figure = get_figure(parent)
     layout[parent.rows, parent.cols, parent.side] = obj
-    register_in_figure!(figure, obj)
     obj
 end
 
-function register_in_figure!(fig::Figure, gridlayout::GridLayoutBase.GridLayout)
-    # do nothing, gridlayouts don't need to be specifically added to the content list
-end
 
 # to power a simple syntax for plotting into nested grids like
 # `scatter(fig[1, 1][2, 3], ...)` we need to either find the only gridlayout that
