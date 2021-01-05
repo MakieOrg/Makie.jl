@@ -575,11 +575,11 @@ const WGLMakie = (function () {
         function renderloop() {
             const canvas = renderer.domElement
             if (!document.body.contains(canvas)){
-                renderer.resetGLState()
+                console.log("EXITING WGL")
+                renderer.state.reset()
                 renderer.dispose()
                 return
             }
-
             render_scenes(renderer, three_scenes, cam);
             window.requestAnimationFrame(renderloop);
         }
