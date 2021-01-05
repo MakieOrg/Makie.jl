@@ -2,7 +2,11 @@ abstract type Layoutable end
 
 macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
 
-   structdef = quote
+    if !(fields.head == :block)
+        error("Fields need to be within a begin end block")
+    end
+
+    structdef = quote
         mutable struct $name <: Layoutable
             parent::Union{Figure, Scene, Nothing}
             layoutobservables::LayoutObservables
@@ -11,13 +15,35 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
         end
     end
 
-    if !(fields.head == :block)
-        error("Fields need to be within a begin end block")
-    end
 
     # append user defined fields to struct definition
     # linenumbernode block, struct block, fields block
-    append!(structdef.args[2].args[3].args, fields.args)
+
+    allfields = structdef.args[2].args[3].args
+
+    append!(allfields, fields.args)
+
+    fieldnames = map(filter(x -> !(x isa LineNumberNode), allfields)) do field
+        if field isa Symbol
+            return field
+        end
+        if field isa Expr && field.head == Symbol("::")
+            return field.args[1]
+        end
+        error("Unexpected field format. Neither Symbol nor x::T")
+    end
+
+    # define an inner constructor that calls _on_create so that there can be some default
+    # initialization routines for all layoutables right after creating the actual objects
+    constructor = quote
+        function $name($(fieldnames...))
+            layoutable = new($(fieldnames...))
+            _on_create(layoutable, $(fieldnames...))
+            layoutable
+        end
+    end
+
+    push!(allfields, constructor)
     
     structdef
 end
@@ -31,6 +57,24 @@ function get_topscene(s::Scene)
         error("Can only use scenes with PixelCamera as topscene")
     end
     s
+end
+
+function register_in_figure!(fig::Figure, @nospecialize layoutable::Layoutable)
+    if layoutable.parent !== fig
+        error("Can't register a layoutable with a different parent in a figure.")
+    end
+    if !(layoutable in fig.content)
+        push!(fig.content, layoutable)
+    end
+    nothing
+end
+
+
+function _on_create(layoutable, parent, layoutobservables, attributes, elements, args...)
+    if parent isa Figure
+        register_in_figure!(parent, layoutable)
+    end
+    nothing
 end
 
 
@@ -133,16 +177,5 @@ function delete_scene!(s::Scene)
         delete!(s, p)
     end
     deleteat!(s.parent.children, findfirst(x -> x === s, s.parent.children))
-    nothing
-end
-
-
-function AbstractPlotting.register_in_figure!(fig::Figure, @nospecialize layoutable::Layoutable)
-    if layoutable.parent !== fig
-        error("Can't register a layoutable with a different parent in a figure.")
-    end
-    if !(layoutable in fig.content)
-        push!(fig.content, layoutable)
-    end
     nothing
 end
