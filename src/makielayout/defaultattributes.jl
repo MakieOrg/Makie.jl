@@ -615,6 +615,8 @@ function default_attributes(::Type{Legend}, scene)
         titlevalign = :center
         "Controls if the legend titles are visible."
         titlevisible = true
+        "The color of the legend titles"
+        titlecolor = :black
         "The group title positions relative to their groups. Can be `:top` or `:left`."
         titleposition = :top
         "The font size of the entry labels."
