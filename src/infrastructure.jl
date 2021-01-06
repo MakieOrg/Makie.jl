@@ -140,12 +140,12 @@ to_mime(x::CairoBackend) = to_mime(x.typ)
 function cairo_draw(screen::CairoScreen, scene::Scene)
     AbstractPlotting.update!(scene)
     draw_background(screen, scene)
-    draw_plot(screen, scene)
+    draw_scene(screen, scene)
     return
 end
 
 
-function draw_plot(screen::CairoScreen, scene::Scene)
+function draw_scene(screen::CairoScreen, scene::Scene)
 
     # get the root area to correct for its pixel size when translating
     root_area = AbstractPlotting.root(scene).px_area[]
@@ -171,13 +171,15 @@ function draw_plot(screen::CairoScreen, scene::Scene)
 
     for elem in scene.plots
         if to_value(get(elem, :visible, true))
-             draw_plot(scene, screen, elem)
+            Cairo.save(screen.context)
+            draw_plot(scene, screen, elem)
+            Cairo.restore(screen.context)
         end
     end
     Cairo.restore(screen.context)
 
     for child in scene.children
-        draw_plot(screen, child)
+        draw_scene(screen, child)
     end
 
     return
