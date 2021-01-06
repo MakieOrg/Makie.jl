@@ -63,10 +63,16 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect
     color = poly.color[]
     if color isa AbstractArray{<:Number}
         color = numbers_to_colors(color, poly)
+    elseif color isa String
+        # string is erroneously broadcasted as chars otherwise
+        color = to_color(color)
     end
     strokecolor = poly.strokecolor[]
     if strokecolor isa AbstractArray{<:Number}
         strokecolor = numbers_to_colors(strokecolor, poly)
+    elseif strokecolor isa String
+        # string is erroneously broadcasted as chars otherwise
+        strokecolor = to_color(strokecolor)
     end
 
     broadcast_foreach(projected_rects, color, strokecolor, poly.strokewidth[]) do r, c, sc, sw
