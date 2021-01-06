@@ -11,7 +11,7 @@ function Legend(
 
     @extract attrs (
         halign, valign, padding, margin,
-        titlefont, titlesize, titlehalign, titlevalign, titlevisible,
+        titlefont, titlesize, titlehalign, titlevalign, titlevisible, titlecolor,
         labelsize, labelfont, labelcolor, labelhalign, labelvalign,
         bgcolor, framecolor, framewidth, framevisible,
         patchsize, # the side length of the entry patch area
@@ -205,7 +205,7 @@ function Legend(
                 # in case a group has no title
                 push!(titletexts, nothing)
             else
-                push!(titletexts, Label(scene, text = title, font = titlefont,
+                push!(titletexts, Label(scene, text = title, font = titlefont, color = titlecolor,
                     textsize = titlesize, halign = titlehalign, valign = titlevalign))
             end
 
