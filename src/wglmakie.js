@@ -36,7 +36,9 @@ const WGLMakie = (function () {
 
     function insert_plot(scene_id, plot_data) {
         const scene = find_scene(scene_id);
-        add_plot(scene, plot_data);
+        plot_data.forEach(plot=> {
+            add_plot(scene, plot);
+        })
     }
 
     function delete_plots(scene_id, plot_uuids) {

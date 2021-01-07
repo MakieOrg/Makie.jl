@@ -8,7 +8,7 @@ JSServe.session(td::ThreeDisplay) = td.session
 js_uuid(object) = string(objectid(object))
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    plot_data = serialize_three(scene, plot)
+    plot_data = serialize_plots(scene, [plot])
     WGL.insert_plot(td.session, js_uuid(scene), plot_data)
     return
 end
@@ -49,7 +49,6 @@ function three_display(session::Session, scene::Scene)
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 
     scene_id = objectid(scene)
-    @show scene_id
     setup = js"""
     function setup(scenes){
         const canvas = $(canvas)
@@ -63,11 +62,9 @@ function three_display(session::Session, scene::Scene)
                     $(WGL).delete_scene($(scene_id))
                 }
             })
-
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
             JSServe.on_update($canvas_width, w_h => {
-                console.log(scene_id, w_h)
                 renderer.setSize(w_h[0], w_h[1]);
                 canvas.style.width = w_h[0];
                 canvas.style.height = w_h[1];
