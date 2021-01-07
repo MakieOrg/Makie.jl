@@ -47,6 +47,9 @@ function backend_display(::Missing, ::Scene)
     """)
 end
 
+Base.display(fap::FigureAxisPlot) = display(fap.figure)
+Base.display(fig::Figure) = display(fig.scene)
+
 function Base.display(scene::Scene)
 
     if !use_display[]
@@ -90,6 +93,9 @@ end
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     show(io, scene)
 end
+
+Base.show(io::IO, m::MIME, fap::FigureAxisPlot) = show(io, m, fap.figure)
+Base.show(io::IO, m::MIME, fig::Figure) = show(io, m, fig.scene)
 
 function Base.show(io::IO, m::MIME, scene::Scene)
     # set update to true, without triggering an event
