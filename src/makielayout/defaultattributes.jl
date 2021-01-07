@@ -29,6 +29,8 @@ function default_attributes(::Type{Axis}, scene)
         titlevisible = true
         "The horizontal alignment of the title."
         titlealign = :center
+        "The color of the title"
+        titlecolor = :black
         "The font family of the xlabel."
         xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font family of the ylabel."
