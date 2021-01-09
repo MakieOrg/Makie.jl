@@ -341,83 +341,80 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
 
     glyphoffsets = glyphlayout.origins
 
-    is3D = scene.camera_controls[] isa Camera3D
-
-
-    # stridx = 1
-    # broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
-    #     Cairo.save(ctx)
-    #     char = txt[stridx]
-
-    #     stridx = nextind(txt, stridx)
-    #     pos = project_position(scene, p, Mat4f0(I))
-    #     scale = project_scale(scene, ts, Mat4f0(I))
-    #     Cairo.move_to(ctx, pos[1], pos[2])
-    #     Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-    #     cairoface = set_ft_font(ctx, f)
-        # old_matrix = get_font_matrix(ctx)
-
-    # calculate the glyph positions and text size relative to screen space
-    if space == :data
-        # in data space, the glyph offsets are just added to the string positions
-        # and then projected
-        glyphpositions = [project_position(
-            scene,
-            to_ndim(Point3f0, position, 0) .+ goffset,
-            Mat4f0(I)) for goffset in glyphoffsets]
-        # and the scale is projected
-        scale = project_scale(scene, textsize, Mat4f0(I))
-    elseif space == :screen
-        # in screen space, the glyph offsets are added after projecting
-        # the string position into screen space
-        glyphpositions = [project_position(scene, position, Mat4f0(I)) .+ p3_to_p2(goffset) .* (1, -1) for goffset in glyphoffsets] # flip for Cairo
-        # and the scale is just taken as is
-        scale = length(textsize) == 2 ? textsize : SVector(textsize, textsize)
-    end
 
     Cairo.save(ctx)
     cairoface = set_ft_font(ctx, font)
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
     old_matrix = get_font_matrix(ctx)
-    set_font_matrix(ctx, scale_matrix(scale...))
 
-    for (gpos, char) in zip(glyphpositions, str)
+
+    for (goffset, char) in zip(glyphoffsets, str)
+
         char in ('\r', '\n') && continue
 
-        Cairo.save(ctx)
-        Cairo.move_to(ctx, gpos...)
-        # TODO this only works in 2d
-        Cairo.rotate(ctx, to_2d_rotation(rotation))
+        if space == :data
+            # in data space, the glyph offsets are just added to the string positions
+            # and then projected
 
-        Cairo.show_text(ctx, string(char))
-        Cairo.restore(ctx)
+            # glyph position in data coordinates (offset has rotation applied already)
+            gpos_data = to_ndim(Point3f0, position, 0) .+ goffset
+
+            scale3 = textsize isa Number ? Point3f0(textsize, textsize, 0) : to_ndim(Point3f0, textsize, 0)
+
+            # this could be done better but it works at least
+
+            # the CairoMatrix is found by transforming the right and up vector
+            # of the character into screen space and then subtracting the projected
+            # origin. The resulting vectors give the directions in which the character
+            # needs to be stretched in order to match the 3D projection
+            
+            xvec = rotation * (scale3[1] * Point3f0(1, 0, 0))
+            yvec = rotation * (scale3[2] * Point3f0(0, -1, 0))
+
+            gproj = project_position(scene, gpos_data, Mat4f0(I))
+            xproj = project_position(scene, gpos_data + xvec, Mat4f0(I))
+            yproj = project_position(scene, gpos_data + yvec, Mat4f0(I))
+            
+            xdiff = xproj - gproj
+            ydiff = yproj - gproj
+
+            mat = Cairo.CairoMatrix(
+                xdiff[1], xdiff[2],
+                ydiff[1], ydiff[2],
+                0, 0,
+            )
+
+            Cairo.save(ctx)
+            Cairo.move_to(ctx, gproj...)
+            set_font_matrix(ctx, mat)
+
+            # Cairo.rotate(ctx, to_2d_rotation(rotation))
+            Cairo.show_text(ctx, string(char))
+            Cairo.restore(ctx)
+
+        elseif space == :screen
+            # in screen space, the glyph offsets are added after projecting
+            # the string position into screen space
+            glyphpos = project_position(
+                scene,
+                position,
+                Mat4f0(I)) .+ p3_to_p2(goffset) .* (1, -1) # flip for Cairo
+            # and the scale is just taken as is
+            scale = length(textsize) == 2 ? textsize : SVector(textsize, textsize)
+
+            Cairo.save(ctx)
+            Cairo.move_to(ctx, glyphpos...)
+            # TODO this only works in 2d
+            mat = scale_matrix(scale...)
+            set_font_matrix(ctx, mat)
+            Cairo.rotate(ctx, to_2d_rotation(rotation))
+    
+            Cairo.show_text(ctx, string(char))
+            Cairo.restore(ctx)
+        else
+            error()
+        end
     end
-
-        # if !is3D
-        #     mat = scale_matrix(scale...)
-        #     set_font_matrix(ctx, mat)
-        #     Cairo.rotate(ctx, to_2d_rotation(r))
-        # else
-        #     # This sort of works ¯\_(ツ)_/¯
-        #     # Somewhat similar to normalmatrix in GLMakie
-        #     w, h = scene.camera.resolution[]
-        #     j = SOneTo(3)
-        #     cpv = 0.005(w + h) * transpose(inv(
-        #         (scene.camera.projectionview[][j,j] *
-        #         AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
-        #     ))
-        #     mat = Cairo.CairoMatrix(
-        #         cpv[1, 1], cpv[1, 2],
-        #         cpv[2, 1], cpv[2, 2],
-        #         # this helps seperate text from the z axis (in the default view)
-        #         (cpv[1, 2] + cpv[2, 1]), 0.0
-        #     )
-        #     set_font_matrix(ctx, mat)
-        # end
-
-        # if !(char in ('\r', '\n'))
-        #     Cairo.show_text(ctx, string(char))
-        # end
 
     cairo_font_face_destroy(cairoface)
     set_font_matrix(ctx, old_matrix)
@@ -685,7 +682,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     return nothing
 end
 
-function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
+function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
     ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
     idxs = LinearIndices(size(zs))
     faces = [
@@ -694,7 +691,7 @@ function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
     ]
     normal_mesh(ps, faces)
 end
-function surface2mesh(xs::Matrix, ys::Matrix, zs::Matrix)
+function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
     ps = [Point3f0(xs[i, j], ys[i, j], zs[i, j]) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
     idxs = LinearIndices(size(zs))
     faces = [
