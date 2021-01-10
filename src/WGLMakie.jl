@@ -48,6 +48,8 @@ function activate!()
     return
 end
 
+const TEXTURE_ATLAS_CHANGED = Ref(false)
+
 function __init__()
     # Activate WGLMakie as backend!
     activate!()
@@ -56,6 +58,11 @@ function __init__()
     # The reasonable_solution is a terrible default for the web!
     if AbstractPlotting.minimal_default.resolution[] == AbstractPlotting.reasonable_resolution()
         set_theme!(resolution=(600, 400))
+    end
+    # We need to update the texture atlas whenever it changes!
+    # We do this in three_plot!
+    AbstractPlotting.font_render_callback!() do sd, uv
+        TEXTURE_ATLAS_CHANGED[] = true
     end
 end
 

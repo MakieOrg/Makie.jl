@@ -19,6 +19,18 @@ function Base.delete!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
     return
 end
 
+function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
+    push!(scene_uuids, js_uuid(scene))
+    for plot in scene.plots
+        append!(plot_uuids, (js_uuid(p) for p in AbstractPlotting.flatten_plots(plot)))
+    end
+    for child in scene.children
+        all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
+    end
+    return scene_uuids, plot_uuids
+end
+
+
 """
     find_plots(td::ThreeDisplay, plot::AbstractPlot)
 
@@ -33,9 +45,6 @@ function three_display(session::Session, scene::Scene)
     serialized = serialize_scene(scene)
     JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open
-    on(session.on_close) do closed
-        closed && (window_open[] = false)
-    end
 
     width, height = size(scene)
 
@@ -57,11 +66,6 @@ function three_display(session::Session, scene::Scene)
         const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
         if ( renderer ) {
             const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
-            JSServe.on_update($(window_open), open=>{
-                if (!open) {
-                    $(WGL).delete_scene($(scene_id))
-                }
-            })
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
             JSServe.on_update($canvas_width, w_h => {
@@ -83,5 +87,18 @@ function three_display(session::Session, scene::Scene)
     connect_scene_events!(scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(session)
+
+    on(session.on_close) do closed
+        if closed
+            scene_uuids, plot_uuids = all_plots_scenes(scene)
+            WGL.delete_scenes(session, scene_uuids, plot_uuids)
+            window_open[] = false
+        end
+    end
+
+    if TEXTURE_ATLAS_CHANGED[]
+        JSServe.update_cached_value!(session, AbstractPlotting.get_texture_atlas().data)
+        TEXTURE_ATLAS_CHANGED[] = false
+    end
     return three, wrapper
 end

@@ -34,6 +34,15 @@ const WGLMakie = (function () {
         return plots;
     }
 
+    function delete_scenes(scene_uuids, plot_uuids) {
+        plot_uuids.forEach((plot_id) => {
+            delete plot_cache[plot_id]
+        })
+        scene_uuids.forEach((scene_id=>{
+            delete_scene(scene_id)
+        }))
+    }
+
     function insert_plot(scene_id, plot_data) {
         const scene = find_scene(scene_id);
         plot_data.forEach(plot=> {
@@ -44,7 +53,10 @@ const WGLMakie = (function () {
     function delete_plots(scene_id, plot_uuids) {
         const scene = find_scene(scene_id);
         const plots = find_plots(plot_uuids);
-        plots.forEach((p) => scene.remove(p));
+        plots.forEach((p) => {
+            scene.remove(p)
+            delete plot_cache[p]
+        });
     }
 
     function add_plot(scene, plot_data) {
@@ -698,5 +710,8 @@ const WGLMakie = (function () {
         find_plots,
         delete_scene,
         find_scene,
+        scene_cache,
+        plot_cache,
+        delete_scenes,
     };
 })();
