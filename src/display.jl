@@ -67,11 +67,18 @@ end
 function Base.showable(mime::MIME{M}, scene::Scene) where M
     backend_showable(current_backend[], mime, scene)
 end
-
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
     backend_showable(current_backend[], mime, scene)
 end
+function Base.showable(mime::MIME{M}, fig::FigureLike) where M
+    backend_showable(current_backend[], mime, get_scene(fig))
+end
+# ambig
+function Base.showable(mime::MIME"application/json", fig::FigureLike)
+    backend_showable(current_backend[], mime, get_scene(fig))
+end
+
 
 function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
     hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
