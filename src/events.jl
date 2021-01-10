@@ -109,7 +109,7 @@ function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebuttons
     function mousebuttons(window, button, action, mods)
         @print_error begin
-            process!(scene, MouseButtonEvent(Mouse.Button(Int(button)), ButtonState(Int(action))))
+            process!(scene, MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action))))
             addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
         end
     end
@@ -124,7 +124,7 @@ function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbuttons
     function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         @print_error begin
-            process!(scene, KeyEvent(Keyboard.Button(Int(button)), ButtonState(Int(action)))) 
+            process!(scene, KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))) 
             addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
         end
     end
