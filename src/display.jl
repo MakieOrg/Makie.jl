@@ -47,6 +47,9 @@ function backend_display(::Missing, ::Scene)
     """)
 end
 
+Base.display(fap::FigureAxisPlot) = display(fap.figure)
+Base.display(fig::Figure) = display(fig.scene)
+
 function Base.display(scene::Scene)
 
     if !use_display[]
@@ -64,11 +67,18 @@ end
 function Base.showable(mime::MIME{M}, scene::Scene) where M
     backend_showable(current_backend[], mime, scene)
 end
-
 # ambig
 function Base.showable(mime::MIME"application/json", scene::Scene)
     backend_showable(current_backend[], mime, scene)
 end
+function Base.showable(mime::MIME{M}, fig::FigureLike) where M
+    backend_showable(current_backend[], mime, get_scene(fig))
+end
+# ambig
+function Base.showable(mime::MIME"application/json", fig::FigureLike)
+    backend_showable(current_backend[], mime, get_scene(fig))
+end
+
 
 function backend_showable(::Backend, ::Mime, ::Scene) where {Backend, Mime <: MIME}
     hasmethod(backend_show, Tuple{Backend, IO, Mime, Scene})
@@ -90,6 +100,9 @@ end
 function Base.show(io::IO, ::MIME"text/plain", scene::Scene)
     show(io, scene)
 end
+
+Base.show(io::IO, m::MIME, fap::FigureAxisPlot) = show(io, m, fap.figure)
+Base.show(io::IO, m::MIME, fig::Figure) = show(io, m, fig.scene)
 
 function Base.show(io::IO, m::MIME, scene::Scene)
     # set update to true, without triggering an event

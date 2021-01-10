@@ -7,11 +7,8 @@ struct AxisPlot
     plot::AbstractPlot
 end
 
-Base.display(fap::FigureAxisPlot) = display(fap.figure)
 Base.show(io::IO, fap::FigureAxisPlot) = show(io, fap.figure)
 Base.show(io::IO, ::MIME"text/plain", fap::FigureAxisPlot) = print(io, "FigureAxisPlot()")
-# Base.show(io::IO, ::MIME"image/svg+xml", fap::FigureAxisPlot) = show(io, MIME"image/svg+xml"(), fap.figure)
-Base.show(io::IO, ::MIME"image/png", fap::FigureAxisPlot) = show(io, MIME"image/png"(), fap.figure)
 
 Base.iterate(fap::FigureAxisPlot, args...) = iterate((fap.figure, fap.axis, fap.plot), args...)
 Base.iterate(ap::AxisPlot, args...) = iterate((ap.axis, ap.plot), args...)
