@@ -94,13 +94,44 @@ function current_default_theme(; kw_args...)
     return merge!(Attributes(kw_args), deepcopy(_current_default_theme))
 end
 
-function set_theme!(new_theme::Attributes)
+"""
+    set_theme(theme; kwargs...)
+
+Set the global default theme to `theme` and add / override any attributes given
+as keyword arguments.
+"""
+function set_theme!(new_theme = Theme()::Attributes; kwargs...)
     empty!(_current_default_theme)
-    new_theme = merge!(new_theme, deepcopy(minimal_default))
+    new_theme = merge!(deepcopy(new_theme), deepcopy(minimal_default))
+    new_theme = merge!(Theme(kwargs), new_theme)
     merge!(_current_default_theme, new_theme)
     return
 end
 
-function set_theme!(;kw_args...)
-    set_theme!(Attributes(; kw_args...))
+"""
+    with_theme(f, theme = Theme(); kwargs...)
+
+Calls `f` with `theme` temporarily activated. Attributes in `theme`
+can be overridden or extended with `kwargs`. The previous theme is always
+restored afterwards, no matter if `f` succeeds or fails.
+
+Example:
+
+```julia
+my_theme = Theme(resolution = (500, 500), color = :red)
+with_theme(my_theme, color = :blue, linestyle = :dashed) do
+    scatter(randn(100, 2))
+end
+```
+"""
+function with_theme(f, theme = Theme(); kwargs...)
+    previous_theme = AbstractPlotting.current_default_theme()
+    try
+        set_theme!(theme; kwargs...)
+        f()
+    catch e
+        rethrow(e)
+    finally
+        set_theme!(previous_theme)
+    end
 end
