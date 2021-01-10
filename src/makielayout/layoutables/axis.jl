@@ -14,7 +14,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
     attrs = merge!(merge!(Attributes(kwargs), theme_attrs), default_attrs)
 
     @extract attrs (
-        title, titlefont, titlesize, titlegap, titlevisible, titlealign,
+        title, titlefont, titlesize, titlegap, titlevisible, titlealign, titlecolor,
         xlabel, ylabel, xlabelcolor, ylabelcolor, xlabelsize, ylabelsize,
         xlabelvisible, ylabelvisible, xlabelpadding, ylabelpadding,
         xticklabelsize, xticklabelcolor, yticklabelsize, xticklabelsvisible, yticklabelsvisible,
@@ -247,6 +247,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
         textsize = titlesize,
         align = titlealignnode,
         font = titlefont,
+        color = titlecolor,
         show_axis=false)
     decorations[:title] = titlet
 

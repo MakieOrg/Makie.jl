@@ -105,6 +105,7 @@ function Colorbar(fig_or_scene; bbox = nothing, kwargs...)
     axis = LineAxis(topscene, endpoints = axispoints, flipped = flipaxisposition,
         limits = limits, ticklabelalign = ticklabelalign, label = label,
         labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
+        labelcolor = labelcolor,
         labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks, tickformat = tickformat,
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,

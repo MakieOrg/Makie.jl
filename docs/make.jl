@@ -352,6 +352,7 @@ makedocs(
             "animation.md",
             "interaction.md",
             "plotting_functions.md",
+            "theming.md",
         ],
         "Documentation" => [
             "scenes.md",
@@ -360,7 +361,6 @@ makedocs(
             "generated/plot-attributes.md",
             "generated/colors.md",
             "lighting.md",
-            "theming.md",
             "cameras.md",
             "recipes.md",
             "output.md",
@@ -375,7 +375,6 @@ makedocs(
             "Special Plots" => "makielayout/special_plots.md",
             "Legend" => "makielayout/llegend.md",
             "Layoutables Examples" => "makielayout/layoutables_examples.md",
-            "Theming Layoutables" => "makielayout/theming.md",
             "How Layouting Works" => "makielayout/layouting.md",
             "Frequently Asked Questions" => "makielayout/faq.md",
             "API Reference" => "makielayout/reference.md",
