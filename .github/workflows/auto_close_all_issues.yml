@@ -10,6 +10,6 @@ jobs:
       - uses: peter-evans/close-issue@v1
         with:
           comment: |
-            We do not accept issues on the CairoMakie.jl repository.
+            We do not accept issues on the AbstractPlotting.jl repository.
             Please open your issue on the Makie.jl repository instead:
             https://github.com/JuliaPlots/Makie.jl/issues
