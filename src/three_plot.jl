@@ -42,6 +42,10 @@ function find_plots(td::ThreeDisplay, plot::AbstractPlot)
 end
 
 function three_display(session::Session, scene::Scene)
+    if TEXTURE_ATLAS_CHANGED[]
+        JSServe.update_cached_value!(session, AbstractPlotting.get_texture_atlas().data)
+        TEXTURE_ATLAS_CHANGED[] = false
+    end
     serialized = serialize_scene(scene)
     JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open
@@ -96,9 +100,5 @@ function three_display(session::Session, scene::Scene)
         end
     end
 
-    if TEXTURE_ATLAS_CHANGED[]
-        JSServe.update_cached_value!(session, AbstractPlotting.get_texture_atlas().data)
-        TEXTURE_ATLAS_CHANGED[] = false
-    end
     return three, wrapper
 end
