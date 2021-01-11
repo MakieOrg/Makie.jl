@@ -35,6 +35,21 @@ struct WilkinsonTicks
     min_px_dist::Float64
 end
 
+"""
+Like LinearTicks but for multiples of `multiple`.
+Example where approximately 5 numbers should be found
+that are multiples of pi, printed like "1π", "2π", etc.:
+
+```
+MultiplesTicks(5, pi, "π")
+```
+"""
+struct MultiplesTicks
+    n_ideal::Int
+    multiple::Float64
+    suffix::String
+end
+
 
 mutable struct LineAxis
     parent::Scene
