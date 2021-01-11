@@ -12,5 +12,4 @@ function _precompile_()
     @assert precompile(Textbox, (Scene,))
 
     @assert precompile(layoutscene, ())  # doesn't fully precompile
-    @assert precompile(get_ticklabels, (AbstractPlotting.Automatic, AbstractPlotting.Automatic, Vector{Float64}))
 end

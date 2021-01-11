@@ -1,6 +1,6 @@
 ```@eval
 using CairoMakie
-CairoMakie.activate!()
+CairoMakie.activate!(type = "png")
 ```
 
 ## Creating an Axis
@@ -78,29 +78,52 @@ nothing # hide
 
 ![axis limits](example_axis_limits.svg)
 
-## Modifying ticks
+## Modifying Ticks
 
-Tick values are computed using `get_tickvalues(ticks, vmin, vmax)`, where `ticks` is either
-the `ax.xticks` or `ax.yticks` attribute
-and the limits of the respective axis are `vmin` and `vmax`.
+To control ticks, you can set the axis attributes `xticks/yticks` and `xtickformat/ytickformat`.
 
-To create the actual tick labels, `get_ticklabels(format, ticks, values)` is called, where `format` is
-`ax.xtickformat` or `ax.ytickformat`, `ticks` is the same as above, and `values` is the result
-of `get_tickvalues`.
+You can overload one or more of these three functions to implement custom ticks:
 
-The most common use cases are predefined. Additionally, custom tick finding behavior can be implemented
-by overloading `get_tickvalues` while custom formatting can be implemented by overloading `get_ticklabels`.
-
-Here are the existing methods for `get_tickvalues`:
-
-```@docs
-AbstractPlotting.MakieLayout.get_tickvalues
+```julia
+tickvalues, ticklabels = MakieLayout.get_ticks(ticks, formatter, vmin, vmax)
+tickvalues = MakieLayout.get_tickvalues(ticks, vmin, vmax)
+ticklabels = MakieLayout.get_ticklabels(formatter, tickvalues)
 ```
 
-And here are the existing methods for `get_ticklabels`:
+If you overload `get_ticks`, you have to compute both tickvalues and ticklabels directly as a vector of floats and strings, respectively.
+Otherwise the result of `get_tickvalues` is passed to `get_ticklabels` by default.
+The limits of the respective axis are passed as `vmin` and `vmax`.
 
-```@docs
-AbstractPlotting.MakieLayout.get_ticklabels
+A couple of behaviors are implemented by default.
+You can specify static ticks by passing an iterable of numbers.
+You can also pass a tuple with tick values and tick labels directly, bypassing the formatting step.
+
+For formatting, you can pass a function which takes a vector of numbers and outputs a vector of strings.
+You can also pass a format string which is passed to `Formatting.format` from [Formatting.jl](https://github.com/JuliaIO/Formatting.jl), where you can mix the formatted numbers with other text like in `"{:.2f}ms"`.
+
+### Predefined Ticks
+
+The default tick type is `LinearTicks(n)`, where `n` is the target number of ticks which the algorithm tries to return.
+
+```@example
+using CairoMakie
+
+fig = Figure(resolution = (1200, 900))
+for (i, n) in enumerate([2, 5, 9])
+    lines(fig[i, 1], 0..20, sin, axis = (xticks = LinearTicks(n),))
+end
+fig
+```
+
+There's also `WilkinsonTicks` which uses the alternative Wilkinson algorithm.
+
+`MultiplesTicks` can be used when an axis should be marked at multiples of a certain number.
+A common scenario is plotting a trigonometric function which should be marked at pi intervals.
+
+```@example
+using CairoMakie
+
+lines(0..20, sin, axis = (xticks = MultiplesTicks(4, pi, "π"),))
 ```
 
 Here are a couple of examples that show off different settings for ticks and formats.
