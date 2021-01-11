@@ -28,13 +28,14 @@ tlength(T) = length(T)
 tlength(::Type{<:Real}) = 1
 
 serialize_three(val::Number) = val
-serialize_three(val::Vec2f0) = Float32[val...]
-serialize_three(val::Vec3f0) = Float32[val...]
-serialize_three(val::Vec4f0) = Float32[val...]
-serialize_three(val::Quaternion) = Float32[val.data...]
+serialize_three(val::Vec2f0) = convert(Vector{Float32}, val)
+serialize_three(val::Vec3f0) = convert(Vector{Float32}, val)
+serialize_three(val::Vec4f0) = convert(Vector{Float32}, val)
+serialize_three(val::Quaternion) = convert(Vector{Float32}, collect(val.data))
 serialize_three(val::RGB) = Float32[red(val), green(val), blue(val)]
 serialize_three(val::RGBA) = Float32[red(val), green(val), blue(val), alpha(val)]
 serialize_three(val::Mat4f0) = vec(val)
+serialize_three(val::Mat3) = vec(val)
 
 function serialize_three(observable::Observable)
     return Dict(:type => "Observable", :id => observable.id,
@@ -44,41 +45,37 @@ end
 function serialize_three(array::AbstractArray)
     return serialize_three(flatten_buffer(array))
 end
-function serialize_three(array::Vector{UInt8})
+
+function serialize_three(array::Buffer)
+    return serialize_three(flatten_buffer(array))
+end
+
+function serialize_three(array::AbstractArray{UInt8})
     return Dict(:type => "Uint8Array", :data => array)
 end
-function serialize_three(array::Vector{Int32})
+
+function serialize_three(array::AbstractArray{Int32})
     return Dict(:type => "Int32Array", :data => array)
 end
-function serialize_three(array::Vector{UInt32})
+
+function serialize_three(array::AbstractArray{UInt32})
     return Dict(:type => "Uint32Array", :data => array)
 end
-function serialize_three(array::Vector{Float32})
+
+function serialize_three(array::AbstractArray{Float32})
     return Dict(:type => "Float32Array", :data => array)
 end
 
-
-
-# Make sure we preserve pointer identity for uploaded textures, so
-# we can actually find duplicated before uploading
-const SAVE_POINTER_IDENTITY_FOR_TEXTURES = IdDict()
-
-function empty_serialization_cache!()
-    empty!(SAVE_POINTER_IDENTITY_FOR_TEXTURES)
+function serialize_three(array::AbstractArray{Float16})
+    return Dict(:type => "Float32Array", :data => array)
 end
 
-function serialize_texture_data(x)
-    buffer = get!(SAVE_POINTER_IDENTITY_FOR_TEXTURES, x) do
-        return serialize_three(x)
-    end
-    # Since we copy the data, and the data in x might have changed
-    # we still need to copy the new data!
-    buffer[:data] .= flatten_buffer(x)
-    return buffer
+function serialize_three(array::AbstractArray{Float64})
+    return Dict(:type => "Float64Array", :data => array)
 end
 
 function serialize_three(color::Sampler{T,N}) where {T,N}
-    tex = Dict(:type => "Sampler", :data => serialize_texture_data(color.data),
+    tex = Dict(:type => "Sampler", :data => serialize_three(color.data),
                :size => [size(color.data)...], :three_format => three_format(T),
                :three_type => three_type(eltype(T)),
                :minFilter => three_filter(color.minfilter),
@@ -126,28 +123,20 @@ Flattens `array` array to be a 1D Vector of Float32 / UInt8.
 If presented with AbstractArray{<: Colorant/Tuple/SVector}, it will flatten those
 to their element type.
 """
-function flatten_buffer(array::AbstractArray{T}) where {T}
-    return flatten_buffer(reinterpret(eltype(T), array))
+function flatten_buffer(array::AbstractArray{<: Number})
+    return array
 end
 
-function flatten_buffer(array::AbstractArray{<:AbstractFloat}) where {T}
-    return convert(Vector{Float32}, vec(array))
-end
-
-function flatten_buffer(array::AbstractArray{<:Integer}) where {T}
-    return convert(Vector{Int32}, vec(array))
-end
-
-function flatten_buffer(array::AbstractArray{<:Unsigned}) where {T}
-    return convert(Vector{UInt32}, vec(array))
-end
-
-function flatten_buffer(array::AbstractArray{T}) where {T<:UInt8}
-    return convert(Vector{T}, vec(array))
+function flatten_buffer(array::Buffer)
+    return flatten_buffer(getfield(array, :data))
 end
 
 function flatten_buffer(array::AbstractArray{T}) where {T<:N0f8}
-    return flatten_buffer(reinterpret(UInt8, array))
+    return reinterpret(UInt8, array)
+end
+
+function flatten_buffer(array::AbstractArray{T}) where {T}
+    return flatten_buffer(reinterpret(eltype(T), array))
 end
 
 lasset(paths...) = read(joinpath(@__DIR__, "..", "assets", paths...), String)
@@ -157,11 +146,12 @@ isscalar(x::AbstractArray) = false
 isscalar(x::Observable) = isscalar(x[])
 isscalar(x) = true
 
-function ShaderAbstractions.type_string(context::ShaderAbstractions.AbstractContext,
-                                        t::Type{<:AbstractPlotting.Quaternion})
+function ShaderAbstractions.type_string(::ShaderAbstractions.AbstractContext,
+                                        ::Type{<:AbstractPlotting.Quaternion})
     return "vec4"
 end
-function ShaderAbstractions.convert_uniform(context::ShaderAbstractions.AbstractContext,
+
+function ShaderAbstractions.convert_uniform(::ShaderAbstractions.AbstractContext,
                                             t::Quaternion)
     return convert(Quaternion, t)
 end

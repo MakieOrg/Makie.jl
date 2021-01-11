@@ -32,6 +32,11 @@ jobs:
         uses: GabrielBB/xvfb-action@v1
         with:
           run: julia --project=@. -e "using Pkg; Pkg.test(coverage=true)"
+      - name: Upload test Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: Testimages
+          path: ./test/recorded
       - uses: actions/cache@v1
         env:
           cache-name: cache-artifacts

@@ -34,17 +34,29 @@ const WGLMakie = (function () {
         return plots;
     }
 
+    function delete_scenes(scene_uuids, plot_uuids) {
+        plot_uuids.forEach((plot_id) => {
+            delete plot_cache[plot_id]
+        })
+        scene_uuids.forEach((scene_id=>{
+            delete_scene(scene_id)
+        }))
+    }
+
     function insert_plot(scene_id, plot_data) {
         const scene = find_scene(scene_id);
-        add_plot(scene, plot_data);
+        plot_data.forEach(plot=> {
+            add_plot(scene, plot);
+        })
     }
 
     function delete_plots(scene_id, plot_uuids) {
         const scene = find_scene(scene_id);
-        console.log(scene)
         const plots = find_plots(plot_uuids);
-        console.log(plots);
-        plots.forEach((p) => scene.remove(p));
+        plots.forEach((p) => {
+            scene.remove(p)
+            delete plot_cache[p]
+        });
     }
 
     function add_plot(scene, plot_data) {
@@ -56,8 +68,6 @@ const WGLMakie = (function () {
         plot_data.uniforms.resolution = cam.resolution;
         plot_data.uniforms.eyeposition = cam.eyeposition;
         const p = deserialize_plot(plot_data);
-        console.log(p.name)
-        console.log(plot_data.uuid);
         plot_cache[plot_data.uuid] = p;
         scene.add(p);
     }
@@ -238,7 +248,7 @@ const WGLMakie = (function () {
             }
         }
 
-        if (is_list(data)) {
+        if (JSServe.is_list(data)) {
             if (data.length == 2) {
                 return new THREE.Vector2().fromArray(data);
             }
@@ -396,14 +406,14 @@ const WGLMakie = (function () {
         mesh.frustumCulled = false;
         mesh.matrixAutoUpdate = false;
         const update_visible = (v) => (mesh.visible = v);
-        update_visible(get_observable(data.visible));
-        on_update(data.visible, update_visible);
+        update_visible(JSServe.get_observable(data.visible));
+        JSServe.on_update(data.visible, update_visible);
         connect_uniforms(mesh, data.uniform_updater);
         connect_attributes(mesh, data.attribute_updater);
         return mesh;
     }
 
-    function deserialize_scene(data) {
+    function deserialize_scene(data, canvas) {
         scene = new THREE.Scene();
         add_scene(data.uuid, scene)
         scene.frustumCulled = false;
@@ -432,16 +442,16 @@ const WGLMakie = (function () {
             cam.view.value.fromArray(view);
             cam.projection.value.fromArray(projection);
             cam.projectionview.value.fromArray(projectionview);
-            cam.resolution.value.fromArray(deserialize_js(resolution));
-            cam.eyeposition.value.fromArray(deserialize_js(eyepos));
+            cam.resolution.value.fromArray(JSServe.deserialize_js(resolution));
+            cam.eyeposition.value.fromArray(JSServe.deserialize_js(eyepos));
         }
 
-        update_cam(get_observable(data.camera));
+        update_cam(JSServe.get_observable(data.camera));
 
         if (data.cam3d_state) {
-            attach_3d_camera(window.renderer.domElement, cam, data.cam3d_state);
+            attach_3d_camera(canvas, cam, data.cam3d_state);
         } else {
-            on_update(data.camera, update_cam);
+            JSServe.on_update(data.camera, update_cam);
         }
 
         data.plots.forEach((plot_data) => {
@@ -451,9 +461,14 @@ const WGLMakie = (function () {
     }
 
     function connect_uniforms(mesh, updater) {
-        on_update(updater, ([name, data]) => {
+        JSServe.on_update(updater, ([name, data]) => {
+            // this is the initial value, which shouldn't end up getting updated -
+            // TODO, figure out why this gets pushed!!
+            if (name === "none"){
+                return
+            }
             const uniform = mesh.material.uniforms[name];
-            const deserialized = deserialize_three(deserialize_js(data));
+            const deserialized = deserialize_three(JSServe.deserialize_js(data));
 
             if (uniform.value.isTexture) {
                 uniform.value.image.data.set(deserialized);
@@ -498,50 +513,53 @@ const WGLMakie = (function () {
 
         re_assign_buffers();
 
-        on_update(updater, ([name, array, length]) => {
-            const new_values = deserialize_three(deserialize_js(array));
-            const buffer = mesh.geometry.attributes[name];
-            let buffers;
-            let first_buffer;
-            let real_length;
-            let is_instance = false;
-            // First, we need to figure out if this is an instance / geometry buffer
-            if (name in instance_buffers) {
-                buffers = instance_buffers;
-                first_buffer = first_instance_buffer;
-                real_length = real_instance_length;
-                is_instance = true;
-            } else {
-                buffers = geometry_buffers;
-                first_buffer = first_geometry_buffer;
-                real_length = real_geometry_length;
-            }
-            if (length <= real_length[0]) {
-                // this is simple - we can just update the values
-                buffer.set(new_values);
-                buffer.needsUpdate = true;
-                if (is_instance) {
-                    mesh.geometry.instanceCount = length;
+        JSServe.on_update(updater, ([name, array, length]) => {
+            // TODO, why are these called with the initial values!?
+            if (length > 0) {
+                const new_values = deserialize_three(JSServe.deserialize_js(array));
+                const buffer = mesh.geometry.attributes[name];
+                let buffers;
+                let first_buffer;
+                let real_length;
+                let is_instance = false;
+                // First, we need to figure out if this is an instance / geometry buffer
+                if (name in instance_buffers) {
+                    buffers = instance_buffers;
+                    first_buffer = first_instance_buffer;
+                    real_length = real_instance_length;
+                    is_instance = true;
+                } else {
+                    buffers = geometry_buffers;
+                    first_buffer = first_geometry_buffer;
+                    real_length = real_geometry_length;
                 }
-            } else {
-                // resizing is a bit more complex
-                // first we directly overwrite the array - this
-                // won't have any effect, but like this we can collect the
-                // newly sized arrays untill all of them have the same length
-                buffer.to_update = new_values;
-                if (
-                    Object.values(buffers).every(
-                        (x) =>
-                            x.to_update &&
-                            x.to_update.length / x.itemSize == length
-                    )
-                ) {
+                if (length <= real_length[0]) {
+                    // this is simple - we can just update the values
+                    buffer.set(new_values);
+                    buffer.needsUpdate = true;
                     if (is_instance) {
-                        recreate_instanced_geometry(mesh);
-                        // we just replaced geometry & all buffers, so we need to update thise
-                        re_assign_buffers();
-                        mesh.geometry.instanceCount =
-                            new_values.length / buffer.itemSize;
+                        mesh.geometry.instanceCount = length;
+                    }
+                } else {
+                    // resizing is a bit more complex
+                    // first we directly overwrite the array - this
+                    // won't have any effect, but like this we can collect the
+                    // newly sized arrays untill all of them have the same length
+                    buffer.to_update = new_values;
+                    if (
+                        Object.values(buffers).every(
+                            (x) =>
+                                x.to_update &&
+                                x.to_update.length / x.itemSize == length
+                        )
+                    ) {
+                        if (is_instance) {
+                            recreate_instanced_geometry(mesh);
+                            // we just replaced geometry & all buffers, so we need to update thise
+                            re_assign_buffers();
+                            mesh.geometry.instanceCount =
+                                new_values.length / buffer.itemSize;
+                        }
                     }
                 }
             }
@@ -550,13 +568,15 @@ const WGLMakie = (function () {
 
     function render_scene(renderer, scene, cam) {
         renderer.autoClear = scene.clearscene;
-        const area = get_observable(scene.pixelarea);
+        const area = JSServe.get_observable(scene.pixelarea);
         if (area) {
             const [x, y, w, h] = area;
             renderer.setViewport(x, y, w, h);
             renderer.setScissor(x, y, w, h);
             renderer.setScissorTest(true);
-            renderer.setClearColor(get_observable(scene.backgroundcolor));
+            renderer.setClearColor(
+                JSServe.get_observable(scene.backgroundcolor)
+            );
             renderer.render(scene, cam);
         }
     }
@@ -567,6 +587,13 @@ const WGLMakie = (function () {
 
     function start_renderloop(renderer, three_scenes, cam) {
         function renderloop() {
+            const canvas = renderer.domElement
+            if (!document.body.contains(canvas)){
+                console.log("EXITING WGL")
+                renderer.state.reset()
+                renderer.dispose()
+                return
+            }
             render_scenes(renderer, three_scenes, cam);
             window.requestAnimationFrame(renderloop);
         }
@@ -574,15 +601,20 @@ const WGLMakie = (function () {
     }
 
     function threejs_module(canvas, comm, width, height) {
-        const context = canvas.getContext("webgl2", {
+        let context = canvas.getContext("webgl2", {
             preserveDrawingBuffer: true,
         });
         if (!context) {
+            console.warn("WebGL 2.0 not supported by browser, falling back to WebGL 1.0 (Volume plots will not work)")
             context = canvas.getContext("webgl", {
                 preserveDrawingBuffer: true,
             });
         }
-
+        if (!context) {
+            // Sigh, safari or something
+            // we return nothing which will be handled by caller
+            return
+        }
         const renderer = new THREE.WebGLRenderer({
             antialias: true,
             canvas: canvas,
@@ -597,15 +629,16 @@ const WGLMakie = (function () {
             var rect = canvas.getBoundingClientRect();
             var x = event.clientX - rect.left;
             var y = event.clientY - rect.top;
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 mouseposition: [x, y],
             });
             return false;
         }
+
         canvas.addEventListener("mousemove", mousemove);
 
         function mousedown(event) {
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 mousedown: event.buttons,
             });
             return false;
@@ -613,15 +646,16 @@ const WGLMakie = (function () {
         canvas.addEventListener("mousedown", mousedown);
 
         function mouseup(event) {
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 mouseup: event.buttons,
             });
             return false;
         }
+
         canvas.addEventListener("mouseup", mouseup);
 
         function wheel(event) {
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 scroll: [event.deltaX, -event.deltaY],
             });
             event.preventDefault();
@@ -630,20 +664,22 @@ const WGLMakie = (function () {
         canvas.addEventListener("wheel", wheel);
 
         function keydown(event) {
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 keydown: event.code,
             });
             return false;
         }
-        document.addEventListener("keydown", keydown);
+
+        canvas.addEventListener("keydown", keydown);
 
         function keyup(event) {
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 keyup: event.code,
             });
             return false;
         }
-        document.addEventListener("keyup", keyup);
+
+        canvas.addEventListener("keyup", keyup);
         // This is a pretty ugly work around......
         // so on keydown, we add the key to the currently pressed keys set
         // if we open the contextmenu before releasing the key, we'll never
@@ -651,14 +687,15 @@ const WGLMakie = (function () {
         // set... Only option I found is to actually listen to the contextmenu
         // and remove all keys if its opened.
         function contextmenu(event) {
-            update_obs(comm, {
+            JSServe.update_obs(comm, {
                 keyup: "delete_keys",
             });
             return false;
         }
-        document.addEventListener("contextmenu", contextmenu);
-        document.addEventListener("focusout", contextmenu);
-        window.renderer = renderer;
+
+        canvas.addEventListener("contextmenu", contextmenu);
+        canvas.addEventListener("focusout", contextmenu);
+
         return renderer;
     }
 
@@ -673,5 +710,8 @@ const WGLMakie = (function () {
         find_plots,
         delete_scene,
         find_scene,
+        scene_cache,
+        plot_cache,
+        delete_scenes,
     };
 })();

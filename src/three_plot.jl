@@ -8,7 +8,7 @@ JSServe.session(td::ThreeDisplay) = td.session
 js_uuid(object) = string(objectid(object))
 
 function Base.insert!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
-    plot_data = serialize_three(scene, plot)
+    plot_data = serialize_plots(scene, [plot])
     WGL.insert_plot(td.session, js_uuid(scene), plot_data)
     return
 end
@@ -18,6 +18,18 @@ function Base.delete!(td::ThreeDisplay, scene::Scene, plot::AbstractPlot)
     WGL.delete_plots(td.session, js_uuid(scene), uuids)
     return
 end
+
+function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[])
+    push!(scene_uuids, js_uuid(scene))
+    for plot in scene.plots
+        append!(plot_uuids, (js_uuid(p) for p in AbstractPlotting.flatten_plots(plot)))
+    end
+    for child in scene.children
+        all_plots_scenes(child, plot_uuids=plot_uuids, scene_uuids=scene_uuids)
+    end
+    return scene_uuids, plot_uuids
+end
+
 
 """
     find_plots(td::ThreeDisplay, plot::AbstractPlot)
@@ -30,57 +42,63 @@ function find_plots(td::ThreeDisplay, plot::AbstractPlot)
 end
 
 function three_display(session::Session, scene::Scene)
-    empty_serialization_cache!()
+    if TEXTURE_ATLAS_CHANGED[]
+        JSServe.update_cached_value!(session, AbstractPlotting.get_texture_atlas().data)
+        TEXTURE_ATLAS_CHANGED[] = false
+    end
     serialized = serialize_scene(scene)
     JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open
-    on(session.on_close) do closed
-        closed && (window_open[] = false)
-    end
 
     width, height = size(scene)
 
-    canvas = DOM.um("canvas", width=width, height=height)
-
+    canvas = DOM.um("canvas", width=width, height=height, tabindex="0")
+    wrapper = DOM.div(canvas)
     comm = Observable(Dict{String,Any}())
+    push!(session, comm)
+
     scene_data = Observable(serialized)
 
     canvas_width = lift(x -> [round.(Int, widths(x))...], pixelarea(scene))
 
     scene_id = objectid(scene)
-
     setup = js"""
     function setup(scenes){
         const canvas = $(canvas)
-        if ( $(WEBGL).isWebGLAvailable() ) {
-            const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
-            const three_scenes = scenes.map($(WGL).deserialize_scene)
 
-            on_update($(window_open), open=>{
-                $(WGL).delete_scene($(scene_id))
-            })
-
+        const scene_id = $(scene_id)
+        const renderer = $(WGL).threejs_module(canvas, $comm, $width, $height)
+        if ( renderer ) {
+            const three_scenes = scenes.map(x=> $(WGL).deserialize_scene(x, canvas))
             const cam = new $(THREE).PerspectiveCamera(45, 1, 0, 100)
             $(WGL).start_renderloop(renderer, three_scenes, cam)
-            on_update($canvas_width, canvas_width => {
-                const w_h = deserialize_js(canvas_width);
+            JSServe.on_update($canvas_width, w_h => {
                 renderer.setSize(w_h[0], w_h[1]);
                 canvas.style.width = w_h[0];
                 canvas.style.height = w_h[1];
             })
         } else {
             const warning = $(WEBGL).getWebGLErrorMessage();
-            canvas.appendChild(warning);
+            $(wrapper).removeChild(canvas)
+            $(wrapper).appendChild(warning)
         }
     }
     """
 
-    JSServe.onjs(session, scene_data, setup)
-    WGLMakie.connect_scene_events!(session, scene, comm)
-    WGLMakie.mousedrag(scene, nothing)
+    onjs(session, scene_data, setup)
+    mousedrag(scene, nothing)
     scene_data[] = scene_data[]
-    connect_scene_events!(session, scene, comm)
+    connect_scene_events!(scene, comm)
     mousedrag(scene, nothing)
     three = ThreeDisplay(session)
-    return three, canvas
+
+    on(session.on_close) do closed
+        if closed
+            scene_uuids, plot_uuids = all_plots_scenes(scene)
+            WGL.delete_scenes(session, scene_uuids, plot_uuids)
+            window_open[] = false
+        end
+    end
+
+    return three, wrapper
 end

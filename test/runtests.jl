@@ -36,7 +36,8 @@ excludes = Set([
     "Hbox",
     "UnicodeMarker",
     # Not sure, looks pretty similar to me! Maybe blend mode?
-    "Test heatmap + image overlap"
+    "Test heatmap + image overlap",
+    "Stars"
 ])
 
 database = ReferenceTests.load_database()
