@@ -4,7 +4,7 @@ on:
   issue_comment:
 jobs:
   auto_close_all_issues:
-    if: ${{ !github.event.issue.pull_request }}
+    if: ${{ !github.event.issue.pull_request }} && ${{ github.event.issue.state == "open" }}
     runs-on: ubuntu-latest
     steps:
       - uses: peter-evans/close-issue@v1
