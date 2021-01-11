@@ -5,7 +5,9 @@ ElectronDisplay.CONFIG.focus = false
 using ImageMagick, FileIO
 using WGLMakie, AbstractPlotting, JSServe, Test
 using Pkg
+disp = scatter(1:4) |> display
 
+ElectronDisplay.Electron.toggle_devtools(disp.display)
 # ImageIO seems broken on 1.6 ... and there doesn't
 # seem to be a clean way anymore to force not to use a loader library?
 filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
