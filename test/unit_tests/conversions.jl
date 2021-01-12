@@ -85,3 +85,38 @@ end
     @test ilabels == [1, 2]
     @test AbstractPlotting.categoric_position.(a, Ref(ilabels)) == [1, 1, 2]
 end
+
+using AbstractPlotting: check_line_pattern, line_diff_pattern
+
+@testset "Linetype" begin
+    @test isnothing(check_line_pattern("-."))
+    @test isnothing(check_line_pattern("--"))
+    @test_throws ArgumentError check_line_pattern("-.*")
+
+    # for readability, the length of dash and dot
+    dash, dot = 3.0, 1.0
+    
+    @test line_diff_pattern(:dash)             ==
+          line_diff_pattern("-",   :normal)    == [dash, 3.0]
+    @test line_diff_pattern(:dot)              == 
+          line_diff_pattern(".",   :normal)    == [dot, 2.0]
+    @test line_diff_pattern(:dashdot)          ==
+          line_diff_pattern("-.",  :normal)    == [dash, 3.0, dot, 3.0]
+    @test line_diff_pattern(:dashdotdot)       == 
+          line_diff_pattern("-..", :normal)    == [dash, 3.0, dot, 2.0, dot, 3.0]
+        
+    @test line_diff_pattern(:dash, :loose)     == [dash, 6.0]
+    @test line_diff_pattern(:dot,  :loose)     == [dot, 4.0]
+    @test line_diff_pattern("-",   :dense)     == [dash, 2.0]
+    @test line_diff_pattern(".",   :dense)     == [dot, 1.0]
+    @test line_diff_pattern(:dash, 0.5)        == [dash, 0.5]
+    @test line_diff_pattern(:dot,  0.5)        == [dot, 0.5]
+    @test line_diff_pattern("-",   (0.4, 0.6)) == [dash, 0.6]
+    @test line_diff_pattern(:dot,  (0.4, 0.6)) == [dot, 0.4]
+    @test line_diff_pattern("-..", (0.4, 0.6)) == [dash, 0.6, dot, 0.4, dot, 0.6]
+
+    # gaps must be Symbol, a number, or two numbers
+    @test_throws ArgumentError line_diff_pattern(:dash, :NORMAL)
+    @test_throws ArgumentError line_diff_pattern(:dash, ()) 
+    @test_throws ArgumentError line_diff_pattern(:dash, (1, 2, 3))
+end
