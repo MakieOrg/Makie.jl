@@ -227,14 +227,9 @@ function mouse_position(scene::Scene, screen::Screen)
         if pos != e.mouseposition[]
             e.mouseposition[] = pos
         end
+        process!(scene, MouseMovedEvent(Vec2f0(pos)))
         return
     end
-    # ^ this could happen in AbstractPlotting too
-    # TODO yay or nay?
-    GLFW.SetCursorPosCallback(
-        to_native(screen), 
-        (_, x, y) -> process!(scene, MouseMovedEvent(Vec2f0(x, y)))
-    )
     return
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_position))
@@ -297,7 +292,7 @@ entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
     function enteredwindowcb(window, entered::Bool)
-        process!(scene, WindowEnteredEvent(entered))
+        process!(scene, WindowHoverEvent(entered))
         @print_error event[] = entered
     end
     disconnect!(window, entered_window)
