@@ -3,56 +3,50 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
-# MakieLayout Tutorial
+# Layout Tutorial
 
-In this tutorial, we will see some of the capabilities of MakieLayout while
+In this tutorial, we will see some of the capabilities of layouts in Makie while
 building a complex figure step by step. This is the final result we will create:
 
 ![step_22](step_22.svg)
 
 All right, let's get started!
 
-## Scene and Layout
+## Creating A Figure
 
-First, we import CairoMakie, which brings in AbstractPlotting and MakieLayout as well.
-Then we create the main scene and layout.
-The function `layoutscene` is a convenience function that creates a `Scene`
-which has a `GridLayout` attached to it that always fills the whole scene area.
-You can pass the outer padding of the top layout as the first argument.
+First, we import CairoMakie.
+Then we create an empty `Figure` which will hold all our content elements and organize them in a layout.
 
 ```@example tutorial
 using CairoMakie
 using Random # hide
 Random.seed!(2) # hide
 
-outer_padding = 30
-scene, layout = layoutscene(outer_padding, resolution = (1200, 700),
-    backgroundcolor = RGBf0(0.98, 0.98, 0.98))
+fig = Figure(resolution = (1200, 700), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
 
-scene
-save("step_001.svg", scene) # hide
+fig
+save("step_001.svg", fig) # hide
 nothing # hide
 ```
 ![step_001](step_001.svg)
 
 ## First Axis
 
-The scene is completely empty, I have made the background light gray so it's easier
-to see. Now we add an Axis. This is an axis or subplot type that MakieLayout defines
-which knows how to behave in a layout (which the Makie version doesn't).
+The figure is completely empty, I have made the background light gray so it's easier
+to see. Now we add an `Axis`.
 
-We create the axis and place it into the layout in one go. You place objects in
-a layout by using indexing syntax. You can save the axis in a variable by chaining
+We create the axis and place it into the figure's layout in one go. You place objects in
+a figure by using indexing syntax. You can save the axis in a variable by chaining
 the `=` expressions.
 
 We call the axis title "Pre Treatment" because we're going to plot some made up measurements,
 like they could result from an experimental trial.
 
 ```@example tutorial
-ax1 = layout[1, 1] = Axis(scene, title = "Pre Treatment")
+ax1 = fig[1, 1] = Axis(fig, title = "Pre Treatment")
 
-scene
-save("step_002.svg", scene) # hide
+fig
+save("step_002.svg", fig) # hide
 nothing # hide
 ```
 ![step_002](step_002.svg)
@@ -60,8 +54,7 @@ nothing # hide
 ## Plotting into an Axis
 
 We can plot into the axis with the ! versions of Makie's plotting functions.
-Contrary to Makie, these calls return the plot objects, not the Scene or Axis,
-so it's easier to save them.
+Such mutating function calls return the plot object that is created, which we save for later.
 
 ```@example tutorial
 data1 = randn(50, 2) * [1 2.5; 2.5 1] .+ [10 10]
@@ -70,8 +63,8 @@ line1 = lines!(ax1, 5..15, x -> x, color = :red, linewidth = 2)
 scat1 = scatter!(ax1, data1,
     color = (:red, 0.3), markersize = 15px, marker = '■')
 
-scene
-save("step_003.svg", scene) # hide
+fig
+save("step_003.svg", fig) # hide
 nothing # hide
 ```
 ![step_003](step_003.svg)
@@ -83,17 +76,25 @@ the right of the one we have. Currently our layout has one row and one cell, and
 only one Axis inside of it:
 
 ```@example tutorial
-layout
+fig.layout
 ```
 
-We can extend the grid by indexing into new grid cells. Let's place a new axis
-next to the one we have, in row 1 and column 2.
+We can extend the grid with a new axis by plotting into a new grid position. Let's place a new axis
+with another line plot next to the one we have, in row 1 and column 2.
+
+We can use the non-mutating plotting syntax and pass a position in our figure as the first argument.
+When we index into a figure, we get a `FigurePosition` object which describes the position we want
+to put our new axis in.
+
+The plotting call returns an `AxisPlot` object which we can directly destructure into axis and plot.
 
 ```@example tutorial
-ax2 = layout[1, 2] = Axis(scene, title = "Post Treatment")
+ax2, line2 = lines(fig[1, 2], 7..17, x -> -x + 26,
+    color = :blue, linewidth = 2,
+    axis = (title = "Post Treatment",))
 
-scene
-save("step_004.svg", scene) # hide
+fig
+save("step_004.svg", fig) # hide
 nothing # hide
 ```
 ![step_004](step_004.svg)
@@ -103,22 +104,22 @@ axis on the right. We can take another look at the `layout` to see how it has
 changed:
 
 ```@example tutorial
-layout
+fig.layout
 ```
 
 Let's plot into the new axis, the same way we did the scatter plots before.
+We can also leave out the axis as the first argument if we just want to plot into
+the current axis.
 
 
 ```@example tutorial
 data2 = randn(50, 2) * [1 -2.5; -2.5 1] .+ [13 13]
 
-line2 = lines!(ax2, 7..17, x -> -x + 26, color = :blue, linewidth = 2)
-scat2 = scatter!(ax2, data2,
+scat2 = scatter!(data2,
     color = (:blue, 0.3), markersize = 15px, marker = '▲')
 
-
-scene
-save("step_005.svg", scene) # hide
+fig
+save("step_005.svg", fig) # hide
 nothing # hide
 ```
 ![step_005](step_005.svg)
@@ -128,13 +129,14 @@ nothing # hide
 
 We want to make the left and right axes correspond to each other, so we can compare
 the plots more easily. To do that, we link both x and y axes. That will keep them
-synchronized.
+synchronized. The function `linkaxes!` links both x and y, `linkxaxes!` links only x and
+`linkyaxes!` links only y.
 
 ```@example tutorial
 linkaxes!(ax1, ax2)
 
-scene
-save("step_006.svg", scene) # hide
+fig
+save("step_006.svg", fig) # hide
 nothing # hide
 ```
 ![step_006](step_006.svg)
@@ -142,13 +144,13 @@ nothing # hide
 
 This looks good, but now both y-axes are the same, so we can hide the right one
 to make the plot less cluttered. We keep the grid lines, though. You can see that
-now that the y-axis is gone, the two LAxes grow to fill the gap.
+now that the y-axis is gone, the two Axes grow to fill the gap.
 
 ```@example tutorial
 hideydecorations!(ax2, grid = false)
 
-scene
-save("step_007.svg", scene) # hide
+fig
+save("step_007.svg", fig) # hide
 nothing # hide
 ```
 ![step_007](step_007.svg)
@@ -162,50 +164,50 @@ ax1.xlabel = "Weight [kg]"
 ax2.xlabel = "Weight [kg]"
 ax1.ylabel = "Maximum Velocity [m/sec]"
 
-scene
-save("step_007_2.svg", scene) # hide
+fig
+save("step_007_2.svg", fig) # hide
 nothing # hide
 ```
 ![step_007 2](step_007_2.svg)
 
 ## Adding a Legend
 
-Let's add a legend to our plot that describes elements from both axes. We use
+Let's add a legend to our figure that describes elements from both axes. We use
 Legend for that. Legend is a relatively complex object and there are many
 ways to create it, but here we'll keep it simple. We place the legend on the
 right again, in row 1 and column 3. Instead of specifying column three, we can
 also say `end+1`.
 
 ```@example tutorial
-leg = layout[1, end+1] = Legend(scene,
+leg = fig[1, end+1] = Legend(fig,
     [line1, scat1, line2, scat2],
     ["f(x) = x", "Data", "f(x) = -x + 26", "Data"])
 
-scene
-save("step_008.svg", scene) # hide
+fig
+save("step_008.svg", fig) # hide
 nothing # hide
 ```
 ![step_008](step_008.svg)
 
-You can see one nice feature of MakieLayout here, which is that the legend takes
+You can see one nice feature of Makie here, which is that the legend takes
 much less horizontal space than the two axes. In fact, it takes exactly the space
-that it needs. This is possible because objects in MakieLayout can tell their width
+that it needs. This is possible because layoutable objects in Makie can tell their width
 or height to their parent `GridLayout`, which can then shrink the row or column
 appropriately.
 
 One thing that could be better about this plot, is that the legend looks like
 it belongs only to the right axis, even though it describes elements from both
 axes. So let's move it in the middle below the two. This is easily possible in
-MakieLayout, without having to recreate the plot from scratch. We simply assign
+Makie, without having to recreate the plot from scratch. We simply assign
 the legend to its new slot.
 
 We want it in the second row, and spanning the first two columns.
 
 ```@example tutorial
-layout[2, 1:2] = leg
+fig[2, 1:2] = leg
 
-scene
-save("step_009.svg", scene) # hide
+fig
+save("step_009.svg", fig) # hide
 nothing # hide
 ```
 ![step_009](step_009.svg)
@@ -223,10 +225,10 @@ two axes, now that there is no legend shrinking the column width to its own size
 We can remove empty cells in a layout by calling `trim!` on it:
 
 ```@example tutorial
-trim!(layout)
+trim!(fig.layout)
 
-scene
-save("step_010.svg", scene) # hide
+fig
+save("step_010.svg", fig) # hide
 nothing # hide
 ```
 ![step_010](step_010.svg)
@@ -243,8 +245,8 @@ this behavior. So we set the `tellheight` attribute to `true`.
 ```@example tutorial
 leg.tellheight = true
 
-scene
-save("step_011.svg", scene) # hide
+fig
+save("step_011.svg", fig) # hide
 nothing # hide
 ```
 ![step_011](step_011.svg)
@@ -256,14 +258,14 @@ use of space is to change the legend's orientation to `:horizontal`.
 ```@example tutorial
 leg.orientation = :horizontal
 
-scene
-save("step_012.svg", scene) # hide
+fig
+save("step_012.svg", fig) # hide
 nothing # hide
 ```
 ![step_012](step_012.svg)
 
 
-## Sublayouts
+## Nested Layouts
 
 Let's add two new axes with heatmaps! We want them stacked on top of each other
 on the right side of the figure. We'll do the naive thing first, which is to
@@ -272,12 +274,12 @@ versions of layout assignment syntax for convenience. Here, we create and assign
 two axes at once. The number of cells and objects has to match to do this.
 
 ```@example tutorial
-hm_axes = layout[1:2, 3] = [Axis(scene, title = t) for t in ["Cell Assembly Pre", "Cell Assembly Post"]]
+hm_axes = fig[1:2, 3] = [Axis(fig, title = t) for t in ["Cell Assembly Pre", "Cell Assembly Post"]]
 
 heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 
-scene
-save("step_013.svg", scene) # hide
+fig
+save("step_013.svg", fig) # hide
 nothing # hide
 ```
 ![step_013](step_013.svg)
@@ -304,14 +306,14 @@ The detaching from the main layout happens automatically.
 
 ```@example tutorial
 hm_sublayout = GridLayout()
-layout[1:2, 3] = hm_sublayout
+fig[1:2, 3] = hm_sublayout
 
 # there is another shortcut for filling a GridLayout vertically with
 # a vector of content
 hm_sublayout[:v] = hm_axes
 
-scene
-save("step_014.svg", scene) # hide
+fig
+save("step_014.svg", fig) # hide
 nothing # hide
 ```
 ![step_014](step_014.svg)
@@ -323,8 +325,8 @@ The function `hidedecorations!` hides both x and y decorations at once.
 
 hidedecorations!.(hm_axes)
 
-scene
-save("step_015.svg", scene) # hide
+fig
+save("step_015.svg", fig) # hide
 nothing # hide
 ```
 ![step_015](step_015.svg)
@@ -351,10 +353,10 @@ for hm in heatmaps
     hm.colorrange = (1, 3)
 end
 
-cbar = hm_sublayout[:, 2] = Colorbar(scene, heatmaps[1], label = "Activity [spikes/sec]")
+cbar = hm_sublayout[:, 2] = Colorbar(fig, heatmaps[1], label = "Activity [spikes/sec]")
 
-scene
-save("step_016.svg", scene) # hide
+fig
+save("step_016.svg", fig) # hide
 nothing # hide
 ```
 ![step_016](step_016.svg)
@@ -367,15 +369,15 @@ sublayout. Let's give it a fixed width of 30 units.
 ```@example tutorial
 cbar.width = 30
 
-scene
-save("step_017.svg", scene) # hide
+fig
+save("step_017.svg", fig) # hide
 nothing # hide
 ```
 ![step_017](step_017.svg)
 
 
 Much better! Note that you can usually set all attributes during creation of an object
-(`Colorbar(scene, width = 30)`) or after the fact, like in this example.
+(`Colorbar(fig, width = 30)`) or after the fact, like in this example.
 
 Objects can also have a width or height relative to the space given to them by their
 parent `GridLayout`. If we feel that the colorbar is a bit too tall, we can shrink it
@@ -387,8 +389,8 @@ If you only specify a number like `30`, it is interpreted as `Fixed(30)`.
 ```@example tutorial
 cbar.height = Relative(2/3)
 
-scene
-save("step_18.svg", scene) # hide
+fig
+save("step_18.svg", fig) # hide
 nothing # hide
 ```
 ![step_18](step_18.svg)
@@ -401,8 +403,8 @@ We can set the `ticks` attribute to any iterable of numbers that we want.
 ```@example tutorial
 cbar.ticks = 1:0.5:3
 
-scene
-save("step_18b.svg", scene) # hide
+fig
+save("step_18b.svg", fig) # hide
 nothing # hide
 ```
 ![step_18b](step_18b.svg)
@@ -412,11 +414,11 @@ nothing # hide
 
 Now the plot could use a title! While other plotting packages sometimes have
 functions like `supertitle`, they often don't work quite right or force you to
-make manual adjustments. In MakieLayout, the `Label` object is much more flexible
+make manual adjustments. In Makie, the `Label` object is much more flexible
 as it allows you to place text anywhere you want. We therefore create our super
 title not with a dedicated function but as a simple part of the whole layout.
 
-How can we place content in a row above row 1? This is easy in MakieLayout, as
+How can we place content in a row above row 1? This is easy in Makie, as
 indexing outside of the current GridLayout cells works not only with higher numbers
 but also with lower numbers. Therefore, we can index into the zero-th row, which
 will create a new row and push all other content down.
@@ -426,11 +428,11 @@ to reflect the new GridLayout size.
 
 
 ```@example tutorial
-supertitle = layout[0, :] = Label(scene, "Plotting with MakieLayout",
+supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
     textsize = 30, font = "Noto Sans Bold", color = (:black, 0.25))
 
-scene
-save("step_19.svg", scene) # hide
+fig
+save("step_19.svg", fig) # hide
 nothing # hide
 ```
 ![step_19](step_19.svg)
@@ -442,10 +444,10 @@ In figures meant for publication, you often need to label subplots with letters
 or numbers. These can sometimes cause trouble because they overlap with other
 content, which has to be fixed after the fact in vector graphics software.
 
-This is not necessary in MakieLayout. Let's place letters in the upper left corners
+This is not necessary in Makie. Let's place letters in the upper left corners
 of the left group and the right group. To do that, we will make use of a property
 of layouts that we have used without mentioning it. When we place our letters, we
-want them to act similarly to the axis titles or labels. In MakieLayout, layoutable
+want them to act similarly to the axis titles or labels. In Makie, layoutable
 objects have an inner part, which is considered the "important" area that should
 align with other "important" inner areas. You can see that the three upper axes
 align with their top spines, and not their titles.
@@ -465,13 +467,13 @@ choice. (Remember that our previously first row is now the second row, due to th
 super title.)
 
 ```@example tutorial
-label_a = layout[2, 1, TopLeft()] = Label(scene, "A", textsize = 35,
+label_a = fig[2, 1, TopLeft()] = Label(fig, "A", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
-label_b = layout[2, 3, TopLeft()] = Label(scene, "B", textsize = 35,
+label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 35,
     font = "Noto Sans Bold", halign = :right)
 
-scene
-save("step_20.svg", scene) # hide
+fig
+save("step_20.svg", fig) # hide
 nothing # hide
 ```
 ![step_20](step_20.svg)
@@ -488,8 +490,8 @@ is (left, right, bottom, top).
 label_a.padding = (0, 6, 16, 0)
 label_b.padding = (0, 6, 16, 0)
 
-scene
-save("step_21.svg", scene) # hide
+fig
+save("step_21.svg", fig) # hide
 nothing # hide
 ```
 ![step_21](step_21.svg)
@@ -513,14 +515,14 @@ because the left two axes will grow to fill the remaining space.
 
 colsize!(hm_sublayout, 1, Aspect(1, 1))
 
-scene
-save("step_22.svg", scene) # hide
+fig
+save("step_22.svg", fig) # hide
 nothing # hide
 ```
 ![step_22](step_22.svg)
 
 And there we have it! Hopefully this tutorial has given you an overview how to
-approach the creation of a complex figure in MakieLayout. Check the rest of the
+approach the creation of a complex figure in Makie. Check the rest of the
 documentation for more details and other dynamic parts like sliders and buttons!
 
 ```@eval

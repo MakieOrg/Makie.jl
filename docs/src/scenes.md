@@ -2,13 +2,16 @@
 
 ## What is a `Scene`?
 
-A `Scene` is basically a container for `Plot`s and other `Scene`s.  `Scenes` have `Plot`s (including an `Axis` if `show_axis = true`) and `Subscenes` associated with them.  Every Scene has a transformation, made up of _scale_, _translation_, and _rotation_.
+`Scene`s are fundamental building blocks of Makie figures.
+A Scene is like a container for `Plot`s and other `Scene`s.
+`Scenes` have `Plot`s (including an `Axis` if `show_axis = true`) and `Subscenes` associated with them.
+Every Scene also has a transformation, made up of _scale_, _translation_, and _rotation_.
 
-Plots associated with a Scene can be accessed through `scene.plots`, which returns an Array of the plots associated with the `Scene`.  Note that if `scene` has no plots (if it was created by layouting, or is an empty scene), then `scene.plots` will be a _0-element array_!
+!!! note
+    Before the introduction of the `Figure` workflow, `Scene`s used to be the main container object which was returned from all plotting functions.
+    Now, scenes are mostly an implementation detail for many users, unless they want to build custom solutions that go beyond what the default system offers.
 
-If a scene is not explicitly declared prior to one of the `plot!` commands being called, a `Scene` will be created by default as follows:  `lines(args...) = lines!(Scene(), args...)`.
-
-In this example, `lines` becomes the parent of all of the following `plot!` commands since it was called prior to a `Scene` being explicitly created.
+A Scene's plots can be accessed via `scene.plots`.
 
 A Scene's subscenes (also called children) can be accessed through `scene.children`.  This will return an Array of the `Scene`'s child scenes.  A child scene can be created by `childscene = Scene(parentscene)`.
 
@@ -22,13 +25,7 @@ Any keyword argument given to the `Scene` will be propagated to its plots; there
 
 A subscene is no different than a normal Scene, except that it is linked to a "parent" Scene.  It inherits the transformations of the parent Scene, but can then be transformed independently of it.
 
-<!--TODO add universe example here-->
-
-## Current Scene
-
-Knowing what Scene you are working with at any given moment is paramount as you work with more complex Makie implementations containing multiple Scenes. You can check your current scene by doing `AbstractPlotting.current_scene()` which will return the current active scene (the last scene that got created). 
-
-## Modifying the Scene
+## Modifying A Scene
 
 Makie offers mutation functions to scale, translate and rotate your Scenes on the fly.
 
