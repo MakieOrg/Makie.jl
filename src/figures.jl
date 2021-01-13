@@ -84,6 +84,11 @@ function Base.setindex!(fig::Figure, obj, rows, cols, side = GridLayoutBase.Inne
     obj
 end
 
+function Base.setindex!(fig::Figure, obj::AbstractArray, rows, cols)
+    fig.layout[rows, cols] = obj
+    obj
+end
+
 Base.lastindex(f::Figure, i) = lastindex(f.layout, i)
 Base.lastindex(f::FigurePosition, i) = lastindex(f.fig, i)
 

@@ -1,48 +1,22 @@
-# Troubleshooting
+# Frequently Asked Questions
 
-## Installation issues
+## Installation Issues
 
-Here, we assume you are running Julia on the vanilla system image - no PackageCompiler goodness.  If you are using `PackageCompiler`, check out the page on compilation.
+We assume you are running Julia on the default system image without PackageCompiler.
 
 ### No `Scene` displayed or GLMakie fails to build
 
-If `Makie` builds, but when a plotting, no `Scene` is displayed, as in:
-
-```julia
-julia> using Makie
-
-julia> lines([0,1], [0,1])
-Scene (960px, 540px):
-events:
-    window_area: GeometryTypes.HyperRectangle{2,Int64}([0, 0], [0, 0])
-    window_dpi: 100.0
-    window_open: false
-    mousebuttons: Set(AbstractPlotting.Mouse.Button[])
-    mouseposition: (0.0, 0.0)
-    mousedrag: notpressed
-    scroll: (0.0, 0.0)
-    keyboardbuttons: Set(AbstractPlotting.Keyboard.Button[])
-    unicode_input: Char[]
-    dropped_files: String[]
-    hasfocus: false
-    entered_window: false
-plots:
-   *Axis2D{...}
-   *Lines{...}
-subscenes:
-   *scene(960px, 540px)
-```
-
-then, your backend may not have built correctly.  By default, Makie will try to use GLMakie as a backend, but if it does not build correctly for whatever reason, then scenes will not be displayed.
+If `Makie` builds, but when plotting no window or plot is displayed, your backend may not have built correctly.
+By default, Makie will try to use GLMakie as a backend, but if it does not build correctly for whatever reason, then scenes will not be displayed.
 Ensure that your graphics card supports OpenGL; if it does not (old models, or relatively old integrated graphics cards), then you may want to consider CairoMakie.
 
-# Plotting issues
+## Plotting issues
 
-## Dimension too large
+### Dimensions too large
 
 In general, plotting functions tend to plot whatever's given to them as a single texture.  This can lead to GL errors, or OpenGL failing silently.  To circumvent this, one can 'tile' the plots (i.e., assemble them piece-by-piece) to decrease the individual texture size.
 
-### 2d plots (heatmaps, images, etc.)
+#### 2d plots (heatmaps, images, etc.)
 
 ```julia
 heatmap(rand(Float32, 24900, 26620))
@@ -70,7 +44,7 @@ heatmap!(sc, (size(data, 1)÷2 + 1):size(data, 1), (size(data, 2)÷2 + 1):size(d
 ```
 ![tiled heatmap](https://user-images.githubusercontent.com/32143268/61105143-a3b35780-a496-11e9-83d1-bebe549aa593.png)
 
-### 3d plots (volumes)
+#### 3d plots (volumes)
 
 The approach here is similar to that for the 2d plots, except that here there is a helpful function that gives the maximum texture size.
 You can check the maximum texture size with:
@@ -112,3 +86,67 @@ If `Makie` can't find your font, you can do two things:
     - `ENV["FREETYPE_ABSTRACTION_FONT_PATH"] = "/path/to/your/fonts"`
 
 3) Specify the path to the font; instead of `font = "Noto"`, you could write `joindir(homedir(), "Noto.ttf")` or something.
+
+
+## Layout Issues
+
+```@eval
+using CairoMakie
+CairoMakie.activate!()
+```
+
+### Elements are squashed into the lower left corner
+
+Layoutable elements require a bounding box that they align themselves to. If you
+place such an element in a layout, the bounding box is controlled by that layout.
+If you forget to put an element in a layout, it will have its default bounding box
+of `BBox(0, 100, 0, 100)` which ends up being in the lower left corner. You can
+also choose to specify a bounding box manually if you need more control.
+
+```@example
+using CairoMakie
+
+scene, layout = layoutscene(resolution = (1200, 1200))
+
+ax1 = Axis(scene, title = "Squashed")
+ax2 = layout[1, 1] = Axis(scene, title = "Placed in Layout")
+ax3 = Axis(scene, bbox = BBox(400, 800, 400, 800),
+  title = "Placed at BBox(400, 800, 400, 800)")
+
+save("faq_squashed_element.svg", scene); nothing # hide
+```
+
+![squashed elements](faq_squashed_element.svg)
+
+
+### Columns or rows are shrunk to the size of Text or another element
+
+Columns or rows that have size `Auto(true)` try to determine the width or height of all
+single-spanned elements that are placed in them, and if any elements report their
+size the row or column will shrink to the maximum reported size. This is so smaller
+elements with a known size take as little space as needed. But if there is other
+content in the row that should take more space, you can give the offending element
+the attribute `tellheight = false` or `tellwidth = false`. This way, its own size
+can be determined automatically, but
+it doesn't report it to the row or column of the layout. Alternatively, you can set the size
+of that row or column to `Auto(false)` (or any other value than `Auto(true)`).
+
+```@example
+using CairoMakie
+
+scene, layout = layoutscene(resolution = (1200, 1200))
+
+layout[1, 1] = Axis(scene, title = "Shrunk")
+layout[2, 1] = Axis(scene, title = "Expanded")
+layout[1, 2] = Label(scene, "tellheight = true", tellheight = true)
+layout[2, 2] = Label(scene, "tellheight = false", tellheight = false)
+
+save("faq_shrunk_row.svg", scene); nothing # hide
+```
+
+![shrunk row](faq_shrunk_row.svg)
+
+```@eval
+using GLMakie
+GLMakie.activate!()
+```

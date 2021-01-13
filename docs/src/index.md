@@ -25,8 +25,8 @@ CairoMakie.activate!()
 
 ## First Steps
 
-- Learn the basics of plotting with Makie in the [Tutorial](@ref)
-- Check out how to make more complex plots and layouts in the [MakieLayout Tutorial](@ref)
+- Learn the basics of plotting with Makie in the [Basic Tutorial](@ref)
+- Check out how to make more complex plots and layouts in the [Layout Tutorial](@ref)
 - See example plots in the [Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html).
 
 

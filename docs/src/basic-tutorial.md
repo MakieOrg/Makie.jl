@@ -1,4 +1,4 @@
-# Tutorial
+# Basic Tutorial
 
 Here is a quick tutorial to get you started. We assume you have [Julia](https://julialang.org/) and `GLMakie.jl` (or one of the other backends) installed already.
 
