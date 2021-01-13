@@ -44,7 +44,8 @@ excludes = Set((
     # sigh this is actually super close,
     # but doesn't interpolate the values inside the
     # triangles, so looks pretty different
-    "FEM polygon 2D"
+    "FEM polygon 2D",
+    "Connected Sphere"
 ))
 
 database = ReferenceTests.load_database()
@@ -54,7 +55,9 @@ filter!(database) do (name, entry)
     !(:volume in entry.used_functions) &&
     !(:volume! in entry.used_functions) &&
     !(:uv_mesh in entry.used_functions) &&
-    (nice_title(entry) !== "short_tests_111")
+    nice_title(entry) !== "short_tests_90" &&
+    nice_title(entry) !== "short_tests_111" &&
+    nice_title(entry) !== "short_tests_35"
 end
 
 recorded = joinpath(@__DIR__, "recorded")
