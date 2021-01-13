@@ -7,12 +7,10 @@ jobs:
     if: ${{ !github.event.issue.pull_request }}
     runs-on: ubuntu-latest
     steps:
+      - if: github.actor != 'JuliaTagBot'
       - uses: peter-evans/close-issue@v1
         with:
           comment: |
             We do not accept issues on the CairoMakie.jl repository.
             Please open your issue on the Makie.jl repository instead:
             https://github.com/JuliaPlots/Makie.jl/issues
-      - uses: OSDKDev/lock-issues@v1.1
-        with:
-          repo-token: "${{ secrets.GITHUB_TOKEN }}"
