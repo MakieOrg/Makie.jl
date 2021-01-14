@@ -23,7 +23,7 @@ const OneOrVec{T} = Union{
 
 # re-export AbstractPlotting
 for name in names(AbstractPlotting)
-    @eval import AbstractPlotting: $(name)
+    @eval using AbstractPlotting: $(name)
     @eval export $(name)
 end
 

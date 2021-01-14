@@ -627,7 +627,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     return nothing
 end
 
-function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
+function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix)
     ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
     idxs = LinearIndices(size(zs))
     faces = [
@@ -636,7 +636,8 @@ function surface2mesh(xs::Vector, ys::Vector, zs::Matrix)
     ]
     normal_mesh(ps, faces)
 end
-function surface2mesh(xs::Matrix, ys::Matrix, zs::Matrix)
+
+function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
     ps = [Point3f0(xs[i, j], ys[i, j], zs[i, j]) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
     idxs = LinearIndices(size(zs))
     faces = [
@@ -653,47 +654,55 @@ end
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.MeshScatter)
-    m = normal_mesh(primitive[:marker][])
+    @get_attribute(primitive, (color, model, marker, markersize, rotations))
+
+    if color isa AbstractArray{<: Number}
+        color = numbers_to_colors(color, primitive)
+    end
+
+    m = normal_mesh(marker)
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(primitive[:model][])
+    model = copy(model)
     view = scene.camera.view[]
+
     sort!(pos, by = p -> begin
         p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0f0), 1f0)
         cam_pos = view * model * p4d
         cam_pos[3] / cam_pos[4]
     end, rev=false)
 
-    colors = primitive[:color][]
-    if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Node(-0.1)
-    end
-    rotations = primitive[:rotations][]
+    submesh = Attributes(
+        model=model,
+        color=color,
+        shading=primitive.shading, lightposition=primitive.lightposition,
+        ambient=primitive.ambient, diffuse=primitive.diffuse,
+        specular=primitive.specular, shininess=primitive.shininess,
+        faceculling=get(primitive, :faceculling, -0.1)
+    )
+
     if !(rotations isa Vector)
         R = AbstractPlotting.rotationmatrix4(to_rotation(rotations))
-        primitive[:model][] = model * R
+        submesh[:model] = model * R
     end
     scales = primitive[:markersize][]
 
     for i in eachindex(pos)
         p = pos[i]
-        if colors isa Vector
-            primitive[:color][] = colors[i]
+        if color isa AbstractVector
+            submesh[:color] = color[i]
         end
         if rotations isa Vector
             R = AbstractPlotting.rotationmatrix4(to_rotation(rotations[i]))
-            primitive[:model][] = model * R
+            submesh[:model] = model * R
         end
-        scale = scales isa Vector ? scales[i] : scales
+        scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, primitive,
+            scene, screen, submesh,
             mesh = m, pos = p, scale = scale
         )
     end
 
-    # Restore adjusted attributes
-    primitive[:color][] = colors
-    primitive[:model][] = model
     return nothing
 end
