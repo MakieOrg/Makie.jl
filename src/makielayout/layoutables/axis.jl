@@ -166,7 +166,7 @@ function Axis(fig_or_scene; bbox = nothing, kwargs...)
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
         trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yreversed, tickwidth = ytickwidth,
             tickcolor = ytickcolor)
-            
+
     decorations[:yaxis] = yaxis
 
     xoppositelinepoints = lift(scene.px_area, spinewidth, xaxisposition) do r, sw, xaxpos
@@ -436,7 +436,7 @@ function getlimits(la::Axis, dim)
         plots_with_autolimits)
 
     bboxes = [FRect2D(AbstractPlotting.data_limits(p)) for p in visible_plots]
-    finite_bboxes = filter(isfinite, bboxes)
+    finite_bboxes = filter(AbstractPlotting.isfinite_rect, bboxes)
 
     isempty(finite_bboxes) && return nothing
 
