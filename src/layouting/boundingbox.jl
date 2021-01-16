@@ -67,8 +67,8 @@ function raw_boundingbox(plots::Vector)
         plot_idx = iterate(plots, idx)
         # isvisible(plot) || continue
         bb2 = boundingbox(plot)
-        isfinite(bb) || (bb = bb2)
-        isfinite(bb2) || continue
+        isfinite_rect(bb) || (bb = bb2)
+        isfinite_rect(bb2) || continue
         bb = union(bb, bb2)
     end
     return bb
@@ -192,7 +192,7 @@ function boundingbox(
                 # bb = rectdiv(bb, 1.5)
                 shifted_bb = FRect3D(rotated_bb) + position[i]
                 bboxc = bbox[]
-                if !isfinite(bboxc)
+                if !isfinite_rect(bboxc)
                     bbox[] = shifted_bb
                 else
                     bbox[] = union(bboxc, shifted_bb)

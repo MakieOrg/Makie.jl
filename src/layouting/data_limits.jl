@@ -57,7 +57,7 @@ function extrema_nan(itr)
 end
 
 function xyz_boundingbox(transform_func, mesh::GeometryBasics.Mesh)
-    xyz_boundingbox(transform_func, coordinates(mesh))
+    xyz_boundingbox(transform_func, decompose(Point, mesh))
 end
 
 function xyz_boundingbox(transform_func, xyz)
@@ -121,7 +121,7 @@ function data_limits(x::Annotations)
     return inv(modelmatrix(x)) * bb
 end
 
-Base.isfinite(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
+isfinite_rect(x::Rect) = all(isfinite.(minimum(x))) &&  all(isfinite.(maximum(x)))
 
 function data_limits(plots::Vector)
     isempty(plots) && return
@@ -133,8 +133,8 @@ function data_limits(plots::Vector)
         # axis shouldn't be part of the data limit
         isaxis(plot) && continue
         bb2 = data_limits(plot)::FRect3D
-        isfinite(bb) || (bb = bb2)
-        isfinite(bb2) || continue
+        isfinite_rect(bb) || (bb = bb2)
+        isfinite_rect(bb2) || continue
         bb = union(bb, bb2)
     end
     bb
