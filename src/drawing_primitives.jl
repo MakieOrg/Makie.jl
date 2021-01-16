@@ -400,6 +400,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
             end
         end
 
+        map(mesh) do mesh
+            func = to_value(transform_func_obs(meshplot))
+            if func !== identity
+                mesh.position .= apply_transform.(func, mesh.position)
+            end
+            return
+        end
         visualize(mesh, Style(:default), gl_attributes)
     end
 end
