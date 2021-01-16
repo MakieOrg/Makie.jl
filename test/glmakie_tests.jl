@@ -5,6 +5,7 @@ using GLMakie.ShaderAbstractions
 using GLMakie.ShaderAbstractions: Sampler
 using GLMakie.StaticArrays
 using GLMakie.GeometryBasics
+using ReferenceTests.RNG
 
 # A test case for wide lines and mitering at joints
 @cell "Miter Joints for line rendering" begin
@@ -45,17 +46,17 @@ end
 # Test for resizing of TextureBuffer
 @cell "Dynamically adjusting number of particles in a meshscatter" begin
 
-    pos = Node(rand(Point3f0, 2))
-    rot = Node(rand(Vec3f0, 2))
-    color = Node(rand(RGBf0, 2))
-    size = Node(0.1*rand(2))
+    pos = Node(RNG.rand(Point3f0, 2))
+    rot = Node(RNG.rand(Vec3f0, 2))
+    color = Node(RNG.rand(RGBf0, 2))
+    size = Node(0.1*RNG.rand(2))
 
     makenew = Node(1)
     on(makenew) do i
-        pos[] = rand(Point3f0, i)
-        rot[] = rand(Vec3f0, i)
-        color[] = rand(RGBf0, i)
-        size[] = 0.1*rand(i)
+        pos[] = RNG.rand(Point3f0, i)
+        rot[] = RNG.rand(Vec3f0, i)
+        color[] = RNG.rand(RGBf0, i)
+        size[] = 0.1*RNG.rand(i)
     end
 
     scene = meshscatter(pos,
@@ -75,18 +76,17 @@ end
     function update_loop(m, buff, screen)
         for i = 1:20
             GLFW.PollEvents()
-            buff .= rand.(Point3f0) .* 20f0
+            buff .= RNG.rand.(Point3f0) .* 20f0
             m[1] = buff
             GLMakie.render_frame(screen)
             GLFW.SwapBuffers(GLMakie.to_native(screen))
             glFinish()
         end
     end
-    scene = meshscatter(rand(Point3f0, 10^4) .* 20f0)
-    screen = AbstractPlotting.backend_display(GLMakie.GLBackend(), scene)
-    meshplot = scene[end]
-    buff = rand(Point3f0, 10^4) .* 20f0;
+    fig, ax, meshplot = meshscatter(RNG.rand(Point3f0, 10^4) .* 20f0)
+    screen = AbstractPlotting.backend_display(GLMakie.GLBackend(), fig.scene)
+    buff = RNG.rand(Point3f0, 10^4) .* 20f0;
     update_loop(meshplot, buff, screen)
     set_window_config!(renderloop=GLMakie.renderloop)
-    scene
+    fig
 end
