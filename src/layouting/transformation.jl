@@ -214,6 +214,30 @@ apply_transform(f::typeof(identity), positions::AbstractArray) = positions
 apply_transform(f::typeof(identity), positions::AbstractVector) = positions
 apply_transform(f::typeof(identity), position::VecTypes) = position
 
+struct PointTrans{N, F}
+    f::F
+end
+
+PointTrans{N}(func::F) where {N, F} = PointTrans{N, F}(func)
+Base.broadcastable(x::PointTrans) = (x,)
+
+function apply_transform(f::PointTrans{N}, point::Point{N}) where N
+    return f.f(point)
+end
+
+function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
+    p_dim = to_ndim(Point{N1, Float32}, point, 0.0)
+    p_trans = f.f(p_dim)
+    if N1 < N2
+        p_large = ntuple(i-> i <= N1 ? p_trans[i] : point[i], N2)
+        return Point{N2, Float32}(p_large)
+    else
+        return to_ndim(Point{N2, Float32}, p_trans, 0.0)
+    end
+end
+
+
+
 function apply_transform(f, data::AbstractArray)
     return map(point-> apply_transform(f, point), data)
 end
