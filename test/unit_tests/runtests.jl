@@ -13,4 +13,5 @@
     include("liftmacro.jl")
     include("makielayout.jl")
     include("figures.jl")
+    include("transformations.jl")
 end
