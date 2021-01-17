@@ -7,15 +7,11 @@ function convert_arguments(P::Type{<:AbstractPlot}, h::StatsBase.Histogram{<:Any
     to_plotspec(ptype, convert_arguments(ptype, map(f, h.edges)..., Float64.(h.weights)); kwargs...)
 end
 
-# recipes export by default, but histogram clashes and breaks e.g. StatsMakie and StatsBase
-module HistogramNoExport
 
-using ..AbstractPlotting
-using AbstractPlotting: @recipe, ATTRIBUTES
 import StatsBase
 
 """
-    histogram(values; bins = 15, normalization = :none)
+    hist(values; bins = 15, normalization = :none)
 
 Plot a histogram of `values`. `bins` can be an `Int` to create that
 number of equal-width bins over the range of `values`.
@@ -35,14 +31,15 @@ can be normalized by setting `normalization`. Possible values are:
 ## Attributes
 $(ATTRIBUTES)
 """
-@recipe(Histogram, values) do scene
+@recipe(Hist, values) do scene
     Attributes(
         bins = 15, # Int or iterable of edges
         normalization = :none
     )
 end
 
-function AbstractPlotting.plot!(plot::Histogram)
+
+function AbstractPlotting.plot!(plot::Hist)
 
     values = plot[:values]
 
@@ -70,8 +67,7 @@ function AbstractPlotting.plot!(plot::Histogram)
     widths = lift(diff, edges)
 
     # plot the values, not the observables, to be in control of updating
-    bp = barplot!(plot, points[]; width = widths[], plot.attributes...).plots[1]
-
+    bp = barplot!(plot, points[]; width = widths[], plot.attributes...)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w
@@ -81,7 +77,3 @@ function AbstractPlotting.plot!(plot::Histogram)
 
     plot
 end
-
-end
-
-using .HistogramNoExport

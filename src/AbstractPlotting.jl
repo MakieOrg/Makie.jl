@@ -126,7 +126,7 @@ include("layouting/boundingbox.jl")
 # more default recipes
 # statistical recipes
 include("stats/conversions.jl")
-include("stats/histogram.jl")
+include("stats/hist.jl")
 include("stats/density.jl")
 include("stats/distributions.jl")
 include("stats/crossbar.jl")
