@@ -764,7 +764,7 @@ function convert_gaps(gaps)
   else
       throw(ArgumentError(error_msg))
   end
-  (; dot_gap, dash_gap)
+  (dot_gap = dot_gap, dash_gap = dash_gap)
 end
 
 function convert_attribute(f::Symbol, ::key"frames")
