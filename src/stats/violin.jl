@@ -22,7 +22,7 @@ function plot!(plot::Violin)
         for (key, idxs) in StructArrays.finduniquesorted(x)
             v = view(y, idxs)
             
-            spec = (x = key, kde = density(v; trim = trim), median = median(v))
+            spec = (x = key, kde = _density(v; trim = trim), median = median(v))
             min, max = extrema_nan(spec.kde.density)
             scale = 0.5*bw/max
             xl = reverse(spec.x .- spec.kde.density .* scale)
