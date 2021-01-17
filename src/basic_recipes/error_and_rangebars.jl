@@ -57,48 +57,48 @@ end
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
-        (x, y, e, e)
+        Vec4f0(x, y, e, e)
     end
     (xyerr,)
 end
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
-    xyerr = broadcast(tuple, x, y, error_low, error_high)
+    xyerr = broadcast(Vec4f0, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
-        (x, y, el, eh)
+        Vec4f0(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
     xyerr = broadcast(xy, error_both) do (x, y), e
-        (x, y, e, e)
+        Vec4f0(x, y, e, e)
     end
     (xyerr,)
 end
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
-        (x, y, el, eh)
+        Vec4f0(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
-        (x, y, el, eh)
+        Vec4f0(x, y, el, eh)
     end
     (xyerr,)
 end
 
 function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
     xyerr = broadcast(xy_error_both) do (x, y, e)
-        (x, y, e, e)
+        Vec4f0(x, y, e, e)
     end
     (xyerr,)
 end
@@ -106,13 +106,13 @@ end
 ### conversions for rangebars
 
 function AbstractPlotting.convert_arguments(::Type{<:Rangebars}, val, low, high)
-    val_low_high = broadcast(tuple, val, low, high) 
+    val_low_high = broadcast(Vec3f0, val, low, high) 
     (val_low_high,)
 end
 
 function AbstractPlotting.convert_arguments(::Type{<:Rangebars}, val, low_high)
     val_low_high = broadcast(val, low_high) do val, (low, high)
-        (val, low, high)
+        Vec3f0(val, low, high)
     end
     (val_low_high,)
 end
