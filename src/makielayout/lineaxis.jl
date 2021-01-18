@@ -339,6 +339,17 @@ function get_ticks(ticks_and_labels::Tuple{Any, Any}, ::AbstractPlotting.Automat
     ticks_and_labels
 end
 
+function get_ticks(tickfunction::Function, formatter, vmin, vmax)
+    result = tickfunction(vmin, vmax)
+    if result isa Tuple{Any, Any}
+        tickvalues, ticklabels = result
+    else
+        tickvalues = result
+        ticklabels = get_ticklabels(formatter, tickvalues)
+    end
+    return tickvalues, ticklabels
+end
+
 """
     get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax)
 
