@@ -208,7 +208,7 @@ function mouse_position(scene::Scene, screen::Screen)
         x, y = GLFW.GetCursorPos(window)
         pos = correct_mouse(window, x, y)
         if pos != e.mouseposition[]
-            e.mouseposition[] = pos
+            @print_error e.mouseposition[] = pos
         end
         return
     end
