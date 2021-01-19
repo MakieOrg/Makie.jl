@@ -98,6 +98,8 @@ A couple of behaviors are implemented by default.
 You can specify static ticks by passing an iterable of numbers.
 You can also pass a tuple with tick values and tick labels directly, bypassing the formatting step.
 
+As a third option you can pass a function taking minimum and maximum axis value as arguments and returning either a vector of tickvalues which are then passed to the current formatter, or a tuple with tickvalues and ticklabels which are then used directly.
+
 For formatting, you can pass a function which takes a vector of numbers and outputs a vector of strings.
 You can also pass a format string which is passed to `Formatting.format` from [Formatting.jl](https://github.com/JuliaIO/Formatting.jl), where you can mix the formatted numbers with other text like in `"{:.2f}ms"`.
 
