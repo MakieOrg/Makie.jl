@@ -3,7 +3,12 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
-## Creating a legend
+## Creating A Legend From Elements
+
+You can create a basic Legend by passing a vector of legend entries and a vector of labels, plus an optional title as the third argument.
+
+The elements in the vector of legend entries can either be plot objects or LegendElements like LineElement, MarkerElement and PolyElement.
+Or they can be vectors of such objects that will be layered together as one.
 
 ```@example
 using CairoMakie
@@ -26,7 +31,31 @@ save("example_legend.svg", scene); nothing # hide
 ![example legend](example_legend.svg)
 
 
-## Multi-bank legend
+## Creating A Legend From An Axis
+
+You can also create a Legend by passing it an axis object, like `Axis`, `LScene` or `Scene`.
+All plots that have a `label` attribute set will be put into the legend, in the order that they appear in the axis, and you can optionally pass a title as the third argument.
+
+```@example
+using CairoMakie
+
+f = Figure()
+
+ax = f[1, 1] = Axis(f)
+
+lines!(0..15, sin, label = "sin", color = :blue)
+lines!(0..15, cos, label = "cos", color = :red)
+lines!(0..15, x -> -cos(x), label = "-cos", color = :green)
+
+f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
+
+save("example_legend_from_axis.svg", f); nothing # hide
+```
+
+![example legend from axis](example_legend_from_axis.svg)
+
+
+## Multi-Bank Legend
 
 You can control the number of banks with the `nbanks` attribute. Banks are columns
 when in vertical mode, and rows when in horizontal mode.
@@ -52,7 +81,7 @@ save("example_legend_ncols.svg", scene); nothing # hide
 
 
 
-## Legend inside an axis
+## Legend Inside An Axis
 
 To place a legend inside an axis you can simply add it to the same layout slot
 that the axis lives in. As long as the axis is bigger than the legend you can
@@ -94,7 +123,7 @@ save("example_legend_alignment.svg", scene); nothing # hide
 ![example legend alignment](example_legend_alignment.svg)
 
 
-## Creating legend entries manually
+## Creating Legend Entries Manually
 
 Sometimes you might want to construct legend entries from scratch to have maximum
 control. So far you can use `LineElement`s, `MarkerElement`s or `PolyElement`s.
@@ -146,7 +175,7 @@ save("example_legend_entries.svg", scene); nothing # hide
 ![example legend entries](example_legend_entries.svg)
 
 
-## Horizontal legend
+## Horizontal Legend
 
 In case you want the legend entries to be listed horizontally, set the `orientation`
 attribute to `:horizontal`. In this case the `nbanks` attribute refers to the
@@ -182,7 +211,7 @@ save("example_legend_horizontal.svg", scene); nothing # hide
 ![example legend horizontal](example_legend_horizontal.svg)
 
 
-## Multi-group legends
+## Multi-Group Legends
 
 Sometimes a legend consists of multiple groups, for example in a plot where both
 marker size and color are varied and those properties need to be visualized
