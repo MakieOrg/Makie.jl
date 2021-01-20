@@ -118,7 +118,7 @@ export grid!, hgrid!, vgrid!
 
 export swap!
 export ncols, nrows
-export contents
+export contents, content
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")
