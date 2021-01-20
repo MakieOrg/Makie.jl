@@ -155,32 +155,14 @@ function get_layout_at!(fp::FigurePosition; createmissing = false)
     end
 end
 
-function get_layout_at!(layout::GridLayoutBase.GridLayout, fsp::FigureSubposition; createmissing = false)
-    gp = layout[fsp.rows, fsp.cols, fsp.side]
-    c = contents(gp, exact = true)
-    layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
-    if isempty(layouts)
-        if createmissing
-            return gp[] = GridLayoutBase.GridLayout()
-        else
-            error("No layout found but `createmissing` is false.")
-        end
-    elseif length(layouts) == 1
-        return only(layouts)
-    else
-        error("Found more than zero or one GridLayouts at $(gp)")
-    end
-end
-
 function get_layout_at!(fsp::FigureSubposition; createmissing = false)
     layout = get_layout_at!(fsp.parent; createmissing = createmissing)
-    get_layout_at!(layout, fsp; createmissing = createmissing)
+    gp = layout[fsp.rows, fsp.cols, fsp.side]
+    get_layout_at!(gp; createmissing = createmissing)
 end
-
 
 get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
 get_figure(fp::FigurePosition) = fp.fig
-
 
 function GridLayoutBase.contents(f::FigurePosition; exact = false)
     GridLayoutBase.contents(f.gp, exact = exact)
@@ -191,16 +173,11 @@ function GridLayoutBase.contents(f::FigureSubposition; exact = false)
     GridLayoutBase.contents(layout[f.rows, f.cols, f.side], exact = exact)
 end
 
-function content(f::FigurePosition)
-    cs = contents(f, exact = true)
-    if length(cs) == 1
-        return cs[1]
-    else
-        error("There is not exactly one object at the given FigurePosition")
-    end
+function GridLayoutBase.content(f::FigurePosition)
+    content(f.gp)
 end
 
-function content(f::FigureSubposition)
+function GridLayoutBase.content(f::FigureSubposition)
     cs = contents(f, exact = true)
     if length(cs) == 1
         return cs[1]
