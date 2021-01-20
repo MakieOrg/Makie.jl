@@ -402,7 +402,7 @@ end
 
 """
     Legend(
-        scene,
+        fig_or_scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
         title::Optional{String} = nothing;
@@ -413,7 +413,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function Legend(scene,
+function Legend(fig_or_scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
         title::Optional{String} = nothing;
@@ -425,14 +425,14 @@ function Legend(scene,
 
     entries = [LegendEntry(label, content) for (content, label) in zip(contents, labels)]
     entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
-    legend = Legend(scene, entrygroups; kwargs...)
+    legend = Legend(fig_or_scene, entrygroups; kwargs...)
 end
 
 
 
 """
     Legend(
-        scene,
+        fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{String}};
@@ -446,7 +446,7 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function Legend(scene,
+function Legend(fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{String}};
@@ -460,5 +460,30 @@ function Legend(scene,
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
 
     entrygroups = Node{Vector{EntryGroup}}([(t, en) for (t, en) in zip(titles, entries)])
-    legend = Legend(scene, entrygroups; kwargs...)
+    legend = Legend(fig_or_scene, entrygroups; kwargs...)
 end
+
+
+"""
+    Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
+
+Create a single-group legend with all plots from `axis` that have the
+attribute `label` set.
+"""
+function Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
+    Legend(fig_or_scene, get_labeled_plots(axis)..., title; kwargs...)
+end
+
+function get_labeled_plots(ax)
+    lplots = filter(get_plots(ax)) do plot
+        haskey(plot.attributes, :label)
+    end
+    labels = map(lplots) do l
+        convert(String, l.label[])
+    end
+    lplots, labels
+end
+
+get_plots(ax::Axis) = ax.scene.plots
+get_plots(scene::Scene) = scene.plots
+get_plots(lscene::LScene) = lscene.scene.plots
