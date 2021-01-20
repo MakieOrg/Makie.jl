@@ -36,15 +36,18 @@ function Button(fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
     roundedrectpoints = lift(roundedrectvertices, buttonrect, cornerradius, cornersegments)
 
-    bcolor = Node{Any}(buttoncolor[])
+    mousestate = Node(:out)
+
+    bcolors = (; out = buttoncolor, active = buttoncolor_active, hover = buttoncolor_hover)
+    bcolor = lift((s,_...)->bcolors[s][], mousestate, values(bcolors)...; typ=Any)
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
         color = bcolor, raw = true)
     decorations[:button] = button
 
 
 
-
-    lcolor = Node{Any}(labelcolor[])
+    lcolors = (; out = labelcolor, active = labelcolor_active, hover = labelcolor_hover)
+    lcolor = lift((s,_...)->lcolors[s][], mousestate, values(lcolors)...; typ=Any)
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
         color = lcolor, align = (:center, :center), raw = true)
 
@@ -65,24 +68,20 @@ function Button(fig_or_scene::FigureLike; bbox = nothing, kwargs...)
 
     mouseevents = addmouseevents!(scene, button, labeltext)
 
-    onmouseover(mouseevents) do state
-        bcolor[] = buttoncolor_hover[]
-        lcolor[] = labelcolor_hover[]
+    onmouseover(mouseevents) do _
+        mousestate[] = :hover
     end
 
-    onmouseout(mouseevents) do state
-        bcolor[] = buttoncolor[]
-        lcolor[] = labelcolor[]
+    onmouseout(mouseevents) do _
+        mousestate[] = :out
+    end
+    
+    onmouseleftup(mouseevents) do _
+        mousestate[] = :hover
     end
 
-    onmouseleftup(mouseevents) do state
-        bcolor[] = buttoncolor_hover[]
-        lcolor[] = labelcolor_hover[]
-    end
-
-    onmouseleftdown(mouseevents) do state
-        bcolor[] = buttoncolor_active[]
-        lcolor[] = labelcolor_active[]
+    onmouseleftdown(mouseevents) do _
+        mousestate[] = :active
         clicks[] = clicks[] + 1
     end
 
