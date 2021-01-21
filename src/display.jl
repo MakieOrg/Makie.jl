@@ -5,8 +5,13 @@ function JSServe.jsrender(session::Session, scene::Scene)
     return canvas
 end
 
+function JSServe.jsrender(session::Session, scene::AbstractPlotting.FigureLike)
+    return JSServe.jsrender(session, AbstractPlotting.get_scene(scene))
+end
+
 const WEB_MIMES = (MIME"text/html", MIME"application/vnd.webio.application+html",
                    MIME"application/prs.juno.plotpane+html", MIME"juliavscode/html")
+
 for M in WEB_MIMES
     @eval begin
         function AbstractPlotting.backend_show(::WGLBackend, io::IO, m::$M, scene::Scene)
