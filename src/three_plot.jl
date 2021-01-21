@@ -30,15 +30,24 @@ function all_plots_scenes(scene::Scene; scene_uuids=String[], plot_uuids=String[
     return scene_uuids, plot_uuids
 end
 
-
 """
     find_plots(td::ThreeDisplay, plot::AbstractPlot)
 
 Gets the ThreeJS object representing the plot object.
 """
 function find_plots(td::ThreeDisplay, plot::AbstractPlot)
+    return find_plots(JSServe.session(td), plot)
+end
+
+function find_plots(session::Session, plot::AbstractPlot)
     uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
-    return WGL.find_plots(td, uuids)
+    return WGL.find_plots(session, uuids)
+end
+
+
+function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
+    uuids = js_uuid.(AbstractPlotting.flatten_plots(plot))
+    JSServe.print_js_code(io, js"$(WGL).find_plots($(uuids))", context)
 end
 
 function three_display(session::Session, scene::Scene)
