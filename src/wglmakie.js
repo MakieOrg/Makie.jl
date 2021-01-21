@@ -105,14 +105,11 @@ const WGLMakie = (function () {
             let startDragY = null;
             function mouseWheelHandler(e) {
                 e = window.event || e;
-                const delta = Math.max(
-                    -1,
-                    Math.min(1, e.wheelDelta || -e.detail)
-                );
-                if (delta < 0 && zoomOut) {
-                    zoomOut(delta);
-                } else if (zoomIn) {
-                    zoomIn(delta);
+                const delta = Math.sign(e.deltaY);
+                if (delta == -1) {
+                    zoomOut();
+                } else if (delta == 1) {
+                    zoomIn();
                 }
 
                 e.preventDefault();
