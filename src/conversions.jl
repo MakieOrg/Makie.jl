@@ -10,11 +10,11 @@ to_color(color) = convert_attribute(color, key"color"())
 
 Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
 """
-to_colormap(color) = convert_attribute(color, key"colormap"())
-to_rotation(color) = convert_attribute(color, key"rotation"())
-to_font(color) = convert_attribute(color, key"font"())
-to_align(color) = convert_attribute(color, key"align"())
-to_textsize(color) = convert_attribute(color, key"textsize"())
+to_colormap(colormap) = convert_attribute(colormap, key"colormap"())
+to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
+to_font(font) = convert_attribute(font, key"font"())
+to_align(align) = convert_attribute(align, key"align"())
+to_textsize(textsize) = convert_attribute(textsize, key"textsize"())
 
 convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
 convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
@@ -795,6 +795,17 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
     str = string(x)
     get!(_font_cache, str) do
         str == "default" && return to_font("Dejavu Sans")
+
+        # check if the string points to a font file and load that
+        if isfile(str)
+            font = FreeTypeAbstraction.try_load(str)
+            if isnothing(font)
+                error("Could not load font file $str")
+            else
+                return font
+            end
+        end
+
         fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
