@@ -5,9 +5,7 @@
 From the japanese word [_Maki-e_](https://en.wikipedia.org/wiki/Maki-e), which is a technique to sprinkle lacquer with gold and silver powder.
 Data is basically the gold and silver of our age, so let's spread it out beautifully on the screen!
 
-**Documentation**: [![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
-
-Build status: [![][gitlab-img]][gitlab-url]
+[![][docs-stable-img]][docs-stable-url] [![][docs-master-img]][docs-master-url]
 
 [![DOI](https://zenodo.org/badge/104806923.svg)](https://zenodo.org/badge/latestdoi/104806923)
 
@@ -20,10 +18,12 @@ Build status: [![][gitlab-img]][gitlab-url]
 
 # Installation
 
+Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
+So, instead of installing Makie, just install e.g. GLMakie directly:
 ```julia
 julia>]
-pkg> add Makie
-pkg> test Makie
+pkg> add GLMakie
+pkg> test GLMakie
 ```
 
 If you plan to use `Makie#master`, you likely also need to check out `AbstractPlotting#master` and `GLMakie#master`.
