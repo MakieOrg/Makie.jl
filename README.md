@@ -3,7 +3,9 @@
 [![Codecov](https://codecov.io/gh/JuliaPlots/WGLMakie.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/WGLMakie.jl)
 
 WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots/Makie.jl) plotting package, implemented using Three.js.
-Backend specific docs, for interactive, static html:
+
+
+Backend specific docs, for creating interactive and static html pages:
 
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaplots.org/WGLMakie.jl/latest/)
 [![](https://img.shields.io/badge/docs-master-blue.svg)](http://juliaplots.org/WGLMakie.jl/dev/)
