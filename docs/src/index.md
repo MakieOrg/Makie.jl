@@ -276,3 +276,8 @@ end
 ```
 
 Hopefully, over time there will be helper libraries with lots of stylised elements like the above, to make flashy dashboards with JSServe + WGLMakie.
+
+# Troubleshooting
+
+## Plots don't display in Safari
+Safari users may need to [enable](https://discussions.apple.com/thread/8655829) WebGL.
