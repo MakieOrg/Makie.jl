@@ -22,7 +22,10 @@ using CairoMakie
 using Random # hide
 Random.seed!(2) # hide
 
-fig = Figure(resolution = (1200, 700), backgroundcolor = RGBf0(0.98, 0.98, 0.98))
+noto_sans = "../assets/NotoSans-Regular.ttf"
+noto_sans_bold = "../assets/NotoSans-Bold.ttf"
+
+fig = Figure(resolution = (1200, 700), backgroundcolor = RGBf0(0.98, 0.98, 0.98), font = noto_sans)
 
 fig
 save("step_001.svg", fig) # hide
@@ -429,7 +432,7 @@ to reflect the new GridLayout size.
 
 ```@example tutorial
 supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
-    textsize = 30, font = "Noto Sans Bold", color = (:black, 0.25))
+    textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
 
 fig
 save("step_19.svg", fig) # hide
@@ -468,9 +471,9 @@ super title.)
 
 ```@example tutorial
 label_a = fig[2, 1, TopLeft()] = Label(fig, "A", textsize = 35,
-    font = "Noto Sans Bold", halign = :right)
+    font = noto_sans_bold, halign = :right)
 label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 35,
-    font = "Noto Sans Bold", halign = :right)
+    font = noto_sans_bold, halign = :right)
 
 fig
 save("step_20.svg", fig) # hide
