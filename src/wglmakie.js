@@ -690,7 +690,7 @@ const WGLMakie = (function () {
             return false;
         }
 
-        canvas.addEventListener("contextmenu", contextmenu);
+        canvas.addEventListener("contextmenu", e => e.preventDefault())
         canvas.addEventListener("focusout", contextmenu);
 
         return renderer;
