@@ -51,11 +51,13 @@ function JSServe.print_js_code(io::IO, plot::AbstractPlot, context)
 end
 
 function three_display(session::Session, scene::Scene)
+    serialized = serialize_scene(scene)
+    
     if TEXTURE_ATLAS_CHANGED[]
         JSServe.update_cached_value!(session, AbstractPlotting.get_texture_atlas().data)
         TEXTURE_ATLAS_CHANGED[] = false
     end
-    serialized = serialize_scene(scene)
+    
     JSServe.register_resource!(session, serialized)
     window_open = scene.events.window_open
 
