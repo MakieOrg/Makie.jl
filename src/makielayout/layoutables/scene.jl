@@ -14,7 +14,7 @@ function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ls::LScene, args..
 end
 
 
-function LScene(fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
+function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = NamedTuple(), kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 

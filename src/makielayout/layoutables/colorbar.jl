@@ -1,6 +1,6 @@
-function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
+function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
 
-    Colorbar(fig_or_scene;
+    layoutable(Colorbar, fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
         kwargs...
@@ -8,7 +8,7 @@ function Colorbar(fig_or_scene, plot::AbstractPlot; kwargs...)
 
 end
 
-function Colorbar(fig_or_scene; bbox = nothing, kwargs...)
+function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     topscene = get_topscene(fig_or_scene)
     attrs = merge!(Attributes(kwargs), default_attributes(Colorbar, topscene).attributes)
 
