@@ -227,7 +227,7 @@ function mouse_position(scene::Scene, screen::Screen)
         if pos != e.mouseposition[]
             e.mouseposition[] = pos
         end
-        process!(scene, MouseMovedEvent(Vec2f0(pos)))
+        process!(scene, MouseMovedEvent(Point2f0(pos)))
         return
     end
     return
