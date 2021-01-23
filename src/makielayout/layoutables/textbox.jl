@@ -1,4 +1,4 @@
-function Textbox(fig_or_scene; bbox = nothing, kwargs...)
+function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
 

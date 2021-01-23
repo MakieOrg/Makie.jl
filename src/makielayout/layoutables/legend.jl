@@ -1,4 +1,4 @@
-function Legend(
+function layoutable(::Type{Legend},
         fig_or_scene,
         entry_groups::Node{Vector{Tuple{Optional{String}, Vector{LegendEntry}}}};
         bbox = nothing, kwargs...)
@@ -413,7 +413,7 @@ one content element. A content element can be an `AbstractPlot`, an array of
 `AbstractPlots`, a `LegendElement`, or any other object for which the
 `legendelements` method is defined.
 """
-function Legend(fig_or_scene,
+function layoutable(::Type{Legend}, fig_or_scene,
         contents::AbstractArray,
         labels::AbstractArray{String},
         title::Optional{String} = nothing;
@@ -425,7 +425,7 @@ function Legend(fig_or_scene,
 
     entries = [LegendEntry(label, content) for (content, label) in zip(contents, labels)]
     entrygroups = Node{Vector{EntryGroup}}([(title, entries)])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
+    legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
 end
 
 
@@ -446,7 +446,7 @@ Within each group, each content element is associated with one label. A content
 element can be an `AbstractPlot`, an array of `AbstractPlots`, a `LegendElement`,
 or any other object for which the `legendelements` method is defined.
 """
-function Legend(fig_or_scene,
+function layoutable(::Type{Legend}, fig_or_scene,
         contentgroups::AbstractArray{<:AbstractArray},
         labelgroups::AbstractArray{<:AbstractArray},
         titles::AbstractArray{<:Optional{String}};
@@ -460,7 +460,7 @@ function Legend(fig_or_scene,
         for (labelgroup, contentgroup) in zip(labelgroups, contentgroups)]
 
     entrygroups = Node{Vector{EntryGroup}}([(t, en) for (t, en) in zip(titles, entries)])
-    legend = Legend(fig_or_scene, entrygroups; kwargs...)
+    legend = layoutable(Legend, fig_or_scene, entrygroups; kwargs...)
 end
 
 
@@ -470,8 +470,10 @@ end
 Create a single-group legend with all plots from `axis` that have the
 attribute `label` set.
 """
-function Legend(fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
-    Legend(fig_or_scene, get_labeled_plots(axis)..., title; kwargs...)
+function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
+    plots, labels = get_labeled_plots(axis)
+    isempty(plots) && error("No plots with labels in the given axis to put in the legend.")
+    layoutable(Legend, fig_or_scene, plots, labels, title; kwargs...)
 end
 
 function get_labeled_plots(ax)

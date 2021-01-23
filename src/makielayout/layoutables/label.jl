@@ -1,8 +1,8 @@
-function Label(fig_or_scene, text; kwargs...)
-    Label(fig_or_scene; text = text, kwargs...)
+function layoutable(::Type{Label}, fig_or_scene, text; kwargs...)
+    layoutable(Label, fig_or_scene; text = text, kwargs...)
 end
 
-function Label(fig_or_scene; bbox = nothing, kwargs...)
+function layoutable(::Type{Label}, fig_or_scene; bbox = nothing, kwargs...)
 
     topscene = get_topscene(fig_or_scene)
     default_attrs = default_attributes(Label, topscene).attributes

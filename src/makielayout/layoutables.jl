@@ -33,13 +33,9 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
         error("Unexpected field format. Neither Symbol nor x::T")
     end
 
-    # define an inner constructor that calls _on_create so that there can be some default
-    # initialization routines for all layoutables right after creating the actual objects
     constructor = quote
         function $name($(fieldnames...))
-            layoutable = new($(fieldnames...))
-            _on_create(layoutable, $(fieldnames...))
-            layoutable
+            new($(fieldnames...))
         end
     end
 
@@ -47,6 +43,30 @@ macro Layoutable(name::Symbol, fields::Expr = Expr(:block))
     
     structdef
 end
+
+# intercept all layoutable constructors and divert to _layoutable(T, ...)
+function (::Type{T})(args...; kwargs...) where {T<:Layoutable}
+    _layoutable(T, args...; kwargs...)
+end
+
+function _layoutable(T::Type{<:Layoutable},
+        fp::Union{AbstractPlotting.FigurePosition, AbstractPlotting.FigureSubposition}, args...; kwargs...)
+
+    fig = AbstractPlotting.get_figure(fp)
+    l = fp[] = _layoutable(T, fig, args...; kwargs...)
+    l
+end
+
+function _layoutable(T::Type{<:Layoutable}, fig::Figure, args...; kwargs...)
+    l = layoutable(T, fig, args...; kwargs...)
+    register_in_figure!(fig, l)
+    l
+end
+
+function _layoutable(T::Type{<:Layoutable}, scene::Scene, args...; kwargs...)
+    layoutable(T, scene, args...; kwargs...)
+end
+
 
 """
 Get the scene which layoutables need from their parent to plot stuff into
@@ -65,14 +85,6 @@ function register_in_figure!(fig::Figure, @nospecialize layoutable::Layoutable)
     end
     if !(layoutable in fig.content)
         push!(fig.content, layoutable)
-    end
-    nothing
-end
-
-
-function _on_create(layoutable, parent, layoutobservables, attributes, elements, args...)
-    if parent isa Figure
-        register_in_figure!(parent, layoutable)
     end
     nothing
 end
