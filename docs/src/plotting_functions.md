@@ -1,12 +1,11 @@
+# Plotting Functions
+
+On this page, the basic plotting functions are listed together with examples of their usage and available attributes.
+
 ```@contents
 Pages = ["plotting_functions.md"]
 Depth = 2
 ```
-
-
-# Plotting Functions
-
-On this page, the basic plotting functions are listed together with examples of their usage and available attributes.
 
 ## `arrows`
 

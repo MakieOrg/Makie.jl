@@ -360,7 +360,7 @@ makedocs(
             "Axis" => "makielayout/laxis.md",
             "GridLayout" => "makielayout/grids.md",
             "Legend" => "makielayout/llegend.md",
-            "Other Layoutables" => "makielayout/layoutables_examples.md",
+            "Layoutables & Widgets" => "makielayout/layoutables_examples.md",
             "How Layouting Works" => "makielayout/layouting.md",
             "generated/colors.md",
             "generated/plot-attributes.md",
