@@ -3,6 +3,16 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
+# Layoutables & Widgets
+
+!!! note
+    All examples here are presented as CairoMakie svg's for clarity of visuals, but keep in mind that CairoMakie is not interactive. Use GLMakie for interactive widgets, WGLMakie currently doesn't have picking implemented which is needed for them.
+
+```@contents
+Pages = ["layoutables_examples.md"]
+Depth = 2
+```
+
 ## Slider
 
 A simple slider without a label. You can create a label using a `Label` object,
@@ -12,17 +22,17 @@ You can then lift the `value` observable to make interactive plots.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-ax = layout[1, 1] = Axis(scene)
-sl1 = layout[2, 1] = Slider(scene, range = 0:0.01:10, startvalue = 3)
-sl2 = layout[3, 1] = Slider(scene, range = 0:0.01:10, startvalue = 5)
-sl3 = layout[4, 1] = Slider(scene, range = 0:0.01:10, startvalue = 7)
+Axis(fig[1, 1])
+sl1 = Slider(fig[2, 1], range = 0:0.01:10, startvalue = 3)
+sl2 = Slider(fig[3, 1], range = 0:0.01:10, startvalue = 5)
+sl3 = Slider(fig[4, 1], range = 0:0.01:10, startvalue = 7)
 
-sl4 = layout[:, 2] = Slider(scene, range = 0:0.01:10, horizontal = false,
+sl4 = Slider(fig[:, 2], range = 0:0.01:10, horizontal = false,
     tellwidth = true, height = nothing, width = Auto())
 
-save("example_lslider.svg", scene); nothing # hide
+save("example_lslider.svg", fig); nothing # hide
 ```
 
 ![example lslider](example_lslider.svg)
@@ -31,24 +41,26 @@ To create a horizontal layout containing a label, a slider, and a value label, u
 
 ```@example
 using CairoMakie
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-ax = layout[1, 1] = Axis(scene)
+Axis(fig[1, 1])
 
-lsgrid = labelslidergrid!(scene,
+lsgrid = labelslidergrid!(
+    fig,
     ["Voltage", "Current", "Resistance"],
-    Ref(LinRange(0:0.1:1000)); # same range for every slider via broadcast
+    # use Ref for the same range for every slider via internal broadcasting
+    Ref(LinRange(0:0.1:1000));
     formats = [x -> "$(round(x, digits = 1))$s" for s in ["V", "A", "Ω"]],
     width = 350,
     tellheight = false)
     
-layout[1, 2] = lsgrid.layout
+fig[1, 2] = lsgrid.layout
 
 set_close_to!(lsgrid.sliders[1], 230.3)
 set_close_to!(lsgrid.sliders[2], 628.4)
 set_close_to!(lsgrid.sliders[3], 15.9)
 
-save("example_labelslidergrid.svg", scene); nothing # hide
+save("example_labelslidergrid.svg", fig); nothing # hide
 ```
 
 ![example labelslidergrid](example_labelslidergrid.svg)
@@ -66,15 +78,15 @@ so rows and columns in a GridLayout can shrink to the appropriate width or heigh
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-axs = layout[1:2, 1:3] = [Axis(scene) for _ in 1:6]
+fig[1:2, 1:3] = [Axis(fig) for _ in 1:6]
 
-supertitle = layout[0, :] = Label(scene, "Six plots", textsize = 30)
+supertitle = Label(fig[0, :], "Six plots", textsize = 30)
 
-sideinfo = layout[2:3, 0] = Label(scene, "This text goes vertically", rotation = pi/2)
+sideinfo = Label(fig[2:3, 0], "This text is vertical", rotation = pi/2)
 
-save("example_ltext.svg", scene); nothing # hide
+save("example_ltext.svg", fig); nothing # hide
 ```
 
 ![example ltext](example_ltext.svg)
@@ -84,16 +96,22 @@ save("example_ltext.svg", scene); nothing # hide
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-layout[1, 1] = Axis(scene)
-layout[2, 1] = buttongrid = GridLayout(tellwidth = false)
+Axis(fig[1, 1])
+fig[2, 1] = buttongrid = GridLayout(tellwidth = false)
 
-buttongrid[1, 1:5] = [Button(scene, label = "Button $i") for i in 1:5]
+buttons = buttongrid[1, 1:5] = [Button(fig, label = "Button $i") for i in 1:5]
 
-scene
+for button in buttons
+    on(button.clicks) do n
+        println("$(button.label[]) was clicked $n times.")
+    end
+end
 
-save("example_lbutton.svg", scene); nothing # hide
+fig
+
+save("example_lbutton.svg", fig); nothing # hide
 ```
 
 ![example lbutton](example_lbutton.svg)
@@ -108,11 +126,13 @@ facet plots or when a rectangular placeholder is needed.
 using CairoMakie
 using ColorSchemes
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-rects = layout[1:4, 1:6] = [Box(scene, color = c) for c in get.(Ref(ColorSchemes.rainbow), (0:23) ./ 23)]
+rects = fig[1:4, 1:6] = [
+    Box(fig, color = c)
+    for c in get.(Ref(ColorSchemes.rainbow), (0:23) ./ 23)]
 
-save("example_lrect.svg", scene); nothing # hide
+save("example_lrect.svg", fig); nothing # hide
 ```
 
 ![example lrect](example_lrect.svg)
@@ -131,9 +151,9 @@ are not inherited from the main scene (which has a pixel camera and no axis, e.g
 ```julia
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-lscene = layout[1, 1] = LScene(scene, scenekw = (camera = cam3d!, raw = false))
+lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
 
 # now you can plot into lscene like you're used to
 scatter!(lscene, randn(100, 3))
@@ -148,17 +168,17 @@ or disable properties of an interactive plot.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-ax = layout[1, 1] = Axis(scene)
+ax = Axis(fig[1, 1])
 
-toggles = [Toggle(scene, active = ac) for ac in [true, false]]
-labels = [Label(scene, lift(x -> x ? "active" : "inactive", t.active))
+toggles = [Toggle(fig, active = ac) for ac in [true, false]]
+labels = [Label(fig, lift(x -> x ? "active" : "inactive", t.active))
     for t in toggles]
 
-layout[1, 2] = grid!(hcat(toggles, labels), tellheight = false)
+fig[1, 2] = grid!(hcat(toggles, labels), tellheight = false)
 
-save("example_ltoggle.svg", scene); nothing # hide
+save("example_ltoggle.svg", fig); nothing # hide
 ```
 
 ![example ltoggle](example_ltoggle.svg)
@@ -177,29 +197,29 @@ The attribute `selection` is set to `optionvalue(element)` when the element's en
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+fig = Figure(resolution = (1200, 900))
 
-menu = Menu(scene, options = ["viridis", "heat", "blues"])
+menu = Menu(fig, options = ["viridis", "heat", "blues"])
 
 funcs = [sqrt, x->x^2, sin, cos]
 
-menu2 = Menu(scene, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
+menu2 = Menu(fig, options = zip(["Square Root", "Square", "Sine", "Cosine"], funcs))
 
-layout[1, 1] = vgrid!(
-    Label(scene, "Colormap", width = nothing),
+fig[1, 1] = vgrid!(
+    Label(fig, "Colormap", width = nothing),
     menu,
-    Label(scene, "Function", width = nothing),
+    Label(fig, "Function", width = nothing),
     menu2;
     tellheight = false, width = 200)
 
-ax = layout[1, 2] = Axis(scene)
+ax = Axis(fig[1, 2])
 
 func = Node{Any}(funcs[1])
 
 ys = @lift($func.(0:0.3:10))
 scat = scatter!(ax, ys, markersize = 10px, color = ys)
 
-cb = layout[1, 3] = Colorbar(scene, scat, width = 30)
+cb = Colorbar(fig[1, 3], scat, width = 30)
 
 on(menu.selection) do s
     scat.colormap = s
@@ -212,7 +232,7 @@ end
 
 menu2.is_open = true
 
-save("example_lmenu.svg", scene); nothing # hide
+save("example_lmenu.svg", fig); nothing # hide
 ```
 
 ![example lmenu](example_lmenu.svg)
@@ -220,7 +240,7 @@ save("example_lmenu.svg", scene); nothing # hide
 
 ## Deleting Layoutables
 
-To remove axes, colorbars and other layoutables from their layout and the scene,
+To remove axes, colorbars and other layoutables from their layout and the figure or scene,
 use `delete!(layoutable)`.
 
 ```@eval
