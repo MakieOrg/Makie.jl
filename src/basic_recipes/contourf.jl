@@ -18,6 +18,7 @@ $(ATTRIBUTES)
         levels = 10,
         colormap = :viridis,
         colorrange = automatic,
+        _computed_levels = nothing, # is computed dynamically and needed for colorbar e.g.
     )
 end
 
@@ -42,7 +43,7 @@ end
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
-    levels = lift(zs, c.levels) do zs, levels
+    c.attributes[:_computed_levels] = lift(zs, c.levels) do zs, levels
         _get_isoband_levels(levels, extrema_nan(zs)...)
     end
 
@@ -79,10 +80,10 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, levels)
+    onany(calculate_polys, xs, ys, zs, c._computed_levels)
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_polys(xs[], ys[], zs[], levels[])
+    calculate_polys(xs[], ys[], zs[], c._computed_levels[])
 
     mesh!(c,
         polys,

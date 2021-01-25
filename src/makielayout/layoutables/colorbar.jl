@@ -8,6 +8,32 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs
 
 end
 
+function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlotting.Contourf; kwargs...)
+
+    steps = lift(plot._computed_levels) do lvls
+        if lvls[1][2:end] != lvls[2][1:end-1]
+            error("You can't make a colorbar for a contourf plot with non-adjacent levels")
+        end
+        push!(copy(lvls[1]), lvls[2][end])
+    end
+
+    limits = lift(steps) do steps
+        steps[1], steps[end]
+    end
+
+    colormap = lift(steps, plot.colormap) do steps, colormap
+        cgrad(colormap, (steps .- steps[1]) ./ (steps[end] - steps[1]), categorical = true)
+    end
+
+    layoutable(Colorbar, fig_or_scene;
+        colormap = colormap,
+        limits = limits,
+        kwargs...
+    )
+
+end
+
+
 function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     topscene = get_topscene(fig_or_scene)
     attrs = merge!(Attributes(kwargs), default_attributes(Colorbar, topscene).attributes)
@@ -66,7 +92,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
             cmap
         else
             error("Can't deal with colormap of type $(typeof(cmap))")
-    end
+        end
     end
 
     steps = lift(cgradient, nsteps) do cgradient, n
