@@ -8,6 +8,17 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs
 
 end
 
+function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
+
+    layoutable(Colorbar, fig_or_scene;
+        colormap = heatmap.colormap,
+        limits = heatmap.colorrange,
+        highclip = heatmap.highclip,
+        lowclip = heatmap.lowclip,
+        kwargs...
+    )
+end
+
 function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlotting.Contourf; kwargs...)
 
     steps = plot._computed_levels
@@ -41,7 +52,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
         halign, valign, vertical, flipaxisposition, ticklabelalign, flip_vertical_label,
-        nsteps)
+        nsteps, highclip, lowclip)
 
     decorations = Dict{Symbol, Any}()
 
@@ -51,25 +62,32 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     framebox = @lift(round_to_IRect2D($(layoutobservables.computedbbox)))
 
-    colorlinepoints = lift(framebox, nsteps) do fb, nsteps
-        fbw = fb.widths[1]
-        fbh = fb.widths[2]
+    highclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), highclip)
+    lowclip_tri_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), lowclip)
 
+    tri_heights = lift(highclip_tri_visible, lowclip_tri_visible, framebox) do hv, lv, box
         if vertical[]
-            [Point2f0(0.5f0 * fbw, y * fbh) for y in LinRange(0f0, 1f0, nsteps)]
+            (lv * width(box), hv * width(box))
         else
-            [Point2f0(x * fbw, 0.5f0 * fbh) for x in LinRange(0f0, 1f0, nsteps)]
+            (lv * height(box), hv * height(box))
+        end .* sin(pi/3)
+    end
+    @show tri_heights[]
+
+    barsize = lift(tri_heights) do heights
+        if vertical[]
+            max(1, height(framebox[]) - sum(heights))
+        else
+            max(1, width(framebox[]) - sum(heights))
         end
     end
 
-    linewidth = lift(framebox) do fb
-        fbw = fb.widths[1]
-        fbh = fb.widths[2]
-
+    barbox = lift(barsize) do sz
+        fbox = framebox[]
         if vertical[]
-            fbw
+            BBox(left(fbox), right(fbox), bottom(fbox) + tri_heights[][1], top(fbox) - tri_heights[][2])
         else
-            fbh
+            BBox(left(fbox) + tri_heights[][1], right(fbox) - tri_heights[][2], bottom(fbox), top(fbox))
         end
     end
 
@@ -94,9 +112,9 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end::Vector{Float64}
     end
 
-    rects_and_colors = lift(framebox, vertical, steps, cgradient) do fb, v, steps, gradient
-        xmin, ymin = minimum(fb)
-        xmax, ymax = maximum(fb)
+    rects_and_colors = lift(barbox, vertical, steps, cgradient) do bbox, v, steps, gradient
+        xmin, ymin = minimum(bbox)
+        xmax, ymax = maximum(bbox)
 
         rects = if v
             yvals = steps .* (ymax - ymin) .+ ymin
@@ -123,16 +141,89 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     # hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
     # decorations[:heatmap] = hm
 
-    ab, al, ar, at = axislines!(
-        topscene, framebox, spinewidth, topspinevisible, rightspinevisible,
-        leftspinevisible, bottomspinevisible, topspinecolor, leftspinecolor,
-        rightspinecolor, bottomspinecolor)
-    decorations[:topspine] = at
-    decorations[:leftspine] = al
-    decorations[:rightspine] = ar
-    decorations[:bottomspine] = ab
+    highclip_tri = lift(barbox, spinewidth) do box, spinewidth
+        if vertical[]
+            lb, rb = topline(box)
+            l = lb
+            r = rb
+            t = ((l .+ r) ./ 2) .+ Point2f0(0, sqrt(sum((r .- l) .^ 2)) * sin(pi/3))
+            [l, r, t]
+        else
+            b, t = rightline(box)
+            r = ((b .+ t) ./ 2) .+ Point2f0(sqrt(sum((t .- b) .^ 2)) * sin(pi/3), 0)
+            [t, b, r]
+        end
+    end
 
-    axispoints = lift(framebox, vertical, flipaxisposition) do scenearea,
+    highclip_tri_color = Observables.map(highclip) do hc
+        to_color(isnothing(hc) ? :transparent : hc)
+    end
+
+    highclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), highclip)
+
+    highclip_tri_poly = poly!(topscene, highclip_tri, color = highclip_tri_color,
+        strokecolor = :transparent,
+        visible = highclip_visible)
+
+    decorations[:highclip] = highclip_tri_poly
+
+
+    lowclip_tri = lift(barbox, spinewidth) do box, spinewidth
+        if vertical[]
+            lb, rb = bottomline(box)
+            l = lb
+            r = rb
+            t = ((l .+ r) ./ 2) .- Point2f0(0, sqrt(sum((r .- l) .^ 2)) * sin(pi/3))
+            [l, r, t]
+        else
+            b, t = leftline(box)
+            l = ((b .+ t) ./ 2) .- Point2f0(sqrt(sum((t .- b) .^ 2)) * sin(pi/3), 0)
+            [b, t, l]
+        end
+    end
+
+    lowclip_tri_color = Observables.map(lowclip) do lc
+        to_color(isnothing(lc) ? :transparent : lc)
+    end
+
+    lowclip_visible = lift(x -> !(isnothing(x) || to_color(x) == to_color(:transparent)), lowclip)
+
+    lowclip_tri_poly = poly!(topscene, lowclip_tri, color = lowclip_tri_color,
+        strokecolor = :transparent,
+        visible = lowclip_visible)
+
+    decorations[:lowclip] = lowclip_tri_poly
+
+
+    borderpoints = lift(barbox, highclip_visible, lowclip_visible) do bb, hcv, lcv
+        if vertical[]
+            points = [bottomright(bb), topright(bb)]
+            if hcv
+                push!(points, highclip_tri[][3])
+            end
+            append!(points, [topleft(bb), bottomleft(bb)])
+            if lcv
+                push!(points, lowclip_tri[][3])
+            end
+            push!(points, bottomright(bb))
+            points
+        else
+            points = [bottomleft(bb), bottomright(bb)]
+            if hcv
+                push!(points, highclip_tri[][3])
+            end
+            append!(points, [topright(bb), topleft(bb)])
+            if lcv
+                push!(points, lowclip_tri[][3])
+            end
+            push!(points, bottomleft(bb))
+            points
+        end
+    end
+
+    decorations[:spines] = lines!(topscene, borderpoints, linewidth = spinewidth, color = topspinecolor)
+
+    axispoints = lift(barbox, vertical, flipaxisposition) do scenearea,
             vertical, flipaxisposition
 
         if vertical
