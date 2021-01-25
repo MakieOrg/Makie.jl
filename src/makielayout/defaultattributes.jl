@@ -307,6 +307,10 @@ function default_attributes(::Type{Colorbar}, scene)
         alignmode = Inside()
         "The number of steps in the heatmap underlying the colorbar gradient."
         nsteps = 100
+        "The color of the high clip triangle."
+        highclip = nothing
+        "The color of the low clip triangle."
+        lowclip = nothing
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
