@@ -72,7 +72,6 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
             (lv * height(box), hv * height(box))
         end .* sin(pi/3)
     end
-    @show tri_heights[]
 
     barsize = lift(tri_heights) do heights
         if vertical[]
