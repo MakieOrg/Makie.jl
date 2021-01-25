@@ -56,23 +56,55 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    xrange = lift(framebox) do fb
-        range(left(fb), right(fb), length = 2)
-    end
-    yrange = lift(framebox) do fb
-        range(bottom(fb), top(fb), length = 2)
-    end
 
-    colorcells = lift(vertical, nsteps) do v, nsteps
-        if v
-            reshape(collect(1:nsteps), 1, :)
+    cgradient = lift(colormap, typ = Any) do cmap
+        if cmap isa Symbol
+            cgrad(cmap)
+        elseif cmap isa Tuple{Symbol, Number}
+            cgrad(cmap[1], alpha = cmap[2])
+        elseif cmap isa PlotUtils.ColorGradient
+            cmap
         else
-            reshape(collect(1:nsteps), :, 1)
-        end
+            error("Can't deal with colormap of type $(typeof(cmap))")
+    end
     end
 
-    hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
-    decorations[:heatmap] = hm
+    steps = lift(cgradient, nsteps) do cgradient, n
+        if cgradient isa PlotUtils.CategoricalColorGradient
+            cgradient.values
+        else
+            collect(LinRange(0, 1, n))
+        end::Vector{Float64}
+    end
+
+    rects_and_colors = lift(framebox, vertical, steps, cgradient) do fb, v, steps, gradient
+        xmin, ymin = minimum(fb)
+        xmax, ymax = maximum(fb)
+
+        rects = if v
+            yvals = steps .* (ymax - ymin) .+ ymin
+            [BBox(xmin, xmax, b, t)
+                for (b, t) in zip(yvals[1:end-1], yvals[2:end])]
+        else
+            xvals = steps .* (xmax - xmin) .+ xmin
+            [BBox(l, r, ymin, ymax)
+                for (l, r) in zip(xvals[1:end-1], xvals[2:end])]
+        end
+
+        colors = get.(Ref(gradient), (steps[1:end-1] .+ steps[2:end]) ./2)
+
+        rects, colors
+    end
+
+    rects = poly!(topscene,
+        lift(x -> getindex(x, 1), rects_and_colors),
+        color = lift(x -> getindex(x, 2), rects_and_colors),
+        show_axis = false)
+
+    decorations[:colorrects] = rects
+
+    # hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
+    # decorations[:heatmap] = hm
 
     ab, al, ar, at = axislines!(
         topscene, framebox, spinewidth, topspinevisible, rightspinevisible,
