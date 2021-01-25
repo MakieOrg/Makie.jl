@@ -17,28 +17,21 @@ $(ATTRIBUTES)
     Theme(
         levels = 10,
         colormap = :viridis,
-        colorrange = automatic,
         _computed_levels = nothing, # is computed dynamically and needed for colorbar e.g.
+        _computed_colormap = nothing, # is computed dynamically and needed for colorbar e.g.
     )
 end
 
 function _get_isoband_levels(levels::Int, mi, ma)
     edges = Float32.(LinRange(mi, ma, levels+1))
-    (edges[1:end-1], edges[2:end])
 end
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
-    (edges[1:end-1], edges[2:end])
+    @assert issorted(edges)
+    edges
 end
 
-function _get_isoband_levels(levels::AbstractVector{<:Tuple{Real, Real}}, mi, ma)
-    (Float32.(first.(levels)), Float32.(last.(levels)))
-end
-
-function _get_isoband_levels(levels::Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}, mi, ma)
-    (Float32.(levels[1]), Float32.(levels[2]))
-end
 
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
@@ -47,16 +40,27 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         _get_isoband_levels(levels, extrema_nan(zs)...)
     end
 
+    colorrange = lift(c._computed_levels) do levels
+        minimum(levels), maximum(levels)
+    end
+
+    c.attributes[:_computed_colormap] = lift(c._computed_levels, c.colormap) do levels, cmap
+        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+        cgrad(cmap, levels_scaled, categorical = true)
+    end
+
     PolyType = typeof(Polygon(Point2f0[], [Point2f0[]]))
 
     polys = Observable(PolyType[])
-    colors = Observable(Float32[])
+    colors = Observable(RGBAf0[])
 
-    function calculate_polys(xs, ys, zs, levels)
+    function calculate_polys(xs, ys, zs, levels::Vector{Float32})
         empty!(polys[])
         empty!(colors[])
-        @assert levels isa Tuple
-        lows, highs = levels
+
+        @assert issorted(levels)
+        lows = levels[1:end-1]
+        highs = levels[2:end]
 
         # zs needs to be transposed to match rest of abstractplotting
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
@@ -73,7 +77,9 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
                 holes = polygroup[2:end]
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
-                push!(colors[], center)
+                center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
+                color::RGBAf0 = get(c._computed_colormap[], center_scaled)
+                push!(colors[], color)
             end
         end
         polys[] = polys[]
@@ -87,8 +93,8 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
 
     mesh!(c,
         polys,
-        colormap = c.colormap,
-        colorrange = c.colorrange,
+        # colormap = c._computed_colormap,
+        # colorrange = colorrange,
         color = colors,
         shading=false)
 end
