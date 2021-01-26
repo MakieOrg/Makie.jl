@@ -20,12 +20,14 @@ $(ATTRIBUTES)
         colormap = :viridis,
         extendlow = nothing,
         extendhigh = nothing,
-        _computed_levels = nothing, # is computed dynamically and needed for colorbar e.g.
-        _computed_colormap = nothing, # is computed dynamically and needed for colorbar e.g.
-        _computed_extendlow = nothing,
-        _computed_extendhigh = nothing,
     )
 end
+
+# these attributes are computed dynamically and needed for colorbar e.g.
+# _computed_levels
+# _computed_colormap
+# _computed_extendlow
+# _computed_extendhigh
 
 function _get_isoband_levels(levels::Int, mi, ma)
     edges = Float32.(LinRange(mi, ma, levels+1))
