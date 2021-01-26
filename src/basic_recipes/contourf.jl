@@ -6,8 +6,7 @@ and vertical grid positions `ys`.
 
 The attribute `levels` can be either
 - an `Int` that produces n equally wide levels or bands
-- an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result
-in n-1 levels or bands
+- an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
 
 If you want to show a band from `-Inf` to the low edge, set `extendlow` to `:auto` for the same color as the first level, or specify a different color (default `nothing` means no extended band)
 If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:auto` for the same color as the last level, or specify a different color (default `nothing` means no extended band)
@@ -38,6 +37,7 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
+conversion_trait(::Type{<:Contourf}) = SurfaceLike()
 
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
