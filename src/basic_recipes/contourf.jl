@@ -5,10 +5,11 @@ Plots a filled contour of the height information in `zs` at horizontal grid posi
 and vertical grid positions `ys`.
 
 The attribute `levels` can be either
-- an `Int` that produces n equally wide levels
-- an `AbstractVector{<:Real}` that lists consecutive levels
-- an `AbstractVector{<:Tuple{Real, Real}}` that lists levels as (low, high) tuples
-- a  `Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}` that lists levels as a tuple of lows and highs
+- an `Int` that produces n equally wide levels or bands
+- an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result in n-1 levels or bands
+
+If you want to show a band from `-Inf` to the low edge, set `extendlow` to `:auto` for the same color as the first level, or specify a different color (default `nothing` means no extended band)
+If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:auto` for the same color as the last level, or specify a different color (default `nothing` means no extended band)
 
 ## Attributes
 $(ATTRIBUTES)
@@ -17,45 +18,90 @@ $(ATTRIBUTES)
     Theme(
         levels = 10,
         colormap = :viridis,
-        colorrange = automatic,
+        extendlow = nothing,
+        extendhigh = nothing,
     )
 end
 
+# these attributes are computed dynamically and needed for colorbar e.g.
+# _computed_levels
+# _computed_colormap
+# _computed_extendlow
+# _computed_extendhigh
+
 function _get_isoband_levels(levels::Int, mi, ma)
     edges = Float32.(LinRange(mi, ma, levels+1))
-    (edges[1:end-1], edges[2:end])
 end
 
 function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges = Float32.(levels)
-    (edges[1:end-1], edges[2:end])
+    @assert issorted(edges)
+    edges
 end
 
-function _get_isoband_levels(levels::AbstractVector{<:Tuple{Real, Real}}, mi, ma)
-    (Float32.(first.(levels)), Float32.(last.(levels)))
-end
-
-function _get_isoband_levels(levels::Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}, mi, ma)
-    (Float32.(levels[1]), Float32.(levels[2]))
-end
+conversion_trait(::Type{<:Contourf}) = SurfaceLike()
 
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
-    levels = lift(zs, c.levels) do zs, levels
+
+    c.attributes[:_computed_levels] = lift(zs, c.levels) do zs, levels
         _get_isoband_levels(levels, extrema_nan(zs)...)
     end
+
+    colorrange = lift(c._computed_levels) do levels
+        minimum(levels), maximum(levels)
+    end
+
+    c.attributes[:_computed_colormap] = lift(c._computed_levels, c.colormap) do levels, cmap
+        levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
+        cgrad(cmap, levels_scaled, categorical = true)
+    end
+
+
+    lowcolor = lift(c.extendlow, typ = Union{Nothing, RGBAf0}) do el
+        if el === nothing
+            nothing
+        elseif el === automatic || el == :auto
+            RGBAf0(get(c._computed_colormap[], 0))
+        else
+            convert_attribute(el, key"color"())::RGBAf0
+        end
+    end
+    c.attributes[:_computed_extendlow] = lowcolor
+    is_extended_low = lift(x -> !isnothing(x), lowcolor)
+
+    highcolor = lift(c.extendhigh, typ = Union{Nothing, RGBAf0}) do eh
+        if eh === nothing
+            nothing
+        elseif eh === automatic || eh == :auto
+            RGBAf0(get(c._computed_colormap[], 1))
+        else
+            convert_attribute(eh, key"color"())::RGBAf0
+        end
+    end
+    c.attributes[:_computed_extendhigh] = highcolor
+    is_extended_high = lift(x -> !isnothing(x), highcolor)
+
+
 
     PolyType = typeof(Polygon(Point2f0[], [Point2f0[]]))
 
     polys = Observable(PolyType[])
-    colors = Observable(Float32[])
+    colors = Observable(RGBAf0[])
 
-    function calculate_polys(xs, ys, zs, levels)
+    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         empty!(polys[])
         empty!(colors[])
-        @assert levels isa Tuple
-        lows, highs = levels
+
+        levels = copy(levels)
+        @assert issorted(levels)
+        is_extended_low && pushfirst!(levels, -Inf)
+        is_extended_high && push!(levels, Inf)
+        lows = levels[1:end-1]
+        highs = levels[2:end]
+
+        nbands = length(lows)
 
         # zs needs to be transposed to match rest of abstractplotting
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
@@ -64,7 +110,8 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
         allids = Int[]
         levelcenters = (highs .+ lows) ./ 2
-        for (center, group) in zip(levelcenters, isos)
+
+        for (i, (center, group)) in enumerate(zip(levelcenters, isos))
             points = Point2f0.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
             for polygroup in polygroups
@@ -72,22 +119,30 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
                 holes = polygroup[2:end]
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
-                push!(colors[], center)
+                center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
+                color::RGBAf0 = if i == 1 && is_extended_low
+                    lowcolor[]
+                elseif i == nbands && is_extended_high
+                    highcolor[]
+                else
+                    get(c._computed_colormap[], center_scaled)
+                end
+                push!(colors[], color)
             end
         end
         polys[] = polys[]
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, levels)
+    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_polys(xs[], ys[], zs[], levels[])
+    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
     mesh!(c,
         polys,
-        colormap = c.colormap,
-        colorrange = c.colorrange,
+        # colormap = c._computed_colormap,
+        # colorrange = colorrange,
         color = colors,
         shading=false)
 end
