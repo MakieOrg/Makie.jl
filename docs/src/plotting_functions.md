@@ -101,7 +101,12 @@ xs = LinRange(0, 10, 100)
 ys = LinRange(0, 10, 100)
 zs = [cos(x) * sin(y) for x in xs, y in ys]
 
-contourf(xs, ys, zs, levels = 10)
+f = Figure()
+
+contourf(f[1, 1], xs, ys, zs, levels = 10)
+contourf(f[1, 2], xs, ys, zs, levels = -0.75:0.25:0.5,
+    extendlow = :cyan, extendhigh = :magenta)
+f
 ```
 
 ## `density`
