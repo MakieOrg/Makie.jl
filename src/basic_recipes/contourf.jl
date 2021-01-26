@@ -17,6 +17,8 @@ $(ATTRIBUTES)
     Theme(
         levels = 10,
         colormap = :viridis,
+        extendlow = nothing,
+        extendhigh = nothing,
         _computed_levels = nothing, # is computed dynamically and needed for colorbar e.g.
         _computed_colormap = nothing, # is computed dynamically and needed for colorbar e.g.
     )
@@ -36,6 +38,23 @@ end
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
+    lowcolor = lift(c.extendlow) do el
+        if el === nothing
+            nothing
+        else
+            convert_attribute(el, key"color"())::RGBAf0
+        end
+    end
+    is_extended_low = lift(x -> !isnothing(x), lowcolor)
+    highcolor = lift(c.extendhigh) do eh
+        if eh === nothing
+            nothing
+        else
+            convert_attribute(eh, key"color"())::RGBAf0
+        end
+    end
+    is_extended_high = lift(x -> !isnothing(x), highcolor)
+
     c.attributes[:_computed_levels] = lift(zs, c.levels) do zs, levels
         _get_isoband_levels(levels, extrema_nan(zs)...)
     end
@@ -54,13 +73,18 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     polys = Observable(PolyType[])
     colors = Observable(RGBAf0[])
 
-    function calculate_polys(xs, ys, zs, levels::Vector{Float32})
+    function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         empty!(polys[])
         empty!(colors[])
 
+        levels = copy(levels)
         @assert issorted(levels)
+        is_extended_low && pushfirst!(levels, -Inf)
+        is_extended_high && push!(levels, Inf)
         lows = levels[1:end-1]
         highs = levels[2:end]
+
+        nbands = length(lows)
 
         # zs needs to be transposed to match rest of abstractplotting
         isos = Isoband.isobands(xs, ys, zs', lows, highs)
@@ -69,7 +93,8 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         allfaces = NgonFace{3,OffsetInteger{-1,UInt32}}[]
         allids = Int[]
         levelcenters = (highs .+ lows) ./ 2
-        for (center, group) in zip(levelcenters, isos)
+
+        for (i, (center, group)) in enumerate(zip(levelcenters, isos))
             points = Point2f0.(group.x, group.y)
             polygroups = _group_polys(points, group.id)
             for polygroup in polygroups
@@ -78,7 +103,13 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
                 center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
-                color::RGBAf0 = get(c._computed_colormap[], center_scaled)
+                color::RGBAf0 = if i == 1 && is_extended_low
+                    lowcolor[]
+                elseif i == nbands && is_extended_high
+                    highcolor[]
+                else
+                    get(c._computed_colormap[], center_scaled)
+                end
                 push!(colors[], color)
             end
         end
@@ -86,10 +117,10 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         return
     end
 
-    onany(calculate_polys, xs, ys, zs, c._computed_levels)
+    onany(calculate_polys, xs, ys, zs, c._computed_levels, is_extended_low, is_extended_high)
     # onany doesn't get called without a push, so we call
     # it on a first run!
-    calculate_polys(xs[], ys[], zs[], c._computed_levels[])
+    calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
     mesh!(c,
         polys,
