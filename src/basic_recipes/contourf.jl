@@ -5,10 +5,12 @@ Plots a filled contour of the height information in `zs` at horizontal grid posi
 and vertical grid positions `ys`.
 
 The attribute `levels` can be either
-- an `Int` that produces n equally wide levels
-- an `AbstractVector{<:Real}` that lists consecutive levels
-- an `AbstractVector{<:Tuple{Real, Real}}` that lists levels as (low, high) tuples
-- a  `Tuple{<:AbstractVector{<:Real},<:AbstractVector{<:Real}}` that lists levels as a tuple of lows and highs
+- an `Int` that produces n equally wide levels or bands
+- an `AbstractVector{<:Real}` that lists n consecutive edges from low to high, which result
+in n-1 levels or bands
+
+If you want to show a band from `-Inf` to the low edge, set `extendlow` to `:auto` for the same color as the first level, or specify a different color (default `nothing` means no extended band)
+If you want to show a band from the high edge to `Inf`, set `extendhigh` to `:auto` for the same color as the last level, or specify a different color (default `nothing` means no extended band)
 
 ## Attributes
 $(ATTRIBUTES)
@@ -55,7 +57,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     end
 
 
-    lowcolor = lift(c.extendlow) do el
+    lowcolor = lift(c.extendlow, typ = Union{Nothing, RGBAf0}) do el
         if el === nothing
             nothing
         elseif el === automatic || el == :auto
@@ -67,7 +69,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(x -> !isnothing(x), lowcolor)
 
-    highcolor = lift(c.extendhigh) do eh
+    highcolor = lift(c.extendhigh, typ = Union{Nothing, RGBAf0}) do eh
         if eh === nothing
             nothing
         elseif eh === automatic || eh == :auto
