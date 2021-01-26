@@ -21,6 +21,8 @@ $(ATTRIBUTES)
         extendhigh = nothing,
         _computed_levels = nothing, # is computed dynamically and needed for colorbar e.g.
         _computed_colormap = nothing, # is computed dynamically and needed for colorbar e.g.
+        _computed_extendlow = nothing,
+        _computed_extendhigh = nothing,
     )
 end
 
@@ -38,22 +40,6 @@ end
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
 
-    lowcolor = lift(c.extendlow) do el
-        if el === nothing
-            nothing
-        else
-            convert_attribute(el, key"color"())::RGBAf0
-        end
-    end
-    is_extended_low = lift(x -> !isnothing(x), lowcolor)
-    highcolor = lift(c.extendhigh) do eh
-        if eh === nothing
-            nothing
-        else
-            convert_attribute(eh, key"color"())::RGBAf0
-        end
-    end
-    is_extended_high = lift(x -> !isnothing(x), highcolor)
 
     c.attributes[:_computed_levels] = lift(zs, c.levels) do zs, levels
         _get_isoband_levels(levels, extrema_nan(zs)...)
@@ -67,6 +53,33 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         levels_scaled = (levels .- minimum(levels)) ./ (maximum(levels) - minimum(levels))
         cgrad(cmap, levels_scaled, categorical = true)
     end
+
+
+    lowcolor = lift(c.extendlow) do el
+        if el === nothing
+            nothing
+        elseif el === automatic || el == :auto
+            RGBAf0(get(c._computed_colormap[], 0))
+        else
+            convert_attribute(el, key"color"())::RGBAf0
+        end
+    end
+    c.attributes[:_computed_extendlow] = lowcolor
+    is_extended_low = lift(x -> !isnothing(x), lowcolor)
+
+    highcolor = lift(c.extendhigh) do eh
+        if eh === nothing
+            nothing
+        elseif eh === automatic || eh == :auto
+            RGBAf0(get(c._computed_colormap[], 1))
+        else
+            convert_attribute(eh, key"color"())::RGBAf0
+        end
+    end
+    c.attributes[:_computed_extendhigh] = highcolor
+    is_extended_high = lift(x -> !isnothing(x), highcolor)
+
+
 
     PolyType = typeof(Polygon(Point2f0[], [Point2f0[]]))
 
