@@ -30,8 +30,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlotting.Con
     layoutable(Colorbar, fig_or_scene;
         colormap = plot._computed_colormap,
         limits = limits,
-        lowclip = plot.extendlow,
-        highclip = plot.extendhigh,
+        lowclip = plot._computed_extendlow,
+        highclip = plot._computed_extendhigh,
         kwargs...
     )
 
