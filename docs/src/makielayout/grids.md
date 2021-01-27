@@ -286,6 +286,43 @@ save("example_trimming_3.svg", scene); nothing # hide
 ![trimming 3](example_trimming_3.svg)
 
 
+## Tweaking space between rows and columns
+
+You can use `rowgap!` and `colgap!` to change the spacing between rows or
+columns respectively.
+
+```@example spacing
+using CairoMakie
+
+fig = Figure(resolution = (1200, 900))
+
+axs = [Axis(fig[i, j]) for i in 1:3, j in 1:3]
+axs[1, 1].title = "Group A"
+axs[1, 2].title = "Group B.1"
+axs[1, 3].title = "Group B.2"
+
+hidedecorations!.(axs, grid=false)
+
+colgap!(fig.layout, 1, Relative(0.15))
+
+fig
+save("example_spacing_1.svg", fig); nothing # hide
+```
+
+![spacing 1](example_spacing_1.svg)
+
+All spaces can be changed at once by omitting the index of the gap to resize.
+
+```@example spacing
+rowgap!(fig.layout, 50)
+
+fig
+save("example_spacing_2.svg", fig); nothing # hide
+```
+
+![spacing 2](example_spacing_2.svg)
+
+
 ```@eval
 using GLMakie
 GLMakie.activate!()
