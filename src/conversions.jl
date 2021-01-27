@@ -37,6 +37,33 @@ conversion_trait(x::Type{<: XYBased}) = PointBased()
 struct SurfaceLike <: ConversionTrait end
 conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
 
+# in case nothing else matches we try to convert each individual argument
+# and reconvert the whole tuple in order to handle missings centrally, e.g.
+function convert_arguments(trait::Any, args...)
+    # convert each single argument as long as it doesn't change anymore
+    single_converted = recursively_convert_single_argument.(args)
+    # if the type of args hasn't changed this function call didn't help and we error
+    typeof(single_converted) == typeof(args) && error("After single conversion no change")
+    # otherwise we try converting our newly single-converted args again because
+    # now a normal conversion method might work again
+    convert_arguments(trait, single_converted...)
+end
+
+function recursively_convert_single_argument(x)    
+    newx = convert_single_argument(x)    
+    if typeof(newx) == typeof(x)
+        x
+    else
+        recursively_convert_single_argument(newx)
+    end  
+end
+
+convert_single_argument(x) = x
+# we can treat arrays with missing reals as Float32 arrays with NaNs 
+function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
+    Float32[ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
+end
+
 function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)
     try
@@ -124,8 +151,8 @@ end
 
 categoric_position(x, labels::Automatic) = x
 
-convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector) = convert_arguments(P, (x, y))
-convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractVector) = convert_arguments(P, (x, y, z))
+convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = (Point2f0.(x, y),)
+convert_arguments(P::PointBased, x::AbstractVector{<:Real}, y::AbstractVector{<:Real}, z::AbstractVector{<:Real}) = (Point3f0.(x, y, z),)
 
 convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
 
@@ -155,7 +182,7 @@ from `x` and `y`.
 
 `P` is the plot Type (it is optional).
 """
-convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
+#convert_arguments(::PointBased, x::RealVector, y::RealVector) = (Point2f0.(x, y),)
 convert_arguments(P::PointBased, x::ClosedInterval, y::RealVector) = convert_arguments(P, LinRange(extrema(x)..., length(y)), y)
 convert_arguments(P::PointBased, x::RealVector, y::ClosedInterval) = convert_arguments(P, x, LinRange(extrema(y)..., length(x)))
 
