@@ -22,4 +22,5 @@ WGLMakie is the Web-based backend, and is still experimental (though relatively 
 CairoMakie uses Cairo to draw vector graphics to SVG and PDF.  
 It needs Cairo.jl to build properly, which may be difficult on MacOS.
 
-!!! tip "using GPU for rendering scenes in Linux" Normally the dedicated GPU is used for rendering scenes, but in case of mobile GPU's in Linux, one can tell Julia to use the dedicated GPU while launching julia as :` $ sudo DRI_PRIME=1 julia` in bash terminal.
+!!! tip "using GPU for rendering scenes in Linux"
+    Normally the dedicated GPU is used for rendering scenes, but in case of mobile GPU's in Linux, one can tell Julia to use the dedicated GPU while launching julia as :` $ sudo DRI_PRIME=1 julia` in bash terminal.
