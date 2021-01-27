@@ -127,26 +127,6 @@ categoric_position(x, labels::Automatic) = x
 convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector) = convert_arguments(P, (x, y))
 convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractVector) = convert_arguments(P, (x, y, z))
 
-
-function convert_arguments(
-        SL::SurfaceLike,
-        x::AbstractVector, y::AbstractVector, z::AbstractMatrix{<: Number}
-    )
-    n, m = size(z)
-    positions = (x, y)
-    labels = categoric_labels.(positions)
-    xyrange = categoric_range.(labels)
-    args = convert_arguments(SL, 0..n, 0..m, z)
-    xyranges = (
-        to_linspace(0.5..(n-0.5), n),
-        to_linspace(0.5..(m-0.5), m)
-    )
-    return PlotSpec(
-        args...,
-        tickranges = xyranges, ticklabels = labels
-    )
-end
-
 convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
 
 """
