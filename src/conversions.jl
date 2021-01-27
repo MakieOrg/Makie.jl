@@ -127,18 +127,6 @@ categoric_position(x, labels::Automatic) = x
 convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector) = convert_arguments(P, (x, y))
 convert_arguments(P::PointBased, x::AbstractVector, y::AbstractVector, z::AbstractVector) = convert_arguments(P, (x, y, z))
 
-function convert_arguments(::PointBased, positions::NTuple{N, AbstractVector}) where N
-    x = first(positions)
-    if any(n-> length(x) != length(n), positions)
-        error("All vectors need to have the same length. Found: $(length.(positions))")
-    end
-    labels = categoric_labels.(positions)
-    xyrange = categoric_range.(labels)
-    points = map(zip(positions...)) do p
-        Point{N, Float32}(categoric_position.(p, labels))
-    end
-    PlotSpec(points, tickranges = xyrange, ticklabels = labels)
-end
 
 function convert_arguments(
         SL::SurfaceLike,
