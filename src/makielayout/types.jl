@@ -50,6 +50,21 @@ struct MultiplesTicks
     suffix::String
 end
 
+"""
+    IntervalsBetween(n::Int, mirror::Bool = true)
+
+Indicates to create n-1 minor ticks between every pair of adjacent major ticks.
+"""
+struct IntervalsBetween
+    n::Int
+    mirror::Bool
+    function IntervalsBetween(n::Int, mirror::Bool)
+        n < 2 && error("You can't have $n intervals (must be at least 2 which means 1 minor tick)")
+        new(n, mirror)
+    end
+end
+IntervalsBetween(n) = IntervalsBetween(n, true)
+
 
 mutable struct LineAxis
     parent::Scene
@@ -59,6 +74,8 @@ mutable struct LineAxis
     tickpositions::Node{Vector{Point2f0}}
     tickvalues::Node{Vector{Float32}}
     ticklabels::Node{Vector{String}}
+    minortickpositions::Node{Vector{Point2f0}}
+    minortickvalues::Node{Vector{Float32}}
 end
 
 struct LimitReset end

@@ -126,13 +126,29 @@ function default_attributes(::Type{Axis}, scene)
         "The width of the y grid lines."
         ygridwidth = 1f0
         "The color of the x grid lines."
-        xgridcolor = RGBAf0(0, 0, 0, 0.1)
+        xgridcolor = RGBAf0(0, 0, 0, 0.12)
         "The color of the y grid lines."
-        ygridcolor = RGBAf0(0, 0, 0, 0.1)
+        ygridcolor = RGBAf0(0, 0, 0, 0.12)
         "The linestyle of the x grid lines."
         xgridstyle = nothing
         "The linestyle of the y grid lines."
         ygridstyle = nothing
+        "Controls if the x minor grid lines are visible."
+        xminorgridvisible = false
+        "Controls if the y minor grid lines are visible."
+        yminorgridvisible = false
+        "The width of the x minor grid lines."
+        xminorgridwidth = 1f0
+        "The width of the y minor grid lines."
+        yminorgridwidth = 1f0
+        "The color of the x minor grid lines."
+        xminorgridcolor = RGBAf0(0, 0, 0, 0.05)
+        "The color of the y minor grid lines."
+        yminorgridcolor = RGBAf0(0, 0, 0, 0.05)
+        "The linestyle of the x minor grid lines."
+        xminorgridstyle = nothing
+        "The linestyle of the y minor grid lines."
+        yminorgridstyle = nothing
         "Controls if the bottom axis spine is visible."
         bottomspinevisible = true
         "Controls if the left axis spine is visible."
@@ -168,11 +184,11 @@ function default_attributes(::Type{Axis}, scene)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin = (0.05f0, 0.05f0)
         "The xticks."
-        xticks = AbstractPlotting.automatic
+        xticks = LinearTicks(4)
         "Format for xticks."
         xtickformat = AbstractPlotting.automatic
         "The yticks."
-        yticks = AbstractPlotting.automatic
+        yticks = LinearTicks(4)
         "Format for yticks."
         ytickformat = AbstractPlotting.automatic
         "The button for panning."
@@ -206,6 +222,30 @@ function default_attributes(::Type{Axis}, scene)
         yreversed = false
         "Controls if the x axis goes rightwards (false) or leftwards (true)"
         xreversed = false
+        "Controls if minor ticks on the x axis are visible"
+        xminorticksvisible = false
+        "The alignment of x minor ticks on the axis spine"
+        xminortickalign = 0f0
+        "The tick size of x minor ticks"
+        xminorticksize = 5f0
+        "The tick width of x minor ticks"
+        xminortickwidth = 1f0
+        "The tick color of x minor ticks"
+        xminortickcolor = :black
+        "The tick locator for the x minor ticks"
+        xminorticks = IntervalsBetween(2)
+        "Controls if minor ticks on the y axis are visible"
+        yminorticksvisible = false
+        "The alignment of y minor ticks on the axis spine"
+        yminortickalign = 0f0
+        "The tick size of y minor ticks"
+        yminorticksize = 5f0
+        "The tick width of y minor ticks"
+        yminortickwidth = 1f0
+        "The tick color of y minor ticks"
+        yminortickcolor = :black
+        "The tick locator for the y minor ticks"
+        yminorticks = IntervalsBetween(2)
     end
 
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
@@ -248,7 +288,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
-        ticks = AbstractPlotting.automatic
+        ticks = LinearTicks(4)
         "Format for ticks."
         tickformat = AbstractPlotting.automatic
         "The space reserved for the tick labels."
@@ -311,6 +351,18 @@ function default_attributes(::Type{Colorbar}, scene)
         highclip = nothing
         "The color of the low clip triangle."
         lowclip = nothing
+        "Controls if minor ticks are visible"
+        minorticksvisible = false
+        "The alignment of minor ticks on the axis spine"
+        minortickalign = 0f0
+        "The tick size of minor ticks"
+        minorticksize = 5f0
+        "The tick width of minor ticks"
+        minortickwidth = 1f0
+        "The tick color of minor ticks"
+        minortickcolor = :black
+        "The tick locator for the minor ticks"
+        minorticks = IntervalsBetween(5)
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -500,6 +552,12 @@ function default_attributes(::Type{LineAxis})
         ticklabelpad = 5f0,
         labelpadding = 15f0,
         reversed = false,
+        minorticksvisible = true,
+        minortickalign = 0f0,
+        minorticksize = 5f0,
+        minortickwidth = 1f0,
+        minortickcolor = :black,
+        minorticks = AbstractPlotting.automatic,
     )
 end
 

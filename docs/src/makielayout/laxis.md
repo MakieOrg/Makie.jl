@@ -161,6 +161,42 @@ nothing # hide
 
 ![axis ticks](example_axis_ticks.svg)
 
+## Minor Ticks and Grids
+
+You can show minor ticks and grids by setting `x/yminorticksvisible = true` and `x/yminorgridvisible = true` which are off by default.
+You can set size, color, width, align etc. like for the normal ticks, but there are no labels.
+The `x/yminorticks` attributes control how minor ticks are computed given major ticks and axis limits.
+For that purpose you can create your own minortick type and overload `MakieLayout.get_minor_tickvalues(minorticks, tickvalues, vmin, vmax)`.
+
+The default minor tick type is `IntervalsBetween(n, mirror = true)` where `n` gives the number of intervals each gap between major ticks is divided into with minor ticks, and `mirror` decides if outside of the major ticks there are more minor ticks with the same intervals as the adjacent gaps.
+
+```@example
+using CairoMakie
+
+theme = Attributes(
+    Axis = (
+        xminorticksvisible = true,
+        yminorticksvisible = true,
+        xminorgridvisible = true,
+        yminorgridvisible = true,
+    )
+)
+
+fig = with_theme(theme) do
+    fig = Figure(resolution = (800, 800))
+    axs = [Axis(fig[fldmod1(n, 2)...],
+        title = "IntervalsBetween($(n+1))",
+        xminorticks = IntervalsBetween(n+1),
+        yminorticks = IntervalsBetween(n+1)) for n in 1:4]
+    fig
+end
+save("example_minor_ticks.svg", fig) # hide
+nothing # hide
+```
+
+![minor ticks](example_minor_ticks.svg)
+
+
 ## Hiding Axis Spines and Decorations
 
 You can hide all axis elements manually, by setting their specific visibility attributes to `false`, like
@@ -186,7 +222,7 @@ nothing # hide
 ![axis hide spines](example_axis_hidespines.svg)
 
 To hide decorations, you can use `hidedecorations!`, or the specific `hidexdecorations!` and `hideydecorations!`.
-When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false` or `grid = false` as keyword
+When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false`, `grid = false`, `minorgrid = false` or `minorticks = false` as keyword
 arguments if you want to keep those elements.
 It's common, e.g., to hide everything but the grid lines in facet plots.
 

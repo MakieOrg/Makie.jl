@@ -34,6 +34,10 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         backgroundcolor,
         xlabelfont, ylabelfont, xticklabelfont, yticklabelfont,
         flip_ylabel, xreversed, yreversed,
+        xminorticksvisible, xminortickalign, xminorticksize, xminortickwidth, xminortickcolor, xminorticks,
+        yminorticksvisible, yminortickalign, yminorticksize, yminortickwidth, yminortickcolor, yminorticks,
+        xminorgridvisible, yminorgridvisible, xminorgridwidth, yminorgridwidth,
+        xminorgridcolor, yminorgridcolor, xminorgridstyle, yminorgridstyle
     )
 
     decorations = Dict{Symbol, Any}()
@@ -68,6 +72,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(xgridlines, 0, 0, -10)
     decorations[:xgridlines] = xgridlines
 
+    xminorgridnode = Node(Point2f0[])
+    xminorgridlines = linesegments!(
+        topscene, xminorgridnode, linewidth = xminorgridwidth, show_axis = false, visible = xminorgridvisible,
+        color = xminorgridcolor, linestyle = xminorgridstyle,
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(xminorgridlines, 0, 0, -10)
+    decorations[:xminorgridlines] = xminorgridlines
+
     ygridnode = Node(Point2f0[])
     ygridlines = linesegments!(
         topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
@@ -76,6 +89,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
     decorations[:ygridlines] = ygridlines
+
+    yminorgridnode = Node(Point2f0[])
+    yminorgridlines = linesegments!(
+        topscene, yminorgridnode, linewidth = yminorgridwidth, show_axis = false, visible = yminorgridvisible,
+        color = yminorgridcolor, linestyle = yminorgridstyle,
+    )
+    # put gridlines behind the zero plane so they don't overlay plots
+    translate!(yminorgridlines, 0, 0, -10)
+    decorations[:yminorgridlines] = yminorgridlines
 
     onany(limits, xreversed, yreversed) do lims, xrev, yrev
 
@@ -154,7 +176,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         ticklabelspace = xticklabelspace, ticks = xticks, tickformat = xtickformat, ticklabelsvisible = xticklabelsvisible,
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = spinewidth,
         ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize,
-        reversed = xreversed, tickwidth = xtickwidth, tickcolor = xtickcolor)
+        reversed = xreversed, tickwidth = xtickwidth, tickcolor = xtickcolor,
+        minorticksvisible = xminorticksvisible, minortickalign = xminortickalign, minorticksize = xminorticksize, minortickwidth = xminortickwidth, minortickcolor = xminortickcolor, minorticks = xminorticks,
+        )
     decorations[:xaxis] = xaxis
 
     yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
@@ -165,7 +189,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         ticklabelspace = yticklabelspace, ticks = yticks, tickformat = ytickformat, ticklabelsvisible = yticklabelsvisible,
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
         trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yreversed, tickwidth = ytickwidth,
-            tickcolor = ytickcolor)
+            tickcolor = ytickcolor,
+        minorticksvisible = yminorticksvisible, minortickalign = yminortickalign, minorticksize = yminorticksize, minortickwidth = yminortickwidth, minortickcolor = yminortickcolor, minorticks = yminorticks,
+        )
 
     decorations[:yaxis] = yaxis
 
@@ -219,6 +245,20 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         offset = yaxisposition[] == :left ? pxwidth : -pxwidth
         opposite_tickpos = tickpos .+ Ref(Point2f0(offset, 0))
         ygridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+    end
+
+    on(xaxis.minortickpositions) do tickpos
+        pxheight = height(scene.px_area[])
+        offset = xaxisposition[] == :bottom ? pxheight : -pxheight
+        opposite_tickpos = tickpos .+ Ref(Point2f0(0, offset))
+        xminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
+    end
+
+    on(yaxis.minortickpositions) do tickpos
+        pxwidth = width(scene.px_area[])
+        offset = yaxisposition[] == :left ? pxwidth : -pxwidth
+        opposite_tickpos = tickpos .+ Ref(Point2f0(offset, 0))
+        yminorgridnode[] = interleave_vectors(tickpos, opposite_tickpos)
     end
 
     titlepos = lift(scene.px_area, titlegap, titlealign, xaxisposition, xaxis.protrusion) do a,
@@ -707,11 +747,13 @@ function add_reset_limits!(la::Axis)
 end
 
 """
-    hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
+    hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true)
 
 Hide decorations of the x-axis: label, ticklabels, ticks and grid.
 """
-function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
+function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true)
     if label
         la.xlabelvisible = false
     end
@@ -724,14 +766,22 @@ function hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = tr
     if grid
         la.xgridvisible = false
     end
+    if minorgrid
+        la.xminorgridvisible = false
+    end
+    if minorticks
+        la.xminorticksvisible = false
+    end
 end
 
 """
-    hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
+    hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true)
 
 Hide decorations of the y-axis: label, ticklabels, ticks and grid.
 """
-function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
+function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true)
     if label
         la.ylabelvisible = false
     end
@@ -744,6 +794,12 @@ function hideydecorations!(la::Axis; label = true, ticklabels = true, ticks = tr
     if grid
         la.ygridvisible = false
     end
+    if minorgrid
+        la.yminorgridvisible = false
+    end
+    if minorticks
+        la.yminorticksvisible = false
+    end
 end
 
 """
@@ -751,9 +807,12 @@ end
 
 Hide decorations of both x and y-axis: label, ticklabels, ticks and grid.
 """
-function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true)
-    hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid)
-    hideydecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid)
+function hidedecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
+        minorgrid = true, minorticks = true)
+    hidexdecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
+        minorgrid = minorgrid, minorticks = minorticks)
+    hideydecorations!(la; label = label, ticklabels = ticklabels, ticks = ticks, grid = grid,
+        minorgrid = minorgrid, minorticks = minorticks)
 end
 
 """

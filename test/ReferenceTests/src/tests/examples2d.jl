@@ -283,17 +283,16 @@ end
 
 @cell "Simple pie chart" begin
     fig = Figure(resolution=(800, 800))
-    ax = fig[1, 1] = Axis(fig, autolimitaspect=1)
-    pie!(ax, 1:5, color=1:5)
+    pie(fig[1, 1], 1:5, color=collect(1:5), axis=(;aspect=DataAspect()))
     fig
 end
 
 @cell "Hollow pie chart" begin
-    pie(1:5, color=1:5, radius=2, inner_radius=1, axis=(;autolimitaspect=1))
+    pie(1:5, color=collect(1.0:5), radius=2, inner_radius=1, axis=(;aspect=DataAspect()))
 end
 
 @cell "Open pie chart" begin
-    pie(0.1:0.1:1.0, normalize=false, axis=(;autolimitaspect=1))
+    pie(0.1:0.1:1.0, normalize=false, axis=(;aspect=DataAspect()))
 end
 
 @cell "intersecting polygon" begin

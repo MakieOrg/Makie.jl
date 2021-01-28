@@ -54,7 +54,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
         halign, valign, vertical, flipaxisposition, ticklabelalign, flip_vertical_label,
-        nsteps, highclip, lowclip)
+        nsteps, highclip, lowclip,
+        minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
 
     decorations = Dict{Symbol, Any}()
 
@@ -252,7 +253,11 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
         ticklabelspace = ticklabelspace, ticklabelcolor = ticklabelcolor,
-        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = flip_vertical_label)
+        spinecolor = :transparent, spinevisible = :false, flip_vertical_label = flip_vertical_label,
+        minorticksvisible = minorticksvisible, minortickalign = minortickalign,
+        minorticksize = minorticksize, minortickwidth = minortickwidth,
+        minortickcolor = minortickcolor, minorticks = minorticks)
+        
     decorations[:axis] = axis
 
     onany(axis.protrusion, vertical, flipaxisposition) do axprotrusion,
