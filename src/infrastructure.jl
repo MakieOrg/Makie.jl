@@ -140,12 +140,47 @@ to_mime(x::CairoBackend) = to_mime(x.typ)
 function cairo_draw(screen::CairoScreen, scene::Scene)
     AbstractPlotting.update!(scene)
     draw_background(screen, scene)
-    draw_scene(screen, scene)
+
+    allplots = get_all_plots(scene)
+    sort!(allplots, by = zvalue)
+
+    last_scene = scene
+
+    Cairo.save(screen.context)
+    for p in allplots
+        to_value(get(p, :visible, true)) == true || continue
+        # only prepare for scene when it changes
+        # this should reduce the number of unnecessary clipping masks etc.
+        if p.parent != last_scene
+            Cairo.restore(screen.context)
+            Cairo.save(screen.context)
+            prepare_for_scene(screen, p.parent)
+            last_scene = p.parent
+        end
+        draw_plot(p.parent, screen, p)
+    end
+
     return
 end
 
+# this is a simplification which will only really work with non-rotated or
+# scaled scene transformations
+# but for Cairo's 2D paradigm that is the only likely mode of transformation
+# and this way we can use the z-value as a means to shift the drawing order
+# by translating e.g. the axis spines forward so they are not obscured halfway
+# by heatmaps or images
+zvalue(x) = AbstractPlotting.translation(x)[][3] + zvalue(x.parent)
+zvalue(::Nothing) = 0f0
 
-function draw_scene(screen::CairoScreen, scene::Scene)
+function get_all_plots(scene, plots = AbstractPlot[])
+    append!(plots, scene.plots)
+    for c in scene.children
+        get_all_plots(c, plots)
+    end
+    plots
+end
+
+function prepare_for_scene(screen::CairoScreen, scene::Scene)
 
     # get the root area to correct for its pixel size when translating
     root_area = AbstractPlotting.root(scene).px_area[]
@@ -154,8 +189,6 @@ function draw_scene(screen::CairoScreen, scene::Scene)
     scene_area = pixelarea(scene)[]
     scene_height = widths(scene_area)[2]
     scene_x_origin, scene_y_origin = scene_area.origin
-
-    Cairo.save(screen.context)
 
     # we need to translate x by the origin, so distance from the left
     # but y by the distance from the top, which is not the origin, but can
@@ -168,19 +201,6 @@ function draw_scene(screen::CairoScreen, scene::Scene)
     # clip the scene to its pixelarea
     Cairo.rectangle(screen.context, 0, 0, widths(scene_area)...)
     Cairo.clip(screen.context)
-
-    for elem in scene.plots
-        if to_value(get(elem, :visible, true))
-            Cairo.save(screen.context)
-            draw_plot(scene, screen, elem)
-            Cairo.restore(screen.context)
-        end
-    end
-    Cairo.restore(screen.context)
-
-    for child in scene.children
-        draw_scene(screen, child)
-    end
 
     return
 end
