@@ -33,6 +33,7 @@ function LineAxis(parent::Scene; kwargs...)
         show_axis = false, visible = ticksvisible
     )
     decorations[:ticklines] = ticklines
+    translate!(ticklines, 0, 0, 10)
 
     ticklabelannosnode = Node(Tuple{String, Point2f0}[])
     ticklabels = annotations!(
@@ -247,6 +248,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
         color = spinecolor, raw = true)
+    translate!(decorations[:axisline], 0, 0, 20)
 
 
     protrusion = lift(ticksvisible, label, labelvisible, labelpadding, labelsize, tickalign, tickspace, ticklabelsvisible, actual_ticklabelspace, ticklabelpad, labelfont, ticklabelfont) do ticksvisible,

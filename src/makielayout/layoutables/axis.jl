@@ -200,9 +200,12 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = spinewidth,
         visible = xoppositespinevisible, color = xoppositespinecolor)
     decorations[:xoppositeline] = xoppositeline
+    translate!(xoppositeline, 0, 0, 20)
     yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = spinewidth,
         visible = yoppositespinevisible, color = yoppositespinecolor)
     decorations[:yoppositeline] = yoppositeline
+    translate!(yoppositeline, 0, 0, 20)
+
 
     on(xaxis.tickpositions) do tickpos
         pxheight = height(scene.px_area[])

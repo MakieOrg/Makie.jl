@@ -164,7 +164,7 @@ function layoutable(::Type{Legend},
         # translate the legend forward so it is above the standard axis content
         # which is at zero. this will not really work if the legend should be
         # above a 3d plot, but for now this hack is ok.
-        # translate!(scene, (0, 0, 10))
+        translate!(scene, (0, 0, 10))
     end
 
     onany(title, nbanks, titleposition, rowgap, colgap, patchlabelgap, groupgap, titlegap,
