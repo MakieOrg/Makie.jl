@@ -9,7 +9,8 @@ function LineAxis(parent::Scene; kwargs...)
         ticklabelspace, ticklabelpad, labelpadding,
         ticklabelsize, ticklabelsvisible, spinewidth, spinecolor, label, labelsize, labelcolor,
         labelfont, ticklabelfont, ticklabelcolor,
-        labelvisible, spinevisible, trimspine, flip_vertical_label, reversed)
+        labelvisible, spinevisible, trimspine, flip_vertical_label, reversed,
+        minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
 
     pos_extents_horizontal = lift(endpoints) do endpoints
         if endpoints[1][2] == endpoints[2][2]
@@ -34,6 +35,13 @@ function LineAxis(parent::Scene; kwargs...)
     )
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
+
+    minorticksnode = Node(Point2f0[])
+    minorticklines = linesegments!(
+        parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
+        show_axis = false, visible = minorticksvisible
+    )
+    decorations[:minorticklines] = minorticklines
 
     ticklabelannosnode = Node(Tuple{String, Point2f0}[])
     ticklabels = annotations!(
@@ -186,6 +194,50 @@ function LineAxis(parent::Scene; kwargs...)
         tickstrings[] = tickstrings_unfiltered[i_values_within_limits]
     end
 
+    minortickvalues = Node(Float32[])
+    minortickpositions = Node(Point2f0[])
+
+    onany(tickvalues, minorticks) do tickvalues, minorticks
+        minortickvalues[] = get_minor_tickvalues(minorticks, tickvalues, limits[]...)
+    end
+
+    onany(minortickvalues) do minortickvalues
+        position, extents_uncorrected, horizontal = pos_extents_horizontal[]
+
+        extents = reversed[] ? reverse(extents_uncorrected) : extents_uncorrected
+
+        px_o = extents[1]
+        px_width = extents[2] - extents[1]
+
+        lim_o = limits[][1]
+        lim_w = limits[][2] - limits[][1]
+
+        tick_fractions = (minortickvalues .- lim_o) ./ lim_w
+        tick_scenecoords = px_o .+ px_width .* tick_fractions
+
+        minortickpositions[] = if horizontal
+            [Point(x, position) for x in tick_scenecoords]
+        else
+            [Point(position, y) for y in tick_scenecoords]
+        end
+    end
+
+    onany(minortickpositions, minortickalign, minorticksize, spinewidth) do tickpositions,
+        tickalign, ticksize, spinewidth
+
+        position, extents, horizontal = pos_extents_horizontal[]
+
+        if horizontal
+            tickstarts = [tp + (flipped[] ? -1f0 : 1f0) * Point2f0(0f0, tickalign * ticksize - 0.5f0 * spinewidth) for tp in tickpositions]
+            tickends = [t + (flipped[] ? -1f0 : 1f0) * Point2f0(0f0, -ticksize) for t in tickstarts]
+            minorticksnode[] = interleave_vectors(tickstarts, tickends)
+        else
+            tickstarts = [tp + (flipped[] ? -1f0 : 1f0) * Point2f0(tickalign * ticksize - 0.5f0 * spinewidth, 0f0) for tp in tickpositions]
+            tickends = [t + (flipped[] ? -1f0 : 1f0) * Point2f0(-ticksize, 0f0) for t in tickstarts]
+            minorticksnode[] = interleave_vectors(tickstarts, tickends)
+        end
+    end
+
     onany(tickstrings, labelgap, flipped) do tickstrings, labelgap, flipped
         # tickspace is always updated before labelgap
         # tickpositions are always updated before tickstrings
@@ -277,7 +329,7 @@ function LineAxis(parent::Scene; kwargs...)
     # etc to avoid empty ticks bug #69
     limits[] = limits[]
 
-    LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings)
+    LineAxis(parent, protrusion, attrs, decorations, tickpositions, tickvalues, tickstrings, minortickpositions, minortickvalues)
 end
 
 
@@ -352,13 +404,6 @@ function get_ticks(tickfunction::Function, formatter, vmin, vmax)
     return tickvalues, ticklabels
 end
 
-"""
-    get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax)
-
-Calls the default tick finding algorithm, which could depend on the current Axis
-state.
-"""
-get_tickvalues(::AbstractPlotting.Automatic, vmin, vmax) = get_tickvalues(LinearTicks(5), vmin, vmax)
 
 """
     get_tickvalues(lt::LinearTicks, vmin, vmax)
@@ -404,4 +449,43 @@ function get_ticks(m::MultiplesTicks, ::AbstractPlotting.Automatic, vmin, vmax)
     multiples = MakieLayout.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
 
     multiples .* m.multiple, Showoff.showoff(multiples) .* m.suffix
+end
+
+
+function get_minor_tickvalues(i::IntervalsBetween, tickvalues, vmin, vmax)
+    vals = Float32[]
+    length(tickvalues) < 2 && return vals
+    n = i.n
+
+    if i.mirror
+        firstinterval = tickvalues[2] - tickvalues[1]
+        stepsize = firstinterval / n
+        v = tickvalues[1] - stepsize
+        while v >= vmin
+            pushfirst!(vals, v)
+            v -= stepsize
+        end
+    end
+
+    for (lo, hi) in zip(@view(tickvalues[1:end-1]), @view(tickvalues[2:end]))
+        interval = hi - lo
+        stepsize = interval / n
+        v = lo
+        for i in 1:n-1
+            v += stepsize
+            push!(vals, v)
+        end
+    end
+
+    if i.mirror
+        lastinterval = tickvalues[end] - tickvalues[end-1]
+        stepsize = lastinterval / n
+        v = tickvalues[end] + stepsize
+        while v <= vmax
+            push!(vals, v)
+            v += stepsize
+        end
+    end
+
+    vals
 end
