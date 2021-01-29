@@ -157,7 +157,9 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
             prepare_for_scene(screen, p.parent)
             last_scene = p.parent
         end
+        Cairo.save(screen.context)
         draw_plot(p.parent, screen, p)
+        Cairo.restore(screen.context)
     end
 
     return
