@@ -1,18 +1,46 @@
-using MakieGallery, AbstractPlotting, GLMakie, Test
+using Pkg
+using GLMakie, Test
+using GLMakie.FileIO
+using GLMakie.AbstractPlotting
+using GLMakie.GeometryBasics
+using GLMakie.GeometryBasics: origin
+using ImageMagick
+# ImageIO seems broken on 1.6 ... and there doesn't
+# seem to be a clean way anymore to force not to use a loader library?
+filter!(x-> x !== :ImageIO, FileIO.sym2saver[:PNG])
+filter!(x-> x !== :ImageIO, FileIO.sym2loader[:PNG])
 
-tested_diff_path = joinpath(@__DIR__, "tested_different")
-test_record_path = joinpath(@__DIR__, "test_recordings")
-isdir(tested_diff_path) && rm(tested_diff_path, force = true, recursive = true)
-mkpath(tested_diff_path)
-isdir(test_record_path) && rm(test_record_path, force = true, recursive = true)
-mkpath(test_record_path)
+# run the unit test suite
+include("unit_tests.jl")
 
-abstractplotting_test_dir = joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "reference_image_tests")
-abstractplotting_tests = joinpath.(abstractplotting_test_dir, readdir(abstractplotting_test_dir))
-# Add GLMakie specific tests
-push!(abstractplotting_tests, joinpath(@__DIR__, "glmakie_tests.jl"))
-database = MakieGallery.load_database(abstractplotting_tests)
+path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
+Pkg.develop(PackageSpec(path = path))
+using ReferenceTests
+using ReferenceTests: @cell
 
-examples = MakieGallery.record_examples(test_record_path)
-@test length(examples) == length(database)
-MakieGallery.run_comparison(test_record_path, tested_diff_path)
+# Run the AbstractPlotting reference image testsuite
+recorded = joinpath(@__DIR__, "recorded")
+rm(recorded; force=true, recursive=true); mkdir(recorded)
+ReferenceTests.record_tests(recording_dir=recorded)
+ReferenceTests.reference_tests(recorded)
+# Run the below, to generate a html to view all differences:
+# recorded, ref_images, scores = ReferenceTests.reference_tests(recorded)
+# ReferenceTests.generate_test_summary("preview.html", recorded, ref_images, scores)
+
+# Run the GLMakie specific backend reference tests
+empty!(ReferenceTests.DATABASE)
+include("glmakie_tests.jl")
+recorded_glmakie = joinpath(@__DIR__, "recorded_glmakie")
+rm(recorded_glmakie; force=true, recursive=true); mkdir(recorded_glmakie)
+ReferenceTests.record_tests(ReferenceTests.DATABASE, recording_dir=recorded_glmakie)
+ref_images = ReferenceTests.download_refimages(; name="glmakie_refimages")
+ReferenceTests.reference_tests(recorded_glmakie; ref_images=ref_images, difference=0.01)
+# needs GITHUB_TOKEN to be defined
+# First look at the generated refimages, to make sure they look ok:
+#ReferenceTests.generate_test_summary("index.html", recorded)
+# Then you can upload them to the latest major release tag with:
+#ReferenceTests.upload_reference_images(recorded)
+
+# And do the same for the backend specific tests:
+# ReferenceTests.generate_test_summary("index.html", recorded_glmakie)
+# ReferenceTests.upload_reference_images(recorded_glmakie; name="glmakie_refimages")

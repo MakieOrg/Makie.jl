@@ -12,6 +12,7 @@ end
 mutable struct GLFramebuffer
     resolution::Node{NTuple{2, Int}}
     id::NTuple{2, GLuint}
+
     buffers::Dict{Symbol, Texture}
     render_buffer_ids::Vector{GLuint}
 end
@@ -30,7 +31,7 @@ function GLFramebuffer(fb_size::NTuple{2, Int})
     glBindFramebuffer(GL_FRAMEBUFFER, render_framebuffer)
 
     color_buffer = Texture(RGBA{N0f8}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
-    objectid_buffer = Texture(Vec{2, GLushort}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
+    objectid_buffer = Texture(Vec{2, GLuint}, fb_size, minfilter = :nearest, x_repeat = :clamp_to_edge)
 
     depth_buffer = Texture(
         Ptr{GLAbstraction.DepthStencil_24_8}(C_NULL), fb_size,
@@ -110,7 +111,6 @@ end
 
 was_destroyed(nw::GLFW.Window) = nw.handle == C_NULL
 
-
 function GLContext()
     context = GLFW.GetCurrentContext()
     version = opengl_version_number()
@@ -129,8 +129,9 @@ end
 function destroy!(nw::GLFW.Window)
     was_current = ShaderAbstractions.is_current_context(nw)
     if !was_destroyed(nw)
-        GLFW.DestroyWindow(nw)
+        GLFW.SetWindowShouldClose(nw, true)
         GLFW.PollEvents()
+        GLFW.DestroyWindow(nw)
         nw.handle = C_NULL
     end
     was_current && ShaderAbstractions.switch_context!()

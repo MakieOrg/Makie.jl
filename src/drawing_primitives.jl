@@ -76,12 +76,14 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
             robj[key] = getfield(scene.camera, key)
         end
+
         if !haskey(gl_attributes, :normalmatrix)
             robj[:normalmatrix] = map(robj[:view], robj[:model]) do v, m
                 i = SOneTo(3)
                 return transpose(inv(v[i, i] * m[i, i]))
             end
         end
+
         !haskey(gl_attributes, :ssao) && (robj[:ssao] = Node(false))
         screen.cache2plot[robj.id] = x
         robj
@@ -165,10 +167,10 @@ function handle_intensities!(attributes)
     end
 end
 
-function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
+function Base.insert!(screen::GLScreen, scene::Scene, @nospecialize(x::Combined))
     # poll inside functions to make wait on compile less prominent
     pollevents(screen)
-    if isempty(x.plots) # if no plots inserted, this truely is an atomic
+    if isempty(x.plots) # if no plots inserted, this truly is an atomic
         draw_atomic(screen, scene, x)
     else
         foreach(x.plots) do x
@@ -179,7 +181,7 @@ function Base.insert!(screen::GLScreen, scene::Scene, x::Combined)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatter})
+function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Union{Scatter, MeshScatter}))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
@@ -209,7 +211,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Union{Scatter, MeshScatt
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
+function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -221,7 +223,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Lines)
     end
 end
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::LineSegments)
+function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegments))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
@@ -363,13 +365,15 @@ end
 convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
 
-function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
-    robj = cached_robj!(screen, scene, x) do gl_attributes
+function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
+    robj = cached_robj!(screen, scene, meshplot) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
         cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
         crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
+        mesh = meshplot[1]
+
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
         elseif to_value(color) isa AbstractPlotting.AbstractPattern
@@ -378,30 +382,31 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Mesh)
             haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
         elseif to_value(color) isa AbstractMatrix{<:Colorant}
             gl_attributes[:image] = color
-        end
-        mesh = x[1]
-        if to_value(color) isa AbstractVector{<: Number}
-            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+        elseif to_value(color) isa AbstractVector{<: Number}
+            mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
                 color_sampler = AbstractPlotting.sampler(cmap, color, crange)
-                GeometryBasics.pointmeta(mesh, color=color_sampler)
+                return GeometryBasics.pointmeta(mesh, color=color_sampler)
             end
-        end
-
-        if to_value(color) isa AbstractMatrix{<: Number}
-            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
+        elseif to_value(color) isa AbstractMatrix{<: Number}
+            mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
                 color_sampler = convert_mesh_color(color, cmap, crange)
                 mesh, uv = GeometryBasics.pop_pointmeta(mesh, :uv)
                 uv_sampler = AbstractPlotting.sampler(color_sampler, uv)
-                GeometryBasics.pointmeta(mesh, color=uv_sampler)
+                return GeometryBasics.pointmeta(mesh, color=uv_sampler)
+            end
+        elseif to_value(color) isa AbstractVector{<: Colorant}
+            mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
+                return GeometryBasics.pointmeta(mesh, color=color)
             end
         end
 
-        if to_value(color) isa AbstractVector{<: Colorant}
-            mesh = lift(x[1], color, cmap, crange) do mesh, color, cmap, crange
-                GeometryBasics.pointmeta(mesh, color=color)
+        map(mesh) do mesh
+            func = to_value(transform_func_obs(meshplot))
+            if func !== identity
+                mesh.position .= apply_transform.(func, mesh.position)
             end
+            return
         end
-
         visualize(mesh, Style(:default), gl_attributes)
     end
 end
@@ -433,16 +438,19 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         end
 
         gl_attributes[:image] = img
-        args = x[1:3]
         gl_attributes[:shading] = to_value(get(gl_attributes, :shading, true))
-        if all(v-> to_value(v) isa AbstractMatrix, args)
-            args = map(args) do arg
+
+        @assert to_value(x[3]) isa AbstractMatrix
+        types = map(v -> typeof(to_value(v)), x[1:2])
+
+        if all(T -> T <: Union{AbstractMatrix, AbstractVector}, types)
+            args = map(x[1:3]) do arg
                 Texture(el32convert(arg); minfilter=:nearest)
             end
             return visualize(args, Style(:surface), gl_attributes)
         else
-            gl_attributes[:ranges] = to_range.(to_value.(args[1:2]))
-            z_data = Texture(el32convert(args[3]); minfilter=:nearest)
+            gl_attributes[:ranges] = to_range.(to_value.(x[1:2]))
+            z_data = Texture(el32convert(x[3]); minfilter=:nearest)
             return visualize(z_data, Style(:surface), gl_attributes)
         end
     end

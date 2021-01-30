@@ -1,0 +1,15 @@
+name: Auto-Close All Issues
+on:
+  issues:
+  issue_comment:
+jobs:
+  auto_close_all_issues:
+    if: ${{ !github.event.issue.pull_request }} && ${{ github.event.issue.state == "open" }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: peter-evans/close-issue@v1
+        with:
+          comment: |
+            We do not accept issues on the GLMakie.jl repository.
+            Please open your issue on the Makie.jl repository instead:
+            https://github.com/JuliaPlots/Makie.jl/issues

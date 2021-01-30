@@ -117,7 +117,7 @@ function _default(main::VolumeTypes{T}, s::Style, data::Dict) where T <: RGBA
         # These don't do anything but are needed for type specification in the frag shader
         color_map = nothing => Texture
         color_norm = nothing
-        color = color_map == nothing ? default(RGBA, s) : nothing
+        color = color_map === nothing ? default(RGBA, s) : nothing
 
         algorithm = AbsorptionRGBA
         shader = GLVisualizeShader("fragment_output.frag", "util.vert", "volume.vert", "volume.frag")

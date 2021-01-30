@@ -97,11 +97,13 @@ function meshparticle(p, s, data)
             nothing
         end => to_meshcolor
         vertex_color = Vec4f0(1)
+        matcap = nothing => Texture
         fetch_pixel = false
         uv_scale = Vec2f0(1)
 
         instances = const_lift(length, position)
         shading = true
+        backlight = 0f0
         shader = GLVisualizeShader(
             "util.vert", "particles.vert", "fragment_output.frag", "standard.frag",
             view = Dict(
@@ -194,6 +196,7 @@ function _default(
     end
     sprites(p, s, data)
 end
+
 function _default(
         p::Tuple{TOrSignal{Matrix{C}}, VectorTypes{P}}, s::Style, data::Dict
     ) where {C <: AbstractFloat, P <: Point}
@@ -311,6 +314,7 @@ function sprites(p, s, data)
             "sprites.vert", "distance_shape.frag",
             view = Dict("position_calc"=>position_calc(position, position_x, position_y, position_z, GLBuffer))
         )
+        scale_primitive = true
         gl_primitive = GL_POINTS
     end
     # Exception for intensity, to make it possible to handle intensity with a

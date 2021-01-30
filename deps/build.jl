@@ -1,20 +1,17 @@
 install_tips = """
-OpenGL/GLFW wasn't installed correctly. This likely means,
-you don't have an OpenGL capable Graphic Card,
-you don't have the newest video driver installed,
-or the GLFW build failed. If you're on linux and `]build` GLFW failed,
-try manually adding `sudo apt-get install libglfw3` and then `]build GLMakie`.
+OpenGL/GLFW wasn't loaded correctly or couldn't be initialized. 
+This likely means, you don't have an OpenGL capable Graphic Card,
+or you don't have an OpenGL 3.3 capable video driver installed.
 If you're on a headless server, you still need to install x-server and
-proper GPU drivers. You can take inspiration from this article
-on how to get Makie running on a headless system:
-https://nextjournal.com/sdanisch/makie-1.0
+proper graphics drivers.
 If you don't have a GPU, there is also a Cairo software backend
 for Makie which you can use:
 https://github.com/JuliaPlots/CairoMakie.jl.
 Please check the below error and open an issue at:
 https://github.com/JuliaPlots/GLMakie.jl.
-After you fixed your OpenGL install, please run `]build GLMakie` again!
-GLMakie will still load, but will be disabled as a default backend for Makie
+After you fixed your OpenGL install, please run `]build GLMakie`!
+Otherwise, GLMakie would still load, but would be disabled as a 
+default backend for Makie.
 """
 try
     using GLFW
@@ -25,6 +22,7 @@ catch e
     # it would be nice to check if this is a GLFW error, but if GLFW doesn't actually load
     # we can't easily use GLFW.GLFWError. Well, GLFW error is the most likely, and
     # we will print the error, to inform the user what happens, so I think this should be fine!
+    println(stderr,"Load error for GLFW")
     error(install_tips)
 end
 
@@ -59,6 +57,6 @@ catch e
     # it would be nice to check if this is a GLFW error, but if GLFW doesn't actually load
     # we can't easily use GLFW.GLFWError. Well, GLFW error is the most likely, and
     # we will print the error, to inform the user what happens, so I think this should be fine!
-    println(stderr, "init error of GLFW")
+    println(stderr, "Initialization error of GLFW")
     error(install_tips)
 end

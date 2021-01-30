@@ -1,11 +1,6 @@
 The OpenGL backend for [Makie](https://github.com/JuliaPlots/Makie.jl)
 
-
-Build status: [![][gitlab-img]][gitlab-url]
-
-[gitlab-img]: https://gitlab.com/JuliaGPU/GLMakie-jl/badges/master/pipeline.svg
-[gitlab-url]: https://gitlab.com/JuliaGPU/GLMakie-jl/pipelines
-
+![CI](https://github.com/JuliaPlots/GLMakie.jl/workflows/CI/badge.svg)
 [![codecov](https://codecov.io/gh/JuliaPlots/GLMakie.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/JuliaPlots/GLMakie.jl)
 
 ## Issues

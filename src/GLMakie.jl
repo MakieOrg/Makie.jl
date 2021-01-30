@@ -19,6 +19,7 @@ using LinearAlgebra
 
 for name in names(AbstractPlotting)
     @eval import AbstractPlotting: $(name)
+    @eval export $(name)
 end
 
 struct GLBackend <: AbstractPlotting.AbstractBackend
@@ -38,7 +39,6 @@ function loadasset(folders...; kw_args...)
     load(path; kw_args...)
 end
 
-export assetpath, loadasset
 
 const deps_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 
@@ -58,7 +58,7 @@ if WORKING_OPENGL
     include("gl_backend.jl")
 end
 
-function activate!(use_display = true)
+function activate!(use_display=true)
     b = GLBackend()
     AbstractPlotting.register_backend!(b)
     AbstractPlotting.set_glyph_resolution!(AbstractPlotting.High)
@@ -70,10 +70,16 @@ function __init__()
     if WORKING_OPENGL
         activate!()
     else
-        @warn("Loaded OpenGL Backend, but OpenGL isn't working")
+        error("Loaded OpenGL Backend, but OpenGL isn't working")
     end
 end
 
 export set_window_config!
+export assetpath, loadasset
+
+if Base.VERSION >= v"1.4.2"
+    include("precompile.jl")
+    _precompile_()
+end
 
 end
