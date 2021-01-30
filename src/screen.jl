@@ -148,7 +148,7 @@ heatmap(depth_color, colormap=:grays, show_axis=false)
 function depthbuffer(screen::Screen)
     render_frame(screen, resize_buffers=false) # let it render
     glFinish() # block until opengl is done rendering
-    source = screen.framebuffer.depth
+    source = screen.framebuffer.buffers[:depth]
     depth = Matrix{Float32}(undef, size(source))
     GLAbstraction.bind(source)
     GLAbstraction.glGetTexImage(source.texturetype, 0, GL_DEPTH_COMPONENT, GL_FLOAT, depth)
@@ -160,7 +160,7 @@ function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.I
     if !isopen(screen)
         error("Screen not open!")
     end
-    ctex = screen.framebuffer.color
+    ctex = screen.framebuffer[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     # GLFW.PollEvents()
