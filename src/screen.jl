@@ -160,7 +160,7 @@ function AbstractPlotting.colorbuffer(screen::Screen, format::AbstractPlotting.I
     if !isopen(screen)
         error("Screen not open!")
     end
-    ctex = screen.framebuffer[:color]
+    ctex = screen.framebuffer.buffers[:color]
     # polling may change window size, when its bigger than monitor!
     # we still need to poll though, to get all the newest events!
     # GLFW.PollEvents()
