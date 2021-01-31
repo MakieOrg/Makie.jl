@@ -138,7 +138,9 @@ function render_frame(screen::Screen; resize_buffers=true)
     glClearStencil(0)
     glClearColor(0, 0, 0, 0)
     glClear(GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT | GL_COLOR_BUFFER_BIT)
+    glDrawBuffer(fb.render_buffer_ids[1])
     setup!(screen)
+    glDrawBuffers(length(fb.render_buffer_ids), fb.render_buffer_ids)
 
     # render with FXAA & SSAO
     glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE)
