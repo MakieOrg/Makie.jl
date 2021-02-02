@@ -74,7 +74,9 @@ struct GLVisualizeShader <: AbstractLazyShader
             view["GLSL_EXTENSIONS"] = "#extension GL_ARB_conservative_depth: enable"
             view["SUPPORTED_EXTENSIONS"] = "#define DETPH_LAYOUT"
         end
-        args = Dict{Symbol,Any}(kw_args)
+        view["buffers"] = get_buffers()
+        view["buffer_writes"] = get_buffer_writes()
+        args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
         new(map(x -> assetpath("shader", x), paths), args)
@@ -164,4 +166,28 @@ function visualize(@nospecialize(main), @nospecialize(s), @nospecialize(data))
         model = Mat4f0(I)
     end
     return assemble_shader(data)
+end
+
+# Make changes to fragment_output to match what's needed for postprocessing
+using ..GLMakie: enable_SSAO
+function get_buffers()
+    if enable_SSAO[]
+        """
+        layout(location=2) out vec4 fragment_position;
+        layout(location=3) out vec3 fragment_normal_occlusion;
+        """
+    else
+        ""
+    end
+end
+
+function get_buffer_writes()
+    if enable_SSAO[]
+        """
+        fragment_position = o_view_pos;
+        fragment_normal_occlusion.xyz = o_normal;
+        """
+    else
+        ""
+    end
 end
