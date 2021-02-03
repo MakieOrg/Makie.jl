@@ -340,7 +340,7 @@ makedocs(
             "assets/syntaxtheme.css"
         ],
     ),
-    sitename = "Makie.jl",
+    sitename = "Makie Plotting Ecosystem",
     expandfirst = [
         "plotting_functions.md",
     ],
@@ -365,8 +365,7 @@ makedocs(
             "generated/colors.md",
             "generated/plot-attributes.md",
             "recipes.md",
-            "backends.md",
-            "output.md",
+            "backends_and_output.md",
             "scenes.md",
             "lighting.md",
             "cameras.md",

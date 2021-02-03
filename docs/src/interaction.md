@@ -222,12 +222,7 @@ end
 
 ## Interactive Widgets
 
-Makie has a couple of useful interactive widgets.
-Default Makie has the `slider`, `button` and `textslider` functions.
-
-MakieLayout has more complex versions of these that can be placed into layouts and allow you to build flexible GUIs.
-Examples are [Slider](@ref), [Button](@ref) and [Menu](@ref).
-
+Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the [Layoutables & Widgets](@ref) section.
 
 ## Recording Animations with Interactions
 

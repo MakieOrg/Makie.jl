@@ -1,7 +1,7 @@
 # Animations
 
-With `Makie.jl` it is easy to create animated plots.
-Animations work by making changes to data or plot attribute Observables and recording the changing scene frame by frame.
+With Makie it is easy to create animated plots.
+Animations work by making changes to data or plot attribute Observables and recording the changing figure frame by frame.
 You can find out more about the Observables workflow on the [Observables & Interaction](@ref) page.
 
 
@@ -9,8 +9,8 @@ You can find out more about the Observables workflow on the [Observables & Inter
 
 To create an animation you need to use the [`record`](@ref) function.
 
-First you create a `Scene`. Next, you pass a function that modifies this scene frame-by-frame to `record`.
-Any changes you make to the scene or its plots will appear in the final animation.
+First you create a `Figure`. Next, you pass a function that modifies this figure frame-by-frame to `record`.
+Any changes you make to the figure or its plots will appear in the final animation.
 You also need to pass an iterable which has as many elements as you want frames in your animation.
 The function that you pass as the first argument is called with each element from this iterator
 over the course of the animation.
@@ -18,7 +18,7 @@ over the course of the animation.
 As a start, here is how you can change the color of a line plot:
 
 ```@example 1
-using GLMakie, AbstractPlotting
+using GLMakie
 using AbstractPlotting.Colors
 
 figure, ax, lineplot = lines(0..10, sin; linewidth=10)
@@ -112,14 +112,12 @@ so that the number of x and y values can not go out of sync.
 ```@example 1
 points = Node(Point2f0[(0, 0)])
 
-figure = Figure()
-ax = figure[1, 1] = Axis(figure)
-scatter!(ax, points)
+fig, ax, sc = scatter(points)
 limits!(ax, 0, 30, 0, 30)
 
 frames = 1:30
 
-record(figure, "append_animation.mp4", frames; framerate = 30) do frame
+record(fig, "append_animation.mp4", frames; framerate = 30) do frame
     new_point = Point2f0(frame, frame)
     points[] = push!(points[], new_point)
 end
@@ -139,9 +137,6 @@ for i = 1:n_frames
     sleep(1/30)
 end
 ```
-
-If you want to animate a plot while interacting with it, check out the `async_latest` function,
-and the [Observables & Interaction](@ref) section.
 
 
 ## More Animation Examples
