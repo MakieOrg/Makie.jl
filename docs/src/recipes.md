@@ -2,39 +2,43 @@
 
 Recipes allow you to extend `Makie` with your own custom types and plotting commands.
 
-There are two types of recipes. _Type recipes_ define a simple mapping from a
-user defined type to an existing plot type. _Full recipes_ can customize the
-theme and define a custom plotting function.
+There are two types of recipes:
+- _Type recipes_ define a simple mapping from a user defined type to an existing plot type
+- _Full recipes_ define new custom plotting functions.
 
 ## Type recipes
 
-Type recipes are really simple and just overload the argument conversion
-pipeline, converting from one type to another, plottable type.
+Type recipes are mostly just conversions from one type or set of input argument types, yet unknown to Makie, to another which Makie can handle already.
 
 !!! warning
     `convert_arguments` must always return a Tuple.
 
-An example is:
+Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
 
 ```julia
-convert_arguments(x::Circle) = (decompose(Point2f, x),)
+AbstractPlotting.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
-This can be done for all plot types or for a subset of plot types:
+You can restrict conversion to a subset of plot types, like only for scatter plots:
 
 ```julia
-# All plot types
-convert_arguments(P::Type{<:AbstractPlot}, x::MyType) = convert_arguments(P, rand(10, 10))
-# Only for scatter plots
-convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
-# For a group of plots, using a conversion trait for instance PointBased plots, which includes Lines and Scatter
-convert_arguments(P::PointBased, x::MyType)
-# It is also possible to convert multiple arguments
-convert_arguments(P::Type{<:Scatter}, x::MyType, y::MyOtherType)
+AbstractPlotting.convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
+```
+
+There are also conversion traits, which make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc.
+
+```julia
+AbstractPlotting.convert_arguments(P::PointBased, x::MyType) = ...
+```
+
+Lastly, it is also possible to convert multiple arguments together.
+
+```julia
+AbstractPlotting.convert_arguments(P::Type{<:Scatter}, x::MyType, y::MyOtherType) = ...
 ```
 
 Optionally you may define the default plot type so that `plot(x::MyType)` will
-use this:
+use it directly:
 
 ```julia
 plottype(::MyType) = Surface
@@ -42,14 +46,13 @@ plottype(::MyType) = Surface
 
 ## Full recipes with the `@recipe` macro
 
-A full recipe for `MyPlot` comes in two parts. First is the plot type name,
-arguments and theme definition which are defined using the `@recipe` macro.
-Second is a custom `plot!` for `MyPlot`, implemented in terms of the atomic
-plotting functions.
+A full recipe comes in two parts. First is the plot type name, for example `MyPlot`, and then arguments and theme definition which are defined using the `@recipe` macro.
+
+Second is at least one custom `plot!` method for `MyPlot` which creates an actual visualization using other existing plotting functions.
+
 We use an example to show how this works:
 
 ```julia
-# arguments (x, y, z) && theme are optional
 @recipe(MyPlot, x, y, z) do scene
     Theme(
         plot_color => :red
@@ -63,17 +66,13 @@ This macro expands to several things. Firstly a type definition:
 const MyPlot{ArgTypes} = Combined{myplot, ArgTypes}
 ```
 
-The type parameter of `Combined` contains the function instead of e.g. a
-symbol. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
-(The downside is we always need a function `myplot` - TODO: is this a problem?)
-The following signatures are defined to make `MyPlot` nice to use:
+The type parameter of `Combined` contains the function `myplot` instead of e.g. a
+symbol `MyPlot`. This way the mapping from `MyPlot` to `myplot` is safer and simpler.
+The following signatures are automatically defined to make `MyPlot` nice to use:
 
 ```julia
 myplot(args...; kw_args...) = ...
-myplot!(scene, args...; kw_args...) = ...
-myplot(kw_args::Dict, args...) = ...
-myplot!(scene, kw_args::Dict, args...) = ...
-#etc (not 100% settled what signatures there will be)
+myplot!(args...; kw_args...) = ...
 ```
 
 A specialization of `argument_names` is emitted if you have an argument list
@@ -105,12 +104,12 @@ As the second part of defining `MyPlot`, you should implement the actual
 plotting of the `MyPlot` object by specializing `plot!`:
 
 ```julia
-function plot!(plot::MyPlot)
+function plot!(myplot::MyPlot)
     # normal plotting code, building on any previously defined recipes
-    # or atomic plotting operations, and adding to the combined `plot`:
-    lines!(plot, rand(10), color = plot[:plot_color])
-    plot!(plot, plot[:x], plot[:y])
-    plot
+    # or atomic plotting operations, and adding to the combined `myplot`:
+    lines!(myplot, rand(10), color = myplot[:plot_color])
+    plot!(myplot, myplot[:x], myplot[:y])
+    myplot
 end
 ```
 
@@ -128,76 +127,182 @@ function plot!(plot::MyVolume)
 end
 ```
 
-Here is a complete example of creating a custom type and a recipe for it.
+## Example: Stock Chart
 
-```@example
-using GLMakie
-using AbstractPlotting
-import AbstractPlotting: Plot, default_theme, plot!, to_value
+Let's say we want to visualize stock values with the classic open / close and low / high combinations.
+In this example, we will create a special type to hold this information, and a recipe that can plot this type.
 
-struct Simulation
-    grid::Vector{Point3f0}
+First, we make a struct to hold the stock's values for a given day:
+
+```@example stocks
+using CairoMakie
+CairoMakie.activate!() # hide
+
+struct StockValue{T<:Real}
+    open::T
+    close::T
+    high::T
+    low::T
 end
+```
 
-# Probably worth having a macro for this!
-function AbstractPlotting.default_theme(scene::SceneLike, ::Type{<: Plot(Simulation)})
-    Theme(
-        advance = 0,
-        molecule_sizes = [0.08, 0.04, 0.04],
-        molecule_colors = [:maroon, :deepskyblue2, :deepskyblue2]
+Now we create a new plot type called `StockChart`.
+The `do scene` closure is just a function that returns our default attributes, in this case they color stocks going down red, and stocks going up green.
+
+```@example stocks
+@recipe(StockChart) do scene
+    Attributes(
+        downcolor = :red,
+        upcolor = :green,
     )
 end
-
-# The recipe! - will get called for plot(!)(x::SimulationResult)
-function AbstractPlotting.plot!(p::Plot(Simulation))
-    sim = to_value(p[1]) # first argument is the SimulationResult
-    # when advance changes, get new positions from the simulation
-    mpos = lift(p.advance) do i
-        sim.grid .+ rand(Point3f0, length(sim.grid)) .* 0.01f0
-    end
-    # size shouldn't change, so we might as well get the value instead of signal
-    pos = to_value(mpos)
-    N = length(pos)
-    sizes = lift(p[:molecule_sizes]) do s
-        repeat(s, outer = N ÷ 3)
-    end
-    sizes = lift(p[:molecule_sizes]) do s
-        repeat(s, outer = N ÷ 3)
-    end
-    colors = lift(p[:molecule_colors]) do c
-        repeat(c, outer = N ÷ 3)
-    end
-    scene = meshscatter!(p, mpos, markersize = sizes, color = colors)
-    indices = Int[]
-    for i in 1:3:N
-        push!(indices, i, i + 1, i, i + 2)
-    end
-    meshplot = p.plots[end] # meshplot is the last plot we added to p
-    # meshplot[1] -> the positions (first argument) converted to points, so
-    # we don't do the conversion 2 times for linesegments!
-    linesegments!(p, lift(x-> view(x, indices), meshplot[1]))
-end
-
-# To write out a video of the whole simulation
-n = 5
-r = range(-1, stop = 1, length = n)
-grid = Point3f0.(r, reshape(r, (1, n, 1)), reshape(r, (1, 1, n)))
-molecules = map(1:(n^3) * 3) do i
-    i3 = ((i - 1) ÷ 3) + 1
-    xy = 0.1; z = 0.08
-    i % 3 == 1 && return grid[i3]
-    i % 3 == 2 && return grid[i3] + Point3f0(xy, xy, z)
-    i % 3 == 0 && return grid[i3] + Point3f0(-xy, xy, z)
-end
-result = Simulation(molecules)
-scene = Scene()
-plotobject = plot!(scene, result)
-N = 100
-record(scene, "molecules_simulation.mp4", 1:N) do i
-    plotobject.advance = i
-end
-
 nothing # hide
 ```
 
-![molecules simulation](molecules_simulation.mp4)
+Then we get to the meat of the recipe, which is actually creating a plot method.
+We need to overload a specific method of `AbstractPlotting.plot!` which as its argument has a subtype of our new `StockChart` plot type.
+The type parameter of that type is a Tuple describing the argument types for which this method should work.
+
+Note that the input arguments we receive inside the `plot!` method, which we can extract by indexing into the `StockChart`, are automatically converted to Observables by Makie.
+
+This means that we must construct our plotting function in a dynamic way so that it will update itself whenever the input observables change.
+This can be a bit trickier than recipes you might now from other plotting packages which produce mostly static plots.
+
+```@example stocks
+function AbstractPlotting.plot!(
+        sc::StockChart{<:Tuple{AbstractVector{<:Real}, AbstractVector{<:StockValue}}})
+
+    # our first argument is an observable of parametric type AbstractVector{<:Real}
+    times = sc[1]
+    # our second argument is an observable of parametric type AbstractVector{<:StockValue}}
+    stockvalues = sc[2]
+
+    # we predefine a couple of observables for the linesegments
+    # and barplots we need to draw
+    # this is necessary because in Makie we want every recipe to be interactively updateable
+    # and therefore need to connect the observable machinery to do so
+    linesegs = Node(Point2f0[])
+    bar_froms = Node(Float32[])
+    bar_tos = Node(Float32[])
+    colors = Node(Bool[])
+
+    # this helper function will update our observables
+    # whenever `times` or `stockvalues` change
+    function update_plot(times, stockvalues)
+        colors[]
+
+        # clear the vectors inside the observables
+        empty!(linesegs[])
+        empty!(bar_froms[])
+        empty!(bar_tos[])
+        empty!(colors[])
+
+        # then refill them with our updated values
+        for (t, s) in zip(times, stockvalues)
+            push!(linesegs[], Point2f0(t, s.low))
+            push!(linesegs[], Point2f0(t, s.high))
+            push!(bar_froms[], s.open)
+            push!(bar_tos[], s.close)
+        end
+        append!(colors[], [x.close > x.open for x in stockvalues])
+        colors[] = colors[]
+    end
+
+    # connect `update_plot` so that it is called whenver `times`
+    # or `stockvalues` change
+    AbstractPlotting.Observables.onany(update_plot, times, stockvalues)
+    
+    # then call it once manually with the first `times` and `stockvalues`
+    # contents so we prepopulate all observables with correct values
+    update_plot(times[], stockvalues[])
+
+    # for the colors we just use a vector of booleans or 0s and 1s, which are
+    # colored according to a 2-element colormap
+    # we build this colormap out of our `downcolor` and `upcolor`
+    # we give the observable `typ = Any` so it will not error when we change
+    # a color from a symbol like :red to a different type like RGBf0(1, 0, 1)
+    colormap = lift(sc.downcolor, sc.upcolor, typ = Any) do dc, uc
+        [dc, uc]
+    end
+
+    # in the last step we plot into our `sc` StockChart object, which means
+    # that our new plot is just made out of two simpler recipes layered on
+    # top of each other
+    linesegments!(sc, linesegs, color = colors, colormap = colormap)
+    barplot!(sc, times, bar_froms, fillto = bar_tos, color = colors, strokewidth = 0, colormap = colormap)
+
+    # lastly we return the new StockChart
+    sc
+end
+nothing # hide
+```
+
+Finally, let's try it out and plot some stocks:
+
+```@example stocks
+timestamps = 1:100
+
+# we create some fake stock values in a way that looks pleasing later
+startvalue = StockValue(0.0, 0.0, 0.0, 0.0)
+stockvalues = foldl(timestamps[2:end], init = [startvalue]) do values, t
+    open = last(values).close + 0.3 * randn()
+    close = open + randn()
+    high = max(open, close) + rand()
+    low = min(open, close) - rand()
+    push!(values, StockValue(
+        open, close, high, low
+    ))
+end
+
+# now we can use our new recipe
+f = Figure(resolution = (1200, 900))
+
+stockchart(f[1, 1], timestamps, stockvalues)
+
+# and let's try one where we change our default attributes
+stockchart(f[2, 1], timestamps, stockvalues,
+    downcolor = :purple, upcolor = :orange)
+f
+save("example_stockchart.svg", f); nothing # hide
+```
+
+![example stockchart](example_stockchart.svg)
+
+
+As a last example, lets pretend our stock data is coming in dynamically, and we want to create an animation out of it.
+This is easy if we use observables as input arguments which we then update frame by frame:
+
+```@example stocks
+timestamps = Node(collect(1:100))
+stocknode = Node(stockvalues)
+
+fig, ax, sc = stockchart(timestamps, stocknode)
+
+record(fig, "stockchart_animation.mp4", 101:200, framerate = 30) do t
+    # push a new timestamp without triggering the observable
+    push!(timestamps[], t)
+
+    # push a new StockValue without triggering the observable
+    old = last(stocknode[])
+    open = old.close + 0.3 * randn()
+    close = open + randn()
+    high = max(open, close) + rand()
+    low = min(open, close) - rand()
+    new = StockValue(open, close, high, low)
+    push!(stocknode[], new)
+
+    # now both timestamps and stocknode are synchronized
+    # again and we can trigger one of them by assigning it to itself
+    # to update the whole stockcharts plot for the new frame
+    stocknode[] = stocknode[]
+    # let's also update the axis limits because the plot will grow
+    # to the right
+    autolimits!(ax)
+end
+nothing # hide
+
+using GLMakie # hide
+GLMakie.activate!() # hide
+```
+
+![stockchart animation](stockchart_animation.mp4)
