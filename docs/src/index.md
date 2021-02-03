@@ -1,8 +1,8 @@
-![Makie.jl](assets/logo.png)
+![Makie](assets/logo.png)
 
 ## Welcome to Makie!
 
-[`Makie`](https://github.com/JuliaPlots/Makie.jl/) is a high-performance, extendable, and multi-platform plotting ecosystem for the [Julia](https://julialang.org/) programming language.
+Makie is a high-performance, extendable, and multi-platform plotting ecosystem for the [Julia](https://julialang.org/) programming language.
 
 ## Installation and Import
 
@@ -56,21 +56,25 @@ Markdown.parse("""
 | Package | Description |
 | :-- | :-- |
 | [`AbstractPlotting.jl`](https://github.com/JuliaPlots/AbstractPlotting.jl) | Defines all infrastructure objects which can be visualized using one of the three backend packages. |
-| [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl) | Default Makie backend. GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows. |
+| [`GLMakie.jl`](https://github.com/JuliaPlots/GLMakie.jl) | GPU-powered, interactive 2D and 3D plotting in standalone `GLFW.jl` windows. |
 | [`CairoMakie.jl`](https://github.com/JuliaPlots/CairoMakie.jl) | `Cairo.jl` based, non-interactive 2D backend for publication-quality vector graphics. |
-| [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) | WebGL-based interactive 2D and 3D plotting that runs within browsers.
+| [`WGLMakie.jl`](https://github.com/JuliaPlots/WGLMakie.jl) | WebGL-based interactive 2D and 3D plotting that runs within browsers. |
+
+The differences between backends are explained in more details under [Backends & Output](@ref).
 
 
 ### Extension Packages
 
+These packages are maintained by third parties. If you install them, keep an eye on version conflicts or downgrades as the Makie ecosystem is developing quickly so things break occasionally.
+
 | Package | Description |
 | :-- | :-- |
 | [`AlgebraOfGraphics.jl`](https://github.com/JuliaPlots/AlgebraOfGraphics.jl/) | Grammar-of-graphics style plotting, inspired by ggplot2. |
-| [`GeoMakie.jl`](https://github.com/JuliaPlots/GeoMakie.jl) | Geographic plotting utilities. |
+| [`GeoMakie.jl`](https://github.com/JuliaPlots/GeoMakie.jl) | Geographic plotting utilities. Currently not maintained. |
 
 
 ## Getting Help
 
 1) Use the REPL `?` help mode
 1) Join the `#makie` channel in the [Julia Slack group](https://julialang.org/slack/).
-1) Open an issue in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl) repository.
+1) Open an issue in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl) repository which serves as the central hub for AbstractPlotting and backend issues.

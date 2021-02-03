@@ -134,7 +134,7 @@ save("sineplot.png", figure)
     only output bitmaps like `png`. `CairoMakie` can output high-quality vector graphics such as `svg` and
     `pdf`, on the other hand those formats don't work as well (or at all) with 3D content.
 
-See [Output](@ref) for more information on this.
+See [Backends & Output](@ref) for more information on this.
 
 ## Creating Animations
 
