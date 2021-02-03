@@ -684,7 +684,8 @@ function convert_attribute(ls::Tuple{<:Union{Symbol,AbstractString},<:Any}, ::ke
 end
 
 function line_pattern(linestyle, gaps)
-    float.([0.0; cumsum(line_diff_pattern(linestyle, gaps))])
+    pattern = line_diff_pattern(linestyle, gaps)
+    isnothing(pattern) ? pattern : float.([0.0; cumsum(pattern)])
 end
 
 "The linestyle patterns are inspired by the LaTeX package tikZ as seen here https://tex.stackexchange.com/questions/45275/tikz-get-values-for-predefined-dash-patterns."
