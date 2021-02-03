@@ -25,6 +25,9 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
     layoutobservables = LayoutObservables{LScene}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight,
         attrs.halign, attrs.valign, attrs.alignmode; suggestedbbox = bbox)
 
+    # Using clear = false (default for scenes constructed from other scenes)
+    # breaks SSAO, so we're using clear = true as a default here. This means
+    # that this LScene might draw over plot objects from other scenes...
     scene = if haskey(scenekw, :clear)
         Scene(topscene, lift(round_to_IRect2D, layoutobservables.computedbbox); scenekw...)
     else
