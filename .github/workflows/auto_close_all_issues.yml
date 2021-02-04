@@ -8,7 +8,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - if: github.actor != 'JuliaTagBot'
-      - uses: peter-evans/close-issue@v1
+        uses: peter-evans/close-issue@v1
         with:
           comment: |
             We do not accept issues on the CairoMakie.jl repository.
