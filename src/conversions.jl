@@ -9,19 +9,27 @@ function convert_arguments(T::PlotFunc, args...; kw...)
         convert_arguments(ct, args...; kw...)
     catch e
         if e isa MethodError
-            error(
-                """
-                `AbstractPlotting.convert_arguments` failed for the plot type $T, or its conversion trait $ct.
-
-                The signature that could not be converted was:
-                $(join("::" .* string.(typeof.(args)), ", "))
-
-                AbstractPlotting needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                You can define a method for `AbstractPlotting.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/recipes.html).
-
-                Alternatively, you can define `AbstractPlotting.convert_single_argument` for single arguments which have types that are unknown to AbstractPlotting but which can be converted to known types and fed back to the conversion pipeline.
-                """
-            )
+            try
+                convert_arguments_individually(T, args...)
+            catch ee
+                if ee isa MethodError
+                    error(
+                        """
+                        `AbstractPlotting.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
+        
+                        The signature that could not be converted was:
+                        $(join("::" .* string.(typeof.(args)), ", "))
+        
+                        AbstractPlotting needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
+                        You can define a method for `AbstractPlotting.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/recipes.html).
+        
+                        Alternatively, you can define `AbstractPlotting.convert_single_argument` for single arguments which have types that are unknown to AbstractPlotting but which can be converted to known types and fed back to the conversion pipeline.
+                        """
+                    )
+                else
+                    rethrow(ee)
+                end
+            end
         else
             rethrow(e)
         end
@@ -30,16 +38,16 @@ end
 
 # in case no trait matches we try to convert each individual argument
 # and reconvert the whole tuple in order to handle missings centrally, e.g.
-function convert_arguments(trait::Any, args...)
+function convert_arguments_individually(T::PlotFunc, args...)
     # convert each single argument until it doesn't change type anymore
     single_converted = recursively_convert_argument.(args)
     # if the type of args hasn't changed this function call didn't help and we error
     if typeof(single_converted) == typeof(args)
-        throw(MethodError(convert_arguments, (trait, args...)))
+        throw(MethodError(convert_arguments, (T, args...)))
     end
     # otherwise we try converting our newly single-converted args again because
     # now a normal conversion method might work again
-    convert_arguments(trait, single_converted...)
+    convert_arguments(T, single_converted...)
 end
 
 function recursively_convert_argument(x)    
