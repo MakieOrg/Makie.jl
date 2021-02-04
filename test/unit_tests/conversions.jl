@@ -127,14 +127,14 @@ end
     mynestedvector = MyNestedVector(MyVector(collect(11:20)))
     @test_throws MethodError convert_arguments(Lines, myvector, mynestedvector)
     
-    convert_single_argument(v::MyNestedVector) = v.v
-    convert_single_argument(v::MyVector) = v.v
+    AbstractPlotting.convert_single_argument(v::MyNestedVector) = v.v
+    AbstractPlotting.convert_single_argument(v::MyVector) = v.v
 
     @test convert_arguments(Lines, myvector, mynestedvector) == (Point2f0.(1:10, 11:20),)
 
     @test isequal(
         convert_arguments(Lines, [1, missing, 2]),
-        (Point2f0[(1, 1), (2, NaN), (3, 3)])
+        (Point2f0[(1, 1), (2, NaN), (3, 2)],)
     )
 
     @test isequal(
