@@ -40,29 +40,39 @@ conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
 # in case nothing else matches we try to convert each individual argument
 # and reconvert the whole tuple in order to handle missings centrally, e.g.
 function convert_arguments(trait::Any, args...)
-    # convert each single argument as long as it doesn't change anymore
-    single_converted = recursively_convert_single_argument.(args)
+    # convert each single argument until it doesn't change type anymore
+    single_converted = recursively_convert_argument.(args)
     # if the type of args hasn't changed this function call didn't help and we error
-    typeof(single_converted) == typeof(args) && error("After single conversion no change")
+    if typeof(single_converted) == typeof(args)
+        throw(MethodError(convert_arguments, (trait, args...)))
+    end
     # otherwise we try converting our newly single-converted args again because
     # now a normal conversion method might work again
     convert_arguments(trait, single_converted...)
 end
 
-function recursively_convert_single_argument(x)    
+function recursively_convert_argument(x)    
     newx = convert_single_argument(x)    
     if typeof(newx) == typeof(x)
         x
     else
-        recursively_convert_single_argument(newx)
+        recursively_convert_argument(newx)
     end  
 end
 
+# if no specific conversion is defined, we don't convert
 convert_single_argument(x) = x
-# we can treat arrays with missing reals as Float32 arrays with NaNs 
+
+# same for points
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
-    Float32[ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
+    [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
 end
+
+function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
+    [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
+end
+
+using Markdown
 
 function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)
@@ -72,12 +82,15 @@ function convert_arguments(T::PlotFunc, args...; kw...)
         if e isa MethodError
             error(
                 """
-                There was no `AbstractPlotting.convert_arguments` overload found for
-                the plot type $T, or its conversion trait $ct.
-                The arguments were:
-                $(typeof.(args))
+                `AbstractPlotting.convert_arguments` failed for the plot type $T, or its conversion trait $ct.
 
-                To fix this, define `AbstractPlotting.convert_arguments(::$T, $(join(Ref("::") .* string.(typeof.(args)), ", ")))`.
+                The arguments that could not be converted were:
+                $(join("::" .* string.(typeof.(args)), ", "))
+
+                AbstractPlotting needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
+                You can define a method for `AbstractPlotting.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/recipes.html).
+
+                Alternatively, you can define `AbstractPlotting.convert_single_argument` for single arguments which have types that are unknown to AbstractPlotting but which can be converted to known types and fed back to the conversion pipeline.
                 """
             )
         else
