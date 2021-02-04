@@ -65,6 +65,7 @@ scene
 ```@example 1
 using GLMakie
 GLMakie.enable_SSAO[] = true
+close(GLMakie.global_gl_screen()) # close any open screen
 
 # Alternatively:
 # fig = Figure()
