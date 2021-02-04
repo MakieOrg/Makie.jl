@@ -1,25 +1,4 @@
 
-"""
-    to_color(color)
-Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
-"""
-to_color(color) = convert_attribute(color, key"color"())
-
-"""
-    to_colormap(cm[, N = 20])
-
-Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
-"""
-to_colormap(colormap) = convert_attribute(colormap, key"colormap"())
-to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
-to_font(font) = convert_attribute(font, key"font"())
-to_align(align) = convert_attribute(align, key"align"())
-to_textsize(textsize) = convert_attribute(textsize, key"textsize"())
-
-convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
-convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
-convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
-convert_attribute(x, key::Key) = x
 
 const XYBased = Union{MeshScatter, Scatter, Lines, LineSegments}
 const RangeLike = Union{AbstractRange, AbstractVector, ClosedInterval}
@@ -82,7 +61,7 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                 """
                 `AbstractPlotting.convert_arguments` failed for the plot type $T, or its conversion trait $ct.
 
-                The arguments that could not be converted were:
+                The signature that could not be converted was:
                 $(join("::" .* string.(typeof.(args)), ", "))
 
                 AbstractPlotting needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
@@ -612,6 +591,28 @@ end
 ################################################################################
 #                            Attribute conversions                             #
 ################################################################################
+
+"""
+    to_color(color)
+Converts a `color` symbol (e.g. `:blue`) to a color RGBA.
+"""
+to_color(color) = convert_attribute(color, key"color"())
+
+"""
+    to_colormap(cm[, N = 20])
+
+Converts a colormap `cm` symbol (e.g. `:Spectral`) to a colormap RGB array, where `N` specifies the number of color points.
+"""
+to_colormap(colormap) = convert_attribute(colormap, key"colormap"())
+to_rotation(rotation) = convert_attribute(rotation, key"rotation"())
+to_font(font) = convert_attribute(font, key"font"())
+to_align(align) = convert_attribute(align, key"align"())
+to_textsize(textsize) = convert_attribute(textsize, key"textsize"())
+
+convert_attribute(x, key::Key, ::Key) = convert_attribute(x, key)
+convert_attribute(s::SceneLike, x, key::Key, ::Key) = convert_attribute(s, x, key)
+convert_attribute(s::SceneLike, x, key::Key) = convert_attribute(x, key)
+convert_attribute(x, key::Key) = x
 
 convert_attribute(p, ::key"highclip") = to_color(p)
 convert_attribute(p::Nothing, ::key"highclip") = p
