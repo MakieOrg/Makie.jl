@@ -82,11 +82,12 @@ conversion_trait(::Type{<: Volume}) = VolumeLike()
 # if no specific conversion is defined, we don't convert
 convert_single_argument(x) = x
 
-# same for points
+# replace missings with NaNs
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Real}})
     [ismissing(x) ? NaN32 : convert(Float32, x) for x in a]
 end
 
+# same for points
 function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}}) where N
     [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
