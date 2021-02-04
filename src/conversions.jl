@@ -252,30 +252,6 @@ function convert_arguments(PB::PointBased, mp::Union{Array{<:Polygon}, MultiPoly
     return (arr,)
 end
 
-################################################################################
-#                              Categorical Traits                              #
-################################################################################
-
-struct Categorical end
-struct Continous end
-
-categorical_trait(::Type) = Categorical()
-categorical_trait(::Type{<: Number}) = Continous()
-
-categoric_labels(x::AbstractVector{T}) where T = categoric_labels(categorical_trait(T), x)
-
-categoric_labels(::Categorical, x) = unique(x)
-categoric_labels(::Continous, x) = automatic # we let them be automatic
-
-categoric_range(range::Automatic) = range
-categoric_range(range) = 1:length(range)
-
-function categoric_position(x, labels)
-    findfirst(l -> l == x, labels)
-end
-
-categoric_position(x, labels::Automatic) = x
-
 
 ################################################################################
 #                                 SurfaceLike                                  #
