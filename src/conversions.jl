@@ -72,8 +72,6 @@ function convert_single_argument(a::AbstractArray{<:Union{Missing, <:Point{N}}})
     [ismissing(x) ? Point{N, Float32}(NaN32) : Point{N, Float32}(x) for x in a]
 end
 
-using Markdown
-
 function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)
     try
