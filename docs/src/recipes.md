@@ -10,8 +10,15 @@ There are two types of recipes:
 
 Type recipes are mostly just conversions from one type or set of input argument types, yet unknown to Makie, to another which Makie can handle already.
 
-!!! warning
-    `convert_arguments` must always return a Tuple.
+This is the sequential logic by which conversions in Makie are attempted:
+- Dispatch on `convert_arguments(::PlotType, args...)`
+- If no matching method is found, determine a conversion trait via `conversion_trait(::PlotType)`
+- Dispatch on `convert_arguments(::ConversionTrait, args...)`
+- If no matching method is found, try to convert each single argument recursively with `convert_single_argument` until each type doesn't change anymore
+- Dispatch on `convert_arguments(::PlotType, converted_args...)`
+- Fail if no method was found
+
+### Multiple Argument Conversion with convert_arguments
 
 Plotting of a `Circle` for example can be defined via a conversion into a vector of points:
 
@@ -19,13 +26,16 @@ Plotting of a `Circle` for example can be defined via a conversion into a vector
 AbstractPlotting.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
+!!! warning
+    `convert_arguments` must always return a Tuple.
+
 You can restrict conversion to a subset of plot types, like only for scatter plots:
 
 ```julia
 AbstractPlotting.convert_arguments(P::Type{<:Scatter}, x::MyType) = convert_arguments(P, rand(10, 10))
 ```
 
-There are also conversion traits, which make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc.
+Conversion traits make it easier to define behavior for a group of plot types that share the same trait. `PointBased` for example applies to `Scatter`, `Lines`, etc. Predefined are `NoConversion`, `PointBased`, `SurfaceLike` and `VolumeLike`.
 
 ```julia
 AbstractPlotting.convert_arguments(P::PointBased, x::MyType) = ...
@@ -43,6 +53,16 @@ use it directly:
 ```julia
 plottype(::MyType) = Surface
 ```
+
+### Single Argument Conversion with convert_single_argument
+
+Some types which are unknown to AbstractPlotting can be converted to other types, for which `convert_arguments` methods are available.
+This is done with `convert_single_argument`.
+
+For example, `AbstractArrays` with `Real`s and `missing`s can usually be safely converted to `Float32` arrays with `NaN`s instead of `missing`s.
+
+The difference between `convert_single_argument` and `convert_arguments` with a single argument is that the former can be applied to any argument of any signature, while the latter only matches one-argument signatures.
+
 
 ## Full recipes with the `@recipe` macro
 
