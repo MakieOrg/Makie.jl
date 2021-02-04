@@ -1,7 +1,8 @@
 using AbstractPlotting: 
     NoConversion, 
     convert_arguments, 
-    conversion_trait
+    conversion_trait,
+    convert_single_argument
 
 @testset "Conversions" begin
 
@@ -111,4 +112,33 @@ using AbstractPlotting: check_line_pattern, line_diff_pattern
     @test_throws ArgumentError line_diff_pattern(:dash, :NORMAL)
     @test_throws ArgumentError line_diff_pattern(:dash, ()) 
     @test_throws ArgumentError line_diff_pattern(:dash, (1, 2, 3))
+end
+
+struct MyVector{T}
+    v::Vector{T}
+end
+
+struct MyNestedVector{T}
+    v::MyVector{T}
+end
+
+@testset "single conversions" begin
+    myvector = MyVector(collect(1:10))
+    mynestedvector = MyNestedVector(MyVector(collect(11:20)))
+    @test_throws MethodError convert_arguments(Lines, myvector, mynestedvector)
+    
+    convert_single_argument(v::MyNestedVector) = v.v
+    convert_single_argument(v::MyVector) = v.v
+
+    @test convert_arguments(Lines, myvector, mynestedvector) == (Point2f0.(1:10, 11:20),)
+
+    @test isequal(
+        convert_arguments(Lines, [1, missing, 2]),
+        (Point2f0[(1, 1), (2, NaN), (3, 3)])
+    )
+
+    @test isequal(
+        convert_arguments(Lines, [Point(1, 2), missing, Point(3, 4)]),
+        (Point2f0[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
+    )
 end
