@@ -30,7 +30,7 @@ Axis(fig[1, 1])
 
 # vertical colorbars
 Colorbar(fig[1, 2], width = 25, limits = (0, 10), colormap = :viridis,
-    flipaxisposition = false, ticklabelalign = (:right, :center))
+    flipaxis = false)
 Colorbar(fig[1, 3], width = 25, limits = (0, 5),
 colormap = cgrad(:Spectral, 5, categorical = true))
 Colorbar(fig[1, 4], width = 25, limits = (-1, 1), colormap = :heat,
@@ -38,13 +38,12 @@ Colorbar(fig[1, 4], width = 25, limits = (-1, 1), colormap = :heat,
 
 # horizontal colorbars
 Colorbar(fig[2, 1], height = 25, limits = (0, 10), colormap = :viridis,
-    vertical = false, ticklabelalign = (:center, :bottom))
+    vertical = false)
 Colorbar(fig[3, 1], height = 25, limits = (0, 5),
-    colormap = cgrad(:Spectral, 5, categorical = true), vertical = false,
-    ticklabelalign = (:center, :bottom))
+    colormap = cgrad(:Spectral, 5, categorical = true), vertical = false)
 Colorbar(fig[4, 1], height = 25, limits = (-1, 1), colormap = :heat,
-    label = "Temperature", vertical = false, flipaxisposition = false,
-    ticklabelalign = (:center, :top), highclip = :cyan, lowclip = :red)
+    label = "Temperature", vertical = false, flipaxis = false,
+    highclip = :cyan, lowclip = :red)
 
 fig
 
