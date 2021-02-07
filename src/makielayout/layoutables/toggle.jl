@@ -58,7 +58,7 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
     decorations[:button] = button
 
     # do these need explicit cleanup?
-    on(topscene.pevents.mousebuttons, priority = Int8(40)) do e
+    on(topscene.pevents.mousebutton, priority = Int8(40)) do e
         in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
         # mouseover is quite expensive, would be good to skip
         hovered = in_bbox && mouseover(topscene, button, frame)
