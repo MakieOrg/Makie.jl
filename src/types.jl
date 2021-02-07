@@ -90,6 +90,79 @@ function Events()
     )
 end
 
+
+"""
+This struct provides accessible `Observable`s to monitor the events
+associated with a Scene.
+
+## Fields
+$(TYPEDFIELDS)
+"""
+struct PriorityEvents
+    """
+    The area of the window in pixels, as a `Rect2D`.
+    """
+    window_area::PriorityObservable{IRect2D}
+    """
+    The DPI resolution of the window, as a `Float64`.
+    """
+    window_dpi::PriorityObservable{Float64}
+    """
+    The state of the window (open => true, closed => false).
+    """
+    window_open::PriorityObservable{Bool}
+
+    """
+    The pressed mouse buttons.
+    Updates when a mouse button is pressed.
+
+    See also [`ispressed`](@ref).
+    """
+    mousebuttons::PriorityObservable{MouseButtonEvent}
+    """
+    The position of the mouse as a `NTuple{2, Float64}`.
+    Updates whenever the mouse moves.
+    """
+    mouseposition::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
+    """
+    The direction of scroll
+    """
+    scroll::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
+
+    """
+    See also [`ispressed`](@ref).
+    """
+    keyboardbuttons::PriorityObservable{KeyEvent}
+
+    unicode_input::PriorityObservable{Char}
+    dropped_files::PriorityObservable{Vector{String}}
+    """
+    Whether the Scene window is in focus or not.
+    """
+    hasfocus::PriorityObservable{Bool}
+    entered_window::PriorityObservable{Bool}
+end
+
+function PriorityEvents()
+    return PriorityEvents(
+        PriorityObservable(IRect(0, 0, 0, 0)),
+        PriorityObservable(100.0),
+        PriorityObservable(false),
+
+        PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release)),
+        PriorityObservable((0.0, 0.0)),
+        PriorityObservable((0.0, 0.0)),
+
+        PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release)),
+
+        PriorityObservable('\0'),
+        PriorityObservable(String[]),
+        PriorityObservable(false),
+        PriorityObservable(false),
+    )
+end
+
+
 mutable struct Camera
     pixel_space::Node{Mat4f0}
     view::Node{Mat4f0}
