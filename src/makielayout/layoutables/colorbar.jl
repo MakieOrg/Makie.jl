@@ -106,6 +106,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
+    map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, cgradient)
+
     steps = lift(cgradient, nsteps) do cgradient, n
         if cgradient isa PlotUtils.CategoricalColorGradient
             cgradient.values
@@ -113,6 +115,17 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
             collect(LinRange(0, 1, n))
         end::Vector{Float64}
     end
+
+    # it's hard to draw categorical and continous colormaps well
+    # with the same primitives
+
+    # therefore we make one interpolated image for continous
+    # colormaps and number of polys for categorical colormaps
+    # at the same time, then we just set one of them invisible
+    # depending on the type of colormap
+    # this should solve most white-line issues
+
+    # for categorical colormaps we make a number of rectangle polys
 
     rects_and_colors = lift(barbox, vertical, steps, cgradient) do bbox, v, steps, gradient
         xmin, ymin = minimum(bbox)
@@ -133,15 +146,35 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         rects, colors
     end
 
+    colors = lift(x -> getindex(x, 2), rects_and_colors)
+
     rects = poly!(topscene,
         lift(x -> getindex(x, 1), rects_and_colors),
-        color = lift(x -> getindex(x, 2), rects_and_colors),
-        show_axis = false)
+        color = colors,
+        show_axis = false,
+        visible = map_is_categorical,
+    )
 
-    decorations[:colorrects] = rects
+    decorations[:categorical_map] = rects
 
-    # hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
-    # decorations[:heatmap] = hm
+    # for continous colormaps we sample a 1d image
+    # to avoid white lines when rendering vector graphics
+
+    continous_pixels = lift(vertical, nsteps, cgradient) do v, n, grad
+        px = get.(Ref(grad), LinRange(0, 1, n))
+        v ? reshape(px, 1, n) : reshape(px, n, 1)
+    end
+
+    cont_image = image!(topscene,
+        @lift(range(left($barbox), right($barbox), length = 2)),
+        @lift(range(bottom($barbox), top($barbox), length = 2)),
+        continous_pixels,
+        visible = @lift(!$map_is_categorical),
+        show_axis = false,
+        interpolate = true,
+    )
+
+    decorations[:continuous_map] = cont_image
 
     highclip_tri = lift(barbox, spinewidth) do box, spinewidth
         if vertical[]
