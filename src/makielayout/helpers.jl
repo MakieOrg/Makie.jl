@@ -323,49 +323,6 @@ function subtheme(scene, key::Symbol)
     sub
 end
 
-"""
-    xaxis_top!(la::Axis)
-
-Move the x-axis to the top, while correctly aligning the tick labels at the bottom.
-"""
-function xaxis_top!(la::Axis)
-    la.xaxisposition = :top
-    la.xticklabelalign = (la.xticklabelalign[][1], :bottom)
-    nothing
-end
-
-"""
-    xaxis_bottom!(la::Axis)
-
-Move the x-axis to the bottom, while correctly aligning the tick labels at the top.
-"""
-function xaxis_bottom!(la::Axis)
-    la.xaxisposition = :bottom
-    la.xticklabelalign = (la.xticklabelalign[][1], :top)
-    nothing
-end
-
-"""
-    yaxis_left!(la::Axis)
-
-Move the y-axis to the left, while correctly aligning the tick labels at the right.
-"""
-function yaxis_left!(la::Axis)
-    la.yaxisposition = :left
-    la.yticklabelalign = (:right, la.yticklabelalign[][2])
-    nothing
-end
-
-"""
-    yaxis_right!(la::Axis)
-
-Move the y-axis to the right, while correctly aligning the tick labels at the left.
-"""
-function yaxis_right!(la::Axis)
-    la.yaxisposition = :right
-    la.yticklabelalign = (:left, la.yticklabelalign[][2])
-    nothing
-end
 
 """
     labelslider!(scene, label, range; format = string, sliderkw = Dict(), labelkw = Dict(), valuekw = Dict(), layoutkw...)

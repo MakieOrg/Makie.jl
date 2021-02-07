@@ -80,9 +80,9 @@ function default_attributes(::Type{Axis}, scene)
         "The counterclockwise rotation of the yticklabels in radians."
         yticklabelrotation = 0f0
         "The horizontal and vertical alignment of the xticklabels."
-        xticklabelalign = (:center, :top)
+        xticklabelalign = AbstractPlotting.automatic
         "The horizontal and vertical alignment of the yticklabels."
-        yticklabelalign = (:right, :center)
+        yticklabelalign = AbstractPlotting.automatic
         "The size of the xtick marks."
         xticksize = 10f0
         "The size of the ytick marks."
@@ -302,7 +302,9 @@ function default_attributes(::Type{Colorbar}, scene)
         "The color of the tick marks."
         tickcolor = RGBf0(0, 0, 0)
         "The horizontal and vertical alignment of the tick labels."
-        ticklabelalign = (:left, :center)
+        ticklabelalign = AbstractPlotting.automatic
+        "The rotation of the ticklabels"
+        ticklabelrotation = 0f0
         "The line width of the spines."
         spinewidth = 1f0
         "Controls if the top spine is visible."
@@ -328,7 +330,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "Controls if the colorbar is oriented vertically."
         vertical = true
         "Flips the axis to the right if vertical and to the top if horizontal."
-        flipaxisposition = true
+        flipaxis = true
         "Flips the colorbar label if the axis is vertical."
         flip_vertical_label = false
         "The width setting of the colorbar."

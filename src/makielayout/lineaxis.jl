@@ -43,11 +43,48 @@ function LineAxis(parent::Scene; kwargs...)
     )
     decorations[:minorticklines] = minorticklines
 
+    realticklabelalign = lift(ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation, typ = Any) do al, (pos, ex, hor), fl, rot
+        if al !== AbstractPlotting.automatic
+            return al
+        end
+        if rot == 0 || !(rot isa Real)
+            if hor
+                (:center, fl ? :bottom : :top)
+            else
+                (fl ? :left : :right, :center)
+            end
+        elseif rot ≈ pi/2
+            if hor
+                (fl ? :left : :right, :center)
+            else
+                (:center, fl ? :top : :bottom)
+            end
+        elseif rot ≈ -pi/2
+            if hor
+                (fl ? :right : :left, :center)
+            else
+                (:center, fl ? :bottom : :top)
+            end
+        elseif rot > 0
+            if hor
+                (fl ? :left : :right, fl ? :bottom : :top)
+            else
+                (fl ? :left : :right, :center)
+            end
+        elseif rot < 0
+            if hor
+                (fl ? :right : :left, fl ? :bottom : :top)
+            else
+                (fl ? :left : :right, :center)
+            end
+        end
+    end
+
     ticklabelannosnode = Node(Tuple{String, Point2f0}[])
     ticklabels = annotations!(
         parent,
         ticklabelannosnode,
-        align = ticklabelalign,
+        align = realticklabelalign,
         rotation = ticklabelrotation,
         textsize = ticklabelsize,
         font = ticklabelfont,
