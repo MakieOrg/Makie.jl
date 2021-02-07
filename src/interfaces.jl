@@ -629,12 +629,12 @@ _plot!(p::Atomic{T}) where T = p
 function _plot!(p::Combined{Any, T}) where T
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
-    error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(plot::Plot$((args...,)))")
+    error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(::Plot$((args...,)))")
 end
 function _plot!(p::Combined{X, T}) where {X, T}
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
-    error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(plot::$X{ <: $T})")
+    error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(::$(Combined{X,S} where {S<:T}))")
 end
 
 function show_attributes(attributes)
