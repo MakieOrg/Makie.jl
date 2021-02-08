@@ -347,10 +347,13 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
+            return true
         end
+        return false
     end
 
-    on(scene.events.keyboardbuttons) do buttons
+    # TODO should this work with keyboardbutton? eat events?
+    on(scene.events.keyboardstate) do buttons
         keysevents[] = KeysEvent(buttons)
     end
 
@@ -736,13 +739,16 @@ function add_reset_limits!(la::Axis)
     scene = la.scene
     e = events(scene)
     cam = camera(scene)
-    on(cam, e.mousebuttons) do buttons
-        if ispressed(scene, AbstractPlotting.Mouse.left) && AbstractPlotting.is_mouseinside(scene)
-            if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.left_control)
-                autolimits!(la)
-            end
+    on(cam, e.mousebutton) do event
+        if event.button == AbstractPlotting.Mouse.left && 
+            event.action == AbstractPlotting.Mouse.release &&
+            AbstractPlotting.is_mouseinside(scene) && 
+            AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.left_control)
+            
+            autolimits!(la)
+            return true
         end
-        return
+        return false
     end
 end
 

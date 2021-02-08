@@ -1,3 +1,4 @@
+# TODO: deprecate?
 function calc_drag(buttons, drag, indrag, tracked_mousebutton)
     # only track if still the same button is pressed
     if length(buttons) == 1 && (!indrag[] || tracked_mousebutton[] == first(buttons))
@@ -23,12 +24,12 @@ function mousedrag(scene::Scene, native_window)
     tracked_mousebutton = RefValue(Mouse.left)
     drag = RefValue(Mouse.notpressed)
     events = scene.events
-    onany(events.mouseposition, events.mousebuttons) do mp, buttons
+    onany(events.mouseposition, events.mousebuttonstate) do mp, buttons
         d = calc_drag(buttons, drag, indrag, tracked_mousebutton)
         if (d == Mouse.pressed) || (d != events.mousedrag[])
             events.mousedrag[] = d
         end
-        return
+        return false
     end
     return
 end
@@ -54,7 +55,7 @@ function register_callbacks(scene::Scene, native_window)
     window_open(scene, native_window)
     mouse_buttons(scene, native_window)
     mouse_position(scene, native_window)
-    mousedrag(scene, native_window)
+    # mousedrag(scene, native_window)
     scroll(scene, native_window)
     keyboard_buttons(scene, native_window)
     unicode_input(scene, native_window)
@@ -66,8 +67,8 @@ end
 
 
 button_key(x::Type{T}) where {T} = error("Must be a keyboard or mouse button. Found: $T")
-button_key(x::Type{Keyboard.Button}) = :keyboardbuttons
-button_key(x::Type{Mouse.Button}) = :mousebuttons
+button_key(x::Type{Keyboard.Button}) = :keyboardstate
+button_key(x::Type{Mouse.Button}) = :mousebuttonstate
 button_key(x::Set{T}) where {T} = button_key(T)
 button_key(x::T) where {T} = button_key(T)
 

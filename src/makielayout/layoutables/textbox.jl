@@ -184,16 +184,12 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         displayed_string[] = join(newchars)
     end
 
-    on(events(scene).unicode_input) do char_array
-        if !focused[] || isempty(char_array)
-            return
+    on(events(scene).unicode_input) do char
+        if focused[] && is_allowed(char, restriction[])
+            insertchar!(char, cursorindex[] + 1)
+            return true
         end
-
-        for c in char_array
-            if is_allowed(c, restriction[])
-                insertchar!(c, cursorindex[] + 1)
-            end
-        end
+        return false
     end
 
 
@@ -221,32 +217,34 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    on(events(scene).keyboardbuttons) do button_set
-        if !focused[] || isempty(button_set)
-            return
+    on(events(scene).keyboardbutton) do event
+        if focused[]
+            if event.action != Keyboard.release
+                key = event.key
+                if key == Keyboard.backspace
+                    removechar!(cursorindex[])
+                elseif key == Keyboard.delete
+                    removechar!(cursorindex[] + 1)
+                elseif key == Keyboard.enter
+                    submit()
+                    if defocus_on_submit[]
+                        defocus!(ltextbox)
+                    end
+                elseif key == Keyboard.escape
+                    if reset_on_defocus[]
+                        reset_to_stored()
+                    end
+                    defocus!(ltextbox)
+                elseif key == Keyboard.right
+                    cursor_forward()
+                elseif key == Keyboard.left
+                    cursor_backward()
+                end
+            end
+            return true
         end
 
-        for key in button_set
-            if key == Keyboard.backspace
-                removechar!(cursorindex[])
-            elseif key == Keyboard.delete
-                removechar!(cursorindex[] + 1)
-            elseif key == Keyboard.enter
-                submit()
-                if defocus_on_submit[]
-                    defocus!(ltextbox)
-                end
-            elseif key == Keyboard.escape
-                if reset_on_defocus[]
-                    reset_to_stored()
-                end
-                defocus!(ltextbox)
-            elseif key == Keyboard.right
-                cursor_forward()
-            elseif key == Keyboard.left
-                cursor_backward()
-            end
-        end
+        return false
     end
 
     ltextbox

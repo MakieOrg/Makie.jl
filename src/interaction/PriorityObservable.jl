@@ -3,7 +3,7 @@ using Observables: AbstractObservable, ObserverFunction, notify!, InternalFuncti
 import Observables: observe, listeners, on, off, onany
 
 mutable struct PriorityObservable{T} <: AbstractObservable{T}
-    listeners::Vector{Pair{Int8, Vector{Function}}}
+    listeners::Vector{Pair{Int8, Vector{Any}}}
     val::T
 
     PriorityObservable{T}() where {T} = new{T}(Pair{Int8, Vector{Any}}[])

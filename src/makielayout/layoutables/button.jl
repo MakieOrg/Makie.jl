@@ -65,7 +65,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
     end
 
 
-
+    
     mouseevents = addmouseevents!(scene, button, labeltext)
 
     onmouseover(mouseevents) do _
@@ -84,6 +84,36 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
         mousestate[] = :active
         clicks[] = clicks[] + 1
     end
+    
+    #=
+    on(topscene.pevents.mousebutton) do e
+        in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
+        hovered = in_bbox && mouseover(topscene, button, frame)
+        if hovered && (e.button == Mouse.left)
+            if e.action == Mouse.press
+                mousestate[] = :active
+                clicks[] = clicks[] + 1
+                return true
+            elseif e.action == Mouse.release
+                mousestate[] = :hover
+                return true
+            end
+        end
+
+        return false
+    end
+
+    on(topscene.pevents.mouseposition) do pos
+        in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
+        hovered = in_bbox && mouseover(topscene, button, frame)
+        if hovered
+            mousestate[] = :hover
+        else
+            mousestate[] = :out
+        end
+        return false
+    end
+    =#
 
     label[] = label[]
     # trigger bbox
