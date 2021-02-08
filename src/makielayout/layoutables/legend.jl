@@ -472,7 +472,7 @@ attribute `label` set.
 """
 function layoutable(::Type{Legend}, fig_or_scene, axis::Union{Axis, Scene, LScene}, title = nothing; kwargs...)
     plots, labels = get_labeled_plots(axis)
-    isempty(plots) && error("No plots with labels in the given axis to put in the legend.")
+    isempty(plots) && error("There are no plots with labels in the given axis that can be put in the legend. Supply labels to plotting functions like `plot(args...; label = \"My label\")`")
     layoutable(Legend, fig_or_scene, plots, labels, title; kwargs...)
 end
 
@@ -489,3 +489,55 @@ end
 get_plots(ax::Axis) = ax.scene.plots
 get_plots(scene::Scene) = scene.plots
 get_plots(lscene::LScene) = lscene.scene.plots
+
+
+# convenience constructor for axis legend
+
+axislegend(ax = current_axis(); kwargs...) = axislegend(ax, ax; kwargs...)
+
+axislegend(title::String; kwargs...) = axislegend(current_axis(), current_axis(), title; kwargs...)
+
+"""
+    axislegend(ax, args...; position = :rt, kwargs...)
+    axislegend(ax = current_axis(); kwargs...)
+    axislegend(title::String; kwargs...)
+
+Create a legend that sits inside an Axis's plot area.
+
+The position can be a Symbol where the first letter controls the horizontal
+alignment and can be l, r or c, and the second letter controls the vertical
+alignment and can be t, b or c. Or it can be a tuple where the first
+element is set as the Legend's halign and the second element as its valign.
+"""
+function axislegend(ax, args...; position = :rt, kwargs...)
+    Legend(ax.parent, args...;
+        bbox = ax.scene.px_area,
+        margin = (10, 10, 10, 10),
+        legend_position_to_aligns(position)...,
+        kwargs...)
+end
+
+function legend_position_to_aligns(s::Symbol)
+    p = string(s)
+    length(p) != 2 && throw(ArgumentError("Position symbol must have length == 2"))
+
+    haligns = Dict(
+        'l' => :left,
+        'r' => :right,
+        'c' => :center,
+    )
+    haskey(haligns, p[1]) || throw(ArgumentError("First letter can be l, r or c, not $(p[1])."))
+
+    valigns = Dict(
+        't' => :top,
+        'b' => :bottom,
+        'c' => :center,
+    )
+    haskey(valigns, p[2]) || throw(ArgumentError("Second letter can be b, t or c, not $(p[2])."))
+
+    (halign = haligns[p[1]], valign = valigns[p[2]])
+end
+
+function legend_position_to_aligns(t::Tuple{Any, Any})
+    (halign = t[1], valign = t[2])
+end
