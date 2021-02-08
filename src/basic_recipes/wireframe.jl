@@ -1,8 +1,8 @@
 
 """
-wireframe(x, y, z)
-wireframe(positions)
-wireframe(mesh)
+    wireframe(x, y, z)
+    wireframe(positions)
+    wireframe(mesh)
 
 Draws a wireframe, either interpreted as a surface or as a mesh.
 
