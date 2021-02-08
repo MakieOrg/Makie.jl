@@ -24,17 +24,16 @@ function Base.setindex!(observable::PriorityObservable, val; notify=(x)->true)
             else
                 Base.invokelatest(f, val)
             end
-            output && return nothing
+            output && return true
         end
     end
-    nothing
+    return false
 end
 
 # reverse order so that the highest priority is notified first
 listeners(o::PriorityObservable) = (f for p in reverse(o.listeners) for f in p[2])
 
 function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false, priority = Int8(0))
-    # on(mousebutton) in toggle doesn't work with this :(
     if Core.Compiler.return_type(f, (typeof(observable.val),)) !== Bool
         error(
             "Observer functions of PriorityObservables must return a Bool to " *
