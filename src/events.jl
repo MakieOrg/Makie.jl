@@ -40,12 +40,9 @@ returns `Node{Bool}`
 """
 window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
-    pevent = scene.pevents.window_open
     event = scene.events.window_open
     function windowclose(win)
         @print_error begin
-            # @timeit "process!" process!(scene, WindowOpenEvent(false))
-            @timeit "pevents" begin pevent[] = false end
             @timeit "events" begin event[] = false end
         end
     end
@@ -67,9 +64,7 @@ end
 function window_area(scene::Scene, screen::Screen)
     window = to_native(screen)
     event = scene.events.window_area
-    pevent = scene.pevents.window_area
     dpievent = scene.events.window_dpi
-    dpipevent = scene.pevents.window_dpi
 
     disconnect!(window, window_area)
     monitor = GLFW.GetPrimaryMonitor()
@@ -89,10 +84,6 @@ function window_area(scene::Scene, screen::Screen)
             props = MonitorProperties(monitor)
             # dpi of a monitor should be the same in x y direction.
             # if not, minimum seems to be a fair default
-            @timeit "pevents" begin
-                dpipevent[] = minimum(props.dpi)
-                pevent[] = IRect(minimum(rect), w, h)
-            end
             @timeit "events" begin
                 dpievent[] = minimum(props.dpi)
                 event[] = IRect(minimum(rect), w, h)
@@ -115,14 +106,12 @@ returns `Node{NTuple{4, Int}}`
 """
 mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
 function mouse_buttons(scene::Scene, window::GLFW.Window)
-    event = scene.events.mousebuttons
-    pevent = scene.pevents.mousebutton
+    event = scene.events.mousebutton
     function mousebuttons(window, button, action, mods)
         @print_error begin
-            @timeit "pevents" begin
-                pevent[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
+            @timeit "events" begin
+                event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
             end
-            @timeit "events" addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
         end
     end
     disconnect!(window, mouse_buttons)
@@ -133,14 +122,12 @@ function disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
 end
 keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(screen))
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
-    event = scene.events.keyboardbuttons
-    pevent = scene.pevents.keyboardbutton
+    event = scene.events.keyboardbutton
     function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         @print_error begin
-            @timeit "pevents" begin
-                pevent[] = KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))
+            @timeit "events" begin
+                event[] = KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))
             end
-            @timeit "events" addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
         end
     end
     disconnect!(window, keyboard_buttons)
@@ -159,10 +146,8 @@ returns `Node{Vector{String}}`, which are absolute file paths
 dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
-    pevent = scene.pevents.dropped_files
     function droppedfiles(window, files)
         @print_error begin
-            @timeit "pevents" begin pevent[] = String.(files) end
             @timeit "events" begin event[] = String.(files) end
         end
     end
@@ -183,22 +168,14 @@ containing the pressed char. Is empty, if no key is pressed.
 unicode_input(scene::Scene, screen) = unicode_input(scene, to_native(screen))
 function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
-    pevent = scene.pevents.unicode_input
     function unicodeinput(window, c::Char)
         @print_error begin
-            @timeit "pevents" begin pevent[] = c end
-            @timeit "events" begin
-                vals = event[]
-                push!(vals, c)
-                event[] = vals
-                empty!(vals)
-                event[] = vals
-            end
+            @timeit "events" begin event[] = c end
         end
     end
     disconnect!(window, unicode_input)
-    x = Char[]; sizehint!(x, 1)
-    event[] = x
+    # x = Char[]; sizehint!(x, 1)
+    # event[] = x
     GLFW.SetCharCallback(window, unicodeinput)
 end
 function disconnect!(window::GLFW.Window, ::typeof(unicode_input))
@@ -242,30 +219,27 @@ which is not in scene coordinates, with the upper left window corner being 0
 function mouse_position(scene::Scene, screen::Screen)
     window = to_native(screen)
     e = events(scene)
-    pevent = scene.pevents.mouseposition
     on(screen.render_tick) do _
         !e.hasfocus[] && return
         x, y = GLFW.GetCursorPos(window)
         pos = correct_mouse(window, x, y)
         if pos != e.mouseposition[]
             @timeit "events" begin e.mouseposition[] = pos end
-            @timeit "pevents" begin AbstractPlotting.notify!(pevent) end
-            # @timeit "pevents" begin pevent = pos end
         end
         return
     end
 
-    function cursorposition(window, w::Cdouble, h::Cdouble)
-        @print_error begin
-            pos = correct_mouse(window, w, h)
-            @timeit "triggerless mouseposition" begin
-                pevent.val = pos
-            end
-            return
-        end
-    end
-    disconnect!(window, mouse_position)
-    GLFW.SetCursorPosCallback(window, cursorposition)
+    # function cursorposition(window, w::Cdouble, h::Cdouble)
+    #     @print_error begin
+    #         pos = correct_mouse(window, w, h)
+    #         @timeit "triggerless mouseposition" begin
+    #             e.mouseposition.val = pos
+    #         end
+    #         return
+    #     end
+    # end
+    # disconnect!(window, mouse_position)
+    # GLFW.SetCursorPosCallback(window, cursorposition)
 
     return
 end
@@ -283,10 +257,8 @@ which is an x and y offset.
 scroll(scene::Scene, screen) = scroll(scene, to_native(screen))
 function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
-    pevent = scene.pevents.scroll
     function scrollcb(window, w::Cdouble, h::Cdouble)
         @print_error begin
-            @timeit "pevents" begin pevent[] = (w, h) end
             @timeit "events" begin
                 event[] = (w, h)
                 event[] = (0.0, 0.0)
@@ -309,10 +281,8 @@ which is true whenever the window has focus.
 hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
-    pevent = scene.pevents.hasfocus
     function hasfocuscb(window, focus::Bool)
         @print_error begin
-            @timeit "pevents" begin pevent[] = focus end 
             @timeit "events" begin event[] = focus end
         end
     end
@@ -334,10 +304,8 @@ which is true whenever the cursor enters the window.
 entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
-    pevent = scene.pevents.entered_window
     function enteredwindowcb(window, entered::Bool)
         @print_error begin
-            @timeit "pevents" begin pevent[] = entered end
             @timeit "events" begin event[] = entered end
         end
     end
