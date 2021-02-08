@@ -119,6 +119,7 @@ struct PriorityEvents
     See also [`ispressed`](@ref).
     """
     mousebutton::PriorityObservable{MouseButtonEvent}
+    mousebuttonstate::Node{Set{Mouse.Button}}
     """
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates whenever the mouse moves.
@@ -133,6 +134,7 @@ struct PriorityEvents
     See also [`ispressed`](@ref).
     """
     keyboardbutton::PriorityObservable{KeyEvent}
+    keyboardstate::Node{Set{Keyboard.Button}}
 
     unicode_input::PriorityObservable{Char}
     dropped_files::PriorityObservable{Vector{String}}
@@ -144,16 +146,53 @@ struct PriorityEvents
 end
 
 function PriorityEvents()
+    mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
+    mousebuttonstate = Node(Set{Mouse.Button}())
+    on(mousebutton, priority = typemax(Int8)) do event
+        set = mousebuttonstate[]
+        if event.action == Mouse.press
+            push!(set, event.button)
+        elseif event.action == Mouse.release
+            delete!(set, event.button)
+        else
+            error("Unrecognized Keyboard action $(event.action)")
+        end
+        mousebuttonstate[] = set
+        # This never consumes because it just keeps track of the state
+        return false
+    end
+        
+    keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
+    keyboardstate = Node(Set{Keyboard.Button}())
+    on(keyboardbutton, priority = typemax(Int8)) do event
+        set = keyboardstate[]
+        if event.key != Keyboard.unknown
+            if event.action == Keyboard.press
+                push!(set, event.key)
+                keyboardstate[] = set
+            elseif event.action == Keyboard.release
+                delete!(set, event.key)
+                keyboardstate[] = set
+            elseif event.action == Keyboard.repeat
+                # nothing needs to be done, besides returning the same set of keys
+            else
+                error("Unrecognized Keyboard action $(event.action)")
+            end
+        end
+        # This never consumes because it just keeps track of the state
+        return false
+    end
+
     return PriorityEvents(
         PriorityObservable(IRect(0, 0, 0, 0)),
         PriorityObservable(100.0),
         PriorityObservable(false),
 
-        PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release)),
+        mousebutton, mousebuttonstate,
         PriorityObservable((0.0, 0.0)),
         PriorityObservable((0.0, 0.0)),
 
-        PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release)),
+        keyboardbutton, keyboardstate,
 
         PriorityObservable('\0'),
         PriorityObservable(String[]),
