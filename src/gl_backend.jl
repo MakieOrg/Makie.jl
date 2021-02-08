@@ -44,10 +44,15 @@ function get_texture!(atlas)
     return tex
 end
 
+# TODO
+const enable_SSAO = Ref(false)
+const enable_FXAA = Ref(true)
+
 include("GLVisualize/GLVisualize.jl")
 using .GLVisualize
 
 include("glwindow.jl")
+include("postprocessing.jl")
 include("screen.jl")
 include("rendering.jl")
 include("events.jl")
