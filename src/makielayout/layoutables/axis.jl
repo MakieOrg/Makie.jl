@@ -374,6 +374,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         for (active, interaction) in values(la.interactions)
             active && process_interaction(interaction, event, la)
         end
+        return false
     end
 
     on(process_event, mouseeventhandle.obs)

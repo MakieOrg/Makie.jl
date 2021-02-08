@@ -139,14 +139,18 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         else
             closest_charindex - 1
         end
+
+        return true
     end
 
     onmouseover(mousestate) do state
         hovering[] = true
+        return false
     end
 
     onmouseout(mousestate) do state
         hovering[] = false
+        return false
     end
 
     onmousedownoutside(mousestate) do state
@@ -154,6 +158,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
             reset_to_stored()
         end
         defocus!(ltextbox)
+        return false
     end
 
     function insertchar!(c, index)
