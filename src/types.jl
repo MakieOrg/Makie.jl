@@ -41,7 +41,7 @@ struct Events
 
     See also [`ispressed`](@ref).
     """
-    mousebutton::Node{Set{Mouse.Button}}
+    mousebuttons::Node{Set{Mouse.Button}}
     """
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates whenever the mouse moves.
@@ -59,7 +59,7 @@ The state of the mouse drag, represented by an enumerator of `DragEnum`.
     """
     See also [`ispressed`](@ref).
     """
-    keyboardbutton::Node{Set{Keyboard.Button}}
+    keyboardbuttons::Node{Set{Keyboard.Button}}
 
     unicode_input::Node{Vector{Char}}
     dropped_files::Node{Vector{String}}
@@ -118,7 +118,7 @@ struct PriorityEvents
 
     See also [`ispressed`](@ref).
     """
-    mousebuttons::PriorityObservable{MouseButtonEvent}
+    mousebutton::PriorityObservable{MouseButtonEvent}
     """
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates whenever the mouse moves.
@@ -132,7 +132,7 @@ struct PriorityEvents
     """
     See also [`ispressed`](@ref).
     """
-    keyboardbuttons::PriorityObservable{KeyEvent}
+    keyboardbutton::PriorityObservable{KeyEvent}
 
     unicode_input::PriorityObservable{Char}
     dropped_files::PriorityObservable{Vector{String}}
