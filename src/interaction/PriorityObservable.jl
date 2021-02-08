@@ -83,25 +83,25 @@ function off(observable::PriorityObservable, obsfunc::ObserverFunction)
     off(observable, f)
 end
 
-function onany(f, args...; priority, weak = false)
-    callback = OnUpdate(f, args)
+# function onany(f, args...; priority::Int8 = Int8(0), weak::Bool = false)
+#     callback = OnUpdate(f, args)
 
-    # store all returned ObserverFunctions
-    obsfuncs = ObserverFunction[]
-    for observable in args
-        if observable isa AbstractObservable
-            obsfunc = on(callback, observable, priority = priority, weak = weak)
-            push!(obsfuncs, obsfunc)
-        elseif observable isa AbstractObservable
-            obsfunc = on(callback, observable, weak = weak)
-            push!(obsfuncs, obsfunc)
-        end
-    end
+#     # store all returned ObserverFunctions
+#     obsfuncs = ObserverFunction[]
+#     for observable in args
+#         if observable isa PriorityObservable
+#             obsfunc = on(callback, observable, priority = priority, weak = weak)
+#             push!(obsfuncs, obsfunc)
+#         elseif observable isa AbstractObservable
+#             obsfunc = on(callback, observable, weak = weak)
+#             push!(obsfuncs, obsfunc)
+#         end
+#     end
 
-    # same principle as with `on`, this collection needs to be
-    # stored by the caller or the connections made will be cut
-    obsfuncs
-end
+#     # same principle as with `on`, this collection needs to be
+#     # stored by the caller or the connections made will be cut
+#     obsfuncs
+# end
 
 # No map. map is evil
 # To be specific - map forwards the output of the function to a new observable
