@@ -25,7 +25,7 @@ function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     map_once(events(scene).mouseposition) do mp
         p, idx = mouse_selection(args...)
         (p in fplots) && f(idx)
-        return
+        return false
     end
 end
 
@@ -67,11 +67,16 @@ end
     mouse_in_scene(scene::Scene)
 returns the mouseposition relative to `scene`
 """
-function mouse_in_scene(scene::SceneLike)
+function mouse_in_scene(scene::SceneLike; priority = Int8(0))
     p = rootparent(scene)
-    lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
-        Vec(mp) .- minimum(sa)
+    output = Node(Vec2(0.0))
+    on(events(scene).mouseposition, priority = priority) do mp
+        output[] = Vec(mp) .- minimum(pixelarea(scene)[])
     end
+    output
+    # lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
+    #     Vec(mp) .- minimum(sa)
+    # end
 end
 
 
@@ -132,6 +137,9 @@ Properly identifies the scene for a plot with multiple sub-plots.
 """
 hovered_scene() = error("hoevered_scene is not implemented yet.")
 
+
+# TODO 
+#=
 """
     select_rectangle(scene; kwargs...) -> rect
 Interactively select a rectangle on a 2D `scene` by clicking the left mouse button,
@@ -285,3 +293,4 @@ function select_point(scene; kwargs...)
     end
     return point_ret
 end
+=#

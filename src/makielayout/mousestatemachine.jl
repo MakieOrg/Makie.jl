@@ -1,3 +1,10 @@
+# TODO
+# - adjust PriorityObservable to be able to see whether an event has been consumed
+# - make all handlers here PriorityObservables
+# - default this to max priority
+# - consume if any handler consumes
+# - also maybe removes dealing with mousebuttonstate
+
 module MouseEventTypes
     @enum MouseEventType begin
         out
@@ -111,7 +118,7 @@ onmouseleftclick(mouseevents) do event
 end
 ```
 """
-function addmouseevents!(scene, elements...)
+function addmouseevents!(scene, elements...; priority = Int8(0))
 
     Mouse = AbstractPlotting.Mouse
     dblclick_max_interval = 0.2    
@@ -122,7 +129,7 @@ function addmouseevents!(scene, elements...)
 
 
     # initialize state variables
-    last_mouseevent = Ref{Mouse.DragEnum}(events(scene).mousedrag[])
+    last_mouseevent = Ref{Mouse.DragEnum}(Mouse.notpressed)
     prev_data = Ref(mouseposition(scene))
     prev_px = Ref(AbstractPlotting.mouseposition_px(scene))
     mouse_downed_inside = Ref(false)
@@ -136,7 +143,7 @@ function addmouseevents!(scene, elements...)
 
 
     # react to mouse position changes
-    mousepos_observerfunc = on(events(scene).mouseposition) do mp
+    mousepos_observerfunc = on(events(scene).mouseposition, priority=priority) do mp
 
         t = time()
         data = mouseposition(scene)
@@ -200,25 +207,24 @@ function addmouseevents!(scene, elements...)
         prev_data[] = data
         prev_px[] = px
         prev_t[] = t
+        return false
     end
 
-
+    
     # react to mouse button changes
-    mousedrag_observerfunc = on(events(scene).mousedrag) do mousedrag
+    mousedrag_observerfunc = on(events(scene).mousebutton, priority=priority) do event
         
         t = time()
         data = prev_data[]
         px = prev_px[]
 
-        pressed_buttons = events(scene).mousebuttons[]
-
-        # we only need to handle mousedown and mouseup
-        # pressed and not pressed are redundant events with mouse position changes
-        mousedrag ∉ (Mouse.down, Mouse.up) && return
+        # TODO: this could probably be simplified by just using event.button
+        # though that would probably change the way this handles a bit
+        pressed_buttons = events(scene).mousebuttonstate[]
         
         # mouse went down, this can either happen inside or outside the objects of interest
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
-        if mousedrag == Mouse.down
+        if event.action == Mouse.press
             if length(pressed_buttons) == 1
                 button = only(pressed_buttons)
                 mouse_downed_button[] = button
@@ -237,7 +243,8 @@ function addmouseevents!(scene, elements...)
                     mouseevent[] = MouseEvent(MouseEventTypes.downoutside, t, data, px, prev_t[], prev_data[], prev_px[])
                 end
             end
-        elseif mousedrag == Mouse.up
+            last_mouseevent[] = Mouse.down
+        elseif event.action == Mouse.release
             # only register up events and clicks if the upped button matches
             # the recorded downed one
             # and it can't be nothing (if the first up event comes from outside)
@@ -314,15 +321,15 @@ function addmouseevents!(scene, elements...)
 
                         mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
                     end
-                end
-
-                
+                end                
             end
+
+            last_mouseevent[] = Mouse.up
         end
             
 
-        last_mouseevent[] = mousedrag
         prev_t[] = t
+        return false
     end
 
     MouseEventHandle(mouseevent, [mousepos_observerfunc, mousedrag_observerfunc])
