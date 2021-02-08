@@ -1,5 +1,4 @@
 using AbstractPlotting: MouseButtonEvent, KeyEvent
-using TimerOutputs
 
 macro print_error(expr)
     return quote
@@ -43,7 +42,7 @@ function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
         @print_error begin
-            @timeit "events" begin event[] = false end
+            event[] = false
         end
     end
     disconnect!(window, window_open)
@@ -84,10 +83,8 @@ function window_area(scene::Scene, screen::Screen)
             props = MonitorProperties(monitor)
             # dpi of a monitor should be the same in x y direction.
             # if not, minimum seems to be a fair default
-            @timeit "events" begin
-                dpievent[] = minimum(props.dpi)
-                event[] = IRect(minimum(rect), w, h)
-            end
+            dpievent[] = minimum(props.dpi)
+            event[] = IRect(minimum(rect), w, h)
         end
     end
     return
@@ -109,9 +106,7 @@ function mouse_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.mousebutton
     function mousebuttons(window, button, action, mods)
         @print_error begin
-            @timeit "events" begin
-                event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
-            end
+            event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
         end
     end
     disconnect!(window, mouse_buttons)
@@ -125,9 +120,7 @@ function keyboard_buttons(scene::Scene, window::GLFW.Window)
     event = scene.events.keyboardbutton
     function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
         @print_error begin
-            @timeit "events" begin
-                event[] = KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))
-            end
+            event[] = KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))
         end
     end
     disconnect!(window, keyboard_buttons)
@@ -148,7 +141,7 @@ function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
     function droppedfiles(window, files)
         @print_error begin
-            @timeit "events" begin event[] = String.(files) end
+            event[] = String.(files)
         end
     end
     disconnect!(window, dropped_files)
@@ -170,7 +163,7 @@ function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
     function unicodeinput(window, c::Char)
         @print_error begin
-            @timeit "events" begin event[] = c end
+            event[] = c
         end
     end
     disconnect!(window, unicode_input)
@@ -224,7 +217,8 @@ function mouse_position(scene::Scene, screen::Screen)
         x, y = GLFW.GetCursorPos(window)
         pos = correct_mouse(window, x, y)
         if pos != e.mouseposition[]
-            @timeit "events" begin e.mouseposition[] = pos end
+            e.mouseposition[] = pos
+            # notify!(e.mouseposition)
         end
         return
     end
@@ -259,10 +253,8 @@ function scroll(scene::Scene, window::GLFW.Window)
     event = scene.events.scroll
     function scrollcb(window, w::Cdouble, h::Cdouble)
         @print_error begin
-            @timeit "events" begin
-                event[] = (w, h)
-                event[] = (0.0, 0.0)
-            end
+            event[] = (w, h)
+            event[] = (0.0, 0.0)
         end
     end
     disconnect!(window, scroll)
@@ -283,7 +275,7 @@ function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
     function hasfocuscb(window, focus::Bool)
         @print_error begin
-            @timeit "events" begin event[] = focus end
+            event[] = focus
         end
     end
     disconnect!(window, hasfocus)
@@ -306,7 +298,7 @@ function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
     function enteredwindowcb(window, entered::Bool)
         @print_error begin
-            @timeit "events" begin event[] = entered end
+            event[] = entered
         end
     end
     disconnect!(window, entered_window)
