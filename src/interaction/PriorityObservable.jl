@@ -1,6 +1,6 @@
 using Observables
-using Observables: AbstractObservable, ObserverFunction, notify!, InternalFunction
-import Observables: observe, listeners, on, off
+using Observables: AbstractObservable, ObserverFunction, notify!, InternalFunction, OnUpdate
+import Observables: observe, listeners, on, off, onany
 
 mutable struct PriorityObservable{T} <: AbstractObservable{T}
     listeners::Vector{Pair{Int8, Vector{Function}}}
@@ -34,7 +34,8 @@ end
 listeners(o::PriorityObservable) = (f for p in reverse(o.listeners) for f in p[2])
 
 function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false, priority = Int8(0))
-    if !(Bool in Base.return_types(f))
+    # on(mousebutton) in toggle doesn't work with this :(
+    if Core.Compiler.return_type(f, (typeof(observable.val),)) !== Bool
         error(
             "Observer functions of PriorityObservables must return a Bool to " *
             "specify whether the update is consumed (true) or should " *
@@ -80,6 +81,26 @@ end
 function off(observable::PriorityObservable, obsfunc::ObserverFunction)
     f = obsfunc.f
     off(observable, f)
+end
+
+function onany(f, args...; priority, weak = false)
+    callback = OnUpdate(f, args)
+
+    # store all returned ObserverFunctions
+    obsfuncs = ObserverFunction[]
+    for observable in args
+        if observable isa AbstractObservable
+            obsfunc = on(callback, observable, priority = priority, weak = weak)
+            push!(obsfuncs, obsfunc)
+        elseif observable isa AbstractObservable
+            obsfunc = on(callback, observable, weak = weak)
+            push!(obsfuncs, obsfunc)
+        end
+    end
+
+    # same principle as with `on`, this collection needs to be
+    # stored by the caller or the connections made will be cut
+    obsfuncs
 end
 
 # No map. map is evil
