@@ -169,8 +169,6 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
         foreach(delete!, texts[])
         # remove all mouse actions previously connected to rects / texts
         foreach(clear!, mouseeventhandles[])
-        # foreach(Observables.off, eventhandles)
-        # empty!(eventhandles)
 
         trim!(contentgrid)
 

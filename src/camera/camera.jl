@@ -12,6 +12,7 @@ end
 
 function disconnect!(c::Camera)
     for node in c.steering_nodes
+        # remove all camera lifts
         if node isa PriorityObservable
             for f in listeners(node)
                 if f isa CameraLift 
@@ -20,7 +21,7 @@ function disconnect!(c::Camera)
             end
         else
             filter!(listeners(node)) do x
-                !(x isa CameraLift) # remove all camera lifts
+                !(x isa CameraLift) 
             end
         end
     end
@@ -42,8 +43,6 @@ end
 
 function (cl::CameraLift{F, Args})(val) where {F, Args}
     cl.f(map(to_value, cl.args)...)
-    # @info x
-    # x
 end
 
 """

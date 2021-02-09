@@ -115,6 +115,9 @@ function off(observable::PriorityObservable, obsfunc::ObserverFunction)
     off(observable, f)
 end
 
+# NOTE:
+# Something like this would be nice to have but it replaces the internal
+# version of Observables v0.3.3...
 # function onany(f, args...; priority::Int8 = Int8(0), weak::Bool = false)
 #     callback = OnUpdate(f, args)
 
@@ -135,6 +138,5 @@ end
 #     obsfuncs
 # end
 
-# No map. map is evil
-# To be specific - map forwards the output of the function to a new observable
-# this means we can't exit early true/false
+# `map` forwards the output of the function to a new observable, which means
+# it's incompatible with PriorityObservables.
