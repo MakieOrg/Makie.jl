@@ -57,55 +57,53 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
     button = scatter!(topscene, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)
     decorations[:button] = button
 
-    # do these need explicit cleanup?
-    on(topscene.events.mousebutton, priority = Int8(40)) do e
-        in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
-        # mouseover is quite expensive, would be good to skip
-        hovered = in_bbox && mouseover(topscene, button, frame)
-        if hovered && (e.button == Mouse.left) && (e.action == Mouse.press)
-            animating[] && return false
-            animating[] = true
 
-            tstart = time()
-            anim_posfrac = Animations.Animation(
-                [0, toggleduration[]],
-                active[] ? [1.0, 0.0] : [0.0, 1.0],
-                Animations.sineio())
-            coloranim = Animations.Animation(
-                [0, toggleduration[]],
-                active[] ? [framecolor_active[], framecolor_inactive[]] : [framecolor_inactive[], framecolor_active[]],
-                Animations.sineio())
+    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
 
-            active[] = !active[]
-            @async while true
-                t = time() - tstart
-                # request endpoint values in every frame if the layout changes during
-                # the animation
-                buttonpos[] = [Animations.linear_interpolate(anim_posfrac(t),
-                    button_endpoint_inactive[], button_endpoint_active[])]
-                framecolor[] = coloranim(t)
-                if t >= toggleduration[]
-                    animating[] = false
-                    break
-                end
-                sleep(1/FPS[])
+    onmouseleftdown(mouseevents) do event
+        if animating[]
+            return true
+        end
+        animating[] = true
+
+        tstart = time()
+
+        anim_posfrac = Animations.Animation(
+            [0, toggleduration[]],
+            active[] ? [1.0, 0.0] : [0.0, 1.0],
+            Animations.sineio())
+        coloranim = Animations.Animation(
+            [0, toggleduration[]],
+            active[] ? [framecolor_active[], framecolor_inactive[]] : [framecolor_inactive[], framecolor_active[]],
+            Animations.sineio())
+
+        active[] = !active[]
+        @async while true
+            t = time() - tstart
+            # request endpoint values in every frame if the layout changes during
+            # the animation
+            buttonpos[] = [Animations.linear_interpolate(anim_posfrac(t),
+                button_endpoint_inactive[], button_endpoint_active[])]
+            framecolor[] = coloranim(t)
+            if t >= toggleduration[]
+                animating[] = false
+                break
             end
+            sleep(1/FPS[])
         end
+        return true
+    end
 
+    onmouseover(mouseevents) do event
+        buttonfactor[] = 1.15
         return false
     end
 
-    on(topscene.events.mouseposition, priority = Int8(40)) do pos
-        in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
-        # mouseover is quite expensive, would be good to skip
-        hovered = in_bbox && mouseover(topscene, button, frame)
-        if hovered && (buttonfactor[] != 1.15)
-            buttonfactor[] = 1.15
-        elseif !hovered && (buttonfactor[] != 1.0)
-            buttonfactor[] = 1.0
-        end
+    onmouseout(mouseevents) do event
+        buttonfactor[] = 1.0
         return false
     end
+
 
     Toggle(fig_or_scene, layoutobservables, attrs, decorations)
 end

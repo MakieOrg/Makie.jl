@@ -101,7 +101,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     button = scatter!(topscene, middlepoint, color = color_active, strokewidth = 0, markersize = buttonsize, raw = true)
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(topscene, linesegs, button)
+    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
 
     onmouseleftdrag(mouseevents) do event
         dragging[] = true

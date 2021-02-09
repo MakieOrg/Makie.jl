@@ -116,16 +116,23 @@ onmouseleftclick(mouseevents) do event
 end
 ```
 """
-function addmouseevents!(scene, elements...; priority = Int8(0))
+function addmouseevents!(scene, elements...; priority = Int8(1))
+    is_mouse_over_relevant_area() = isempty(elements) ? AbstractPlotting.is_mouseinside(scene) : mouseover(scene, elements...)
+    _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+end
+function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2D}; priority = Int8(1))
+    is_mouse_over_relevant_area() = AbstractPlotting.mouseposition_px(scene) in bbox[]
+    _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+end
 
+
+function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     Mouse = AbstractPlotting.Mouse
     dblclick_max_interval = 0.2    
 
     mouseevent = AbstractPlotting.PriorityObservable{MouseEvent}(
         MouseEvent(MouseEventTypes.out, 0.0, Point2f0(0, 0), Point2f0(0, 0), 0.0, Point2f0(0, 0), Point2f0(0, 0))
     )
-
-    is_mouse_over_relevant_area() = isempty(elements) ? AbstractPlotting.is_mouseinside(scene) : mouseover(scene, elements...)
 
 
     # initialize state variables
