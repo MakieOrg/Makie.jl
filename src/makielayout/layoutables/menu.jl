@@ -163,7 +163,6 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     allrects = Ref{Vector{Box}}([])
     alltexts = Ref{Vector{Label}}([])
     mouseeventhandles = Ref{Vector{MouseEventHandle}}([])
-    # eventhandles = Vector{Observables.ObserverFunction}(undef, 0)
 
     function reassemble()
         foreach(delete!, rects[])
@@ -193,12 +192,12 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
         rowgap!(contentgrid, 0)
 
-        mouseeventhandles[] = [addmouseevents!(scene, r.elements[:rect], t.elements[:text], priority=Int8(60)) for (r, t) in zip(allrects[], alltexts[])]
+        mouseeventhandles[] = map(allrects[]) do r
+            addmouseevents!(scene, r.layoutobservables.computedbbox, priority=Int8(60))
+        end
 
         # create mouse events for each menu entry rect / text combo
         for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles[], allrects[], alltexts[]))
-        # for (i, (r, t)) in enumerate(zip(allrects[], alltexts[]))
-            # Should these disable other events?
             onmouseover(mouseeventhandle) do _
                 r.color = cell_color_hover[]
                 return false
@@ -225,46 +224,6 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
                 is_open[] = !is_open[]
                 return true
             end
-            
-            #=
-            handle = on(topscene.events.mousebutton, priority = Int8(60)) do event
-                # in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
-                # hovered = in_bbox && 
-                hovered = mouseover(topscene, r.elements[:rect], t.elements[:text])
-                if hovered && event.button == Mouse.left && event.action == Mouse.press # TODO change to on release?
-                    r.color = cell_color_active[]
-                    if is_open[]
-                        # first item is already selected
-                        if i > 1
-                            i_selected[] = i - 1
-                        end
-                        is_open[] = !is_open[]
-                        return true
-                    end
-                    is_open[] = !is_open[]
-                end
-            
-                return false
-            end
-            push!(eventhandles, handle)
-            
-            handle = on(topscene.events.mouseposition, priority = Int8(60)) do pos
-                # in_bbox = AbstractPlotting.mouseposition_px(topscene) in layoutobservables.computedbbox[]
-                hovered = mouseover(topscene, r.elements[:rect], t.elements[:text])
-                if hovered
-                    r.color = cell_color_hover[]
-                else
-                    if i == 1
-                        r.color = selection_cell_color_inactive[]
-                    else
-                        i_option = i - 1
-                        r.color = iseven(i_option) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
-                    end
-                end
-                return false
-            end
-            push!(eventhandles, handle)
-            =#
         end
 
         nothing
