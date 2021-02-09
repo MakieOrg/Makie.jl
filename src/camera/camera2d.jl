@@ -113,20 +113,18 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
         camera(scene), 
         Node.((scene, cam, startpos, drag_active))..., 
         e.mousebutton
-    ) do scene, cam, startpos, active, button
-        pan = cam.panbutton[]
-        mp = e.mouseposition[]
-        if ispressed(scene, pan) && is_mouseinside(scene)
-            window_area = pixelarea(scene)[]
-            if button.action == Mouse.press
+    ) do scene, cam, startpos, active, event
+        if event.button == cam.panbutton[]
+            mp = e.mouseposition[]
+            if event.action == Mouse.press && is_mouseinside(scene)
                 startpos[] = mp
                 active[] = true
                 return true
-            elseif button.action == Mouse.release
+            elseif event.action == Mouse.release
                 diff = startpos[] .- mp
                 startpos[] = mp
                 area = cam.area[]
-                diff = Vec(diff) .* wscale(window_area, area)
+                diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
                 cam.area[] = FRect(minimum(area) .+ diff, widths(area))
                 update_cam!(scene, cam)
                 active[] = false
