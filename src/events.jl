@@ -13,25 +13,6 @@ macro print_error(expr)
     end
 end
 
-function addbuttons(scene::Scene, name, button, action, ::Type{ButtonEnum}) where ButtonEnum
-    event = getfield(scene.events, name)
-    set = event[]
-    button_enum = ButtonEnum(Int(button))
-    if button != GLFW.KEY_UNKNOWN
-        if action == GLFW.PRESS
-            push!(set, button_enum)
-        elseif action == GLFW.RELEASE
-            delete!(set, button_enum)
-        elseif action == GLFW.REPEAT
-            # nothing needs to be done, besides returning the same set of keys
-        else
-            error("Unrecognized enum value for GLFW button press action: $action")
-        end
-    end
-    event[] = set # trigger setfield event!
-    return
-end
-
 """
 Returns a signal, which is true as long as the window is open.
 returns `Node{Bool}`
@@ -254,7 +235,6 @@ function scroll(scene::Scene, window::GLFW.Window)
     function scrollcb(window, w::Cdouble, h::Cdouble)
         @print_error begin
             event[] = (w, h)
-            event[] = (0.0, 0.0)
         end
     end
     disconnect!(window, scroll)
