@@ -141,8 +141,8 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
     last_mousepos = RefValue(Vec2f0(0, 0))
     dragging = RefValue(false)
     on(camera(scene), scene.events.mousebutton) do event
-        if event.button == key[] && ispressed(scene, button[]) && is_mouseinside(scene)
-            if event.action == Mouse.press
+        if event.button == key[] && ispressed(scene, button[])
+            if event.action == Mouse.press && is_mouseinside(scene)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return true
@@ -188,8 +188,8 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
     e = events(scene)
 
     on(camera(scene), e.mousebutton) do event
-        if event.button == button[] && ispressed(scene, key[]) && is_mouseinside(scene)
-            if event.action == Mouse.press
+        if event.button == button[] && ispressed(scene, key[])
+            if event.action == Mouse.press && is_mouseinside(scene)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return true
