@@ -86,6 +86,7 @@ end
 
 function process_interaction(@nospecialize args...)
     # do nothing in the default case
+    return false
 end
 
 # a generic fallback for functions to have one really simple path to getting interactivity
@@ -93,8 +94,16 @@ end
 function process_interaction(f::Function, event, parent)
     # in case f is only defined for a specific type of event
     if applicable(f, event, parent)
-        f(event, parent)
+        # TODO this is deprecation code, make this just `return f(event, parent)` eventually
+        x = f(event, parent)
+        if x isa Bool
+            return x
+        else
+            @warn "Interactions should return true if the consume the given event or false if they don't! ($f)" maxlog = 1
+            return false
+        end
     end
+    return false
 end
 
 
@@ -157,11 +166,11 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         translate!(wf, 0, 0, 110)
         append!(r.plots, [mesh, wf])
         r.active = true
-
+        return true
     elseif event.type === MouseEventTypes.leftdrag
         r.to = event.data
         r.rectnode[] = _chosen_limits(r, ax)
-
+        return true
     elseif event.type === MouseEventTypes.leftdragstop
         newlims = r.rectnode[]
         if !(0 in widths(newlims))
@@ -175,18 +184,19 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         # remove any possible links in plotting functions
         empty!(r.rectnode.listeners)
         r.active = false
+        return true
     end
 
-    return nothing
+    return false
 end
 
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
     r.restrict_y = Keyboard.x in event.keys
     r.restrict_x = Keyboard.y in event.keys
-    r.active || return
+    r.active || return false
 
     r.rectnode[] = _chosen_limits(r, ax)
-    return nothing
+    return true
 end
 
 
@@ -203,10 +213,11 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
             autolimits!(ax)
+            return true
         end
     end
 
-    return nothing
+    return false
 end
 
 
@@ -265,12 +276,15 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         end
 
     end
+
+    # NOTE this might be problematic if if we add scrolling to something like Menu
+    return true
 end
 
 function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     if event.type !== MouseEventTypes.rightdrag
-        return nothing
+        return false
     end
 
     tlimits = ax.targetlimits
@@ -299,5 +313,5 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
            
-    return nothing
+    return true
 end

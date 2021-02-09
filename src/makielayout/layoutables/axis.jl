@@ -372,7 +372,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     function process_event(event)
         for (active, interaction) in values(la.interactions)
-            active && process_interaction(interaction, event, la)
+            if active
+                process_interaction(interaction, event, la) && return true
+            end
         end
         return false
     end
