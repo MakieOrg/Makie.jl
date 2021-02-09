@@ -193,9 +193,9 @@ function Scene(
     )
     push!(scene.children, child)
     child
-    end
+end
 
-    function Scene(parent::Scene, area; clear=false, transform_func=identity, attributes...)
+function Scene(parent::Scene, area; clear=false, transform_func=identity, attributes...)
     events = parent.events
     px_area = lift(pixelarea(parent), convert(Node, area)) do p, a
         # make coordinates relative to parent
