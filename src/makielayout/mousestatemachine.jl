@@ -1,7 +1,3 @@
-# TODO
-# - priority is a bit awkward here - addmouseevents!() is the important control
-# - also maybe removes dealing with mousebuttonstate
-
 module MouseEventTypes
     @enum MouseEventType begin
         out
