@@ -35,29 +35,33 @@ listeners(o::PriorityObservable) = (f for p in reverse(o.listeners) for f in p[2
 
 function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false, priority = Int8(0))
     if Core.Compiler.return_type(f, (typeof(observable.val),)) !== Bool
-        error(
+        sanitized_func = x -> begin f(x); false end
+        @warn(
             "Observer functions of PriorityObservables must return a Bool to " *
             "specify whether the update is consumed (true) or should " *
-            "propagate (false) to other observer functions."
+            "propagate (false) to other observer functions. The given " *
+            "function has been wrapped to always return false."
         )
+    else
+        sanitized_func = f
     end
     
     priority = Int8(priority)
     # Create or insert into correct priority
     idx = findfirst(p -> p[1] >= priority, observable.listeners)
     if idx === nothing
-        push!(observable.listeners, priority => Any[f])
+        push!(observable.listeners, priority => Any[sanitized_func])
     elseif observable.listeners[idx][1] == priority
-        push!(observable.listeners[idx][2], f)
+        push!(observable.listeners[idx][2], sanitized_func)
     else
-        insert!(observable.listeners, idx, priority => Any[f])
+        insert!(observable.listeners, idx, priority => Any[sanitized_func])
     end
 
     # same as Observable?
     for g in Observables.addhandler_callbacks
         g(f, observable)
     end
-    return ObserverFunction(f, observable, weak)
+    return ObserverFunction(sanitized_func, observable, weak)
 end
 
 function off(observable::PriorityObservable, @nospecialize(f))
