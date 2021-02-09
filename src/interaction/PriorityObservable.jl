@@ -2,6 +2,7 @@ using Observables
 using Observables: AbstractObservable, ObserverFunction, notify!, InternalFunction, OnUpdate
 import Observables: observe, listeners, on, off, onany
 
+
 mutable struct PriorityObservable{T} <: AbstractObservable{T}
     listeners::Vector{Pair{Int8, Vector{Any}}}
     val::T
@@ -12,6 +13,34 @@ mutable struct PriorityObservable{T} <: AbstractObservable{T}
     PriorityObservable{Any}(@nospecialize(val)) = new{Any}(Pair{Int8, Vector{Any}}[], val)
 end
 
+"""
+    PriorityObservable(value)
+
+Creates a new `PriorityObservable` holding the given `value`.
+
+A `po = PriorityObservable` differs from a normal `Observable` (or `Node`) in 
+two ways:
+1. When registering a function to `po` you can also give it a `priority`.
+Functions with higher priority will be evaluated first.
+2. Each registered function is assumed to return a `Bool`. If `true` is returned
+the observable will stop calling the remaining observer functions.
+
+In the following example we have 3 listeners to a `PriorityObservable`. When 
+triggering the `PriorityObservable` you will first see `"First"` as it is the 
+callback with the highest priority. After that `"Second"` will be printed and 
+stop further execution. `"Third"` will therefore not be printed.
+```
+po = PriorityObservable(1)
+on(x -> begin printstyled("First\n", color=:green); false end, po, priority = 1)
+on(x -> begin printstyled("Second\n", color=:orange); true end, po, priority = 0)
+on(x -> begin printstyled("Third\n", color=:red); false end, po, priority = -1)
+po[] = 2
+```
+
+Note that `PriorityObservable` does not implement `map`. If you wish to know
+whether any observer function returned `true`, you can check the output of
+`setindex!(po, val)`.
+"""
 PriorityObservable(val::T) where {T} = PriorityObservable{T}(val)
 
 Base.getindex(observable::PriorityObservable) = observable.val
