@@ -83,8 +83,39 @@ save("example_legend_ncols.svg", scene); nothing # hide
 
 ## Legend Inside An Axis
 
-To place a legend inside an axis you can simply add it to the same layout slot
-that the axis lives in. As long as the axis is bigger than the legend you can
+The `axislegend` function is a quick way to add a legend to an Axis.
+You can pass a selected axis plus arguments which are forwarded to the `Legend` constructor, or the current axis is used by default.
+If you pass only a string, it's used as the title with the current axis.
+
+The position can be set via a shortcut symbol, first halign (l, r, c) then valign (b, t, c), such as :lt for left, top and :cb for center bottom.
+
+```@example
+using CairoMakie
+
+f = Figure(resolution = (800, 600))
+
+ax = Axis(f[1, 1])
+
+sc1 = scatter!(randn(10, 2), color = :red, label = "Red Dots")
+sc2 = scatter!(randn(10, 2), color = :blue, label = "Blue Dots")
+scatter!(randn(10, 2), color = :orange, label = "Orange Dots")
+scatter!(randn(10, 2), color = :cyan, label = "Cyan Dots")
+
+axislegend()
+
+axislegend("Titled Legend", position = :lb)
+
+axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
+    orientation = :horizontal)
+
+
+save("example_axislegend.svg", f); nothing # hide
+```
+
+![example axislegend](example_axislegend.svg)
+
+Alternatively, you can simply add a Legend to the same layout slot
+that an axis lives in. As long as the axis is bigger than the legend you can
 set the legend's `tellheight` and `tellwidth` to `false` and position it using the align
 variables. You can use the margin keyword to keep the legend from touching the axis
 spines.

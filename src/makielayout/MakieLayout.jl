@@ -71,7 +71,7 @@ export Colorbar
 export Label
 export Box
 export Toggle
-export Legend
+export Legend, axislegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export Menu
