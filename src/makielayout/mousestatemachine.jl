@@ -132,7 +132,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
 
     # initialize state variables
-    last_mouseevent = Ref{Mouse.DragEnum}(Mouse.notpressed)
+    last_mouseevent = Ref{Mouse.Action}(Mouse.release)
     prev_data = Ref(mouseposition(scene))
     prev_px = Ref(AbstractPlotting.mouseposition_px(scene))
     mouse_downed_inside = Ref(false)
@@ -159,7 +159,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
         # this can mean a new drag started, or a drag continues if it is ongoing.
         # it can also mean that a drag that started outside and isn't related to this
         # object is going across it and should be ignored here
-        if last_mouseevent[] == Mouse.down
+        if last_mouseevent[] == Mouse.press
 
             if drag_ongoing[]
                 # continue the drag
@@ -269,7 +269,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                     consumed = consumed || x
                 end
             end
-            last_mouseevent[] = Mouse.down
+            last_mouseevent[] = Mouse.press
         elseif event.action == Mouse.release
             # only register up events and clicks if the upped button matches
             # the recorded downed one
@@ -368,7 +368,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
                 end                
             end
 
-            last_mouseevent[] = Mouse.up
+            last_mouseevent[] = Mouse.release
         end
             
 
