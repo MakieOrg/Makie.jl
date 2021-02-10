@@ -146,7 +146,7 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return true
-            elseif event.action == Mouse.release
+            elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
                 diff = (last_mousepos[] - mousepos) * cam.translationspeed[]
@@ -193,7 +193,7 @@ function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
                 last_mousepos[] = mouseposition_px(scene)
                 dragging[] = true
                 return true
-            elseif event.action == Mouse.release
+            elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
                 dragging[] = false
                 rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
