@@ -1,4 +1,4 @@
-using AbstractPlotting: PriorityObservable
+using AbstractPlotting: PriorityObservable, MouseButtonEvent, KeyEvent
 
 @testset "PriorityObservable" begin
     po = PriorityObservable(0)
@@ -40,23 +40,23 @@ end
         @test isempty(events.mousebuttonstate[])
         @test isempty(events.keyboardstate[])
 
-        events.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.left, Mouse.press)
-        events.keyboardbutton[] = AbstractPlotting.KeyEvent(Keyboard.a, Keyboard.press)
+        events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.press)
         @test events.mousebuttonstate[] == Set([Mouse.left])
         @test events.keyboardstate[] == Set([Keyboard.a])
 
-        events.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.right, Mouse.press)
-        events.keyboardbutton[] = AbstractPlotting.KeyEvent(Keyboard.b, Keyboard.press)
+        events.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
+        events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.press)
         @test events.mousebuttonstate[] == Set([Mouse.left, Mouse.right])
         @test events.keyboardstate[] == Set([Keyboard.a, Keyboard.b])
 
-        events.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.left, Mouse.release)
-        events.keyboardbutton[] = AbstractPlotting.KeyEvent(Keyboard.a, Keyboard.release)
+        events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.release)
         @test events.mousebuttonstate[] == Set([Mouse.right])
         @test events.keyboardstate[] == Set([Keyboard.b])
 
-        events.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.right, Mouse.release)
-        events.keyboardbutton[] = AbstractPlotting.KeyEvent(Keyboard.b, Keyboard.release)
+        events.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
+        events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.release)
         @test isempty(events.mousebuttonstate[])
         @test isempty(events.keyboardstate[])
     end
@@ -77,7 +77,7 @@ end
         # Rotation
         # 1) In scene, in drag
         e.mouseposition[] = (400, 250)
-        e.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
         e.mouseposition[] = (600, 250)
         @test cc.lookat[]       ≈ Vec3f0(0)
         @test cc.eyeposition[]  ≈ Vec3f0(4.14532, -0.9035063, 3.0)
@@ -90,7 +90,7 @@ end
         @test cc.upvector[]     ≈ Vec3f0(-0.22516009, -0.30002305, 0.92697847)
 
         # 3) not in drag
-        e.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.left, Mouse.release)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
         e.mouseposition[] = (400, 250)
         @test cc.lookat[]       ≈ Vec3f0(0)
         @test cc.eyeposition[]  ≈ Vec3f0(-2.8912058, -3.8524969, -1.9491522)
@@ -99,7 +99,7 @@ end
 
         # Pan
         # 1) In scene, in drag
-        e.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.right, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         e.mouseposition[] = (600, 250)
         @test cc.lookat[]       ≈ Vec3f0(-1.662389, 1.2475829, -6.194297f-8)
         @test cc.eyeposition[]  ≈ Vec3f0(-4.5535946, -2.604914, -1.9491524)
@@ -112,7 +112,7 @@ end
         @test cc.upvector[]     ≈ Vec3f0(-0.22516009, -0.30002305, 0.92697847)
 
         # 3) not in drag
-        e.mousebutton[] = AbstractPlotting.MouseButtonEvent(Mouse.right, Mouse.release)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
         e.mouseposition[] = (400, 250)
         @test cc.lookat[]       ≈ Vec3f0(-4.5191803, 4.3663344, -1.9266889)
         @test cc.eyeposition[]  ≈ Vec3f0(-7.410386, 0.5138376, -3.8758411)
@@ -131,5 +131,155 @@ end
         @test cc.lookat[]       ≈ Vec3f0(-4.10603, 4.056275, -1.9266889)
         @test cc.eyeposition[]  ≈ Vec3f0(-5.8407536, 1.7447768, -3.0961802)
         @test cc.upvector[]     ≈ Vec3f0(-0.22516009, -0.30002305, 0.92697847)
+    end
+
+    @testset "mouse state machine" begin
+        scene = Scene();
+        e = events(scene)
+        bbox = Node(Rect2D(200, 200, 400, 300))
+        msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
+        eventlog = MouseEvent[]
+        on(x -> begin push!(eventlog, x); false end, msm.obs)
+
+        e.mouseposition[] = (0, 200)
+        @test isempty(eventlog)
+        
+        # move inside
+        e.mouseposition[] = (300, 200)
+        @test length(eventlog) == 1
+        @test eventlog[1].type == MouseEventTypes.enter
+        @test eventlog[1].px == Point2f0(300, 200)
+        @test eventlog[1].prev_px == Point2f0(0, 200)
+        empty!(eventlog)
+
+        # over
+        e.mouseposition[] = (300, 300)
+        @test length(eventlog) == 1
+        @test eventlog[1].type == MouseEventTypes.over
+        @test eventlog[1].px == Point2f0(300, 300)
+        @test eventlog[1].prev_px == Point2f0(300, 200)
+        empty!(eventlog)
+
+        for button in (:left, :middle, :right)
+            # click
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
+            @test length(eventlog) == 3
+            for (i, t) in enumerate((
+                    getfield(MouseEventTypes, Symbol(button, :down)), 
+                    getfield(MouseEventTypes, Symbol(button, :click)), 
+                    getfield(MouseEventTypes, Symbol(button, :up))
+                ))
+                @test eventlog[i].type == t
+                @test eventlog[i].px == Point2f0(300, 300)
+                @test eventlog[i].prev_px == Point2f0(300, 300)
+            end
+            empty!(eventlog)
+
+            # doubleclick
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
+            @test length(eventlog) == 3
+            for (i, t) in enumerate((
+                    getfield(MouseEventTypes, Symbol(button, :down)), 
+                    getfield(MouseEventTypes, Symbol(button, :doubleclick)), 
+                    getfield(MouseEventTypes, Symbol(button, :up))
+                ))
+                @test eventlog[i].type == t
+                @test eventlog[i].px == Point2f0(300, 300)
+                @test eventlog[i].prev_px == Point2f0(300, 300)
+            end
+            empty!(eventlog)
+
+            # triple click = click
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
+            @test length(eventlog) == 3
+            for (i, t) in enumerate((
+                    getfield(MouseEventTypes, Symbol(button, :down)), 
+                    getfield(MouseEventTypes, Symbol(button, :click)), 
+                    getfield(MouseEventTypes, Symbol(button, :up))
+                ))
+                @test eventlog[i].type == t
+                @test eventlog[i].px == Point2f0(300, 300)
+                @test eventlog[i].prev_px == Point2f0(300, 300)
+            end
+            empty!(eventlog)
+
+            # drag
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.press)
+            e.mouseposition[] = (500, 300)
+            e.mouseposition[] = (700, 200)
+            e.mousebutton[] = MouseButtonEvent(getfield(Mouse, button), Mouse.release)
+            @test length(eventlog) == 6
+            prev_px = Point2f0[(300, 300), (300, 300), (300, 300), (500, 300), (700, 200), (700, 200)]
+            px      = Point2f0[(300, 300), (500, 300), (500, 300), (700, 200), (700, 200), (700, 200)]
+            for (i, t) in enumerate((
+                    getfield(MouseEventTypes, Symbol(button, :down)), 
+                    getfield(MouseEventTypes, Symbol(button, :dragstart)), 
+                    getfield(MouseEventTypes, Symbol(button, :drag)), 
+                    getfield(MouseEventTypes, Symbol(button, :drag)), 
+                    getfield(MouseEventTypes, Symbol(button, :dragstop)), 
+                    getfield(MouseEventTypes, :out),
+                    # TODO this is kinda missing an "up outside"
+                ))
+                @test eventlog[i].type == t
+                @test eventlog[i].px == px[i]
+                @test eventlog[i].prev_px == prev_px[i]
+            end
+            e.mouseposition[] = (300, 300)
+            empty!(eventlog)
+        end
+
+        # TODO: This should probably be:
+        # left down > right down > right click > right up > left up
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test length(eventlog) == 3
+        @test eventlog[1].type == MouseEventTypes.leftdown
+        @test eventlog[2].type == MouseEventTypes.leftclick
+        @test eventlog[3].type == MouseEventTypes.leftup
+        empty!(eventlog)
+
+        # double left up? :(
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
+        @test length(eventlog) == 4
+        @test eventlog[1].type == MouseEventTypes.leftdown
+        @test eventlog[2].type == MouseEventTypes.leftdoubleclick
+        @test eventlog[3].type == MouseEventTypes.leftup
+        @test eventlog[4].type == MouseEventTypes.leftup
+        empty!(eventlog)
+
+        # This should probably be a leftdragstop on right down
+        e.mouseposition[] = (300, 300)
+        empty!(eventlog)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
+        e.mouseposition[] = (350, 350)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
+        e.mouseposition[] = (350, 400)
+        e.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
+        e.mouseposition[] = (400, 400)
+        e.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
+        @test length(eventlog) == 7
+        @test eventlog[1].type == MouseEventTypes.leftdown
+        @test eventlog[2].type == MouseEventTypes.leftdragstart
+        @test eventlog[3].type == MouseEventTypes.leftdrag
+        @test eventlog[4].type == MouseEventTypes.leftdrag
+        @test eventlog[5].type == MouseEventTypes.over
+        @test eventlog[6].type == MouseEventTypes.leftdragstop
+        @test eventlog[7].type == MouseEventTypes.leftup
+        @test eventlog[1].px == Point2f0(300, 300)
+        @test eventlog[2].px == Point2f0(350, 350)
+        @test eventlog[3].px == Point2f0(350, 350)
+        @test eventlog[4].px == Point2f0(350, 400)
+        @test eventlog[5].px == Point2f0(400, 400)
+        @test eventlog[6].px == Point2f0(400, 400)
+        @test eventlog[7].px == Point2f0(400, 400)
+        empty!(eventlog)
     end
 end
