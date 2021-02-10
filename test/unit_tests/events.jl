@@ -8,14 +8,17 @@ using AbstractPlotting: PriorityObservable, MouseButtonEvent, KeyEvent
     third = Node(0.0)
 
     on(po, priority=1) do x
+        sleep(0)
         first[] = time()
         return false
     end
     on(po, priority=0) do x
+        sleep(0)
         second[] = time()
         return isodd(x)
     end
     on(po, priority=-1) do x
+        sleep(0)
         third[] = time()
         return false
     end
