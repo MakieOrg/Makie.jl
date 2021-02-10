@@ -43,6 +43,11 @@ whether any observer function returned `true`, you can check the output of
 """
 PriorityObservable(val::T) where {T} = PriorityObservable{T}(val)
 
+Base.show(io::IO,::PriorityObservable) = print(io, "PriorityObservable()")
+function Base.show(io::IO, ::MIME"text/plain", po::PriorityObservable{T}) where {T}
+    print(io, "PriorityObservable{T} with priorities [", join(first.(po.listeners), ','), "]")
+end
+
 Base.getindex(observable::PriorityObservable) = observable.val
 function Base.setindex!(observable::PriorityObservable, val; notify=(x)->true)
     observable.val = val
