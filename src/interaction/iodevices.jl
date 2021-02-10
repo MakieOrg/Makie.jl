@@ -183,25 +183,6 @@ module Mouse
         press   = 1
         release = 0
     end
-
-    @enum DragState begin
-        left_press
-        left_repeat
-        left_release
-        middle_press
-        middle_repeat
-        middle_release
-        right_press
-        right_repeat
-        right_release
-    end
-
-    @enum DragEnum begin
-        down
-        up
-        pressed
-        notpressed
-    end
 end
 
 # Void for no button needs to be pressed,
@@ -209,14 +190,12 @@ const ButtonTypes = Union{Nothing, Mouse.Button, Keyboard.Button}
 
 
 
-# all the key presses (== keyboardbuttons)
 struct KeyEvent
     key::Keyboard.Button
     action::Keyboard.Action
     # mod::ButtonModifier
 end
 
-# all the mouse button presses (== mousebuttons)
 struct MouseButtonEvent
     button::Mouse.Button
     action::Mouse.Action

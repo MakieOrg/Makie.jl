@@ -27,7 +27,7 @@ can be controlled via the `priority` keyword (default 0) in `on`.
 Example:
 ```
 on(events(scene).mousebutton, priority = Int8(20)) do event
-    if is_correct_event
+    if is_correct_event(event)
         do_something()
         return true
     end

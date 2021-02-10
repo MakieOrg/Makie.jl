@@ -189,7 +189,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         displayed_string[] = join(newchars)
     end
 
-    on(events(scene).unicode_input) do char
+    on(events(scene).unicode_input, priority = 60) do char
         if focused[] && is_allowed(char, restriction[])
             insertchar!(char, cursorindex[] + 1)
             return true
@@ -222,7 +222,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    on(events(scene).keyboardbutton) do event
+    on(events(scene).keyboardbutton, priority = 60) do event
         if focused[]
             if event.action != Keyboard.release
                 key = event.key
