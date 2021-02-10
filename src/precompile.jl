@@ -90,7 +90,6 @@ function _precompile_()
         end
     end   # time: 0.012269881
     Base.precompile(Tuple{typeof(lift),Function,Observable{Any},Observable{Union{Nothing, FRect3D, FRect{3}, Rect3D{Float32}}}})   # time: 0.012067013
-    Base.precompile(Tuple{typeof(on),Function,Camera,Observable{AbstractPlotting.Mouse.DragEnum},Vararg{Observable, 100}})   # time: 0.010931468
     isdefined(AbstractPlotting, Symbol("#89#92")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#89#92")),Tuple{Int64, Int64}})   # time: 0.010871829
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Vector{Tuple{String, Point{2, Float32}}}}},))) catch missing end
         if !ismissing(fbody)
