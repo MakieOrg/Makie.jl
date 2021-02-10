@@ -120,7 +120,7 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
                 startpos[] = mp
                 active[] = true
                 return true
-            elseif event.action == Mouse.release
+            elseif event.action == Mouse.release && active[]
                 diff = startpos[] .- mp
                 startpos[] = mp
                 area = cam.area[]
