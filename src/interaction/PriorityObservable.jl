@@ -51,7 +51,8 @@ end
 function Base.show(io::IO, ::MIME"text/plain", po::PriorityObservable{T}) where {T}
     print(io, "PriorityObservable{T}(")
     print(io, po.val)
-    print(io, ") with priorities [", join(first.(po.listeners), ','), "]")
+    N = mapreduce(x -> length(x[2]), +, po.listeners)
+    print(io, ") with $N listeners at priorities [", join(first.(po.listeners), ','), "]")
 end
 
 Base.getindex(observable::PriorityObservable) = observable.val
