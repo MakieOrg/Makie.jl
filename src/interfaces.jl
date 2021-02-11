@@ -626,15 +626,33 @@ plot!(p::Combined) = _plot!(p)
 
 _plot!(p::Atomic{T}) where T = p
 
-function _plot!(p::Combined{Any, T}) where T
-    args = (T.parameters...,)
-    typed_args = join(string.("::", args), ", ")
-    error("Plotting for the arguments ($typed_args) not defined. If you want to support those arguments, overload plot!(::Plot$((args...,)))")
+function _plot!(p::Combined{fn, T}) where {fn, T}
+    throw(PlotMethodError(fn, T))
 end
-function _plot!(p::Combined{X, T}) where {X, T}
+
+struct PlotMethodError <: Exception
+    fn
+    T
+end
+
+function Base.showerror(io::IO, err::PlotMethodError)
+    fn = err.fn
+    T = err.T
     args = (T.parameters...,)
     typed_args = join(string.("::", args), ", ")
-    error("Plotting for the arguments ($typed_args) not defined for $X. If you want to support those arguments, overload plot!(::$(Combined{X,S} where {S<:T}))")
+
+    print(io, "PlotMethodError: no ")
+    printstyled(io, fn == Any ? "plot" : fn; color=:cyan)
+    print(io, " method for arguments ")
+    printstyled(io, "($typed_args)"; color=:cyan)
+    print(io, ". To support these arguments, define\n  ")
+    printstyled(io, "plot!(::$(Combined{fn,S} where {S<:T}))"; color=:cyan)
+    print(io, "\nAvailable methods are:\n")
+    for m in methods(plot!)
+        if m.sig <: Tuple{typeof(plot!), Combined{fn}}
+            println(io, "  ", m)
+        end
+    end
 end
 
 function show_attributes(attributes)
