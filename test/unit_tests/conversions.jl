@@ -1,7 +1,10 @@
 using AbstractPlotting: 
     NoConversion, 
     convert_arguments, 
-    conversion_trait
+    conversion_trait,
+    to_vertices
+
+using StaticArrays
 
 @testset "Conversions" begin
 
@@ -14,6 +17,33 @@ using AbstractPlotting:
         @test convert_arguments(ncttt, 1, 2, 3) == (1, 2, 3)
     end
 
+end
+
+@testset "to_vertices" begin
+    X1 = [Point(rand(3)...) for i = 1:10]
+    V1 = to_vertices(X1)
+    @test Float32(X1[7][1]) == V1[7][1]
+
+    X2 = [tuple(rand(3)...) for i = 1:10]
+    V2 = to_vertices(X2)
+    @test Float32(X2[7][1]) == V2[7][1]
+
+    X3 = [SVector(rand(3)...) for i = 1:10]
+    V3 = to_vertices(X3)
+    @test Float32(X3[7][1]) == V3[7][1]
+
+    X4 = rand(2,10)
+    V4 = to_vertices(X4)
+    @test Float32(X4[7][1]) == V4[1,7]
+    @test V4[3,7] == 0
+
+    X5 = rand(3,10)
+    V5 = to_vertices(X5)
+    @test Float32(X5[7][1]) == V5[1,7]
+
+    X6 = rand(10,3)
+    V6 = to_vertices(X6)
+    @test Float32(X6[7][1]) == V6[7,1]
 end
 
 @testset "functions" begin

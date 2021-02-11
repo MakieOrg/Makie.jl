@@ -514,6 +514,23 @@ function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
     end
 end
 
+"""
+    to_vertices(v)
+
+Converts a representation of vertices `v` to its canonical representation as a
+`Vector{Point3f0}`. `v` can be:
+
+- An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s
+
+- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case exta dimensions will
+  be either truncated or padded with zeros as required.
+
+- An `AbstractMatrix`:
+  - if `v` has 2 or 3 rows, it will treat each column as a vertex,
+  - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
+"""
+function to_vertices end
+
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
     vert3f0 = T != Float32 ? Point3f0.(verts) : verts
     return reinterpret(Point3f0, vert3f0)
@@ -534,7 +551,8 @@ function to_vertices(verts::AbstractMatrix{<: Number})
 end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
-    reinterpret(Point{size(verts, 1), T}, elconvert(T, vec(verts)), (size(verts, 2),))
+    N = size(verts, 1)
+    reinterpret(Point{N, T}, elconvert(T, vec(verts)))
 end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
