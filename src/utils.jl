@@ -32,6 +32,15 @@ function project_rect(scene, rect::Rect, model)
     return Rect(mini, maxi .- mini)
 end
 
+function project_polygon(scene, poly::P, model) where P <: Polygon
+    ext = decompose(Point2f0, poly.exterior)
+    interiors = decompose.(Point2f0, poly.interiors)
+    Polygon(
+        Point2f0.(project_position.(Ref(scene), ext, Ref(model))),
+        [Point2f0.(project_position.(Ref(scene), interior, Ref(model))) for interior in interiors],
+    )
+end
+
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
 ########################################

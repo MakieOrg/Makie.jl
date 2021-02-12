@@ -84,3 +84,52 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, rects::Vector{<:Rect
         Cairo.stroke(screen.context)
     end
 end
+
+function polypath(ctx, polygon)
+    ext = decompose(Point2f0, polygon.exterior)
+    Cairo.move_to(ctx, ext[1]...)
+    for point in ext[2:end]
+        Cairo.line_to(ctx, point...)
+    end
+    Cairo.close_path(ctx)
+
+    interiors = decompose.(Point2f0, polygon.interiors)
+    for interior in interiors
+        Cairo.move_to(ctx, interior[1]...)
+        for point in interior[2:end]
+            Cairo.line_to(ctx, point...)
+        end
+        Cairo.close_path(ctx)
+    end
+end
+
+function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractArray{<:Polygon})
+    
+    model = poly.model[]
+    projected_polys = project_polygon.(Ref(scene), polygons, Ref(model))
+
+    color = poly.color[]
+    if color isa AbstractArray{<:Number}
+        color = numbers_to_colors(color, poly)
+    elseif color isa String
+        # string is erroneously broadcasted as chars otherwise
+        color = to_color(color)
+    end
+    strokecolor = poly.strokecolor[]
+    if strokecolor isa AbstractArray{<:Number}
+        strokecolor = numbers_to_colors(strokecolor, poly)
+    elseif strokecolor isa String
+        # string is erroneously broadcasted as chars otherwise
+        strokecolor = to_color(strokecolor)
+    end
+
+    broadcast_foreach(projected_polys, color, strokecolor, poly.strokewidth[]) do po, c, sc, sw
+        polypath(screen.context, po)
+        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(c))...)
+        Cairo.fill_preserve(screen.context)
+        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(sc))...)
+        Cairo.set_line_width(screen.context, sw)
+        Cairo.stroke(screen.context)
+    end
+
+end
