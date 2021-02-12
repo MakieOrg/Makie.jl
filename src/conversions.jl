@@ -560,7 +560,15 @@ end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
     N = size(verts, 1)
-    reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+    if T == Float32 && N == 3
+        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+    else
+        let N = Val(N), lverts = verts
+            broadcast(1:size(verts, 2), N) do vidx, n
+                to_ndim(Point3f0, ntuple(i-> lverts[i, vidx], n), 0.0)
+            end
+        end
+    end       
 end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
