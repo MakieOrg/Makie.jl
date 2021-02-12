@@ -139,11 +139,13 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     # it on a first run!
     calculate_polys(xs[], ys[], zs[], c._computed_levels[], is_extended_low[], is_extended_high[])
 
-    mesh!(c,
+    poly!(c,
         polys,
         # colormap = c._computed_colormap,
         # colorrange = colorrange,
         color = colors,
+        strokewidth = 0,
+        strokecolor = :transparent,
         shading=false)
 end
 
