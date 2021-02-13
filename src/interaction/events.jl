@@ -5,7 +5,6 @@ window_area(scene, native_window) = not_implemented_for(native_window)
 window_open(scene, native_window) = not_implemented_for(native_window)
 mouse_buttons(scene, native_window) = not_implemented_for(native_window)
 mouse_position(scene, native_window) = not_implemented_for(native_window)
-mousedrag(scene, native_window) = not_implemented_for(native_window)
 scroll(scene, native_window) = not_implemented_for(native_window)
 keyboard_buttons(scene, native_window) = not_implemented_for(native_window)
 unicode_input(scene, native_window) = not_implemented_for(native_window)
@@ -67,7 +66,7 @@ a `Keyboard` button (e.g. `Keyboard.a`), a `Mouse` button (e.g. `Mouse.left`)
 or `nothing`. In the latter case `true` is always returned.
 """
 function ispressed(scene::SceneLike, button)
-    buttons = getfield(events(scene), button_key(button))[]
+    buttons = getfield(events(scene), button_key(button))
     ispressed(buttons, button)
 end
 

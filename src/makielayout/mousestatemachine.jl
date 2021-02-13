@@ -240,7 +240,7 @@ function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
 
         # TODO: this could probably be simplified by just using event.button
         # though that would probably change the way this handles a bit
-        pressed_buttons = events(scene).mousebuttonstate[]
+        pressed_buttons = events(scene).mousebuttonstate
         
         # mouse went down, this can either happen inside or outside the objects of interest
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)

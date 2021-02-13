@@ -40,28 +40,28 @@ end
 @testset "Events" begin
     @testset "Mouse and Keyboard state" begin
         events = AbstractPlotting.Events()
-        @test isempty(events.mousebuttonstate[])
-        @test isempty(events.keyboardstate[])
+        @test isempty(events.mousebuttonstate)
+        @test isempty(events.keyboardstate)
 
         events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.press)
         events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.press)
-        @test events.mousebuttonstate[] == Set([Mouse.left])
-        @test events.keyboardstate[] == Set([Keyboard.a])
+        @test events.mousebuttonstate == Set([Mouse.left])
+        @test events.keyboardstate == Set([Keyboard.a])
 
         events.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.press)
         events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.press)
-        @test events.mousebuttonstate[] == Set([Mouse.left, Mouse.right])
-        @test events.keyboardstate[] == Set([Keyboard.a, Keyboard.b])
+        @test events.mousebuttonstate == Set([Mouse.left, Mouse.right])
+        @test events.keyboardstate == Set([Keyboard.a, Keyboard.b])
 
         events.mousebutton[] = MouseButtonEvent(Mouse.left, Mouse.release)
         events.keyboardbutton[] = KeyEvent(Keyboard.a, Keyboard.release)
-        @test events.mousebuttonstate[] == Set([Mouse.right])
-        @test events.keyboardstate[] == Set([Keyboard.b])
+        @test events.mousebuttonstate == Set([Mouse.right])
+        @test events.keyboardstate == Set([Keyboard.b])
 
         events.mousebutton[] = MouseButtonEvent(Mouse.right, Mouse.release)
         events.keyboardbutton[] = KeyEvent(Keyboard.b, Keyboard.release)
-        @test isempty(events.mousebuttonstate[])
-        @test isempty(events.keyboardstate[])
+        @test isempty(events.mousebuttonstate)
+        @test isempty(events.keyboardstate)
     end
 
     # This testset is based on the results the current camera system has. If 
