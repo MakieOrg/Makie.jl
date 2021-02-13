@@ -57,7 +57,7 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         end
         @handle msg.mousedown begin
             # This can probably be done better from the JS side?
-            state = e.mousebuttonstate[]
+            state = e.mousebuttonstate
             if mousedown & 1 != 0 && !(Mouse.left in state)
                 setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.press))
             end
@@ -69,7 +69,7 @@ function connect_scene_events!(scene::Scene, comm::Observable)
             end
         end
         @handle msg.mouseup begin
-            state = e.mousebuttonstate[]
+            state = e.mousebuttonstate
             if mouseup & 1 == 0 && (Mouse.left in state)
                 setindex!(e.mousebutton, MouseButtonEvent(Mouse.left, Mouse.release))
             end
@@ -94,7 +94,7 @@ function connect_scene_events!(scene::Scene, comm::Observable)
         @handle msg.keyup begin
             if keyup == "delete_keys"
                 # this works fine
-                for key in e.keyboardstate[]
+                for key in e.keyboardstate
                     e.keyboardbutton[] = KeyEvent(key, Keyboard.release)
                 end
             else
