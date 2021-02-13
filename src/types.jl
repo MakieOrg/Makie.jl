@@ -171,9 +171,8 @@ function Base.getproperty(e::Events, field::Symbol)
         return mousebuttons
     elseif field == :keyboardbuttons
         @warn(
-            "`events.keyboardbuttons` is deprecated and no longer triggers on " *
-            "key repeats. Use `events.keyboardbutton` to react to `KeyEvent`s " *
-            "instead."
+            "`events.keyboardbuttons` is deprecated. Use " *
+            "`events.keyboardbutton` to react to `KeyEvent`s instead."
         )
         keyboardbuttons = Node(Set{Keyboard.Button}())
         on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
