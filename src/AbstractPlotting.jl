@@ -194,7 +194,6 @@ export window_area
 export window_open
 export mouse_buttons
 export mouse_position
-export mousedrag
 export scroll
 export keyboard_buttons
 export unicode_input

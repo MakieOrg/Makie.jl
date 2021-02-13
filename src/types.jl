@@ -62,7 +62,7 @@ struct Events
     """
     A Set of all currently pressed mousebuttons.
     """
-    mousebuttonstate::Node{Set{Mouse.Button}}
+    mousebuttonstate::Set{Mouse.Button}
     """
     The position of the mouse as a `NTuple{2, Float64}`.
     Updates once per event poll/frame.
@@ -83,7 +83,7 @@ struct Events
     """
     Contains all currently pressed keys.
     """
-    keyboardstate::Node{Set{Keyboard.Button}}
+    keyboardstate::Set{Keyboard.Button}
 
     """
     Contains the last typed character.
@@ -105,9 +105,9 @@ end
 
 function Events()
     mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
-    mousebuttonstate = Node(Set{Mouse.Button}())
+    mousebuttonstate = Set{Mouse.Button}()
     on(mousebutton, priority = typemax(Int8)) do event
-        set = mousebuttonstate[]
+        set = mousebuttonstate
         if event.action == Mouse.press
             push!(set, event.button)
         elseif event.action == Mouse.release
@@ -115,24 +115,21 @@ function Events()
         else
             error("Unrecognized Keyboard action $(event.action)")
         end
-        mousebuttonstate[] = set
         # This never consumes because it just keeps track of the state
         return false
     end
         
     keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
-    keyboardstate = Node(Set{Keyboard.Button}())
+    keyboardstate = Set{Keyboard.Button}()
     on(keyboardbutton, priority = typemax(Int8)) do event
-        set = keyboardstate[]
+        set = keyboardstate
         if event.key != Keyboard.unknown
             if event.action == Keyboard.press
                 push!(set, event.key)
-                keyboardstate[] = set
             elseif event.action == Keyboard.release
                 delete!(set, event.key)
-                keyboardstate[] = set
             elseif event.action == Keyboard.repeat
-                # nothing needs to be done, besides returning the same set of keys
+                # set should already have the key
             else
                 error("Unrecognized Keyboard action $(event.action)")
             end
@@ -157,6 +154,36 @@ function Events()
         PriorityObservable(false),
         PriorityObservable(false),
     )
+end
+
+# Compat only
+function Base.getproperty(e::Events, field::Symbol)
+    if field == :mousebuttons
+        @warn(
+            "`events.mousebuttons` is deprecated. Use `event.mousebutton` to " *
+            "react to `MouseButtonEvent`s instead and ``."
+        )
+        mousebuttons = Node(Set{Mouse.Button}())
+        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
+            mousebuttons[] = getfield(e, :mousebuttonstate)
+            return false
+        end
+        return mousebuttons
+    elseif field == :keyboardbuttons
+        @warn(
+            "`events.keyboardbuttons` is deprecated and no longer triggers on " *
+            "key repeats. Use `events.keyboardbutton` to react to `KeyEvent`s " *
+            "instead."
+        )
+        keyboardbuttons = Node(Set{Keyboard.Button}())
+        on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
+            keyboardbuttons[] = getfield(e, :keyboardstate)
+            return false
+        end
+        return keyboardbuttons
+    else
+        getfield(e, field)
+    end
 end
 
 

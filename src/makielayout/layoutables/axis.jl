@@ -352,9 +352,10 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         return false
     end
 
-    # TODO should this work with keyboardbutton? eat events?
-    on(scene.events.keyboardstate) do buttons
-        keysevents[] = KeysEvent(buttons)
+    # TODO this should probably just forward KeyEvent from AbstractPlotting
+    on(scene.events.keyboardbutton) do e
+        keysevents[] = KeysEvent(scene.events.keyboardstate)
+        return false
     end
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()

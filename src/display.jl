@@ -263,6 +263,8 @@ function record_events(f, scene::Scene, path::String)
     display(scene)
     result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
     for field in fieldnames(Events)
+        # These are not Nodes
+        (field == :mousebuttonstate || field == :keyboardstate) && continue
         on(getfield(scene.events, field), priority = typemax(Int8)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
