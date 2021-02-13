@@ -82,7 +82,9 @@ function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false
             "specify whether the update is consumed (true) or should " *
             "propagate (false) to other observer functions. The given " *
             "function has been wrapped to always return false."
-        )
+        ) 
+        Base.show_backtrace(stderr, backtrace())
+        println()
     else
         sanitized_func = f
     end
