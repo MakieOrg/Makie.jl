@@ -167,5 +167,3 @@ For more information, see the [Animations](@ref) and the [Observables & Interact
 That concludes our short tutorial. We hope you have learned how to create basic plots
 with Makie and how easy it is to change and animate them using Observables.
 
-You can check out more examples that you can adapt
-in the [Example Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html).

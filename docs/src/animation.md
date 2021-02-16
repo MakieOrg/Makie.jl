@@ -138,7 +138,3 @@ for i = 1:n_frames
 end
 ```
 
-
-## More Animation Examples
-
-You can see more complex examples in the [Example Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html)!
