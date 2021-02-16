@@ -27,7 +27,7 @@ CairoMakie.activate!()
 
 - Learn the basics of plotting with Makie in the [Basic Tutorial](@ref)
 - Check out how to make more complex plots and layouts in the [Layout Tutorial](@ref)
-- See example plots in the [Gallery](http://juliaplots.org/MakieReferenceImages/gallery/index.html).
+- See examples of many plotting functions under [Plotting Functions](@ref).
 
 ```@eval
 using Markdown
@@ -75,6 +75,7 @@ These packages are maintained by third parties. If you install them, keep an eye
 
 ## Getting Help
 
-1) Use the REPL `?` help mode
-1) Join the `#makie` channel in the [Julia Slack group](https://julialang.org/slack/).
-1) Open an issue in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl) repository which serves as the central hub for AbstractPlotting and backend issues.
+1) Use the REPL `?` help mode.
+1) Click this link to open a preformatted topic on the [Julia Discourse Page](https://discourse.julialang.org/new-topic?title=Makie%20-%20Your%20question%20here&category=domain/viz&tags=Makie&body=You%20can%20write%20your%20question%20in%20this%20space.%0A%0ABefore%20asking%2C%20please%20take%20a%20minute%20to%20make%20sure%20that%20you%20have%20installed%20the%20latest%20available%20versions%20and%20have%20looked%20at%20%5Bthe%20most%20recent%20documentation%5D(http%3A%2Fmakie.juliaplots.org%2Fstable%2F)%20%3Ainnocent%3A). If you do this manually, please use the category Domain/Visualization and tag questions with `Makie` to increase their visibility.
+1) For casual conversation about Makie and its development, have a look at the `#makie` channel in the [Julia Slack group](https://julialang.org/slack/). Please direct your usage questions to [Discourse](https://discourse.julialang.org/new-topic?title=Makie%20-%20Your%20question%20here&category=domain/viz&tags=Makie&body=You%20can%20write%20your%20question%20in%20this%20space.%0A%0ABefore%20asking%2C%20please%20take%20a%20minute%20to%20make%20sure%20that%20you%20have%20installed%20the%20latest%20available%20versions%20and%20have%20looked%20at%20%5Bthe%20most%20recent%20documentation%5D(http%3A%2Fmakie.juliaplots.org%2Fstable%2F)%20%3Ainnocent%3A) and not to Slack, to make questions and answers accessible to everybody.
+1) For technical issues and bug reports, open an issue in the [Makie.jl](https://github.com/JuliaPlots/Makie.jl) repository which serves as the central hub for AbstractPlotting and backend issues.
