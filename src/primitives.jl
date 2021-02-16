@@ -666,7 +666,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     model = copy(model)
     view = scene.camera.view[]
 
-    sort!(pos, by = p -> begin
+    zorder = sortperm(pos, by = p -> begin
         p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0f0), 1f0)
         cam_pos = view * model * p4d
         cam_pos[3] / cam_pos[4]
@@ -687,7 +687,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
     end
     scales = primitive[:markersize][]
 
-    for i in eachindex(pos)
+    for i in zorder
         p = pos[i]
         if color isa AbstractVector
             submesh[:color] = color[i]
