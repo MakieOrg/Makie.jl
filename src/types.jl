@@ -160,7 +160,7 @@ end
 function Base.getproperty(e::Events, field::Symbol)
     if field == :mousebuttons
         @warn(
-            "`events.mousebuttons` is deprecated. Use `event.mousebutton` to " *
+            "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
             "react to `MouseButtonEvent`s instead and ``."
         )
         mousebuttons = Node(Set{Mouse.Button}())
@@ -180,6 +180,29 @@ function Base.getproperty(e::Events, field::Symbol)
             return false
         end
         return keyboardbuttons
+    elseif field == :mousedrag
+        @warn(
+            "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
+            "mouse state machine (`addmouseevents!`) instead."
+        )
+        mousedrag = Node(Mouse.notpressed)
+        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
+            if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
+                mousedrag[] = Mouse.down
+            elseif mousedrag[] in (Mouse.down, Mouse.pressed)
+                mousedrag[] = Mouse.up
+            end
+            return false
+        end
+        on(getfield(e, :mouseposition), priority=typemax(Int8)-1) do pos
+            if mousedrag[] in (Mouse.down, Mouse.pressed)
+                mousedrag[] = Mouse.pressed
+            elseif mousedrag[] == Mouse.up
+                mousedrag[] = Mouse.notpressed
+            end
+            return false
+        end
+        return mousedrag
     else
         getfield(e, field)
     end

@@ -32,8 +32,12 @@ using AbstractPlotting: PriorityObservable, MouseButtonEvent, KeyEvent
     @test x == false
     @test first[] < second[] < third[]
 
+    # redirecting to avoid printing a stacktrace
+    old_stdout = stdout
+    redirect_stdout()
     msg = "Observer functions of PriorityObservables must return a Bool to specify whether the update is consumed (true) or should propagate (false) to other observer functions. The given function has been wrapped to always return false."
     @test_logs (:warn, msg) on(identity, po)
+    redirect_stdout(old_stdout)
 end
 
 
