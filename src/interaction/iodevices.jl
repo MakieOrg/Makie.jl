@@ -183,6 +183,19 @@ module Mouse
         press   = 1
         release = 0
     end
+
+    # deprecated, remove eventually
+    """
+        Mouse.DragEnum
+    Enumerates the drag states of the mouse.
+    $(INSTANCES)
+    """
+    @enum DragEnum begin
+        down
+        up
+        pressed
+        notpressed
+    end
 end
 
 # Void for no button needs to be pressed,
