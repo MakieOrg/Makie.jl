@@ -139,11 +139,11 @@ function add_pan!(scene::SceneLike, cam::Camera2D)
         Node.((scene, cam, startpos, drag_active))..., 
         e.mouseposition
     ) do scene, cam, startpos, active, pos
-        if active[] && ispressed(scene, pan)
-            diff = startpos[] .- mp
-            startpos[] = mp
+        if active[] && ispressed(scene, cam.panbutton[])
+            diff = startpos[] .- pos
+            startpos[] = pos
             area = cam.area[]
-            diff = Vec(diff) .* wscale(window_area, area)
+            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
             cam.area[] = FRect(minimum(area) .+ diff, widths(area))
             update_cam!(scene, cam)
             return true
