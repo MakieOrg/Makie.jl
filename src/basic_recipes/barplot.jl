@@ -38,7 +38,6 @@ end
 flip(r::Rect2D) = Rect2D(reverse(origin(r)), reverse(widths(r)))
 
 using DataAPI: refarray, levels
-import DataFrames
 
 function AbstractPlotting.plot!(p::BarPlot)
 
@@ -129,22 +128,37 @@ function shift_dodge(i, x_gap, dodge_gap, n_dodge)
 end
 
 function stack_grouped_from_to(i_stack, y, grp)
-	tmp_df = DataFrames.DataFrame(; i_stack, y, is_pos = y .> 0, grp..., order = 1:length(y), copycols = false)
-    
+	
+	from = Array{Float64}(undef, length(y))
+	to   = Array{Float64}(undef, length(y))
+	
+	groupby = StructArray((; grp..., is_pos = y .> 0))
+
+	grps = StructArrays.finduniquesorted(groupby)
+	
+	for (grp, inds) in grps
+		
+		fromto = stack_from_to(i_stack[inds], y[inds])
+		
+		from[inds] .= fromto.from
+		to[inds] .= fromto.to
+	
+	end
+	
+	(from = from, to = to)
+end
+
+function stack_from_to(i_stack, y)
+	# save current order
+	order = 1:length(y)
 	# sort by i_stack
-	sort!(tmp_df, :i_stack)
+	perm = sortperm(i_stack)
+	# restore original order
+	inv_perm = sortperm(order[perm])
 	
-	grp_keys = [keys(grp)..., :is_pos]
-	
-	DataFrames.transform!(
-    	DataFrames.groupby(tmp_df, grp_keys),
-		:y => stack_from_to_sorted => DataFrames.AsTable
-	)
-	
-	# restore original ordering
-	sort!(tmp_df, :order)
-	
-	(; tmp_df.from, tmp_df.to)
+	from, to = stack_from_to_sorted(view(y, perm))
+
+	(from = view(from, inv_perm), to = view(to, inv_perm))
 end
 
 function stack_from_to_sorted(y)
