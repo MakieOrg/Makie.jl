@@ -327,7 +327,7 @@ Gets the attributes from plot, that are valid for PlotType
 """
 function attributes_from(PlotType, plot)
     result = Attributes()
-    for key in attribute_names(attributes)
+    for key in attribute_names(PlotType)
         if haskey(plot, key)
             result[key] = plot[key]
         end
