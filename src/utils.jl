@@ -114,6 +114,8 @@ function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
     [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
 end
 
+to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf0.(img)
+
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange
 
