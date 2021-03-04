@@ -61,27 +61,13 @@ function createprogram()
 end
 
 shadertype(s::Shader) = s.typ
-function shadertype(f::File{format"GLSLShader"})
-    shadertype(file_extension(f))
-end
+
 function shadertype(ext::AbstractString)
     ext == ".comp" && return GL_COMPUTE_SHADER
     ext == ".vert" && return GL_VERTEX_SHADER
     ext == ".frag" && return GL_FRAGMENT_SHADER
     ext == ".geom" && return GL_GEOMETRY_SHADER
     error("$ext not a valid extension for $f")
-end
-
-#Implement File IO interface
-function load(f::File{format"GLSLShader"})
-    fname = filename(f)
-    source = open(readstring, fname)
-    compile_shader(fname, source)
-end
-function save(f::File{format"GLSLShader"}, data::Shader)
-    s = open(f, "w")
-    write(s, data.source)
-    close(s)
 end
 
 function uniformlocations(nametypedict::Dict{Symbol, GLenum}, program)
@@ -142,7 +128,7 @@ function compile_shader(source::Vector{UInt8}, typ, name)
 end
 
 function compile_shader(path, source_str::AbstractString)
-    typ = GLAbstraction.shadertype(query(path))
+    typ = shadertype(splitext(path)[2])
     source = Vector{UInt8}(source_str)
     name = Symbol(path)
     compile_shader(source, typ, name)
