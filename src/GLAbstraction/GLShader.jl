@@ -61,13 +61,12 @@ function createprogram()
 end
 
 shadertype(s::Shader) = s.typ
-
 function shadertype(ext::AbstractString)
     ext == ".comp" && return GL_COMPUTE_SHADER
     ext == ".vert" && return GL_VERTEX_SHADER
     ext == ".frag" && return GL_FRAGMENT_SHADER
     ext == ".geom" && return GL_GEOMETRY_SHADER
-    error("$ext not a valid extension for $f")
+    error("$ext not a valid shader extension")
 end
 
 function uniformlocations(nametypedict::Dict{Symbol, GLenum}, program)

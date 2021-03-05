@@ -6,15 +6,12 @@ using ModernGL
 using AbstractPlotting
 using FixedPointNumbers
 using ColorTypes
-using FileIO
 using ..GLMakie.GLFW
 using Printf
 using LinearAlgebra
 using Observables
 using ShaderAbstractions
 using ShaderAbstractions: current_context, is_context_active, context_alive
-
-import FileIO: load, save
 
 import FixedPointNumbers: N0f8, N0f16, N0f8, Normed
 
