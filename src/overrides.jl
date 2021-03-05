@@ -28,7 +28,7 @@ end
 function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2})
 
     # in the rare case of per-vertex colors redirect to mesh drawing
-    if poly.color[] isa Array
+    if poly.color[] isa AbstractArray
         draw_poly_as_mesh(scene, screen, poly)
         return
     end
@@ -132,4 +132,36 @@ function draw_poly(scene::Scene, screen::CairoScreen, poly, polygons::AbstractAr
         Cairo.stroke(screen.context)
     end
 
+end
+
+
+################################################################################
+#                                     Band                                     #
+#     Override because band is usually a polygon, but because it supports      #
+#        gradients as well via `mesh` we have to intercept the poly use        #
+################################################################################
+
+function draw_plot(scene::Scene, screen::CairoScreen,
+        band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
+
+    if !(band.color isa AbstractArray)
+        upperpoints = band[1][]
+        lowerpoints = band[2][]
+        points = vcat(lowerpoints, reverse(upperpoints))
+        model = band.model[]
+        points = project_position.(Ref(scene), points, Ref(model))
+        Cairo.move_to(screen.context, points[1]...)
+        for p in points[2:end]
+            Cairo.line_to(screen.context, p...)
+        end
+        Cairo.close_path(screen.context)
+        Cairo.set_source_rgba(screen.context, rgbatuple(to_color(band.color[]))...)
+        Cairo.fill(screen.context)
+    else
+        for p in band.plots
+            draw_plot(scene, screen, p)
+        end
+    end
+
+    nothing
 end
