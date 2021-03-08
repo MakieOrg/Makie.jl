@@ -12,10 +12,30 @@ building a complex figure step by step. This is the final result we will create:
 
 All right, let's get started!
 
+## Getting started & Backends
+
+First, we import CairoMakie, which re-exports everything from AbstractPlotting and MakieLayout.
+
+```@example tutorial
+using CairoMakie
+```
+
+The same works for all the other backends (WGLMakie, GLMakie).
+You can find an overview of the different backends in [Makie-Ecosystem](@ref).
+The MakieLayout package itself is depcrecated, since it now lives directly in AbstractPlotting.
+If we do not want to make the code backend dependend,
+e.g. inside a package where the user should chose the backend,
+we can depend on `AbstractPlotting` alone.
+This allows the user to do:
+
+```julia
+using CustomPlots # depends only on AbstractPlotting
+using GLMakie # choses GLMakie as the backend for CustomPlots
+```
+
 ## Creating A Figure
 
-First, we import CairoMakie.
-Then we create an empty `Figure` which will hold all our content elements and organize them in a layout.
+We create an empty `Figure` which will hold all our content elements and organize them in a layout.
 
 ```@example tutorial
 using CairoMakie
@@ -31,6 +51,7 @@ fig
 save("step_001.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_001](step_001.svg)
 
 ## First Axis
@@ -52,6 +73,7 @@ fig
 save("step_002.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_002](step_002.svg)
 
 ## Plotting into an Axis
@@ -70,6 +92,7 @@ fig
 save("step_003.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_003](step_003.svg)
 
 ## Multiple Axes
@@ -100,6 +123,7 @@ fig
 save("step_004.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_004](step_004.svg)
 
 As you can see, the first axis has shrunk to the left to make space for the new
@@ -114,7 +138,6 @@ Let's plot into the new axis, the same way we did the scatter plots before.
 We can also leave out the axis as the first argument if we just want to plot into
 the current axis.
 
-
 ```@example tutorial
 data2 = randn(50, 2) * [1 -2.5; -2.5 1] .+ [13 13]
 
@@ -125,8 +148,8 @@ fig
 save("step_005.svg", fig) # hide
 nothing # hide
 ```
-![step_005](step_005.svg)
 
+![step_005](step_005.svg)
 
 ## Linking Axes
 
@@ -142,8 +165,8 @@ fig
 save("step_006.svg", fig) # hide
 nothing # hide
 ```
-![step_006](step_006.svg)
 
+![step_006](step_006.svg)
 
 This looks good, but now both y-axes are the same, so we can hide the right one
 to make the plot less cluttered. We keep the grid lines, though. You can see that
@@ -156,8 +179,8 @@ fig
 save("step_007.svg", fig) # hide
 nothing # hide
 ```
-![step_007](step_007.svg)
 
+![step_007](step_007.svg)
 
 Even though our plots are entirely made up, we should follow best practice and label
 the axes. We can do this with the `xlabel` and `ylabel` attributes of the `Axis`.
@@ -171,6 +194,7 @@ fig
 save("step_007_2.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_007 2](step_007_2.svg)
 
 ## Adding a Legend
@@ -190,6 +214,7 @@ fig
 save("step_008.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_008](step_008.svg)
 
 You can see one nice feature of Makie here, which is that the legend takes
@@ -213,8 +238,8 @@ fig
 save("step_009.svg", fig) # hide
 nothing # hide
 ```
-![step_009](step_009.svg)
 
+![step_009](step_009.svg)
 
 ## Fixing Spacing Issues
 
@@ -234,6 +259,7 @@ fig
 save("step_010.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_010](step_010.svg)
 
 This is much better already! But the legend still takes too much space vertically.
@@ -244,7 +270,6 @@ where the legend sits on the right of an axis. We wouldn't want the axis to shri
 to the height of the legend. But now that the legend has its own row, we do want
 this behavior. So we set the `tellheight` attribute to `true`.
 
-
 ```@example tutorial
 leg.tellheight = true
 
@@ -252,8 +277,8 @@ fig
 save("step_011.svg", fig) # hide
 nothing # hide
 ```
-![step_011](step_011.svg)
 
+![step_011](step_011.svg)
 
 Now the legend's row is shrunk to fit. One thing that we can do to improve the
 use of space is to change the legend's orientation to `:horizontal`.
@@ -265,8 +290,8 @@ fig
 save("step_012.svg", fig) # hide
 nothing # hide
 ```
-![step_012](step_012.svg)
 
+![step_012](step_012.svg)
 
 ## Nested Layouts
 
@@ -285,8 +310,8 @@ fig
 save("step_013.svg", fig) # hide
 nothing # hide
 ```
-![step_013](step_013.svg)
 
+![step_013](step_013.svg)
 
 This looks weird, the two axes do not have the same height. Rather, the lower
 one has the height of the legend in the same row. What can we do to remedy this
@@ -319,6 +344,7 @@ fig
 save("step_014.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_014](step_014.svg)
 
 We don't care about the axis decorations, as it's often the case with image plots.
@@ -332,8 +358,8 @@ fig
 save("step_015.svg", fig) # hide
 nothing # hide
 ```
-![step_015](step_015.svg)
 
+![step_015](step_015.svg)
 
 ## Adding a Colorbar
 
@@ -362,12 +388,11 @@ fig
 save("step_016.svg", fig) # hide
 nothing # hide
 ```
-![step_016](step_016.svg)
 
+![step_016](step_016.svg)
 
 The color bar is quite chunky because it takes 50% of the available width in the
 sublayout. Let's give it a fixed width of 30 units.
-
 
 ```@example tutorial
 cbar.width = 30
@@ -376,8 +401,8 @@ fig
 save("step_017.svg", fig) # hide
 nothing # hide
 ```
-![step_017](step_017.svg)
 
+![step_017](step_017.svg)
 
 Much better! Note that you can usually set all attributes during creation of an object
 (`Colorbar(fig, width = 30)`) or after the fact, like in this example.
@@ -388,7 +413,6 @@ to two thirds of the available height using `Relative(2/3)`.
 
 If you only specify a number like `30`, it is interpreted as `Fixed(30)`.
 
-
 ```@example tutorial
 cbar.height = Relative(2/3)
 
@@ -396,8 +420,8 @@ fig
 save("step_18.svg", fig) # hide
 nothing # hide
 ```
-![step_18](step_18.svg)
 
+![step_18](step_18.svg)
 
 We don't really like the automatically chosen tick values here. Sometimes, the automatic
 algorithms just don't choose the values we want, so let's change them.
@@ -410,8 +434,8 @@ fig
 save("step_18b.svg", fig) # hide
 nothing # hide
 ```
-![step_18b](step_18b.svg)
 
+![step_18b](step_18b.svg)
 
 ## Adding a Title
 
@@ -429,7 +453,6 @@ will create a new row and push all other content down.
 Note that after this, all the cell indices of our current content will have changed
 to reflect the new GridLayout size.
 
-
 ```@example tutorial
 supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
     textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
@@ -438,8 +461,8 @@ fig
 save("step_19.svg", fig) # hide
 nothing # hide
 ```
-![step_19](step_19.svg)
 
+![step_19](step_19.svg)
 
 ## Subplot Labels
 
@@ -461,7 +484,7 @@ be aligned.
 
 So for our corner letters, we don't want to create new columns or rows. Doing that
 would probably cause alignment issues in most cases. Instead, we place these objects
-*inside* the protrusions of existing cells. That means they are part of the gaps
+_inside_ the protrusions of existing cells. That means they are part of the gaps
 between columns and rows, which is fitting for our labels.
 
 We can do this by specifying the `Side` as a third argument when indexing the layout.
@@ -479,6 +502,7 @@ fig
 save("step_20.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_20](step_20.svg)
 
 That looks good! You can see that the letters, larger than the axis titles, have
@@ -497,6 +521,7 @@ fig
 save("step_21.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_21](step_21.svg)
 
 ## Tweaking aspect ratios
@@ -522,6 +547,7 @@ fig
 save("step_22.svg", fig) # hide
 nothing # hide
 ```
+
 ![step_22](step_22.svg)
 
 And there we have it! Hopefully this tutorial has given you an overview how to
