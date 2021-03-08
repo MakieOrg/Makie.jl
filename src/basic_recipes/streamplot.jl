@@ -48,6 +48,9 @@ function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
     return (f, limits)
 end
 
+
+scatterfun(N) = N == 2 ? scatter! : meshscatter!
+
 """
 streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
 
