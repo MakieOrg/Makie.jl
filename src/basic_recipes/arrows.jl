@@ -45,10 +45,7 @@ const quiver! = arrows!
 export quiver, quiver!
 
 arrow_head(N, marker) = marker
-arrow_head(N, marker::Automatic) = N == 2 ? '▲' : Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
-
-scatterfun(N) = N == 2 ? scatter! : meshscatter!
-
+arrow_head(N, marker::Automatic) = N == 2 ? '▲' : arrow_mesh() #Pyramid(Point3f0(0, 0, -0.5), 1f0, 1f0)
 
 convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f0.(x, y), Vec2f0.(u, v))
 function convert_arguments(::Type{<: Arrows}, x::AbstractVector, y::AbstractVector, u::AbstractMatrix, v::AbstractMatrix)
@@ -58,21 +55,35 @@ convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Ve
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
     @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor, colormap)
-    headstart = lift(points, directions, lengthscale) do points, directions, s
-        map(points, directions) do p1, dir
-            dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
-            Point{N, Float32}(p1) => Point{N, Float32}(p1 .+ (dir .* Float32(s)))
+    
+    if N == 2
+        headstart = lift(points, directions, lengthscale) do points, directions, s
+            map(points, directions) do p1, dir
+                dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
+                Point{N, Float32}(p1) => Point{N, Float32}(p1 .+ (dir .* Float32(s)))
+            end
         end
+
+        linesegments!(
+            arrowplot, headstart,
+            color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
+            linestyle = arrowplot[:linestyle], colormap = colormap,
+        )
+        scatter!(
+            arrowplot,
+            lift(x-> last.(x), headstart),
+            marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
+            color = arrowcolor, rotations = directions,  strokewidth = 0.0, colormap = colormap,
+        )
+    else
+        dirs = lift(arrowplot[:normalize], directions) do n, dir
+            n ? StaticArrays.normalize(dir) : dir
+        end
+        meshscatter!(
+            arrowplot,
+            points, rotations = dirs,
+            marker = lift(x -> arrow_head(3, x), arrowhead),
+            markersize = arrowsize, color = arrowcolor, colormap = colormap
+        )
     end
-    linesegments!(
-        arrowplot, headstart,
-        color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
-        linestyle = arrowplot[:linestyle], colormap = colormap,
-    )
-    scatterfun(N)(
-        arrowplot,
-        lift(x-> last.(x), headstart),
-        marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
-        color = arrowcolor, rotations = directions,  strokewidth = 0.0, colormap = colormap,
-    )
 end
