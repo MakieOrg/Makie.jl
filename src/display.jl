@@ -225,7 +225,7 @@ Save a `Scene` with the specified filename and format.
 - `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
-        f::FileIO.File, fig::FigureLike;
+        filename, fig::FigureLike;
         resolution = size(get_scene(fig)),
         pt_per_unit = 1.0,
         px_per_unit = 1.0,
@@ -237,7 +237,6 @@ function FileIO.save(
     # But otherwise we could get a filetype :UNKNOWN from a corrupt existing file
     # (from an error during save, e.g.), therefore we don't want to rely on the
     # type readout from an existing file.
-    filename = FileIO.filename(f)
     isfile(filename) && rm(filename)
     # query the filetype only from the file extension
     F = filetype(FileIO.query(filename))
