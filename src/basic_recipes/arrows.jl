@@ -26,13 +26,13 @@ $(ATTRIBUTES)
         arrowhead = automatic,
         arrowtail = automatic,
         linecolor = :black,
-        linewidth = 1,
-        arrowsize = 0.3,
+        linewidth = automatic,
+        arrowsize = automatic,
         linestyle = nothing,
         # scale = Vec3f0(1), # unused?
         align = :origin,
         normalize = false,
-        lengthscale = 1.0f0,
+        lengthscale = automatic,
         colormap = :viridis
     )
     # connect arrow + linecolor by default
@@ -66,28 +66,30 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     )
     
     if N == 2
-        headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
+        headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, lengthscale
+            s = lengthscale === automatic ? 1f0 : Float32(lengthscale)
             map(points, dirs) do p1, dir
                 dir = n ? StaticArrays.normalize(dir) : dir
                 if align == :head
-                    shift = Float32(s) .* dir
+                    shift = s .* dir
                 else
                     shift = Vec2f0(0)
                 end
-                Point2f0(p1 .- shift) => Point2f0(p1 .- shift .+ (dir .* Float32(s)))
+                Point2f0(p1 .- shift) => Point2f0(p1 .- shift .+ (dir .* s))
             end
         end
 
         linesegments!(
             arrowplot, headstart,
-            color = :linecolor, linewidth = :linewidth,
-            linestyle = :linestyle, colormap = colormap,
+            color = linecolor, colormap = colormap, linestyle = linestyle, 
+            linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth)
         )
         scatter!(
             arrowplot,
             lift(x-> last.(x), headstart),
-            marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
-            color = arrowcolor, rotations = directions,  strokewidth = 0.0, colormap = colormap,
+            marker = lift(x-> arrow_head(N, x), arrowhead), 
+            markersize = @lift($arrowsize === automatic ? 0.3 : $arrowsize),
+            color = arrowcolor, rotations = directions, strokewidth = 0.0, colormap = colormap,
         )
     else
         #                   2d              3d
@@ -95,12 +97,13 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         # linewidth:    tail width      tail width
         # arrowsize:    head size       head size
         # dir:          tail length     tail length
-        start = lift(points, directions, align, lengthscale) do points, dirs, align, s
+        start = lift(points, directions, align, lengthscale) do points, dirs, align, lengthscale
+            s = lengthscale === automatic ? 1f0 : Float32(lengthscale)
             map(points, dirs) do p, dir
                 if align == :head
                     shift = Vec3f0(0)
                 else
-                    shift = -Float32(s) .* dir
+                    shift = -s .* dir
                 end
                 Point3f0(p .- shift)
             end
@@ -108,9 +111,10 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         meshscatter!(
             arrowplot,
             start, rotations = directions,
-            marker = lift(x -> arrow_tail(3, x), arrowhead),
-            markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, lw, ls
-                lw = 0.5lw; ls = ls
+            marker = lift(x -> arrow_tail(3, x), arrowtail),
+            markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, lengthscale
+                lw = linewidth === automatic ? 0.05f0 : linewidth
+                ls = lengthscale === automatic ? 0.3f0 : lengthscale
                 if n
                     Vec3f0(lw, lw, ls)
                 else
@@ -123,7 +127,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             start, rotations = directions,
             marker = lift(x -> arrow_head(3, x), arrowhead),
-            markersize = arrowsize,
+            markersize = lift(arrowsize, typ=Any) do as
+                as === automatic ? Vec3f0(0.2, 0.2, 0.3) : as
+            end,
             color = arrowcolor, colormap = colormap
         )
     end
