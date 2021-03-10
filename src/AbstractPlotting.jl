@@ -253,8 +253,8 @@ function __init__()
     end
 end
 
-function arrow_mesh()
-    FileIO.load(joinpath(dirname(@__DIR__), "assets", "meshes", "arrow.obj"))
+function load_asset(filepath)
+    FileIO.load(joinpath(dirname(@__DIR__), "assets", filepath))
 end
 
 
