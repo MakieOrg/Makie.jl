@@ -29,7 +29,8 @@ $(ATTRIBUTES)
         linewidth = 1,
         arrowsize = 0.3,
         linestyle = nothing,
-        scale = Vec3f0(1),
+        # scale = Vec3f0(1), # unused?
+        align = :origin,
         normalize = false,
         lengthscale = 1.0f0,
         colormap = :viridis
@@ -59,16 +60,21 @@ convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Ve
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
     @extract arrowplot (
-        points, directions, colormap, normalize,
+        points, directions, colormap, normalize, align,
         arrowtail, linecolor, linestyle, linewidth, lengthscale, 
         arrowhead, arrowsize, arrowcolor
     )
     
     if N == 2
-        headstart = lift(points, directions, normalize, lengthscale) do points, directions, n, s
-            map(points, directions) do p1, dir
+        headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
+            map(points, dirs) do p1, dir
                 dir = n ? StaticArrays.normalize(dir) : dir
-                Point{N, Float32}(p1) => Point{N, Float32}(p1 .+ (dir .* Float32(s)))
+                if align == :head
+                    shift = Float32(s) .* dir
+                else
+                    shift = Vec2f0(0)
+                end
+                Point2f0(p1 .- shift) => Point2f0(p1 .- shift .+ (dir .* Float32(s)))
             end
         end
 
@@ -89,9 +95,19 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         # linewidth:    tail width      tail width
         # arrowsize:    head size       head size
         # dir:          tail length     tail length
+        start = lift(points, directions, align, lengthscale) do points, dirs, align, s
+            map(points, dirs) do p, dir
+                if align == :head
+                    shift = Vec3f0(0)
+                else
+                    shift = -Float32(s) .* dir
+                end
+                Point3f0(p .- shift)
+            end
+        end
         meshscatter!(
             arrowplot,
-            points, rotations = directions,
+            start, rotations = directions,
             marker = lift(x -> arrow_tail(3, x), arrowhead),
             markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, lw, ls
                 lw = 0.5lw; ls = ls
@@ -105,7 +121,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         )
         meshscatter!(
             arrowplot,
-            points, rotations = directions,
+            start, rotations = directions,
             marker = lift(x -> arrow_head(3, x), arrowhead),
             markersize = arrowsize,
             color = arrowcolor, colormap = colormap
