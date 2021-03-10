@@ -29,7 +29,6 @@ $(ATTRIBUTES)
         linewidth = automatic,
         arrowsize = automatic,
         linestyle = nothing,
-        # scale = Vec3f0(1), # unused?
         align = :origin,
         normalize = false,
         lengthscale = automatic,
@@ -70,7 +69,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             s = lengthscale === automatic ? 1f0 : Float32(lengthscale)
             map(points, dirs) do p1, dir
                 dir = n ? StaticArrays.normalize(dir) : dir
-                if align == :head
+                if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = s .* dir
                 else
                     shift = Vec2f0(0)
@@ -92,15 +91,10 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             color = arrowcolor, rotations = directions, strokewidth = 0.0, colormap = colormap,
         )
     else
-        #                   2d              3d
-        # lengthscale:  tail length     tail length
-        # linewidth:    tail width      tail width
-        # arrowsize:    head size       head size
-        # dir:          tail length     tail length
         start = lift(points, directions, align, lengthscale) do points, dirs, align, lengthscale
             s = lengthscale === automatic ? 1f0 : Float32(lengthscale)
             map(points, dirs) do p, dir
-                if align == :head
+                if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = Vec3f0(0)
                 else
                     shift = -s .* dir
