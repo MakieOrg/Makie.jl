@@ -175,14 +175,26 @@ end
 This summarizes the current state of interactivity with WGLMakie inside static pages.
 
 Note that the normal interactivity from Makie is preserved with WGLMakie in e.g. Pluto, as long as the Julia session is running.
-Which brings us to setting up Pluto/IJulia sessions!
-This should always be your first cell:
+Which brings us to setting up Pluto/IJulia sessions! The return value of your first cell must be the return value of the function `Page`. 
+For example, your first cell can be
 ```julia
 begin
 	using JSServe
 	Page()
 end
 ```
+As is common with files meant to be shared, you might wish to set up a temporary directory so as to not pollute other people's environment. The following code will also be a valid first cell.
+```julia
+begin
+	using Pkg
+	Pkg.activate(mktempdir())
+	
+	Pkg.add("JSServe")
+	using JSServe
+	Page()
+end
+```
+
 
 If you're accessing the notebook from another PC, you must set:
 ```julia
