@@ -253,10 +253,6 @@ function __init__()
     end
 end
 
-function load_asset(filepath)
-    FileIO.load(joinpath(dirname(@__DIR__), "assets", filepath))
-end
-
 
 include("figures.jl")
 export content
