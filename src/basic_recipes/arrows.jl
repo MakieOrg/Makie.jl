@@ -32,7 +32,8 @@ $(ATTRIBUTES)
         align = :origin,
         normalize = false,
         lengthscale = automatic,
-        colormap = :viridis
+        colormap = :viridis,
+        quality = 16
     )
     # connect arrow + linecolor by default
     get!(theme, :arrowcolor, theme[:linecolor])
@@ -44,11 +45,75 @@ const quiver = arrows
 const quiver! = arrows!
 export quiver, quiver!
 
-arrow_head(N, marker) = marker
-arrow_head(N, marker::Automatic) = N == 2 ? '▲' : load_asset("meshes/cone.obj")
+arrow_head(N, marker, quality) = marker
+function arrow_head(N, marker::Automatic, quality)
+    if N == 2
+        return '▲'
+    else
+        merge([
+           _circle(Point3f0(0), 1f0, Vec3f0(0,0,-1), quality),
+           _mantle(Point3f0(0), Point3f0(0,0,1), 1f0, 0f0, quality)
+        ])
+    end
+end
 
-arrow_tail(N, marker) = marker
-arrow_tail(N, marker::Automatic) = N == 2 ? nothing : load_asset("meshes/tube.obj")
+arrow_tail(N, marker, quality) = marker
+function arrow_tail(N, marker::Automatic, quality)
+    if N == 2
+        nothing
+    else 
+        merge([
+            _circle(Point3f0(0,0,-1), 1f0, Vec3f0(0,0,-1), quality),
+            _mantle(Point3f0(0,0,-1), Point3f0(0), 1f0, 1f0, quality)
+        ])
+    end
+end
+
+
+function _mantle(origin, extremity, r1, r2, N)
+    @assert N ≥ 3
+    dphi = 2pi / N
+
+    # Equivalent to
+    # xy = cos(atan(temp))
+    # z  = sin(atan(temp))
+    temp = -(r2-r1) / norm(extremity .- origin)
+    xy = 1.0 / sqrt(temp^2 + 1)
+    z = temp / sqrt(temp^2 + 1)
+
+    coords = Vector{Point3f0}(undef, 2N)
+    normals = Vector{Vec3f0}(undef, 2N)
+    faces = Vector{GLTriangleFace}(undef, 2N)
+
+    for (i, phi) in enumerate(0:dphi:2pi-0.5dphi)
+        coords[2i - 1] = origin .+ r1 * Vec3f0(cos(phi), sin(phi), 0)
+        coords[2i] = extremity .+ r2 * Vec3f0(cos(phi), sin(phi), 0)
+        normals[2i - 1] = Vec3f0(xy*cos(phi), xy*sin(phi), z)
+        normals[2i] = Vec3f0(xy*cos(phi), xy*sin(phi), z)
+        faces[2i - 1] = GLTriangleFace(2i-1, mod1(2i+1, 2N), 2i)
+        faces[2i] = GLTriangleFace(mod1(2i+1, 2N), mod1(2i+2, 2N), 2i)
+    end
+
+    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+end
+
+# GeometryBasics.Circle doesn't work with Point3f0...
+function _circle(origin, r, normal, N)
+    @assert N ≥ 3
+    dphi = 2pi / N
+
+    coords = Vector{Point3f0}(undef, N+1)
+    normals = fill(normal, N+1)
+    faces = Vector{GLTriangleFace}(undef, N)
+
+    for (i, phi) in enumerate(0:dphi:2pi-0.5dphi)
+        coords[i] = origin .+ r * Vec3f0(cos(phi), sin(phi), 0)
+        faces[i] = GLTriangleFace(N+1, mod1(i+1, N), i)
+    end
+    coords[N+1] = origin
+
+    GeometryBasics.Mesh(meta(coords; normals=normals), faces)
+end
 
 
 convert_arguments(::Type{<: Arrows}, x, y, u, v) = (Point2f0.(x, y), Vec2f0.(u, v))
@@ -61,7 +126,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     @extract arrowplot (
         points, directions, colormap, normalize, align,
         arrowtail, linecolor, linestyle, linewidth, lengthscale, 
-        arrowhead, arrowsize, arrowcolor
+        arrowhead, arrowsize, arrowcolor, quality
     )
     
     if N == 2
@@ -86,13 +151,13 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         scatter!(
             arrowplot,
             lift(x-> last.(x), headstart),
-            marker = lift(x-> arrow_head(N, x), arrowhead), 
+            marker = @lift(arrow_head(2, $arrowhead, $quality)), 
             markersize = @lift($arrowsize === automatic ? 0.3 : $arrowsize),
             color = arrowcolor, rotations = directions, strokewidth = 0.0, colormap = colormap,
         )
     else
         start = lift(points, directions, align, lengthscale) do points, dirs, align, lengthscale
-            s = lengthscale === automatic ? 1f0 : Float32(lengthscale)
+            s = lengthscale === automatic ? 0.3f0 : Float32(lengthscale)
             map(points, dirs) do p, dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = Vec3f0(0)
@@ -105,7 +170,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         meshscatter!(
             arrowplot,
             start, rotations = directions,
-            marker = lift(x -> arrow_tail(3, x), arrowtail),
+            marker = @lift(arrow_tail(3, $arrowhead, $quality)),
             markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, lengthscale
                 lw = linewidth === automatic ? 0.05f0 : linewidth
                 ls = lengthscale === automatic ? 0.3f0 : lengthscale
@@ -120,7 +185,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         meshscatter!(
             arrowplot,
             start, rotations = directions,
-            marker = lift(x -> arrow_head(3, x), arrowhead),
+            marker = @lift(arrow_head(3, $arrowhead, $quality)),
             markersize = lift(arrowsize, typ=Any) do as
                 as === automatic ? Vec3f0(0.2, 0.2, 0.3) : as
             end,
