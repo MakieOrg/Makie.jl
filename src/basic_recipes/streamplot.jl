@@ -24,7 +24,8 @@ See the function [`streamplot_impl`](@ref) for implementation details.
             maxsteps = 500,
             colormap = theme(scene, :colormap),
             arrow_size = 0.03,
-            density = 1.0
+            density = 1.0,
+            quality = 16
         ),
         default_theme(scene, Lines) # so that we can theme the lines as needed.
     )
@@ -172,7 +173,7 @@ function plot!(p::StreamPlot)
     N = ndims(p.limits[])
     scatterfun(N)(
         p,
-        lift(first, data), markersize = p.arrow_size, marker = arrow_head(N, automatic),
+        lift(first, data), markersize = p.arrow_size, marker = arrow_head(N, automatic, p.quality),
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
         colormap = p.colormap,
     )
