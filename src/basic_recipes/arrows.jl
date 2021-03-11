@@ -33,7 +33,7 @@ $(ATTRIBUTES)
         normalize = false,
         lengthscale = automatic,
         colormap = :viridis,
-        quality = 16
+        quality = 32
     )
     # connect arrow + linecolor by default
     get!(theme, :arrowcolor, theme[:linecolor])
@@ -51,8 +51,8 @@ function arrow_head(N, marker::Automatic, quality)
         return '▲'
     else
         merge([
-           _circle(Point3f0(0), 1f0, Vec3f0(0,0,-1), quality),
-           _mantle(Point3f0(0), Point3f0(0,0,1), 1f0, 0f0, quality)
+           _circle(Point3f0(0), 0.5f0, Vec3f0(0,0,-1), quality),
+           _mantle(Point3f0(0), Point3f0(0,0,1), 0.5f0, 0f0, quality)
         ])
     end
 end
@@ -63,8 +63,8 @@ function arrow_tail(N, marker::Automatic, quality)
         nothing
     else 
         merge([
-            _circle(Point3f0(0,0,-1), 1f0, Vec3f0(0,0,-1), quality),
-            _mantle(Point3f0(0,0,-1), Point3f0(0), 1f0, 1f0, quality)
+            _circle(Point3f0(0,0,-1), 0.5f0, Vec3f0(0,0,-1), quality),
+            _mantle(Point3f0(0,0,-1), Point3f0(0), 0.5f0, 0.5f0, quality)
         ])
     end
 end
