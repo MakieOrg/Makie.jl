@@ -71,7 +71,6 @@ end
 
 
 function _mantle(origin, extremity, r1, r2, N)
-    @assert N ≥ 3
     dphi = 2pi / N
 
     # Equivalent to
@@ -99,7 +98,6 @@ end
 
 # GeometryBasics.Circle doesn't work with Point3f0...
 function _circle(origin, r, normal, N)
-    @assert N ≥ 3
     dphi = 2pi / N
 
     coords = Vector{Point3f0}(undef, N+1)
