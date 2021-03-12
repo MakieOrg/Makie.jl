@@ -171,7 +171,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             marker = @lift(arrow_tail(3, $arrowhead, $quality)),
             markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, lengthscale
                 lw = linewidth === automatic ? 0.05f0 : linewidth
-                ls = lengthscale === automatic ? 0.3f0 : lengthscale
+                ls = lengthscale === automatic ? 1f0 : lengthscale
                 if n
                     Vec3f0(lw, lw, ls)
                 else
