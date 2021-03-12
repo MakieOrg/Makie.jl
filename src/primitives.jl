@@ -472,7 +472,7 @@ function draw_mesh2D(scene, screen, primitive)
     colorrange = get(primitive, :colorrange, nothing) |> to_value
     ctx = screen.context
     model = primitive.model[]
-    mesh = primitive[1][]
+    mesh = GeometryBasics.mesh(primitive[1][])
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
     color = hasproperty(mesh, :color) ? mesh.color : color

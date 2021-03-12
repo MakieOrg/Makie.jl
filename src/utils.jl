@@ -1,3 +1,11 @@
+function AbstractPlotting.to_ndim(T::Type{<: VecTypes{N,ET}}, val, fillval) where {N,ET}
+    T(ntuple(Val(N)) do i
+        i == 1 && return ET(val)
+        ET(fillval)
+    end)
+end
+
+
 ################################################################################
 #                             Projection utilities                             #
 ################################################################################
