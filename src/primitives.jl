@@ -534,7 +534,7 @@ function draw_mesh3D(
     # Mesh data
     # transform to view/camera space
     vs = map(coordinates(mesh)) do v
-        p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, scale, 1f0) .* to_ndim(Vec3f0, v, 0f0), 1f0)
+        p4d = to_ndim(Vec4f0, scale .* to_ndim(Vec3f0, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end
     fs = faces(mesh)
@@ -699,8 +699,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh,
-            mesh = m, pos = p, scale = scale
+            scene, screen, submesh, mesh = m, pos = p, 
+            scale = scale isa Real ? Vec3f0(scale) : to_ndim(Vec3f0, scale, 1f0)
         )
     end
 
