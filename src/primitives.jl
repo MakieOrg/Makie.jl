@@ -544,7 +544,7 @@ function draw_mesh3D(
 
     # Liight math happens in view/camera space
     if lightposition == :eyeposition
-        lightposition = scene.camera_controls[].eyeposition[]
+        lightposition = scene.camera.eyeposition[]
     end
     lightpos = (view * to_ndim(Vec4f0, lightposition, 1.0))[Vec(1, 2, 3)]
 
