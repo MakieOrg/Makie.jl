@@ -42,21 +42,8 @@ end
 
 const deps_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
 
-if isfile(deps_path)
-    include(deps_path)
-else
-    error("""
-        The file $(deps_path) does not exist.
-        This file is generated during the build process; it is possible that GLMakie
-        wasn't built correctly.  To rerun the build process, run `Pkg.build("GLMakie"),
-        or enter the Pkg REPL mode (`]`) and then type `build GLMakie`.
-        """)
-end
-
-if WORKING_OPENGL
-     # don't put this into try catch, to not mess with normal errors
-    include("gl_backend.jl")
-end
+# don't put this into try catch, to not mess with normal errors
+include("gl_backend.jl")
 
 function activate!(use_display=true)
     b = GLBackend()
@@ -67,11 +54,7 @@ function activate!(use_display=true)
 end
 
 function __init__()
-    if WORKING_OPENGL
-        activate!()
-    else
-        error("Loaded OpenGL Backend, but OpenGL isn't working")
-    end
+    activate!()
 end
 
 export set_window_config!
