@@ -18,7 +18,7 @@ jobs:
           - '1' # Leave this line unchanged. '1' will automatically expand to the latest stable 1.x release of Julia.
           - 'nightly'
         os:
-          - ubuntu-bionic
+          - ubuntu-18.04
         arch:
           - x64
     steps:
