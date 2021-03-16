@@ -266,7 +266,7 @@ function display_loading_image(screen::Screen)
     if size(image) == fbsize
         nw = to_native(screen)
         # transfer loading image to gpu framebuffer
-        fb.buffers[:color][1:size(image, 1), 1:size(image, 2)] = image 
+        fb.buffers[:color][1:size(image, 1), 1:size(image, 2)] = image
         ShaderAbstractions.is_context_active(nw) || return
         w, h = fbsize
         glBindFramebuffer(GL_FRAMEBUFFER, 0) # transfer back to window
@@ -312,13 +312,25 @@ function Screen(;
         (GLFW.FLOATING, WINDOW_CONFIG.float[]),
     ]
 
-    window = GLFW.Window(
-        name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
-        windowhints = windowhints,
-        visible = false,
-        focus = false,
-        kw_args...
-    )
+    window = try
+        GLFW.Window(
+            name = title, resolution = (10, 10), # 10, because smaller sizes seem to error on some platforms
+            windowhints = windowhints,
+            visible = false,
+            focus = false,
+            kw_args...
+        )
+    catch e
+        @warn("""
+            GLFW couldn't create an OpenGL window.
+            This likely means, you don't have an OpenGL capable Graphic Card,
+            or you don't have an OpenGL 3.3 capable video driver installed.
+            Have a look at the troubleshooting section in the GLMakie readme:
+            https://github.com/JuliaPlots/GLMakie.jl#troubleshooting-opengl.
+        """)
+        rethrow(e)
+    end
+
     GLFW.SetWindowIcon(window, AbstractPlotting.icon())
 
     # tell GLAbstraction that we created a new context.
