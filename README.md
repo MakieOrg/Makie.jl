@@ -51,10 +51,12 @@ glxgears
 ```
 
 On the Windows side:
+
 1) install [VcXsrv](https://sourceforge.net/projects/vcxsrv/)
 2) choose multiple windows -> display 0 -> start no client -> disable native opengl
 
 Troubleshooting:
+
 1.)  install: `sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev`
 
 2.) WSL has some problems with passing through localhost, so one may need to use: `export DISPLAY=192.168.178.31:0`, with the local ip of the pcs network adapter, which runs VcXsrv
