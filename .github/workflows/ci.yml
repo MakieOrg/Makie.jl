@@ -16,7 +16,6 @@ jobs:
       matrix:
         version:
           - '1.5.3'
-          - 'nightly'
         os:
           - ubuntu-latest
         arch:
@@ -39,7 +38,7 @@ jobs:
             ${{ runner.os }}-test-
             ${{ runner.os }}-
       - run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev libgl1-mesa-glx
-      - run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=@. -e 'using Pkg; Pkg.test(coverage=true)'
+      - run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=@. -e 'using GLFW; GLFW.Window();'
       - uses: julia-actions/julia-processcoverage@v1
       - uses: codecov/codecov-action@v1
         with:
