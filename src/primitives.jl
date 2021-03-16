@@ -476,7 +476,7 @@ function draw_mesh2D(scene, screen, primitive)
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
     color = hasproperty(mesh, :color) ? mesh.color : color
-    vs = coordinates(mesh); fs = faces(mesh)
+    vs =  decompose(Point, mesh); fs = decompose(TriangleFace, mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
 
@@ -699,7 +699,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlott
         scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, submesh, mesh = m, pos = p, 
+            scene, screen, submesh, mesh = m, pos = p,
             scale = scale isa Real ? Vec3f0(scale) : to_ndim(Vec3f0, scale, 1f0)
         )
     end
