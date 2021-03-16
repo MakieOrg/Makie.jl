@@ -17,7 +17,7 @@ jobs:
         version:
           - '1'
         os:
-          - ubuntu-latest
+          - ubuntu-18.04
         arch:
           - x64
     steps:
