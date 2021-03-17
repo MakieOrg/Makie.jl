@@ -26,9 +26,13 @@ import GridLayoutBase
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-using Observables: listeners, notify!, to_value
-# Imports from Observables which we use a lot
-using Observables: notify!, listeners
+using Observables: listeners, to_value
+
+if hasmethod(Observables.notify, Tuple{Observable})
+    using Observables: notify
+else
+    Base.notify(obs::Observable) = Observables.notify!(obs)
+end
 
 module ContoursHygiene
     import Contour
