@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!(type = "png")
 ```
 
+# Axis
+
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.

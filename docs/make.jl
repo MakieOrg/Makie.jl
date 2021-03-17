@@ -341,9 +341,6 @@ makedocs(
         ],
     ),
     sitename = "Makie Plotting Ecosystem",
-    expandfirst = [
-        "plotting_functions.md",
-    ],
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
@@ -351,17 +348,36 @@ makedocs(
             "Layout Tutorial" => "makielayout/tutorial.md",
             "animation.md",
             "interaction.md",
-            "plotting_functions.md",
+            "Plotting Functions" =>
+                joinpath.(
+                    "plotting_functions",
+                    filter(
+                        endswith(".md"),
+                        readdir(joinpath(srcpath, "plotting_functions"),
+                            sort = true)
+                    )
+                ),
             "theming.md",
         ],
         "Documentation" => [
             "plot_method_signatures.md",
             "Figure" => "figure.md",
-            "Axis" => "makielayout/laxis.md",
-            "GridLayout" => "makielayout/grids.md",
-            "Legend" => "makielayout/llegend.md",
-            "Layoutables & Widgets" => "makielayout/layoutables_examples.md",
-            "How Layouting Works" => "makielayout/layouting.md",
+            "Layoutables & Widgets" => [
+                "makielayout/layoutables.md",
+                "makielayout/axis.md",
+                "makielayout/box.md",
+                "makielayout/button.md",
+                "makielayout/colorbar.md",
+                "makielayout/gridlayout.md",
+                "makielayout/label.md",
+                "makielayout/legend.md",
+                "makielayout/lscene.md",
+                "makielayout/menu.md",
+                "makielayout/slider.md",
+                "makielayout/toggle.md",
+                
+            ],
+            "makielayout/layouting.md",
             "generated/colors.md",
             "generated/plot-attributes.md",
             "recipes.md",

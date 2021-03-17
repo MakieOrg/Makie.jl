@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
+# Legend
+
 ## Creating A Legend From Elements
 
 You can create a basic Legend by passing a vector of legend entries and a vector of labels, plus an optional title as the third argument.
