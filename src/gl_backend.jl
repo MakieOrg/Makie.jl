@@ -1,4 +1,14 @@
-using GLFW
+try
+    using GLFW
+catch e
+    @warn("""
+        OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
+        This likely means, you're on a headless server without having OpenGL support setup correctly.
+        Have a look at the troubleshooting section in the readme:
+        https://github.com/JuliaPlots/GLMakie.jl#troubleshooting-opengl.
+    """)
+    rethrow(e)
+end
 
 include("GLAbstraction/GLAbstraction.jl")
 
@@ -44,10 +54,15 @@ function get_texture!(atlas)
     return tex
 end
 
+# TODO
+const enable_SSAO = Ref(false)
+const enable_FXAA = Ref(true)
+
 include("GLVisualize/GLVisualize.jl")
 using .GLVisualize
 
 include("glwindow.jl")
+include("postprocessing.jl")
 include("screen.jl")
 include("rendering.jl")
 include("events.jl")

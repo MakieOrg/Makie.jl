@@ -42,12 +42,23 @@ raw_io(io::IOContext) = raw_io(io.io)
 
 function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
     img, screen = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"PNG", raw_io(io)), img)
+    # TODO: when FileIO 1.6 is the minimum required version, delete the conditional
+    if isdefined(FileIO, :action)   # FileIO 1.6+
+        # keep this one
+        FileIO.save(FileIO.Stream{FileIO.format"PNG"}(raw_io(io)), img)
+    else
+        # delete this one
+        FileIO.save(FileIO.Stream(FileIO.format"PNG", raw_io(io)), img)
+    end
     return screen
 end
 
 function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
     img, screen = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"JPEG", raw_io(io)), img)
+    if isdefined(FileIO, :action)   # FileIO 1.6+
+        FileIO.save(FileIO.Stream{FileIO.format"JPEG"}(raw_io(io)), img)
+    else
+        FileIO.save(FileIO.Stream(FileIO.format"JPEG", raw_io(io)), img)
+    end
     return screen
 end
