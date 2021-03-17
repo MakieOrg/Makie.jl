@@ -59,6 +59,6 @@ function plot!(plot::Annotations)
         return
     end
     # update one time in the beginning, since otherwise the above won't run
-    notify!(sargs[1])
+    notify(sargs[1])
     plot
 end

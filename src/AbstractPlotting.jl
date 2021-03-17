@@ -26,9 +26,14 @@ import GridLayoutBase
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-using Observables: listeners, notify!, to_value
-# Imports from Observables which we use a lot
-using Observables: notify!, listeners
+using Observables: listeners, to_value
+
+# Backwards compatability for Observables 0.3
+if hasmethod(Observables.notify, Tuple{Observable})
+    using Observables: notify
+else
+    Base.notify(obs::Observable) = Observables.notify!(obs)
+end
 
 module ContoursHygiene
     import Contour
@@ -162,7 +167,7 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Node/Signal related
-export Node, Observable, lift, map_once, to_value, on, @lift
+export Node, Observable, lift, map_once, to_value, on, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
