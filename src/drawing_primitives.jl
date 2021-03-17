@@ -74,7 +74,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         end
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
-            robj[key] = getfield(scene.camera, key)
+            if !haskey(robj.uniforms, key)
+                robj[key] = getfield(scene.camera, key)
+            end
         end
 
         if !haskey(gl_attributes, :normalmatrix)
@@ -315,13 +317,13 @@ function preprojected_glyph_arrays(strings::AbstractVector{<:String}, positions:
         end
     elseif space == :screen
         allpos = map(positions, glyphlayouts) do pos, glyphlayout::AbstractPlotting.Glyphlayout
-            projected = AbstractPlotting.project(projview, resolution, to_ndim(Point3f0, pos, 0))
-            [projected + o for o in glyphlayout.origins]
+            projected = to_ndim(Point3f0, AbstractPlotting.project(projview, resolution, to_ndim(Point3f0, pos, 0)), 0)
+            return [projected .+ o for o in glyphlayout.origins]
         end
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
-    
+
     megapos = reduce(vcat, allpos)
 
     atlas = get_texture_atlas()
@@ -349,7 +351,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation)
 
-            preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, scene.camera.projectionview[], Vec2f0(scene.resolution[]))
+            preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, scene.camera.projectionview[], Vec2f0(widths(pixelarea(scene)[])))
             # to_gl_text(str, args..., model, j, l)
         end
 
@@ -379,12 +381,12 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             end
         end
 
-        visualize(
+        robj = visualize(
             (DISTANCEFIELD, positions),
 
             color = signals[1],
             stroke_color = signals[2],
-            # stroke_width = signals[3], # for some reason I get 
+            # stroke_width = signals[3], # for some reason I get
             # no method matching gl_convert(::Vector{Float32})
             stroke_width = 0.0f0,
             rotation = signals[4],
@@ -395,6 +397,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             distancefield = get_texture!(atlas),
             visible = gl_attributes[:visible]
         )
+        # Draw text in screenspace
+        robj[:projection] = scene.camera.pixel_space
+        robj[:projectionview] = scene.camera.pixel_space
+        return robj
     end
 end
 
