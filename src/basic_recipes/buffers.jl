@@ -79,7 +79,7 @@ function finish!(tb::Annotations)
     if length(tb[1][]) != length(tb.textsize[])
         error("Inconsistent buffer state for $(tb[1][])")
     end
-    notify!(tb[1])
+    notify(tb[1])
     return
 end
 
