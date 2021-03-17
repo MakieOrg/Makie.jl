@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
+# GridLayout
+
 ## Setting column and row sizes correctly
 
 There are four different types of sizes you can give rows and columns.

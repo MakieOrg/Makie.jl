@@ -1,0 +1,26 @@
+```@eval
+using CairoMakie
+CairoMakie.activate!()
+```
+
+# Label
+
+This is just normal text, except it's also layoutable. A text's size is known,
+so rows and columns in a GridLayout can shrink to the appropriate width or height.
+
+```@example
+using CairoMakie
+
+fig = Figure(resolution = (1200, 900))
+
+fig[1:2, 1:3] = [Axis(fig) for _ in 1:6]
+
+supertitle = Label(fig[0, :], "Six plots", textsize = 30)
+
+sideinfo = Label(fig[2:3, 0], "This text is vertical", rotation = pi/2)
+
+save("example_ltext.svg", fig); nothing # hide
+```
+
+![example ltext](example_ltext.svg)
+

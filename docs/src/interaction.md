@@ -221,7 +221,7 @@ end
 
 ## Interactive Widgets
 
-Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the [Layoutables & Widgets](@ref) section.
+Makie has a couple of useful interactive widgets like sliders, buttons and menus, which you can read about in the [Layoutables](@ref) section.
 
 ## Recording Animations with Interactions
 
