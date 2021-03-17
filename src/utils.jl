@@ -77,7 +77,13 @@ function rgbatuple(c::Colorant)
     red(rgba), green(rgba), blue(rgba), alpha(rgba)
 end
 
-rgbatuple(c) = rgbatuple(to_color(c))
+function rgbatuple(c)
+    colorant = to_color(c)
+    if !(colorant <: Colorant)
+        error("Can't convert $(c) to a colorant")
+    end
+    return rgbatuple(colorant)
+end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
