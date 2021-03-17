@@ -311,7 +311,7 @@ function p3_to_p2(p::Point3{T}) where T
         Point2{T}(p[1:2]...)
     else
         error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
-    end  
+    end
 end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
@@ -367,14 +367,14 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             # of the character into screen space and then subtracting the projected
             # origin. The resulting vectors give the directions in which the character
             # needs to be stretched in order to match the 3D projection
-            
+
             xvec = rotation * (scale3[1] * Point3f0(1, 0, 0))
             yvec = rotation * (scale3[2] * Point3f0(0, -1, 0))
 
             gproj = project_position(scene, gpos_data, Mat4f0(I))
             xproj = project_position(scene, gpos_data + xvec, Mat4f0(I))
             yproj = project_position(scene, gpos_data + yvec, Mat4f0(I))
-            
+
             xdiff = xproj - gproj
             ydiff = yproj - gproj
 
@@ -408,7 +408,7 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             mat = scale_matrix(scale...)
             set_font_matrix(ctx, mat)
             Cairo.rotate(ctx, to_2d_rotation(rotation))
-    
+
             Cairo.show_text(ctx, string(char))
             Cairo.restore(ctx)
         else
@@ -527,11 +527,11 @@ function draw_mesh2D(scene, screen, primitive)
     colorrange = get(primitive, :colorrange, nothing) |> to_value
     ctx = screen.context
     model = primitive.model[]
-    mesh = primitive[1][]
+    mesh = GeometryBasics.mesh(primitive[1][])
     # Priorize colors of the mesh if present
     # This is a hack, which needs cleaning up in the Mesh plot type!
     color = hasproperty(mesh, :color) ? mesh.color : color
-    vs = coordinates(mesh); fs = faces(mesh)
+    vs =  decompose(Point, mesh); fs = decompose(TriangleFace, mesh)
     uv = hasproperty(mesh, :uv) ? mesh.uv : nothing
     pattern = Cairo.CairoPatternMesh()
 
@@ -589,7 +589,7 @@ function draw_mesh3D(
     # Mesh data
     # transform to view/camera space
     vs = map(coordinates(mesh)) do v
-        p4d = to_ndim(Vec4f0, scale * to_ndim(Vec3f0, v, 0f0), 1f0)
+        p4d = to_ndim(Vec4f0, scale .* to_ndim(Vec3f0, v, 0f0), 1f0)
         view * (model * p4d .+ to_ndim(Vec4f0, pos, 0f0))
     end
     fs = faces(mesh)
@@ -599,7 +599,7 @@ function draw_mesh3D(
 
     # Liight math happens in view/camera space
     if lightposition == :eyeposition
-        lightposition = scene.camera_controls[].eyeposition[]
+        lightposition = scene.camera.eyeposition[]
     end
     lightpos = (view * to_ndim(Vec4f0, lightposition, 1.0))[Vec(1, 2, 3)]
 
@@ -691,6 +691,7 @@ function surface2mesh(xs::AbstractVector, ys::AbstractVector, zs::AbstractMatrix
     ]
     normal_mesh(ps, faces)
 end
+
 function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix)
     ps = [Point3f0(xs[i, j], ys[i, j], zs[i, j]) for j in 1:size(zs, 2) for i in 1:size(zs, 1)]
     idxs = LinearIndices(size(zs))
@@ -701,54 +702,61 @@ function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix
     normal_mesh(ps, faces)
 end
 
-
 ################################################################################
 #                                 MeshScatter                                  #
 ################################################################################
 
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::AbstractPlotting.MeshScatter)
-    m = normal_mesh(primitive[:marker][])
+    @get_attribute(primitive, (color, model, marker, markersize, rotations))
+
+    if color isa AbstractArray{<: Number}
+        color = numbers_to_colors(color, primitive)
+    end
+
+    m = normal_mesh(marker)
     pos = primitive[1][]
     # For correct z-ordering we need to be in view/camera or screen space
-    model = copy(primitive[:model][])
+    model = copy(model)
     view = scene.camera.view[]
-    sort!(pos, by = p -> begin
+
+    zorder = sortperm(pos, by = p -> begin
         p4d = to_ndim(Vec4f0, to_ndim(Vec3f0, p, 0f0), 1f0)
         cam_pos = view * model * p4d
         cam_pos[3] / cam_pos[4]
     end, rev=false)
 
-    colors = primitive[:color][]
-    if !haskey(primitive, :faceculling)
-        primitive[:faceculling] = Node(-0.1)
-    end
-    rotations = primitive[:rotations][]
+    submesh = Attributes(
+        model=model,
+        color=color,
+        shading=primitive.shading, lightposition=primitive.lightposition,
+        ambient=primitive.ambient, diffuse=primitive.diffuse,
+        specular=primitive.specular, shininess=primitive.shininess,
+        faceculling=get(primitive, :faceculling, -0.1)
+    )
+
     if !(rotations isa Vector)
         R = AbstractPlotting.rotationmatrix4(to_rotation(rotations))
-        primitive[:model][] = model * R
+        submesh[:model] = model * R
     end
     scales = primitive[:markersize][]
 
-    for i in eachindex(pos)
+    for i in zorder
         p = pos[i]
-        if colors isa Vector
-            primitive[:color][] = colors[i]
+        if color isa AbstractVector
+            submesh[:color] = color[i]
         end
         if rotations isa Vector
             R = AbstractPlotting.rotationmatrix4(to_rotation(rotations[i]))
-            primitive[:model][] = model * R
+            submesh[:model] = model * R
         end
-        scale = scales isa Vector ? scales[i] : scales
+        scale = markersize isa Vector ? markersize[i] : markersize
 
         draw_mesh3D(
-            scene, screen, primitive,
-            mesh = m, pos = p, scale = scale
+            scene, screen, submesh, mesh = m, pos = p,
+            scale = scale isa Real ? Vec3f0(scale) : to_ndim(Vec3f0, scale, 1f0)
         )
     end
 
-    # Restore adjusted attributes
-    primitive[:color][] = colors
-    primitive[:model][] = model
     return nothing
 end

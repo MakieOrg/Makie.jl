@@ -32,6 +32,15 @@ function project_rect(scene, rect::Rect, model)
     return Rect(mini, maxi .- mini)
 end
 
+function project_polygon(scene, poly::P, model) where P <: Polygon
+    ext = decompose(Point2f0, poly.exterior)
+    interiors = decompose.(Point2f0, poly.interiors)
+    Polygon(
+        Point2f0.(project_position.(Ref(scene), ext, Ref(model))),
+        [Point2f0.(project_position.(Ref(scene), interior, Ref(model))) for interior in interiors],
+    )
+end
+
 scale_matrix(x, y) = Cairo.CairoMatrix(x, 0.0, 0.0, y, 0.0, 0.0)
 
 ########################################
@@ -68,7 +77,13 @@ function rgbatuple(c::Colorant)
     red(rgba), green(rgba), blue(rgba), alpha(rgba)
 end
 
-rgbatuple(c) = rgbatuple(to_color(c))
+function rgbatuple(c)
+    colorant = to_color(c)
+    if !(colorant <: Colorant)
+        error("Can't convert $(c) to a colorant")
+    end
+    return rgbatuple(colorant)
+end
 
 to_uint32_color(c) = reinterpret(UInt32, convert(ARGB32, c))
 
@@ -104,6 +119,8 @@ function to_rgba_image(img::AbstractMatrix{<: AbstractFloat}, attributes)
 
     [get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip) for pixel in img]
 end
+
+to_rgba_image(img::AbstractMatrix{<: Colorant}, attributes) = RGBAf0.(img)
 
 function get_rgba_pixel(pixel, colormap, colorrange, nan_color, lowclip, highclip)
     vmin, vmax = colorrange

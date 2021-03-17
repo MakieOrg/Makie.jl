@@ -1,5 +1,18 @@
 using Test, Pkg
 using CairoMakie
+
+# Before changing Pkg environment, try the test in #864
+@testset "Runs without error" begin
+    fig = Figure()
+    scatter(fig[1, 1], rand(10))
+    fn = tempname()*".png"
+    try
+        save(fn, fig)
+    finally
+        rm(fn)
+    end
+end
+
 path = normpath(joinpath(dirname(pathof(AbstractPlotting)), "..", "test", "ReferenceTests"))
 Pkg.develop(PackageSpec(path=path))
 using ReferenceTests
@@ -44,7 +57,8 @@ excludes = Set((
     # sigh this is actually super close,
     # but doesn't interpolate the values inside the
     # triangles, so looks pretty different
-    "FEM polygon 2D"
+    "FEM polygon 2D",
+    "Connected Sphere"
 ))
 
 database = ReferenceTests.load_database()
@@ -54,7 +68,9 @@ filter!(database) do (name, entry)
     !(:volume in entry.used_functions) &&
     !(:volume! in entry.used_functions) &&
     !(:uv_mesh in entry.used_functions) &&
-    (nice_title(entry) !== "short_tests_111")
+    nice_title(entry) !== "short_tests_90" &&
+    nice_title(entry) !== "short_tests_111" &&
+    nice_title(entry) !== "short_tests_35"
 end
 
 recorded = joinpath(@__DIR__, "recorded")
