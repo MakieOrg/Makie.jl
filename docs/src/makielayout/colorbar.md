@@ -36,11 +36,7 @@ Colorbar(fig[4, 1], height = 25, limits = (-1, 1), colormap = :heat,
     highclip = :cyan, lowclip = :red)
 
 fig
-
-save("example_colorbar.svg", fig); nothing # hide
 ```
-
-![example colorbar](example_colorbar.svg)
 
 You can also automatically choose colormap and limits for certain plot objects by passing them as the second argument.
 
@@ -69,8 +65,5 @@ ax, hm = contourf(fig[2, 2][1, 1], xs, ys, zs,
 Colorbar(fig[2, 2][1, 2], hm, width = 20, ticks = -1:0.25:1)
 
 fig
-save("example_colorbar_2.svg", fig); nothing # hide
 ```
-
-![example colorbar 2](example_colorbar_2.svg)
 

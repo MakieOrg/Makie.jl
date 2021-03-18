@@ -23,8 +23,4 @@ scatter!(xs, ys .- 2, markersize = LinRange(5, 30, 20))
 scatter!(xs, ys .- 3, marker = 'a':'t', strokewidth = 0, color = :black)
 
 f
-save("example_scatter_1.svg", f); nothing # hide
 ```
-
-![example_scatter_1](example_scatter_1.svg)
-

@@ -22,7 +22,4 @@ band!(xs, ys_low, ys_high)
 band!(xs, ys_low .- 1, ys_high .-1, color = :red)
 
 f
-save("example_band.svg", f); nothing # hide
 ```
-
-![example band](example_band.svg)

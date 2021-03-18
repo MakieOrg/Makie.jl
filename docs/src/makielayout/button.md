@@ -22,8 +22,4 @@ for button in buttons
 end
 
 fig
-
-save("example_lbutton.svg", fig); nothing # hide
 ```
-
-![example lbutton](example_lbutton.svg)

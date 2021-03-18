@@ -51,7 +51,5 @@ end
 
 menu2.is_open = true
 
-save("example_lmenu.svg", fig); nothing # hide
+fig
 ```
-
-![example lmenu](example_lmenu.svg)

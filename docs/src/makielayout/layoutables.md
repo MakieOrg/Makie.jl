@@ -27,10 +27,7 @@ AbstractPlotting.inline!(true) # hide
 f = Figure(resolution = (800, 600))
 ax = Axis(f[1, 1])
 f
-save("layoutables_figure.svg", f); nothing # hide
 ```
-
-![layoutables_figure](layoutables_figure.svg)
 
 ## Adding to a Scene
 
@@ -46,10 +43,7 @@ AbstractPlotting.inline!(true) # hide
 scene, layout = layoutscene(resolution = (800, 600))
 ax = layout[1, 1] = Axis(scene)
 scene
-save("layoutables_scene.svg", scene); nothing # hide
 ```
-
-![layoutables_scene](layoutables_scene.svg)
 
 ## Specifying a boundingbox directly
 
@@ -69,10 +63,7 @@ f = Figure(resolution = (800, 600))
 Axis(f, bbox = BBox(100, 300, 100, 500), title = "Axis 1")
 Axis(f, bbox = BBox(400, 700, 200, 400), title = "Axis 2")
 f
-save("layoutables_manual_bbox.svg", f); nothing # hide
 ```
-
-![layoutables_manual_bbox](layoutables_manual_bbox.svg)
 
 ## Deleting Layoutables
 

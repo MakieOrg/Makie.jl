@@ -21,10 +21,7 @@ co = contourf!(xs, ys, zs, levels = 10)
 Colorbar(f[1, 2], co, width = 20)
 
 f
-save("example_contourf_1.svg", f); nothing # hide
 ```
-
-![example_contourf_1](example_contourf_1.svg)
 
 
 ```@example
@@ -45,10 +42,7 @@ co = contourf!(xs, ys, zs, levels = -0.75:0.25:0.5,
 Colorbar(f[1, 2], co, width = 20)
 
 f
-save("example_contourf_2.svg", f); nothing # hide
 ```
-
-![example_contourf_2](example_contourf_2.svg)
 
 
 ```@example
@@ -70,8 +64,5 @@ co = contourf!(xs, ys, zs,
 Colorbar(f[1, 2], co, width = 20)
 
 f
-save("example_contourf_3.svg", f); nothing # hide
 ```
-
-![example_contourf_3](example_contourf_3.svg)
 
