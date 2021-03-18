@@ -26,12 +26,12 @@ $(ATTRIBUTES)
         arrowhead = automatic,
         arrowtail = automatic,
         linecolor = :black,
-        linewidth = 1f0,
+        linewidth = automatic,
         arrowsize = automatic,
         linestyle = nothing,
         align = :origin,
         normalize = false,
-        lengthscale = automatic,
+        lengthscale = 1f0,
         colormap = :viridis,
         quality = 32
     )
@@ -128,8 +128,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     )
     
     if N == 2
-        headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, lengthscale
-            s = lengthscale === automatic ? 1f0 : Float32(lengthscale)
+        headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
                 dir = n ? StaticArrays.normalize(dir) : dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
@@ -144,7 +143,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         linesegments!(
             arrowplot, headstart,
             color = linecolor, colormap = colormap, linestyle = linestyle, 
-            linewidth = linewidth
+            linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth)
         )
         scatter!(
             arrowplot,
@@ -154,8 +153,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             color = arrowcolor, rotations = directions, strokewidth = 0.0, colormap = colormap,
         )
     else
-        start = lift(points, directions, align, lengthscale) do points, dirs, align, lengthscale
-            s = lengthscale === automatic ? 0.3f0 : Float32(lengthscale)
+        start = lift(points, directions, align, lengthscale) do points, dirs, align, s
             map(points, dirs) do p, dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
                     shift = Vec3f0(0)
@@ -169,7 +167,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             start, rotations = directions,
             marker = @lift(arrow_tail(3, $arrowhead, $quality)),
-            markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, lengthscale
+            markersize = lift(directions, normalize, linewidth, lengthscale) do dirs, n, linewidth, ls
                 lw = linewidth === automatic ? 0.05f0 : linewidth
                 if n
                     Vec3f0(lw, lw, ls)
