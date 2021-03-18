@@ -8,6 +8,7 @@ Otherwise, an interactive window will open when you return a `Figure`.
 
 ```@example 1
 using GLMakie
+GLMakie.activate!() # hide
 AbstractPlotting.inline!(true)
 nothing # hide
 ```

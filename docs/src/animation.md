@@ -19,6 +19,7 @@ As a start, here is how you can change the color of a line plot:
 
 ```@example 1
 using GLMakie
+GLMakie.activate!() # hide
 using AbstractPlotting.Colors
 
 figure, ax, lineplot = lines(0..10, sin; linewidth=10)

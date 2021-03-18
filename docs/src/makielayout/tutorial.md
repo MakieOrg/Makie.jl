@@ -12,28 +12,26 @@ building a complex figure step by step. This is the final result we will create:
 
 All right, let's get started!
 
-## Getting started & Backends
+## Importing a backend
 
-First, we import CairoMakie, which re-exports everything from AbstractPlotting and MakieLayout.
+First, we import CairoMakie, which re-exports AbstractPlotting and MakieLayout.
 
 ```@example tutorial
 using CairoMakie
 ```
 
-The same works for all the other backends (WGLMakie, GLMakie).
-You can find an overview of the different backends in [Makie-Ecosystem](@ref).
-The MakieLayout package itself is depcrecated, since it now lives directly in AbstractPlotting.
-If we do not want to make the code backend dependend,
-e.g. inside a package where the user should chose the backend,
-we can depend on `AbstractPlotting` alone.
+The same works for the other backends WGLMakie and GLMakie.
+You can find an overview of the different backends with their capabilities in [Backends & Output](@ref).
+The old MakieLayout package which you needed to install separately is deprecated, since it now lives directly in AbstractPlotting.
+As a side note, if you do not want to make plotting code backend dependent, for example inside a package where the user should choose the backend themselves, you can depend on `AbstractPlotting` alone.
 This allows the user to do:
 
 ```julia
 using CustomPlots # depends only on AbstractPlotting
-using GLMakie # choses GLMakie as the backend for CustomPlots
+using GLMakie # chooses GLMakie as the backend for CustomPlots
 ```
 
-## Creating A Figure
+## Creating a figure
 
 We create an empty `Figure` which will hold all our content elements and organize them in a layout.
 
@@ -54,7 +52,7 @@ nothing # hide
 
 ![step_001](step_001.svg)
 
-## First Axis
+## First axis
 
 The figure is completely empty, I have made the background light gray so it's easier
 to see. Now we add an `Axis`.
@@ -76,7 +74,7 @@ nothing # hide
 
 ![step_002](step_002.svg)
 
-## Plotting into an Axis
+## Plotting into an axis
 
 We can plot into the axis with the ! versions of Makie's plotting functions.
 Such mutating function calls return the plot object that is created, which we save for later.
@@ -95,7 +93,7 @@ nothing # hide
 
 ![step_003](step_003.svg)
 
-## Multiple Axes
+## Multiple axes
 
 This looks nice already, but we want another axis with a second dataset, to
 the right of the one we have. Currently our layout has one row and one cell, and
@@ -151,7 +149,7 @@ nothing # hide
 
 ![step_005](step_005.svg)
 
-## Linking Axes
+## Linking axes
 
 We want to make the left and right axes correspond to each other, so we can compare
 the plots more easily. To do that, we link both x and y axes. That will keep them
@@ -197,7 +195,7 @@ nothing # hide
 
 ![step_007 2](step_007_2.svg)
 
-## Adding a Legend
+## Adding a legend
 
 Let's add a legend to our figure that describes elements from both axes. We use
 Legend for that. Legend is a relatively complex object and there are many
@@ -241,7 +239,7 @@ nothing # hide
 
 ![step_009](step_009.svg)
 
-## Fixing Spacing Issues
+## Fixing spacing issues
 
 There are a couple of things wrong with this. The legend is where we want it, below the
 two axes. But it takes too much space vertically, and there is a large gap on the right.
@@ -293,7 +291,7 @@ nothing # hide
 
 ![step_012](step_012.svg)
 
-## Nested Layouts
+## Nested layouts
 
 Let's add two new axes with heatmaps! We want them stacked on top of each other
 on the right side of the figure. We'll do the naive thing first, which is to
@@ -361,7 +359,7 @@ nothing # hide
 
 ![step_015](step_015.svg)
 
-## Adding a Colorbar
+## Adding a colorbar
 
 Now, we also want to add a color bar for the two heatmaps. Right now, their colors
 are independently scaled from each other. We choose a scale that makes sense for
@@ -437,7 +435,7 @@ nothing # hide
 
 ![step_18b](step_18b.svg)
 
-## Adding a Title
+## Adding a title
 
 Now the plot could use a title! While other plotting packages sometimes have
 functions like `supertitle`, they often don't work quite right or force you to
@@ -464,7 +462,7 @@ nothing # hide
 
 ![step_19](step_19.svg)
 
-## Subplot Labels
+## Subplot labels
 
 In figures meant for publication, you often need to label subplots with letters
 or numbers. These can sometimes cause trouble because they overlap with other
