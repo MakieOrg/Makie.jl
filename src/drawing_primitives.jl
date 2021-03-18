@@ -347,11 +347,11 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(x[1], args...) do str, pos, tsize, font, align, rotation, model, j, l, space
+        gl_text = lift(x[1], scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation)
 
-            preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, scene.camera.projectionview[], Vec2f0(widths(pixelarea(scene)[])))
+            preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, Vec2f0(widths(pixelarea(scene)[])))
             # to_gl_text(str, args..., model, j, l)
         end
 
