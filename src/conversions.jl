@@ -568,7 +568,7 @@ function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
                 to_ndim(Point3f0, ntuple(i-> lverts[i, vidx], n), 0.0)
             end
         end
-    end       
+    end
 end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
@@ -751,9 +751,9 @@ function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
     dot = 1
     dash = 3
     check_line_pattern(ls_str)
-    
+
     dot_gap, dash_gap = convert_gaps(gaps)
-    
+
     pattern = Float64[]
     for i in 1:length(ls_str)
         curr_char = ls_str[i]
@@ -778,7 +778,7 @@ end
 function check_line_pattern(ls_str)
     isnothing(match(r"^[.-]+$", ls_str)) &&
         throw(ArgumentError("If you provide a string as linestyle, it must only consist of dashes (-) and dots (.)"))
-    
+
     nothing
 end
 
@@ -788,7 +788,7 @@ function convert_gaps(gaps)
       gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
       dot_gaps  = (normal = 2, dense = 1, loose = 4)
       dash_gaps = (normal = 3, dense = 2, loose = 6)
-  
+
       dot_gap  = getproperty(dot_gaps, gaps)
       dash_gap = getproperty(dash_gaps, gaps)
   elseif gaps isa Real

@@ -3,8 +3,8 @@
 
 Plots markers at the given positions extending from `offset` along stem lines.
 
-`offset` can be a number, in which case it sets y for 2D and also z for 3D stems.
-It can be a Point2 for 2D plots and 3D plots, as well as a Point3 for 3D plots.
+`offset` can be a number, in which case it sets y for 2D, and z for 3D stems.
+It can be a Point2 for 2D plots, as well as a Point3 for 3D plots.
 It can also be an iterable of any of these at the same length as xs, ys, zs.
 
 The conversion trait of stem is `PointBased`.
@@ -42,8 +42,7 @@ conversion_trait(::Type{<:Stem}) = PointBased()
 
 trunkpoint(stempoint::P, offset::Number) where P <: Point2 = P(stempoint[1], offset)
 trunkpoint(stempoint::P, offset::Point2) where P <: Point2 = P(offset...)
-trunkpoint(stempoint::P, offset::Number) where P <: Point3 = P(stempoint[1], offset, offset)
-trunkpoint(stempoint::P, offset::Point2) where P <: Point3 = P(stempoint[1], offset[1], offset[2])
+trunkpoint(stempoint::P, offset::Number) where P <: Point3 = P(stempoint[1], stempoint[2], offset)
 trunkpoint(stempoint::P, offset::Point3) where P <: Point3 = P(offset...)
 
 

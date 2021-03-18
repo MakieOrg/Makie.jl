@@ -27,7 +27,6 @@ CairoMakie.activate!()
 
 - Learn the basics of plotting with Makie in the [Basic Tutorial](@ref)
 - Check out how to make more complex plots and layouts in the [Layout Tutorial](@ref)
-- See examples of many plotting functions under [Plotting Functions](@ref).
 
 ```@eval
 using Markdown

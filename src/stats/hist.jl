@@ -71,9 +71,8 @@ function AbstractPlotting.plot!(plot::Hist)
 
     # update the barplot points without triggering, then trigger with `width`
     on(widths) do w
-        setindex!(bp[1], points[], notify = _ -> false)
+        bp[1].val = points[]
         bp.width = w
     end
-
     plot
 end
