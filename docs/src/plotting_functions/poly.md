@@ -18,11 +18,7 @@ Axis(f[1, 1])
 poly!(Point2f0[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :black, strokewidth = 1)
 
 f
-save("example_poly_1.svg", f); nothing # hide
 ```
-
-![example_poly_1](example_poly_1.svg)
-
 
 
 ```@example
@@ -43,10 +39,8 @@ p = Polygon(
 poly!(p, color = :blue)
 
 f
-save("example_poly_2_.svg", f); nothing # hide
 ```
 
-![example_poly_2_](example_poly_2_.svg)
 
 ```@example
 using CairoMakie
@@ -65,10 +59,7 @@ poly!(
 )
 
 f
-save("example_poly_3.svg", f); nothing # hide
 ```
-
-![example_poly_3](example_poly_3.svg)
 
 
 
@@ -85,10 +76,8 @@ Axis(f[1, 1], aspect = DataAspect())
 poly!(Circle(Point2f0(0, 0), 15f0), color = :pink)
 
 f
-save("example_poly_4.svg", f); nothing # hide
 ```
 
-![example_poly_4](example_poly_4.svg)
 
 ```@example
 using CairoMakie
@@ -107,7 +96,4 @@ poly!(ps, color = rand(RGBf0, length(ps)),
     axis = (backgroundcolor = :gray15,))
 
 f
-save("example_poly_5.svg", f); nothing # hide
 ```
-
-![example_poly_5](example_poly_5.svg)

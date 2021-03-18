@@ -26,12 +26,8 @@ errorbars!(xs, ys, higherrors, color = :red) # same low and high error
 scatter!(xs, ys, markersize = 3, color = :black)
 
 f
-save("example_errorbars_1.svg", f); nothing # hide
 ```
 
-
-
-![example_errorbars_1](example_errorbars_1.svg)
 
 ```@example
 using CairoMakie
@@ -53,11 +49,7 @@ errorbars!(xs, ys, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
 scatter!(xs, ys, markersize = 3, color = :black)
 
 f
-save("example_errorbars_2_.svg", f); nothing # hide
 ```
-
-![example_errorbars_2_](example_errorbars_2_.svg)
-
 
 
 ```@example
@@ -80,8 +72,4 @@ errorbars!(xs, ys, lowerrors, higherrors, whiskerwidth = 3, direction = :x)
 scatter!(xs, ys, markersize = 3, color = :black)
 
 f
-save("example_errorbars_3_.svg", f); nothing # hide
 ```
-
-![example_errorbars_3_](example_errorbars_3_.svg)
-

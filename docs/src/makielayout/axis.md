@@ -18,11 +18,9 @@ scene, layout = layoutscene(resolution = (1200, 900))
 ax = layout[1, 1] = Axis(scene, xlabel = "x label", ylabel = "y label",
     title = "Title")
 
-save("basic_axis.svg", scene) # hide
-nothing # hide
+scene
 ```
 
-![basic axis](basic_axis.svg)
 
 ## Plotting Into an Axis
 
@@ -35,8 +33,7 @@ that it is more convenient to save and manipulate the plot objects.
 ```@example laxis
 lineobject = lines!(ax, 0..10, sin, color = :red)
 
-save("basic_axis_plotting.svg", scene) # hide
-nothing # hide
+scene
 ```
 
 ![basic axis plotting](basic_axis_plotting.svg)
@@ -74,8 +71,7 @@ ylims!(axes[4], (1, -1)) # as tuple, reversed
 limits!(axes[5], 0, 2pi, -1, 1) # x1, x2, y1, y2
 limits!(axes[6], BBox(0, 2pi, -1, 1)) # as rectangle
 
-save("example_axis_limits.svg", scene) # hide
-nothing # hide
+scene
 ```
 
 ![axis limits](example_axis_limits.svg)
@@ -157,11 +153,8 @@ axes[4].xtickformat = "{:.2f}ms"
 axes[4].xlabel = "Time"
 
 
-save("example_axis_ticks.svg", scene) # hide
-nothing # hide
+scene
 ```
-
-![axis ticks](example_axis_ticks.svg)
 
 ## Minor Ticks and Grids
 
@@ -192,11 +185,9 @@ fig = with_theme(theme) do
         yminorticks = IntervalsBetween(n+1)) for n in 1:4]
     fig
 end
-save("example_minor_ticks.svg", fig) # hide
-nothing # hide
-```
 
-![minor ticks](example_minor_ticks.svg)
+fig
+```
 
 
 ## Hiding Axis Spines and Decorations
@@ -217,11 +208,9 @@ ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
 hidespines!(ax1)
 hidespines!(ax2, :t, :r) # only top and right
 
-save("example_axis_hidespines.svg", scene) # hide
-nothing # hide
+scene
 ```
 
-![axis hide spines](example_axis_hidespines.svg)
 
 To hide decorations, you can use `hidedecorations!`, or the specific `hidexdecorations!` and `hideydecorations!`.
 When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false`, `grid = false`, `minorgrid = false` or `minorticks = false` as keyword
@@ -277,11 +266,8 @@ axes[2, 2].aspect = AxisAspect(2)
 axes[2, 3].title = "AxisAspect(0.5)"
 axes[2, 3].aspect = AxisAspect(0.5)
 
-save("example_axis_aspects.svg", scene) # hide
-nothing # hide
+scene
 ```
-
-![axis aspects](example_axis_aspects.svg)
 
 
 ## Controlling Data Aspect Ratios
@@ -386,11 +372,8 @@ for i in 1:3
     end
 end
 
-save("example_linked_axes.svg", scene) # hide
-nothing # hide
+scene
 ```
-
-![linked axes](example_linked_axes.svg)
 
 
 ## Axis interaction
@@ -526,10 +509,8 @@ ax2 = layout[1, 2] = Axis(scene, title = "hlines")
 hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 
 scene
-save("example_vlines.svg", scene); nothing # hide
 ```
 
-![example vlines](example_vlines.svg)
 
 ```@eval
 using GLMakie

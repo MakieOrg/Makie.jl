@@ -21,11 +21,7 @@ highs = LinRange(0.1, 0.4, length(vals))
 rangebars!(vals, lows, highs, color = :red)
 
 f
-save("example_rangebars_1.svg", f); nothing # hide
 ```
-
-![example_rangebars_1](example_rangebars_1.svg)
-
 
 
 ```@example
@@ -44,8 +40,5 @@ rangebars!(vals, lows, highs, color = LinRange(0, 1, length(vals)),
     whiskerwidth = 3, direction = :x)
 
 f
-save("example_rangebars_2.svg", f); nothing # hide
 ```
-
-![example_rangebars_2](example_rangebars_2.svg)
 

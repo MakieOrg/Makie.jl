@@ -8,7 +8,7 @@ CairoMakie.activate!()
 In this tutorial, we will see some of the capabilities of layouts in Makie while
 building a complex figure step by step. This is the final result we will create:
 
-![step_22](step_22.svg)
+![layout_tutorial_final](layout_tutorial_final.svg)
 
 All right, let's get started!
 
@@ -46,11 +46,8 @@ noto_sans_bold = "../assets/NotoSans-Bold.ttf"
 fig = Figure(resolution = (1200, 700), backgroundcolor = RGBf0(0.98, 0.98, 0.98), font = noto_sans)
 
 fig
-save("step_001.svg", fig) # hide
-nothing # hide
 ```
 
-![step_001](step_001.svg)
 
 ## First axis
 
@@ -68,11 +65,8 @@ like they could result from an experimental trial.
 ax1 = fig[1, 1] = Axis(fig, title = "Pre Treatment")
 
 fig
-save("step_002.svg", fig) # hide
-nothing # hide
 ```
 
-![step_002](step_002.svg)
 
 ## Plotting into an axis
 
@@ -87,11 +81,8 @@ scat1 = scatter!(ax1, data1,
     color = (:red, 0.3), markersize = 15px, marker = '■')
 
 fig
-save("step_003.svg", fig) # hide
-nothing # hide
 ```
 
-![step_003](step_003.svg)
 
 ## Multiple axes
 
@@ -118,11 +109,8 @@ ax2, line2 = lines(fig[1, 2], 7..17, x -> -x + 26,
     axis = (title = "Post Treatment",))
 
 fig
-save("step_004.svg", fig) # hide
-nothing # hide
 ```
 
-![step_004](step_004.svg)
 
 As you can see, the first axis has shrunk to the left to make space for the new
 axis on the right. We can take another look at the `layout` to see how it has
@@ -143,11 +131,8 @@ scat2 = scatter!(data2,
     color = (:blue, 0.3), markersize = 15px, marker = '▲')
 
 fig
-save("step_005.svg", fig) # hide
-nothing # hide
 ```
 
-![step_005](step_005.svg)
 
 ## Linking axes
 
@@ -160,11 +145,8 @@ synchronized. The function `linkaxes!` links both x and y, `linkxaxes!` links on
 linkaxes!(ax1, ax2)
 
 fig
-save("step_006.svg", fig) # hide
-nothing # hide
 ```
 
-![step_006](step_006.svg)
 
 This looks good, but now both y-axes are the same, so we can hide the right one
 to make the plot less cluttered. We keep the grid lines, though. You can see that
@@ -174,11 +156,8 @@ now that the y-axis is gone, the two Axes grow to fill the gap.
 hideydecorations!(ax2, grid = false)
 
 fig
-save("step_007.svg", fig) # hide
-nothing # hide
 ```
 
-![step_007](step_007.svg)
 
 Even though our plots are entirely made up, we should follow best practice and label
 the axes. We can do this with the `xlabel` and `ylabel` attributes of the `Axis`.
@@ -189,11 +168,8 @@ ax2.xlabel = "Weight [kg]"
 ax1.ylabel = "Maximum Velocity [m/sec]"
 
 fig
-save("step_007_2.svg", fig) # hide
-nothing # hide
 ```
 
-![step_007 2](step_007_2.svg)
 
 ## Adding a legend
 
@@ -209,11 +185,8 @@ leg = fig[1, end+1] = Legend(fig,
     ["f(x) = x", "Data", "f(x) = -x + 26", "Data"])
 
 fig
-save("step_008.svg", fig) # hide
-nothing # hide
 ```
 
-![step_008](step_008.svg)
 
 You can see one nice feature of Makie here, which is that the legend takes
 much less horizontal space than the two axes. In fact, it takes exactly the space
@@ -233,11 +206,8 @@ We want it in the second row, and spanning the first two columns.
 fig[2, 1:2] = leg
 
 fig
-save("step_009.svg", fig) # hide
-nothing # hide
 ```
 
-![step_009](step_009.svg)
 
 ## Fixing spacing issues
 
@@ -254,11 +224,8 @@ We can remove empty cells in a layout by calling `trim!` on it:
 trim!(fig.layout)
 
 fig
-save("step_010.svg", fig) # hide
-nothing # hide
 ```
 
-![step_010](step_010.svg)
 
 This is much better already! But the legend still takes too much space vertically.
 The reason for that is the default `tellheight` setting of the legend. It's set to
@@ -272,11 +239,8 @@ this behavior. So we set the `tellheight` attribute to `true`.
 leg.tellheight = true
 
 fig
-save("step_011.svg", fig) # hide
-nothing # hide
 ```
 
-![step_011](step_011.svg)
 
 Now the legend's row is shrunk to fit. One thing that we can do to improve the
 use of space is to change the legend's orientation to `:horizontal`.
@@ -285,11 +249,8 @@ use of space is to change the legend's orientation to `:horizontal`.
 leg.orientation = :horizontal
 
 fig
-save("step_012.svg", fig) # hide
-nothing # hide
 ```
 
-![step_012](step_012.svg)
 
 ## Nested layouts
 
@@ -305,11 +266,8 @@ hm_axes = fig[1:2, 3] = [Axis(fig, title = t) for t in ["Cell Assembly Pre", "Ce
 heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 
 fig
-save("step_013.svg", fig) # hide
-nothing # hide
 ```
 
-![step_013](step_013.svg)
 
 This looks weird, the two axes do not have the same height. Rather, the lower
 one has the height of the legend in the same row. What can we do to remedy this
@@ -339,11 +297,8 @@ fig[1:2, 3] = hm_sublayout
 hm_sublayout[:v] = hm_axes
 
 fig
-save("step_014.svg", fig) # hide
-nothing # hide
 ```
 
-![step_014](step_014.svg)
 
 We don't care about the axis decorations, as it's often the case with image plots.
 The function `hidedecorations!` hides both x and y decorations at once.
@@ -353,11 +308,8 @@ The function `hidedecorations!` hides both x and y decorations at once.
 hidedecorations!.(hm_axes)
 
 fig
-save("step_015.svg", fig) # hide
-nothing # hide
 ```
 
-![step_015](step_015.svg)
 
 ## Adding a colorbar
 
@@ -383,11 +335,8 @@ end
 cbar = hm_sublayout[:, 2] = Colorbar(fig, heatmaps[1], label = "Activity [spikes/sec]")
 
 fig
-save("step_016.svg", fig) # hide
-nothing # hide
 ```
 
-![step_016](step_016.svg)
 
 The color bar is quite chunky because it takes 50% of the available width in the
 sublayout. Let's give it a fixed width of 30 units.
@@ -396,11 +345,8 @@ sublayout. Let's give it a fixed width of 30 units.
 cbar.width = 30
 
 fig
-save("step_017.svg", fig) # hide
-nothing # hide
 ```
 
-![step_017](step_017.svg)
 
 Much better! Note that you can usually set all attributes during creation of an object
 (`Colorbar(fig, width = 30)`) or after the fact, like in this example.
@@ -415,11 +361,8 @@ If you only specify a number like `30`, it is interpreted as `Fixed(30)`.
 cbar.height = Relative(2/3)
 
 fig
-save("step_18.svg", fig) # hide
-nothing # hide
 ```
 
-![step_18](step_18.svg)
 
 We don't really like the automatically chosen tick values here. Sometimes, the automatic
 algorithms just don't choose the values we want, so let's change them.
@@ -429,11 +372,8 @@ We can set the `ticks` attribute to any iterable of numbers that we want.
 cbar.ticks = 1:0.5:3
 
 fig
-save("step_18b.svg", fig) # hide
-nothing # hide
 ```
 
-![step_18b](step_18b.svg)
 
 ## Adding a title
 
@@ -456,11 +396,8 @@ supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
     textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
 
 fig
-save("step_19.svg", fig) # hide
-nothing # hide
 ```
 
-![step_19](step_19.svg)
 
 ## Subplot labels
 
@@ -497,11 +434,8 @@ label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 35,
     font = noto_sans_bold, halign = :right)
 
 fig
-save("step_20.svg", fig) # hide
-nothing # hide
 ```
 
-![step_20](step_20.svg)
 
 That looks good! You can see that the letters, larger than the axis titles, have
 increased the gap between the title and the axes to fit them. In most other
@@ -516,11 +450,8 @@ label_a.padding = (0, 6, 16, 0)
 label_b.padding = (0, 6, 16, 0)
 
 fig
-save("step_21.svg", fig) # hide
-nothing # hide
 ```
 
-![step_21](step_21.svg)
 
 ## Tweaking aspect ratios
 
@@ -542,11 +473,7 @@ because the left two axes will grow to fill the remaining space.
 colsize!(hm_sublayout, 1, Aspect(1, 1))
 
 fig
-save("step_22.svg", fig) # hide
-nothing # hide
 ```
-
-![step_22](step_22.svg)
 
 And there we have it! Hopefully this tutorial has given you an overview how to
 approach the creation of a complex figure in Makie. Check the rest of the

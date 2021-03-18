@@ -18,7 +18,6 @@ rects = fig[1:4, 1:6] = [
     Box(fig, color = c)
     for c in get.(Ref(ColorSchemes.rainbow), (0:23) ./ 23)]
 
-save("example_lrect.svg", fig); nothing # hide
+fig
 ```
 
-![example lrect](example_lrect.svg)

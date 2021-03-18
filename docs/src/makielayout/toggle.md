@@ -21,7 +21,5 @@ labels = [Label(fig, lift(x -> x ? "active" : "inactive", t.active))
 
 fig[1, 2] = grid!(hcat(toggles, labels), tellheight = false)
 
-save("example_ltoggle.svg", fig); nothing # hide
+fig
 ```
-
-![example ltoggle](example_ltoggle.svg)

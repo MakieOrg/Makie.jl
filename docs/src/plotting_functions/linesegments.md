@@ -22,9 +22,4 @@ linesegments!(xs, ys .- 1, linewidth = 5)
 linesegments!(xs, ys .- 2, linewidth = 5, color = LinRange(1, 5, length(xs)))
 
 f
-save("example_linesegments.svg", f); nothing # hide
 ```
-
-![example linesegments](example_linesegments.svg)
-
-
