@@ -41,7 +41,17 @@ end
 
 function plot(P::PlotFunc, fp::FigurePosition, args...; axis = NamedTuple(), kwargs...)
 
-    @assert isempty(contents(fp.gp, exact = true))
+    c = contents(fp.gp, exact = true)
+    if !isempty(c)
+        error("""
+        You have used the non-mutating plotting syntax with a FigurePosition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+
+        $(c)
+
+        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
+        If you really want to place an axis on top of other layoutables, make your intention clear and create it manually.
+        """)
+    end
 
     proxyscene = Scene()
     plot!(proxyscene, P, Attributes(kwargs), args...)
@@ -68,6 +78,18 @@ function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
 end
 
 function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = NamedTuple(), kwargs...)
+
+    c = contents(fsp, exact = true)
+    if !isempty(c)
+        error("""
+        You have used the non-mutating plotting syntax with a FigureSubposition, which requires an empty GridLayout slot to create an axis in, but there are already the following objects at this layout position:
+
+        $(c)
+
+        If you meant to plot into an axis at this position, use the plotting function with `!` (e.g. `func!` instead of `func`).
+        If you really want to place an axis on top of other layoutables, make your intention clear and create it manually.
+        """)
+    end
 
     fig = get_figure(fsp)
 
