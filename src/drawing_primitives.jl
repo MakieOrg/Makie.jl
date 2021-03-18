@@ -398,8 +398,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             visible = gl_attributes[:visible]
         )
         # Draw text in screenspace
-        robj[:projection] = scene.camera.pixel_space
-        robj[:projectionview] = scene.camera.pixel_space
+        if x.space[] == :screen
+            robj[:projection] = scene.camera.pixel_space
+            robj[:projectionview] = scene.camera.pixel_space
+        end
         return robj
     end
 end
