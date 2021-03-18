@@ -119,6 +119,7 @@ end
 function Base.setindex!(parent::Union{FigurePosition,FigureSubposition}, obj,
     rows, cols, side = GridLayoutBase.Inner())
     layout = get_layout_at!(parent, createmissing = true)
+    isnothing(layout) && error("No single GridLayout could be found or created at this FigureSubposition. This means that there are at least two GridLayouts at this position already and it's unclear which one is meant.")
     layout[rows, cols, side] = obj
     obj
 end
@@ -130,6 +131,7 @@ end
 
 function Base.setindex!(parent::FigureSubposition, obj)
     layout = get_layout_at!(parent.parent, createmissing = true)
+    isnothing(layout) && error("No single GridLayout could be found or created at this FigureSubposition. This means that there are at least two GridLayouts at this position already and it's unclear which one is meant.")
     layout[parent.rows, parent.cols, parent.side] = obj
     obj
 end
@@ -142,23 +144,33 @@ end
 function get_layout_at!(fp::FigurePosition; createmissing = false)
     c = contents(fp.gp, exact = true)
     layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
-    if isempty(layouts)
-        if createmissing
-            return fp.gp[] = GridLayoutBase.GridLayout()
-        else
-            error("No layout found but `createmissing` is false.")
-        end
+    if isempty(layouts) && createmissing
+        fp.gp[] = GridLayoutBase.GridLayout()
     elseif length(layouts) == 1
-        return only(layouts)
+        only(layouts)::GridLayoutBase.GridLayout
     else
-        error("Found more than zero or one GridLayouts at $(fp.gp)")
+        nothing
     end
 end
 
 function get_layout_at!(fsp::FigureSubposition; createmissing = false)
     layout = get_layout_at!(fsp.parent; createmissing = createmissing)
+
+    if isnothing(layout)
+        return nothing
+    end
+
     gp = layout[fsp.rows, fsp.cols, fsp.side]
-    get_layout_at!(gp; createmissing = createmissing)
+
+    c = contents(gp, exact = true)
+    layouts = filter(x -> x isa GridLayoutBase.GridLayout, c)
+    if isempty(layouts) && createmissing
+        gp[] = GridLayoutBase.GridLayout()
+    elseif length(layouts) == 1
+        only(layouts)::GridLayoutBase.GridLayout
+    else
+        nothing
+    end
 end
 
 get_figure(fsp::FigureSubposition) = get_figure(fsp.parent)
@@ -170,6 +182,7 @@ end
 
 function GridLayoutBase.contents(f::FigureSubposition; exact = false)
     layout = get_layout_at!(f.parent, createmissing = false)
+    isnothing(layout) && return []
     GridLayoutBase.contents(layout[f.rows, f.cols, f.side], exact = exact)
 end
 
