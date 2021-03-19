@@ -399,6 +399,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         )
         # Draw text in screenspace
         if x.space[] == :screen
+            robj[:view] = Observable(Mat4f0(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space
         end
