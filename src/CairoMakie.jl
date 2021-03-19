@@ -45,7 +45,7 @@ function display_path(type::String)
     return joinpath(@__DIR__, "display." * type)
 end
 
-function activate!(; inline = true, type = "svg")
+function activate!(; inline = true, type = "png")
     AbstractPlotting.current_backend[] = CairoBackend(display_path(type))
     AbstractPlotting.use_display[] = !inline
     return
