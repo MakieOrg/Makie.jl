@@ -14,13 +14,18 @@ using CairoMakie
 
 fig = Figure(resolution = (1200, 900))
 
-Axis(fig[1, 1])
-sl1 = Slider(fig[2, 1], range = 0:0.01:10, startvalue = 3)
-sl2 = Slider(fig[3, 1], range = 0:0.01:10, startvalue = 5)
-sl3 = Slider(fig[4, 1], range = 0:0.01:10, startvalue = 7)
+ax = Axis(fig[1, 1])
 
-sl4 = Slider(fig[:, 2], range = 0:0.01:10, horizontal = false,
+sl_x = Slider(fig[2, 1], range = 0:0.01:10, startvalue = 3)
+sl_y = Slider(fig[1, 2], range = 0:0.01:10, horizontal = false,
+    startvalue = 6,
     tellwidth = true, height = nothing, width = Auto())
+
+point = @lift(Point2f0($(sl_x.value), $(sl_y.value)))
+
+scatter!(point, color = :red, markersize = 20)
+
+limits!(ax, 0, 10, 0, 10)
 
 fig
 ```
@@ -31,21 +36,28 @@ To create a horizontal layout containing a label, a slider, and a value label, u
 using CairoMakie
 fig = Figure(resolution = (1200, 900))
 
-Axis(fig[1, 1])
+ax = Axis(fig[1, 1])
 
 lsgrid = labelslidergrid!(
     fig,
     ["Voltage", "Current", "Resistance"],
-    # use Ref for the same range for every slider via internal broadcasting
-    Ref(LinRange(0:0.1:1000));
+    [0:0.1:10, 0:0.1:20, 0:0.1:30];
     formats = [x -> "$(round(x, digits = 1))$s" for s in ["V", "A", "Ω"]],
     width = 350,
     tellheight = false)
     
 fig[1, 2] = lsgrid.layout
 
-set_close_to!(lsgrid.sliders[1], 230.3)
-set_close_to!(lsgrid.sliders[2], 628.4)
+sliderobservables = [s.value for s in lsgrid.sliders]
+bars = lift(sliderobservables...) do slvalues...
+    [slvalues...]
+end
+
+barplot!(ax, bars, color = [:yellow, :orange, :red])
+ylims!(ax, 0, 30)
+
+set_close_to!(lsgrid.sliders[1], 5.3)
+set_close_to!(lsgrid.sliders[2], 10.2)
 set_close_to!(lsgrid.sliders[3], 15.9)
 
 fig

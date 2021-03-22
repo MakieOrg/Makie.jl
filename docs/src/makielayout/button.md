@@ -10,16 +10,24 @@ using CairoMakie
 
 fig = Figure(resolution = (1200, 900))
 
-Axis(fig[1, 1])
+ax = Axis(fig[1, 1])
 fig[2, 1] = buttongrid = GridLayout(tellwidth = false)
 
-buttons = buttongrid[1, 1:5] = [Button(fig, label = "Button $i") for i in 1:5]
+counts = Node([1, 4, 3, 7, 2])
 
-for button in buttons
-    on(button.clicks) do n
-        println("$(button.label[]) was clicked $n times.")
+buttonlabels = [@lift("Count: $($counts[i])") for i in 1:5]
+
+buttons = buttongrid[1, 1:5] = [Button(fig, label = l) for l in buttonlabels]
+
+for i in 1:5
+    on(buttons[i].clicks) do n
+        counts[][i] += 1
+        notify(counts)
     end
 end
+
+barplot!(counts, color = cgrad(:Spectral)[LinRange(0, 1, 5)])
+ylims!(ax, 0, 20)
 
 fig
 ```
