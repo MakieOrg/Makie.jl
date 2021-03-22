@@ -1,6 +1,6 @@
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
-using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert, Pixel
-using AbstractPlotting: convert_arguments
+using AbstractPlotting: attribute_per_char, FastPixel, el32convert, Pixel
+using AbstractPlotting: convert_arguments, preprojected_glyph_arrays
 
 convert_attribute(s::ShaderAbstractions.Sampler{RGBAf0}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
@@ -243,104 +243,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
     end
 end
 
-function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
-                    font, align, rot, model, j, l) where T <: VecTypes
-    atlas = get_texture_atlas()
-    N = length(T)
-    positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
-    char_str_idx = iterate(string)
-    offsets = Vec2f0[]
-    broadcast_foreach(1:length(string), positions_per_char, textsize, font, align) do idx, pos, tsize, font, align
-        char, str_idx = char_str_idx
-        mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
-        push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
-        push!(uv_offset_width, glyph_uv_width!(atlas, char, font))
-        glyph_bb, ext = FreeTypeAbstraction.metrics_bb(char, font, tsize)
-        if isa(tsize, Vec2f0) # this needs better unit support
-            push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
-        else
-            push!(scale, widths(glyph_bb))
-        end
-        push!(offsets, minimum(glyph_bb))
-        char_str_idx = iterate(string, str_idx)
-    end
-    return positions, offsets, uv_offset_width, scale
-end
-
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
-    atlas = get_texture_atlas()
-    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
-    end
-    return positions, offsets, uv, scales
-end
-
-function preprojected_glyph_arrays(string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout, font, textsize, space::Symbol, projview, resolution)
-
-    atlas = get_texture_atlas()
-    if space == :data
-        positions = glyphlayout.origins .+ to_ndim(Point3f0, position, 0)
-    elseif space == :screen
-        projected = AbstractPlotting.project(projview, resolution, to_ndim(Point3f0, position, 0))
-        positions = glyphlayout.origins .+ to_ndim(Point3f0, projected, 0)
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
-
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
-    end
-    return positions, offsets, uv, scales
-end
-
-function preprojected_glyph_arrays(strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font, textsize, space::Symbol, projview, resolution)
-
-    megastring = join(strings, "")
-
-    if space == :data
-        allpos = map(positions, glyphlayouts) do pos, glyphlayout::AbstractPlotting.Glyphlayout
-            p = to_ndim(Point3f0, pos, 0)
-            [p + o for o in glyphlayout.origins]
-        end
-    elseif space == :screen
-        allpos = map(positions, glyphlayouts) do pos, glyphlayout::AbstractPlotting.Glyphlayout
-            projected = to_ndim(Point3f0, AbstractPlotting.project(projview, resolution, to_ndim(Point3f0, pos, 0)), 0)
-            return [projected .+ o for o in glyphlayout.origins]
-        end
-    else
-        error("Unknown space $space, only :data or :screen allowed")
-    end
-
-    megapos = reduce(vcat, allpos)
-
-    atlas = get_texture_atlas()
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-
-    broadcast_foreach(strings, font, textsize) do str, fo, ts
-        for (c, f, pixelsize) in zip(str, attribute_per_char(str, fo), attribute_per_char(str, ts))
-            push!(uv, glyph_uv_width!(atlas, c, f))
-            glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, f, pixelsize)
-            push!(scales, widths(glyph_bb))
-            push!(offsets, minimum(glyph_bb))
-        end
-    end
-    return megapos, offsets, uv, scales
-end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
@@ -350,9 +252,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         gl_text = lift(x[1], scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation)
-
-            preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, Vec2f0(widths(pixelarea(scene)[])))
-            # to_gl_text(str, args..., model, j, l)
+            res = Vec2f0(widths(pixelarea(scene)[]))
+            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res)
         end
 
 
