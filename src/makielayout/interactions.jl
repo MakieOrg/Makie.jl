@@ -106,7 +106,7 @@ end
 function _chosen_limits(rz, ax)
 
     r = positivize(FRect2D(rz.from, rz.to .- rz.from))
-    lims = ax.limits[]
+    lims = ax.finallimits[]
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
         r = FRect2D(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2]) 
@@ -144,18 +144,19 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         r.to = event.data
         r.rectnode[] = _chosen_limits(r, ax)
 
-        selection_vertices = lift(_selection_vertices, ax.limits, r.rectnode)
+        selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
 
         # manually specify correct faces for a rectangle with a rectangle hole inside
         faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
 
-        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.33), shading = false,
+        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
             fxaa = false) # fxaa false seems necessary for correct transparency
-        wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)
+        # wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)
         # translate forward so selection mesh and frame are never behind data
         translate!(mesh, 0, 0, 100)
-        translate!(wf, 0, 0, 110)
-        append!(r.plots, [mesh, wf])
+        # translate!(wf, 0, 0, 110)
+        # append!(r.plots, [mesh, wf])
+        append!(r.plots, [mesh])
         r.active = true
 
     elseif event.type === MouseEventTypes.leftdrag
@@ -202,7 +203,11 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
-            autolimits!(ax)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            else
+                reset_limits!(ax)
+            end
         end
     end
 
@@ -229,7 +234,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
 
         # don't let z go negative
         z = max(0.1f0, 1f0 - (abs(zoom) * s.speed))
-        if zoom > 0
+        if zoom < 0
             z = 1/z   # sets the old to be a fraction of the new. This ensures zoom in & then out returns to original position.
         end
 

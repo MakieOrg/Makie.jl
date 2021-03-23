@@ -53,28 +53,46 @@ but they will be changed to fit the chosen ratio.
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-axes = layout[] = [Axis(scene) for i in 1:2, j in 1:3]
+axes = [Axis(f[i, j]) for j in 1:3, i in 1:2]
 
-xs = LinRange(0, 2pi, 50)
 for (i, ax) in enumerate(axes)
     ax.title = "Axis $i"
-    lines!(ax, xs, sin.(xs))
+    poly!(ax, Point2f0[(9, 9), (3, 1), (1, 3)],
+        color = cgrad(:inferno, 6, categorical = true)[i])
 end
 
-xlims!(axes[1], [0, 2pi]) # as vector
-xlims!(axes[2], 2pi, 0) # separate, reversed
-ylims!(axes[3], -1, 1) # separate
-ylims!(axes[4], (1, -1)) # as tuple, reversed
-limits!(axes[5], 0, 2pi, -1, 1) # x1, x2, y1, y2
-limits!(axes[6], BBox(0, 2pi, -1, 1)) # as rectangle
+xlims!(axes[1], [0, 10]) # as vector
+xlims!(axes[2], 10, 0) # separate, reversed
+ylims!(axes[3], 0, 10) # separate
+ylims!(axes[4], (10, 0)) # as tuple, reversed
+limits!(axes[5], 0, 10, 0, 10) # x1, x2, y1, y2
+limits!(axes[6], BBox(0, 10, 0, 10)) # as rectangle
 
-scene
+f
 ```
 
-![axis limits](example_axis_limits.svg)
+When you create a new plot in an axis, `reset_limits!(ax)` is called, which adjusts the limits to the new bounds.
+If you have previously set limits with `limits!`, `xlims!` or `ylims!`, these limits are not overridden by the new plot. If you want to override the manually set limits, call `autolimits!(ax)` to compute completely new limits from the axis content.
+
+The user-defined limits are stored in `ax.limits`. This can either be a tuple with two entries, where each entry can be either `nothing` or a tuple with numbers `(low, high)`.It can also be a tuple with four numbers `(xlow, xhigh, ylow, yhigh)`. You can pass this directly when creating a new axis. The same observable `limits` is also set using `limits!`, `xlims!` and `ylims!`, or reset to `(nothing, nothing)` using `autolimits!`.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure(resolution = (800, 400))
+
+lines(f[1, 1], 0..10, sin)
+lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
+
+f
+```
 
 ## Modifying Ticks
 
@@ -396,8 +414,11 @@ You can also restrict the pan dimensions all the time by setting the axis attrib
 
 ### Limit Reset
 
-You can reset the limits with `ctrl + leftclick`. Alternatively, you can call
-`autolimits!` on the axis to achieve the same effect programmatically.
+You can reset the limits with `ctrl + leftclick`. This is the same as doing `reset_limits!(ax)`. This sets the limits back to the values stored in `ax.limits`, and if they are `nothing`, computes them automatically. If you have previously called `limits!`, `xlims!` or `ylims!`, these settings therefore stay intact when doing a limit reset.
+
+You can alternatively press `ctrl + shift + leftclick`, which is the same as calling `autolimits!(ax)`.
+This function ignores previously set limits and computes them all anew given the axis content.
+
 
 ### Rectangle Selection Zoom
 
