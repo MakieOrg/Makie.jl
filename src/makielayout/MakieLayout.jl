@@ -78,7 +78,7 @@ export Menu
 export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
-export autolimits!, limits!
+export autolimits!, limits!, reset_limits!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!

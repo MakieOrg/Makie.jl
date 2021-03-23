@@ -215,7 +215,10 @@ function default_attributes(::Type{Axis}, scene)
         flip_ylabel = false
         "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
         autolimitaspect = nothing
+        "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
         targetlimits = BBox(0, 100, 0, 100)
+        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
+        limits = (nothing, nothing)
         "The align mode of the axis in its parent GridLayout."
         alignmode = Inside()
         "Controls if the y axis goes upwards (false) or downwards (true)"

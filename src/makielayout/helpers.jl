@@ -407,7 +407,7 @@ function hvlines!(ax::Axis, direction::Int, datavals, axmins, axmaxs; attributes
 
     datavals, axmins, axmaxs = map(x -> x isa Observable ? x : Observable(x), (datavals, axmins, axmaxs))
 
-    linesegs = lift(ax.limits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
+    linesegs = lift(ax.finallimits, ax.scene.px_area, datavals, axmins, axmaxs) do lims, pxa,
             datavals, axmins, axmaxs
 
         xlims = (minimum(lims)[direction], maximum(lims)[direction])
