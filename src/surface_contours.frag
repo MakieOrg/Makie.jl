@@ -49,7 +49,7 @@ vec3 blinn_phong(vec3 N, vec3 V, vec3 L, vec3 diffuse)
     // specular coefficient
     vec3 H = normalize(L+V);
     float spec_coeff = pow(max(dot(H,N), 0.0), shininess);
-    if (diff_coeff <= 0.0)
+    if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
 
     // final lighting model

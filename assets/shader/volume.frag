@@ -110,6 +110,8 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     // specular coefficient
     vec3 H = normalize(L + V);
     float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
+    if (diff_coeff <= 0.0 || isnan(spec_coeff))
+        spec_coeff = 0.0;
     // final lighting model
     return vec3(
         ambient * color +
@@ -309,7 +311,7 @@ void main()
 
     float steps = 0.1;
     // the algorithm numbers correspond to the order in the
-    // RaymarchAlgorithm enum defined in AbstractPlotting types.jl 
+    // RaymarchAlgorithm enum defined in AbstractPlotting types.jl
     if(algorithm == 0)
         color = isosurface(start, step_in_dir);
     else if(algorithm == 1)
