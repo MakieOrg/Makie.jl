@@ -1,7 +1,7 @@
 authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.15.27"
+version = "0.16.0"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
