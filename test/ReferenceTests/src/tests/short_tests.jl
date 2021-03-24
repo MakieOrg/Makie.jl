@@ -1,28 +1,6 @@
 @cell arc(Point2f0(0), 10f0, 0f0, pi, linewidth=20)
 
-@cell begin
-    scene = Scene(raw=true, camera=campixel!)
-    text!(
-        scene, "boundingbox",
-        align=(:left, :center),
-        position=(50, 50)
-    )
-    scale!(scene, Vec3f0(4, 1, 1))
-    linesegments!(scene, boundingbox(scene))
-    offset = 0
-    for a_lign in (:center, :left, :right), b_lign in (:center, :left, :right)
-        t = text!(scene,
-            "boundingbox",
-            align=(a_lign, b_lign),
-            position=(50, 100 + offset)
-        )
-        linesegments!(boundingbox(t))
-        offset += 50
-    end
-    scene
-end
-
-# @cell mesh(IRect(0, 0, 200, 200))
+@cell mesh(IRect(0, 0, 200, 200))
 
 @cell poly(IRect(0, 0, 200, 200), strokewidth=20, strokecolor=:red, color=(:black, 0.4))
 

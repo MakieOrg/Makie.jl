@@ -288,6 +288,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         align = titlealignnode,
         font = titlefont,
         color = titlecolor,
+        space = :data,
         show_axis=false)
     decorations[:title] = titlet
 
