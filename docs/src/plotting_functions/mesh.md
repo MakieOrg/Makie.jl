@@ -32,7 +32,7 @@ using GLMakie
 GLMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-brain = load("../assets/brain.stl")
+brain = load(assetpath("brain.stl"))
 
 mesh(
     brain,
