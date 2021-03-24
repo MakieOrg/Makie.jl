@@ -19,10 +19,6 @@ end
 const PostProcessROBJ = RenderObject{PostprocessPrerender}
 
 rcpframe(x) = 1f0 ./ Vec2f0(x[1], x[2])
-loadshader(name) = joinpath(@__DIR__, "GLVisualize", "assets", "shader", name)
-
-
-
 
 struct PostProcessor{F}
     robjs::Vector{PostProcessROBJ}

@@ -25,22 +25,7 @@ end
 struct GLBackend <: AbstractPlotting.AbstractBackend
 end
 
-"""
-returns path relative to the assets folder
-"""
-assetpath(folders...) = joinpath(@__DIR__, "GLVisualize", "assets", folders...)
-
-"""
-Loads a file from the asset folder
-"""
-function loadasset(folders...; kw_args...)
-    path = assetpath(folders...)
-    isfile(path) || isdir(path) || error("Could not locate file at $path")
-    load(path; kw_args...)
-end
-
-
-const deps_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
+loadshader(name) = normpath(joinpath(@__DIR__, "..", "assets", "shader", name))
 
 # don't put this into try catch, to not mess with normal errors
 include("gl_backend.jl")
@@ -58,7 +43,6 @@ function __init__()
 end
 
 export set_window_config!
-export assetpath, loadasset
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")
