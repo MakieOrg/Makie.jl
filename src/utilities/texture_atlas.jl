@@ -44,8 +44,6 @@ function TextureAtlas(initial_size = TEXTURE_RESOLUTION[])
     )
 end
 
-assetpath(files...) = joinpath(@__DIR__, "..", "..", "assets", files...)
-
 begin
     # basically a singleton for the textureatlas
 
