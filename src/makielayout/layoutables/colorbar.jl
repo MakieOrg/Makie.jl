@@ -95,14 +95,18 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
 
     cgradient = lift(colormap, typ = Any) do cmap
-        if cmap isa Symbol
-            cgrad(cmap)
-        elseif cmap isa Tuple{Symbol, Number}
-            cgrad(cmap[1], alpha = cmap[2])
-        elseif cmap isa PlotUtils.ColorGradient
+        if cmap isa PlotUtils.ColorGradient
+            # if we have a colorgradient directly, we want to keep it intact
+            # to enable correct categorical colormap behavior etc
             cmap
         else
-            error("Can't deal with colormap of type $(typeof(cmap))")
+            # this is a bit weird, first convert to a vector of colors,
+            # then use cgrad, but at least I can use `get` on that later
+            converted = AbstractPlotting.convert_attribute(
+                cmap,
+                AbstractPlotting.key"colormap"()
+            )
+            cgrad(converted)
         end
     end
 

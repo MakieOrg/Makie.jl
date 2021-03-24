@@ -90,7 +90,8 @@ function LineAxis(parent::Scene; kwargs...)
         font = ticklabelfont,
         color = ticklabelcolor,
         show_axis = false,
-        visible = ticklabelsvisible)
+        visible = ticklabelsvisible,
+        space = :data)
 
     ticklabel_ideal_space = lift(ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible, typ=Float32) do args...
         maxwidth = if pos_extents_horizontal[][3]
@@ -184,6 +185,7 @@ function LineAxis(parent::Scene; kwargs...)
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
+        space = :data,
     )
 
     decorations[:labeltext] = labeltext

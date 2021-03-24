@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!(type = "png")
 ```
 
+# Axis
+
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.
@@ -16,11 +18,9 @@ scene, layout = layoutscene(resolution = (1200, 900))
 ax = layout[1, 1] = Axis(scene, xlabel = "x label", ylabel = "y label",
     title = "Title")
 
-save("basic_axis.svg", scene) # hide
-nothing # hide
+scene
 ```
 
-![basic axis](basic_axis.svg)
 
 ## Plotting Into an Axis
 
@@ -33,8 +33,7 @@ that it is more convenient to save and manipulate the plot objects.
 ```@example laxis
 lineobject = lines!(ax, 0..10, sin, color = :red)
 
-save("basic_axis_plotting.svg", scene) # hide
-nothing # hide
+scene
 ```
 
 ![basic axis plotting](basic_axis_plotting.svg)
@@ -54,29 +53,46 @@ but they will be changed to fit the chosen ratio.
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-axes = layout[] = [Axis(scene) for i in 1:2, j in 1:3]
+axes = [Axis(f[i, j]) for j in 1:3, i in 1:2]
 
-xs = LinRange(0, 2pi, 50)
 for (i, ax) in enumerate(axes)
     ax.title = "Axis $i"
-    lines!(ax, xs, sin.(xs))
+    poly!(ax, Point2f0[(9, 9), (3, 1), (1, 3)],
+        color = cgrad(:inferno, 6, categorical = true)[i])
 end
 
-xlims!(axes[1], [0, 2pi]) # as vector
-xlims!(axes[2], 2pi, 0) # separate, reversed
-ylims!(axes[3], -1, 1) # separate
-ylims!(axes[4], (1, -1)) # as tuple, reversed
-limits!(axes[5], 0, 2pi, -1, 1) # x1, x2, y1, y2
-limits!(axes[6], BBox(0, 2pi, -1, 1)) # as rectangle
+xlims!(axes[1], [0, 10]) # as vector
+xlims!(axes[2], 10, 0) # separate, reversed
+ylims!(axes[3], 0, 10) # separate
+ylims!(axes[4], (10, 0)) # as tuple, reversed
+limits!(axes[5], 0, 10, 0, 10) # x1, x2, y1, y2
+limits!(axes[6], BBox(0, 10, 0, 10)) # as rectangle
 
-save("example_axis_limits.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![axis limits](example_axis_limits.svg)
+When you create a new plot in an axis, `reset_limits!(ax)` is called, which adjusts the limits to the new bounds.
+If you have previously set limits with `limits!`, `xlims!` or `ylims!`, these limits are not overridden by the new plot. If you want to override the manually set limits, call `autolimits!(ax)` to compute completely new limits from the axis content.
+
+The user-defined limits are stored in `ax.limits`. This can either be a tuple with two entries, where each entry can be either `nothing` or a tuple with numbers `(low, high)`.It can also be a tuple with four numbers `(xlow, xhigh, ylow, yhigh)`. You can pass this directly when creating a new axis. The same observable `limits` is also set using `limits!`, `xlims!` and `ylims!`, or reset to `(nothing, nothing)` using `autolimits!`.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure(resolution = (800, 400))
+
+lines(f[1, 1], 0..10, sin)
+lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
+
+f
+```
 
 ## Modifying Ticks
 
@@ -155,11 +171,8 @@ axes[4].xtickformat = "{:.2f}ms"
 axes[4].xlabel = "Time"
 
 
-save("example_axis_ticks.svg", scene) # hide
-nothing # hide
+scene
 ```
-
-![axis ticks](example_axis_ticks.svg)
 
 ## Minor Ticks and Grids
 
@@ -190,11 +203,9 @@ fig = with_theme(theme) do
         yminorticks = IntervalsBetween(n+1)) for n in 1:4]
     fig
 end
-save("example_minor_ticks.svg", fig) # hide
-nothing # hide
-```
 
-![minor ticks](example_minor_ticks.svg)
+fig
+```
 
 
 ## Hiding Axis Spines and Decorations
@@ -215,11 +226,9 @@ ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
 hidespines!(ax1)
 hidespines!(ax2, :t, :r) # only top and right
 
-save("example_axis_hidespines.svg", scene) # hide
-nothing # hide
+scene
 ```
 
-![axis hide spines](example_axis_hidespines.svg)
 
 To hide decorations, you can use `hidedecorations!`, or the specific `hidexdecorations!` and `hideydecorations!`.
 When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false`, `grid = false`, `minorgrid = false` or `minorticks = false` as keyword
@@ -275,11 +284,8 @@ axes[2, 2].aspect = AxisAspect(2)
 axes[2, 3].title = "AxisAspect(0.5)"
 axes[2, 3].aspect = AxisAspect(0.5)
 
-save("example_axis_aspects.svg", scene) # hide
-nothing # hide
+scene
 ```
-
-![axis aspects](example_axis_aspects.svg)
 
 
 ## Controlling Data Aspect Ratios
@@ -384,11 +390,8 @@ for i in 1:3
     end
 end
 
-save("example_linked_axes.svg", scene) # hide
-nothing # hide
+scene
 ```
-
-![linked axes](example_linked_axes.svg)
 
 
 ## Axis interaction
@@ -411,8 +414,11 @@ You can also restrict the pan dimensions all the time by setting the axis attrib
 
 ### Limit Reset
 
-You can reset the limits with `ctrl + leftclick`. Alternatively, you can call
-`autolimits!` on the axis to achieve the same effect programmatically.
+You can reset the limits with `ctrl + leftclick`. This is the same as doing `reset_limits!(ax)`. This sets the limits back to the values stored in `ax.limits`, and if they are `nothing`, computes them automatically. If you have previously called `limits!`, `xlims!` or `ylims!`, these settings therefore stay intact when doing a limit reset.
+
+You can alternatively press `ctrl + shift + leftclick`, which is the same as calling `autolimits!(ax)`.
+This function ignores previously set limits and computes them all anew given the axis content.
+
 
 ### Rectangle Selection Zoom
 
@@ -524,10 +530,8 @@ ax2 = layout[1, 2] = Axis(scene, title = "hlines")
 hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 
 scene
-save("example_vlines.svg", scene); nothing # hide
 ```
 
-![example vlines](example_vlines.svg)
 
 ```@eval
 using GLMakie
