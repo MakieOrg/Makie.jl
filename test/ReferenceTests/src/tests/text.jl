@@ -21,7 +21,7 @@ end
     fig = text(
         ["0 is the ORIGIN of this", "10 says hi"],
         position = pos,
-        aspect = DataAspect(),
+        axis = (aspect = DataAspect(),),
         space = :data,
         align = (:center, :center),
         textsize = 2)
