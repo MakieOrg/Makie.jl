@@ -150,6 +150,9 @@ if `font` can't represent char `c`
 """
 function find_font_for_char(c::Char, font::NativeFont)
     FT_Get_Char_Index(font, c) != 0 && return font
+    # it seems that linebreaks are not found which messes up font metrics
+    # if another font is selected just for those chars
+    c in ('\n', '\r', '\t') && return font
     for afont in alternativefonts()
         if FT_Get_Char_Index(afont, c) != 0
             return afont
