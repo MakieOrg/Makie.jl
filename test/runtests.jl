@@ -26,6 +26,7 @@ ReferenceTests.reference_tests(recorded)
 # Run the below, to generate a html to view all differences:
 # recorded, ref_images, scores = ReferenceTests.reference_tests(recorded)
 # ReferenceTests.generate_test_summary("preview.html", recorded, ref_images, scores)
+# ReferenceTests.generate_test_summary("preview.html", recorded)
 
 # Run the GLMakie specific backend reference tests
 empty!(ReferenceTests.DATABASE)
@@ -37,9 +38,9 @@ ref_images = ReferenceTests.download_refimages(; name="glmakie_refimages")
 ReferenceTests.reference_tests(recorded_glmakie; ref_images=ref_images, difference=0.01)
 # needs GITHUB_TOKEN to be defined
 # First look at the generated refimages, to make sure they look ok:
-#ReferenceTests.generate_test_summary("index.html", recorded)
+# ReferenceTests.generate_test_summary("index_gl.html", recorded_glmakie)
 # Then you can upload them to the latest major release tag with:
-#ReferenceTests.upload_reference_images(recorded)
+# ReferenceTests.upload_reference_images(recorded)
 
 # And do the same for the backend specific tests:
 # ReferenceTests.generate_test_summary("index.html", recorded_glmakie)
