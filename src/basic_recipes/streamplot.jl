@@ -23,6 +23,7 @@ See the function [`streamplot_impl`](@ref) for implementation details.
             gridsize = (32, 32, 32),
             maxsteps = 500,
             colormap = theme(scene, :colormap),
+            colorrange = AbstractPlotting.automatic,
             arrow_size = 0.03,
             density = 1.0
         ),
@@ -162,7 +163,7 @@ function plot!(p::StreamPlot)
     end
     lines!(
         p,
-        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap,
+        lift(x->x[3], data), color = lift(last, data), colormap = p.colormap, colorrange = p.colorrange,
         linestyle = p.linestyle,
         linewidth = p.linewidth
     )
@@ -171,6 +172,6 @@ function plot!(p::StreamPlot)
         p,
         lift(first, data), markersize = p.arrow_size, marker = arrow_head(N, automatic),
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
-        colormap = p.colormap,
+        colormap = p.colormap, colorrange = p.colorrange,
     )
 end

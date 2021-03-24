@@ -1,3 +1,5 @@
+using AbstractPlotting: volume
+
 @testset "Unit tests" begin
     @testset "#659 Volume errors if data is not a cube" begin
         fig, ax, vplot = volume(1:8, 1:8, 1:10, rand(8, 8, 10))

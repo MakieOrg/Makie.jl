@@ -27,7 +27,7 @@ GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.c
   a good compromise.
 
 !!! note
-    The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.enable_SSAO[] = true`, close any existing GLMakie window and reopen it.
+The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.enable_SSAO[] = true`, close any existing GLMakie window and reopen it.
 
 ## Matcap
 
@@ -37,6 +37,7 @@ A matcap (material capture) is a texture which is applied based on the normals o
 
 ```@example 1
 using GLMakie
+GLMakie.activate!() # hide
 using AbstractPlotting
 xs = -10:0.1:10
 ys = -10:0.1:10
@@ -64,6 +65,7 @@ scene
 
 ```@example 1
 using GLMakie
+GLMakie.activate!() # hide
 GLMakie.enable_SSAO[] = true
 close(GLMakie.global_gl_screen()) # close any open screen
 
@@ -86,8 +88,10 @@ scene
 ```
 
 ```@example 1
-using FileIO, GLMakie
-catmesh = FileIO.load(GLMakie.assetpath("cat.obj"))
+using FileIO
+using GLMakie
+GLMakie.activate!() # hide
+catmesh = FileIO.load(assetpath("cat.obj"))
 gold = FileIO.load(download("https://raw.githubusercontent.com/nidorx/matcaps/master/1024/E6BF3C_5A4719_977726_FCFC82.png"))
 
 mesh(catmesh, matcap=gold, shading=false)

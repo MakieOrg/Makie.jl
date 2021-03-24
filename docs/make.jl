@@ -235,7 +235,7 @@ const plot_attr_desc = Dict(
     :align => "`(:pos, :pos)`. Specify the text alignment, where `:pos` can be `:left`, `:center`, or `:right`.",
     :alpha => "Float in [0,1]. The alpha value (transparency).",
     :color => "Symbol or Colorant. The color of the main plot element (markers, lines, etc.). Can be a color symbol/string like :red, or a Colorant.  Can also be an array or matrix of 'z-values' that are converted into colors by the colormap automatically.",
-    :colormap => "The color map of the main plot. Call available_gradients() to see what gradients are available. Can also be used with any Vector{<: Colorant}, or e.g. [:red, :black], or `ColorSchemes.jl` colormaps (by `colormap = ColorSchemes.<colorscheme name>.colors`).",
+    :colormap => "The color map of the main plot. Call `available_gradients()` to see what gradients are available. Can also be used with any Vector{<: Colorant}, or e.g. [:red, :black], or `ColorSchemes.jl` colormaps (by `colormap = ColorSchemes.<colorscheme name>.colors`).",
     :colorrange => "A tuple `(min, max)` where `min` and `max` specify the data range to be used for indexing the colormap. E.g. color = [-2, 4] with colorrange = (-2, 4) will map to the lowest and highest color value of the colormap.",
     :fillrange => "Bool. Toggles range filling in `contour` plots.",
     :font => "String. Specifies the font, and can choose any font available on the system.",
@@ -248,7 +248,7 @@ const plot_attr_desc = Dict(
     :levels => "Integer. Number of levels for a `contour`-type plot.",
     :linestyle => "Symbol. Style of the line (for `line` and `linesegments` plots). Available styles are `:dash`, `:dot`, `:dashdot`, and `:dashdotdot`. You can also supply an array describing the length of each gap/fill.",
     :linewidth => "Number. Width of the line in `line` and `linesegments` plots.",
-    :marker => "Symbol, Shape, or AbstractVector.",
+    :marker => "Symbol, Char, Shape, or AbstractVector. Call `available_marker_symbols`() to see which ones.",
     :marker_offset => "Array of `GeometryBasics.Point`'s. Specifies the offset coordinates for the markers. See the [Marker offset](https://simondanisch.github.io/ReferenceImages/gallery/marker_offset/index.html) example.",
     :markersize => "Number or AbstractVector. Specifies size (radius pixels) of the markers.",
     :position => "NTuple{2,Float}, `(x, y)`. Specify the coordinates to position text at.",
@@ -341,9 +341,6 @@ makedocs(
         ],
     ),
     sitename = "Makie Plotting Ecosystem",
-    expandfirst = [
-        "plotting_functions.md",
-    ],
     pages = Any[
         "Home" => "index.md",
         "Basics" => [
@@ -351,17 +348,36 @@ makedocs(
             "Layout Tutorial" => "makielayout/tutorial.md",
             "animation.md",
             "interaction.md",
-            "plotting_functions.md",
+            "Plotting Functions" =>
+                joinpath.(
+                    "plotting_functions",
+                    filter(
+                        endswith(".md"),
+                        readdir(joinpath(srcpath, "plotting_functions"),
+                            sort = true)
+                    )
+                ),
             "theming.md",
         ],
         "Documentation" => [
             "plot_method_signatures.md",
             "Figure" => "figure.md",
-            "Axis" => "makielayout/laxis.md",
-            "GridLayout" => "makielayout/grids.md",
-            "Legend" => "makielayout/llegend.md",
-            "Layoutables & Widgets" => "makielayout/layoutables_examples.md",
-            "How Layouting Works" => "makielayout/layouting.md",
+            "Layoutables & Widgets" => [
+                "makielayout/layoutables.md",
+                "makielayout/axis.md",
+                "makielayout/box.md",
+                "makielayout/button.md",
+                "makielayout/colorbar.md",
+                "makielayout/gridlayout.md",
+                "makielayout/label.md",
+                "makielayout/legend.md",
+                "makielayout/lscene.md",
+                "makielayout/menu.md",
+                "makielayout/slider.md",
+                "makielayout/toggle.md",
+                
+            ],
+            "makielayout/layouting.md",
             "generated/colors.md",
             "generated/plot-attributes.md",
             "recipes.md",
