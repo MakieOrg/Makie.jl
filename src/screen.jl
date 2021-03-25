@@ -360,6 +360,7 @@ function Screen(;
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> begin
+        screen.render_tick[] = nothing
         render_frame(screen)
         GLFW.SwapBuffers(window)
     end)

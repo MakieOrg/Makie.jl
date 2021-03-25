@@ -28,7 +28,7 @@ function fps_renderloop(screen::Screen, framerate=WINDOW_CONFIG.framerate[])
             GLFW.SwapBuffers(to_native(screen))
             t_elapsed = (time_ns() - t) / 1e9
             diff = time_per_frame - t_elapsed
-            if diff > 0.0
+            if diff > 0.001 # can't sleep less than 0.001
                 sleep(diff)
             else # if we don't sleep, we still need to yield explicitely to other tasks
                 yield()
