@@ -243,13 +243,17 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
     end
 end
 
+value_or_first(x::AbstractArray) = first(x)
+value_or_first(x::StaticArray) = x
+value_or_first(x) = x
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
+        string_obs = x[1]
         liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(x[1], scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
+        gl_text = lift(string_obs, scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation)
             res = Vec2f0(widths(pixelarea(scene)[]))
@@ -266,18 +270,24 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         keys = (:color, :strokecolor, :strokewidth, :rotation)
 
         signals = map(keys) do key
-            return lift(x[1], x[key]) do str, attr
+            return lift(positions, x[key]) do pos, attr
+                str = string_obs[]
                 if str isa AbstractVector
-                    result = []
-                    broadcast_foreach(str, attr) do st, aa
-                        for att in attribute_per_char(st, aa)
-                            push!(result, AbstractPlotting.convert_attribute(att, Key{key}()))
+                    if isempty(str)
+                        attr = convert_attribute(value_or_first(attr), Key{key}())
+                        return Vector{typeof(attr)}()
+                    else
+                        result = []
+                        broadcast_foreach(str, attr) do st, aa
+                            for att in attribute_per_char(st, aa)
+                                push!(result, convert_attribute(att, Key{key}()))
+                            end
                         end
+                        # narrow the type from any, this is ugly
+                        return identity.(result)
                     end
-                    # narrow the type from any, this is ugly
-                    identity.(result)
                 else
-                    AbstractPlotting.get_attribute(x, key)
+                    return AbstractPlotting.get_attribute(x, key)
                 end
             end
         end
