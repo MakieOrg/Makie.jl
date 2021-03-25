@@ -1,6 +1,6 @@
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, transform_func_obs, apply_transform
-using AbstractPlotting: attribute_per_char, layout_text, FastPixel, el32convert, Pixel
-using AbstractPlotting: convert_arguments
+using AbstractPlotting: attribute_per_char, FastPixel, el32convert, Pixel
+using AbstractPlotting: convert_arguments, preprojected_glyph_arrays
 
 convert_attribute(s::ShaderAbstractions.Sampler{RGBAf0}, k::key"color") = s
 function convert_attribute(s::ShaderAbstractions.Sampler{T, N}, k::key"color") where {T, N}
@@ -74,7 +74,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
         end
         robj = robj_func(gl_attributes)
         for key in (:pixel_space, :view, :projection, :resolution, :eyeposition, :projectionview)
-            robj[key] = getfield(scene.camera, key)
+            if !haskey(robj.uniforms, key)
+                robj[key] = getfield(scene.camera, key)
+            end
         end
 
         if !haskey(gl_attributes, :normalmatrix)
@@ -241,54 +243,20 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
     end
 end
 
-function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
-                    font, align, rot, model, j, l) where T <: VecTypes
-    atlas = get_texture_atlas()
-    N = length(T)
-    positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
-    char_str_idx = iterate(string)
-    offsets = Vec2f0[]
-    broadcast_foreach(1:length(string), positions_per_char, textsize, font, align) do idx, pos, tsize, font, align
-        char, str_idx = char_str_idx
-        mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
-        push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
-        push!(uv_offset_width, glyph_uv_width!(atlas, char, font))
-        glyph_bb, ext = FreeTypeAbstraction.metrics_bb(char, font, tsize)
-        if isa(tsize, Vec2f0) # this needs better unit support
-            push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
-        else
-            push!(scale, widths(glyph_bb))
-        end
-        push!(offsets, minimum(glyph_bb))
-        char_str_idx = iterate(string, str_idx)
-    end
-    return positions, offsets, uv_offset_width, scale
-end
-
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
-    atlas = get_texture_atlas()
-    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
-    end
-    return positions, offsets, uv, scales
-end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight)
+        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space)
         args = getindex.(Ref(gl_attributes), liftkeys)
-        gl_text = lift(x[1], args...) do str, pos, tsize, font, align, rotation, model, j, l
+
+        gl_text = lift(x[1], scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
             args = @get_attribute x (position, textsize, font, align, rotation)
-            to_gl_text(str, args..., model, j, l)
+            res = Vec2f0(widths(pixelarea(scene)[]))
+            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res)
         end
+
+
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             lift(getindex, gl_text, i)
@@ -299,16 +267,29 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
 
         signals = map(keys) do key
             return lift(x[1], x[key]) do str, attr
-                AbstractPlotting.get_attribute(x, key)
+                if str isa AbstractVector
+                    result = []
+                    broadcast_foreach(str, attr) do st, aa
+                        for att in attribute_per_char(st, aa)
+                            push!(result, AbstractPlotting.convert_attribute(att, Key{key}()))
+                        end
+                    end
+                    # narrow the type from any, this is ugly
+                    identity.(result)
+                else
+                    AbstractPlotting.get_attribute(x, key)
+                end
             end
         end
 
-        visualize(
+        robj = visualize(
             (DISTANCEFIELD, positions),
 
             color = signals[1],
             stroke_color = signals[2],
-            stroke_width = signals[3],
+            # stroke_width = signals[3], # for some reason I get
+            # no method matching gl_convert(::Vector{Float32})
+            stroke_width = 0.0f0,
             rotation = signals[4],
 
             scale = scale,
@@ -317,6 +298,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             distancefield = get_texture!(atlas),
             visible = gl_attributes[:visible]
         )
+        # Draw text in screenspace
+        if x.space[] == :screen
+            robj[:view] = Observable(Mat4f0(I))
+            robj[:projection] = scene.camera.pixel_space
+            robj[:projectionview] = scene.camera.pixel_space
+        end
+        return robj
     end
 end
 
