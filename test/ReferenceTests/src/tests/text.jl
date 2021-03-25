@@ -2,7 +2,7 @@
     fig = Figure(resolution = (600, 600))
     ax = fig[1, 1] = Axis(fig)
     tightlimits!(ax)
-    values = rand(100)
+    values = RNG.rand(100)
 
     poly!(ax, [FRect2D(x, y, 1, 1) for x in 1:10 for y in 1:10], color = values,
         strokecolor = :black, strokewidth = 1)
@@ -200,7 +200,7 @@ end
 
 
 @cell "3D screenspace annotaitons" begin
-    positions = rand(Point3f0, 10)
+    positions = RNG.rand(Point3f0, 10)
     fig, ax, p = meshscatter(positions, color=:white)
     text!(
         fill("Annotation", 10),
