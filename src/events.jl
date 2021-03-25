@@ -46,7 +46,6 @@ function window_open(scene::Scene, window::GLFW.Window)
     GLFW.SetWindowCloseCallback(window, windowclose)
 end
 
-
 function disconnect!(window::GLFW.Window, ::typeof(window_open))
     GLFW.SetWindowCloseCallback(window, nothing)
 end
