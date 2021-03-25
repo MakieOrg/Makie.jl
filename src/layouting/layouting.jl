@@ -273,7 +273,11 @@ function preprojected_glyph_arrays(strings::AbstractVector{<:String}, positions:
         error("Unknown space $space, only :data or :screen allowed")
     end
 
-    megapos = reduce(vcat, allpos)
+    megapos::Vector{Point3f0} = if isempty(allpos)
+        Point3f0[]
+    else
+        reduce(vcat, allpos)
+    end
 
     atlas = get_texture_atlas()
     uv = Vec4f0[]
