@@ -70,7 +70,8 @@ filter!(database) do (name, entry)
     !(:uv_mesh in entry.used_functions) &&
     nice_title(entry) !== "short_tests_90" &&
     nice_title(entry) !== "short_tests_111" &&
-    nice_title(entry) !== "short_tests_35"
+    nice_title(entry) !== "short_tests_35" &&
+    nice_title(entry) !== "short_tests_13"
 end
 
 recorded = joinpath(@__DIR__, "recorded")
