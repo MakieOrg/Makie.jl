@@ -79,7 +79,7 @@ struct GLVisualizeShader <: AbstractLazyShader
         args = Dict{Symbol, Any}(kw_args)
         args[:view] = view
         args[:fragdatalocation] = [(0, "fragment_color"), (1, "fragment_groupid")]
-        new(map(x -> assetpath("shader", x), paths), args)
+        new(map(x -> loadshader(x), paths), args)
     end
 end
 

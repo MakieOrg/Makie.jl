@@ -6,7 +6,6 @@ function _precompile_()
     # It would be far better to fix the inference problems.
     isdefined(GLMakie, Symbol("#89#90")) && Base.precompile(Tuple{getfield(GLMakie, Symbol("#89#90")),Text{Tuple{String}}})   # time: 1.7054044
     isdefined(GLMakie, Symbol("#72#78")) && Base.precompile(Tuple{getfield(GLMakie, Symbol("#72#78")),SMatrix{4, 4, Float32, 16},SMatrix{4, 4, Float32, 16}})   # time: 0.18958463
-    Base.precompile(Tuple{typeof(to_gl_text),String,Vector{Point{3, Float32}},Vector{Float32},Vector{FTFont},Vec{2, Float32},Vector{Quaternionf0},SMatrix{4, 4, Float32, 16},Float64,Float64})   # time: 0.11106048
     isdefined(GLMakie, Symbol("#44#46")) && Base.precompile(Tuple{getfield(GLMakie, Symbol("#44#46")),GLFW.Window})   # time: 0.098638594
     isdefined(GLMakie, Symbol("#81#82")) && Base.precompile(Tuple{getfield(GLMakie, Symbol("#81#82")),Symbol})   # time: 0.07212781
     Base.precompile(Tuple{typeof(draw_atomic),Screen,Scene,Union{Scatter{ArgType} where ArgType, MeshScatter{ArgType} where ArgType}})   # time: 0.06695828

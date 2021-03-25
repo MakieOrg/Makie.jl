@@ -25,38 +25,10 @@ end
 struct GLBackend <: AbstractPlotting.AbstractBackend
 end
 
-"""
-returns path relative to the assets folder
-"""
-assetpath(folders...) = joinpath(@__DIR__, "GLVisualize", "assets", folders...)
+loadshader(name) = normpath(joinpath(@__DIR__, "..", "assets", "shader", name))
 
-"""
-Loads a file from the asset folder
-"""
-function loadasset(folders...; kw_args...)
-    path = assetpath(folders...)
-    isfile(path) || isdir(path) || error("Could not locate file at $path")
-    load(path; kw_args...)
-end
-
-
-const deps_path = joinpath(@__DIR__, "..", "deps", "deps.jl")
-
-if isfile(deps_path)
-    include(deps_path)
-else
-    error("""
-        The file $(deps_path) does not exist.
-        This file is generated during the build process; it is possible that GLMakie
-        wasn't built correctly.  To rerun the build process, run `Pkg.build("GLMakie"),
-        or enter the Pkg REPL mode (`]`) and then type `build GLMakie`.
-        """)
-end
-
-if WORKING_OPENGL
-     # don't put this into try catch, to not mess with normal errors
-    include("gl_backend.jl")
-end
+# don't put this into try catch, to not mess with normal errors
+include("gl_backend.jl")
 
 function activate!(use_display=true)
     b = GLBackend()
@@ -67,15 +39,10 @@ function activate!(use_display=true)
 end
 
 function __init__()
-    if WORKING_OPENGL
-        activate!()
-    else
-        error("Loaded OpenGL Backend, but OpenGL isn't working")
-    end
+    activate!()
 end
 
 export set_window_config!
-export assetpath, loadasset
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")

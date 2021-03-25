@@ -30,15 +30,14 @@ program = disp.renderlist[1][3].vertexarray.program
 
 struct OGLContext <: ShaderAbstractions.AbstractContext end
 
-using GLMakie.GLVisualize: assetpath
 instance = ShaderAbstractions.VertexArray(posmeta, triangles_buff)
 
 ShaderAbstractions.type_string(OGLContext(), Vec2f0)
 
 p = ShaderAbstractions.Program(
     OGLContext(),
-    read(assetpath("shader", "mesh.vert"), String),
-    read(assetpath("shader", "mesh.frag"), String),
+    read(loadshader("mesh.vert"), String),
+    read(loadshader("mesh.frag"), String),
     instance;
 )
 
