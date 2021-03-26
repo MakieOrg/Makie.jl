@@ -194,6 +194,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 
         pos = project_position(scene, point, model)
 
+        isnan(pos) && return
+
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
         if m isa Char
@@ -206,13 +208,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 end
 
 
-function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
 
     marker_offset = marker_offset + scale ./ 2
 
     pos += Point2f0(marker_offset[1], -marker_offset[2])
 
     # Cairo.scale(ctx, scale...)
+    Cairo.move_to(ctx, pos[1] + scale[1]/2, pos[2])
     Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
     Cairo.fill_preserve(ctx)
 
@@ -262,6 +265,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     # bottom left corner.
     Cairo.translate(ctx, centering_offset...)
 
+    Cairo.move_to(ctx, 0, 0)
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
     # stroke
