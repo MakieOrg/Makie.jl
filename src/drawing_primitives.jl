@@ -260,7 +260,6 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res)
         end
 
-
         # unpack values from the one signal:
         positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
             lift(getindex, gl_text, i)
@@ -313,9 +312,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             robj[:view] = Observable(Mat4f0(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space
+        else
+            robj[:model] = x.model
         end
+
         return robj
     end
+    return robj
 end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
