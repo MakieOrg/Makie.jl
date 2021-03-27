@@ -133,7 +133,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         elseif yaxisposition == :right
             rightline(FRect2D(area))
         else
-            error("Invalid xaxisposition $xaxisposition")
+            error("Invalid yaxisposition $yaxisposition")
         end
     end
 
