@@ -132,7 +132,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         if displayed_string[] == placeholder[] || displayed_string[] == " "
             displayed_string[] = " "
             cursorindex[] = 0
-            return
+            return true
         end
 
         pos = state.data
