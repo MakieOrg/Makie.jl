@@ -7,7 +7,15 @@ CairoMakie.activate!()
 
 A simple slider without a label. You can create a label using a `Label` object,
 for example. You need to specify a range that constrains the slider's possible values.
-You can then lift the `value` observable to make interactive plots.
+
+The currently selected value is in the attribute `value`.
+Don't change this value manually, but use the function `set_close_to!(slider, value)`.
+This is necessary to ensure the value is actually present in the `range` attribute.
+
+You can double-click the slider to reset it (approximately) to the value present in `startvalue`.
+
+If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available value when releasing the mouse.
+
 
 ```@example
 using CairoMakie
@@ -29,6 +37,8 @@ limits!(ax, 0, 10, 0, 10)
 
 fig
 ```
+
+## Labelled slider convenience functions
 
 To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`AbstractPlotting.MakieLayout.labelslidergrid!`](@ref).
 
@@ -62,9 +72,3 @@ set_close_to!(lsgrid.sliders[3], 15.9)
 
 fig
 ```
-
-If you want to programmatically move the slider, use the function [`AbstractPlotting.MakieLayout.set_close_to!`](@ref).
-Don't manipulate the `value` attribute directly, as there is no guarantee that
-this value exists in the range underlying the slider, and the slider's displayed value would
-not change anyway by changing the slider's output.
-
