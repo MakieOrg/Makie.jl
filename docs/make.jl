@@ -369,6 +369,7 @@ makedocs(
                 "makielayout/button.md",
                 "makielayout/colorbar.md",
                 "makielayout/gridlayout.md",
+                "makielayout/intervalslider.md",
                 "makielayout/label.md",
                 "makielayout/legend.md",
                 "makielayout/lscene.md",
