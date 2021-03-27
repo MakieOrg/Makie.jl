@@ -129,8 +129,10 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     onmouseleftdown(mousestate) do state
         focus!(ltextbox)
 
-        if displayed_string[] == placeholder[]
+        if displayed_string[] == placeholder[] || displayed_string[] == " "
             displayed_string[] = " "
+            cursorindex[] = 0
+            return
         end
 
         pos = state.data
@@ -217,7 +219,9 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     function cursor_forward()
-        cursorindex[] = min(length(displayed_string[]), cursorindex[] + 1)
+        if displayed_string[] != " "
+            cursorindex[] = min(length(displayed_string[]), cursorindex[] + 1)
+        end
     end
 
     function cursor_backward()
