@@ -78,9 +78,8 @@ end
 listeners(o::PriorityObservable) = (f for p in reverse(o.listeners) for f in p[2])
 
 
-
-function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false, priority = 0)
-    if Core.Compiler.return_type(f, (typeof(observable.val),)) !== Bool
+function _sanitize_observer_function(@nospecialize(f), argtypes)
+    if Core.Compiler.return_type(f, argtypes) !== Bool
         sanitized_func = x -> begin f(x); false end
         @warn(
             "Observer functions of PriorityObservables must return a Bool to " *
@@ -90,9 +89,15 @@ function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false
         ) 
         Base.show_backtrace(stderr, backtrace())
         println()
+        return sanitized_func
     else
-        sanitized_func = f
+        return f
     end
+end
+
+
+function on(@nospecialize(f), observable::PriorityObservable; weak::Bool = false, priority = 0)
+    sanitized_func = _sanitize_observer_function(f, (typeof(observable.val),))
     
     # Create or insert into correct priority
     idx = findfirst(p -> p[1] >= priority, observable.listeners)
