@@ -46,11 +46,17 @@ end
 
 function draw_data_inspector!(inspector)
     a = inspector.attributes
-    p = text!(
+    p1 = text!(
         inspector.parent, a.display_text, 
-        position = a.position, visible = a.visible, halign = a.halign
+        position = a.position, visible = a.visible, halign = a.halign,
+        overdraw=true
     )
-    push!(inspector.plots, p)
+    p2 = scatter!(
+        inspector.parent, map(x -> [x], a.position), 
+        color = (:yellow, 0.5), strokecolor = :red, overdraw=true,
+        visible = a.visible
+    )
+    push!(inspector.plots, p1, p2)
     nothing
 end
 
