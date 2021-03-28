@@ -19,7 +19,9 @@ function data_inspector(
             display_text = " ",
             position = Point3f0(0),
             visible = false,
-            halign = :left
+            halign = :left,
+            bbox = Rect3D(Vec3f0(0,0,0),Vec3f0(1,1,1)),
+            bbox_visible = false,
         ),
         ScenePlot[], whitelist, blacklist
     )
@@ -33,6 +35,7 @@ function data_inspector(
         @info idx, typeof(plt)
         if plt === nothing
             inspector.attributes.visible[] = false
+            inspector.attributes.bbox_visible[] = false
         else
             show_data(inspector, plt, idx)
         end
@@ -42,6 +45,10 @@ function data_inspector(
 
     inspector
 end
+
+
+position2string(p::Point2f0) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
+position2string(p::Point3f0) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
 
 
 function draw_data_inspector!(inspector)
@@ -56,7 +63,11 @@ function draw_data_inspector!(inspector)
         color = (:yellow, 0.5), strokecolor = :red, overdraw=true,
         visible = a.visible
     )
-    push!(inspector.plots, p1, p2)
+    p3 = wireframe!(
+        inspector.parent, a.bbox,
+        color = :red, visible = a.bbox_visible
+    )
+    push!(inspector.plots, p1, p2, p3)
     nothing
 end
 
@@ -66,10 +77,11 @@ function show_data(inspector::DataInspector, plot::Union{Scatter, MeshScatter}, 
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
+        a.bbox_visible[] = false
     else
         pos = to_ndim(Point3f0, plot[1][][idx], 0)
         a.position[] = pos
-        a.display_text[] = string(pos)
+        a.display_text[] = position2string(pos)
         a.visible[] = true
     end
 end
@@ -129,18 +141,46 @@ function closest_point_on_line(A::Point3f0, B::Point3f0, origin::Point3f0, dir::
 end
 
 function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
-    @info "Lines"
+    @info "Lines, LineSegments"
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
+        a.bbox_visible[] = false
     else
         pos = mouseposition(inspector.parent)
         p0, p1 = plot[1][][idx-1:idx]
         origin, dir = view_ray(inspector.parent)
         p = closest_point_on_line(p0, p1, origin, dir)
         a.position[] = p
-        a.display_text[] = string(p)
+        a.display_text[] = position2string(p)
         a.visible[] = true
+    end
+end
+
+function bbox2string(bbox::Rect3D)
+    p = origin(bbox)
+    w = widths(bbox)
+    @sprintf(
+        "Bounding Box:\nx: (%0.3f, %0.3f)\ny: (%0.3f, %0.3f)\nz: (%0.3f, %0.3f)",
+        p[1], w[1], p[2], w[2], p[3], w[3]
+    )
+end
+
+function show_data(inspector::DataInspector, plot::Mesh, idx)
+    @info "Mesh"
+    a = inspector.attributes
+    if idx === nothing
+        a.visible[] = false
+        a.bbox_visible[] = false
+    else
+        bbox = boundingbox(plot)
+        min, max = extrema(bbox)
+        p = 0.5 * (max .+ min)
+        a.position[] = p
+        a.display_text[] = bbox2string(bbox)
+        a.bbox[] = bbox
+        a.visible[] = true
+        a.bbox_visible[] = true
     end
 end
 
@@ -148,5 +188,7 @@ end
 function show_data(inspector::DataInspector, plot, idx)
     @info "else"
     inspector.attributes.visible[] = false
+    inspector.attributes.bbox_visible[] = false
+
     nothing
 end
