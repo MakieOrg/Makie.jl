@@ -128,7 +128,7 @@ function closest_point_on_line(A::Point3f0, B::Point3f0, origin::Point3f0, dir::
     A .+ t * u_AB
 end
 
-function show_data(inspector::DataInspector, plot::Lines, idx)
+function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
     @info "Lines"
     a = inspector.attributes
     if idx === nothing
