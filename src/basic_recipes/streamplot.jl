@@ -14,7 +14,7 @@ streamplot(v, -2..2, -2..2)
 $(ATTRIBUTES)
 
 ## Implementation
-See the function [`streamplot_impl`](@ref) for implementation details.
+See the function `AbstractPlotting.streamplot_impl` for implementation details.
 """
 @recipe(StreamPlot, f, limits) do scene
     merge(
