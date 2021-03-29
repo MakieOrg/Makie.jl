@@ -418,24 +418,28 @@ end
 function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     isopen(screen) || return SelectionID{Int}(0, 0)
     window_size = widths(screen)
+    w, h = window_size
+    if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
+        return SelectionID{Int}(0, 0)
+    end
+
     fb = screen.framebuffer
     buff = fb.buffers[:objectid]
     glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
     glReadBuffer(GL_COLOR_ATTACHMENT1)
 
-    w, h = window_size
     x0, y0 = max.(1, floor.(Int, xy .- range))
     x1, y1 = min.([w, h], floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
     sid = Matrix{SelectionID{UInt32}}(undef, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sid)
 
-    min_dist = range^2 # squared distance
+    min_dist = range^2
     id = SelectionID{Int}(0, 0)
     x, y =  xy .+ 1 .- Vec2f0(x0, y0)
     for i in 1:dx, j in 1:dy
         d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][2] < 0x3f800000)
+        if (d < min_dist) && (sid[i, j][1] > 0x00000000) && (sid[i, j][2] < 0x3f800000)
             min_dist = d
             id = convert(SelectionID{Int}, sid[i, j])
         end
