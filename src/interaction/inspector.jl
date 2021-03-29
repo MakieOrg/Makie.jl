@@ -50,6 +50,61 @@ end
 position2string(p::Point2f0) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
 position2string(p::Point3f0) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
 
+function Bbox_from_glyphlayout(gl)
+    bbox = FRect3D(
+        gl.origins[1] .+ Vec3f0(origin(gl.bboxes[1])..., 0), 
+        Vec3f0(widths(gl.bboxes[1])..., 0)
+    )
+    for (o, bb) in zip(gl.origins[2:end], gl.bboxes[2:end])
+        bbox2 = FRect3D(o .+ Vec3f0(origin(bb)..., 0), Vec3f0(widths(bb)..., 0))
+        bbox = union(bbox, bbox2)
+    end
+    bbox
+end
+function text2worldbbox(p::Text)
+    if p._glyphlayout[] isa Vector
+        @info "TODO"
+    else
+        map(p._glyphlayout, p.position, camera(p.parent).projectionview, pixelarea(p.parent)) do gl, pos, pv, area
+            px_pos = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
+            px_bbox = Bbox_from_glyphlayout(gl) + to_ndim(Vec3f0, px_pos, 0)
+            @info px_bbox
+            px_bbox = px_bbox - Vec3f0(0.5widths(area)..., 0)
+            # @info px_bbox
+            px_bbox = FRect3D(
+                2 .* origin(px_bbox) ./ Vec3f0(widths(area)..., 1),
+                2 .* widths(px_bbox) ./ Vec3f0(widths(area)..., 1)
+            )
+            # @info px_bbox
+            # p00 = 2 .* (origin(px_bbox) .- Vec3f0(0.5widths(area)..., 0)) ./ Vec3f0(widths(area)..., 1)
+            # p11 = p0 .+ 2 * widths(px_bbox) ./ Vec3f0(widths(area)..., 1)
+            ps = unique(coordinates(px_bbox))
+            inv_pv = inv(pv)
+            # world_p0 = inv_pv * Vec4f0(p0..., 1); world_p0 = world_p0 / world_p0[4]
+            # world_p1 = inv_pv * Vec4f0(p1..., 1); world_p1 = world_p1 / world_p1[4]
+            # world_bbox = FRect3D(world_p0[SOneTo(3)], world_p1[SOneTo(3)] .- world_p0[SOneTo(3)])
+            world_ps = map(ps) do p
+                proj = inv_pv * Vec4f0(p..., 1)
+                proj[SOneTo(3)] / proj[4]
+            end
+            minx, maxx = extrema(getindex.(world_ps, (1,)))
+            miny, maxy = extrema(getindex.(world_ps, (2,)))
+            minz, maxz = extrema(getindex.(world_ps, (3,)))
+            world_bbox = FRect3D(Point3f0(minx, miny, minz), Vec3f0(maxx-minx, maxy-miny, maxz-minz))
+            # world_bbox = inv(pv) * px_bbox
+            @info world_bbox
+            world_bbox
+        end
+    end
+end
+function text2pixelbbox(p::Text)
+    if p._glyphlayout[] isa Vector
+        @info "TODO"
+    else
+        map(Bbox_from_glyphlayout, p._glyphlayout)
+    end
+end
+
 
 function draw_data_inspector!(inspector)
     a = inspector.attributes
@@ -57,6 +112,39 @@ function draw_data_inspector!(inspector)
         inspector.parent, a.display_text, 
         position = a.position, visible = a.visible, halign = a.halign,
         overdraw=true
+    )
+    map(p1.position, camera(inspector.parent).projectionview, pixelarea(inspector.parent)) do pos, pv, area
+        projected = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
+        @info "Before: $pos"
+        @info "After: $projected"
+        nothing
+    end
+    tbb = wireframe!(
+        inspector.parent, text2worldbbox(p1),
+        color = :lightblue, shading = false, visible = a.visible,
+    )
+    bg = mesh!(
+        inspector.parent, 
+        map(
+                p1.position, 
+                camera(inspector.parent).projectionview, 
+                pixelarea(inspector.parent),
+                text2pixelbbox(p1)
+            ) do pos, pv, area, bbox
+            projected = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
+            bbox + to_ndim(Point3f0, projected, 0) + Point3f0(0, 0, 1e-3) # -4, 1, 
+        end, 
+        color = :orange, shading = false, visible = a.visible,
+        model = map(
+                p1.position,
+                camera(inspector.parent).projectionview, 
+                inspector.parent.px_area
+            ) do pos, pv, rect
+            projected = AbstractPlotting.project(pv, Vec2f0(widths(rect)), to_ndim(Point3f0, pos, 0))
+            inv(pv) * 
+            scalematrix(Vec3f0((2.0 ./ widths(rect))..., 1)) *
+            translationmatrix(Vec3f0(-0.5widths(rect)..., 0))
+        end
     )
     p2 = scatter!(
         inspector.parent, map(x -> [x], a.position), 
@@ -67,7 +155,7 @@ function draw_data_inspector!(inspector)
         inspector.parent, a.bbox,
         color = :red, visible = a.bbox_visible
     )
-    push!(inspector.plots, p1, p2, p3)
+    push!(inspector.plots, p1, p2, p3, bg, tbb)
     nothing
 end
 
