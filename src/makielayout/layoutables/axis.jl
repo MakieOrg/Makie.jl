@@ -990,3 +990,15 @@ end
 function limits!(args...)
     limits!(current_axis(), args...)
 end
+
+function Base.delete!(ax::Axis, plot::AbstractPlot)
+    delete!(ax.scene, plot)
+    ax
+end
+
+function Base.empty!(ax::Axis)
+    for plot in copy(ax.scene.plots)
+        delete!(ax, plot)
+    end
+    ax
+end

@@ -43,3 +43,8 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
 
     ls
 end
+
+function Base.delete!(ax::LScene, plot::AbstractPlot)
+    delete!(ax.scene, plot)
+    ax
+end
