@@ -19,16 +19,12 @@ using Base.Iterators: Repeated, repeated
 using LinearAlgebra
 
 import AbstractPlotting: to_font, glyph_uv_width!
-import ..GLMakie: get_texture!
+import ..GLMakie: get_texture!, loadshader
 
 const GLBoundingBox = FRect3D
 
-using ..GLMakie: assetpath, loadasset
-
-
 include("visualize_interface.jl")
 export visualize # Visualize an object
-export visualize_default # get the default parameter for a visualization
 
 include(joinpath("visualize", "lines.jl"))
 include(joinpath("visualize", "image_like.jl"))
@@ -37,5 +33,10 @@ include(joinpath("visualize", "particles.jl"))
 include(joinpath("visualize", "surface.jl"))
 
 export CIRCLE, RECTANGLE, ROUNDED_RECTANGLE, DISTANCEFIELD, TRIANGLE
+
+if Base.VERSION >= v"1.4.2"
+    include("precompile.jl")
+    _precompile_()
+end
 
 end # module

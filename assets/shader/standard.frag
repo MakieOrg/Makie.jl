@@ -8,6 +8,7 @@ uniform vec3 ambient;
 uniform vec3 diffuse;
 uniform vec3 specular;
 uniform float shininess;
+uniform float backlight;
 
 in vec3 o_normal;
 in vec3 o_lightdir;
@@ -47,9 +48,6 @@ vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, sampler2D matcap){
     return matcap_color(matcap);
 }
 
-
-
-
 uniform bool fetch_pixel;
 uniform vec2 uv_scale;
 
@@ -75,7 +73,8 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     vec3 H = normalize(L + V);
 
     float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
-
+    if (diff_coeff <= 0.0 || isnan(spec_coeff))
+        spec_coeff = 0.0;
     // final lighting model
     return vec3(
         ambient * color +

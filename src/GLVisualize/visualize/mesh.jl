@@ -2,6 +2,7 @@
 function _default(mesh::TOrSignal{M}, s::Style, data::Dict) where M <: GeometryBasics.Mesh
     return @gen_defaults! data begin
         shading = true
+        backlight = 0f0
         main = mesh
         vertex_color = Vec4f0(0)
         texturecoordinates = Vec2f0(0)

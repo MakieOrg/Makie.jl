@@ -1,8 +1,9 @@
 *.jl.cov
 *.jl.*.cov
 *.jl.mem
-precompile.jl
 build
 src/glbackend/.cache
 test/testimages/*
+test/recorded
+test/recorded_glmakie
 Manifest.toml

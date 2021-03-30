@@ -1,4 +1,14 @@
-using GLFW
+try
+    using GLFW
+catch e
+    @warn("""
+        OpenGL/GLFW wasn't loaded correctly or couldn't be initialized.
+        This likely means, you're on a headless server without having OpenGL support setup correctly.
+        Have a look at the troubleshooting section in the readme:
+        https://github.com/JuliaPlots/GLMakie.jl#troubleshooting-opengl.
+    """)
+    rethrow(e)
+end
 
 include("GLAbstraction/GLAbstraction.jl")
 
@@ -10,10 +20,10 @@ function get_texture!(atlas)
     # clean up dead context!
     filter!(atlas_texture_cache) do (ctx, tex_func)
         if GLAbstraction.context_alive(ctx)
-            true
+            return true
         else
             AbstractPlotting.remove_font_render_callback!(tex_func[2])
-            false
+            return false
         end
     end
     tex, func = get!(atlas_texture_cache, GLAbstraction.current_context()) do
@@ -44,42 +54,17 @@ function get_texture!(atlas)
     return tex
 end
 
+# TODO
+const enable_SSAO = Ref(false)
+const enable_FXAA = Ref(true)
+
 include("GLVisualize/GLVisualize.jl")
 using .GLVisualize
 
 include("glwindow.jl")
+include("postprocessing.jl")
 include("screen.jl")
 include("rendering.jl")
 include("events.jl")
 include("drawing_primitives.jl")
-
-function AbstractPlotting.backend_display(x::GLBackend, scene::Scene)
-    screen = global_gl_screen(size(scene), AbstractPlotting.use_display[])
-    display_loading_image(screen)
-    AbstractPlotting.backend_display(screen, scene)
-    return screen
-end
-
-"""
-    scene2image(scene::Scene)
-
-Buffers the `scene` in an image buffer.
-"""
-function scene2image(scene::Scene)
-    screen = global_gl_screen(size(scene), false)
-    AbstractPlotting.backend_display(screen, scene)
-    AbstractPlotting.colorbuffer(screen)
-end
-
-raw_io(io::IO) = io
-raw_io(io::IOContext) = raw_io(io.io)
-
-function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/png", scene::Scene)
-    img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"PNG", raw_io(io)), img)
-end
-
-function AbstractPlotting.backend_show(::GLBackend, io::IO, m::MIME"image/jpeg", scene::Scene)
-    img = scene2image(scene)
-    FileIO.save(FileIO.Stream(FileIO.format"JPEG", raw_io(io)), img)
-end
+include("display.jl")
