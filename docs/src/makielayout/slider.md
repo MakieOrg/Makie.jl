@@ -18,7 +18,7 @@ If you set the attribute `snap = false`, the slider will move continously while 
 
 
 ```@example
-using CairoMakie
+using GLMakie
 
 fig = Figure(resolution = (1200, 900))
 
@@ -43,7 +43,8 @@ fig
 To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`AbstractPlotting.MakieLayout.labelslidergrid!`](@ref).
 
 ```@example
-using CairoMakie
+using GLMakie
+
 fig = Figure(resolution = (1200, 900))
 
 ax = Axis(fig[1, 1])
