@@ -323,7 +323,6 @@ end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        xs = 
         gl_attributes[:position_x] = if to_value(x[1]) isa Vector
             map(x[1]) do v
                 # Equivalent to
