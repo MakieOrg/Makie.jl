@@ -1,4 +1,4 @@
-## How layouting works
+# How layouts work
 
 The goal of MakieLayout is that all elements placed in a scene fit into the
 window, fill the available space, and are nicely aligned relative to each other.

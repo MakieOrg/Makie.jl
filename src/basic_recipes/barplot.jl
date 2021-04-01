@@ -50,7 +50,8 @@ function AbstractPlotting.plot!(p::BarPlot)
         # compute half-width of bars
         if width === automatic
             # times 0.8 for default gap
-            width = mean(diff(first.(xy))) * 0.8 # TODO ignore nan?
+            width = mean(diff(first.(xy))) * 0.8
+            width = ifelse(isfinite(width), width, 0.8)
         end
 
         rects = bar_rectangle.(xy, width, fillto)

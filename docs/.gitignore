@@ -17,7 +17,7 @@ src/generated
 *.zip
 tmax
 prec
-Manifest.toml
+#Manifest.toml
 
 src/assets/syntaxtheme.css
 

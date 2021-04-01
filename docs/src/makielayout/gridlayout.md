@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
+# GridLayout
+
 ## Setting column and row sizes correctly
 
 There are four different types of sizes you can give rows and columns.
@@ -24,11 +26,7 @@ colsize!(layout, 1, Fixed(400))
 # colsize!(layout, 1, 400) would also work
 
 scene
-save("example_fixed_size.svg", scene); nothing # hide
 ```
-
-![fixed size](example_fixed_size.svg)
-
 
 ### Relative
 
@@ -48,10 +46,7 @@ layout[1, 3] = Colorbar(scene, width = 30)
 colsize!(layout, 1, Relative(2/3))
 
 scene
-save("example_relative_size.svg", scene); nothing # hide
 ```
-
-![relative size](example_relative_size.svg)
 
 
 ### Auto
@@ -90,10 +85,7 @@ colsize!(layout, 2, Auto(1)) # equivalent to Auto(true, 1)
 colsize!(layout, 3, Auto(2)) # equivalent to Auto(true, 2)
 
 scene
-save("example_auto_size.svg", scene); nothing # hide
 ```
-
-![auto size](example_auto_size.svg)
 
 
 ### Aspect
@@ -118,10 +110,7 @@ rowsize!(layout, 2, Relative(2/3))
 colsize!(layout, 1, Aspect(1, 1))
 
 scene
-save("example_aspect_size.svg", scene); nothing # hide
 ```
-
-![aspect size](example_aspect_size.svg)
 
 !!! note
 
@@ -150,10 +139,8 @@ subgl_right[1:3, 1] = [Axis(scene) for i in 1:3]
 layout[1, 1] = subgl_left
 layout[1, 2] = subgl_right
 
-save("example_nested_grids.svg", scene); nothing # hide
+scene
 ```
-
-![example nested grids](example_nested_grids.svg)
 
 ## Alignment
 
@@ -183,10 +170,9 @@ subgl_3[1, 1] = Axis(scene, title="Outside(50)")
 
 layout[1:3, 2] = [Box(scene, color = :transparent, strokecolor = :red) for i in 1:3]
 
-save("example_grid_alignment.svg", scene); nothing # hide
+scene
 ```
 
-![example grid alignment](example_grid_alignment.svg)
 
 ## Spanned Placement
 
@@ -205,10 +191,8 @@ layout[:, 3] = Axis(scene, title="[:, 3]")
 layout[1:3, end] = Axis(scene, title="[1:3, end]")
 layout[end, end] = Axis(scene, title="[end, end]")
 
-save("example_spanned_grid_content.svg", scene); nothing # hide
+scene
 ```
-
-![spanned grid content](example_spanned_grid_content.svg)
 
 ## Adding rows and columns by indexing
 
@@ -235,10 +219,8 @@ layout[2:end-1, 0] = Label(scene, text="Left Text", textsize=50,
 layout[2:end-1, end+1] = Label(scene, text="Right Text", textsize=50,
     rotation=-pi/2)
 
-save("example_indexing_outside_grid.svg", scene); nothing # hide
+scene
 ```
-
-![indexing outside grid](example_indexing_outside_grid.svg)
 
 
 ## Trimming empty rows and columns
@@ -257,10 +239,7 @@ ax1 = layout[1, 1] = Axis(scene, title = "Axis 1")
 ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
 
 scene
-save("example_trimming_1.svg", scene); nothing # hide
 ```
-
-![trimming 1](example_trimming_1.svg)
 
 Now we decide we'd like the second axis better if it was below the first one.
 We move it two the new cell, and the old unused column is left blank.
@@ -269,10 +248,7 @@ We move it two the new cell, and the old unused column is left blank.
 layout[2, 1] = ax2
 
 scene
-save("example_trimming_2.svg", scene); nothing # hide
 ```
-
-![trimming 2](example_trimming_2.svg)
 
 We can get rid of the unused space with `trim!`:
 
@@ -280,10 +256,7 @@ We can get rid of the unused space with `trim!`:
 trim!(layout)
 
 scene
-save("example_trimming_3.svg", scene); nothing # hide
 ```
-
-![trimming 3](example_trimming_3.svg)
 
 
 ## Tweaking space between rows and columns
@@ -306,10 +279,7 @@ hidedecorations!.(axs, grid=false)
 colgap!(fig.layout, 1, Relative(0.15))
 
 fig
-save("example_spacing_1.svg", fig); nothing # hide
 ```
-
-![spacing 1](example_spacing_1.svg)
 
 All spaces can be changed at once by omitting the index of the gap to resize.
 
@@ -317,10 +287,7 @@ All spaces can be changed at once by omitting the index of the gap to resize.
 rowgap!(fig.layout, 50)
 
 fig
-save("example_spacing_2.svg", fig); nothing # hide
 ```
-
-![spacing 2](example_spacing_2.svg)
 
 
 ```@eval

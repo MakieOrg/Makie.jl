@@ -244,7 +244,7 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     titlegap = 0.01limit_widths[offset_indices] .* titlegap
     tgap = 0.01limit_widths[offset_indices] .* tgap
 
-    for i = 1:N
+    for i in 1:N
         axis_vec = unit(Point{N, Float32}, i)
         width = Float32(limit_widths[i])
         stop = origin .+ (width .* axis_vec)
@@ -271,13 +271,11 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
                 end
             end
             if !isempty(axisnames[i])
-                tick_widths = if length(ticklabels[i]) >= 3
-                    w = widths(text_bb(ticklabels[i][end-1], to_font(tfont[i]), ttextsize[i]))[1]
-                    w / scale[j]
-                else
-                    0f0
-                end
-                pos = (labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2)
+                font = to_font(tfont[i])
+                tick_widths = maximum(ticklabels[i]) do label
+                    widths(text_bb(label, font, ttextsize[i]))[1]
+                end / scale[j]
+                pos = labelposition(ranges, i, tickdir, titlegap[i] + tick_widths, origin) .+ offset2
                 push!(
                     textbuffer, to_latex(axisnames[i]), pos,
                     textsize = axisnames_size[i], color = axisnames_color[i],
@@ -306,12 +304,19 @@ function draw_axis3d(textbuffer, linebuffer, scale, limits, ranges_labels, args.
     return
 end
 
+function text_bb(str, font, size)
+    rot = Quaternionf0(0,0,0,1)
+    layout = layout_text(str, size, font, Vec2f0(0), rot, Mat4f0(I), 0.5, 1.0)
+    @assert typeof(layout.bboxes) <: Vector{FRect2D}
+    return data_text_boundingbox(str, layout, rot, Point3f0(0))
+end
+
 
 function plot!(scene::SceneLike, ::Type{<: Axis3D}, attributes::Attributes, args...)
     axis = Axis3D(scene, attributes, args)
     # Disable any non linear transform for the axis plot!
     axis.transformation.transform_func[] = identity
-    textbuffer = TextBuffer(axis, Point{3}, transparency = true)
+    textbuffer = TextBuffer(axis, Point{3}, transparency = true, space = :data)
     linebuffer = LinesegmentBuffer(axis, Point{3}, transparency = true)
 
     tstyle, ticks, frame = to_value.(getindex.(axis, (:names, :ticks, :frame)))

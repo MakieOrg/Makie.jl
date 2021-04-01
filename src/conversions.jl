@@ -16,13 +16,13 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                     error(
                         """
                         `AbstractPlotting.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
-        
+
                         The signature that could not be converted was:
                         $(join("::" .* string.(typeof.(args)), ", "))
-        
+
                         AbstractPlotting needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
                         You can define a method for `AbstractPlotting.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/recipes.html).
-        
+
                         Alternatively, you can define `AbstractPlotting.convert_single_argument` for single arguments which have types that are unknown to AbstractPlotting but which can be converted to known types and fed back to the conversion pipeline.
                         """
                     )
@@ -50,13 +50,13 @@ function convert_arguments_individually(T::PlotFunc, args...)
     convert_arguments(T, single_converted...)
 end
 
-function recursively_convert_argument(x)    
-    newx = convert_single_argument(x)    
+function recursively_convert_argument(x)
+    newx = convert_single_argument(x)
     if typeof(newx) == typeof(x)
         x
     else
         recursively_convert_argument(newx)
-    end  
+    end
 end
 
 ################################################################################
@@ -485,7 +485,7 @@ end
     convert_arguments(Mesh, vertices, indices)::GLNormalMesh
 
 Takes `vertices` and `indices`, and creates a triangle mesh out of those.
-See `to_vertices` and `to_triangles` for more information about
+See [`to_vertices`](@ref) and [`to_triangles`](@ref) for more information about
 accepted types.
 """
 function convert_arguments(
@@ -567,7 +567,16 @@ function el32convert(x::AbstractArray{T, N}) where {T<:Union{Missing, <: Number}
         return (ismissing(elem) ? NaN32 : convert(Float32, elem))::Float32
     end::Array{Float32, N}
 end
+"""
+    to_triangles(indices)
 
+Convert a representation of triangle point indices `indices` to its canonical representation as a `Vector{AbstractPlotting.GLTriangleFace}`. `indices` can be any of the following:
+
+- An `AbstractVector{Int}`, containing groups of 3 1-based indices,
+- An `AbstractVector{UIn32}`, containing groups of 3 0-based indices,
+- An `AbstractVector` of `TriangleFace` objects,
+- An `AbstractMatrix` of `Integer`s, where each row is a triangle.
+"""
 function to_triangles(x::AbstractVector{Int})
     idx0 = UInt32.(x .- 1)
     return to_triangles(idx0)
@@ -589,6 +598,21 @@ function to_triangles(faces::AbstractMatrix{T}) where T <: Integer
     end
 end
 
+"""
+    to_vertices(v)
+
+Converts a representation of vertices `v` to its canonical representation as a
+`Vector{Point3f0}`. `v` can be:
+
+- An `AbstractVector` of 3-element `Tuple`s or `StaticVector`s,
+
+- An `AbstractVector` of `Tuple`s or `StaticVector`s, in which case exta dimensions will
+  be either truncated or padded with zeros as required,
+
+- An `AbstractMatrix`"
+  - if `v` has 2 or 3 rows, it will treat each column as a vertex,
+  - otherwise if `v` has 2 or 3 columns, it will treat each row as a vertex.
+"""
 function to_vertices(verts::AbstractVector{<: VecTypes{3, T}}) where T
     vert3f0 = T != Float32 ? Point3f0.(verts) : verts
     return reinterpret(Point3f0, vert3f0)
@@ -609,7 +633,16 @@ function to_vertices(verts::AbstractMatrix{<: Number})
 end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{1}) where T <: Number
-    reinterpret(Point{size(verts, 1), T}, elconvert(T, vec(verts)), (size(verts, 2),))
+    N = size(verts, 1)
+    if T == Float32 && N == 3
+        reinterpret(Point{N, T}, elconvert(T, vec(verts)))
+    else
+        let N = Val(N), lverts = verts
+            broadcast(1:size(verts, 2), N) do vidx, n
+                to_ndim(Point3f0, ntuple(i-> lverts[i, vidx], n), 0.0)
+            end
+        end
+    end
 end
 
 function to_vertices(verts::AbstractMatrix{T}, ::Val{2}) where T <: Number
@@ -757,9 +790,9 @@ function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
     dot = 1
     dash = 3
     check_line_pattern(ls_str)
-    
+
     dot_gap, dash_gap = convert_gaps(gaps)
-    
+
     pattern = Float64[]
     for i in 1:length(ls_str)
         curr_char = ls_str[i]
@@ -784,7 +817,7 @@ end
 function check_line_pattern(ls_str)
     isnothing(match(r"^[.-]+$", ls_str)) &&
         throw(ArgumentError("If you provide a string as linestyle, it must only consist of dashes (-) and dots (.)"))
-    
+
     nothing
 end
 
@@ -794,7 +827,7 @@ function convert_gaps(gaps)
       gaps in [:normal, :dense, :loose] || throw(ArgumentError(error_msg))
       dot_gaps  = (normal = 2, dense = 1, loose = 4)
       dash_gaps = (normal = 3, dense = 2, loose = 6)
-  
+
       dot_gap  = getproperty(dot_gaps, gaps)
       dash_gap = getproperty(dash_gaps, gaps)
   elseif gaps isa Real

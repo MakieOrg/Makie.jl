@@ -93,16 +93,20 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     cursorpoints = lift(cursorindex, displayed_charbbs) do ci, bbs
 
-        if (ci) > length(bbs)
+        hadvances = t.elements[:text]._glyphlayout[].hadvances::Vector{Float32}
+
+        if ci > length(bbs)
             # correct cursorindex if it's outside of the displayed charbbs range
             cursorindex[] = length(bbs)
             return
         end
 
-        if ci == 0
+        if 0 < ci < length(bbs)
+            [leftline(bbs[ci+1])...]
+        elseif ci == 0
             [leftline(bbs[1])...]
         else
-            [rightline(bbs[ci])...]
+            [leftline(bbs[ci])...] .+ Point2f0(hadvances[ci], 0)
         end
     end
 
@@ -125,8 +129,10 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     onmouseleftdown(mousestate) do state
         focus!(ltextbox)
 
-        if displayed_string[] == placeholder[]
+        if displayed_string[] == placeholder[] || displayed_string[] == " "
             displayed_string[] = " "
+            cursorindex[] = 0
+            return
         end
 
         pos = state.data
@@ -213,7 +219,9 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     function cursor_forward()
-        cursorindex[] = min(length(displayed_string[]), cursorindex[] + 1)
+        if displayed_string[] != " "
+            cursorindex[] = min(length(displayed_string[]), cursorindex[] + 1)
+        end
     end
 
     function cursor_backward()
@@ -254,24 +262,14 @@ end
 
 
 function charbbs(text)
-    positions = AbstractPlotting.layout_text(text[1][], text.position[], text.textsize[],
-        text.font[], text.align[], text.rotation[], text.model[],
-        text.justification[], text.lineheight[])
-
-    font = AbstractPlotting.to_font(text.font[])
-
-    bbs = [
-        AbstractPlotting.FreeTypeAbstraction.height_insensitive_boundingbox(
-            AbstractPlotting.FreeTypeAbstraction.get_extent(font, char),
-            font
-        )
-        for char in text[1][]
-    ]
-
-    bbs_shifted_scaled = [Rect2D(
-            (AbstractPlotting.origin(bb) .* text.textsize[] .+ pos[1:2])...,
-            (widths(bb) .* text.textsize[])...)
-        for (bb, pos) in zip(bbs, positions)]
+    glyphlayout = text._glyphlayout[]
+    if !(glyphlayout isa AbstractPlotting.Glyphlayout)
+        error("Expected a single Glyphlayout from the textbox string, got a $(typeof(glyphlayout)).")
+    end
+    pos = Point2f0(text.position[])
+    map(glyphlayout.bboxes, glyphlayout.origins) do bb, ori
+        FRect2D(Point2f0(ori) + bb.origin + pos, bb.widths)
+    end
 end
 
 function validate_textbox(str, validator::Function)

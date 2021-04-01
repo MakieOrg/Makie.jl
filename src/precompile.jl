@@ -1,22 +1,33 @@
+macro warnpcfail(ex::Expr)
+    modl = __module__
+    file = __source__.file === nothing ? "?" : String(__source__.file)
+    line = __source__.line
+    quote
+        $(esc(ex)) || @warn """precompile directive
+     $($(Expr(:quote, ex)))
+ failed. Please report an issue in $($modl) (after checking for duplicates) or remove this directive.""" _file=$file _line=$line
+    end
+end
+
 function _precompile_()
     ccall(:jl_generating_output, Cint, ()) == 1 || return nothing
-    @assert precompile(Scene, ())
-    @assert precompile(update_limits!, (Scene,))
-    @assert precompile(update_limits!, (Scene, Automatic))
-    @assert precompile(update_limits!, (Scene, FRect3D))
+    @warnpcfail precompile(Scene, ())
+    @warnpcfail precompile(update_limits!, (Scene,))
+    @warnpcfail precompile(update_limits!, (Scene, Automatic))
+    @warnpcfail precompile(update_limits!, (Scene, FRect3D))
 
-    @assert precompile(boundingbox, (Scene,))
+    @warnpcfail precompile(boundingbox, (Scene,))
     Ngonf0 = GeometryBasics.Ngon{2, Float32, 3, Point2f0}
-    # @assert precompile(boundingbox, (Mesh{Tuple{Vector{GeometryBasics.Mesh{2, Float32, Ngonf0, FaceView{Ngonf0}}}}},))  # doesn't seem to work
-    @assert precompile(boundingbox, (Poly{Tuple{Vector{Vector{Point2f0}}}},))
-    @assert precompile(boundingbox, (String, Vector{Point3f0}, Vector{Float32}, Vector{FTFont}, Vec2f0, Vector{Quaternionf0}, SMatrix{4, 4, Float32, 16}, Float64, Float64))
+    # @warnpcfail precompile(boundingbox, (Mesh{Tuple{Vector{GeometryBasics.Mesh{2, Float32, Ngonf0, FaceView{Ngonf0}}}}},))  # doesn't seem to work
+    @warnpcfail precompile(boundingbox, (Poly{Tuple{Vector{Vector{Point2f0}}}},))
+    @warnpcfail precompile(boundingbox, (String, Vector{Point3f0}, Vector{Float32}, Vector{FTFont}, Vec2f0, Vector{Quaternionf0}, SMatrix{4, 4, Float32, 16}, Float64, Float64))
 
-    @assert precompile(poly_convert, (Vector{Vector{Point2f0}},))
-    @assert precompile(rotatedrect, (FRect2D, Float32))
+    @warnpcfail precompile(poly_convert, (Vector{Vector{Point2f0}},))
+    @warnpcfail precompile(rotatedrect, (FRect2D, Float32))
 
-    @assert precompile(plot!, (Scene, Type{Poly{Tuple{IRect2D}}}, Attributes, Tuple{Observable{IRect2D}}, Observable{Tuple{Vector{Vector{Point2f0}}}}))
-    @assert precompile(plot!, (Mesh{Tuple{Vector{GeometryBasics.Mesh{2, Float32, Ngonf0, FaceView{Ngonf0}}}}},))
-    @assert precompile(plot!, (Scene, Type{Annotations{Tuple{Vector{Tuple{String, Point2f0}}}}}, Attributes, Tuple{Observable{Vector{Tuple{String, Point2f0}}}}, Observable{Tuple{Vector{Tuple{String, Point2f0}}}}))
+    @warnpcfail precompile(plot!, (Scene, Type{Poly{Tuple{IRect2D}}}, Attributes, Tuple{Observable{IRect2D}}, Observable{Tuple{Vector{Vector{Point2f0}}}}))
+    @warnpcfail precompile(plot!, (Mesh{Tuple{Vector{GeometryBasics.Mesh{2, Float32, Ngonf0, FaceView{Ngonf0}}}}},))
+    @warnpcfail precompile(plot!, (Scene, Type{Annotations{Tuple{Vector{Tuple{String, Point2f0}}}}}, Attributes, Tuple{Observable{Vector{Tuple{String, Point2f0}}}}, Observable{Tuple{Vector{Tuple{String, Point2f0}}}}))
 
     # A big dump from SnoopCompile. These will go stale rapidly, but until work is done on inferrability this is probably the best we can do
     isdefined(AbstractPlotting, Symbol("#303#305")) && Base.precompile(Tuple{getfield(AbstractPlotting, Symbol("#303#305")),Int64,FTFont,Tuple{String, Point{2, Float32}},RGBA{Float32},Float32,Vec{2, Float32},Quaternionf0,Float64,Float64})   # time: 0.8072854
