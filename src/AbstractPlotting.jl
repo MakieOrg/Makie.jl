@@ -26,9 +26,14 @@ import GridLayoutBase
 using Base: RefValue
 using Base.Iterators: repeated, drop
 import Base: getindex, setindex!, push!, append!, parent, get, get!, delete!, haskey
-using Observables: listeners, notify!, to_value
-# Imports from Observables which we use a lot
-using Observables: notify!, listeners
+using Observables: listeners, to_value
+
+# Backwards compatability for Observables 0.3
+if hasmethod(Observables.notify, Tuple{Observable})
+    using Observables: notify
+else
+    Base.notify(obs::Observable) = Observables.notify!(obs)
+end
 
 module ContoursHygiene
     import Contour
@@ -112,6 +117,7 @@ include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
 include("basic_recipes/series.jl")
 include("basic_recipes/spy.jl")
+include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
 include("basic_recipes/timeseries.jl")
 include("basic_recipes/title.jl")
@@ -161,7 +167,7 @@ export xtickrotation, ytickrotation, ztickrotation
 export xtickrotation!, ytickrotation!, ztickrotation!
 
 # Node/Signal related
-export Node, Observable, lift, map_once, to_value, on, @lift
+export Node, Observable, lift, map_once, to_value, on, onany, @lift, off, connect!
 
 # utilities and macros
 export @recipe, @extract, @extractvalue, @key_str, @get_attribute
@@ -233,15 +239,18 @@ export cgrad, available_gradients, showgradients
 
 export Pattern
 
+assetpath(files...) = normpath(joinpath(@__DIR__, "..", "assets", files...))
+
+export assetpath
 # default icon for Makie
 function icon()
-    path = joinpath(dirname(pathof(AbstractPlotting)), "..", "assets", "icons")
+    path = assetpath("icons")
     icons = FileIO.load.(joinpath.(path, readdir(path)))
-    icons = reinterpret.(NTuple{4,UInt8}, icons)
+    return reinterpret.(NTuple{4,UInt8}, icons)
 end
 
 function logo()
-    FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
+    FileIO.load(assetpath("misc", "makie_logo.png"))
 end
 
 function __init__()

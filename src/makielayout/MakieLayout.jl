@@ -56,6 +56,7 @@ include("layoutables/axis.jl")
 include("layoutables/colorbar.jl")
 include("layoutables/label.jl")
 include("layoutables/slider.jl")
+include("layoutables/intervalslider.jl")
 include("layoutables/button.jl")
 include("layoutables/box.jl")
 include("layoutables/toggle.jl")
@@ -66,25 +67,25 @@ include("layoutables/textbox.jl")
 
 export Axis
 export Slider
+export IntervalSlider
 export Button
 export Colorbar
 export Label
 export Box
 export Toggle
-export Legend
+export Legend, axislegend
 export LegendEntry, MarkerElement, PolyElement, LineElement, LegendElement
 export LScene
 export Menu
 export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
-export autolimits!, limits!
+export autolimits!, limits!, reset_limits!
 export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export layoutscene
 export set_close_to!
-export xaxis_bottom!, xaxis_top!, yaxis_left!, yaxis_right!
 export labelslider!, labelslidergrid!
 export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!

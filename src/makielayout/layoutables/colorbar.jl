@@ -48,12 +48,12 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     @extract attrs (
         label, labelcolor, labelsize, labelvisible, labelpadding, ticklabelsize,
-        ticklabelspace, labelfont, ticklabelfont, ticklabelcolor,
+        ticklabelspace, labelfont, ticklabelfont, ticklabelcolor, ticklabelrotation,
         ticklabelsvisible, ticks, tickformat, ticksize, ticksvisible, ticklabelpad, tickalign,
         tickwidth, tickcolor, spinewidth, topspinevisible,
         rightspinevisible, leftspinevisible, bottomspinevisible, topspinecolor,
         leftspinecolor, rightspinecolor, bottomspinecolor, colormap, limits,
-        halign, valign, vertical, flipaxisposition, ticklabelalign, flip_vertical_label,
+        halign, valign, vertical, flipaxis, ticklabelalign, flip_vertical_label,
         nsteps, highclip, lowclip,
         minorticksvisible, minortickalign, minorticksize, minortickwidth, minortickcolor, minorticks)
 
@@ -95,16 +95,22 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
 
     cgradient = lift(colormap, typ = Any) do cmap
-        if cmap isa Symbol
-            cgrad(cmap)
-        elseif cmap isa Tuple{Symbol, Number}
-            cgrad(cmap[1], alpha = cmap[2])
-        elseif cmap isa PlotUtils.ColorGradient
+        if cmap isa PlotUtils.ColorGradient
+            # if we have a colorgradient directly, we want to keep it intact
+            # to enable correct categorical colormap behavior etc
             cmap
         else
-            error("Can't deal with colormap of type $(typeof(cmap))")
+            # this is a bit weird, first convert to a vector of colors,
+            # then use cgrad, but at least I can use `get` on that later
+            converted = AbstractPlotting.convert_attribute(
+                cmap,
+                AbstractPlotting.key"colormap"()
+            )
+            cgrad(converted)
         end
     end
+
+    map_is_categorical = lift(x -> x isa PlotUtils.CategoricalColorGradient, cgradient)
 
     steps = lift(cgradient, nsteps) do cgradient, n
         if cgradient isa PlotUtils.CategoricalColorGradient
@@ -113,6 +119,17 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
             collect(LinRange(0, 1, n))
         end::Vector{Float64}
     end
+
+    # it's hard to draw categorical and continous colormaps well
+    # with the same primitives
+
+    # therefore we make one interpolated image for continous
+    # colormaps and number of polys for categorical colormaps
+    # at the same time, then we just set one of them invisible
+    # depending on the type of colormap
+    # this should solve most white-line issues
+
+    # for categorical colormaps we make a number of rectangle polys
 
     rects_and_colors = lift(barbox, vertical, steps, cgradient) do bbox, v, steps, gradient
         xmin, ymin = minimum(bbox)
@@ -133,15 +150,35 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         rects, colors
     end
 
+    colors = lift(x -> getindex(x, 2), rects_and_colors)
+
     rects = poly!(topscene,
         lift(x -> getindex(x, 1), rects_and_colors),
-        color = lift(x -> getindex(x, 2), rects_and_colors),
-        show_axis = false)
+        color = colors,
+        show_axis = false,
+        visible = map_is_categorical,
+    )
 
-    decorations[:colorrects] = rects
+    decorations[:categorical_map] = rects
 
-    # hm = heatmap!(topscene, xrange, yrange, colorcells, colormap = colormap, raw = true)
-    # decorations[:heatmap] = hm
+    # for continous colormaps we sample a 1d image
+    # to avoid white lines when rendering vector graphics
+
+    continous_pixels = lift(vertical, nsteps, cgradient) do v, n, grad
+        px = get.(Ref(grad), LinRange(0, 1, n))
+        v ? reshape(px, 1, n) : reshape(px, n, 1)
+    end
+
+    cont_image = image!(topscene,
+        @lift(range(left($barbox), right($barbox), length = 2)),
+        @lift(range(bottom($barbox), top($barbox), length = 2)),
+        continous_pixels,
+        visible = @lift(!$map_is_categorical),
+        show_axis = false,
+        interpolate = true,
+    )
+
+    decorations[:continuous_map] = cont_image
 
     highclip_tri = lift(barbox, spinewidth) do box, spinewidth
         if vertical[]
@@ -225,17 +262,17 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     decorations[:spines] = lines!(topscene, borderpoints, linewidth = spinewidth, color = topspinecolor)
 
-    axispoints = lift(barbox, vertical, flipaxisposition) do scenearea,
-            vertical, flipaxisposition
+    axispoints = lift(barbox, vertical, flipaxis) do scenearea,
+            vertical, flipaxis
 
         if vertical
-            if flipaxisposition
+            if flipaxis
                 (bottomright(scenearea), topright(scenearea))
             else
                 (bottomleft(scenearea), topleft(scenearea))
             end
         else
-            if flipaxisposition
+            if flipaxis
                 (topleft(scenearea), topright(scenearea))
             else
                 (bottomleft(scenearea), bottomright(scenearea))
@@ -244,13 +281,14 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     end
 
-    axis = LineAxis(topscene, endpoints = axispoints, flipped = flipaxisposition,
+    axis = LineAxis(topscene, endpoints = axispoints, flipped = flipaxis,
         limits = limits, ticklabelalign = ticklabelalign, label = label,
         labelpadding = labelpadding, labelvisible = labelvisible, labelsize = labelsize,
         labelcolor = labelcolor,
         labelfont = labelfont, ticklabelfont = ticklabelfont, ticks = ticks, tickformat = tickformat,
         ticklabelsize = ticklabelsize, ticklabelsvisible = ticklabelsvisible, ticksize = ticksize,
         ticksvisible = ticksvisible, ticklabelpad = ticklabelpad, tickalign = tickalign,
+        ticklabelrotation = ticklabelrotation,
         tickwidth = tickwidth, tickcolor = tickcolor, spinewidth = spinewidth,
         ticklabelspace = ticklabelspace, ticklabelcolor = ticklabelcolor,
         spinecolor = :transparent, spinevisible = :false, flip_vertical_label = flip_vertical_label,
@@ -260,20 +298,20 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         
     decorations[:axis] = axis
 
-    onany(axis.protrusion, vertical, flipaxisposition) do axprotrusion,
-            vertical, flipaxisposition
+    onany(axis.protrusion, vertical, flipaxis) do axprotrusion,
+            vertical, flipaxis
 
 
         left, right, top, bottom = 0f0, 0f0, 0f0, 0f0
 
         if vertical
-            if flipaxisposition
+            if flipaxis
                 right += axprotrusion
             else
                 left += axprotrusion
             end
         else
-            if flipaxisposition
+            if flipaxis
                 top += axprotrusion
             else
                 bottom += axprotrusion

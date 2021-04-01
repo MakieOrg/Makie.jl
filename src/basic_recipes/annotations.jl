@@ -19,46 +19,7 @@ function convert_arguments(::Type{<: Annotations},
 end
 
 function plot!(plot::Annotations)
-    sargs = (
-        plot.model, plot.font,
-        plot[1],
-        getindex.(plot, (:color, :textsize, :align, :rotation, :justification, :lineheight))...,
-    )
-    atlas = get_texture_atlas()
-    combinedpos = [Point3f0(0)]
-    colors = RGBAf0[RGBAf0(0,0,0,0)]
-    textsize = Float32[0]
-    fonts = [defaultfont()]
-    rotations = Quaternionf0[Quaternionf0(0,0,0,0)]
-
-    tplot = text!(plot, " ",
-        align = Vec2f0(0), model = Mat4f0(I),
-        position = combinedpos, color = colors, visible = plot.visible,
-        textsize = textsize, font = fonts, rotation = rotations
-    )
-
-    onany(sargs...) do model, pfonts, text_pos, args...
-        io = IOBuffer();
-        empty!(combinedpos); empty!(colors); empty!(textsize); empty!(fonts); empty!(rotations)
-        broadcast_foreach(1:length(text_pos), to_font(pfonts), text_pos, args...) do idx, f,
-                (text, startpos), color, tsize, alignment, rotation, justification, lineheight
-            c = to_color(color)
-            rot = to_rotation(rotation)
-            pos = layout_text(text, startpos, tsize, f, alignment, rot, model, justification, lineheight)
-            print(io, text)
-            n = length(pos)
-            append!(combinedpos, pos)
-            append!(textsize, repeated(tsize, n))
-            append!(colors, repeated(c, n))
-            append!(fonts, one_attribute_per_char(f, text))
-            append!(rotations, repeated(rot, n))
-        end
-        str = String(take!(io))
-        # update string the signals
-        tplot[1] = str
-        return
-    end
-    # update one time in the beginning, since otherwise the above won't run
-    notify!(sargs[1])
+    # annotations are not necessary anymore with the different text behavior
+    text!(plot, plot[1]; plot.attributes...)
     plot
 end

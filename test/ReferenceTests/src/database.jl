@@ -77,6 +77,7 @@ end
 
 function load_database()
     empty!(DATABASE)
+    include(joinpath(@__DIR__, "tests/text.jl"))
     include(joinpath(@__DIR__, "tests/attributes.jl"))
     include(joinpath(@__DIR__, "tests/examples2d.jl"))
     include(joinpath(@__DIR__, "tests/examples3d.jl"))

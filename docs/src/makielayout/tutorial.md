@@ -8,14 +8,32 @@ CairoMakie.activate!()
 In this tutorial, we will see some of the capabilities of layouts in Makie while
 building a complex figure step by step. This is the final result we will create:
 
-![step_22](step_22.svg)
+![layout_tutorial_final](layout_tutorial_final.svg)
 
 All right, let's get started!
 
-## Creating A Figure
+## Importing a backend
 
-First, we import CairoMakie.
-Then we create an empty `Figure` which will hold all our content elements and organize them in a layout.
+First, we import CairoMakie, which re-exports AbstractPlotting and MakieLayout.
+
+```@example tutorial
+using CairoMakie
+```
+
+The same works for the other backends WGLMakie and GLMakie.
+You can find an overview of the different backends with their capabilities in [Backends & Output](@ref).
+The old MakieLayout package which you needed to install separately is deprecated, since it now lives directly in AbstractPlotting.
+As a side note, if you do not want to make plotting code backend dependent, for example inside a package where the user should choose the backend themselves, you can depend on `AbstractPlotting` alone.
+This allows the user to do:
+
+```julia
+using CustomPlots # depends only on AbstractPlotting
+using GLMakie # chooses GLMakie as the backend for CustomPlots
+```
+
+## Creating a figure
+
+We create an empty `Figure` which will hold all our content elements and organize them in a layout.
 
 ```@example tutorial
 using CairoMakie
@@ -28,12 +46,10 @@ noto_sans_bold = "../assets/NotoSans-Bold.ttf"
 fig = Figure(resolution = (1200, 700), backgroundcolor = RGBf0(0.98, 0.98, 0.98), font = noto_sans)
 
 fig
-save("step_001.svg", fig) # hide
-nothing # hide
 ```
-![step_001](step_001.svg)
 
-## First Axis
+
+## First axis
 
 The figure is completely empty, I have made the background light gray so it's easier
 to see. Now we add an `Axis`.
@@ -49,12 +65,10 @@ like they could result from an experimental trial.
 ax1 = fig[1, 1] = Axis(fig, title = "Pre Treatment")
 
 fig
-save("step_002.svg", fig) # hide
-nothing # hide
 ```
-![step_002](step_002.svg)
 
-## Plotting into an Axis
+
+## Plotting into an axis
 
 We can plot into the axis with the ! versions of Makie's plotting functions.
 Such mutating function calls return the plot object that is created, which we save for later.
@@ -67,12 +81,10 @@ scat1 = scatter!(ax1, data1,
     color = (:red, 0.3), markersize = 15px, marker = '■')
 
 fig
-save("step_003.svg", fig) # hide
-nothing # hide
 ```
-![step_003](step_003.svg)
 
-## Multiple Axes
+
+## Multiple axes
 
 This looks nice already, but we want another axis with a second dataset, to
 the right of the one we have. Currently our layout has one row and one cell, and
@@ -97,10 +109,8 @@ ax2, line2 = lines(fig[1, 2], 7..17, x -> -x + 26,
     axis = (title = "Post Treatment",))
 
 fig
-save("step_004.svg", fig) # hide
-nothing # hide
 ```
-![step_004](step_004.svg)
+
 
 As you can see, the first axis has shrunk to the left to make space for the new
 axis on the right. We can take another look at the `layout` to see how it has
@@ -114,7 +124,6 @@ Let's plot into the new axis, the same way we did the scatter plots before.
 We can also leave out the axis as the first argument if we just want to plot into
 the current axis.
 
-
 ```@example tutorial
 data2 = randn(50, 2) * [1 -2.5; -2.5 1] .+ [13 13]
 
@@ -122,13 +131,10 @@ scat2 = scatter!(data2,
     color = (:blue, 0.3), markersize = 15px, marker = '▲')
 
 fig
-save("step_005.svg", fig) # hide
-nothing # hide
 ```
-![step_005](step_005.svg)
 
 
-## Linking Axes
+## Linking axes
 
 We want to make the left and right axes correspond to each other, so we can compare
 the plots more easily. To do that, we link both x and y axes. That will keep them
@@ -139,10 +145,7 @@ synchronized. The function `linkaxes!` links both x and y, `linkxaxes!` links on
 linkaxes!(ax1, ax2)
 
 fig
-save("step_006.svg", fig) # hide
-nothing # hide
 ```
-![step_006](step_006.svg)
 
 
 This looks good, but now both y-axes are the same, so we can hide the right one
@@ -153,10 +156,7 @@ now that the y-axis is gone, the two Axes grow to fill the gap.
 hideydecorations!(ax2, grid = false)
 
 fig
-save("step_007.svg", fig) # hide
-nothing # hide
 ```
-![step_007](step_007.svg)
 
 
 Even though our plots are entirely made up, we should follow best practice and label
@@ -168,12 +168,10 @@ ax2.xlabel = "Weight [kg]"
 ax1.ylabel = "Maximum Velocity [m/sec]"
 
 fig
-save("step_007_2.svg", fig) # hide
-nothing # hide
 ```
-![step_007 2](step_007_2.svg)
 
-## Adding a Legend
+
+## Adding a legend
 
 Let's add a legend to our figure that describes elements from both axes. We use
 Legend for that. Legend is a relatively complex object and there are many
@@ -187,10 +185,8 @@ leg = fig[1, end+1] = Legend(fig,
     ["f(x) = x", "Data", "f(x) = -x + 26", "Data"])
 
 fig
-save("step_008.svg", fig) # hide
-nothing # hide
 ```
-![step_008](step_008.svg)
+
 
 You can see one nice feature of Makie here, which is that the legend takes
 much less horizontal space than the two axes. In fact, it takes exactly the space
@@ -210,13 +206,10 @@ We want it in the second row, and spanning the first two columns.
 fig[2, 1:2] = leg
 
 fig
-save("step_009.svg", fig) # hide
-nothing # hide
 ```
-![step_009](step_009.svg)
 
 
-## Fixing Spacing Issues
+## Fixing spacing issues
 
 There are a couple of things wrong with this. The legend is where we want it, below the
 two axes. But it takes too much space vertically, and there is a large gap on the right.
@@ -231,10 +224,8 @@ We can remove empty cells in a layout by calling `trim!` on it:
 trim!(fig.layout)
 
 fig
-save("step_010.svg", fig) # hide
-nothing # hide
 ```
-![step_010](step_010.svg)
+
 
 This is much better already! But the legend still takes too much space vertically.
 The reason for that is the default `tellheight` setting of the legend. It's set to
@@ -244,15 +235,11 @@ where the legend sits on the right of an axis. We wouldn't want the axis to shri
 to the height of the legend. But now that the legend has its own row, we do want
 this behavior. So we set the `tellheight` attribute to `true`.
 
-
 ```@example tutorial
 leg.tellheight = true
 
 fig
-save("step_011.svg", fig) # hide
-nothing # hide
 ```
-![step_011](step_011.svg)
 
 
 Now the legend's row is shrunk to fit. One thing that we can do to improve the
@@ -262,13 +249,10 @@ use of space is to change the legend's orientation to `:horizontal`.
 leg.orientation = :horizontal
 
 fig
-save("step_012.svg", fig) # hide
-nothing # hide
 ```
-![step_012](step_012.svg)
 
 
-## Nested Layouts
+## Nested layouts
 
 Let's add two new axes with heatmaps! We want them stacked on top of each other
 on the right side of the figure. We'll do the naive thing first, which is to
@@ -282,10 +266,7 @@ hm_axes = fig[1:2, 3] = [Axis(fig, title = t) for t in ["Cell Assembly Pre", "Ce
 heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 
 fig
-save("step_013.svg", fig) # hide
-nothing # hide
 ```
-![step_013](step_013.svg)
 
 
 This looks weird, the two axes do not have the same height. Rather, the lower
@@ -316,10 +297,8 @@ fig[1:2, 3] = hm_sublayout
 hm_sublayout[:v] = hm_axes
 
 fig
-save("step_014.svg", fig) # hide
-nothing # hide
 ```
-![step_014](step_014.svg)
+
 
 We don't care about the axis decorations, as it's often the case with image plots.
 The function `hidedecorations!` hides both x and y decorations at once.
@@ -329,13 +308,10 @@ The function `hidedecorations!` hides both x and y decorations at once.
 hidedecorations!.(hm_axes)
 
 fig
-save("step_015.svg", fig) # hide
-nothing # hide
 ```
-![step_015](step_015.svg)
 
 
-## Adding a Colorbar
+## Adding a colorbar
 
 Now, we also want to add a color bar for the two heatmaps. Right now, their colors
 are independently scaled from each other. We choose a scale that makes sense for
@@ -359,24 +335,17 @@ end
 cbar = hm_sublayout[:, 2] = Colorbar(fig, heatmaps[1], label = "Activity [spikes/sec]")
 
 fig
-save("step_016.svg", fig) # hide
-nothing # hide
 ```
-![step_016](step_016.svg)
 
 
 The color bar is quite chunky because it takes 50% of the available width in the
 sublayout. Let's give it a fixed width of 30 units.
 
-
 ```@example tutorial
 cbar.width = 30
 
 fig
-save("step_017.svg", fig) # hide
-nothing # hide
 ```
-![step_017](step_017.svg)
 
 
 Much better! Note that you can usually set all attributes during creation of an object
@@ -388,15 +357,11 @@ to two thirds of the available height using `Relative(2/3)`.
 
 If you only specify a number like `30`, it is interpreted as `Fixed(30)`.
 
-
 ```@example tutorial
 cbar.height = Relative(2/3)
 
 fig
-save("step_18.svg", fig) # hide
-nothing # hide
 ```
-![step_18](step_18.svg)
 
 
 We don't really like the automatically chosen tick values here. Sometimes, the automatic
@@ -407,13 +372,10 @@ We can set the `ticks` attribute to any iterable of numbers that we want.
 cbar.ticks = 1:0.5:3
 
 fig
-save("step_18b.svg", fig) # hide
-nothing # hide
 ```
-![step_18b](step_18b.svg)
 
 
-## Adding a Title
+## Adding a title
 
 Now the plot could use a title! While other plotting packages sometimes have
 functions like `supertitle`, they often don't work quite right or force you to
@@ -429,19 +391,15 @@ will create a new row and push all other content down.
 Note that after this, all the cell indices of our current content will have changed
 to reflect the new GridLayout size.
 
-
 ```@example tutorial
 supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
     textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
 
 fig
-save("step_19.svg", fig) # hide
-nothing # hide
 ```
-![step_19](step_19.svg)
 
 
-## Subplot Labels
+## Subplot labels
 
 In figures meant for publication, you often need to label subplots with letters
 or numbers. These can sometimes cause trouble because they overlap with other
@@ -461,7 +419,7 @@ be aligned.
 
 So for our corner letters, we don't want to create new columns or rows. Doing that
 would probably cause alignment issues in most cases. Instead, we place these objects
-*inside* the protrusions of existing cells. That means they are part of the gaps
+_inside_ the protrusions of existing cells. That means they are part of the gaps
 between columns and rows, which is fitting for our labels.
 
 We can do this by specifying the `Side` as a third argument when indexing the layout.
@@ -476,10 +434,8 @@ label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 35,
     font = noto_sans_bold, halign = :right)
 
 fig
-save("step_20.svg", fig) # hide
-nothing # hide
 ```
-![step_20](step_20.svg)
+
 
 That looks good! You can see that the letters, larger than the axis titles, have
 increased the gap between the title and the axes to fit them. In most other
@@ -494,10 +450,8 @@ label_a.padding = (0, 6, 16, 0)
 label_b.padding = (0, 6, 16, 0)
 
 fig
-save("step_21.svg", fig) # hide
-nothing # hide
 ```
-![step_21](step_21.svg)
+
 
 ## Tweaking aspect ratios
 
@@ -518,11 +472,9 @@ because the left two axes will grow to fill the remaining space.
 
 colsize!(hm_sublayout, 1, Aspect(1, 1))
 
+save("layout_tutorial_final.svg", fig) # hide
 fig
-save("step_22.svg", fig) # hide
-nothing # hide
 ```
-![step_22](step_22.svg)
 
 And there we have it! Hopefully this tutorial has given you an overview how to
 approach the creation of a complex figure in Makie. Check the rest of the

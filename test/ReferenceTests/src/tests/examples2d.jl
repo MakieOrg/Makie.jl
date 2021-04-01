@@ -100,7 +100,7 @@ end
     )
 end
 
-@cell "colored triangle" begin
+@cell "colored triangle with poly" begin
     poly(
         [(0.0, 0.0), (0.5, 1.0), (1.0, 0.0)],
         color=[:red, :green, :blue],

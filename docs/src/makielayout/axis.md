@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!(type = "png")
 ```
 
+# Axis
+
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.
@@ -11,36 +13,55 @@ Here's how you create one
 ```@example laxis
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-ax = layout[1, 1] = Axis(scene, xlabel = "x label", ylabel = "y label",
+ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
     title = "Title")
 
-save("basic_axis.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![basic axis](basic_axis.svg)
 
-## Plotting Into an Axis
+## Plotting into an Axis
 
 You can use all the normal mutating 2D plotting functions with an `Axis`.
-The only difference is, that they return the created plot object and not
-the axis (like Makie's base functions return the `Scene`). This is so
-that it is more convenient to save and manipulate the plot objects.
+These functions return the created plot object.
+Omitting the `ax` argument plots into the `current_axis()`, which is usually the axis that was last created.
 
 
 ```@example laxis
 lineobject = lines!(ax, 0..10, sin, color = :red)
+scatobject = scatter!(0:0.5:10, cos, color = :orange)
 
-save("basic_axis_plotting.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![basic axis plotting](basic_axis_plotting.svg)
+## Deleting plots
+
+You can delete a plot object directly via `delete!(ax, plotobj)`.
+You can also remove all plots with `empty!(ax)`.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure(resolution = (1200, 500))
+
+axs = [Axis(f[1, i]) for i in 1:3]
+
+scatters = map(axs) do ax
+    [scatter!(ax, 0:0.1:10, x -> sin(x) + i) for i in 1:3]
+end
+
+delete!(axs[2], scatters[2][2])
+empty!(axs[3])
+
+f
+```
 
 
-## Setting Axis Limits and Reversing Axes
+## Setting Axis limits and reversing axes
 
 You can set axis limits with the functions `xlims!`, `ylims!` or `limits!`. The
 numbers are meant in the order left right for `xlims!`, and bottom top for `ylims!`.
@@ -54,31 +75,48 @@ but they will be changed to fit the chosen ratio.
 
 ```@example
 using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-axes = layout[] = [Axis(scene) for i in 1:2, j in 1:3]
+axes = [Axis(f[i, j]) for j in 1:3, i in 1:2]
 
-xs = LinRange(0, 2pi, 50)
 for (i, ax) in enumerate(axes)
     ax.title = "Axis $i"
-    lines!(ax, xs, sin.(xs))
+    poly!(ax, Point2f0[(9, 9), (3, 1), (1, 3)],
+        color = cgrad(:inferno, 6, categorical = true)[i])
 end
 
-xlims!(axes[1], [0, 2pi]) # as vector
-xlims!(axes[2], 2pi, 0) # separate, reversed
-ylims!(axes[3], -1, 1) # separate
-ylims!(axes[4], (1, -1)) # as tuple, reversed
-limits!(axes[5], 0, 2pi, -1, 1) # x1, x2, y1, y2
-limits!(axes[6], BBox(0, 2pi, -1, 1)) # as rectangle
+xlims!(axes[1], [0, 10]) # as vector
+xlims!(axes[2], 10, 0) # separate, reversed
+ylims!(axes[3], 0, 10) # separate
+ylims!(axes[4], (10, 0)) # as tuple, reversed
+limits!(axes[5], 0, 10, 0, 10) # x1, x2, y1, y2
+limits!(axes[6], BBox(0, 10, 0, 10)) # as rectangle
 
-save("example_axis_limits.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![axis limits](example_axis_limits.svg)
+When you create a new plot in an axis, `reset_limits!(ax)` is called, which adjusts the limits to the new bounds.
+If you have previously set limits with `limits!`, `xlims!` or `ylims!`, these limits are not overridden by the new plot. If you want to override the manually set limits, call `autolimits!(ax)` to compute completely new limits from the axis content.
 
-## Modifying Ticks
+The user-defined limits are stored in `ax.limits`. This can either be a tuple with two entries, where each entry can be either `nothing` or a tuple with numbers `(low, high)`.It can also be a tuple with four numbers `(xlow, xhigh, ylow, yhigh)`. You can pass this directly when creating a new axis. The same observable `limits` is also set using `limits!`, `xlims!` and `ylims!`, or reset to `(nothing, nothing)` using `autolimits!`.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure(resolution = (800, 400))
+
+lines(f[1, 1], 0..10, sin)
+lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
+
+f
+```
+
+## Modifying ticks
 
 To control ticks, you can set the axis attributes `xticks/yticks` and `xtickformat/ytickformat`.
 
@@ -103,7 +141,7 @@ As a third option you can pass a function taking minimum and maximum axis value 
 For formatting, you can pass a function which takes a vector of numbers and outputs a vector of strings.
 You can also pass a format string which is passed to `Formatting.format` from [Formatting.jl](https://github.com/JuliaIO/Formatting.jl), where you can mix the formatted numbers with other text like in `"{:.2f}ms"`.
 
-### Predefined Ticks
+### Predefined ticks
 
 The default tick type is `LinearTicks(n)`, where `n` is the target number of ticks which the algorithm tries to return.
 
@@ -155,13 +193,10 @@ axes[4].xtickformat = "{:.2f}ms"
 axes[4].xlabel = "Time"
 
 
-save("example_axis_ticks.svg", scene) # hide
-nothing # hide
+scene
 ```
 
-![axis ticks](example_axis_ticks.svg)
-
-## Minor Ticks and Grids
+## Minor ticks and grids
 
 You can show minor ticks and grids by setting `x/yminorticksvisible = true` and `x/yminorgridvisible = true` which are off by default.
 You can set size, color, width, align etc. like for the normal ticks, but there are no labels.
@@ -190,14 +225,12 @@ fig = with_theme(theme) do
         yminorticks = IntervalsBetween(n+1)) for n in 1:4]
     fig
 end
-save("example_minor_ticks.svg", fig) # hide
-nothing # hide
+
+fig
 ```
 
-![minor ticks](example_minor_ticks.svg)
 
-
-## Hiding Axis Spines and Decorations
+## Hiding Axis spines and decorations
 
 You can hide all axis elements manually, by setting their specific visibility attributes to `false`, like
 `xticklabelsvisible`, but that can be tedious. There are a couple of convenience functions for this.
@@ -207,26 +240,40 @@ To hide spines, you can use `hidespines!`.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-ax1 = layout[1, 1] = Axis(scene, title = "Axis 1")
-ax2 = layout[1, 2] = Axis(scene, title = "Axis 2")
+ax1 = Axis(f[1, 1], title = "Axis 1")
+ax2 = Axis(f[1, 2], title = "Axis 2")
 
 hidespines!(ax1)
 hidespines!(ax2, :t, :r) # only top and right
 
-save("example_axis_hidespines.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![axis hide spines](example_axis_hidespines.svg)
 
 To hide decorations, you can use `hidedecorations!`, or the specific `hidexdecorations!` and `hideydecorations!`.
 When hiding, you can set `label = false`, `ticklabels = false`, `ticks = false`, `grid = false`, `minorgrid = false` or `minorticks = false` as keyword
 arguments if you want to keep those elements.
 It's common, e.g., to hide everything but the grid lines in facet plots.
 
-## Controlling Axis Aspect Ratios
+```@example
+using CairoMakie
+
+f = Figure(resolution = (1200, 700))
+
+ax1 = Axis(f[1, 1], title = "Axis 1")
+ax2 = Axis(f[1, 2], title = "Axis 2")
+ax3 = Axis(f[1, 3], title = "Axis 3")
+
+hidedecorations!(ax1)
+hidexdecorations!(ax2, grid = false)
+hideydecorations!(ax3, ticks = false)
+
+f
+```
+
+## Controlling Axis aspect ratios
 
 If you're plotting images, you might want to force a specific aspect ratio
 of an axis, so that the images are not stretched. The default is that an axis
@@ -246,11 +293,10 @@ using FileIO
 using Random # hide
 Random.seed!(1) # hide
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-axes = [Axis(scene) for i in 1:2, j in 1:3]
+axes = [Axis(f[i, j]) for i in 1:2, j in 1:3]
 tightlimits!.(axes)
-layout[1:2, 1:3] = axes
 
 img = rotr90(load("../assets/cow.png"))
 
@@ -275,14 +321,11 @@ axes[2, 2].aspect = AxisAspect(2)
 axes[2, 3].title = "AxisAspect(0.5)"
 axes[2, 3].aspect = AxisAspect(0.5)
 
-save("example_axis_aspects.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![axis aspects](example_axis_aspects.svg)
 
-
-## Controlling Data Aspect Ratios
+## Controlling data aspect ratios
 
 If you want the content of an axis to adhere to a certain data aspect ratio, there is
 another way than forcing the aspect ratio of the whole axis to be the same, and
@@ -364,32 +407,76 @@ separately.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1200, 900))
+f = Figure(resolution = (1200, 900))
 
-layout[1, 1:3] = axs = [Axis(scene) for i in 1:3]
-linkxaxes!(axs[1:2]...)
-linkyaxes!(axs[2:3]...)
+ax1 = Axis(f[1, 1])
+ax2 = Axis(f[1, 2])
+ax3 = Axis(f[2, 2])
 
-axs[1].title = "x linked"
-axs[2].title = "x & y linked"
-axs[3].title = "y linked"
+linkyaxes!(ax1, ax2)
+linkxaxes!(ax2, ax3)
 
-for i in 1:3
-    lines!(axs[i], 1:10, 1:10, color = "green")
+ax1.title = "y linked"
+ax2.title = "x & y linked"
+ax3.title = "x linked"
+
+for (i, ax) in enumerate([ax1, ax2, ax3])
+    lines!(ax, 1:10, 1:10, color = "green")
     if i != 1
-        lines!(axs[i], 1:10, 11:20, color = "blue")
+        lines!(ax, 11:20, 1:10, color = "red")
     end
     if i != 3
-        lines!(axs[i], 11:20, 1:10, color = "red")
+        lines!(ax, 1:10, 11:20, color = "blue")
     end
 end
 
-save("example_linked_axes.svg", scene) # hide
-nothing # hide
+f
 ```
 
-![linked axes](example_linked_axes.svg)
 
+## Changing x and y axis position
+
+By default, the x axis is at the bottom, and the y axis at the left side.
+You can change this with the attributes `xaxisposition = :top` and `yaxisposition = :right`.
+
+```@example
+using CairoMakie
+
+f = Figure(resolution = (800, 800))
+
+for i in 1:2, j in 1:2
+    Axis(
+        f[i, j],
+        limits = (0, 5, 0, 5),
+        xaxisposition = (i == 1 ? :top : :bottom),
+        yaxisposition = (j == 1 ? :left : :right))
+end
+
+f
+```
+
+
+## Creating a twin axis
+
+There is currently no dedicated function to do this, but you can simply add an Axis on top of another, then hide everything but the second axis.
+
+Here's an example how to do this with a second y axis on the right.
+
+```@example
+using CairoMakie
+
+f = Figure(resolution = (800, 600))
+
+ax1 = Axis(f[1, 1], yticklabelcolor = :blue)
+ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right)
+hidespines!(ax2)
+hidexdecorations!(ax2)
+
+lines!(ax1, 0..10, sin, color = :blue)
+lines!(ax2, 0..10, x -> 100 * cos(x), color = :red)
+
+f
+```
 
 ## Axis interaction
 
@@ -411,8 +498,11 @@ You can also restrict the pan dimensions all the time by setting the axis attrib
 
 ### Limit Reset
 
-You can reset the limits with `ctrl + leftclick`. Alternatively, you can call
-`autolimits!` on the axis to achieve the same effect programmatically.
+You can reset the limits with `ctrl + leftclick`. This is the same as doing `reset_limits!(ax)`. This sets the limits back to the values stored in `ax.limits`, and if they are `nothing`, computes them automatically. If you have previously called `limits!`, `xlims!` or `ylims!`, these settings therefore stay intact when doing a limit reset.
+
+You can alternatively press `ctrl + shift + leftclick`, which is the same as calling `autolimits!(ax)`.
+This function ignores previously set limits and computes them all anew given the axis content.
+
 
 ### Rectangle Selection Zoom
 
@@ -524,12 +614,11 @@ ax2 = layout[1, 2] = Axis(scene, title = "hlines")
 hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 
 scene
-save("example_vlines.svg", scene); nothing # hide
 ```
 
-![example vlines](example_vlines.svg)
 
 ```@eval
 using GLMakie
 GLMakie.activate!()
 ```
+

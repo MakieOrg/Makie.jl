@@ -113,10 +113,8 @@ ax2 = layout[1, 1] = Axis(scene, title = "Placed in Layout")
 ax3 = Axis(scene, bbox = BBox(400, 800, 400, 800),
   title = "Placed at BBox(400, 800, 400, 800)")
 
-save("faq_squashed_element.svg", scene); nothing # hide
+scene
 ```
-
-![squashed elements](faq_squashed_element.svg)
 
 
 ### Columns or rows are shrunk to the size of Text or another element
@@ -141,10 +139,8 @@ layout[2, 1] = Axis(scene, title = "Expanded")
 layout[1, 2] = Label(scene, "tellheight = true", tellheight = true)
 layout[2, 2] = Label(scene, "tellheight = false", tellheight = false)
 
-save("faq_shrunk_row.svg", scene); nothing # hide
+scene
 ```
-
-![shrunk row](faq_shrunk_row.svg)
 
 ```@eval
 using GLMakie

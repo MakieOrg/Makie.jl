@@ -18,7 +18,7 @@ end
     lines!(fig[2, 1:2][1, 2], cumsum(rand(30)), color = :red, linewidth = 10)
     surface(fig[1, 2], collect(1.0:40), collect(1.0:40), (x, y) -> 10 * cos(x) * sin(y))
     fig[2, 1:2][2, :] = Colorbar(fig, vertical = false,
-        height = 20, ticklabelalign = (:center, :top), flipaxisposition = false)
+        height = 20, ticklabelalign = (:center, :top), flipaxis = false)
     fig[3, :] = Menu(fig, options = ["A", "B", "C"])
     lt = fig[0, :] = Label(fig, "Figure Demo")
     fig[5, :] = Textbox(fig)

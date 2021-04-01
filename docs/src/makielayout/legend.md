@@ -3,6 +3,8 @@ using CairoMakie
 CairoMakie.activate!()
 ```
 
+# Legend
+
 ## Creating A Legend From Elements
 
 You can create a basic Legend by passing a vector of legend entries and a vector of labels, plus an optional title as the third argument.
@@ -25,11 +27,8 @@ sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
 leg = Legend(scene, [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
 layout[1, 2] = leg
 
-save("example_legend.svg", scene); nothing # hide
+scene
 ```
-
-![example legend](example_legend.svg)
-
 
 ## Creating A Legend From An Axis
 
@@ -49,10 +48,8 @@ lines!(0..15, x -> -cos(x), label = "-cos", color = :green)
 
 f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
 
-save("example_legend_from_axis.svg", f); nothing # hide
+f
 ```
-
-![example legend from axis](example_legend_from_axis.svg)
 
 
 ## Multi-Bank Legend
@@ -73,18 +70,43 @@ lins = [lines!(ax, xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:
 leg = Legend(scene, lins, string.(1:length(lins)), nbanks = 3)
 layout[1, 2] = leg
 
-
-save("example_legend_ncols.svg", scene); nothing # hide
+scene
 ```
-
-![example legend ncols](example_legend_ncols.svg)
-
 
 
 ## Legend Inside An Axis
 
-To place a legend inside an axis you can simply add it to the same layout slot
-that the axis lives in. As long as the axis is bigger than the legend you can
+The `axislegend` function is a quick way to add a legend to an Axis.
+You can pass a selected axis plus arguments which are forwarded to the `Legend` constructor, or the current axis is used by default.
+If you pass only a string, it's used as the title with the current axis.
+
+The position can be set via a shortcut symbol, first halign (l, r, c) then valign (b, t, c), such as :lt for left, top and :cb for center bottom.
+
+```@example
+using CairoMakie
+
+f = Figure(resolution = (800, 600))
+
+ax = Axis(f[1, 1])
+
+sc1 = scatter!(randn(10, 2), color = :red, label = "Red Dots")
+sc2 = scatter!(randn(10, 2), color = :blue, label = "Blue Dots")
+scatter!(randn(10, 2), color = :orange, label = "Orange Dots")
+scatter!(randn(10, 2), color = :cyan, label = "Cyan Dots")
+
+axislegend()
+
+axislegend("Titled Legend", position = :lb)
+
+axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
+    orientation = :horizontal)
+
+f
+```
+
+
+Alternatively, you can simply add a Legend to the same layout slot
+that an axis lives in. As long as the axis is bigger than the legend you can
 set the legend's `tellheight` and `tellwidth` to `false` and position it using the align
 variables. You can use the margin keyword to keep the legend from touching the axis
 spines.
@@ -117,10 +139,8 @@ for leg in legends
     layout[1, 1] = leg
 end
 
-save("example_legend_alignment.svg", scene); nothing # hide
+scene
 ```
-
-![example legend alignment](example_legend_alignment.svg)
 
 
 ## Creating Legend Entries Manually
@@ -169,10 +189,8 @@ leg = layout[1, 2] = Legend(scene,
     ["Line & Marker", "Poly & Line", "Line", "Marker", "Poly"],
     patchsize = (35, 35))
 
-save("example_legend_entries.svg", scene); nothing # hide
+scene
 ```
-
-![example legend entries](example_legend_entries.svg)
 
 
 ## Horizontal Legend
@@ -204,11 +222,8 @@ leg_horizontal = Legend(scene, [lin, sca, lin], ["a line", "some dots", "line ag
     orientation = :horizontal, tellwidth = false, tellheight = true)
 layout[2, 1] = leg_horizontal
 
-
-save("example_legend_horizontal.svg", scene); nothing # hide
+scene
 ```
-
-![example legend horizontal](example_legend_horizontal.svg)
 
 
 ## Multi-Group Legends
@@ -262,11 +277,7 @@ legends[5].nbanks = 2
 legends[6].nbanks = 2
 
 scene
-
-save("example_multilegend.svg", scene); nothing # hide
 ```
-
-![example multilegend](example_multilegend.svg)
 
 ```@eval
 using GLMakie
