@@ -296,6 +296,34 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     end
 end
 
+pos2index(x, r, N) = ceil(Int, N * (x - minimum(r)) / (maximum(r) - minimum(r) + 1e-10))
+index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i-1) / (N-1)
+
+function show_data(inspector::DataInspector, plot::Heatmap, idx)
+    # This is a mess but it'll need to be updated once Heatmaps are centered 
+    # anyway...
+    @info "Heatmap"
+    a = inspector.attributes
+    if idx === nothing
+        a.visible[] = false
+        a.bbox_visible[] = false
+    else
+        # idx == 0 :(
+        mpos = mouseposition(inspector.parent)
+        i = pos2index(mpos[1], plot[1][], size(plot[3][], 1))
+        j = pos2index(mpos[2], plot[2][], size(plot[3][], 2))
+        x = index2pos(i, plot[1][], size(plot[3][], 1))
+        y = index2pos(j, plot[2][], size(plot[3][], 2))
+        z = plot[3][][i, j]
+
+        # bbox = plot.plots[1][1][][idx]
+        a.position[] = Point3f0(x, y, 0)
+        a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
+        # a.bbox[] = FRect3D(bbox)
+        a.visible[] = true
+        # a.bbox_visible[] = true
+    end
+end
 
 
 function show_data(inspector::DataInspector, plot, idx)
