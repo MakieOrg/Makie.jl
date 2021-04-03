@@ -358,13 +358,6 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         xaxislinks, yaxislinks, finallimits, block_limit_linking,
         mouseeventhandle, scrollevents, keysevents, interactions)
 
-    # register as current axis
-    # TODO: is this a good place for that? probably not
-    if fig_or_scene isa Figure
-        AbstractPlotting.current_axis!(fig_or_scene, ax)
-    end
-
-
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
             active && process_interaction(interaction, event, ax)
@@ -455,6 +448,7 @@ end
 function convert_limit_attribute(lims::Tuple{Any, Any})
     lims
 end
+can_be_current_axis(ax::Axis) = true
 
 function AbstractPlotting.plot!(
         la::Axis, P::AbstractPlotting.PlotFunc,
