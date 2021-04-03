@@ -122,29 +122,39 @@ function ssao_postprocessor(framebuffer)
         glViewport(0, 0, w, h)
         # glClearColor(1, 1, 1, 1)            # 1 means no darkening
         # glClear(GL_COLOR_BUFFER_BIT)
+        glDisable(GL_STENCIL_TEST)
+        glEnable(GL_SCISSOR_TEST)
 
         for (screenid, scene) in screen.screens
+            # Select the area of one leaf scene
+            # This should be per scene because projection may vary between 
+            # scenes. It should be a leaf scene to avoid repeatedly shading
+            # the same region (though this is not guaranteed...)
+            isempty(scene.children) || continue
+            a = pixelarea(scene)[]
+            glScissor(minimum(a)..., widths(a)...)
             # update uniforms
             SSAO = scene.SSAO
             data1[:projection][] = scene.camera.projection[]
             data1[:bias][] = Float32(to_value(get(SSAO, :bias, 0.025)))
             data1[:radius][] = Float32(to_value(get(SSAO, :radius, 0.5)))
-            # use stencil to select one scene
-            glStencilFunc(GL_EQUAL, screenid, 0xff)
             GLAbstraction.render(pass1)
         end
+
 
         # SSAO - blur occlusion and apply to color
         glDrawBuffer(GL_COLOR_ATTACHMENT0)  # color buffer
         for (screenid, scene) in screen.screens
+            # Select the area of one leaf scene
+            isempty(scene.children) || continue
+            a = pixelarea(scene)[]
+            glScissor(minimum(a)..., widths(a)...)
             # update uniforms
             SSAO = scene.attributes.SSAO
             data2[:blur_range][] = Int32(to_value(get(SSAO, :blur, 2)))
-            # use stencil to select one scene
-            glStencilFunc(GL_EQUAL, screenid, 0xff)
             GLAbstraction.render(pass2)
         end
-        glDisable(GL_STENCIL_TEST)
+        glDisable(GL_SCISSOR_TEST)
     end
 
     PostProcessor([pass1, pass2], full_render)
