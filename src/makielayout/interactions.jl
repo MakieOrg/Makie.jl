@@ -2,6 +2,7 @@
 function interactions end
 
 interactions(ax::Axis) = ax.interactions
+interactions(ax3::Axis3) = ax3.interactions
 
 """
     register_interaction!(parent, name::Symbol, interaction)
@@ -304,5 +305,19 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
            
+    return nothing
+end
+
+
+function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
+    if event.type !== MouseEventTypes.leftdrag
+        return nothing
+    end
+
+    dpx = event.px - event.prev_px
+
+    ax3d.azimuth[] += -dpx[1] * 0.01
+    ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
+
     return nothing
 end

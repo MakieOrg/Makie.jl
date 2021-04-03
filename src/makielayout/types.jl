@@ -105,6 +105,9 @@ struct DragPan
     reset_delay::Float32
 end
 
+struct DragRotate
+end
+
 struct ScrollEvent
     x::Float32
     y::Float32
@@ -175,4 +178,13 @@ end
 @Layoutable Textbox begin
     cursorindex::Node{Int}
     cursoranimtask
+end
+
+@Layoutable Axis3 begin
+    scene::Scene
+    limits::Node{FRect3D}
+    mouseeventhandle::MouseEventHandle
+    scrollevents::Observable{ScrollEvent}
+    keysevents::Observable{KeysEvent}
+    interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
