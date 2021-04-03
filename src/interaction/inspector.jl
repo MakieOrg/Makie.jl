@@ -30,8 +30,7 @@ function data_inspector(
         # This is super cheap
         is_mouseinside(scene) || return false
 
-        # range requires GLMakie#173
-        plt, idx = pick(scene, mp) # , range)
+        plt, idx = pick(scene, mp, range)
         @info idx, typeof(plt)
         if plt === nothing
             inspector.attributes.visible[] = false
@@ -68,7 +67,7 @@ function text2worldbbox(p::Text)
         map(p._glyphlayout, p.position, camera(p.parent).projectionview, pixelarea(p.parent)) do gl, pos, pv, area
             px_pos = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
             px_bbox = Bbox_from_glyphlayout(gl) + to_ndim(Vec3f0, px_pos, 0)
-            @info px_bbox
+            # @info px_bbox
             px_bbox = px_bbox - Vec3f0(0.5widths(area)..., 0)
             # @info px_bbox
             px_bbox = FRect3D(
@@ -92,7 +91,7 @@ function text2worldbbox(p::Text)
             minz, maxz = extrema(getindex.(world_ps, (3,)))
             world_bbox = FRect3D(Point3f0(minx, miny, minz), Vec3f0(maxx-minx, maxy-miny, maxz-minz))
             # world_bbox = inv(pv) * px_bbox
-            @info world_bbox
+            # @info world_bbox
             world_bbox
         end
     end
@@ -115,13 +114,13 @@ function draw_data_inspector!(inspector)
     )
     map(p1.position, camera(inspector.parent).projectionview, pixelarea(inspector.parent)) do pos, pv, area
         projected = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
-        @info "Before: $pos"
-        @info "After: $projected"
+        # @info "Before: $pos"
+        # @info "After: $projected"
         nothing
     end
     tbb = wireframe!(
         inspector.parent, text2worldbbox(p1),
-        color = :lightblue, shading = false, visible = a.visible,
+        color = :lightblue, shading = false, visible = a.visible, overdraw=true
     )
     bg = mesh!(
         inspector.parent, 
@@ -134,7 +133,7 @@ function draw_data_inspector!(inspector)
             projected = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
             bbox + to_ndim(Point3f0, projected, 0) + Point3f0(0, 0, 1e-3) # -4, 1, 
         end, 
-        color = :orange, shading = false, visible = a.visible,
+        color = :orange, shading = false, visible = a.visible, overdraw=true,
         model = map(
                 p1.position,
                 camera(inspector.parent).projectionview, 
@@ -153,7 +152,7 @@ function draw_data_inspector!(inspector)
     )
     p3 = wireframe!(
         inspector.parent, a.bbox,
-        color = :red, visible = a.bbox_visible
+        color = :red, visible = a.bbox_visible, overdraw=true
     )
     push!(inspector.plots, p1, p2, p3, bg, tbb)
     nothing
@@ -235,6 +234,10 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
         a.visible[] = false
         a.bbox_visible[] = false
     else
+        if plot.parent.parent isa BarPlot
+            return show_data(inspector, plot.parent.parent, div(idx-1, 6)+1)
+        end
+
         pos = mouseposition(inspector.parent)
         p0, p1 = plot[1][][idx-1:idx]
         origin, dir = view_ray(inspector.parent)
@@ -261,6 +264,10 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         a.visible[] = false
         a.bbox_visible[] = false
     else
+        if plot.parent.parent.parent isa BarPlot
+            return show_data(inspector, plot.parent.parent.parent, div(idx-1, 4)+1)
+        end
+
         bbox = boundingbox(plot)
         min, max = extrema(bbox)
         p = 0.5 * (max .+ min)
@@ -272,6 +279,24 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     end
 end
 
+function show_data(inspector::DataInspector, plot::BarPlot, idx)
+    @info "BarPlot"
+    a = inspector.attributes
+    if idx === nothing
+        a.visible[] = false
+        a.bbox_visible[] = false
+    else
+        pos = plot[1][][idx]
+        bbox = plot.plots[1][1][][idx]
+        a.position[] = to_ndim(Point3f0, pos, 0)
+        a.display_text[] = position2string(pos)
+        a.bbox[] = FRect3D(bbox)
+        a.visible[] = true
+        a.bbox_visible[] = true
+    end
+end
+
+
 
 function show_data(inspector::DataInspector, plot, idx)
     @info "else"
@@ -280,3 +305,92 @@ function show_data(inspector::DataInspector, plot, idx)
 
     nothing
 end
+
+# barplot 
+# 
+
+# wireframe!(ax.scene, 
+#     bboxes[1], #map(first, bboxes), 
+#     color = :red, 
+#     model = map(
+#             camera(ax.scene).projectionview, 
+#             ax.scene.px_area
+#         ) do pv, rect
+#         inv(pv) * 
+#         scalematrix(Vec3f0((2.0 ./ widths(rect))..., 1)) *
+#         translationmatrix(Vec3f0(-0.5widths(rect)..., 0))
+#     end
+# )
+# wireframe!(ax.scene, 
+#     bboxes[2], #map(first, bboxes), 
+#     color = :red, 
+#     model = map(
+#             camera(ax.scene).projectionview, 
+#             ax.scene.px_area
+#         ) do pv, rect
+#         inv(pv) * 
+#         scalematrix(Vec3f0((2.0 ./ widths(rect))..., 1)) *
+#         translationmatrix(Vec3f0(-0.5widths(rect)..., 0))
+#     end
+# )
+
+# wireframe!(ax.scene, 
+#     bbox, 
+#     color = :red, 
+#     model = map(
+#             camera(ax.scene).projectionview, 
+#             ax.scene.px_area
+#         ) do pv, rect
+#         inv(pv) * 
+#         scalematrix(Vec3f0((2.0 ./ widths(rect))..., 1)) *
+#         translationmatrix(Vec3f0(-0.5widths(rect)..., 0))
+#     end
+# )
+
+# using AbstractPlotting: origin
+# fig, ax, p = text("He\nllo")
+# bbox = AbstractPlotting.screenspace_boundingbox(p)
+# adjusted = map(bbox, pixelarea(fig.scene), pixelarea(ax.scene)) do bb, trg, src
+#     bb + to_ndim(Vec3f0, origin(src), 0) - to_ndim(Vec3f0, origin(trg), 0)
+# end
+# wireframe!(fig.scene, adjusted, color=:red)
+# fig
+
+# using AbstractPlotting: origin, scalematrix, translationmatrix
+# fig, ax, p = text(["Hello", "hi"], position=[Point3f0(0), Point3f0(1,1,2)])
+# bboxes = AbstractPlotting.screenspace_boundingbox(p)
+# wireframe!(ax.scene, 
+#     bboxes[1], #map(first, bboxes), 
+#     color = :red, 
+#     model = map(
+#             camera(ax.scene).projectionview, 
+#             ax.scene.px_area
+#         ) do pv, rect
+#         inv(pv) * 
+#         scalematrix(Vec3f0((2.0 ./ widths(rect))..., 1)) *
+#         translationmatrix(Vec3f0(-0.5widths(rect)..., 0))
+#     end
+# )
+# wireframe!(ax.scene, 
+#     bboxes[2], #map(first, bboxes), 
+#     color = :red, 
+#     model = map(
+#             camera(ax.scene).projectionview, 
+#             ax.scene.px_area
+#         ) do pv, rect
+#         inv(pv) * 
+#         scalematrix(Vec3f0((2.0 ./ widths(rect))..., 1)) *
+#         translationmatrix(Vec3f0(-0.5widths(rect)..., 0))
+#     end
+# )
+# fig
+
+# # This does not work...?
+# adjusted = map(bboxes) do bbox
+#     map(bbox, pixelarea(fig.scene), pixelarea(ax.scene)) do bb, trg, src
+#         bb + to_ndim(Vec3f0, origin(src), 0) - to_ndim(Vec3f0, origin(trg), 0)
+#     end
+# end
+# wireframe!(fig.scene, adjusted[1], color=:red)
+# wireframe!(fig.scene, adjusted[2], color=:blue)
+# fig
