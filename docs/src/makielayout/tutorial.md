@@ -472,6 +472,7 @@ because the left two axes will grow to fill the remaining space.
 
 colsize!(hm_sublayout, 1, Aspect(1, 1))
 
+save("layout_tutorial_final.svg", fig) # hide
 fig
 ```
 

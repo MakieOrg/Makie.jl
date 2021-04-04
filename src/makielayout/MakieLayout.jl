@@ -53,6 +53,7 @@ include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
 include("layoutables/axis.jl")
+include("layoutables/axis3d.jl")
 include("layoutables/colorbar.jl")
 include("layoutables/label.jl")
 include("layoutables/slider.jl")
@@ -66,6 +67,7 @@ include("layoutables/menu.jl")
 include("layoutables/textbox.jl")
 
 export Axis
+export Axis3
 export Slider
 export IntervalSlider
 export Button

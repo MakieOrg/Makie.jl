@@ -6,7 +6,7 @@ CairoMakie.activate!()
 # Button
 
 ```@example
-using CairoMakie
+using GLMakie
 
 fig = Figure(resolution = (1200, 900))
 

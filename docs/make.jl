@@ -365,6 +365,7 @@ makedocs(
             "Layoutables & Widgets" => [
                 "makielayout/layoutables.md",
                 "makielayout/axis.md",
+                "makielayout/axis3.md",
                 "makielayout/box.md",
                 "makielayout/button.md",
                 "makielayout/colorbar.md",

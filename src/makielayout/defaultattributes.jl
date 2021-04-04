@@ -949,3 +949,207 @@ $(let
 end)
 """
 Textbox
+
+
+
+function default_attributes(::Type{Axis3}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        "The height setting of the scene."
+        height = nothing
+        "The width setting of the scene."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+        "The elevation angle of the camera"
+        elevation = pi/8
+        "The azimuth angle of the camera"
+        azimuth = 1.275 * pi
+        "A number between 0 and 1, where 0 is orthographic, and 1 full perspective"
+        perspectiveness = 0f0
+        "Aspects of the 3 axes with each other"
+        aspect = (1, 1, 2/3) # :data :equal
+        "The view mode which affects the final projection. `:fit` results in the projection that always fits the limits into the viewport, invariant to rotation. `:fitzoom` keeps the x/y ratio intact but stretches the view so the corners touch the scene viewport. `:stretch` scales separately in both x and y direction to fill the viewport, which can distort the `aspect` that is set."
+        viewmode = :fitzoom # :fit :fitzoom :stretch
+        "The background color"
+        backgroundcolor = :transparent
+        "The x label"
+        xlabel = "x"
+        "The y label"
+        ylabel = "y"
+        "The z label"
+        zlabel = "z"
+        "The x label color"
+        xlabelcolor = :black
+        "The y label color"
+        ylabelcolor = :black
+        "The z label color"
+        zlabelcolor = :black
+        "Controls if the x label is visible"
+        xlabelvisible = true
+        "Controls if the y label is visible"
+        ylabelvisible = true
+        "Controls if the z label is visible"
+        zlabelvisible = true
+        "Controls if the x ticklabels are visible"
+        xticklabelsvisible = true
+        "Controls if the y ticklabels are visible"
+        yticklabelsvisible = true
+        "Controls if the z ticklabels are visible"
+        zticklabelsvisible = true
+        "Controls if the x ticks are visible"
+        xticksvisible = true
+        "Controls if the y ticks are visible"
+        yticksvisible = true
+        "Controls if the z ticks are visible"
+        zticksvisible = true
+        "The x label size"
+        xlabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The y label size"
+        ylabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The z label size"
+        zlabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The x label font"
+        xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The y label font"
+        ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The z label font"
+        zlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The x label rotation"
+        xlabelrotation = AbstractPlotting.automatic
+        "The y label rotation"
+        ylabelrotation = AbstractPlotting.automatic
+        "The z label rotation"
+        zlabelrotation = AbstractPlotting.automatic
+        "The x label align"
+        xlabelalign = AbstractPlotting.automatic
+        "The y label align"
+        ylabelalign = AbstractPlotting.automatic
+        "The z label align"
+        zlabelalign = AbstractPlotting.automatic
+        "The x label offset"
+        xlabeloffset = 40
+        "The y label offset"
+        ylabeloffset = 40
+        "The z label offset"
+        zlabeloffset = 50
+        "The x ticklabel color"
+        xticklabelcolor = :black
+        "The y ticklabel color"
+        yticklabelcolor = :black
+        "The z ticklabel color"
+        zticklabelcolor = :black
+        "The x ticklabel size"
+        xticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The y ticklabel size"
+        yticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The z ticklabel size"
+        zticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The x ticklabel font"
+        xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The y ticklabel font"
+        yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The z ticklabel font"
+        zticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The x grid color"
+        xgridcolor = :gray80
+        "The y grid color"
+        ygridcolor = :gray80
+        "The z grid color"
+        zgridcolor = :gray80
+        "The x tick color"
+        xtickcolor = :black
+        "The y tick color"
+        ytickcolor = :black
+        "The z tick color"
+        ztickcolor = :black
+        "The x tick width"
+        xtickwidth = 1
+        "The y tick width"
+        ytickwidth = 1
+        "The z tick width"
+        ztickwidth = 1
+        "The x spine color"
+        xspinecolor = :black
+        "The y spine color"
+        yspinecolor = :black
+        "The z spine color"
+        zspinecolor = :black
+        "The x spine width"
+        xspinewidth = 1
+        "The y spine width"
+        yspinewidth = 1
+        "The z spine width"
+        zspinewidth = 1
+        "Controls if the x spine is visible"
+        xspinesvisible = true
+        "Controls if the y spine is visible"
+        yspinesvisible = true
+        "Controls if the z spine is visible"
+        zspinesvisible = true
+        "Controls if the x grid is visible"
+        xgridvisible = true
+        "Controls if the y grid is visible"
+        ygridvisible = true
+        "Controls if the z grid is visible"
+        zgridvisible = true
+        "The protrusions on the sides of the axis, how much gap space is reserved for labels etc."
+        protrusions = 30
+        "The x ticks"
+        xticks = WilkinsonTicks(5; k_min = 3)
+        "The y ticks"
+        yticks = WilkinsonTicks(5; k_min = 3)
+        "The z ticks"
+        zticks = WilkinsonTicks(5; k_min = 3)
+        "The x tick format"
+        xtickformat = AbstractPlotting.automatic
+        "The y tick format"
+        ytickformat = AbstractPlotting.automatic
+        "The z tick format"
+        ztickformat = AbstractPlotting.automatic
+        "The axis title string."
+        title = ""
+        "The font family of the title."
+        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The title's font size."
+        titlesize = lift_parent_attribute(scene, :fontsize, 20f0)
+        "The gap between axis and title."
+        titlegap = 10f0
+        "Controls if the title is visible."
+        titlevisible = true
+        "The horizontal alignment of the title."
+        titlealign = :center
+        "The color of the title"
+        titlecolor = :black
+        "The color of the xy panel"
+        xypanelcolor = :transparent
+        "The color of the yz panel"
+        yzpanelcolor = :transparent
+        "The color of the xz panel"
+        xzpanelcolor = :transparent
+        "Controls if the xy panel is visible"
+        xypanelvisible = true
+        "Controls if the yz panel is visible"
+        yzpanelvisible = true
+        "Controls if the xz panel is visible"
+        xzpanelvisible = true
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
+end
+
+@doc """
+Axis3 has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(Axis3, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+Axis3
