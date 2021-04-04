@@ -9,7 +9,7 @@ A toggle with an attribute `active` that can either be true or false, to enable
 or disable properties of an interactive plot.
 
 ```@example
-using CairoMakie
+using GLMakie
 
 fig = Figure(resolution = (1200, 900))
 

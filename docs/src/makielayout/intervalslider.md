@@ -20,7 +20,8 @@ If you set the attribute `snap = false`, the slider will move continously while 
 
 
 ```@example
-using CairoMakie
+using GLMakie
+using CairoMakie # hide
 AbstractPlotting.inline!(true) # hide
 CairoMakie.activate!() # hide
 

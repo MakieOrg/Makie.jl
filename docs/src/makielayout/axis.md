@@ -36,6 +36,30 @@ scatobject = scatter!(0:0.5:10, cos, color = :orange)
 f
 ```
 
+## Deleting plots
+
+You can delete a plot object directly via `delete!(ax, plotobj)`.
+You can also remove all plots with `empty!(ax)`.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure(resolution = (1200, 500))
+
+axs = [Axis(f[1, i]) for i in 1:3]
+
+scatters = map(axs) do ax
+    [scatter!(ax, 0:0.1:10, x -> sin(x) + i) for i in 1:3]
+end
+
+delete!(axs[2], scatters[2][2])
+empty!(axs[3])
+
+f
+```
+
 
 ## Setting Axis limits and reversing axes
 
@@ -597,3 +621,4 @@ scene
 using GLMakie
 GLMakie.activate!()
 ```
+
