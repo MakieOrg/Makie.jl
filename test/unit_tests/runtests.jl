@@ -16,4 +16,5 @@ using AbstractPlotting: volume
     include("makielayout.jl")
     include("figures.jl")
     include("transformations.jl")
+    include("stack.jl")
 end
