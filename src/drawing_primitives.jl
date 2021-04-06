@@ -312,9 +312,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             robj[:view] = Observable(Mat4f0(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space
-        else
-            robj[:model] = x.model
         end
+        robj[:model] = x.model
 
         return robj
     end
