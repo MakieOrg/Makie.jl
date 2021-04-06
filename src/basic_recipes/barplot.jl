@@ -37,8 +37,6 @@ end
 
 flip(r::Rect2D) = Rect2D(reverse(origin(r)), reverse(widths(r)))
 
-using DataAPI: refarray, levels
-
 function AbstractPlotting.plot!(p::BarPlot)
 
     in_y_direction = lift(p.direction) do dir
@@ -57,8 +55,7 @@ function AbstractPlotting.plot!(p::BarPlot)
         if dodge === automatic
             n_dodge = 1
         else
-            n_dodge = length(levels(dodge))
-            n_dodge
+            n_dodge = length(unique(dodge))
         end
         
         x = first.(xy)
@@ -82,10 +79,8 @@ function AbstractPlotting.plot!(p::BarPlot)
 
         if dodge === automatic
             i_dodge = 1
-        else
-            i_dodge = refarray(dodge)
-            @assert eltype(i_dodge) <: Integer
-            # This is satisfied if dodge isa PooledArray, CategoricalArray or Vector{<:Integer}
+        else 
+            i_dodge = categoric_position.(dodge, Ref(categoric_labels(dodge)))
         end
         
         shft = shift_dodge.(1:n_dodge, x_gap, dodge_gap, n_dodge)
@@ -100,9 +95,7 @@ function AbstractPlotting.plot!(p::BarPlot)
             end
         else
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
-            i_stack = refarray(stack)
-            @assert eltype(i_dodge) <: Integer
-            # This is satisfied if dodge isa PooledArray, CategoricalArray or Vector{<:Integer}
+            i_stack = categoric_position.(stack, Ref(categoric_labels(stack)))
             
             grp = dodge === automatic ? (x = x, ) : (i_dodge = i_dodge, x = x)
             from, to = stack_grouped_from_to(i_stack, y, grp)
