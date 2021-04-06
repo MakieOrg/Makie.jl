@@ -334,7 +334,7 @@ end
 	grp_dodge = [grp_dodge1; grp_dodge2][perm]
 	grp_stack = [grp_stack1; grp_stack2][perm]
 		
-	tbl = (; x,  grp_dodge,  grp_stack,  y)
+	tbl = (; x = x, grp_dodge = grp_dodge, grp_stack = grp_stack, y = y)
 	
 	fig = Figure()
 	ax = Axis(fig[1,1])
