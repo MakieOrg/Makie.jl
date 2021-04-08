@@ -1,31 +1,46 @@
 # Basic Tutorial
 
-Here is a quick tutorial to get you started. We assume you have [Julia](https://julialang.org/) and `CairoMakie.jl` (or one of the other backends) installed already.
+## Preface
+
+Here is a quick tutorial to get you started with Makie!
+
+We assume you have [Julia](https://julialang.org/) and `CairoMakie.jl` (or one of the other backends, `GLMakie.jl` or `WGLMakie.jl`) installed already.
+
+This tutorial uses CairoMakie, but the code can be executed with any backend.
+CairoMakie can output beautiful static vector graphics, but it doesn't have the native ability to open interactive windows.
+
+To see the output of plotting commands when using CairoMakie, we recommend you either use an IDE which supports png or svg output, such as VSCode, Atom/Juno, Jupyter, Pluto, etc., or try using a viewer package such as [ElectronDisplay.jl](https://github.com/queryverse/ElectronDisplay.jl), or alternatively save your plots to files directly.
+The Julia REPL by itself does not have the ability to show plots.
+
+GLMakie can open interactive windows, or alternatively display bitmaps inline if `AbstractPlotting.inline!(true)` is called.
+
+WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
+
+For more information, have a look at [Backends & Output](@ref).
+
+Ok, now that this is out of the way, let's get started!
+
+## Importing CairoMakie
 
 First, we import CairoMakie, which might take a little bit of time because there is a lot to precompile. Just sit tight!
-For this tutorial, we also call `AbstractPlotting.inline!(true)` so plots appear inline after each example.
-If you set `AbstractPlotting.inline!(false)` and the currently active backend supports windows, an interactive window will open whenever you return a [Figure](@ref).
 
 ```@example 1
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true)
+AbstractPlotting.inline!(true) # hide
 nothing # hide
 ```
-
-!!! note
-    A [Figure](@ref) is usually displayed whenever it is returned in global scope (e.g. in the REPL).
-    To display a Figure from within a local scope, like from within a function, you can directly call `display(figure)`.  
 
 ## First plot
 
 Makie has many different plotting functions, one of the most common ones is [lines](@ref).
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
-Remember that we called `AbstractPlotting.inline!(true)`, so no window will open.
 
-```@example
-using CairoMakie
+!!! note
+    Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
+    To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
+```@example 1
 x = LinRange(0, 10, 100)
 y = sin.(x)
 lines(x, y)
