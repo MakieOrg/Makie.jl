@@ -182,7 +182,7 @@ end
 
 @Layoutable Axis3 begin
     scene::Scene
-    limits::Node{FRect3D}
+    finallimits::Node{FRect3D}
     mouseeventhandle::MouseEventHandle
     scrollevents::Observable{ScrollEvent}
     keysevents::Observable{KeysEvent}

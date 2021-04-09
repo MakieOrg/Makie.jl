@@ -1140,6 +1140,16 @@ function default_attributes(::Type{Axis3}, scene)
         yzpanelvisible = true
         "Controls if the xz panel is visible"
         xzpanelvisible = true
+        "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
+        targetlimits = FRect3D(Vec3f0(0, 0, 0), Vec3f0(1, 1, 1))
+        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
+        limits = (nothing, nothing, nothing)
+        "The relative margins added to the autolimits in x direction."
+        xautolimitmargin = (0.05, 0.05)
+        "The relative margins added to the autolimits in y direction."
+        yautolimitmargin = (0.05, 0.05)
+        "The relative margins added to the autolimits in z direction."
+        zautolimitmargin = (0.05, 0.05)
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
