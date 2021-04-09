@@ -26,13 +26,13 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     notify(protrusions)
 
-    limits = Node(FRect3D(Vec3f0(0f0, 0f0, 0f0), Vec3f0(100f0, 100f0, 100f0)))
+    finallimits = Node(FRect3D(Vec3f0(0f0, 0f0, 0f0), Vec3f0(100f0, 100f0, 100f0)))
 
     scenearea = lift(round_to_IRect2D, layoutobservables.computedbbox)
 
     scene = Scene(topscene, scenearea, raw = true, clear = false, backgroundcolor = attrs.backgroundcolor)
 
-    matrices = lift(calculate_matrices, limits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
+    matrices = lift(calculate_matrices, finallimits, scene.px_area, elevation, azimuth, perspectiveness, aspect, viewmode)
 
     on(matrices) do (view, proj, eyepos)
         pv = proj * view
@@ -42,15 +42,15 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         scene.camera.projectionview[] = pv
     end
 
-    ticknode_1 = lift(limits, attrs.xticks, attrs.xtickformat) do lims, ticks, format
+    ticknode_1 = lift(finallimits, attrs.xticks, attrs.xtickformat) do lims, ticks, format
         tl = get_ticks(ticks, format, minimum(lims)[1], maximum(lims)[1])
     end
 
-    ticknode_2 = lift(limits, attrs.yticks, attrs.ytickformat) do lims, ticks, format
+    ticknode_2 = lift(finallimits, attrs.yticks, attrs.ytickformat) do lims, ticks, format
         tl = get_ticks(ticks, format, minimum(lims)[2], maximum(lims)[2])
     end
 
-    ticknode_3 = lift(limits, attrs.zticks, attrs.ztickformat) do lims, ticks, format
+    ticknode_3 = lift(finallimits, attrs.zticks, attrs.ztickformat) do lims, ticks, format
         tl = get_ticks(ticks, format, minimum(lims)[3], maximum(lims)[3])
     end
 
@@ -58,17 +58,17 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     mi2 = @lift(0 <= $azimuth % 2pi < pi)
     mi3 = @lift($elevation > 0)
 
-    add_panel!(scene, 1, 2, 3, limits, mi3, attrs)
-    add_panel!(scene, 2, 3, 1, limits, mi1, attrs)
-    add_panel!(scene, 1, 3, 2, limits, mi2, attrs)
+    add_panel!(scene, 1, 2, 3, finallimits, mi3, attrs)
+    add_panel!(scene, 2, 3, 1, finallimits, mi1, attrs)
+    add_panel!(scene, 1, 3, 2, finallimits, mi2, attrs)
 
-    add_gridlines_and_frames!(topscene, scene, 1, limits, ticknode_1, mi1, mi2, mi3, attrs)
-    add_gridlines_and_frames!(topscene, scene, 2, limits, ticknode_2, mi2, mi1, mi3, attrs)
-    add_gridlines_and_frames!(topscene, scene, 3, limits, ticknode_3, mi3, mi1, mi2, attrs)
+    add_gridlines_and_frames!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs)
+    add_gridlines_and_frames!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs)
+    add_gridlines_and_frames!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs)
 
-    add_ticks_and_ticklabels!(topscene, scene, 1, limits, ticknode_1, mi1, mi2, mi3, attrs, azimuth)
-    add_ticks_and_ticklabels!(topscene, scene, 2, limits, ticknode_2, mi2, mi1, mi3, attrs, azimuth)
-    add_ticks_and_ticklabels!(topscene, scene, 3, limits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)   
+    add_ticks_and_ticklabels!(topscene, scene, 1, finallimits, ticknode_1, mi1, mi2, mi3, attrs, azimuth)
+    add_ticks_and_ticklabels!(topscene, scene, 2, finallimits, ticknode_2, mi2, mi1, mi3, attrs, azimuth)
+    add_ticks_and_ticklabels!(topscene, scene, 3, finallimits, ticknode_3, mi3, mi1, mi2, attrs, azimuth)   
 
     titlepos = lift(scene.px_area, attrs.titlegap, attrs.titlealign) do a, titlegap, align
 
@@ -104,7 +104,6 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     decorations[:title] = titlet
 
 
-
     mouseeventhandle = addmouseevents!(scene)
     scrollevents = Node(ScrollEvent(0, 0))
     keysevents = Node(KeysEvent(Set()))
@@ -122,9 +121,18 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
 
-    ax = Axis3(fig_or_scene, layoutobservables, attrs, decorations, scene, limits,
+    ax = Axis3(fig_or_scene, layoutobservables, attrs, decorations, scene, finallimits,
         mouseeventhandle, scrollevents, keysevents, interactions)
 
+    on(attrs.limits) do lims
+        reset_limits!(ax)
+    end
+    
+    on(attrs.targetlimits) do lims
+        # adjustlimits!(ax)
+        # we have no aspect constraints here currently, so just update final limits
+        ax.finallimits[] = lims
+    end
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
@@ -141,8 +149,8 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         DragRotate())
 
 
-    # trigger projection via limits
-    limits[] = limits[]
+    # in case the user set limits already
+    notify(attrs.limits)
 
     ax
 end
@@ -254,7 +262,7 @@ function AbstractPlotting.plot!(
 
     plot = AbstractPlotting.plot!(ax.scene, P, attributes, args...; kw_attributes...)
 
-    autolimits!(ax)
+    reset_limits!(ax)
     plot
 end
 
@@ -278,7 +286,7 @@ function autolimits!(ax::Axis3)
 
     lims = FRect3D(nori, nwidths)
 
-    ax.limits[] = lims
+    ax.finallimits[] = lims
     nothing
 end
 
@@ -737,4 +745,102 @@ function hidespines!(ax::Axis3)
     ax.yspinesvisible = false
     ax.zspinesvisible = false
     ax
+end
+
+
+"""
+    reset_limits!(ax; xauto = true, yauto = true)
+
+Resets the axis limits depending on the value of `ax.limits`.
+If one of the two components of limits is nothing, that value is either copied from the targetlimits if `xauto` or `yauto` is true, respectively, or it is determined automatically from the plots in the axis.
+If one of the components is a tuple of two numbers, those are used directly.
+"""
+function reset_limits!(ax::Axis3; xauto = true, yauto = true, zauto = true)
+    mlims = convert_limit_attribute(ax.limits[])
+
+    mxlims, mylims, mzlims = mlims::Tuple{Any, Any, Any}
+    xlims = if isnothing(mxlims)
+        if xauto
+            xautolimits(ax)
+        else
+            left(ax.targetlimits[]), right(ax.targetlimits[])
+        end
+    else
+        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+    end
+    ylims = if isnothing(mylims)
+        if yauto
+            yautolimits(ax)
+        else
+            left(ax.targetlimits[]), right(ax.targetlimits[])
+        end
+    else
+        convert(Tuple{Float32, Float32}, mylims)
+    end
+    zlims = if isnothing(mzlims)
+        if zauto
+            zautolimits(ax)
+        else
+            left(ax.targetlimits[]), right(ax.targetlimits[])
+        end
+    else
+        convert(Tuple{Float32, Float32}, mzlims)
+    end
+    @assert xlims[1] <= xlims[2]
+    @assert ylims[1] <= ylims[2]
+    @assert zlims[1] <= zlims[2]
+    ax.targetlimits[] = FRect3D(
+        Vec3f0(xlims[1], ylims[1], zlims[1]),
+        Vec3f0(xlims[2] - xlims[1], ylims[2] - ylims[1], zlims[2] - zlims[1]),
+    )
+    nothing
+end
+
+# this is so users can do limits = (left, right, bottom, top)
+function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any, Any, Any})
+    (lims[1:2], lims[3:4], lims[5:6])
+end
+
+function convert_limit_attribute(lims::Tuple{Any, Any, Any})
+    lims
+end
+
+
+function xautolimits(ax::Axis3)
+    xlims = getlimits(ax, 1)
+    
+    if isnothing(xlims)
+        xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
+    else
+        xlims = expandlimits(xlims,
+            ax.attributes.xautolimitmargin[][1],
+            ax.attributes.xautolimitmargin[][2])
+    end
+    xlims
+end
+
+function yautolimits(ax::Axis3)
+    ylims = getlimits(ax, 2)
+    
+    if isnothing(ylims)
+        ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])
+    else
+        ylims = expandlimits(ylims,
+            ax.attributes.yautolimitmargin[][1],
+            ax.attributes.yautolimitmargin[][2])
+    end
+    ylims
+end
+
+function zautolimits(ax::Axis3)
+    zlims = getlimits(ax, 3)
+    
+    if isnothing(zlims)
+        zlims = (ax.targetlimits[].origin[3], ax.targetlimits[].origin[3] + ax.targetlimits[].widths[3])
+    else
+        zlims = expandlimits(zlims,
+            ax.attributes.zautolimitmargin[][1],
+            ax.attributes.zautolimitmargin[][2])
+    end
+    zlims
 end
