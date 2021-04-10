@@ -38,7 +38,7 @@ Colorbar(fig[4, 1], height = 25, limits = (-1, 1), colormap = :heat,
 fig
 ```
 
-You can also automatically choose colormap and limits for certain plot objects by passing them as the second argument.
+If you pass a `plotobject`, a `heatmap` or `contourf`, the Colorbar is set up automatically such that it tracks these objects' relevant attributes like `colormap`, `colorrange`, `highclip` and `lowclip`. If you want to adjust these attributes afterwards, change them in the plot object, otherwise the Colorbar and the plot object will go out of sync.
 
 ```@example
 using CairoMakie

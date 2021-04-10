@@ -87,3 +87,19 @@ end
     @test ax.targetlimits[] == BBox(-5, 11, 5, 7)
     @test ax.finallimits[] == BBox(-5, 11, 5, 7)
 end
+
+@testset "Colorbar plot object kwarg clash" begin
+    for attr in (:colormap, :limits)
+        f, ax, p = scatter(1:10, 1:10, color = 1:10, colorrange = (1, 10))
+        Colorbar(f[2, 1], p)
+        @test_throws ErrorException Colorbar(f[2, 1], p; Dict(attr => nothing)...)
+    end
+
+    for attr in (:colormap, :limits, :highclip, :lowclip)
+        for F in (heatmap, contourf)
+            f, ax, p = F(1:10, 1:10, randn(10, 10))
+            Colorbar(f[1, 2], p)
+            @test_throws ErrorException Colorbar(f[1, 3], p; Dict(attr => nothing)...)
+        end
+    end
+end
