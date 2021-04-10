@@ -434,17 +434,26 @@ function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
     sid = Matrix{SelectionID{UInt32}}(undef, dx, dy)
     glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sid)
 
-    min_dist = range^2
-    id = SelectionID{Int}(0, 0)
+    # get unique (plt, idx) pairs with the lowest distance from the cursor
+    ids = SelectionID{Int}[]
+    distances = Float64[]
     x, y =  xy .+ 1 .- Vec2f0(x0, y0)
     for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][1] > 0x00000000) && (sid[i, j][2] < 0x3f800000)
-            min_dist = d
+        if (sid[i, j][1] > 0x00000000) && (sid[i, j][2] < 0x3f800000)
             id = convert(SelectionID{Int}, sid[i, j])
+            d = (x-i)^2 + (y-j)^2
+            i = findfirst(isequal(id), ids)
+            if i === nothing
+                push!(ids, id)
+                push!(distances, d)
+            elseif distances[i] > d
+                distances[i] = d
+            end
         end
     end
-    return id
+
+    idxs = sortperm(distances)
+    return ids[idxs]
 end
 
 function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
@@ -458,12 +467,9 @@ function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Floa
 end
 
 function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64}, range::Float64)
-    sid = pick_native(screen, xy, range)
-    if haskey(screen.cache2plot, sid.id)
-        plot = screen.cache2plot[sid.id]
-        return (plot, sid.index)
-    else
-        return (nothing, 0)
+    sids = pick_native(screen, xy, range)
+    return map(sids) do sid
+        (screen.cache2plot[sid.id], sid.index)
     end
 end
 
