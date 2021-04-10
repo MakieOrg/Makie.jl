@@ -429,7 +429,7 @@ function reset_limits!(ax; xauto = true, yauto = true)
         if yauto
             yautolimits(ax)
         else
-            left(ax.targetlimits[]), right(ax.targetlimits[])
+            bottom(ax.targetlimits[]), top(ax.targetlimits[])
         end
     else
         convert(Tuple{Float32, Float32}, mylims)
