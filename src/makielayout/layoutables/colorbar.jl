@@ -1,5 +1,11 @@
 function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlot; kwargs...)
 
+    for key in (:colormap, :limits)
+        if key in keys(kwargs)
+            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
+        end
+    end
+
     layoutable(Colorbar, fig_or_scene;
         colormap = plot.colormap,
         limits = plot.colorrange,
@@ -10,6 +16,12 @@ end
 
 function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Image}; kwargs...)
 
+    for key in (:colormap, :limits, :highclip, :lowclip)
+        if key in keys(kwargs)
+            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
+        end
+    end
+
     layoutable(Colorbar, fig_or_scene;
         colormap = heatmap.colormap,
         limits = heatmap.colorrange,
@@ -19,19 +31,25 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene, heatmap::Union{Heatmap, Im
     )
 end
 
-function layoutable(::Type{<:Colorbar}, fig_or_scene, plot::AbstractPlotting.Contourf; kwargs...)
+function layoutable(::Type{<:Colorbar}, fig_or_scene, contourf::AbstractPlotting.Contourf; kwargs...)
 
-    steps = plot._computed_levels
+    for key in (:colormap, :limits, :highclip, :lowclip)
+        if key in keys(kwargs)
+            error("You should not pass the `$key` attribute to the colorbar when constructing it using an existing plot object. This attribute is copied from the plot object, and setting it from the colorbar will make the plot object and the colorbar go out of sync.")
+        end
+    end
+
+    steps = contourf._computed_levels
 
     limits = lift(steps) do steps
         steps[1], steps[end]
     end
 
     layoutable(Colorbar, fig_or_scene;
-        colormap = plot._computed_colormap,
+        colormap = contourf._computed_colormap,
         limits = limits,
-        lowclip = plot._computed_extendlow,
-        highclip = plot._computed_extendhigh,
+        lowclip = contourf._computed_extendlow,
+        highclip = contourf._computed_extendhigh,
         kwargs...
     )
 

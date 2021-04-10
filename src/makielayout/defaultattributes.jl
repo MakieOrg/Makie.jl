@@ -373,6 +373,13 @@ function default_attributes(::Type{Colorbar}, scene)
 end
 
 @doc """
+    Colorbar(parent; kwargs...)
+    Colorbar(parent, plotobject; kwargs...)
+    Colorbar(parent, heatmap::Heatmap; kwargs...)
+    Colorbar(parent, contourf::Contourf; kwargs...)
+
+Add a Colorbar to `parent`. If you pass a `plotobject`, a `heatmap` or `contourf`, the Colorbar is set up automatically such that it tracks these objects' relevant attributes like `colormap`, `colorrange`, `highclip` and `lowclip`. If you want to adjust these attributes afterwards, change them in the plot object, otherwise the Colorbar and the plot object will go out of sync.
+
 Colorbar has the following attributes:
 
 $(let
