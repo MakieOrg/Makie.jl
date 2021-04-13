@@ -414,8 +414,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
 
         map(mesh) do mesh
             func = to_value(transform_func_obs(meshplot))
-            if func !== identity
-                mesh.position .= apply_transform.(func, mesh.position)
+            if func ∉ (identity, (identity, identity), (identity, identity, identity))
+                mesh.position .= apply_transform.(Ref(func), mesh.position)
             end
             return
         end
