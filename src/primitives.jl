@@ -465,6 +465,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         Cairo.scale(ctx, w / s.width, h / s.height)
         Cairo.set_source_surface(ctx, s, 0, 0)
         p = Cairo.get_source(ctx)
+        # this is needed to avoid blurry edges
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
         # Set filter doesn't work!?
         Cairo.pattern_set_filter(p, interp_flag)
         Cairo.fill(ctx)
