@@ -72,7 +72,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
 end
 
 function draw_single(primitive::Lines, ctx, positions)
-    @inbounds for i in 1:length(positions)
+    n = length(positions)
+    @inbounds for i in 1:n
         p = positions[i]
         # only take action for non-NaNs
         if !isnan(p)
@@ -81,10 +82,13 @@ function draw_single(primitive::Lines, ctx, positions)
                 Cairo.move_to(ctx, p...)
             else
                 Cairo.line_to(ctx, p...)
+                # complete line segment at end or if next point is NaN
+                if i == n || isnan(positions[i+1])
+                    Cairo.stroke(ctx)
+                end
             end
         end
     end
-    Cairo.stroke(ctx)
 end
 
 function draw_single(primitive::LineSegments, ctx, positions)
@@ -92,11 +96,11 @@ function draw_single(primitive::LineSegments, ctx, positions)
     @inbounds for i in 1:length(positions)
         if iseven(i)
             Cairo.line_to(ctx, positions[i]...)
+            Cairo.stroke(ctx)
         else
             Cairo.move_to(ctx, positions[i]...)
         end
     end
-    Cairo.stroke(ctx)
 end
 
 # if linewidth is not an array
