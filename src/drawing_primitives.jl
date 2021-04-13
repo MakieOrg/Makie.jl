@@ -217,7 +217,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = to_value(linestyle)
+        ls = to_value(linestyle)
+        if isnothing(ls)
+            data[:pattern] = ls
+        else
+            linewidth = gl_attributes[:thickness]
+            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+        end
         positions = handle_view(x[1], data)
         positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
@@ -229,7 +235,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = to_value(linestyle)
+        ls = to_value(linestyle)
+        if isnothing(ls)
+            data[:pattern] = ls
+        else
+            linewidth = gl_attributes[:thickness]
+            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+        end
         positions = handle_view(x.converted[1], data)
         positions = apply_transform(transform_func_obs(x), positions)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
