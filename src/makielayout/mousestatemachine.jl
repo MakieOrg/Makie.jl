@@ -220,7 +220,7 @@ function addmouseevents!(scene, elements...)
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
         if mousedrag == Mouse.down
             if length(pressed_buttons) == 1
-                button = only(pressed_buttons)
+                button = first(pressed_buttons)
                 mouse_downed_button[] = button
 
                 if mouse_was_inside[]
