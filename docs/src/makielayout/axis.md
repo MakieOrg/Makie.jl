@@ -273,6 +273,50 @@ hideydecorations!(ax3, ticks = false)
 f
 ```
 
+## Log scales and other axis scales
+
+The two attributes `xscale` and `yscale`, which by default are set to `identity`, can be used to project the data in a nonlinear way, in addition to the linear zoom that the limits provide.
+
+Take care that the axis limits always stay inside the limits appropriate for the chosen scaling function, for example, `log` functions fail for values `x <= 0`, `sqrt` for `x < 0`, etc.
+
+```@example
+using CairoMakie
+
+data = sort(10.0 .^ randn(100))
+
+f = Figure(resolution = (1000, 1000), fontsize = 14)
+
+for (i, scale) in enumerate([identity, log10, log2, log, sqrt])
+    
+    row, col = fldmod1(i, 2)
+    Axis(f[row, col], yscale = scale, title = string(scale),
+        yminorticksvisible = true, yminorgridvisible = true,
+        yminorticks = IntervalsBetween(8))
+        
+    lines!(data, color = :blue)
+
+end
+
+f
+```
+
+Some plotting functions, like barplots or density plots, have offset parameters which are usually zero, which you have to set to some non-zero value explicitly so they work in `log` axes.
+
+```@example
+using CairoMakie
+
+processors = ["VAX-11/780", "Sun-4/260", "PowerPC 604",
+    "Alpha 21164", "Intel Pentium III", "Intel Xeon"]
+relative_speeds = [1, 9, 117, 280, 1779, 6505]
+
+barplot(relative_speeds, fillto = 0.5,
+    axis = (yscale = log10, ylabel ="relative speed",
+        xticks = (1:6, processors), xticklabelrotation = pi/8))
+
+ylims!(0.5, 10000)
+current_figure()
+```
+
 ## Controlling Axis aspect ratios
 
 If you're plotting images, you might want to force a specific aspect ratio
