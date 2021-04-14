@@ -50,6 +50,8 @@ struct MultiplesTicks
     suffix::String
 end
 
+struct Log10Ticks end
+
 """
     IntervalsBetween(n::Int, mirror::Bool = true)
 
@@ -121,6 +123,7 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
+    targetlimits::Node{FRect2D}
     finallimits::Node{FRect2D}
     block_limit_linking::Node{Bool}
     mouseeventhandle::MouseEventHandle
