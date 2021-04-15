@@ -476,18 +476,50 @@ _logbase(::typeof(log2)) = "2"
 _logbase(::typeof(log)) = "e"
 
 # log ticks just use the normal pipeline but with log'd limits, then transform the labels 
-function get_ticks(x, scale::Union{typeof(log10), typeof(log2), typeof(log)}, y, vmin, vmax)
+function get_ticks(x, scale::Union{typeof(log10), typeof(log2), typeof(log)}, any_formatter, vmin, vmax)
     ticks_scaled = get_tickvalues(x, identity, scale(vmin), scale(vmax))
     
     ticks = AbstractPlotting.inverse_transform(scale).(ticks_scaled)
 
-    if y === AbstractPlotting.automatic
+    if any_formatter === AbstractPlotting.automatic
         # here we assume that the labels are normal numbers, and we just superscript them
         labels_scaled = get_ticklabels(AbstractPlotting.automatic, ticks_scaled)
         labels = _logbase(scale) .* AbstractPlotting.UnicodeFun.to_superscript.(labels_scaled)
     else
         # otherwise the formatter has to handle the real tick numbers
-        labels = get_ticklabels(y, ticks)
+        labels = get_ticklabels(any_formatter, ticks)
+    end
+
+    (ticks, labels)
+end
+
+# logit ticks
+function get_ticks(x, scale::typeof(AbstractPlotting.logit), any_formatter, vmin, vmax)
+
+    logit_10(x) = log10(x / (1 - x))
+    expit_10(x) = 1 / (1 + exp10(-x))
+    ticks_scaled = get_tickvalues(x, identity, logit_10(vmin), logit_10(vmax))
+    
+    ticks = expit_10.(ticks_scaled)
+
+    if any_formatter === AbstractPlotting.automatic
+        base_labels = get_ticklabels(AbstractPlotting.automatic, ticks_scaled)
+        
+        labels = map(ticks_scaled, base_labels) do t, bl
+            if t == 0
+                "¹/₂"
+            elseif t < 0
+                "10" * AbstractPlotting.UnicodeFun.to_superscript(bl)
+            else
+                "1-10" * AbstractPlotting.UnicodeFun.to_superscript("-" * bl)
+            end
+        end
+        # # here we assume that the labels are normal numbers, and we just superscript them
+        # labels_scaled = get_ticklabels(AbstractPlotting.automatic, ticks_scaled)
+        # labels = _logbase(scale) .* AbstractPlotting.UnicodeFun.to_superscript.(labels_scaled)
+    else
+        # otherwise the formatter has to handle the real tick numbers
+        labels = get_ticklabels(any_formatter, ticks)
     end
 
     (ticks, labels)
@@ -590,7 +622,7 @@ function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax
 end
 
 # for log scales, we need to step in log steps at the edges
-function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typeof(log2), typeof(log10)}, tickvalues, vmin, vmax)
+function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typeof(log2), typeof(log10), typeof(AbstractPlotting.logit)}, tickvalues, vmin, vmax)
     vals = Float32[]
     length(tickvalues) < 2 && return vals
     n = i.n

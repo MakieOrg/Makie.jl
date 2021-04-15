@@ -485,17 +485,15 @@ function validate_limits_for_scales(lims::Rect, xsc, ysc)
     ylims = (mi[2], ma[2])
 
     if !validate_limits_for_scale(xlims, xsc)
-        error("Invalid x-limits $xlims for scale $xsc")
+        error("Invalid x-limits $xlims for scale $xsc which is defined on the interval $(defined_interval(xsc))")
     end
     if !validate_limits_for_scale(ylims, ysc)
-        error("Invalid y-limits $ylims for scale $ysc")
+        error("Invalid y-limits $ylims for scale $ysc which is defined on the interval $(defined_interval(ysc))")
     end
     nothing
 end
 
-validate_limits_for_scale(lims, ::typeof(identity)) = true
-validate_limits_for_scale(lims, ::Union{typeof(log2), typeof(log10), typeof(log)}) = all(>(0), lims)
-validate_limits_for_scale(lims, ::typeof(sqrt)) = all(>=(0), lims)
+validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
 
 function AbstractPlotting.plot!(
         la::Axis, P::AbstractPlotting.PlotFunc,
@@ -666,7 +664,7 @@ function xautolimits(ax::Axis)
     # but if we have limits, then expand them with the auto margins
     if !isnothing(xlims)
         if !validate_limits_for_scale(xlims, ax.xscale[])
-            error("Found invalid x-limits $xlims for scale $(ax.xscale[])")
+            error("Found invalid x-limits $xlims for scale $(ax.xscale[]) which is defined on the interval $(defined_interval(ax.xscale[]))")
         end
         xlims = expandlimits(xlims,
             ax.attributes.xautolimitmargin[][1],
@@ -696,7 +694,7 @@ function yautolimits(ax)
     # but if we have limits, then expand them with the auto margins
     if !isnothing(ylims)
         if !validate_limits_for_scale(ylims, ax.yscale[])
-            error("Found invalid direct y-limits $ylims for scale $(ax.yscale[])")
+            error("Found invalid direct y-limits $ylims for scale $(ax.yscale[]) which is defined on the interval $(defined_interval(ax.yscale[]))")
         end
         ylims = expandlimits(ylims,
             ax.attributes.yautolimitmargin[][1],
@@ -1095,3 +1093,9 @@ defaultlimits(::typeof(log2)) = (1.0, 8.0)
 defaultlimits(::typeof(log)) = (1.0, exp(3.0))
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
+defaultlimits(::typeof(AbstractPlotting.logit)) = (0.01, 0.99)
+
+defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
+defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
+defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
+defined_interval(::typeof(AbstractPlotting.logit)) = OpenInterval(0.0, 1.0)
