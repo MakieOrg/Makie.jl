@@ -282,19 +282,18 @@ Take care that the axis limits always stay inside the limits appropriate for the
 ```@example
 using CairoMakie
 
-data = sort(10.0 .^ randn(100))
+data = LinRange(0.01, 0.99, 200)
 
 f = Figure(resolution = (1000, 1000), fontsize = 14)
 
-for (i, scale) in enumerate([identity, log10, log2, log, sqrt])
-    
+for (i, scale) in enumerate([identity, log10, log2, log, sqrt, AbstractPlotting.logit])
+
     row, col = fldmod1(i, 2)
     Axis(f[row, col], yscale = scale, title = string(scale),
         yminorticksvisible = true, yminorgridvisible = true,
         yminorticks = IntervalsBetween(8))
-        
-    lines!(data, color = :blue)
 
+    lines!(data, color = :blue)
 end
 
 f

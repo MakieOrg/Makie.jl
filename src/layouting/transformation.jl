@@ -319,3 +319,7 @@ inverse_transform(::typeof(log)) = exp
 inverse_transform(::typeof(log2)) = exp2
 inverse_transform(::typeof(sqrt)) = x -> x ^ 2
 inverse_transform(F::Tuple) = map(inverse_transform, F)
+
+logit(x) = log(x / (1 - x))
+expit(x) = 1 / (1 + exp(-x))
+inverse_transform(::typeof(logit)) = expit
