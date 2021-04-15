@@ -41,7 +41,8 @@ barplot(tbl.x, tbl.height,
 		stack = tbl.grp,
 		color = tbl.grp,
 		axis = (xticks = (1:3, ["left", "middle", "right"]),
-				title = "Stacked bars")
+				title = "Stacked bars"),
+        figure = (resolution = (800, 600), )
 		)
 ```
 
@@ -50,7 +51,8 @@ barplot(tbl.x, tbl.height,
 		dodge = tbl.grp,
 		color = tbl.grp,
 		axis = (xticks = (1:3, ["left", "middle", "right"]),
-				title = "Dodged bars")
+				title = "Dodged bars"),
+        figure = (resolution = (800, 600), )
 		)
 ```
 
@@ -60,7 +62,8 @@ barplot(tbl.x, tbl.height,
 		stack = tbl.grp2,
 		color = tbl.grp,
 		axis = (xticks = (1:3, ["left", "middle", "right"]),
-				title = "Dodged and stacked bars")
+				title = "Dodged and stacked bars"),
+        figure = (resolution = (800, 600), )
 		)
 ```
 
@@ -69,7 +72,7 @@ let
 	colors = AbstractPlotting.wong_colors
 
 	# Figure and Axis
-	fig = Figure()
+	fig = Figure(resolution = (800, 600))
 	ax = Axis(fig[1,1], xticks = (1:3, ["left", "middle", "right"]),
 					title = "Dodged bars")
 	
