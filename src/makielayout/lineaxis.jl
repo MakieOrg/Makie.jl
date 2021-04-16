@@ -496,11 +496,11 @@ end
 # logit ticks
 function get_ticks(x, scale::typeof(AbstractPlotting.logit), any_formatter, vmin, vmax)
 
-    logit_10(x) = log10(x / (1 - x))
-    expit_10(x) = 1 / (1 + exp10(-x))
+    logit_10(x) = AbstractPlotting.logit(x) / log(10)
+    logistic_10(x) = AbstractPlotting.logistic(log(10) * x)
     ticks_scaled = get_tickvalues(x, identity, logit_10(vmin), logit_10(vmax))
     
-    ticks = expit_10.(ticks_scaled)
+    ticks = logistic_10.(ticks_scaled)
 
     if any_formatter === AbstractPlotting.automatic
         base_labels = get_ticklabels(AbstractPlotting.automatic, ticks_scaled)
