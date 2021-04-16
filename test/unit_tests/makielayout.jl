@@ -34,7 +34,8 @@ end
 
 @testset "Axis limits basics" begin
     f = Figure()
-    ax = Axis(f[1, 1], targetlimits = BBox(0, 10, 0, 20), limits = (nothing, nothing))
+    ax = Axis(f[1, 1], limits = (nothing, nothing))
+    ax.targetlimits[] = BBox(0, 10, 0, 20)
     @test ax.finallimits[] == BBox(0, 10, 0, 20)
     @test ax.limits[] == (nothing, nothing)
     xlims!(ax, -10, 10)

@@ -43,15 +43,15 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     end
 
     ticknode_1 = lift(finallimits, attrs.xticks, attrs.xtickformat) do lims, ticks, format
-        tl = get_ticks(ticks, format, minimum(lims)[1], maximum(lims)[1])
+        tl = get_ticks(ticks, identity, format, minimum(lims)[1], maximum(lims)[1])
     end
 
     ticknode_2 = lift(finallimits, attrs.yticks, attrs.ytickformat) do lims, ticks, format
-        tl = get_ticks(ticks, format, minimum(lims)[2], maximum(lims)[2])
+        tl = get_ticks(ticks, identity, format, minimum(lims)[2], maximum(lims)[2])
     end
 
     ticknode_3 = lift(finallimits, attrs.zticks, attrs.ztickformat) do lims, ticks, format
-        tl = get_ticks(ticks, format, minimum(lims)[3], maximum(lims)[3])
+        tl = get_ticks(ticks, identity, format, minimum(lims)[3], maximum(lims)[3])
     end
 
     mi1 = @lift(!(pi/2 <= $azimuth % 2pi < 3pi/2))
@@ -814,7 +814,8 @@ function xautolimits(ax::Axis3)
     else
         xlims = expandlimits(xlims,
             ax.attributes.xautolimitmargin[][1],
-            ax.attributes.xautolimitmargin[][2])
+            ax.attributes.xautolimitmargin[][2],
+            identity)
     end
     xlims
 end
@@ -827,7 +828,8 @@ function yautolimits(ax::Axis3)
     else
         ylims = expandlimits(ylims,
             ax.attributes.yautolimitmargin[][1],
-            ax.attributes.yautolimitmargin[][2])
+            ax.attributes.yautolimitmargin[][2],
+            identity)
     end
     ylims
 end
@@ -840,7 +842,8 @@ function zautolimits(ax::Axis3)
     else
         zlims = expandlimits(zlims,
             ax.attributes.zautolimitmargin[][1],
-            ax.attributes.zautolimitmargin[][2])
+            ax.attributes.zautolimitmargin[][2],
+            identity)
     end
     zlims
 end

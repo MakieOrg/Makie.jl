@@ -184,11 +184,11 @@ function default_attributes(::Type{Axis}, scene)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin = (0.05f0, 0.05f0)
         "The xticks."
-        xticks = LinearTicks(4)
+        xticks = AbstractPlotting.automatic
         "Format for xticks."
         xtickformat = AbstractPlotting.automatic
         "The yticks."
-        yticks = LinearTicks(4)
+        yticks = AbstractPlotting.automatic
         "Format for yticks."
         ytickformat = AbstractPlotting.automatic
         "The button for panning."
@@ -215,8 +215,6 @@ function default_attributes(::Type{Axis}, scene)
         flip_ylabel = false
         "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
         autolimitaspect = nothing
-        "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
-        targetlimits = BBox(0, 100, 0, 100)
         "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
         limits = (nothing, nothing)
         "The align mode of the axis in its parent GridLayout."
@@ -249,6 +247,10 @@ function default_attributes(::Type{Axis}, scene)
         yminortickcolor = :black
         "The tick locator for the y minor ticks"
         yminorticks = IntervalsBetween(2)
+        "The x axis scale"
+        xscale = identity
+        "The y axis scale"
+        yscale = identity
     end
 
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
@@ -291,7 +293,7 @@ function default_attributes(::Type{Colorbar}, scene)
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
-        ticks = LinearTicks(4)
+        ticks = AbstractPlotting.automatic
         "Format for ticks."
         tickformat = AbstractPlotting.automatic
         "The space reserved for the tick labels."
@@ -336,10 +338,10 @@ function default_attributes(::Type{Colorbar}, scene)
         flipaxis = true
         "Flips the colorbar label if the axis is vertical."
         flip_vertical_label = false
-        "The width setting of the colorbar."
-        width = nothing
+        "The width setting of the colorbar. Use `size` to set width or height relative to colorbar orientation instead."
+        width = AbstractPlotting.automatic
         "The height setting of the colorbar."
-        height = nothing
+        height = AbstractPlotting.automatic
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -368,6 +370,10 @@ function default_attributes(::Type{Colorbar}, scene)
         minortickcolor = :black
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
+        "The axis scale"
+        scale = identity
+        "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
+        size = 20
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
@@ -570,6 +576,7 @@ function default_attributes(::Type{LineAxis})
         minortickwidth = 1f0,
         minortickcolor = :black,
         minorticks = AbstractPlotting.automatic,
+        scale = identity,
     )
 end
 

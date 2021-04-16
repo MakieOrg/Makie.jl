@@ -89,7 +89,7 @@ function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There needs to be a single axis at $(fp.gp.span), $(fp.gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
-    ax = only(c)
+    ax = first(c)
     plot!(P, ax, args...; kwargs...)
 end
 
@@ -141,6 +141,6 @@ function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There is not just one axis at $(gp).")
     end
-    ax = only(c)
+    ax = first(c)
     plot!(P, ax, args...; kwargs...)
 end
