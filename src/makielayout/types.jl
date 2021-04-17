@@ -50,7 +50,26 @@ struct MultiplesTicks
     suffix::String
 end
 
-struct Log10Ticks end
+
+# """
+#     LogitTicks{T}(linear_ticks::T)
+
+# Wraps any other tick object.
+# Used to apply a linear tick searching algorithm on a logit-transformed interval.
+# """
+# struct LogitTicks{T}
+#     linear_ticks::T
+# end
+
+"""
+    LogTicks{T}(linear_ticks::T)
+
+Wraps any other tick object.
+Used to apply a linear tick searching algorithm on a log-transformed interval.
+"""
+struct LogTicks{T}
+    linear_ticks::T
+end
 
 """
     IntervalsBetween(n::Int, mirror::Bool = true)
