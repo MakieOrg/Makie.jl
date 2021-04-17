@@ -48,6 +48,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         colormap = [:black, :white],
+        colorrange = automatic,
         interpolate = true,
         fxaa = false,
         lowclip = nothing,
@@ -70,6 +71,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         colormap = :viridis,
+        colorrange = automatic,
         linewidth = 0.0,
         interpolate = false,
         levels = 1,
@@ -120,6 +122,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = nothing,
         colormap = :viridis,
+        colorrange = automatic,
         shading = true,
         fxaa = true,
         lowclip = nothing,
@@ -147,6 +150,7 @@ $(ATTRIBUTES)
         linewidth = 1.0,
         color = :black,
         colormap = :viridis,
+        colorrange = automatic,
         linestyle = nothing,
         fxaa = false
     )
@@ -183,6 +187,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = :black,
         colormap = :viridis,
+        colorrange = automatic,
         interpolate = false,
         shading = true,
         fxaa = true,
@@ -204,6 +209,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = :gray65,
         colormap = :viridis,
+        colorrange = automatic,
         marker = Circle,
         markersize = 10,
 

@@ -44,7 +44,7 @@ function LineAxis(parent::Scene; kwargs...)
     decorations[:minorticklines] = minorticklines
 
     realticklabelalign = lift(ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation, typ = Any) do al, (pos, ex, hor), fl, rot
-        if al !== AbstractPlotting.automatic
+        if al !== automatic
             return al
         end
         if rot == 0 || !(rot isa Real)
@@ -112,7 +112,7 @@ function LineAxis(parent::Scene; kwargs...)
     actual_ticklabelspace = attrs[:actual_ticklabelspace]
 
     onany(ticklabel_ideal_space, ticklabelspace) do idealspace, space
-        s = if space == AbstractPlotting.automatic
+        s = if space == automatic
             idealspace
         else
             space
@@ -192,9 +192,9 @@ function LineAxis(parent::Scene; kwargs...)
 
     tickvalues = Node(Float32[])
 
-    tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat) do (position, extents, horizontal),
-            limits, ticks, tickformat
-        get_ticks(ticks, tickformat, limits...)
+    tickvalues_labels_unfiltered = lift(pos_extents_horizontal, limits, ticks, tickformat, attrs.scale) do (position, extents, horizontal),
+            limits, ticks, tickformat, scale
+        get_ticks(ticks, scale, tickformat, limits...)
     end
 
     tickpositions = Node(Point2f0[])
@@ -215,10 +215,19 @@ function LineAxis(parent::Scene; kwargs...)
         lim_w = limits[][2] - limits[][1]
 
         # if labels are given manually, it's possible that some of them are outside the displayed limits
-        i_values_within_limits = findall(tv -> lim_o <= tv <= (lim_o + lim_w), tickvalues_unfiltered)
+        # we only check approximately because otherwise because of floating point errors, ticks can be dismissed sometimes
+        i_values_within_limits = findall(tickvalues_unfiltered) do tv
+            (limits[][1] <= tv || limits[][1] ≈ tv) &&
+             (tv <= limits[][2] || tv ≈ limits[][2])
+        end
+
         tickvalues[] = tickvalues_unfiltered[i_values_within_limits]
 
-        tick_fractions = (tickvalues[] .- lim_o) ./ lim_w
+        scale = attrs.scale[]
+        tickvalues_scaled = scale.(tickvalues[])
+
+        tick_fractions = (tickvalues_scaled .- scale(limits[][1])) ./ (scale(limits[][2]) - scale(limits[][1]))
+
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
         tickpos = if horizontal
@@ -237,7 +246,7 @@ function LineAxis(parent::Scene; kwargs...)
     minortickpositions = Node(Point2f0[])
 
     onany(tickvalues, minorticks) do tickvalues, minorticks
-        minortickvalues[] = get_minor_tickvalues(minorticks, tickvalues, limits[]...)
+        minortickvalues[] = get_minor_tickvalues(minorticks, attrs.scale[], tickvalues, limits[]...)
     end
 
     onany(minortickvalues) do minortickvalues
@@ -251,7 +260,11 @@ function LineAxis(parent::Scene; kwargs...)
         lim_o = limits[][1]
         lim_w = limits[][2] - limits[][1]
 
-        tick_fractions = (minortickvalues .- lim_o) ./ lim_w
+        scale = attrs.scale[]
+        tickvalues_scaled = scale.(minortickvalues)
+
+        tick_fractions = (tickvalues_scaled .- scale(limits[][1])) ./ (scale(limits[][2]) - scale(limits[][1]))
+
         tick_scenecoords = px_o .+ px_width .* tick_fractions
 
         minortickpositions[] = if horizontal
@@ -417,13 +430,24 @@ Base function that calls `get_tickvalues(ticks, vmin, max)` and
 For custom ticks / formatter combinations, this method can be overloaded
 directly, or both `get_tickvalues` and `get_ticklabels` separately.
 """
-function get_ticks(ticks, formatter, vmin, vmax)
-    tickvalues = get_tickvalues(ticks, vmin, vmax)
+function get_ticks(ticks, scale, formatter, vmin, vmax)
+    tickvalues = get_tickvalues(ticks, scale, vmin, vmax)
     ticklabels = get_ticklabels(formatter, tickvalues)
     return tickvalues, ticklabels
 end
 
-function get_ticks(ticks_and_labels::Tuple{Any, Any}, ::AbstractPlotting.Automatic, vmin, vmax)
+# automatic with identity scaling uses WilkinsonTicks by default
+get_tickvalues(::Automatic, ::typeof(identity), vmin, vmax) = get_tickvalues(WilkinsonTicks(5, k_min = 3), vmin, vmax)
+
+# fall back to identity if not overloaded scale function is used with automatic
+get_tickvalues(::Automatic, F, vmin, vmax) = get_tickvalues(automatic, identity, vmin, vmax)
+
+# fall back to non-scale aware behavior if no special version is overloaded
+get_tickvalues(ticks, scale, vmin, vmax) = get_tickvalues(ticks, vmin, vmax)
+
+
+
+function get_ticks(ticks_and_labels::Tuple{Any, Any}, any_scale, ::Automatic, vmin, vmax)
     n1 = length(ticks_and_labels[1])
     n2 = length(ticks_and_labels[2])
     if n1 != n2
@@ -432,7 +456,7 @@ function get_ticks(ticks_and_labels::Tuple{Any, Any}, ::AbstractPlotting.Automat
     ticks_and_labels
 end
 
-function get_ticks(tickfunction::Function, formatter, vmin, vmax)
+function get_ticks(tickfunction::Function, any_scale, formatter, vmin, vmax)
     result = tickfunction(vmin, vmax)
     if result isa Tuple{Any, Any}
         tickvalues, ticklabels = result
@@ -443,6 +467,55 @@ function get_ticks(tickfunction::Function, formatter, vmin, vmax)
     return tickvalues, ticklabels
 end
 
+_logbase(::typeof(log10)) = "10"
+_logbase(::typeof(log2)) = "2"
+_logbase(::typeof(log)) = "e"
+
+
+function get_ticks(::Automatic, scale::Union{typeof(log10), typeof(log2), typeof(log)},
+        any_formatter, vmin, vmax)
+    get_ticks(LogTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
+end
+
+# log ticks just use the normal pipeline but with log'd limits, then transform the labels 
+function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof(log)}, ::Automatic, vmin, vmax)
+    ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
+    
+    ticks = AbstractPlotting.inverse_transform(scale).(ticks_scaled)
+
+    labels_scaled = get_ticklabels(automatic, ticks_scaled)
+    labels = _logbase(scale) .* AbstractPlotting.UnicodeFun.to_superscript.(labels_scaled)
+
+    (ticks, labels)
+end
+
+# function get_ticks(::Automatic, scale::typeof(AbstractPlotting.logit), any_formatter, vmin, vmax)
+#     get_ticks(LogitTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
+# end
+
+logit_10(x) = log10(x / (1 - x))
+expit_10(x) = 1 / (1 + exp10(-x))
+
+# function get_ticks(l::LogitTicks, scale::typeof(AbstractPlotting.logit), ::Automatic, vmin, vmax)
+
+#     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
+    
+#     ticks = expit_10.(ticks_scaled)
+
+#     base_labels = get_ticklabels(automatic, ticks_scaled)
+    
+#     labels = map(ticks_scaled, base_labels) do t, bl
+#         if t == 0
+#             "¹/₂"
+#         elseif t < 0
+#             "10" * AbstractPlotting.UnicodeFun.to_superscript(bl)
+#         else
+#             "1-10" * AbstractPlotting.UnicodeFun.to_superscript("-" * bl)
+#         end
+#     end
+
+#     (ticks, labels)
+# end
 
 """
     get_tickvalues(lt::LinearTicks, vmin, vmax)
@@ -458,14 +531,25 @@ get_tickvalues(lt::LinearTicks, vmin, vmax) = locateticks(vmin, vmax, lt.n_ideal
 
 Convert tickvalues to a float array by default.
 """
-get_tickvalues(tickvalues, vmin, vmax) = Float64.(tickvalues)
+get_tickvalues(tickvalues, vmin, vmax) = convert(Vector{Float64}, tickvalues)
+
+
+# function get_tickvalues(l::LogitTicks, vmin, vmax)
+#     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
+#     expit_10.(ticks_scaled)
+# end
+
+function get_tickvalues(l::LogTicks, scale, vmin, vmax)
+    ticks_scaled = get_tickvalues(l.linear_ticks, scale(vmin), scale(vmax))
+    AbstractPlotting.inverse_transform(scale).(ticks_scaled)
+end
 
 """
-    get_ticklabels(::AbstractPlotting.Automatic, values)
+    get_ticklabels(::Automatic, values)
 
 Gets tick labels by applying `Showoff.showoff` to `values`.
 """
-get_ticklabels(::AbstractPlotting.Automatic, values) = Showoff.showoff(values)
+get_ticklabels(::Automatic, values) = Showoff.showoff(values)
 
 """
     get_ticklabels(formatfunction::Function, values)
@@ -482,7 +566,7 @@ Gets tick labels by formatting each value in `values` according to a `Formatting
 get_ticklabels(formatstring::AbstractString, values) = [Formatting.format(formatstring, v) for v in values]
 
 
-function get_ticks(m::MultiplesTicks, ::AbstractPlotting.Automatic, vmin, vmax)
+function get_ticks(m::MultiplesTicks, any_scale, ::Automatic, vmin, vmax)
     dvmin = vmin / m.multiple
     dvmax = vmax / m.multiple
     multiples = MakieLayout.get_tickvalues(LinearTicks(m.n_ideal), dvmin, dvmax)
@@ -491,8 +575,8 @@ function get_ticks(m::MultiplesTicks, ::AbstractPlotting.Automatic, vmin, vmax)
 end
 
 
-function get_minor_tickvalues(i::IntervalsBetween, tickvalues, vmin, vmax)
-    vals = Float32[]
+function get_minor_tickvalues(i::IntervalsBetween, scale, tickvalues, vmin, vmax)
+    vals = Float64[]
     length(tickvalues) < 2 && return vals
     n = i.n
 
@@ -500,10 +584,7 @@ function get_minor_tickvalues(i::IntervalsBetween, tickvalues, vmin, vmax)
         firstinterval = tickvalues[2] - tickvalues[1]
         stepsize = firstinterval / n
         v = tickvalues[1] - stepsize
-        while v >= vmin
-            pushfirst!(vals, v)
-            v -= stepsize
-        end
+        prepend!(vals, v:-stepsize:vmin)
     end
 
     for (lo, hi) in zip(@view(tickvalues[1:end-1]), @view(tickvalues[2:end]))
@@ -520,10 +601,46 @@ function get_minor_tickvalues(i::IntervalsBetween, tickvalues, vmin, vmax)
         lastinterval = tickvalues[end] - tickvalues[end-1]
         stepsize = lastinterval / n
         v = tickvalues[end] + stepsize
-        while v <= vmax
-            push!(vals, v)
+        append!(vals, v:stepsize:vmax)
+    end
+
+    vals
+end
+
+# for log scales, we need to step in log steps at the edges
+function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typeof(log2), typeof(log10)}, tickvalues, vmin, vmax)
+
+    vals = Float64[]
+    length(tickvalues) < 2 && return vals
+    n = i.n
+
+    invscale = AbstractPlotting.inverse_transform(scale)
+
+    if i.mirror
+        firstinterval_scaled = scale(tickvalues[2]) - scale(tickvalues[1])
+        stepsize = firstinterval_scaled / n
+        prevtick = invscale(scale(tickvalues[1]) - firstinterval_scaled)
+        stepsize = (tickvalues[1] - prevtick) / n
+        v = tickvalues[1] - stepsize
+        prepend!(vals, v:-stepsize:vmin)
+    end
+
+    for (lo, hi) in zip(@view(tickvalues[1:end-1]), @view(tickvalues[2:end]))
+        interval = hi - lo
+        stepsize = interval / n
+        v = lo
+        for i in 1:n-1
             v += stepsize
+            push!(vals, v)
         end
+    end
+
+    if i.mirror
+        lastinterval_scaled = scale(tickvalues[end]) - scale(tickvalues[end-1])
+        nexttick = invscale(scale(tickvalues[end]) + lastinterval_scaled)
+        stepsize = (nexttick - tickvalues[end]) / n
+        v = tickvalues[end] + stepsize
+        append!(vals, v:stepsize:vmax)
     end
 
     vals

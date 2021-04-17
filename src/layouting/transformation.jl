@@ -209,16 +209,37 @@ transform_func_obs(x) = transformation(x).transform_func
     apply_transform(f, data)
 Apply the data transform func to the data
 """
-apply_transform(f::typeof(identity), position::Number) = position
-apply_transform(f::typeof(identity), positions::AbstractArray) = positions
-apply_transform(f::typeof(identity), positions::AbstractVector) = positions
-apply_transform(f::typeof(identity), position::VecTypes) = position
+apply_transform(f::typeof(identity), x) = x
+# these are all ambiguity fixes
+apply_transform(f::typeof(identity), x::AbstractArray) = x
+apply_transform(f::typeof(identity), x::VecTypes) = x
+apply_transform(f::typeof(identity), x::Number) = x
+apply_transform(f::typeof(identity), x::ClosedInterval) = x
+
+apply_transform(f::NTuple{2, typeof(identity)}, x) = x
+apply_transform(f::NTuple{2, typeof(identity)}, x::AbstractArray) = x
+apply_transform(f::NTuple{2, typeof(identity)}, x::VecTypes) = x
+apply_transform(f::NTuple{2, typeof(identity)}, x::Number) = x
+apply_transform(f::NTuple{2, typeof(identity)}, x::ClosedInterval) = x
+
+apply_transform(f::NTuple{3, typeof(identity)}, x) = x
+apply_transform(f::NTuple{3, typeof(identity)}, x::AbstractArray) = x
+apply_transform(f::NTuple{3, typeof(identity)}, x::VecTypes) = x
+apply_transform(f::NTuple{3, typeof(identity)}, x::Number) = x
+apply_transform(f::NTuple{3, typeof(identity)}, x::ClosedInterval) = x
+
 
 struct PointTrans{N, F}
     f::F
+    function PointTrans{N}(f::F) where {N, F}
+        if !hasmethod(f, Tuple{Point{N}})
+            error("PointTrans with parameter N = $N must be applicable to an argument of type Point{$N}.")
+        end
+        new{N, F}(f)
+    end
 end
 
-PointTrans{N}(func::F) where {N, F} = PointTrans{N, F}(func)
+# PointTrans{N}(func::F) where {N, F} = PointTrans{N, F}(func)
 Base.broadcastable(x::PointTrans) = (x,)
 
 function apply_transform(f::PointTrans{N}, point::Point{N}) where N
@@ -236,25 +257,38 @@ function apply_transform(f::PointTrans{N1}, point::Point{N2}) where {N1, N2}
     end
 end
 
-
-
 function apply_transform(f, data::AbstractArray)
-    return map(point-> apply_transform(f, point), data)
+    map(point-> apply_transform(f, point), data)
 end
 
-function apply_transform(f::NTuple{N, Any}, point::VecTypes{N}) where {N, T}
-    return Point{N, Float32}(ntuple(i-> apply_transform(f[i], point[i]), N))
+function apply_transform(f::Tuple{Any, Any}, point::VecTypes{2})
+    Point2{Float32}(
+        f[1](point[1]),
+        f[2](point[2]),
+    )
 end
+# ambiguity fix
+apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{2}) = point
+
+
+function apply_transform(f::Tuple{Any, Any}, point::VecTypes{3})
+    apply_transform((f..., identity), point)
+end
+# ambiguity fix
+apply_transform(f::NTuple{2, typeof(identity)}, point::VecTypes{3}) = point
+
+function apply_transform(f::Tuple{Any, Any, Any}, point::VecTypes{3})
+    Point3{Float32}(
+        f[1](point[1]),
+        f[2](point[2]),
+        f[3](point[3]),
+    )
+end
+# ambiguity fix
+apply_transform(f::NTuple{3, typeof(identity)}, point::VecTypes{3}) = point
+
 
 apply_transform(f, number::Number) = f(number)
-
-function apply_transform(f::Union{typeof(log), typeof(log10), typeof(log2)}, number::Number)
-    if number <= 0.0
-        return 0.0
-    else
-        return f(number)
-    end
-end
 
 function apply_transform(f::Observable, data::Observable)
     return lift((f, d)-> apply_transform(f, d), f, data)
@@ -265,3 +299,27 @@ function apply_transform(f, itr::ClosedInterval)
     mini, maxi = extrema(itr)
     return apply_transform(f, mini) .. apply_transform(f, maxi)
 end
+
+
+function apply_transform(f, r::Rect)
+    mi = minimum(r)
+    ma = maximum(r)
+    mi_t = apply_transform(f, mi)
+    ma_t = apply_transform(f, ma)
+    Rect(Vec(mi_t), Vec(ma_t .- mi_t))
+end
+# ambiguity fix
+apply_transform(f::typeof(identity), r::Rect) = r
+apply_transform(f::NTuple{2, typeof(identity)}, r::Rect) = r
+apply_transform(f::NTuple{3, typeof(identity)}, r::Rect) = r
+
+inverse_transform(::typeof(identity)) = identity
+inverse_transform(::typeof(log10)) = exp10
+inverse_transform(::typeof(log)) = exp
+inverse_transform(::typeof(log2)) = exp2
+inverse_transform(::typeof(sqrt)) = x -> x ^ 2
+inverse_transform(F::Tuple) = map(inverse_transform, F)
+
+logit(x) = log(x / (1 - x))
+expit(x) = 1 / (1 + exp(-x))
+inverse_transform(::typeof(logit)) = expit
