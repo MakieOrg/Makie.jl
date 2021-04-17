@@ -1,170 +1,340 @@
 # Basic Tutorial
 
-Here is a quick tutorial to get you started. We assume you have [Julia](https://julialang.org/) and `GLMakie.jl` (or one of the other backends) installed already.
+## Preface
 
-First, we import GLMakie, which might take a little bit of time because there is a lot to precompile. Just sit tight!
-For this tutorial, we also call `AbstractPlotting.inline!(true)` so plots appear inline after each example.
-Otherwise, an interactive window will open when you return a `Figure`.
+Here is a quick tutorial to get you started with Makie!
+
+We assume you have [Julia](https://julialang.org/) and `CairoMakie.jl` (or one of the other backends, `GLMakie.jl` or `WGLMakie.jl`) installed already.
+
+This tutorial uses CairoMakie, but the code can be executed with any backend.
+CairoMakie can output beautiful static vector graphics, but it doesn't have the native ability to open interactive windows.
+
+To see the output of plotting commands when using CairoMakie, we recommend you either use an IDE which supports png or svg output, such as VSCode, Atom/Juno, Jupyter, Pluto, etc., or try using a viewer package such as [ElectronDisplay.jl](https://github.com/queryverse/ElectronDisplay.jl), or alternatively save your plots to files directly.
+The Julia REPL by itself does not have the ability to show plots.
+
+GLMakie can open interactive windows, or alternatively display bitmaps inline if `AbstractPlotting.inline!(true)` is called.
+
+WGLMakie shows interactive plots in environments that support interactive html displays, such as VSCode, Atom/Juno, Jupyter, Pluto, etc.
+
+For more information, have a look at [Backends & Output](@ref).
+
+Ok, now that this is out of the way, let's get started!
+
+## Importing CairoMakie
+
+First, we import CairoMakie, which might take a little bit of time because there is a lot to precompile. Just sit tight!
 
 ```@example 1
-using GLMakie
-GLMakie.activate!() # hide
-AbstractPlotting.inline!(true)
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
 nothing # hide
 ```
 
-!!! note
-    A `Figure` is usually displayed whenever it is returned in global scope (e.g. in the REPL).
-    To display a Figure from within a local scope,
-    like from within a function, you can directly call `display(figure)`.  
+## First plot
 
-## A First Plot
-
-Let's begin by plotting some points using the `scatter` function.
-
-
-```@example 1
-points = [Point2f0(cos(t), sin(t)) for t in LinRange(0, 2pi, 20)]
-colors = 1:20
-figure, axis, scatterobject = scatter(points, color = colors, markersize = 15)
-figure
-```
-
-You can see that we've split the return value of `scatter` into three components: `figure`, `axis` and `scatterobject`.
-Every plotting function in its default form returns an object of type `FigureAxisPlot` which bundles these three parts, which makes it easy to continue working separately with them.
-
-## Changing Attributes
-
-One great feature of Makie is that it uses `Observables` (or `Nodes` as a Makie-specific alias),
-which make it easy to write visualizations that can be updated dynamically with new data.
-
-An `Observable` is a container object which notifies all its listeners whenever its content changes.
-Put simply, using `Observables`, if your input data changes your plots change as well.
-
-Plot objects usually have a collection of attributes, which are observables. If you change them,
-the plots update immediately.
-Let's try to change the marker size of our scatter plot:
-
-```@example 1
-scatterobject.markersize = 30
-figure
-```
-
-
-## Adding A Plot
-
-Let's add another scatter plot to our axis.
-To add a plot to an existing figure or axis, you use the mutating version with a `!`.
-Each plot type such as `Scatter` has a non-mutating function (`scatter`) and a mutating function (`scatter!`) associated with it.
-
-Let's plot another circle.
-This time we try some different arguments, a circle function and a range of values.
-
-We use `scatter!` without passing a specific target as the first argument, which plots into the last used axis.
-
-```@example 1
-circlefunc = ts -> 1.5 .* Point2f0.(cos.(ts), sin.(ts))
-scatter!(circlefunc, LinRange(0, 2pi, 30), color = :red)
-figure
-```
-
-## Plotting `Observables`
-
-So far, we have plotted normal "static" values - a simple array of points, or a function evaluated on static values.
-Makie makes it really easy to plot "dynamic" values as well.
-This is done using Observables.
-
-Imagine that you want to interactively visualize how a sine function over a constant interval depends on its parameters.
-That means the x values are fixed but the y values depend on the frequency and phase of the sine function.
-Such a dependency is easy to express with `Observables` or `Nodes` for short.
-
-Usually, all plot functions accept their input arguments and attributes as `Observables`.
-If you don't pass `Observables`, they get converted internally anyway.
-
-```@example 1
-xs = -pi:0.01:pi
-frequency = Node(3.0) # Node === Observable
-phase = Node(0.0)
-
-ys = lift(frequency, phase) do fr, ph
-    @. 0.3 * sin(fr * xs - ph)
-end
-
-lines!(xs, ys, color = :blue, linewidth = 3)
-figure
-```
-
-You can see that our sine function was nicely visualized. The `lift` function takes as its first
-input a function which computes its output from the other arguments, `frequency` and `phase`
-in this case, which are `Observables`.
-The output is then stored inside another `Observable`, `ys`.
-Therefore, `ys` always contains the result of the sine function
-with the current `frequency` and `phase` applied
-to the values in `xs`. (If you haven't used the `do` syntax before, it is Julia's way of passing
-an anonymous function as the first argument to another function.
-It's very useful for dealing with `Observables`.)
+Makie has many different plotting functions, one of the most common ones is [lines](@ref).
+You can just call such a function and your plot will appear if your coding environment can show png or svg files.
 
 !!! note
-    For short functions, there is a really convenient macro alternative to `lift`.
-    Instead of what we wrote above, we could have written `ys = @lift(0.3 * sin($frequency .* xs .- $phase))`.
-    Just prefix expressions that reference observables with a `$` symbol.
-
-Now, we can change the `frequency` to a different value and the plot will change with it.
-`Observables` are mutated with empty square brackets (like `Ref`s).
+    Objects such as [Figure](@ref), `FigureAxisPlot` or `Scene` are usually displayed whenever they are returned in global scope (e.g. in the REPL).
+    To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
 ```@example 1
-frequency[] = 9
-figure
+x = LinRange(0, 10, 100)
+y = sin.(x)
+lines(x, y)
 ```
 
-You see that the line plot has changed to reflect the new frequency.
-That's how easy it is to create a dynamic visualization with `Observables`. 
-Imagine the opportunities to hook Observables up with sliders and buttons to control a complex plot.
+Another common function is [scatter](@ref).
 
+```@example
+using CairoMakie
 
-## Saving Static Plots
-
-Makie overloads the `FileIO` interface. This is how you save this figure as a `png`:
-
-```julia
-save("sineplot.png", figure)
+x = LinRange(0, 10, 100)
+y = sin.(x)
+scatter(x, y)
 ```
 
-!!! note
-    Different backends have different possible output formats. `GLMakie` as a GPU-powered backend can
-    only output bitmaps like `png`. `CairoMakie` can output high-quality vector graphics such as `svg` and
-    `pdf`, on the other hand those formats don't work as well (or at all) with 3D content.
+## Multiple plots
 
-See [Backends & Output](@ref) for more information on this.
+Every plotting function has a version with and one without `!`.
+For example, there's `scatter` and `scatter!`, `lines` and `lines!`, etc.
+The functions without a `!` always create a new axis with a plot inside, while the functions with `!` plot into an already existing axis.
 
-## Creating Animations
+Here's how you could plot two lines on top of each other.
 
-Often, we want to create small videos that show how a visualization changes over time.
-This is really easy to do if we already have a plot with observables.
-Once we have our figure, we can just change the observables that we want in a closure function and
-pass that to `record`, which creates a video for us.
+```@example
+using CairoMakie
 
-We can just re-use our existing figure. Let's change the phase over time.
-We just need to supply an iterator with as many elements as we want frames in our video.
+x = LinRange(0, 10, 100)
+y1 = sin.(x)
+y2 = cos.(x)
 
-```@example 1
-framerate = 30 # fps
-timestamps = 0:1/framerate:3
-
-record(figure, "phase_animation.mp4", timestamps; framerate = framerate) do t
-    phase[] = 2 * t * 2pi
-end
-nothing # hide
+lines(x, y1)
+lines!(x, y2)
+current_figure()
 ```
 
-And here is our result, as we expect the sine function moves sideways.
+The second `lines!` call plots into the axis created by the first `lines` call.
+If you don't specify an axis to plot into, it's as if you had called `lines!(current_axis(), ...)`.
 
-![phase_animation](phase_animation.mp4)
+The call to `current_figure` is necessary here, because functions with `!` return only the newly created plot object, but this alone does not cause the figure to display when returned.
 
-For more information, see the [Animations](@ref) and the [Observables & Interaction](@ref) sections.
+## Attributes
 
-## Summary
+Every plotting function has attributes which you can set through keyword arguments.
+The lines in the previous example both have the same default color, which we can change easily.
 
-That concludes our short tutorial. We hope you have learned how to create basic plots
-with Makie and how easy it is to change and animate them using Observables.
+```@example
+using CairoMakie
 
+x = LinRange(0, 10, 100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+lines(x, y1, color = :red)
+lines!(x, y2, color = :blue)
+current_figure()
+```
+
+Other plotting functions have different attributes.
+The function `scatter`, for example, does not only have the `color` attribute, but also a `markersize` attribute.
+
+```@example
+using CairoMakie
+
+x = LinRange(0, 10, 100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+scatter(x, y1, color = :red, markersize = 5)
+scatter!(x, y2, color = :blue, markersize = 10)
+current_figure()
+```
+
+If you save the plot object returned from a call like `scatter!`, you can also manipulate its attributes later with the syntax `plot.attribute = new_value`.
+
+```@example
+using CairoMakie
+
+x = LinRange(0, 10, 100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+scatter(x, y1, color = :red, markersize = 5)
+sc = scatter!(x, y2, color = :blue, markersize = 10)
+sc.color = :green
+sc.markersize = 20
+current_figure()
+```
+
+## Array attributes
+
+A lot of attributes can be set to either a single value or an array with as many elements as there are data points.
+For example, it is usually much more performant to draw many points with one scatter object, than to create many scatter objects with one point each.
+
+Here are the two scatter plots again, but one has varying markersize, and the other varying color.
+
+```@example array_scatter
+using CairoMakie
+
+x = LinRange(0, 10, 100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+scatter(x, y1, color = :red, markersize = LinRange(5, 15, 100))
+sc = scatter!(x, y2, color = LinRange(0, 1, 100), colormap = :thermal)
+
+current_figure()
+```
+
+Note that the color array does not actually contain colors, rather the numerical values are mapped to the plot's `colormap`.
+There are many different colormaps to choose from, take a look on the [Colors](@ref) page.
+
+The values are mapped to colors via the `colorrange` attribute, which by default goes from the minimum to the maximum color value, but we can also limit or expand the range manually.
+For example, we can constrain the previous scatter plot's color range to (0.25, 0.75), which will clip the colors at the bottom and the top quarters.
+
+```@example array_scatter
+sc.colorrange = (0.25, 0.75)
+
+current_figure()
+```
+
+Of course you can also use an array of colors directly, in which case the `colorrange` is ignored:
+
+```@example
+using CairoMakie
+
+x = LinRange(0, 10, 100)
+y = sin.(x)
+
+colors = repeat([:crimson, :dodgerblue, :slateblue1, :sienna1, :orchid1], 20)
+
+scatter(x, y, color = colors, markersize = 20)
+```
+
+
+## Simple legend
+
+If you add label attributes to your plots, you can call the `axislegend` function to add a legend with all labeled plots to the current axis.
+
+```@example
+using CairoMakie
+
+x = LinRange(0, 10, 100)
+y1 = sin.(x)
+y2 = cos.(x)
+
+lines(x, y1, color = :red, label = "sin")
+lines!(x, y2, color = :blue, label = "cos")
+axislegend()
+current_figure()
+```
+
+## Subplots
+
+Makie uses a powerful layout system under the hood, which allows you to create very complex figures with many subplots.
+For the easiest way to do this, we need a [Figure](@ref) object.
+So far, we haven't seen this explicitly, it was created in the background in the first plotting function call.
+
+We can also create a [Figure](@ref) directly and then continue working with it.
+We can make subplots by giving the location of the subplot in our layout grid as the first argument to our plotting function.
+The basic syntax for specifying the location in a figure is `fig[row, col]`.
+
+```@example
+using CairoMakie
+
+x = LinRange(0, 10, 100)
+y = sin.(x)
+
+fig = Figure()
+lines(fig[1, 1], x, y, color = :red)
+lines(fig[1, 2], x, y, color = :blue)
+lines(fig[2, 1:2], x, y, color = :green)
+
+fig
+```
+
+Each `lines` call creates a new axis in the position given as the first argument, that's why we use `lines` and not `lines!` here.
+
+## Constructing axes manually
+
+Like [Figure](@ref)s, we can also create axes manually.
+This is useful if we want to prepare an empty axis to then plot into it later.
+
+The default 2D axis that we have created implicitly so far is called [Axis](@ref) and can also be created in a specific position in the figure by passing that position as the first argument.
+
+For example, we can create a figure with three axes.
+
+```@example manual_axes
+using CairoMakie
+ 
+f = Figure()
+ax1 = Axis(f[1, 1])
+ax2 = Axis(f[1, 2])
+ax3 = Axis(f[2, 1:2])
+f
+```
+
+And then we can continue to plot into these empty axes.
+
+```@example manual_axes
+lines!(ax1, 0..10, sin)
+lines!(ax2, 0..10, cos)
+lines!(ax3, 0..10, sqrt)
+f
+```
+
+Axes also have many attributes that you can set, for example to give them a title, or labels.
+
+```@example manual_axes 
+ax1.title = "sin"
+ax2.title = "cos"
+ax3.title = "sqrt"
+
+ax1.ylabel = "amplitude"
+ax3.ylabel = "amplitude"
+ax3.xlabel = "time"
+f
+```
+
+## Legend and Colorbar
+
+We have seen two `Layoutables` so far, the [Axis](@ref) and the [Legend](@ref) which was created by the function `axislegend`.
+All `Layoutable`s can be placed into the layout of a figure at arbitrary positions, which makes it easy to assemble complex figures.
+
+In the same way as with the [Axis](@ref) before, you can also create a [Legend](@ref) manually and then place it freely, wherever you want, in the figure.
+There are multiple ways to create [Legend](@ref)s, for one of them you pass one vector of plot objects and one vector of label strings.
+
+You can see here that we can deconstruct the return value from the two `lines` calls into one newly created axis and one plot object each.
+We can then feed the plot objects to the legend constructor.
+We place the legend in the second column and across both rows, which centers it nicely next to the two axes.
+
+```@example
+using CairoMakie
+
+f = Figure()
+ax1, l1 = lines(f[1, 1], 0..10, sin, color = :red)
+ax2, l2 = lines(f[2, 1], 0..10, cos, color = :blue)
+Legend(f[1:2, 2], [l1, l2], ["sin", "cos"])
+f
+```
+
+The [Colorbar](@ref) works in a very similar way.
+We just need to pass a position in the figure to it, and one plot object.
+In this example, we use a `heatmap`.
+
+You can see here that we split the return value of `heatmap` into three parts: the newly created figure, the axis and the heatmap plot object.
+This is useful as we can then continue with the figure `f` and the heatmap `hm` which we need for the colorbar.
+
+```@example
+using CairoMakie
+
+f, ax, hm = heatmap(randn(20, 20))
+Colorbar(f[1, 2], hm, width = 20)
+f
+```
+
+The previous short syntax is basically equivalent to this longer, manual version.
+You can switch between those workflows however you please.
+
+```@example
+using CairoMakie
+
+f = Figure()
+ax = Axis(f[1, 1])
+hm = heatmap!(ax, randn(20, 20))
+Colorbar(f[1, 2], hm, width = 20)
+f
+```
+
+## Passing attributes to implicit Figure and Axis
+
+For one-off plots, it's convenient to set a few axis or figure settings directly with the plotting command.
+You can do this only with the plotting functions without `!` like `lines` or `scatter`, because those always create a new axis, and can create a new figure if they are not plotting into an existing one. This is explained further under [Plot Method Signatures](@ref).
+
+You can pass your axis attributes under the keyword `axis` and your figure attributes under the keyword figure.
+
+```@example
+using CairoMakie
+
+heatmap(randn(20, 20),
+    figure = (resolution = (800, 600), backgroundcolor = :pink),
+    axis = (aspect = 1, xlabel = "x axis", ylabel = "y axis")
+)
+```
+
+If you set only one attribute, be careful to do `axis = (key = value,)` (note the trailing comma), otherwise you're not making a NamedTuple but a local variable `key`.
+
+## Next steps
+
+We've only looked at a small subset of Makie's functionality here.
+
+You can read about the different available plotting functions with examples in the `Plotting Functions` section.
+
+If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref).
+
+If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
+
+If you want to create animated movies, you can find more information in the [Animations](@ref) chapter.

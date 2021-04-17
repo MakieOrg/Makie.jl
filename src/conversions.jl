@@ -757,7 +757,7 @@ function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
     pattern = Float64[]
     for i in 1:length(ls_str)
         curr_char = ls_str[i]
-        next_char = i == lastindex(ls_str) ? ls_str[begin] : ls_str[i+1]
+        next_char = i == lastindex(ls_str) ? ls_str[firstindex(ls_str)] : ls_str[i+1]
         # push dash or dot
         if curr_char == '-'
             push!(pattern, dash)

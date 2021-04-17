@@ -147,7 +147,7 @@ function get_layout_at!(fp::FigurePosition; createmissing = false)
     if isempty(layouts) && createmissing
         fp.gp[] = GridLayoutBase.GridLayout()
     elseif length(layouts) == 1
-        only(layouts)::GridLayoutBase.GridLayout
+        first(layouts)::GridLayoutBase.GridLayout
     else
         nothing
     end
@@ -167,7 +167,7 @@ function get_layout_at!(fsp::FigureSubposition; createmissing = false)
     if isempty(layouts) && createmissing
         gp[] = GridLayoutBase.GridLayout()
     elseif length(layouts) == 1
-        only(layouts)::GridLayoutBase.GridLayout
+        first(layouts)::GridLayoutBase.GridLayout
     else
         nothing
     end
