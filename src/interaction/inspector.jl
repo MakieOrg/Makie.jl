@@ -201,8 +201,8 @@ function draw_data_inspector!(inspector)
 end
 
 
-function show_data(inspector::DataInspector, plot::Union{Scatter, MeshScatter}, idx)
-    @info "Scatter, MeshScatter"
+function show_data(inspector::DataInspector, plot::Scatter, idx)
+    @info "Scatter"
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
@@ -221,6 +221,50 @@ function show_data(inspector::DataInspector, plot::Union{Scatter, MeshScatter}, 
         a.bbox2D[] = FRect2D(proj_pos .- Vec2f0(10), Vec2f0(20))
         a.bbox2D_visible[] = true
         a.bbox3D_visible[] = false
+        a.visible[] = true
+    end
+end
+
+to_scale(f::AbstractFloat, idx) = Vec3f0(f)
+to_scale(v::Vec2f0, idx) = Vec3f0(v[1], v[2], 1)
+to_scale(v::Vec3f0, idx) = v
+to_scale(v::Vector, idx) = to_scale(v[idx], idx)
+
+to_rotation(x, idx) = x
+to_rotation(x::Vector, idx) = x[idx]
+
+    
+function show_data(inspector::DataInspector, plot::MeshScatter, idx)
+    @info "MeshScatter"
+    a = inspector.attributes
+    if idx === nothing
+        a.visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
+    else
+        scene = parent_scene(plot)
+        pos = to_ndim(Point3f0, plot[1][][idx], 0)
+        proj_pos = project(
+            camera(scene).projectionview[],
+            Vec2f0(widths(pixelarea(scene)[])),
+            pos
+        ) .+ Vec2f0(origin(pixelarea(scene)[]))
+        bbox = Rect{3, Float32}(plot.marker[])
+
+        a.position[] = proj_pos
+        a.display_text[] = position2string(pos)
+        a.bbox3D[] = bbox
+        a.projectionview[] = begin
+            inv(camera(inspector.parent).projectionview[]) *
+            # translationmatrix(to_ndim(Vec3f0, origin(pixelarea(scene)[]) ./ widths(pixelarea(inspector.parent)[]), 0)) *
+            camera(scene).projectionview[] * transformationmatrix(
+                pos, 
+                to_scale(plot.markersize[], idx), 
+                to_rotation(plot.rotations[], idx)
+            )
+        end
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = true
         a.visible[] = true
     end
 end
@@ -400,8 +444,7 @@ pos2index(x, r, N) = ceil(Int, N * (x - minimum(r) + 1e-10) / (maximum(r) - mini
 index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i) / (N)
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    # This is a mess but it'll need to be updated once Heatmaps are centered 
-    # anyway...
+    # This needs to be updated once Heatmaps are centered 
     # Alternatively, could this get a useful index?
     @info "Heatmap"
     a = inspector.attributes
