@@ -209,7 +209,7 @@ export dropped_files
 export hasfocus
 export entered_window
 export disconnect!, must_update, force_update!, update!, update_limits!
-export data_inspector
+export DataInspector
 
 # Raymarching algorithms
 export RaymarchAlgorithm, IsoValue, Absorption, MaximumIntensityProjection, AbsorptionRGBA, IndexedAbsorptionRGBA

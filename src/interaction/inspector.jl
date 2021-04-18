@@ -1,229 +1,38 @@
-# TODO
-# - add 3D bounding boxes (on pixel scene via projection...?)
-# - add finalizer to clean up indicator plots
-
 # checklist:
 #=
-- scatter 2D :)
-- scatter 3D :)
+- scatter 2D :) (ignores zoom scaling)
+- scatter 3D :) (ignores zoom scaling)
 - LScene Axis :(
 - lines 2D :)
 - lines 3D :)
-- meshscatter 2D :/ (bad bboxes)
-- meshscatter 3D :/
-- linesegments 3D :)
+- meshscatter 2D :) 
+- meshscatter 3D :) (bad text position - maybe static?)
+- linesegments 3D :) 
 - linesegments 2D :)
-- heatmap :/ (bad bbox)
-- barplot :/ (bad bbox)
-- mesh :)
+- heatmap :)
+- barplot :)
+- mesh :) (bad text position - maybe static?)
 =#
 
-struct DataInspector
-    parent::Scene
 
-    attributes::Attributes
-    plots::Vector{AbstractPlot}
-
-    whitelist::Vector{AbstractPlot}
-    blacklist::Vector{AbstractPlot}
-end
-
-function data_inspector(fig::Figure; blacklist = flatten_plots(fig.scene.plots), kwargs...)
-    data_inspector(fig.scene; blacklist = blacklist, kwargs...)
-end
-
-# Probably needs do defined elsewhere or this file needs to be moved
-# using ..MakieLayout: Axis, Axis3, LScene
-# function data_inspector(ax::Union{Axis, Axis3, LScene}; whitelist = ax.scene.plots, kwargs...)
-#     parent = root(ax.scene)
-#     data_inspector(parent; whitelist = whitelist, kwargs...)
-# end
-
-function data_inspector(
-        scene::SceneLike; 
-        whitelist = AbstractPlot[], blacklist = AbstractPlot[], range = 10
-    )
-    @assert cameracontrols(scene) isa PixelCamera
-
-    inspector = DataInspector(
-        scene,
-        Attributes(
-            display_text = " ",
-            position = Point2f0(0),
-            visible = false,
-            halign = :left,
-            bbox2D = Rect2D(Vec2f0(0,0),Vec2f0(1,1)),
-            bbox2D_visible = false,
-            bbox3D = Rect3D(Vec3f0(0,0,0),Vec3f0(1,1,1)),
-            bbox3D_visible = false,
-            projectionview = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
-            depth = 1e3,
-            extend = (:right, :up)
-        ),
-        AbstractPlot[], whitelist, blacklist
-    )
-
-    e = events(scene)
-    onany(e.mouseposition, e.scroll) do mp, _
-        # This is super cheap
-        is_mouseinside(scene) || return false
-
-        picks = pick_sorted(scene, mp, range)
-        should_clear = true
-        for (plt, idx) in picks
-            @info idx, typeof(plt)
-            b1 = plt === nothing
-            b2 = plt in inspector.blacklist
-            b3 = (!isempty(inspector.whitelist) && !(plt in inspector.whitelist))
-            b4 = b1 || b2 || b3
-            @info b1 b2 b3 b4
-            if (plt !== nothing) && !(plt in inspector.blacklist) && 
-                (isempty(inspector.whitelist) || (plt in inspector.whitelist))
-                show_data(inspector, plt, idx)
-                should_clear = false
-                break
-            end
-        end
-
-        if should_clear
-            inspector.attributes.visible[] = false
-            inspector.attributes.bbox2D_visible[] = false
-            inspector.attributes.bbox3D_visible[] = false
-        end
-    end
-
-    draw_data_inspector!(inspector)
-
-    inspector
-end
-
+### indicator data -> string
+########################################
 
 position2string(p::Point2f0) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
 position2string(p::Point3f0) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
 
-function Bbox_from_glyphlayout(gl)
-    bbox = FRect3D(
-        gl.origins[1] .+ Vec3f0(origin(gl.bboxes[1])..., 0), 
-        Vec3f0(widths(gl.bboxes[1])..., 0)
+function bbox2string(bbox::Rect3D)
+    p = origin(bbox)
+    w = widths(bbox)
+    @sprintf(
+        "Bounding Box:\nx: (%0.3f, %0.3f)\ny: (%0.3f, %0.3f)\nz: (%0.3f, %0.3f)",
+        p[1], w[1], p[2], w[2], p[3], w[3]
     )
-    for (o, bb) in zip(gl.origins[2:end], gl.bboxes[2:end])
-        bbox2 = FRect3D(o .+ Vec3f0(origin(bb)..., 0), Vec3f0(widths(bb)..., 0))
-        bbox = union(bbox, bbox2)
-    end
-    bbox
-end
-function text2worldbbox(p::Text)
-    if p._glyphlayout[] isa Vector
-        @info "TODO"
-    else
-        if cameracontrols(p.parent) isa PixelCamera
-            # This will probably end up being what we use...
-            map(p._glyphlayout, p.position) do gl, pos
-                FRect2D(Bbox_from_glyphlayout(gl)) + Vec2f0(pos[1], pos[2])
-            end
-        else 
-            map(p._glyphlayout, p.position, camera(p.parent).projectionview, pixelarea(p.parent)) do gl, pos, pv, area
-                px_pos = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
-                px_bbox = Bbox_from_glyphlayout(gl) + to_ndim(Vec3f0, px_pos, 0)
-                px_bbox = px_bbox - Vec3f0(0.5widths(area)..., 0)
-                px_bbox = FRect3D(
-                    2 .* origin(px_bbox) ./ Vec3f0(widths(area)..., 1),
-                    2 .* widths(px_bbox) ./ Vec3f0(widths(area)..., 1)
-                )
-                ps = unique(coordinates(px_bbox))
-                inv_pv = inv(pv)
-                world_ps = map(ps) do p
-                    proj = inv_pv * Vec4f0(p..., 1)
-                    proj[SOneTo(3)] / proj[4]
-                end
-                minx, maxx = extrema(getindex.(world_ps, (1,)))
-                miny, maxy = extrema(getindex.(world_ps, (2,)))
-                minz, maxz = extrema(getindex.(world_ps, (3,)))
-                world_bbox = FRect3D(Point3f0(minx, miny, minz), Vec3f0(maxx-minx, maxy-miny, maxz-minz))
-                world_bbox
-            end
-        end
-    end
-end
-function text2pixelbbox(p::Text)
-    if p._glyphlayout[] isa Vector
-        @info "TODO"
-    else
-        map(Bbox_from_glyphlayout, p._glyphlayout)
-    end
 end
 
 
-function draw_data_inspector!(inspector)
-    a = inspector.attributes
-    _text = text!(
-        inspector.parent, a.display_text, 
-        position = a.position, visible = a.visible, halign = a.halign,
-        show_axis=false
-    )
-
-    bbox = text2worldbbox(_text)
-    # pop!(inspector.parent.plots)
-    outline = wireframe!(
-        inspector.parent, bbox,
-        color = :lightblue, shading = false, visible = a.visible,
-        show_axis=false
-    )
-    background = mesh!(
-        inspector.parent, bbox, color = :orange, shading = false, 
-        visible = a.visible, show_axis=false
-    )
-
-    bbox2D = wireframe!(
-        inspector.parent, a.bbox2D,
-        # map(p -> FRect2D(p .- Vec2f0(10), Vec2f0(20)), a.position), 
-        color = :red, linewidth = 2, 
-        visible = a.bbox2D_visible, show_axis=false
-    )
-    bbox3D = wireframe!(
-        inspector.parent, a.bbox3D, model = a.projectionview, 
-        color = :red, visible = a.bbox3D_visible, show_axis=false
-    )
-
-    # To make sure inspector plots end up in front
-    on(a.depth) do d
-        # This is a translate to, not translate by!?!
-        translate!(background, Vec3f0(0,0,d))
-        translate!(outline,    Vec3f0(0,0,d+0.1))
-        translate!(_text,      Vec3f0(0,0,d+1))
-        translate!(bbox2D,     Vec3f0(0,0,d))
-        translate!(bbox3D,     Vec3f0(0,0,0))
-    end
-    a.depth[] = a.depth[]
-    push!(inspector.plots, _text, outline, background, bbox2D, bbox3D)
-    append!(inspector.blacklist, flatten_plots(inspector.plots))
-    nothing
-end
-
-
-function show_data(inspector::DataInspector, plot::Scatter, idx)
-    @info "Scatter"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        scene = parent_scene(plot)
-        pos = to_ndim(Point3f0, plot[1][][idx], 0)
-        proj_pos = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            pos
-        ) .+ Vec2f0(origin(pixelarea(scene)[]))
-        a.position[] = proj_pos
-        a.display_text[] = position2string(pos)
-        a.bbox2D[] = FRect2D(proj_pos .- Vec2f0(10), Vec2f0(20))
-        a.bbox2D_visible[] = true
-        a.bbox3D_visible[] = false
-        a.visible[] = true
-    end
-end
+### dealing with markersize and rotations
+########################################
 
 to_scale(f::AbstractFloat, idx) = Vec3f0(f)
 to_scale(v::Vec2f0, idx) = Vec3f0(v[1], v[2], 1)
@@ -233,43 +42,9 @@ to_scale(v::Vector, idx) = to_scale(v[idx], idx)
 to_rotation(x, idx) = x
 to_rotation(x::Vector, idx) = x[idx]
 
-    
-function show_data(inspector::DataInspector, plot::MeshScatter, idx)
-    @info "MeshScatter"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        scene = parent_scene(plot)
-        pos = to_ndim(Point3f0, plot[1][][idx], 0)
-        proj_pos = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            pos
-        ) .+ Vec2f0(origin(pixelarea(scene)[]))
-        bbox = Rect{3, Float32}(plot.marker[])
 
-        a.position[] = proj_pos
-        a.display_text[] = position2string(pos)
-        a.bbox3D[] = bbox
-        a.projectionview[] = begin
-            inv(camera(inspector.parent).projectionview[]) *
-            # translationmatrix(to_ndim(Vec3f0, origin(pixelarea(scene)[]) ./ widths(pixelarea(inspector.parent)[]), 0)) *
-            camera(scene).projectionview[] * transformationmatrix(
-                pos, 
-                to_scale(plot.markersize[], idx), 
-                to_rotation(plot.rotations[], idx)
-            )
-        end
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = true
-        a.visible[] = true
-    end
-end
-
-
+### Selecting a point on a nearby line
+########################################
 
 function closest_point_on_line(p0::Point2f0, p1::Point2f0, r::Point2f0)
     # This only works in 2D
@@ -323,214 +98,481 @@ function closest_point_on_line(A::Point3f0, B::Point3f0, origin::Point3f0, dir::
     A .+ t * u_AB
 end
 
-function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
-    @info "Lines, LineSegments"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        if plot.parent.parent isa BarPlot
-            return show_data(inspector, plot.parent.parent, div(idx-1, 6)+1)
-        end
 
-        scene = parent_scene(plot)
+### Heatmap positions/indices
+########################################
 
-        # cast ray from cursor into screen, find closest point to line
-        pos = mouseposition(scene)
-        p0, p1 = plot[1][][idx-1:idx]
-        origin, dir = view_ray(scene)
-        p = closest_point_on_line(p0, p1, origin, dir)
+pos2index(x, r, N) = clamp(ceil(Int, N * (x - minimum(r)) / (maximum(r) - minimum(r))), 1, N)
+index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i) / (N)
 
-        proj_pos = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            to_ndim(Point3f0, p, 0)
-        ) .+ Vec2f0(minimum(pixelarea(scene)[]))
 
-        a.position[] = proj_pos
-        a.display_text[] = position2string(p)
-        a.bbox2D[] = FRect2D(proj_pos .- Vec2f0(10), Vec2f0(20))
-        a.bbox2D_visible[] = true
-        a.bbox3D_visible[] = false
-        a.visible[] = true
+### Getting text bounding boxes to draw backgrounds
+########################################
+
+function Bbox_from_glyphlayout(gl)
+    bbox = FRect3D(
+        gl.origins[1] .+ Vec3f0(origin(gl.bboxes[1])..., 0), 
+        Vec3f0(widths(gl.bboxes[1])..., 0)
+    )
+    for (o, bb) in zip(gl.origins[2:end], gl.bboxes[2:end])
+        bbox2 = FRect3D(o .+ Vec3f0(origin(bb)..., 0), Vec3f0(widths(bb)..., 0))
+        bbox = union(bbox, bbox2)
     end
+    bbox
 end
 
-function bbox2string(bbox::Rect3D)
-    p = origin(bbox)
-    w = widths(bbox)
-    @sprintf(
-        "Bounding Box:\nx: (%0.3f, %0.3f)\ny: (%0.3f, %0.3f)\nz: (%0.3f, %0.3f)",
-        p[1], w[1], p[2], w[2], p[3], w[3]
+#=
+function text2worldbbox(p::Text)
+    if p._glyphlayout[] isa Vector
+        @info "TODO"
+    else
+        if cameracontrols(p.parent) isa PixelCamera
+            # This will probably end up being what we use...
+            map(p._glyphlayout, p.position) do gl, pos
+                FRect2D(Bbox_from_glyphlayout(gl)) + Vec2f0(pos[1], pos[2])
+            end
+        else 
+            map(p._glyphlayout, p.position, camera(p.parent).projectionview, pixelarea(p.parent)) do gl, pos, pv, area
+                px_pos = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
+                px_bbox = Bbox_from_glyphlayout(gl) + to_ndim(Vec3f0, px_pos, 0)
+                px_bbox = px_bbox - Vec3f0(0.5widths(area)..., 0)
+                px_bbox = FRect3D(
+                    2 .* origin(px_bbox) ./ Vec3f0(widths(area)..., 1),
+                    2 .* widths(px_bbox) ./ Vec3f0(widths(area)..., 1)
+                )
+                ps = unique(coordinates(px_bbox))
+                inv_pv = inv(pv)
+                world_ps = map(ps) do p
+                    proj = inv_pv * Vec4f0(p..., 1)
+                    proj[SOneTo(3)] / proj[4]
+                end
+                minx, maxx = extrema(getindex.(world_ps, (1,)))
+                miny, maxy = extrema(getindex.(world_ps, (2,)))
+                minz, maxz = extrema(getindex.(world_ps, (3,)))
+                world_bbox = FRect3D(Point3f0(minx, miny, minz), Vec3f0(maxx-minx, maxy-miny, maxz-minz))
+                world_bbox
+            end
+        end
+    end
+end
+function text2pixelbbox(p::Text)
+    if p._glyphlayout[] isa Vector
+        @info "TODO"
+    else
+        map(Bbox_from_glyphlayout, p._glyphlayout)
+    end
+end
+=#
+
+
+## Shifted projection
+########################################
+
+function shift_project(scene, pos)
+    project(
+        camera(scene).projectionview[],
+        Vec2f0(widths(pixelarea(scene)[])),
+        pos
+    ) .+ Vec2f0(origin(pixelarea(scene)[]))
+end
+
+
+
+################################################################################
+### Base pixel-space plot for Indicator
+################################################################################
+
+
+# TODO
+# Could probably use some more attributes
+@recipe(_Inspector, x) do scene
+    Attributes(
+        # Text
+        display_text = " ",
+        text_position = Point2f0(0),
+        text_align = (:left, :bottom),
+
+        # Background
+        background_color = :orange,
+        outline_color = :lightblue,
+
+        # pixel BBox/indicator
+        color = :red,
+        bbox2D = FRect2D(Vec2f0(0,0), Vec2f0(1,1)),
+        px_bbox_visible = true,
+        bbox3D = FRect3D(Vec3f0(0,0,0), Vec3f0(1,1,1)),
+        bbox_visible = true,
+
+        # general
+        position = Point3f0(0),
+        proj_position = Point2f0(0),
+        root_px_projection = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
+        model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
+        depth = 1e3,
+        visible = true
     )
 end
 
+function plot!(plot::_Inspector)
+    @extract plot (
+        display_text, text_position, text_align,
+        background_color, outline_color,
+        bbox2D, px_bbox_visible,
+        bbox3D, bbox_visible,
+        color,
+        position, proj_position, 
+        root_px_projection, model, 
+        depth, visible
+    )
+    _text = text!(plot, display_text, 
+        position = text_position, visible = visible, align = text_align,
+        show_axis = false
+    )
+
+    id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
+    bbox = map(_text._glyphlayout, _text.position) do gl, pos
+        FRect2D(Bbox_from_glyphlayout(gl)) + Vec2f0(pos[1], pos[2])
+    end
+
+    background = mesh!(
+        plot, bbox, color = background_color, shading = false, 
+        visible = visible, show_axis = false,
+        projection = root_px_projection, view = id, projectionview = root_px_projection
+    )
+    outline = wireframe!(
+        plot, bbox,
+        color = outline_color, shading = false, visible = visible,
+        show_axis = false,
+        projection = root_px_projection, view = id, projectionview = root_px_projection
+    )
+    
+    px_bbox = wireframe!(
+        plot, bbox2D,
+        color = color, linewidth = 2, # model = model,
+        visible = px_bbox_visible, show_axis = false,
+        projection = root_px_projection, view = id, projectionview = root_px_projection
+    )
+
+    # To make sure inspector plots end up in front
+    on(depth) do d
+        # This is a translate to, not translate by
+        translate!(background, Vec3f0(0,0,d))
+        translate!(outline,    Vec3f0(0,0,d+1))
+        translate!(_text,      Vec3f0(0,0,d+2))
+        translate!(px_bbox,    Vec3f0(0,0,d))
+    end
+    depth[] = depth[]
+    nothing
+end
+
+
+################################################################################
+### Interactive selection via DataInspector
+################################################################################
+
+
+
+# TODO destructor?
+mutable struct DataInspector
+    # need some static reference
+    root::Scene
+
+    # Adjust to hover
+    hovered_scene::Union{Nothing, Scene}
+    temp_plots::Vector{AbstractPlot}
+
+    # plot to attach to hovered scene
+    plot::_Inspector
+
+    whitelist::Vector{AbstractPlot}
+    blacklist::Vector{AbstractPlot}
+end
+
+
+"""
+    DataInspector(figure; blacklist = fig.scene.plots, kwargs...)
+    DataInspector(axis; whitelist = axis.scene.plots, kwargs...)
+    DataInspector(scene; kwargs...)
+
+...
+"""
+function DataInspector(fig::Figure; blacklist = fig.scene.plots, kwargs...)
+    DataInspector(fig.scene; blacklist = blacklist, kwargs...)
+end
+
+function DataInspector(ax; whitelist = ax.scene.plots, kwargs...)
+    DataInspector(ax.scene; whitelist = whitelist, kwargs...)
+end
+
+# TODO
+# - It would be good if we didn't need to flatten. Maybe recursively go up all
+#   the way, then check if a plot is rejected and move down a level if it is or
+#   attempt to show if not. If show fails also move down a level, else break.
+function DataInspector(
+        scene::Scene; 
+        whitelist = AbstractPlot[], blacklist = AbstractPlot[], range = 10,
+        kwargs...
+    )
+    parent = root(scene)
+    @assert origin(pixelarea(parent)[]) == Vec2f0(0)
+
+    plot = _inspector!(parent, 1, show_axis=false; kwargs...)
+    plot.root_px_projection[] = camera(parent).pixel_space[]
+    push!(blacklist, plot)
+    blacklist = flatten_plots(blacklist)
+    
+    inspector = DataInspector(parent, scene, AbstractPlot[], plot, whitelist, blacklist)
+
+    e = events(parent)
+    onany(e.mouseposition, e.scroll) do mp, _
+        # This is super cheap
+        is_mouseinside(parent) || return false
+
+        picks = pick_sorted(parent, mp, range)
+        should_clear = true
+        for (plt, idx) in picks
+            @info idx, typeof(plt)
+            if (plt !== nothing) && !(plt in inspector.blacklist) && 
+                (isempty(inspector.whitelist) || (plt in inspector.whitelist))
+                show_data(inspector, plt, idx)
+                should_clear = false
+                break
+            end
+        end
+
+        if should_clear
+            plot.visible[] = false
+            plot.bbox_visible[] = false
+            plot.px_bbox_visible[] = false
+        end
+    end
+
+    inspector
+end
+
+
+function update_hovered!(inspector::DataInspector, scene)
+    if scene != inspector.hovered_scene
+        if !isempty(inspector.temp_plots) && (inspector.hovered_scene !== nothing)
+            for p in inspector.temp_plots
+                delete!(inspector.hovered_scene, p)
+                for prim in flatten_plots(p)
+                    delete!(inspector.blacklist, p)
+                end
+            end
+            empty!(inspector.temp_plots)
+        end
+        inspector.hovered_scene = scene
+    end
+end
+
+function update_positions!(inspector, scene, pos)
+    a = inspector.plot.attributes
+    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    a.position[] = pos
+    a.proj_position[] = proj_pos
+    return proj_pos
+end
+
+
+# TODO: better 3D scaling
+function show_data(inspector::DataInspector, plot::Scatter, idx)
+    @info "Scatter"
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+
+    proj_pos = update_positions!(inspector, scene, plot[1][][idx])
+    ms = plot.markersize[]
+
+    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.display_text[] = position2string(plot[1][][idx])
+    a.bbox2D[] = FRect2D(proj_pos .- 0.5 .* ms .- Vec2f0(5), Vec2f0(ms) .+ Vec2f0(10))
+    a.px_bbox_visible[] = true
+    a.bbox_visible[] = false
+    a.visible[] = true
+
+    return true
+end
+
+    
+function show_data(inspector::DataInspector, plot::MeshScatter, idx)
+    @info "MeshScatter"
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+        
+    proj_pos = update_positions!(inspector, scene, plot[1][][idx])
+    bbox = Rect{3, Float32}(plot.marker[])
+
+    a.model[] = transformationmatrix(
+        plot[1][][idx],
+        to_scale(plot.markersize[], idx), 
+        to_rotation(plot.rotations[], idx)
+    )
+
+    if isempty(inspector.temp_plots)
+        p = wireframe!(
+            scene, a.bbox3D, model = a.model, 
+            color = a.color, visible = a.bbox_visible, show_axis = false,
+        )
+        push!(inspector.temp_plots, p)
+        append!(inspector.blacklist, flatten_plots(p))
+    end
+
+    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.display_text[] = position2string(plot[1][][idx])
+    a.bbox3D[] = bbox
+    a.px_bbox_visible[] = false
+    a.bbox_visible[] = true
+    a.visible[] = true
+    
+    return true
+end
+
+# TODO
+# this needs some clamping?
+function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
+    @info "Lines, LineSegments"
+    a = inspector.plot.attributes
+    if plot.parent.parent isa BarPlot
+        return show_data(inspector, plot.parent.parent, div(idx-1, 6)+1)
+    end
+        
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+
+    # cast ray from cursor into screen, find closest point to line
+    p0, p1 = plot[1][][idx-1:idx]
+    origin, dir = view_ray(scene)
+    pos = closest_point_on_line(p0, p1, origin, dir)
+    lw = plot.linewidth[]
+    
+    proj_pos = update_positions!(inspector, scene, pos)
+
+    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.display_text[] = position2string(pos)
+    a.bbox2D[] = FRect2D(proj_pos .- 0.5 .* lw .- Vec2f0(5), Vec2f0(lw) .+ Vec2f0(10))
+    a.px_bbox_visible[] = true
+    a.bbox_visible[] = false
+    a.visible[] = true
+
+    return true
+end
+
+# TODO position indicator better
 function show_data(inspector::DataInspector, plot::Mesh, idx)
     @info "Mesh"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        if plot.parent.parent.parent isa BarPlot
-            return show_data(inspector, plot.parent.parent.parent, div(idx-1, 4)+1)
-        end
-        
-        scene = parent_scene(plot)
-        bbox = boundingbox(plot)
-        min, max = extrema(bbox)
-        center = 0.5 * (max .+ min)
-        proj_pos = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            to_ndim(Point3f0, center, 0)
-        ) .+ Vec2f0(minimum(pixelarea(scene)[]))
-
-        @sync begin
-            a.position[] = proj_pos
-            a.display_text[] = bbox2string(bbox)
-            a.projectionview[] = inv(camera(inspector.parent).projectionview[]) * 
-                                camera(scene).projectionview[]
-            a.bbox3D[] = bbox
-        end
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = true
-        a.visible[] = true
+    a = inspector.plot.attributes
+    if plot.parent.parent.parent isa BarPlot
+        return show_data(inspector, plot.parent.parent.parent, div(idx-1, 4)+1)
     end
+
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+        
+    bbox = boundingbox(plot)
+    min, max = extrema(bbox)
+    proj_pos = update_positions!(inspector, scene, 0.5 * (max .+ min))
+
+    a.model[] = plot.model[]
+
+    if isempty(inspector.temp_plots)
+        p = wireframe!(
+            scene, a.bbox3D, model = a.model, 
+            color = a.color, visible = a.bbox_visible, show_axis = false,
+        )
+        push!(inspector.temp_plots, p)
+        append!(inspector.blacklist, flatten_plots(p))
+    end
+
+    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.display_text[] = bbox2string(bbox)
+    a.bbox3D[] = bbox
+    a.px_bbox_visible[] = false
+    a.bbox_visible[] = true
+    a.visible[] = true
+
+    return true
 end
 
+# TODO breaks with ax as root
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
     @info "BarPlot"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        pos = plot[1][][idx]
-        scene = parent_scene(plot)
-        proj_pos = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            to_ndim(Point3f0, pos, 0)
-        )
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+        
+    proj_pos = update_positions!(inspector, scene, plot[1][][idx])
+    a.model[] = plot.model[]
+    a.bbox2D[] = plot.plots[1][1][][idx]
 
-        proj_pos0 = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            to_ndim(Point3f0, minimum(plot.plots[1][1][][idx]), 0)
+    if isempty(inspector.temp_plots)
+        p = wireframe!(
+            scene, a.bbox2D, model = a.model, 
+            color = a.color, visible = a.bbox_visible, show_axis = false,
         )
-
-        proj_pos1 = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            to_ndim(Point3f0, maximum(plot.plots[1][1][][idx]), 0)
-        )
-
-        bbox = FRect2D(proj_pos0 .+ Vec2f0(origin(pixelarea(scene)[])), proj_pos1 .- proj_pos0)
-        a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
-        a.display_text[] = position2string(pos)
-        a.bbox2D[] = bbox
-        a.bbox2D_visible[] = true
-        a.bbox3D_visible[] = false
-        a.visible[] = true
+        translate!(p, Vec3f0(0, 0, a.depth[]))
+        push!(inspector.temp_plots, p)
+        append!(inspector.blacklist, flatten_plots(p))
     end
-end
 
-pos2index(x, r, N) = ceil(Int, N * (x - minimum(r) + 1e-10) / (maximum(r) - minimum(r)))
-index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i) / (N)
+    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.display_text[] = position2string(pos)
+    a.bbox_visible[] = true
+    a.px_bbox_visible[] = false
+    a.visible[] = true
+
+    return true
+end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
     # This needs to be updated once Heatmaps are centered 
     # Alternatively, could this get a useful index?
     @info "Heatmap"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        # idx == 0 :(
-        scene = parent_scene(plot)
-        mpos = mouseposition(scene)
-        i = pos2index(mpos[1], plot[1][], size(plot[3][], 1))
-        j = pos2index(mpos[2], plot[2][], size(plot[3][], 2))
-        x0 = index2pos(i-1, plot[1][], size(plot[3][], 1))
-        y0 = index2pos(j-1, plot[2][], size(plot[3][], 2))
-        x1 = index2pos(i, plot[1][], size(plot[3][], 1))
-        y1 = index2pos(j, plot[2][], size(plot[3][], 2))
-        x = 0.5(x0 + x1); y = 0.5(y0 + y1)
-        z = plot[3][][i, j]
+    a = inspector.plot.attributes
+    # idx == 0 :(
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+            
+    mpos = mouseposition(scene)
+    i = pos2index(mpos[1], plot[1][], size(plot[3][], 1))
+    j = pos2index(mpos[2], plot[2][], size(plot[3][], 2))
+    x0 = index2pos(i-1, plot[1][], size(plot[3][], 1))
+    y0 = index2pos(j-1, plot[2][], size(plot[3][], 2))
+    x1 = index2pos(i, plot[1][], size(plot[3][], 1))
+    y1 = index2pos(j, plot[2][], size(plot[3][], 2))
+    x = 0.5(x0 + x1); y = 0.5(y0 + y1)
+    z = plot[3][][i, j]
 
-        proj_pos = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            Point3f0(x, y, 0)
+    proj_pos = update_positions!(inspector, scene, Point3f0(x, y, 0))
+    a.bbox2D[] = FRect2D(Vec2f0(x0, y0), Vec2f0(x1-x0, y1-y0))
+    
+    if isempty(inspector.temp_plots)
+        p = wireframe!(
+            scene, a.bbox2D, model = a.model, 
+            color = a.color, visible = a.bbox_visible, show_axis = false,
         )
-
-        proj_pos0 = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            Point3f0(x0, y0, 0)
-        )
-
-        proj_pos1 = project(
-            camera(scene).projectionview[],
-            Vec2f0(widths(pixelarea(scene)[])),
-            Point3f0(x1, y1, 0)
-        )
-
-        bbox = FRect2D(proj_pos0 .+ Vec2f0(origin(pixelarea(scene)[])), proj_pos1 .- proj_pos0)
-        a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
-        a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
-        a.bbox2D[] = bbox
-        a.bbox2D_visible[] = true
-        a.bbox3D_visible[] = false
-        a.visible[] = true
+        translate!(p, Vec3f0(0, 0, a.depth[]))
+        push!(inspector.temp_plots, p)
+        append!(inspector.blacklist, flatten_plots(p))
     end
-end
+    
+    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
+    a.bbox_visible[] = true
+    a.px_bbox_visible[] = false
+    a.visible[] = true
 
-
-function show_data(inspector::DataInspector, plot::Surface, idx)
-    @info "Surface"
-    a = inspector.attributes
-    if idx === nothing
-        a.visible[] = false
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = false
-    else
-        @info idx
-        # ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
-        # idxs = LinearIndices(size(zs))
-        # faces = [
-        #     QuadFace(idxs[i, j], idxs[i+1, j], idxs[i+1, j+1], idxs[i, j+1])
-        #     for j in 1:size(zs, 2)-1 for i in 1:size(zs, 1)-1
-        # ]
-        # faces = [QuadFace(i, i+1, i+N+1, i+N) for i in ]
-        
-        # # The div skips faces that connect the right edge to the left
-        # N = size(plot[3][], 1)
-        # shifted = idx + div(idx, N)
-        # face = QuadFace(shifted, shifted+1, shifted+N+1, shifted+N)
-
-        # bbox = plot.plots[1][1][][idx]
-        # a.position[] = Point3f0(x, y, 0)
-        # a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
-        # a.bbox[] = FRect3D(bbox)
-        # a.visible[] = true
-        # a.bbox_visible[] = true
-    end
+    return true
 end
 
 
 function show_data(inspector::DataInspector, plot, idx)
     @info "else"
-    inspector.attributes.visible[] = false
-    inspector.attributes.bbox2D_visible[] = false
-    inspector.attributes.bbox3D_visible[] = false
+    inspector.plot.visible[] = false
+    inspector.plot.bbox_visible[] = false
+    inspector.plot.px_bbox_visible[] = false
 
-    nothing
+    return false
 end
