@@ -15,6 +15,7 @@
 - linesegments 2D :)
 - heatmap :/ (bad bbox)
 - barplot :/ (bad bbox)
+- mesh :)
 =#
 
 struct DataInspector
@@ -51,14 +52,19 @@ function data_inspector(
             position = Point2f0(0),
             visible = false,
             halign = :left,
-            bbox = Rect3D(Vec3f0(0,0,0),Vec3f0(1,1,1)),
-            bbox_visible = false,
-            depth = 1e3
+            bbox2D = Rect2D(Vec2f0(0,0),Vec2f0(1,1)),
+            bbox2D_visible = false,
+            bbox3D = Rect3D(Vec3f0(0,0,0),Vec3f0(1,1,1)),
+            bbox3D_visible = false,
+            projectionview = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
+            depth = 1e3,
+            extend = (:right, :up)
         ),
         AbstractPlot[], whitelist, blacklist
     )
 
-    on(events(scene).mouseposition) do mp
+    e = events(scene)
+    onany(e.mouseposition, e.scroll) do mp, _
         # This is super cheap
         is_mouseinside(scene) || return false
 
@@ -81,7 +87,8 @@ function data_inspector(
 
         if should_clear
             inspector.attributes.visible[] = false
-            inspector.attributes.bbox_visible[] = false
+            inspector.attributes.bbox2D_visible[] = false
+            inspector.attributes.bbox3D_visible[] = false
         end
     end
 
@@ -149,46 +156,46 @@ end
 
 function draw_data_inspector!(inspector)
     a = inspector.attributes
-    p1 = text!(
+    _text = text!(
         inspector.parent, a.display_text, 
         position = a.position, visible = a.visible, halign = a.halign,
-        overdraw=!true, show_axis=false
-    )
-
-    bbox = text2worldbbox(p1)
-    # pop!(inspector.parent.plots)
-    tbb = wireframe!(
-        inspector.parent, bbox,
-        color = :lightblue, shading = false, visible = a.visible, overdraw=!true, 
         show_axis=false
     )
-    bg = mesh!(
-        inspector.parent, bbox, color = :orange, shading = false, 
-        visible = a.visible, overdraw=!true, show_axis=false
-    )
 
-    p2 = wireframe!(
-        inspector.parent, 
-        map(p -> FRect2D(p .- Vec2f0(10), Vec2f0(20)), a.position), 
-        color = :red, linewidth = 2, overdraw=!true,
+    bbox = text2worldbbox(_text)
+    # pop!(inspector.parent.plots)
+    outline = wireframe!(
+        inspector.parent, bbox,
+        color = :lightblue, shading = false, visible = a.visible,
+        show_axis=false
+    )
+    background = mesh!(
+        inspector.parent, bbox, color = :orange, shading = false, 
         visible = a.visible, show_axis=false
     )
-    p3 = wireframe!(
-        inspector.parent, a.bbox,
-        color = :red, visible = a.bbox_visible, overdraw=!true, show_axis=false
+
+    bbox2D = wireframe!(
+        inspector.parent, a.bbox2D,
+        # map(p -> FRect2D(p .- Vec2f0(10), Vec2f0(20)), a.position), 
+        color = :red, linewidth = 2, 
+        visible = a.bbox2D_visible, show_axis=false
     )
+    bbox3D = wireframe!(
+        inspector.parent, a.bbox3D, model = a.projectionview, 
+        color = :red, visible = a.bbox3D_visible, show_axis=false
+    )
+
     # To make sure inspector plots end up in front
-    # 3D plots should be fine with depth > 1.0, but I'm not sure about 2D
     on(a.depth) do d
         # This is a translate to, not translate by!?!
-        translate!(bg, Vec3f0(0,0,d))
-        translate!(tbb, Vec3f0(0,0,d+0.1))
-        translate!(p1, Vec3f0(0,0,d+1))
-        translate!(p2, Vec3f0(0,0,d))
-        translate!(p3, Vec3f0(0,0,d))
+        translate!(background, Vec3f0(0,0,d))
+        translate!(outline,    Vec3f0(0,0,d+0.1))
+        translate!(_text,      Vec3f0(0,0,d+1))
+        translate!(bbox2D,     Vec3f0(0,0,d))
+        translate!(bbox3D,     Vec3f0(0,0,0))
     end
     a.depth[] = a.depth[]
-    push!(inspector.plots, p1, tbb, bg, p2, p3)
+    push!(inspector.plots, _text, outline, background, bbox2D, bbox3D)
     append!(inspector.blacklist, flatten_plots(inspector.plots))
     nothing
 end
@@ -199,7 +206,8 @@ function show_data(inspector::DataInspector, plot::Union{Scatter, MeshScatter}, 
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
-        a.bbox_visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
     else
         scene = parent_scene(plot)
         pos = to_ndim(Point3f0, plot[1][][idx], 0)
@@ -207,9 +215,12 @@ function show_data(inspector::DataInspector, plot::Union{Scatter, MeshScatter}, 
             camera(scene).projectionview[],
             Vec2f0(widths(pixelarea(scene)[])),
             pos
-        )
-        a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
+        ) .+ Vec2f0(origin(pixelarea(scene)[]))
+        a.position[] = proj_pos
         a.display_text[] = position2string(pos)
+        a.bbox2D[] = FRect2D(proj_pos .- Vec2f0(10), Vec2f0(20))
+        a.bbox2D_visible[] = true
+        a.bbox3D_visible[] = false
         a.visible[] = true
     end
 end
@@ -273,7 +284,8 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
-        a.bbox_visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
     else
         if plot.parent.parent isa BarPlot
             return show_data(inspector, plot.parent.parent, div(idx-1, 6)+1)
@@ -291,10 +303,13 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
             camera(scene).projectionview[],
             Vec2f0(widths(pixelarea(scene)[])),
             to_ndim(Point3f0, p, 0)
-        )
+        ) .+ Vec2f0(minimum(pixelarea(scene)[]))
 
-        a.position[] = proj_pos .+ Vec2f0(minimum(pixelarea(scene)[]))
+        a.position[] = proj_pos
         a.display_text[] = position2string(p)
+        a.bbox2D[] = FRect2D(proj_pos .- Vec2f0(10), Vec2f0(20))
+        a.bbox2D_visible[] = true
+        a.bbox3D_visible[] = false
         a.visible[] = true
     end
 end
@@ -313,22 +328,33 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
-        a.bbox_visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
     else
         if plot.parent.parent.parent isa BarPlot
             return show_data(inspector, plot.parent.parent.parent, div(idx-1, 4)+1)
         end
         
-        # TODO this should create a plot in its parent scene, not in inspectors
-        # parent scene
+        scene = parent_scene(plot)
         bbox = boundingbox(plot)
         min, max = extrema(bbox)
-        p = 0.5 * (max .+ min)
-        a.position[] = Point2f0(p[1], p[2]) #.+ Vec2f0(origin(pixelarea(scene)[]))
-        a.display_text[] = bbox2string(bbox)
-        a.bbox[] = bbox
+        center = 0.5 * (max .+ min)
+        proj_pos = project(
+            camera(scene).projectionview[],
+            Vec2f0(widths(pixelarea(scene)[])),
+            to_ndim(Point3f0, center, 0)
+        ) .+ Vec2f0(minimum(pixelarea(scene)[]))
+
+        @sync begin
+            a.position[] = proj_pos
+            a.display_text[] = bbox2string(bbox)
+            a.projectionview[] = inv(camera(inspector.parent).projectionview[]) * 
+                                camera(scene).projectionview[]
+            a.bbox3D[] = bbox
+        end
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = true
         a.visible[] = true
-        a.bbox_visible[] = true
     end
 end
 
@@ -337,7 +363,8 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
-        a.bbox_visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
     else
         pos = plot[1][][idx]
         bbox = plot.plots[1][1][][idx]
@@ -349,9 +376,14 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         )
         a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
         a.display_text[] = position2string(pos)
-        a.bbox[] = FRect3D(bbox)
+        a.projectionview[] = 
+            translationmatrix(to_ndim(Vec3f0, 0.5minimum(pixelarea(scene)[]), 0)) * 
+            inv(camera(inspector.parent).projectionview[]) * 
+            camera(scene).projectionview[]
+        a.bbox3D[] = FRect3D(bbox)
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = true
         a.visible[] = true
-        a.bbox_visible[] = true
     end
 end
 
@@ -366,7 +398,8 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
-        a.bbox_visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
     else
         # idx == 0 :(
         scene = parent_scene(plot)
@@ -383,12 +416,13 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
             Point3f0(x, y, 0)
         )
 
-        # bbox = plot.plots[1][1][][idx]
+        bbox = plot.plots[1][1][][idx]
         a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
         a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
-        # a.bbox[] = FRect3D(bbox)
+        a.bbox[] = FRect3D(bbox)
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = true
         a.visible[] = true
-        # a.bbox_visible[] = true
     end
 end
 
@@ -398,7 +432,8 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     a = inspector.attributes
     if idx === nothing
         a.visible[] = false
-        a.bbox_visible[] = false
+        a.bbox2D_visible[] = false
+        a.bbox3D_visible[] = false
     else
         @info idx
         # ps = [Point3f0(xs[i], ys[j], zs[i, j]) for j in eachindex(ys) for i in eachindex(xs)]
@@ -427,7 +462,8 @@ end
 function show_data(inspector::DataInspector, plot, idx)
     @info "else"
     inspector.attributes.visible[] = false
-    inspector.attributes.bbox_visible[] = false
+    inspector.attributes.bbox2D_visible[] = false
+    inspector.attributes.bbox3D_visible[] = false
 
     nothing
 end
