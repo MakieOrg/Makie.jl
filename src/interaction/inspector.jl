@@ -388,7 +388,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
 end
 
 pos2index(x, r, N) = ceil(Int, N * (x - minimum(r) + 1e-10) / (maximum(r) - minimum(r)))
-index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i-0.5) / (N)
+index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i) / (N)
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
     # This is a mess but it'll need to be updated once Heatmaps are centered 
@@ -406,8 +406,11 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
         mpos = mouseposition(scene)
         i = pos2index(mpos[1], plot[1][], size(plot[3][], 1))
         j = pos2index(mpos[2], plot[2][], size(plot[3][], 2))
-        x = index2pos(i, plot[1][], size(plot[3][], 1))
-        y = index2pos(j, plot[2][], size(plot[3][], 2))
+        x0 = index2pos(i-1, plot[1][], size(plot[3][], 1))
+        y0 = index2pos(j-1, plot[2][], size(plot[3][], 2))
+        x1 = index2pos(i, plot[1][], size(plot[3][], 1))
+        y1 = index2pos(j, plot[2][], size(plot[3][], 2))
+        x = 0.5(x0 + x1); y = 0.5(y0 + y1)
         z = plot[3][][i, j]
 
         proj_pos = project(
@@ -416,12 +419,24 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
             Point3f0(x, y, 0)
         )
 
-        bbox = plot.plots[1][1][][idx]
+        proj_pos0 = project(
+            camera(scene).projectionview[],
+            Vec2f0(widths(pixelarea(scene)[])),
+            Point3f0(x0, y0, 0)
+        )
+
+        proj_pos1 = project(
+            camera(scene).projectionview[],
+            Vec2f0(widths(pixelarea(scene)[])),
+            Point3f0(x1, y1, 0)
+        )
+
+        bbox = FRect2D(proj_pos0 .+ Vec2f0(origin(pixelarea(scene)[])), proj_pos1 .- proj_pos0)
         a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
         a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
-        a.bbox[] = FRect3D(bbox)
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = true
+        a.bbox2D[] = bbox
+        a.bbox2D_visible[] = true
+        a.bbox3D_visible[] = false
         a.visible[] = true
     end
 end
