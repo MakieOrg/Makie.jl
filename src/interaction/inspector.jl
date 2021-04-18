@@ -367,22 +367,31 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         a.bbox3D_visible[] = false
     else
         pos = plot[1][][idx]
-        bbox = plot.plots[1][1][][idx]
         scene = parent_scene(plot)
         proj_pos = project(
             camera(scene).projectionview[],
             Vec2f0(widths(pixelarea(scene)[])),
             to_ndim(Point3f0, pos, 0)
         )
+
+        proj_pos0 = project(
+            camera(scene).projectionview[],
+            Vec2f0(widths(pixelarea(scene)[])),
+            to_ndim(Point3f0, minimum(plot.plots[1][1][][idx]), 0)
+        )
+
+        proj_pos1 = project(
+            camera(scene).projectionview[],
+            Vec2f0(widths(pixelarea(scene)[])),
+            to_ndim(Point3f0, maximum(plot.plots[1][1][][idx]), 0)
+        )
+
+        bbox = FRect2D(proj_pos0 .+ Vec2f0(origin(pixelarea(scene)[])), proj_pos1 .- proj_pos0)
         a.position[] = proj_pos .+ Vec2f0(origin(pixelarea(scene)[]))
         a.display_text[] = position2string(pos)
-        a.projectionview[] = 
-            translationmatrix(to_ndim(Vec3f0, 0.5minimum(pixelarea(scene)[]), 0)) * 
-            inv(camera(inspector.parent).projectionview[]) * 
-            camera(scene).projectionview[]
-        a.bbox3D[] = FRect3D(bbox)
-        a.bbox2D_visible[] = false
-        a.bbox3D_visible[] = true
+        a.bbox2D[] = bbox
+        a.bbox2D_visible[] = true
+        a.bbox3D_visible[] = false
         a.visible[] = true
     end
 end
