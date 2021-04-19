@@ -18,14 +18,14 @@
 ### indicator data -> string
 ########################################
 
-position2string(p::Point2f0) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
-position2string(p::Point3f0) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
+position2string(p::Point2f0) = @sprintf(" x: %0.6f\n y: %0.6f", p[1], p[2])
+position2string(p::Point3f0) = @sprintf(" x: %0.6f\n y: %0.6f\n z: %0.6f", p[1], p[2], p[3])
 
 function bbox2string(bbox::Rect3D)
     p = origin(bbox)
     w = widths(bbox)
     @sprintf(
-        "Bounding Box:\nx: (%0.3f, %0.3f)\ny: (%0.3f, %0.3f)\nz: (%0.3f, %0.3f)",
+        " Bounding Box:\n x: (%0.3f, %0.3f)\n y: (%0.3f, %0.3f)\n z: (%0.3f, %0.3f)",
         p[1], w[1], p[2], w[2], p[3], w[3]
     )
 end
@@ -191,47 +191,54 @@ end
         display_text = " ",
         text_position = Point2f0(0),
         text_align = (:left, :bottom),
+        textcolor = :black, 
+        textsize = 20, 
+        font = "Dejavu Sans",
 
         # Background
-        background_color = :orange,
-        outline_color = :lightblue,
+        background_color = :white,
+        outline_color = :grey,
+        outline_linestyle = nothing,
+        outline_linewidth = 2,
 
         # pixel BBox/indicator
         color = :red,
-        bbox2D = FRect2D(Vec2f0(0,0), Vec2f0(1,1)),
+        bbox_linewidth = 2,
+        bbox_linestyle = nothing,
+        bbox2D = FRect2D(Vec2f0(0), Vec2f0(0)),
         px_bbox_visible = true,
-        bbox3D = FRect3D(Vec3f0(0,0,0), Vec3f0(1,1,1)),
-        bbox_visible = true,
-
+        
         # general
-        position = Point3f0(0),
-        proj_position = Point2f0(0),
         root_px_projection = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         depth = 1e3,
-        visible = true
+        visible = true,
+        
+        # For other purposes/unused
+        bbox3D = FRect3D(Vec3f0(0), Vec3f0(0)),
+        bbox_visible = true,
+        position = Point3f0(0),
+        proj_position = Point2f0(0),
     )
 end
 
 function plot!(plot::_Inspector)
     @extract plot (
-        display_text, text_position, text_align,
-        background_color, outline_color,
-        bbox2D, px_bbox_visible,
-        bbox3D, bbox_visible,
-        color,
-        position, proj_position, 
-        root_px_projection, model, 
-        depth, visible
+        display_text, text_position, text_align, textcolor, textsize, font,
+        background_color, outline_color, outline_linestyle, outline_linewidth,
+        bbox2D, px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
+        root_px_projection, model, depth, visible
     )
     _text = text!(plot, display_text, 
         position = text_position, visible = visible, align = text_align,
+        color = textcolor, font = font, textsize = textsize,
         show_axis = false
     )
 
     id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
     bbox = map(_text._glyphlayout, _text.position) do gl, pos
-        FRect2D(Bbox_from_glyphlayout(gl)) + Vec2f0(pos[1], pos[2])
+        r = FRect2D(Bbox_from_glyphlayout(gl))
+        FRect2D(origin(r) .+ Vec2f0(pos[1], pos[2]-2), widths(r) .+ Vec2f0(0, 4))
     end
 
     background = mesh!(
@@ -241,14 +248,14 @@ function plot!(plot::_Inspector)
     )
     outline = wireframe!(
         plot, bbox,
-        color = outline_color, shading = false, visible = visible,
-        show_axis = false,
+        color = outline_color, visible = visible, show_axis = false,
+        linestyle = outline_linestyle, linewidth = outline_linewidth, 
         projection = root_px_projection, view = id, projectionview = root_px_projection
     )
     
     px_bbox = wireframe!(
         plot, bbox2D,
-        color = color, linewidth = 2, # model = model,
+        color = color, linewidth = bbox_linewidth, linestyle = bbox_linestyle, # model = model,
         visible = px_bbox_visible, show_axis = false,
         projection = root_px_projection, view = id, projectionview = root_px_projection
     )
@@ -308,6 +315,7 @@ end
 # - It would be good if we didn't need to flatten. Maybe recursively go up all
 #   the way, then check if a plot is rejected and move down a level if it is or
 #   attempt to show if not. If show fails also move down a level, else break.
+# ^ That makes it hard to work with picked indices...
 function DataInspector(
         scene::Scene; 
         whitelist = AbstractPlot[], blacklist = AbstractPlot[], range = 10,
@@ -334,8 +342,8 @@ function DataInspector(
             @info idx, typeof(plt)
             if (plt !== nothing) && !(plt in inspector.blacklist) && 
                 (isempty(inspector.whitelist) || (plt in inspector.whitelist))
-                show_data(inspector, plt, idx)
-                should_clear = false
+
+                should_clear = !show_data(inspector, plt, idx)
                 break
             end
         end
@@ -420,7 +428,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
 
-    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.text_position[] = Point2f0(origin(pixelarea(inspector.root)[]) .+ 10)
     a.display_text[] = position2string(plot[1][][idx])
     a.bbox3D[] = bbox
     a.px_bbox_visible[] = false
@@ -486,7 +494,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
 
-    a.text_position[] = proj_pos .+ Vec2f0(5)
+    a.text_position[] = Point2f0(origin(pixelarea(inspector.root)[]) .+ Vec2f0(10, 10))
     a.display_text[] = bbox2string(bbox)
     a.bbox3D[] = bbox
     a.px_bbox_visible[] = false
@@ -570,9 +578,5 @@ end
 
 function show_data(inspector::DataInspector, plot, idx)
     @info "else"
-    inspector.plot.visible[] = false
-    inspector.plot.bbox_visible[] = false
-    inspector.plot.px_bbox_visible[] = false
-
     return false
 end
