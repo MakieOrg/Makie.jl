@@ -263,9 +263,9 @@ function plot!(plot::_Inspector)
     # To make sure inspector plots end up in front
     on(depth) do d
         # This is a translate to, not translate by
-        translate!(background, Vec3f0(0,0,d))
-        translate!(outline,    Vec3f0(0,0,d+1))
-        translate!(_text,      Vec3f0(0,0,d+2))
+        translate!(background, Vec3f0(0,0,d+1))
+        translate!(outline,    Vec3f0(0,0,d+2))
+        translate!(_text,      Vec3f0(0,0,d+3))
         translate!(px_bbox,    Vec3f0(0,0,d))
     end
     depth[] = depth[]
@@ -362,16 +362,19 @@ end
 function update_hovered!(inspector::DataInspector, scene)
     if scene != inspector.hovered_scene
         if !isempty(inspector.temp_plots) && (inspector.hovered_scene !== nothing)
-            for p in inspector.temp_plots
-                delete!(inspector.hovered_scene, p)
-                for prim in flatten_plots(p)
-                    delete!(inspector.blacklist, p)
-                end
-            end
-            empty!(inspector.temp_plots)
+            clear_temporary_plots!(inspector)
         end
         inspector.hovered_scene = scene
     end
+end
+
+function clear_temporary_plots!(inspector::DataInspector)
+    for p in inspector.temp_plots
+        delete!(inspector.hovered_scene, p)
+        flattened = flatten_plots(p)
+        filter!(p -> !(p in flattened), inspector.blacklist)
+    end
+    empty!(inspector.temp_plots)
 end
 
 function update_positions!(inspector, scene, pos)
@@ -419,7 +422,8 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         to_rotation(plot.rotations[], idx)
     )
 
-    if isempty(inspector.temp_plots)
+    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect3D)
+        clear_temporary_plots!(inspector)
         p = wireframe!(
             scene, a.bbox3D, model = a.model, 
             color = a.color, visible = a.bbox_visible, show_axis = false,
@@ -485,7 +489,8 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 
     a.model[] = plot.model[]
 
-    if isempty(inspector.temp_plots)
+    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect3D)
+        clear_temporary_plots!(inspector)
         p = wireframe!(
             scene, a.bbox3D, model = a.model, 
             color = a.color, visible = a.bbox_visible, show_axis = false,
@@ -515,7 +520,8 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a.model[] = plot.model[]
     a.bbox2D[] = plot.plots[1][1][][idx]
 
-    if isempty(inspector.temp_plots)
+    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
+        clear_temporary_plots!(inspector)
         p = wireframe!(
             scene, a.bbox2D, model = a.model, 
             color = a.color, visible = a.bbox_visible, show_axis = false,
@@ -556,7 +562,8 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     proj_pos = update_positions!(inspector, scene, Point3f0(x, y, 0))
     a.bbox2D[] = FRect2D(Vec2f0(x0, y0), Vec2f0(x1-x0, y1-y0))
     
-    if isempty(inspector.temp_plots)
+    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
+        clear_temporary_plots!(inspector)
         p = wireframe!(
             scene, a.bbox2D, model = a.model, 
             color = a.color, visible = a.bbox_visible, show_axis = false,
