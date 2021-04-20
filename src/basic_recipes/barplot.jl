@@ -50,13 +50,6 @@ function AbstractPlotting.plot!(p::BarPlot)
     end
 
     bars = lift(p[1], p.fillto, p.width, p.dodge, p.x_gap, p.dodge_gap, p.stack, in_y_direction) do xy, fillto, width, dodge, x_gap, dodge_gap, stack, in_y_direction
-      
-        #
-        if dodge === automatic
-            n_dodge = 1
-        else
-            n_dodge = length(unique(dodge))
-        end
         
         x = first.(xy)
         y = last.(xy)
@@ -75,13 +68,18 @@ function AbstractPlotting.plot!(p::BarPlot)
         # --------------------------------
         # ------------ Dodging -----------
         # --------------------------------
-        dodge_width = scale_width(x_gap, dodge_gap, n_dodge)
 
         if dodge === automatic
             i_dodge = 1
-        else 
-            i_dodge = categoric_position.(dodge, Ref(categoric_labels(dodge)))
+        elseif eltype(dodge) <: Integer
+            i_dodge = dodge
+        else
+            ArgumentError("The keyword argument `dodge` currently supports only `AbstractVector{<: Integer}`") |> throw
         end
+
+        n_dodge = maximum(i_dodge)
+
+        dodge_width = scale_width(x_gap, dodge_gap, n_dodge)
         
         shft = shift_dodge.(1:n_dodge, x_gap, dodge_gap, n_dodge)
 
@@ -93,13 +91,15 @@ function AbstractPlotting.plot!(p::BarPlot)
             if fillto === automatic
                 fillto = 0.0
             end
-        else
+        elseif eltype(stack) <: Integer
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
-            i_stack = categoric_position.(stack, Ref(categoric_labels(stack)))
+            i_stack = stack
             
             grp = dodge === automatic ? (x = x, ) : (i_dodge = i_dodge, x = x)
             from, to = stack_grouped_from_to(i_stack, y, grp)
             y, fillto = to, from
+        else
+            ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
         end
         
         rects = bar_rectangle.(x .+ width .* shft[i_dodge], y, width .* dodge_width, fillto)

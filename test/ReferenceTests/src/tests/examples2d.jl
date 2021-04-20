@@ -319,12 +319,12 @@ end
         
 	x1         = ["a_right", "a_right", "a_right", "a_right"]
 	y1         = [2, 3, -3, -2]
-	grp_dodge1 = ["b", "b",  "a", "a"]
+	grp_dodge1 = [2, 2,  1,  1]
 	grp_stack1 = [1, 2,  1,  2]
 
 	x2         = ["z_left", "z_left", "z_left", "z_left"]
 	y2         = [2, 3, -3, -2]	
-	grp_dodge2 = ["a", "b", "a", "b"]
+	grp_dodge2 = [1, 2,  1,  2]
 	grp_stack2 = [1, 1,  2,  2]
 
 	perm = [1, 4, 2, 7, 5, 3, 8, 6]
