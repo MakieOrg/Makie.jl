@@ -247,11 +247,15 @@ mutable struct DataInspector
 
     # plot to attach to hovered scene
     plot::_Inspector
+    
+    enabled::Bool
 
     whitelist::Vector{AbstractPlot}
     blacklist::Vector{AbstractPlot}
 end
 
+enable!(inspector::DataInspector) = inspector.enabled = true
+disable!(inspector::DataInspector) = inspector.enabled = false
 
 """
     DataInspector(figure; blacklist = fig.scene.plots, kwargs...)
@@ -286,12 +290,11 @@ function DataInspector(
     push!(blacklist, plot)
     blacklist = flatten_plots(blacklist)
     
-    inspector = DataInspector(parent, scene, AbstractPlot[], plot, whitelist, blacklist)
+    inspector = DataInspector(parent, scene, AbstractPlot[], plot, true, whitelist, blacklist)
 
     e = events(parent)
     onany(e.mouseposition, e.scroll) do mp, _
-        # This is super cheap
-        is_mouseinside(parent) || return false
+        (inspector.enabled && is_mouseinside(parent)) || return false
 
         picks = pick_sorted(parent, mp, range)
         should_clear = true
