@@ -74,7 +74,7 @@ let
     # Figure and Axis
     fig = Figure(resolution = (800, 600))
     ax = Axis(fig[1,1], xticks = (1:3, ["left", "middle", "right"]),
-              title = "Dodged bars")
+              title = "Dodged bars with legend")
 
     # Plot
     barplot!(ax, tbl.x, tbl.height,
