@@ -22,19 +22,23 @@ grid.
 $(ATTRIBUTES)
 """
 @recipe(Arrows, points, directions) do scene
-    theme = Attributes(
-        arrowhead = automatic,
-        arrowtail = automatic,
-        linecolor = :black,
-        linewidth = automatic,
-        arrowsize = automatic,
-        linestyle = nothing,
-        align = :origin,
-        normalize = false,
-        lengthscale = 1f0,
-        colormap = :viridis,
-        quality = 32
+    theme = merge!(
+        default_theme(scene), 
+        Attributes(
+            arrowhead = automatic,
+            arrowtail = automatic,
+            linecolor = :black,
+            arrowsize = automatic,
+            linestyle = nothing,
+            align = :origin,
+            normalize = false,
+            lengthscale = 1f0,
+            colormap = :viridis,
+            quality = 32,
+        )
     )
+    theme[:fxaa] = automatic
+    theme[:linewidth] = automatic
     # connect arrow + linecolor by default
     get!(theme, :arrowcolor, theme[:linecolor])
     theme
@@ -124,9 +128,12 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     @extract arrowplot (
         points, directions, colormap, normalize, align,
         arrowtail, linecolor, linestyle, linewidth, lengthscale, 
-        arrowhead, arrowsize, arrowcolor, quality
+        arrowhead, arrowsize, arrowcolor, quality,
+        # passthrough
+        lightposition, ambient, diffuse, specular, shininess,
+        fxaa, ssao, transparency, visible
     )
-    
+
     if N == 2
         headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
@@ -143,14 +150,19 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         linesegments!(
             arrowplot, headstart,
             color = linecolor, colormap = colormap, linestyle = linestyle, 
-            linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth)
+            linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
+            fxaa = @lift($fxaa == automatic ? false : $fxaa),
+            transparency = transparency, visible = visible
         )
         scatter!(
             arrowplot,
             lift(x-> last.(x), headstart),
             marker = @lift(arrow_head(2, $arrowhead, $quality)), 
             markersize = @lift($arrowsize === automatic ? 0.3 : $arrowsize),
-            color = arrowcolor, rotations = directions, strokewidth = 0.0, colormap = colormap,
+            color = arrowcolor, rotations = directions, strokewidth = 0.0, 
+            colormap = colormap,
+            fxaa = @lift($fxaa == automatic ? false : $fxaa),
+            transparency = transparency, visible = visible
         )
     else
         start = lift(points, directions, align, lengthscale) do points, dirs, align, s
@@ -175,7 +187,11 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
                     map(dir -> Vec3f0(lw, lw, norm(dir) * ls), dirs)
                 end 
             end, 
-            color = linecolor, colormap = colormap
+            color = linecolor, colormap = colormap,
+            fxaa = @lift($fxaa == automatic ? true : $fxaa), ssao = ssao,
+            lightposition = lightposition, ambient = ambient, diffuse = diffuse, 
+            specular = specular, shininess = shininess,
+            transparency = transparency, visible = visible
         )
         meshscatter!(
             arrowplot,
@@ -184,7 +200,11 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             markersize = lift(arrowsize, typ=Any) do as
                 as === automatic ? Vec3f0(0.2, 0.2, 0.3) : as
             end,
-            color = arrowcolor, colormap = colormap
+            color = arrowcolor, colormap = colormap,
+            fxaa = @lift($fxaa == automatic ? true : $fxaa), ssao = ssao,
+            lightposition = lightposition, ambient = ambient, diffuse = diffuse, 
+            specular = specular, shininess = shininess,
+            transparency = transparency, visible = visible
         )
     end
 end
