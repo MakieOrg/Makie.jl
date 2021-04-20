@@ -123,13 +123,6 @@ xlims!(scene::Scene, lims::Real...) = xlims!(scene, lims)
 ylims!(scene::Scene, lims::Real...) = ylims!(scene, lims)
 zlims!(scene::Scene, lims::Real...) = zlims!(scene, lims)
 
-xlims!(lims::NTuple{2, Real}) = xlims!(current_scene(), lims)
-ylims!(lims::NTuple{2, Real}) = ylims!(current_scene(), lims)
-zlims!(lims::NTuple{2, Real}) = zlims!(current_scene(), lims)
-
-xlims!(lims::Real...) = xlims!(current_scene(), lims)
-ylims!(lims::Real...) = ylims!(current_scene(), lims)
-zlims!(lims::Real...) = zlims!(current_scene(), lims)
 ################################################################################
 """
     ticklabels(scene)

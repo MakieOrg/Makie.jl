@@ -7,56 +7,69 @@ CairoMakie.activate!()
 
 A simple slider without a label. You can create a label using a `Label` object,
 for example. You need to specify a range that constrains the slider's possible values.
-You can then lift the `value` observable to make interactive plots.
+
+The currently selected value is in the attribute `value`.
+Don't change this value manually, but use the function `set_close_to!(slider, value)`.
+This is necessary to ensure the value is actually present in the `range` attribute.
+
+You can double-click the slider to reset it (approximately) to the value present in `startvalue`.
+
+If you set the attribute `snap = false`, the slider will move continously while dragging and only jump to the closest available value when releasing the mouse.
+
 
 ```@example
-using CairoMakie
+using GLMakie
 
 fig = Figure(resolution = (1200, 900))
 
-Axis(fig[1, 1])
-sl1 = Slider(fig[2, 1], range = 0:0.01:10, startvalue = 3)
-sl2 = Slider(fig[3, 1], range = 0:0.01:10, startvalue = 5)
-sl3 = Slider(fig[4, 1], range = 0:0.01:10, startvalue = 7)
+ax = Axis(fig[1, 1])
 
-sl4 = Slider(fig[:, 2], range = 0:0.01:10, horizontal = false,
+sl_x = Slider(fig[2, 1], range = 0:0.01:10, startvalue = 3)
+sl_y = Slider(fig[1, 2], range = 0:0.01:10, horizontal = false,
+    startvalue = 6,
     tellwidth = true, height = nothing, width = Auto())
 
-save("example_lslider.svg", fig); nothing # hide
+point = @lift(Point2f0($(sl_x.value), $(sl_y.value)))
+
+scatter!(point, color = :red, markersize = 20)
+
+limits!(ax, 0, 10, 0, 10)
+
+fig
 ```
 
-![example lslider](example_lslider.svg)
+## Labelled slider convenience functions
 
 To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`AbstractPlotting.MakieLayout.labelslidergrid!`](@ref).
 
 ```@example
-using CairoMakie
+using GLMakie
+
 fig = Figure(resolution = (1200, 900))
 
-Axis(fig[1, 1])
+ax = Axis(fig[1, 1])
 
 lsgrid = labelslidergrid!(
     fig,
     ["Voltage", "Current", "Resistance"],
-    # use Ref for the same range for every slider via internal broadcasting
-    Ref(LinRange(0:0.1:1000));
+    [0:0.1:10, 0:0.1:20, 0:0.1:30];
     formats = [x -> "$(round(x, digits = 1))$s" for s in ["V", "A", "Ω"]],
     width = 350,
     tellheight = false)
     
 fig[1, 2] = lsgrid.layout
 
-set_close_to!(lsgrid.sliders[1], 230.3)
-set_close_to!(lsgrid.sliders[2], 628.4)
+sliderobservables = [s.value for s in lsgrid.sliders]
+bars = lift(sliderobservables...) do slvalues...
+    [slvalues...]
+end
+
+barplot!(ax, bars, color = [:yellow, :orange, :red])
+ylims!(ax, 0, 30)
+
+set_close_to!(lsgrid.sliders[1], 5.3)
+set_close_to!(lsgrid.sliders[2], 10.2)
 set_close_to!(lsgrid.sliders[3], 15.9)
 
-save("example_labelslidergrid.svg", fig); nothing # hide
+fig
 ```
-
-![example labelslidergrid](example_labelslidergrid.svg)
-
-If you want to programmatically move the slider, use the function [`AbstractPlotting.MakieLayout.set_close_to!`](@ref).
-Don't manipulate the `value` attribute directly, as there is no guarantee that
-this value exists in the range underlying the slider, and the slider's displayed value would
-not change anyway by changing the slider's output.
-

@@ -263,10 +263,7 @@ stockchart(f[1, 1], timestamps, stockvalues)
 stockchart(f[2, 1], timestamps, stockvalues,
     downcolor = :purple, upcolor = :orange)
 f
-save("example_stockchart.svg", f); nothing # hide
 ```
-
-![example stockchart](example_stockchart.svg)
 
 
 As a last example, lets pretend our stock data is coming in dynamically, and we want to create an animation out of it.

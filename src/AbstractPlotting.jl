@@ -239,15 +239,18 @@ export cgrad, available_gradients, showgradients
 
 export Pattern
 
+assetpath(files...) = normpath(joinpath(@__DIR__, "..", "assets", files...))
+
+export assetpath
 # default icon for Makie
 function icon()
-    path = joinpath(dirname(pathof(AbstractPlotting)), "..", "assets", "icons")
+    path = assetpath("icons")
     icons = FileIO.load.(joinpath.(path, readdir(path)))
-    icons = reinterpret.(NTuple{4,UInt8}, icons)
+    return reinterpret.(NTuple{4,UInt8}, icons)
 end
 
 function logo()
-    FileIO.load(joinpath(dirname(@__DIR__), "assets", "misc", "makie_logo.png"))
+    FileIO.load(assetpath("misc", "makie_logo.png"))
 end
 
 function __init__()

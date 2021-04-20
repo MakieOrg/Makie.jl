@@ -19,8 +19,5 @@ supertitle = Label(fig[0, :], "Six plots", textsize = 30)
 
 sideinfo = Label(fig[2:3, 0], "This text is vertical", rotation = pi/2)
 
-save("example_ltext.svg", fig); nothing # hide
+fig
 ```
-
-![example ltext](example_ltext.svg)
-

@@ -24,8 +24,4 @@ scatterlines!(xs, ys .- 3, marker = :cross, strokewidth = 0,
     strokecolor = :red, markercolor = :orange)
 
 f
-save("example_scatterlines_1.svg", f); nothing # hide
 ```
-
-![example_scatterlines_1](example_scatterlines_1.svg)
-

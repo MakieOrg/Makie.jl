@@ -9,7 +9,7 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
     decorations = Dict{Symbol, Any}()
 
     @extract attrs (
-        halign, valign, horizontal, linewidth,
+        halign, valign, horizontal, linewidth, snap,
         startvalue, value, color_active, color_active_dimmed, color_inactive
     )
 
@@ -71,6 +71,11 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
+    # when the range is changed, switch to closest value
+    on(sliderrange) do rng
+        selected_index[] = closest_index(rng, value[])
+    end
+
     on(selected_index) do i
         value[] = sliderrange[][i]
     end
@@ -107,19 +112,20 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
 
         dragging[] = true
         dif = event.px - event.prev_px
-        fraction = if horizontal[]
-            dif[1] / (endpoints[][2][1] - endpoints[][1][1])
+        fraction = clamp(if horizontal[]
+            (event.px[1] - endpoints[][1][1]) / (endpoints[][2][1] - endpoints[][1][1])
         else
-            dif[2] / (endpoints[][2][2] - endpoints[][1][2])
-        end
-        if fraction != 0.0f0
-            newfraction = min(max(displayed_sliderfraction[] + fraction, 0f0), 1f0)
-            displayed_sliderfraction[] = newfraction
+            (event.px[2] - endpoints[][1][2]) / (endpoints[][2][2] - endpoints[][1][2])
+        end, 0, 1)
 
-            newindex = closest_fractionindex(sliderrange[], newfraction)
-            if selected_index[] != newindex
-                selected_index[] = newindex
-            end
+        newindex = closest_fractionindex(sliderrange[], fraction)
+        if snap[]
+            fraction = (newindex - 1) / (length(sliderrange[]) - 1)
+        end
+        displayed_sliderfraction[] = fraction
+
+        if selected_index[] != newindex
+            selected_index[] = newindex
         end
     end
 
@@ -198,9 +204,10 @@ function closest_index_inexact(sliderrange, value)
 end
 
 """
-Set the `slider` to the value in the slider's range that is closest to `value`.
+Set the `slider` to the value in the slider's range that is closest to `value` and return this value.
 """
-function set_close_to!(slider, value)
+function set_close_to!(slider::Slider, value)
     closest = closest_index(slider.range[], value)
     slider.selected_index = closest
+    slider.range[][closest]
 end

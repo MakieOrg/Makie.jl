@@ -21,8 +21,4 @@ zs = [cos(x) * sin(y) for x in xs, y in ys]
 contour!(xs, ys, zs)
 
 f
-save("example_contour.svg", f); nothing # hide
 ```
-
-![example contour](example_contour.svg)
-

@@ -202,6 +202,7 @@ format2mime(::Type{FileIO.format"HTML"}) = MIME("text/html")
 filetype(::FileIO.File{F}) where F = F
 # Allow format to be overridden with first argument
 
+
 """
     FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 1.0, px_per_unit = 1.0)
 
@@ -225,13 +226,20 @@ Save a `Scene` with the specified filename and format.
 - `px_per_unit`: The size of one scene unit in `px` when exporting to a bitmap format. This provides a mechanism to export the same scene with higher or lower resolution.
 """
 function FileIO.save(
-        filename, fig::FigureLike;
+        filename::String, fig::FigureLike; args...
+    )
+    FileIO.save(FileIO.query(filename), fig; args...)
+end
+
+function FileIO.save(
+        file::FileIO.Formatted, fig::FigureLike;
         resolution = size(get_scene(fig)),
         pt_per_unit = 1.0,
         px_per_unit = 1.0,
     )
     scene = get_scene(fig)
     resolution != size(scene) && resize!(scene, resolution)
+    filename = FileIO.filename(file)
     # Delete previous file if it exists and query only the file string for type.
     # We overwrite existing files anyway, so this doesn't change the behavior.
     # But otherwise we could get a filetype :UNKNOWN from a corrupt existing file
@@ -239,7 +247,7 @@ function FileIO.save(
     # type readout from an existing file.
     isfile(filename) && rm(filename)
     # query the filetype only from the file extension
-    F = filetype(FileIO.query(filename))
+    F = filetype(file)
 
     open(filename, "w") do s
         iocontext = IOContext(s,

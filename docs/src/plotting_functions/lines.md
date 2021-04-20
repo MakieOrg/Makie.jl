@@ -23,7 +23,4 @@ lines!(xs, ys .- 2, linewidth = 5, color = ys)
 lines!(xs, ys .- 3, linestyle = :dash)
 
 f
-save("example_lines_1.svg", f); nothing # hide
 ```
-
-![example_lines_1](example_lines_1.svg)
