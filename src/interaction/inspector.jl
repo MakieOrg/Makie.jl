@@ -168,7 +168,7 @@ end
         # general
         root_px_projection = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
-        depth = 1e3,
+        depth = 9e3,
         visible = true,
         
         # For other purposes/unused
