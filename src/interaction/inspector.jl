@@ -146,6 +146,7 @@ end
     Attributes(
         # Text
         display_text = " ",
+        text_position = Point2f0(0), # this usually gets overwritten
         text_align = (:left, :bottom),
         textcolor = :black, 
         textsize = 20, 
@@ -169,29 +170,39 @@ end
         model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         depth = 9e3,
         visible = true,
-        tooltip_align = (:center, :top),
-        tooltip_offset = Vec2f0(20), # this adjusts to tooltip_align
-        proj_position = Point2f0(0),
+        tooltip_align = (:center, :top), # tooltip relative to text_position
+        tooltip_offset = Vec2f0(20), # this is an absolute offset
         
         # For other purposes/unused
         bbox3D = FRect3D(Vec3f0(0), Vec3f0(0)),
         bbox_visible = true,
+        proj_position = Point2f0(0),
         position = Point3f0(0),
     )
 end
 
 function plot!(plot::_Inspector)
     @extract plot (
-        display_text, text_align, textcolor, textsize, font,
+        display_text, text_position, text_align, textcolor, textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
         bbox2D, px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
         tooltip_align, tooltip_offset, proj_position,
         root_px_projection, model, depth, visible
     )
 
+    aligned_text_position = Node(Point2f0(0))
+
+    _text = text!(plot, display_text, 
+        position = aligned_text_position, visible = visible, align = text_align,
+        color = textcolor, font = font, textsize = textsize, show_axis = false
+    )
+
     id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
-    bbox = Node(FRect2D(Vec2f0(0), Vec2f0(0)))
-    text_position = map(proj_position, tooltip_align, tooltip_offset, bbox) do pos, align, offset, bbox
+    bbox = map(_text._glyphlayout, _text.position) do gl, pos
+        r = FRect2D(Bbox_from_glyphlayout(gl))
+        FRect2D(origin(r) .+ Vec2f0(pos[1], pos[2]-2), widths(r) .+ Vec2f0(0, 4))
+    end
+    onany(text_position, tooltip_align, tooltip_offset, bbox) do pos, align, offset, bbox
         halign, valign = align
         ox, oy = offset
         wx, wy = widths(bbox)
@@ -209,20 +220,9 @@ function plot!(plot::_Inspector)
         elseif valign == :bottom
             dy = -wy - oy
         end
-        pos .+ Point2f0(dx, dy)
-    end
-
-    _text = text!(plot, display_text, 
-        position = text_position, visible = visible, align = text_align,
-        color = textcolor, font = font, textsize = textsize,
-        show_axis = false
-    )
-
-    onany(_text._glyphlayout, _text.position) do gl, pos
-        r = FRect2D(Bbox_from_glyphlayout(gl))
-        bb = FRect2D(origin(r) .+ Vec2f0(pos[1], pos[2]-2), widths(r) .+ Vec2f0(0, 4))
-        if bbox[] != bb
-            bbox[] = bb
+        new_pos = pos .+ Point2f0(dx, dy)
+        if new_pos != aligned_text_position[]
+            aligned_text_position[] = new_pos
         end
     end
 
@@ -381,12 +381,14 @@ end
 function update_tooltip_alignment!(inspector)
     a = inspector.plot.attributes
     wx, wy = widths(pixelarea(inspector.root)[])
-    px, py = a.proj_position[]
+    p = a.proj_position[]
+    px, py = p
     halign, valign = a.tooltip_align[]
     px < wx/3  && (halign = :right)
     px > 2wx/3 && (halign = :left)
     py < wy/3  && (valign = :top)
     py > 2wy/3 && (valign = :bottom)
+    a.text_position[] = p
     a.tooltip_align[] = (halign, valign)
 end
     
@@ -491,7 +493,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     bbox = boundingbox(plot)
     min, max = extrema(bbox)
     proj_pos = update_positions!(inspector, scene, 0.5 * (max .+ min))
-    update_tooltip_alignment!(inspector)
 
     a.model[] = plot.model[]
 
@@ -505,6 +506,8 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
 
+    a.text_position[] = Point2f0(maximum(pixelarea(scene)[])) .+ a.tooltip_offset[]
+    a.tooltip_align[] = (:left, :bottom)
     a.display_text[] = bbox2string(bbox)
     a.bbox3D[] = bbox
     a.px_bbox_visible[] = false
