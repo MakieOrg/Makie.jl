@@ -20,9 +20,4 @@ Axis(f[1, 1], aspect = DataAspect())
 image!(img)
 
 f
-save("example_image_1.svg", f); nothing # hide
 ```
-
-![example_image_1](example_image_1.svg)
-
-

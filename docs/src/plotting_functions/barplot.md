@@ -21,9 +21,4 @@ barplot!(xs, ys, color = :red, strokecolor = :black, strokewidth = 1)
 barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
 
 f
-save("example_barplot.svg", f); nothing # hide
 ```
-
-![example barplot](example_barplot.svg)
-
-

@@ -2,6 +2,7 @@
 function interactions end
 
 interactions(ax::Axis) = ax.interactions
+interactions(ax3::Axis3) = ax3.interactions
 
 """
     register_interaction!(parent, name::Symbol, interaction)
@@ -106,7 +107,7 @@ end
 function _chosen_limits(rz, ax)
 
     r = positivize(FRect2D(rz.from, rz.to .- rz.from))
-    lims = ax.limits[]
+    lims = ax.finallimits[]
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
         r = FRect2D(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2]) 
@@ -139,27 +140,41 @@ end
 
 function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
 
+    # TODO: actually, the data from the mouse event should be transformed already
+    # but the problem is that these mouse events are generated all the time
+    # and outside of log axes, you would quickly run into domain errors
+    transf = AbstractPlotting.transform_func(ax)
+    inv_transf = AbstractPlotting.inverse_transform(transf)
+
     if event.type === MouseEventTypes.leftdragstart
-        r.from = event.prev_data
-        r.to = event.data
+        data = AbstractPlotting.apply_transform(inv_transf, event.data)
+        prev_data = AbstractPlotting.apply_transform(inv_transf, event.prev_data)
+
+        r.from = prev_data
+        r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
 
-        selection_vertices = lift(_selection_vertices, ax.limits, r.rectnode)
+        selection_vertices = lift(_selection_vertices, ax.finallimits, r.rectnode)
 
         # manually specify correct faces for a rectangle with a rectangle hole inside
         faces = [1 2 5; 5 2 6; 2 3 6; 6 3 7; 3 4 7; 7 4 8; 4 1 8; 8 1 5]
 
-        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.33), shading = false,
+        mesh = mesh!(ax.scene, selection_vertices, faces, color = (:black, 0.2), shading = false,
             fxaa = false) # fxaa false seems necessary for correct transparency
-        wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)
+        # wf = wireframe!(ax.scene, r.rectnode, color = (:black, 0.66), linewidth = 2)
         # translate forward so selection mesh and frame are never behind data
         translate!(mesh, 0, 0, 100)
-        translate!(wf, 0, 0, 110)
-        append!(r.plots, [mesh, wf])
+        # translate!(wf, 0, 0, 110)
+        # append!(r.plots, [mesh, wf])
+        append!(r.plots, [mesh])
         r.active = true
 
     elseif event.type === MouseEventTypes.leftdrag
-        r.to = event.data
+        # clamp mouse data to shown limits
+        rect = AbstractPlotting.apply_transform(transf, ax.finallimits[])
+        data = AbstractPlotting.apply_transform(inv_transf, rectclamp(event.data, rect))
+        
+        r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
 
     elseif event.type === MouseEventTypes.leftdragstop
@@ -178,6 +193,12 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     end
 
     return nothing
+end
+
+function rectclamp(p::Point, r::Rect)
+    map(p, minimum(r), maximum(r)) do pp, mi, ma
+        clamp(pp, mi, ma)
+    end |> Point
 end
 
 function process_interaction(r::RectangleZoom, event::KeysEvent, ax::Axis)
@@ -202,7 +223,11 @@ function process_interaction(l::LimitReset, event::MouseEvent, ax::Axis)
 
     if event.type === MouseEventTypes.leftclick
         if ispressed(ax.scene, Keyboard.left_control)
-            autolimits!(ax)
+            if ispressed(ax.scene, Keyboard.left_shift)
+                autolimits!(ax)
+            else
+                reset_limits!(ax)
+            end
         end
     end
 
@@ -229,7 +254,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
 
         # don't let z go negative
         z = max(0.1f0, 1f0 - (abs(zoom) * s.speed))
-        if zoom > 0
+        if zoom < 0
             z = 1/z   # sets the old to be a fraction of the new. This ensures zoom in & then out returns to original position.
         end
 
@@ -242,11 +267,17 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             # now to 0..1
             0.5 .+ 0.5
 
-        xorigin = tlimits[].origin[1]
-        yorigin = tlimits[].origin[2]
+        xscale = ax.xscale[]
+        yscale = ax.yscale[]
 
-        xwidth = tlimits[].widths[1]
-        ywidth = tlimits[].widths[2]
+        transf = (xscale, yscale)
+        tlimits_trans = AbstractPlotting.apply_transform(transf, tlimits[])
+
+        xorigin = tlimits_trans.origin[1]
+        yorigin = tlimits_trans.origin[2]
+
+        xwidth = tlimits_trans.widths[1]
+        ywidth = tlimits_trans.widths[2]
 
         newxwidth = xzoomlock[] ? xwidth : xwidth * z
         newywidth = yzoomlock[] ? ywidth : ywidth * z
@@ -256,7 +287,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
 
         timed_ticklabelspace_reset(ax, s.reset_timer, s.prev_xticklabelspace, s.prev_yticklabelspace, s.reset_delay)
 
-        tlimits[] = if ispressed(scene, xzoomkey[])
+        newrect_trans = if ispressed(scene, xzoomkey[])
             FRect(newxorigin, yorigin, newxwidth, ywidth)
         elseif ispressed(scene, yzoomkey[])
             FRect(xorigin, newyorigin, xwidth, newywidth)
@@ -264,6 +295,8 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             FRect(newxorigin, newyorigin, newxwidth, newywidth)
         end
 
+        inv_transf = AbstractPlotting.inverse_transform(transf)
+        tlimits[] = AbstractPlotting.apply_transform(inv_transf, newrect_trans)
     end
 end
 
@@ -281,23 +314,64 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     panbutton = ax.panbutton
 
     scene = ax.scene
+    cam = camera(scene)
+    pa = pixelarea(scene)[]
 
-    movement = AbstractPlotting.to_world(ax.scene, event.px) .-
-               AbstractPlotting.to_world(ax.scene, event.prev_px)
+    mp_axscene = Vec4f0((event.px .- pa.origin)..., 0, 1)
+    mp_axscene_prev = Vec4f0((event.prev_px .- pa.origin)..., 0, 1)
 
-    xori, yori = Vec2f0(tlimits[].origin) .- movement
+    mp_axfraction, mp_axfraction_prev = map((mp_axscene, mp_axscene_prev)) do mp
+        # first to normal -1..1 space
+        (cam.pixel_space[] * mp)[1:2] .*
+        # now to 1..-1 if an axis is reversed to correct zoom point
+        (-2 .* ((ax.xreversed[], ax.yreversed[])) .+ 1) .*
+        # now to 0..1
+        0.5 .+ 0.5
+    end
+    
+    xscale = ax.xscale[]
+    yscale = ax.yscale[]
+
+    transf = (xscale, yscale)
+    tlimits_trans = AbstractPlotting.apply_transform(transf, tlimits[])
+
+    movement_frac = mp_axfraction .- mp_axfraction_prev
+
+    xscale = ax.xscale[]
+    yscale = ax.yscale[]
+
+    transf = (xscale, yscale)
+    tlimits_trans = AbstractPlotting.apply_transform(transf, tlimits[])
+
+    xori, yori = tlimits_trans.origin .- movement_frac .* widths(tlimits_trans)
 
     if xpanlock[] || ispressed(scene, ypankey[])
-        xori = tlimits[].origin[1]
+        xori = tlimits_trans.origin[1]
     end
 
     if ypanlock[] || ispressed(scene, xpankey[])
-        yori = tlimits[].origin[2]
+        yori = tlimits_trans.origin[2]
     end
 
     timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
-    tlimits[] = FRect(Vec2f0(xori, yori), widths(tlimits[]))
+    inv_transf = AbstractPlotting.inverse_transform(transf)
+    newrect_trans = FRect(Vec2f0(xori, yori), widths(tlimits_trans))
+    tlimits[] = AbstractPlotting.apply_transform(inv_transf, newrect_trans)
            
+    return nothing
+end
+
+
+function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
+    if event.type !== MouseEventTypes.leftdrag
+        return nothing
+    end
+
+    dpx = event.px - event.prev_px
+
+    ax3d.azimuth[] += -dpx[1] * 0.01
+    ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
+
     return nothing
 end

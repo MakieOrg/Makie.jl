@@ -19,11 +19,7 @@ xs = LinRange(0, 4pi, 30)
 stem!(xs, sin.(xs))
 
 f
-save("example_stem_1.svg", f); nothing # hide
 ```
-
-![example stem_1](example_stem_1.svg)
-
 
 
 ```@example
@@ -43,11 +39,7 @@ stem!(xs, sin,
     trunklinestyle = :dash, stemlinestyle = :dashdot)
 
 f
-save("example_stem_2.svg", f); nothing # hide
 ```
-
-![example stem_2](example_stem_2.svg)
-
 
 
 ```@example
@@ -66,11 +58,7 @@ stem!(xs, sin.(xs),
     trunkcolor = LinRange(0, 1, 30), trunkwidth = 5)
 
 f
-save("example_stem_3.svg", f); nothing # hide
 ```
-
-![example stem_3](example_stem_3.svg)
-
 
 
 ```@example

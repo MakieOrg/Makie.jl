@@ -1,7 +1,7 @@
-authors = ["Simon Danisch", "Julius Krumbiegel"]
 name = "AbstractPlotting"
 uuid = "537997a7-5e4e-5d89-9595-2241ea00577e"
-version = "0.15.25"
+authors = ["Simon Danisch", "Julius Krumbiegel"]
+version = "0.17.3"
 
 [deps]
 Animations = "27a7e980-b3e6-11e9-2bcd-0b925532e340"
@@ -69,7 +69,7 @@ Observables = "0.3.1, 0.4"
 Packing = "0.4"
 PlotUtils = "1"
 PolygonOps = "0.1.1"
-Showoff = "0.3"
+Showoff = "0.3, 1.0.2"
 SignedDistanceFields = "0.4"
 StaticArrays = "0.12, 1.0"
 StatsBase = "0.31, 0.32, 0.33"

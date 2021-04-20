@@ -365,10 +365,12 @@ makedocs(
             "Layoutables & Widgets" => [
                 "makielayout/layoutables.md",
                 "makielayout/axis.md",
+                "makielayout/axis3.md",
                 "makielayout/box.md",
                 "makielayout/button.md",
                 "makielayout/colorbar.md",
                 "makielayout/gridlayout.md",
+                "makielayout/intervalslider.md",
                 "makielayout/label.md",
                 "makielayout/legend.md",
                 "makielayout/lscene.md",

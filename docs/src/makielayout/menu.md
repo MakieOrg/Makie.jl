@@ -14,7 +14,7 @@ The attribute `selection` is set to `optionvalue(element)` when the element's en
 
 
 ```@example
-using CairoMakie
+using GLMakie
 
 fig = Figure(resolution = (1200, 900))
 
@@ -51,7 +51,5 @@ end
 
 menu2.is_open = true
 
-save("example_lmenu.svg", fig); nothing # hide
+fig
 ```
-
-![example lmenu](example_lmenu.svg)

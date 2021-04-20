@@ -27,11 +27,8 @@ sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
 leg = Legend(scene, [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
 layout[1, 2] = leg
 
-save("example_legend.svg", scene); nothing # hide
+scene
 ```
-
-![example legend](example_legend.svg)
-
 
 ## Creating A Legend From An Axis
 
@@ -51,10 +48,8 @@ lines!(0..15, x -> -cos(x), label = "-cos", color = :green)
 
 f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
 
-save("example_legend_from_axis.svg", f); nothing # hide
+f
 ```
-
-![example legend from axis](example_legend_from_axis.svg)
 
 
 ## Multi-Bank Legend
@@ -75,12 +70,8 @@ lins = [lines!(ax, xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:
 leg = Legend(scene, lins, string.(1:length(lins)), nbanks = 3)
 layout[1, 2] = leg
 
-
-save("example_legend_ncols.svg", scene); nothing # hide
+scene
 ```
-
-![example legend ncols](example_legend_ncols.svg)
-
 
 
 ## Legend Inside An Axis
@@ -110,11 +101,9 @@ axislegend("Titled Legend", position = :lb)
 axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
     orientation = :horizontal)
 
-
-save("example_axislegend.svg", f); nothing # hide
+f
 ```
 
-![example axislegend](example_axislegend.svg)
 
 Alternatively, you can simply add a Legend to the same layout slot
 that an axis lives in. As long as the axis is bigger than the legend you can
@@ -150,10 +139,8 @@ for leg in legends
     layout[1, 1] = leg
 end
 
-save("example_legend_alignment.svg", scene); nothing # hide
+scene
 ```
-
-![example legend alignment](example_legend_alignment.svg)
 
 
 ## Creating Legend Entries Manually
@@ -202,10 +189,8 @@ leg = layout[1, 2] = Legend(scene,
     ["Line & Marker", "Poly & Line", "Line", "Marker", "Poly"],
     patchsize = (35, 35))
 
-save("example_legend_entries.svg", scene); nothing # hide
+scene
 ```
-
-![example legend entries](example_legend_entries.svg)
 
 
 ## Horizontal Legend
@@ -237,11 +222,8 @@ leg_horizontal = Legend(scene, [lin, sca, lin], ["a line", "some dots", "line ag
     orientation = :horizontal, tellwidth = false, tellheight = true)
 layout[2, 1] = leg_horizontal
 
-
-save("example_legend_horizontal.svg", scene); nothing # hide
+scene
 ```
-
-![example legend horizontal](example_legend_horizontal.svg)
 
 
 ## Multi-Group Legends
@@ -295,11 +277,7 @@ legends[5].nbanks = 2
 legends[6].nbanks = 2
 
 scene
-
-save("example_multilegend.svg", scene); nothing # hide
 ```
-
-![example multilegend](example_multilegend.svg)
 
 ```@eval
 using GLMakie

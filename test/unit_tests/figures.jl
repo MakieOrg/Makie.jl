@@ -100,7 +100,7 @@ end
     @test contents(fig[1, 2][1, 1], exact = false) == [ax2]
     @test contents(fig[1, 2][1:2, 1:2], exact = true) == []
     @test contents(fig[1, 2][1:2, 1:2], exact = false) == [ax2]
-    @test_throws ErrorException contents(fig[1:2, 1:2][1, 1])
+    @test contents(fig[1:2, 1:2][1, 1]) == []
 
     label2 = fig[1, 2][1, 1] = Label(fig)
     @test contents(fig[1, 2][1, 1], exact = true) == [ax2, label2]
@@ -109,4 +109,23 @@ end
     @test contents(fig[1, 2][1:2, 1:2], exact = false) == [ax2, label2]
 
     @test_throws ErrorException content(fig[1, 2][1, 1])
+end
+
+@testset "Nested axis assignment" begin
+    fig = Figure()
+    @test Axis(fig[1, 1]) isa Axis
+    @test Axis(fig[1, 1][2, 3]) isa Axis
+    @test Axis(fig[1, 1][2, 3][4, 5]) isa Axis
+    @test_throws ErrorException scatter(fig[1, 1])
+    @test_throws ErrorException scatter(fig[1, 1][2, 3])
+    @test_throws ErrorException scatter(fig[1, 1][2, 3][4, 5])
+    @test scatter(fig[1, 2], 1:10) isa AbstractPlotting.AxisPlot
+    @test scatter(fig[1, 1][1, 1], 1:10) isa AbstractPlotting.AxisPlot
+    @test scatter(fig[1, 1][1, 1][1, 1], 1:10) isa AbstractPlotting.AxisPlot
+
+    fig = Figure()
+    fig[1, 1] = GridLayout()
+    @test Axis(fig[1, 1][1, 1]) isa Axis
+    fig[1, 1] = GridLayout()
+    @test_throws ErrorException Axis(fig[1, 1][1, 1])
 end

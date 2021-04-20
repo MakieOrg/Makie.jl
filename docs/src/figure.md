@@ -70,10 +70,8 @@ lines(pos2, cumsum(randn(100)))
 heatmap(f[1, 3], randn(10, 10))
 
 f
-save("figurepositions.svg", f); nothing # hide
 ```
 
-![figurepositions](figurepositions.svg)
 
 You can also index further into a `FigurePosition`, which creates a `FigureSubposition`.
 With `FigureSubposition`s you can describe positions in arbitrarily nested grid layouts.
@@ -92,10 +90,8 @@ f[1, 2][1, 1] = Axis(f, title = "I'm nested")
 heatmap(f[1, 2][2, 1], randn(20, 20))
 
 f
-save("figurepositions_2.svg", f); nothing # hide
 ```
 
-![figurepositions_2](figurepositions_2.svg)
 
 All nested grid layouts that don't exist yet, but are needed for a nested plotting call, are created in the background automatically.
 

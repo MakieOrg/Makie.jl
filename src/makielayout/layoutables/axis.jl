@@ -37,7 +37,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         xminorticksvisible, xminortickalign, xminorticksize, xminortickwidth, xminortickcolor, xminorticks,
         yminorticksvisible, yminortickalign, yminorticksize, yminortickwidth, yminortickcolor, yminorticks,
         xminorgridvisible, yminorgridvisible, xminorgridwidth, yminorgridwidth,
-        xminorgridcolor, yminorgridcolor, xminorgridstyle, yminorgridstyle
+        xminorgridcolor, yminorgridcolor, xminorgridstyle, yminorgridstyle,
+        limits
     )
 
     decorations = Dict{Symbol, Any}()
@@ -46,9 +47,22 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     layoutobservables = LayoutObservables{Axis}(attrs.width, attrs.height, attrs.tellwidth, attrs.tellheight, halign, valign, attrs.alignmode;
         suggestedbbox = bbox, protrusions = protrusions)
 
-    limits = Node(FRect(0, 0, 100, 100))
+    # initialize either with user limits, or pick defaults based on scales
+    # so that we don't immediately error
+    targetlimits = Node{FRect2D}(defaultlimits(limits[], attrs.xscale[], attrs.yscale[]))
+    finallimits = Node{FRect2D}(targetlimits[])
 
-    scenearea = sceneareanode!(layoutobservables.computedbbox, limits, aspect)
+    onany(targetlimits, attrs.xscale, attrs.yscale) do lims, xsc, ysc
+        # this should validate the targetlimits before anything else happens with them
+        # so there should be nothing before this lifting `targetlimits`
+        # we don't use finallimits because that's one step later and you
+        # already shouldn't set invalid targetlimits (even if they could
+        # theoretically be adjusted to fit somehow later?)
+        # and this way we can error pretty early
+        validate_limits_for_scales(lims, xsc, ysc)
+    end
+
+    scenearea = sceneareanode!(layoutobservables.computedbbox, finallimits, aspect)
 
     scene = Scene(topscene, scenearea, raw = true)
 
@@ -99,7 +113,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     translate!(yminorgridlines, 0, 0, -10)
     decorations[:yminorgridlines] = yminorgridlines
 
-    onany(limits, xreversed, yreversed) do lims, xrev, yrev
+    onany(finallimits, xreversed, yreversed, attrs.xscale, attrs.yscale) do lims, xrev, yrev, xsc, ysc
 
         nearclip = -10_000f0
         farclip = 10_000f0
@@ -111,14 +125,17 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         bottomtop = yrev ? (top, bottom) : (bottom, top)
 
         projection = AbstractPlotting.orthographicprojection(
-            leftright..., bottomtop..., nearclip, farclip)
+            xsc.(leftright)...,
+            ysc.(bottomtop)..., nearclip, farclip)
         camera(scene).projection[] = projection
         camera(scene).projectionview[] = projection
     end
 
-    on(attrs.targetlimits) do tlims
-        update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
+    onany(attrs.xscale, attrs.yscale) do xsc, ysc
+        scene.transformation.transform_func[] = (xsc, ysc)
     end
+
+    notify(attrs.xscale)
 
     xaxis_endpoints = lift(xaxisposition, scene.px_area) do xaxisposition, area
         if xaxisposition == :bottom
@@ -136,7 +153,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         elseif yaxisposition == :right
             rightline(FRect2D(area))
         else
-            error("Invalid xaxisposition $xaxisposition")
+            error("Invalid yaxisposition $yaxisposition")
         end
     end
 
@@ -168,7 +185,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         yflip ? lc : rc
     end
 
-    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = lift(xlimits, limits),
+    xaxis = LineAxis(topscene, endpoints = xaxis_endpoints, limits = lift(xlimits, finallimits),
         flipped = xaxis_flipped, ticklabelrotation = xticklabelrotation,
         ticklabelalign = xticklabelalign, labelsize = xlabelsize,
         labelpadding = xlabelpadding, ticklabelpad = xticklabelpad, labelvisible = xlabelvisible,
@@ -177,11 +194,11 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         ticksvisible = xticksvisible, spinevisible = xspinevisible, spinecolor = xspinecolor, spinewidth = spinewidth,
         ticklabelsize = xticklabelsize, trimspine = xtrimspine, ticksize = xticksize,
         reversed = xreversed, tickwidth = xtickwidth, tickcolor = xtickcolor,
-        minorticksvisible = xminorticksvisible, minortickalign = xminortickalign, minorticksize = xminorticksize, minortickwidth = xminortickwidth, minortickcolor = xminortickcolor, minorticks = xminorticks,
+        minorticksvisible = xminorticksvisible, minortickalign = xminortickalign, minorticksize = xminorticksize, minortickwidth = xminortickwidth, minortickcolor = xminortickcolor, minorticks = xminorticks, scale = attrs.xscale,
         )
     decorations[:xaxis] = xaxis
 
-    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = lift(ylimits, limits),
+    yaxis  =  LineAxis(topscene, endpoints = yaxis_endpoints, limits = lift(ylimits, finallimits),
         flipped = yaxis_flipped, ticklabelrotation = yticklabelrotation,
         ticklabelalign = yticklabelalign, labelsize = ylabelsize,
         labelpadding = ylabelpadding, ticklabelpad = yticklabelpad, labelvisible = ylabelvisible,
@@ -190,7 +207,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         ticksvisible = yticksvisible, spinevisible = yspinevisible, spinecolor = yspinecolor, spinewidth = spinewidth,
         trimspine = ytrimspine, ticklabelsize = yticklabelsize, ticksize = yticksize, flip_vertical_label = flip_ylabel, reversed = yreversed, tickwidth = ytickwidth,
             tickcolor = ytickcolor,
-        minorticksvisible = yminorticksvisible, minortickalign = yminortickalign, minorticksize = yminorticksize, minortickwidth = yminortickwidth, minortickcolor = yminortickcolor, minorticks = yminorticks,
+        minorticksvisible = yminorticksvisible, minortickalign = yminortickalign, minorticksize = yminorticksize, minortickwidth = yminortickwidth, minortickcolor = yminortickcolor, minorticks = yminorticks, scale = attrs.yscale,
         )
 
     decorations[:yaxis] = yaxis
@@ -291,6 +308,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         align = titlealignnode,
         font = titlefont,
         color = titlecolor,
+        space = :data,
         show_axis=false)
     decorations[:title] = titlet
 
@@ -356,20 +374,13 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
 
-    la = Axis(fig_or_scene, layoutobservables, attrs, decorations, scene,
-        xaxislinks, yaxislinks, limits, block_limit_linking,
+    ax = Axis(fig_or_scene, layoutobservables, attrs, decorations, scene,
+        xaxislinks, yaxislinks, targetlimits, finallimits, block_limit_linking,
         mouseeventhandle, scrollevents, keysevents, interactions)
 
-    # register as current axis
-    # TODO: is this a good place for that? probably not
-    if fig_or_scene isa Figure
-        AbstractPlotting.current_axis!(fig_or_scene, la)
-    end
-
-
     function process_event(event)
-        for (active, interaction) in values(la.interactions)
-            active && process_interaction(interaction, event, la)
+        for (active, interaction) in values(ax.interactions)
+            active && process_interaction(interaction, event, ax)
         end
     end
 
@@ -377,31 +388,112 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(process_event, scrollevents)
     on(process_event, keysevents)
 
-    register_interaction!(la,
+    register_interaction!(ax,
         :rectanglezoom,
         RectangleZoom(false, false, false, nothing, nothing, Node(FRect2D(0, 0, 1, 1)), []))
 
-    register_interaction!(la,
+    register_interaction!(ax,
         :limitreset,
         LimitReset())
 
-    register_interaction!(la,
+    register_interaction!(ax,
         :scrollzoom,
         ScrollZoom(0.1, Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
 
-    register_interaction!(la,
+    register_interaction!(ax,
         :dragpan,
         DragPan(Ref{Any}(nothing), Ref{Any}(0), Ref{Any}(0), 0.2))
 
-    # compute limits that adhere to the limit aspect ratio whenever the targeted
-    # limits or the scene size change, because both influence the displayed ratio
-    onany(scene.px_area, la.targetlimits) do pxa, lims
-        adjustlimits!(la)
+
+    # these are the user defined limits
+    on(limits) do mlims
+        reset_limits!(ax)
     end
 
-    la
+    # these are the limits that we try to target, but they can be changed for correct aspects
+    on(targetlimits) do tlims
+        update_linked_limits!(block_limit_linking, xaxislinks, yaxislinks, tlims)
+    end
+
+    # compute limits that adhere to the limit aspect ratio whenever the targeted
+    # limits or the scene size change, because both influence the displayed ratio
+    onany(scene.px_area, targetlimits) do pxa, lims
+        adjustlimits!(ax)
+    end
+
+    # in case the user set limits already
+    notify(limits)
+
+    ax
 end
 
+"""
+    reset_limits!(ax; xauto = true, yauto = true)
+
+Resets the axis limits depending on the value of `ax.limits`.
+If one of the two components of limits is nothing, that value is either copied from the targetlimits if `xauto` or `yauto` is true, respectively, or it is determined automatically from the plots in the axis.
+If one of the components is a tuple of two numbers, those are used directly.
+"""
+function reset_limits!(ax; xauto = true, yauto = true)
+    mlims = convert_limit_attribute(ax.limits[])
+
+    mxlims, mylims = mlims::Tuple{Any, Any}
+    xlims = if isnothing(mxlims)
+        if xauto
+            xautolimits(ax)
+            xautolimits(ax)
+        else
+            left(ax.targetlimits[]), right(ax.targetlimits[])
+        end
+    else
+        convert(Tuple{Float32, Float32}, tuple(mxlims...))
+    end
+    ylims = if isnothing(mylims)
+        if yauto
+            yautolimits(ax)
+        else
+            bottom(ax.targetlimits[]), top(ax.targetlimits[])
+        end
+    else
+        convert(Tuple{Float32, Float32}, mylims)
+    end
+    if !(xlims[1] <= xlims[2])
+        error("Invalid x-limits as xlims[1] <= xlims[2] is not met for $xlims.")
+    end
+    if !(ylims[1] <= ylims[2])
+        error("Invalid y-limits as ylims[1] <= ylims[2] is not met for $ylims.")
+    end
+
+    ax.targetlimits[] = BBox(xlims..., ylims...)
+    nothing
+end
+
+# this is so users can do limits = (left, right, bottom, top)
+function convert_limit_attribute(lims::Tuple{Any, Any, Any, Any})
+    (lims[1:2], lims[3:4])
+end
+
+function convert_limit_attribute(lims::Tuple{Any, Any})
+    lims
+end
+can_be_current_axis(ax::Axis) = true
+
+function validate_limits_for_scales(lims::Rect, xsc, ysc)
+    mi = minimum(lims)
+    ma = maximum(lims)
+    xlims = (mi[1], ma[1])
+    ylims = (mi[2], ma[2])
+
+    if !validate_limits_for_scale(xlims, xsc)
+        error("Invalid x-limits $xlims for scale $xsc which is defined on the interval $(defined_interval(xsc))")
+    end
+    if !validate_limits_for_scale(ylims, ysc)
+        error("Invalid y-limits $ylims for scale $ysc which is defined on the interval $(defined_interval(ysc))")
+    end
+    nothing
+end
+
+validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
 
 function AbstractPlotting.plot!(
         la::Axis, P::AbstractPlotting.PlotFunc,
@@ -414,7 +506,7 @@ function AbstractPlotting.plot!(
     # adjust the limit margins in those cases automatically.
     has_tight_limit_trait(P) && tightlimits!(la)
 
-    autolimits!(la)
+    reset_limits!(la)
     plot
 end
 
@@ -450,12 +542,16 @@ function limitunion(lims1, lims2)
     (min(lims1..., lims2...), max(lims1..., lims2...))
 end
 
-function expandlimits(lims, marginleft, marginright)
+function expandlimits(lims, margin_low, margin_high, scale)
+    # expand limits so that the margins are applied at the current axis scale
     limsordered = (min(lims[1], lims[2]), max(lims[1], lims[2]))
-    w = limsordered[2] - limsordered[1]
-    dleft = w * marginleft
-    dright = w * marginright
-    lims = (limsordered[1] - dleft, limsordered[2] + dright)
+    lims_scaled = scale.(limsordered)
+
+    w_scaled = lims_scaled[2] - lims_scaled[1]
+    d_low_scaled = w_scaled * margin_low
+    d_high_scaled = w_scaled * margin_high
+    inverse = AbstractPlotting.inverse_transform(scale)
+    lims = inverse.((lims_scaled[1] - d_low_scaled, lims_scaled[2] + d_high_scaled))
 
     # guard against singular limits from something like a vline or hline
     if lims[2] - lims[1] == 0
@@ -466,6 +562,8 @@ end
 
 function getlimits(la::Axis, dim)
 
+    # find all plots that don't have exclusion attributes set
+    # for this dimension
     plots_with_autolimits = if dim == 1
         filter(p -> !haskey(p.attributes, :xautolimits) || p.attributes.xautolimits[], la.scene.plots)
     elseif dim == 2
@@ -474,17 +572,24 @@ function getlimits(la::Axis, dim)
         error("Dimension $dim not allowed. Only 1 or 2.")
     end
 
+    # only use visible plots for limits
     visible_plots = filter(
         p -> !haskey(p.attributes, :visible) || p.attributes.visible[],
         plots_with_autolimits)
 
+    # get all data limits
     bboxes = [FRect2D(AbstractPlotting.data_limits(p)) for p in visible_plots]
+    
+    # filter out bboxes that are invalid somehow
     finite_bboxes = filter(AbstractPlotting.isfinite_rect, bboxes)
 
+    # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     isempty(finite_bboxes) && return nothing
 
+    # otherwise start with the first box
     templim = (finite_bboxes[1].origin[dim], finite_bboxes[1].origin[dim] + finite_bboxes[1].widths[dim])
 
+    # and union all other limits with it
     for bb in finite_bboxes[2:end]
         templim = limitunion(templim, (bb.origin[dim], bb.origin[dim] + bb.widths[dim]))
     end
@@ -544,14 +649,29 @@ end
 """
     autolimits!(la::Axis)
 
-Set the target limits of `la` to an automatically determined rectangle, that depends
-on the data limits of all plot objects in the axis, as well as the autolimit margins
-for x and y axis.
+Reset manually specified limits of `la` to an automatically determined rectangle, that depends on the data limits of all plot objects in the axis, as well as the autolimit margins for x and y axis.
 """
-function autolimits!(la::Axis)
+function autolimits!(ax::Axis)
+    ax.limits[] = (nothing, nothing)
+    # bbox = BBox(xautolimits(ax)..., yautolimits(ax)...)
+    # ax.targetlimits[] = bbox
+    nothing
+end
 
-    xlims = getxlimits(la)
-    for link in la.xaxislinks
+function xautolimits(ax::Axis)
+    # try getting x limits for the axis and then union them with linked axes
+    xlims = getxlimits(ax)
+    # but if we have limits, then expand them with the auto margins
+    if !isnothing(xlims)
+        if !validate_limits_for_scale(xlims, ax.xscale[])
+            error("Found invalid x-limits $xlims for scale $(ax.xscale[]) which is defined on the interval $(defined_interval(ax.xscale[]))")
+        end
+        xlims = expandlimits(xlims,
+            ax.attributes.xautolimitmargin[][1],
+            ax.attributes.xautolimitmargin[][2],
+            ax.xscale[])
+    end
+    for link in ax.xaxislinks
         if isnothing(xlims)
             xlims = getxlimits(link)
         else
@@ -561,16 +681,27 @@ function autolimits!(la::Axis)
             end
         end
     end
+    # if no limits have been found, use the targetlimits directly
     if isnothing(xlims)
-        xlims = (la.targetlimits[].origin[1], la.targetlimits[].origin[1] + la.targetlimits[].widths[1])
-    else
-        xlims = expandlimits(xlims,
-            la.attributes.xautolimitmargin[][1],
-            la.attributes.xautolimitmargin[][2])
+        xlims = (ax.targetlimits[].origin[1], ax.targetlimits[].origin[1] + ax.targetlimits[].widths[1])
     end
+    xlims
+end
 
-    ylims = getylimits(la)
-    for link in la.yaxislinks
+function yautolimits(ax)
+    # try getting y limits for the axis and then union them with linked axes
+    ylims = getylimits(ax)
+    # but if we have limits, then expand them with the auto margins
+    if !isnothing(ylims)
+        if !validate_limits_for_scale(ylims, ax.yscale[])
+            error("Found invalid direct y-limits $ylims for scale $(ax.yscale[]) which is defined on the interval $(defined_interval(ax.yscale[]))")
+        end
+        ylims = expandlimits(ylims,
+            ax.attributes.yautolimitmargin[][1],
+            ax.attributes.yautolimitmargin[][2],
+            ax.yscale[])
+    end
+    for link in ax.yaxislinks
         if isnothing(ylims)
             ylims = getylimits(link)
         else
@@ -580,18 +711,11 @@ function autolimits!(la::Axis)
             end
         end
     end
+    # if no limits have been found, use the targetlimits directly
     if isnothing(ylims)
-        ylims = (la.targetlimits[].origin[2], la.targetlimits[].origin[2] + la.targetlimits[].widths[2])
-    else
-        ylims = expandlimits(ylims,
-            la.attributes.yautolimitmargin[][1],
-            la.attributes.yautolimitmargin[][2])
+        ylims = (ax.targetlimits[].origin[2], ax.targetlimits[].origin[2] + ax.targetlimits[].widths[2])    
     end
-
-
-    bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
-    # la.limits[] = bbox
-    la.targetlimits[] = bbox
+    ylims
 end
 
 """
@@ -609,8 +733,9 @@ function adjustlimits!(la)
     asp = la.autolimitaspect[]
     target = la.targetlimits[]
 
+    # in the simplest case, just update the final limits with the target limits
     if isnothing(asp)
-        la.limits[] = target
+        la.finallimits[] = target
         return
     end
 
@@ -635,7 +760,7 @@ function adjustlimits!(la)
             (la.xautolimitmargin[] ./ marginsum)
         end
 
-        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)...)
+        xlims = expandlimits(xlims, ((correction_factor - 1) .* ratios)..., identity) # don't use scale here?
     elseif correction_factor < 1
         # need to go taller
 
@@ -645,12 +770,12 @@ function adjustlimits!(la)
         else
             (la.yautolimitmargin[] ./ marginsum)
         end
-        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)...)
+        ylims = expandlimits(ylims, (((1 / correction_factor) - 1) .* ratios)..., identity) # don't use scale here?
     end
 
     bbox = BBox(xlims[1], xlims[2], ylims[1], ylims[2])
 
-    la.limits[] = bbox
+    la.finallimits[] = bbox
 end
 
 """
@@ -675,7 +800,7 @@ function linkxaxes!(a::Axis, others...)
         end
     end
     # update limits because users will expect to see the effect
-    autolimits!(a)
+    reset_limits!(a)
 end
 
 """
@@ -700,7 +825,7 @@ function linkyaxes!(a::Axis, others...)
         end
     end
     # update limits because users will expect to see the effect
-    autolimits!(a)
+    reset_limits!(a)
 end
 
 
@@ -732,19 +857,6 @@ function timed_ticklabelspace_reset(ax::Axis, reset_timer::Ref,
 
 end
 
-function add_reset_limits!(la::Axis)
-    scene = la.scene
-    e = events(scene)
-    cam = camera(scene)
-    on(cam, e.mousebuttons) do buttons
-        if ispressed(scene, AbstractPlotting.Mouse.left) && AbstractPlotting.is_mouseinside(scene)
-            if AbstractPlotting.ispressed(scene, AbstractPlotting.Keyboard.left_control)
-                autolimits!(la)
-            end
-        end
-        return
-    end
-end
 
 """
     hidexdecorations!(la::Axis; label = true, ticklabels = true, ticks = true, grid = true,
@@ -863,7 +975,9 @@ end
 
 
 function AbstractPlotting.xlims!(ax::Axis, xlims)
-    if xlims[1] == xlims[2]
+    if length(xlims) != 2
+        error("Invalid xlims length of $(length(xlims)), must be 2.")
+    elseif xlims[1] == xlims[2]
         error("Can't set x limits to the same value $(xlims[1]).")
     elseif xlims[1] > xlims[2]
         xlims = reverse(xlims)
@@ -872,16 +986,20 @@ function AbstractPlotting.xlims!(ax::Axis, xlims)
         ax.xreversed[] = false
     end
 
-	lims = ax.targetlimits[]
-	newlims = FRect2D((xlims[1], lims.origin[2]), (xlims[2] - xlims[1], lims.widths[2]))
-	ax.targetlimits[] = newlims
+	# lims = ax.targetlimits[]
+	# newlims = FRect2D((xlims[1], lims.origin[2]), (xlims[2] - xlims[1], lims.widths[2]))
+	# ax.targetlimits[] = newlims
+    ax.limits.val = (xlims, ax.limits[][2])
+    reset_limits!(ax, yauto = false)
     nothing
 end
 
-AbstractPlotting.xlims!(ax::Axis, x1, x2) = xlims!(ax, (x1, x2))
+AbstractPlotting.xlims!(ax::Axis, x1, x2) = AbstractPlotting.xlims!(ax, (x1, x2))
 
 function AbstractPlotting.ylims!(ax::Axis, ylims)
-    if ylims[1] == ylims[2]
+    if length(ylims) != 2
+        error("Invalid ylims length of $(length(ylims)), must be 2.")
+    elseif ylims[1] == ylims[2]
         error("Can't set y limits to the same value $(ylims[1]).")
     elseif ylims[1] > ylims[2]
         ylims = reverse(ylims)
@@ -890,13 +1008,19 @@ function AbstractPlotting.ylims!(ax::Axis, ylims)
         ax.yreversed[] = false
     end
 
-	lims = ax.targetlimits[]
-	newlims = FRect2D((lims.origin[1], ylims[1]), (lims.widths[1], ylims[2] - ylims[1]))
-	ax.targetlimits[] = newlims
+	# lims = ax.targetlimits[]
+	# newlims = FRect2D((lims.origin[1], ylims[1]), (lims.widths[1], ylims[2] - ylims[1]))
+	# ax.targetlimits[] = newlims
+    ax.limits.val = (ax.limits[][1], ylims)
+    reset_limits!(ax, xauto = false)
     nothing
 end
 
-AbstractPlotting.ylims!(ax::Axis, y1, y2) = ylims!(ax, (y1, y2))
+AbstractPlotting.ylims!(ax::Axis, y1, y2) = AbstractPlotting.ylims!(ax, (y1, y2))
+
+AbstractPlotting.xlims!(lims::Real...) = AbstractPlotting.xlims!(current_axis(), lims...)
+AbstractPlotting.ylims!(lims::Real...) = AbstractPlotting.ylims!(current_axis(), lims...)
+# zlims!(lims::Real...) = zlims!(current_axis(), lims)
 
 """
     limits!(ax::Axis, xlims, ylims)
@@ -905,8 +1029,8 @@ Set the axis limits to `xlims` and `ylims`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, xlims, ylims)
-    xlims!(ax, xlims)
-    ylims!(ax, ylims)
+    AbstractPlotting.xlims!(ax, xlims)
+    AbstractPlotting.ylims!(ax, ylims)
 end
 
 """
@@ -916,8 +1040,8 @@ Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, x1, x2, y1, y2)
-    xlims!(ax, x1, x2)
-    ylims!(ax, y1, y2)
+    AbstractPlotting.xlims!(ax, x1, x2)
+    AbstractPlotting.ylims!(ax, y1, y2)
 end
 
 """
@@ -929,6 +1053,49 @@ If limits are ordered high-low, this reverses the axis orientation.
 function limits!(ax::Axis, rect::Rect2D)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
-    xlims!(ax, xmin, xmax)
-    ylims!(ax, ymin, ymax)
+    AbstractPlotting.xlims!(ax, xmin, xmax)
+    AbstractPlotting.ylims!(ax, ymin, ymax)
 end
+
+function limits!(args...)
+    limits!(current_axis(), args...)
+end
+
+function Base.delete!(ax::Axis, plot::AbstractPlot)
+    delete!(ax.scene, plot)
+    ax
+end
+
+function Base.empty!(ax::Axis)
+    for plot in copy(ax.scene.plots)
+        delete!(ax, plot)
+    end
+    ax
+end
+
+AbstractPlotting.transform_func(ax::Axis) = AbstractPlotting.transform_func(ax.scene)
+
+
+# these functions pick limits for different x and y scales, so that
+# we don't pick values that are invalid, such as 0 for log etc.
+function defaultlimits(userlimits::Tuple{Any, Any, Any, Any}, xscale, yscale)
+    BBox(userlimits...)
+end
+
+function defaultlimits(userlimits::Tuple{Any, Any}, xscale, yscale)
+    xl = isnothing(userlimits[1]) ? defaultlimits(xscale) : userlimits[1]
+    yl = isnothing(userlimits[2]) ? defaultlimits(yscale) : userlimits[2]
+    BBox(xl..., yl...)
+end
+
+defaultlimits(::typeof(log10)) = (1.0, 1000.0)
+defaultlimits(::typeof(log2)) = (1.0, 8.0)
+defaultlimits(::typeof(log)) = (1.0, exp(3.0))
+defaultlimits(::typeof(identity)) = (0.0, 10.0)
+defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
+defaultlimits(::typeof(AbstractPlotting.logit)) = (0.01, 0.99)
+
+defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
+defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
+defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
+defined_interval(::typeof(AbstractPlotting.logit)) = OpenInterval(0.0, 1.0)

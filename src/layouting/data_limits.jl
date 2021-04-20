@@ -14,15 +14,15 @@ Data limits calculate a minimal boundingbox from the data points in a plot.
 This doesn't include any transformations, markers etc.
 """
 function atomic_limits(x::Atomic{<: Tuple{Arg1}}) where Arg1
-    return xyz_boundingbox(transform_func(x), to_value(x[1]))
+    return xyz_boundingbox(identity, to_value(x[1]))
 end
 
 function atomic_limits(x::Atomic{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    return xyz_boundingbox(transform_func(x), to_value.(x[1:3])...)
+    return xyz_boundingbox(identity, to_value.(x[1:3])...)
 end
 
 function atomic_limits(x::Atomic{<: Tuple{X, Y}}) where {X, Y}
-    return xyz_boundingbox(transform_func(x), to_value.(x[1:2])...)
+    return xyz_boundingbox(identity, to_value.(x[1:2])...)
 end
 
 _isfinite(x) = isfinite(x)
@@ -91,13 +91,13 @@ end
 
 const ImageLike{Arg} = Union{Heatmap{Arg}, Image{Arg}}
 function data_limits(x::ImageLike{<: Tuple{X, Y, Z}}) where {X, Y, Z}
-    xyz_boundingbox(transform_func(x), to_value.((x[1], x[2]))...)
+    xyz_boundingbox(identity, to_value.((x[1], x[2]))...)
 end
 
 function data_limits(x::Volume)
     _to_interval(r) = ((lo, hi) = extrema(r); lo..hi)
     axes = (x[1], x[2], x[3])
-    xyz_boundingbox(transform_func(x), _to_interval.(to_value.(axes))...)
+    xyz_boundingbox(identity, _to_interval.(to_value.(axes))...)
 end
 
 function text_limits(x::VecTypes)
@@ -109,8 +109,31 @@ function text_limits(x::AbstractVector)
     return FRect3D(x)
 end
 
+FRect3D_from_point(p::VecTypes{2}) = FRect3D(Point3f0(p..., 0), Point3f0(0, 0, 0))
+FRect3D_from_point(p::VecTypes{3}) = FRect3D(Point3f0(p...), Point3f0(0, 0, 0))
+
 function atomic_limits(x::Text{<: Tuple{Arg1}}) where Arg1
-    return boundingbox(x)
+    if x.space[] == :data
+        return boundingbox(x)
+    elseif x.space[] == :screen
+        if x[1][] isa AbstractArray
+            bb = FRect3D_from_point(x.position[][1])
+            for p in x.position[][2:end]
+                bb = union(bb, FRect3D_from_point(p))
+            end
+        else
+            if x.position[] isa Union{StaticArrays.StaticArray, Tuple{Real, Real}, GeometryBasics.Point}
+                bb = FRect3D_from_point(x.position[])
+            else
+                bb = FRect3D_from_point(x.position[][1])
+                for p in x.position[][2:end]
+                    bb = union(bb, FRect3D_from_point(p))
+                end
+                bb
+            end
+        end
+        bb
+    end
 end
 
 function data_limits(x::Annotations)
