@@ -121,49 +121,6 @@ function Bbox_from_glyphlayout(gl)
     bbox
 end
 
-#=
-function text2worldbbox(p::Text)
-    if p._glyphlayout[] isa Vector
-        @info "TODO"
-    else
-        if cameracontrols(p.parent) isa PixelCamera
-            # This will probably end up being what we use...
-            map(p._glyphlayout, p.position) do gl, pos
-                FRect2D(Bbox_from_glyphlayout(gl)) + Vec2f0(pos[1], pos[2])
-            end
-        else 
-            map(p._glyphlayout, p.position, camera(p.parent).projectionview, pixelarea(p.parent)) do gl, pos, pv, area
-                px_pos = AbstractPlotting.project(pv, Vec2f0(widths(area)), to_ndim(Point3f0, pos, 0))
-                px_bbox = Bbox_from_glyphlayout(gl) + to_ndim(Vec3f0, px_pos, 0)
-                px_bbox = px_bbox - Vec3f0(0.5widths(area)..., 0)
-                px_bbox = FRect3D(
-                    2 .* origin(px_bbox) ./ Vec3f0(widths(area)..., 1),
-                    2 .* widths(px_bbox) ./ Vec3f0(widths(area)..., 1)
-                )
-                ps = unique(coordinates(px_bbox))
-                inv_pv = inv(pv)
-                world_ps = map(ps) do p
-                    proj = inv_pv * Vec4f0(p..., 1)
-                    proj[SOneTo(3)] / proj[4]
-                end
-                minx, maxx = extrema(getindex.(world_ps, (1,)))
-                miny, maxy = extrema(getindex.(world_ps, (2,)))
-                minz, maxz = extrema(getindex.(world_ps, (3,)))
-                world_bbox = FRect3D(Point3f0(minx, miny, minz), Vec3f0(maxx-minx, maxy-miny, maxz-minz))
-                world_bbox
-            end
-        end
-    end
-end
-function text2pixelbbox(p::Text)
-    if p._glyphlayout[] isa Vector
-        @info "TODO"
-    else
-        map(Bbox_from_glyphlayout, p._glyphlayout)
-    end
-end
-=#
-
 
 ## Shifted projection
 ########################################
@@ -341,6 +298,7 @@ function DataInspector(
         for (plt, idx) in picks
             @info idx, typeof(plt)
             if (plt !== nothing) && !(plt in inspector.blacklist) && 
+                # to_value(get(plt.attributes, :inspectable, true)) &&
                 (isempty(inspector.whitelist) || (plt in inspector.whitelist))
 
                 should_clear = !show_data(inspector, plt, idx)
