@@ -146,7 +146,6 @@ end
     Attributes(
         # Text
         display_text = " ",
-        text_position = Point2f0(0),
         text_align = (:left, :bottom),
         textcolor = :black, 
         textsize = 20, 
@@ -170,32 +169,61 @@ end
         model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         depth = 9e3,
         visible = true,
+        tooltip_align = (:center, :top),
+        tooltip_offset = Vec2f0(20), # this adjusts to tooltip_align
+        proj_position = Point2f0(0),
         
         # For other purposes/unused
         bbox3D = FRect3D(Vec3f0(0), Vec3f0(0)),
         bbox_visible = true,
         position = Point3f0(0),
-        proj_position = Point2f0(0),
     )
 end
 
 function plot!(plot::_Inspector)
     @extract plot (
-        display_text, text_position, text_align, textcolor, textsize, font,
+        display_text, text_align, textcolor, textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
         bbox2D, px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
+        tooltip_align, tooltip_offset, proj_position,
         root_px_projection, model, depth, visible
     )
+
+    id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
+    bbox = Node(FRect2D(Vec2f0(0), Vec2f0(0)))
+    text_position = map(proj_position, tooltip_align, tooltip_offset, bbox) do pos, align, offset, bbox
+        halign, valign = align
+        ox, oy = offset
+        wx, wy = widths(bbox)
+        if halign == :left
+            dx = -wx - ox
+        elseif halign == :center
+            dx = -0.5wx
+        elseif halign == :right
+            dx = + ox
+        end
+        if valign == :top
+            dy = oy
+        elseif valign == :center
+            dy = -0.5wy
+        elseif valign == :bottom
+            dy = -wy - oy
+        end
+        pos .+ Point2f0(dx, dy)
+    end
+
     _text = text!(plot, display_text, 
         position = text_position, visible = visible, align = text_align,
         color = textcolor, font = font, textsize = textsize,
         show_axis = false
     )
 
-    id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
-    bbox = map(_text._glyphlayout, _text.position) do gl, pos
+    onany(_text._glyphlayout, _text.position) do gl, pos
         r = FRect2D(Bbox_from_glyphlayout(gl))
-        FRect2D(origin(r) .+ Vec2f0(pos[1], pos[2]-2), widths(r) .+ Vec2f0(0, 4))
+        bb = FRect2D(origin(r) .+ Vec2f0(pos[1], pos[2]-2), widths(r) .+ Vec2f0(0, 4))
+        if bbox[] != bb
+            bbox[] = bb
+        end
     end
 
     background = mesh!(
@@ -320,6 +348,7 @@ function DataInspector(
 end
 
 
+# updates hovered_scene and clears any temp plots
 function update_hovered!(inspector::DataInspector, scene)
     if scene != inspector.hovered_scene
         if !isempty(inspector.temp_plots) && (inspector.hovered_scene !== nothing)
@@ -329,6 +358,7 @@ function update_hovered!(inspector::DataInspector, scene)
     end
 end
 
+# clears temporary plots (i.e. bboxes)
 function clear_temporary_plots!(inspector::DataInspector)
     for p in inspector.temp_plots
         delete!(inspector.hovered_scene, p)
@@ -338,6 +368,7 @@ function clear_temporary_plots!(inspector::DataInspector)
     empty!(inspector.temp_plots)
 end
 
+# computes a projected position relative to the root scene
 function update_positions!(inspector, scene, pos)
     a = inspector.plot.attributes
     proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
@@ -346,6 +377,19 @@ function update_positions!(inspector, scene, pos)
     return proj_pos
 end
 
+# update alignment direction
+function update_tooltip_alignment!(inspector)
+    a = inspector.plot.attributes
+    wx, wy = widths(pixelarea(inspector.root)[])
+    px, py = a.proj_position[]
+    halign, valign = a.tooltip_align[]
+    px < wx/3  && (halign = :right)
+    px > 2wx/3 && (halign = :left)
+    py < wy/3  && (valign = :top)
+    py > 2wy/3 && (valign = :bottom)
+    a.tooltip_align[] = (halign, valign)
+end
+    
 
 # TODO: better 3D scaling
 function show_data(inspector::DataInspector, plot::Scatter, idx)
@@ -355,9 +399,9 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     update_hovered!(inspector, scene)
 
     proj_pos = update_positions!(inspector, scene, plot[1][][idx])
+    update_tooltip_alignment!(inspector)
     ms = plot.markersize[]
 
-    a.text_position[] = proj_pos .+ Vec2f0(5)
     a.display_text[] = position2string(plot[1][][idx])
     a.bbox2D[] = FRect2D(proj_pos .- 0.5 .* ms .- Vec2f0(5), Vec2f0(ms) .+ Vec2f0(10))
     a.px_bbox_visible[] = true
@@ -375,6 +419,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     update_hovered!(inspector, scene)
         
     proj_pos = update_positions!(inspector, scene, plot[1][][idx])
+    update_tooltip_alignment!(inspector)
     bbox = Rect{3, Float32}(plot.marker[])
 
     a.model[] = transformationmatrix(
@@ -393,7 +438,6 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
 
-    a.text_position[] = Point2f0(origin(pixelarea(inspector.root)[]) .+ 10)
     a.display_text[] = position2string(plot[1][][idx])
     a.bbox3D[] = bbox
     a.px_bbox_visible[] = false
@@ -422,8 +466,8 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     lw = plot.linewidth[]
     
     proj_pos = update_positions!(inspector, scene, pos)
+    update_tooltip_alignment!(inspector)
 
-    a.text_position[] = proj_pos .+ Vec2f0(5)
     a.display_text[] = position2string(pos)
     a.bbox2D[] = FRect2D(proj_pos .- 0.5 .* lw .- Vec2f0(5), Vec2f0(lw) .+ Vec2f0(10))
     a.px_bbox_visible[] = true
@@ -447,6 +491,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     bbox = boundingbox(plot)
     min, max = extrema(bbox)
     proj_pos = update_positions!(inspector, scene, 0.5 * (max .+ min))
+    update_tooltip_alignment!(inspector)
 
     a.model[] = plot.model[]
 
@@ -460,7 +505,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
 
-    a.text_position[] = Point2f0(origin(pixelarea(inspector.root)[]) .+ Vec2f0(10, 10))
     a.display_text[] = bbox2string(bbox)
     a.bbox3D[] = bbox
     a.px_bbox_visible[] = false
@@ -478,6 +522,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     update_hovered!(inspector, scene)
         
     proj_pos = update_positions!(inspector, scene, plot[1][][idx])
+    update_tooltip_alignment!(inspector)
     a.model[] = plot.model[]
     a.bbox2D[] = plot.plots[1][1][][idx]
 
@@ -492,7 +537,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
 
-    a.text_position[] = proj_pos .+ Vec2f0(5)
     a.display_text[] = position2string(pos)
     a.bbox_visible[] = true
     a.px_bbox_visible[] = false
@@ -521,6 +565,7 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     z = plot[3][][i, j]
 
     proj_pos = update_positions!(inspector, scene, Point3f0(x, y, 0))
+    update_tooltip_alignment!(inspector)
     a.bbox2D[] = FRect2D(Vec2f0(x0, y0), Vec2f0(x1-x0, y1-y0))
     
     if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
@@ -534,8 +579,7 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
         append!(inspector.blacklist, flatten_plots(p))
     end
     
-    a.text_position[] = proj_pos .+ Vec2f0(5)
-    a.display_text[] = @sprintf("%0.3f @ (%i, %i)", z, i, j)
+    a.display_text[] = @sprintf(" %0.3f @ (%i, %i) ", z, i, j)
     a.bbox_visible[] = true
     a.px_bbox_visible[] = false
     a.visible[] = true
