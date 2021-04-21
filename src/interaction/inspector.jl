@@ -1,20 +1,3 @@
-# checklist:
-#=
-- scatter 2D :) (ignores zoom scaling)
-- scatter 3D :) (ignores zoom scaling)
-- LScene Axis :(
-- lines 2D :)
-- lines 3D :)
-- meshscatter 2D :) 
-- meshscatter 3D :) (bad text position - maybe static?)
-- linesegments 3D :) 
-- linesegments 2D :)
-- heatmap :)
-- barplot :)
-- mesh :) (bad text position - maybe static?)
-=#
-
-
 ### indicator data -> string
 ########################################
 
@@ -172,9 +155,10 @@ end
         _px_bbox_visible = true,
         
         # general
+        tooltip_align = (:center, :top), # default tooltip position relative to cursor
+        tooltip_offset = Vec2f0(20), # default offset in alignment direction
         depth = 9e3,
-        tooltip_align = (:center, :top),
-        tooltip_offset = Vec2f0(20), # this is an absolute offset
+        enabled = true,
 
         _root_px_projection = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         _model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
@@ -291,22 +275,39 @@ mutable struct DataInspector
 
     # plot to attach to hovered scene
     plot::_Inspector
-    
-    enabled::Bool
-
-    whitelist::Vector{AbstractPlot}
-    blacklist::Vector{AbstractPlot}
 end
 
-enable!(inspector::DataInspector) = inspector.enabled = true
-disable!(inspector::DataInspector) = inspector.enabled = false
+enable!(inspector::DataInspector) = inspector.plot.enabled[] = true
+disable!(inspector::DataInspector) = inspector.plot.enabled[] = false
 
 """
-    DataInspector(figure; blacklist = fig.scene.plots, kwargs...)
-    DataInspector(axis; whitelist = axis.scene.plots, kwargs...)
-    DataInspector(scene; kwargs...)
+    DataInspector(figure; kwargs...)
 
 ...
+
+### Keyword Arguments:
+- `range = 10`: Snapping range for selecting a point on a plot to inspect.
+- `enabled = true`: Disables inspection of plots when set to false. Can also be
+    adjusted with `enable!(inspector)` and `disable!(inspector)`.
+- `text_padding = Vec4f0(0, 0, 4, 4)`: Padding for the box drawn around the 
+    tooltip text. (left, right, bottom, top)
+- `text_align = (:left, :bottom)`: Alignment of text within the tooltip.
+- `textcolor = :black`: Tooltip text color.
+- `textsize = 20`: Tooltip text size.
+- `font = "Dejavu Sans"`: Tooltip font.
+- `background_color = :white`: Color of the tooltip background.
+- `outline_color = :grey`: Color of the tooltip outline.
+- `outline_linestyle = nothing`: Color of the tooltip outline.
+- `outline_linewidth = 2`: Linewidth of the tooltip outline.
+- `color = :red`: Color of the selection indicator.
+- `bbox_linewidth = 2`: Linewidth of the selection indicator.
+- `bbox_linestyle = nothing`: Linestyle of the selection indicator  
+- `tooltip_align = (:center, :top)`: Default position of the tooltip relative to
+    the current selection.
+- `tooltip_offset = Vec2f0(20)`: Offset between the indicator position and the 
+    tooltip position. 
+- `depth = 9e3`: Depth value of the tooltip. This should be high so that the 
+    tooltip is always in front.
 """
 function DataInspector(fig::Figure; kwargs...)
     DataInspector(fig.scene; kwargs...)
@@ -316,37 +317,26 @@ function DataInspector(ax; kwargs...)
     DataInspector(ax.scene; kwargs...)
 end
 
-# TODO
-# - It would be good if we didn't need to flatten. Maybe recursively go up all
-#   the way, then check if a plot is rejected and move down a level if it is or
-#   attempt to show if not. If show fails also move down a level, else break.
-# ^ That makes it hard to work with picked indices...
-function DataInspector(
-        scene::Scene; 
-        whitelist = AbstractPlot[], blacklist = AbstractPlot[], range = 10,
-        kwargs...
-    )
+
+function DataInspector(scene::Scene; range = 10, kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f0(0)
 
     plot = _inspector!(parent, 1, show_axis=false; kwargs...)
     plot._root_px_projection[] = camera(parent).pixel_space[]
-    inspector = DataInspector(parent, scene, AbstractPlot[], plot, true, whitelist, blacklist)
+    inspector = DataInspector(parent, scene, AbstractPlot[], plot)
 
     e = events(parent)
     onany(e.mouseposition, e.scroll) do mp, _
-        (inspector.enabled && is_mouseinside(parent)) || return false
+        (inspector.plot.enabled[] && is_mouseinside(parent)) || return false
 
         picks = pick_sorted(parent, mp, range)
         should_clear = true
         for (plt, idx) in picks
             @info to_value(get(plt.attributes, :inspectable, nothing)), idx, typeof(plt)
-            if (plt !== nothing) && !(plt in inspector.blacklist) && 
-                to_value(get(plt.attributes, :inspectable, true)) &&
-                (isempty(inspector.whitelist) || (plt in inspector.whitelist))
-
-                processed = show_data(inspector, plt, idx)
-                if processed
+            if to_value(get(plt.attributes, :inspectable, true)) &&
+                # show_data should return true if it created a tooltip
+                if show_data_recursion(inspector, plt, idx)
                     should_clear = false
                     break
                 end
@@ -365,6 +355,26 @@ function DataInspector(
 end
 
 
+function show_data_recursion(inspector, plot, idx,)
+    processed = show_data_recursion(inspector, plot.parent, idx, plot)
+    if processed
+        return true
+    else
+        return show_data(inspector, plot, idx)
+    end
+end
+show_data_recursion(inspector, plot, idx, source) = false
+function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
+    processed = show_data_recursion(inspector, plot.parent, idx, source)
+    if processed
+        return true
+    else
+        return show_data(inspector, plot, idx, source)
+    end
+end
+    
+
+
 # updates hovered_scene and clears any temp plots
 function update_hovered!(inspector::DataInspector, scene)
     if scene != inspector.hovered_scene
@@ -379,8 +389,6 @@ end
 function clear_temporary_plots!(inspector::DataInspector)
     for p in inspector.temp_plots
         delete!(inspector.hovered_scene, p)
-        flattened = flatten_plots(p)
-        filter!(p -> !(p in flattened), inspector.blacklist)
     end
     empty!(inspector.temp_plots)
 end
@@ -410,6 +418,13 @@ function update_tooltip_alignment!(inspector)
     a._tooltip_align[] = (halign, valign)
 end
     
+
+
+################################################################################
+### show_data for primitive plots
+################################################################################
+
+
 
 # TODO: better 3D scaling
 function show_data(inspector::DataInspector, plot::Scatter, idx)
@@ -453,11 +468,10 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect3D)
         clear_temporary_plots!(inspector)
         p = wireframe!(
-            scene, a._bbox3D, model = a._model, 
-            color = a.color, visible = a._bbox_visible, show_axis = false,
+            scene, a._bbox3D, model = a._model, color = a.color, 
+            visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
-        append!(inspector.blacklist, flatten_plots(p))
     end
 
     a._display_text[] = position2string(plot[1][][idx])
@@ -476,10 +490,6 @@ end
 function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
     @info "Lines, LineSegments"
     a = inspector.plot.attributes
-    if plot.parent.parent isa BarPlot
-        return show_data(inspector, plot.parent.parent, div(idx-1, 6)+1)
-    end
-        
     scene = parent_scene(plot)
     update_hovered!(inspector, scene)
 
@@ -507,10 +517,6 @@ end
 function show_data(inspector::DataInspector, plot::Mesh, idx)
     @info "Mesh"
     a = inspector.plot.attributes
-    if plot.parent.parent.parent isa BarPlot
-        return show_data(inspector, plot.parent.parent.parent, div(idx-1, 4)+1)
-    end
-
     scene = parent_scene(plot)
     update_hovered!(inspector, scene)
         
@@ -523,11 +529,10 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect3D)
         clear_temporary_plots!(inspector)
         p = wireframe!(
-            scene, a._bbox3D, model = a._model, 
-            color = a.color, visible = a._bbox_visible, show_axis = false,
+            scene, a._bbox3D, model = a._model, color = a.color, 
+            visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
-        append!(inspector.blacklist, flatten_plots(p))
     end
 
     a._text_position[] = Point2f0(maximum(pixelarea(scene)[]))
@@ -539,40 +544,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     a._visible[] = true
     a._text_padding[] = Vec4f0(0, 0, 6, 4)
     a._tooltip_offset[] = Vec2f0(5)
-
-    return true
-end
-
-# TODO breaks with ax as root
-function show_data(inspector::DataInspector, plot::BarPlot, idx)
-    @info "BarPlot"
-    a = inspector.plot.attributes
-    scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
-        
-    pos = plot[1][][idx]
-    proj_pos = update_positions!(inspector, scene, pos)
-    update_tooltip_alignment!(inspector)
-    a._model[] = plot.model[]
-    a._bbox2D[] = plot.plots[1][1][][idx]
-
-    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
-        clear_temporary_plots!(inspector)
-        p = wireframe!(
-            scene, a._bbox2D, model = a._model, 
-            color = a.color, visible = a._bbox_visible, show_axis = false,
-        )
-        translate!(p, Vec3f0(0, 0, a.depth[]))
-        push!(inspector.temp_plots, p)
-        append!(inspector.blacklist, flatten_plots(p))
-    end
-
-    a._display_text[] = position2string(pos)
-    a._bbox_visible[] = true
-    a._px_bbox_visible[] = false
-    a._visible[] = true
-    a._text_padding[] = a.text_padding[]
-    a._tooltip_offset[] = a.tooltip_offset[]
 
     return true
 end
@@ -603,12 +574,11 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
         clear_temporary_plots!(inspector)
         p = wireframe!(
-            scene, a._bbox2D, model = a._model, 
-            color = a.color, visible = a._bbox_visible, show_axis = false,
+            scene, a._bbox2D, model = a._model, color = a.color, 
+            visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         translate!(p, Vec3f0(0, 0, a.depth[]))
         push!(inspector.temp_plots, p)
-        append!(inspector.blacklist, flatten_plots(p))
     end
     
     a._display_text[] = @sprintf("H[%i, %i] = %0.3f", i, j, z)
@@ -620,8 +590,55 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     return true
 end
 
-
-function show_data(inspector::DataInspector, plot, idx)
+function show_data(inspector::DataInspector, plot, idx, source = nothing)
     @info "else"
     return false
+end
+
+
+
+################################################################################
+### show_data for Combined/recipe plots
+################################################################################
+
+
+
+function show_data(inspector::DataInspector, plot::BarPlot, idx, ::LineSegments)
+    return show_data(inspector, plot, div(idx-1, 6)+1)
+end
+
+function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
+    return show_data(inspector, plot, div(idx-1, 4)+1)
+end
+
+function show_data(inspector::DataInspector, plot::BarPlot, idx)
+    @info "BarPlot"
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+        
+    pos = plot[1][][idx]
+    proj_pos = update_positions!(inspector, scene, pos)
+    update_tooltip_alignment!(inspector)
+    a._model[] = plot.model[]
+    a._bbox2D[] = plot.plots[1][1][][idx]
+
+    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
+        clear_temporary_plots!(inspector)
+        p = wireframe!(
+            scene, a._bbox2D, model = a._model, color = a.color, 
+            visible = a._bbox_visible, show_axis = false, inspectable = false
+        )
+        translate!(p, Vec3f0(0, 0, a.depth[]))
+        push!(inspector.temp_plots, p)
+    end
+
+    a._display_text[] = position2string(pos)
+    a._bbox_visible[] = true
+    a._px_bbox_visible[] = false
+    a._visible[] = true
+    a._text_padding[] = a.text_padding[]
+    a._tooltip_offset[] = a.tooltip_offset[]
+
+    return true
 end
