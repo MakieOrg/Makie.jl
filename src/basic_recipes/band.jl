@@ -31,7 +31,8 @@ function plot!(plot::Band)
     mesh!(plot, coordinates, connectivity;
         color = plot[:color], colormap = plot[:colormap],
         colorrange = plot[:colorrange],
-        shading = false, visible = plot[:visible]
+        shading = false, visible = plot[:visible],
+        inspectable = plot[:inspectable]
     )
 end
 

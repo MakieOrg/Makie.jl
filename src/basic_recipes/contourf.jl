@@ -20,6 +20,7 @@ $(ATTRIBUTES)
         colormap = :viridis,
         extendlow = nothing,
         extendhigh = nothing,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -146,7 +147,9 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
-        shading=false)
+        shading=false,
+        inspectable = c.inspectable
+    )
 end
 
 """

@@ -86,6 +86,7 @@ const minimal_default = Attributes(
         blur = Int32(2),      # A (2blur+1) by (2blur+1) range is used for blurring
         # N_samples = 64,       # number of samples (requires shader reload)
     ),
+    inspectable = true
 )
 
 const _current_default_theme = deepcopy(minimal_default)

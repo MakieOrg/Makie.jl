@@ -202,7 +202,8 @@ function plot!(plot::_Inspector)
     _aligned_text_position = Node(Point2f0(0))
     text_plot = text!(plot, _display_text, 
         position = _aligned_text_position, visible = _visible, align = text_align,
-        color = textcolor, font = font, textsize = textsize, show_axis = false
+        color = textcolor, font = font, textsize = textsize, show_axis = false,
+        inspectable = false
     )
 
     # compute text boundingbox and adjust _aligned_text_position
@@ -243,12 +244,12 @@ function plot!(plot::_Inspector)
     id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
     background = mesh!(
         plot, bbox, color = background_color, shading = false, 
-        visible = _visible, show_axis = false,
+        visible = _visible, show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
     outline = wireframe!(
         plot, bbox,
-        color = outline_color, visible = _visible, show_axis = false,
+        color = outline_color, visible = _visible, show_axis = false, inspectable = false,
         linestyle = outline_linestyle, linewidth = outline_linewidth, 
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
@@ -257,7 +258,7 @@ function plot!(plot::_Inspector)
     px_bbox = wireframe!(
         plot, _bbox2D,
         color = color, linewidth = bbox_linewidth, linestyle = bbox_linestyle, # model = _model,
-        visible = _px_bbox_visible, show_axis = false,
+        visible = _px_bbox_visible, show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
 
@@ -307,12 +308,12 @@ disable!(inspector::DataInspector) = inspector.enabled = false
 
 ...
 """
-function DataInspector(fig::Figure; blacklist = fig.scene.plots, kwargs...)
-    DataInspector(fig.scene; blacklist = blacklist, kwargs...)
+function DataInspector(fig::Figure; kwargs...)
+    DataInspector(fig.scene; kwargs...)
 end
 
-function DataInspector(ax; whitelist = ax.scene.plots, kwargs...)
-    DataInspector(ax.scene; whitelist = whitelist, kwargs...)
+function DataInspector(ax; kwargs...)
+    DataInspector(ax.scene; kwargs...)
 end
 
 # TODO
@@ -330,9 +331,6 @@ function DataInspector(
 
     plot = _inspector!(parent, 1, show_axis=false; kwargs...)
     plot._root_px_projection[] = camera(parent).pixel_space[]
-    push!(blacklist, plot)
-    blacklist = flatten_plots(blacklist)
-    
     inspector = DataInspector(parent, scene, AbstractPlot[], plot, true, whitelist, blacklist)
 
     e = events(parent)
@@ -342,9 +340,9 @@ function DataInspector(
         picks = pick_sorted(parent, mp, range)
         should_clear = true
         for (plt, idx) in picks
-            @info idx, typeof(plt)
+            @info to_value(get(plt.attributes, :inspectable, nothing)), idx, typeof(plt)
             if (plt !== nothing) && !(plt in inspector.blacklist) && 
-                # to_value(get(plt.attributes, :inspectable, true)) &&
+                to_value(get(plt.attributes, :inspectable, true)) &&
                 (isempty(inspector.whitelist) || (plt in inspector.whitelist))
 
                 processed = show_data(inspector, plt, idx)
