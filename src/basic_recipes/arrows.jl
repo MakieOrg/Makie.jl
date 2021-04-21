@@ -22,7 +22,7 @@ grid.
 $(ATTRIBUTES)
 """
 @recipe(Arrows, points, directions) do scene
-    theme = Attributes(
+    attr = Attributes(
         arrowhead = automatic,
         arrowtail = nothing,
         linecolor = :black,
@@ -32,11 +32,12 @@ $(ATTRIBUTES)
         scale = Vec3f0(1),
         normalize = false,
         lengthscale = 1.0f0,
-        colormap = :viridis
+        colormap = :viridis, 
+        inspectable = theme(scene, :inspectable)
     )
     # connect arrow + linecolor by default
-    get!(theme, :arrowcolor, theme[:linecolor])
-    theme
+    get!(attr, :arrowcolor, attr[:linecolor])
+    attr
 end
 
 # For the matlab/matplotlib users
@@ -57,7 +58,11 @@ end
 convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Vec3f0.(u, v, w))
 
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
-    @extract arrowplot (points, directions, lengthscale, arrowhead, arrowsize, arrowcolor, colormap)
+    @extract arrowplot (
+        points, directions, lengthscale, arrowhead, arrowsize, arrowcolor, 
+        colormap, inspectable
+    )
+
     headstart = lift(points, directions, lengthscale) do points, directions, s
         map(points, directions) do p1, dir
             dir = arrowplot[:normalize][] ? StaticArrays.normalize(dir) : dir
@@ -68,11 +73,13 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         arrowplot, headstart,
         color = arrowplot[:linecolor], linewidth = arrowplot[:linewidth],
         linestyle = arrowplot[:linestyle], colormap = colormap,
+        inspectable = inspectable
     )
     scatterfun(N)(
         arrowplot,
         lift(x-> last.(x), headstart),
         marker = lift(x-> arrow_head(N, x), arrowhead), markersize = arrowsize,
-        color = arrowcolor, rotations = directions,  strokewidth = 0.0, colormap = colormap,
+        color = arrowcolor, rotations = directions,  strokewidth = 0.0, 
+        colormap = colormap, inspectable = inspectable
     )
 end

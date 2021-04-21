@@ -33,6 +33,7 @@ $(ATTRIBUTES)
         strokecolor = :black,
         strokewidth = 1,
         visible = true,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -61,14 +62,16 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         colormap = s.trunkcolormap,
         colorrange = s.trunkcolorrange,
         visible = s.visible,
-        linestyle = s.trunklinestyle)
+        linestyle = s.trunklinestyle,
+        inspectable = s.inspectable)
     linesegments!(s, stemtuples,
         linewidth = s.stemwidth,
         color = s.stemcolor,
         colormap = s.stemcolormap,
         colorrange = s.stemcolorrange,
         visible = s.visible,
-        linestyle = s.stemlinestyle)
+        linestyle = s.stemlinestyle,
+        inspectable = s.inspectable)
     scatter!(s, s[1],
         color = s.color,
         colormap = s.colormap,
@@ -77,6 +80,7 @@ function plot!(s::Stem{<:Tuple{<:AbstractVector{<:Point}}})
         marker = s.marker,
         strokecolor = s.strokecolor,
         strokewidth = s.strokewidth,
-        visible = s.visible)
+        visible = s.visible,
+        inspectable = s.inspectable)
     s
 end

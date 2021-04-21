@@ -56,6 +56,7 @@ $(ATTRIBUTES)
         direction = :x,
         boundary = automatic,
         bandwidth = automatic,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -94,6 +95,9 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
         end
     end
 
-    poly!(plot, points, color = plot.color, strokewidth = 0)
-    lines!(plot, linepoints, color = plot.strokecolor, linewidth = plot.strokewidth)
+    poly!(plot, points, color = plot.color, strokewidth = 0, inspectable = plot.inspectable)
+    lines!(
+        plot, linepoints, color = plot.strokecolor, linewidth = plot.strokewidth,
+        inspectable = plot.inspectable
+    )
 end
