@@ -137,7 +137,7 @@ sorted by distance to `xy`.
 """
 function pick_sorted(scene::SceneLike, xy, range)
     screen = getscreen(scene)
-    screen === nothing && return (nothing, 0)
+    screen === nothing && return Tuple{AbstractPlot, Int}[]
     pick_sorted(scene, screen, xy, range)
 end
 
