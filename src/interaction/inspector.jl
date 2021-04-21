@@ -1,8 +1,11 @@
 ### indicator data -> string
 ########################################
 
-position2string(p::Point2f0) = @sprintf(" x: %0.6f\n y: %0.6f", p[1], p[2])
-position2string(p::Point3f0) = @sprintf(" x: %0.6f\n y: %0.6f\n z: %0.6f", p[1], p[2], p[3])
+vec2string(p::StaticVector{2}) = @sprintf("(%0.3f, %0.3f)", p[1], p[2])
+vec2string(p::StaticVector{3}) = @sprintf("(%0.3f, %0.3f, %0.3f)", p[1], p[2], p[3])
+
+position2string(p::StaticVector{2}) = @sprintf(" x: %0.6f\n y: %0.6f", p[1], p[2])
+position2string(p::StaticVector{3}) = @sprintf(" x: %0.6f\n y: %0.6f\n z: %0.6f", p[1], p[2], p[3])
 
 function bbox2string(bbox::Rect3D)
     p0 = origin(bbox)
@@ -639,6 +642,35 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a._visible[] = true
     a._text_padding[] = a.text_padding[]
     a._tooltip_offset[] = a.tooltip_offset[]
+
+    return true
+end
+
+function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
+    return show_data(inspector, plot, div(idx+1, 2), nothing)
+end
+function show_data(inspector::DataInspector, plot::Arrows, idx, source)
+    @info "Arrows"
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+        
+    pos = plot[1][][idx]
+    proj_pos = update_positions!(inspector, scene, pos)
+    update_tooltip_alignment!(inspector)
+    
+    p = vec2string(pos)
+    v = vec2string(plot[2][][idx])
+
+    a._text_position[] = Point2f0(maximum(pixelarea(scene)[]))
+    a._tooltip_align[] = (:left, :bottom)
+    a._display_text[] = " Position:\n  $p\n Direction\n  $v"
+    a._bbox2D[] = FRect2D(proj_pos .- Vec2f0(5), Vec2f0(10))
+    a._bbox_visible[] = false
+    a._px_bbox_visible[] = true
+    a._visible[] = true
+    a._text_padding[] = a.text_padding[]
+    a._tooltip_offset[] = Vec2f0(5)
 
     return true
 end
