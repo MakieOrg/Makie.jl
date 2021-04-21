@@ -458,9 +458,15 @@ If you want a simpler interface, consider using [`record`](@ref).
 
 ### Keyword Arguments:
 - `framrate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and `51` being the highest compression. Note that `compression = 0` only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to `.mp4`. If you have issues playing a video, try `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently only applies to `.mp4`. Defaults to `yuv444p` for `profile = high444`.
+- `compression = 0`: Controls the video compression with `0` being lossless and 
+                     `51` being the highest compression. Note that `compression = 0` 
+                     only works with `.mp4` if `profile = high444`.
+- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to 
+                        `.mp4`. If you have issues playing a video, try 
+                        `profile = "high"` or `profile = "main"`.
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently 
+                              only applies to `.mp4`. Defaults to `yuv444p` for 
+                              `profile = high444`.
 """
 function save(
         path::String, io::VideoStream; 
@@ -501,9 +507,8 @@ function save(
 end
 
 """
-    record(func, figure, path; framerate = 24, compression = 20)
-    record(func, figure, path, iter;
-            framerate = 24, compression = 20, sleep = true)
+    record(func, figure, path; framerate = 24, compression = 20, kwargs...)
+    record(func, figure, path, iter; framerate = 24, compression = 20, kwargs...)
 
 The first signature provides `func` with a VideoStream, which it should call 
 `recordframe!(io)` on when recording a frame.
@@ -524,15 +529,7 @@ extension.  Allowable extensions are:
 6 times bigger with the same quality!
 
 The `compression` argument controls the compression ratio; `51` is the
-highest compression, and `0` is the lowest (lossless).
-
-When `sleep` is set to `true` (the default), AbstractPlotting will
-display the animation in real-time by sleeping in between frames.
-Thus, a 24-frame, 24-fps recording would take one second to record.
-
-When it is set to `false`, frames are rendered as fast as the backend
-can render them.  Thus, a 24-frame, 24-fps recording would usually
-take much less than one second in GLMakie.
+highest compression, and `0` or `1` is the lowest (with `0` being lossless).
 
 Typical usage patterns would look like:
 
@@ -575,6 +572,18 @@ record(fig, "test.gif", 1:255) do i
     p[:color] = RGBf0(i/255, (255 - i)/255, 0) # animate figure
 end
 ```
+
+### Keyword Arguments:
+- `framrate = 24`: The target framerate.
+- `compression = 0`: Controls the video compression with `0` being lossless and 
+                     `51` being the highest compression. Note that `compression = 0` 
+                     only works with `.mp4` if `profile = high444`.
+- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to 
+                        `.mp4`. If you have issues playing a video, try 
+                        `profile = "high"` or `profile = "main"`.
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently 
+                              only applies to `.mp4`. Defaults to `yuv444p` for 
+                              `profile = high444`.
 """
 function record(func, scene, path; framerate::Int = 24, kwargs...)
     io = Record(func, scene, framerate = framerate)
