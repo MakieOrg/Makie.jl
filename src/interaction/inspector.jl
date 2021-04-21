@@ -22,11 +22,16 @@ position2string(p::Point2f0) = @sprintf(" x: %0.6f\n y: %0.6f", p[1], p[2])
 position2string(p::Point3f0) = @sprintf(" x: %0.6f\n y: %0.6f\n z: %0.6f", p[1], p[2], p[3])
 
 function bbox2string(bbox::Rect3D)
-    p = origin(bbox)
-    w = widths(bbox)
+    p0 = origin(bbox)
+    p1 = p0 .+ widths(bbox)
     @sprintf(
-        " Bounding Box:\n x: (%0.3f, %0.3f)\n y: (%0.3f, %0.3f)\n z: (%0.3f, %0.3f)",
-        p[1], w[1], p[2], w[2], p[3], w[3]
+        """
+         Bounding Box:
+          x: (%0.3f, %0.3f)
+          y: (%0.3f, %0.3f)
+          z: (%0.3f, %0.3f)
+        """,
+        p0[1], p1[1], p0[2], p1[2], p0[3], p1[3]
     )
 end
 
