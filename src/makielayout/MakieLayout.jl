@@ -7,6 +7,7 @@ using ..AbstractPlotting.Keyboard
 using ..AbstractPlotting.Mouse
 using ..AbstractPlotting: ispressed, is_mouseinside, get_scene, FigureLike
 using ..AbstractPlotting: OpenInterval, Interval
+using ..AbstractPlotting: Automatic, automatic
 using Observables: onany
 import Observables
 import Formatting
@@ -84,7 +85,7 @@ export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!
-export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween
+export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export layoutscene
