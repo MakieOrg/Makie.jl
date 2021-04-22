@@ -125,7 +125,51 @@ pos2index(x, r, N) = clamp(ceil(Int, N * (x - minimum(r)) / (maximum(r) - minimu
 index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i) / (N)
 
 
-### Getting text bounding boxes to draw backgrounds
+### Surface positions
+########################################
+
+surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
+surface_x(xs, i, j, N) = xs[i]
+surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
+
+surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
+surface_y(ys, i, j, N) = ys[j]
+surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
+
+function surface_pos(xs, ys, zs, i, j)
+    N, M = size(zs)
+    Point3f0(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
+end
+
+
+### Mapping mesh vertex indices to Vector{Polygon} index
+########################################
+
+function vertexindex2poly(polys, idx)
+    counter = 0
+    for i in eachindex(polys)
+        step = ncoords(polys[i])
+        if idx <= counter + step
+            return i
+        else
+            counter += step
+        end
+    end
+    return length(polys)
+end
+
+ncoords(x) = length(coordinates(x))
+ncoords(mesh::Mesh) = length(coordinates(mesh))
+function ncoords(poly::Polygon)
+    N = length(poly.exterior) + 1
+    for int in poly.interiors
+        N += length(int) + 1
+    end
+    N
+end
+
+
+### Text bounding box
 ########################################
 
 function Bbox_from_glyphlayout(gl)
@@ -198,8 +242,6 @@ end
         _tooltip_offset = Vec2f0(20),
         _bbox3D = FRect3D(Vec3f0(0), Vec3f0(0)),
         _bbox_visible = true,
-        _proj_position = Point2f0(0),
-        _position = Point3f0(0),
     )
 end
 
@@ -209,8 +251,8 @@ function plot!(plot::_Inspector)
         textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
         _bbox2D, _px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
-        _tooltip_align, _tooltip_offset, _proj_position,
-        _root_px_projection, _model, depth, _visible
+        _tooltip_align, _tooltip_offset,
+        _root_px_projection, depth, _visible
     )
 
     # tooltip text
@@ -272,7 +314,7 @@ function plot!(plot::_Inspector)
     # pixel-space marker for selected element (not always used)
     px_bbox = wireframe!(
         plot, _bbox2D,
-        color = color, linewidth = bbox_linewidth, linestyle = bbox_linestyle, # model = _model,
+        color = color, linewidth = bbox_linewidth, linestyle = bbox_linestyle, 
         visible = _px_bbox_visible, show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
@@ -424,23 +466,13 @@ function clear_temporary_plots!(inspector::DataInspector)
     empty!(inspector.temp_plots)
 end
 
-# computes a projected position relative to the root scene
-function update_positions!(inspector, scene, pos)
-    a = inspector.plot.attributes
-    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
-    a._position[] = pos
-    a._proj_position[] = proj_pos
-    return proj_pos
-end
-
 # update alignment direction
-function update_tooltip_alignment!(inspector)
+function update_tooltip_alignment!(inspector, proj_pos)
     a = inspector.plot.attributes
-    p = a._proj_position[]
-    a._text_position[] = p
+    a._text_position[] = proj_pos
 
     wx, wy = widths(pixelarea(inspector.root)[])
-    px, py = p
+    px, py = proj_pos
     halign, valign = a.tooltip_align[]
     px < wx/4  && (halign = :right)
     px > 3wx/4 && (halign = :left)
@@ -464,8 +496,8 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     scene = parent_scene(plot)
     update_hovered!(inspector, scene)
 
-    proj_pos = update_positions!(inspector, scene, plot[1][][idx])
-    update_tooltip_alignment!(inspector)
+    proj_pos = shift_project(scene, to_ndim(Point3f0, plot[1][][idx], 0))
+    update_tooltip_alignment!(inspector, proj_pos)
     ms = plot.markersize[]
 
     a._display_text[] = position2string(plot[1][][idx])
@@ -486,8 +518,8 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     scene = parent_scene(plot)
     update_hovered!(inspector, scene)
         
-    proj_pos = update_positions!(inspector, scene, plot[1][][idx])
-    update_tooltip_alignment!(inspector)
+    proj_pos = shift_project(scene, to_ndim(Point3f0, plot[1][][idx], 0))
+    update_tooltip_alignment!(inspector, proj_pos)
     bbox = Rect{3, Float32}(plot.marker[])
 
     a._model[] = transformationmatrix(
@@ -516,8 +548,7 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     return true
 end
 
-# TODO
-# this needs some clamping?
+
 function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
     @info "Lines, LineSegments"
     a = inspector.plot.attributes
@@ -530,8 +561,8 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     pos = closest_point_on_line(p0, p1, origin, dir)
     lw = plot.linewidth[] isa Vector ? plot.linewidth[][idx] : plot.linewidth[]
     
-    proj_pos = update_positions!(inspector, scene, pos)
-    update_tooltip_alignment!(inspector)
+    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    update_tooltip_alignment!(inspector, proj_pos)
 
     a._display_text[] = position2string(pos)
     a._bbox2D[] = FRect2D(proj_pos .- 0.5 .* lw .- Vec2f0(5), Vec2f0(lw) .+ Vec2f0(10))
@@ -544,7 +575,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     return true
 end
 
-# TODO position indicator better
+
 function show_data(inspector::DataInspector, plot::Mesh, idx)
     @info "Mesh"
     a = inspector.plot.attributes
@@ -553,7 +584,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         
     bbox = boundingbox(plot)
     min, max = extrema(bbox)
-    proj_pos = update_positions!(inspector, scene, 0.5 * (max .+ min))
+    proj_pos = shift_project(scene, to_ndim(Point3f0, 0.5(max .+ min), 0))
 
     a._model[] = plot.model[]
 
@@ -579,6 +610,7 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     return true
 end
 
+
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
     # This needs to be updated once Heatmaps are centered 
     # Alternatively, could this get a useful index?
@@ -595,11 +627,12 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     y0 = index2pos(j-1, plot[2][], size(plot[3][], 2))
     x1 = index2pos(i, plot[1][], size(plot[3][], 1))
     y1 = index2pos(j, plot[2][], size(plot[3][], 2))
-    x = 0.5(x0 + x1); y = 0.5(y0 + y1)
+    # x = 0.5(x0 + x1); y = 0.5(y0 + y1)
     z = plot[3][][i, j]
 
-    proj_pos = update_positions!(inspector, scene, Point3f0(x, y, 0))
-    update_tooltip_alignment!(inspector)
+    # proj_pos = shift_project(scene, Point3f0(x, y, 0))
+    proj_pos = Point2f0(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, proj_pos)
     a._bbox2D[] = FRect2D(Vec2f0(x0, y0), Vec2f0(x1-x0, y1-y0))
     
     if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
@@ -622,27 +655,14 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
 end
 
 
-surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
-surface_x(xs, i, j, N) = xs[i]
-surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
-
-surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
-surface_y(ys, i, j, N) = ys[j]
-surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
-
-function surface_pos(xs, ys, zs, i, j)
-    N, M = size(zs)
-    Point3f0(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
-end
-
 function show_data(inspector::DataInspector, plot::Surface, idx)
     @info "Surface"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
     update_hovered!(inspector, scene)
             
-    a._proj_position[] = Point2f0(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector)
+    proj_pos = Point2f0(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, proj_pos)
 
     xs = plot[1][]
     ys = plot[2][]
@@ -673,8 +693,8 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 
     if !isnan(pos)
         a._display_text[] = position2string(pos)
-        a._text_position[] = a._proj_position[]
-        a._bbox2D[] = FRect2D(a._proj_position[] .- Vec2f0(5), Vec2f0(10))
+        a._text_position[] = proj_pos
+        a._bbox2D[] = FRect2D(proj_pos .- Vec2f0(5), Vec2f0(10))
         a._bbox_visible[] = false
         a._px_bbox_visible[] = true
         a._visible[] = true
@@ -713,8 +733,8 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     update_hovered!(inspector, scene)
         
     pos = plot[1][][idx]
-    proj_pos = update_positions!(inspector, scene, pos)
-    update_tooltip_alignment!(inspector)
+    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    update_tooltip_alignment!(inspector, proj_pos)
     a._model[] = plot.model[]
     a._bbox2D[] = plot.plots[1][1][][idx]
 
@@ -748,8 +768,8 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     update_hovered!(inspector, scene)
         
     pos = plot[1][][idx]
-    proj_pos = update_positions!(inspector, scene, pos)
-    update_tooltip_alignment!(inspector)
+    proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
+    update_tooltip_alignment!(inspector, proj_pos)
     
     p = vec2string(pos)
     v = vec2string(plot[2][][idx])
@@ -798,7 +818,7 @@ function show_poly(inspector, plot, idx, source)
     scene = parent_scene(plot)
     update_hovered!(inspector, scene)
         
-    idx = triangle2poly_index(plot[1][], idx)
+    idx = vertexindex2poly(plot[1][], idx)
     m = GeometryBasics.mesh(plot[1][][idx])
     
     clear_temporary_plots!(inspector)
@@ -824,29 +844,4 @@ function show_poly(inspector, plot, idx, source)
     a._visible[] = true
 
     return idx, ext
-end
-
-
-# 
-function triangle2poly_index(polys, idx)
-    counter = 0
-    for i in eachindex(polys)
-        step = ncoords(polys[i])
-        if idx <= counter + step
-            return i
-        else
-            counter += step
-        end
-    end
-    return length(polys)
-end
-
-ncoords(x) = length(coordinates(x))
-ncoords(mesh::Mesh) = length(coordinates(mesh))
-function ncoords(poly::Polygon)
-    N = length(poly.exterior) + 1
-    for int in poly.interiors
-        N += length(int) + 1
-    end
-    N
 end
