@@ -690,19 +690,19 @@ end
 
 # This should work if contourf would place computed levels in colors and let the
 # backend handle picking colors from a colormap
-# function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
-#     @info "Contourf"
-#     a = inspector.plot.attributes
-#     scene = parent_scene(plot)
-#     idx, ext = show_poly(inspector, plot.plots[1], idx, source)
-#     level = plot.plots[1].color[][idx]
+function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
+    @info "Contourf"
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    idx, ext = show_poly(inspector, plot.plots[1], idx, source)
+    level = plot.plots[1].color[][idx]
 
-#     a._text_position[] = Point2f0(mouseposition_px(inspector.root))
-#     a._display_text[] = @sprintf("level = %0.3f", level)
-#     a._text_padding[] = Vec4f0(5, 5, 4, 4)
-#     a._tooltip_offset[] = a.tooltip_offset[]
-#     return true
-# end
+    a._text_position[] = Point2f0(mouseposition_px(inspector.root))
+    a._display_text[] = @sprintf("level = %0.3f", level)
+    a._text_padding[] = Vec4f0(5, 5, 4, 4)
+    a._tooltip_offset[] = a.tooltip_offset[]
+    return true
+end
 
 # What should this display?
 # function show_data(

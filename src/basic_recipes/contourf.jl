@@ -89,7 +89,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     PolyType = typeof(Polygon(Point2f0[], [Point2f0[]]))
 
     polys = Observable(PolyType[])
-    colors = Observable(RGBAf0[])
+    colors = Observable(Float64[])
 
     function calculate_polys(xs, ys, zs, levels::Vector{Float32}, is_extended_low, is_extended_high)
         empty!(polys[])
@@ -121,14 +121,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
                 push!(polys[], GeometryBasics.Polygon(outline, holes))
                 # use contour level center value as color
                 center_scaled = (center - colorrange[][1]) / (colorrange[][2] - colorrange[][1])
-                color::RGBAf0 = if i == 1 && is_extended_low
-                    lowcolor[]
-                elseif i == nbands && is_extended_high
-                    highcolor[]
-                else
-                    get(c._computed_colormap[], center_scaled)
-                end
-                push!(colors[], color)
+                push!(colors[], center)
             end
         end
         polys[] = polys[]
@@ -142,8 +135,8 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
 
     poly!(c,
         polys,
-        # colormap = c._computed_colormap,
-        # colorrange = colorrange,
+        colormap = c._computed_colormap,
+        colorrange = colorrange,
         color = colors,
         strokewidth = 0,
         strokecolor = :transparent,
