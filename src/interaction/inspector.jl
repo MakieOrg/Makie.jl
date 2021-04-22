@@ -21,6 +21,19 @@ function bbox2string(bbox::Rect3D)
     )
 end
 
+function bbox2string(bbox::Rect2D)
+    p0 = origin(bbox)
+    p1 = p0 .+ widths(bbox)
+    @sprintf(
+        """
+         Bounding Box:
+          x: (%0.3f, %0.3f)
+          y: (%0.3f, %0.3f)
+        """,
+        p0[1], p1[1], p0[2], p1[2]
+    )
+end
+
 
 ### dealing with markersize and rotations
 ########################################
@@ -673,4 +686,88 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a._tooltip_offset[] = Vec2f0(5)
 
     return true
+end
+
+# This should work if contourf would place computed levels in colors and let the
+# backend handle picking colors from a colormap
+# function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
+#     @info "Contourf"
+#     a = inspector.plot.attributes
+#     scene = parent_scene(plot)
+#     idx, ext = show_poly(inspector, plot.plots[1], idx, source)
+#     level = plot.plots[1].color[][idx]
+
+#     a._text_position[] = Point2f0(mouseposition_px(inspector.root))
+#     a._display_text[] = @sprintf("level = %0.3f", level)
+#     a._text_padding[] = Vec4f0(5, 5, 4, 4)
+#     a._tooltip_offset[] = a.tooltip_offset[]
+#     return true
+# end
+
+# What should this display?
+# function show_data(
+#         inspector::DataInspector, plot::Poly{<: Tuple{<: AbstractVector}}, 
+#         idx, source::Mesh
+#     )
+#     @info "PolyMesh"
+#     idx, ext = show_poly(inspectable, plot, idx, source)
+#     return true
+# end
+
+function show_poly(inspector, plot, idx, source)
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+        
+    idx = triangle2poly_index(plot[1][], idx)
+    m = GeometryBasics.mesh(plot[1][][idx])
+    
+    clear_temporary_plots!(inspector)
+    ext = plot[1][][idx].exterior
+    p = lines!(
+        scene, ext, color = a.color, 
+        visible = a._visible, show_axis = false, inspectable = false
+    )
+    translate!(p, Vec3f0(0,0,a.depth[]))
+    push!(inspector.temp_plots, p)
+    
+    for int in plot[1][][idx].interiors
+        p = lines!(
+            scene, int, color = a.color, 
+            visible = a._visible, show_axis = false, inspectable = false
+        )
+        translate!(p, Vec3f0(0,0,a.depth[]))
+        push!(inspector.temp_plots, p)
+    end
+
+    a._px_bbox_visible[] = false
+    a._bbox_visible[] = true
+    a._visible[] = true
+
+    return idx, ext
+end
+
+
+# 
+function triangle2poly_index(polys, idx)
+    counter = 0
+    for i in eachindex(polys)
+        step = ncoords(polys[i])
+        if idx <= counter + step
+            return i
+        else
+            counter += step
+        end
+    end
+    return length(polys)
+end
+
+ncoords(x) = length(coordinates(x))
+ncoords(mesh::Mesh) = length(coordinates(mesh))
+function ncoords(poly::Polygon)
+    N = length(poly.exterior) + 1
+    for int in poly.interiors
+        N += length(int) + 1
+    end
+    N
 end
