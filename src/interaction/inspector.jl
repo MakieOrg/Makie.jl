@@ -102,6 +102,21 @@ function closest_point_on_line(A::Point3f0, B::Point3f0, origin::Point3f0, dir::
     A .+ t * u_AB
 end
 
+function ray_triangle_intersection(A, B, C, origin, dir)
+    # See: https://www.iue.tuwien.ac.at/phd/ertl/node114.html
+    AO = A .- origin
+    BO = B .- origin
+    CO = C .- origin
+    A1 = 0.5 * dot(cross(BO, CO), dir)
+    A2 = 0.5 * dot(cross(CO, AO), dir)
+    A3 = 0.5 * dot(cross(AO, BO), dir)
+    if (A1 > 0 && A2 > 0 && A3 > 0) || (A1 < 0 && A2 < 0 && A3 < 0)
+        Point3f0((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
+    else
+        Point3f0(NaN)
+    end
+end
+
 
 ### Heatmap positions/indices
 ########################################
@@ -433,7 +448,7 @@ function update_tooltip_alignment!(inspector)
     py > 3wy/4 && (valign = :bottom)
     a._tooltip_align[] = (halign, valign)
 end
-    
+
 
 
 ################################################################################
@@ -603,6 +618,70 @@ function show_data(inspector::DataInspector, plot::Heatmap, idx)
     a._visible[] = true
     a._text_padding[] = Vec4f0(5, 5, 4, 4)
     a._tooltip_offset[] = a.tooltip_offset[]
+    return true
+end
+
+
+surface_x(xs::ClosedInterval, i, j, N) = minimum(xs) + (maximum(xs) - minimum(xs)) * (i-1) / (N-1)
+surface_x(xs, i, j, N) = xs[i]
+surface_x(xs::AbstractMatrix, i, j, N) = xs[i, j]
+
+surface_y(ys::ClosedInterval, i, j, N) = minimum(ys) + (maximum(ys) - minimum(ys)) * (j-1) / (N-1)
+surface_y(ys, i, j, N) = ys[j]
+surface_y(ys::AbstractMatrix, i, j, N) = ys[i, j]
+
+function surface_pos(xs, ys, zs, i, j)
+    N, M = size(zs)
+    Point3f0(surface_x(xs, i, j, N), surface_y(ys, i, j, M), zs[i, j])
+end
+
+function show_data(inspector::DataInspector, plot::Surface, idx)
+    @info "Surface"
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    update_hovered!(inspector, scene)
+            
+    a._proj_position[] = Point2f0(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector)
+
+    xs = plot[1][]
+    ys = plot[2][]
+    zs = plot[3][]
+    w, h = size(zs)
+    i = mod1(idx, w); j = div(idx-1, w)
+
+    origin, dir = view_ray(scene)
+    pos = Point3f0(NaN)
+
+    if i - 1 > 0
+        pos = ray_triangle_intersection(
+            surface_pos(xs, ys, zs, i, j),
+            surface_pos(xs, ys, zs, i-1, j),
+            surface_pos(xs, ys, zs, i, j+1),
+            origin, dir
+        )
+    end
+
+    if i + 1 <= w && isnan(pos)
+        pos = ray_triangle_intersection(
+            surface_pos(xs, ys, zs, i, j),
+            surface_pos(xs, ys, zs, i, j+1),
+            surface_pos(xs, ys, zs, i+1, j+1),
+            origin, dir
+        )
+    end
+
+    if !isnan(pos)
+        a._display_text[] = position2string(pos)
+        a._text_position[] = a._proj_position[]
+        a._bbox2D[] = FRect2D(a._proj_position[] .- Vec2f0(5), Vec2f0(10))
+        a._bbox_visible[] = false
+        a._px_bbox_visible[] = true
+        a._visible[] = true
+        a._text_padding[] = Vec4f0(5, 5, 4, 4)
+        a._tooltip_offset[] = a.tooltip_offset[]
+    end
+
     return true
 end
 
