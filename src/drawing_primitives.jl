@@ -51,7 +51,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
@@ -66,9 +66,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:use_pixel_marker] = lift(x-> x <: Pixel, mspace)
         end
 
-        if haskey(gl_attributes, :lightposition)
+        if haskey(x.attributes, :lightposition)
             eyepos = scene.camera.eyeposition
-            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition], eyepos) do pos, eyepos
+            gl_attributes[:lightposition] = lift(x.attributes[:lightposition], eyepos) do pos, eyepos
                 return pos == :eyeposition ? eyepos : pos
             end
         end
@@ -278,9 +278,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :strokecolor, :strokewidth, :rotation)
+        _keys = (:color, :strokecolor, :rotation)
 
-        signals = map(keys) do key
+        signals = map(_keys) do key
             return lift(positions, x[key]) do pos, attr
                 str = string_obs[]
                 if str isa AbstractVector
@@ -303,29 +303,33 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             end
         end
 
-        robj = visualize(
-            (DISTANCEFIELD, positions),
+        filtered = gl_attributes
+        filter!(gl_attributes) do (k, v)
+            # These are liftkeys except:
+            # - nan_color, _glyphlayout, thickness, nan_color are also filtered
+            # - model is let through
+            !(k in (
+                :position, :space, :justification, :font, :_glyphlayout, :align, 
+                :textsize, :nan_color, :rotation, :lineheight, :thickness, 
+        ))
+        end
+        filtered[:color] = signals[1]
+        filtered[:stroke_color] = signals[2]
+        filtered[:rotation] = signals[3]
+        filtered[:scale] = scale
+        filtered[:offset] = offset
+        filtered[:uv_offset_width] = uv_offset_width
+        filtered[:distancefield] = get_texture!(atlas)
+        
 
-            color = signals[1],
-            stroke_color = signals[2],
-            # stroke_width = signals[3], # for some reason I get
-            # no method matching gl_convert(::Vector{Float32})
-            stroke_width = 0.0f0,
-            rotation = signals[4],
-
-            scale = scale,
-            offset = offset,
-            uv_offset_width = uv_offset_width,
-            distancefield = get_texture!(atlas),
-            visible = gl_attributes[:visible]
-        )
+        robj = visualize((DISTANCEFIELD, positions), Style(:default), filtered)
+        
         # Draw text in screenspace
         if x.space[] == :screen
             robj[:view] = Observable(Mat4f0(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space
         end
-        robj[:model] = x.model
 
         return robj
     end
