@@ -34,6 +34,23 @@ function bbox2string(bbox::Rect2D)
     )
 end
 
+color2text(c::AbstractFloat) = @sprintf("%0.3f", c)
+color2text(c::Symbol) = string(c)
+color2text(c) = color2text(to_color(c))
+function color2text(c::RGBAf0)
+    if c.alpha == 1.0
+        @sprintf("RGB(%0.2f, %0.2f, %0.2f)", c.r, c.g, c.b)
+    else
+        @sprintf("RGBA(%0.2f, %0.2f, %0.2f, %0.2f)", c.r, c.g, c.b, c.alpha)
+    end 
+end
+
+color2text(name, i::Integer, j::Integer, c) = "$name[$i, $j] = $(color2text(c))"
+function color2text(name, i, j, c)
+    idxs = @sprintf("%0.2f, %0.2f", i, j)
+    "$name[$idxs] = $(color2text(c))"
+end
+
 
 ### dealing with markersize and rotations
 ########################################
@@ -234,6 +251,7 @@ end
         tooltip_offset = Vec2f0(20), # default offset in alignment direction
         depth = 9e3,
         enabled = true,
+        range = 10,
 
         _root_px_projection = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         _model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
@@ -242,6 +260,8 @@ end
         _tooltip_offset = Vec2f0(20),
         _bbox3D = FRect3D(Vec3f0(0), Vec3f0(0)),
         _bbox_visible = true,
+        _position = Point3f0(0),
+        _color = RGBAf0(0,0,0,0)
     )
 end
 
@@ -356,7 +376,9 @@ disable!(inspector::DataInspector) = inspector.plot.enabled[] = false
 """
     DataInspector(figure; kwargs...)
 
-...
+Creates a data inspector which will show relevant information in a tooltip 
+when you hover over a plot. If you wish to exclude a plot you may set 
+`plot.inspectable[] = false`. 
 
 ### Keyword Arguments:
 - `range = 10`: Snapping range for selecting a point on a plot to inspect.
@@ -391,7 +413,7 @@ function DataInspector(ax; kwargs...)
 end
 
 
-function DataInspector(scene::Scene; range = 10, kwargs...)
+function DataInspector(scene::Scene; kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f0(0)
 
@@ -403,7 +425,7 @@ function DataInspector(scene::Scene; range = 10, kwargs...)
     onany(e.mouseposition, e.scroll) do mp, _
         (inspector.plot.enabled[] && is_mouseinside(parent)) || return false
 
-        picks = pick_sorted(parent, mp, range)
+        picks = pick_sorted(parent, mp, inspector.plot.range[])
         should_clear = true
         for (plt, idx) in picks
             @info to_value(get(plt.attributes, :inspectable, nothing)), idx, typeof(plt)
@@ -511,7 +533,7 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     return true
 end
 
-    
+
 function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     @info "MeshScatter"
     a = inspector.plot.attributes
@@ -611,50 +633,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
 end
 
 
-function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    # This needs to be updated once Heatmaps are centered 
-    # Alternatively, could this get a useful index?
-    @info "Heatmap"
-    a = inspector.plot.attributes
-    # idx == 0 :(
-    scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
-            
-    mpos = mouseposition(scene)
-    i = pos2index(mpos[1], plot[1][], size(plot[3][], 1))
-    j = pos2index(mpos[2], plot[2][], size(plot[3][], 2))
-    x0 = index2pos(i-1, plot[1][], size(plot[3][], 1))
-    y0 = index2pos(j-1, plot[2][], size(plot[3][], 2))
-    x1 = index2pos(i, plot[1][], size(plot[3][], 1))
-    y1 = index2pos(j, plot[2][], size(plot[3][], 2))
-    # x = 0.5(x0 + x1); y = 0.5(y0 + y1)
-    z = plot[3][][i, j]
-
-    # proj_pos = shift_project(scene, Point3f0(x, y, 0))
-    proj_pos = Point2f0(mouseposition_px(inspector.root))
-    update_tooltip_alignment!(inspector, proj_pos)
-    a._bbox2D[] = FRect2D(Vec2f0(x0, y0), Vec2f0(x1-x0, y1-y0))
-    
-    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
-        clear_temporary_plots!(inspector)
-        p = wireframe!(
-            scene, a._bbox2D, model = a._model, color = a.color, 
-            visible = a._bbox_visible, show_axis = false, inspectable = false
-        )
-        translate!(p, Vec3f0(0, 0, a.depth[]))
-        push!(inspector.temp_plots, p)
-    end
-    
-    a._display_text[] = @sprintf("H[%i, %i] = %0.3f", i, j, z)
-    a._bbox_visible[] = true
-    a._px_bbox_visible[] = false
-    a._visible[] = true
-    a._text_padding[] = Vec4f0(5, 5, 4, 4)
-    a._tooltip_offset[] = a.tooltip_offset[]
-    return true
-end
-
-
 function show_data(inspector::DataInspector, plot::Surface, idx)
     @info "Surface"
     a = inspector.plot.attributes
@@ -703,6 +681,114 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     end
 
     return true
+end
+
+function show_data(inspector::DataInspector, plot::Heatmap, idx)
+    @info "Heatmap"
+    show_imagelike(inspector, plot, "H")
+end
+
+function show_data(inspector::DataInspector, plot::Image, idx)
+    @info "Image"
+    show_imagelike(inspector, plot, "img")
+end
+
+function show_imagelike(inspector, plot, name)
+    a = inspector.plot.attributes
+    scene = parent_scene(plot)
+    mpos = mouseposition(scene)
+
+    i, j, z = if plot.interpolate[]
+        _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
+    else
+        _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos)
+    end
+
+    a._color[] = if z isa AbstractFloat
+        interpolated_getindex(
+            to_colormap(plot.colormap[]), z, 
+            to_value(get(plot.attributes, :colorrange, (0, 1)))
+        )
+    else
+        z
+    end
+
+    a._position[] = to_ndim(Point3f0, mpos, 0)
+    proj_pos = Point2f0(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, proj_pos)
+
+    if plot.interpolate[]
+        if isempty(inspector.temp_plots) || !(inspector.temp_plots[1] isa Scatter)
+            clear_temporary_plots!(inspector)
+            p = scatter!(
+                scene, map(p -> [p], a._position), color = a._color, 
+                visible = a._bbox_visible,
+                show_axis = false, inspectable = false, 
+                marker=:rect, markersize = min(2a.range[]-2, 20),
+                strokecolor = a.color, strokewidth = 1
+            )
+            translate!(p, Vec3f0(0, 0, a.depth[]))
+            push!(inspector.temp_plots, p)
+        end
+    else
+        a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j)
+        if isempty(inspector.temp_plots) || 
+            !(inspector.temp_plots[1] isa Wireframe) ||
+            !(inspector.temp_plots[1][1][] isa Rect2D)
+
+            clear_temporary_plots!(inspector)
+            p = wireframe!(
+                scene, a._bbox2D, model = a._model, color = a.color, 
+                visible = a._bbox_visible, show_axis = false, inspectable = false
+            )
+            translate!(p, Vec3f0(0, 0, a.depth[]))
+            push!(inspector.temp_plots, p)
+        end
+    end
+
+    a._display_text[] = color2text(name, i, j, z)
+    a._bbox_visible[] = true
+    a._px_bbox_visible[] = false
+    a._visible[] = true
+    a._text_padding[] = Vec4f0(5, 5, 4, 4)
+    a._tooltip_offset[] = a.tooltip_offset[]
+    return true
+end
+
+
+function _interpolated_getindex(xs, ys, img, mpos)
+    x0, x1 = extrema(xs)
+    y0, y1 = extrema(ys)
+    x, y = clamp.(mpos, (x0, y0), (x1, y1))
+
+    i = clamp((x - x0) / (x1 - x0) * size(img, 1) + 0.5, 1, size(img, 1))
+    j = clamp((y - y0) / (y1 - y0) * size(img, 2) + 0.5, 1, size(img, 2))
+    l = clamp(floor(Int, i), 1, size(img, 1)-1); 
+    r = clamp(ceil(Int, i), 2, size(img, 1))
+    b = clamp(floor(Int, j), 1, size(img, 2)-1); 
+    t = clamp(ceil(Int, j), 2, size(img, 2))
+    z = ((r-i) * img[l, b] + (i-l) * img[r, b]) * (t-j) +
+        ((r-i) * img[l, t] + (i-l) * img[r, t]) * (j-b)
+
+    # float, float, value
+    return i, j, z
+end
+function _pixelated_getindex(xs, ys, img, mpos)
+    x0, x1 = extrema(xs)
+    y0, y1 = extrema(ys)
+    x, y = clamp.(mpos, (x0, y0), (x1, y1))
+
+    i = clamp(round(Int, (x - x0) / (x1 - x0) * size(img, 1) + 0.5), 1, size(img, 1))
+    j = clamp(round(Int, (y - y0) / (y1 - y0) * size(img, 2) + 0.5), 1, size(img, 2))
+
+    # int, int, value
+    return i, j, img[i,j]
+end
+function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer)
+    x0, x1 = extrema(xs)
+    y0, y1 = extrema(ys)
+    nw, nh = ((x1 - x0), (y1 - y0)) ./ size(img)
+    FRect2D(nw * (i-1), nh * (j-1), nw, nh)
 end
 
 function show_data(inspector::DataInspector, plot, idx, source = nothing)
