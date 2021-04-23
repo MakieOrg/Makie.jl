@@ -496,14 +496,17 @@ function save(path::String, io::VideoStream;
 end
 
 """
-    record(func, scene, path; framerate = 24, compression = 20)
-    record(func, scene, path, iter;
+    record(func, figure, path; framerate = 24, compression = 20)
+    record(func, figure, path, iter;
             framerate = 24, compression = 20, sleep = true)
 
-The first signature provides `func` with a VideoStream, which it should call `recordframe!(io)` on when recording a frame.
+The first signature provides `func` with a VideoStream, which it should call 
+`recordframe!(io)` on when recording a frame.
 
-Records the Scene `scene` after the application of `func` on it for each element
-in `itr` (any iterator).  `func` must accept an element of `itr`.
+The second signature iterates `iter`, calling `recordframe!(io)` internally 
+after calling `func` with the current iteration element.
+
+Both notations require a Figure, FigureAxisPlot or Scene `figure` to work.
 
 The animation is then saved to `path`, with the format determined by `path`'s
 extension.  Allowable extensions are:
@@ -512,7 +515,7 @@ extension.  Allowable extensions are:
 - `.webm` (smallest file size)
 - `.gif`  (largest file size for the same quality)
 
-`.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
+`.mp4` and `.mk4` are marginally bigger than `webm` and `.gif`s are up to
 6 times bigger with the same quality!
 
 The `compression` argument controls the compression ratio; `51` is the
@@ -529,18 +532,18 @@ take much less than one second in GLMakie.
 Typical usage patterns would look like:
 
 ```julia
-record(scene, "video.mp4", itr) do i
-    func(i) # or some other manipulation of the Scene
+record(figure, "video.mp4", itr) do i
+    func(i) # or some other manipulation of the figure
 end
 ```
 
 or, for more tweakability,
 
 ```julia
-record(scene, "test.gif") do io
+record(figure, "test.gif") do io
     for i = 1:100
-        func!(scene)     # animate scene
-        recordframe!(io) # record a new frame
+        func!(figure)     # animate figure
+        recordframe!(io)  # record a new frame
     end
 end
 ```
@@ -552,19 +555,19 @@ If you want a more tweakable interface, consider using [`VideoStream`](@ref) and
 ### Examples
 
 ```julia
-scene = lines(rand(10))
-record(scene, "test.gif") do io
+fig, ax, p = lines(rand(10))
+record(fig, "test.gif") do io
     for i in 1:255
-        scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+        p[:color] = RGBf0(i/255, (255 - i)/255, 0) # animate figure
         recordframe!(io)
     end
 end
 ```
 or
 ```julia
-scene = lines(rand(10))
-record(scene, "test.gif", 1:255) do i
-    scene.plots[:color] = Colors.RGB(i/255, (255 - i)/255, 0) # animate scene
+fig, ax, p = lines(rand(10))
+record(fig, "test.gif", 1:255) do i
+    p[:color] = RGBf0(i/255, (255 - i)/255, 0) # animate figure
 end
 ```
 """
