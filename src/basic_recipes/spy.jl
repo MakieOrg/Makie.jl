@@ -1,4 +1,3 @@
-# This is broken btw :)
 """
 spy(x::Range, y::Range, z::AbstractSparseArray)
 
