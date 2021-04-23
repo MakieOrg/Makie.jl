@@ -277,10 +277,14 @@ function plot!(plot::_Inspector)
 
     # tooltip text
     _aligned_text_position = Node(Point2f0(0))
+    id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
     text_plot = text!(plot, _display_text, 
         position = _aligned_text_position, visible = _visible, align = text_align,
         color = textcolor, font = font, textsize = textsize, show_axis = false,
-        inspectable = false
+        inspectable = false, 
+        # requires some changes in GLMakie but should make this work on any scene
+        # space = :data,
+        # projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
 
     # compute text boundingbox and adjust _aligned_text_position
@@ -312,16 +316,17 @@ function plot!(plot::_Inspector)
         end
         new_pos = pos .+ Point2f0(dx, dy)
         if new_pos != _aligned_text_position[]
+            @info new_pos
             _aligned_text_position[] = new_pos
         end
     end
 
 
     # tooltip background and frame 
-    id = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1)
     background = mesh!(
         plot, bbox, color = background_color, shading = false, 
-        visible = _visible, show_axis = false, inspectable = false,
+        visible = false, #_visible, 
+        show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
     outline = wireframe!(
@@ -359,15 +364,10 @@ end
 
 # TODO destructor?
 mutable struct DataInspector
-    # need some static reference
     root::Scene
-
-    # Adjust to hover
-    hovered_scene::Union{Nothing, Scene}
     temp_plots::Vector{AbstractPlot}
-
-    # plot to attach to hovered scene
     plot::_Inspector
+    selection::AbstractPlot
 end
 
 enable!(inspector::DataInspector) = inspector.plot.enabled[] = true
@@ -416,10 +416,12 @@ end
 function DataInspector(scene::Scene; kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f0(0)
-
-    plot = _inspector!(parent, 1, show_axis=false; kwargs...)
-    plot._root_px_projection[] = camera(parent).pixel_space[]
-    inspector = DataInspector(parent, scene, AbstractPlot[], plot)
+    plot = _inspector!(
+        parent, 1, 
+        show_axis=false, _root_px_projection = camera(parent).pixel_space; 
+        kwargs...
+    )
+    inspector = DataInspector(parent, AbstractPlot[], plot, plot)
 
     e = events(parent)
     onany(e.mouseposition, e.scroll) do mp, _
@@ -470,20 +472,10 @@ end
     
 
 
-# updates hovered_scene and clears any temp plots
-function update_hovered!(inspector::DataInspector, scene)
-    if scene != inspector.hovered_scene
-        if !isempty(inspector.temp_plots) && (inspector.hovered_scene !== nothing)
-            clear_temporary_plots!(inspector)
-        end
-        inspector.hovered_scene = scene
-    end
-end
-
 # clears temporary plots (i.e. bboxes)
 function clear_temporary_plots!(inspector::DataInspector)
     for p in inspector.temp_plots
-        delete!(inspector.hovered_scene, p)
+        delete!(parent_scene(p), p)
     end
     empty!(inspector.temp_plots)
 end
@@ -516,7 +508,6 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     @info "Scatter"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
 
     proj_pos = shift_project(scene, to_ndim(Point3f0, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -538,7 +529,6 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     @info "MeshScatter"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
         
     proj_pos = shift_project(scene, to_ndim(Point3f0, plot[1][][idx], 0))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -550,13 +540,14 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
         to_rotation(plot.rotations[], idx)
     )
 
-    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect3D)
+    if inspector.selection != plot
         clear_temporary_plots!(inspector)
         p = wireframe!(
             scene, a._bbox3D, model = a._model, color = a.color, 
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
+        inspector.selection = plot
     end
 
     a._display_text[] = position2string(plot[1][][idx])
@@ -575,7 +566,6 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     @info "Lines, LineSegments"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
 
     # cast ray from cursor into screen, find closest point to line
     p0, p1 = plot[1][][idx-1:idx]
@@ -602,21 +592,19 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     @info "Mesh"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
         
     bbox = boundingbox(plot)
     min, max = extrema(bbox)
     proj_pos = shift_project(scene, to_ndim(Point3f0, 0.5(max .+ min), 0))
 
-    a._model[] = plot.model[]
-
-    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect3D)
+    if inspector.selection != plot
         clear_temporary_plots!(inspector)
         p = wireframe!(
-            scene, a._bbox3D, model = a._model, color = a.color, 
+            scene, a._bbox3D, color = a.color, 
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
+        inspector.selection = plot
     end
 
     a._text_position[] = Point2f0(maximum(pixelarea(scene)[]))
@@ -637,7 +625,6 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     @info "Surface"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
             
     proj_pos = Point2f0(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
@@ -718,7 +705,7 @@ function show_imagelike(inspector, plot, name)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if plot.interpolate[]
-        if isempty(inspector.temp_plots) || !(inspector.temp_plots[1] isa Scatter)
+        if inspector.selection != plot || !(inspector.temp_plots[1] isa Scatter)
             clear_temporary_plots!(inspector)
             p = scatter!(
                 scene, map(p -> [p], a._position), color = a._color, 
@@ -729,13 +716,11 @@ function show_imagelike(inspector, plot, name)
             )
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
+            inspector.selection = plot
         end
     else
         a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j)
-        if isempty(inspector.temp_plots) || 
-            !(inspector.temp_plots[1] isa Wireframe) ||
-            !(inspector.temp_plots[1][1][] isa Rect2D)
-
+        if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2D)
             clear_temporary_plots!(inspector)
             p = wireframe!(
                 scene, a._bbox2D, model = a._model, color = a.color, 
@@ -743,6 +728,7 @@ function show_imagelike(inspector, plot, name)
             )
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
+            inspector.selection = plot
         end
     end
 
@@ -764,9 +750,9 @@ function _interpolated_getindex(xs, ys, img, mpos)
     i = clamp((x - x0) / (x1 - x0) * size(img, 1) + 0.5, 1, size(img, 1))
     j = clamp((y - y0) / (y1 - y0) * size(img, 2) + 0.5, 1, size(img, 2))
     l = clamp(floor(Int, i), 1, size(img, 1)-1); 
-    r = clamp(ceil(Int, i), 2, size(img, 1))
+    r = clamp(i+1, 2, size(img, 1))
     b = clamp(floor(Int, j), 1, size(img, 2)-1); 
-    t = clamp(ceil(Int, j), 2, size(img, 2))
+    t = clamp(j+1, 2, size(img, 2))
     z = ((r-i) * img[l, b] + (i-l) * img[r, b]) * (t-j) +
         ((r-i) * img[l, t] + (i-l) * img[r, t]) * (j-b)
 
@@ -812,11 +798,12 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Mesh)
     return show_data(inspector, plot, div(idx-1, 4)+1)
 end
 
+
+
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
     @info "BarPlot"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
         
     pos = plot[1][][idx]
     proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
@@ -824,7 +811,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a._model[] = plot.model[]
     a._bbox2D[] = plot.plots[1][1][][idx]
 
-    if isempty(inspector.temp_plots) || !(inspector.temp_plots[1][1][] isa Rect2D)
+    if inspector.selection != plot
         clear_temporary_plots!(inspector)
         p = wireframe!(
             scene, a._bbox2D, model = a._model, color = a.color, 
@@ -832,6 +819,7 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
         )
         translate!(p, Vec3f0(0, 0, a.depth[]))
         push!(inspector.temp_plots, p)
+        inspector.selection = plot
     end
 
     a._display_text[] = position2string(pos)
@@ -851,7 +839,6 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     @info "Arrows"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
         
     pos = plot[1][][idx]
     proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
@@ -902,7 +889,6 @@ end
 function show_poly(inspector, plot, idx, source)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
-    update_hovered!(inspector, scene)
         
     idx = vertexindex2poly(plot[1][], idx)
     m = GeometryBasics.mesh(plot[1][][idx])
