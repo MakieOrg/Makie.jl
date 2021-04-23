@@ -127,7 +127,9 @@ function ray_triangle_intersection(A, B, C, origin, dir)
     A1 = 0.5 * dot(cross(BO, CO), dir)
     A2 = 0.5 * dot(cross(CO, AO), dir)
     A3 = 0.5 * dot(cross(AO, BO), dir)
-    if (A1 > 0 && A2 > 0 && A3 > 0) || (A1 < 0 && A2 < 0 && A3 < 0)
+
+    e = 1e-3
+    if (A1 > -e && A2 > -e && A3 > -e) || (A1 < e && A2 < e && A3 < e)
         Point3f0((A1 * A .+ A2 * B .+ A3 * C) / (A1 + A2 + A3))
     else
         Point3f0(NaN)
@@ -325,8 +327,7 @@ function plot!(plot::_Inspector)
     # tooltip background and frame 
     background = mesh!(
         plot, bbox, color = background_color, shading = false, 
-        visible = false, #_visible, 
-        show_axis = false, inspectable = false,
+        visible = _visible, show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
     outline = wireframe!(
@@ -633,27 +634,33 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
     ys = plot[2][]
     zs = plot[3][]
     w, h = size(zs)
-    i = mod1(idx, w); j = div(idx-1, w)
+    _i = mod1(idx, w); _j = div(idx-1, w)
 
+    # This isn't the most accurate so we include some neighboring faces
     origin, dir = view_ray(scene)
     pos = Point3f0(NaN)
+    for i in _i-1:_i+1, j in _j-1:_j+1
+        (1 <= i <= w) && (1 <= j < h) || continue
 
-    if i - 1 > 0
-        pos = ray_triangle_intersection(
-            surface_pos(xs, ys, zs, i, j),
-            surface_pos(xs, ys, zs, i-1, j),
-            surface_pos(xs, ys, zs, i, j+1),
-            origin, dir
-        )
-    end
+        if i - 1 > 0
+            pos = ray_triangle_intersection(
+                surface_pos(xs, ys, zs, i, j),
+                surface_pos(xs, ys, zs, i-1, j),
+                surface_pos(xs, ys, zs, i, j+1),
+                origin, dir
+            )
+        end
 
-    if i + 1 <= w && isnan(pos)
-        pos = ray_triangle_intersection(
-            surface_pos(xs, ys, zs, i, j),
-            surface_pos(xs, ys, zs, i, j+1),
-            surface_pos(xs, ys, zs, i+1, j+1),
-            origin, dir
-        )
+        if i + 1 <= w && isnan(pos)
+            pos = ray_triangle_intersection(
+                surface_pos(xs, ys, zs, i, j),
+                surface_pos(xs, ys, zs, i, j+1),
+                surface_pos(xs, ys, zs, i+1, j+1),
+                origin, dir
+            )
+        end
+
+        isnan(pos) || break
     end
 
     if !isnan(pos)
@@ -665,6 +672,10 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
         a._visible[] = true
         a._text_padding[] = Vec4f0(5, 5, 4, 4)
         a._tooltip_offset[] = a.tooltip_offset[]
+    else
+        a._bbox_visible[] = false
+        a._px_bbox_visible[] = false
+        a._visible[] = false
     end
 
     return true
