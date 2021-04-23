@@ -278,9 +278,9 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         end
 
         atlas = get_texture_atlas()
-        _keys = (:color, :strokecolor, :rotation)
+        keys = (:color, :strokecolor, :rotation)
 
-        signals = map(_keys) do key
+        signals = map(keys) do key
             return lift(positions, x[key]) do pos, attr
                 str = string_obs[]
                 if str isa AbstractVector
@@ -303,27 +303,24 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             end
         end
 
-        filtered = gl_attributes
         filter!(gl_attributes) do (k, v)
-            # These are liftkeys except:
-            # - nan_color, _glyphlayout, thickness, nan_color are also filtered
-            # - model is let through
+            # These are liftkeys without model but with _glyphlayout
             !(k in (
                 :position, :space, :justification, :font, :_glyphlayout, :align, 
-                :textsize, :nan_color, :rotation, :lineheight, :thickness, 
-        ))
+                :textsize, :rotation, :lineheight, 
+            ))
         end
-        filtered[:color] = signals[1]
-        filtered[:stroke_color] = signals[2]
-        filtered[:rotation] = signals[3]
-        filtered[:scale] = scale
-        filtered[:offset] = offset
-        filtered[:uv_offset_width] = uv_offset_width
-        filtered[:distancefield] = get_texture!(atlas)
+        gl_attributes[:color] = signals[1]
+        gl_attributes[:stroke_color] = signals[2]
+        gl_attributes[:rotation] = signals[3]
+        gl_attributes[:scale] = scale
+        gl_attributes[:offset] = offset
+        gl_attributes[:uv_offset_width] = uv_offset_width
+        gl_attributes[:distancefield] = get_texture!(atlas)
         
 
-        robj = visualize((DISTANCEFIELD, positions), Style(:default), filtered)
-        
+        robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
+
         # Draw text in screenspace
         if x.space[] == :screen
             robj[:view] = Observable(Mat4f0(I))
