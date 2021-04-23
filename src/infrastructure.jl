@@ -148,7 +148,7 @@ function cairo_draw(screen::CairoScreen, scene::Scene)
 
     Cairo.save(screen.context)
     for p in allplots
-        to_value(get(p, :visible, true)) == true || continue
+        to_value(get(p, :visible, true)) || continue
         # only prepare for scene when it changes
         # this should reduce the number of unnecessary clipping masks etc.
         if p.parent != last_scene
@@ -227,7 +227,7 @@ function draw_plot(scene::Scene, screen::CairoScreen, primitive::Combined)
         draw_atomic(scene, screen, primitive)
     else
         for plot in primitive.plots
-            if to_value(get(primitive, :visible, true)) == true
+            if to_value(get(primitive, :visible, true))
                 draw_plot(scene, screen, plot)
             end
         end
