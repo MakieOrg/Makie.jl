@@ -4,18 +4,18 @@
 vec2string(p::StaticVector{2}) = @sprintf("(%0.3f, %0.3f)", p[1], p[2])
 vec2string(p::StaticVector{3}) = @sprintf("(%0.3f, %0.3f, %0.3f)", p[1], p[2], p[3])
 
-position2string(p::StaticVector{2}) = @sprintf(" x: %0.6f\n y: %0.6f", p[1], p[2])
-position2string(p::StaticVector{3}) = @sprintf(" x: %0.6f\n y: %0.6f\n z: %0.6f", p[1], p[2], p[3])
+position2string(p::StaticVector{2}) = @sprintf("x: %0.6f\ny: %0.6f", p[1], p[2])
+position2string(p::StaticVector{3}) = @sprintf("x: %0.6f\ny: %0.6f\nz: %0.6f", p[1], p[2], p[3])
 
 function bbox2string(bbox::Rect3D)
     p0 = origin(bbox)
     p1 = p0 .+ widths(bbox)
     @sprintf(
         """
-         Bounding Box:
-          x: (%0.3f, %0.3f)
-          y: (%0.3f, %0.3f)
-          z: (%0.3f, %0.3f)
+        Bounding Box:
+         x: (%0.3f, %0.3f)
+         y: (%0.3f, %0.3f)
+         z: (%0.3f, %0.3f)
         """,
         p0[1], p1[1], p0[2], p1[2], p0[3], p1[3]
     )
@@ -26,9 +26,9 @@ function bbox2string(bbox::Rect2D)
     p1 = p0 .+ widths(bbox)
     @sprintf(
         """
-         Bounding Box:
-          x: (%0.3f, %0.3f)
-          y: (%0.3f, %0.3f)
+        Bounding Box:
+         x: (%0.3f, %0.3f)
+         y: (%0.3f, %0.3f)
         """,
         p0[1], p1[1], p0[2], p1[2]
     )
@@ -191,14 +191,16 @@ end
 ### Text bounding box
 ########################################
 
-function Bbox_from_glyphlayout(gl)
-    bbox = FRect3D(
-        gl.origins[1] .+ Vec3f0(origin(gl.bboxes[1])..., 0), 
-        Vec3f0(widths(gl.bboxes[1])..., 0)
-    )
-    for (o, bb) in zip(gl.origins[2:end], gl.bboxes[2:end])
-        bbox2 = FRect3D(o .+ Vec3f0(origin(bb)..., 0), Vec3f0(widths(bb)..., 0))
-        bbox = union(bbox, bbox2)
+function Bbox_from_glyphlayout(text, gl)
+    bbox = FRect2D(0, 0, 0, 0)
+    for (c, o, bb) in zip(text, gl.origins, gl.bboxes)
+        c == '\n' && continue
+        bbox2 = FRect2D(o[Vec(1,2)] .+ origin(bb), widths(bb))
+        if bbox == FRect2D(0, 0, 0, 0)
+            bbox = bbox2
+        else
+            bbox = union(bbox, bbox2)
+        end
     end
     bbox
 end
@@ -226,14 +228,13 @@ end
     # Attributes starting with _ are modified internally
     Attributes(
         # Text
-        text_padding = Vec4f0(0, 0, 4, 4), # LRBT
+        text_padding = Vec4f0(5, 5, 3, 3), # LRBT
         text_align = (:left, :bottom),
         textcolor = :black, 
         textsize = 20, 
         font = "Dejavu Sans",
         _display_text = " ",
         _text_position = Point2f0(0),
-        _text_padding = Vec4f0(0),
 
         # Background
         background_color = :white,
@@ -268,7 +269,7 @@ end
 
 function plot!(plot::_Inspector)
     @extract plot (
-        _display_text, _text_position, _text_padding, text_align, textcolor, 
+        _display_text, _text_position, text_padding, text_align, textcolor, 
         textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
         _bbox2D, _px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
@@ -283,14 +284,15 @@ function plot!(plot::_Inspector)
         position = _aligned_text_position, visible = _visible, align = text_align,
         color = textcolor, font = font, textsize = textsize, show_axis = false,
         inspectable = false, 
-        # requires some changes in GLMakie but should make this work on any scene
-        # space = :data,
-        # projection = _root_px_projection, view = id, projectionview = _root_px_projection
+        # with https://github.com/JuliaPlots/GLMakie.jl/pull/183 this should
+        # allow the tooltip to work in any scene.
+        space = :data,
+        projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
 
     # compute text boundingbox and adjust _aligned_text_position
-    bbox = map(text_plot._glyphlayout, text_plot.position, _text_padding) do gl, pos, pad
-        rect = FRect2D(Bbox_from_glyphlayout(gl))
+    bbox = map(text_plot._glyphlayout, text_plot.position, text_padding) do gl, pos, pad
+        rect = Bbox_from_glyphlayout(_display_text[], gl)
         l, r, b, t = pad
         FRect2D(
             origin(rect) .+ Vec2f0(pos[1] - l, pos[2] - b), 
@@ -539,7 +541,6 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     a._px_bbox_visible[] = true
     a._bbox_visible[] = false
     a._visible[] = true
-    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -575,7 +576,6 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     a._px_bbox_visible[] = false
     a._bbox_visible[] = true
     a._visible[] = true
-    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -600,7 +600,6 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     a._px_bbox_visible[] = true
     a._bbox_visible[] = false
     a._visible[] = true
-    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -631,7 +630,6 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     a._px_bbox_visible[] = false
     a._bbox_visible[] = true
     a._visible[] = true
-    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -685,7 +683,6 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
         a._bbox_visible[] = false
         a._px_bbox_visible[] = true
         a._visible[] = true
-        a._text_padding[] = Vec4f0(5, 5, 4, 4)
     else
         a._bbox_visible[] = false
         a._px_bbox_visible[] = false
@@ -766,7 +763,6 @@ function show_imagelike(inspector, plot, name)
     a._bbox_visible[] = true
     a._px_bbox_visible[] = false
     a._visible[] = true
-    a._text_padding[] = Vec4f0(5, 5, 4, 4)
     return true
 end
 
@@ -855,7 +851,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a._bbox_visible[] = true
     a._px_bbox_visible[] = false
     a._visible[] = true
-    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -883,7 +878,6 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     a._bbox_visible[] = false
     a._px_bbox_visible[] = true
     a._visible[] = true
-    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -899,7 +893,6 @@ function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
 
     a._text_position[] = Point2f0(mouseposition_px(inspector.root))
     a._display_text[] = @sprintf("level = %0.3f", level)
-    a._text_padding[] = Vec4f0(5, 5, 4, 4)
     return true
 end
 
