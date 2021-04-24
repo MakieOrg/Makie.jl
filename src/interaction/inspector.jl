@@ -259,7 +259,6 @@ end
         _model = Mat4f0(1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1),
         _visible = true,
         _tooltip_align = (:center, :top),
-        _tooltip_offset = Vec2f0(20),
         _bbox3D = FRect3D(Vec3f0(0), Vec3f0(0)),
         _bbox_visible = true,
         _position = Point3f0(0),
@@ -273,7 +272,7 @@ function plot!(plot::_Inspector)
         textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
         _bbox2D, _px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
-        _tooltip_align, _tooltip_offset,
+        _tooltip_align, tooltip_offset,
         _root_px_projection, depth, _visible
     )
 
@@ -298,7 +297,7 @@ function plot!(plot::_Inspector)
             widths(rect) .+ Vec2f0(l + r, b + t)
         )
     end
-    onany(_text_position, _tooltip_align, _tooltip_offset, bbox) do pos, align, offset, bbox
+    onany(_text_position, _tooltip_align, tooltip_offset, bbox) do pos, align, offset, bbox
         halign, valign = align
         ox, oy = offset
         wx, wy = widths(bbox)
@@ -326,7 +325,8 @@ function plot!(plot::_Inspector)
 
     # tooltip background and frame 
     background = mesh!(
-        plot, bbox, color = background_color, shading = false, 
+        plot, bbox, color = background_color, shading = false, #fxaa = false, 
+        # TODO with fxaa here the text above becomes seethrough on a heatmap
         visible = _visible, show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
@@ -520,7 +520,6 @@ function show_data(inspector::DataInspector, plot::Scatter, idx)
     a._bbox_visible[] = false
     a._visible[] = true
     a._text_padding[] = a.text_padding[]
-    a._tooltip_offset[] = a.tooltip_offset[]
 
     return true
 end
@@ -557,7 +556,6 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     a._bbox_visible[] = true
     a._visible[] = true
     a._text_padding[] = a.text_padding[]
-    a._tooltip_offset[] = a.tooltip_offset[]
 
     return true
 end
@@ -583,7 +581,6 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     a._bbox_visible[] = false
     a._visible[] = true
     a._text_padding[] = a.text_padding[]
-    a._tooltip_offset[] = a.tooltip_offset[]
 
     return true
 end
@@ -595,8 +592,8 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     scene = parent_scene(plot)
         
     bbox = boundingbox(plot)
-    min, max = extrema(bbox)
-    proj_pos = shift_project(scene, to_ndim(Point3f0, 0.5(max .+ min), 0))
+    proj_pos = Point2f0(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, proj_pos)
 
     if inspector.selection != plot
         clear_temporary_plots!(inspector)
@@ -608,15 +605,13 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
         inspector.selection = plot
     end
 
-    a._text_position[] = Point2f0(maximum(pixelarea(scene)[]))
-    a._tooltip_align[] = (:left, :bottom)
+    a._text_position[] = proj_pos
     a._display_text[] = bbox2string(bbox)
     a._bbox3D[] = bbox
     a._px_bbox_visible[] = false
     a._bbox_visible[] = true
     a._visible[] = true
-    a._text_padding[] = Vec4f0(0, 0, 6, 4)
-    a._tooltip_offset[] = Vec2f0(5)
+    a._text_padding[] = a.text_padding[]
 
     return true
 end
@@ -671,7 +666,6 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
         a._px_bbox_visible[] = true
         a._visible[] = true
         a._text_padding[] = Vec4f0(5, 5, 4, 4)
-        a._tooltip_offset[] = a.tooltip_offset[]
     else
         a._bbox_visible[] = false
         a._px_bbox_visible[] = false
@@ -748,7 +742,6 @@ function show_imagelike(inspector, plot, name)
     a._px_bbox_visible[] = false
     a._visible[] = true
     a._text_padding[] = Vec4f0(5, 5, 4, 4)
-    a._tooltip_offset[] = a.tooltip_offset[]
     return true
 end
 
@@ -838,7 +831,6 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a._px_bbox_visible[] = false
     a._visible[] = true
     a._text_padding[] = a.text_padding[]
-    a._tooltip_offset[] = a.tooltip_offset[]
 
     return true
 end
@@ -853,20 +845,20 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
         
     pos = plot[1][][idx]
     proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
-    update_tooltip_alignment!(inspector, proj_pos)
-    
+
+    mpos = Point2f0(mouseposition_px(inspector.root))
+    update_tooltip_alignment!(inspector, mpos)
+
     p = vec2string(pos)
     v = vec2string(plot[2][][idx])
 
-    a._text_position[] = Point2f0(maximum(pixelarea(scene)[]))
-    a._tooltip_align[] = (:left, :bottom)
+    a._text_position[] = mpos
     a._display_text[] = " Position:\n  $p\n Direction\n  $v"
     a._bbox2D[] = FRect2D(proj_pos .- Vec2f0(5), Vec2f0(10))
     a._bbox_visible[] = false
     a._px_bbox_visible[] = true
     a._visible[] = true
     a._text_padding[] = a.text_padding[]
-    a._tooltip_offset[] = Vec2f0(5)
 
     return true
 end
@@ -883,7 +875,6 @@ function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
     a._text_position[] = Point2f0(mouseposition_px(inspector.root))
     a._display_text[] = @sprintf("level = %0.3f", level)
     a._text_padding[] = Vec4f0(5, 5, 4, 4)
-    a._tooltip_offset[] = a.tooltip_offset[]
     return true
 end
 
