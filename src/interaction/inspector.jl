@@ -577,7 +577,7 @@ function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, i
     proj_pos = shift_project(scene, to_ndim(Point3f0, pos, 0))
     update_tooltip_alignment!(inspector, proj_pos)
 
-    a._display_text[] = position2string(pos)
+    a._display_text[] = position2string(typeof(p0)(pos))
     a._bbox2D[] = FRect2D(proj_pos .- 0.5 .* lw .- Vec2f0(5), Vec2f0(lw) .+ Vec2f0(10))
     a._px_bbox_visible[] = true
     a._bbox_visible[] = false
@@ -761,9 +761,9 @@ function _interpolated_getindex(xs, ys, img, mpos)
     i = clamp((x - x0) / (x1 - x0) * size(img, 1) + 0.5, 1, size(img, 1))
     j = clamp((y - y0) / (y1 - y0) * size(img, 2) + 0.5, 1, size(img, 2))
     l = clamp(floor(Int, i), 1, size(img, 1)-1); 
-    r = clamp(i+1, 2, size(img, 1))
+    r = clamp(l+1, 2, size(img, 1))
     b = clamp(floor(Int, j), 1, size(img, 2)-1); 
-    t = clamp(j+1, 2, size(img, 2))
+    t = clamp(b+1, 2, size(img, 2))
     z = ((r-i) * img[l, b] + (i-l) * img[r, b]) * (t-j) +
         ((r-i) * img[l, t] + (i-l) * img[r, t]) * (j-b)
 
