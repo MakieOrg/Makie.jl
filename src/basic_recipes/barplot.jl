@@ -13,7 +13,7 @@ $(ATTRIBUTES)
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         dodge = automatic,
-        x_gap = 0.1,
+        x_gap = 0.2,
         dodge_gap = 0.03,
         marker = Rect,
         stack = automatic,
@@ -54,15 +54,12 @@ function AbstractPlotting.plot!(p::BarPlot)
         x = first.(xy)
         y = last.(xy)
         
-        # compute half-width of bars
+        # compute width of bars
         if width === automatic
             x_unique = unique(filter(isfinite, x))
-            
-            if length(x_unique) == 1
-                width = 1 - 2x_gap
-            else
-                width = (1 - 2x_gap) * mean(diff(sort(x_unique)))
-            end
+            x_diffs = diff(sort(x_unique))
+            minimum_distance = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
+            width = (1 - x_gap) * minimum_distance
         end
 
         # --------------------------------
