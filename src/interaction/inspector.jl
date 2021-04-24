@@ -369,6 +369,26 @@ mutable struct DataInspector
     temp_plots::Vector{AbstractPlot}
     plot::_Inspector
     selection::AbstractPlot
+    obsfuncs::Vector{Any}
+end
+
+
+function DataInspector(scene::Scene, plot::AbstractPlot)
+    x = DataInspector(scene, AbstractPlot[], plot, plot, Any[])
+    # finalizer(cleanup, x) # doesn't get triggered when this is dereferenced
+    x
+end
+
+function cleanup(inspector::DataInspector)
+    off.(inspector.obsfuncs)
+    empty!(inspector.obsfuncs)
+    delete!(inspector.root, inspector.plot)
+    clear_temporary_plots!(inspector)
+    inspector
+end
+
+function Base.delete!(::Union{Scene, Figure}, inspector::DataInspector)
+    cleanup(inspector)
 end
 
 enable!(inspector::DataInspector) = inspector.plot.enabled[] = true
@@ -405,27 +425,23 @@ when you hover over a plot. If you wish to exclude a plot you may set
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the 
     tooltip is always in front.
 """
-function DataInspector(fig::Figure; kwargs...)
-    DataInspector(fig.scene; kwargs...)
+function DataInspector(fig_or_layoutable::Figure; kwargs...)
+    DataInspector(fig_or_layoutable.scene; kwargs...)
 end
-
-function DataInspector(ax; kwargs...)
-    DataInspector(ax.scene; kwargs...)
-end
-
 
 function DataInspector(scene::Scene; kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f0(0)
+
     plot = _inspector!(
         parent, 1, 
         show_axis=false, _root_px_projection = camera(parent).pixel_space; 
         kwargs...
     )
-    inspector = DataInspector(parent, AbstractPlot[], plot, plot)
+    inspector = DataInspector(parent, plot)
 
     e = events(parent)
-    onany(e.mouseposition, e.scroll) do mp, _
+    f = onany(e.mouseposition, e.scroll) do mp, _
         (inspector.plot.enabled[] && is_mouseinside(parent)) || return false
 
         picks = pick_sorted(parent, mp, inspector.plot.range[])
@@ -449,6 +465,9 @@ function DataInspector(scene::Scene; kwargs...)
         end
     end
 
+    append!(inspector.obsfuncs, f)
+    @info "number of obsfuncs: $(length(inspector.obsfuncs))"
+
     inspector
 end
 
@@ -470,11 +489,12 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
         return show_data(inspector, plot, idx, source)
     end
 end
-    
-
 
 # clears temporary plots (i.e. bboxes)
 function clear_temporary_plots!(inspector::DataInspector)
+    for i in length(inspector.obsfuncs):-1:3
+        off(pop!(inspector.obsfuncs))
+    end
     for p in inspector.temp_plots
         delete!(parent_scene(p), p)
     end
@@ -721,6 +741,11 @@ function show_imagelike(inspector, plot, name)
             )
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
+            # Hacky?
+            push!(
+                inspector.obsfuncs, 
+                Observables.ObserverFunction(a._position.listeners[end], a._position, false)
+            )
             inspector.selection = plot
         end
     else
