@@ -59,12 +59,12 @@ function AbstractPlotting.plot!(p::BarPlot)
             x_unique = unique(filter(isfinite, x))
             
             if length(x_unique) == 1
-                width = 1.0
+                width = 1 - 2x_gap
             else
-                width = mean(diff(sort(x_unique)))
+                width = (1 - 2x_gap) * mean(diff(sort(x_unique)))
             end
         end
-        
+
         # --------------------------------
         # ------------ Dodging -----------
         # --------------------------------
@@ -79,9 +79,9 @@ function AbstractPlotting.plot!(p::BarPlot)
 
         n_dodge = maximum(i_dodge)
 
-        dodge_width = scale_width(x_gap, dodge_gap, n_dodge)
-        
-        shft = shift_dodge.(1:n_dodge, x_gap, dodge_gap, n_dodge)
+        dodge_width = scale_width(dodge_gap, n_dodge)
+
+        shifts = shift_dodge.(i_dodge, dodge_width, dodge_gap)
 
         # --------------------------------
         # ----------- Stacking -----------
@@ -102,7 +102,7 @@ function AbstractPlotting.plot!(p::BarPlot)
             ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
         end
         
-        rects = bar_rectangle.(x .+ width .* shft[i_dodge], y, width .* dodge_width, fillto)
+        rects = @. bar_rectangle(x + width * shifts, y, width * dodge_width, fillto)
         return in_y_direction ? rects : flip.(rects)
     end
 
@@ -112,12 +112,10 @@ function AbstractPlotting.plot!(p::BarPlot)
     )
 end
 
-scale_width(x_gap, dodge_gap, n_dodge) = ((1 - x_gap) - n_dodge * dodge_gap) / n_dodge
+scale_width(dodge_gap, n_dodge) = (1 - (n_dodge - 1) * dodge_gap) / n_dodge
 
-function shift_dodge(i, x_gap, dodge_gap, n_dodge)
-    wdt = scale_width(x_gap, dodge_gap, n_dodge)
-
-    - (1/2) + (i-1)*(wdt + dodge_gap) + (0.5 * (wdt + x_gap + dodge_gap))
+function shift_dodge(i, dodge_width, dodge_gap)
+    (dodge_width - 1) / 2 + (i - 1) * (dodge_width + dodge_gap)
 end
 
 function stack_grouped_from_to(i_stack, y, grp)
