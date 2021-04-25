@@ -262,14 +262,14 @@ value_or_first(x) = x
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         string_obs = x[1]
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space)
+        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(string_obs, scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
+        gl_text = lift(string_obs, scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space, offset
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
-            args = @get_attribute x (position, textsize, font, align, rotation)
+            args = @get_attribute x (position, textsize, font, align, rotation, offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
-            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res)
+            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res, offset)
         end
 
         # unpack values from the one signal:
