@@ -13,6 +13,7 @@ $(ATTRIBUTES)
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         dodge = automatic,
+        n_dodge = automatic,
         x_gap = 0.2,
         dodge_gap = 0.03,
         marker = Rect,
@@ -49,11 +50,11 @@ function AbstractPlotting.plot!(p::BarPlot)
         end
     end
 
-    bars = lift(p[1], p.fillto, p.width, p.dodge, p.x_gap, p.dodge_gap, p.stack, in_y_direction) do xy, fillto, width, dodge, x_gap, dodge_gap, stack, in_y_direction
+    bars = lift(p[1], p.fillto, p.width, p.dodge, p.n_dodge, p.x_gap, p.dodge_gap, p.stack, in_y_direction) do xy, fillto, width, dodge, n_dodge, x_gap, dodge_gap, stack, in_y_direction
         
         x = first.(xy)
         y = last.(xy)
-        
+
         # compute width of bars
         if width === automatic
             x_unique = unique(filter(isfinite, x))
@@ -74,7 +75,7 @@ function AbstractPlotting.plot!(p::BarPlot)
             ArgumentError("The keyword argument `dodge` currently supports only `AbstractVector{<: Integer}`") |> throw
         end
 
-        n_dodge = maximum(i_dodge)
+        n_dodge === automatic && (n_dodge = maximum(i_dodge))
 
         dodge_width = scale_width(dodge_gap, n_dodge)
 
