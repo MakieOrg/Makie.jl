@@ -102,3 +102,28 @@ end
 
 scene
 ```
+
+The offset attribute can be used to shift text away from its position.
+This is especially useful with `space = :screen`, for example to place text together with barplots.
+You can specify the end of the barplots in data coordinates, and then offset the text a little bit to the left.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure(resolution = (800, 600))
+
+horsepower = [52, 78, 80, 112, 140]
+cars = ["Kia", "Mini", "Honda", "Mercedes", "Ferrari"]
+
+ax = Axis(f[1, 1], xlabel = "horse power")
+tightlimits!(ax, Left())
+hideydecorations!(ax)
+
+barplot!(horsepower, direction = :x)
+text!(cars, position = Point.(horsepower, 1:5), align = (:right, :center),
+    offset = (-20, 0), color = :white)
+
+f
+```

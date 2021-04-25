@@ -231,14 +231,17 @@ function glyph_positions(str::AbstractString, font_per_char, fontscale_px, halig
         reduce(vcat, map(line -> [l.hadvance for l in line], lineinfos)))
 end
 
-function preprojected_glyph_arrays(string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout, font, textsize, space::Symbol, projview, resolution)
+function preprojected_glyph_arrays(string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout, font, textsize, space::Symbol, projview, resolution, offset::VecTypes, transfunc)
+
+    offset = to_ndim(Point3f0, offset, 0)
+    pos3f0 = to_ndim(Point3f0, position, 0)
 
     atlas = get_texture_atlas()
     if space == :data
-        positions = glyphlayout.origins .+ to_ndim(Point3f0, position, 0)
+        positions = apply_transform(transfunc, [pos3f0 + offset + o for o in glyphlayout.origins])
     elseif space == :screen
-        projected = AbstractPlotting.project(projview, resolution, to_ndim(Point3f0, position, 0))
-        positions = glyphlayout.origins .+ to_ndim(Point3f0, projected, 0)
+        projected = AbstractPlotting.project(projview, resolution, apply_transform(transfunc, pos3f0))
+        positions = [to_ndim(Point3f0, projected, 0) + offset + o for o in glyphlayout.origins]
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
@@ -255,19 +258,36 @@ function preprojected_glyph_arrays(string::String, position::VecTypes, glyphlayo
     return positions, offsets, uv, scales
 end
 
-function preprojected_glyph_arrays(strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font, textsize, space::Symbol, projview, resolution)
+
+function preprojected_glyph_arrays(strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font, textsize, space::Symbol, projview, resolution, offset, transfunc)
+
+    if offset isa VecTypes
+        offset = [to_ndim(Point3f0, offset, 0)]
+    end
 
     megastring = join(strings, "")
 
     if space == :data
-        allpos = map(positions, glyphlayouts) do pos, glyphlayout::AbstractPlotting.Glyphlayout
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offs
             p = to_ndim(Point3f0, pos, 0)
-            [p + o for o in glyphlayout.origins]
+            apply_transform(
+                transfunc,
+                [p .+ to_ndim(Point3f0, offs, 0) .+ o for o in glyphlayout.origins]
+            )
         end
     elseif space == :screen
-        allpos = map(positions, glyphlayouts) do pos, glyphlayout::AbstractPlotting.Glyphlayout
-            projected = to_ndim(Point3f0, AbstractPlotting.project(projview, resolution, to_ndim(Point3f0, pos, 0)), 0)
-            return [projected .+ o for o in glyphlayout.origins]
+        allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offs
+            projected = to_ndim(
+                Point3f0,
+                AbstractPlotting.project(
+                    projview,
+                    resolution,
+                    apply_transform(transfunc, to_ndim(Point3f0, pos, 0))
+                ),
+                0)
+
+            return [projected .+ to_ndim(Point3f0, offs, 0) + o
+                        for o in glyphlayout.origins]
         end
     else
         error("Unknown space $space, only :data or :screen allowed")
