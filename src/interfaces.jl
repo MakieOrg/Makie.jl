@@ -275,6 +275,7 @@ $(ATTRIBUTES)
         justification = automatic,
         lineheight = 1.0,
         space = :screen, # or :data
+        offset = Point2f0(0, 0),
         _glyphlayout = nothing,
     )
 end
