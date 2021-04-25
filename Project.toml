@@ -1,7 +1,7 @@
 name = "CairoMakie"
 uuid = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 author = ["Simon Danisch <sdanisch@gmail.com>"]
-version = "0.4.4"
+version = "0.4.5"
 
 [deps]
 AbstractPlotting = "537997a7-5e4e-5d89-9595-2241ea00577e"
@@ -15,7 +15,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 
 [compat]
-AbstractPlotting = "0.16.3, 0.17"
+AbstractPlotting = "0.18"
 Cairo = "1.0.4"
 Colors = "0.10, 0.11, 0.12"
 FFTW = "1"

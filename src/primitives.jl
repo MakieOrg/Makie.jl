@@ -324,31 +324,33 @@ end
 
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, rotation, model, space))
+    @get_attribute(primitive, (textsize, color, font, rotation, model, space, offset))
     txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
     # use cached glyph info
     glyphlayouts = primitive._glyphlayout[]
 
-    draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font, rotation, model,  space)
+    draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font,
+        rotation, model, space, offset)
 
     nothing
 end
 
-function draw_string(scene, ctx, strings::AbstractArray, positions::AbstractArray, glyphlayouts, textsize, color, font, rotation, model::SMatrix, space)
+function draw_string(scene, ctx, strings::AbstractArray, positions::AbstractArray, glyphlayouts, textsize, color, font, rotation, model::SMatrix, space, offset)
 
     # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
     broadcast_foreach(strings, positions, glyphlayouts, textsize, color, font, rotation,
-        Ref(model), space) do str, pos, glayout, ts, c, f, ro, mo, sp
+        Ref(model), space, offset) do str, pos, glayout, ts, c, f, ro, mo, sp, off
 
-        draw_string(scene, ctx, str, pos, glayout, ts, c, f, ro, mo, sp)
+        draw_string(scene, ctx, str, pos, glayout, ts, c, f, ro, mo, sp, off)
     end
 end
 
-function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space)
+function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space, offset)
 
     glyphoffsets = glyphlayout.origins
 
+    p3_offset = to_ndim(Point3f0, offset, 0)
 
     Cairo.save(ctx)
     cairoface = set_ft_font(ctx, font)
@@ -365,7 +367,7 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             # and then projected
 
             # glyph position in data coordinates (offset has rotation applied already)
-            gpos_data = to_ndim(Point3f0, position, 0) .+ goffset
+            gpos_data = to_ndim(Point3f0, position, 0) .+ goffset .+ p3_offset
 
             scale3 = textsize isa Number ? Point3f0(textsize, textsize, 0) : to_ndim(Point3f0, textsize, 0)
 
@@ -406,7 +408,7 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             glyphpos = project_position(
                 scene,
                 position,
-                Mat4f0(I)) .+ p3_to_p2(goffset) .* (1, -1) # flip for Cairo
+                Mat4f0(I)) .+ (p3_to_p2(goffset .+ p3_offset)) .* (1, -1) # flip for Cairo
             # and the scale is just taken as is
             scale = length(textsize) == 2 ? textsize : SVector(textsize, textsize)
 
