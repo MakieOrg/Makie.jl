@@ -239,11 +239,11 @@ function zoom!(scene, point, zoom_step, shift_lookat::Bool)
         if projectiontype == Perspective
             ray_dir *= norm(dir)
         end
-        cam.eyeposition[] = eyeposition + (ray_dir - dir) * 0.1f0 * zoom_step
-        cam.lookat[] = lookat + zoom_step * 0.1f0 * ray_dir
+        cam.eyeposition[] = eyeposition + (ray_dir - dir) * (1f0 - 0.9f0 ^ zoom_step)
+        cam.lookat[] = lookat + (1f0 - 0.9f0 ^ zoom_step) * ray_dir
     else
         # Rotations need more extreme eyeposition shifts
-        cam.eyeposition[] = eyeposition + (ray_dir - dir * 0.1f0) * zoom_step
+        cam.eyeposition[] = eyeposition + sign(zoom_step) * (ray_dir - dir * (1f0 - 0.9f0^abs(zoom_step)))
     end
 
     update_cam!(scene, cam)
