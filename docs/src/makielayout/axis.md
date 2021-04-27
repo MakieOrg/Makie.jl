@@ -8,7 +8,7 @@ CairoMakie.activate!(type = "png")
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.
-Here's how you create one 
+Here's how you create one
 
 ```@example laxis
 using CairoMakie
@@ -571,7 +571,7 @@ You can check which interactions are currently active by calling `interactions(a
 Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
 
-#### `Function` Interaction 
+#### `Function` Interaction
 If `interaction` is a `Function`, it should accept two arguments, which correspond to an event and the axis.
 This function will then be called whenever the axis generates an event.
 
@@ -595,7 +595,7 @@ The function option is most suitable for interactions that don't involve much st
 A more verbose but flexible option is available.
 For this, you define a new type which typically holds all the state variables you're interested in.
 
-Whenever the axis generates an event, it calls `process_interaction(interaction, event, axis)` on all 
+Whenever the axis generates an event, it calls `process_interaction(interaction, event, axis)` on all
 stored interactions.
 By defining `process_interaction` for specific types of interaction and event, you can create more complex interaction patterns.
 
@@ -659,9 +659,27 @@ hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 scene
 ```
 
+### abline!
+
+abline works similar to v/hlines!:
+
+```@docs
+abline!
+```
+
+```@setup 1
+using CairoMakie
+CairoMakie.activate!(type = "png")
+```
+
+```@example 1
+fig, ax, pl = scatter(1:4)
+abline!(ax, 0, 1)
+abline!(ax, 0, 1.5, color = :red, linestyle=:dash, linewidth=2)
+fig
+```
 
 ```@eval
 using GLMakie
 GLMakie.activate!()
 ```
-
