@@ -65,7 +65,7 @@ scatter!(scene, args...; kwargs...) -> ::Scatter
 
 ## FigurePositions
 
-In the background, each `Figure` has a `GridLayout` from GridLayoutBase.jl, which takes care of layouting plot elements nicely.
+In the background, each `Figure` has a `GridLayout` from [GridLayoutBase.jl](https://github.com/jkrumbiegel/GridLayoutBase.jl), which takes care of layouting plot elements nicely.
 For convenience, you can index into a figure multiple times to refer to nested grid positions, which makes it easy to quickly assemble complex layouts.
 
 For example, `fig[1, 2]` creates a `FigurePosition` referring to row 1 and column 2, while `fig[1, 2][3, 1:2]` creates a `FigureSubposition` that refers to row 3 and columns 1 to 2 in a nested GridLayout which is located at row 1 and column 2.
