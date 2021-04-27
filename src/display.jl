@@ -337,9 +337,7 @@ Returns a stream and a buffer that you can use, which don't allocate for new fra
 Use [`recordframe!(stream)`](@ref) to add new video frames to the stream, and
 [`save(path, stream)`](@ref) to save the video.
 """
-function VideoStream(
-        scene::Scene; framerate::Integer = 24
-    )
+function VideoStream(scene::Scene; framerate::Integer = 24)
     #codec = `-codec:v libvpx -quality good -cpu-used 0 -b:v 500k -qmin 10 -qmax 42 -maxrate 500k -bufsize 1000k -threads 8`
     dir = mktempdir()
     path = joinpath(dir, "$(gensym(:video)).mkv")
@@ -443,7 +441,7 @@ function recordframe!(io::VideoStream)
 end
 
 """
-    save(path::String, io::VideoStream; framerate = 24, compression = 20)
+    save(path::String, io::VideoStream[; kwargs...])
 
 Flushes the video stream and converts the file to the extension found in `path`,
 which can be one of the following:
@@ -455,15 +453,27 @@ which can be one of the following:
 `.mp4` and `.mk4` are marginally bigger and `.gif`s are up to
 6 times bigger with the same quality!
 
-The `compression` argument controls the compression ratio; `51` is the
-highest compression, and `0` is the lowest (lossless).
-
 See the docs of [`VideoStream`](@ref) for how to create a VideoStream.
 If you want a simpler interface, consider using [`record`](@ref).
 
+### Keyword Arguments:
+- `framrate = 24`: The target framerate.
+- `compression = 0`: Controls the video compression with `0` being lossless and 
+                     `51` being the highest compression. Note that `compression = 0` 
+                     only works with `.mp4` if `profile = high444`.
+- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to 
+                        `.mp4`. If you have issues playing a video, try 
+                        `profile = "high"` or `profile = "main"`.
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently 
+                              only applies to `.mp4`. Defaults to `yuv444p` for 
+                              `profile = high444`.
 """
-function save(path::String, io::VideoStream;
-              framerate::Int = 24, compression = 20)
+function save(
+        path::String, io::VideoStream; 
+        framerate::Int = 24, compression = 20, profile = "high422", 
+        pixel_format = profile == "high444" ? "yuv444p" : "yuv420p"
+    )
+
     close(io.process)
     wait(io.process)
     p, typ = splitext(path)
@@ -473,7 +483,8 @@ function save(path::String, io::VideoStream;
         mktempdir() do dir
             out = joinpath(dir, "out$(typ)")
             if typ == ".mp4"
-                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+                # ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -pix_fmt yuv420p -c:a libvo_aacenc -b:a 128k -y $out`)
+                ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libx264 -preset slow -r $framerate -profile:v $profile -pix_fmt $pixel_format -c:a libvo_aacenc -b:a 128k -y $out`)
             elseif typ == ".webm"
                 ffmpeg_exe(`-loglevel quiet -i $(io.path) -crf $compression -c:v libvpx-vp9 -threads 16 -b:v 2000k -c:a libvorbis -threads 16 -r $framerate -vf scale=iw:ih -y $out`)
             elseif typ == ".gif"
@@ -496,9 +507,8 @@ function save(path::String, io::VideoStream;
 end
 
 """
-    record(func, figure, path; framerate = 24, compression = 20)
-    record(func, figure, path, iter;
-            framerate = 24, compression = 20, sleep = true)
+    record(func, figure, path; framerate = 24, compression = 20, kwargs...)
+    record(func, figure, path, iter; framerate = 24, compression = 20, kwargs...)
 
 The first signature provides `func` with a VideoStream, which it should call 
 `recordframe!(io)` on when recording a frame.
@@ -519,15 +529,7 @@ extension.  Allowable extensions are:
 6 times bigger with the same quality!
 
 The `compression` argument controls the compression ratio; `51` is the
-highest compression, and `0` is the lowest (lossless).
-
-When `sleep` is set to `true` (the default), AbstractPlotting will
-display the animation in real-time by sleeping in between frames.
-Thus, a 24-frame, 24-fps recording would take one second to record.
-
-When it is set to `false`, frames are rendered as fast as the backend
-can render them.  Thus, a 24-frame, 24-fps recording would usually
-take much less than one second in GLMakie.
+highest compression, and `0` or `1` is the lowest (with `0` being lossless).
 
 Typical usage patterns would look like:
 
@@ -570,10 +572,22 @@ record(fig, "test.gif", 1:255) do i
     p[:color] = RGBf0(i/255, (255 - i)/255, 0) # animate figure
 end
 ```
+
+### Keyword Arguments:
+- `framrate = 24`: The target framerate.
+- `compression = 0`: Controls the video compression with `0` being lossless and 
+                     `51` being the highest compression. Note that `compression = 0` 
+                     only works with `.mp4` if `profile = high444`.
+- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to 
+                        `.mp4`. If you have issues playing a video, try 
+                        `profile = "high"` or `profile = "main"`.
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently 
+                              only applies to `.mp4`. Defaults to `yuv444p` for 
+                              `profile = high444`.
 """
-function record(func, scene, path; framerate::Int = 24, compression = 20)
-    io = Record(func, scene; framerate = framerate)
-    save(path, io; framerate = framerate, compression = compression)
+function record(func, scene, path; framerate::Int = 24, kwargs...)
+    io = Record(func, scene, framerate = framerate)
+    save(path, io, framerate = framerate; kwargs...)
 end
 
 function Record(func, scene; framerate=24)
@@ -582,9 +596,9 @@ function Record(func, scene; framerate=24)
     return io
 end
 
-function record(func, scene, path, iter; framerate::Int = 24, compression = 20)
+function record(func, scene, path, iter; framerate::Int = 24, kwargs...)
     io = Record(func, scene, iter; framerate=framerate)
-    save(path, io, framerate = framerate, compression = compression)
+    save(path, io, framerate = framerate; kwargs...)
 end
 
 function Record(func, scene, iter; framerate::Int = 24)
