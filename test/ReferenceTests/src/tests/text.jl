@@ -199,7 +199,7 @@ end
 end
 
 
-@cell "3D screenspace annotaitons" begin
+@cell "3D screenspace annotations" begin
     positions = RNG.rand(Point3f0, 10)
     fig, ax, p = meshscatter(positions, color=:white)
     text!(
@@ -210,4 +210,41 @@ end
         space = :screen,
         overdraw=false)
     fig
+end
+
+
+@cell "Text offset" begin
+    f = Figure(resolution = (1000, 1000))
+    barplot(f[1, 1], 3:5)
+    text!("bar 1", position = (1, 3), offset = (0, 10), align = (:center, :baseline))
+    text!(["bar 2", "bar 3"], position = [(2, 4), (3, 5)],
+        offset = [(0, -10), (0, -20)],
+        align = (:center, :top), color = :white)
+
+    scatter(f[1, 2], Point2f0(0, 0))
+    text!("hello", position = (0, 0), offset = (40, 0), align = (:left, :center))
+    text!("hello", position = (0, 0), offset = (40, 0), align = (:left, :center),
+        rotation = -pi/4)
+    text!("hello", position = (0, 0), offset = (40, 0), align = (:left, :center),
+        rotation = pi/4)
+
+    scatter(f[2, 1], Point2f0[(0, 0), (10, 0), (20, 10)])
+    text!("ABC", space = :data, offset = (0, 0), color = (:red, 0.3), align = (:left, :baseline))
+    text!("ABC", space = :data, offset = (10, 0), color = (:green, 0.3), align = (:left, :baseline))
+    text!("ABC", space = :data, offset = (20, 10), color = (:blue, 0.3), align = (:left, :baseline))
+
+    LScene(f[2, 2], scenekw = (show_axis = false,))
+    scatter!(Point3f0[(0, 0, 0), (2, 2, 2)])
+    text!("hello", position = Point3f0(1, 1, 1), offset = (10, 10))
+
+    f
+end
+
+
+@cell "Log10 text" begin
+    barplot([1, 10, 100], fillto = 0.1, axis = (yscale = log10,))
+    text!(["bar 1", "bar 2", "bar 3"], position = [(1, 1), (2, 10), (3, 100)],
+        offset = (0, -10), color = :white, align = (:center, :top))
+    tightlimits!(current_axis(), Bottom())
+    current_figure()
 end

@@ -11,7 +11,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene, Mesh)...,
         colorrange = automatic,
-        color = RGBAf0(0.0,0,0,0.2)
+        color = RGBAf0(0,0,0,0.2)
     )
 end
 
