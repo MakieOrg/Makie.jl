@@ -339,6 +339,7 @@ makedocs(
             "assets/favicon.ico",
             "assets/syntaxtheme.css"
         ],
+        sidebar_sitename=false,
     ),
     sitename = "Makie Plotting Ecosystem",
     pages = Any[

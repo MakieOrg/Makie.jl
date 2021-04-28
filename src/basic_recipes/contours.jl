@@ -1,6 +1,6 @@
 
 """
-contour(x, y, z)
+    contour(x, y, z)
 
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
 
@@ -23,7 +23,7 @@ $(ATTRIBUTES)
 end
 
 """
-contour3d(x, y, z)
+    contour3d(x, y, z)
 
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.

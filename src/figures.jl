@@ -27,11 +27,15 @@ if an axis is placed at that position (if not it errors) or it can reference an 
 get_scene(fig::Figure) = fig.scene
 
 const _current_figure = Ref{Union{Nothing, Figure}}(nothing)
+"Returns the current active figure (or the last figure that got created)"
 current_figure() = _current_figure[]
+"Set `fig` as the current active scene"
 current_figure!(fig) = (_current_figure[] = fig)
 
+"Returns the current active axis (or the last axis that got created)"
 current_axis() = current_axis(current_figure())
 current_axis(fig::Figure) = fig.current_axis[]
+"Set `ax` as the current active axis in `fig`"
 function current_axis!(fig::Figure, ax)
     if ax.parent !== fig
         error("This axis' parent is not the given figure")
