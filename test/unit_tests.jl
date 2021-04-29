@@ -29,7 +29,9 @@ end
         fig, ax, splot = scatter(1:N, 1:N)
         limits!(ax, 99990,100000, 99990,100000)
         screen = display(fig)
-        yield()
+        # we don't really need the color buffer here, but this should be the best way right now to really
+        # force a full render to happen
+        GLMakie.colorbuffer(screen)
         # test for pick a single data point (with idx > 65535)
         point_px = project_sp(ax.scene, Point2f0(N-1,N-1))
         plot,idx = pick(ax.scene, point_px)
