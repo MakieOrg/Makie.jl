@@ -243,9 +243,9 @@ end
         outline_linewidth = 2,
 
         # pixel BBox/indicator
-        color = :red,
-        bbox_linewidth = 2,
-        bbox_linestyle = nothing,
+        indicator_color = :red,
+        indicator_linewidth = 2,
+        indicator_linestyle = nothing,
         _bbox2D = FRect2D(Vec2f0(0), Vec2f0(0)),
         _px_bbox_visible = true,
         
@@ -269,12 +269,12 @@ end
 
 function plot!(plot::_Inspector)
     @extract plot (
-        _display_text, _text_position, text_padding, text_align, textcolor, 
-        textsize, font,
+        text_padding, text_align, textcolor, textsize, font,
         background_color, outline_color, outline_linestyle, outline_linewidth,
-        _bbox2D, _px_bbox_visible, bbox_linestyle, bbox_linewidth, color,
-        _tooltip_align, tooltip_offset,
-        _root_px_projection, depth, _visible
+        indicator_linestyle, indicator_linewidth, indicator_color,
+        tooltip_offset, depth, 
+        _display_text, _text_position, _bbox2D, _px_bbox_visible, 
+        _tooltip_align, _root_px_projection, _visible
     )
 
     # tooltip text
@@ -342,8 +342,9 @@ function plot!(plot::_Inspector)
     # pixel-space marker for selected element (not always used)
     px_bbox = wireframe!(
         plot, _bbox2D,
-        color = color, linewidth = bbox_linewidth, linestyle = bbox_linestyle, 
-        visible = _px_bbox_visible, show_axis = false, inspectable = false,
+        color = indicator_color, linewidth = indicator_linewidth, 
+        linestyle = indicator_linestyle, visible = _px_bbox_visible, 
+        show_axis = false, inspectable = false,
         projection = _root_px_projection, view = id, projectionview = _root_px_projection
     )
 
@@ -385,7 +386,7 @@ function cleanup(inspector::DataInspector)
     off.(inspector.obsfuncs)
     empty!(inspector.obsfuncs)
     delete!(inspector.root, inspector.plot)
-    clear_temporary_plots!(inspector)
+    clear_temporary_plots!(inspector, inspector.slection)
     inspector
 end
 
@@ -404,26 +405,27 @@ when you hover over a plot. If you wish to exclude a plot you may set
 `plot.inspectable[] = false`. 
 
 ### Keyword Arguments:
-- `range = 10`: Snapping range for selecting a point on a plot to inspect.
+- `range = 10`: Controls the snapping range for selecting an element of a plot.
 - `enabled = true`: Disables inspection of plots when set to false. Can also be
     adjusted with `enable!(inspector)` and `disable!(inspector)`.
-- `text_padding = Vec4f0(0, 0, 4, 4)`: Padding for the box drawn around the 
+- `text_padding = Vec4f0(5, 5, 3, 3)`: Padding for the box drawn around the 
     tooltip text. (left, right, bottom, top)
-- `text_align = (:left, :bottom)`: Alignment of text within the tooltip.
+- `text_align = (:left, :bottom)`: Alignment of text within the tooltip. This 
+    does not affect the alignment of the tooltip relative to the cursor.
 - `textcolor = :black`: Tooltip text color.
 - `textsize = 20`: Tooltip text size.
 - `font = "Dejavu Sans"`: Tooltip font.
-- `background_color = :white`: Color of the tooltip background.
-- `outline_color = :grey`: Color of the tooltip outline.
-- `outline_linestyle = nothing`: Color of the tooltip outline.
+- `background_color = :white`: Background color of the tooltip.
+- `outline_color = :grey`: Outline color of the tooltip.
+- `outline_linestyle = nothing`: Linestyle of the tooltip outline.
 - `outline_linewidth = 2`: Linewidth of the tooltip outline.
-- `color = :red`: Color of the selection indicator.
-- `bbox_linewidth = 2`: Linewidth of the selection indicator.
-- `bbox_linestyle = nothing`: Linestyle of the selection indicator  
+- `indicator_color = :red`: Color of the selection indicator.
+- `indicator_linewidth = 2`: Linewidth of the selection indicator.
+- `indicator_linestyle = nothing`: Linestyle of the selection indicator  
 - `tooltip_align = (:center, :top)`: Default position of the tooltip relative to
-    the current selection.
-- `tooltip_offset = Vec2f0(20)`: Offset between the indicator position and the 
-    tooltip position. 
+    the cursor or current selection. The real align may adjust to keep the 
+    tooltip in view.
+- `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.  
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the 
     tooltip is always in front.
 """
@@ -492,8 +494,9 @@ function show_data_recursion(inspector, plot::AbstractPlot, idx, source)
     end
 end
 
-# clears temporary plots (i.e. bboxes)
-function clear_temporary_plots!(inspector::DataInspector)
+# clears temporary plots (i.e. bboxes) and update selection
+function clear_temporary_plots!(inspector::DataInspector, plot)
+    inspector.selection = plot
     for i in length(inspector.obsfuncs):-1:3
         off(pop!(inspector.obsfuncs))
     end
@@ -562,13 +565,13 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     )
 
     if inspector.selection != plot
-        clear_temporary_plots!(inspector)
+        clear_temporary_plots!(inspector, plot)
         p = wireframe!(
-            scene, a._bbox3D, model = a._model, color = a.color, 
+            scene, a._bbox3D, model = a._model, color = a.indicator_color, 
+            linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
-        inspector.selection = plot
     end
 
     a._display_text[] = position2string(plot[1][][idx])
@@ -615,13 +618,13 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     update_tooltip_alignment!(inspector, proj_pos)
 
     if inspector.selection != plot
-        clear_temporary_plots!(inspector)
+        clear_temporary_plots!(inspector, plot)
         p = wireframe!(
-            scene, a._bbox3D, color = a.color, 
+            scene, a._bbox3D, color = a.indicator_color, 
+            linewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
-        inspector.selection = plot
     end
 
     a._text_position[] = proj_pos
@@ -728,13 +731,14 @@ function show_imagelike(inspector, plot, name)
 
     if plot.interpolate[]
         if inspector.selection != plot || !(inspector.temp_plots[1] isa Scatter)
-            clear_temporary_plots!(inspector)
+            clear_temporary_plots!(inspector, plot)
             p = scatter!(
                 scene, map(p -> [p], a._position), color = a._color, 
                 visible = a._bbox_visible,
                 show_axis = false, inspectable = false, 
                 marker=:rect, markersize = min(2a.range[]-2, 20),
-                strokecolor = a.color, strokewidth = 1
+                strokecolor = a.indicator_color, 
+                strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
             )
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
@@ -743,19 +747,18 @@ function show_imagelike(inspector, plot, name)
                 inspector.obsfuncs, 
                 Observables.ObserverFunction(a._position.listeners[end], a._position, false)
             )
-            inspector.selection = plot
         end
     else
         a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j)
         if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2D)
-            clear_temporary_plots!(inspector)
+            clear_temporary_plots!(inspector, plot)
             p = wireframe!(
-                scene, a._bbox2D, model = a._model, color = a.color, 
+                scene, a._bbox2D, model = a._model, color = a.indicator_color, 
+                strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
                 visible = a._bbox_visible, show_axis = false, inspectable = false
             )
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
-            inspector.selection = plot
         end
     end
 
@@ -815,7 +818,7 @@ end
 
 
 
-function show_data(inspector::DataInspector, plot::BarPlot, idx, ::LineSegments)
+function show_data(inspector::DataInspector, plot::BarPlot, idx, ::Lines)
     return show_data(inspector, plot, div(idx-1, 6)+1)
 end
 
@@ -837,14 +840,14 @@ function show_data(inspector::DataInspector, plot::BarPlot, idx)
     a._bbox2D[] = plot.plots[1][1][][idx]
 
     if inspector.selection != plot
-        clear_temporary_plots!(inspector)
+        clear_temporary_plots!(inspector, plot)
         p = wireframe!(
-            scene, a._bbox2D, model = a._model, color = a.color, 
+            scene, a._bbox2D, model = a._model, color = a.indicator_color, 
+            strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         translate!(p, Vec3f0(0, 0, a.depth[]))
         push!(inspector.temp_plots, p)
-        inspector.selection = plot
     end
 
     a._display_text[] = position2string(pos)
@@ -916,7 +919,8 @@ function show_poly(inspector, plot, idx, source)
     clear_temporary_plots!(inspector)
     ext = plot[1][][idx].exterior
     p = lines!(
-        scene, ext, color = a.color, 
+        scene, ext, color = a.indicator_color, 
+        strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
         visible = a._visible, show_axis = false, inspectable = false
     )
     translate!(p, Vec3f0(0,0,a.depth[]))
@@ -924,7 +928,8 @@ function show_poly(inspector, plot, idx, source)
     
     for int in plot[1][][idx].interiors
         p = lines!(
-            scene, int, color = a.color, 
+            scene, int, color = a.indicator_color, 
+            strokewidth = a.indicator_linewidth, linestyle = a.indicator_linestyle,
             visible = a._visible, show_axis = false, inspectable = false
         )
         translate!(p, Vec3f0(0,0,a.depth[]))
