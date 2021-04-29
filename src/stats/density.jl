@@ -16,24 +16,6 @@ function convert_arguments(P::PlotFunc, d::KernelDensity.BivariateKDE)
     to_plotspec(ptype, convert_arguments(ptype, d.x, d.y, d.density))
 end
 
-function searchrange(x, xlims)
-    min, max = xlims
-    i1 = searchsortedfirst(x, min)
-    i2 = searchsortedlast(x, max)
-    return i1:i2
-end
-
-function trim_density(k::KernelDensity.UnivariateKDE, xlims)
-    range = searchrange(k.x, xlims)
-    KernelDensity.UnivariateKDE(k.x[range], k.density[range])
-end
-
-function _density(x; trim = false)
-    k = KernelDensity.kde(x)
-    return trim ? trim_density(k, extrema_nan(x)) : k
-end
-
-
 """
     density(values; npoints = 200, offset = 0.0, direction = :x)
 

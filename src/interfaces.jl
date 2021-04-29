@@ -565,6 +565,7 @@ plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
 
 ## specialized definitions for types
+plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector) = Scatter
 plottype(::AbstractMatrix{<: Real}) = Heatmap
