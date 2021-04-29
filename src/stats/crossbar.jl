@@ -26,8 +26,12 @@ It is most commonly used as part of the `boxplot`.
     colormap=theme(scene, :colormap),
     colorrange=automatic,
     orientation=:vertical,
-    # box
-    width=0.8,
+    # box and dodging
+    width = automatic,
+    dodge = automatic,
+    n_dodge = automatic,
+    x_gap = 0.2,
+    dodge_gap = 0.03,
     strokecolor=:white,
     strokewidth=0.0,
     # notch
@@ -45,7 +49,7 @@ It is most commonly used as part of the `boxplot`.
 end
 
 function AbstractPlotting.plot!(plot::CrossBar)
-    args = @extract plot (width, show_notch, notchmin, notchmax, notchwidth, orientation)
+    args = @extract plot (width, dodge, n_dodge, x_gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(
         plot[1],
@@ -53,7 +57,8 @@ function AbstractPlotting.plot!(plot::CrossBar)
         plot[3],
         plot[4],
         args...,
-    ) do x, y, ymin, ymax, bw, show_notch, nmin, nmax, nw, orientation
+    ) do x, y, ymin, ymax, width, dodge, n_dodge, x_gap, dodge_gap, show_notch, nmin, nmax, nw, orientation
+        x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
         show_notch = show_notch && (nmin !== automatic && nmax !== automatic)
 
         # for horizontal crossbars just flip all components
@@ -63,8 +68,8 @@ function AbstractPlotting.plot!(plot::CrossBar)
         end
 
         # make the shape
-        hw = bw ./ 2 # half box width
-        l, m, r = x .- hw, x, x .+ hw
+        hw = boxwidth ./ 2 # half box width
+        l, m, r = x̂ .- hw, x̂, x̂ .+ hw
 
         if show_notch && nmin !== automatic && nmax !== automatic
             if any(nmin < ymin || nmax > ymax)
@@ -89,7 +94,7 @@ function AbstractPlotting.plot!(plot::CrossBar)
             end
             midlines = Pair.(fpoint.(m .- nw .* hw, y), fpoint.(m .+ nw .* hw, y))
         else
-            boxes = frect.(l, ymin, bw, ymax .- ymin)
+            boxes = frect.(l, ymin, boxwidth, ymax .- ymin)
             midlines = Pair.(fpoint.(l, y), fpoint.(r, y))
         end
         return [boxes;], [midlines;]
