@@ -5,7 +5,7 @@ end
 Base.broadcastable(x::Key) = (x,)
 Key(x::Symbol) = Key{x}()
 
-function convert_attribute(::Type{P}, key, arg) where P
+function convert_attribute(::Type{P}, key, arg) where {P}
     return convert_attribute(key, arg)
 end
 
@@ -19,6 +19,6 @@ function convert_attribute(::key"color", c::String)
     return parse(RGBA{Float32}, c)
 end
 
-function convert_arguments(::Type{P}, args...) where P
+function convert_arguments(::Type{P}, args...) where {P}
     return args[1]
 end
