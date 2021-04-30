@@ -20,7 +20,7 @@ If you set the attribute `snap = false`, the slider will move continously while 
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 ax = Axis(fig[1, 1])
 
@@ -45,7 +45,7 @@ To create a horizontal layout containing a label, a slider, and a value label, u
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 ax = Axis(fig[1, 1])
 

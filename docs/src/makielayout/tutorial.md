@@ -43,7 +43,8 @@ Random.seed!(2) # hide
 noto_sans = "../assets/NotoSans-Regular.ttf"
 noto_sans_bold = "../assets/NotoSans-Bold.ttf"
 
-fig = Figure(resolution = (1200, 700), backgroundcolor = RGBf0(0.98, 0.98, 0.98), font = noto_sans)
+fig = Figure(backgroundcolor = RGBf0(0.98, 0.98, 0.98),
+    resolution = (1000, 700), font = noto_sans)
 
 fig
 ```
@@ -337,21 +338,7 @@ cbar = hm_sublayout[:, 2] = Colorbar(fig, heatmaps[1], label = "Activity [spikes
 fig
 ```
 
-
-The color bar is quite chunky because it takes 50% of the available width in the
-sublayout. Let's give it a fixed width of 30 units.
-
-```@example tutorial
-cbar.width = 30
-
-fig
-```
-
-
-Much better! Note that you can usually set all attributes during creation of an object
-(`Colorbar(fig, width = 30)`) or after the fact, like in this example.
-
-Objects can also have a width or height relative to the space given to them by their
+Objects can have a width or height relative to the space given to them by their
 parent `GridLayout`. If we feel that the colorbar is a bit too tall, we can shrink it
 to two thirds of the available height using `Relative(2/3)`.
 
@@ -393,7 +380,7 @@ to reflect the new GridLayout size.
 
 ```@example tutorial
 supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
-    textsize = 30, font = noto_sans_bold, color = (:black, 0.25))
+    textsize = 24, font = noto_sans_bold, color = (:black, 0.25))
 
 fig
 ```
@@ -428,9 +415,9 @@ choice. (Remember that our previously first row is now the second row, due to th
 super title.)
 
 ```@example tutorial
-label_a = fig[2, 1, TopLeft()] = Label(fig, "A", textsize = 35,
+label_a = fig[2, 1, TopLeft()] = Label(fig, "A", textsize = 24,
     font = noto_sans_bold, halign = :right)
-label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 35,
+label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 24,
     font = noto_sans_bold, halign = :right)
 
 fig

@@ -12,7 +12,7 @@ facet plots or when a rectangular placeholder is needed.
 using CairoMakie
 using ColorSchemes
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 rects = fig[1:4, 1:6] = [
     Box(fig, color = c)
