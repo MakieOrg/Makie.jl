@@ -14,7 +14,7 @@ using FileIO
 
 img = rotr90(load("../assets/cow.png"))
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1], aspect = DataAspect())
 
 image!(img)

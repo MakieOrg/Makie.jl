@@ -211,7 +211,7 @@ $(ATTRIBUTES)
         colormap = :viridis,
         colorrange = automatic,
         marker = Circle,
-        markersize = 10,
+        markersize = 8,
 
         strokecolor = :black,
         strokewidth = 1.0,

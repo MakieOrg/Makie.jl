@@ -17,7 +17,7 @@ are not inherited from the main scene (which has a pixel camera and no axis, e.g
 ```julia
 using CairoMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 lscene = LScene(fig[1, 1], scenekw = (camera = cam3d!, raw = false))
 

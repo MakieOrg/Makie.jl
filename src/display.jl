@@ -109,22 +109,9 @@ function Base.show(io::IO, m::MIME, scene::Scene)
     # this just indicates, that now we may update on e.g. resize
     update!(scene)
 
-    # Here, we deal with the Juno plotsize.
-    # Since SVGs are in units of pt, which is 1/72 in,
-    # and pixels (which Juno reports its plotsize as)
-    # are 1/96 in, we need to rescale the scene,
-    # whose units are in pt, into the expected size in px.
-    # This means we have to scale by a factor of 72/96.
-    res = get(io, :juno_plotsize, nothing)
-    if !isnothing(res)
-        if m isa MIME"image/svg+xml"
-            res = round.(Int, res .* 0.75)
-        end
-        resize!(scene, res...)
-    end
     ioc = IOContext(io,
         :full_fidelity => true,
-        :pt_per_unit => get(io, :pt_per_unit, 1.0),
+        :pt_per_unit => get(io, :pt_per_unit, 0.75),
         :px_per_unit => get(io, :px_per_unit, 1.0)
     )
     screen = backend_show(current_backend[], ioc, m, scene)
@@ -204,7 +191,7 @@ filetype(::FileIO.File{F}) where F = F
 
 
 """
-    FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 1.0, px_per_unit = 1.0)
+    FileIO.save(filename, scene; resolution = size(scene), pt_per_unit = 0.75, px_per_unit = 1.0)
 
 Save a `Scene` with the specified filename and format.
 
@@ -234,7 +221,7 @@ end
 function FileIO.save(
         file::FileIO.Formatted, fig::FigureLike;
         resolution = size(get_scene(fig)),
-        pt_per_unit = 1.0,
+        pt_per_unit = 0.75,
         px_per_unit = 1.0,
     )
     scene = get_scene(fig)
