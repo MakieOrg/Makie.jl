@@ -1,4 +1,4 @@
-using SnoopCompile
+using SnoopCompile, MakieCore, ProfileView
 
 SnoopCompile.@snoopc ["--project=$(pwd())"] "compiles.log" begin
     using MakieCore
@@ -10,19 +10,9 @@ data = SnoopCompile.read("compiles.log")
 pc = SnoopCompile.format_userimg(reverse!(data[2]))
 SnoopCompile.write(joinpath(@__DIR__, "..", "src", "precompile.jl"), pc)
 
-@time begin
-    using MakieCore
-    using MakieCore: Point2f
-    @time begin
-        s = MakieCore.CairoScreen(500, 500)
-        x = MakieCore.Scatter(rand(Point2f, 10))
-        MakieCore.draw_atomic(s, x)
-    end
-end
-
 tinf = SnoopCompile.@snoopi_deep begin
     s = MakieCore.Scene(500, 500)
-    scat = MakieCore.Scatter(randn(MakieCore.Point2f, 20) ./ 2; strokecolor = :red)
+    scat = MakieCore.Scatter(randn(MakieCore.Point2f, 20)./2; strokecolor=:red)
     push!(s, scat)
     MakieCore.colorbuffer(s)
 end
@@ -30,13 +20,14 @@ end
 # SnoopCompile.write(joinpath(@__DIR__, "..", "src", "precompile.jl"), pc)
 fg = flamegraph(tinf)
 ProfileView.view(fg)
-
+staleinstances(tinf)
+flat = flatten(tinf)
 
 @time begin
     using MakieCore
     @time begin
         s = MakieCore.Scene(500, 500)
-        scat = MakieCore.Scatter(randn(MakieCore.Point2f, 20) ./ 2; strokecolor = :red)
+        scat = MakieCore.Scatter(randn(MakieCore.Point2f, 20)./2; strokecolor=:red)
         push!(s, scat)
         MakieCore.colorbuffer(s)
         nothing

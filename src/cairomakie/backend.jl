@@ -1,12 +1,15 @@
 using Cairo
 
-function rgbatuple(c::Colorant)
-    rgba = RGBA(c)
-    return (red(rgba), green(rgba), blue(rgba), alpha(rgba))
+function rgbatuple(c::AbstractRGB)
+    return (red(c), green(c), blue(c), 1.0)
 end
 
-to_2d_scale(x::Number) = Vec2f(x)
-to_2d_scale(x::Vec) = convert(Vec2f, x)
+function rgbatuple(c::RGBA)
+    return (red(c), green(c), blue(c), alpha(c))
+end
+
+to_2d_scale(x::Number) = Vec2f((x, x))
+to_2d_scale(x::Vec) = Vec2f((x[1], x[2]))
 
 include("screen.jl")
 include("drawing.jl")

@@ -14,6 +14,16 @@ mutable struct Camera
     steering_nodes::Vector{Any}
 end
 
+function Mat4f(x::UniformScaling)
+    return Mat4f((
+        1f0, 0f0, 0f0, 0f0,
+        0f0, 1f0, 0f0, 0f0,
+        0f0, 0f0, 1f0, 0f0,
+        0f0, 0f0, 0f0, 1f0,
+        ))
+end
+
+
 function Camera()
     Camera(
         Observable(Mat4f(I)),
@@ -61,14 +71,12 @@ end
 function transformationmatrix(translation, scale)
     T = eltype(translation)
     T0, T1 = zero(T), one(T)
-    Mat4(
-        [
-            scale[1] T0 T0 T0
-            T0 scale[2] T0 T0
-            T0 T0 scale[3] T0
-            translation[1] translation[2] translation[3] T1
-        ],
-    )
+    return Mat4{T}((
+        T(scale[1]), T0, T0, T0,
+        T0,T(scale[2]), T0, T0,
+        T0, T0, T(scale[3]), T0,
+        translation[1], translation[2], translation[3], T1
+    ))
 end
 
 function transformationmatrix(translation, scale, rotation::Quaternion)

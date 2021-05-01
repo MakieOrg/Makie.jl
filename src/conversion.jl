@@ -16,7 +16,7 @@ convert_attribute(::key"color", c::Colorant) = convert(RGBAf0, c)
 convert_attribute(k::key"color", c::Symbol) = convert_attribute(k, string(c))
 
 function convert_attribute(::key"color", c::String)
-    return parse(RGBA{Float32}, c)
+    return parse(RGBAf0, c)
 end
 
 function convert_arguments(::Type{P}, args...) where {P}

@@ -18,7 +18,7 @@ end
 project_scale(scene, s::Number, model = Mat4f(I)) = project_scale(scene, Vec2f(s), model)
 
 function project_scale(scene, s, model = Mat4f(I))
-    p4d = to_ndim(Vec4f, s, 0.0f0)
-    p = @inbounds (scene.camera.projectionview[]*model*p4d)[Vec(1, 2)] ./ 2.0f0
-    return p .* widths(scene.camera)
+    p4d = scene.camera.projectionview[]*model*Vec4f(s[1], s[2], s[3], 0.0f0)
+    p2d = Vec2f(p4d[1] / 2f0, p4d[2] / 2)
+    return p2d .* widths(scene.camera)
 end
