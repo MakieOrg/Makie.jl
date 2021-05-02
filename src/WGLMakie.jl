@@ -28,6 +28,7 @@ struct WGLBackend <: AbstractPlotting.AbstractBackend end
 #["https://unpkg.com/three@0.123.0/build/three.min.js"
 const THREE = Dependency(:THREE,
                                  ["https://cdn.jsdelivr.net/gh/mrdoob/three.js/build/three.js"])
+
 const WGL = Dependency(:WGLMakie, [joinpath(@__DIR__, "wglmakie.js")])
 const WEBGL = Dependency(:WEBGL, [joinpath(@__DIR__, "WEBGL.js")])
 
