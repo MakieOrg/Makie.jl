@@ -1,3 +1,4 @@
+
 function handle_color!(uniform_dict, instance_dict)
     color, udict = if haskey(uniform_dict, :color)
         to_value(uniform_dict[:color]), uniform_dict
@@ -33,7 +34,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:offset] = plot[1]
+    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -148,52 +149,13 @@ function create_shader(scene::Scene, plot::Scatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     attributes = copy(plot.attributes.attributes)
-    attributes[:offset] = plot[1]
+    attributes[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
     attributes[:markerspace] = plot.markerspace
     delete!(attributes, :uv_offset_width)
     return scatter_shader(scene, attributes)
-end
-
-function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
-                    font, align, rot, model, j, l) where T <: VecTypes
-    atlas = get_texture_atlas()
-    N = length(T)
-    positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
-    char_str_idx = iterate(string)
-    offsets = Vec2f0[]
-    broadcast_foreach(1:length(string), positions_per_char, textsize, font, align) do idx, pos, tsize, font, align
-        char, str_idx = char_str_idx
-        mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
-        push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
-        push!(uv_offset_width, glyph_uv_width!(atlas, char, font))
-        glyph_bb, ext = FreeTypeAbstraction.metrics_bb(char, font, tsize)
-        if isa(tsize, Vec2f0) # this needs better unit support
-            push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
-        else
-            push!(scale, widths(glyph_bb))
-        end
-        push!(offsets, minimum(glyph_bb))
-        char_str_idx = iterate(string, str_idx)
-    end
-    return positions, offsets, uv_offset_width, scale
-end
-
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
-    atlas = get_texture_atlas()
-    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
-    end
-    return positions, offsets, uv, scales
 end
 
 value_or_first(x::AbstractArray) = first(x)

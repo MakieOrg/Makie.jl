@@ -13,14 +13,15 @@ end
 
 function create_shader(scene::Scene, plot::Union{Lines,LineSegments})
     # Potentially per instance attributes
-    positions = lift(plot[1]) do points
-        points = topoint(points)
+    positions = lift(plot[1], transform_func_obs(plot)) do points, trans
+        points = apply_transform(trans, topoint(points))
         if plot isa LineSegments
             return points
         else
             # Repeat every second point to connect the lines !
             return topoint(TupleView{2, 1}(points))
         end
+        trans
     end
     startr = lift(p -> 1:2:(length(p) - 1), positions)
     endr = lift(p -> 2:2:length(p), positions)

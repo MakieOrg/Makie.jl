@@ -22,6 +22,7 @@ using ShaderAbstractions: InstancedProgram
 import AbstractPlotting.FileIO
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
+using AbstractPlotting: apply_transform, transform_func_obs
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: AbstractPlotting.AbstractBackend end
