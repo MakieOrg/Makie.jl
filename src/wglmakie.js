@@ -62,7 +62,6 @@ const WGLMakie = (function () {
     function add_plot(scene, plot_data) {
         // fill in the camera uniforms, that we don't sent in serialization per plot
         const cam = scene.wgl_camera;
-        console.log(plot_data.space)
         if (plot_data.space == "screen") {
             plot_data.uniforms.view = new THREE.Uniform(new THREE.Matrix4());
             plot_data.uniforms.projection = cam.pixel_space;
@@ -76,7 +75,6 @@ const WGLMakie = (function () {
             plot_data.uniforms.eyeposition = cam.eyeposition;
         }
         const p = deserialize_plot(plot_data);
-        console.log(p)
         plot_cache[plot_data.uuid] = p;
         scene.add(p);
     }
