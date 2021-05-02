@@ -230,7 +230,7 @@ export PlotSpec
 export plot!, plot
 
 
-export Stepper, step!, replay_events, record_events, RecordEvents, record, VideoStream
+export Stepper, replay_events, record_events, RecordEvents, record, VideoStream
 export VideoStream, recordframe!, record
 export save
 
