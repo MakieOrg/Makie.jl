@@ -62,11 +62,18 @@ const WGLMakie = (function () {
     function add_plot(scene, plot_data) {
         // fill in the camera uniforms, that we don't sent in serialization per plot
         const cam = scene.wgl_camera;
-        plot_data.uniforms.view = cam.view;
-        plot_data.uniforms.projection = cam.projection;
-        plot_data.uniforms.projectionview = cam.projectionview;
-        plot_data.uniforms.resolution = cam.resolution;
-        plot_data.uniforms.eyeposition = cam.eyeposition;
+        if (plot_data.space == "screen") {
+            plot_data.uniforms.view = new THREE.Uniform(new THREE.Matrix4());
+            plot_data.uniforms.projection = cam.pixel_space;
+            plot_data.uniforms.projectionview = cam.pixel_space;
+            plot_data.uniforms.resolution = cam.resolution;
+        } else {
+            plot_data.uniforms.view = cam.view;
+            plot_data.uniforms.projection = cam.projection;
+            plot_data.uniforms.projectionview = cam.projectionview;
+            plot_data.uniforms.resolution = cam.resolution;
+            plot_data.uniforms.eyeposition = cam.eyeposition;
+        }
         const p = deserialize_plot(plot_data);
         plot_cache[plot_data.uuid] = p;
         scene.add(p);
@@ -422,6 +429,7 @@ const WGLMakie = (function () {
             view: new THREE.Uniform(new THREE.Matrix4()),
             projection: new THREE.Uniform(new THREE.Matrix4()),
             projectionview: new THREE.Uniform(new THREE.Matrix4()),
+            pixel_space: new THREE.Uniform(new THREE.Matrix4()),
             resolution: new THREE.Uniform(new THREE.Vector2()),
             eyeposition: new THREE.Uniform(new THREE.Vector3()),
         };
@@ -435,10 +443,12 @@ const WGLMakie = (function () {
                 projectionview,
                 resolution,
                 eyepos,
+                pixel_space,
             ] = camera;
             cam.view.value.fromArray(view);
             cam.projection.value.fromArray(projection);
             cam.projectionview.value.fromArray(projectionview);
+            cam.pixel_space.value.fromArray(pixel_space);
             cam.resolution.value.fromArray(JSServe.deserialize_js(resolution));
             cam.eyeposition.value.fromArray(JSServe.deserialize_js(eyepos));
         }

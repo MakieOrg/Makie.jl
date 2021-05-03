@@ -292,20 +292,26 @@ function serialize_three(scene::Scene, plot::AbstractPlot)
     mesh[:visible] = plot.visible
     mesh[:uuid] = js_uuid(plot)
     uniforms = mesh[:uniforms]
+    updater = mesh[:uniform_updater]
+
     delete!(uniforms, :lightposition)
+
     if haskey(plot, :lightposition)
         eyepos = scene.camera.eyeposition
         lightpos = lift(plot.lightposition, eyepos,
-                                        typ=Vec3f0) do pos, eyepos
+                        typ=Vec3f0) do pos, eyepos
             return ifelse(pos == :eyeposition, eyepos, pos)::Vec3f0
         end
         uniforms[:lightposition] = serialize_three(lightpos[])
-        updater = mesh[:uniform_updater]
         on(lightpos) do value
             updater[] = [:lightposition, serialize_three(value)]
             return
         end
     end
+    if haskey(plot, :space)
+        mesh[:space] = plot.space[]
+    end
+
     return mesh
 end
 
@@ -317,6 +323,7 @@ function serialize_camera(scene::Scene)
         # same goes for eyeposition, since an eyepos change will trigger
         # a view matrix change!
         ep = cam.eyeposition[]
-        return [serialize_three.((v, p, pv, res, ep))...]
+        pixel_space = cam.pixel_space[]
+        return [serialize_three.((v, p, pv, res, ep, pixel_space))...]
     end
 end

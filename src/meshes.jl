@@ -1,5 +1,11 @@
-vertexbuffer(x) = decompose(Point, x)
-vertexbuffer(x::Observable) = Buffer(lift(vertexbuffer, x))
+function vertexbuffer(x, trans)
+    pos = decompose(Point, x)
+    return apply_transform(trans,  pos)
+end
+
+function vertexbuffer(x::Observable, p)
+    return Buffer(lift(vertexbuffer, x, transform_func_obs(p)))
+end
 
 facebuffer(x) = facebuffer(GeometryBasics.faces(x))
 facebuffer(x::Observable) = Buffer(lift(facebuffer, x))
@@ -90,7 +96,7 @@ function create_shader(scene::Scene, plot::AbstractPlotting.Mesh)
     end
 
     faces = facebuffer(mesh_signal)
-    positions = vertexbuffer(mesh_signal)
+    positions = vertexbuffer(mesh_signal, plot)
     instance = GeometryBasics.Mesh(GeometryBasics.meta(positions; attributes...), faces)
 
     get!(uniforms, :colorrange, true)
