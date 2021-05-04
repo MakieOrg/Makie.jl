@@ -335,41 +335,8 @@ end
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:position_x] = if to_value(x[1]) isa Vector
-            map(x[1]) do v
-                # Equivalent to
-                # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
-                # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
-                borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
-                borders[1] = 2borders[1] - borders[2]
-                borders[end] = 2borders[end] - borders[end-1]
-                Texture(el32convert(borders), minfilter = :nearest)
-            end
-        else
-            map(x[1]) do _x
-                min, max = to_range(_x)
-                N = size(to_value(x[3]), 1)
-                halfstep = 0.5 * (max - min) / (N-1)
-                a = collect(range(min-halfstep, max+halfstep, length=N+1))
-                Texture(el32convert(a); minfilter=:nearest)
-            end
-        end
-        gl_attributes[:position_y] = if to_value(x[2]) isa Vector
-            map(x[2]) do v
-                borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
-                borders[1] = 2borders[1] - borders[2]
-                borders[end] = 2borders[end] - borders[end-1]
-                Texture(el32convert(borders), minfilter = :nearest)
-            end
-        else
-            map(x[2]) do _x
-                min, max = to_range(_x)
-                N = size(to_value(x[3]), 2)
-                halfstep = 0.5 * (max - min) / (N-1)
-                a = collect(range(min-halfstep, max+halfstep, length=N+1))
-                Texture(el32convert(a); minfilter=:nearest)
-            end
-        end
+        gl_attributes[:position_x] = map(v -> Texture(el32convert(v), minfilter = :nearest), x[1])
+        gl_attributes[:position_y] = map(v -> Texture(el32convert(v), minfilter = :nearest), x[2])
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
         if !(to_value(x[3]) isa ShaderAbstractions.Sampler)
