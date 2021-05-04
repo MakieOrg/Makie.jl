@@ -51,7 +51,7 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
     robj = get!(screen.cache, objectid(x)) do
 
         filtered = filter(x.attributes) do (k, v)
-            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO))
+            !(k in (:transformation, :tickranges, :ticklabels, :raw, :SSAO, :lightposition))
         end
 
         gl_attributes = Dict{Symbol, Any}(map(filtered) do key_value
@@ -66,9 +66,9 @@ function cached_robj!(robj_func, screen, scene, x::AbstractPlot)
             gl_attributes[:use_pixel_marker] = lift(x-> x <: Pixel, mspace)
         end
 
-        if haskey(gl_attributes, :lightposition)
+        if haskey(x.attributes, :lightposition)
             eyepos = scene.camera.eyeposition
-            gl_attributes[:lightposition] = lift(gl_attributes[:lightposition], eyepos) do pos, eyepos
+            gl_attributes[:lightposition] = lift(x.attributes[:lightposition], eyepos) do pos, eyepos
                 return pos == :eyeposition ? eyepos : pos
             end
         end
@@ -217,7 +217,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::Lines))
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = to_value(linestyle)
+        ls = to_value(linestyle)
+        if isnothing(ls)
+            data[:pattern] = ls
+        else
+            linewidth = gl_attributes[:thickness]
+            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+        end
         positions = handle_view(x[1], data)
         positions = apply_transform(transform_func_obs(x), positions)
         handle_intensities!(data)
@@ -229,7 +235,13 @@ function draw_atomic(screen::GLScreen, scene::Scene, @nospecialize(x::LineSegmen
     robj = cached_robj!(screen, scene, x) do gl_attributes
         linestyle = pop!(gl_attributes, :linestyle)
         data = Dict{Symbol, Any}(gl_attributes)
-        data[:pattern] = to_value(linestyle)
+        ls = to_value(linestyle)
+        if isnothing(ls)
+            data[:pattern] = ls
+        else
+            linewidth = gl_attributes[:thickness]
+            data[:pattern] = ls .* (to_value(linewidth) * 0.25)
+        end
         positions = handle_view(x.converted[1], data)
         positions = apply_transform(transform_func_obs(x), positions)
         if haskey(data, :color) && data[:color][] isa AbstractVector{<: Number}
@@ -250,14 +262,14 @@ value_or_first(x) = x
 function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         string_obs = x[1]
-        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space)
+        liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
         args = getindex.(Ref(gl_attributes), liftkeys)
 
-        gl_text = lift(string_obs, scene.camera.projectionview, args...) do str, projview, pos, tsize, font, align, rotation, model, j, l, space
+        gl_text = lift(string_obs, scene.camera.projectionview, AbstractPlotting.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
             # For annotations, only str (x[1]) will get updated, but all others are updated too!
-            args = @get_attribute x (position, textsize, font, align, rotation)
+            args = @get_attribute x (position, textsize, font, align, rotation, offset)
             res = Vec2f0(widths(pixelarea(scene)[]))
-            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res)
+            return preprojected_glyph_arrays(str, pos, x._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
         end
 
         # unpack values from the one signal:
@@ -266,7 +278,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         end
 
         atlas = get_texture_atlas()
-        keys = (:color, :strokecolor, :strokewidth, :rotation)
+        keys = (:color, :strokecolor, :rotation)
 
         signals = map(keys) do key
             return lift(positions, x[key]) do pos, attr
@@ -291,29 +303,29 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
             end
         end
 
-        robj = visualize(
-            (DISTANCEFIELD, positions),
+        filter!(gl_attributes) do (k, v)
+            # These are liftkeys without model but with _glyphlayout
+            !(k in (
+                :position, :space, :justification, :font, :_glyphlayout, :align, 
+                :textsize, :rotation, :lineheight, 
+            ))
+        end
+        gl_attributes[:color] = signals[1]
+        gl_attributes[:stroke_color] = signals[2]
+        gl_attributes[:rotation] = signals[3]
+        gl_attributes[:scale] = scale
+        gl_attributes[:offset] = offset
+        gl_attributes[:uv_offset_width] = uv_offset_width
+        gl_attributes[:distancefield] = get_texture!(atlas)
+        
 
-            color = signals[1],
-            stroke_color = signals[2],
-            # stroke_width = signals[3], # for some reason I get
-            # no method matching gl_convert(::Vector{Float32})
-            stroke_width = 0.0f0,
-            rotation = signals[4],
+        robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
 
-            scale = scale,
-            offset = offset,
-            uv_offset_width = uv_offset_width,
-            distancefield = get_texture!(atlas),
-            visible = gl_attributes[:visible]
-        )
         # Draw text in screenspace
         if x.space[] == :screen
             robj[:view] = Observable(Mat4f0(I))
             robj[:projection] = scene.camera.pixel_space
             robj[:projectionview] = scene.camera.pixel_space
-        else
-            robj[:model] = x.model
         end
 
         return robj
@@ -437,8 +449,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
 
         map(mesh) do mesh
             func = to_value(transform_func_obs(meshplot))
-            if func !== identity
-                mesh.position .= apply_transform.(func, mesh.position)
+            if func ∉ (identity, (identity, identity), (identity, identity, identity))
+                mesh.position .= apply_transform.(Ref(func), mesh.position)
             end
             return
         end
