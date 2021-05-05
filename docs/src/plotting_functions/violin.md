@@ -42,7 +42,7 @@ xs = rand(1:3, N)
 dodge = rand(1:2, N)
 side = rand([:left, :right], N)
 colors = map(side) do s
-    return s == :left ? RGB(0.0, 0.5, 0.5) : RGB(1.0, 0.65, 0.0)
+    return s == :left ? "orange" : "teal"
 end
 ys = map(side) do s
     return s == :left ? randn() : rand()
