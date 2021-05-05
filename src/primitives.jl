@@ -440,23 +440,22 @@ end
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap, Image})
     ctx = screen.context
     image = primitive[3][]
-    x, y = primitive[1][], primitive[2][]
+    xs, ys = primitive[1][], primitive[2][]
     model = primitive[:model][]
-    imsize = (extrema_nan(x), extrema_nan(y))
+    imsize = (extrema_nan(xs), extrema_nan(ys))
 
-    # find projected image corners
-    # this already takes care of flipping the image to correct cairo orientation
-    xy = project_position(scene, Point2f0(first.(imsize)), model)
-    xymax = project_position(scene, Point2f0(last.(imsize)), model)
-
-
-    w, h = xymax .- xy
     interp = to_value(get(primitive, :interpolate, true))
 
     # theoretically, we could restrict the non-interpolation vector graphics hack to actual vector
     # graphics backends, but it's not directly visible from screen.surface what type we have
 
     if interp
+        # find projected image corners
+        # this already takes care of flipping the image to correct cairo orientation
+        xy = project_position(scene, Point2f0(first.(imsize)), model)
+        xymax = project_position(scene, Point2f0(last.(imsize)), model)
+        w, h = xymax .- xy
+
         # FILTER_BEST doesn't work reliably with png backend, GAUSSIAN is not implemented
         interp_flag = Cairo.FILTER_BILINEAR
 
@@ -475,15 +474,18 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         Cairo.restore(ctx)
 
     else
-        colors = to_rgba_image(image, primitive)
 
-        cellw = w / size(image, 1)
-        cellh = h / size(image, 2)
+        # find projected image corners
+        # this already takes care of flipping the image to correct cairo orientation
+        xys = [project_position(scene, Point2f0(x, y), model) for x in xs, y in ys]
+        colors = to_rgba_image(image, primitive)
 
         ni, nj = size(image)
         @inbounds for i in 1:ni, j in 1:nj
-            ori = xy + Point2f0((i-1) * cellw, (j-1) * cellh)
-
+            x0, y0 = xys[i, j]
+            x1, y1 = xys[i+1, j+1]
+            w = x1 - x0; h = y1 - y0
+            
             # there are usually white lines between directly adjacent rectangles
             # in vector graphics because of anti-aliasing
 
@@ -506,8 +508,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
                 0.0
             end
 
-            # we add the bulge in the direction of cellw / cellh in case the axes are reversed
-            Cairo.rectangle(ctx, ori..., cellw + sign(cellw) * xbulge, cellh + sign(cellh) * ybulge)
+            # we add the bulge in the direction of cell width / height in case the axes are reversed
+            Cairo.rectangle(ctx, x0, y0, w + sign(w) * xbulge, h + sign(h) * ybulge)
             Cairo.set_source_rgba(ctx, rgbatuple(colors[i, j])...)
             Cairo.fill(ctx)
         end
