@@ -23,11 +23,12 @@ $(ATTRIBUTES)
 """
 @recipe(Arrows, points, directions) do scene
     theme = merge!(
-        default_theme(scene), 
+        default_theme(scene),
         Attributes(
             arrowhead = automatic,
             arrowtail = automatic,
-            linecolor = :black,
+            color = :black,
+            linecolor = automatic,
             arrowsize = automatic,
             linestyle = nothing,
             align = :origin,
@@ -65,7 +66,7 @@ arrow_tail(N, marker, quality) = marker
 function arrow_tail(N, marker::Automatic, quality)
     if N == 2
         nothing
-    else 
+    else
         merge([
             _circle(Point3f0(0,0,-1), 0.5f0, Vec3f0(0,0,-1), quality),
             _mantle(Point3f0(0,0,-1), Point3f0(0), 0.5f0, 0.5f0, quality)
@@ -127,13 +128,17 @@ convert_arguments(::Type{<: Arrows}, x, y, z, u, v, w) = (Point3f0.(x, y, z), Ve
 function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) where {N, T, V}
     @extract arrowplot (
         points, directions, colormap, normalize, align,
-        arrowtail, linecolor, linestyle, linewidth, lengthscale, 
+        arrowtail, color, linecolor, linestyle, linewidth, lengthscale,
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
         lightposition, ambient, diffuse, specular, shininess,
         fxaa, ssao, transparency, visible
     )
 
+    arrow_c = map((a, c)-> a === automatic ? c : a , arrowcolor, color)
+    line_c = map((a, c)-> a === automatic ? c : a , linecolor, color)
+
+    fxaa_bool = @lift($fxaa == automatic ? false : $fxaa)
     if N == 2
         headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
@@ -149,19 +154,19 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
 
         linesegments!(
             arrowplot, headstart,
-            color = linecolor, colormap = colormap, linestyle = linestyle, 
+            color = line_c, colormap = colormap, linestyle = linestyle,
             linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
-            fxaa = @lift($fxaa == automatic ? false : $fxaa),
+            fxaa = fxaa_bool,
             transparency = transparency, visible = visible
         )
         scatter!(
             arrowplot,
             lift(x-> last.(x), headstart),
-            marker = @lift(arrow_head(2, $arrowhead, $quality)), 
+            marker = @lift(arrow_head(2, $arrowhead, $quality)),
             markersize = @lift($arrowsize === automatic ? 0.3 : $arrowsize),
-            color = arrowcolor, rotations = directions, strokewidth = 0.0, 
+            color = arrow_c, rotations = directions, strokewidth = 0.0,
             colormap = colormap,
-            fxaa = @lift($fxaa == automatic ? false : $fxaa),
+            fxaa = fxaa_bool,
             transparency = transparency, visible = visible
         )
     else
@@ -185,11 +190,11 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
                     Vec3f0(lw, lw, ls)
                 else
                     map(dir -> Vec3f0(lw, lw, norm(dir) * ls), dirs)
-                end 
-            end, 
-            color = linecolor, colormap = colormap,
-            fxaa = @lift($fxaa == automatic ? true : $fxaa), ssao = ssao,
-            lightposition = lightposition, ambient = ambient, diffuse = diffuse, 
+                end
+            end,
+            color = line_c, colormap = colormap,
+            fxaa = fxaa_bool, ssao = ssao,
+            lightposition = lightposition, ambient = ambient, diffuse = diffuse,
             specular = specular, shininess = shininess,
             transparency = transparency, visible = visible
         )
@@ -200,9 +205,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             markersize = lift(arrowsize, typ=Any) do as
                 as === automatic ? Vec3f0(0.2, 0.2, 0.3) : as
             end,
-            color = arrowcolor, colormap = colormap,
-            fxaa = @lift($fxaa == automatic ? true : $fxaa), ssao = ssao,
-            lightposition = lightposition, ambient = ambient, diffuse = diffuse, 
+            color = arrow_c, colormap = colormap,
+            fxaa = fxaa_bool, ssao = ssao,
+            lightposition = lightposition, ambient = ambient, diffuse = diffuse,
             specular = specular, shininess = shininess,
             transparency = transparency, visible = visible
         )
