@@ -211,7 +211,7 @@ $(ATTRIBUTES)
         colormap = :viridis,
         colorrange = automatic,
         marker = Circle,
-        markersize = 10,
+        markersize = 8,
 
         strokecolor = :black,
         strokewidth = 1.0,
@@ -275,6 +275,7 @@ $(ATTRIBUTES)
         justification = automatic,
         lineheight = 1.0,
         space = :screen, # or :data
+        offset = Point2f0(0, 0),
         _glyphlayout = nothing,
     )
 end
@@ -554,6 +555,7 @@ plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
 
 ## specialized definitions for types
+plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector) = Scatter
 plottype(::AbstractMatrix{<: Real}) = Heatmap

@@ -15,19 +15,18 @@ Or they can be vectors of such objects that will be layered together as one.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1400, 900))
+f = Figure()
 
-ax = layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 
 xs = 0:0.5:10
 ys = sin.(xs)
-lin = lines!(ax, xs, ys, color = :blue)
-sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
+lin = lines!(xs, ys, color = :blue)
+sca = scatter!(xs, ys, color = :red, markersize = 15)
 
-leg = Legend(scene, [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
-layout[1, 2] = leg
+Legend(f[1, 2], [lin, sca, [lin, sca]], ["a line", "some dots", "both together"])
 
-scene
+f
 ```
 
 ## Creating A Legend From An Axis
@@ -60,17 +59,16 @@ when in vertical mode, and rows when in horizontal mode.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1400, 900))
+f = Figure()
 
-ax = layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 
 xs = 0:0.1:10
-lins = [lines!(ax, xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:1]
+lins = [lines!(xs, sin.(xs .+ 3v), color = RGBf0(v, 0, 1-v)) for v in 0:0.1:1]
 
-leg = Legend(scene, lins, string.(1:length(lins)), nbanks = 3)
-layout[1, 2] = leg
+Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
 
-scene
+f
 ```
 
 
@@ -85,7 +83,7 @@ The position can be set via a shortcut symbol, first halign (l, r, c) then valig
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 
 ax = Axis(f[1, 1])
 
@@ -117,29 +115,26 @@ using CairoMakie
 haligns = [:left, :right, :center]
 valigns = [:top, :bottom, :center]
 
-scene, layout = layoutscene(resolution = (1400, 900))
+f = Figure()
 
-ax = layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 
 xs = 0:0.1:10
-lins = [lines!(ax, xs, sin.(xs .* i), color = color)
+lins = [lines!(xs, sin.(xs .* i), color = color)
     for (i, color) in zip(1:3, [:red, :blue, :green])]
 
-legends = [Legend(
-        scene, lins, ["Line $i" for i in 1:3],
+for (j, ha, va) in zip(1:3, haligns, valigns)
+    Legend(
+        f[1, 1], lins, ["Line $i" for i in 1:3],
         "$ha & $va",
         tellheight = false,
         tellwidth = false,
         margin = (10, 10, 10, 10),
         halign = ha, valign = va, orientation = :horizontal
-    ) for (j, ha, va) in zip(1:3, haligns, valigns)]
-
-
-for leg in legends
-    layout[1, 1] = leg
+    ) 
 end
 
-scene
+f
 ```
 
 
@@ -162,9 +157,9 @@ MakieLayout.attributenames(LegendEntry)
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1400, 900))
+f = Figure()
 
-ax = layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 
 
 elem_1 = [LineElement(color = :red, linestyle = nothing),
@@ -184,12 +179,12 @@ elem_5 = PolyElement(color = :green, strokecolor = :black,
         polypoints = Point2f0[(0, 0), (1, 0), (0, 1)])
 
 
-leg = layout[1, 2] = Legend(scene,
+Legend(f[1, 2],
     [elem_1, elem_2, elem_3, elem_4, elem_5],
     ["Line & Marker", "Poly & Line", "Line", "Marker", "Poly"],
-    patchsize = (35, 35))
+    patchsize = (35, 35), rowgap = 10)
 
-scene
+f
 ```
 
 
@@ -206,23 +201,21 @@ if you place the legend below or above the axis.
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1400, 900))
+f = Figure()
 
-ax = layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 
 xs = 0:0.5:10
 ys = sin.(xs)
-lin = lines!(ax, xs, ys, color = :blue)
-sca = scatter!(ax, xs, ys, color = :red, markersize = 15)
+lin = lines!(xs, ys, color = :blue)
+sca = scatter!(xs, ys, color = :red, markersize = 15)
 
-leg = Legend(scene, [lin, sca, lin], ["a line", "some dots", "line again"])
-layout[1, 2] = leg
+Legend(f[1, 2], [lin, sca, lin], ["a line", "some dots", "line again"])
 
-leg_horizontal = Legend(scene, [lin, sca, lin], ["a line", "some dots", "line again"],
+Legend(f[2, 1], [lin, sca, lin], ["a line", "some dots", "line again"],
     orientation = :horizontal, tellwidth = false, tellheight = true)
-layout[2, 1] = leg_horizontal
 
-scene
+f
 ```
 
 
@@ -238,15 +231,15 @@ You can shift the position of the titles relative to each group with the
 ```@example
 using CairoMakie
 
-scene, layout = layoutscene(resolution = (1400, 900))
+f = Figure()
 
-ax = layout[1, 1] = Axis(scene)
+Axis(f[1, 1])
 
 markersizes = [5, 10, 15, 20]
 colors = [:red, :green, :blue, :orange]
 
 for ms in markersizes, color in colors
-    scatter!(ax, randn(5, 2), markersize = ms, color = color)
+    scatter!(randn(5, 2), markersize = ms, color = color)
 end
 
 group_size = [MarkerElement(marker = :circle, color = :black, strokecolor = :transparent,
@@ -255,13 +248,13 @@ group_size = [MarkerElement(marker = :circle, color = :black, strokecolor = :tra
 group_color = [PolyElement(color = color, strokecolor = :transparent)
     for color in colors]
 
-legends = [Legend(scene,
+legends = [Legend(f,
     [group_size, group_color],
     [string.(markersizes), string.(colors)],
     ["Size", "Color"]) for _ in 1:6]
 
-layout[1, 2:4] = legends[1:3]
-layout[2:4, 1] = legends[4:6]
+f[1, 2:4] = legends[1:3]
+f[2:4, 2] = legends[4:6]
 
 for l in legends[4:6]
     l.orientation = :horizontal
@@ -276,7 +269,7 @@ legends[3].nbanks = 2
 legends[5].nbanks = 2
 legends[6].nbanks = 2
 
-scene
+f
 ```
 
 ```@eval
