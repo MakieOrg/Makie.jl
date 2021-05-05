@@ -8,7 +8,7 @@ CairoMakie.activate!()
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 ax = Axis(fig[1, 1])
 fig[2, 1] = buttongrid = GridLayout(tellwidth = false)

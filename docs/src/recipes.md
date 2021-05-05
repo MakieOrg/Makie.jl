@@ -255,7 +255,7 @@ stockvalues = foldl(timestamps[2:end], init = [startvalue]) do values, t
 end
 
 # now we can use our new recipe
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 stockchart(f[1, 1], timestamps, stockvalues)
 
