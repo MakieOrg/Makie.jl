@@ -113,16 +113,19 @@ function plot!(plot::Violin)
         return (vertices = vertices, lines = lines, colors = colors)
     end
 
-    t = copy(Theme(plot))
-    mediancolor = pop!(t, :mediancolor)
-    t[:color] = lift(s -> s.colors, signals)
-    poly!(plot, t, lift(s -> s.vertices, signals))
+    poly!(
+        plot,
+        lift(s -> s.vertices, signals),
+        color = lift(s -> s.colors, signals),
+        strokecolor = plot[:strokecolor],
+        strokewidth = plot[:strokewidth],
+    )
     linesegments!(
         plot,
         lift(s -> s.lines, signals),
         color = lift(
             (mc, sc) -> mc === automatic ? sc : mc,
-            mediancolor,
+            plot[:mediancolor],
             plot[:strokecolor],
         ),
         linewidth = plot[:medianlinewidth],
