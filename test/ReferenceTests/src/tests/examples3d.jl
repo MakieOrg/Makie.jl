@@ -233,7 +233,7 @@ end
     surface(x, y, z)
     arrows!(
         pts, ∇ˢF,
-        arrowsize=0.03, linecolor=(:white, 0.6), linewidth=3
+        arrowsize=0.03, linecolor=(:white, 0.6), linewidth=0.03
     )
     current_figure()
 end
