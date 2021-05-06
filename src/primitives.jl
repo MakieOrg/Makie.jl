@@ -441,6 +441,17 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     ctx = screen.context
     image = primitive[3][]
     xs, ys = primitive[1][], primitive[2][]
+    if !(xs isa Vector)
+        l, r = extrema(xs)
+        N = size(image, 1)
+        xs = collect(range(l, r, length=N))
+    end
+    if !(ys isa Vector)
+        l, r = extrema(ys)
+        N = size(image, 2)
+        ys = collect(range(l, r, length=N))
+    end
+
     model = primitive[:model][]
     imsize = (extrema_nan(xs), extrema_nan(ys))
 
