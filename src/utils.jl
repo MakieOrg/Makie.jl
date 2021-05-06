@@ -83,7 +83,7 @@ end
 
 function rgbatuple(c)
     colorant = to_color(c)
-    if !(colorant <: Colorant)
+    if !(colorant isa Colorant)
         error("Can't convert $(c) to a colorant")
     end
     return rgbatuple(colorant)
