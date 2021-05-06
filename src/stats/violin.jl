@@ -46,9 +46,8 @@ function plot!(plot::Violin)
             return s == :left ? - 1 : s == :right ? 1 : 0
         end
         colors = broadcast(x̂, color) do _, c
-            rgba = to_color(c)
             # `RGBA` values cannot be sorted
-            return (rgba.r, rgba.g, rgba.b, rgba.alpha)
+            return rgbatuple(c)
         end
 
         sa = StructArray((x = x̂, side = sides, color = colors))
