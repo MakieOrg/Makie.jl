@@ -41,12 +41,26 @@ N = 1000
 xs = rand(1:3, N)
 dodge = rand(1:2, N)
 side = rand([:left, :right], N)
-colors = map(side) do s
-    return s == :left ? "orange" : "teal"
-end
+color = Observable((left = :orange, right = :teal))
 ys = map(side) do s
     return s == :left ? randn() : rand()
 end
 
-violin(xs, ys, dodge = dodge, side = side, color = colors)
+violin(xs, ys, dodge = dodge, side = side, color = color)
+```
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+N = 1000
+xs = rand(1:3, N)
+side = rand([:left, :right], N)
+color = Observable((left = [:red, :orange, :yellow], right = [:blue, :teal, :cyan]))
+ys = map(side) do s
+    return s == :left ? randn() : rand()
+end
+
+violin(xs, ys, side = side, color = color)
 ```
