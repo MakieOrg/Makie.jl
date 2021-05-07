@@ -25,7 +25,9 @@ See the function `AbstractPlotting.streamplot_impl` for implementation details.
             colormap = theme(scene, :colormap),
             colorrange = AbstractPlotting.automatic,
             arrow_size = 0.03,
-            density = 1.0
+            arrow_head = automatic,
+            density = 1.0,
+            quality = 16
         ),
         default_theme(scene, Lines) # so that we can theme the lines as needed.
     )
@@ -48,6 +50,9 @@ end
 function convert_arguments(::Type{<: StreamPlot}, f::Function, limits::Rect)
     return (f, limits)
 end
+
+
+scatterfun(N) = N == 2 ? scatter! : meshscatter!
 
 """
 streamplot_impl(CallType, f, limits::Rect{N, T}, resolutionND, stepsize)
@@ -170,7 +175,8 @@ function plot!(p::StreamPlot)
     N = ndims(p.limits[])
     scatterfun(N)(
         p,
-        lift(first, data), markersize = p.arrow_size, marker = arrow_head(N, automatic),
+        lift(first, data), markersize = p.arrow_size, 
+        marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
         colormap = p.colormap, colorrange = p.colorrange,
     )

@@ -59,8 +59,28 @@ function current_axis!(ax)
     ax
 end
 
+to_rectsides(n::Number) = to_rectsides((n, n, n, n))
+to_rectsides(t::Tuple{Any, Any, Any, Any}) = GridLayoutBase.RectSides{Float32}(t...)
+
 function Figure(; kwargs...)
-    scene, layout = layoutscene(; kwargs...)
+
+    kwargs_dict = Dict(kwargs)
+    padding = pop!(kwargs_dict, :figure_padding, current_default_theme()[:figure_padding])
+
+    scene = Scene(; camera = campixel!, kwargs_dict...)
+
+    padding = padding isa Observable ? padding : Observable{Any}(padding)
+
+    alignmode = lift(Outside ∘ to_rectsides, padding)
+
+    layout = GridLayout(scene)
+
+    on(alignmode) do al
+        layout.alignmode[] = al
+        notify(layout.needs_update)
+    end
+    notify(alignmode)
+
     Figure(
         scene,
         layout,

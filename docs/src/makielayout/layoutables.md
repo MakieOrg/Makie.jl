@@ -24,7 +24,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 ax = Axis(f[1, 1])
 f
 ```
@@ -40,7 +40,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-scene, layout = layoutscene(resolution = (800, 600))
+scene, layout = layoutscene()
 ax = layout[1, 1] = Axis(scene)
 scene
 ```
@@ -59,7 +59,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f, bbox = BBox(100, 300, 100, 500), title = "Axis 1")
 Axis(f, bbox = BBox(400, 700, 200, 400), title = "Axis 2")
 f

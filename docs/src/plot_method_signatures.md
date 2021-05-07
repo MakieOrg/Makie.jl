@@ -78,7 +78,7 @@ If a GridLayout along the nesting levels doesn't exist, yet, it is created autom
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 # first row, first column
 scatter(fig[1, 1], 1.0..10, sin)
@@ -96,7 +96,7 @@ lines(fig[1, 3][2, 1], cumsum(randn(1000)), color = :red)
 ax, hm = heatmap(fig[2, 1:3], randn(30, 10))
 
 # across all rows, new column after the last one
-fig[:, end+1] = Colorbar(fig, hm, width = 30)
+fig[:, end+1] = Colorbar(fig, hm)
 
 fig
 ```

@@ -27,8 +27,7 @@ f(x, P::FitzhughNagumo) = Point2f0(
 
 f(x) = f(x, P)
 
-streamplot(f, -1.5..1.5, -1.5..1.5, colormap = :magma,
-    figure = (resolution = (800, 600),))
+streamplot(f, -1.5..1.5, -1.5..1.5, colormap = :magma)
 
 save("example_streamplot.png", current_figure(), px_per_unit = 2); nothing # hide
 ```

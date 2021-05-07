@@ -13,7 +13,7 @@ Here's how you create one
 ```@example laxis
 using CairoMakie
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
     title = "Title")
@@ -46,7 +46,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (1200, 500))
+f = Figure()
 
 axs = [Axis(f[1, i]) for i in 1:3]
 
@@ -78,7 +78,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 axes = [Axis(f[i, j]) for j in 1:3, i in 1:2]
 
@@ -108,7 +108,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 400))
+f = Figure()
 
 lines(f[1, 1], 0..10, sin)
 lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
@@ -148,7 +148,7 @@ The default tick type is `LinearTicks(n)`, where `n` is the target number of tic
 ```@example
 using CairoMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 for (i, n) in enumerate([2, 5, 9])
     lines(fig[i, 1], 0..20, sin, axis = (xticks = LinearTicks(n),))
 end
@@ -218,7 +218,7 @@ theme = Attributes(
 )
 
 fig = with_theme(theme) do
-    fig = Figure(resolution = (800, 800))
+    fig = Figure()
     axs = [Axis(fig[fldmod1(n, 2)...],
         title = "IntervalsBetween($(n+1))",
         xminorticks = IntervalsBetween(n+1),
@@ -240,7 +240,7 @@ To hide spines, you can use `hidespines!`.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 ax1 = Axis(f[1, 1], title = "Axis 1")
 ax2 = Axis(f[1, 2], title = "Axis 2")
@@ -260,7 +260,7 @@ It's common, e.g., to hide everything but the grid lines in facet plots.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (1200, 700))
+f = Figure()
 
 ax1 = Axis(f[1, 1], title = "Axis 1")
 ax2 = Axis(f[1, 2], title = "Axis 2")
@@ -284,7 +284,7 @@ using CairoMakie
 
 data = LinRange(0.01, 0.99, 200)
 
-f = Figure(resolution = (1000, 1000), fontsize = 14)
+f = Figure(resolution = (800, 800))
 
 for (i, scale) in enumerate([identity, log10, log2, log, sqrt, AbstractPlotting.logit])
 
@@ -336,12 +336,12 @@ using FileIO
 using Random # hide
 Random.seed!(1) # hide
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 axes = [Axis(f[i, j]) for i in 1:2, j in 1:3]
 tightlimits!.(axes)
 
-img = rotr90(load("../assets/cow.png"))
+img = rotr90(load(assetpath("cow.png")))
 
 for ax in axes
     image!(ax, img)
@@ -361,8 +361,8 @@ axes[2, 1].aspect = AxisAspect(1)
 axes[2, 2].title = "AxisAspect(2)"
 axes[2, 2].aspect = AxisAspect(2)
 
-axes[2, 3].title = "AxisAspect(0.5)"
-axes[2, 3].aspect = AxisAspect(0.5)
+axes[2, 3].title = "AxisAspect(2/3)"
+axes[2, 3].aspect = AxisAspect(2/3)
 
 f
 ```
@@ -450,7 +450,7 @@ separately.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 ax1 = Axis(f[1, 1])
 ax2 = Axis(f[1, 2])
@@ -485,7 +485,7 @@ You can change this with the attributes `xaxisposition = :top` and `yaxispositio
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (800, 800))
+f = Figure()
 
 for i in 1:2, j in 1:2
     Axis(
@@ -508,7 +508,7 @@ Here's an example how to do this with a second y axis on the right.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue)
 ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right)
