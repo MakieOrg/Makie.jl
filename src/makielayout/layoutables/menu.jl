@@ -254,7 +254,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
         markersize = dropdown_arrow_size,
         color = dropdown_arrow_color,
         strokecolor = :transparent,
-        raw = true)
+        raw = true, inspectable = false)
     translate!(dropdown_arrow, 0, 0, 1)
 
 
