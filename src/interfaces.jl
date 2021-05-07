@@ -281,7 +281,7 @@ $(ATTRIBUTES)
 end
 
 function plot!(plot::Text)
-    
+
     # attach a function to any text that calculates the glyph layout and stores it
     onany(plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
         ts = to_textsize(ts)
@@ -528,6 +528,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
+
     transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
     plot_obj
