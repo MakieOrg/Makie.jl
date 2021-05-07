@@ -438,31 +438,37 @@ function DataInspector(scene::Scene; kwargs...)
     inspector = DataInspector(parent, plot)
 
     e = events(parent)
-    f = onany(e.mouseposition, e.scroll) do mp, _
-        (inspector.plot.enabled[] && is_mouseinside(parent)) || return false
+    f1 = on(_ -> on_hover(inspector), e.mouseposition)
+    f2 = on(_ -> on_hover(inspector), e.scroll)
 
-        picks = pick_sorted(parent, mp, inspector.plot.range[])
-        should_clear = true
-        for (plt, idx) in picks
-            if to_value(get(plt.attributes, :inspectable, true)) &&
-                # show_data should return true if it created a tooltip
-                if show_data_recursion(inspector, plt, idx)
-                    should_clear = false
-                    break
-                end
+    push!(inspector.obsfuncs, f1, f2)
+
+    inspector
+end
+
+function on_hover(inspector)
+    parent = inspector.root
+    (inspector.plot.enabled[] && is_mouseinside(parent)) || return false
+
+    mp = mouseposition_px(parent)
+    should_clear = true
+    for (plt, idx) in pick_sorted(parent, mp, inspector.plot.range[])
+        if to_value(get(plt.attributes, :inspectable, true)) &&
+            # show_data should return true if it created a tooltip
+            if show_data_recursion(inspector, plt, idx)
+                should_clear = false
+                break
             end
-        end
-
-        if should_clear
-            plot._visible[] = false
-            plot._bbox_visible[] = false
-            plot._px_bbox_visible[] = false
         end
     end
 
-    append!(inspector.obsfuncs, f)
+    if should_clear
+        inspector.plot._visible[] = false
+        inspector.plot._bbox_visible[] = false
+        inspector.plot._px_bbox_visible[] = false
+    end
 
-    inspector
+    return false
 end
 
 
