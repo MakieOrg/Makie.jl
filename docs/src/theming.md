@@ -12,7 +12,7 @@ Let's create a plot with the default theme:
 using GLMakie
 
 function example_plot()
-    f = Figure(resolution = (1000, 800))
+    f = Figure()
     for i in 1:2, j in 1:2
         lines(f[i, j], cumsum(randn(1000)))
     end

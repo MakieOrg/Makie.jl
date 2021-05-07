@@ -12,7 +12,7 @@ CairoMakie.activate!() # hide
 using AbstractPlotting.GeometryBasics
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 poly!(Point2f0[(0, 0), (2, 0), (3, 1), (1, 1)], color = :red, strokecolor = :black, strokewidth = 1)
@@ -27,7 +27,7 @@ CairoMakie.activate!() # hide
 using AbstractPlotting.GeometryBasics
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 # polygon with hole
@@ -48,7 +48,7 @@ CairoMakie.activate!() # hide
 using AbstractPlotting.GeometryBasics
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 # vector of shapes
@@ -69,7 +69,7 @@ CairoMakie.activate!() # hide
 using AbstractPlotting.GeometryBasics
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1], aspect = DataAspect())
 
 # shape decomposition
@@ -85,7 +85,7 @@ CairoMakie.activate!() # hide
 using AbstractPlotting.GeometryBasics
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 # vector of polygons

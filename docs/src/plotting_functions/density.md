@@ -11,7 +11,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 density!(randn(200))
@@ -25,7 +25,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 density!(randn(200), direction = :y, npoints = 10)
@@ -39,7 +39,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 density!(randn(200), color = (:red, 0.3),
@@ -54,7 +54,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 vectors = [randn(1000) .+ i/2 for i in 0:5]
