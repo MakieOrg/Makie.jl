@@ -206,7 +206,7 @@ function layoutable(::Type{Legend},
                 push!(titletexts, nothing)
             else
                 push!(titletexts, Label(scene, text = title, font = titlefont, color = titlecolor,
-                    textsize = titlesize, halign = titlehalign, valign = titlevalign), inspectable = false)
+                    textsize = titlesize, halign = titlehalign, valign = titlevalign, inspectable = false))
             end
 
             etexts = []
