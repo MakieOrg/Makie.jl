@@ -29,7 +29,7 @@ $(ATTRIBUTES)
 """
 @recipe(Density) do scene
     Theme(
-        color = :gray85,
+        color = RGBAf0(0,0,0,0.2),
         strokecolor = :black,
         strokewidth = 1,
         strokearound = false,
