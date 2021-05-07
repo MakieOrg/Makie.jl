@@ -915,6 +915,7 @@ convert_attribute(r::AbstractVector{<: Quaternionf0}, k::key"rotation") = r
 convert_attribute(x, k::key"colorrange") = x==nothing ? nothing : Vec2f0(x)
 
 convert_attribute(x, k::key"textsize") = Float32(x)
+convert_attribute(x::AbstractVector, k::key"textsize") = convert_attribute.(x, k)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = el32convert(x)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f0, x)
 convert_attribute(x, k::key"linewidth") = Float32(x)
