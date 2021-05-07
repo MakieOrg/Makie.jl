@@ -58,7 +58,7 @@ This object can be used to plot a new axis into a certain layout position in the
 using CairoMakie
 CairoMakie.activate!() # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 pos = f[1, 1]
 scatter(pos, rand(100, 2))
 
@@ -80,7 +80,7 @@ Often, a desired plot layout can only be achieved with nesting, and repeatedly i
 using CairoMakie
 CairoMakie.activate!() # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 
 f[1, 1] = Axis(f, title = "I'm not nested")
 f[1, 2][1, 1] = Axis(f, title = "I'm nested")
@@ -99,7 +99,26 @@ All nested grid layouts that don't exist yet, but are needed for a nested plotti
     value for further manipulation. You can instead retrieve them after the fact with the `content` function, for example,
     as explained in the following section.
 
-## Retrieving objects from a `Figure`
+
+## Figure padding
+
+You can change the amount of whitespace around the figure content with the keyword `figure_padding`.
+This takes either a number for all four sides, or a tuple of four numbers for left, right, bottom, top.
+You can also theme this setting with `set_theme!(figure_padding = 30)`, for example.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+
+f = Figure(figure_padding = 1, backgroundcolor = :gray80)
+
+Axis(f[1, 1])
+scatter!(1:10)
+
+f
+```
+
+## Retrieving Objects From A Figure
 
 Sometimes users are surprised that indexing into a figure does not retrieve the object placed at that position.
 This is because the `FigurePosition` is needed for plotting, and returning content objects directly would take

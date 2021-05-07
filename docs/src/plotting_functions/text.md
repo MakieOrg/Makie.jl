@@ -18,7 +18,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 
 Axis(f[1, 1], aspect = DataAspect(), backgroundcolor = :gray50)
 
@@ -46,7 +46,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 LScene(f[1, 1])
 
 text!(
@@ -112,7 +112,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 
 horsepower = [52, 78, 80, 112, 140]
 cars = ["Kia", "Mini", "Honda", "Mercedes", "Ferrari"]

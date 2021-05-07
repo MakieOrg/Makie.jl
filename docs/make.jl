@@ -407,7 +407,10 @@ makedocs(
 # env variable, which is JuliaPlots/AbstractPlotting.jl by default
 ENV["GITHUB_REPOSITORY"] = "JuliaPlots/MakieDocumentation"
 
-deploydocs(
-    repo = "github.com/JuliaPlots/MakieDocumentation",
-    push_preview = true
-)
+if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
+    deploydocs(
+        repo = "github.com/JuliaPlots/MakieDocumentation",
+        push_preview = true
+    )
+end
+
