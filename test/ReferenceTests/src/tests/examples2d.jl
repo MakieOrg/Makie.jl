@@ -241,7 +241,7 @@ end
         ) # plot lines with colors
     end
     fig
-    step!(st)
+    AbstractPlotting.step!(st)
 
     for (i, rot) in enumerate(LinRange(0, π / 2, N))
         AbstractPlotting.rotate!(plots[i], rot)
@@ -256,7 +256,7 @@ end
         )
     end
 
-    step!(st)
+    AbstractPlotting.step!(st)
     fig
 end
 
@@ -313,17 +313,17 @@ end
     function categorical_ticks(cat)
         labels = AbstractPlotting.categoric_labels(cat)
         ticks = AbstractPlotting.categoric_range(labels)
-        
+
         ticks, labels
     end
-        
+
 	x1         = ["a_right", "a_right", "a_right", "a_right"]
 	y1         = [2, 3, -3, -2]
 	grp_dodge1 = [2, 2,  1,  1]
 	grp_stack1 = [1, 2,  1,  2]
 
 	x2         = ["z_left", "z_left", "z_left", "z_left"]
-	y2         = [2, 3, -3, -2]	
+	y2         = [2, 3, -3, -2]
 	grp_dodge2 = [1, 2,  1,  2]
 	grp_stack2 = [1, 1,  2,  2]
 
@@ -333,15 +333,15 @@ end
 	y = [y1; y2][perm]
 	grp_dodge = [grp_dodge1; grp_dodge2][perm]
 	grp_stack = [grp_stack1; grp_stack2][perm]
-		
+
 	tbl = (; x = x, grp_dodge = grp_dodge, grp_stack = grp_stack, y = y)
-	
+
 	fig = Figure()
 	ax = Axis(fig[1,1])
-	
+
 	barplot!(ax, tbl.x, tbl.y, dodge = tbl.grp_dodge, stack = tbl.grp_stack, color = tbl.grp_stack)
-	
+
 	ax.xticks = categorical_ticks(tbl.x)
-	
+
 	fig
 end
