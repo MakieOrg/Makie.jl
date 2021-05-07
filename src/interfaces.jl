@@ -48,6 +48,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         colormap = [:black, :white],
+        colorrange = automatic,
         interpolate = true,
         fxaa = false,
         lowclip = nothing,
@@ -70,6 +71,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         colormap = :viridis,
+        colorrange = automatic,
         linewidth = 0.0,
         interpolate = false,
         levels = 1,
@@ -120,6 +122,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = nothing,
         colormap = :viridis,
+        colorrange = automatic,
         shading = true,
         fxaa = true,
         lowclip = nothing,
@@ -147,6 +150,7 @@ $(ATTRIBUTES)
         linewidth = 1.0,
         color = :black,
         colormap = :viridis,
+        colorrange = automatic,
         linestyle = nothing,
         fxaa = false
     )
@@ -183,6 +187,7 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = :black,
         colormap = :viridis,
+        colorrange = automatic,
         interpolate = false,
         shading = true,
         fxaa = true,
@@ -204,8 +209,9 @@ $(ATTRIBUTES)
         default_theme(scene)...,
         color = :gray65,
         colormap = :viridis,
+        colorrange = automatic,
         marker = Circle,
-        markersize = 10,
+        markersize = 8,
 
         strokecolor = :black,
         strokewidth = 1.0,
@@ -269,12 +275,13 @@ $(ATTRIBUTES)
         justification = automatic,
         lineheight = 1.0,
         space = :screen, # or :data
+        offset = Point2f0(0, 0),
         _glyphlayout = nothing,
     )
 end
 
 function plot!(plot::Text)
-    
+
     # attach a function to any text that calculates the glyph layout and stores it
     onany(plot[1], plot.position, plot.textsize, plot.font, plot.align, plot.rotation, plot.model, plot.justification, plot.lineheight) do str, pos, ts, f, al, rot, mo, jus, lh
         ts = to_textsize(ts)
@@ -521,6 +528,7 @@ function (PlotType::Type{<: AbstractPlot{Typ}})(scene::SceneLike, attributes::At
     end
     # create the plot, with the full attributes, the input signals, and the final signal nodes.
     plot_obj = FinalType(scene, transformation, plot_attributes, input, seperate_tuple(args))
+
     transformation.parent[] = plot_obj
     calculated_attributes!(plot_obj)
     plot_obj
@@ -548,6 +556,7 @@ plottype(::Type{Any}, argvalues...) = plottype(argvalues...)
 plottype(P::Type{<: Combined{T}}, argvalues...) where T = P
 
 ## specialized definitions for types
+plottype(::AbstractVector, ::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector, ::AbstractVector) = Scatter
 plottype(::AbstractVector) = Scatter
 plottype(::AbstractMatrix{<: Real}) = Heatmap

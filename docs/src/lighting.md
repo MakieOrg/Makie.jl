@@ -1,6 +1,6 @@
 # Lighting
 
-For 3-D scenes, GLMakie offers several attributes to control the lighting of the scene. These are set per plot.
+For 3D scenes, `GLMakie` offers several attributes to control the lighting of the scene. These are set per plot.
 
 - `ambient::Vec3f0`: Objects should never be completely dark; we use an ambient light to simulate background lighting, and give the object some color. Each element of the vector represents the intensity of color in R, G or B respectively.
 - `diffuse::Vec3f0`: Simulates the directional impact which the light source has on the plot object. This is the most visually significant component of the lighting model; the more a part of an object faces the light source, the brighter it becomes. Each element of the vector represents the intensity of color in R, G or B respectively.
@@ -27,7 +27,7 @@ GLMakie also implements [_screen-space ambient occlusion_](https://learnopengl.c
   a good compromise.
 
 !!! note
-The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.enable_SSAO[] = true`, close any existing GLMakie window and reopen it.
+    The SSAO postprocessor is turned off by default to save on resources. To turn it on, set `GLMakie.enable_SSAO[] = true`, close any existing GLMakie window and reopen it.
 
 ## Matcap
 
@@ -38,7 +38,7 @@ A matcap (material capture) is a texture which is applied based on the normals o
 ```@example 1
 using GLMakie
 GLMakie.activate!() # hide
-using AbstractPlotting
+
 xs = -10:0.1:10
 ys = -10:0.1:10
 zs = [10 * (cos(x) * cos(y)) * (.1 + exp(-(x^2 + y^2 + 1)/10)) for x in xs, y in ys]

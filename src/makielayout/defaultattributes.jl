@@ -22,9 +22,9 @@ function default_attributes(::Type{Axis}, scene)
         "The font family of the title."
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The title's font size."
-        titlesize = lift_parent_attribute(scene, :fontsize, 20f0)
+        titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The gap between axis and title."
-        titlegap = 10f0
+        titlegap = 4f0
         "Controls if the title is visible."
         titlevisible = true
         "The horizontal alignment of the title."
@@ -40,17 +40,17 @@ function default_attributes(::Type{Axis}, scene)
         "The color of the ylabel."
         ylabelcolor = RGBf0(0, 0, 0)
         "The font size of the xlabel."
-        xlabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        xlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font size of the ylabel."
-        ylabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        ylabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Controls if the xlabel is visible."
         xlabelvisible = true
         "Controls if the ylabel is visible."
         ylabelvisible = true
         "The padding between the xlabel and the ticks or axis."
-        xlabelpadding = 15f0
+        xlabelpadding = 3f0
         "The padding between the ylabel and the ticks or axis."
-        ylabelpadding = 15f0 # because of boundingbox inaccuracies of ticklabels
+        ylabelpadding = 5f0 # because of boundingbox inaccuracies of ticklabels
         "The font family of the xticklabels."
         xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font family of the yticklabels."
@@ -60,9 +60,9 @@ function default_attributes(::Type{Axis}, scene)
         "The color of yticklabels."
         yticklabelcolor = RGBf0(0, 0, 0)
         "The font size of the xticklabels."
-        xticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font size of the yticklabels."
-        yticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        yticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Controls if the xticklabels are visible."
         xticklabelsvisible = true
         "Controls if the yticklabels are visible."
@@ -72,9 +72,9 @@ function default_attributes(::Type{Axis}, scene)
         "The space reserved for the yticklabels."
         yticklabelspace = AbstractPlotting.automatic
         "The space between xticks and xticklabels."
-        xticklabelpad = 5f0
+        xticklabelpad = 2f0
         "The space between yticks and yticklabels."
-        yticklabelpad = 5f0
+        yticklabelpad = 4f0
         "The counterclockwise rotation of the xticklabels in radians."
         xticklabelrotation = 0f0
         "The counterclockwise rotation of the yticklabels in radians."
@@ -84,9 +84,9 @@ function default_attributes(::Type{Axis}, scene)
         "The horizontal and vertical alignment of the yticklabels."
         yticklabelalign = AbstractPlotting.automatic
         "The size of the xtick marks."
-        xticksize = 10f0
+        xticksize = 6f0
         "The size of the ytick marks."
-        yticksize = 10f0
+        yticksize = 6f0
         "Controls if the xtick marks are visible."
         xticksvisible = true
         "Controls if the ytick marks are visible."
@@ -184,11 +184,11 @@ function default_attributes(::Type{Axis}, scene)
         "The relative margins added to the autolimits in y direction."
         yautolimitmargin = (0.05f0, 0.05f0)
         "The xticks."
-        xticks = LinearTicks(4)
+        xticks = AbstractPlotting.automatic
         "Format for xticks."
         xtickformat = AbstractPlotting.automatic
         "The yticks."
-        yticks = LinearTicks(4)
+        yticks = AbstractPlotting.automatic
         "Format for yticks."
         ytickformat = AbstractPlotting.automatic
         "The button for panning."
@@ -215,8 +215,6 @@ function default_attributes(::Type{Axis}, scene)
         flip_ylabel = false
         "Constrains the data aspect ratio (`nothing` leaves the ratio unconstrained)."
         autolimitaspect = nothing
-        "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
-        targetlimits = BBox(0, 100, 0, 100)
         "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high) or a tuple (nothing_or_xlims, nothing_or_ylims). Are set by `xlims!`, `ylims!` and `limits!`."
         limits = (nothing, nothing)
         "The align mode of the axis in its parent GridLayout."
@@ -230,7 +228,7 @@ function default_attributes(::Type{Axis}, scene)
         "The alignment of x minor ticks on the axis spine"
         xminortickalign = 0f0
         "The tick size of x minor ticks"
-        xminorticksize = 5f0
+        xminorticksize = 4f0
         "The tick width of x minor ticks"
         xminortickwidth = 1f0
         "The tick color of x minor ticks"
@@ -242,13 +240,17 @@ function default_attributes(::Type{Axis}, scene)
         "The alignment of y minor ticks on the axis spine"
         yminortickalign = 0f0
         "The tick size of y minor ticks"
-        yminorticksize = 5f0
+        yminorticksize = 4f0
         "The tick width of y minor ticks"
         yminortickwidth = 1f0
         "The tick color of y minor ticks"
         yminortickcolor = :black
         "The tick locator for the y minor ticks"
         yminorticks = IntervalsBetween(2)
+        "The x axis scale"
+        xscale = identity
+        "The y axis scale"
+        yscale = identity
     end
 
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
@@ -273,31 +275,31 @@ function default_attributes(::Type{Colorbar}, scene)
         "The label font family."
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The label font size."
-        labelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        labelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Controls if the label is visible."
         labelvisible = true
         "The gap between the label and the ticks."
-        labelpadding = 15f0
+        labelpadding = 5f0
         "The font family of the tick labels."
         ticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font size of the tick labels."
-        ticklabelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        ticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Controls if the tick labels are visible."
         ticklabelsvisible = true
         "The color of the tick labels."
         ticklabelcolor = RGBf0(0, 0, 0)
         "The size of the tick marks."
-        ticksize = 10f0
+        ticksize = 6f0
         "Controls if the tick marks are visible."
         ticksvisible = true
         "The ticks."
-        ticks = LinearTicks(4)
+        ticks = AbstractPlotting.automatic
         "Format for ticks."
         tickformat = AbstractPlotting.automatic
         "The space reserved for the tick labels."
         ticklabelspace = AbstractPlotting.automatic
         "The gap between tick labels and tick marks."
-        ticklabelpad = 5f0
+        ticklabelpad = 3f0
         "The alignment of the tick marks relative to the axis spine (0 = out, 1 = in)."
         tickalign = 0f0
         "The line width of the tick marks."
@@ -336,10 +338,10 @@ function default_attributes(::Type{Colorbar}, scene)
         flipaxis = true
         "Flips the colorbar label if the axis is vertical."
         flip_vertical_label = false
-        "The width setting of the colorbar."
-        width = nothing
+        "The width setting of the colorbar. Use `size` to set width or height relative to colorbar orientation instead."
+        width = AbstractPlotting.automatic
         "The height setting of the colorbar."
-        height = nothing
+        height = AbstractPlotting.automatic
         "Controls if the parent layout can adjust to this element's width"
         tellwidth = true
         "Controls if the parent layout can adjust to this element's height"
@@ -361,18 +363,29 @@ function default_attributes(::Type{Colorbar}, scene)
         "The alignment of minor ticks on the axis spine"
         minortickalign = 0f0
         "The tick size of minor ticks"
-        minorticksize = 5f0
+        minorticksize = 4f0
         "The tick width of minor ticks"
         minortickwidth = 1f0
         "The tick color of minor ticks"
         minortickcolor = :black
         "The tick locator for the minor ticks"
         minorticks = IntervalsBetween(5)
+        "The axis scale"
+        scale = identity
+        "The width or height of the colorbar, depending on if it's vertical or horizontal, unless overridden by `width` / `height`"
+        size = 16
     end
     (attributes = attrs, documentation = docdict, defaults = defaultdict)
 end
 
 @doc """
+    Colorbar(parent; kwargs...)
+    Colorbar(parent, plotobject; kwargs...)
+    Colorbar(parent, heatmap::Heatmap; kwargs...)
+    Colorbar(parent, contourf::Contourf; kwargs...)
+
+Add a Colorbar to `parent`. If you pass a `plotobject`, a `heatmap` or `contourf`, the Colorbar is set up automatically such that it tracks these objects' relevant attributes like `colormap`, `colorrange`, `highclip` and `lowclip`. If you want to adjust these attributes afterwards, change them in the plot object, otherwise the Colorbar and the plot object will go out of sync.
+
 Colorbar has the following attributes:
 
 $(let
@@ -391,7 +404,7 @@ function default_attributes(::Type{Label}, scene)
         "The color of the text."
         color = RGBf0(0, 0, 0)
         "The font size of the text."
-        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font family of the text."
         font = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The vertical alignment of the text in its suggested boundingbox"
@@ -478,7 +491,7 @@ function default_attributes(::Type{Button}, scene)
         "The extra space added to the sides of the button label's boundingbox."
         padding = (10f0, 10f0, 10f0, 10f0)
         "The font size of the button label."
-        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The text of the button label."
         label = "Button"
         "The font family of the button label."
@@ -536,7 +549,7 @@ function default_attributes(::Type{LineAxis})
         limits = (0f0, 100f0),
         flipped = false,
         flip_vertical_label = false,
-        ticksize = 10f0,
+        ticksize = 6f0,
         tickwidth = 1f0,
         tickcolor = RGBf0(0, 0, 0),
         tickalign = 0f0,
@@ -554,15 +567,16 @@ function default_attributes(::Type{LineAxis})
         labelcolor = RGBf0(0, 0, 0),
         labelvisible = true,
         ticklabelspace = AbstractPlotting.automatic,
-        ticklabelpad = 5f0,
-        labelpadding = 15f0,
+        ticklabelpad = 3f0,
+        labelpadding = 5f0,
         reversed = false,
         minorticksvisible = true,
         minortickalign = 0f0,
-        minorticksize = 5f0,
+        minorticksize = 4f0,
         minortickwidth = 1f0,
         minortickcolor = :black,
         minorticks = AbstractPlotting.automatic,
+        scale = identity,
     )
 end
 
@@ -728,7 +742,7 @@ function default_attributes(::Type{Legend}, scene)
         "The font family of the legend group titles."
         titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The font size of the legend group titles."
-        titlesize = lift_parent_attribute(scene, :fontsize, 20f0)
+        titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The horizontal alignment of the legend group titles."
         titlehalign = :center
         "The vertical alignment of the legend group titles."
@@ -740,7 +754,7 @@ function default_attributes(::Type{Legend}, scene)
         "The group title positions relative to their groups. Can be `:top` or `:left`."
         titleposition = :top
         "The font size of the entry labels."
-        labelsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        labelsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "The font family of the entry labels."
         labelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
         "The color of the entry labels."
@@ -750,7 +764,7 @@ function default_attributes(::Type{Legend}, scene)
         "The vertical alignment of the entry labels."
         labelvalign = :center
         "The additional space between the legend content and the border."
-        padding = (10f0, 10f0, 10f0, 10f0)
+        padding = (10f0, 10f0, 8f0, 8f0)
         "The additional space between the legend and its suggested boundingbox."
         margin = (0f0, 0f0, 0f0, 0f0)
         "The background color of the legend."
@@ -774,9 +788,9 @@ function default_attributes(::Type{Legend}, scene)
         "The number of banks in which the legend entries are grouped. Columns if the legend is vertically oriented, otherwise rows."
         nbanks = 1
         "The gap between the label of one legend entry and the patch of the next."
-        colgap = 20
+        colgap = 16
         "The gap between the entry rows."
-        rowgap = 4
+        rowgap = 3
         "The gap between the patch and the label of each legend entry."
         patchlabelgap = 5
         "The default points used for LineElements in normalized coordinates relative to each label patch."
@@ -796,9 +810,9 @@ function default_attributes(::Type{Legend}, scene)
         "The orientation of the legend (:horizontal or :vertical)."
         orientation = :vertical
         "The gap between each group title and its group."
-        titlegap = 15
+        titlegap = 8
         "The gap between each group and the next."
-        groupgap = 30
+        groupgap = 16
         "The horizontal alignment of entry groups in their parent GridLayout."
         gridshalign = :center
         "The vertical alignment of entry groups in their parent GridLayout."
@@ -897,7 +911,7 @@ function default_attributes(::Type{Textbox}, scene)
         "Controls if the textbox is defocused when a string is submitted."
         defocus_on_submit = true
         "Text size."
-        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Text color."
         textcolor = :black
         "Text color for the placeholder."
@@ -949,3 +963,217 @@ $(let
 end)
 """
 Textbox
+
+
+
+function default_attributes(::Type{Axis3}, scene)
+    attrs, docdict, defaultdict = @documented_attributes begin
+        "The height setting of the scene."
+        height = nothing
+        "The width setting of the scene."
+        width = nothing
+        "Controls if the parent layout can adjust to this element's width"
+        tellwidth = true
+        "Controls if the parent layout can adjust to this element's height"
+        tellheight = true
+        "The horizontal alignment of the scene in its suggested bounding box."
+        halign = :center
+        "The vertical alignment of the scene in its suggested bounding box."
+        valign = :center
+        "The alignment of the scene in its suggested bounding box."
+        alignmode = Inside()
+        "The elevation angle of the camera"
+        elevation = pi/8
+        "The azimuth angle of the camera"
+        azimuth = 1.275 * pi
+        "A number between 0 and 1, where 0 is orthographic, and 1 full perspective"
+        perspectiveness = 0f0
+        "Aspects of the 3 axes with each other"
+        aspect = (1, 1, 2/3) # :data :equal
+        "The view mode which affects the final projection. `:fit` results in the projection that always fits the limits into the viewport, invariant to rotation. `:fitzoom` keeps the x/y ratio intact but stretches the view so the corners touch the scene viewport. `:stretch` scales separately in both x and y direction to fill the viewport, which can distort the `aspect` that is set."
+        viewmode = :fitzoom # :fit :fitzoom :stretch
+        "The background color"
+        backgroundcolor = :transparent
+        "The x label"
+        xlabel = "x"
+        "The y label"
+        ylabel = "y"
+        "The z label"
+        zlabel = "z"
+        "The x label color"
+        xlabelcolor = :black
+        "The y label color"
+        ylabelcolor = :black
+        "The z label color"
+        zlabelcolor = :black
+        "Controls if the x label is visible"
+        xlabelvisible = true
+        "Controls if the y label is visible"
+        ylabelvisible = true
+        "Controls if the z label is visible"
+        zlabelvisible = true
+        "Controls if the x ticklabels are visible"
+        xticklabelsvisible = true
+        "Controls if the y ticklabels are visible"
+        yticklabelsvisible = true
+        "Controls if the z ticklabels are visible"
+        zticklabelsvisible = true
+        "Controls if the x ticks are visible"
+        xticksvisible = true
+        "Controls if the y ticks are visible"
+        yticksvisible = true
+        "Controls if the z ticks are visible"
+        zticksvisible = true
+        "The x label size"
+        xlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The y label size"
+        ylabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The z label size"
+        zlabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The x label font"
+        xlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The y label font"
+        ylabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The z label font"
+        zlabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The x label rotation"
+        xlabelrotation = AbstractPlotting.automatic
+        "The y label rotation"
+        ylabelrotation = AbstractPlotting.automatic
+        "The z label rotation"
+        zlabelrotation = AbstractPlotting.automatic
+        "The x label align"
+        xlabelalign = AbstractPlotting.automatic
+        "The y label align"
+        ylabelalign = AbstractPlotting.automatic
+        "The z label align"
+        zlabelalign = AbstractPlotting.automatic
+        "The x label offset"
+        xlabeloffset = 40
+        "The y label offset"
+        ylabeloffset = 40
+        "The z label offset"
+        zlabeloffset = 50
+        "The x ticklabel color"
+        xticklabelcolor = :black
+        "The y ticklabel color"
+        yticklabelcolor = :black
+        "The z ticklabel color"
+        zticklabelcolor = :black
+        "The x ticklabel size"
+        xticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The y ticklabel size"
+        yticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The z ticklabel size"
+        zticklabelsize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The x ticklabel font"
+        xticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The y ticklabel font"
+        yticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The z ticklabel font"
+        zticklabelfont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The x grid color"
+        xgridcolor = :gray80
+        "The y grid color"
+        ygridcolor = :gray80
+        "The z grid color"
+        zgridcolor = :gray80
+        "The x tick color"
+        xtickcolor = :black
+        "The y tick color"
+        ytickcolor = :black
+        "The z tick color"
+        ztickcolor = :black
+        "The x tick width"
+        xtickwidth = 1
+        "The y tick width"
+        ytickwidth = 1
+        "The z tick width"
+        ztickwidth = 1
+        "The x spine color"
+        xspinecolor = :black
+        "The y spine color"
+        yspinecolor = :black
+        "The z spine color"
+        zspinecolor = :black
+        "The x spine width"
+        xspinewidth = 1
+        "The y spine width"
+        yspinewidth = 1
+        "The z spine width"
+        zspinewidth = 1
+        "Controls if the x spine is visible"
+        xspinesvisible = true
+        "Controls if the y spine is visible"
+        yspinesvisible = true
+        "Controls if the z spine is visible"
+        zspinesvisible = true
+        "Controls if the x grid is visible"
+        xgridvisible = true
+        "Controls if the y grid is visible"
+        ygridvisible = true
+        "Controls if the z grid is visible"
+        zgridvisible = true
+        "The protrusions on the sides of the axis, how much gap space is reserved for labels etc."
+        protrusions = 30
+        "The x ticks"
+        xticks = WilkinsonTicks(5; k_min = 3)
+        "The y ticks"
+        yticks = WilkinsonTicks(5; k_min = 3)
+        "The z ticks"
+        zticks = WilkinsonTicks(5; k_min = 3)
+        "The x tick format"
+        xtickformat = AbstractPlotting.automatic
+        "The y tick format"
+        ytickformat = AbstractPlotting.automatic
+        "The z tick format"
+        ztickformat = AbstractPlotting.automatic
+        "The axis title string."
+        title = ""
+        "The font family of the title."
+        titlefont = lift_parent_attribute(scene, :font, "DejaVu Sans")
+        "The title's font size."
+        titlesize = lift_parent_attribute(scene, :fontsize, 16f0)
+        "The gap between axis and title."
+        titlegap = 4f0
+        "Controls if the title is visible."
+        titlevisible = true
+        "The horizontal alignment of the title."
+        titlealign = :center
+        "The color of the title"
+        titlecolor = :black
+        "The color of the xy panel"
+        xypanelcolor = :transparent
+        "The color of the yz panel"
+        yzpanelcolor = :transparent
+        "The color of the xz panel"
+        xzpanelcolor = :transparent
+        "Controls if the xy panel is visible"
+        xypanelvisible = true
+        "Controls if the yz panel is visible"
+        yzpanelvisible = true
+        "Controls if the xz panel is visible"
+        xzpanelvisible = true
+        "The limits that the axis tries to set given other constraints like aspect. Don't set this directly, use `xlims!`, `ylims!` or `limits!` instead."
+        targetlimits = FRect3D(Vec3f0(0, 0, 0), Vec3f0(1, 1, 1))
+        "The limits that the user has manually set. They are reinstated when calling `reset_limits!` and are set to nothing by `autolimits!`. Can be either a tuple (xlow, xhigh, ylow, high, zlow, zhigh) or a tuple (nothing_or_xlims, nothing_or_ylims, nothing_or_zlims). Are set by `xlims!`, `ylims!`, `zlims!` and `limits!`."
+        limits = (nothing, nothing, nothing)
+        "The relative margins added to the autolimits in x direction."
+        xautolimitmargin = (0.05, 0.05)
+        "The relative margins added to the autolimits in y direction."
+        yautolimitmargin = (0.05, 0.05)
+        "The relative margins added to the autolimits in z direction."
+        zautolimitmargin = (0.05, 0.05)
+    end
+    (attributes = attrs, documentation = docdict, defaults = defaultdict)
+end
+
+@doc """
+Axis3 has the following attributes:
+
+$(let
+    _, docs, defaults = default_attributes(Axis3, nothing)
+    docvarstring(docs, defaults)
+end)
+"""
+Axis3

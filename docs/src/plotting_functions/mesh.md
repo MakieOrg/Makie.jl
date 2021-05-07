@@ -38,7 +38,6 @@ mesh(
     brain,
     color = [tri[1][2] for tri in brain for i in 1:3],
     colormap = Reverse(:Spectral),
-    shininess = 0,
     figure = (resolution = (1000, 1000),)
 )
 ```

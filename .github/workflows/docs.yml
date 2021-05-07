@@ -40,9 +40,16 @@ jobs:
       - name: Install binary dependencies
         run: sudo apt-get update && sudo apt-get install -y xorg-dev mesa-utils xvfb libgl1 freeglut3-dev libxrandr-dev libxinerama-dev libxcursor-dev libxi-dev libxext-dev
       - name: Install Julia dependencies
-        run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.add(url = "https://github.com/JuliaDocs/Documenter.jl", rev = "master"); Pkg.instantiate()'
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
+          julia --project=docs -e
+          'using Pkg; Pkg.develop(PackageSpec(path=pwd())); 
+           Pkg.add(url = "https://github.com/JuliaDocs/Documenter.jl", rev = "master");
+           Pkg.instantiate()'
       - name: Build and deploy
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-        run: DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24' julia --project=docs --color=yes docs/make.jl
+        run: >
+          DISPLAY=:0 xvfb-run -s '-screen 0 1024x768x24'
+          julia --project=docs --color=yes docs/make.jl

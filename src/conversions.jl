@@ -77,8 +77,13 @@ convert_arguments(::NoConversion, args...) = args
 struct PointBased <: ConversionTrait end
 conversion_trait(x::Type{<: XYBased}) = PointBased()
 
-struct SurfaceLike <: ConversionTrait end
-conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
+abstract type SurfaceLike <: ConversionTrait end
+
+struct ContinuousSurface <: SurfaceLike end
+conversion_trait(::Type{<: Union{Surface, Image}}) = ContinuousSurface()
+
+struct DiscreteSurface <: SurfaceLike end
+conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
 
 struct VolumeLike end
 conversion_trait(::Type{<: Volume}) = VolumeLike()
@@ -202,6 +207,44 @@ function convert_arguments(P::PointBased, x::Rect3D)
         4, 8, 8, 6, 2, 4, 2, 6
     ]
     convert_arguments(P, decompose(Point3f0, x)[inds])
+end
+
+function edges(v::AbstractVector)
+    l = length(v)
+    if l == 1
+        return [v[1] - 0.5, v[1] + 0.5]
+    else
+        # Equivalent to
+        # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
+        # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
+        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders[1] = 2borders[1] - borders[2]
+        borders[end] = 2borders[end] - borders[end-1]
+        return borders
+    end
+end
+
+function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
+    x̂, ŷ = map((x, y), size(z)) do v, sz
+        return length(v) == sz ? edges(v) : v
+    end
+    return x̂, ŷ, z
+end
+
+adjust_axes(::SurfaceLike, x, y, z) = x, y, z
+
+"""
+    convert_arguments(SL::SurfaceLike, x::VecOrMat, y::VecOrMat, z::Matrix)
+
+If `SL` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
+whether they represent edges or centers of the heatmap bins.
+If they are centers, convert to edges.
+"""
+function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
+    return adjust_axes(SL, x, y, z)
+end
+function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
+    return adjust_axes(SL, x, y, z)
 end
 
 """
@@ -796,7 +839,7 @@ function line_diff_pattern(ls_str::AbstractString, gaps = :normal)
     pattern = Float64[]
     for i in 1:length(ls_str)
         curr_char = ls_str[i]
-        next_char = i == lastindex(ls_str) ? ls_str[begin] : ls_str[i+1]
+        next_char = i == lastindex(ls_str) ? ls_str[firstindex(ls_str)] : ls_str[i+1]
         # push dash or dot
         if curr_char == '-'
             push!(pattern, dash)
@@ -930,6 +973,7 @@ convert_attribute(r::AbstractVector{<: Quaternionf0}, k::key"rotation") = r
 convert_attribute(x, k::key"colorrange") = x==nothing ? nothing : Vec2f0(x)
 
 convert_attribute(x, k::key"textsize") = Float32(x)
+convert_attribute(x::AbstractVector, k::key"textsize") = convert_attribute.(x, k)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: Number = el32convert(x)
 convert_attribute(x::AbstractVector{T}, k::key"textsize") where T <: VecTypes = elconvert(Vec2f0, x)
 convert_attribute(x, k::key"linewidth") = Float32(x)

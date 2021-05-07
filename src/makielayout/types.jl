@@ -50,6 +50,27 @@ struct MultiplesTicks
     suffix::String
 end
 
+
+# """
+#     LogitTicks{T}(linear_ticks::T)
+
+# Wraps any other tick object.
+# Used to apply a linear tick searching algorithm on a logit-transformed interval.
+# """
+# struct LogitTicks{T}
+#     linear_ticks::T
+# end
+
+"""
+    LogTicks{T}(linear_ticks::T)
+
+Wraps any other tick object.
+Used to apply a linear tick searching algorithm on a log-transformed interval.
+"""
+struct LogTicks{T}
+    linear_ticks::T
+end
+
 """
     IntervalsBetween(n::Int, mirror::Bool = true)
 
@@ -105,6 +126,9 @@ struct DragPan
     reset_delay::Float32
 end
 
+struct DragRotate
+end
+
 struct ScrollEvent
     x::Float32
     y::Float32
@@ -118,6 +142,7 @@ end
     scene::Scene
     xaxislinks::Vector{Axis}
     yaxislinks::Vector{Axis}
+    targetlimits::Node{FRect2D}
     finallimits::Node{FRect2D}
     block_limit_linking::Node{Bool}
     mouseeventhandle::MouseEventHandle
@@ -175,4 +200,13 @@ end
 @Layoutable Textbox begin
     cursorindex::Node{Int}
     cursoranimtask
+end
+
+@Layoutable Axis3 begin
+    scene::Scene
+    finallimits::Node{FRect3D}
+    mouseeventhandle::MouseEventHandle
+    scrollevents::Observable{ScrollEvent}
+    keysevents::Observable{KeysEvent}
+    interactions::Dict{Symbol, Tuple{Bool, Any}}
 end
