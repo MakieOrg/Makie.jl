@@ -241,10 +241,10 @@ whether they represent edges or centers of the heatmap bins.
 If they are centers, convert to edges.
 """
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return adjust_axes(SL, x, y, z)
+    return map(el32convert, adjust_axes(SL, x, y, z))
 end
 function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return adjust_axes(SL, x, y, z)
+    return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
 """
