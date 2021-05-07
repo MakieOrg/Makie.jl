@@ -1,13 +1,13 @@
-# Figure
+# `Figure`
 
 The `Figure` object contains a top-level `Scene` and a `GridLayout`, as well as a list of layoutables that have been placed into it, like `Axis`, `Colorbar`, `Slider`, `Legend`, etc.
 
 !!! note
-    Wherever you see the old `scene, layout = layoutscene()` workflow from MakieLayout, you can imagine that 
+    Wherever you see the old `scene, layout = layoutscene()` workflow from MakieLayout, you can imagine that
     the `Figure` takes over the role of both `scene` and `layout`, plus additional conveniences like keeping
     track of layoutables.
 
-## Creating A Figure
+## Creating a `Figure`
 
 You can create a figure explicitly with the `Figure()` function, and set attributes of the underlying scene.
 The most important one of which is the `resolution`.
@@ -29,7 +29,7 @@ figure = figureaxisplot.figure
 figure, axis, plot = scatter(rand(100, 2))
 
 # you can also ignore components
-figure, _ = scatter(rand(100, 2))
+figure, = scatter(rand(100, 2))
 ```
 
 You can pass arguments to the created figure in a dict-like object to the special `figure` keyword:
@@ -38,10 +38,9 @@ You can pass arguments to the created figure in a dict-like object to the specia
 scatter(rand(100, 2), figure = (resolution = (600, 400),))
 ```
 
-## Placing Layoutables Into A Figure
+## Placing layoutables into a `Figure`
 
-All layoutables take their parent figure as the first argument, then you can place them in the figure layout
-via indexing syntax.
+All layoutables take their parent figure as the first argument, then you can place them in the figure layout via indexing syntax.
 
 ```julia
 f = Figure()
@@ -49,7 +48,7 @@ ax = f[1, 1] = Axis(f)
 sl = f[2, 1] = Slider(f)
 ```
 
-## FigurePositions and FigureSubpositions
+## `FigurePosition`s and `FigureSubposition`s
 
 The indexing syntax of `Figure` is implemented to work seamlessly with layouting.
 If you index into the figure, a `FigurePosition` object that stores this indexing operation is created.
@@ -100,6 +99,7 @@ All nested grid layouts that don't exist yet, but are needed for a nested plotti
     value for further manipulation. You can instead retrieve them after the fact with the `content` function, for example,
     as explained in the following section.
 
+
 ## Figure padding
 
 You can change the amount of whitespace around the figure content with the keyword `figure_padding`.
@@ -117,7 +117,6 @@ scatter!(1:10)
 
 f
 ```
-
 
 ## Retrieving Objects From A Figure
 
