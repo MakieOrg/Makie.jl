@@ -115,7 +115,6 @@ include("basic_recipes/error_and_rangebars.jl")
 include("basic_recipes/pie.jl")
 include("basic_recipes/poly.jl")
 include("basic_recipes/scatterlines.jl")
-include("basic_recipes/series.jl")
 include("basic_recipes/spy.jl")
 include("basic_recipes/stem.jl")
 include("basic_recipes/streamplot.jl")
@@ -273,6 +272,7 @@ for name in names(MakieLayout)
 end
 
 include("figureplotting.jl")
+include("basic_recipes/series.jl")
 
 if Base.VERSION >= v"1.4.2"
     include("precompile.jl")
