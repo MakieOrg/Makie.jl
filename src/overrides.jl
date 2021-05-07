@@ -144,7 +144,7 @@ end
 function draw_plot(scene::Scene, screen::CairoScreen,
         band::Band{<:Tuple{<:AbstractVector{<:Point2},<:AbstractVector{<:Point2}}})
 
-    if !(band.color isa AbstractArray)
+    if !(band.color[] isa AbstractArray)
         upperpoints = band[1][]
         lowerpoints = band[2][]
         points = vcat(lowerpoints, reverse(upperpoints))

@@ -72,7 +72,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Lines, 
 end
 
 function draw_single(primitive::Lines, ctx, positions)
-    @inbounds for i in 1:length(positions)
+    n = length(positions)
+    @inbounds for i in 1:n
         p = positions[i]
         # only take action for non-NaNs
         if !isnan(p)
@@ -81,10 +82,13 @@ function draw_single(primitive::Lines, ctx, positions)
                 Cairo.move_to(ctx, p...)
             else
                 Cairo.line_to(ctx, p...)
+                # complete line segment at end or if next point is NaN
+                if i == n || isnan(positions[i+1])
+                    Cairo.stroke(ctx)
+                end
             end
         end
     end
-    Cairo.stroke(ctx)
 end
 
 function draw_single(primitive::LineSegments, ctx, positions)
@@ -92,11 +96,11 @@ function draw_single(primitive::LineSegments, ctx, positions)
     @inbounds for i in 1:length(positions)
         if iseven(i)
             Cairo.line_to(ctx, positions[i]...)
+            Cairo.stroke(ctx)
         else
             Cairo.move_to(ctx, positions[i]...)
         end
     end
-    Cairo.stroke(ctx)
 end
 
 # if linewidth is not an array
@@ -194,6 +198,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 
         pos = project_position(scene, point, model)
 
+        isnan(pos) && return
+
         Cairo.set_source_rgba(ctx, rgbatuple(col)...)
         m = convert_attribute(marker, key"marker"(), key"scatter"())
         if m isa Char
@@ -206,13 +212,14 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
 end
 
 
-function draw_marker(ctx, marker, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
+function draw_marker(ctx, marker::Circle, pos, scale, strokecolor, strokewidth, marker_offset, rotation)
 
     marker_offset = marker_offset + scale ./ 2
 
     pos += Point2f0(marker_offset[1], -marker_offset[2])
 
     # Cairo.scale(ctx, scale...)
+    Cairo.move_to(ctx, pos[1] + scale[1]/2, pos[2])
     Cairo.arc(ctx, pos[1], pos[2], scale[1]/2, 0, 2*pi)
     Cairo.fill_preserve(ctx)
 
@@ -262,6 +269,7 @@ function draw_marker(ctx, marker::Char, font, pos, scale, strokecolor, strokewid
     # bottom left corner.
     Cairo.translate(ctx, centering_offset...)
 
+    Cairo.move_to(ctx, 0, 0)
     Cairo.text_path(ctx, string(marker))
     Cairo.fill_preserve(ctx)
     # stroke
@@ -306,65 +314,122 @@ end
 #                                     Text                                     #
 ################################################################################
 
+function p3_to_p2(p::Point3{T}) where T
+    if p[3] == 0 || isnan(p[3])
+        Point2{T}(p[1:2]...)
+    else
+        error("Can't reduce Point3 to Point2 with nonzero third component $(p[3]).")
+    end
+end
+
 function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     ctx = screen.context
-    @get_attribute(primitive, (textsize, color, font, align, rotation, model, justification, lineheight))
+    @get_attribute(primitive, (textsize, color, font, rotation, model, space, offset))
     txt = to_value(primitive[1])
     position = primitive.attributes[:position][]
-    N = length(txt)
-    atlas = AbstractPlotting.get_texture_atlas()
-    if position isa Union{StaticArrays.StaticArray, Tuple{Real, Real}, GeometryBasics.Point} # one position to place text
-        position = AbstractPlotting.layout_text(
-            txt, position, textsize,
-            font, align, rotation, model, justification, lineheight
-        )
+    # use cached glyph info
+    glyphlayouts = primitive._glyphlayout[]
+
+    draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font,
+        rotation, model, space, offset)
+
+    nothing
+end
+
+function draw_string(scene, ctx, strings::AbstractArray, positions::AbstractArray, glyphlayouts, textsize, color, font, rotation, model::SMatrix, space, offset)
+
+    # TODO: why is the Ref around model necessary? doesn't broadcast_foreach handle staticarrays matrices?
+    broadcast_foreach(strings, positions, glyphlayouts, textsize, color, font, rotation,
+        Ref(model), space, offset) do str, pos, glayout, ts, c, f, ro, mo, sp, off
+
+        draw_string(scene, ctx, str, pos, glayout, ts, c, f, ro, mo, sp, off)
     end
+end
 
-    is3D = scene.camera_controls[] isa Camera3D
+function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, textsize, color, font, rotation, model, space, offset)
 
-    stridx = 1
-    broadcast_foreach(1:N, position, textsize, color, font, rotation) do i, p, ts, cc, f, r
-        Cairo.save(ctx)
-        char = txt[stridx]
+    glyphoffsets = glyphlayout.origins
 
-        stridx = nextind(txt, stridx)
-        pos = project_position(scene, p, Mat4f0(I))
-        scale = project_scale(scene, ts, Mat4f0(I))
-        Cairo.move_to(ctx, pos[1], pos[2])
-        Cairo.set_source_rgba(ctx, red(cc), green(cc), blue(cc), alpha(cc))
-        cairoface = set_ft_font(ctx, f)
-        old_matrix = get_font_matrix(ctx)
+    p3_offset = to_ndim(Point3f0, offset, 0)
 
-        if !is3D
+    Cairo.save(ctx)
+    cairoface = set_ft_font(ctx, font)
+    Cairo.set_source_rgba(ctx, rgbatuple(color)...)
+    old_matrix = get_font_matrix(ctx)
+
+
+    for (goffset, char) in zip(glyphoffsets, str)
+
+        char in ('\r', '\n') && continue
+
+        if space == :data
+            # in data space, the glyph offsets are just added to the string positions
+            # and then projected
+
+            # glyph position in data coordinates (offset has rotation applied already)
+            gpos_data = to_ndim(Point3f0, position, 0) .+ goffset .+ p3_offset
+
+            scale3 = textsize isa Number ? Point3f0(textsize, textsize, 0) : to_ndim(Point3f0, textsize, 0)
+
+            # this could be done better but it works at least
+
+            # the CairoMatrix is found by transforming the right and up vector
+            # of the character into screen space and then subtracting the projected
+            # origin. The resulting vectors give the directions in which the character
+            # needs to be stretched in order to match the 3D projection
+
+            xvec = rotation * (scale3[1] * Point3f0(1, 0, 0))
+            yvec = rotation * (scale3[2] * Point3f0(0, -1, 0))
+
+            gproj = project_position(scene, gpos_data, Mat4f0(I))
+            xproj = project_position(scene, gpos_data + xvec, Mat4f0(I))
+            yproj = project_position(scene, gpos_data + yvec, Mat4f0(I))
+
+            xdiff = xproj - gproj
+            ydiff = yproj - gproj
+
+            mat = Cairo.CairoMatrix(
+                xdiff[1], xdiff[2],
+                ydiff[1], ydiff[2],
+                0, 0,
+            )
+
+            Cairo.save(ctx)
+            Cairo.move_to(ctx, gproj...)
+            set_font_matrix(ctx, mat)
+
+            # Cairo.rotate(ctx, to_2d_rotation(rotation))
+            Cairo.show_text(ctx, string(char))
+            Cairo.restore(ctx)
+
+        elseif space == :screen
+            # in screen space, the glyph offsets are added after projecting
+            # the string position into screen space
+            glyphpos = project_position(
+                scene,
+                position,
+                Mat4f0(I)) .+ (p3_to_p2(goffset .+ p3_offset)) .* (1, -1) # flip for Cairo
+            # and the scale is just taken as is
+            scale = length(textsize) == 2 ? textsize : SVector(textsize, textsize)
+
+            Cairo.save(ctx)
+            Cairo.move_to(ctx, glyphpos...)
+            # TODO this only works in 2d
             mat = scale_matrix(scale...)
             set_font_matrix(ctx, mat)
-            Cairo.rotate(ctx, to_2d_rotation(r))
-        else
-            # This sort of works ¯\_(ツ)_/¯
-            # Somewhat similar to normalmatrix in GLMakie
-            w, h = scene.camera.resolution[]
-            j = SOneTo(3)
-            cpv = 0.005(w + h) * transpose(inv(
-                (scene.camera.projectionview[][j,j] *
-                AbstractPlotting.rotationmatrix4(r)[j,j])[Vec(1,2), Vec(1,2)]
-            ))
-            mat = Cairo.CairoMatrix(
-                cpv[1, 1], cpv[1, 2],
-                cpv[2, 1], cpv[2, 2],
-                # this helps seperate text from the z axis (in the default view)
-                (cpv[1, 2] + cpv[2, 1]), 0.0
-            )
-            set_font_matrix(ctx, mat)
-        end
+            Cairo.rotate(ctx, to_2d_rotation(rotation))
 
-        if !(char in ('\r', '\n'))
             Cairo.show_text(ctx, string(char))
+            Cairo.restore(ctx)
+        else
+            error()
         end
-
-        cairo_font_face_destroy(cairoface)
-        set_font_matrix(ctx, old_matrix)
-        Cairo.restore(ctx)
     end
+
+    cairo_font_face_destroy(cairoface)
+    set_font_matrix(ctx, old_matrix)
+    Cairo.restore(ctx)
+
     nothing
 end
 
@@ -402,6 +467,8 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         Cairo.scale(ctx, w / s.width, h / s.height)
         Cairo.set_source_surface(ctx, s, 0, 0)
         p = Cairo.get_source(ctx)
+        # this is needed to avoid blurry edges
+        Cairo.pattern_set_extend(p, Cairo.EXTEND_PAD)
         # Set filter doesn't work!?
         Cairo.pattern_set_filter(p, interp_flag)
         Cairo.fill(ctx)
@@ -646,7 +713,6 @@ function surface2mesh(xs::AbstractMatrix, ys::AbstractMatrix, zs::AbstractMatrix
     ]
     normal_mesh(ps, faces)
 end
-
 
 ################################################################################
 #                                 MeshScatter                                  #
