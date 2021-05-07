@@ -4,7 +4,7 @@
 
 Here is a quick tutorial to get you started with Makie!
 
-We assume you have [Julia](https://julialang.org/) and `CairoMakie.jl` (or one of the other backends, `GLMakie.jl` or `WGLMakie.jl`) installed already.
+We assume you have [Julia](https://julialang.org/) and `CairoMakie.jl` (or one of the other backends, i.e. `GLMakie.jl` or `WGLMakie.jl`) installed already.
 
 This tutorial uses CairoMakie, but the code can be executed with any backend.
 CairoMakie can output beautiful static vector graphics, but it doesn't have the native ability to open interactive windows.
@@ -20,9 +20,9 @@ For more information, have a look at [Backends & Output](@ref).
 
 Ok, now that this is out of the way, let's get started!
 
-## Importing CairoMakie
+## First plot
 
-First, we import CairoMakie, which might take a little bit of time because there is a lot to precompile. Just sit tight!
+First, we import CairoMakie.
 
 ```@example 1
 using CairoMakie
@@ -30,8 +30,6 @@ CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 nothing # hide
 ```
-
-## First plot
 
 Makie has many different plotting functions, one of the most common ones is [lines](@ref).
 You can just call such a function and your plot will appear if your coding environment can show png or svg files.
@@ -41,7 +39,7 @@ You can just call such a function and your plot will appear if your coding envir
     To display such objects from within a local scope, like from within a function, you can directly call `display(figure)`, for example.
 
 ```@example 1
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y = sin.(x)
 lines(x, y)
 ```
@@ -51,7 +49,7 @@ Another common function is [scatter](@ref).
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y = sin.(x)
 scatter(x, y)
 ```
@@ -67,7 +65,7 @@ Here's how you could plot two lines on top of each other.
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y1 = sin.(x)
 y2 = cos.(x)
 
@@ -89,7 +87,7 @@ The lines in the previous example both have the same default color, which we can
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y1 = sin.(x)
 y2 = cos.(x)
 
@@ -104,7 +102,7 @@ The function `scatter`, for example, does not only have the `color` attribute, b
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y1 = sin.(x)
 y2 = cos.(x)
 
@@ -118,7 +116,7 @@ If you save the plot object returned from a call like `scatter!`, you can also m
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y1 = sin.(x)
 y2 = cos.(x)
 
@@ -139,12 +137,12 @@ Here are the two scatter plots again, but one has varying markersize, and the ot
 ```@example array_scatter
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y1 = sin.(x)
 y2 = cos.(x)
 
-scatter(x, y1, color = :red, markersize = LinRange(5, 15, 100))
-sc = scatter!(x, y2, color = LinRange(0, 1, 100), colormap = :thermal)
+scatter(x, y1, color = :red, markersize = range(5, 15, length=100))
+sc = scatter!(x, y2, color = range(0, 1, length=100), colormap = :thermal)
 
 current_figure()
 ```
@@ -166,7 +164,7 @@ Of course you can also use an array of colors directly, in which case the `color
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y = sin.(x)
 
 colors = repeat([:crimson, :dodgerblue, :slateblue1, :sienna1, :orchid1], 20)
@@ -182,7 +180,7 @@ If you add label attributes to your plots, you can call the `axislegend` functio
 ```@example
 using CairoMakie
 
-x = LinRange(0, 10, 100)
+x = range(0, 10, length=100)
 y1 = sin.(x)
 y2 = cos.(x)
 
@@ -229,12 +227,12 @@ For example, we can create a figure with three axes.
 
 ```@example manual_axes
 using CairoMakie
- 
-f = Figure()
-ax1 = Axis(f[1, 1])
-ax2 = Axis(f[1, 2])
-ax3 = Axis(f[2, 1:2])
-f
+
+fig = Figure()
+ax1 = Axis(fig[1, 1])
+ax2 = Axis(fig[1, 2])
+ax3 = Axis(fig[2, 1:2])
+fig
 ```
 
 And then we can continue to plot into these empty axes.
@@ -243,12 +241,13 @@ And then we can continue to plot into these empty axes.
 lines!(ax1, 0..10, sin)
 lines!(ax2, 0..10, cos)
 lines!(ax3, 0..10, sqrt)
-f
+fig
 ```
+Note, the notation `0..10` above creates a closed interval from `0` to `10` (see [`IntervalSets.jl`](https://github.com/JuliaMath/IntervalSets.jl) for further details).
 
 Axes also have many attributes that you can set, for example to give them a title, or labels.
 
-```@example manual_axes 
+```@example manual_axes
 ax1.title = "sin"
 ax2.title = "cos"
 ax3.title = "sqrt"
@@ -256,7 +255,7 @@ ax3.title = "sqrt"
 ax1.ylabel = "amplitude"
 ax3.ylabel = "amplitude"
 ax3.xlabel = "time"
-f
+fig
 ```
 
 ## Legend and Colorbar
@@ -274,11 +273,11 @@ We place the legend in the second column and across both rows, which centers it 
 ```@example
 using CairoMakie
 
-f = Figure()
-ax1, l1 = lines(f[1, 1], 0..10, sin, color = :red)
-ax2, l2 = lines(f[2, 1], 0..10, cos, color = :blue)
-Legend(f[1:2, 2], [l1, l2], ["sin", "cos"])
-f
+fig = Figure()
+ax1, l1 = lines(fig[1, 1], 0..10, sin, color = :red)
+ax2, l2 = lines(fig[2, 1], 0..10, cos, color = :blue)
+Legend(fig[1:2, 2], [l1, l2], ["sin", "cos"])
+fig
 ```
 
 The [Colorbar](@ref) works in a very similar way.
@@ -291,9 +290,9 @@ This is useful as we can then continue with the figure `f` and the heatmap `hm` 
 ```@example
 using CairoMakie
 
-f, ax, hm = heatmap(randn(20, 20))
-Colorbar(f[1, 2], hm)
-f
+fig, ax, hm = heatmap(randn(20, 20))
+Colorbar(fig[1, 2], hm)
+fig
 ```
 
 The previous short syntax is basically equivalent to this longer, manual version.
@@ -302,19 +301,19 @@ You can switch between those workflows however you please.
 ```@example
 using CairoMakie
 
-f = Figure()
-ax = Axis(f[1, 1])
+fig = Figure()
+ax = Axis(fig[1, 1])
 hm = heatmap!(ax, randn(20, 20))
-Colorbar(f[1, 2], hm)
-f
+Colorbar(fig[1, 2], hm)
+fig
 ```
 
-## Passing attributes to implicit Figure and Axis
+## Passing attributes to Figure and Axis
 
-For one-off plots, it's convenient to set a few axis or figure settings directly with the plotting command.
-You can do this only with the plotting functions without `!` like `lines` or `scatter`, because those always create a new axis, and can create a new figure if they are not plotting into an existing one. This is explained further under [Plot Method Signatures](@ref).
+For one-off plots, it can be convenient to set axis or figure settings directly with the plotting command.
+You can do this using the plotting functions without the `!` suffix, like `lines` or `scatter`, because these always create a new axis and also create a new figure if they are not plotting onto an existing one. This is explained further under [Plot Method Signatures](@ref).
 
-You can pass your axis attributes under the keyword `axis` and your figure attributes under the keyword figure.
+You can pass axis attributes under the keyword `axis` and figure attributes under the keyword `figure`.
 
 ```@example
 using CairoMakie
@@ -325,16 +324,16 @@ heatmap(randn(20, 20),
 )
 ```
 
-If you set only one attribute, be careful to do `axis = (key = value,)` (note the trailing comma), otherwise you're not making a NamedTuple but a local variable `key`.
+If you set only one attribute, be careful to do `axis = (key = value,)` (note the trailing comma), otherwise you're not creating a `NamedTuple` but a local variable `key`.
 
 ## Next steps
 
 We've only looked at a small subset of Makie's functionality here.
 
-You can read about the different available plotting functions with examples in the `Plotting Functions` section.
+You can read about the different available plotting functions with examples in the [Plotting Functions]() section.
 
-If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref).
+If you want to learn about making complex figures with nested sublayouts, have a look at the [Layout Tutorial](@ref) section.
 
 If you're interested in creating interactive visualizations that use Makie's special `Observables` workflow, this is explained in more detail in the [Observables & Interaction](@ref) section.
 
-If you want to create animated movies, you can find more information in the [Animations](@ref) chapter.
+If you want to create animated movies, you can find more information in the [Animations](@ref) section.
