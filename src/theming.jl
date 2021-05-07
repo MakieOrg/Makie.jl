@@ -26,11 +26,6 @@ If the primary monitor can't be accessed, returns (1920, 1080) (full hd)
 """
 function primary_resolution end
 
-"""
-Returns a reasonable resolution for the main monitor.
-(right now just half the resolution of the main monitor)
-"""
-reasonable_resolution() = primary_resolution() .÷ 2
 
 #=
 Conservative 7-color palette from Points of view: Color blindness, Bang Wong - Nature Methods
@@ -57,13 +52,17 @@ const default_palettes = Attributes(
 const minimal_default = Attributes(
     palette = default_palettes,
     font = "Dejavu Sans",
+    padding = Vec3f0(0.05),
+    figure_padding = 16,
+    rowgap = 24,
+    colgap = 24,
     backgroundcolor = :white,
     color = :black,
     colormap = :viridis,
     marker = Circle,
     markersize = 0.1,
     linestyle = nothing,
-    resolution = reasonable_resolution(),
+    resolution = (800, 600), # 4/3 aspect ratio
     visible = true,
     clear = true,
     show_axis = true,
@@ -77,7 +76,6 @@ const minimal_default = Attributes(
     axis_type = automatic,
     camera = automatic,
     limits = automatic,
-    padding = Vec3f0(0.05),
     raw = false,
     SSAO = Attributes(
         # enable = false,
