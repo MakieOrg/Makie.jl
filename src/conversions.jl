@@ -209,44 +209,6 @@ function convert_arguments(P::PointBased, x::Rect3D)
     convert_arguments(P, decompose(Point3f0, x)[inds])
 end
 
-function edges(v::AbstractVector)
-    l = length(v)
-    if l == 1
-        return [v[1] - 0.5, v[1] + 0.5]
-    else
-        # Equivalent to
-        # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
-        # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
-        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
-        borders[1] = 2borders[1] - borders[2]
-        borders[end] = 2borders[end] - borders[end-1]
-        return borders
-    end
-end
-
-function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
-    x̂, ŷ = map((x, y), size(z)) do v, sz
-        return length(v) == sz ? edges(v) : v
-    end
-    return x̂, ŷ, z
-end
-
-adjust_axes(::SurfaceLike, x, y, z) = x, y, z
-
-"""
-    convert_arguments(SL::SurfaceLike, x::VecOrMat, y::VecOrMat, z::Matrix)
-
-If `SL` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
-whether they represent edges or centers of the heatmap bins.
-If they are centers, convert to edges.
-"""
-function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return map(el32convert, adjust_axes(SL, x, y, z))
-end
-function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return map(el32convert, adjust_axes(SL, x, y, z))
-end
-
 """
 
     convert_arguments(PB, LineString)
@@ -308,6 +270,45 @@ end
 #                                 SurfaceLike                                  #
 ################################################################################
 
+function edges(v::AbstractVector)
+    l = length(v)
+    if l == 1
+        return [v[1] - 0.5, v[1] + 0.5]
+    else
+        # Equivalent to
+        # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
+        # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
+        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders[1] = 2borders[1] - borders[2]
+        borders[end] = 2borders[end] - borders[end-1]
+        return borders
+    end
+end
+
+function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
+    x̂, ŷ = map((x, y), size(z)) do v, sz
+        return length(v) == sz ? edges(v) : v
+    end
+    return x̂, ŷ, z
+end
+
+adjust_axes(::SurfaceLike, x, y, z) = x, y, z
+
+"""
+    convert_arguments(SL::SurfaceLike, x::VecOrMat, y::VecOrMat, z::Matrix)
+
+If `SL` is `Heatmap` and `x` and `y` are vectors, infer from length of `x` and `y`
+whether they represent edges or centers of the heatmap bins.
+If they are centers, convert to edges. Convert eltypes to `Float32` and return
+outputs as a `Tuple`.
+"""
+function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
+    return map(el32convert, adjust_axes(SL, x, y, z))
+end
+function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
+    return map(el32convert, adjust_axes(SL, x, y, z))
+end
+
 convert_arguments(::SurfaceLike, x::AbstractMatrix, y::AbstractMatrix) = (x, y, zeros(size(y)))
 
 """
@@ -319,21 +320,6 @@ linspaces with size(z, 1/2)
 """
 function convert_arguments(P::SurfaceLike, x::ClosedInterval, y::ClosedInterval, z::AbstractMatrix)
     convert_arguments(P, to_linspace(x, size(z, 1)), to_linspace(y, size(z, 2)), z)
-end
-
-"""
-    convert_arguments(P, x::VecOrMat, y::VecOrMat, z::Matrix)
-
-Takes 3 `AbstractMatrix` `x`, `y`, and `z`, converts them to `Float32` and
-outputs them in a Tuple.
-
-`P` is the plot Type (it is optional).
-"""
-function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return (el32convert(x), el32convert(y), el32convert(z))
-end
-function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return (el32convert(x), el32convert(y), el32convert(z))
 end
 
 """
