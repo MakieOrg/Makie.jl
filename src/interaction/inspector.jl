@@ -312,7 +312,6 @@ function plot!(plot::_Inspector)
         end
         new_pos = pos .+ Point2f0(dx, dy)
         if new_pos != _aligned_text_position[]
-            @info new_pos
             _aligned_text_position[] = new_pos
         end
     end
@@ -444,7 +443,6 @@ function DataInspector(scene::Scene; kwargs...)
         picks = pick_sorted(parent, mp, inspector.plot.range[])
         should_clear = true
         for (plt, idx) in picks
-            @info to_value(get(plt.attributes, :inspectable, nothing)), idx, typeof(plt)
             if to_value(get(plt.attributes, :inspectable, true)) &&
                 # show_data should return true if it created a tooltip
                 if show_data_recursion(inspector, plt, idx)
@@ -455,7 +453,6 @@ function DataInspector(scene::Scene; kwargs...)
         end
 
         if should_clear
-            @info "Clearing"
             plot._visible[] = false
             plot._bbox_visible[] = false
             plot._px_bbox_visible[] = false
@@ -463,7 +460,6 @@ function DataInspector(scene::Scene; kwargs...)
     end
 
     append!(inspector.obsfuncs, f)
-    @info "number of obsfuncs: $(length(inspector.obsfuncs))"
 
     inspector
 end
@@ -524,7 +520,6 @@ end
 
 # TODO: better 3D scaling
 function show_data(inspector::DataInspector, plot::Scatter, idx)
-    @info "Scatter"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
 
@@ -543,7 +538,6 @@ end
 
 
 function show_data(inspector::DataInspector, plot::MeshScatter, idx)
-    @info "MeshScatter"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
         
@@ -578,7 +572,6 @@ end
 
 
 function show_data(inspector::DataInspector, plot::Union{Lines, LineSegments}, idx)
-    @info "Lines, LineSegments"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
 
@@ -602,7 +595,6 @@ end
 
 
 function show_data(inspector::DataInspector, plot::Mesh, idx)
-    @info "Mesh"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
         
@@ -632,7 +624,6 @@ end
 
 
 function show_data(inspector::DataInspector, plot::Surface, idx)
-    @info "Surface"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
             
@@ -689,13 +680,10 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    # TODO fix bounds
-    @info "Heatmap"
     show_imagelike(inspector, plot, "H")
 end
 
 function show_data(inspector::DataInspector, plot::Image, idx)
-    @info "Image"
     show_imagelike(inspector, plot, "img")
 end
 
@@ -801,7 +789,6 @@ function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer)
 end
 
 function show_data(inspector::DataInspector, plot, idx, source = nothing)
-    @info "else"
     return false
 end
 
@@ -824,7 +811,6 @@ end
 
 
 function show_data(inspector::DataInspector, plot::BarPlot, idx)
-    @info "BarPlot"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
         
@@ -857,7 +843,6 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, ::LineSegments)
     return show_data(inspector, plot, div(idx+1, 2), nothing)
 end
 function show_data(inspector::DataInspector, plot::Arrows, idx, source)
-    @info "Arrows"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
         
@@ -883,7 +868,6 @@ end
 # This should work if contourf would place computed levels in colors and let the
 # backend handle picking colors from a colormap
 function show_data(inspector::DataInspector, plot::Contourf, idx, source::Mesh)
-    @info "Contourf"
     a = inspector.plot.attributes
     scene = parent_scene(plot)
     idx, ext = show_poly(inspector, plot.plots[1], idx, source)
@@ -911,7 +895,7 @@ function show_poly(inspector, plot, idx, source)
     idx = vertexindex2poly(plot[1][], idx)
     m = GeometryBasics.mesh(plot[1][][idx])
     
-    clear_temporary_plots!(inspector)
+    clear_temporary_plots!(inspector, plot)
     ext = plot[1][][idx].exterior
     p = lines!(
         scene, ext, color = a.indicator_color, 
