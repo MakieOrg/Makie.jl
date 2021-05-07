@@ -16,7 +16,7 @@ The attribute `selection` is set to `optionvalue(element)` when the element's en
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 menu = Menu(fig, options = ["viridis", "heat", "blues"])
 
@@ -38,7 +38,7 @@ func = Node{Any}(funcs[1])
 ys = @lift($func.(0:0.3:10))
 scat = scatter!(ax, ys, markersize = 10px, color = ys)
 
-cb = Colorbar(fig[1, 3], scat, width = 30)
+cb = Colorbar(fig[1, 3], scat)
 
 on(menu.selection) do s
     scat.colormap = s

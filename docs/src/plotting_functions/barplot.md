@@ -11,7 +11,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 Axis(f[1, 1])
 
 xs = 1:0.2:10
@@ -21,6 +21,17 @@ barplot!(xs, ys, color = :red, strokecolor = :black, strokewidth = 1)
 barplot!(xs, ys .- 1, fillto = -1, color = xs, strokecolor = :black, strokewidth = 1)
 
 f
+```
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+xs = 1:0.2:10
+ys = 0.5 .* sin.(xs)
+
+barplot(xs, ys, width = step(xs), color = :gray85, strokecolor = :black, strokewidth = 1)
 ```
 
 ```@example bar
@@ -42,7 +53,6 @@ barplot(tbl.x, tbl.height,
         color = tbl.grp,
         axis = (xticks = (1:3, ["left", "middle", "right"]),
                 title = "Stacked bars"),
-        figure = (resolution = (800, 600), )
         )
 ```
 
@@ -52,7 +62,6 @@ barplot(tbl.x, tbl.height,
         color = tbl.grp,
         axis = (xticks = (1:3, ["left", "middle", "right"]),
                 title = "Dodged bars"),
-        figure = (resolution = (800, 600), )
         )
 ```
 
@@ -63,7 +72,6 @@ barplot(tbl.x, tbl.height,
         color = tbl.grp,
         axis = (xticks = (1:3, ["left", "middle", "right"]),
                 title = "Dodged and stacked bars"),
-        figure = (resolution = (800, 600), )
         )
 ```
 
@@ -72,7 +80,7 @@ let
     colors = AbstractPlotting.wong_colors
 
     # Figure and Axis
-    fig = Figure(resolution = (800, 600))
+    fig = Figure()
     ax = Axis(fig[1,1], xticks = (1:3, ["left", "middle", "right"]),
               title = "Dodged bars with legend")
 

@@ -65,7 +65,7 @@ scatter!(scene, args...; kwargs...) -> ::Scatter
 
 ## FigurePositions
 
-In the background, each `Figure` has a `GridLayout` from GridLayoutBase.jl, which takes care of layouting plot elements nicely.
+In the background, each `Figure` has a `GridLayout` from [GridLayoutBase.jl](https://github.com/jkrumbiegel/GridLayoutBase.jl), which takes care of layouting plot elements nicely.
 For convenience, you can index into a figure multiple times to refer to nested grid positions, which makes it easy to quickly assemble complex layouts.
 
 For example, `fig[1, 2]` creates a `FigurePosition` referring to row 1 and column 2, while `fig[1, 2][3, 1:2]` creates a `FigureSubposition` that refers to row 3 and columns 1 to 2 in a nested GridLayout which is located at row 1 and column 2.
@@ -78,7 +78,7 @@ If a GridLayout along the nesting levels doesn't exist, yet, it is created autom
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 # first row, first column
 scatter(fig[1, 1], 1.0..10, sin)
@@ -96,7 +96,7 @@ lines(fig[1, 3][2, 1], cumsum(randn(1000)), color = :red)
 ax, hm = heatmap(fig[2, 1:3], randn(30, 10))
 
 # across all rows, new column after the last one
-fig[:, end+1] = Colorbar(fig, hm, width = 30)
+fig[:, end+1] = Colorbar(fig, hm)
 
 fig
 ```
