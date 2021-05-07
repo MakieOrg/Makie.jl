@@ -499,6 +499,7 @@ axislegend(title::String; kwargs...) = axislegend(current_axis(), current_axis()
 
 """
     axislegend(ax, args...; position = :rt, kwargs...)
+    axislegend(ax, args...; position = (1, 1), kwargs...)
     axislegend(ax = current_axis(); kwargs...)
     axislegend(title::String; kwargs...)
 
