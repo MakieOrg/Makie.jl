@@ -339,6 +339,7 @@ makedocs(
             "assets/favicon.ico",
             "assets/syntaxtheme.css"
         ],
+        sidebar_sitename=false,
     ),
     sitename = "Makie Plotting Ecosystem",
     pages = Any[
@@ -365,6 +366,7 @@ makedocs(
             "Layoutables & Widgets" => [
                 "makielayout/layoutables.md",
                 "makielayout/axis.md",
+                "makielayout/axis3.md",
                 "makielayout/box.md",
                 "makielayout/button.md",
                 "makielayout/colorbar.md",
@@ -405,7 +407,10 @@ makedocs(
 # env variable, which is JuliaPlots/AbstractPlotting.jl by default
 ENV["GITHUB_REPOSITORY"] = "JuliaPlots/MakieDocumentation"
 
-deploydocs(
-    repo = "github.com/JuliaPlots/MakieDocumentation",
-    push_preview = true
-)
+if !isempty(get(ENV, "DOCUMENTER_KEY", ""))
+    deploydocs(
+        repo = "github.com/JuliaPlots/MakieDocumentation",
+        push_preview = true
+    )
+end
+

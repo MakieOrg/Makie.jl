@@ -35,12 +35,6 @@ function layoutable(::Type{LScene}, fig_or_scene; bbox = nothing, scenekw = Name
 
     ls = LScene(fig_or_scene, layoutobservables, attrs, Dict{Symbol, Any}(), scene)
 
-    # register as current axis
-    # TODO: is this a good place for that? probably not
-    if fig_or_scene isa Figure
-        AbstractPlotting.current_axis!(fig_or_scene, ls)
-    end
-
     ls
 end
 
@@ -48,3 +42,5 @@ function Base.delete!(ax::LScene, plot::AbstractPlot)
     delete!(ax.scene, plot)
     ax
 end
+
+can_be_current_axis(ls::LScene) = true

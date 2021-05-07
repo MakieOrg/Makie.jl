@@ -583,3 +583,4 @@ function update_limits!(scene::Scene, new_limits::Rect, padding::Vec3f0=scene.pa
     scene.data_limits[] = FRect3D(minimum(lims) .- padd_abs, lim_w .+  2padd_abs)
     scene
 end
+

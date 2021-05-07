@@ -6,6 +6,8 @@ import ..AbstractPlotting: IRect2D
 using ..AbstractPlotting.Keyboard
 using ..AbstractPlotting.Mouse
 using ..AbstractPlotting: ispressed, is_mouseinside, get_scene, FigureLike
+using ..AbstractPlotting: OpenInterval, Interval
+using ..AbstractPlotting: Automatic, automatic
 using Observables: onany
 import Observables
 import Formatting
@@ -53,6 +55,7 @@ include("defaultattributes.jl")
 include("lineaxis.jl")
 include("interactions.jl")
 include("layoutables/axis.jl")
+include("layoutables/axis3d.jl")
 include("layoutables/colorbar.jl")
 include("layoutables/label.jl")
 include("layoutables/slider.jl")
@@ -66,6 +69,7 @@ include("layoutables/menu.jl")
 include("layoutables/textbox.jl")
 
 export Axis
+export Axis3
 export Slider
 export IntervalSlider
 export Button
@@ -81,7 +85,7 @@ export Textbox
 export linkxaxes!, linkyaxes!, linkaxes!
 export AxisAspect, DataAspect
 export autolimits!, limits!, reset_limits!
-export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween
+export LinearTicks, WilkinsonTicks, MultiplesTicks, IntervalsBetween, LogTicks
 export hidexdecorations!, hideydecorations!, hidedecorations!, hidespines!
 export tight_xticklabel_spacing!, tight_yticklabel_spacing!, tight_ticklabel_spacing!, tightlimits!
 export layoutscene
@@ -90,7 +94,7 @@ export labelslider!, labelslidergrid!
 export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
 export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
-export hlines!, vlines!
+export hlines!, vlines!, abline!
 
 
 # from GridLayoutBase

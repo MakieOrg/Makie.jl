@@ -1,6 +1,6 @@
 
 """
-contour(x, y, z)
+    contour(x, y, z)
 
 Creates a contour plot of the plane spanning x::Vector, y::Vector, z::Matrix
 
@@ -23,7 +23,7 @@ $(ATTRIBUTES)
 end
 
 """
-contour3d(x, y, z)
+    contour3d(x, y, z)
 
 Creates a 3D contour plot of the plane spanning x::Vector, y::Vector, z::Matrix,
 with z-elevation for each level.
@@ -71,8 +71,8 @@ function to_levels(n::Integer, cnorm)
     range(zmin + dz; step = dz, length = n)
 end
 
-conversion_trait(::Type{<: Contour3d}) = SurfaceLike()
-conversion_trait(::Type{<: Contour}) = SurfaceLike()
+conversion_trait(::Type{<: Contour3d}) = ContinuousSurface()
+conversion_trait(::Type{<: Contour}) = ContinuousSurface()
 conversion_trait(::Type{<: Contour{<: Tuple{X, Y, Z, Vol}}}) where {X, Y, Z, Vol} = VolumeLike()
 conversion_trait(::Type{<: Contour{<: Tuple{<: AbstractArray{T, 3}}}}) where T = VolumeLike()
 

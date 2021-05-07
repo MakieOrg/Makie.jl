@@ -5,7 +5,7 @@ Animations work by making changes to data or plot attribute Observables and reco
 You can find out more about the Observables workflow on the [Observables & Interaction](@ref) page.
 
 
-## A Simple Example
+## A simple example
 
 To create an animation you need to use the [`record`](@ref) function.
 
@@ -22,14 +22,14 @@ using GLMakie
 GLMakie.activate!() # hide
 using AbstractPlotting.Colors
 
-figure, ax, lineplot = lines(0..10, sin; linewidth=10)
+fig, ax, lineplot = lines(0..10, sin; linewidth=10)
 
 # animation settings
-n_frames = 30
+nframes = 30
 framerate = 30
-hue_iterator = LinRange(0, 360, n_frames)
+hue_iterator = range(0, 360, length=nframes)
 
-record(figure, "color_animation.mp4", hue_iterator; framerate = framerate) do hue
+record(fig, "color_animation.mp4", hue_iterator; framerate = framerate) do hue
     lineplot.color = HSV(hue, 1, 0.75)
 end
 nothing # hide
@@ -44,11 +44,11 @@ function change_function(hue)
     lineplot.color = HSV(hue, 1, 0.75)
 end
 
-record(change_function, figure, "color_animation.mp4", hue_iterator; framerate = framerate)
+record(change_function, fig, "color_animation.mp4", hue_iterator; framerate = framerate)
 ```
 
 
-## File Formats
+## File formats
 
 Video files are created with [`FFMPEG.jl`](https://github.com/JuliaIO/FFMPEG.jl).
 You can choose from the following file formats:
@@ -59,7 +59,7 @@ You can choose from the following file formats:
 - `.gif` (lowest quality with largest file size)
 
 
-## Animations Using Observables
+## Animations using `Observables`
 
 Often, you want to animate a complex plot over time, and all the data that is displayed should be determined by the current time stamp.
 Such a dependency is really easy to express with `Observables` or `Nodes`.
@@ -73,17 +73,18 @@ We use the convenient `@lift` macro which denotes that the `lift`ed expression d
 ```@example 1
 time = Node(0.0)
 
-xs = LinRange(0, 7, 40)
+xs = range(0, 7, length=40)
 
 ys_1 = @lift(sin.(xs .- $time))
 ys_2 = @lift(cos.(xs .- $time) .+ 3)
 
-figure, _ = lines(xs, ys_1, color = :blue, linewidth = 4)
+fig  = lines(xs, ys_1, color = :blue, linewidth = 4)
 scatter!(xs, ys_2, color = :red, markersize = 15)
 
-timestamps = 0:1/30:2
+framerate = 30
+timestamps = range(0, 2, step=1/framerate)
 
-record(figure, "time_animation.mp4", timestamps; framerate = 30) do t
+record(fig, "time_animation.mp4", timestamps; framerate = framerate) do t
     time[] = t
 end
 nothing # hide
@@ -96,24 +97,31 @@ a single variable (like time) during your animation loop.
 
 For example, to make a line with color dependent on time, you could write:
 
-```julia
+```@example 1
 time = Node(0.0)
 color_observable = @lift(RGBf0($time, 0, 0))
 
-lines(0..10, sin, color = color_observable)
+fig = lines(0..10, sin, color = color_observable)
+
+record(fig, "color_animation.mp4", timestamps; framerate = framerate) do t
+    time[] = t
+end
+nothing # hide
 ```
 
-## Appending Data With Observables
+![color animation](color_animation.mp4)
+
+## Appending data with Observables
 
 You can also append data to a plot during an animation.
-Instead of passing x and y (or z) values separately,
-it's better to make a `Node` with a vector of `Point`s,
-so that the number of x and y values can not go out of sync.
+Instead of passing `x` and `y` (or `z`) values separately,
+it is better to make a `Node` with a vector of `Point`s,
+so that the number of `x` and `y` values can not go out of sync.
 
 ```@example 1
 points = Node(Point2f0[(0, 0)])
 
-fig, ax, sc = scatter(points)
+fig, ax = scatter(points)
 limits!(ax, 0, 30, 0, 30)
 
 frames = 1:30
@@ -127,15 +135,24 @@ nothing # hide
 
 ![append animation](append_animation.mp4)
 
-## Animating a Plot "Live"
+## Animating a plot "live"
 
-You can animate a live plot easily using a loop. 
+You can animate a live plot easily using a loop.
 Update all `Observables` that you need and then add a short sleep interval so that the display can refresh:
 
-```julia
-for i = 1:n_frames
-    time_observable[] = time()
-    sleep(1/30)
-end
-```
+```@example 1
+points = Node(Point2f0[randn(2)])
 
+fig, ax = scatter(points)
+limits!(ax, -4, 4, -4, 4)
+
+fps = 60
+nframes = 120
+
+for i = 1:nframes
+    new_point = Point2f0(randn(2))
+    points[] = push!(points[], new_point)
+    sleep(1/fps) # refreshes the display!
+end
+nothing # hide
+```

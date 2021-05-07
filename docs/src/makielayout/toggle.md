@@ -11,7 +11,7 @@ or disable properties of an interactive plot.
 ```@example
 using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 ax = Axis(fig[1, 1])
 

@@ -17,13 +17,21 @@ function plot(P::PlotFunc, args...; axis = NamedTuple(), figure = NamedTuple(), 
     # scene_attributes = extract_scene_attributes!(attributes)
     fig = Figure(; figure...)
 
-    proxyscene = Scene()
-    plot!(proxyscene, P, Attributes(kw_attributes), args...; show_axis = false)
+    axis = Dict(pairs(axis))
 
-    if is2d(proxyscene)
-        ax = Axis(fig; axis...)
+    if haskey(axis, :type)
+        axtype = axis[:type]
+        pop!(axis, :type)
+        ax = axtype(fig; axis...)
     else
-        ax = LScene(fig; scenekw = (camera = cam3d!, axis...))
+        proxyscene = Scene()
+        plot!(proxyscene, P, Attributes(kw_attributes), args...; show_axis = false)
+
+        if is2d(proxyscene)
+            ax = Axis(fig; axis...)
+        else
+            ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+        end
     end
 
     fig[1, 1] = ax
@@ -53,13 +61,21 @@ function plot(P::PlotFunc, fp::FigurePosition, args...; axis = NamedTuple(), kwa
         """)
     end
 
-    proxyscene = Scene()
-    plot!(proxyscene, P, Attributes(kwargs), args...)
+    axis = Dict(pairs(axis))
 
-    if is2d(proxyscene)
-        ax = Axis(fp.fig; axis...)
+    if haskey(axis, :type)
+        axtype = axis[:type]
+        pop!(axis, :type)
+        ax = axtype(fp.fig; axis...)
     else
-        ax = LScene(fp.fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+        proxyscene = Scene()
+        plot!(proxyscene, P, Attributes(kwargs), args...; show_axis = false)
+
+        if is2d(proxyscene)
+            ax = Axis(fp.fig; axis...)
+        else
+            ax = LScene(fp.fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+        end
     end
 
     fp[] = ax
@@ -73,7 +89,7 @@ function plot!(P::PlotFunc, fp::FigurePosition, args...; kwargs...)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There needs to be a single axis at $(fp.gp.span), $(fp.gp.side) to plot into.\nUse a non-mutating plotting command to create an axis implicitly.")
     end
-    ax = only(c)
+    ax = first(c)
     plot!(P, ax, args...; kwargs...)
 end
 
@@ -93,13 +109,21 @@ function plot(P::PlotFunc, fsp::FigureSubposition, args...; axis = NamedTuple(),
 
     fig = get_figure(fsp)
 
-    proxyscene = Scene()
-    plot!(proxyscene, P, Attributes(kwargs), args...)
+    axis = Dict(pairs(axis))
 
-    if is2d(proxyscene)
-        ax = Axis(fig; axis...)
+    if haskey(axis, :type)
+        axtype = axis[:type]
+        pop!(axis, :type)
+        ax = axtype(fig; axis...)
     else
-        ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+        proxyscene = Scene()
+        plot!(proxyscene, P, Attributes(kwargs), args...; show_axis = false)
+
+        if is2d(proxyscene)
+            ax = Axis(fig; axis...)
+        else
+            ax = LScene(fig; scenekw = (camera = cam3d!, show_axis = true, raw = false, axis...))
+        end
     end
 
     fsp.parent[fsp.rows, fsp.cols, fsp.side] = ax
@@ -117,6 +141,6 @@ function plot!(P::PlotFunc, fsp::FigureSubposition, args...; kwargs...)
     if !(length(c) == 1 && c[1] isa Union{Axis, LScene})
         error("There is not just one axis at $(gp).")
     end
-    ax = only(c)
+    ax = first(c)
     plot!(P, ax, args...; kwargs...)
 end
