@@ -136,7 +136,9 @@ end
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
     color_node = plot.color
-    attributes = Attributes(visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa)
+    attributes = Attributes(
+        visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa, inspectable = plot.inspectable
+    )
 
     attributes[:colormap] = get(plot, :colormap, nothing)
     attributes[:colorrange] = get(plot, :colorrange, nothing)

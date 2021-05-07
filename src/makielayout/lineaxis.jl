@@ -31,7 +31,7 @@ function LineAxis(parent::Scene; kwargs...)
     ticksnode = Node(Point2f0[])
     ticklines = linesegments!(
         parent, ticksnode, linewidth = tickwidth, color = tickcolor,
-        show_axis = false, visible = ticksvisible
+        show_axis = false, visible = ticksvisible, inspectable = false
     )
     decorations[:ticklines] = ticklines
     translate!(ticklines, 0, 0, 10)
@@ -39,7 +39,7 @@ function LineAxis(parent::Scene; kwargs...)
     minorticksnode = Node(Point2f0[])
     minorticklines = linesegments!(
         parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
-        show_axis = false, visible = minorticksvisible
+        show_axis = false, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
 
@@ -91,7 +91,8 @@ function LineAxis(parent::Scene; kwargs...)
         color = ticklabelcolor,
         show_axis = false,
         visible = ticklabelsvisible,
-        space = :data)
+        space = :data, 
+        inspectable = false)
 
     ticklabel_ideal_space = lift(ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible, typ=Float32) do args...
         maxwidth = if pos_extents_horizontal[][3]
@@ -185,7 +186,7 @@ function LineAxis(parent::Scene; kwargs...)
         parent, label, textsize = labelsize, color = labelcolor,
         position = labelpos, show_axis = false, visible = labelvisible,
         align = labelalign, rotation = labelrotation, font = labelfont,
-        space = :data,
+        space = :data, inspectable = false
     )
 
     decorations[:labeltext] = labeltext
@@ -351,7 +352,7 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true)
+        color = spinecolor, raw = true, inspectable = false)
     translate!(decorations[:axisline], 0, 0, 20)
 
 

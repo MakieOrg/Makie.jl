@@ -429,7 +429,7 @@ when you hover over a plot. If you wish to exclude a plot you may set
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the 
     tooltip is always in front.
 """
-function DataInspector(fig_or_layoutable::Figure; kwargs...)
+function DataInspector(fig_or_layoutable; kwargs...)
     DataInspector(fig_or_layoutable.scene; kwargs...)
 end
 
