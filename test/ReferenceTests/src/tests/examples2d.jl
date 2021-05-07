@@ -1,6 +1,6 @@
 using GeometryBasics
 using Statistics
-using CategoricalArrays: categorical
+using CategoricalArrays: categorical, levelcode
 
 @cell "Test heatmap + image overlap" begin
     heatmap(RNG.rand(32, 32))
@@ -310,13 +310,6 @@ end
 end
 
 @cell "Grouped bar" begin
-    function categorical_ticks(cat)
-        labels = AbstractPlotting.categoric_labels(cat)
-        ticks = AbstractPlotting.categoric_range(labels)
-
-        ticks, labels
-    end
-
 	x1         = ["a_right", "a_right", "a_right", "a_right"]
 	y1         = [2, 3, -3, -2]
 	grp_dodge1 = [2, 2,  1,  1]
@@ -339,9 +332,9 @@ end
 	fig = Figure()
 	ax = Axis(fig[1,1])
 
-	barplot!(ax, tbl.x, tbl.y, dodge = tbl.grp_dodge, stack = tbl.grp_stack, color = tbl.grp_stack)
+	barplot!(ax, levelcode.(tbl.x), tbl.y, dodge = tbl.grp_dodge, stack = tbl.grp_stack, color = tbl.grp_stack)
 
-	ax.xticks = categorical_ticks(tbl.x)
+	ax.xticks = (1:2, ["z_left", "a_right"])
 
 	fig
 end
