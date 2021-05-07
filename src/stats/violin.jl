@@ -34,24 +34,24 @@ end
 
 conversion_trait(x::Type{<:Violin}) = SampleBased()
 
+function getviolincolor(c, i::Int)
+    c isa NamedTuple || return c
+    return i == 1 ? c.right : c.left
+end
+
 function plot!(plot::Violin)
     x, y = plot[1], plot[2]
     args = @extract plot (width, side, color, show_median, npoints, boundary, bandwidth,
         datalimits, max_density, dodge, n_dodge, x_gap, dodge_gap)
-    signals = lift(x, y, args...) do x, y, width, side, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, x_gap, dodge_gap
+    signals = lift(x, y, args...) do x, y, width, vside, color, show_median, n, bound, bw, limits, max_density, dodge, n_dodge, x_gap, dodge_gap
         x̂, violinwidth = xw_from_dodge(x, width, 1, x_gap, dodge, n_dodge, dodge_gap)
 
-        # Allow `side` and `color` to be either scalar or vector
-        sides = broadcast(x̂, side) do _, s
+        # Allow `side` to be either scalar or vector
+        sides = broadcast(x̂, vside) do _, s
             return s == :left ? - 1 : s == :right ? 1 : 0
         end
-        colors = broadcast(x̂, color) do _, c
-            rgba = to_color(c)
-            # `RGBA` values cannot be sorted
-            return (red(rgba), green(rgba), blue(rgba), alpha(rgba))
-        end
 
-        sa = StructArray((x = x̂, side = sides, color = colors))
+        sa = StructArray((x = x̂, side = sides))
 
         specs = map(StructArrays.finduniquesorted(sa)) do (key, idxs)
             v = view(y, idxs)
@@ -63,7 +63,7 @@ function plot!(plot::Violin)
             l1, l2 = limits isa Function ? limits(v) : limits
             i1, i2 = searchsortedfirst(k.x, l1), searchsortedlast(k.x, l2)
             kde = (x = view(k.x, i1:i2), density = view(k.density, i1:i2))
-            return (x = key.x, side = key.side, color = RGBA(key.color...), kde = kde, median = median(v))
+            return (x = key.x, side = key.side, kde = kde, median = median(v))
         end
 
         max = if max_density === automatic
@@ -77,7 +77,7 @@ function plot!(plot::Violin)
 
         vertices = Vector{Point2f0}[]
         lines = Pair{Point2f0, Point2f0}[]
-        colors = RGBA{Float32}[]
+        side = Int[]
 
         for spec in specs
             scale = 0.5*violinwidth/max
@@ -107,19 +107,27 @@ function plot!(plot::Violin)
                 median_right = Point2f0(spec.side == -1 ? spec.x : spec.x + ym * scale, xm)
                 push!(lines, median_left => median_right)
             end
-            push!(colors, spec.color)
+
+            push!(side, spec.side)
         end
 
-        return (vertices = vertices, lines = lines, colors = colors)
+        return (vertices = vertices, lines = lines, side = side)
     end
 
-    poly!(
-        plot,
-        lift(s -> s.vertices, signals),
-        color = lift(s -> s.colors, signals),
-        strokecolor = plot[:strokecolor],
-        strokewidth = plot[:strokewidth],
-    )
+    for i in -1:1
+        sidevertices = lift(s -> s.vertices[s.side .== i], signals)
+        sidecolor = lift(c -> getviolincolor(c, i), color)
+        # TODO: fix empty `poly` to avoid this check
+        if !isempty(sidevertices[])
+            poly!(
+                plot,
+                sidevertices,
+                color = sidecolor,
+                strokecolor = plot[:strokecolor],
+                strokewidth = plot[:strokewidth],
+            )
+        end
+    end
     linesegments!(
         plot,
         lift(s -> s.lines, signals),
