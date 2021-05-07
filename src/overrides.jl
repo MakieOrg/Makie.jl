@@ -25,31 +25,35 @@ function draw_poly_as_mesh(scene, screen, poly)
     draw_plot(scene, screen, poly.plots[2])
 end
 
+
+# in the rare case of per-vertex colors redirect to mesh drawing
+function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color::AbstractArray, model, strokecolor, strokewidth)
+    draw_poly_as_mesh(scene, screen, poly)
+end
+
 function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2})
+    draw_poly(scene, screen, poly, points, poly.color[], poly.model[], poly.strokecolor[], poly.strokewidth[])
+end
 
-    # in the rare case of per-vertex colors redirect to mesh drawing
-    if poly.color[] isa AbstractArray
-        draw_poly_as_mesh(scene, screen, poly)
-        return
-    end
-
-    model = poly.model[]
+function draw_poly(scene::Scene, screen::CairoScreen, poly, points::Vector{<:Point2}, color, model, strokecolor, strokewidth)
     points = project_position.(Ref(scene), points, Ref(model))
     Cairo.move_to(screen.context, points[1]...)
     for p in points[2:end]
         Cairo.line_to(screen.context, p...)
     end
     Cairo.close_path(screen.context)
-    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(poly.color[]))...)
+    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(color))...)
     Cairo.fill_preserve(screen.context)
-    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(poly.strokecolor[]))...)
-    Cairo.set_line_width(screen.context, poly.strokewidth[])
+    Cairo.set_source_rgba(screen.context, rgbatuple(to_color(strokecolor))...)
+    Cairo.set_line_width(screen.context, strokewidth)
     Cairo.stroke(screen.context)
 end
 
 function draw_poly(scene::Scene, screen::CairoScreen, poly, points_list::Vector{<:Vector{<:Point2}})
-    for points in points_list
-        draw_poly(scene, screen, poly, points)
+    broadcast_foreach(points_list, poly.color[],
+        poly.strokecolor[], poly.strokewidth[]) do points, color, strokecolor, strokewidth
+
+            draw_poly(scene, screen, poly, points, color, poly.model[], strokecolor, strokewidth)
     end
 end
 
