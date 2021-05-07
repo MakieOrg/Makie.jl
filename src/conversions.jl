@@ -34,8 +34,13 @@ convert_arguments(::NoConversion, args...) = args
 struct PointBased <: ConversionTrait end
 conversion_trait(x::Type{<: XYBased}) = PointBased()
 
-struct SurfaceLike <: ConversionTrait end
-conversion_trait(::Type{<: Union{Surface, Heatmap, Image}}) = SurfaceLike()
+abstract type SurfaceLike <: ConversionTrait end
+
+struct ContinuousSurface <: SurfaceLike end
+conversion_trait(::Type{<: Union{Surface, Image}}) = ContinuousSurface()
+
+struct DiscreteSurface <: SurfaceLike end
+conversion_trait(::Type{<: Heatmap}) = DiscreteSurface()
 
 function convert_arguments(T::PlotFunc, args...; kw...)
     ct = conversion_trait(T)
@@ -148,14 +153,10 @@ function convert_arguments(
     positions = (x, y)
     labels = categoric_labels.(positions)
     xyrange = categoric_range.(labels)
-    args = convert_arguments(SL, 0..n, 0..m, z)
-    xyranges = (
-        to_linspace(0.5..(n-0.5), n),
-        to_linspace(0.5..(m-0.5), m)
-    )
+    args = convert_arguments(SL, 1:n, 1:m, z)
     return PlotSpec(
         args...,
-        tickranges = xyranges, ticklabels = labels
+        tickranges = xyrange, ticklabels = labels
     )
 end
 
@@ -248,6 +249,29 @@ function convert_arguments(P::PointBased, x::Rect3D)
     convert_arguments(P, decompose(Point3f0, x)[inds])
 end
 
+function edges(v::AbstractVector)
+    l = length(v)
+    if l == 1
+        return [v[1] - 0.5, v[1] + 0.5]
+    else
+        # Equivalent to
+        # mids = 0.5 .* (v[1:end-1] .+ v[2:end])
+        # borders = [2v[1] - mids[1]; mids; 2v[end] - mids[end]]
+        borders = [0.5 * (v[max(1, i)] + v[min(end, i+1)]) for i in 0:length(v)]
+        borders[1] = 2borders[1] - borders[2]
+        borders[end] = 2borders[end] - borders[end-1]
+        return borders
+    end
+end
+
+function adjust_axes(::DiscreteSurface, x::AbstractVector{<:Number}, y::AbstractVector{<:Number}, z::AbstractMatrix)
+    x̂, ŷ = map((x, y), size(z)) do v, sz
+        return length(v) == sz ? edges(v) : v
+    end
+    return x̂, ŷ, z
+end
+
+adjust_axes(::SurfaceLike, x, y, z) = x, y, z
 
 """
     convert_arguments(P, x::VecOrMat, y::VecOrMat, z::Matrix)
@@ -257,11 +281,11 @@ outputs them in a Tuple.
 
 `P` is the plot Type (it is optional).
 """
-function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
-    return (el32convert(x), el32convert(y), el32convert(z))
+function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<: Union{Number, Colorant}})
+    return map(el32convert, adjust_axes(SL, x, y, z))
 end
-function convert_arguments(::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
-    return (el32convert(x), el32convert(y), el32convert(z))
+function convert_arguments(SL::SurfaceLike, x::AbstractVecOrMat{<: Number}, y::AbstractVecOrMat{<: Number}, z::AbstractMatrix{<:Number})
+    return map(el32convert, adjust_axes(SL, x, y, z))
 end
 
 """

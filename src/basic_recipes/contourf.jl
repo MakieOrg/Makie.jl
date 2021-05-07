@@ -39,7 +39,7 @@ function _get_isoband_levels(levels::AbstractVector{<:Real}, mi, ma)
     edges
 end
 
-conversion_trait(::Type{<:Contourf}) = SurfaceLike()
+conversion_trait(::Type{<:Contourf}) = ContinuousSurface()
 
 function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:AbstractVector{<:Real}, <:AbstractMatrix{<:Real}}})
     xs, ys, zs = c[1:3]
