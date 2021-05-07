@@ -84,19 +84,104 @@ end
 
 
 """
-    pick(scene::Scene, xy::VecLike[, range])
+    pick(scene::Scene, xy::VecLike)
 
-Return the plot under pixel position xy
+Return the plot under pixel position xy.
 """
 function pick(scene::SceneLike, xy)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
     pick(scene, screen, Vec{2, Float64}(xy))
 end
+
+"""
+    pick(scene::Scene, xy::VecLike, range)
+
+Return the plot closest to xy within a given range.
+"""
 function pick(scene::SceneLike, xy, range)
     screen = getscreen(scene)
     screen === nothing && return (nothing, 0)
-    pick(scene, screen, Vec{2, Float64}(xy), Float64(range))
+    pick_closest(scene, screen, xy, range)
+end
+
+# The backend may handle this more optimally
+function pick_closest(scene::SceneLike, screen, xy, range)
+    w, h = widths(screen)
+    ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
+    x0, y0 = max.(1, floor.(Int, xy .- range))
+    x1, y1 = min.([w, h], floor.(Int, xy .+ range))
+    dx = x1 - x0; dy = y1 - y0
+    
+    picks = pick(scene, screen, IRect2D(x0, y0, dx, dy))
+
+    min_dist = range^2
+    selected = (0, 0)
+    x, y =  xy .+ 1 .- Vec2f0(x0, y0)
+    for i in 1:dx, j in 1:dy
+        d = (x-i)^2 + (y-j)^2
+        if (d < min_dist) && (picks[i, j][1] != nothing)
+            min_dist = d
+            selected = (i, j)
+        end
+    end
+
+    return selected == (0, 0) ? (nothing, 0) : picks[selected[1], selected[2]]
+end
+
+"""
+    pick_sorted(scene::Scene, xy::VecLike, range)
+
+Return all `(plot, index)`` pairs in a `(xy .- range, xy .+ range)`` region 
+sorted by distance to `xy`.
+"""
+function pick_sorted(scene::SceneLike, xy, range)
+    screen = getscreen(scene)
+    screen === nothing && return Tuple{AbstractPlot, Int}[]
+    pick_sorted(scene, screen, xy, range)
+end
+
+function pick_sorted(scene::SceneLike, screen, xy, range)
+    w, h = widths(screen)
+    if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
+        return Tuple{AbstractPlot, Int}[]
+    end
+    x0, y0 = max.(1, floor.(Int, xy .- range))
+    x1, y1 = min.([w, h], floor.(Int, xy .+ range))
+    dx = x1 - x0; dy = y1 - y0
+    
+    picks = pick(scene, screen, IRect2D(x0, y0, dx, dy))
+
+    selected = filter(x -> x[1] != nothing, unique(vec(picks)))
+    distances = [range^2 for _ in selected]
+    x, y =  xy .+ 1 .- Vec2f0(x0, y0)
+    for i in 1:dx, j in 1:dy
+        if picks[i, j][1] != nothing
+            d = (x-i)^2 + (y-j)^2
+            i = findfirst(isequal(picks[i, j]), selected)
+            if i === nothing
+                @warn "This shouldn't happen..."
+            elseif distances[i] > d
+                distances[i] = d
+            end
+        end
+    end
+
+    idxs = sortperm(distances)
+    permute!(selected, idxs)
+    return selected
+end
+
+"""
+    pick(scene::Scene, rect::IRect2D)
+
+Return all `(plot, index)` pairs within the given rect. The rect must be within
+screen boundaries.
+"""
+function pick(scene::SceneLike, rect::IRect2D)
+    screen = getscreen(scene)
+    screen === nothing && return Tuple{AbstractPlot, Int}[]
+    return pick(scene, screen, rect)
 end
 
 """
