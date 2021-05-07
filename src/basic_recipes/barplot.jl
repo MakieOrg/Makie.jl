@@ -13,7 +13,8 @@ $(ATTRIBUTES)
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         dodge = automatic,
-        x_gap = 0.1,
+        n_dodge = automatic,
+        x_gap = 0.2,
         dodge_gap = 0.03,
         marker = Rect,
         stack = automatic,
@@ -37,6 +38,21 @@ end
 
 flip(r::Rect2D) = Rect2D(reverse(origin(r)), reverse(widths(r)))
 
+function xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_gap)
+    width === automatic && (width = (1 - x_gap) * minimum_distance)
+    if dodge === automatic
+        i_dodge = 1
+    elseif eltype(dodge) <: Integer
+        i_dodge = dodge
+    else
+        ArgumentError("The keyword argument `dodge` currently supports only `AbstractVector{<: Integer}`") |> throw
+    end
+    n_dodge === automatic && (n_dodge = maximum(i_dodge))
+    dodge_width = scale_width(dodge_gap, n_dodge)
+    shifts = shift_dodge.(i_dodge, dodge_width, dodge_gap)
+    return x .+ width .* shifts, width * dodge_width
+end
+
 function AbstractPlotting.plot!(p::BarPlot)
 
     in_y_direction = lift(p.direction) do dir
@@ -49,39 +65,21 @@ function AbstractPlotting.plot!(p::BarPlot)
         end
     end
 
-    bars = lift(p[1], p.fillto, p.width, p.dodge, p.x_gap, p.dodge_gap, p.stack, in_y_direction) do xy, fillto, width, dodge, x_gap, dodge_gap, stack, in_y_direction
+    bars = lift(p[1], p.fillto, p.width, p.dodge, p.n_dodge, p.x_gap, p.dodge_gap, p.stack, in_y_direction) do xy, fillto, width, dodge, n_dodge, x_gap, dodge_gap, stack, in_y_direction
         
         x = first.(xy)
         y = last.(xy)
-        
-        # compute half-width of bars
+
+        minimum_distance = nothing
+        # only really compute `minimum_distance` if `width` is `automatic`
         if width === automatic
             x_unique = unique(filter(isfinite, x))
-            
-            if length(x_unique) == 1
-                width = 1.0
-            else
-                width = mean(diff(sort(x_unique)))
-            end
-        end
-        
-        # --------------------------------
-        # ------------ Dodging -----------
-        # --------------------------------
-
-        if dodge === automatic
-            i_dodge = 1
-        elseif eltype(dodge) <: Integer
-            i_dodge = dodge
-        else
-            ArgumentError("The keyword argument `dodge` currently supports only `AbstractVector{<: Integer}`") |> throw
+            x_diffs = diff(sort(x_unique))
+            minimum_distance = isempty(x_diffs) ? 1.0 : minimum(x_diffs)
         end
 
-        n_dodge = maximum(i_dodge)
-
-        dodge_width = scale_width(x_gap, dodge_gap, n_dodge)
-        
-        shft = shift_dodge.(1:n_dodge, x_gap, dodge_gap, n_dodge)
+        # compute width of bars and x̂ (horizontal position after dodging)
+        x̂, barwidth = xw_from_dodge(x, width, minimum_distance, x_gap, dodge, n_dodge, dodge_gap)
 
         # --------------------------------
         # ----------- Stacking -----------
@@ -95,14 +93,13 @@ function AbstractPlotting.plot!(p::BarPlot)
             fillto === automatic || @warn "Ignore keyword fillto when keyword stack is provided"
             i_stack = stack
             
-            grp = dodge === automatic ? (x = x, ) : (i_dodge = i_dodge, x = x)
-            from, to = stack_grouped_from_to(i_stack, y, grp)
+            from, to = stack_grouped_from_to(i_stack, y, (x = x̂,))
             y, fillto = to, from
         else
             ArgumentError("The keyword argument `stack` currently supports only `AbstractVector{<: Integer}`") |> throw
         end
         
-        rects = bar_rectangle.(x .+ width .* shft[i_dodge], y, width .* dodge_width, fillto)
+        rects = @. bar_rectangle(x̂, y, barwidth, fillto)
         return in_y_direction ? rects : flip.(rects)
     end
 
@@ -112,12 +109,10 @@ function AbstractPlotting.plot!(p::BarPlot)
     )
 end
 
-scale_width(x_gap, dodge_gap, n_dodge) = ((1 - x_gap) - n_dodge * dodge_gap) / n_dodge
+scale_width(dodge_gap, n_dodge) = (1 - (n_dodge - 1) * dodge_gap) / n_dodge
 
-function shift_dodge(i, x_gap, dodge_gap, n_dodge)
-    wdt = scale_width(x_gap, dodge_gap, n_dodge)
-
-    - (1/2) + (i-1)*(wdt + dodge_gap) + (0.5 * (wdt + x_gap + dodge_gap))
+function shift_dodge(i, dodge_width, dodge_gap)
+    (dodge_width - 1) / 2 + (i - 1) * (dodge_width + dodge_gap)
 end
 
 function stack_grouped_from_to(i_stack, y, grp)

@@ -291,7 +291,7 @@ This is useful as we can then continue with the figure `f` and the heatmap `hm` 
 using CairoMakie
 
 fig, ax, hm = heatmap(randn(20, 20))
-Colorbar(fig[1, 2], hm, width = 20)
+Colorbar(fig[1, 2], hm)
 fig
 ```
 
@@ -304,7 +304,7 @@ using CairoMakie
 fig = Figure()
 ax = Axis(fig[1, 1])
 hm = heatmap!(ax, randn(20, 20))
-Colorbar(fig[1, 2], hm, width = 20)
+Colorbar(fig[1, 2], hm)
 fig
 ```
 
@@ -319,7 +319,7 @@ You can pass axis attributes under the keyword `axis` and figure attributes unde
 using CairoMakie
 
 heatmap(randn(20, 20),
-    figure = (resolution = (800, 600), backgroundcolor = :pink),
+    figure = (backgroundcolor = :pink,),
     axis = (aspect = 1, xlabel = "x axis", ylabel = "y axis")
 )
 ```
