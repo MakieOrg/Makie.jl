@@ -110,13 +110,14 @@ end
 function closest_point_on_line(A::Point3f0, B::Point3f0, origin::Point3f0, dir::Vec3f0)
     # See:
     # https://en.wikipedia.org/wiki/Line%E2%80%93plane_intersection
-    u_AB = normalize(B .- A)
+    AB_norm = norm(B .- A)
+    u_AB = (B .- A) / AB_norm
     u_dir = normalize(dir)
     u_perp = normalize(cross(u_dir, u_AB))
     # e_RD, e_perp defines a plane with normal n
     n = normalize(cross(u_dir, u_perp))
     t = dot(origin .- A, n) / dot(u_AB, n)
-    A .+ t * u_AB
+    A .+ clamp(t, 0.0, AB_norm) * u_AB
 end
 
 function ray_triangle_intersection(A, B, C, origin, dir)
