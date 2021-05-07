@@ -252,11 +252,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
     if zoom != 0
         pa = pixelarea(scene)[]
 
-        # don't let z go negative
-        z = max(0.1f0, 1f0 - (abs(zoom) * s.speed))
-        if zoom < 0
-            z = 1/z   # sets the old to be a fraction of the new. This ensures zoom in & then out returns to original position.
-        end
+        z = (1f0 - s.speed)^zoom
 
         mp_axscene = Vec4f0((e.mouseposition[] .- pa.origin)..., 0, 1)
 
