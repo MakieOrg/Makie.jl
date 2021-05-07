@@ -220,7 +220,7 @@ function layoutable(::Type{Legend},
                 push!(etexts, Label(scene,
                     text = e.label, textsize = e.labelsize, font = e.labelfont,
                     color = e.labelcolor, halign = e.labelhalign, valign = e.labelvalign
-                    ), inspectable = false)
+                    ))
 
                 # create the patch rectangle
                 rect = Box(scene, color = e.patchcolor, strokecolor = e.patchstrokecolor,
