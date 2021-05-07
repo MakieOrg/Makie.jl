@@ -137,13 +137,6 @@ function ray_triangle_intersection(A, B, C, origin, dir)
 end
 
 
-### Heatmap positions/indices
-########################################
-
-pos2index(x, r, N) = clamp(ceil(Int, N * (x - minimum(r)) / (maximum(r) - minimum(r))), 1, N)
-index2pos(i, r, N) = minimum(r) + (maximum(r) - minimum(r)) * (i) / (N)
-
-
 ### Surface positions
 ########################################
 
@@ -696,6 +689,7 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
+    # TODO fix bounds
     @info "Heatmap"
     show_imagelike(inspector, plot, "H")
 end
@@ -736,7 +730,7 @@ function show_imagelike(inspector, plot, name)
                 scene, map(p -> [p], a._position), color = a._color, 
                 visible = a._bbox_visible,
                 show_axis = false, inspectable = false, 
-                marker=:rect, markersize = min(2a.range[]-2, 20),
+                marker=:rect, markersize = map(r -> 2r - 4, a.range),
                 strokecolor = a.indicator_color, 
                 strokewidth = a.indicator_linewidth #, linestyle = a.indicator_linestyle no?
             )
@@ -748,6 +742,7 @@ function show_imagelike(inspector, plot, name)
                 Observables.ObserverFunction(a._position.listeners[end], a._position, false)
             )
         end
+        a._display_text[] = color2text(name, mpos[1], mpos[2], z)
     else
         a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j)
         if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2D)
@@ -760,9 +755,9 @@ function show_imagelike(inspector, plot, name)
             translate!(p, Vec3f0(0, 0, a.depth[]))
             push!(inspector.temp_plots, p)
         end
+        a._display_text[] = color2text(name, i, j, z)
     end
 
-    a._display_text[] = color2text(name, i, j, z)
     a._bbox_visible[] = true
     a._px_bbox_visible[] = false
     a._visible[] = true
@@ -802,7 +797,7 @@ function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer)
     x0, x1 = extrema(xs)
     y0, y1 = extrema(ys)
     nw, nh = ((x1 - x0), (y1 - y0)) ./ size(img)
-    FRect2D(nw * (i-1), nh * (j-1), nw, nh)
+    FRect2D(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
 end
 
 function show_data(inspector::DataInspector, plot, idx, source = nothing)
