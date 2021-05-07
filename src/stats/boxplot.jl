@@ -28,6 +28,7 @@ The boxplot has 3 components:
 - `show_outliers`: show outliers as points
 """
 @recipe(BoxPlot, x, y) do scene
+    scattertheme = default_theme(scene, Scatter)
     Theme(
         color = theme(scene, :color),
         colormap = theme(scene, :colormap),
@@ -55,11 +56,11 @@ The boxplot has 3 components:
         whiskerlinewidth = 1.0,
         # outliers points
         show_outliers = true,
-        marker = Circle,
-        markersize = 10,
+        marker = scattertheme.marker,
+        markersize = scattertheme.markersize,
         outliercolor = automatic,
-        outlierstrokecolor = :black,
-        outlierstrokewidth = 1.0,
+        outlierstrokecolor = scattertheme.strokecolor,
+        outlierstrokewidth = scattertheme.strokewidth,
     )
 end
 
