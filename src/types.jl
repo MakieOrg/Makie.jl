@@ -159,10 +159,17 @@ end
 # Compat only
 function Base.getproperty(e::Events, field::Symbol)
     if field == :mousebuttons
-        @warn(
-            "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
-            "react to `MouseButtonEvent`s instead and ``."
-        )
+        try
+            error()
+        catch e
+            bt = catch_backtrace()
+            @warn(
+                "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
+                "react to `MouseButtonEvent`s instead and ``."
+            )
+            Base.show_backtrace(stderr, bt)
+            println(stderr)
+        end
         mousebuttons = Node(Set{Mouse.Button}())
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             mousebuttons[] = getfield(e, :mousebuttonstate)
@@ -170,10 +177,17 @@ function Base.getproperty(e::Events, field::Symbol)
         end
         return mousebuttons
     elseif field == :keyboardbuttons
-        @warn(
-            "`events.keyboardbuttons` is deprecated. Use " *
-            "`events.keyboardbutton` to react to `KeyEvent`s instead."
-        )
+        try
+            error()
+        catch e
+            bt = catch_backtrace()
+            @warn(
+                "`events.keyboardbuttons` is deprecated. Use " *
+                "`events.keyboardbutton` to react to `KeyEvent`s instead."
+            )
+            Base.show_backtrace(stderr, bt)
+            println(stderr)
+        end
         keyboardbuttons = Node(Set{Keyboard.Button}())
         on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
             keyboardbuttons[] = getfield(e, :keyboardstate)
@@ -181,10 +195,17 @@ function Base.getproperty(e::Events, field::Symbol)
         end
         return keyboardbuttons
     elseif field == :mousedrag
-        @warn(
-            "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
-            "mouse state machine (`addmouseevents!`) instead."
-        )
+        try
+            error()
+        catch e
+            bt = catch_backtrace()
+            @warn(
+                "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
+                "mouse state machine (`addmouseevents!`) instead."
+            )
+            Base.show_backtrace(stderr, bt)
+            println(stderr)
+        end
         mousedrag = Node(Mouse.notpressed)
         on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
             if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
