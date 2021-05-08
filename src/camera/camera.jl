@@ -13,15 +13,9 @@ end
 function disconnect!(c::Camera)
     for node in c.steering_nodes
         # remove all camera lifts
-        if node isa PriorityObservable
-            for f in listeners(node)
-                if f isa CameraLift 
-                    off(node, f)
-                end
-            end
-        else
-            filter!(listeners(node)) do x
-                !(x isa CameraLift) 
+        for f in listeners(node)
+            if f isa CameraLift 
+                off(node, f)
             end
         end
     end
