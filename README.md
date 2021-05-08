@@ -7,7 +7,7 @@ WGLMakie is a WebGL backend for the [Makie.jl](https://www.github.com/JuliaPlots
 
 Backend specific docs, for creating interactive and static html pages:
 
-[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaplots.org/WGLMakie.jl/latest/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](http://juliaplots.org/WGLMakie.jl/stable/)
 [![](https://img.shields.io/badge/docs-master-blue.svg)](http://juliaplots.org/WGLMakie.jl/dev/)
 
 # Installation

@@ -1,3 +1,4 @@
+
 function handle_color!(uniform_dict, instance_dict)
     color, udict = if haskey(uniform_dict, :color)
         to_value(uniform_dict[:color]), uniform_dict
@@ -33,7 +34,7 @@ function create_shader(scene::Scene, plot::MeshScatter)
     per_instance = filter(plot.attributes.attributes) do (k, v)
         return k in per_instance_keys && !(isscalar(v[]))
     end
-    per_instance[:offset] = plot[1]
+    per_instance[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
 
     for (k, v) in per_instance
         per_instance[k] = Buffer(lift_convert(k, v, plot))
@@ -148,7 +149,7 @@ function create_shader(scene::Scene, plot::Scatter)
         return k in per_instance_keys && !(isscalar(v[]))
     end
     attributes = copy(plot.attributes.attributes)
-    attributes[:offset] = plot[1]
+    attributes[:offset] = apply_transform(transform_func_obs(plot),  plot[1])
     attributes[:billboard] = map(rot -> isa(rot, Billboard), plot.rotations)
     attributes[:pixelspace] = getfield(scene.camera, :pixel_space)
     attributes[:model] = plot.model
@@ -157,74 +158,68 @@ function create_shader(scene::Scene, plot::Scatter)
     return scatter_shader(scene, attributes)
 end
 
-function to_gl_text(string, positions_per_char::AbstractVector{T}, textsize,
-                    font, align, rot, model, j, l) where T <: VecTypes
-    atlas = get_texture_atlas()
-    N = length(T)
-    positions, uv_offset_width, scale = Point{3, Float32}[], Vec4f0[], Vec2f0[]
-    char_str_idx = iterate(string)
-    offsets = Vec2f0[]
-    broadcast_foreach(1:length(string), positions_per_char, textsize, font, align) do idx, pos, tsize, font, align
-        char, str_idx = char_str_idx
-        mpos = model * Vec4f0(to_ndim(Vec3f0, pos, 0f0)..., 1f0)
-        push!(positions, to_ndim(Point{3, Float32}, mpos, 0))
-        push!(uv_offset_width, glyph_uv_width!(atlas, char, font))
-        glyph_bb, ext = FreeTypeAbstraction.metrics_bb(char, font, tsize)
-        if isa(tsize, Vec2f0) # this needs better unit support
-            push!(scale, tsize) # Vec2f0, we assume it's already in absolute size
-        else
-            push!(scale, widths(glyph_bb))
-        end
-        push!(offsets, minimum(glyph_bb))
-        char_str_idx = iterate(string, str_idx)
-    end
-    return positions, offsets, uv_offset_width, scale
-end
-
-function to_gl_text(string, startpos::VecTypes{N, T}, textsize, font, aoffsetvec, rot, model, j, l) where {N, T}
-    atlas = get_texture_atlas()
-    positions = layout_text(string, startpos, textsize, font, aoffsetvec, rot, model, j, l)
-    uv = Vec4f0[]
-    scales = Vec2f0[]
-    offsets = Vec2f0[]
-    for (c, font, pixelsize) in zip(string, attribute_per_char(string, font), attribute_per_char(string, textsize))
-        push!(uv, glyph_uv_width!(atlas, c, font))
-        glyph_bb, extent = FreeTypeAbstraction.metrics_bb(c, font, pixelsize)
-        push!(scales, widths(glyph_bb))
-        push!(offsets, minimum(glyph_bb))
-    end
-    return positions, offsets, uv, scales
-end
-
+value_or_first(x::AbstractArray) = first(x)
+value_or_first(x::StaticArray) = x
+value_or_first(x) = x
 
 function create_shader(scene::Scene, plot::AbstractPlotting.Text)
 
-    liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight)
+    string_obs = plot[1]
+    liftkeys = (:position, :textsize, :font, :align, :rotation, :model, :justification, :lineheight, :space, :offset)
+
     args = getindex.(Ref(plot), liftkeys)
-    gl_text = lift(plot[1], args...) do str, pos, tsize, font, align, rotation, model, j, l
+
+    gl_text = lift(string_obs, scene.camera.projectionview, AbstractPlotting.transform_func_obs(scene), args...) do str, projview, transfunc, pos, tsize, font, align, rotation, model, j, l, space, offset
         # For annotations, only str (x[1]) will get updated, but all others are updated too!
-        args = @get_attribute plot (position, textsize, font, align, rotation)
-        to_gl_text(str, args..., model, j, l)
+        args = @get_attribute plot (position, textsize, font, align, rotation, offset)
+        res = Vec2f0(widths(pixelarea(scene)[]))
+        return AbstractPlotting.preprojected_glyph_arrays(str, pos, plot._glyphlayout[], font, textsize, space, projview, res, offset, transfunc)
     end
 
     # unpack values from the one signal:
     positions, offset, uv_offset_width, scale = map((1, 2, 3, 4)) do i
-        return lift(getindex, gl_text, i)
+        lift(getindex, gl_text, i)
     end
-    # Sigh, we also allow inplace mutation without triggering
-    # plot.rotation to update, so we need to update also on the string array (plot[1])
-    rotation = lift(plot[1], plot.rotation) do str, rotation
-        return to_rotation(rotation)
+
+    atlas = get_texture_atlas()
+    keys = (:color, :rotation)
+
+    signals = map(keys) do key
+        return lift(positions, plot[key]) do pos, attr
+            str = string_obs[]
+            if str isa AbstractVector
+                if isempty(str)
+                    attr = convert_attribute(value_or_first(attr), Key{key}())
+                    return Vector{typeof(attr)}()
+                else
+                    result = []
+                    broadcast_foreach(str, attr) do st, aa
+                        for att in attribute_per_char(st, aa)
+                            push!(result, convert_attribute(att, Key{key}()))
+                        end
+                    end
+                    # narrow the type from any, this is ugly
+                    return identity.(result)
+                end
+            else
+                return AbstractPlotting.get_attribute(plot, key)
+            end
+        end
     end
-    color = lift(plot[1], plot.color) do str, color
-        return to_color(color)
-    end
-    uniforms = Dict(:model => Observable(Mat4f0(I)), :shape_type => Observable(Cint(3)),
-                    :color => color, :rotations => rotation, :markersize => scale,
-                    :markerspace => Observable(SceneSpace),
-                    :marker_offset => offset, :offset => positions,
-                    :uv_offset_width => uv_offset_width,
-                    :transform_marker => Observable(false), :billboard => Observable(false),
-                    :pixelspace => getfield(scene.camera, :pixel_space))
+
+    uniforms = Dict(
+        :model => Observable(Mat4f0(I)),
+        :shape_type => Observable(Cint(3)),
+        :color => signals[1],
+        :rotations => signals[2],
+        :markersize => scale,
+        :markerspace => Observable(Pixel),
+        :marker_offset => offset,
+        :offset => positions,
+        :uv_offset_width => uv_offset_width,
+        :transform_marker => Observable(false),
+        :billboard => Observable(false),
+        :pixelspace => getfield(scene.camera, :pixel_space))
+
     return scatter_shader(scene, uniforms)
 end

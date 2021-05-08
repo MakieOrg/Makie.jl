@@ -23,12 +23,14 @@ import AbstractPlotting.FileIO
 using AbstractPlotting: get_texture_atlas, glyph_uv_width!, SceneSpace, Pixel
 using AbstractPlotting: attribute_per_char, glyph_uv_width!, layout_text
 using AbstractPlotting: MouseButtonEvent, KeyEvent
+using AbstractPlotting: apply_transform, transform_func_obs
 
 struct WebGL <: ShaderAbstractions.AbstractContext end
 struct WGLBackend <: AbstractPlotting.AbstractBackend end
 #["https://unpkg.com/three@0.123.0/build/three.min.js"
 const THREE = Dependency(:THREE,
                                  ["https://cdn.jsdelivr.net/gh/mrdoob/three.js/build/three.js"])
+
 const WGL = Dependency(:WGLMakie, [joinpath(@__DIR__, "wglmakie.js")])
 const WEBGL = Dependency(:WEBGL, [joinpath(@__DIR__, "WEBGL.js")])
 
@@ -55,11 +57,7 @@ function __init__()
     # Activate WGLMakie as backend!
     activate!()
     browser_display = JSServe.BrowserDisplay() in Base.Multimedia.displays
-    AbstractPlotting.inline!(browser_display)
-    # The reasonable_solution is a terrible default for the web!
-    if AbstractPlotting.minimal_default.resolution[] == AbstractPlotting.reasonable_resolution()
-        set_theme!(resolution=(600, 400))
-    end
+    AbstractPlotting.inline!(!browser_display)
     # We need to update the texture atlas whenever it changes!
     # We do this in three_plot!
     AbstractPlotting.font_render_callback!() do sd, uv
