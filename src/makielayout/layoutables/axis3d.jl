@@ -116,8 +116,8 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
         return false
     end
 
-    on(scene.events.keyboardbuttons) do buttons
-        keysevents[] = KeysEvent(buttons)
+    on(scene.events.keyboardbutton) do e
+        keysevents[] = KeysEvent(scene.events.keyboardstate)
         return false
     end
 
