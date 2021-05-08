@@ -1,10 +1,9 @@
-using AbstractPlotting: 
-    NoConversion, 
-    convert_arguments, 
+using AbstractPlotting:
+    NoConversion,
+    convert_arguments,
     conversion_trait,
+    convert_single_argument,
     to_vertices
-
-using StaticArrays
 
 @testset "Conversions" begin
 
@@ -12,7 +11,7 @@ using StaticArrays
     struct NoConversionTestType end
     conversion_trait(::NoConversionTestType) = NoConversion()
 
-    let nctt = NoConversionTestType(), 
+    let nctt = NoConversionTestType(),
         ncttt = conversion_trait(nctt)
         @test convert_arguments(ncttt, 1, 2, 3) == (1, 2, 3)
     end
@@ -81,7 +80,7 @@ end
     p1 = convert_arguments(AbstractPlotting.PointBased(), lsa)
     @test p1[1][1:4] == pts
     @test p1[1][6:9] == pts1
-    
+
     mls = MultiLineString(lsa)
     p2 = convert_arguments(AbstractPlotting.PointBased(), mls)
     @test p2[1][1:4] == pts
@@ -108,17 +107,9 @@ end
     mpol = MultiPolygon([pol, pol1])
     @test p4[1][1:4] == pts
     @test p4[1][6:9] == pts1
-    @test p4[1][11:15] == pts2 
+    @test p4[1][11:15] == pts2
     @test p4[1][17:20] == pts3
     @test p4[1][22:26] == pts4
-end
-
-@testset "Categorical values" begin
-    # AbstractPlotting.jl#345
-    a = Any[Int64(1), Int32(1), Int128(2)] # vector of categorical values of different types
-    ilabels = AbstractPlotting.categoric_labels(a)
-    @test ilabels == [1, 2]
-    @test AbstractPlotting.categoric_position.(a, Ref(ilabels)) == [1, 1, 2]
 end
 
 using AbstractPlotting: check_line_pattern, line_diff_pattern
@@ -130,16 +121,16 @@ using AbstractPlotting: check_line_pattern, line_diff_pattern
 
     # for readability, the length of dash and dot
     dash, dot = 3.0, 1.0
-    
+
     @test line_diff_pattern(:dash)             ==
           line_diff_pattern("-",   :normal)    == [dash, 3.0]
-    @test line_diff_pattern(:dot)              == 
+    @test line_diff_pattern(:dot)              ==
           line_diff_pattern(".",   :normal)    == [dot, 2.0]
     @test line_diff_pattern(:dashdot)          ==
           line_diff_pattern("-.",  :normal)    == [dash, 3.0, dot, 3.0]
-    @test line_diff_pattern(:dashdotdot)       == 
+    @test line_diff_pattern(:dashdotdot)       ==
           line_diff_pattern("-..", :normal)    == [dash, 3.0, dot, 2.0, dot, 3.0]
-        
+
     @test line_diff_pattern(:dash, :loose)     == [dash, 6.0]
     @test line_diff_pattern(:dot,  :loose)     == [dot, 4.0]
     @test line_diff_pattern("-",   :dense)     == [dash, 2.0]
@@ -152,6 +143,35 @@ using AbstractPlotting: check_line_pattern, line_diff_pattern
 
     # gaps must be Symbol, a number, or two numbers
     @test_throws ArgumentError line_diff_pattern(:dash, :NORMAL)
-    @test_throws ArgumentError line_diff_pattern(:dash, ()) 
+    @test_throws ArgumentError line_diff_pattern(:dash, ())
     @test_throws ArgumentError line_diff_pattern(:dash, (1, 2, 3))
+end
+
+struct MyVector{T}
+    v::Vector{T}
+end
+
+struct MyNestedVector{T}
+    v::MyVector{T}
+end
+
+@testset "single conversions" begin
+    myvector = MyVector(collect(1:10))
+    mynestedvector = MyNestedVector(MyVector(collect(11:20)))
+    @test_throws ErrorException convert_arguments(Lines, myvector, mynestedvector)
+
+    AbstractPlotting.convert_single_argument(v::MyNestedVector) = v.v
+    AbstractPlotting.convert_single_argument(v::MyVector) = v.v
+
+    @test convert_arguments(Lines, myvector, mynestedvector) == (Point2f0.(1:10, 11:20),)
+
+    @test isequal(
+        convert_arguments(Lines, [1, missing, 2]),
+        (Point2f0[(1, 1), (2, NaN), (3, 2)],)
+    )
+
+    @test isequal(
+        convert_arguments(Lines, [Point(1, 2), missing, Point(3, 4)]),
+        (Point2f0[(1.0, 2.0), (NaN, NaN), (3.0, 4.0)],)
+    )
 end

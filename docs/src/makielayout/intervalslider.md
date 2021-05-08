@@ -20,11 +20,12 @@ If you set the attribute `snap = false`, the slider will move continously while 
 
 
 ```@example
-using CairoMakie
+using GLMakie
+using CairoMakie # hide
 AbstractPlotting.inline!(true) # hide
 CairoMakie.activate!() # hide
 
-f = Figure(resolution = (800, 800))
+f = Figure()
 Axis(f[1, 1], limits = (0, 1, 0, 1))
 
 rs_h = IntervalSlider(f[2, 1], range = LinRange(0, 1, 1000),

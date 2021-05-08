@@ -28,13 +28,18 @@ The boxplot has 3 components:
 - `show_outliers`: show outliers as points
 """
 @recipe(BoxPlot, x, y) do scene
-    t = Theme(
+    scattertheme = default_theme(scene, Scatter)
+    Theme(
         color = theme(scene, :color),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         orientation = :vertical,
-        # box
-        width = 0.8,
+        # box and dodging
+        width = automatic,
+        dodge = automatic,
+        n_dodge = automatic,
+        x_gap = 0.2,
+        dodge_gap = 0.03,
         strokecolor = :white,
         strokewidth = 0.0,
         # notch
@@ -51,13 +56,12 @@ The boxplot has 3 components:
         whiskerlinewidth = 1.0,
         # outliers points
         show_outliers = true,
-        marker = :circle,
-        markersize = automatic,
-        outlierstrokecolor = :black,
-        outlierstrokewidth = 1.0,
+        marker = scattertheme.marker,
+        markersize = scattertheme.markersize,
+        outliercolor = automatic,
+        outlierstrokecolor = scattertheme.strokecolor,
+        outlierstrokewidth = scattertheme.strokewidth,
     )
-    get!(t, :outliercolor, t[:color])
-    t
 end
 
 conversion_trait(x::Type{<:BoxPlot}) = SampleBased()
@@ -69,17 +73,18 @@ _flip_xy(p::Point2f0) = reverse(p)
 _flip_xy(r::Rect{2,T}) where {T} = Rect{2,T}(reverse(r.origin), reverse(r.widths))
 
 function AbstractPlotting.plot!(plot::BoxPlot)
-    args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation)
+    args = @extract plot (width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap)
 
     signals = lift(
         plot[1],
         plot[2],
         args...,
-    ) do x, y, bw, range, show_outliers, whiskerwidth, show_notch, orientation
+    ) do x, y, width, range, show_outliers, whiskerwidth, show_notch, orientation, x_gap, dodge, n_dodge, dodge_gap
+        x̂, boxwidth = xw_from_dodge(x, width, 1.0, x_gap, dodge, n_dodge, dodge_gap)
         if !(whiskerwidth == :match || whiskerwidth >= 0)
             error("whiskerwidth must be :match or a positive number. Found: $whiskerwidth")
         end
-        ww = whiskerwidth == :match ? bw : whiskerwidth * bw
+        ww = whiskerwidth == :match ? boxwidth : whiskerwidth * boxwidth
         outlier_points = Point2f0[]
         centers = Float32[]
         medians = Float32[]
@@ -88,7 +93,7 @@ function AbstractPlotting.plot!(plot::BoxPlot)
         notchmin = Float32[]
         notchmax = Float32[]
         t_segments = Point2f0[]
-        for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x))
+        for (i, (center, idxs)) in enumerate(StructArrays.finduniquesorted(x̂))
             values = view(y, idxs)
 
             # compute quantiles
@@ -150,6 +155,7 @@ function AbstractPlotting.plot!(plot::BoxPlot)
             notchmax = notchmax,
             outliers = outlier_points,
             t_segments = t_segments,
+            boxwidth = boxwidth,
         )
     end
     centers = @lift($signals.centers)
@@ -160,16 +166,17 @@ function AbstractPlotting.plot!(plot::BoxPlot)
     notchmax = @lift($show_notch ? $signals.notchmax : automatic)
     outliers = @lift($signals.outliers)
     t_segments = @lift($signals.t_segments)
+    boxwidth = @lift($signals.boxwidth)
+
+    outliercolor = lift(plot[:outliercolor], plot[:color]) do outliercolor, color
+        outliercolor === automatic ? color : outliercolor
+    end
 
     scatter!(
         plot,
-        color = plot[:outliercolor],
+        color = outliercolor,
         marker = plot[:marker],
-        markersize = lift(
-            (w, ms) -> ms === automatic ? w * 0.1 : ms,
-            width,
-            plot.markersize,
-        ),
+        markersize = plot[:markersize],
         strokecolor = plot[:outlierstrokecolor],
         strokewidth = plot[:outlierstrokewidth],
         outliers,
@@ -191,7 +198,7 @@ function AbstractPlotting.plot!(plot::BoxPlot)
         midlinewidth = plot[:medianlinewidth],
         show_midline = plot[:show_median],
         orientation = orientation,
-        width = width,
+        width = boxwidth,
         show_notch = show_notch,
         notchmin = notchmin,
         notchmax = notchmax,

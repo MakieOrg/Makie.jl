@@ -37,7 +37,7 @@ function default_attributes(::Type{Menu}, scene)
         "The list of options selectable in the menu. This can be any iterable of a mixture of strings and containers with one string and one other value. If an entry is just a string, that string is both label and selection. If an entry is a container with one string and one other value, the string is the label and the other value is the selection."
         options = ["no options"]
         "Font size of the cell texts"
-        textsize = lift_parent_attribute(scene, :fontsize, 20f0)
+        textsize = lift_parent_attribute(scene, :fontsize, 16f0)
         "Padding of entry texts"
         textpadding = (10, 10, 10, 10)
         "Color of entry texts"

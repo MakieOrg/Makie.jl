@@ -8,12 +8,12 @@ CairoMakie.activate!(type = "png")
 ## Creating an Axis
 
 The `Axis` is a 2D axis that works well with automatic layouts.
-Here's how you create one 
+Here's how you create one
 
 ```@example laxis
 using CairoMakie
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 ax = Axis(f[1, 1], xlabel = "x label", ylabel = "y label",
     title = "Title")
@@ -36,6 +36,30 @@ scatobject = scatter!(0:0.5:10, cos, color = :orange)
 f
 ```
 
+## Deleting plots
+
+You can delete a plot object directly via `delete!(ax, plotobj)`.
+You can also remove all plots with `empty!(ax)`.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure()
+
+axs = [Axis(f[1, i]) for i in 1:3]
+
+scatters = map(axs) do ax
+    [scatter!(ax, 0:0.1:10, x -> sin(x) + i) for i in 1:3]
+end
+
+delete!(axs[2], scatters[2][2])
+empty!(axs[3])
+
+f
+```
+
 
 ## Setting Axis limits and reversing axes
 
@@ -54,7 +78,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 axes = [Axis(f[i, j]) for j in 1:3, i in 1:2]
 
@@ -84,7 +108,7 @@ using CairoMakie
 CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 400))
+f = Figure()
 
 lines(f[1, 1], 0..10, sin)
 lines(f[1, 2], 0..10, sin, axis = (limits = (0, 10, -1, 1),))
@@ -124,7 +148,7 @@ The default tick type is `LinearTicks(n)`, where `n` is the target number of tic
 ```@example
 using CairoMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 for (i, n) in enumerate([2, 5, 9])
     lines(fig[i, 1], 0..20, sin, axis = (xticks = LinearTicks(n),))
 end
@@ -194,7 +218,7 @@ theme = Attributes(
 )
 
 fig = with_theme(theme) do
-    fig = Figure(resolution = (800, 800))
+    fig = Figure()
     axs = [Axis(fig[fldmod1(n, 2)...],
         title = "IntervalsBetween($(n+1))",
         xminorticks = IntervalsBetween(n+1),
@@ -216,7 +240,7 @@ To hide spines, you can use `hidespines!`.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 ax1 = Axis(f[1, 1], title = "Axis 1")
 ax2 = Axis(f[1, 2], title = "Axis 2")
@@ -236,7 +260,7 @@ It's common, e.g., to hide everything but the grid lines in facet plots.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (1200, 700))
+f = Figure()
 
 ax1 = Axis(f[1, 1], title = "Axis 1")
 ax2 = Axis(f[1, 2], title = "Axis 2")
@@ -247,6 +271,49 @@ hidexdecorations!(ax2, grid = false)
 hideydecorations!(ax3, ticks = false)
 
 f
+```
+
+## Log scales and other axis scales
+
+The two attributes `xscale` and `yscale`, which by default are set to `identity`, can be used to project the data in a nonlinear way, in addition to the linear zoom that the limits provide.
+
+Take care that the axis limits always stay inside the limits appropriate for the chosen scaling function, for example, `log` functions fail for values `x <= 0`, `sqrt` for `x < 0`, etc.
+
+```@example
+using CairoMakie
+
+data = LinRange(0.01, 0.99, 200)
+
+f = Figure(resolution = (800, 800))
+
+for (i, scale) in enumerate([identity, log10, log2, log, sqrt, AbstractPlotting.logit])
+
+    row, col = fldmod1(i, 2)
+    Axis(f[row, col], yscale = scale, title = string(scale),
+        yminorticksvisible = true, yminorgridvisible = true,
+        yminorticks = IntervalsBetween(8))
+
+    lines!(data, color = :blue)
+end
+
+f
+```
+
+Some plotting functions, like barplots or density plots, have offset parameters which are usually zero, which you have to set to some non-zero value explicitly so they work in `log` axes.
+
+```@example
+using CairoMakie
+
+processors = ["VAX-11/780", "Sun-4/260", "PowerPC 604",
+    "Alpha 21164", "Intel Pentium III", "Intel Xeon"]
+relative_speeds = [1, 9, 117, 280, 1779, 6505]
+
+barplot(relative_speeds, fillto = 0.5,
+    axis = (yscale = log10, ylabel ="relative speed",
+        xticks = (1:6, processors), xticklabelrotation = pi/8))
+
+ylims!(0.5, 10000)
+current_figure()
 ```
 
 ## Controlling Axis aspect ratios
@@ -269,12 +336,12 @@ using FileIO
 using Random # hide
 Random.seed!(1) # hide
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 axes = [Axis(f[i, j]) for i in 1:2, j in 1:3]
 tightlimits!.(axes)
 
-img = rotr90(load("../assets/cow.png"))
+img = rotr90(load(assetpath("cow.png")))
 
 for ax in axes
     image!(ax, img)
@@ -294,8 +361,8 @@ axes[2, 1].aspect = AxisAspect(1)
 axes[2, 2].title = "AxisAspect(2)"
 axes[2, 2].aspect = AxisAspect(2)
 
-axes[2, 3].title = "AxisAspect(0.5)"
-axes[2, 3].aspect = AxisAspect(0.5)
+axes[2, 3].title = "AxisAspect(2/3)"
+axes[2, 3].aspect = AxisAspect(2/3)
 
 f
 ```
@@ -383,7 +450,7 @@ separately.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (1200, 900))
+f = Figure()
 
 ax1 = Axis(f[1, 1])
 ax2 = Axis(f[1, 2])
@@ -418,7 +485,7 @@ You can change this with the attributes `xaxisposition = :top` and `yaxispositio
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (800, 800))
+f = Figure()
 
 for i in 1:2, j in 1:2
     Axis(
@@ -441,7 +508,7 @@ Here's an example how to do this with a second y axis on the right.
 ```@example
 using CairoMakie
 
-f = Figure(resolution = (800, 600))
+f = Figure()
 
 ax1 = Axis(f[1, 1], yticklabelcolor = :blue)
 ax2 = Axis(f[1, 1], yticklabelcolor = :red, yaxisposition = :right)
@@ -504,7 +571,7 @@ You can check which interactions are currently active by calling `interactions(a
 Often, you don't want to remove an interaction entirely but only disable it for a moment, then reenable it again.
 You can use the functions `activate_interaction!(ax, name::Symbol)` and `deactivate_interaction!(ax, name::Symbol)` for that.
 
-#### `Function` Interaction 
+#### `Function` Interaction
 If `interaction` is a `Function`, it should accept two arguments, which correspond to an event and the axis.
 This function will then be called whenever the axis generates an event.
 
@@ -528,7 +595,7 @@ The function option is most suitable for interactions that don't involve much st
 A more verbose but flexible option is available.
 For this, you define a new type which typically holds all the state variables you're interested in.
 
-Whenever the axis generates an event, it calls `process_interaction(interaction, event, axis)` on all 
+Whenever the axis generates an event, it calls `process_interaction(interaction, event, axis)` on all
 stored interactions.
 By defining `process_interaction` for specific types of interaction and event, you can create more complex interaction patterns.
 
@@ -592,6 +659,25 @@ hlines!(ax2, [1, 2, 3, 4], xmax = [0.25, 0.5, 0.75, 1], color = :blue)
 scene
 ```
 
+### abline!
+
+abline works similar to v/hlines!:
+
+```@docs
+abline!
+```
+
+```@setup 1
+using CairoMakie
+CairoMakie.activate!(type = "png")
+```
+
+```@example 1
+fig, ax, pl = scatter(1:4)
+abline!(ax, 0, 1)
+abline!(ax, 0, 1.5, color = :red, linestyle=:dash, linewidth=2)
+fig
+```
 
 ```@eval
 using GLMakie

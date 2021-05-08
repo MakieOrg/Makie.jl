@@ -11,7 +11,7 @@ so rows and columns in a GridLayout can shrink to the appropriate width or heigh
 ```@example
 using CairoMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 fig[1:2, 1:3] = [Axis(fig) for _ in 1:6]
 
