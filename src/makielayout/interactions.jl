@@ -375,7 +375,7 @@ end
 
 function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
     if event.type !== MouseEventTypes.leftdrag
-        return nothing
+        return false
     end
 
     dpx = event.px - event.prev_px
@@ -383,5 +383,5 @@ function process_interaction(dr::DragRotate, event::MouseEvent, ax3d)
     ax3d.azimuth[] += -dpx[1] * 0.01
     ax3d.elevation[] = clamp(ax3d.elevation[] - dpx[2] * 0.01, -pi/2 + 0.001, pi/2 - 0.001)
 
-    return nothing
+    return true
 end
