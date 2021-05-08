@@ -513,7 +513,7 @@ function AbstractPlotting.plot!(
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
-    has_tight_limit_trait(P) && tightlimits!(la)
+    needs_tight_limits(plot) && tightlimits!(la)
 
     reset_limits!(la)
     plot
@@ -524,8 +524,13 @@ function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ax::Axis, args...;
     AbstractPlotting.plot!(ax, P, attributes, args...)
 end
 
-has_tight_limit_trait(@nospecialize any) = false
-has_tight_limit_trait(::Type{<:Union{Heatmap, Image, Contourf}}) = true
+needs_tight_limits(@nospecialize any) = false
+needs_tight_limits(::Union{Heatmap, Image}) = true
+function needs_tight_limits(c::Contourf)
+    # we know that all values are included and the contourf is rectangular
+    c.levels[] isa Int
+    # otherwise here it could be in an arbitrary shape
+end
 
 function bboxunion(bb1, bb2)
 
