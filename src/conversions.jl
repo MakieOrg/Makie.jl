@@ -335,6 +335,12 @@ function convert_arguments(::SurfaceLike, data::AbstractMatrix)
     (0f0 .. n, 0f0 .. m, el32convert(data))
 end
 
+function convert_arguments(::DiscreteSurface, data::AbstractMatrix)
+    n, m = Float32.(size(data))
+    (0.5f0 .. n+0.5f0, 0.5f0 .. m+0.5f0, el32convert(data))
+end
+
+
 """
     convert_arguments(P, x, y, f)::(Vector, Vector, Matrix)
 
