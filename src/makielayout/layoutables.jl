@@ -49,6 +49,8 @@ function (::Type{T})(args...; kwargs...) where {T<:Layoutable}
     _layoutable(T, args...; kwargs...)
 end
 
+can_be_current_axis(x) = false
+
 function _layoutable(T::Type{<:Layoutable},
         fp::Union{AbstractPlotting.FigurePosition, AbstractPlotting.FigureSubposition}, args...; kwargs...)
 
@@ -60,6 +62,9 @@ end
 function _layoutable(T::Type{<:Layoutable}, fig::Figure, args...; kwargs...)
     l = layoutable(T, fig, args...; kwargs...)
     register_in_figure!(fig, l)
+    if can_be_current_axis(l)
+        AbstractPlotting.current_axis!(fig, l)
+    end
     l
 end
 

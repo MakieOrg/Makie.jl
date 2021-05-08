@@ -393,9 +393,9 @@ function labelslidergrid!(scene, labels, ranges; formats = [string],
     sliders = map(x -> x.slider, elements)
     labels = map(x -> x.label, elements)
     valuelabels = map(x -> x.valuelabel, elements)
-    
+
     layout = grid!(hcat(labels, sliders, valuelabels); layoutkw...)
-    
+
     (sliders = sliders, labels = labels, valuelabels = valuelabels, layout = layout)
 end
 
@@ -448,5 +448,19 @@ Create vertical lines across `ax` at `xs` in data coordinates and `ymin` to `yma
 in axis coordinates (0 to 1). All three of these can have single or multiple values because
 they are broadcast to calculate the final line segments.
 """
-vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...) = 
+vlines!(ax::Axis, xs; ymin = 0.0, ymax = 1.0, attrs...) =
     hvlines!(ax, 2, xs, ymin, ymax; attrs...)
+
+"""
+    abline!(axis::Axis, a::Number, b::Number; line_kw_args...)
+Adds a line defined by `f(x) = x * b + a` to the axis.
+kwargs are the same as for a `line` plot and are passed directly to the line attributess.
+"""
+function abline!(axis::Axis, a::Number, b::Number; kwargs...)
+    f(x) = x * b + a
+    line = map(axis.finallimits) do limits
+        xmin, xmax = first.(extrema(limits))
+        return [Point2f0(xmin, f(xmin)), Point2f0(xmax, f(xmax))]
+    end
+    return linesegments!(axis, line; xautolimits=false, yautolimits=false, kwargs...)
+end

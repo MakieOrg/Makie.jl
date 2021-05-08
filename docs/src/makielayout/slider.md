@@ -18,16 +18,14 @@ If you set the attribute `snap = false`, the slider will move continously while 
 
 
 ```@example
-using CairoMakie
+using GLMakie
 
-fig = Figure(resolution = (1200, 900))
+fig = Figure()
 
 ax = Axis(fig[1, 1])
 
 sl_x = Slider(fig[2, 1], range = 0:0.01:10, startvalue = 3)
-sl_y = Slider(fig[1, 2], range = 0:0.01:10, horizontal = false,
-    startvalue = 6,
-    tellwidth = true, height = nothing, width = Auto())
+sl_y = Slider(fig[1, 2], range = 0:0.01:10, horizontal = false, startvalue = 6)
 
 point = @lift(Point2f0($(sl_x.value), $(sl_y.value)))
 
@@ -43,8 +41,9 @@ fig
 To create a horizontal layout containing a label, a slider, and a value label, use the convenience function [`AbstractPlotting.MakieLayout.labelslider!`](@ref), or, if you need multiple aligned rows of sliders, use [`AbstractPlotting.MakieLayout.labelslidergrid!`](@ref).
 
 ```@example
-using CairoMakie
-fig = Figure(resolution = (1200, 900))
+using GLMakie
+
+fig = Figure()
 
 ax = Axis(fig[1, 1])
 
@@ -55,7 +54,7 @@ lsgrid = labelslidergrid!(
     formats = [x -> "$(round(x, digits = 1))$s" for s in ["V", "A", "Ω"]],
     width = 350,
     tellheight = false)
-    
+
 fig[1, 2] = lsgrid.layout
 
 sliderobservables = [s.value for s in lsgrid.sliders]
