@@ -66,6 +66,18 @@ function Base.delete!(screen::Screen, scene::Scene, plot::AbstractPlot)
         renderobject = get(screen.cache, objectid(plot)) do
             error("Could not find $(typeof(subplot)) in current GLMakie screen!")
         end
+
+        # These need explicit clean up because (some of) the source nodes
+        # remain whe the plot is deleated.
+        for k in (:lightposition, :normalmatrix)
+            if haskey(renderobject.uniforms, k)
+                n = renderobject.uniforms[k]
+                for input in n.inputs
+                    off(input)
+                end
+            end
+        end
+
         filter!(x-> x[3] !== renderobject, screen.renderlist)
     end
 end
@@ -360,6 +372,7 @@ function Screen(;
     )
 
     GLFW.SetWindowRefreshCallback(window, window -> begin
+        screen.render_tick[] = nothing
         render_frame(screen)
         GLFW.SwapBuffers(window)
     end)
@@ -397,6 +410,38 @@ function global_gl_screen(resolution::Tuple, visibility::Bool, tries = 1)
     screen
 end
 
+
+
+#################################################################################
+### Point picking
+################################################################################
+
+
+
+function pick_native(screen::Screen, rect::IRect2D)
+    isopen(screen) || return Matrix{SelectionID{Int}}(undef, 0, 0)
+    window_size = widths(screen)
+    fb = screen.framebuffer
+    buff = fb.buffers[:objectid]
+    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
+    glReadBuffer(GL_COLOR_ATTACHMENT1)
+    rx, ry = minimum(rect)
+    rw, rh = widths(rect)
+    w, h = window_size
+    sid = zeros(SelectionID{UInt32}, widths(rect)...)
+    if rx > 0 && ry > 0 && rx + rw <= w && ry + rh <= h
+        glReadPixels(rx, ry, rw, rh, buff.format, buff.pixeltype, sid)
+        for i in eachindex(sid)
+            if sid[i][2] > 0x3f800000
+                sid[i] = SelectionID(0, sid[i].index)
+            end
+        end
+        return sid
+    else
+        error("Pick region $rect out of screen bounds ($w, $h).")
+    end
+end
+
 function pick_native(screen::Screen, xy::Vec{2, Float64})
     isopen(screen) || return SelectionID{Int}(0, 0)
     sid = Base.RefValue{SelectionID{UInt32}}()
@@ -411,39 +456,7 @@ function pick_native(screen::Screen, xy::Vec{2, Float64})
         glReadPixels(x, y, 1, 1, buff.format, buff.pixeltype, sid)
         return convert(SelectionID{Int}, sid[])
     end
-    return return SelectionID{Int}(0, 0)
-end
-
-function pick_native(screen::Screen, xy::Vec{2, Float64}, range::Float64)
-    isopen(screen) || return SelectionID{Int}(0, 0)
-    window_size = widths(screen)
-    w, h = window_size
-    if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
-        return SelectionID{Int}(0, 0)
-    end
-
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-
-    x0, y0 = max.(1, floor.(Int, xy .- range))
-    x1, y1 = min.((w, h), floor.(Int, xy .+ range))
-    dx = x1 - x0; dy = y1 - y0
-    sid = Matrix{SelectionID{UInt32}}(undef, dx, dy)
-    glReadPixels(x0, y0, dx, dy, buff.format, buff.pixeltype, sid)
-
-    min_dist = range^2
-    id = SelectionID{Int}(0, 0)
-    x, y =  xy .+ 1 .- Vec2f0(x0, y0)
-    for i in 1:dx, j in 1:dy
-        d = (x-i)^2 + (y-j)^2
-        if (d < min_dist) && (sid[i, j][2] < 0x3f800000)
-            min_dist = d
-            id = convert(SelectionID{Int}, sid[i, j])
-        end
-    end
-    return id
+    return SelectionID{Int}(0, 0)
 end
 
 function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64})
@@ -456,35 +469,80 @@ function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Floa
     end
 end
 
-function AbstractPlotting.pick(scene::SceneLike, screen::Screen, xy::Vec{2, Float64}, range::Float64)
-    sid = pick_native(screen, xy, range)
-    if haskey(screen.cache2plot, sid.id)
-        plot = screen.cache2plot[sid.id]
-        return (plot, sid.index)
+function AbstractPlotting.pick(scene::SceneLike, screen::Screen, rect::IRect2D)
+    map(pick_native(screen, rect)) do sid
+        if haskey(screen.cache2plot, sid.id)
+            (screen.cache2plot[sid.id], sid.index)
+        else
+            (nothing, sid.index)
+        end
+    end
+end
+
+
+# Skips one set of allocations
+function AbstractPlotting.pick_closest(scene::SceneLike, screen::Screen, xy, range)
+    isopen(screen) || return (nothing, 0)
+    w, h = widths(screen)
+    ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
+
+    x0, y0 = max.(1, floor.(Int, xy .- range))
+    x1, y1 = min.((w, h), floor.(Int, xy .+ range))
+    dx = x1 - x0; dy = y1 - y0
+    sid = pick_native(screen, IRect2D(x0, y0, dx, dy))
+
+    min_dist = range^2
+    id = SelectionID{Int}(0, 0)
+    x, y =  xy .+ 1 .- Vec2f0(x0, y0)
+    for i in 1:dx, j in 1:dy
+        d = (x-i)^2 + (y-j)^2
+        if (d < min_dist) && (sid[i, j][1] > 0x00000000) && 
+            (sid[i, j][2] < 0x3f800000) && haskey(screen.cache2plot, sid[i, j][1])
+            min_dist = d
+            id = convert(SelectionID{Int}, sid[i, j])
+        end
+    end
+
+    if haskey(screen.cache2plot, id[1])
+        return (screen.cache2plot[id[1]], id[2])
     else
         return (nothing, 0)
     end
 end
 
-function AbstractPlotting.pick(screen::Screen, rect::IRect2D)
-    window_size = widths(screen)
-    fb = screen.framebuffer
-    buff = fb.buffers[:objectid]
-    glBindFramebuffer(GL_FRAMEBUFFER, fb.id[1])
-    glReadBuffer(GL_COLOR_ATTACHMENT1)
-    x, y = minimum(rect)
-    rw, rh = widths(rect)
-    w, h = window_size
-    sid = zeros(SelectionID{UInt32}, widths(rect)...)
-    if x > 0 && y > 0 && x <= w && y <= h
-        glReadPixels(x, y, rw, rh, buff.format, buff.pixeltype, sid)
-        sid = filter(x -> x.id < 0x3f800000,sid)
-        return map(unique(vec(SelectionID{Int}.(sid)))) do sid
-            (screen.cache2plot[sid.id], sid.index)
+# Skips some allocations
+function AbstractPlotting.pick_sorted(scene::SceneLike, screen::Screen, xy, range)
+    isopen(screen) || return (nothing, 0)
+    w, h = widths(screen)
+    if !((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h))
+        return Tuple{AbstractPlot, Int}[]
+    end
+    x0, y0 = max.(1, floor.(Int, xy .- range))
+    x1, y1 = min.([w, h], floor.(Int, xy .+ range))
+    dx = x1 - x0; dy = y1 - y0
+    
+    picks = pick_native(screen, IRect2D(x0, y0, dx, dy))
+
+    selected = filter(x -> x[1] > 0 && haskey(screen.cache2plot, x[1]), unique(vec(picks)))
+    distances = [range^2 for _ in selected]
+    x, y =  xy .+ 1 .- Vec2f0(x0, y0)
+    for i in 1:dx, j in 1:dy
+        if picks[i, j][1] > 0
+            d = (x-i)^2 + (y-j)^2
+            i = findfirst(isequal(picks[i, j]), selected)
+            if i === nothing
+                @warn "This shouldn't happen..."
+            elseif distances[i] > d
+                distances[i] = d
+            end
         end
     end
-    return Tuple{AbstractPlot, Int}[]
+
+    idxs = sortperm(distances)
+    permute!(selected, idxs)
+    return map(id -> (screen.cache2plot[id[1]], id[2]), selected)
 end
+
 
 pollevents(::GLScreen) = nothing
 pollevents(::Screen) = GLFW.PollEvents()

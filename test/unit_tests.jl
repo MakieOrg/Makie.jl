@@ -29,7 +29,9 @@ end
         fig, ax, splot = scatter(1:N, 1:N)
         limits!(ax, 99990,100000, 99990,100000)
         screen = display(fig)
-        yield()
+        # we don't really need the color buffer here, but this should be the best way right now to really
+        # force a full render to happen
+        GLMakie.AbstractPlotting.colorbuffer(screen)
         # test for pick a single data point (with idx > 65535)
         point_px = project_sp(ax.scene, Point2f0(N-1,N-1))
         plot,idx = pick(ax.scene, point_px)
@@ -40,13 +42,12 @@ end
         origin_px = project_sp(ax.scene, Point(origin(rect)))
         tip_px = project_sp(ax.scene, Point(origin(rect) .+ widths(rect)))
         rect_px = IRect2D(round.(origin_px), round.(tip_px .- origin_px))
-        #! there is no pick(::Scene,::IRect2D)
-        plot_idx = pick(screen, rect_px)
+        picks = unique(pick(ax.scene, rect_px))
 
         # objects returned in plot_idx should be either grid lines (i.e. LineSegments) or Scatter points
-        @test all(pi-> pi[1] isa Union{LineSegments,Scatter, AbstractPlotting.Mesh}, plot_idx)
+        @test all(pi-> pi[1] isa Union{LineSegments,Scatter, AbstractPlotting.Mesh}, picks)
         # scatter points should have indices equal to those in 99991:99998
-        scatter_plot_idx = filter(pi -> pi[1] isa Scatter, plot_idx)
+        scatter_plot_idx = filter(pi -> pi[1] isa Scatter, picks)
         @test Set(last.(scatter_plot_idx)) == Set(99991:99998)
     end
 end

@@ -75,9 +75,9 @@ vec3 blinnphong(vec3 N, vec3 V, vec3 L, vec3 color){
     float spec_coeff = pow(max(dot(H, N), 0.0), shininess);
     if (diff_coeff <= 0.0 || isnan(spec_coeff))
         spec_coeff = 0.0;
+
     // final lighting model
     return vec3(
-        ambient * color +
         diffuse * diff_coeff * color +
         specular * spec_coeff
     );
