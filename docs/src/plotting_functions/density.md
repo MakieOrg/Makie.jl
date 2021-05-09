@@ -66,3 +66,45 @@ end
 
 f
 ```
+
+#### Gradients
+
+You can color density plots with gradients by choosing `color = :x` or `:y`, depending on the `direction` attribute.
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+months = ["January", "February", "March", "April",
+    "May", "June", "July", "August", "September",
+    "October", "November", "December"]
+
+f = Figure()
+Axis(f[1, 1], title = "Fictive temperatures",
+    yticks = ((1:12) ./ 4,  reverse(months)))
+
+for i in 12:-1:1
+    d = density!(randn(200) .- 2sin((i+3)/6*pi), offset = i / 4,
+        color = :x, colormap = :thermal, colorrange = (-5, 5))
+    # this helps with layering in GLMakie
+    translate!(d, 0, 0, -0.1i)
+end
+f
+```
+
+Due to technical limitations, if you color the `:vertical` dimension (or :horizontal with direction = :y), only a colormap made with just two colors can currently work:
+
+```@example
+using CairoMakie
+CairoMakie.activate!() # hide
+AbstractPlotting.inline!(true) # hide
+
+f = Figure()
+Axis(f[1, 1])
+for x in 1:5
+    d = density!(x * randn(200) .+ 3x,
+        color = :y, colormap = [:darkblue, :gray95])
+end
+f
+```
