@@ -32,7 +32,7 @@ dodge2 = rand(1:2, 1000)
 
 fig = Figure()
 ax = Axis(fig[1, 1])
-violin!(ax, xs1, ys1, dodge = dodge1, side = :left, color = "orange")
-violin!(ax, xs2, ys2, dodge = dodge2, side = :right, color = "teal")
+violin!(ax, xs1, ys1, dodge = dodge1, side = :left, color = :orange)
+violin!(ax, xs2, ys2, dodge = dodge2, side = :right, color = :teal)
 fig
 ```
