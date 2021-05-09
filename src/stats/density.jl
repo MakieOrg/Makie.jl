@@ -22,7 +22,11 @@ end
 Plot a kernel density estimate of `values`.
 `npoints` controls the resolution of the estimate, the baseline can be
 shifted with `offset` and the `direction` set to :x or :y.
-`bandwidth` and `boundary` are determined automatically by default. 
+`bandwidth` and `boundary` are determined automatically by default.
+
+`color` is usually set to a single color, but can also be set to `:x` or
+`:y` to color with a gradient. If you use `:y` when direction = `:x` (or vice versa),
+note that only 2-element colormaps can work correctly.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -30,6 +34,8 @@ $(ATTRIBUTES)
 @recipe(Density) do scene
     Theme(
         color = RGBAf0(0,0,0,0.2),
+        colormap = :viridis,
+        colorrange = AbstractPlotting.automatic,
         strokecolor = :black,
         strokewidth = 1,
         strokearound = false,
@@ -45,7 +51,7 @@ end
 function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     x = plot[1]
 
-    points = lift(x, plot.direction, plot.boundary, plot.offset,
+    lowerupper = lift(x, plot.direction, plot.boundary, plot.offset,
         plot.npoints, plot.bandwidth) do x, dir, bound, offs, n, bw
 
         k = KernelDensity.kde(x;
@@ -54,32 +60,55 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
             (bw === automatic ? NamedTuple() : (bandwidth = bw,))...,
         )
 
-        ps = Vector{Point2f0}(undef, length(k.x) + 2)
         if dir === :x
-            ps[1] = Point2f0(k.x[1], offs)
-            ps[2:end-1] .= Point2f0.(k.x, k.density .+ offs)
-            ps[end] = Point2f0(k.x[end], offs)
+            lower = Point2f0.(k.x, offs)
+            upper = Point2f0.(k.x, offs .+ k.density)
         elseif dir === :y
-            ps[1] = Point2f0(offs, k.x[1])
-            ps[2:end-1] .= Point2f0.(k.density .+ offs, k.x)
-            ps[end] = Point2f0(offs, k.x[end])
+            lower = Point2f0.(offs, k.x)
+            upper = Point2f0.(offs .+ k.density, k.x)
         else
             error("Invalid direction $dir, only :x or :y allowed")
         end
-        ps
+        (lower, upper)
     end
 
-    linepoints = lift(points, plot.strokearound) do ps, sa
+    linepoints = lift(lowerupper, plot.strokearound) do lu, sa
         if sa
-            push!(copy(ps), ps[1])
+            ps = copy(lu[2])
+            push!(ps, lu[1][end])
+            push!(ps, lu[1][1])
+            push!(ps, lu[1][2])
+            ps
         else
-            ps[2:end-1]
+            lu[2]
         end
     end
 
-    poly!(plot, points, color = plot.color, strokewidth = 0, inspectable = plot.inspectable)
-    lines!(
-        plot, linepoints, color = plot.strokecolor, linewidth = plot.strokewidth,
-        inspectable = plot.inspectable
-    )
+    lower = Node(Point2f0[])
+    upper = Node(Point2f0[])
+
+    on(lowerupper) do (l, u)
+        lower.val = l
+        upper[] = u
+    end
+    notify(lowerupper)
+
+    colorobs = lift(plot.color, lowerupper, plot.direction, typ = Any) do c, lu, dir
+        if (dir == :x && c == :x) || (dir == :y && c == :y)
+            dim = dir == :x ? 1 : 2
+            [l[dim] for l in lu[1]]
+        elseif (dir == :y && c == :x) || (dir == :x && c == :y)
+            o = Float32(plot.offset[])
+            dim = dir == :x ? 2 : 1
+            vcat([l[dim] - o for l in lu[1]], [l[dim] - o for l in lu[2]])
+        else
+            c
+        end
+    end
+
+    band!(plot, lower, upper, color = colorobs, colormap = plot.colormap,
+        colorrange = plot.colorrange, inspectable = plot.inspectable)
+    l = lines!(plot, linepoints, color = plot.strokecolor,
+        linewidth = plot.strokewidth, inspectable = plot.inspectable)
+    plot
 end
