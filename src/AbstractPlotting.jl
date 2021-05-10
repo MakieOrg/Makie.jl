@@ -21,6 +21,7 @@ using Printf: @sprintf
 import Isoband
 import PolygonOps
 import GridLayoutBase
+using StatsFuns: logit, logistic
 
 # Imports from Base which we don't want to have to qualify
 using Base: RefValue
