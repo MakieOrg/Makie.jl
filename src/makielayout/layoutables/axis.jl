@@ -373,11 +373,15 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
+            return true
         end
+        return false
     end
 
-    on(scene.events.keyboardbuttons) do buttons
-        keysevents[] = KeysEvent(buttons)
+    # TODO this should probably just forward KeyEvent from AbstractPlotting
+    on(scene.events.keyboardbutton) do e
+        keysevents[] = KeysEvent(scene.events.keyboardstate)
+        return false
     end
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
@@ -389,8 +393,9 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
-            active && process_interaction(interaction, event, ax)
+            active && process_interaction(interaction, event, ax) && return true
         end
+        return false
     end
 
     on(process_event, mouseeventhandle.obs)

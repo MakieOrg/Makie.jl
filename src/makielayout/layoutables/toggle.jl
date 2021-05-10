@@ -57,11 +57,12 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
     button = scatter!(topscene, buttonpos, markersize = buttonsize, color = buttoncolor, strokewidth = 0, raw = true)
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(topscene, button, frame)
+
+    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
 
     onmouseleftdown(mouseevents) do event
         if animating[]
-            return
+            return true
         end
         animating[] = true
 
@@ -90,15 +91,19 @@ function layoutable(::Type{Toggle}, fig_or_scene; bbox = nothing, kwargs...)
             end
             sleep(1/FPS[])
         end
+        return true
     end
 
     onmouseover(mouseevents) do event
         buttonfactor[] = 1.15
+        return false
     end
 
     onmouseout(mouseevents) do event
         buttonfactor[] = 1.0
+        return false
     end
+
 
     Toggle(fig_or_scene, layoutobservables, attrs, decorations)
 end

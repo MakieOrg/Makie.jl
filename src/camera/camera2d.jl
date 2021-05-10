@@ -106,28 +106,49 @@ end
 
 function add_pan!(scene::SceneLike, cam::Camera2D)
     startpos = RefValue((0.0, 0.0))
+    drag_active = RefValue(false)
     e = events(scene)
+
     on(
-        camera(scene),
-        Node.((scene, cam, startpos))...,
-        e.mousedrag
-    ) do scene, cam, startpos, dragging
-        pan = cam.panbutton[]
-        mp = e.mouseposition[]
-        if ispressed(scene, pan) && is_mouseinside(scene)
-            window_area = pixelarea(scene)[]
-            if dragging == Mouse.down
+        camera(scene), 
+        Node.((scene, cam, startpos, drag_active))..., 
+        e.mousebutton
+    ) do scene, cam, startpos, active, event
+        if event.button == cam.panbutton[]
+            mp = e.mouseposition[]
+            if event.action == Mouse.press && is_mouseinside(scene)
                 startpos[] = mp
-            elseif dragging == Mouse.pressed && ispressed(scene, pan)
+                active[] = true
+                return true
+            elseif event.action == Mouse.release && active[]
                 diff = startpos[] .- mp
                 startpos[] = mp
                 area = cam.area[]
-                diff = Vec(diff) .* wscale(window_area, area)
+                diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
                 cam.area[] = FRect(minimum(area) .+ diff, widths(area))
                 update_cam!(scene, cam)
+                active[] = false
+                return true
             end
         end
-        return
+        return false
+    end
+
+    on(
+        camera(scene), 
+        Node.((scene, cam, startpos, drag_active))..., 
+        e.mouseposition
+    ) do scene, cam, startpos, active, pos
+        if active[] && ispressed(scene, cam.panbutton[])
+            diff = startpos[] .- pos
+            startpos[] = pos
+            area = cam.area[]
+            diff = Vec(diff) .* wscale(pixelarea(scene)[], area)
+            cam.area[] = FRect(minimum(area) .+ diff, widths(area))
+            update_cam!(scene, cam)
+            return true
+        end
+        return false
     end
 end
 
@@ -147,8 +168,9 @@ function add_zoom!(scene::SceneLike, cam::Camera2D)
             p1, p2 = p1 + mp, p2 + mp
             cam.area[] = FRect(p1, p2 - p1)
             update_cam!(scene, cam)
+            return true
         end
-        return
+        return false
     end
 end
 
@@ -185,23 +207,19 @@ function selection_rect!(scene, cam, key)
         raw = true
     )
     waspressed = RefValue(false)
-    dragged_rect = on(camera(scene), events(scene).mousedrag, key) do drag, key
+    on(camera(scene), events(scene).mousebutton, key) do event, key
         if ispressed(scene, key) && is_mouseinside(scene)
             mp = events(scene).mouseposition[]
             mp = camspace(scene, cam, mp)
-            if drag == Mouse.down
+            if event.action == Mouse.press
                 waspressed[] = true
                 rect_vis[:visible] = true # start displaying
                 rect[] = FRect(mp, 0, 0)
                 rect_vis[1] = rect[]
-            elseif drag == Mouse.pressed
-                mini = minimum(rect[])
-                rect[] = FRect(mini, mp - mini)
-                # mini, maxi = min(mini, mp), max(mini, mp)
-                rect_vis[1] = rect[]
+                return true
             end
         else
-            if drag == Mouse.up && waspressed[]
+            if event.action == Mouse.release && waspressed[]
                 waspressed[] = false
                 r = absrect(rect[])
                 w, h = widths(r)
@@ -210,13 +228,30 @@ function selection_rect!(scene, cam, key)
                 end
                 rect[] = FRect(NaN, NaN, NaN, NaN)
                 rect_vis[1] = rect[]
+                return true
             end
             # always hide if not the right key is pressed
             rect_vis[:visible] = false # hide
+            return false #?
         end
-        return rect[]
+        return false
     end
-    rect_vis, dragged_rect
+
+    on(camera(scene), events(scene).mouseposition, key) do event, key
+        # this is only true after a mousebutton update
+        if ispressed(scene, key) && is_mouseinside(scene)
+            mini = minimum(rect[])
+            rect[] = FRect(mini, mp - mini)
+            # mini, maxi = min(mini, mp), max(mini, mp)
+            rect_vis[1] = rect[]
+            return true
+        end
+        return false
+    end
+
+    # TODO: this needs explicit cleanup?
+    # why?
+    return rect_vis, rect
 end
 
 function reset!(cam, boundingbox, preserveratio = true)

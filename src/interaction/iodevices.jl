@@ -138,8 +138,17 @@ module Keyboard
     )
 
     """
-    """
+        Keyboard.Action
+    
+    Enumerates all key states/actions in accordance with the GLFW spec.
 
+    $(INSTANCES)
+    """
+    @enum Action begin
+        release = 0
+        press   = 1
+        repeat  = 2
+    end
 end
 
 """
@@ -152,7 +161,7 @@ module Mouse
     """
         Mouse.Button
 
-    Enumerates all mouse buttons, in accordance with the GLFW spec.
+    Enumerates all mouse buttons in accordance with the GLFW spec.
 
     $(INSTANCES)
     """
@@ -160,13 +169,25 @@ module Mouse
         left = 0
         middle = 2
         right = 1 # Conform to GLFW
+        none = -1 # for convenience
     end
 
     """
+        Mouse.Action
+    
+    Enumerates all mouse states/actions in accordance with the GLFW spec.
+
+    $(INSTANCES)
+    """
+    @enum Action begin
+        press   = 1
+        release = 0
+    end
+
+    # deprecated, remove eventually
+    """
         Mouse.DragEnum
-
     Enumerates the drag states of the mouse.
-
     $(INSTANCES)
     """
     @enum DragEnum begin
@@ -175,8 +196,21 @@ module Mouse
         pressed
         notpressed
     end
-
 end
 
 # Void for no button needs to be pressed,
 const ButtonTypes = Union{Nothing, Mouse.Button, Keyboard.Button}
+
+
+
+struct KeyEvent
+    key::Keyboard.Button
+    action::Keyboard.Action
+    # mod::ButtonModifier
+end
+
+struct MouseButtonEvent
+    button::Mouse.Button
+    action::Mouse.Action
+    # mod::ButtonModifier
+end

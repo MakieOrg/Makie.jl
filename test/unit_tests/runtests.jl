@@ -17,4 +17,9 @@ using AbstractPlotting: volume
     include("figures.jl")
     include("transformations.jl")
     include("stack.jl")
+    include("events.jl")
+
+    # Skipped:
+    # include("zoom_pan.jl")
+    # include("statistical_tests.jl")
 end

@@ -222,3 +222,6 @@ function GridLayoutBase.content(f::FigureSubposition)
         error("There is not exactly one object at the given FigureSubposition")
     end
 end
+
+events(fig::Figure) = events(fig.scene)
+events(fap::FigureAxisPlot) = events(fap.figure.scene)

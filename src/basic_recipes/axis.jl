@@ -9,7 +9,9 @@ module Formatters
         try
             Showoff.showoff(ticks, :plain)
         catch e
+            bt = Base.catch_backtrace()
             Base.showerror(stderr, e)
+            Base.show_backtrace(stderr, bt)
             println("with ticks: ", ticks)
             String["-Inf", "Inf"]
         end
