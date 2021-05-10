@@ -340,8 +340,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
                 Texture(el32convert(v), minfilter = :nearest)
             else
                 l, r = extrema(v)
-                N = size(x[3][], 1)
-                Texture(el32convert(collect(range(l, r, length=N))), minfilter=:nearest)
+                Texture(Float32[l, r], minfilter=:nearest)
             end
         end
         gl_attributes[:position_y] = map(x[2]) do v
@@ -349,8 +348,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
                 Texture(el32convert(v), minfilter = :nearest)
             else
                 l, r = extrema(v)
-                N = size(x[3][], 1)
-                Texture(el32convert(collect(range(l, r, length=N))), minfilter=:nearest)
+                Texture(Float32[l, r], minfilter=:nearest)
             end
         end
         interp = to_value(pop!(gl_attributes, :interpolate))
