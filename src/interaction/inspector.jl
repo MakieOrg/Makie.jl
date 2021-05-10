@@ -421,12 +421,14 @@ when you hover over a plot. If you wish to exclude a plot you may set
 - `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.  
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the 
     tooltip is always in front.
+- `priority = 100`: The priority of creating a tooltip on a mouse movement or 
+    scrolling event.
 """
 function DataInspector(fig_or_layoutable; kwargs...)
     DataInspector(fig_or_layoutable.scene; kwargs...)
 end
 
-function DataInspector(scene::Scene; kwargs...)
+function DataInspector(scene::Scene; priority = 100, kwargs...)
     parent = root(scene)
     @assert origin(pixelarea(parent)[]) == Vec2f0(0)
 
@@ -438,8 +440,8 @@ function DataInspector(scene::Scene; kwargs...)
     inspector = DataInspector(parent, plot)
 
     e = events(parent)
-    f1 = on(_ -> on_hover(inspector), e.mouseposition)
-    f2 = on(_ -> on_hover(inspector), e.scroll)
+    f1 = on(_ -> on_hover(inspector), e.mouseposition, priority = priority)
+    f2 = on(_ -> on_hover(inspector), e.scroll, priority = priority)
 
     push!(inspector.obsfuncs, f1, f2)
 

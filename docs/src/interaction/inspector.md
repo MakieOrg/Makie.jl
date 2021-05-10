@@ -32,6 +32,7 @@ The `inspector = DataInspector(fig)` contains the following attributes:
 - `tooltip_align = (:center, :top)`: Default position of the tooltip relative to the cursor or current selection. The real align may adjust to keep the tooltip in view.
 - `tooltip_offset = Vec2f0(20)`: Offset from the indicator to the tooltip.  
 - `depth = 9e3`: Depth value of the tooltip. This should be high so that the tooltip is always in front.
+- `priority = 100`: The priority of creating a tooltip on a mouse movement or scrolling event.
 
 
 ## Extending the `DataInspector`
