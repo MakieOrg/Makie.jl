@@ -12,6 +12,8 @@
 struct CairoBackend <: AbstractPlotting.AbstractBackend
     typ::RenderType
     path::String
+    px_per_unit::Float64
+    pt_per_unit::Float64
 end
 
 """
@@ -27,7 +29,7 @@ struct CairoScreen{S} <: AbstractPlotting.AbstractScreen
 end
 
 
-function CairoBackend(path::String)
+function CairoBackend(path::String; px_per_unit=1, pt_per_unit=1)
     ext = splitext(path)[2]
     typ = if ext == ".png"
         PNG
@@ -40,7 +42,7 @@ function CairoBackend(path::String)
     else
         error("Unsupported extension: $ext")
     end
-    CairoBackend(typ, path)
+    CairoBackend(typ, path, px_per_unit, pt_per_unit)
 end
 
 # we render the scene directly, since we have
@@ -267,7 +269,7 @@ AbstractPlotting.backend_showable(x::CairoBackend, ::MIME"image/png", scene::Sce
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"image/svg+xml", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, 1.0)
+    pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
 
     screen = CairoScreen(scene, io, :svg; device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
@@ -277,7 +279,7 @@ end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/pdf", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, 1.0)
+    pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
 
     screen = CairoScreen(scene, io, :pdf; device_scaling_factor = pt_per_unit)
     cairo_draw(screen, scene)
@@ -288,7 +290,7 @@ end
 
 function AbstractPlotting.backend_show(x::CairoBackend, io::IO, ::MIME"application/postscript", scene::Scene)
 
-    pt_per_unit = get(io, :pt_per_unit, 1.0)
+    pt_per_unit = get(io, :pt_per_unit, x.pt_per_unit)
 
     screen = CairoScreen(scene, io, :eps; device_scaling_factor = pt_per_unit)
 
@@ -301,7 +303,7 @@ function AbstractPlotting.backend_show(x::CairoBackend, io::IO, m::MIME"image/pn
 
     # multiply the resolution of the png with this factor for more or less detail
     # while relative line and font sizes are unaffected
-    px_per_unit = get(io, :px_per_unit, 1.0)
+    px_per_unit = get(io, :px_per_unit, x.px_per_unit)
     # create an ARGB surface, to speed up drawing ops.
     screen = CairoScreen(scene; device_scaling_factor = px_per_unit)
     cairo_draw(screen, scene)
