@@ -1,3 +1,5 @@
+using AbstractPlotting: MouseButtonEvent, KeyEvent
+
 macro print_error(expr)
     return quote
         try
@@ -11,25 +13,6 @@ macro print_error(expr)
     end
 end
 
-function addbuttons(scene::Scene, name, button, action, ::Type{ButtonEnum}) where ButtonEnum
-    event = getfield(scene.events, name)
-    set = event[]
-    button_enum = ButtonEnum(Int(button))
-    if button != GLFW.KEY_UNKNOWN
-        if action == GLFW.PRESS
-            push!(set, button_enum)
-        elseif action == GLFW.RELEASE
-            delete!(set, button_enum)
-        elseif action == GLFW.REPEAT
-            # nothing needs to be done, besides returning the same set of keys
-        else
-            error("Unrecognized enum value for GLFW button press action: $action")
-        end
-    end
-    event[] = set # trigger setfield event!
-    return
-end
-
 """
 Returns a signal, which is true as long as the window is open.
 returns `Node{Bool}`
@@ -39,7 +22,9 @@ window_open(scene::Scene, screen) = window_open(scene, to_native(screen))
 function window_open(scene::Scene, window::GLFW.Window)
     event = scene.events.window_open
     function windowclose(win)
-        @print_error event[] = false
+        @print_error begin
+            event[] = false
+        end
     end
     disconnect!(window, window_open)
     event[] = isopen(window)
@@ -98,9 +83,11 @@ returns `Node{NTuple{4, Int}}`
 """
 mouse_buttons(scene::Scene, screen) = mouse_buttons(scene, to_native(screen))
 function mouse_buttons(scene::Scene, window::GLFW.Window)
-    event = scene.events.mousebuttons
+    event = scene.events.mousebutton
     function mousebuttons(window, button, action, mods)
-        @print_error addbuttons(scene, :mousebuttons, button, action, Mouse.Button)
+        @print_error begin
+            event[] = MouseButtonEvent(Mouse.Button(Int(button)), Mouse.Action(Int(action)))
+        end
     end
     disconnect!(window, mouse_buttons)
     GLFW.SetMouseButtonCallback(window, mousebuttons)
@@ -110,9 +97,11 @@ function disconnect!(window::GLFW.Window, ::typeof(mouse_buttons))
 end
 keyboard_buttons(scene::Scene, screen) = keyboard_buttons(scene, to_native(screen))
 function keyboard_buttons(scene::Scene, window::GLFW.Window)
-    event = scene.events.keyboardbuttons
+    event = scene.events.keyboardbutton
     function keyoardbuttons(window, button, scancode::Cint, action, mods::Cint)
-        @print_error addbuttons(scene, :keyboardbuttons, button, action, Keyboard.Button)
+        @print_error begin
+            event[] = KeyEvent(Keyboard.Button(Int(button)), Keyboard.Action(Int(action)))
+        end
     end
     disconnect!(window, keyboard_buttons)
     GLFW.SetKeyCallback(window, keyoardbuttons)
@@ -131,7 +120,9 @@ dropped_files(scene::Scene, screen) = dropped_files(scene, to_native(screen))
 function dropped_files(scene::Scene, window::GLFW.Window)
     event = scene.events.dropped_files
     function droppedfiles(window, files)
-        @print_error event[] = String.(files)
+        @print_error begin
+            event[] = String.(files)
+        end
     end
     disconnect!(window, dropped_files)
     event[] = String[]
@@ -152,16 +143,12 @@ function unicode_input(scene::Scene, window::GLFW.Window)
     event = scene.events.unicode_input
     function unicodeinput(window, c::Char)
         @print_error begin
-            vals = event[]
-            push!(vals, c)
-            event[] = vals
-            empty!(vals)
-            event[] = vals
+            event[] = c
         end
     end
     disconnect!(window, unicode_input)
-    x = Char[]; sizehint!(x, 1)
-    event[] = x
+    # x = Char[]; sizehint!(x, 1)
+    # event[] = x
     GLFW.SetCharCallback(window, unicodeinput)
 end
 function disconnect!(window::GLFW.Window, ::typeof(unicode_input))
@@ -174,6 +161,9 @@ function retina_scaling_factor(w, fb)
     fb ./ w
 end
 
+# TODO both of these methods are slow!
+# ~90µs, ~80µs
+# This is too slow for events that may happen 100x per frame
 function framebuffer_size(window::GLFW.Window)
     wh = GLFW.GetFramebufferSize(window)
     (wh.width, wh.height)
@@ -208,14 +198,28 @@ function mouse_position(scene::Scene, screen::Screen)
         pos = correct_mouse(window, x, y)
         if pos != e.mouseposition[]
             @print_error e.mouseposition[] = pos
+            # notify!(e.mouseposition)
         end
         return
     end
+
+    # function cursorposition(window, w::Cdouble, h::Cdouble)
+    #     @print_error begin
+    #         pos = correct_mouse(window, w, h)
+    #         @timeit "triggerless mouseposition" begin
+    #             e.mouseposition.val = pos
+    #         end
+    #         return
+    #     end
+    # end
+    # disconnect!(window, mouse_position)
+    # GLFW.SetCursorPosCallback(window, cursorposition)
+
     return
 end
 function disconnect!(window::GLFW.Window, ::typeof(mouse_position))
+    GLFW.SetCursorPosCallback(window, nothing)
     nothing
-    #GLFW.SetCursorPosCallback(window, nothing)
 end
 
 """
@@ -230,7 +234,6 @@ function scroll(scene::Scene, window::GLFW.Window)
     function scrollcb(window, w::Cdouble, h::Cdouble)
         @print_error begin
             event[] = (w, h)
-            event[] = (0.0, 0.0)
         end
     end
     disconnect!(window, scroll)
@@ -250,7 +253,9 @@ hasfocus(scene::Scene, screen) = hasfocus(scene, to_native(screen))
 function hasfocus(scene::Scene, window::GLFW.Window)
     event = scene.events.hasfocus
     function hasfocuscb(window, focus::Bool)
-        @print_error event[] = focus
+        @print_error begin
+            event[] = focus
+        end
     end
     disconnect!(window, hasfocus)
     GLFW.SetWindowFocusCallback(window, hasfocuscb)
@@ -271,7 +276,9 @@ entered_window(scene::Scene, screen) = entered_window(scene, to_native(screen))
 function entered_window(scene::Scene, window::GLFW.Window)
     event = scene.events.entered_window
     function enteredwindowcb(window, entered::Bool)
-        @print_error event[] = entered
+        @print_error begin
+            event[] = entered
+        end
     end
     disconnect!(window, entered_window)
     GLFW.SetCursorEnterCallback(window, enteredwindowcb)

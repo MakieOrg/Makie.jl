@@ -487,7 +487,7 @@ function AbstractPlotting.pick_closest(scene::SceneLike, screen::Screen, xy, ran
     ((1.0 <= xy[1] <= w) && (1.0 <= xy[2] <= h)) || return (nothing, 0)
 
     x0, y0 = max.(1, floor.(Int, xy .- range))
-    x1, y1 = min.([w, h], floor.(Int, xy .+ range))
+    x1, y1 = min.((w, h), floor.(Int, xy .+ range))
     dx = x1 - x0; dy = y1 - y0
     sid = pick_native(screen, IRect2D(x0, y0, dx, dy))
 
