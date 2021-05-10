@@ -87,6 +87,11 @@ function is_mouseinside(scene, target)
     return false
 end
 
+"""
+    is_mouseinside(scene)
+
+Returns true if the current mouseposition is inside the given scene.
+"""
 function is_mouseinside(scene)
     return Vec(scene.events.mouseposition[]) in pixelarea(scene)[]
     # Check that mouse is not inside any other screen
