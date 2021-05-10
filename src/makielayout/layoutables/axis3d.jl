@@ -112,11 +112,14 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
     on(scene.events.scroll) do s
         if is_mouseinside(scene)
             scrollevents[] = ScrollEvent(s[1], s[2])
+            return true
         end
+        return false
     end
 
-    on(scene.events.keyboardbuttons) do buttons
-        keysevents[] = KeysEvent(buttons)
+    on(scene.events.keyboardbutton) do e
+        keysevents[] = KeysEvent(scene.events.keyboardstate)
+        return false
     end
 
     interactions = Dict{Symbol, Tuple{Bool, Any}}()
@@ -137,8 +140,9 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
     function process_event(event)
         for (active, interaction) in values(ax.interactions)
-            active && process_interaction(interaction, event, ax)
+            active && process_interaction(interaction, event, ax) && return true
         end
+        return false
     end
 
     on(process_event, mouseeventhandle.obs)

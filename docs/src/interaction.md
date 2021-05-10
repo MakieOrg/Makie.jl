@@ -191,7 +191,6 @@ It also only works if you can still trigger all listeners correctly.
 For example, if another observable listened only to `xs`, we wouldn't have updated it correctly in the above workaround.
 Often, you can avoid length change problems by using arrays of containers like `Point2f0` or `Vec3f0` instead of synchronizing two or three observables of single element vectors manually.
 
-
 ## Inspecting Data
 
 Makie provides a data inspection tool via `DataInspector(x)` where x can be a 
@@ -362,32 +361,93 @@ end
 
 which finishes the implementation of a custom tooltip for `BarPlot`.
 
+## Interaction
+
+Each `Scene` has an Events struct that holds a few predefined `PriorityObservable`s. 
+(see them in `scene.events`) These observables are triggered when the backend
+registers an event and can be reacted to.
+
+The `Events` struct has the following fields:
+* `window_area::PriorityObservable{IRect2D}`: Contains the current size of the window in pixels.
+* `window_dpi::PriorityObservable{Float64}`: Contains the DPI resolution of the window.
+* `window_open::PriorityObservable{Bool}`: Contains `true` as long as the window is open.
+* `hasfocus::PriorityObservable{Bool}`: Contains `true` if the window is focused (in the foreground).
+* `enetered_window::PriorityObservable{Bool}`: Contains true if the mouse is within the window 
+(regarless of whether it is focused).
+* `mousebutton::PriorityObservable{MouseButtonEvent}`: Contains the most recent `MouseButtonEvent` 
+which holds the relevant `button::Mouse.Button` and `action::Mouse.Action`.
+* `mousebuttonstate::Set{Mouse.Button}`: Contains all currently pressed mouse buttons.
+* `mouseposition::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent cursor position in pixel.
+* `scroll::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent scroll offset.
+* `keyboardbutton::PriorityObservable{KeyEvent}`: Contains the most recent `KeyEvent` which holds
+the relevant `key::Keyboard.Button` and `action::Keyboard.Action`.
+* `keyboardstate::PriorityObservable{Keyboard.Button}`: Contains all currently pressed keys.
+* `unicode_input::PriorityObservable{Char}`: Contains the most recently typed character.
+* `dropped_files::PriorityObservable{Vector{String}}`: Contains a list of filepaths to files
+dragged into the window.
+
+### PriorityObservable
+
+A `PriorityObservable` differs from normal Observables/Nodes in two ways:
+
+They allow for callbacks (functions that are called when the observable is trigger)
+to be ordered. The order can be specified via the `priority::Int8` keyword, e.g.
+`on(callback, events.mouseposition, priority = 12)`. The callbacks are executed
+in order of priority, starting with the highest. Note that multiple callbacks
+can have the same priority. Most base interactions and interactive layoutables 
+use a priority of 0 (base interactions) or 1 (if they use a mouse state machine). 
+The exceptions to this are `Menu` and `Textbox` which both use a priority of 60
+to capture events before they reach other plot elements when necessary.
+
+The second speciality of PriorityObservables is that they allow callbacks to 
+"consume" an event by returning `true`. If an event is consumed it triggers no
+other callbacks. Because of this property all callbacks are assumed to return
+a `Bool` and only `on` is available for reacting to a PriorityObservable.
+
 
 ## Mouse Interaction
 
-Each `Scene` has an Events struct that holds a few predefined Nodes (see them in `scene.events`)
-To use them in your interaction pipeline, you can use them with `lift` or `on`.
+There are three mouse events one can react to:
 
-For example, for interaction with the mouse cursor, use the `mouseposition` Node.
+* `events.mousebutton` which holds a `MouseButtonEvent` with relevant `button` and `action`
+* `events.mouseposition` which holds the current cursor position relative to the 
+window as `NTuple{2, Float64}` in pixel
+* `events.scroll` which holds an `NTuple{2, Float64}` of the last scroll change
+
+For example, we can react to a `MouseButtonEvent` with
 
 ```julia
-on(scene.events.mouseposition) do mpos
-    # do something with the mouse position
+on(events(fig).mousebutton, priority = 0) do event
+    if event.button == Mouse.left
+        if event.action == Mouse.press
+            # do something
+        else
+            # do something else when the mouse button is released
+        end
+    end
+    # Do not consume the event
+    return false
 end
 ```
 
+
 ## Keyboard Interaction
 
-You can use `scene.events.keyboardbuttons` to react to raw keyboard events and `scene.events.unicode_input` to react to specific characters being typed.
+You can use `events.keyboardbutton` to react to a `KeyEvent` and 
+`events.unicode_input` to react to specific characters being typed.
 
-The `keyboardbuttons` Node, for example, contains an enum that can be used to implement a keyboard event handler.
+For example we may react to specific keys being pressed or held with
 
 ```julia
-on(scene.events.keyboardbuttons) do button
-    ispressed(button, Keyboard.left) && move_left()
-    ispressed(button, Keyboard.up) && move_up()
-    ispressed(button, Keyboard.right) && move_right()
-    ispressed(button, Keyboard.down) && move_down()
+on(events(fig).keyboardbutton) do event
+    if event.action in (Keyboard.press, Keyboard.repeat)
+        event.button == Keyboard.left   && move_left()
+        event.button == Keyboard.up     && move_up()
+        event.button == Keyboard.right  && move_right()
+        event.button == Keyboard.down   && move_down()
+    end
+    # Let the event reach other listeners
+    return false
 end
 ```
 

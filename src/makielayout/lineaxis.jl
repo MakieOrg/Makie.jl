@@ -494,8 +494,8 @@ end
 #     get_ticks(LogitTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
 # end
 
-logit_10(x) = log10(x / (1 - x))
-expit_10(x) = 1 / (1 + exp10(-x))
+logit_10(x) = AbstractPlotting.logit(x) / log(10)
+expit_10(x) = AbstractPlotting.logistic(log(10) * x)
 
 # function get_ticks(l::LogitTicks, scale::typeof(AbstractPlotting.logit), ::Automatic, vmin, vmax)
 

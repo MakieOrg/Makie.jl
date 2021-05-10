@@ -136,23 +136,39 @@ function rotate_cam(
     rotation
 end
 
+# TODO switch button and key because this is the wrong order
 function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
     last_mousepos = RefValue(Vec2f0(0, 0))
-    on(camera(scene), scene.events.mousedrag) do drag
-        mp = mouseposition_px(scene)
-        if ispressed(scene, key[]) && ispressed(scene, button[]) && is_mouseinside(scene)
-            if drag == Mouse.down
-                #just started pressing, nothing to do yet
-                last_mousepos[] = mp
-            elseif drag == Mouse.pressed
-                mousepos = mp
+    dragging = RefValue(false)
+    on(camera(scene), scene.events.mousebutton) do event
+        if event.button == key[] && ispressed(scene, button[])
+            if event.action == Mouse.press && is_mouseinside(scene)
+                last_mousepos[] = mouseposition_px(scene)
+                dragging[] = true
+                return true
+            elseif event.action == Mouse.release && dragging[]
+                mousepos = mouseposition_px(scene)
+                dragging[] = false
                 diff = (last_mousepos[] - mousepos) * cam.translationspeed[]
                 last_mousepos[] = mousepos
                 translate_cam!(scene, cam, Vec3f0(0f0, diff[1], diff[2]))
+                return true
             end
         end
-        return
+        return false
     end
+
+    on(camera(scene), scene.events.mouseposition) do mp
+        if dragging[] && ispressed(scene, button[])
+            mousepos = screen_relative(scene, mp)
+            diff = (last_mousepos[] .- mousepos) * cam.translationspeed[]
+            last_mousepos[] = mousepos
+            translate_cam!(scene, cam, Vec3f0(0f0, diff[1], diff[2]))
+            return true
+        end
+        return false
+    end
+
     on(camera(scene), scene.events.scroll) do scroll
         if ispressed(scene, button[]) && is_mouseinside(scene)
             cam_res = Vec2f0(widths(scene.px_area[]))
@@ -160,27 +176,46 @@ function add_translation!(scene, cam, key, button, zoom_shift_lookat::Bool)
             mouse_pos_normalized = 2*mouse_pos_normalized .- 1f0
             zoom_step = scroll[2]
             zoom!(scene, mouse_pos_normalized, zoom_step, zoom_shift_lookat)
+            return true
         end
-        return
+        return false
     end
 end
 
 function add_rotation!(scene, cam, button, key, fixed_axis::Bool)
     last_mousepos = RefValue(Vec2f0(0, 0))
+    dragging = RefValue(false)
     e = events(scene)
-    on(camera(scene), e.mousedrag) do drag
-        if ispressed(scene, button[]) && ispressed(scene, key[]) && is_mouseinside(scene)
-            if drag == Mouse.down
+
+    on(camera(scene), e.mousebutton) do event
+        if event.button == button[] && ispressed(scene, key[])
+            if event.action == Mouse.press && is_mouseinside(scene)
                 last_mousepos[] = mouseposition_px(scene)
-            elseif drag == Mouse.pressed
+                dragging[] = true
+                return true
+            elseif event.action == Mouse.release && dragging[]
                 mousepos = mouseposition_px(scene)
+                dragging[] = false
                 rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
                 mp = (last_mousepos[] - mousepos) * rot_scaling
                 last_mousepos[] = mousepos
                 rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0), fixed_axis)
+                return true
             end
         end
-        return
+        return false
+    end
+
+    on(camera(scene), e.mouseposition) do mp
+        if dragging[] && ispressed(scene, key[])
+            mousepos = screen_relative(scene, mp)
+            rot_scaling = cam.rotationspeed[] * (e.window_dpi[] * 0.005)
+            mp = (last_mousepos[] .- mousepos) * rot_scaling
+            last_mousepos[] = mousepos
+            rotate_cam!(scene, cam, Vec3f0(mp[1], -mp[2], 0f0), fixed_axis)
+            return true
+        end
+        return false
     end
 end
 

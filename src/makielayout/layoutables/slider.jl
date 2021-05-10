@@ -109,10 +109,9 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         markersize = buttonsize, raw = true, inspectable = false)
     decorations[:button] = button
 
-    mouseevents = addmouseevents!(topscene, linesegs, button)
+    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
 
     onmouseleftdrag(mouseevents) do event
-
         dragging[] = true
         dif = event.px - event.prev_px
         fraction = clamp(if horizontal[]
@@ -130,6 +129,8 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         if selected_index[] != newindex
             selected_index[] = newindex
         end
+
+        return true
     end
 
     onmouseleftdragstop(mouseevents) do event
@@ -137,28 +138,32 @@ function layoutable(::Type{Slider}, fig_or_scene; bbox = nothing, kwargs...)
         # adjust slider to closest legal value
         sliderfraction[] = sliderfraction[]
         linecolors[] = [color_active_dimmed[], color_inactive[]]
+        return true
     end
 
     onmouseleftdown(mouseevents) do event
-
         pos = event.px
         dim = horizontal[] ? 1 : 2
         frac = (pos[dim] - endpoints[][1][dim]) / (endpoints[][2][dim] - endpoints[][1][dim])
         selected_index[] = closest_fractionindex(sliderrange[], frac)
         # linecolors[] = [color_active[], color_inactive[]]
+        return true
     end
 
     onmouseleftdoubleclick(mouseevents) do event
         selected_index[] = closest_index(sliderrange[], startvalue[])
+        return true
     end
 
     onmouseenter(mouseevents) do event
         button_magnification[] = 1.25
+        return false
     end
 
     onmouseout(mouseevents) do event
         button_magnification[] = 1.0
         linecolors[] = [color_active_dimmed[], color_inactive[]]
+        return false
     end
 
     # trigger autosize through linewidth for first layout

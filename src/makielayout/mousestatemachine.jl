@@ -55,7 +55,7 @@ struct MouseEvent
 end
 
 struct MouseEventHandle
-    obs::Observable{MouseEvent}
+    obs::AbstractPlotting.PriorityObservable{MouseEvent}
     observerfuncs::Vector{<:Observables.ObserverFunction}
 end
 
@@ -80,11 +80,13 @@ for eventtype in instances(MouseEventType)
         Executes the function f whenever the `MouseEventHandle`'s observable is set to
         a MouseEvent with `event.type === $($eventtype)`.
         """
-        function $onfunctionname(f, mev::MouseEventHandle)
-            on(mev.obs) do event
+        function $onfunctionname(f, mev::MouseEventHandle; priority = Int8(0))
+            sanitized_func = _sanitize_observer_function(f, (typeof(mev.obs.val),))
+            on(mev.obs, priority = priority) do event
                 if event.type === $eventtype
-                    f(event)
+                    return sanitized_func(event)::Bool
                 end
+                return false
             end
         end
         export $onfunctionname
@@ -111,18 +113,27 @@ onmouseleftclick(mouseevents) do event
 end
 ```
 """
-function addmouseevents!(scene, elements...)
+function addmouseevents!(scene, elements...; priority = Int8(1))
+    is_mouse_over_relevant_area() = isempty(elements) ? AbstractPlotting.is_mouseinside(scene) : mouseover(scene, elements...)
+    _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+end
+function addmouseevents!(scene, bbox::Observables.AbstractObservable{<: Rect2D}; priority = Int8(1))
+    is_mouse_over_relevant_area() = AbstractPlotting.mouseposition_px(scene) in bbox[]
+    _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
+end
 
+
+function _addmouseevents!(scene, is_mouse_over_relevant_area, priority)
     Mouse = AbstractPlotting.Mouse
     dblclick_max_interval = 0.2    
 
-    mouseevent = Node{MouseEvent}(MouseEvent(MouseEventTypes.out, 0.0, Point2f0(0, 0), Point2f0(0, 0), 0.0, Point2f0(0, 0), Point2f0(0, 0)))
-
-    is_mouse_over_relevant_area() = isempty(elements) ? AbstractPlotting.is_mouseinside(scene) : mouseover(scene, elements...)
+    mouseevent = AbstractPlotting.PriorityObservable{MouseEvent}(
+        MouseEvent(MouseEventTypes.out, 0.0, Point2f0(0, 0), Point2f0(0, 0), 0.0, Point2f0(0, 0), Point2f0(0, 0))
+    )
 
 
     # initialize state variables
-    last_mouseevent = Ref{Mouse.DragEnum}(events(scene).mousedrag[])
+    last_mouseevent = Ref{Mouse.Action}(Mouse.release)
     prev_data = Ref(mouseposition(scene))
     prev_px = Ref(AbstractPlotting.mouseposition_px(scene))
     mouse_downed_inside = Ref(false)
@@ -136,8 +147,8 @@ function addmouseevents!(scene, elements...)
 
 
     # react to mouse position changes
-    mousepos_observerfunc = on(events(scene).mouseposition) do mp
-
+    mousepos_observerfunc = on(events(scene).mouseposition, priority=priority) do mp
+        consumed = false
         t = time()
         data = mouseposition(scene)
         px = AbstractPlotting.mouseposition_px(scene)
@@ -149,7 +160,7 @@ function addmouseevents!(scene, elements...)
         # this can mean a new drag started, or a drag continues if it is ongoing.
         # it can also mean that a drag that started outside and isn't related to this
         # object is going across it and should be ignored here
-        if last_mouseevent[] == Mouse.down
+        if last_mouseevent[] == Mouse.press
 
             if drag_ongoing[]
                 # continue the drag
@@ -159,7 +170,10 @@ function addmouseevents!(scene, elements...)
                     Mouse.middle => MouseEventTypes.middledrag
                     x => error("No recognized mouse button $x")
                 end
-                mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                x = setindex!(mouseevent,
+                    MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                )
+                consumed = consumed || x
             else
                 # mouse was downed inside but no drag is ongoing
                 # that means a drag started
@@ -171,7 +185,10 @@ function addmouseevents!(scene, elements...)
                         Mouse.middle => MouseEventTypes.middledragstart
                         x => error("No recognized mouse button $x")
                     end
-                    mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    x = setindex!(mouseevent, 
+                        MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
+                    consumed = consumed || x
 
                     event = @match mouse_downed_button[] begin
                         Mouse.left => MouseEventTypes.leftdrag
@@ -179,19 +196,30 @@ function addmouseevents!(scene, elements...)
                         Mouse.middle => MouseEventTypes.middledrag
                         x => error("No recognized mouse button $x")
                     end
-                    mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    x = setindex!(mouseevent, 
+                        MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
+                    consumed = consumed || x
                 end
             end
         else
             if mouse_inside
-                if mouse_was_inside[]
-                    mouseevent[] = MouseEvent(MouseEventTypes.over, t, data, px, prev_t[], prev_data[], prev_px[])
+                x = if mouse_was_inside[]
+                    setindex!(mouseevent,
+                        MouseEvent(MouseEventTypes.over, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
                 else
-                    mouseevent[] = MouseEvent(MouseEventTypes.enter, t, data, px, prev_t[], prev_data[], prev_px[])
+                    setindex!(mouseevent, 
+                        MouseEvent(MouseEventTypes.enter, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
                 end
+                consumed = consumed || x
             else
                 if mouse_was_inside[]
-                    mouseevent[] = MouseEvent(MouseEventTypes.out, t, data, px, prev_t[], prev_data[], prev_px[])
+                    x = setindex!(mouseevent, 
+                        MouseEvent(MouseEventTypes.out, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
+                    consumed = consumed || x
                 end
             end
         end
@@ -200,25 +228,24 @@ function addmouseevents!(scene, elements...)
         prev_data[] = data
         prev_px[] = px
         prev_t[] = t
+        return consumed::Bool
     end
 
-
+    
     # react to mouse button changes
-    mousedrag_observerfunc = on(events(scene).mousedrag) do mousedrag
-        
+    mousedrag_observerfunc = on(events(scene).mousebutton, priority=priority) do event
+        consumed = false
         t = time()
         data = prev_data[]
         px = prev_px[]
 
-        pressed_buttons = events(scene).mousebuttons[]
-
-        # we only need to handle mousedown and mouseup
-        # pressed and not pressed are redundant events with mouse position changes
-        mousedrag ∉ (Mouse.down, Mouse.up) && return
+        # TODO: this could probably be simplified by just using event.button
+        # though that would probably change the way this handles a bit
+        pressed_buttons = events(scene).mousebuttonstate
         
         # mouse went down, this can either happen inside or outside the objects of interest
         # we also only react if one button is pressed, because otherwise things go crazy (pressed left button plus clicks from other buttons in between are not allowed, e.g.)
-        if mousedrag == Mouse.down
+        if event.action == Mouse.press
             if length(pressed_buttons) == 1
                 button = first(pressed_buttons)
                 mouse_downed_button[] = button
@@ -230,14 +257,21 @@ function addmouseevents!(scene, elements...)
                         Mouse.middle => MouseEventTypes.middledown
                         x => error("No recognized mouse button $x")
                     end
-                    mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    x = setindex!(mouseevent, 
+                        MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
+                    consumed = consumed || x
                     mouse_downed_inside[] = true
                 else
                     mouse_downed_inside[] = false
-                    mouseevent[] = MouseEvent(MouseEventTypes.downoutside, t, data, px, prev_t[], prev_data[], prev_px[])
+                    x = setindex!(mouseevent, 
+                        MouseEvent(MouseEventTypes.downoutside, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
+                    consumed = consumed || x
                 end
             end
-        elseif mousedrag == Mouse.up
+            last_mouseevent[] = Mouse.press
+        elseif event.action == Mouse.release
             # only register up events and clicks if the upped button matches
             # the recorded downed one
             # and it can't be nothing (if the first up event comes from outside)
@@ -254,7 +288,10 @@ function addmouseevents!(scene, elements...)
                         Mouse.middle => MouseEventTypes.middledragstop
                         x => error("No recognized mouse button $x")
                     end
-                    mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    x = setindex!(mouseevent, 
+                        MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                    )
+                    consumed = consumed || x
                     drag_ongoing[] = false
 
                     if mouse_was_inside[]
@@ -266,10 +303,16 @@ function addmouseevents!(scene, elements...)
                             x => error("No recognized mouse button $x")
                         end
 
-                        mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                        x = setindex!(mouseevent, 
+                            MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                        )
+                        consumed = consumed || x
                     else
                         # mouse could be not over elements after drag is over
-                        mouseevent[] = MouseEvent(MouseEventTypes.out, t, data, px, prev_t[], prev_data[], prev_px[])
+                        x = setindex!(mouseevent, 
+                            MouseEvent(MouseEventTypes.out, t, data, px, prev_t[], prev_data[], prev_px[])
+                        )
+                        consumed = consumed || x
                     end
                 else
                     if mouse_was_inside[]
@@ -287,7 +330,10 @@ function addmouseevents!(scene, elements...)
                                     Mouse.middle => MouseEventTypes.middledoubleclick
                                     x => error("No recognized mouse button $x")
                                 end
-                                mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                                x = setindex!(mouseevent, 
+                                    MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                                )
+                                consumed = consumed || x
                                 last_click_was_double[] = true
                             else
                                 event = @match mouse_downed_button[] begin
@@ -296,7 +342,10 @@ function addmouseevents!(scene, elements...)
                                     Mouse.middle => MouseEventTypes.middleclick
                                     x => error("No recognized mouse button $x")
                                 end
-                                mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                                x = setindex!(mouseevent, 
+                                    MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                                )
+                                consumed = consumed || x
                                 last_click_was_double[] = false
                             end
                             # save what type the last downed button was
@@ -312,17 +361,20 @@ function addmouseevents!(scene, elements...)
                             x => error("No recognized mouse button $x")
                         end
 
-                        mouseevent[] = MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                        x = setindex!(mouseevent, 
+                            MouseEvent(event, t, data, px, prev_t[], prev_data[], prev_px[])
+                        )
+                        consumed = consumed || x
                     end
-                end
-
-                
+                end                
             end
+
+            last_mouseevent[] = Mouse.release
         end
             
 
-        last_mouseevent[] = mousedrag
         prev_t[] = t
+        return consumed::Bool
     end
 
     MouseEventHandle(mouseevent, [mousepos_observerfunc, mousedrag_observerfunc])
