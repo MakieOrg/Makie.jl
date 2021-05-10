@@ -33,11 +33,11 @@ using AbstractPlotting: PriorityObservable, MouseButtonEvent, KeyEvent
     @test first[] < second[] < third[]
 
     # redirecting to avoid printing a stacktrace
-    old_stdout = stdout
-    redirect_stdout()
+    old_stderr = stderr
+    redirect_stderr()
     msg = "Observer functions of PriorityObservables must return a Bool to specify whether the update is consumed (true) or should propagate (false) to other observer functions. The given function has been wrapped to always return false."
     @test_logs (:warn, msg) on(identity, po)
-    redirect_stdout(old_stdout)
+    redirect_stderr(old_stderr)
 end
 
 
@@ -71,7 +71,7 @@ end
     # This testset is based on the results the current camera system has. If 
     # cam3d! is updated this is likely to break. 
     @testset "cam3d!" begin
-        scene = Scene();
+        scene = Scene(resolution=(800, 600));
         e = events(scene)
         cam3d!(scene)
         cc = cameracontrols(scene)
@@ -106,7 +106,7 @@ end
 
 
         # Reset state so this is indepentent from the last checks
-        scene = Scene();
+        scene = Scene(resolution=(800, 600));
         e = events(scene)
         cam3d!(scene)
         cc = cameracontrols(scene)
@@ -140,7 +140,7 @@ end
 
 
         # Reset state
-        scene = Scene();
+        scene = Scene(resolution=(800, 600));
         e = events(scene)
         cam3d!(scene)
         cc = cameracontrols(scene)
@@ -165,7 +165,7 @@ end
     end
 
     @testset "mouse state machine" begin
-        scene = Scene();
+        scene = Scene(resolution=(800, 600));
         e = events(scene)
         bbox = Node(Rect2D(200, 200, 400, 300))
         msm = addmouseevents!(scene, bbox, priority=typemax(Int8))
