@@ -25,7 +25,7 @@ function onpick(f, scene::SceneLike, plots::AbstractPlot...; range=1)
     map_once(events(scene).mouseposition) do mp
         p, idx = mouse_selection(args...)
         (p in fplots) && f(idx)
-        return
+        return false
     end
 end
 
@@ -67,11 +67,13 @@ end
     mouse_in_scene(scene::Scene)
 returns the mouseposition relative to `scene`
 """
-function mouse_in_scene(scene::SceneLike)
+function mouse_in_scene(scene::SceneLike; priority = Int8(0))
     p = rootparent(scene)
-    lift(pixelarea(p), pixelarea(scene), events(scene).mouseposition) do pa, sa, mp
-        Vec(mp) .- minimum(sa)
+    output = Node(Vec2(0.0))
+    on(events(scene).mouseposition, priority = priority) do mp
+        output[] = Vec(mp) .- minimum(pixelarea(scene)[])
     end
+    output
 end
 
 
@@ -217,6 +219,7 @@ Properly identifies the scene for a plot with multiple sub-plots.
 """
 hovered_scene() = error("hoevered_scene is not implemented yet.")
 
+
 """
     select_rectangle(scene; kwargs...) -> rect
 Interactively select a rectangle on a 2D `scene` by clicking the left mouse button,
@@ -231,7 +234,7 @@ rectangle has area > 0.
 
 The `kwargs...` are propagated into `lines!` which plots the selected rectangle.
 """
-function select_rectangle(scene; strokewidth = 3.0, kwargs...)
+function select_rectangle(scene; blocking = false, priority = 2, strokewidth = 3.0, kwargs...)
     key = Mouse.left
     waspressed = Node(false)
     rect = Node(FRect(0, 0, 1, 1)) # plotted rectangle
@@ -242,19 +245,18 @@ function select_rectangle(scene; strokewidth = 3.0, kwargs...)
         scene, rect, raw = true, visible = false, color = RGBAf0(0, 0, 0, 0), strokecolor = RGBAf0(0.1, 0.1, 0.8, 0.5), strokewidth = strokewidth, kwargs...,
     )
 
-    on(events(scene).mousedrag) do drag
-        if ispressed(scene, key) && is_mouseinside(scene)
-            mp = mouseposition(scene)
-            if drag == Mouse.down
+    on(events(scene).mousebutton, priority=priority) do event
+        if event.button == key
+            if event.action == Mouse.press && is_mouseinside(scene)
+                mp = mouseposition(scene)
                 waspressed[] = true
                 plotted_rect[:visible] = true # start displaying
                 rect[] = FRect(mp, 0.0, 0.0)
-            elseif drag == Mouse.pressed
-                mini = minimum(rect[])
-                rect[] = FRect(mini, mp - mini)
+                return blocking
             end
-        else
-            if drag == Mouse.up && waspressed[] # User has selected the rectangle
+        end
+        if !(event.button == key && event.action == Mouse.press)
+            if waspressed[] # User has selected the rectangle
                 waspressed[] = false
                 r = absrect(rect[])
                 w, h = widths(r)
@@ -264,9 +266,21 @@ function select_rectangle(scene; strokewidth = 3.0, kwargs...)
             end
             # always hide if not the right key is pressed
             plotted_rect[:visible] = false # make the plotted rectangle invisible
+            return blocking
         end
-        return rect_ret
+
+        return false
     end
+    on(events(scene).mouseposition, priority=priority) do event
+        if waspressed[]
+            mp = mouseposition(scene)
+            mini = minimum(rect[])
+            rect[] = FRect(mini, mp - mini)
+            return blocking
+        end
+        return false
+    end
+
     return rect_ret
 end
 
@@ -283,7 +297,7 @@ and only if the selected line has non-zero length.
 
 The `kwargs...` are propagated into `lines!` which plots the selected line.
 """
-function select_line(scene; kwargs...)
+function select_line(scene; blocking = false, priority = 2, kwargs...)
     key = Mouse.left
     waspressed = Node(false)
     line = Node([Point2f0(0,0), Point2f0(1,1)])
@@ -294,31 +308,40 @@ function select_line(scene; kwargs...)
         linewidth = 4, kwargs...,
     )
 
-    on(events(scene).mousedrag) do drag
-        if ispressed(scene, key) && is_mouseinside(scene)
+    on(events(scene).mousebutton, priority=priority) do event
+        if event.button == key && is_mouseinside(scene)
             mp = mouseposition(scene)
-            if drag == Mouse.down
+            if event.action == Mouse.press
                 waspressed[] = true
                 plotted_line[:visible] = true  # start displaying
                 line[][1] = mp
                 line[][2] = mp
                 line[] = line[]
-            elseif drag == Mouse.pressed
-                line[][2] = mp
-                line[] = line[] # actually update observable
+                return blocking
             end
-        else
-            if drag == Mouse.up && waspressed[] # User has selected the rectangle
+        end
+        if !(event.button == key && event.action == Mouse.press)
+            if waspressed[] # User has selected the rectangle
                 waspressed[] = false
                 if line[][1] != line[][2]
                     line_ret[] = copy(line[])
                 end
             end
-            # always hide if not the right key is pressed
             plotted_line[:visible] = false
+            return blocking
         end
-        return line_ret
+        return false
     end
+    on(events(scene).mouseposition, priority=priority) do event
+        if waspressed[]
+            mp = mouseposition(scene)
+            line[][2] = mp
+            line[] = line[] # actually update observable
+            return blocking
+        end
+        return false
+    end
+
     return line_ret
 end
 
@@ -334,7 +357,7 @@ The value of the returned point is updated **only** when the user un-clicks.
 
 The `kwargs...` are propagated into `scatter!` which plots the selected point.
 """
-function select_point(scene; kwargs...)
+function select_point(scene; blocking = false, priority=2, kwargs...)
     key = Mouse.left
     pmarker = Circle(Point2f0(0, 0), Float32(1))
     waspressed = Node(false)
@@ -346,27 +369,36 @@ function select_point(scene; kwargs...)
         color = RGBAf0(0.1, 0.1, 0.8, 0.5), kwargs...,
     )
 
-    on(events(scene).mousedrag) do drag
-        if ispressed(scene, key) && is_mouseinside(scene)
+    on(events(scene).mousebutton, priority=priority) do event
+        if event.button == key && is_mouseinside(scene)
             mp = mouseposition(scene)
-            if drag == Mouse.down
+            if event.action == Mouse.press
                 waspressed[] = true
                 plotted_point[:visible] = true  # start displaying
                 point[][1] = mp
                 point[] = point[]
-            elseif drag == Mouse.pressed
-                point[][1] = mp
-                point[] = point[] # actually update observable
+                return blocking
             end
-        else
-            if drag == Mouse.up && waspressed[] # User has selected the rectangle
+        end
+        if !(event.button == key && event.action == Mouse.press)
+            if waspressed[] # User has selected the rectangle
                 waspressed[] = false
                 point_ret[] = copy(point[][1])
             end
-            # always hide if not the right key is pressed
             plotted_point[:visible] = false
+            return blocking
         end
-        return point_ret
+        return false
     end
+    on(events(scene).mouseposition, priority=priority) do event
+        if waspressed[]
+            mp = mouseposition(scene)
+            point[][1] = mp
+            point[] = point[] # actually update observable
+            return blocking
+        end
+        return false
+    end
+
     return point_ret
 end

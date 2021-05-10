@@ -138,10 +138,11 @@ function Scene(;clear=true, transform_func=identity, scene_attributes...)
     px_area = lift(attributes.resolution) do res
         IRect(0, 0, res)
     end
-    on(events.window_area) do w_area
+    on(events.window_area, priority = typemax(Int8)) do w_area
         if !any(x -> x ≈ 0.0, widths(w_area)) && px_area[] != w_area
             px_area[] = w_area
         end
+        return false
     end
     scene = Scene(
         events,
@@ -254,6 +255,7 @@ end
 
 """
     getscreen(scene::Scene)
+
 Gets the current screen a scene is associated with.
 Returns nothing if not yet displayed on a screen.
 """

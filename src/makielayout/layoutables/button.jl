@@ -64,25 +64,28 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
         layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
-
-
-    mouseevents = addmouseevents!(scene, button, labeltext)
+    
+    mouseevents = addmouseevents!(scene, layoutobservables.computedbbox)
 
     onmouseover(mouseevents) do _
         mousestate[] = :hover
+        return false
     end
 
     onmouseout(mouseevents) do _
         mousestate[] = :out
+        return false
     end
     
     onmouseleftup(mouseevents) do _
         mousestate[] = :hover
+        return true
     end
 
     onmouseleftdown(mouseevents) do _
         mousestate[] = :active
         clicks[] = clicks[] + 1
+        return true
     end
 
     label[] = label[]

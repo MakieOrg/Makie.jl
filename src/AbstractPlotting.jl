@@ -54,6 +54,7 @@ include("documentation/docstringextension.jl")
 include("utilities/quaternions.jl")
 include("attributes.jl")
 include("dictlike.jl")
+include("interaction/PriorityObservable.jl")
 include("types.jl")
 include("utilities/utilities.jl")
 include("utilities/texture_atlas.jl")
@@ -199,7 +200,6 @@ export window_area
 export window_open
 export mouse_buttons
 export mouse_position
-export mousedrag
 export scroll
 export keyboard_buttons
 export unicode_input

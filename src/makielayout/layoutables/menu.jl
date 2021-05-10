@@ -157,6 +157,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
         padding = textpadding, textsize = textsize, color = textcolor)
 
 
+    # TODO Do these really need to be refs?
     rects = Ref{Vector{Box}}([])
     texts = Ref{Vector{Label}}([])
     allrects = Ref{Vector{Box}}([])
@@ -189,12 +190,15 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
         rowgap!(contentgrid, 0)
 
-        mouseeventhandles[] = [addmouseevents!(scene, r.elements[:rect], t.elements[:text]) for (r, t) in zip(allrects[], alltexts[])]
+        mouseeventhandles[] = map(allrects[]) do r
+            addmouseevents!(scene, r.layoutobservables.computedbbox, priority=Int8(60))
+        end
 
         # create mouse events for each menu entry rect / text combo
         for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles[], allrects[], alltexts[]))
             onmouseover(mouseeventhandle) do _
-                    r.color = cell_color_hover[]
+                r.color = cell_color_hover[]
+                return false
             end
 
             onmouseout(mouseeventhandle) do _
@@ -204,6 +208,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
                     i_option = i - 1
                     r.color = iseven(i_option) ? cell_color_inactive_even[] : cell_color_inactive_odd[]
                 end
+                return false
             end
 
             onmouseleftdown(mouseeventhandle) do _
@@ -215,6 +220,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
                     end
                 end
                 is_open[] = !is_open[]
+                return true
             end
         end
 
@@ -322,10 +328,11 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmouseevents!(scene)) do events
+    onmousedownoutside(addmouseevents!(scene, priority=Int8(60))) do events
         if is_open[]
             is_open[] = !is_open[]
         end
+        return false
     end
 
     # trigger bbox

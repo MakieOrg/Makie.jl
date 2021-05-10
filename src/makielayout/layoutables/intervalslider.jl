@@ -127,7 +127,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
     buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0, markersize = buttonsizes, raw = true)
     decorations[:buttons] = buttons
 
-    mouseevents = addmouseevents!(topscene, linesegs, buttons)
+    mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)
 
     # we need to record where a drag started for the case where the center of the
     # range is shifted, because the difference in indices always needs to stay the same
@@ -196,12 +196,15 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
                 selected_indices[] = newindices
             end
         end
+
+        return true
     end
 
     onmouseleftdragstop(mouseevents) do event
         dragging[] = false
         # adjust slider to closest legal value
         sliderfractions[] = sliderfractions[]
+        return true
     end
 
     onmouseleftdown(mouseevents) do event
@@ -219,7 +222,7 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         start_disp_fractions[] = displayed_sliderfractions[]
 
         if state[] in (:both, :none)
-            return
+            return true
         end
 
         newindex = closest_fractionindex(sliderrange[], frac)
@@ -229,6 +232,8 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
             selected_indices[] = (selected_indices[][1], newindex)
         end
         # linecolors[] = [color_active[], color_inactive[]]
+
+        return true
     end
 
     onmouseleftdoubleclick(mouseevents) do event
@@ -237,6 +242,8 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         else
             closest_index.(Ref(sliderrange[]), startvalues[])
         end
+
+        return true
     end
 
     onmouseover(mouseevents) do event
@@ -256,10 +263,13 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         else
             :max
         end
+
+        return false
     end
 
     onmouseout(mouseevents) do event
         state[] = :none
+        return false
     end
 
     # trigger autosize through linewidth for first layout
