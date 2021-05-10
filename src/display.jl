@@ -27,13 +27,14 @@ end
 function push_screen!(scene::Scene, display::AbstractDisplay)
     push!(scene.current_screens, display)
     deregister = nothing
-    deregister = on(events(scene).window_open) do is_open
+    deregister = on(events(scene).window_open, priority=typemax(Int8)) do is_open
         # when screen closes, it should set the scene isopen event to false
         # so that's when we can remove the display
         if !is_open
             filter!(x-> x !== display, scene.current_screens)
             deregister !== nothing && off(deregister)
         end
+        return false
     end
     return
 end
@@ -259,9 +260,12 @@ function record_events(f, scene::Scene, path::String)
     display(scene)
     result = Vector{Pair{Float64, Pair{Symbol, Any}}}()
     for field in fieldnames(Events)
-        on(getfield(scene.events, field)) do value
+        # These are not Nodes
+        (field == :mousebuttonstate || field == :keyboardstate) && continue
+        on(getfield(scene.events, field), priority = typemax(Int8)) do value
             value = isa(value, Set) ? copy(value) : value
             push!(result, time() => (field => value))
+            return false
         end
     end
     f()
@@ -283,15 +287,9 @@ function replay_events(f, scene::Scene, path::String)
     sort!(events, by = first)
     for i in 1:length(events)
         t1, (field, value) = events[i]
-        field == :mousedrag && continue
-        if field == :mousebuttons
-            Base.invokelatest() do
-                getfield(scene.events, field)[] = value
-            end
-        else
-            Base.invokelatest() do
-                getfield(scene.events, field)[] = value
-            end
+        (field == :mousebuttonstate || field == :keyboardstate) && continue
+        Base.invokelatest() do
+            getfield(scene.events, field)[] = value
         end
         f()
         if i < length(events)

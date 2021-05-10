@@ -14,9 +14,26 @@ end
 
 include("interaction/iodevices.jl")
 
+
 """
-This struct provides accessible `Observable`s to monitor the events
+This struct provides accessible `PriorityObservable`s to monitor the events
 associated with a Scene.
+
+Functions that act on a `PriorityObservable` must return true if the function 
+consumes an event and false if it does not. When an event is consumed it does 
+not trigger other observer functions. The order in which functions are exectued
+can be controlled via the `priority` keyword (default 0) in `on`.
+
+Example:
+```
+on(events(scene).mousebutton, priority = Int8(20)) do event
+    if is_correct_event(event)
+        do_something()
+        return true
+    end
+    return false
+end
+```
 
 ## Fields
 $(TYPEDFIELDS)
@@ -25,70 +42,193 @@ struct Events
     """
     The area of the window in pixels, as a `Rect2D`.
     """
-    window_area::Node{IRect2D}
+    window_area::PriorityObservable{IRect2D}
     """
     The DPI resolution of the window, as a `Float64`.
     """
-    window_dpi::Node{Float64}
+    window_dpi::PriorityObservable{Float64}
     """
     The state of the window (open => true, closed => false).
     """
-    window_open::Node{Bool}
+    window_open::PriorityObservable{Bool}
 
     """
-    The pressed mouse buttons.
-    Updates when a mouse button is pressed.
+    Most recently triggered `MouseButtonEvent`. Contains the relevant 
+    `event.button` and `event.action` (press/release)
 
     See also [`ispressed`](@ref).
     """
-    mousebuttons::Node{Set{Mouse.Button}}
+    mousebutton::PriorityObservable{MouseButtonEvent}
+    """
+    A Set of all currently pressed mousebuttons.
+    """
+    mousebuttonstate::Set{Mouse.Button}
     """
     The position of the mouse as a `NTuple{2, Float64}`.
-    Updates whenever the mouse moves.
+    Updates once per event poll/frame.
     """
-    mouseposition::Node{NTuple{2, Float64}}
-    """
-The state of the mouse drag, represented by an enumerator of `DragEnum`.
-    """
-    mousedrag::Node{Mouse.DragEnum}
+    mouseposition::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
     """
     The direction of scroll
     """
-    scroll::Node{NTuple{2, Float64}}
+    scroll::PriorityObservable{NTuple{2, Float64}} # why no Vec2?
 
     """
+    Most recently triggered `KeyEvent`. Contains the relevant `event.key` and
+    `event.action` (press/repeat/release)
+
     See also [`ispressed`](@ref).
     """
-    keyboardbuttons::Node{Set{Keyboard.Button}}
+    keyboardbutton::PriorityObservable{KeyEvent}
+    """
+    Contains all currently pressed keys.
+    """
+    keyboardstate::Set{Keyboard.Button}
 
-    unicode_input::Node{Vector{Char}}
-    dropped_files::Node{Vector{String}}
+    """
+    Contains the last typed character.
+    """
+    unicode_input::PriorityObservable{Char}
+    """
+    Contains a list of filepaths to files dragged into the scene.
+    """
+    dropped_files::PriorityObservable{Vector{String}}
     """
     Whether the Scene window is in focus or not.
     """
-    hasfocus::Node{Bool}
-    entered_window::Node{Bool}
+    hasfocus::PriorityObservable{Bool}
+    """
+    Whether the mouse is inside the window or not.
+    """
+    entered_window::PriorityObservable{Bool}
 end
 
 function Events()
+    mousebutton = PriorityObservable(MouseButtonEvent(Mouse.none, Mouse.release))
+    mousebuttonstate = Set{Mouse.Button}()
+    on(mousebutton, priority = typemax(Int8)) do event
+        set = mousebuttonstate
+        if event.action == Mouse.press
+            push!(set, event.button)
+        elseif event.action == Mouse.release
+            delete!(set, event.button)
+        else
+            error("Unrecognized Keyboard action $(event.action)")
+        end
+        # This never consumes because it just keeps track of the state
+        return false
+    end
+        
+    keyboardbutton = PriorityObservable(KeyEvent(Keyboard.unknown, Keyboard.release))
+    keyboardstate = Set{Keyboard.Button}()
+    on(keyboardbutton, priority = typemax(Int8)) do event
+        set = keyboardstate
+        if event.key != Keyboard.unknown
+            if event.action == Keyboard.press
+                push!(set, event.key)
+            elseif event.action == Keyboard.release
+                delete!(set, event.key)
+            elseif event.action == Keyboard.repeat
+                # set should already have the key
+            else
+                error("Unrecognized Keyboard action $(event.action)")
+            end
+        end
+        # This never consumes because it just keeps track of the state
+        return false
+    end
+
     return Events(
-        Node(IRect(0, 0, 0, 0)),
-        Node(100.0),
-        Node(false),
+        PriorityObservable(IRect(0, 0, 0, 0)),
+        PriorityObservable(100.0),
+        PriorityObservable(false),
 
-        Node(Set{Mouse.Button}()),
-        Node((0.0, 0.0)),
-        Node(Mouse.notpressed),
-        Node((0.0, 0.0)),
+        mousebutton, mousebuttonstate,
+        PriorityObservable((0.0, 0.0)),
+        PriorityObservable((0.0, 0.0)),
 
-        Node(Set{Keyboard.Button}()),
+        keyboardbutton, keyboardstate,
 
-        Node(Char[]),
-        Node(String[]),
-        Node(false),
-        Node(false),
+        PriorityObservable('\0'),
+        PriorityObservable(String[]),
+        PriorityObservable(false),
+        PriorityObservable(false),
     )
 end
+
+# Compat only
+function Base.getproperty(e::Events, field::Symbol)
+    if field == :mousebuttons
+        try
+            error()
+        catch e
+            bt = catch_backtrace()
+            @warn(
+                "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
+                "react to `MouseButtonEvent`s instead and ``."
+            )
+            Base.show_backtrace(stderr, bt)
+            println(stderr)
+        end
+        mousebuttons = Node(Set{Mouse.Button}())
+        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
+            mousebuttons[] = getfield(e, :mousebuttonstate)
+            return false
+        end
+        return mousebuttons
+    elseif field == :keyboardbuttons
+        try
+            error()
+        catch e
+            bt = catch_backtrace()
+            @warn(
+                "`events.keyboardbuttons` is deprecated. Use " *
+                "`events.keyboardbutton` to react to `KeyEvent`s instead."
+            )
+            Base.show_backtrace(stderr, bt)
+            println(stderr)
+        end
+        keyboardbuttons = Node(Set{Keyboard.Button}())
+        on(getfield(e, :keyboardbutton), priority=typemax(Int8)-1) do event
+            keyboardbuttons[] = getfield(e, :keyboardstate)
+            return false
+        end
+        return keyboardbuttons
+    elseif field == :mousedrag
+        try
+            error()
+        catch e
+            bt = catch_backtrace()
+            @warn(
+                "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
+                "mouse state machine (`addmouseevents!`) instead."
+            )
+            Base.show_backtrace(stderr, bt)
+            println(stderr)
+        end
+        mousedrag = Node(Mouse.notpressed)
+        on(getfield(e, :mousebutton), priority=typemax(Int8)-1) do event
+            if (event.action == Mouse.press) && (length(e.mousebuttonstate) == 1)
+                mousedrag[] = Mouse.down
+            elseif mousedrag[] in (Mouse.down, Mouse.pressed)
+                mousedrag[] = Mouse.up
+            end
+            return false
+        end
+        on(getfield(e, :mouseposition), priority=typemax(Int8)-1) do pos
+            if mousedrag[] in (Mouse.down, Mouse.pressed)
+                mousedrag[] = Mouse.pressed
+            elseif mousedrag[] == Mouse.up
+                mousedrag[] = Mouse.notpressed
+            end
+            return false
+        end
+        return mousedrag
+    else
+        getfield(e, field)
+    end
+end
+
 
 mutable struct Camera
     pixel_space::Node{Mat4f0}
