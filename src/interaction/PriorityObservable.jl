@@ -45,7 +45,7 @@ PriorityObservable(val::T) where {T} = PriorityObservable{T}(val)
 
 
 
-function Base.show(io::IO,::PriorityObservable)
+function Base.show(io::IO, po::PriorityObservable)
     print(io, "PriorityObservable(")
     print(io, po.val)
     print(io, ")")
