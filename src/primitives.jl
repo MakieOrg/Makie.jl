@@ -444,12 +444,12 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
     if !(xs isa Vector)
         l, r = extrema(xs)
         N = size(image, 1)
-        xs = collect(range(l, r, length=N))
+        xs = collect(range(l, r, length = N+1))
     end
     if !(ys isa Vector)
         l, r = extrema(ys)
         N = size(image, 2)
-        ys = collect(range(l, r, length=N))
+        ys = collect(range(l, r, length = N+1))
     end
 
     model = primitive[:model][]
@@ -491,6 +491,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Union{Heatmap
         xys = [project_position(scene, Point2f0(x, y), model) for x in xs, y in ys]
         colors = to_rgba_image(image, primitive)
 
+        # Note: xs and ys should have size ni+1, nj+1
         ni, nj = size(image)
         @inbounds for i in 1:ni, j in 1:nj
             x0, y0 = xys[i, j]
