@@ -300,30 +300,30 @@ function _reassemble_menu(
     # remove all mouse actions previously connected to rects / texts
     foreach(clear!, mouseeventhandles)
 
-    trim!(contentgrid)
-
-    rects = [Box(scene, width = nothing, height = nothing,
-        color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[],
-        strokewidth = 0, visible = is_open)
-        for i in 1:length(options[])]
-
-    texts = [Label(scene, s, halign = :left, tellwidth = false,
-        textsize = textsize, color = textcolor,
-        padding = textpadding, visible = is_open)
-        for s in optionstrings[]]
-
-    foreach(l -> translate!(l.elements[:rect], 0, 0, 10), rects)
-    foreach(l -> translate!(l.elements[:text], 0, 0, 10), texts)
-    
+    trim!(contentgrid)    
 
     # Repopulate allrects and all alltexts
-    resize!(allrects, length(rects)+1)
-    resize!(alltexts, length(texts)+1)
+    resize!(allrects, length(options[])+1)
+    resize!(alltexts, length(options[])+1)
+
     allrects[1] = selectionrect
     alltexts[1] = selectiontext
-    for i in eachindex(rects)
-        allrects[i+1] = rects[i]
-        alltexts[i+1] = texts[i]
+    
+    for i in 1:length(options[])
+        allrects[i+1] = Box(
+            scene, width = nothing, height = nothing,
+            color = iseven(i) ? cell_color_inactive_even[] : cell_color_inactive_odd[],
+            strokewidth = 0, visible = is_open
+        )
+
+        alltexts[i+1] = Label(
+            scene, optionstrings[][i], halign = :left, tellwidth = false,
+            textsize = textsize, color = textcolor,
+            padding = textpadding, visible = is_open
+        )
+
+        translate!(allrects[i+1].elements[:rect], 0, 0, 10)
+        translate!(alltexts[i+1].elements[:text], 0, 0, 10)
     end
 
 
