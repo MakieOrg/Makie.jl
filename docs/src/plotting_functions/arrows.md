@@ -61,33 +61,23 @@ using GLMakie
 GLMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure(resolution = (800, 600))
-Axis3(f[1, 1])
-
 ps = [Point3f0(x, y, z) for x in -5:2:5 for y in -5:2:5 for z in -5:2:5]
 ns = map(p -> 0.1 * Vec3f0(p[2], p[3], p[1]), ps)
-
-arrows!(
-    ps, ns,
+arrows(
+    ps, ns, fxaa=true, # turn on anti-aliasing
     linecolor = :gray, arrowcolor = :black,
     linewidth = 0.1, arrowsize = Vec3f0(0.3, 0.3, 0.4),
-    align = :center
+    align = :center, axis=(type=Axis3,)
 )
-
-f
 ```
 
 ```@example 1
 using LinearAlgebra
-f = Figure(resolution = (800, 600))
-Axis3(f[1, 1])
 lengths = norm.(ns)
 arrows(
-    ps, ns,
+    ps, ns, fxaa=true, # turn on anti-aliasing
     color=lengths,
     linewidth = 0.1, arrowsize = Vec3f0(0.3, 0.3, 0.4),
-    align = :center
+    align = :center, axis=(type=Axis3,)
 )
-
-f
 ```
