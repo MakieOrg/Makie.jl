@@ -139,7 +139,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
     selectionrect = Box(scene, width = nothing, height = nothing,
         color = selection_cell_color_inactive[], strokewidth = 0)
-    
+
 
     optionstrings = Ref{Vector{String}}(optionlabel.(options[]))
 
@@ -171,7 +171,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
         _reassemble_menu(
             scene, selectionrect, selectiontext,
-            allrects, alltexts, mouseeventhandles, 
+            allrects, alltexts, mouseeventhandles,
             contentgrid, attrs, optionstrings
         )
 
@@ -195,11 +195,11 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     # reassemble for the first time
     _reassemble_menu(
         scene, selectionrect, selectiontext,
-        allrects, alltexts, mouseeventhandles, 
+        allrects, alltexts, mouseeventhandles,
         contentgrid, attrs, optionstrings
     )
 
-    
+
     dropdown_arrow = scatter!(scene,
         lift(x -> [Point2f0(width(x) - 20, (top(x) + bottom(x)) / 2)], selectionrect.layoutobservables.computedbbox),
         marker = @lift($is_open ? '▴' : '▾'),
@@ -281,13 +281,13 @@ end
 
 function _reassemble_menu(
         scene, selectionrect, selectiontext,
-        allrects, alltexts, mouseeventhandles, 
+        allrects, alltexts, mouseeventhandles,
         contentgrid, attributes, optionstrings
     )
 
     @extract attributes (
         cell_color_inactive_even, cell_color_inactive_odd, textsize, textcolor,
-        textpadding, cell_color_hover, selection_cell_color_inactive, 
+        textpadding, cell_color_hover, selection_cell_color_inactive,
         cell_color_active, is_open, options, i_selected
     )
 
@@ -300,7 +300,7 @@ function _reassemble_menu(
     # remove all mouse actions previously connected to rects / texts
     foreach(clear!, mouseeventhandles)
 
-    trim!(contentgrid)    
+    trim!(contentgrid)
 
     # Repopulate allrects and all alltexts
     resize!(allrects, length(options[])+1)
@@ -308,7 +308,7 @@ function _reassemble_menu(
 
     allrects[1] = selectionrect
     alltexts[1] = selectiontext
-    
+
     for i in 1:length(options[])
         allrects[i+1] = Box(
             scene, width = nothing, height = nothing,
@@ -329,9 +329,9 @@ function _reassemble_menu(
 
     contentgrid[1:length(allrects), 1] = allrects
     contentgrid[1:length(alltexts), 1] = alltexts
-    
+
     rowgap!(contentgrid, 0)
-    
+
     resize!(mouseeventhandles, length(alltexts))
     map!(mouseeventhandles, allrects) do r
         addmouseevents!(scene, r.layoutobservables.computedbbox, priority=Int8(60))
@@ -341,12 +341,15 @@ function _reassemble_menu(
     for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles, allrects, alltexts))
         onmouseover(mouseeventhandle) do _
             r.visible[] || return false
+            (i == i_selected[]+1) && return false
             r.color = cell_color_hover[]
             return false
         end
 
         onmouseout(mouseeventhandle) do _
             r.visible[] || return false
+            # do nothing for selected items
+            (i == i_selected[]+1) && return false
             if i == 1
                 r.color = selection_cell_color_inactive[]
             else
@@ -362,6 +365,10 @@ function _reassemble_menu(
             if is_open[]
                 # first item is already selected
                 if i > 1
+                    # de-highlight previously selected
+                    if i_selected[] != 0
+                        allrects[i_selected[] + 1].color = cell_color_inactive_even[]
+                    end
                     i_selected[] = i - 1
                 end
             end
