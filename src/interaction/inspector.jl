@@ -474,7 +474,7 @@ function on_hover(inspector)
 end
 
 
-function show_data_recursion(inspector, plot, idx,)
+function show_data_recursion(inspector, plot, idx)
     processed = show_data_recursion(inspector, plot.parent, idx, plot)
     if processed
         return true
@@ -797,7 +797,7 @@ function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer)
     FRect2D(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
 end
 
-function show_data(inspector::DataInspector, plot, idx, source = nothing)
+function show_data(@nospecialize(inspector::DataInspector, plot, idx, source = nothing))
     return false
 end
 

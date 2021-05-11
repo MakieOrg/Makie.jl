@@ -249,5 +249,29 @@ function _precompile_()
     Base.precompile(Tuple{Type{Scatter{Tuple{Vector{Point{2, Float32}}}}},Scene,Transformation,Attributes,Tuple{Observable{Vector{Float64}}, Observable{Vector{Float64}}},Tuple{Observable{Vector{Point{2, Float32}}}}})   # time: 0.001059559
     Base.precompile(Tuple{typeof(is2d),GeometryBasics.HyperRectangle{3, Float32}})   # time: 0.001005834
     Base.precompile(Tuple{Type{Lines{Tuple{Vector{Point{2, Float32}}}}},Scene,Transformation,Attributes,Tuple{Observable{GeometryBasics.HyperRectangle{2, Float32}}},Tuple{Observable{Vector{Point{2, Float32}}}}})   # time: 0.001005373
+    
+    # DataInspector
+    @warnpcfail precompile(on_hover, (DataInspector, ))
+    for PT in (
+            Scatter{Tuple{Vector{Point2f0}}}, 
+            Scatter{Tuple{Vector{Point3f0}}}, 
+            MeshScatter{Tuple{Vector{Point3f0}}}, 
+            Lines{Tuple{Vector{Point2f0}}}, 
+            Lines{Tuple{Vector{Point3f0}}}, 
+            LineSegments{Tuple{Vector{Point2f0}}}, 
+            LineSegments{Tuple{Vector{Point3f0}}}, 
+            # Mesh, 
+            Surface{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}}, 
+            Surface{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}}, 
+            Surface{Tuple{Matrix{Float32}, Matrix{Float32}, Matrix{Float32}}}, 
+            Heatmap{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}}, 
+            Heatmap{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}}, 
+            Image{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}}, 
+            Image{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}}, 
+            BarPlot{Tuple{Vector{Point{2, Float32}}}}
+        )
 
+        @warnpcfail precompile(show_data_recursion, (DataInspector, PT, UInt64))
+        @warnpcfail precompile(show_data, (DataInspector, PT, UInt64))
+    end
 end
