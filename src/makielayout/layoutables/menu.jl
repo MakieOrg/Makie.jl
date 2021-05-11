@@ -190,8 +190,8 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
         rowgap!(contentgrid, 0)
 
-        mouseeventhandles[] = map(allrects[]) do r
-            addmouseevents!(scene, r.layoutobservables.computedbbox, priority=Int8(60))
+        mouseeventhandles[] = map(allrects[], alltexts[]) do r, t
+            addmouseevents!(scene, r.elements[:rect], t.elements[:text], priority=Int8(60))
         end
 
         # create mouse events for each menu entry rect / text combo
@@ -328,7 +328,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
     # close the menu if the user clicks somewhere else
-    onmousedownoutside(addmouseevents!(scene, priority=Int8(60))) do events
+    onmousedownoutside(addmouseevents!(scene, priority=Int8(61))) do events
         if is_open[]
             is_open[] = !is_open[]
         end
