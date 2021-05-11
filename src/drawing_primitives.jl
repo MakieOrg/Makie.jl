@@ -306,8 +306,8 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         filter!(gl_attributes) do (k, v)
             # These are liftkeys without model but with _glyphlayout
             !(k in (
-                :position, :space, :justification, :font, :_glyphlayout, :align, 
-                :textsize, :rotation, :lineheight, 
+                :position, :space, :justification, :font, :_glyphlayout, :align,
+                :textsize, :rotation, :lineheight,
             ))
         end
         gl_attributes[:color] = signals[1]
@@ -317,7 +317,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
         gl_attributes[:offset] = offset
         gl_attributes[:uv_offset_width] = uv_offset_width
         gl_attributes[:distancefield] = get_texture!(atlas)
-        
+
 
         robj = visualize((DISTANCEFIELD, positions), Style(:default), gl_attributes)
 
@@ -333,23 +333,23 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     return robj
 end
 
+xy_convert(x::AbstractVector) = el32convert(x)
+xy_convert(x) = Float32[extrema(x)...]
+
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
-        gl_attributes[:position_x] = map(x[1]) do v
-            if v isa Vector
-                Texture(el32convert(v), minfilter = :nearest)
-            else
-                l, r = extrema(v)
-                Texture(Float32[l, r], minfilter=:nearest)
-            end
+        t = AbstractPlotting.transform_func_obs(scene)
+        xpos = map(t, x[1]) do t, x
+            return first.(apply_transform.((t,), Point.(xy_convert(x), 0)))
         end
-        gl_attributes[:position_y] = map(x[2]) do v
-            if v isa Vector
-                Texture(el32convert(v), minfilter = :nearest)
-            else
-                l, r = extrema(v)
-                Texture(Float32[l, r], minfilter=:nearest)
-            end
+        ypos = map(t, x[2]) do t, y
+            return last.(apply_transform.((t,), Point.(0, xy_convert(y))))
+        end
+        gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
+        gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
+        # number of planes used to render the heatmap
+        gl_attributes[:instances] = map(xpos, ypos) do x, y
+            (length(x)-1) * (length(y)-1)
         end
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
