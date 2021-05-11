@@ -776,7 +776,7 @@ function _interpolated_getindex(xs, ys, img, mpos)
     z = ((r-i) * img[l, b] + (i-l) * img[r, b]) * (t-j) +
         ((r-i) * img[l, t] + (i-l) * img[r, t]) * (j-b)
 
-    # float, float, value
+    # float, float, value (i, j are no longer used)
     return i, j, z
 end
 function _pixelated_getindex(xs, ys, img, mpos)
@@ -790,11 +790,30 @@ function _pixelated_getindex(xs, ys, img, mpos)
     # int, int, value
     return i, j, img[i,j]
 end
+
+function _interpolated_getindex(xs::Vector, ys::Vector, img, mpos)
+    x, y = mpos
+    i, j, _ = _pixelated_getindex(xs, ys, img, mpos)
+    w = (xs[i+1] - xs[i]); h = (ys[j+1] - ys[j])
+    z = ((xs[i+1] - x) / w * img[i, j]   + (x - xs[i]) / w * img[i+1, j])   * (ys[j+1] - y) / h +
+        ((xs[i+1] - x) / w * img[i, j+1] + (x - xs[i]) / w * img[i+1, j+1]) * (y - ys[j]) / h
+    return i, j, z
+end
+function _pixelated_getindex(xs::Vector, ys::Vector, img, mpos)
+    x, y = mpos
+    i = max(1, something(findfirst(v -> v >= x, xs), length(xs))-1)
+    j = max(1, something(findfirst(v -> v >= y, ys), length(ys))-1)
+    return i, j, img[i, j]
+end
+
 function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer)
     x0, x1 = extrema(xs)
     y0, y1 = extrema(ys)
     nw, nh = ((x1 - x0), (y1 - y0)) ./ size(img)
     FRect2D(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
+end
+function _pixelated_image_bbox(xs::Vector, ys::Vector, img, i::Integer, j::Integer)
+    FRect2D(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
 end
 
 function show_data(@nospecialize(inspector::DataInspector, plot, idx, source = nothing))
