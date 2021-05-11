@@ -341,12 +341,15 @@ function _reassemble_menu(
     for (i, (mouseeventhandle, r, t)) in enumerate(zip(mouseeventhandles, allrects, alltexts))
         onmouseover(mouseeventhandle) do _
             r.visible[] || return false
+            (i == i_selected[]+1) && return false
             r.color = cell_color_hover[]
             return false
         end
 
         onmouseout(mouseeventhandle) do _
             r.visible[] || return false
+            # do nothing for selected items
+            (i == i_selected[]+1) && return false
             if i == 1
                 r.color = selection_cell_color_inactive[]
             else
