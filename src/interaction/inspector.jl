@@ -816,10 +816,9 @@ function _pixelated_image_bbox(xs::Vector, ys::Vector, img, i::Integer, j::Integ
     FRect2D(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
 end
 
-function show_data(@nospecialize(inspector::DataInspector, plot, idx, source = nothing))
+function show_data(inspector::DataInspector, plot, idx, source=nothing)
     return false
 end
-
 
 
 ################################################################################
