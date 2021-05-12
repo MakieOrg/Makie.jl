@@ -689,14 +689,14 @@ function show_data(inspector::DataInspector, plot::Surface, idx)
 end
 
 function show_data(inspector::DataInspector, plot::Heatmap, idx)
-    show_imagelike(inspector, plot, "H")
+    show_imagelike(inspector, plot, "H", true)
 end
 
 function show_data(inspector::DataInspector, plot::Image, idx)
-    show_imagelike(inspector, plot, "img")
+    show_imagelike(inspector, plot, "img", false)
 end
 
-function show_imagelike(inspector, plot, name)
+function show_imagelike(inspector, plot, name, edge_based)
     a = inspector.plot.attributes
     scene = parent_scene(plot)
     mpos = mouseposition(scene)
@@ -704,7 +704,7 @@ function show_imagelike(inspector, plot, name)
     i, j, z = if plot.interpolate[]
         _interpolated_getindex(plot[1][], plot[2][], plot[3][], mpos)
     else
-        _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos)
+        _pixelated_getindex(plot[1][], plot[2][], plot[3][], mpos, edge_based)
     end
 
     a._color[] = if z isa AbstractFloat
@@ -741,7 +741,7 @@ function show_imagelike(inspector, plot, name)
         end
         a._display_text[] = color2text(name, mpos[1], mpos[2], z)
     else
-        a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j)
+        a._bbox2D[] = _pixelated_image_bbox(plot[1][], plot[2][], plot[3][], i, j, edge_based)
         if inspector.selection != plot || !(inspector.temp_plots[1][1][] isa Rect2D)
             clear_temporary_plots!(inspector, plot)
             p = wireframe!(
@@ -779,7 +779,7 @@ function _interpolated_getindex(xs, ys, img, mpos)
     # float, float, value (i, j are no longer used)
     return i, j, z
 end
-function _pixelated_getindex(xs, ys, img, mpos)
+function _pixelated_getindex(xs, ys, img, mpos, edge_based)
     x0, x1 = extrema(xs)
     y0, y1 = extrema(ys)
     x, y = clamp.(mpos, (x0, y0), (x1, y1))
@@ -792,28 +792,40 @@ function _pixelated_getindex(xs, ys, img, mpos)
 end
 
 function _interpolated_getindex(xs::Vector, ys::Vector, img, mpos)
-    x, y = mpos
-    i, j, _ = _pixelated_getindex(xs, ys, img, mpos)
-    w = (xs[i+1] - xs[i]); h = (ys[j+1] - ys[j])
-    z = ((xs[i+1] - x) / w * img[i, j]   + (x - xs[i]) / w * img[i+1, j])   * (ys[j+1] - y) / h +
-        ((xs[i+1] - x) / w * img[i, j+1] + (x - xs[i]) / w * img[i+1, j+1]) * (y - ys[j]) / h
-    return i, j, z
+    # x, y = mpos
+    # i, j, _ = _pixelated_getindex(xs, ys, img, mpos, false)
+    # w = (xs[i+1] - xs[i]); h = (ys[j+1] - ys[j])
+    # z = ((xs[i+1] - x) / w * img[i, j]   + (x - xs[i]) / w * img[i+1, j])   * (ys[j+1] - y) / h +
+    #     ((xs[i+1] - x) / w * img[i, j+1] + (x - xs[i]) / w * img[i+1, j+1]) * (y - ys[j]) / h
+    # return i, j, z
+    _interpolated_getindex(minimum(xs)..maximum(xs), minimum(ys)..maximum(ys), img, mpos)
 end
-function _pixelated_getindex(xs::Vector, ys::Vector, img, mpos)
-    x, y = mpos
-    i = max(1, something(findfirst(v -> v >= x, xs), length(xs))-1)
-    j = max(1, something(findfirst(v -> v >= y, ys), length(ys))-1)
-    return i, j, img[i, j]
+function _pixelated_getindex(xs::Vector, ys::Vector, img, mpos, edge_based)
+    if edge_based
+        x, y = mpos
+        i = max(1, something(findfirst(v -> v >= x, xs), length(xs))-1)
+        j = max(1, something(findfirst(v -> v >= y, ys), length(ys))-1)
+        return i, j, img[i, j]
+    else
+        _pixelated_getindex(minimum(xs)..maximum(xs), minimum(ys)..maximum(ys), img, mpos, edge_based)
+    end
 end
 
-function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer)
+function _pixelated_image_bbox(xs, ys, img, i::Integer, j::Integer, edge_based)
     x0, x1 = extrema(xs)
     y0, y1 = extrema(ys)
     nw, nh = ((x1 - x0), (y1 - y0)) ./ size(img)
     FRect2D(x0 + nw * (i-1), y0 + nh * (j-1), nw, nh)
 end
-function _pixelated_image_bbox(xs::Vector, ys::Vector, img, i::Integer, j::Integer)
-    FRect2D(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
+function _pixelated_image_bbox(xs::Vector, ys::Vector, img, i::Integer, j::Integer, edge_based)
+    if edge_based
+        FRect2D(xs[i], ys[j], xs[i+1] - xs[i], ys[j+1] - ys[j])
+    else
+        _pixelated_image_bbox(
+            minimum(xs)..maximum(xs), minimum(ys)..maximum(ys),
+            img, i, j, edge_based
+        )
+    end
 end
 
 function show_data(inspector::DataInspector, plot, idx, source=nothing)
