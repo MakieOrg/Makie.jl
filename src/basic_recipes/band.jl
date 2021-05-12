@@ -1,8 +1,9 @@
 """
-band(x, ylower, yupper; kwargs...)
-band(lower, upper; kwargs...)
+    band(x, ylower, yupper; kwargs...)
+    band(lower, upper; kwargs...)
 
-Plots a band from `ylower` to `yupper` along `x`.
+Plots a band from `ylower` to `yupper` along `x`. The form `band(lower, upper)` plots a [ruled surface](https://en.wikipedia.org/wiki/Ruled_surface)
+between the points in `lower` and `upper`.
 
 ## Attributes
 $(ATTRIBUTES)
@@ -66,15 +67,15 @@ function fill_view(x, y1, y2, where::Nothing)
   function fill_view(x, y1, y2, bools::AbstractVector{<: Union{Integer, Bool}})
     view(x, bools), view(y1, bools), view(y2, bools)
   end
-  
+
   """
       fill_between!(x, y1, y2; where = nothing, scene = current_scene(), kw_args...)
-  
+
   fill the section between 2 lines with the condition `where`
   """
   function fill_between!(x, y1, y2; where = nothing, scene = current_scene(), kw_args...)
     xv, ylow, yhigh = fill_view(x, y1, y2, where)
     band!(scene, xv, ylow, yhigh; kw_args...)
   end
-  
+
   export fill_between!
