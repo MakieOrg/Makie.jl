@@ -191,7 +191,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
         show_axis = false,
-        visible = map_is_categorical,
+        visible = map_is_categorical, 
+        inspectable = false
     )
 
     decorations[:categorical_map] = rects
@@ -212,7 +213,8 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         continous_pixels,
         visible = @lift(!$map_is_categorical),
         show_axis = false,
-        interpolate = true,
+        interpolate = true, 
+        inspectable = false
     )
 
     decorations[:continuous_map] = cont_image
@@ -239,7 +241,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     highclip_tri_poly = poly!(topscene, highclip_tri, color = highclip_tri_color,
         strokecolor = :transparent,
-        visible = highclip_visible)
+        visible = highclip_visible, inspectable = false)
 
     decorations[:highclip] = highclip_tri_poly
 
@@ -266,7 +268,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     lowclip_tri_poly = poly!(topscene, lowclip_tri, color = lowclip_tri_color,
         strokecolor = :transparent,
-        visible = lowclip_visible)
+        visible = lowclip_visible, inspectable = false)
 
     decorations[:lowclip] = lowclip_tri_poly
 
@@ -297,7 +299,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    decorations[:spines] = lines!(topscene, borderpoints, linewidth = spinewidth, color = topspinecolor)
+    decorations[:spines] = lines!(topscene, borderpoints, linewidth = spinewidth, color = topspinecolor, inspectable = false)
 
     axispoints = lift(barbox, vertical, flipaxis) do scenearea,
             vertical, flipaxis

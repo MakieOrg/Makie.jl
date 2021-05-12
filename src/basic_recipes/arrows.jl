@@ -22,7 +22,7 @@ grid.
 $(ATTRIBUTES)
 """
 @recipe(Arrows, points, directions) do scene
-    theme = merge!(
+    attr = merge!(
         default_theme(scene),
         Attributes(
             arrowhead = automatic,
@@ -36,13 +36,14 @@ $(ATTRIBUTES)
             lengthscale = 1f0,
             colormap = :viridis,
             quality = 32,
+            inspectable = theme(scene, :inspectable)
         )
     )
-    theme[:fxaa] = automatic
-    theme[:linewidth] = automatic
+    attr[:fxaa] = automatic
+    attr[:linewidth] = automatic
     # connect arrow + linecolor by default
-    get!(theme, :arrowcolor, theme[:linecolor])
-    theme
+    get!(attr, :arrowcolor, attr[:linecolor])
+    attr
 end
 
 # For the matlab/matplotlib users
@@ -132,7 +133,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
         arrowhead, arrowsize, arrowcolor, quality,
         # passthrough
         lightposition, ambient, diffuse, specular, shininess,
-        fxaa, ssao, transparency, visible
+        fxaa, ssao, transparency, visible, inspectable
     )
 
     arrow_c = map((a, c)-> a === automatic ? c : a , arrowcolor, color)
@@ -156,8 +157,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot, headstart,
             color = line_c, colormap = colormap, linestyle = linestyle,
             linewidth = @lift($linewidth === automatic ? 1f0 : $linewidth),
-            fxaa = fxaa_bool,
-            transparency = transparency, visible = visible
+            fxaa = fxaa_bool, inspectable = inspectable,
+            transparency = transparency, visible = visible, 
         )
         scatter!(
             arrowplot,
@@ -166,7 +167,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             markersize = @lift($arrowsize === automatic ? 0.3 : $arrowsize),
             color = arrow_c, rotations = directions, strokewidth = 0.0,
             colormap = colormap,
-            fxaa = fxaa_bool,
+            fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
     else
@@ -195,7 +196,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             color = line_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
             lightposition = lightposition, ambient = ambient, diffuse = diffuse,
-            specular = specular, shininess = shininess,
+            specular = specular, shininess = shininess, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
         meshscatter!(
@@ -208,7 +209,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             color = arrow_c, colormap = colormap,
             fxaa = fxaa_bool, ssao = ssao,
             lightposition = lightposition, ambient = ambient, diffuse = diffuse,
-            specular = specular, shininess = shininess,
+            specular = specular, shininess = shininess, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
     end

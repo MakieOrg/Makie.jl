@@ -170,7 +170,8 @@ function plot!(p::StreamPlot)
         p,
         lift(x->x[3], data), color = lift(last, data), colormap = p.colormap, colorrange = p.colorrange,
         linestyle = p.linestyle,
-        linewidth = p.linewidth
+        linewidth = p.linewidth,
+        inspectable = p.inspectable
     )
     N = ndims(p.limits[])
     scatterfun(N)(
@@ -179,5 +180,6 @@ function plot!(p::StreamPlot)
         marker = @lift(arrow_head(N, $(p.arrow_head), $(p.quality))),
         color = lift(x-> x[4], data), rotations = lift(x-> x[2], data),
         colormap = p.colormap, colorrange = p.colorrange,
+        inspectable = p.inspectable
     )
 end

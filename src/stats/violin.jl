@@ -92,5 +92,6 @@ function plot!(plot::Violin)
         ),
         linewidth = plot[:medianlinewidth],
         visible = plot[:show_median],
+        inspectable = plot[:inspectable]
     )
 end

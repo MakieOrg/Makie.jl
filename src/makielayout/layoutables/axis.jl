@@ -74,7 +74,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     scene = Scene(topscene, scenearea, raw = true)
 
-    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true)
+    background = poly!(topscene, scenearea, color = backgroundcolor, strokewidth = 0, raw = true, inspectable = false)
     translate!(background, 0, 0, -100)
     decorations[:background] = background
 
@@ -88,7 +88,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     xgridnode = Node(Point2f0[])
     xgridlines = linesegments!(
         topscene, xgridnode, linewidth = xgridwidth, show_axis = false, visible = xgridvisible,
-        color = xgridcolor, linestyle = xgridstyle,
+        color = xgridcolor, linestyle = xgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xgridlines, 0, 0, -10)
@@ -97,7 +97,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     xminorgridnode = Node(Point2f0[])
     xminorgridlines = linesegments!(
         topscene, xminorgridnode, linewidth = xminorgridwidth, show_axis = false, visible = xminorgridvisible,
-        color = xminorgridcolor, linestyle = xminorgridstyle,
+        color = xminorgridcolor, linestyle = xminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(xminorgridlines, 0, 0, -10)
@@ -106,7 +106,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     ygridnode = Node(Point2f0[])
     ygridlines = linesegments!(
         topscene, ygridnode, linewidth = ygridwidth, show_axis = false, visible = ygridvisible,
-        color = ygridcolor, linestyle = ygridstyle,
+        color = ygridcolor, linestyle = ygridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(ygridlines, 0, 0, -10)
@@ -115,7 +115,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     yminorgridnode = Node(Point2f0[])
     yminorgridlines = linesegments!(
         topscene, yminorgridnode, linewidth = yminorgridwidth, show_axis = false, visible = yminorgridvisible,
-        color = yminorgridcolor, linestyle = yminorgridstyle,
+        color = yminorgridcolor, linestyle = yminorgridstyle, inspectable = false
     )
     # put gridlines behind the zero plane so they don't overlay plots
     translate!(yminorgridlines, 0, 0, -10)
@@ -249,11 +249,11 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     end
 
     xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = spinewidth,
-        visible = xoppositespinevisible, color = xoppositespinecolor)
+        visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false)
     decorations[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
     yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = spinewidth,
-        visible = yoppositespinevisible, color = yoppositespinecolor)
+        visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false)
     decorations[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
@@ -317,7 +317,8 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         font = titlefont,
         color = titlecolor,
         space = :data,
-        show_axis=false)
+        show_axis=false, 
+        inspectable = false)
     decorations[:title] = titlet
 
     function compute_protrusions(title, titlesize, titlegap, titlevisible, spinewidth,

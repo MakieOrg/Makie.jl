@@ -22,6 +22,7 @@ $(ATTRIBUTES)
         strokecolor = s_theme.strokecolor,
         strokewidth = s_theme.strokewidth,
         marker = s_theme.marker,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -33,6 +34,7 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         linewidth = p.linewidth,
         colormap = p.colormap,
         colorrange = p.colorrange,
+        inspectable = p.inspectable
     )
     scatter!(p, p[1:N]...;
         color = p.markercolor,
@@ -42,5 +44,6 @@ function plot!(p::Combined{scatterlines, <:NTuple{N, Any}}) where N
         markersize = p.markersize,
         colormap = p.markercolormap,
         colorrange = p.markercolorrange,
+        inspectable = p.inspectable
     )
 end

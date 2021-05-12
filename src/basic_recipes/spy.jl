@@ -1,4 +1,3 @@
-
 """
 spy(x::Range, y::Range, z::AbstractSparseArray)
 
@@ -22,6 +21,7 @@ $(ATTRIBUTES)
         colorrange = automatic,
         framecolor = :black,
         framesize = 1,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -74,8 +74,9 @@ function plot!(p::Spy)
     scatter!(
         p,
         lift(first, xycol), color = lift(last, xycol),
-        marker = marker, markersize = markersize, colorrange = p.colorrange
+        marker = marker, markersize = markersize, colorrange = p.colorrange,
+        inspectable = p.inspectable
     )
 
-    lines!(p, rect, color = p.framecolor, linewidth = p.framesize)
+    lines!(p, rect, color = p.framecolor, linewidth = p.framesize, inspectable = p.inspectable)
 end
