@@ -225,8 +225,8 @@ end
         text_padding = Vec4f0(5, 5, 3, 3), # LRBT
         text_align = (:left, :bottom),
         textcolor = :black, 
-        textsize = 20, 
-        font = "Dejavu Sans",
+        textsize = 18, 
+        font = theme(scene, :font),
         _display_text = " ",
         _text_position = Point2f0(0),
 
@@ -913,7 +913,7 @@ function show_data(inspector::DataInspector, plot::Arrows, idx, source)
     v = vec2string(plot[2][][idx])
 
     a._text_position[] = mpos
-    a._display_text[] = " Position:\n  $p\n Direction\n  $v"
+    a._display_text[] = "Position:\n  $p\nDirection\n  $v"
     a._bbox2D[] = FRect2D(proj_pos .- Vec2f0(5), Vec2f0(10))
     a._bbox_visible[] = false
     a._px_bbox_visible[] = true
