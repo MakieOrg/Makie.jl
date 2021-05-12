@@ -23,6 +23,7 @@ $(ATTRIBUTES)
         width = automatic,
         direction = :y,
         visible = theme(scene, :visible),
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -105,7 +106,8 @@ function AbstractPlotting.plot!(p::BarPlot)
 
     poly!(
         p, bars, color = p.color, colormap = p.colormap, colorrange = p.colorrange,
-        strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible
+        strokewidth = p.strokewidth, strokecolor = p.strokecolor, visible = p.visible,
+        inspectable = p.inspectable
     )
 end
 

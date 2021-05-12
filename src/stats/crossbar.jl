@@ -43,6 +43,7 @@ It is most commonly used as part of the `boxplot`.
     show_midline=true,
     midlinecolor=automatic,
     midlinewidth=1.0,
+    inspectable = theme(scene, :inspectable)
 )
     t
 end
@@ -108,6 +109,7 @@ function AbstractPlotting.plot!(plot::CrossBar)
         colormap=plot.colormap,
         strokecolor=plot.strokecolor,
         strokewidth=plot.strokewidth,
+        inspectable = plot[:inspectable]
     )
     linesegments!(
         plot,
@@ -118,6 +120,7 @@ function AbstractPlotting.plot!(plot::CrossBar)
         ),
         linewidth=plot[:midlinewidth],
         visible=plot[:show_midline],
+        inspectable = plot[:inspectable],
         midlines,
     )
 end

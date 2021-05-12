@@ -35,6 +35,7 @@ $(ATTRIBUTES)
         linestyle = nothing,
         overdraw = false,
         transparency = false,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -51,12 +52,14 @@ function plot!(plot::Poly{<: Tuple{Union{GeometryBasics.Mesh, GeometryPrimitive}
     mesh!(
         plot, plot[1],
         color = plot[:color], colormap = plot[:colormap], colorrange = plot[:colorrange],
-        shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw]
+        shading = plot[:shading], visible = plot[:visible], overdraw = plot[:overdraw],
+        inspectable = plot[:inspectable]
     )
     wireframe!(
         plot, plot[1],
         color = plot[:strokecolor], linestyle = plot[:linestyle],
-        linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw]
+        linewidth = plot[:strokewidth], visible = plot[:visible], overdraw = plot[:overdraw],
+        inspectable = plot[:inspectable]
     )
 end
 
@@ -117,21 +120,25 @@ function plot!(plot::Poly{<: Tuple{<: Union{Polygon, AbstractVector{<: PolyEleme
         colorrange = plot.colorrange,
         overdraw = plot.overdraw,
         fxaa = plot.fxaa,
-        transparency = plot.transparency
+        transparency = plot.transparency,
+        inspectable = plot.inspectable
     )
     outline = lift(to_line_segments, geometries)
     lines!(
         plot, outline, visible = plot.visible,
         color = plot.strokecolor, linestyle = plot.linestyle,
         linewidth = plot.strokewidth,
-        overdraw = plot.overdraw, transparency = plot.transparency
+        overdraw = plot.overdraw, transparency = plot.transparency,
+        inspectable = plot.inspectable
     )
 end
 
 function plot!(plot::Mesh{<: Tuple{<: AbstractVector{P}}}) where P <: Union{AbstractMesh, Polygon}
     meshes = plot[1]
     color_node = plot.color
-    attributes = Attributes(visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa)
+    attributes = Attributes(
+        visible = plot.visible, shading = plot.shading, fxaa=plot.fxaa, inspectable = plot.inspectable
+    )
 
     attributes[:colormap] = get(plot, :colormap, nothing)
     attributes[:colorrange] = get(plot, :colorrange, nothing)

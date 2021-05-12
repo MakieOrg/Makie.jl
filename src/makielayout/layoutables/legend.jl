@@ -40,7 +40,7 @@ function layoutable(::Type{Legend},
     decorations[:frame] = poly!(scene,
         @lift(enlarge($legendrect, repeat([-$framewidth/2], 4)...)),
         color = bgcolor, strokewidth = framewidth, visible = framevisible,
-        strokecolor = framecolor, raw = true)
+        strokecolor = framecolor, raw = true, inspectable = false)
 
     # the grid containing all content
     grid = GridLayout(bbox = legendrect, alignmode = Outside(padding[]...))
@@ -206,7 +206,7 @@ function layoutable(::Type{Legend},
                 push!(titletexts, nothing)
             else
                 push!(titletexts, Label(scene, text = title, font = titlefont, color = titlecolor,
-                    textsize = titlesize, halign = titlehalign, valign = titlevalign))
+                    textsize = titlesize, halign = titlehalign, valign = titlevalign, inspectable = false))
             end
 
             etexts = []
@@ -266,7 +266,7 @@ function legendelement_plots!(scene, element::MarkerElement, bbox::Node{FRect2D}
     scat = scatter!(scene, points, color = attrs.color, marker = attrs.marker,
         markersize = attrs.markersize,
         strokewidth = attrs.markerstrokewidth,
-        strokecolor = attrs.strokecolor, raw = true)
+        strokecolor = attrs.strokecolor, raw = true, inspectable = false)
     [scat]
 end
 
@@ -278,7 +278,7 @@ function legendelement_plots!(scene, element::LineElement, bbox::Node{FRect2D}, 
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     lin = lines!(scene, points, linewidth = attrs.linewidth, color = attrs.color,
         linestyle = attrs.linestyle,
-        raw = true)
+        raw = true, inspectable = false)
     [lin]
 end
 
@@ -290,7 +290,7 @@ function legendelement_plots!(scene, element::PolyElement, bbox::Node{FRect2D}, 
     points = @lift(fractionpoint.(Ref($bbox), $fracpoints))
     pol = poly!(scene, points, strokewidth = attrs.polystrokewidth, color = attrs.color,
         strokecolor = attrs.strokecolor,
-        raw = true)
+        raw = true, inspectable = false)
     [pol]
 end
 

@@ -61,6 +61,7 @@ The boxplot has 3 components:
         outliercolor = automatic,
         outlierstrokecolor = scattertheme.strokecolor,
         outlierstrokewidth = scattertheme.strokewidth,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -180,12 +181,14 @@ function AbstractPlotting.plot!(plot::BoxPlot)
         strokecolor = plot[:outlierstrokecolor],
         strokewidth = plot[:outlierstrokewidth],
         outliers,
+        inspectable = plot[:inspectable]
     )
     linesegments!(
         plot,
         color = plot[:whiskercolor],
         linewidth = plot[:whiskerlinewidth],
         t_segments,
+        inspectable = plot[:inspectable]
     )
     crossbar!(
         plot,
@@ -203,6 +206,7 @@ function AbstractPlotting.plot!(plot::BoxPlot)
         notchmin = notchmin,
         notchmax = notchmax,
         notchwidth = plot[:notchwidth],
+        inspectable = plot[:inspectable],
         centers,
         medians,
         boxmin,

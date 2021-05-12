@@ -31,6 +31,7 @@ end
 
 """
     mouse_selection(scene::Scene)
+
 Returns the plot that is under the current mouse position
 """
 function mouse_selection(scene::SceneLike)
@@ -64,8 +65,11 @@ function flatten_plots(array, plots = AbstractPlot[])
 end
 
 """
-    mouse_in_scene(scene::Scene)
-returns the mouseposition relative to `scene`
+    mouse_in_scene(scene::Scene[, priority = 0])
+
+Returns a new node that is true whenever the cursor is inside the given scene.
+
+See also: [`is_mouseinside`](@ref)
 """
 function mouse_in_scene(scene::SceneLike; priority = Int8(0))
     p = rootparent(scene)
@@ -78,7 +82,9 @@ end
 
 
 """
-Return the plot under pixel position x y
+    pick(scene, x, y)
+
+Returns the plot under pixel position `(x, y)`.
 """
 function pick(scene::SceneLike, x::Number, y::Number)
     return pick(scene, Vec{2, Float64}(x, y))
@@ -134,7 +140,7 @@ end
 """
     pick_sorted(scene::Scene, xy::VecLike, range)
 
-Return all `(plot, index)`` pairs in a `(xy .- range, xy .+ range)`` region 
+Return all `(plot, index)` pairs in a `(xy .- range, xy .+ range)` region 
 sorted by distance to `xy`.
 """
 function pick_sorted(scene::SceneLike, xy, range)
@@ -187,15 +193,18 @@ function pick(scene::SceneLike, rect::IRect2D)
 end
 
 """
-Normalizes mouse position relative to the screen rectangle
+    screen_relative(scene, pos)
+
+Normalizes mouse position `pos` relative to the screen rectangle.
 """
 function screen_relative(scene::Scene, mpos)
     return Point2f0(mpos) .- Point2f0(minimum(pixelarea(scene)[]))
 end
 
 """
-    mouseposition(scene = hovered_scene()) -> pos
-Return the current position of the mouse `pos` in _data points_ of the
+    mouseposition(scene = hovered_scene())
+
+Return the current position of the mouse in _data coordinates_ of the
 given `scene`.
 
 By default uses the `scene` that the mouse is currently hovering over.
@@ -213,7 +222,8 @@ end
 
 """
     hovered_scene()
-Return the `scene` that the mouse is currently hovering over.
+
+Returns the `scene` that the mouse is currently hovering over.
 
 Properly identifies the scene for a plot with multiple sub-plots.
 """
@@ -222,6 +232,7 @@ hovered_scene() = error("hoevered_scene is not implemented yet.")
 
 """
     select_rectangle(scene; kwargs...) -> rect
+
 Interactively select a rectangle on a 2D `scene` by clicking the left mouse button,
 dragging and then un-clicking. The function returns an **observable** `rect` whose
 value corresponds to the selected rectangle on the scene. In addition the function
@@ -286,6 +297,7 @@ end
 
 """
     select_line(scene; kwargs...) -> line
+
 Interactively select a line (typically an arrow) on a 2D `scene` by clicking the left mouse button,
 dragging and then un-clicking. Return an **observable** whose value corresponds
 to the selected line on the scene. In addition the function
@@ -347,6 +359,7 @@ end
 
 """
     select_point(scene; kwargs...) -> point
+    
 Interactively select a point on a 2D `scene` by clicking the left mouse button,
 dragging and then un-clicking. Return an **observable** whose value corresponds
 to the selected point on the scene. In addition the function

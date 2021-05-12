@@ -105,10 +105,12 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         [ci, ci]
     end
 
-    endbuttons = scatter!(topscene, endpoints, color = endbuttoncolors, markersize = linewidth, strokewidth = 0, raw = true)
+    endbuttons = scatter!(topscene, endpoints, color = endbuttoncolors, 
+        markersize = linewidth, strokewidth = 0, raw = true, inspectable = false)
     decorations[:endbuttons] = endbuttons
 
-    linesegs = linesegments!(topscene, linepoints, color = linecolors, linewidth = linewidth, raw = true)
+    linesegs = linesegments!(topscene, linepoints, color = linecolors, 
+        linewidth = linewidth, raw = true, inspectable = false)
     decorations[:linesegments] = linesegs
 
     state = Node(:none)
@@ -124,7 +126,8 @@ function layoutable(::Type{IntervalSlider}, fig_or_scene; bbox = nothing, kwargs
         end
     end
     buttonsizes = @lift($linewidth .* $button_magnifications)
-    buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0, markersize = buttonsizes, raw = true)
+    buttons = scatter!(topscene, middlepoints, color = color_active, strokewidth = 0, 
+        markersize = buttonsizes, raw = true, inspectable = false)
     decorations[:buttons] = buttons
 
     mouseevents = addmouseevents!(topscene, layoutobservables.computedbbox)

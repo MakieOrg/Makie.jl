@@ -348,7 +348,12 @@ makedocs(
             "Basic Tutorial" => "basic-tutorial.md",
             "Layout Tutorial" => "makielayout/tutorial.md",
             "animation.md",
-            "interaction.md",
+            "Interaction" => [
+                "interaction/nodes.md",
+                "interaction/events.md",
+                "interaction/inspector.md"
+            ],
+            # "interaction.md",
             "Plotting Functions" =>
                 joinpath.(
                     "plotting_functions",

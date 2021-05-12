@@ -44,6 +44,7 @@ $(ATTRIBUTES)
         direction = :x,
         boundary = automatic,
         bandwidth = automatic,
+        inspectable = theme(scene, :inspectable)
     )
 end
 
@@ -106,8 +107,8 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     end
 
     band!(plot, lower, upper, color = colorobs, colormap = plot.colormap,
-        colorrange = plot.colorrange)
+        colorrange = plot.colorrange, inspectable = plot.inspectable)
     l = lines!(plot, linepoints, color = plot.strokecolor,
-        linewidth = plot.strokewidth)
+        linewidth = plot.strokewidth, inspectable = plot.inspectable)
     plot
 end

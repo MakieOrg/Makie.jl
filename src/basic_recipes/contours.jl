@@ -18,7 +18,7 @@ $(ATTRIBUTES)
         levels = 5,
         linewidth = 1.0,
         alpha = 1.0,
-        fillrange = false,
+        fillrange = false
     )
 end
 
@@ -106,7 +106,7 @@ function plot!(plot::Contour{<: Tuple{X, Y, Z, Vol}}) where {X, Y, Z, Vol}
         plot, x, y, z, volume, colormap = cmap, colorrange = cliprange, algorithm = 7,
         transparency = plot.transparency, overdraw = plot.overdraw,
         ambient = plot.ambient, diffuse = plot.diffuse, lightposition = plot.lightposition,
-        shininess = plot.shininess, specular = plot.specular
+        shininess = plot.shininess, specular = plot.specular, inspectable = plot.inspectable
     )
 end
 
@@ -174,7 +174,8 @@ function plot!(plot::T) where T <: Union{Contour, Contour3d}
         end
         lines!(
             plot, lift(first, result);
-            color = lift(last, result), linewidth = plot[:linewidth]
+            color = lift(last, result), linewidth = plot[:linewidth],
+            inspectable = plot[:inspectable]
         )
     end
     plot
