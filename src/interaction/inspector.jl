@@ -561,6 +561,13 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
     )
 
     if inspector.selection != plot
+        eyeposition = cameracontrols(scene).eyeposition[]
+        lookat = cameracontrols(scene).lookat[]
+        upvector = cameracontrols(scene).upvector[]
+
+        # To avoid putting a bbox outside the plots bbox
+        a._bbox3D[] = boundingbox(plot)
+
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(
             scene, a._bbox3D, model = a._model, color = a.indicator_color, 
@@ -568,6 +575,9 @@ function show_data(inspector::DataInspector, plot::MeshScatter, idx)
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
+
+        # Restore camera
+        update_cam!(scene, eyeposition, lookat, upvector)
     end
 
     a._display_text[] = position2string(plot[1][][idx])
@@ -611,7 +621,13 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
     proj_pos = Point2f0(mouseposition_px(inspector.root))
     update_tooltip_alignment!(inspector, proj_pos)
 
+    a._bbox3D[] = bbox
+
     if inspector.selection != plot
+        eyeposition = cameracontrols(scene).eyeposition[]
+        lookat = cameracontrols(scene).lookat[]
+        upvector = cameracontrols(scene).upvector[]
+
         clear_temporary_plots!(inspector, plot)
         p = wireframe!(
             scene, a._bbox3D, color = a.indicator_color, 
@@ -619,11 +635,13 @@ function show_data(inspector::DataInspector, plot::Mesh, idx)
             visible = a._bbox_visible, show_axis = false, inspectable = false
         )
         push!(inspector.temp_plots, p)
+
+        # Restore camera
+        update_cam!(scene, eyeposition, lookat, upvector)
     end
 
     a._text_position[] = proj_pos
     a._display_text[] = bbox2string(bbox)
-    a._bbox3D[] = bbox
     a._px_bbox_visible[] = false
     a._bbox_visible[] = true
     a._visible[] = true
