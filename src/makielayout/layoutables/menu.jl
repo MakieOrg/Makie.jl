@@ -132,6 +132,7 @@ function layoutable(::Type{Menu}, fig_or_scene; bbox = nothing, kwargs...)
 
 
     scene = Scene(topscene, scenearea, raw = true, camera = campixel!)
+    translate!(scene, 0, 0, 21)
 
     contentgrid = GridLayout(
         bbox = lift(x -> FRect2D(AbstractPlotting.zero_origin(x)), scenearea),
@@ -321,9 +322,6 @@ function _reassemble_menu(
             textsize = textsize, color = textcolor,
             padding = textpadding, visible = is_open
         )
-
-        translate!(allrects[i+1].elements[:rect], 0, 0, 10)
-        translate!(alltexts[i+1].elements[:text], 0, 0, 10)
     end
 
 
