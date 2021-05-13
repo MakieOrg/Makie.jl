@@ -161,7 +161,7 @@ function Base.getproperty(e::Events, field::Symbol)
     if field == :mousebuttons
         try
             error()
-        catch e
+        catch ex
             bt = catch_backtrace()
             @warn(
                 "`events.mousebuttons` is deprecated. Use `events.mousebutton` to " *
@@ -179,7 +179,7 @@ function Base.getproperty(e::Events, field::Symbol)
     elseif field == :keyboardbuttons
         try
             error()
-        catch e
+        catch ex
             bt = catch_backtrace()
             @warn(
                 "`events.keyboardbuttons` is deprecated. Use " *
@@ -197,7 +197,7 @@ function Base.getproperty(e::Events, field::Symbol)
     elseif field == :mousedrag
         try
             error()
-        catch e
+        catch ex
             bt = catch_backtrace()
             @warn(
                 "`events.mousedrag` is deprecated. Use `events.mousebutton` or a " *
