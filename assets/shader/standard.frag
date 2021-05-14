@@ -28,6 +28,7 @@ vec4 get_color(Nothing image, vec2 uv, Nothing color_range, Nothing color_map, N
 vec4 get_color(Nothing color, vec2 uv, vec2 color_range, sampler1D color_map, Nothing matcap){
     return o_color;
 }
+
 vec4 get_color(sampler2D color, vec2 uv, vec2 color_range, sampler1D color_map, Nothing matcap){
     return o_color;
 }

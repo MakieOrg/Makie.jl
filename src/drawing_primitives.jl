@@ -393,47 +393,54 @@ end
 convert_mesh_color(c::AbstractArray{<: Number}, cmap, crange) = vec2color(c, cmap, crange)
 convert_mesh_color(c, cmap, crange) = c
 
+function update_positions(mesh::GeometryBasics.Mesh, positions)
+    points = coordinates(mesh)
+    attr = GeometryBasics.attributes(points)
+    delete!(attr, :position) # position == metafree(points)
+    return GeometryBasics.Mesh(meta(positions; attr...), faces(mesh))
+end
+
 function draw_atomic(screen::GLScreen, scene::Scene, meshplot::Mesh)
     robj = cached_robj!(screen, scene, meshplot) do gl_attributes
         # signals not supported for shading yet
         gl_attributes[:shading] = to_value(pop!(gl_attributes, :shading))
         color = pop!(gl_attributes, :color)
-        cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
-        crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
+        # cmap = get(gl_attributes, :color_map, Node(nothing)); delete!(gl_attributes, :color_map)
+        # crange = get(gl_attributes, :color_norm, Node(nothing)); delete!(gl_attributes, :color_norm)
         mesh = meshplot[1]
 
         if to_value(color) isa Colorant
             gl_attributes[:vertex_color] = color
+            delete!(gl_attributes, :color_map)
+            delete!(gl_attributes, :color_norm)
         elseif to_value(color) isa AbstractPlotting.AbstractPattern
             img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
             gl_attributes[:image] = ShaderAbstractions.Sampler(img, x_repeat=:repeat, minfilter=:nearest)
             haskey(gl_attributes, :fetch_pixel) || (gl_attributes[:fetch_pixel] = true)
         elseif to_value(color) isa AbstractMatrix{<:Colorant}
             gl_attributes[:image] = color
-        elseif to_value(color) isa AbstractVector{<: Number}
-            mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
-                color_sampler = AbstractPlotting.sampler(cmap, color, crange)
-                return GeometryBasics.pointmeta(mesh, color=color_sampler)
-            end
+            delete!(gl_attributes, :color_map)
+            delete!(gl_attributes, :color_norm)
         elseif to_value(color) isa AbstractMatrix{<: Number}
+            cmap = pop!(gl_attributes, :color_map)
+            crange = pop!(gl_attributes, :color_norm)
             mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
                 color_sampler = convert_mesh_color(color, cmap, crange)
                 mesh, uv = GeometryBasics.pop_pointmeta(mesh, :uv)
                 uv_sampler = AbstractPlotting.sampler(color_sampler, uv)
                 return GeometryBasics.pointmeta(mesh, color=uv_sampler)
             end
-        elseif to_value(color) isa AbstractVector{<: Colorant}
-            mesh = lift(mesh, color, cmap, crange) do mesh, color, cmap, crange
-                return GeometryBasics.pointmeta(mesh, color=color)
+        elseif to_value(color) isa AbstractVector{<: Union{Number, Colorant}}
+            mesh = lift(mesh, color) do mesh, color
+                return GeometryBasics.pointmeta(mesh, color=el32convert(color))
             end
         end
 
-        map(mesh) do mesh
-            func = to_value(transform_func_obs(meshplot))
+        mesh = map(mesh, transform_func_obs(meshplot)) do mesh, func
             if func ∉ (identity, (identity, identity), (identity, identity, identity))
-                mesh.position .= apply_transform.(Ref(func), mesh.position)
+                return update_positions(mesh, apply_transform.(Ref(func), mesh.position))
             end
-            return
+            return mesh
         end
         visualize(mesh, Style(:default), gl_attributes)
     end
