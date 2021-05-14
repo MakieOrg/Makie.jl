@@ -45,6 +45,8 @@ jobs:
           julia --project=docs -e
           'using Pkg; Pkg.develop(PackageSpec(path=pwd())); 
            Pkg.add(url = "https://github.com/JuliaDocs/Documenter.jl", rev = "master");
+           Pkg.add(url = "https://github.com/JuliaPlots/CairoMakie.jl", rev = "master");
+           Pkg.add(url = "https://github.com/JuliaPlots/GLMakie.jl", rev = "master");
            Pkg.instantiate()'
       - name: Build and deploy
         env:
