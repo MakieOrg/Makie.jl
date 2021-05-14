@@ -79,7 +79,7 @@ function line_visualization(position::Union{VectorTypes{T}, MatTypes{T}}, data::
         # Duplicate the vertex indices on the ends of the line, as our geometry
         # shader in `layout(lines_adjacency)` mode requires each rendered
         # segment to have neighbouring vertices.
-        indices             = const_lift((p)->[1; 1:length(p); length(p)], p_vec) => to_index_buffer
+        indices             = const_lift((p)-> isempty(p) ? Cuint[] : [1; 1:length(p); length(p)], p_vec) => to_index_buffer
         shader              = GLVisualizeShader("fragment_output.frag", "util.vert", "lines.vert", "lines.geom", "lines.frag")
         gl_primitive        = GL_LINE_STRIP_ADJACENCY
         valid_vertex        = const_lift(p_vec) do pv
