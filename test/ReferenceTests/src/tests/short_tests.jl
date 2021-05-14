@@ -117,3 +117,38 @@ end
         colormap=:Spectral
     )
 end
+
+@cell "heatmaps & surface" begin
+    data =
+        hcat(LinRange(2, 3, 4), LinRange(2, 2.5, 4), LinRange(2.5, 3, 4), [1, NaN, NaN, 5])
+
+    fig = Figure()
+    heatmap(
+        fig[1, 1],
+        data,
+        colorrange = (2, 3),
+        highclip = :red,
+        lowclip = :black,
+        nan_color = (:green, 0.5),
+    )
+    surface(
+        fig[1, 2],
+        zeros(size(data)),
+        color = data,
+        colorrange = (2, 3),
+        highclip = :red,
+        lowclip = :black,
+        nan_color = (:green, 0.5),
+        shading = false,
+    )
+    surface!(
+        Axis(fig[2, 2]),
+        data,
+        colorrange = (2, 3),
+        highclip = :red,
+        lowclip = :black,
+        nan_color = (:green, 0.5),
+        shading = false,
+    )
+    fig
+end
