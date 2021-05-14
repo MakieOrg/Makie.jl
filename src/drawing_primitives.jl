@@ -333,17 +333,20 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Text)
     return robj
 end
 
-xy_convert(x::AbstractVector) = el32convert(x)
-xy_convert(x) = Float32[extrema(x)...]
+xy_convert(x::AbstractVector, n) = el32convert(x)
+xy_convert(x, n) = Float32[LinRange(extrema(x)..., n + 1);]
 
 function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
     robj = cached_robj!(screen, scene, x) do gl_attributes
         t = AbstractPlotting.transform_func_obs(scene)
+        mat = x[3]
         xpos = map(t, x[1]) do t, x
-            return first.(apply_transform.((t,), Point.(xy_convert(x), 0)))
+            n = size(mat[], 1)
+            return first.(apply_transform.((t,), Point.(xy_convert(x, n), 0)))
         end
         ypos = map(t, x[2]) do t, y
-            return last.(apply_transform.((t,), Point.(0, xy_convert(y))))
+            n = size(mat[], 1)
+            return last.(apply_transform.((t,), Point.(0, xy_convert(y, n))))
         end
         gl_attributes[:position_x] = Texture(xpos, minfilter = :nearest)
         gl_attributes[:position_y] = Texture(ypos, minfilter = :nearest)
@@ -353,10 +356,10 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Heatmap)
         end
         interp = to_value(pop!(gl_attributes, :interpolate))
         interp = interp ? :linear : :nearest
-        if !(to_value(x[3]) isa ShaderAbstractions.Sampler)
-            tex = Texture(el32convert(x[3]), minfilter = interp)
+        if !(to_value(mat) isa ShaderAbstractions.Sampler)
+            tex = Texture(el32convert(mat), minfilter = interp)
         else
-            tex = to_value(x[3])
+            tex = to_value(mat)
         end
         pop!(gl_attributes, :color)
         gl_attributes[:stroke_width] = pop!(gl_attributes, :thickness)
