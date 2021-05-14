@@ -139,8 +139,8 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
     arrow_c = map((a, c)-> a === automatic ? c : a , arrowcolor, color)
     line_c = map((a, c)-> a === automatic ? c : a , linecolor, color)
 
-    fxaa_bool = @lift($fxaa == automatic ? false : $fxaa)
     if N == 2
+        fxaa_bool = @lift($fxaa == automatic ? false : $fxaa)
         headstart = lift(points, directions, normalize, align, lengthscale) do points, dirs, n, align, s
             map(points, dirs) do p1, dir
                 dir = n ? StaticArrays.normalize(dir) : dir
@@ -171,6 +171,7 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             transparency = transparency, visible = visible
         )
     else
+        fxaa_bool = @lift($fxaa == automatic ? true : $fxaa)
         start = lift(points, directions, align, lengthscale) do points, dirs, align, s
             map(points, dirs) do p, dir
                 if align in (:head, :lineend, :tailend, :headstart, :center)
