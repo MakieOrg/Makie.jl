@@ -446,11 +446,7 @@ function draw_atomic(screen::GLScreen, scene::Scene, x::Surface)
         # signals not supported for shading yet
         # We automatically insert x[3] into the color channel, so if it's equal we don't need to do anything
         if isa(to_value(color), AbstractMatrix{<: Number}) && to_value(color) !== to_value(x[3])
-            crange = pop!(gl_attributes, :color_norm)
-            cmap = pop!(gl_attributes, :color_map)
-            img = lift(color, cmap, crange) do img, cmap, norm
-                AbstractPlotting.interpolated_getindex.((cmap,), img, (norm,))
-            end
+            img = el32convert(color)
         elseif to_value(color) isa AbstractPlotting.AbstractPattern
             pattern_img = lift(x -> el32convert(AbstractPlotting.to_image(x)), color)
             img = ShaderAbstractions.Sampler(pattern_img, x_repeat=:repeat, minfilter=:nearest)

@@ -17,34 +17,37 @@ in vec4 o_color;
 in vec2 o_uv;
 flat in uvec2 o_id;
 
-{{image_type}} image;
 {{matcap_type}} matcap;
-{{color_range_type}} color_range;
+{{image_type}} image;
+{{color_map_type}} color_map;
+{{color_norm_type}} color_norm;
 
-vec4 get_color(Nothing image, vec2 uv, Nothing color_range, Nothing matcap){
+vec4 get_color(Nothing image, vec2 uv, Nothing color_range, Nothing color_map, Nothing matcap){
+    return o_color;
+}
+vec4 get_color(Nothing color, vec2 uv, vec2 color_range, sampler1D color_map, Nothing matcap){
+    return o_color;
+}
+vec4 get_color(sampler2D color, vec2 uv, vec2 color_range, sampler1D color_map, Nothing matcap){
     return o_color;
 }
 
-vec4 get_color(sampler2D color, vec2 uv, Nothing color_range, Nothing matcap){
+vec4 get_color(sampler2D color, vec2 uv, Nothing color_range, Nothing color_map, Nothing matcap){
     return texture(color, uv);
-}
-
-vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, Nothing matcap){
-    float value = (uv.y - color_range.x) / (color_range.y - color_range.x);
-    return texture(color, value);
 }
 
 vec4 matcap_color(sampler2D matcap){
     vec2 muv = o_normal.xy * 0.5 + vec2(0.5, 0.5);
     return texture(matcap, vec2(1.0-muv.y, muv.x));
 }
-vec4 get_color(Nothing image, vec2 uv, Nothing color_range, sampler2D matcap){
+
+vec4 get_color(Nothing image, vec2 uv, Nothing color_range, Nothing color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
-vec4 get_color(sampler2D color, vec2 uv, Nothing color_range, sampler2D matcap){
+vec4 get_color(sampler2D color, vec2 uv, Nothing color_range, Nothing color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
-vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, sampler2D matcap){
+vec4 get_color(sampler1D color, vec2 uv, vec2 color_range, sampler1D color_map, sampler2D matcap){
     return matcap_color(matcap);
 }
 
@@ -63,6 +66,7 @@ vec4 get_pattern_color(sampler2D color){
     vec2 pos = gl_FragCoord.xy * uv_scale;
     return texelFetch(color, ivec2(mod(pos.x, size.x), mod(pos.y, size.y)), 0);
 }
+
 // Needs to exist for opengl to be happy
 vec4 get_pattern_color(Nothing color){return vec4(1,0,1,1);}
 
@@ -92,7 +96,7 @@ void main(){
     if (fetch_pixel){
         color = get_pattern_color(image);
     }else{
-        color = get_color(image, o_uv, color_range, matcap);
+        color = get_color(image, o_uv, color_norm, color_map, matcap);
     }
     {{light_calc}}
     write2framebuffer(color, o_id);

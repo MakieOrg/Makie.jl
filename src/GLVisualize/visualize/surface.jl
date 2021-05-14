@@ -77,6 +77,7 @@ function native_triangle_mesh(mesh)
 end
 
 function surface(main, s::Style{:surface}, data::Dict)
+
     @gen_defaults! data begin
         primitive = Rect2D(0f0,0f0,1f0,1f0) => native_triangle_mesh
         scale = nothing
@@ -84,15 +85,7 @@ function surface(main, s::Style{:surface}, data::Dict)
         position_x = nothing => Texture
         position_y = nothing => Texture
         position_z = nothing => Texture
-        wireframe = false
-        glow_color = RGBA{Float32}(0,0,0,0) => GLBuffer
-        stroke_color = RGBA{Float32}(0,0,0,1) => GLBuffer
-        stroke_width = wireframe ? 0.03f0 : 0f0
-        glow_width = 0f0
-        uv_offset_width = Vec4f0(0) => GLBuffer
-        shape = RECTANGLE
         image = nothing => Texture
-        distancefield = nothing => Texture
         shading = true
         normal = shading
         invert_normals = false
@@ -104,11 +97,16 @@ function surface(main, s::Style{:surface}, data::Dict)
         color_norm = nothing
         fetch_pixel = false
         matcap = nothing => Texture
+
+        nan_color = RGBAf0(1, 0, 0, 1)
+        highclip = RGBAf0(0, 0, 0, 0)
+        lowclip = RGBAf0(0, 0, 0, 0)
+
         uv_scale = Vec2f0(1)
         instances = const_lift(x->(size(x,1)-1) * (size(x,2)-1), main) => "number of planes used to render the surface"
         shader = GLVisualizeShader(
             "fragment_output.frag", "util.vert", "surface.vert",
-            to_value(wireframe) ? "distance_shape.frag" : "standard.frag",
+            "standard.frag",
             view = Dict(
                 "position_calc" => position_calc(position, position_x, position_y, position_z, Texture),
                 "normal_calc" => normal_calc(normal, to_value(invert_normals)),
@@ -116,8 +114,8 @@ function surface(main, s::Style{:surface}, data::Dict)
             )
         )
     end
+    return data
 end
-
 
 function position_calc(x...)
     _position_calc(Iterators.filter(x->!isa(x, Nothing), x)...)
@@ -139,7 +137,7 @@ function _position_calc(
 end
 
 function _position_calc(
-        position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::MatTypes{T}, 
+        position_x::VectorTypes{T}, position_y::VectorTypes{T}, position_z::MatTypes{T},
         target::Type{Texture}
     ) where T<:AbstractFloat
     """

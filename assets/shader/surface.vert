@@ -1,7 +1,6 @@
 {{GLSL_VERSION}}
 {{GLSL_EXTENSIONS}}
 
-
 struct Grid2D{
     ivec2 lendiv;
     vec2 start;
@@ -21,8 +20,7 @@ in vec2 vertices;
 uniform sampler2D position_z;
 
 uniform vec3 lightposition;
-{{stroke_color_type}} stroke_color;
-{{glow_color_type}} glow_color;
+
 {{image_type}} image;
 {{color_map_type}} color_map;
 {{color_norm_type}} color_norm;
@@ -34,11 +32,11 @@ uniform vec4 nan_color;
 vec4 color_lookup(float intensity, sampler1D color, vec2 norm);
 
 // constant color!
-vec4 get_color(vec4 color, float _intensity, Nothing color_map, Nothing color_norm, int index){
+vec4 get_color(vec4 color, float _intensity, Nothing color_map, Nothing color_norm, vec2 index){
     return color;
 }
 
-vec4 get_color(Nothing _, float i, sampler1D color_map, vec2 color_norm, int index){
+vec4 get_color(Nothing _, float i, sampler1D color_map, vec2 color_norm, ivec2 index){
     vec4 color = color_lookup(i, color_map, color_norm);
     if (isnan(i)) {
         color = nan_color;
@@ -50,7 +48,12 @@ vec4 get_color(Nothing _, float i, sampler1D color_map, vec2 color_norm, int ind
     return color;
 }
 
-vec4 get_color(sampler2D color, float _intensity, Nothing b, Nothing c, int index){
+vec4 get_color(sampler2D color, float _intensity, sampler1D color_map, vec2 color_norm, ivec2 index){
+    float value = texelFetch(color, index, 0).r;
+    return get_color(Nothing(false), value, color_map, color_norm, index); // we fetch the color in fragment shader
+}
+
+vec4 get_color(sampler2D color, float _intensity, Nothing b, Nothing c, ivec2 index){
     return vec4(0); // we fetch the color in fragment shader
 }
 
@@ -96,14 +99,12 @@ void main()
     vec2 offset = vertices;
     ivec2 offseti = ivec2(offset);
     ivec2 dims = textureSize(position_z, 0);
-    vec2 final_scale = ((scale.xy)/(scale.xy-stroke_width));
-
-    const float uv_w = 0.9;
-
     vec3 pos;
     {{position_calc}}
-    //pos           += vec3(scale.xy*vertices, 0.0);
-    o_color = get_color(image, pos.z, color_map, color_norm, index);
+    o_color = get_color(image, pos.z, color_map, color_norm, index2D);
+    if (isnan(pos.z)) {
+        pos.z = 0.0;
+    }
     o_id = uvec2(objectid, index1D+1);
     o_uv = index01 * uv_scale;
     vec3 normalvec = {{normal_calc}};
