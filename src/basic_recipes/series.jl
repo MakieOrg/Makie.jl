@@ -1,7 +1,28 @@
+
+
+"""
+    series(curves;
+        linewidth=2,
+        color=:lighttest,
+        solid_color=nothing,
+        labels=nothing,
+        # scatter arguments, if any is set != nothing, a scatterplot is added
+        marker=nothing,
+        markersize=nothing,
+        markercolor=automatic,
+        strokecolor=nothing,
+        strokewidth=nothing)
+
+Curves can be:
+* `AbstractVector{<: AbstractVector{<: Point2}}`: the native representation of a series as a vector of lines
+* `AbstractMatrix`: each row represents y coordinates of the line, while `x` goes from `1:size(curves, 1)`
+* `AbstractVector, AbstractMatrix`: the same as the above, but the first argument sets the x values for all lines
+* `AbstractVector{<: Tuple{X<: AbstractVector, Y<: AbstractVector}}`: A vector of tuples, where each tuple contains a vector for the x and y coordinates
+
+"""
 @recipe(Series, curves) do scene
     Attributes(
         linewidth=2,
-        palette=:lighttest,
         color=:lighttest,
         solid_color=nothing,
         labels=nothing,
@@ -36,12 +57,12 @@ end
 replace_missing(x::T) where T = ismissing(x) ? T(NaN) : x
 
 function convert_arguments(T::Type{<: Series}, y::AbstractMatrix)
-    convert_arguments(T, 1:size(y, 1), y)
+    convert_arguments(T, 1:size(y, 2), y)
 end
 
 function convert_arguments(::Type{<: Series}, x::AbstractVector, ys::AbstractMatrix)
-    return (map(1:size(ys, 2)) do i
-        Point2f0.(replace_missing.(x), replace_missing.(view(ys, :, i)))
+    return (map(1:size(ys, 1)) do i
+        Point2f0.(replace_missing.(x), replace_missing.(view(ys, i, :)))
     end,)
 end
 
@@ -71,7 +92,7 @@ function plot!(plot::Series)
     end
 
     for i in 1:nseries
-        label = @lift isnothing($labels) ? "line$(i)" : $labels[i]
+        label = @lift isnothing($labels) ? "series $(i)" : $labels[i]
         positions = @lift $curves[i]
         series_color = @lift $colors isa AbstractVector ? $colors[i] : $colors
         if !isempty(scatter)
