@@ -34,9 +34,14 @@ end
 
 conversion_trait(x::Type{<:Violin}) = SampleBased()
 
-function getviolincolor(c, i::Int)
-    c isa NamedTuple || return c
-    return i == 1 ? c.right : c.left
+getuniquevalue(v, idxs) = v
+
+function getuniquevalue(v::AbstractVector, idxs)
+    u = view(v, idxs)
+    f = first(u)
+    msg = "Collection must have the same value across all indices"
+    all(isequal(f), u) || throw(ArgumentError(msg))
+    return f
 end
 
 function plot!(plot::Violin)
@@ -63,7 +68,8 @@ function plot!(plot::Violin)
             l1, l2 = limits isa Function ? limits(v) : limits
             i1, i2 = searchsortedfirst(k.x, l1), searchsortedlast(k.x, l2)
             kde = (x = view(k.x, i1:i2), density = view(k.density, i1:i2))
-            return (x = key.x, side = key.side, kde = kde, median = median(v))
+            c = getuniquevalue(color, idxs)
+            return (x = key.x, side = key.side, color = to_color(c), kde = kde, median = median(v))
         end
 
         max = if max_density === automatic
@@ -77,7 +83,7 @@ function plot!(plot::Violin)
 
         vertices = Vector{Point2f0}[]
         lines = Pair{Point2f0, Point2f0}[]
-        side = Int[]
+        colors = RGBA{Float32}[]
 
         for spec in specs
             scale = 0.5*violinwidth/max
@@ -108,26 +114,19 @@ function plot!(plot::Violin)
                 push!(lines, median_left => median_right)
             end
 
-            push!(side, spec.side)
+            push!(colors, spec.color)
         end
 
-        return (vertices = vertices, lines = lines, side = side)
+        return (vertices = vertices, lines = lines, colors = colors)
     end
 
-    for i in -1:1
-        sidevertices = lift(s -> s.vertices[s.side .== i], signals)
-        sidecolor = lift(c -> getviolincolor(c, i), color)
-        # TODO: fix empty `poly` to avoid this check
-        if !isempty(sidevertices[])
-            poly!(
-                plot,
-                sidevertices,
-                color = sidecolor,
-                strokecolor = plot[:strokecolor],
-                strokewidth = plot[:strokewidth],
-            )
-        end
-    end
+    poly!(
+        plot,
+        lift(s -> s.vertices, signals),
+        color = lift(s -> s.colors, signals),
+        strokecolor = plot[:strokecolor],
+        strokewidth = plot[:strokewidth],
+    )
     linesegments!(
         plot,
         lift(s -> s.lines, signals),
