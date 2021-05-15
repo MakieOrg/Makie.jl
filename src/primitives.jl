@@ -179,7 +179,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Scatter)
     end
 
     broadcast_foreach(primitive[1][], colors, markersize, strokecolor,
-                      strokewidth, marker, marker_offset, primitive.rotations[]) do point, col,
+                      strokewidth, marker, marker_offset, remove_billboard(rotations)) do point, col,
                           markersize, strokecolor, strokewidth, marker, mo, rotation
 
         # if we give size in pixels, the size is always equal to that value
@@ -331,7 +331,7 @@ function draw_atomic(scene::Scene, screen::CairoScreen, primitive::Text)
     glyphlayouts = primitive._glyphlayout[]
 
     draw_string(scene, ctx, txt, position, glyphlayouts, textsize, color, font,
-        rotation, model, space, offset)
+        remove_billboard(rotation), model, space, offset)
 
     nothing
 end

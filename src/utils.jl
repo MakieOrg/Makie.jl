@@ -56,7 +56,13 @@ function to_2d_rotation(x)
     return -AbstractPlotting.quaternion_to_2d_angle(quat)
 end
 
-to_2d_rotation(::AbstractPlotting.Billboard) = 0
+function to_2d_rotation(::AbstractPlotting.Billboard)
+    @warn "This should not be reachable!"
+    0
+end
+
+remove_billboard(x) = x
+remove_billboard(b::AbstractPlotting.Billboard) = b.rotation
 
 to_2d_rotation(quat::AbstractPlotting.Quaternion) = -AbstractPlotting.quaternion_to_2d_angle(quat)
 
