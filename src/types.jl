@@ -296,10 +296,18 @@ func2type(f::Function) = Combined{f}
 
 
 """
+    Billboard([angle::Real])
+    Billboard([angles::Vector{<: Real}])
+
 Billboard attribute to always have a primitive face the camera.
 Can be used for rotation.
 """
-struct Billboard end
+struct Billboard{T <: Union{Float32, Vector{Float32}}}
+    rotation::T
+end
+Billboard() = Billboard(0f0)
+Billboard(angle::Real) = Billboard(Float32(angle))
+Billboard(angles::Vector) = Billboard(Float32.(angles))
 
 """
 Type to indicate that an attribute will get calculated automatically

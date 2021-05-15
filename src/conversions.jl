@@ -752,7 +752,8 @@ function convert_attribute(c::Tuple{T, F}, k::key"color") where {T, F <: Number}
     RGBAf0(Colors.color(to_color(c[1])), c[2])
 end
 
-convert_attribute(c::Billboard, ::key"rotations") = Quaternionf0(0, 0, 0, 1)
+convert_attribute(b::Billboard{Float32}, ::key"rotations") = to_rotation(b.rotation)
+convert_attribute(b::Billboard{Vector{Float32}}, ::key"rotations") = to_rotation.(b.rotation)
 convert_attribute(r::AbstractArray, ::key"rotations") = to_rotation.(r)
 convert_attribute(r::StaticVector, ::key"rotations") = to_rotation(r)
 
