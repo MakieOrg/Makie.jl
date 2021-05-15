@@ -350,15 +350,21 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
 
     glyphoffsets = glyphlayout.origins
 
-    p3_offset = to_ndim(Point3f0, offset, 0)
-
     Cairo.save(ctx)
     cairoface = set_ft_font(ctx, font)
     Cairo.set_source_rgba(ctx, rgbatuple(color)...)
     old_matrix = get_font_matrix(ctx)
 
 
-    for (goffset, char) in zip(glyphoffsets, str)
+    for (i, char) in enumerate(str)
+        goffset = glyphoffsets[i]
+        if offset isa Vector
+            p3_offset = to_ndim(Point3f0, offset[i], 0)
+        else
+            p3_offset = to_ndim(Point3f0, offset, 0)
+        end
+        ts = textsize isa Vector ? textsize[i] : textsize
+
 
         char in ('\r', '\n') && continue
 
@@ -369,7 +375,7 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
             # glyph position in data coordinates (offset has rotation applied already)
             gpos_data = to_ndim(Point3f0, position, 0) .+ goffset .+ p3_offset
 
-            scale3 = textsize isa Number ? Point3f0(textsize, textsize, 0) : to_ndim(Point3f0, textsize, 0)
+            scale3 = ts isa Number ? Point3f0(ts, ts, 0) : to_ndim(Point3f0, ts, 0)
 
             # this could be done better but it works at least
 
@@ -410,7 +416,7 @@ function draw_string(scene, ctx, str::String, position::VecTypes, glyphlayout, t
                 position,
                 Mat4f0(I)) .+ (p3_to_p2(goffset .+ p3_offset)) .* (1, -1) # flip for Cairo
             # and the scale is just taken as is
-            scale = length(textsize) == 2 ? textsize : SVector(textsize, textsize)
+            scale = length(ts) == 2 ? ts : SVector(ts, ts)
 
             Cairo.save(ctx)
             Cairo.move_to(ctx, glyphpos...)
