@@ -41,7 +41,7 @@ N = 1000
 xs = rand(1:3, N)
 dodge = rand(1:2, N)
 side = rand([:left, :right], N)
-color = Observable((left = :orange, right = :teal))
+color = @. ifelse(side == :left, :orange, :teal)
 ys = map(side) do s
     return s == :left ? randn() : rand()
 end
@@ -57,7 +57,10 @@ AbstractPlotting.inline!(true) # hide
 N = 1000
 xs = rand(1:3, N)
 side = rand([:left, :right], N)
-color = Observable((left = [:red, :orange, :yellow], right = [:blue, :teal, :cyan]))
+color = map(xs, side) do x, s
+    colors = s == :left ? [:red, :orange, :yellow] : [:blue, :teal, :cyan]
+    return colors[x]
+end
 ys = map(side) do s
     return s == :left ? randn() : rand()
 end
