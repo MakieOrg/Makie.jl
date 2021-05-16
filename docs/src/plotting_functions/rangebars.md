@@ -37,7 +37,7 @@ lows = zeros(length(vals))
 highs = LinRange(0.1, 0.4, length(vals))
 
 rangebars!(vals, lows, highs, color = LinRange(0, 1, length(vals)),
-    whiskerwidth = 3, direction = :x)
+    whiskerwidth = 10, direction = :x)
 
 f
 ```

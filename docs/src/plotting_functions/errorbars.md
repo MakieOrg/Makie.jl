@@ -43,7 +43,9 @@ ys = 0.5 .* sin.(xs)
 lowerrors = fill(0.1, length(xs))
 higherrors = LinRange(0.1, 0.4, length(xs))
 
-errorbars!(xs, ys, lowerrors, higherrors, color = LinRange(0, 1, length(xs)))
+errorbars!(xs, ys, lowerrors, higherrors,
+    color = range(0, 1, length = length(xs)),
+    whiskerwidth = 10)
 
 # plot position scatters so low and high errors can be discriminated
 scatter!(xs, ys, markersize = 3, color = :black)
