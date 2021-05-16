@@ -30,7 +30,7 @@ function LineAxis(parent::Scene; kwargs...)
 
     ticksnode = Node(Point2f0[])
     ticklines = linesegments!(
-        parent, ticksnode, linewidth = tickwidth, color = tickcolor,
+        parent, ticksnode, linewidth = tickwidth, color = tickcolor, linestyle = nothing,
         show_axis = false, visible = ticksvisible, inspectable = false
     )
     decorations[:ticklines] = ticklines
@@ -39,6 +39,7 @@ function LineAxis(parent::Scene; kwargs...)
     minorticksnode = Node(Point2f0[])
     minorticklines = linesegments!(
         parent, minorticksnode, linewidth = minortickwidth, color = minortickcolor,
+        linestyle = nothing,
         show_axis = false, visible = minorticksvisible, inspectable = false
     )
     decorations[:minorticklines] = minorticklines
@@ -352,7 +353,7 @@ function LineAxis(parent::Scene; kwargs...)
     end
 
     decorations[:axisline] = lines!(parent, linepoints, linewidth = spinewidth, visible = spinevisible,
-        color = spinecolor, raw = true, inspectable = false)
+        color = spinecolor, raw = true, inspectable = false, linestyle = nothing)
     translate!(decorations[:axisline], 0, 0, 20)
 
 

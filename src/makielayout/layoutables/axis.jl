@@ -249,11 +249,13 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
     end
 
     xoppositeline = lines!(topscene, xoppositelinepoints, linewidth = spinewidth,
-        visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false)
+        visible = xoppositespinevisible, color = xoppositespinecolor, inspectable = false,
+        linestyle = nothing)
     decorations[:xoppositeline] = xoppositeline
     translate!(xoppositeline, 0, 0, 20)
     yoppositeline = lines!(topscene, yoppositelinepoints, linewidth = spinewidth,
-        visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false)
+        visible = yoppositespinevisible, color = yoppositespinecolor, inspectable = false,
+        linestyle = nothing)
     decorations[:yoppositeline] = yoppositeline
     translate!(yoppositeline, 0, 0, 20)
 
@@ -389,7 +391,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
 
     ax = Axis(fig_or_scene, layoutobservables, attrs, decorations, scene,
         xaxislinks, yaxislinks, targetlimits, finallimits, block_limit_linking,
-        mouseeventhandle, scrollevents, keysevents, interactions)
+        mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
     this_axis[] = ax
 
     function process_event(event)
@@ -510,12 +512,79 @@ end
 
 validate_limits_for_scale(lims, scale) = all(x -> x in defined_interval(scale), lims)
 
+
+
+palettesyms(cycle::Cycle) = [c[2] for c in cycle.cycle]
+attrsyms(cycle::Cycle) = [c[1] for c in cycle.cycle]
+
+function get_cycler_index!(c::Cycler, P::Type)
+    if !haskey(c.counters, P)
+        c.counters[P] = 1
+    else
+        c.counters[P] += 1
+    end
+end
+
+function get_cycle_for_plottype(P)::Cycle
+    psym = AbstractPlotting.plotsym(P)
+
+    plottheme = AbstractPlotting.default_theme(nothing, P)
+
+    cdt = AbstractPlotting.current_default_theme()
+    cycle_raw = if haskey(cdt, psym) && haskey(cdt[psym], :cycle)
+        cdt[psym].cycle[]
+    else
+        haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
+    end
+
+    if isnothing(cycle_raw)
+        Cycle([])
+    elseif cycle_raw isa Cycle
+        cycle_raw
+    else
+        Cycle(cycle_raw)
+    end
+end
+
+function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palette::Attributes)
+    no_cycle_attribute_passed = !any(keys(allattrs)) do key
+        any(syms -> key in syms, attrsyms(cycle))
+    end
+
+    if no_cycle_attribute_passed
+        index = get_cycler_index!(cycler, P)
+
+        paletteattrs = [palette[sym] for sym in palettesyms(cycle)]
+
+        for (isym, syms) in enumerate(attrsyms(cycle))
+            for sym in syms
+                allattrs[sym] = lift(paletteattrs..., typ = Any) do ps...
+                    if cycle.covary
+                        ps[isym][mod1(index, length(ps[isym]))]
+                    else
+                        cis = CartesianIndices(length.(ps))
+                        n = length(cis)
+                        k = mod1(index, n)
+                        idx = Tuple(cis[k])
+                        ps[isym][idx[isym]]
+                    end
+                end
+            end
+        end
+    end
+end
+
 function AbstractPlotting.plot!(
         la::Axis, P::AbstractPlotting.PlotFunc,
         attributes::AbstractPlotting.Attributes, args...;
         kw_attributes...)
 
-    plot = AbstractPlotting.plot!(la.scene, P, attributes, args...; kw_attributes...)
+    allattrs = merge(attributes, Attributes(kw_attributes))
+
+    cycle = get_cycle_for_plottype(P)
+    add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
+
+    plot = AbstractPlotting.plot!(la.scene, P, allattrs, args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.

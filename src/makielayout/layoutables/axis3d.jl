@@ -126,7 +126,7 @@ function layoutable(::Type{<:Axis3}, fig_or_scene::Union{Figure, Scene}; bbox = 
 
 
     ax = Axis3(fig_or_scene, layoutobservables, attrs, decorations, scene, finallimits,
-        mouseeventhandle, scrollevents, keysevents, interactions)
+        mouseeventhandle, scrollevents, keysevents, interactions, Cycler())
 
     on(attrs.limits) do lims
         reset_limits!(ax)
@@ -265,7 +265,12 @@ function AbstractPlotting.plot!(
     attributes::AbstractPlotting.Attributes, args...;
     kw_attributes...)
 
-    plot = AbstractPlotting.plot!(ax.scene, P, attributes, args...; kw_attributes...)
+    allattrs = merge(attributes, Attributes(kw_attributes))
+
+    cycle = get_cycle_for_plottype(P)
+    add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
+
+    plot = AbstractPlotting.plot!(ax.scene, P, allattrs, args...)
 
     reset_limits!(ax)
     plot

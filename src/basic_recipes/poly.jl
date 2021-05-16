@@ -20,12 +20,12 @@ $(ATTRIBUTES)
 """
 @recipe(Poly) do scene
     Attributes(;
-        color = theme(scene, :color),
+        color = theme(scene, :patchcolor),
         visible = theme(scene, :visible),
-        strokecolor = RGBAf0(0,0,0,0),
+        strokecolor = theme(scene, :patchstrokecolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
-        strokewidth = 1.0,
+        strokewidth = theme(scene, :patchstrokewidth),
         shading = false,
         # we turn this false for now, since otherwise shapes look transparent
         # since we use meshes, which are drawn into a different framebuffer because of fxaa
@@ -35,6 +35,7 @@ $(ATTRIBUTES)
         linestyle = nothing,
         overdraw = false,
         transparency = false,
+        cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable)
     )
 end

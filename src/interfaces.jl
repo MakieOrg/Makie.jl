@@ -6,7 +6,7 @@ default_theme(scene, T) = Attributes()
 
 function default_theme(scene)
     Attributes(
-        color = theme(scene, :color),
+        # color = theme(scene, :color),
         linewidth = 1,
         transformation = automatic,
         model = automatic,
@@ -72,7 +72,7 @@ $(ATTRIBUTES)
 @recipe(Heatmap, x, y, values) do scene
     Attributes(;
         default_theme(scene)...,
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
         linewidth = 0.0,
         interpolate = false,
@@ -105,7 +105,7 @@ $(ATTRIBUTES)
         isovalue = 0.5,
         isorange = 0.05,
         color = nothing,
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         colorrange = (0, 1),
         fxaa = true,
         inspectable = theme(scene, :inspectable)
@@ -125,7 +125,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         color = nothing,
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
         shading = true,
         fxaa = true,
@@ -152,12 +152,13 @@ $(ATTRIBUTES)
 @recipe(Lines, positions) do scene
     Attributes(;
         default_theme(scene)...,
-        linewidth = 1.0,
-        color = :black,
-        colormap = :viridis,
+        linewidth = theme(scene, :linewidth),
+        color = theme(scene, :linecolor),
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
         linestyle = nothing,
         fxaa = false,
+        cycle = [:color],
         inspectable = theme(scene, :inspectable)
     )
 end
@@ -192,12 +193,13 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         color = :black,
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
         interpolate = false,
         shading = true,
         fxaa = true,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        cycle = [:color => :patchcolor],
     )
 end
 
@@ -214,14 +216,14 @@ $(ATTRIBUTES)
 @recipe(Scatter, positions) do scene
     Attributes(;
         default_theme(scene)...,
-        color = :gray65,
-        colormap = :viridis,
+        color = theme(scene, :markercolor),
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
         marker = Circle,
-        markersize = 8,
+        markersize = theme(scene, :markersize),
 
-        strokecolor = :black,
-        strokewidth = 1.0,
+        strokecolor = theme(scene, :markerstrokecolor),
+        strokewidth = theme(scene, :markerstrokewidth),
         glowcolor = RGBA(0, 0, 0, 0),
         glowwidth = 0.0,
 
@@ -232,6 +234,7 @@ $(ATTRIBUTES)
         distancefield = nothing,
         markerspace = Pixel,
         fxaa = false,
+        cycle = [:color],
         inspectable = theme(scene, :inspectable)
     )
 end
@@ -251,7 +254,7 @@ $(ATTRIBUTES)
     Attributes(;
         default_theme(scene)...,
         color = :black,
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
         marker = Sphere(Point3f0(0), 1f0),
         markersize = 0.1,
@@ -259,7 +262,8 @@ $(ATTRIBUTES)
         # markerspace = relative,
         shading = true,
         fxaa = true,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        cycle = [:color],
     )
 end
 
@@ -274,6 +278,7 @@ $(ATTRIBUTES)
 @recipe(Text, text) do scene
     Attributes(;
         default_theme(scene)...,
+        color = theme(scene, :textcolor),
         font = theme(scene, :font),
         strokecolor = (:black, 0.0),
         strokewidth = 0,
@@ -430,7 +435,7 @@ function (PT::Type{<: Combined})(parent, transformation, attributes, input_args,
     PT(parent, transformation, attributes, input_args, converted, AbstractPlot[])
 end
 
-plotsym(::Type{<:AbstractPlot{F}}) where F = Symbol(typeof(F).name.mt.name)
+plotsym(T::Type{<:AbstractPlot{F}}) where F = Symbol(split(string(Symbol(T)), "{")[1])
 
 """
     used_attributes(args...) = ()

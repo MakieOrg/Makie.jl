@@ -22,7 +22,7 @@ $(ATTRIBUTES)
     Theme(
         levels = 10,
         mode = :normal,
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         extendlow = nothing,
         extendhigh = nothing,
         inspectable = theme(scene, :inspectable)

@@ -96,6 +96,7 @@ export addmouseevents!
 export interactions, register_interaction!, deregister_interaction!, activate_interaction!, deactivate_interaction!
 export MouseEventTypes, MouseEvent, ScrollEvent, KeysEvent
 export hlines!, vlines!, abline!
+export Cycle
 
 
 # from GridLayoutBase
