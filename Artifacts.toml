@@ -2,5 +2,5 @@
 git-tree-sha1 = "a74800f299f6bdade309e459b999442f303aa64d"
 
     [[assets.download]]
-    sha256 = "7ccfd273ff2ac996059d9019ff317202bdc69aef394fe450be557df9aae81733"
+    sha256 = "aa8d3e891da5c0757620f0bad9f9cd78e2e843bbc31773b5759e4f54e4f92b2b"
     url = "https://github.com/JuliaPlots/AbstractPlotting.jl/releases/download/assets-0.1.0/assets-0.1.0.tar.gz"
