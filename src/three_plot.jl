@@ -97,10 +97,8 @@ function three_display(session::Session, scene::Scene)
     """
 
     onjs(session, scene_data, setup)
-    mousedrag(scene, nothing)
     scene_data[] = scene_data[]
     connect_scene_events!(scene, comm)
-    mousedrag(scene, nothing)
     three = ThreeDisplay(session)
 
     on(session.on_close) do closed
