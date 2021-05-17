@@ -33,17 +33,18 @@ $(ATTRIBUTES)
 """
 @recipe(Density) do scene
     Theme(
-        color = RGBAf0(0,0,0,0.2),
-        colormap = :viridis,
+        color = theme(scene, :patchcolor),
+        colormap = theme(scene, :colormap),
         colorrange = AbstractPlotting.automatic,
-        strokecolor = :black,
-        strokewidth = 1,
+        strokecolor = theme(scene, :patchstrokecolor),
+        strokewidth = theme(scene, :patchstrokewidth),
         strokearound = false,
         npoints = 200,
         offset = 0.0,
         direction = :x,
         boundary = automatic,
         bandwidth = automatic,
+        cycle = [:color => :patchcolor],
         inspectable = theme(scene, :inspectable)
     )
 end

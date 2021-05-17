@@ -14,26 +14,27 @@ $(ATTRIBUTES)
 """
 @recipe(Stem) do scene
     Attributes(
-        stemcolor = :black,
-        stemcolormap = :viridis,
+        stemcolor = theme(scene, :linecolor),
+        stemcolormap = theme(scene, :colormap),
         stemcolorrange = automatic,
-        stemwidth = 1,
+        stemwidth = theme(scene, :linewidth),
         stemlinestyle = nothing,
-        trunkwidth = 1,
+        trunkwidth = theme(scene, :linewidth),
         trunklinestyle = nothing,
-        trunkcolor = :black,
-        trunkcolormap = :viridis,
+        trunkcolor = theme(scene, :linecolor),
+        trunkcolormap = theme(scene, :colormap),
         trunkcolorrange = automatic,
         offset = 0,
         marker = :circle,
-        markersize = 10,
-        color = :gray65,
-        colormap = :viridis,
+        markersize = theme(scene, :markersize),
+        color = theme(scene, :markercolor),
+        colormap = theme(scene, :colormap),
         colorrange = automatic,
-        strokecolor = :black,
-        strokewidth = 1,
+        strokecolor = theme(scene, :markerstrokecolor),
+        strokewidth = theme(scene, :markerstrokewidth),
         visible = true,
-        inspectable = theme(scene, :inspectable)
+        inspectable = theme(scene, :inspectable),
+        cycle = [[:stemcolor, :color, :trunkcolor] => :color],
     )
 end
 

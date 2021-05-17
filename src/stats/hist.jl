@@ -34,7 +34,8 @@ $(ATTRIBUTES)
 @recipe(Hist, values) do scene
     Attributes(
         bins = 15, # Int or iterable of edges
-        normalization = :none
+        normalization = :none,
+        cycle = [:color => :patchcolor],
     )
 end
 

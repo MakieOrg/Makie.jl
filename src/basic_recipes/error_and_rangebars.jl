@@ -19,12 +19,12 @@ $(ATTRIBUTES)
 """
 @recipe(Errorbars) do scene
     Theme(
-        whiskerwidth = 10,
-        color = :black,
-        linewidth = 1,
+        whiskerwidth = 0,
+        color = theme(scene, :linecolor),
+        linewidth = theme(scene, :linewidth),
         direction = :y,
         visible = theme(scene, :visible),
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         inspectable = theme(scene, :inspectable)
     )
 end
@@ -45,12 +45,12 @@ $(ATTRIBUTES)
 """
 @recipe(Rangebars) do scene
     Theme(
-        whiskerwidth = 10,
-        color = :black,
-        linewidth = 1,
+        whiskerwidth = 0,
+        color = theme(scene, :linecolor),
+        linewidth = theme(scene, :linewidth),
         direction = :y,
         visible = theme(scene, :visible),
-        colormap = :viridis,
+        colormap = theme(scene, :colormap),
         inspectable = theme(scene, :inspectable)
     )
 end

@@ -9,7 +9,7 @@ $(ATTRIBUTES)
 """
 @recipe(Contour) do scene
     default = default_theme(scene)
-    pop!(default, :color)
+    # pop!(default, :color)
     Attributes(;
         default...,
         color = nothing,

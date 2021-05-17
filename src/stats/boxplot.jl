@@ -30,7 +30,7 @@ The boxplot has 3 components:
 @recipe(BoxPlot, x, y) do scene
     scattertheme = default_theme(scene, Scatter)
     Theme(
-        color = theme(scene, :color),
+        color = theme(scene, :patchcolor),
         colormap = theme(scene, :colormap),
         colorrange = automatic,
         orientation = :vertical,
