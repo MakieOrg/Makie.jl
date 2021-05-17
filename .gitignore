@@ -1,0 +1,17 @@
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+src/.cache
+src/logo.png
+prec
+tmax
+prec.zip
+tmax.zip
+bluemarble-2048.png
+phases.0001_print.jpg
+**/._*
+Manifest.toml
+!docs/Manifest.toml
+/build
+
+\.DS_Store
