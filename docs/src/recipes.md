@@ -3,6 +3,7 @@
 Recipes allow you to extend `Makie` with your own custom types and plotting commands.
 
 There are two types of recipes:
+
 - _Type recipes_ define a simple mapping from a user defined type to an existing plot type
 - _Full recipes_ define new custom plotting functions.
 
@@ -11,6 +12,7 @@ There are two types of recipes:
 Type recipes are mostly just conversions from one type or set of input argument types, yet unknown to Makie, to another which Makie can handle already.
 
 This is the sequential logic by which conversions in Makie are attempted:
+
 - Dispatch on `convert_arguments(::PlotType, args...)`
 - If no matching method is found, determine a conversion trait via `conversion_trait(::PlotType)`
 - Dispatch on `convert_arguments(::ConversionTrait, args...)`
@@ -27,7 +29,7 @@ AbstractPlotting.convert_arguments(x::Circle) = (decompose(Point2f, x),)
 ```
 
 !!! warning
-    `convert_arguments` must always return a Tuple.
+`convert_arguments` must always return a Tuple.
 
 You can restrict conversion to a subset of plot types, like only for scatter plots:
 
@@ -62,7 +64,6 @@ This is done with `convert_single_argument`.
 For example, `AbstractArrays` with `Real`s and `missing`s can usually be safely converted to `Float32` arrays with `NaN`s instead of `missing`s.
 
 The difference between `convert_single_argument` and `convert_arguments` with a single argument is that the former can be applied to any argument of any signature, while the latter only matches one-argument signatures.
-
 
 ## Full recipes with the `@recipe` macro
 
@@ -231,7 +232,7 @@ function AbstractPlotting.plot!(
     # connect `update_plot` so that it is called whenver `times`
     # or `stockvalues` change
     AbstractPlotting.Observables.onany(update_plot, times, stockvalues)
-    
+
     # then call it once manually with the first `times` and `stockvalues`
     # contents so we prepopulate all observables with correct values
     update_plot(times[], stockvalues[])
@@ -239,9 +240,9 @@ function AbstractPlotting.plot!(
     # for the colors we just use a vector of booleans or 0s and 1s, which are
     # colored according to a 2-element colormap
     # we build this colormap out of our `downcolor` and `upcolor`
-    # we give the observable `typ = Any` so it will not error when we change
+    # we give the observable element type `Any` so it will not error when we change
     # a color from a symbol like :red to a different type like RGBf0(1, 0, 1)
-    colormap = lift(sc.downcolor, sc.upcolor, typ = Any) do dc, uc
+    colormap = lift(Any, sc.downcolor, sc.upcolor) do dc, uc
         [dc, uc]
     end
 
@@ -284,7 +285,6 @@ stockchart(f[2, 1], timestamps, stockvalues,
     downcolor = :purple, upcolor = :orange)
 f
 ```
-
 
 As a last example, lets pretend our stock data is coming in dynamically, and we want to create an animation out of it.
 This is easy if we use observables as input arguments which we then update frame by frame:

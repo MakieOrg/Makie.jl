@@ -124,14 +124,12 @@ function _precompile_()
     end   # time: 0.00889073
     Base.precompile(Tuple{typeof(value_convert),Tuple{Tuple{Bool, Bool}, Tuple{Bool, Bool}}})   # time: 0.008890678
     Base.precompile(Tuple{typeof(value_convert),Tuple{AbstractPlotting.Keyboard.Button, AbstractPlotting.Mouse.Button}})   # time: 0.008794897
-    Base.precompile(Tuple{Core.kwftype(typeof(lift)),NamedTuple{(:init, :typ), Tuple{SMatrix{4, 4, Float32, 16}, DataType}},typeof(lift),Function,Observable{Vec{3, Float32}},Observable{Vec{3, Float32}},Vararg{Any, 100}})   # time: 0.008736545
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{Tuple{Vector{Point{2, Float32}}}},))) catch missing end
         if !ismissing(fbody)
             precompile(fbody, (Vector{Point{2, Float32}},Type,Symbol,typeof(lift),Function,Observable{Tuple{Vector{Point{2, Float32}}}},))
         end
     end   # time: 0.00867902
     Base.precompile(Tuple{typeof(default_theme),Scene,Type{Lines{Tuple{Vector{Point{2, Float32}}}}}})   # time: 0.008428088
-    Base.precompile(Tuple{Core.kwftype(typeof(lift)),NamedTuple{(:init, :typ), Tuple{Nothing, DataType}},typeof(lift),Function,Observable{Annotations{Tuple{Vector{Tuple{String, Point{2, Float32}}}}}},Observable{LineSegments{Tuple{Vector{Point{2, Float32}}}}},Vararg{Any, 100}})   # time: 0.008249298
     Base.precompile(Tuple{typeof(value_convert),Tuple{Tuple{Symbol, Symbol}, Tuple{Symbol, Symbol}}})   # time: 0.008128306
     let fbody = try Base.bodyfunction(which(lift, (Function,Observable{GeometryBasics.HyperRectangle{2, Float32}},))) catch missing end
         if !ismissing(fbody)
@@ -249,25 +247,25 @@ function _precompile_()
     Base.precompile(Tuple{Type{Scatter{Tuple{Vector{Point{2, Float32}}}}},Scene,Transformation,Attributes,Tuple{Observable{Vector{Float64}}, Observable{Vector{Float64}}},Tuple{Observable{Vector{Point{2, Float32}}}}})   # time: 0.001059559
     Base.precompile(Tuple{typeof(is2d),GeometryBasics.HyperRectangle{3, Float32}})   # time: 0.001005834
     Base.precompile(Tuple{Type{Lines{Tuple{Vector{Point{2, Float32}}}}},Scene,Transformation,Attributes,Tuple{Observable{GeometryBasics.HyperRectangle{2, Float32}}},Tuple{Observable{Vector{Point{2, Float32}}}}})   # time: 0.001005373
-    
+
     # DataInspector
     @warnpcfail precompile(on_hover, (DataInspector, ))
     for PT in (
-            Scatter{Tuple{Vector{Point2f0}}}, 
-            Scatter{Tuple{Vector{Point3f0}}}, 
-            MeshScatter{Tuple{Vector{Point3f0}}}, 
-            Lines{Tuple{Vector{Point2f0}}}, 
-            Lines{Tuple{Vector{Point3f0}}}, 
-            LineSegments{Tuple{Vector{Point2f0}}}, 
-            LineSegments{Tuple{Vector{Point3f0}}}, 
-            # Mesh, 
-            Surface{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}}, 
-            Surface{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}}, 
-            Surface{Tuple{Matrix{Float32}, Matrix{Float32}, Matrix{Float32}}}, 
-            Heatmap{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}}, 
-            Heatmap{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}}, 
-            Image{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}}, 
-            Image{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}}, 
+            Scatter{Tuple{Vector{Point2f0}}},
+            Scatter{Tuple{Vector{Point3f0}}},
+            MeshScatter{Tuple{Vector{Point3f0}}},
+            Lines{Tuple{Vector{Point2f0}}},
+            Lines{Tuple{Vector{Point3f0}}},
+            LineSegments{Tuple{Vector{Point2f0}}},
+            LineSegments{Tuple{Vector{Point3f0}}},
+            # Mesh,
+            Surface{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}},
+            Surface{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}},
+            Surface{Tuple{Matrix{Float32}, Matrix{Float32}, Matrix{Float32}}},
+            Heatmap{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}},
+            Heatmap{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}},
+            Image{Tuple{IntervalSets.ClosedInterval{Float32}, IntervalSets.ClosedInterval{Float32}, Matrix{Float32}}},
+            Image{Tuple{Vector{Float32}, Vector{Float32}, Matrix{Float32}}},
             BarPlot{Tuple{Vector{Point{2, Float32}}}}
         )
 
