@@ -915,7 +915,7 @@ function convert_attribute(x::Union{Symbol, String}, k::key"font")
             end
         end
 
-        fontpath = joinpath(@__DIR__, "..", "assets", "fonts")
+        fontpath = assetpath("fonts")
         font = FreeTypeAbstraction.findfont(str; additional_fonts=fontpath)
         if font === nothing
             @warn("Could not find font $str, using Dejavu Sans")
