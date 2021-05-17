@@ -22,12 +22,12 @@ Data is the gold and silver of our age, so let's spread it out beautifully on th
 
 Please consider using the backends directly. As explained in the documentation, they re-export all of Makie's functionality.
 So, instead of installing Makie, just install e.g. GLMakie directly:
+
 ```julia
 julia>]
 pkg> add GLMakie
 pkg> test GLMakie
 ```
-
 
 Interactive example by [AlexisRenchon](https://github.com/AlexisRenchon):
 
@@ -38,10 +38,8 @@ Example from [InteractiveChaos.jl](https://github.com/JuliaDynamics/InteractiveC
 [![interactive chaos](https://user-images.githubusercontent.com/1010467/81500069-ea005f80-92cf-11ea-81db-2b7bcbfea297.gif)
 ](https://github.com/JuliaDynamics/InteractiveChaos.jl)
 
-
 You can follow Makie on [twitter](https://twitter.com/MakiePlots) to get the latest, outstanding examples:
 [![image](https://user-images.githubusercontent.com/1010467/81500210-e7523a00-92d0-11ea-9849-1240f165e0f8.png)](https://twitter.com/MakiePlots)
-
 
 ## Sponsors
 
