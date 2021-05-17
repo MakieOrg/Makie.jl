@@ -93,7 +93,7 @@ function plot!(plot::Density{<:Tuple{<:AbstractVector}})
     end
     notify(lowerupper)
 
-    colorobs = lift(plot.color, lowerupper, plot.direction, typ = Any) do c, lu, dir
+    colorobs = lift(Any, plot.color, lowerupper, plot.direction) do c, lu, dir
         if (dir == :x && c == :x) || (dir == :y && c == :y)
             dim = dir == :x ? 1 : 2
             [l[dim] for l in lu[1]]

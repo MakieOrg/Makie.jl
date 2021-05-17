@@ -43,7 +43,7 @@ function LineAxis(parent::Scene; kwargs...)
     )
     decorations[:minorticklines] = minorticklines
 
-    realticklabelalign = lift(ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation, typ = Any) do al, (pos, ex, hor), fl, rot
+    realticklabelalign = lift(Any, ticklabelalign, pos_extents_horizontal, flipped, ticklabelrotation) do al, (pos, ex, hor), fl, rot
         if al !== automatic
             return al
         end
@@ -91,10 +91,10 @@ function LineAxis(parent::Scene; kwargs...)
         color = ticklabelcolor,
         show_axis = false,
         visible = ticklabelsvisible,
-        space = :data, 
+        space = :data,
         inspectable = false)
 
-    ticklabel_ideal_space = lift(ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible, typ=Float32) do args...
+    ticklabel_ideal_space = lift(Float32, ticklabelannosnode, ticklabelalign, ticklabelrotation, ticklabelfont, ticklabelsvisible) do args...
         maxwidth = if pos_extents_horizontal[][3]
                 # height
                 ticklabelsvisible[] ? height(FRect2D(boundingbox(ticklabels))) : 0f0
@@ -478,10 +478,10 @@ function get_ticks(::Automatic, scale::Union{typeof(log10), typeof(log2), typeof
     get_ticks(LogTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
 end
 
-# log ticks just use the normal pipeline but with log'd limits, then transform the labels 
+# log ticks just use the normal pipeline but with log'd limits, then transform the labels
 function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof(log)}, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
-    
+
     ticks = AbstractPlotting.inverse_transform(scale).(ticks_scaled)
 
     labels_scaled = get_ticklabels(automatic, ticks_scaled)
@@ -500,11 +500,11 @@ expit_10(x) = AbstractPlotting.logistic(log(10) * x)
 # function get_ticks(l::LogitTicks, scale::typeof(AbstractPlotting.logit), ::Automatic, vmin, vmax)
 
 #     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
-    
+
 #     ticks = expit_10.(ticks_scaled)
 
 #     base_labels = get_ticklabels(automatic, ticks_scaled)
-    
+
 #     labels = map(ticks_scaled, base_labels) do t, bl
 #         if t == 0
 #             "¹/₂"

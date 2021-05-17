@@ -75,7 +75,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     end
 
 
-    lowcolor = lift(c.extendlow, typ = Union{Nothing, RGBAf0}) do el
+    lowcolor = lift(Union{Nothing, RGBAf0}, c.extendlow) do el
         if el === nothing
             nothing
         elseif el === automatic || el == :auto
@@ -87,7 +87,7 @@ function AbstractPlotting.plot!(c::Contourf{<:Tuple{<:AbstractVector{<:Real}, <:
     c.attributes[:_computed_extendlow] = lowcolor
     is_extended_low = lift(x -> !isnothing(x), lowcolor)
 
-    highcolor = lift(c.extendhigh, typ = Union{Nothing, RGBAf0}) do eh
+    highcolor = lift(Union{Nothing, RGBAf0}, c.extendhigh) do eh
         if eh === nothing
             nothing
         elseif eh === automatic || eh == :auto

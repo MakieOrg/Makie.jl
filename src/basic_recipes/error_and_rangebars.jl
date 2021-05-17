@@ -108,7 +108,7 @@ end
 ### conversions for rangebars
 
 function AbstractPlotting.convert_arguments(::Type{<:Rangebars}, val, low, high)
-    val_low_high = broadcast(Vec3f0, val, low, high) 
+    val_low_high = broadcast(Vec3f0, val, low, high)
     (val_low_high,)
 end
 
@@ -200,7 +200,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         screen_to_scene([p for pair in screenendpoints_shifted_pairs for p in pair], scene)
     end
 
-    whiskercolors = lift(color, typ = Any) do color
+    whiskercolors = lift(Any, color) do color
         # we have twice as many linesegments for whiskers as we have errorbars, so we
         # need to duplicate colors if a vector of colors is given
         if color isa AbstractVector
@@ -210,7 +210,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         end
     end
 
-    whiskerlinewidths = lift(linewidth, typ = Any) do linewidth
+    whiskerlinewidths = lift(Any, linewidth) do linewidth
         # same for linewidth
         if linewidth isa AbstractVector
             repeat(linewidth, inner = 2)
@@ -224,7 +224,7 @@ function _plot_bars!(plot, linesegpairs, is_in_y_direction)
         colormap = colormap, inspectable = inspectable
     )
     linesegments!(
-        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths, 
+        plot, whiskers, color = whiskercolors, linewidth = whiskerlinewidths,
         visible = visible, colormap = colormap, inspectable = inspectable
     )
     plot
