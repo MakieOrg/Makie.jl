@@ -1,5 +1,6 @@
 module AbstractPlotting
 
+using Artifacts
 using Random
 using FFMPEG # get FFMPEG on any system!
 using Observables, GeometryBasics, IntervalSets, PlotUtils
@@ -242,7 +243,7 @@ export cgrad, available_gradients, showgradients
 
 export Pattern
 
-assetpath(files...) = normpath(joinpath(@__DIR__, "..", "assets", files...))
+assetpath(files...) = normpath(joinpath(artifact"assets", files...))
 
 export assetpath
 # default icon for Makie
