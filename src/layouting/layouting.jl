@@ -233,28 +233,25 @@ end
 
 
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout, 
+        string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout,
         font, textsize, space::Symbol, projview, resolution, offset::VecTypes, transfunc
     )
-
     offset = to_ndim(Point3f0, offset, 0)
     pos3f0 = to_ndim(Point3f0, position, 0)
 
     if space == :data
-        positions = apply_transform(transfunc, [pos3f0 + offset + o for o in glyphlayout.origins])
+        positions = apply_transform(transfunc, Point3f0[pos3f0 + offset + o for o in glyphlayout.origins])
     elseif space == :screen
         projected = AbstractPlotting.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = [to_ndim(Point3f0, projected, 0) + offset + o for o in glyphlayout.origins]
+        positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for o in glyphlayout.origins]
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
-
     text_quads(positions, string, font, textsize)
 end
 
-
 function preprojected_glyph_arrays(
-        string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout, 
+        string::String, position::VecTypes, glyphlayout::AbstractPlotting.Glyphlayout,
         font, textsize, space::Symbol, projview, resolution, offsets::Vector, transfunc
     )
 
@@ -265,7 +262,7 @@ function preprojected_glyph_arrays(
         positions = apply_transform(transfunc, [pos3f0 + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)])
     elseif space == :screen
         projected = AbstractPlotting.project(projview, resolution, apply_transform(transfunc, pos3f0))
-        positions = [to_ndim(Point3f0, projected, 0) + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)]
+        positions = Point3f0[to_ndim(Point3f0, projected, 0) + offset + o for (o, offset) in zip(glyphlayout.origins, offsets)]
     else
         error("Unknown space $space, only :data or :screen allowed")
     end
@@ -273,9 +270,8 @@ function preprojected_glyph_arrays(
     text_quads(positions, string, font, textsize)
 end
 
-
 function preprojected_glyph_arrays(
-        strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font, 
+        strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font,
         textsize, space::Symbol, projview, resolution, offset, transfunc
     )
 
@@ -283,14 +279,12 @@ function preprojected_glyph_arrays(
         offset = [to_ndim(Point3f0, offset, 0)]
     end
 
-    megastring = join(strings, "")
-
     if space == :data
         allpos = broadcast(positions, glyphlayouts, offset) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offs
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
-                [p .+ to_ndim(Point3f0, offs, 0) .+ o for o in glyphlayout.origins]
+                Point3f0[p .+ to_ndim(Point3f0, offs, 0) .+ o for o in glyphlayout.origins]
             )
         end
     elseif space == :screen
@@ -304,7 +298,7 @@ function preprojected_glyph_arrays(
                 ),
                 0)
 
-            return [projected .+ to_ndim(Point3f0, offs, 0) + o
+            return Point3f0[projected .+ to_ndim(Point3f0, offs, 0) + o
                         for o in glyphlayout.origins]
         end
     else
@@ -316,18 +310,16 @@ end
 
 
 function preprojected_glyph_arrays(
-        strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font, 
+        strings::AbstractVector{<:String}, positions::AbstractVector, glyphlayouts::Vector, font,
         textsize, space::Symbol, projview, resolution, offsets::Vector{<: Vector}, transfunc
     )
-
-    megastring = join(strings, "")
 
     if space == :data
         allpos = broadcast(positions, glyphlayouts, offsets) do pos, glyphlayout::AbstractPlotting.Glyphlayout, offsets
             p = to_ndim(Point3f0, pos, 0)
             apply_transform(
                 transfunc,
-                [p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphlayout.origins, offsets)]
+                Point3f0[p .+ to_ndim(Point3f0, offset, 0) .+ o for (o, offset) in zip(glyphlayout.origins, offsets)]
             )
         end
     elseif space == :screen
@@ -341,7 +333,7 @@ function preprojected_glyph_arrays(
                 ),
                 0)
 
-            return [projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphlayout.origins, offsets)]
+            return Point3f0[projected .+ to_ndim(Point3f0, offset, 0) + o for (o, offset) in zip(glyphlayout.origins, offsets)]
         end
     else
         error("Unknown space $space, only :data or :screen allowed")
