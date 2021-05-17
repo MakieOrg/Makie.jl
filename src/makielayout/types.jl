@@ -24,6 +24,7 @@ end
 Cycle(cycle; covary = false) = Cycle(to_cycle(cycle), covary)
 
 to_cycle(single) = [to_cycle_single(single)]
+to_cycle(::Nothing) = []
 to_cycle(symbolvec::Vector) = map(to_cycle_single, symbolvec)
 to_cycle_single(sym::Symbol) = [sym] => sym
 to_cycle_single(pair::Pair{Symbol, Symbol}) = [pair[1]] => pair[2]
