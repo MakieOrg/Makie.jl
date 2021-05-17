@@ -39,7 +39,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
     mousestate = Node(:out)
 
     bcolors = (; out = buttoncolor, active = buttoncolor_active, hover = buttoncolor_hover)
-    bcolor = lift((s,_...)->bcolors[s][], mousestate, values(bcolors)...; typ=Any)
+    bcolor = lift((s,_...)->bcolors[s][], Any, mousestate, values(bcolors)...)
     button = poly!(subscene, roundedrectpoints, strokewidth = strokewidth, strokecolor = strokecolor,
         color = bcolor, raw = true, inspectable = false)
     decorations[:button] = button
@@ -47,7 +47,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
 
 
     lcolors = (; out = labelcolor, active = labelcolor_active, hover = labelcolor_hover)
-    lcolor = lift((s,_...)->lcolors[s][], mousestate, values(lcolors)...; typ=Any)
+    lcolor = lift((s,_...)->lcolors[s][], Any, mousestate, values(lcolors)...)
     labeltext = text!(subscene, label, position = textpos, textsize = textsize, font = font,
         color = lcolor, align = (:center, :center), raw = true, space = :data, inspectable = false)
 
@@ -64,7 +64,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
         layoutobservables.autosize[] = (autowidth, autoheight)
     end
 
-    
+
     mouseevents = addmouseevents!(scene, layoutobservables.computedbbox)
 
     onmouseover(mouseevents) do _
@@ -76,7 +76,7 @@ function layoutable(::Type{Button}, fig_or_scene::FigureLike; bbox = nothing, kw
         mousestate[] = :out
         return false
     end
-    
+
     onmouseleftup(mouseevents) do _
         mousestate[] = :hover
         return true

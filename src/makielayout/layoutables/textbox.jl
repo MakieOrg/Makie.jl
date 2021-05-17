@@ -43,9 +43,8 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     hovering = Node(false)
 
-    realbordercolor = lift(bordercolor, bordercolor_focused,
-        bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering,
-        typ = Any) do bc, bcf, bcfi, bch, focused, valid, hovering
+    realbordercolor = lift(Any, bordercolor, bordercolor_focused,
+        bordercolor_focused_invalid, bordercolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         if focused
             valid ? bcf : bcfi
@@ -54,9 +53,8 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
         end
     end
 
-    realboxcolor = lift(boxcolor, boxcolor_focused,
-        boxcolor_focused_invalid, boxcolor_hover, focused, displayed_is_valid, hovering,
-        typ = Any) do bc, bcf, bcfi, bch, focused, valid, hovering
+    realboxcolor = lift(Any, boxcolor, boxcolor_focused,
+        boxcolor_focused_invalid, boxcolor_hover, focused, displayed_is_valid, hovering) do bc, bcf, bcfi, bch, focused, valid, hovering
 
         if focused
             valid ? bcf : bcfi
@@ -72,7 +70,7 @@ function layoutable(::Type{Textbox}, fig_or_scene; bbox = nothing, kwargs...)
 
     displayed_chars = @lift([c for c in $displayed_string])
 
-    realtextcolor = lift(textcolor, textcolor_placeholder, focused, stored_string, displayed_string, typ = Any) do tc, tcph, foc, cont, disp
+    realtextcolor = lift(Any, textcolor, textcolor_placeholder, focused, stored_string, displayed_string) do tc, tcph, foc, cont, disp
         # the textbox has normal text color if it's focused
         # if it's defocused, the displayed text has to match the stored text in order
         # to be normal colored

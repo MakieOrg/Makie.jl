@@ -1,39 +1,32 @@
 # I don't want to use map anymore, it's so ambigious, especially to newcomers.
 # TODO should this become it's own function?
 """
-    lift(f, o1::Observables.AbstractObservable, rest...; init = f(to_value(o1), to_value.(rest)...), typ = typeof(init))
+    lift(f, o1::Observables.AbstractObservable, rest...)
 
 Create a new `Observable` by applying `f` to all observables in `o1` and `rest...`.
-By default, the initial value `init` is determined by the first function evaluation.
-You can also set `typ` to control the parametric type of the Observable irrespective of the `init` value.
+The initial value is determined by the first function evaluation.
 """
-function lift(
-        f, o1::Observables.AbstractObservable, rest...;
-        init = f(to_value(o1), to_value.(rest)...), typ = typeof(init),
-        name = :node # name ignored for now
-    )
+function lift(f, o1::Observables.AbstractObservable, rest...; kw...)
+    if !isempty(kw)
+        error("lift(f, obs...; init=f.(obs...), typ=typeof(init)) is deprecated. Use lift(typ, f, obs...), or map!(f, Observable(), obs...) for different init.")
+    end
+    init = f(to_value(o1), to_value.(rest)...)
+    typ = typeof(init)
     result = Observable{typ}(init)
     map!(f, result, o1, rest...)
+    return result
 end
 
-# TODO remove this and play by Observables rules
-function Base.push!(x::Node, value)
-    @warn "`push!(x::Union{Node, Observable}, value)`` is deprecated. Use: `x[] = value` instead"
-    x[] = value
+function lift(
+        f, ::Type{T}, o1::Observables.AbstractObservable, rest...
+    ) where {T}
+    init = f(to_value(o1), to_value.(rest)...)
+    result = Observable{T}(init)
+    map!(f, result, o1, rest...)
+    return result
 end
 
 Base.close(node::Node) = empty!(node.listeners)
-function close_all_nodes(any::T) where T
-    for field in fieldnames(T)
-        value = getfield(any, field)
-        (value isa Node) && close(value)
-    end
-end
-
-function disconnect!(s::Node)
-    # empty!(Observables.listeners(s))
-    return
-end
 
 """
 Observables.off but without throwing an error
@@ -68,12 +61,10 @@ test(Node(1), Node(2))
 
 """
 function map_once(
-        f, input::Node, inputrest::Node...;
-        init = f(to_value.((input, inputrest...))...),
-        typ = typeof(init)
+        f, input::Node, inputrest::Node...
     )
     for arg in (input, inputrest...)
         safe_off(arg, f)
     end
-    lift(f, input, inputrest..., init = init, typ = typ)
+    lift(f, input, inputrest...)
 end
