@@ -525,13 +525,15 @@ function get_cycler_index!(c::Cycler, P::Type)
     end
 end
 
-function get_cycle_for_plottype(P)::Cycle
+function get_cycle_for_plottype(allattrs, P)::Cycle
     psym = AbstractPlotting.plotsym(P)
 
     plottheme = AbstractPlotting.default_theme(nothing, P)
 
     cdt = AbstractPlotting.current_default_theme()
-    cycle_raw = if haskey(cdt, psym) && haskey(cdt[psym], :cycle)
+    cycle_raw = if haskey(allattrs, :cycle)
+        allattrs.cycle[]
+    elseif haskey(cdt, psym) && haskey(cdt[psym], :cycle)
         cdt[psym].cycle[]
     else
         haskey(plottheme, :cycle) ? plottheme.cycle[] : nothing
@@ -581,7 +583,7 @@ function AbstractPlotting.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
-    cycle = get_cycle_for_plottype(P)
+    cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
     plot = AbstractPlotting.plot!(la.scene, P, allattrs, args...)

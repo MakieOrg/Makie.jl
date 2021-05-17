@@ -107,7 +107,37 @@ cycle = [:linecolor => :color, :marker]
 # you can also map multiple attributes that should receive
 # the same cycle attribute
 cycle = [[:linecolor, :markercolor] => :color, :marker]
+# nothing disables cycling
+cycle = nothing # equivalent to cycle = []
 ```
+
+### Covarying cycles
+
+You can also construct a `Cycle` object directly, which additionally allows to set the `covary` keyword, that defaults to `false`. A cycler with `covary = true` cycles all attributes together, instead of cycling through all values of the first, then the second, etc.
+
+```julia
+# palettes: color = [:red, :blue, :green] marker = [:circle, :rect, :utriangle, :dtriangle]
+
+cycle = [:color, :marker]
+# 1: :red, :circle
+# 2: :blue, :circle
+# 3: :green, :circle
+# 4: :red, :rect
+# ...
+
+cycle = Cycle([:color, :marker], covary = true)
+# 1: :red, :circle
+# 2: :blue, :rect
+# 3: :green, :utriangle
+# 4: :red, :dtriangle
+# ...
+```
+
+### Palettes
+
+The attributes specified in the cycle are looked up in the axis' palette.
+A single `:color` is both plot attribute as well as palette attribute, while `:color => :patchcolor` means that `plot.color` should be set to `palette.patchcolor`.
+Here's an example that shows how density plots react to different palette options:
 
 ```@example
 using CairoMakie
@@ -145,7 +175,7 @@ set_theme!() # hide
 f
 ```
 
-
+You can also theme global palettes via `set_theme!(palette = (color = my_colors, marker = my_markers))` for example.
 
 ## Special attributes
 

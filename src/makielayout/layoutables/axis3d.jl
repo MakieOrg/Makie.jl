@@ -267,7 +267,7 @@ function AbstractPlotting.plot!(
 
     allattrs = merge(attributes, Attributes(kw_attributes))
 
-    cycle = get_cycle_for_plottype(P)
+    cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, ax.cycler, ax.palette)
 
     plot = AbstractPlotting.plot!(ax.scene, P, allattrs, args...)
