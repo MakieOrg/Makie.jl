@@ -63,7 +63,7 @@ end
 
 Helper, to more easily save all kind of results from the test database
 """
-function save_result(path::String, scene::AbstractPlotting.FigureLike)
+function save_result(path::String, scene::Makie.FigureLike)
     FileIO.save(path * ".png", scene)
 end
 

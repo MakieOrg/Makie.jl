@@ -57,48 +57,48 @@ end
 
 ### conversions for errorbars
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
+function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_both)
     xyerr = broadcast(x, y, error_both) do x, y, e
         Vec4f0(x, y, e, e)
     end
     (xyerr,)
 end
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
+function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low, error_high)
     xyerr = broadcast(Vec4f0, x, y, error_low, error_high)
     (xyerr,)
 end
 
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
+function Makie.convert_arguments(::Type{<:Errorbars}, x, y, error_low_high::AbstractVector{<:VecTypes{2}})
     xyerr = broadcast(x, y, error_low_high) do x, y, (el, eh)
         Vec4f0(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
+function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_both)
     xyerr = broadcast(xy, error_both) do (x, y), e
         Vec4f0(x, y, e, e)
     end
     (xyerr,)
 end
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
+function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low, error_high)
     xyerr = broadcast(xy, error_low, error_high) do (x, y), el, eh
         Vec4f0(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
+function Makie.convert_arguments(::Type{<:Errorbars}, xy::AbstractVector{<:VecTypes{2}}, error_low_high::AbstractVector{<:VecTypes{2}})
     xyerr = broadcast(xy, error_low_high) do (x, y), (el, eh)
         Vec4f0(x, y, el, eh)
     end
     (xyerr,)
 end
 
-function AbstractPlotting.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
+function Makie.convert_arguments(::Type{<:Errorbars}, xy_error_both::AbstractVector{<:VecTypes{3}})
     xyerr = broadcast(xy_error_both) do (x, y, e)
         Vec4f0(x, y, e, e)
     end
@@ -107,12 +107,12 @@ end
 
 ### conversions for rangebars
 
-function AbstractPlotting.convert_arguments(::Type{<:Rangebars}, val, low, high)
+function Makie.convert_arguments(::Type{<:Rangebars}, val, low, high)
     val_low_high = broadcast(Vec3f0, val, low, high)
     (val_low_high,)
 end
 
-function AbstractPlotting.convert_arguments(::Type{<:Rangebars}, val, low_high)
+function Makie.convert_arguments(::Type{<:Rangebars}, val, low_high)
     val_low_high = broadcast(val, low_high) do val, (low, high)
         Vec3f0(val, low, high)
     end
@@ -122,7 +122,7 @@ end
 ### the two plotting functions create linesegpairs in two different ways
 ### and then hit the same underlying implementation in `_plot_bars!`
 
-function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTypes{4}}}
+function Makie.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVector{<:VecTypes{4}}}
 
     x_y_low_high = plot[1]
 
@@ -149,7 +149,7 @@ function AbstractPlotting.plot!(plot::Errorbars{T}) where T <: Tuple{AbstractVec
 end
 
 
-function AbstractPlotting.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTypes{3}}}
+function Makie.plot!(plot::Rangebars{T}) where T <: Tuple{AbstractVector{<:VecTypes{3}}}
 
     val_low_high = plot[1]
 

@@ -34,7 +34,7 @@ Found: $(typeof(signal))
 """)
 
 
-function AbstractPlotting.plot!(plot::TimeSeries)
+function Makie.plot!(plot::TimeSeries)
     # normal plotting code, building on any previously defined recipes
     # or atomic plotting operations, and adding to the combined `plot`:
     points = Node(fill(Point2f0(NaN), plot.history[]))

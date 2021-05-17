@@ -1,4 +1,4 @@
-function AbstractPlotting.plot!(plot::Plot(AbstractVector{<: Complex}))
+function Makie.plot!(plot::Plot(AbstractVector{<: Complex}))
     plot[:axis, :labels] = ("Re(x)", "Im(x)")
     lines!(plot, lift(im-> Point2f0.(real.(im), imag.(im)), x[1]))
 end

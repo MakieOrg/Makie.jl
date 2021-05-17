@@ -1,4 +1,4 @@
-#= 
+#=
 S. Axen implementation from https://github.com/JuliaPlots/StatsMakie.jl/blob/master/src/recipes/crossbar.jl#L22
 The StatMakie.jl package is licensed under the MIT "Expat" License:
     Copyright (c) 2018: Pietro Vertechi. =#
@@ -49,7 +49,7 @@ It is most commonly used as part of the `boxplot`.
     t
 end
 
-function AbstractPlotting.plot!(plot::CrossBar)
+function Makie.plot!(plot::CrossBar)
     args = @extract plot (width, dodge, n_dodge, x_gap, dodge_gap, show_notch, notchmin, notchmax, notchwidth, orientation)
 
     signals = lift(

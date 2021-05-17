@@ -1,16 +1,16 @@
-function AbstractPlotting.plot!(
-        lscene::LScene, P::AbstractPlotting.PlotFunc,
-        attributes::AbstractPlotting.Attributes, args...;
+function Makie.plot!(
+        lscene::LScene, P::Makie.PlotFunc,
+        attributes::Makie.Attributes, args...;
         kw_attributes...)
 
-    plot = AbstractPlotting.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
+    plot = Makie.plot!(lscene.scene, P, attributes, args...; kw_attributes...)
 
     plot
 end
 
-function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ls::LScene, args...; kw_attributes...)
-    attributes = AbstractPlotting.Attributes(kw_attributes)
-    AbstractPlotting.plot!(ls, P, attributes, args...)
+function Makie.plot!(P::Makie.PlotFunc, ls::LScene, args...; kw_attributes...)
+    attributes = Makie.Attributes(kw_attributes)
+    Makie.plot!(ls, P, attributes, args...)
 end
 
 

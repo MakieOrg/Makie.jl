@@ -1,7 +1,7 @@
 ## Exported
 
 ```@autodocs
-Modules = [AbstractPlotting.MakieLayout]
+Modules = [Makie.MakieLayout]
 Order   = [:module, :constant, :type, :function, :macro]
 Public  = true
 Private = false
@@ -10,7 +10,7 @@ Private = false
 ## Unexported
 
 ```@autodocs
-Modules = [AbstractPlotting.MakieLayout]
+Modules = [Makie.MakieLayout]
 Order   = [:module, :constant, :type, :function, :macro]
 Public  = false
 Private = true

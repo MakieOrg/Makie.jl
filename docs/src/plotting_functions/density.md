@@ -9,7 +9,7 @@ density
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -19,11 +19,10 @@ density!(randn(200))
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -33,11 +32,10 @@ density!(randn(200), direction = :y, npoints = 10)
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -48,11 +46,10 @@ density!(randn(200), color = (:red, 0.3),
 f
 ```
 
-
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])
@@ -74,7 +71,7 @@ You can color density plots with gradients by choosing `color = :x` or `:y`, dep
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 months = ["January", "February", "March", "April",
     "May", "June", "July", "August", "September",
@@ -98,7 +95,7 @@ Due to technical limitations, if you color the `:vertical` dimension (or :horizo
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f[1, 1])

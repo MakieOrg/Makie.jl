@@ -427,7 +427,7 @@ const atomic_function_symbols = (
     :lines, :surface, :volume, :heatmap, :image
 )
 
-const atomic_functions = getfield.(Ref(AbstractPlotting), atomic_function_symbols)
+const atomic_functions = getfield.(Ref(Makie), atomic_function_symbols)
 const Atomic{Arg} = Union{map(x-> Combined{x, Arg}, atomic_functions)...}
 
 

@@ -1,13 +1,13 @@
 # Events
 
 Interactive backends such as `GLMakie` and `WGLMakie` pass events to an `Events`
-struct in the currently active scene. There they trigger a number of slightly 
+struct in the currently active scene. There they trigger a number of slightly
 modified observables of type `PriorityObservable`. By reacting to those one can
 build up custom interactions.
 
 ## PriorityObservables
 
-Much like the name suggests a `PriorityObservable` adds a priority to its 
+Much like the name suggests a `PriorityObservable` adds a priority to its
 listeners. Furthermore it allows for a listener to stop execution of lower
 priority listeners by returning `true`. Note that because of this you cannot
 use `map` or `lift` on a `PriorityObservable`. Instead `on` should be used.
@@ -15,7 +15,7 @@ use `map` or `lift` on a `PriorityObservable`. Instead `on` should be used.
 To understand how a `PriorityObserable` works you may try this example:
 
 ```julia
-using AbstractPlotting: PriorityObservable
+using Makie: PriorityObservable
 
 po = PriorityObservable(0)
 
@@ -44,36 +44,34 @@ listener, as it blocks execution of the lower priority by returning `true`. With
 all three connected you should see two prints, first the high priority, than the
 medium priority.
 
-
 ## The Events struct
 
 Events from the backend are stored in `PriorityObservables` within the `Events`
-struct. You can access it from any scene via `events(scene)` and via 
+struct. You can access it from any scene via `events(scene)` and via
 `events(figure.scene)` or `events(axis.scene)` from a figure or axis. The struct
 contains the following fields you may react to.
 
-* `window_area::PriorityObservable{IRect2D}`: Contains the current size of the window in pixels.
-* `window_dpi::PriorityObservable{Float64}`: Contains the DPI of the window.
-* `window_open::PriorityObservable{Bool}`: Contains `true` as long as the window is open.
-* `hasfocus::PriorityObservable{Bool}`: Contains `true` if the window is focused (in the foreground).
-* `entered_window::PriorityObservable{Bool}`: Contains true if the mouse is within the window (regarless of whether it is focused), i.e. when it is hovered.
-* `mousebutton::PriorityObservable{MouseButtonEvent}`: Contains the most recent `MouseButtonEvent`  which holds the relevant `button::Mouse.Button` and `action::Mouse.Action`.
-* `mousebuttonstate::Set{Mouse.Button}`: Contains all currently pressed mouse buttons.
-* `mouseposition::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent cursor position in pixel units relative to the root scene/window.
-* `scroll::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent scroll offset.
-* `keyboardbutton::PriorityObservable{KeyEvent}`: Contains the most recent `KeyEvent` which holds the relevant `key::Keyboard.Button` and `action::Keyboard.Action`.
-* `keyboardstate::PriorityObservable{Keyboard.Button}`: Contains all currently pressed keys.
-* `unicode_input::PriorityObservable{Char}`: Contains the most recently typed character.
-* `dropped_files::PriorityObservable{Vector{String}}`: Contains a list of filepaths to a collection files dragged into the window.
-
+- `window_area::PriorityObservable{IRect2D}`: Contains the current size of the window in pixels.
+- `window_dpi::PriorityObservable{Float64}`: Contains the DPI of the window.
+- `window_open::PriorityObservable{Bool}`: Contains `true` as long as the window is open.
+- `hasfocus::PriorityObservable{Bool}`: Contains `true` if the window is focused (in the foreground).
+- `entered_window::PriorityObservable{Bool}`: Contains true if the mouse is within the window (regarless of whether it is focused), i.e. when it is hovered.
+- `mousebutton::PriorityObservable{MouseButtonEvent}`: Contains the most recent `MouseButtonEvent` which holds the relevant `button::Mouse.Button` and `action::Mouse.Action`.
+- `mousebuttonstate::Set{Mouse.Button}`: Contains all currently pressed mouse buttons.
+- `mouseposition::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent cursor position in pixel units relative to the root scene/window.
+- `scroll::PriorityObservable{NTuple{2, Float64}}`: Contains the most recent scroll offset.
+- `keyboardbutton::PriorityObservable{KeyEvent}`: Contains the most recent `KeyEvent` which holds the relevant `key::Keyboard.Button` and `action::Keyboard.Action`.
+- `keyboardstate::PriorityObservable{Keyboard.Button}`: Contains all currently pressed keys.
+- `unicode_input::PriorityObservable{Char}`: Contains the most recently typed character.
+- `dropped_files::PriorityObservable{Vector{String}}`: Contains a list of filepaths to a collection files dragged into the window.
 
 ## Mouse Interaction
 
 There are three mouse events one can react to:
 
-* `events.mousebutton` which holds a `MouseButtonEvent` with relevant `button` and `action`
-* `events.mouseposition` which holds the current cursor position relative to the window as `NTuple{2, Float64}` in pixel
-* `events.scroll` which holds an `NTuple{2, Float64}` of the last scroll change
+- `events.mousebutton` which holds a `MouseButtonEvent` with relevant `button` and `action`
+- `events.mouseposition` which holds the current cursor position relative to the window as `NTuple{2, Float64}` in pixel
+- `events.scroll` which holds an `NTuple{2, Float64}` of the last scroll change
 
 For example, we can react to a left click with:
 
@@ -93,19 +91,18 @@ end
 
 There are also a bunch of convenience function for mouse interactions:
 
-* `hovered_scene()` returns the currently hovered scene.
-* `mouseposition_px([scene])` returns the cursor position in pixel units relative to the given or currently hovered scene.
-* `mouseposition([scene])` returns the cursor position of the given or hovered scene in data coordinates.
-* `mouseover(scene, plots...)` returns true if the mouse is over any of the given plots.
-* `mouse_selection(scene[, range])` returns the plot under your cursor.
-* `onpick(f, scene, plots...[; range=1])` allows you to define a callback `f` when one of the given plots is hovered (or the closest within range of the cursor).
-* `pick(scene, position[, range])` returns the plot under the given position (or the closest within range)
-* `AbstractPlotting.pick_closest(scene, position, range)` returns all plots within range, sorted by distance to the given position.
-
+- `hovered_scene()` returns the currently hovered scene.
+- `mouseposition_px([scene])` returns the cursor position in pixel units relative to the given or currently hovered scene.
+- `mouseposition([scene])` returns the cursor position of the given or hovered scene in data coordinates.
+- `mouseover(scene, plots...)` returns true if the mouse is over any of the given plots.
+- `mouse_selection(scene[, range])` returns the plot under your cursor.
+- `onpick(f, scene, plots...[; range=1])` allows you to define a callback `f` when one of the given plots is hovered (or the closest within range of the cursor).
+- `pick(scene, position[, range])` returns the plot under the given position (or the closest within range)
+- `Makie.pick_closest(scene, position, range)` returns all plots within range, sorted by distance to the given position.
 
 ## Keyboard Interaction
 
-You can use `events.keyboardbutton` to react to a `KeyEvent` and 
+You can use `events.keyboardbutton` to react to a `KeyEvent` and
 `events.unicode_input` to react to specific characters being typed.
 
 For example we may react to specific keys being pressed or held with
@@ -122,7 +119,6 @@ on(events(fig).keyboardbutton) do event
     return false
 end
 ```
-
 
 ## Interactive Widgets
 

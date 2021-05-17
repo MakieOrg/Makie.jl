@@ -132,7 +132,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         leftright = xrev ? (right, left) : (left, right)
         bottomtop = yrev ? (top, bottom) : (bottom, top)
 
-        projection = AbstractPlotting.orthographicprojection(
+        projection = Makie.orthographicprojection(
             xsc.(leftright)...,
             ysc.(bottomtop)..., nearclip, farclip)
         camera(scene).projection[] = projection
@@ -381,7 +381,7 @@ function layoutable(::Type{<:Axis}, fig_or_scene::Union{Figure, Scene}; bbox = n
         return false
     end
 
-    # TODO this should probably just forward KeyEvent from AbstractPlotting
+    # TODO this should probably just forward KeyEvent from Makie
     on(scene.events.keyboardbutton) do e
         keysevents[] = KeysEvent(scene.events.keyboardstate)
         return false
@@ -526,11 +526,11 @@ function get_cycler_index!(c::Cycler, P::Type)
 end
 
 function get_cycle_for_plottype(allattrs, P)::Cycle
-    psym = AbstractPlotting.plotsym(P)
+    psym = Makie.plotsym(P)
 
-    plottheme = AbstractPlotting.default_theme(nothing, P)
+    plottheme = Makie.default_theme(nothing, P)
 
-    cdt = AbstractPlotting.current_default_theme()
+    cdt = Makie.current_default_theme()
     cycle_raw = if haskey(allattrs, :cycle)
         allattrs.cycle[]
     elseif haskey(cdt, psym) && haskey(cdt[psym], :cycle)
@@ -576,9 +576,9 @@ function add_cycle_attributes!(allattrs, P, cycle::Cycle, cycler::Cycler, palett
     end
 end
 
-function AbstractPlotting.plot!(
-        la::Axis, P::AbstractPlotting.PlotFunc,
-        attributes::AbstractPlotting.Attributes, args...;
+function Makie.plot!(
+        la::Axis, P::Makie.PlotFunc,
+        attributes::Makie.Attributes, args...;
         kw_attributes...)
 
     allattrs = merge(attributes, Attributes(kw_attributes))
@@ -586,7 +586,7 @@ function AbstractPlotting.plot!(
     cycle = get_cycle_for_plottype(allattrs, P)
     add_cycle_attributes!(allattrs, P, cycle, la.cycler, la.palette)
 
-    plot = AbstractPlotting.plot!(la.scene, P, allattrs, args...)
+    plot = Makie.plot!(la.scene, P, allattrs, args...)
 
     # some area-like plots basically always look better if they cover the whole plot area.
     # adjust the limit margins in those cases automatically.
@@ -596,9 +596,9 @@ function AbstractPlotting.plot!(
     plot
 end
 
-function AbstractPlotting.plot!(P::AbstractPlotting.PlotFunc, ax::Axis, args...; kw_attributes...)
-    attributes = AbstractPlotting.Attributes(kw_attributes)
-    AbstractPlotting.plot!(ax, P, attributes, args...)
+function Makie.plot!(P::Makie.PlotFunc, ax::Axis, args...; kw_attributes...)
+    attributes = Makie.Attributes(kw_attributes)
+    Makie.plot!(ax, P, attributes, args...)
 end
 
 needs_tight_limits(@nospecialize any) = false
@@ -641,7 +641,7 @@ function expandlimits(lims, margin_low, margin_high, scale)
     w_scaled = lims_scaled[2] - lims_scaled[1]
     d_low_scaled = w_scaled * margin_low
     d_high_scaled = w_scaled * margin_high
-    inverse = AbstractPlotting.inverse_transform(scale)
+    inverse = Makie.inverse_transform(scale)
     lims = inverse.((lims_scaled[1] - d_low_scaled, lims_scaled[2] + d_high_scaled))
 
     # guard against singular limits from something like a vline or hline
@@ -681,10 +681,10 @@ function getlimits(la::Axis, dim)
         plots_with_autolimits)
 
     # get all data limits
-    bboxes = [FRect2D(AbstractPlotting.data_limits(p)) for p in visible_plots]
+    bboxes = [FRect2D(Makie.data_limits(p)) for p in visible_plots]
 
     # filter out bboxes that are invalid somehow
-    finite_bboxes = filter(AbstractPlotting.isfinite_rect, bboxes)
+    finite_bboxes = filter(Makie.isfinite_rect, bboxes)
 
     # if there are no bboxes remaining, `nothing` signals that no limits could be determined
     isempty(finite_bboxes) && return nothing
@@ -940,7 +940,7 @@ end
 
 """
 Keeps the ticklabelspace static for a short duration and then resets it to its previous
-value. If that value is AbstractPlotting.automatic, the reset will trigger new
+value. If that value is Makie.automatic, the reset will trigger new
 protrusions for the axis and the layout will adjust. This is so the layout doesn't
 immediately readjust during interaction, which would let the whole layout jitter around.
 """
@@ -1083,7 +1083,7 @@ function Base.show(io::IO, ax::Axis)
 end
 
 
-function AbstractPlotting.xlims!(ax::Axis, xlims)
+function Makie.xlims!(ax::Axis, xlims)
     if length(xlims) != 2
         error("Invalid xlims length of $(length(xlims)), must be 2.")
     elseif xlims[1] == xlims[2]
@@ -1103,9 +1103,9 @@ function AbstractPlotting.xlims!(ax::Axis, xlims)
     nothing
 end
 
-AbstractPlotting.xlims!(ax::Axis, x1, x2) = AbstractPlotting.xlims!(ax, (x1, x2))
+Makie.xlims!(ax::Axis, x1, x2) = Makie.xlims!(ax, (x1, x2))
 
-function AbstractPlotting.ylims!(ax::Axis, ylims)
+function Makie.ylims!(ax::Axis, ylims)
     if length(ylims) != 2
         error("Invalid ylims length of $(length(ylims)), must be 2.")
     elseif ylims[1] == ylims[2]
@@ -1125,10 +1125,10 @@ function AbstractPlotting.ylims!(ax::Axis, ylims)
     nothing
 end
 
-AbstractPlotting.ylims!(ax::Axis, y1, y2) = AbstractPlotting.ylims!(ax, (y1, y2))
+Makie.ylims!(ax::Axis, y1, y2) = Makie.ylims!(ax, (y1, y2))
 
-AbstractPlotting.xlims!(lims::Real...) = AbstractPlotting.xlims!(current_axis(), lims...)
-AbstractPlotting.ylims!(lims::Real...) = AbstractPlotting.ylims!(current_axis(), lims...)
+Makie.xlims!(lims::Real...) = Makie.xlims!(current_axis(), lims...)
+Makie.ylims!(lims::Real...) = Makie.ylims!(current_axis(), lims...)
 # zlims!(lims::Real...) = zlims!(current_axis(), lims)
 
 """
@@ -1138,8 +1138,8 @@ Set the axis limits to `xlims` and `ylims`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, xlims, ylims)
-    AbstractPlotting.xlims!(ax, xlims)
-    AbstractPlotting.ylims!(ax, ylims)
+    Makie.xlims!(ax, xlims)
+    Makie.ylims!(ax, ylims)
 end
 
 """
@@ -1149,8 +1149,8 @@ Set the axis x-limits to `x1` and `x2` and the y-limits to `y1` and `y2`.
 If limits are ordered high-low, this reverses the axis orientation.
 """
 function limits!(ax::Axis, x1, x2, y1, y2)
-    AbstractPlotting.xlims!(ax, x1, x2)
-    AbstractPlotting.ylims!(ax, y1, y2)
+    Makie.xlims!(ax, x1, x2)
+    Makie.ylims!(ax, y1, y2)
 end
 
 """
@@ -1162,8 +1162,8 @@ If limits are ordered high-low, this reverses the axis orientation.
 function limits!(ax::Axis, rect::Rect2D)
     xmin, ymin = minimum(rect)
     xmax, ymax = maximum(rect)
-    AbstractPlotting.xlims!(ax, xmin, xmax)
-    AbstractPlotting.ylims!(ax, ymin, ymax)
+    Makie.xlims!(ax, xmin, xmax)
+    Makie.ylims!(ax, ymin, ymax)
 end
 
 function limits!(args...)
@@ -1182,7 +1182,7 @@ function Base.empty!(ax::Axis)
     ax
 end
 
-AbstractPlotting.transform_func(ax::Axis) = AbstractPlotting.transform_func(ax.scene)
+Makie.transform_func(ax::Axis) = Makie.transform_func(ax.scene)
 
 
 # these functions pick limits for different x and y scales, so that
@@ -1202,9 +1202,9 @@ defaultlimits(::typeof(log2)) = (1.0, 8.0)
 defaultlimits(::typeof(log)) = (1.0, exp(3.0))
 defaultlimits(::typeof(identity)) = (0.0, 10.0)
 defaultlimits(::typeof(sqrt)) = (0.0, 100.0)
-defaultlimits(::typeof(AbstractPlotting.logit)) = (0.01, 0.99)
+defaultlimits(::typeof(Makie.logit)) = (0.01, 0.99)
 
 defined_interval(::typeof(identity)) = OpenInterval(-Inf, Inf)
 defined_interval(::Union{typeof(log2), typeof(log10), typeof(log)}) = OpenInterval(0.0, Inf)
 defined_interval(::typeof(sqrt)) = Interval{:closed,:open}(0, Inf)
-defined_interval(::typeof(AbstractPlotting.logit)) = OpenInterval(0.0, 1.0)
+defined_interval(::typeof(Makie.logit)) = OpenInterval(0.0, 1.0)

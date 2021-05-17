@@ -129,7 +129,7 @@ Each "step" is saved as a separate file in the folder
 pointed to by `path`, and the format is customizable by
 `format`, which can be any output type your backend supports.
 
-Notice that the relevant `AbstractPlotting.step!` is not
+Notice that the relevant `Makie.step!` is not
 exported and should be accessed by module name.
 """
 mutable struct FolderStepper
@@ -446,19 +446,19 @@ If you want a simpler interface, consider using [`record`](@ref).
 
 ### Keyword Arguments:
 - `framrate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and 
-                     `51` being the highest compression. Note that `compression = 0` 
+- `compression = 0`: Controls the video compression with `0` being lossless and
+                     `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to 
-                        `.mp4`. If you have issues playing a video, try 
+- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to
+                        `.mp4`. If you have issues playing a video, try
                         `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently 
-                              only applies to `.mp4`. Defaults to `yuv444p` for 
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
+                              only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
 function save(
-        path::String, io::VideoStream; 
-        framerate::Int = 24, compression = 20, profile = "high422", 
+        path::String, io::VideoStream;
+        framerate::Int = 24, compression = 20, profile = "high422",
         pixel_format = profile == "high444" ? "yuv444p" : "yuv420p"
     )
 
@@ -498,10 +498,10 @@ end
     record(func, figure, path; framerate = 24, compression = 20, kwargs...)
     record(func, figure, path, iter; framerate = 24, compression = 20, kwargs...)
 
-The first signature provides `func` with a VideoStream, which it should call 
+The first signature provides `func` with a VideoStream, which it should call
 `recordframe!(io)` on when recording a frame.
 
-The second signature iterates `iter`, calling `recordframe!(io)` internally 
+The second signature iterates `iter`, calling `recordframe!(io)` internally
 after calling `func` with the current iteration element.
 
 Both notations require a Figure, FigureAxisPlot or Scene `figure` to work.
@@ -563,14 +563,14 @@ end
 
 ### Keyword Arguments:
 - `framrate = 24`: The target framerate.
-- `compression = 0`: Controls the video compression with `0` being lossless and 
-                     `51` being the highest compression. Note that `compression = 0` 
+- `compression = 0`: Controls the video compression with `0` being lossless and
+                     `51` being the highest compression. Note that `compression = 0`
                      only works with `.mp4` if `profile = high444`.
-- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to 
-                        `.mp4`. If you have issues playing a video, try 
+- `profile = "high422`: A ffmpeg compatible profile. Currently only applies to
+                        `.mp4`. If you have issues playing a video, try
                         `profile = "high"` or `profile = "main"`.
-- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently 
-                              only applies to `.mp4`. Defaults to `yuv444p` for 
+- `pixel_format = "yuv420p"`: A ffmpeg compatible pixel format (pix_fmt). Currently
+                              only applies to `.mp4`. Defaults to `yuv444p` for
                               `profile = high444`.
 """
 function record(func, scene, path; framerate::Int = 24, kwargs...)

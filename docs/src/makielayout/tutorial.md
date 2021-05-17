@@ -112,7 +112,7 @@ All right, let's get started!
 
 ## Importing a backend
 
-First, we import CairoMakie, which re-exports AbstractPlotting and MakieLayout.
+First, we import CairoMakie, which re-exports Makie and MakieLayout.
 
 ```@example tutorial
 using CairoMakie
@@ -120,12 +120,12 @@ using CairoMakie
 
 The same works for the other backends WGLMakie and GLMakie.
 You can find an overview of the different backends with their capabilities in [Backends & Output](@ref).
-The old MakieLayout package which you needed to install separately is deprecated, since it now lives directly in AbstractPlotting.
-As a side note, if you do not want to make plotting code backend dependent, for example inside a package where the user should choose the backend themselves, you can depend on `AbstractPlotting` alone.
+The old MakieLayout package which you needed to install separately is deprecated, since it now lives directly in Makie.
+As a side note, if you do not want to make plotting code backend dependent, for example inside a package where the user should choose the backend themselves, you can depend on `Makie` alone.
 This allows the user to do:
 
 ```julia
-using CustomPlots # depends only on AbstractPlotting
+using CustomPlots # depends only on Makie
 using GLMakie # chooses GLMakie as the backend for CustomPlots
 ```
 
@@ -147,7 +147,6 @@ fig = Figure(backgroundcolor = RGBf0(0.98, 0.98, 0.98),
 fig
 ```
 
-
 ## First axis
 
 The figure is completely empty, I have made the background light gray so it's easier
@@ -166,7 +165,6 @@ ax1 = fig[1, 1] = Axis(fig, title = "Pre Treatment")
 fig
 ```
 
-
 ## Plotting into an axis
 
 We can plot into the axis with the ! versions of Makie's plotting functions.
@@ -181,7 +179,6 @@ scat1 = scatter!(ax1, data1,
 
 fig
 ```
-
 
 ## Multiple axes
 
@@ -210,7 +207,6 @@ ax2, line2 = lines(fig[1, 2], 7..17, x -> -x + 26,
 fig
 ```
 
-
 As you can see, the first axis has shrunk to the left to make space for the new
 axis on the right. We can take another look at the `layout` to see how it has
 changed:
@@ -232,7 +228,6 @@ scat2 = scatter!(data2,
 fig
 ```
 
-
 ## Linking axes
 
 We want to make the left and right axes correspond to each other, so we can compare
@@ -246,7 +241,6 @@ linkaxes!(ax1, ax2)
 fig
 ```
 
-
 This looks good, but now both y-axes are the same, so we can hide the right one
 to make the plot less cluttered. We keep the grid lines, though. You can see that
 now that the y-axis is gone, the two Axes grow to fill the gap.
@@ -256,7 +250,6 @@ hideydecorations!(ax2, grid = false)
 
 fig
 ```
-
 
 Even though our plots are entirely made up, we should follow best practice and label
 the axes. We can do this with the `xlabel` and `ylabel` attributes of the `Axis`.
@@ -268,7 +261,6 @@ ax1.ylabel = "Maximum Velocity [m/sec]"
 
 fig
 ```
-
 
 ## Adding a legend
 
@@ -285,7 +277,6 @@ leg = fig[1, end+1] = Legend(fig,
 
 fig
 ```
-
 
 You can see one nice feature of Makie here, which is that the legend takes
 much less horizontal space than the two axes. In fact, it takes exactly the space
@@ -307,7 +298,6 @@ fig[2, 1:2] = leg
 fig
 ```
 
-
 ## Fixing spacing issues
 
 There are a couple of things wrong with this. The legend is where we want it, below the
@@ -325,7 +315,6 @@ trim!(fig.layout)
 fig
 ```
 
-
 This is much better already! But the legend still takes too much space vertically.
 The reason for that is the default `tellheight` setting of the legend. It's set to
 `false`, which essentially means that it can compute its own height, but
@@ -340,7 +329,6 @@ leg.tellheight = true
 fig
 ```
 
-
 Now the legend's row is shrunk to fit. One thing that we can do to improve the
 use of space is to change the legend's orientation to `:horizontal`.
 
@@ -349,7 +337,6 @@ leg.orientation = :horizontal
 
 fig
 ```
-
 
 ## Nested layouts
 
@@ -366,7 +353,6 @@ heatmaps = [heatmap!(ax, i .+ rand(20, 20)) for (i, ax) in enumerate(hm_axes)]
 
 fig
 ```
-
 
 This looks weird, the two axes do not have the same height. Rather, the lower
 one has the height of the legend in the same row. What can we do to remedy this
@@ -398,7 +384,6 @@ hm_sublayout[:v] = hm_axes
 fig
 ```
 
-
 We don't care about the axis decorations, as it's often the case with image plots.
 The function `hidedecorations!` hides both x and y decorations at once.
 
@@ -408,7 +393,6 @@ hidedecorations!.(hm_axes)
 
 fig
 ```
-
 
 ## Adding a colorbar
 
@@ -448,7 +432,6 @@ cbar.height = Relative(2/3)
 fig
 ```
 
-
 We don't really like the automatically chosen tick values here. Sometimes, the automatic
 algorithms just don't choose the values we want, so let's change them.
 We can set the `ticks` attribute to any iterable of numbers that we want.
@@ -458,7 +441,6 @@ cbar.ticks = 1:0.5:3
 
 fig
 ```
-
 
 ## Adding a title
 
@@ -482,7 +464,6 @@ supertitle = fig[0, :] = Label(fig, "Complex Figures with Makie",
 
 fig
 ```
-
 
 ## Subplot labels
 
@@ -521,7 +502,6 @@ label_b = fig[2, 3, TopLeft()] = Label(fig, "B", textsize = 24,
 fig
 ```
 
-
 That looks good! You can see that the letters, larger than the axis titles, have
 increased the gap between the title and the axes to fit them. In most other
 plotting software, you can easily get overlap issues when you add labels like these between other elements.
@@ -536,7 +516,6 @@ label_b.padding = (0, 6, 16, 0)
 
 fig
 ```
-
 
 ## Tweaking aspect ratios
 

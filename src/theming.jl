@@ -47,7 +47,7 @@ end
 
 const default_palettes = Attributes(
     color = wong_colors(1),
-    patchcolor = AbstractPlotting.wong_colors(0.6),
+    patchcolor = Makie.wong_colors(0.6),
     marker = [:circle, :utriangle, :cross, :rect, :diamond, :dtriangle, :pentagon, :xcross],
     linestyle = [nothing, :dash, :dot, :dashdot, :dashdotdot],
     side = [:left, :right]
@@ -136,7 +136,7 @@ end
 ```
 """
 function with_theme(f, theme = Theme(); kwargs...)
-    previous_theme = AbstractPlotting.current_default_theme()
+    previous_theme = Makie.current_default_theme()
     try
         set_theme!(theme; kwargs...)
         f()

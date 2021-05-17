@@ -1,4 +1,4 @@
-module AbstractPlotting
+module Makie
 
 using Artifacts
 using Random

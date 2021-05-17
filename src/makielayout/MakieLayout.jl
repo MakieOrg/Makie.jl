@@ -1,14 +1,14 @@
 module MakieLayout
 
-using ..AbstractPlotting
-using ..AbstractPlotting: Rect2D
-import ..AbstractPlotting: IRect2D
-using ..AbstractPlotting.Keyboard
-using ..AbstractPlotting.Mouse
-using ..AbstractPlotting: ispressed, is_mouseinside, get_scene, FigureLike
-using ..AbstractPlotting: _sanitize_observer_function
-using ..AbstractPlotting: OpenInterval, Interval
-using ..AbstractPlotting: Automatic, automatic
+using ..Makie
+using ..Makie: Rect2D
+import ..Makie: IRect2D
+using ..Makie.Keyboard
+using ..Makie.Mouse
+using ..Makie: ispressed, is_mouseinside, get_scene, FigureLike
+using ..Makie: _sanitize_observer_function
+using ..Makie: OpenInterval, Interval
+using ..Makie: Automatic, automatic
 using Observables: onany
 import Observables
 import Formatting
@@ -28,7 +28,7 @@ const COLOR_ACCENT_DIMMED = Ref(RGBf0(((174, 192, 230) ./ 255)...))
 # GridLayoutBase at the same time as MakieLayout, which is unlikely, though
 function __init__()
     GridLayoutBase.DEFAULT_COLGAP_GETTER[] = function()
-        ct = AbstractPlotting.current_default_theme()
+        ct = Makie.current_default_theme()
         if haskey(ct, :colgap)
             ct[:colgap][]
         else
@@ -36,7 +36,7 @@ function __init__()
         end
     end
     GridLayoutBase.DEFAULT_ROWGAP_GETTER[] = function()
-        ct = AbstractPlotting.current_default_theme()
+        ct = Makie.current_default_theme()
         if haskey(ct, :rowgap)
             ct[:rowgap][]
         else
@@ -117,7 +117,7 @@ export AxisAspect, DataAspect
 export colsize!, rowsize!, colgap!, rowgap!
 export Left, Right, Top, Bottom, TopLeft, BottomLeft, TopRight, BottomRight
 
-# hbox and vbox shadow AbstractPlotting functions
+# hbox and vbox shadow Makie functions
 const hgrid! = GridLayoutBase.hbox!
 const vgrid! = GridLayoutBase.vbox!
 

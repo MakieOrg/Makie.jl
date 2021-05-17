@@ -7,7 +7,7 @@ mesh
 ```@example
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 vertices = [
     0.0 0.0;
@@ -30,7 +30,7 @@ scene = mesh(vertices, faces, color = colors, shading = false)
 using FileIO
 using GLMakie
 GLMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 brain = load(assetpath("brain.stl"))
 

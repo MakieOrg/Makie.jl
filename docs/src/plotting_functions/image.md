@@ -9,7 +9,7 @@ image
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 using FileIO
 
 img = rotr90(load("../assets/cow.png"))

@@ -1,5 +1,5 @@
 using StatsBase: Histogram
-using AbstractPlotting, StatsBase
+using Makie, StatsBase
 import Distributions
 using KernelDensity
 
@@ -66,7 +66,7 @@ end
     @test p1[1][] == p2[1][]
     @test p1[2][] == p2[2][]
     @test p1[3][] == p2[3][]
-    
+
     fig, ax, p1 = surface(d)
     @test p1 isa Surface
     fig, ax, p2 = surface(d.x, d.y, d.density)
@@ -77,12 +77,12 @@ end
 
 @testset "distribution" begin
     d = Distributions.Normal()
-    rg = AbstractPlotting.support(d)
+    rg = Makie.support(d)
     @test minimum(rg) ≈ -3.7190164854556866
     @test maximum(rg) ≈ 3.719016485455714
     fix, ax, plt = plot(d)
     @test plt isa Lines
-    @test !AbstractPlotting.isdiscrete(d)
+    @test !Makie.isdiscrete(d)
     @test first(plt[1][][1]) ≈ minimum(rg) rtol = 1f-6
     @test first(plt[1][][end]) ≈ maximum(rg) rtol = 1f-6
 
@@ -91,12 +91,12 @@ end
     end
 
     d = Distributions.Poisson()
-    rg = AbstractPlotting.support(d)
+    rg = Makie.support(d)
     @test rg == 0:6
     fig, ax, p = plot(d)
     @test p isa ScatterLines
     plt = p.plots[1]
-    @test AbstractPlotting.isdiscrete(d)
+    @test Makie.isdiscrete(d)
 
     @test first.(plt[1][]) == 0:6
     @test last.(plt[1][]) ≈ Distributions.pdf.(d, first.(plt[1][]))
@@ -154,7 +154,7 @@ end
     fig, ax, p = crossbar(1, 3, 2, 4; show_notch = true, notchmin = 2.5, notchmax = 3.5);
     @test p isa CrossBar
     @test p.plots[1] isa Poly
-    @test p.plots[1][1][][1] isa AbstractPlotting.AbstractMesh
+    @test p.plots[1][1][][1] isa Makie.AbstractMesh
     poly = Point{2,Float32}[[0.6, 2.0], [1.4, 2.0], [1.4, 2.5], [1.2, 3.0], [1.4, 3.5],
                             [1.4, 4.0], [0.6, 4.0], [0.6, 3.5], [0.8, 3.0], [0.6, 2.5]]
     @test map(Point2f0, p.plots[1][1][][1].position) == poly
@@ -236,7 +236,7 @@ end
                                            map(Point2f0, [[4.6, 85.75], [5.4, 85.75], [5.4, 87.1437], [5.2, 90.5], [5.4, 93.8563], [5.4, 95.25], [4.6, 95.25], [4.6, 93.8563], [4.8, 90.5], [4.6, 87.1437]])]
     meshes = plts[3].plots[1][1][]
     @testset for (i, mesh) in enumerate(meshes)
-        @test mesh isa AbstractPlotting.AbstractMesh
+        @test mesh isa Makie.AbstractMesh
         vertices = map(Point2f0, mesh.position)
         @test vertices ≈ notch_boxes[i]
     end

@@ -9,7 +9,7 @@ crossbar
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = [1, 1, 2, 2, 3, 3]
 ys = rand(6)

@@ -483,22 +483,22 @@ end
 function get_ticks(l::LogTicks, scale::Union{typeof(log10), typeof(log2), typeof(log)}, ::Automatic, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, identity, scale(vmin), scale(vmax))
 
-    ticks = AbstractPlotting.inverse_transform(scale).(ticks_scaled)
+    ticks = Makie.inverse_transform(scale).(ticks_scaled)
 
     labels_scaled = get_ticklabels(automatic, ticks_scaled)
-    labels = _logbase(scale) .* AbstractPlotting.UnicodeFun.to_superscript.(labels_scaled)
+    labels = _logbase(scale) .* Makie.UnicodeFun.to_superscript.(labels_scaled)
 
     (ticks, labels)
 end
 
-# function get_ticks(::Automatic, scale::typeof(AbstractPlotting.logit), any_formatter, vmin, vmax)
+# function get_ticks(::Automatic, scale::typeof(Makie.logit), any_formatter, vmin, vmax)
 #     get_ticks(LogitTicks(WilkinsonTicks(5, k_min = 3)), scale, any_formatter, vmin, vmax)
 # end
 
-logit_10(x) = AbstractPlotting.logit(x) / log(10)
-expit_10(x) = AbstractPlotting.logistic(log(10) * x)
+logit_10(x) = Makie.logit(x) / log(10)
+expit_10(x) = Makie.logistic(log(10) * x)
 
-# function get_ticks(l::LogitTicks, scale::typeof(AbstractPlotting.logit), ::Automatic, vmin, vmax)
+# function get_ticks(l::LogitTicks, scale::typeof(Makie.logit), ::Automatic, vmin, vmax)
 
 #     ticks_scaled = get_tickvalues(l.linear_ticks, identity, logit_10(vmin), logit_10(vmax))
 
@@ -510,9 +510,9 @@ expit_10(x) = AbstractPlotting.logistic(log(10) * x)
 #         if t == 0
 #             "¹/₂"
 #         elseif t < 0
-#             "10" * AbstractPlotting.UnicodeFun.to_superscript(bl)
+#             "10" * Makie.UnicodeFun.to_superscript(bl)
 #         else
-#             "1-10" * AbstractPlotting.UnicodeFun.to_superscript("-" * bl)
+#             "1-10" * Makie.UnicodeFun.to_superscript("-" * bl)
 #         end
 #     end
 
@@ -543,7 +543,7 @@ get_tickvalues(tickvalues, vmin, vmax) = convert(Vector{Float64}, tickvalues)
 
 function get_tickvalues(l::LogTicks, scale, vmin, vmax)
     ticks_scaled = get_tickvalues(l.linear_ticks, scale(vmin), scale(vmax))
-    AbstractPlotting.inverse_transform(scale).(ticks_scaled)
+    Makie.inverse_transform(scale).(ticks_scaled)
 end
 
 """
@@ -616,7 +616,7 @@ function get_minor_tickvalues(i::IntervalsBetween, scale::Union{typeof(log), typ
     length(tickvalues) < 2 && return vals
     n = i.n
 
-    invscale = AbstractPlotting.inverse_transform(scale)
+    invscale = Makie.inverse_transform(scale)
 
     if i.mirror
         firstinterval_scaled = scale(tickvalues[2]) - scale(tickvalues[1])

@@ -12,7 +12,7 @@ end
 
 @testset "FigureAxisPlot" begin
     fap = scatter(rand(100, 2))
-    @test fap isa AbstractPlotting.FigureAxisPlot
+    @test fap isa Makie.FigureAxisPlot
     fig, ax, p = scatter(rand(100, 2))
     @test fig isa Figure
     @test ax isa Axis
@@ -30,9 +30,9 @@ end
     @test current_figure() === fig
 
     figurepos = fig[1, 1]
-    @test figurepos isa AbstractPlotting.FigurePosition
+    @test figurepos isa Makie.FigurePosition
     ap = scatter(figurepos, rand(100, 2))
-    @test ap isa AbstractPlotting.AxisPlot
+    @test ap isa Makie.AxisPlot
     @test current_axis() === ap.axis
 
     ax2, p2 = scatter(fig[1, 2], rand(100, 2))
@@ -119,9 +119,9 @@ end
     @test_throws ErrorException scatter(fig[1, 1])
     @test_throws ErrorException scatter(fig[1, 1][2, 3])
     @test_throws ErrorException scatter(fig[1, 1][2, 3][4, 5])
-    @test scatter(fig[1, 2], 1:10) isa AbstractPlotting.AxisPlot
-    @test scatter(fig[1, 1][1, 1], 1:10) isa AbstractPlotting.AxisPlot
-    @test scatter(fig[1, 1][1, 1][1, 1], 1:10) isa AbstractPlotting.AxisPlot
+    @test scatter(fig[1, 2], 1:10) isa Makie.AxisPlot
+    @test scatter(fig[1, 1][1, 1], 1:10) isa Makie.AxisPlot
+    @test scatter(fig[1, 1][1, 1][1, 1], 1:10) isa Makie.AxisPlot
 
     fig = Figure()
     fig[1, 1] = GridLayout()

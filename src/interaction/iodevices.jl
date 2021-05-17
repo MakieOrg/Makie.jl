@@ -4,7 +4,7 @@ represent keyboard buttons.
 """
 module Keyboard
 
-    using ..AbstractPlotting: INSTANCES # import the docstring extensions
+    using ..Makie: INSTANCES # import the docstring extensions
     """
         Keyboard.Button
 
@@ -139,7 +139,7 @@ module Keyboard
 
     """
         Keyboard.Action
-    
+
     Enumerates all key states/actions in accordance with the GLFW spec.
 
     $(INSTANCES)
@@ -156,7 +156,7 @@ Backend independent enums and fields which
 represent mouse actions.
 """
 module Mouse
-    using ..AbstractPlotting: INSTANCES # import the docstring extensions
+    using ..Makie: INSTANCES # import the docstring extensions
 
     """
         Mouse.Button
@@ -174,7 +174,7 @@ module Mouse
 
     """
         Mouse.Action
-    
+
     Enumerates all mouse states/actions in accordance with the GLFW spec.
 
     $(INSTANCES)

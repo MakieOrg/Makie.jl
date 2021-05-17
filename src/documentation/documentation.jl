@@ -4,7 +4,7 @@
 """
     help(func[; extended = false])
 
-Welcome to the main help function of `Makie.jl` / `AbstractPlotting.jl`.
+Welcome to the main help function of `Makie.jl` / `Makie.jl`.
 
 For help on a specific function's arguments, type `help_arguments(function_name)`.
 
@@ -136,7 +136,7 @@ function help_attributes(io::IO, Typ::Type{T}; extended = false) where T <: Abst
             if !(attribute in filter_keys)
                 padding = longest - length(string(attribute)) + extra_padding
                 print(io, "  ", attribute, " "^padding)
-                show(io, isnothing(AbstractPlotting.to_value(value)) ? "nothing" : to_value(value))
+                show(io, isnothing(Makie.to_value(value)) ? "nothing" : to_value(value))
                 print(io, "\n")
             end
         end
@@ -214,7 +214,7 @@ Use the optional `extended = true` keyword argument to see more details.
 function print_rec(io::IO, dict, indent::Int = 1; extended = false)
     for (k, v) in dict
         print(io, " "^(indent*4), k)
-        if isa(to_value(v), AbstractPlotting.Attributes)
+        if isa(to_value(v), Makie.Attributes)
             print(io, ": ")
             println(io)
             print_rec(io, v.attributes, indent + 1; extended = extended)

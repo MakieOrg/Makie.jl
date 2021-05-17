@@ -15,7 +15,7 @@ A `Node` is an object that allows its value to be updated interactively.
 Let's start by creating one:
 
 ```@example 1
-using GLMakie, AbstractPlotting
+using GLMakie, Makie
 
 x = Node(0.0)
 ```
@@ -57,8 +57,8 @@ nothing # hide
 ```
 
 !!! note
-    All registered functions in a `Node` are executed synchronously in the order of registration.
-    This means that if you change two Nodes after one another, all effects of the first change will happen before the second change.
+All registered functions in a `Node` are executed synchronously in the order of registration.
+This means that if you change two Nodes after one another, all effects of the first change will happen before the second change.
 
 There are two ways to access the value of a `Node`.
 You can use the indexing syntax or the `to_value` function:
@@ -111,7 +111,6 @@ y[] = 20.0
 @show z[]
 nothing # hide
 ```
-
 
 ## Shorthand Macro For `lift`
 

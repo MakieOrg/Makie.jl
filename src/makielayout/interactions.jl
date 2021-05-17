@@ -119,11 +119,11 @@ function _chosen_limits(rz, ax)
     lims = ax.finallimits[]
     # restrict to y change
     if rz.restrict_x || !ax.xrectzoom[]
-        r = FRect2D(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2]) 
+        r = FRect2D(lims.origin[1], r.origin[2], widths(lims)[1], widths(r)[2])
     end
     # restrict to x change
     if rz.restrict_y || !ax.yrectzoom[]
-        r = FRect2D(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2]) 
+        r = FRect2D(r.origin[1], lims.origin[2], widths(r)[1], widths(lims)[2])
     end
     return r
 end
@@ -152,12 +152,12 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
     # TODO: actually, the data from the mouse event should be transformed already
     # but the problem is that these mouse events are generated all the time
     # and outside of log axes, you would quickly run into domain errors
-    transf = AbstractPlotting.transform_func(ax)
-    inv_transf = AbstractPlotting.inverse_transform(transf)
+    transf = Makie.transform_func(ax)
+    inv_transf = Makie.inverse_transform(transf)
 
     if event.type === MouseEventTypes.leftdragstart
-        data = AbstractPlotting.apply_transform(inv_transf, event.data)
-        prev_data = AbstractPlotting.apply_transform(inv_transf, event.prev_data)
+        data = Makie.apply_transform(inv_transf, event.data)
+        prev_data = Makie.apply_transform(inv_transf, event.prev_data)
 
         r.from = prev_data
         r.to = data
@@ -180,9 +180,9 @@ function process_interaction(r::RectangleZoom, event::MouseEvent, ax::Axis)
         return true
     elseif event.type === MouseEventTypes.leftdrag
         # clamp mouse data to shown limits
-        rect = AbstractPlotting.apply_transform(transf, ax.finallimits[])
-        data = AbstractPlotting.apply_transform(inv_transf, rectclamp(event.data, rect))
-        
+        rect = Makie.apply_transform(transf, ax.finallimits[])
+        data = Makie.apply_transform(inv_transf, rectclamp(event.data, rect))
+
         r.to = data
         r.rectnode[] = _chosen_limits(r, ax)
         return true
@@ -278,7 +278,7 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
         yscale = ax.yscale[]
 
         transf = (xscale, yscale)
-        tlimits_trans = AbstractPlotting.apply_transform(transf, tlimits[])
+        tlimits_trans = Makie.apply_transform(transf, tlimits[])
 
         xorigin = tlimits_trans.origin[1]
         yorigin = tlimits_trans.origin[2]
@@ -302,8 +302,8 @@ function process_interaction(s::ScrollZoom, event::ScrollEvent, ax::Axis)
             FRect(newxorigin, newyorigin, newxwidth, newywidth)
         end
 
-        inv_transf = AbstractPlotting.inverse_transform(transf)
-        tlimits[] = AbstractPlotting.apply_transform(inv_transf, newrect_trans)
+        inv_transf = Makie.inverse_transform(transf)
+        tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
     end
 
     # NOTE this might be problematic if if we add scrolling to something like Menu
@@ -338,12 +338,12 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
         # now to 0..1
         0.5 .+ 0.5
     end
-    
+
     xscale = ax.xscale[]
     yscale = ax.yscale[]
 
     transf = (xscale, yscale)
-    tlimits_trans = AbstractPlotting.apply_transform(transf, tlimits[])
+    tlimits_trans = Makie.apply_transform(transf, tlimits[])
 
     movement_frac = mp_axfraction .- mp_axfraction_prev
 
@@ -351,7 +351,7 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
     yscale = ax.yscale[]
 
     transf = (xscale, yscale)
-    tlimits_trans = AbstractPlotting.apply_transform(transf, tlimits[])
+    tlimits_trans = Makie.apply_transform(transf, tlimits[])
 
     xori, yori = tlimits_trans.origin .- movement_frac .* widths(tlimits_trans)
 
@@ -365,10 +365,10 @@ function process_interaction(dp::DragPan, event::MouseEvent, ax)
 
     timed_ticklabelspace_reset(ax, dp.reset_timer, dp.prev_xticklabelspace, dp.prev_yticklabelspace, dp.reset_delay)
 
-    inv_transf = AbstractPlotting.inverse_transform(transf)
+    inv_transf = Makie.inverse_transform(transf)
     newrect_trans = FRect(Vec2f0(xori, yori), widths(tlimits_trans))
-    tlimits[] = AbstractPlotting.apply_transform(inv_transf, newrect_trans)
-           
+    tlimits[] = Makie.apply_transform(inv_transf, newrect_trans)
+
     return true
 end
 

@@ -1,9 +1,9 @@
 # `Layoutables`
 
 !!! note
-    All examples in this section are presented as static CairoMakie vector graphics for clarity of visuals.
-    Keep in mind that CairoMakie is not interactive.
-    Use GLMakie for interactive widgets, as WGLMakie currently doesn't have picking implemented.
+All examples in this section are presented as static CairoMakie vector graphics for clarity of visuals.
+Keep in mind that CairoMakie is not interactive.
+Use GLMakie for interactive widgets, as WGLMakie currently doesn't have picking implemented.
 
 `Layoutables` are objects which can be added to a `Figure` or `Scene` and have their location and size controlled by a `GridLayout`. In of itself, a `Layoutable` is an abstract type.
 A `Figure` has its own internal `GridLayout` and therefore offers simplified syntax for adding layoutables to it.
@@ -11,9 +11,9 @@ If you want to work with a bare `Scene`, you can attach a `GridLayout` to its pi
 The `layoutscene` function is supplied for this purpose.
 
 !!! note
-    A layout only controls an object's position or bounding box.
-    A `Layoutable` can be controlled by the GridLayout of a Figure but not be added as a visual to the Figure.
-    A `Layoutable` can also be added to a Scene without being inside any GridLayout, if you specify the bounding box yourself.
+A layout only controls an object's position or bounding box.
+A `Layoutable` can be controlled by the GridLayout of a Figure but not be added as a visual to the Figure.
+A `Layoutable` can also be added to a Scene without being inside any GridLayout, if you specify the bounding box yourself.
 
 ## Adding to a `Figure`
 
@@ -22,7 +22,7 @@ Here's one way to add a `Layoutable`, in this case an `Axis`, to a Figure.
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 ax = Axis(f[1, 1])
@@ -38,7 +38,7 @@ This is mostly not needed anymore since Figures were added.
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 scene, layout = layoutscene()
 ax = layout[1, 1] = Axis(scene)
@@ -57,7 +57,7 @@ Here's an example where two axes are placed manually:
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 f = Figure()
 Axis(f, bbox = BBox(100, 300, 100, 500), title = "Axis 1")

@@ -50,7 +50,6 @@ f[1, 2] = Legend(f, ax, "Trig Functions", framevisible = false)
 f
 ```
 
-
 ## Multi-Bank Legend
 
 You can control the number of banks with the `nbanks` attribute. Banks are columns
@@ -70,7 +69,6 @@ Legend(f[1, 2], lins, string.(1:length(lins)), nbanks = 3)
 
 f
 ```
-
 
 ## Legend Inside An Axis
 
@@ -102,7 +100,6 @@ axislegend(ax, [sc1, sc2], ["One", "Two"], "Selected Dots", position = :rb,
 f
 ```
 
-
 Alternatively, you can simply add a Legend to the same layout slot
 that an axis lives in. As long as the axis is bigger than the legend you can
 set the legend's `tellheight` and `tellwidth` to `false` and position it using the align
@@ -131,12 +128,11 @@ for (j, ha, va) in zip(1:3, haligns, valigns)
         tellwidth = false,
         margin = (10, 10, 10, 10),
         halign = ha, valign = va, orientation = :horizontal
-    ) 
+    )
 end
 
 f
 ```
-
 
 ## Creating Legend Entries Manually
 
@@ -149,10 +145,9 @@ arrangement for `MarkerElement`s or poly shape for `PolyElement`s. You can check
 the list using this function:
 
 ```@example
-using AbstractPlotting
+using Makie
 MakieLayout.attributenames(LegendEntry)
 ```
-
 
 ```@example
 using CairoMakie
@@ -187,7 +182,6 @@ Legend(f[1, 2],
 f
 ```
 
-
 ## Horizontal Legend
 
 In case you want the legend entries to be listed horizontally, set the `orientation`
@@ -195,8 +189,6 @@ attribute to `:horizontal`. In this case the `nbanks` attribute refers to the
 number of rows instead of columns. To keep an adjacent axis from potentially shrinking to
 the width of the horizontal legend, set `tellwidth = false` and `tellheight = true`
 if you place the legend below or above the axis.
-
-
 
 ```@example
 using CairoMakie
@@ -217,7 +209,6 @@ Legend(f[2, 1], [lin, sca, lin], ["a line", "some dots", "line again"],
 
 f
 ```
-
 
 ## Multi-Group Legends
 

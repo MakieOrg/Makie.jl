@@ -2,14 +2,14 @@ using Pkg
 using Test
 using MeshIO
 using StaticArrays
-using AbstractPlotting
+using Makie
 using ImageMagick
 
-using AbstractPlotting.Observables
-using AbstractPlotting.GeometryBasics
-using AbstractPlotting.PlotUtils
-using AbstractPlotting.FileIO
-using AbstractPlotting.IntervalSets
+using Makie.Observables
+using Makie.GeometryBasics
+using Makie.PlotUtils
+using Makie.FileIO
+using Makie.IntervalSets
 using GeometryBasics: Pyramid
 
 # ImageIO seems broken on 1.6 ... and there doesn't

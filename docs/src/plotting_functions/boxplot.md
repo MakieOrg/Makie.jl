@@ -9,7 +9,7 @@ boxplot
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = rand(1:3, 1000)
 ys = randn(1000)
@@ -20,7 +20,7 @@ boxplot(xs, ys)
 ```@example
 using CairoMakie
 CairoMakie.activate!() # hide
-AbstractPlotting.inline!(true) # hide
+Makie.inline!(true) # hide
 
 xs = rand(1:3, 1000)
 ys = randn(1000)

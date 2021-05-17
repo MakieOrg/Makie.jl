@@ -15,15 +15,15 @@ function convert_arguments(T::PlotFunc, args...; kw...)
                 if ee isa MethodError
                     error(
                         """
-                        `AbstractPlotting.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
+                        `Makie.convert_arguments` for the plot type $T and its conversion trait $ct was unsuccessful.
 
                         The signature that could not be converted was:
                         $(join("::" .* string.(typeof.(args)), ", "))
 
-                        AbstractPlotting needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
-                        You can define a method for `AbstractPlotting.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/recipes.html).
+                        Makie needs to convert all plot input arguments to types that can be consumed by the backends (typically Arrays with Float32 elements).
+                        You can define a method for `Makie.convert_arguments` (a type recipe) for these types or their supertypes to make this set of arguments convertible (See http://makie.juliaplots.org/stable/recipes.html).
 
-                        Alternatively, you can define `AbstractPlotting.convert_single_argument` for single arguments which have types that are unknown to AbstractPlotting but which can be converted to known types and fed back to the conversion pipeline.
+                        Alternatively, you can define `Makie.convert_single_argument` for single arguments which have types that are unknown to Makie but which can be converted to known types and fed back to the conversion pipeline.
                         """
                     )
                 else
@@ -605,7 +605,7 @@ end
 """
     to_triangles(indices)
 
-Convert a representation of triangle point indices `indices` to its canonical representation as a `Vector{AbstractPlotting.GLTriangleFace}`. `indices` can be any of the following:
+Convert a representation of triangle point indices `indices` to its canonical representation as a `Vector{Makie.GLTriangleFace}`. `indices` can be any of the following:
 
 - An `AbstractVector{Int}`, containing groups of 3 1-based indices,
 - An `AbstractVector{UIn32}`, containing groups of 3 0-based indices,
@@ -1060,19 +1060,19 @@ function convert_attribute(cs::Union{String, Symbol}, ::key"colormap", n::Intege
         error(
             """
             There is no color gradient named $cs.
-            See `AbstractPlotting.available_gradients()` for the list of available gradients,
+            See `Makie.available_gradients()` for the list of available gradients,
             or look at http://makie.juliaplots.org/dev/generated/colors#Colormap-reference.
             """
         )
     end
 end
 
-function AbstractPlotting.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
+function Makie.convert_attribute(cg::PlotUtils.ContinuousColorGradient, ::key"colormap", n::Integer=length(cg.values))
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
     return getindex.(Ref(cg), LinRange(first(cg.values), last(cg.values), n))
 end
 
-function AbstractPlotting.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
+function Makie.convert_attribute(cg::PlotUtils.CategoricalColorGradient, ::key"colormap", n::Integer = length(cg.colors) * 20)
     # PlotUtils does not always give [0, 1] range, so we adapt to what it has
     return vcat(fill.(cg.colors.colors, Ref(n ÷ length(cg.colors)))...)
 end
