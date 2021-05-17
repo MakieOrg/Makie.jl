@@ -10,15 +10,18 @@
 #   - Update files in `/assets` directory.
 #   - Bump the `version` variable below.
 #   - Run `rebuild_artifacts()` to create new tarball and update Artifacts.toml.
-#   - Commit the changes.
+#   - Commit & push the changes.
 #   - Run `release_artifacts()` to create a new release and upload the new tarball.
-#
+# Note:
+# https://discourse.julialang.org/t/git-tree-sha1-for-artifacts-toml/43879
+# can make this process on windows a bit annoying
+# TODO figure out if we can use ArtifactUtils or so...
 
 using Pkg.Artifacts
 using ghr_jll
 using LibGit2
 
-version = v"0.1.1"
+version = v"0.1.2"
 user = "JuliaPlots"
 repo = "AbstractPlotting.jl"
 host = "https://github.com/$user/$repo/releases/download"
@@ -36,8 +39,8 @@ function rebuild_artifacts()
     end
 
     archive_filename = "assets-$version.tar.gz"
-    download_hash = archive_artifact(product_hash, joinpath(build_path, archive_filename))
-
+    path = joinpath(build_path, archive_filename)
+    download_hash = archive_artifact(product_hash, path)
     bind_artifact!(
         artifact_toml,
         "assets",
@@ -50,18 +53,19 @@ function rebuild_artifacts()
             ),
         ],
     )
+    return path
 end
 
-function release_artifacts()
+function release_artifacts(tar_path)
     name = "Release assets $(version)"
     commit = string(LibGit2.GitHash(LibGit2.GitCommit(LibGit2.GitRepo(@__DIR__), "HEAD")))
     token = ENV["GITHUB_TOKEN"]
     tag = "assets-$version"
     ghr() do bin
-        run(`$bin -u $user -r $repo -n $name -c $commit -t $token $tag $build_path`)
+        run(`$bin -u $user -r $repo -n $name -c $commit -t $token $tag $tar_path`)
     end
 end
 
-rebuild_artifacts()
+tar_path = rebuild_artifacts()
 
-release_artifacts()
+release_artifacts(tar_path)
