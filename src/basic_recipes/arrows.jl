@@ -36,7 +36,8 @@ $(ATTRIBUTES)
             lengthscale = 1f0,
             colormap = theme(scene, :colormap),
             quality = 32,
-            inspectable = theme(scene, :inspectable)
+            inspectable = theme(scene, :inspectable),
+            markerspace = Pixel,
         )
     )
     attr[:fxaa] = automatic
@@ -152,6 +153,24 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
                 Point2f0(p1 .- shift) => Point2f0(p1 .- shift .+ (dir .* s))
             end
         end
+    
+        scene = parent_scene(arrowplot)
+        rotations = directions
+
+        # for 2D arrows, compute the correct marker rotation given the projection / scene size
+        # for the screen-space marker
+        if arrowplot.markerspace[] == Pixel
+            rotations = lift(scene.camera.projectionview, scene.px_area, headstart) do pv, pxa, hs
+                angles = map(hs) do (start, stop)
+                    pstart = project(scene, start)
+                    pstop = project(scene, stop)
+                    diff = pstop - pstart
+                    angle = acos(diff[2] / norm(diff))
+                    angle = ifelse(diff[1] > 0, 2pi - angle, angle)
+                end
+                Billboard(angles)
+            end
+        end
 
         linesegments!(
             arrowplot, headstart,
@@ -164,9 +183,9 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             arrowplot,
             lift(x-> last.(x), headstart),
             marker = @lift(arrow_head(2, $arrowhead, $quality)),
-            markersize = @lift($arrowsize === automatic ? 0.3 : $arrowsize),
-            color = arrow_c, rotations = directions, strokewidth = 0.0,
-            colormap = colormap,
+            markersize = @lift($arrowsize === automatic ? theme(scene, :markersize)[] : $arrowsize),
+            color = arrow_c, rotations = rotations, strokewidth = 0.0,
+            colormap = colormap, markerspace = arrowplot.markerspace,
             fxaa = fxaa_bool, inspectable = inspectable,
             transparency = transparency, visible = visible
         )
@@ -214,4 +233,5 @@ function plot!(arrowplot::Arrows{<: Tuple{AbstractVector{<: Point{N, T}}, V}}) w
             transparency = transparency, visible = visible
         )
     end
+
 end

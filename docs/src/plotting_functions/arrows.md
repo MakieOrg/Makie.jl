@@ -39,19 +39,21 @@ arrows
 ### Examples
 
 ```@example
-using GLMakie
-GLMakie.activate!() # hide
+using CairoMakie
+CairoMakie.activate!() # hide
 AbstractPlotting.inline!(true) # hide
 
-f = Figure()
-Axis(f[1, 1])
+f = Figure(resolution = (800, 800))
+Axis(f[1, 1], backgroundcolor = "black")
 
-xs = LinRange(1, 10, 20)
-ys = LinRange(1, 15, 20)
-us = [cos(x) for x in xs, y in ys]
-vs = [sin(y) for x in xs, y in ys]
+xs = LinRange(0, 2pi, 20)
+ys = LinRange(0, 3pi, 20)
+us = [sin(x) * cos(y) for x in xs, y in ys]
+vs = [-cos(x) * sin(y) for x in xs, y in ys]
+strength = vec(sqrt.(us .^ 2 .+ vs .^ 2))
 
-arrows!(xs, ys, us, vs, arrowsize = 0.2, lengthscale = 0.3)
+arrows!(xs, ys, us, vs, arrowsize = 10, lengthscale = 0.3,
+    arrowcolor = strength, linecolor = strength)
 
 f
 ```
