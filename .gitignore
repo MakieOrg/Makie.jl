@@ -12,5 +12,6 @@ phases.0001_print.jpg
 **/._*
 Manifest.toml
 !docs/Manifest.toml
+/build
 
 \.DS_Store
