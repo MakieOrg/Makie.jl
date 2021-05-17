@@ -8,12 +8,22 @@ By default, the initial value `init` is determined by the first function evaluat
 You can also set `typ` to control the parametric type of the Observable irrespective of the `init` value.
 """
 function lift(
-        f, o1::Observables.AbstractObservable, rest...;
-        init = f(to_value(o1), to_value.(rest)...), typ = typeof(init),
-        name = :node # name ignored for now
+        f, o1::Observables.AbstractObservable, rest...
     )
+    init = f(to_value(o1), to_value.(rest)...)
+    typ = typeof(init)
     result = Observable{typ}(init)
     map!(f, result, o1, rest...)
+    return result
+end
+
+function lift(
+        f, ::Type{T}, o1::Observables.AbstractObservable, rest...
+    ) where {T}
+    init = f(to_value(o1), to_value.(rest)...)
+    result = Observable{T}(init)
+    map!(f, result, o1, rest...)
+    return result
 end
 
 # TODO remove this and play by Observables rules
@@ -68,12 +78,10 @@ test(Node(1), Node(2))
 
 """
 function map_once(
-        f, input::Node, inputrest::Node...;
-        init = f(to_value.((input, inputrest...))...),
-        typ = typeof(init)
+        f, input::Node, inputrest::Node...
     )
     for arg in (input, inputrest...)
         safe_off(arg, f)
     end
-    lift(f, input, inputrest..., init = init, typ = typ)
+    lift(f, input, inputrest...)
 end

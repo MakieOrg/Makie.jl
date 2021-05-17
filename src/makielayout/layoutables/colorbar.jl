@@ -81,11 +81,11 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
     # make the layout width and height settings depend on `size` if they are set to automatic
     # and determine whether they are nothing or `size` depending on colorbar orientation
-    _width = lift(attrs.size, attrs.width, vertical, typ = Any) do sz, w, v
+    _width = lift(Any, attrs.size, attrs.width, vertical) do sz, w, v
         w === AbstractPlotting.automatic ? (v ? sz : nothing) : w
     end
 
-    _height = lift(attrs.size, attrs.height, vertical, typ = Any) do sz, h, v
+    _height = lift(Any, attrs.size, attrs.height, vertical) do sz, h, v
         h === AbstractPlotting.automatic ? (v ? nothing : sz) : h
     end
 
@@ -123,7 +123,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
     end
 
 
-    cgradient = lift(colormap, typ = Any) do cmap
+    cgradient = lift(Any, colormap) do cmap
         if cmap isa PlotUtils.ColorGradient
             # if we have a colorgradient directly, we want to keep it intact
             # to enable correct categorical colormap behavior etc
@@ -164,7 +164,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
 
         # we need to convert the 0 to 1 steps into rescaled 0 to 1 steps given the
         # colormap's `scale` attribute
-        
+
         s_scaled = scaled_steps(steps, scale, lims)
 
         xmin, ymin = minimum(bbox)
@@ -191,7 +191,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         lift(x -> getindex(x, 1), rects_and_colors),
         color = colors,
         show_axis = false,
-        visible = map_is_categorical, 
+        visible = map_is_categorical,
         inspectable = false
     )
 
@@ -213,7 +213,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         continous_pixels,
         visible = @lift(!$map_is_categorical),
         show_axis = false,
-        interpolate = true, 
+        interpolate = true,
         inspectable = false
     )
 
@@ -334,7 +334,7 @@ function layoutable(::Type{<:Colorbar}, fig_or_scene; bbox = nothing, kwargs...)
         minorticksvisible = minorticksvisible, minortickalign = minortickalign,
         minorticksize = minorticksize, minortickwidth = minortickwidth,
         minortickcolor = minortickcolor, minorticks = minorticks, scale = scale)
-        
+
     decorations[:axis] = axis
 
     onany(axis.protrusion, vertical, flipaxis) do axprotrusion,
